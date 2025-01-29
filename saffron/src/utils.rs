@@ -4,6 +4,7 @@ use ark_ff::{BigInteger, PrimeField};
 use ark_poly::EvaluationDomain;
 use o1_utils::FieldHelpers;
 use thiserror::Error;
+use tracing::instrument;
 
 // For injectivity, you can only use this on inputs of length at most
 // 'F::MODULUS_BIT_SIZE / 8', e.g. for Vesta this is 31.
@@ -59,9 +60,9 @@ pub struct QueryBytes {
 /// We store the data in a vector of vector of field element
 /// The inner vector represent polynomials
 pub struct FieldElt {
-    /// the number of the polynomial the data point is attached too
+    /// the index of the polynomial the data point is attached too
     poly_index: usize,
-    /// the number of the root of unity the data point is attached too
+    /// the index of the root of unity the data point is attached too
     eval_index: usize,
     domain_size: usize,
     n_polys: usize,
@@ -70,46 +71,51 @@ pub struct FieldElt {
 #[derive(Debug)]
 pub struct QueryField<F> {
     start: FieldElt,
-    /// how many bytes we need to trim from the first 31bytes chunk
+    /// how many bytes we need to trim from the first chunk
     /// we get from the first field element we decode
     leftover_start: usize,
     end: FieldElt,
-    /// how many bytes we need to trim from the last 31bytes chunk
+    /// how many bytes we need to trim from the last chunk
     /// we get from the last field element we decode
     leftover_end: usize,
     tag: PhantomData<F>,
 }
 
 impl<F: PrimeField> QueryField<F> {
+    #[instrument(skip_all, level = "debug")]
     pub fn apply(self, data: &[Vec<F>]) -> Vec<u8> {
-        let mut answer: Vec<u8> = Vec::new();
-        let mut field_elt = self.start;
         let n = (F::MODULUS_BIT_SIZE / 8) as usize;
         let m = F::size_in_bytes();
         let mut buffer = vec![0u8; m];
-        while field_elt <= self.end {
-            decode_into(
-                &mut buffer,
-                data[field_elt.poly_index][field_elt.eval_index],
-            );
-            answer.extend_from_slice(&buffer[(m - n)..m]);
-            field_elt = field_elt.next().unwrap();
-        }
-        // trimming the first and last 31bytes chunk
+        let mut answer = Vec::new();
+        self.start
+            .into_iter()
+            .take_while(|x| x <= &self.end)
+            .for_each(|x| {
+                let value = data[x.poly_index][x.eval_index];
+                decode_into(&mut buffer, value);
+                answer.extend_from_slice(&buffer[(m - n)..m]);
+            });
+
         answer[(self.leftover_start)..(answer.len() - self.leftover_end)].to_vec()
     }
 }
 
 impl Iterator for FieldElt {
     type Item = FieldElt;
-    fn next(&mut self) -> Option<FieldElt> {
-        if self.eval_index < (1 << 16) - 1 {
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = *self;
+
+        if (self.eval_index + 1) < self.domain_size {
             self.eval_index += 1;
-        } else {
+        } else if (self.poly_index + 1) < self.n_polys {
             self.poly_index += 1;
-            self.eval_index = 0
-        };
-        Some(*self)
+            self.eval_index = 0;
+        } else {
+            return None;
+        }
+
+        Some(current)
     }
 }
 
