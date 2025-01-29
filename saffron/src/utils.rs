@@ -267,7 +267,7 @@ mod tests {
     use mina_curves::pasta::Fp;
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
-    use test_utils::UserData;
+    use test_utils::{DataSize, UserData};
     use tracing::debug;
 
     fn decode<Fp: PrimeField>(x: Fp) -> Vec<u8> {
@@ -371,7 +371,7 @@ mod tests {
             for query in queries {
                 let expected = &xs[query.start..(query.start+query.len)];
                 let field_query: QueryField<Fp> = query.into_query_field(DOMAIN.size(), chunked.len()).unwrap();
-                let got_answer = field_query.apply(&chunked);  // Note: might need clone depending on your types
+                let got_answer = field_query.apply(&chunked);
                 prop_assert_eq!(expected, got_answer);
             }
         }
@@ -406,5 +406,30 @@ mod tests {
             prop_assert!(query_field.is_err());
 
         }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(20))]
+        #[test]
+        fn test_nil_query(
+            (UserData(xs), query) in UserData::arbitrary_with(DataSize::Small)
+                .prop_flat_map(|xs| {
+                    let padded_len = {
+                        let m = Fp::MODULUS_BIT_SIZE as usize / 8;
+                        padded_field_length(&xs.0) * m
+                    };
+                    let query_strategy = (0..padded_len).prop_map(move |start| {
+                        QueryBytes { start, len: 0 }
+                    });
+                    (Just(xs), query_strategy)
+                })
+        ) {
+            let chunked = encode_for_domain(&*DOMAIN, &xs);
+            let n_polys = chunked.len();
+            let field_query: QueryField<Fp> = query.into_query_field(DOMAIN.size(), n_polys).unwrap();
+            let got_answer = field_query.apply(&chunked);
+            prop_assert!(got_answer.is_empty());
+            }
+
     }
 }
