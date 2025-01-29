@@ -276,7 +276,7 @@ mod tests {
     use mina_curves::pasta::Fp;
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
-    use test_utils::UserData;
+    use test_utils::{DataSize, UserData};
     use tracing::debug;
 
     fn decode_from_field_elements<F: PrimeField>(xs: Vec<F>) -> Vec<u8> {
@@ -374,13 +374,39 @@ mod tests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(20))]
         #[test]
+        fn test_nil_query(
+            (UserData(xs), query) in UserData::arbitrary_with(DataSize::Small)
+                .prop_flat_map(|xs| {
+                    let unpadded_len = xs.len();
+                    let padded_len = {
+                        let m = Fp::MODULUS_BIT_SIZE as usize / 8;
+                        padded_field_length(unpadded_len) * m
+                    };
+                    let query_strategy = (0..padded_len).prop_map(move |start| {
+                        QueryBytes { start, len: 0 }
+                    });
+                    (Just(xs), query_strategy)
+                })
+        ) {
+            let chunked = encode_for_domain(&*DOMAIN, &xs);
+            let n_polys = chunked.len();
+            let field_query: QueryField<Fp> = query.into_query_field(DOMAIN.size(), n_polys);
+            let got_answer = field_query.apply(&chunked).unwrap();
+            prop_assert!(got_answer.is_empty());
+            }
+
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(20))]
+        #[test]
         fn test_for_invalid_query_length(
             (UserData(xs), mut query) in UserData::arbitrary()
                 .prop_flat_map(|xs| {
                     let unpadded_len = xs.len();
                     let padded_len = {
                         let m = Fp::MODULUS_BIT_SIZE as usize / 8;
-                        padded_field_length(xs.len()) * m
+                        padded_field_length(unpadded_len) * m
                     };
                     let query_strategy = (0..unpadded_len).prop_map(move |start| {
                         // this is the last valid end point
