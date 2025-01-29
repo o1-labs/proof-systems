@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use ark_ff::{BigInteger, PrimeField};
 use ark_poly::EvaluationDomain;
 use o1_utils::FieldHelpers;
+use thiserror::Error;
 
 // For injectivity, you can only use this on inputs of length at most
 // 'F::MODULUS_BIT_SIZE / 8', e.g. for Vesta this is 31.
@@ -59,9 +60,11 @@ pub struct QueryBytes {
 /// The inner vector represent polynomials
 pub struct FieldElt {
     /// the number of the polynomial the data point is attached too
-    poly_nb: usize,
+    poly_index: usize,
     /// the number of the root of unity the data point is attached too
-    eval_nb: usize,
+    eval_index: usize,
+    domain_size: usize,
+    n_polys: usize,
 }
 /// Represents a query in term of Field element
 #[derive(Debug)]
@@ -74,28 +77,21 @@ pub struct QueryField<F> {
     /// how many bytes we need to trim from the last 31bytes chunk
     /// we get from the last field element we decode
     leftover_end: usize,
-    tag: PhantomData<F>
+    tag: PhantomData<F>,
 }
 
 impl<F: PrimeField> QueryField<F> {
-    pub fn is_valid(&self, nb_poly: usize) -> bool {
-        self.start.eval_nb < 1 << 16
-            && self.end.eval_nb < 1 << 16
-            && self.end.poly_nb < nb_poly
-            && self.start <= self.end
-            && self.leftover_end <= (F::MODULUS_BIT_SIZE as usize) / 8
-            && self.leftover_start <= (F::MODULUS_BIT_SIZE as usize) / 8
-    }
-
-    pub fn apply(self, data: Vec<Vec<F>>) -> Vec<u8> {
-        assert!(self.is_valid(data.len()), "Invalid query");
+    pub fn apply(self, data: &[Vec<F>]) -> Vec<u8> {
         let mut answer: Vec<u8> = Vec::new();
         let mut field_elt = self.start;
         let n = (F::MODULUS_BIT_SIZE / 8) as usize;
         let m = F::size_in_bytes();
         let mut buffer = vec![0u8; m];
         while field_elt <= self.end {
-            decode_into(&mut buffer, data[field_elt.poly_nb][field_elt.eval_nb]);
+            decode_into(
+                &mut buffer,
+                data[field_elt.poly_index][field_elt.eval_index],
+            );
             answer.extend_from_slice(&buffer[(m - n)..m]);
             field_elt = field_elt.next().unwrap();
         }
@@ -107,40 +103,80 @@ impl<F: PrimeField> QueryField<F> {
 impl Iterator for FieldElt {
     type Item = FieldElt;
     fn next(&mut self) -> Option<FieldElt> {
-        if self.eval_nb < (1 << 16) - 1 {
-            self.eval_nb += 1;
+        if self.eval_index < (1 << 16) - 1 {
+            self.eval_index += 1;
         } else {
-            self.poly_nb += 1;
-            self.eval_nb = 0
+            self.poly_index += 1;
+            self.eval_index = 0
         };
         Some(*self)
     }
 }
 
-impl<F: PrimeField> Into<QueryField<F>> for QueryBytes {
-    fn into(self) -> QueryField<F> {
-        let n = F::MODULUS_BIT_SIZE as usize / 8;
-        let start_field_nb = self.start / n;
-        let start = FieldElt {
-            poly_nb: start_field_nb / (1 << 16),
-            eval_nb: start_field_nb % (1 << 16),
-        };
-        let leftover_start = self.start % n;
+#[derive(Debug, Error, Clone, PartialEq)]
+pub enum QueryError {
+    #[error("Query out of bounds: poly_index {poly_index} eval_index {eval_index} n_polys {n_polys} domain_size {domain_size}")]
+    QueryOutOfBounds {
+        poly_index: usize,
+        eval_index: usize,
+        n_polys: usize,
+        domain_size: usize,
+    },
+}
 
-        let byte_end = self.start + self.len;
-        let end_field_nb = byte_end / n;
-        let end = FieldElt {
-            poly_nb: end_field_nb / (1 << 16),
-            eval_nb: end_field_nb % (1 << 16),
+impl QueryBytes {
+    pub fn into_query_field<F: PrimeField>(
+        &self,
+        domain_size: usize,
+        n_polys: usize,
+    ) -> Result<QueryField<F>, QueryError> {
+        let n = (F::MODULUS_BIT_SIZE / 8) as usize;
+        let start = {
+            let start_field_nb = self.start / n;
+            FieldElt {
+                poly_index: start_field_nb / domain_size,
+                eval_index: start_field_nb % domain_size,
+                domain_size,
+                n_polys,
+            }
         };
+        if start.poly_index >= n_polys {
+            return Err(QueryError::QueryOutOfBounds {
+                poly_index: start.poly_index,
+                eval_index: start.eval_index,
+                n_polys,
+                domain_size,
+            });
+        };
+        let byte_end = self.start + self.len;
+        let end = {
+            let end_field_nb = byte_end / n;
+            FieldElt {
+                poly_index: end_field_nb / domain_size,
+                eval_index: end_field_nb % domain_size,
+                domain_size,
+                n_polys,
+            }
+        };
+        if end.poly_index >= n_polys {
+            return Err(QueryError::QueryOutOfBounds {
+                poly_index: end.poly_index,
+                eval_index: end.eval_index,
+                n_polys,
+                domain_size,
+            });
+        };
+
+        let leftover_start = self.start % n;
         let leftover_end = n - byte_end % n;
-        QueryField {
+
+        Ok(QueryField {
             start,
             leftover_start,
             end,
             leftover_end,
-            tag: PhantomData,
-        }
+            tag: std::marker::PhantomData,
+        })
     }
 }
 
@@ -232,6 +268,7 @@ mod tests {
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
     use test_utils::UserData;
+    use tracing::debug;
 
     fn decode<Fp: PrimeField>(x: Fp) -> Vec<u8> {
         let mut buffer = vec![0u8; Fp::size_in_bytes()];
@@ -333,10 +370,41 @@ mod tests {
             let chunked = encode_for_domain(&*DOMAIN, &xs);
             for query in queries {
                 let expected = &xs[query.start..(query.start+query.len)];
-                let field_query: QueryField<Fp> = query.clone().into();
-                let got_answer = field_query.apply(chunked.clone());  // Note: might need clone depending on your types
+                let field_query: QueryField<Fp> = query.into_query_field(DOMAIN.size(), chunked.len()).unwrap();
+                let got_answer = field_query.apply(&chunked);  // Note: might need clone depending on your types
                 prop_assert_eq!(expected, got_answer);
             }
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(20))]
+        #[test]
+        fn test_for_invalid_query_length(
+            (UserData(xs), mut query) in UserData::arbitrary()
+                .prop_flat_map(|UserData(xs)| {
+                    let padded_len = {
+                        let m = Fp::MODULUS_BIT_SIZE as usize / 8;
+                        padded_field_length(&xs) * m
+                    };
+                    let query_strategy = (0..xs.len()).prop_map(move |start| {
+                        // this is the last valid end point
+                        let end = padded_len - 1;
+                        QueryBytes { start, len: end - start }
+                    });
+                    (Just(UserData(xs)), query_strategy)
+                })
+        ) {
+            debug!("check that first query is valid");
+            let chunked = encode_for_domain(&*DOMAIN, &xs);
+            let n_polys = chunked.len();
+            let query_field = query.into_query_field::<Fp>(DOMAIN.size(), n_polys);
+            prop_assert!(query_field.is_ok());
+            debug!("check that extending query length by 1 is invalid");
+            query.len += 1;
+            let query_field = query.into_query_field::<Fp>(DOMAIN.size(), n_polys);
+            prop_assert!(query_field.is_err());
+
         }
     }
 }
