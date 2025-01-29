@@ -1,6 +1,7 @@
 use ark_ff::{BigInteger, PrimeField};
 use ark_poly::EvaluationDomain;
 use o1_utils::FieldHelpers;
+use thiserror::Error;
 use tracing::instrument;
 
 // For injectivity, you can only use this on inputs of length at most
@@ -88,22 +89,35 @@ pub struct QueryField<F> {
 
 impl<F: PrimeField> QueryField<F> {
     #[instrument(skip_all, level = "debug")]
-    pub fn apply(self, data: &[Vec<F>]) -> Vec<u8> {
+    pub fn apply(self, data: &[Vec<F>]) -> Result<Vec<u8>, QueryError> {
         let mut answer: Vec<u8> = Vec::new();
         let mut current = self.start;
 
-        while current <= self.end {
+        loop {
+            // First process the current element
             let value = data[current.poly_index][current.eval_index];
             answer.extend(decode(&value));
+
+            // Check if we've reached the end
+            if current == self.end {
+                break;
+            }
+
+            // Try to move to next element
             if let Some(next) = current.next() {
                 current = next;
             } else {
-                break;
+                return Err(QueryError::QueryOutOfBounds {
+                    poly_index: current.poly_index,
+                    eval_index: current.eval_index,
+                    n_polys: self.end.n_polys,
+                    domain_size: self.end.domain_size,
+                });
             }
         }
 
         let n = answer.len();
-        answer[(self.leftover_start)..(n - self.leftover_end)].to_vec()
+        Ok(answer[(self.leftover_start)..(n - self.leftover_end)].to_vec())
     }
 }
 
@@ -120,6 +134,17 @@ impl Iterator for FieldElt {
         }
         None
     }
+}
+
+#[derive(Debug, Error, Clone, PartialEq)]
+pub enum QueryError {
+    #[error("Query out of bounds: poly_index {poly_index} eval_index {eval_index} n_polys {n_polys} domain_size {domain_size}")]
+    QueryOutOfBounds {
+        poly_index: usize,
+        eval_index: usize,
+        n_polys: usize,
+        domain_size: usize,
+    },
 }
 
 impl QueryBytes {
@@ -252,6 +277,7 @@ mod tests {
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
     use test_utils::UserData;
+    use tracing::debug;
 
     fn decode_from_field_elements<F: PrimeField>(xs: Vec<F>) -> Vec<u8> {
         xs.iter().flat_map(decode).collect()
@@ -282,6 +308,24 @@ mod tests {
         const SRS_SIZE: usize = 1 << 16;
         Radix2EvaluationDomain::new(SRS_SIZE).unwrap()
     });
+
+    fn padded_field_length(n: usize) -> usize {
+        let m = Fp::MODULUS_BIT_SIZE as usize / 8;
+        let n_field_elems = (n + m - 1) / m;
+        let n_polys = (n_field_elems + DOMAIN.size() - 1) / DOMAIN.size();
+        n_polys * DOMAIN.size()
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(20))]
+        #[test]
+        fn test_padded_byte_length(UserData(xs) in UserData::arbitrary()
+    )
+          { let chunked = encode_for_domain(&*DOMAIN, &xs);
+            let n = chunked.into_iter().flatten().count();
+            prop_assert_eq!(n, padded_field_length(xs.len()));
+          }
+        }
 
     // check that Vec<u8> -> Vec<Vec<F>> -> Vec<u8> is the identity function
     proptest! {
@@ -321,9 +365,43 @@ mod tests {
             for query in queries {
                 let expected = &xs[query.start..(query.start+query.len)];
                 let field_query: QueryField<Fp> = query.into_query_field(DOMAIN.size(), n_polys);
-                let got_answer = field_query.apply(&chunked);
+                let got_answer = field_query.apply(&chunked).unwrap();
                 prop_assert_eq!(expected, got_answer);
             }
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(20))]
+        #[test]
+        fn test_for_invalid_query_length(
+            (UserData(xs), mut query) in UserData::arbitrary()
+                .prop_flat_map(|xs| {
+                    let unpadded_len = xs.len();
+                    let padded_len = {
+                        let m = Fp::MODULUS_BIT_SIZE as usize / 8;
+                        padded_field_length(xs.len()) * m
+                    };
+                    let query_strategy = (0..unpadded_len).prop_map(move |start| {
+                        // this is the last valid end point
+                        let end = padded_len - 1;
+                        QueryBytes { start, len: end - start }
+                    });
+                    (Just(xs), query_strategy)
+                })
+        ) {
+            debug!("check that first query is valid");
+            let chunked = encode_for_domain(&*DOMAIN, &xs);
+            let n_polys = chunked.len();
+            let query_field = query.into_query_field(DOMAIN.size(), n_polys);
+            let res = query_field.apply(&chunked);
+            prop_assert!(res.is_ok());
+            debug!("check that extending query length by 1 is invalid");
+            query.len += 1;
+            let query_field = query.into_query_field(DOMAIN.size(), n_polys);
+            let res = query_field.apply(&chunked);
+            prop_assert!(res.is_err());
+
         }
     }
 }
