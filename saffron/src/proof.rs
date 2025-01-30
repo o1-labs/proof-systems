@@ -44,6 +44,8 @@ where
     let evaluation = p.evaluate(&evaluation_point);
     let opening_proof_sponge = {
         let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
+        // TODO: check and see if we need to also absorb the absorb the poly cm
+        // see https://github.com/o1-labs/proof-systems/blob/feature/test-data-storage-commitments/data-storage/src/main.rs#L265-L269
         sponge.absorb_fr(&[evaluation]);
         sponge
     };
@@ -58,8 +60,8 @@ where
                 },
             )],
             &[evaluation_point],
-            G::ScalarField::one(), // Single polynomial, so we don't care
-            G::ScalarField::one(), // Single polynomial, so we don't care
+            G::ScalarField::one(), // Single evaluation, so we don't care
+            G::ScalarField::one(), // Single evaluation, so we don't care
             opening_proof_sponge,
             rng,
         );
