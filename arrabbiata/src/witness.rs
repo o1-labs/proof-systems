@@ -1,4 +1,3 @@
-use ark_ec::models::short_weierstrass::SWCurveConfig;
 use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
@@ -207,8 +206,8 @@ impl<
         E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
     > InterpreterEnv for Env<Fp, Fq, E1, E2>
 where
-    <E1::Params as ark_ec::CurveConfig>::BaseField: PrimeField,
-    <E2::Params as ark_ec::CurveConfig>::BaseField: PrimeField,
+    E1::BaseField: PrimeField,
+    E2::BaseField: PrimeField,
 {
     type Position = (Column, CurrOrNext);
 
@@ -701,9 +700,11 @@ where
             };
             let num = {
                 let a: BigInt = if self.current_iteration % 2 == 0 {
-                    (E2::Params::COEFF_A).to_biguint().into()
+                    let a: E2::BaseField = E2::get_curve_params().0;
+                    a.to_biguint().into()
                 } else {
-                    (E1::Params::COEFF_A).to_biguint().into()
+                    let a: E1::BaseField = E1::get_curve_params().0;
+                    a.to_biguint().into()
                 };
                 let x1_square = x1.clone() * x1.clone();
                 let two_x1_square = x1_square.clone() + x1_square.clone();
@@ -741,9 +742,11 @@ where
         };
         let num = {
             let a: BigInt = if self.current_iteration % 2 == 0 {
-                (E2::Params::COEFF_A).to_biguint().into()
+                let a: E2::BaseField = E2::get_curve_params().0;
+                a.to_biguint().into()
             } else {
-                (E1::Params::COEFF_A).to_biguint().into()
+                let a: E1::BaseField = E1::get_curve_params().0;
+                a.to_biguint().into()
             };
             let x1_square = x1.clone() * x1.clone();
             let two_x1_square = x1_square.clone() + x1_square.clone();
