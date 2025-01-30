@@ -1062,6 +1062,19 @@
 <a href="#1062" id="1062">1062</a>
 <a href="#1063" id="1063">1063</a>
 <a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
+<a href="#1066" id="1066">1066</a>
+<a href="#1067" id="1067">1067</a>
+<a href="#1068" id="1068">1068</a>
+<a href="#1069" id="1069">1069</a>
+<a href="#1070" id="1070">1070</a>
+<a href="#1071" id="1071">1071</a>
+<a href="#1072" id="1072">1072</a>
+<a href="#1073" id="1073">1073</a>
+<a href="#1074" id="1074">1074</a>
+<a href="#1075" id="1075">1075</a>
+<a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::models::short_weierstrass::SWCurveConfig;
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
@@ -1083,18 +1096,31 @@
     NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
-<span class="doccomment">/// The first instruction in the IVC is the Poseidon permutation. It is used to
-/// start hashing the public input.
+<span class="doccomment">/// The first instruction in the verifier circuit (often shortened in &quot;IVC&quot; in
+/// the crate) is the Poseidon permutation. It is used to start hashing the
+/// public input.
 </span><span class="kw">pub const </span>IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(<span class="number">0</span>);
 
-<span class="doccomment">/// An environment that can be shared between IVC instances.
+<span class="doccomment">/// An environment is used to contain the state of a long &quot;running program&quot;.
 ///
-/// It contains all the accumulators that can be picked for a given fold
-/// instance k, including the sponges.
+/// The running program is composed of two parts: one user application and one
+/// verifier application. The verifier application is used to encode the
+/// correctness of previous program states computations.
+///
+/// The term &quot;app(lication) state&quot; will be used to refer to the state of the
+/// user application, and the term &quot;IVC state&quot; will be used to refer to the
+/// state of the verifier application. The term program state will be used to refer to
+/// the state of the whole program.
+///
+/// The environment contains all the accumulators that can be picked for a given
+/// fold instance k, including the sponges.
 ///
 /// The environment is run over big integers to avoid performing
 /// reduction at all step. Instead the user implementing the interpreter can
 /// reduce in the corresponding field when they want.
+///
+/// The environment is generic over two curves (called E1 and E2) that are
+/// supposed to form a cycle.
 </span><span class="kw">pub struct </span>Env&lt;
     Fp: PrimeField,
     Fq: PrimeField,
