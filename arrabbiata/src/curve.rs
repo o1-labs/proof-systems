@@ -68,6 +68,16 @@ where
 
     /// Create a new sponge, with an empty state (i.e. initialized to zero).
     fn create_new_sponge() -> DefaultFqSponge<Self::Params, Self::SpongeConstants>;
+
+    /// Absorb an element of the base field into the sponge.
+    ///
+    /// This method is supposed to be an alias to `sponge.absorb_fq(&[fq])`.
+    /// However, it seems that the compiler requests some additional type
+    /// constraints if there is generic code over the trait `ArrabbiataCurve`.
+    fn absorb_fq(
+        sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
+        fq: Self::BaseField,
+    );
 }
 
 impl ArrabbiataCurve for Affine<PallasParameters> {
@@ -102,6 +112,13 @@ impl ArrabbiataCurve for Affine<PallasParameters> {
             DefaultFqSponge::new(Self::other_curve_sponge_params());
         sponge
     }
+
+    fn absorb_fq(
+        sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
+        fq: Self::BaseField,
+    ) {
+        sponge.absorb_fq(&[fq])
+    }
 }
 
 impl ArrabbiataCurve for Affine<VestaParameters> {
@@ -135,5 +152,12 @@ impl ArrabbiataCurve for Affine<VestaParameters> {
         let sponge: DefaultFqSponge<VestaParameters, PlonkSpongeConstants> =
             DefaultFqSponge::new(Self::other_curve_sponge_params());
         sponge
+    }
+
+    fn absorb_fq(
+        sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
+        fq: Self::BaseField,
+    ) {
+        sponge.absorb_fq(&[fq])
     }
 }
