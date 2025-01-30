@@ -109,10 +109,9 @@ where
 mod tests {
     use super::*;
     use crate::{
-        blob::test_utils::*,
         commitment::{commit_to_field_elems, fold_commitments},
         env,
-        utils::encode_for_domain,
+        utils::{encode_for_domain, test_utils::UserData},
     };
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
     use ark_std::UniformRand;
@@ -140,7 +139,7 @@ mod tests {
     proptest! {
     #![proptest_config(ProptestConfig::with_cases(5))]
     #[test]
-    fn test_storage_prove_verify(BlobData(data) in BlobData::arbitrary()) {
+    fn test_storage_prove_verify(UserData(data) in UserData::arbitrary()) {
         let mut rng = OsRng;
         let commitment = {
             let field_elems = encode_for_domain(&*DOMAIN, &data);

@@ -11,7 +11,7 @@ use std::{
 };
 use tracing::debug;
 
-const DEFAULT_SRS_SIZE: usize = 1 << 16;
+pub const DEFAULT_SRS_SIZE: usize = 1 << 16;
 
 fn get_srs(cache: Option<String>) -> (SRS<Vesta>, Radix2EvaluationDomain<Fp>) {
     match cache {
