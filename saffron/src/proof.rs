@@ -2,17 +2,29 @@ use crate::blob::FieldBlob;
 use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as D};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use kimchi::curve::KimchiCurve;
 use mina_poseidon::FqSponge;
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
-    commitment::{absorb_commitment, BatchEvaluationProof, Evaluation},
+    commitment::{absorb_commitment, BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
     utils::DensePolynomialOrEvaluations,
     PolyComm,
 };
 use rand::rngs::OsRng;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use tracing::instrument;
+
+#[serde_as]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(bound = "G::ScalarField : CanonicalDeserialize + CanonicalSerialize")]
+pub struct StorageProof<G: CommitmentCurve> {
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub evaluation: G::ScalarField,
+    pub opening_proof: OpeningProof<G>,
+}
 
 #[instrument(skip_all, level = "debug")]
 pub fn storage_proof<G: KimchiCurve, EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
@@ -21,7 +33,7 @@ pub fn storage_proof<G: KimchiCurve, EFqSponge: Clone + FqSponge<G::BaseField, G
     blob: FieldBlob<G>,
     evaluation_point: G::ScalarField,
     rng: &mut OsRng,
-) -> (G::ScalarField, OpeningProof<G>)
+) -> StorageProof<G>
 where
     G::BaseField: PrimeField,
 {
@@ -47,7 +59,7 @@ where
         sponge.absorb_fr(&[evaluation]);
         sponge
     };
-    let proof = srs.open(
+    let opening_proof = srs.open(
             group_map,
             &[(
                 DensePolynomialOrEvaluations::<<G as AffineRepr>::ScalarField, D<G::ScalarField>> ::DensePolynomial(
@@ -63,7 +75,10 @@ where
             opening_proof_sponge,
             rng,
         );
-    (evaluation, proof)
+    StorageProof {
+        evaluation,
+        opening_proof,
+    }
 }
 
 #[instrument(skip_all, level = "debug")]
@@ -75,15 +90,14 @@ pub fn verify_storage_proof<
     group_map: &G::Map,
     commitment: PolyComm<G>,
     evaluation_point: G::ScalarField,
-    evaluation: G::ScalarField,
-    opening_proof: &OpeningProof<G>,
+    proof: &StorageProof<G>,
     rng: &mut OsRng,
 ) -> bool
 where
     G::BaseField: PrimeField,
 {
     let mut opening_proof_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    opening_proof_sponge.absorb_fr(&[evaluation]);
+    opening_proof_sponge.absorb_fr(&[proof.evaluation]);
 
     srs.verify(
         group_map,
@@ -94,10 +108,10 @@ where
             evalscale: G::ScalarField::one(),
             evaluations: vec![Evaluation {
                 commitment,
-                evaluations: vec![vec![evaluation]],
+                evaluations: vec![vec![proof.evaluation]],
             }],
-            opening: opening_proof,
-            combined_inner_product: evaluation,
+            opening: &proof.opening_proof,
+            combined_inner_product: proof.evaluation,
         }],
         rng,
     )
@@ -150,16 +164,15 @@ mod tests {
         };
         let blob = FieldBlob::<Vesta>::encode(&*SRS, *DOMAIN, &data);
         let evaluation_point = Fp::rand(&mut rng);
-        let (evaluation, proof) = storage_proof::<
-            Vesta,
-            DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+        let proof = storage_proof::<
+            Vesta, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>
+
         >(&*SRS, &*GROUP_MAP, blob, evaluation_point, &mut rng);
         let res = verify_storage_proof::<Vesta, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(
             &*SRS,
             &*GROUP_MAP,
             commitment,
             evaluation_point,
-            evaluation,
             &proof,
             &mut rng,
         );
