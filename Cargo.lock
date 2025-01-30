@@ -2675,7 +2675,6 @@ dependencies = [
  "rmp-serde",
  "serde",
  "serde_with",
- "sha3",
  "time",
  "tracing",
  "tracing-subscriber",
