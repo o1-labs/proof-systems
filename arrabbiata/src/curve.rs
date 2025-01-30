@@ -78,6 +78,16 @@ where
         sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
         fq: Self::BaseField,
     );
+
+    /// Absorb a list of curve points into the sponge.
+    ///
+    /// This method is supposed to be an alias to `sponge.absorb_g(&[gs])`.
+    /// However, it seems that the compiler requests some additional type
+    /// constraints if there is generic code over the trait `ArrabbiataCurve`.
+    fn absorb_curve_points(
+        sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
+        comms: &[Self],
+    );
 }
 
 impl ArrabbiataCurve for Affine<PallasParameters> {
@@ -119,6 +129,13 @@ impl ArrabbiataCurve for Affine<PallasParameters> {
     ) {
         sponge.absorb_fq(&[fq])
     }
+
+    fn absorb_curve_points(
+        sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
+        comms: &[Self],
+    ) {
+        sponge.absorb_g(comms)
+    }
 }
 
 impl ArrabbiataCurve for Affine<VestaParameters> {
@@ -159,5 +176,12 @@ impl ArrabbiataCurve for Affine<VestaParameters> {
         fq: Self::BaseField,
     ) {
         sponge.absorb_fq(&[fq])
+    }
+
+    fn absorb_curve_points(
+        sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
+        comms: &[Self],
+    ) {
+        sponge.absorb_g(comms)
     }
 }
