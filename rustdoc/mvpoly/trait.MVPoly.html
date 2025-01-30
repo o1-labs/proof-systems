@@ -10,7 +10,7 @@
 <span class="item-spacer"></span>    unsafe fn <a href="#tymethod.degree" class="fn">degree</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.usize.html">usize</a>;
 <span class="item-spacer"></span>    fn <a href="#tymethod.eval" class="fn">eval</a>(&amp;self, x: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.array.html">[F; N]</a>) -&gt; F;
 <span class="item-spacer"></span>    fn <a href="#tymethod.from_variable" class="fn">from_variable</a>&lt;Column: <a class="trait" href="https://doc.rust-lang.org/1.72.1/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.usize.html">usize</a>&gt;&gt;(
-        var: Variable&lt;Column&gt;,
+        var: <a class="struct" href="../kimchi/circuits/expr/struct.Variable.html" title="struct kimchi::circuits::expr::Variable">Variable</a>&lt;Column&gt;,
         offset_next_row: <a class="enum" href="https://doc.rust-lang.org/1.72.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.usize.html">usize</a>&gt;
     ) -&gt; Self;
 <span class="item-spacer"></span>    fn <a href="#tymethod.is_homogeneous" class="fn">is_homogeneous</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.bool.html">bool</a>;
@@ -37,10 +37,10 @@
 
     // Provided methods
     fn <a href="#method.from_constant" class="fn">from_constant</a>&lt;ChallengeTerm: <a class="trait" href="https://doc.rust-lang.org/1.72.1/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a>&gt;(
-        op: Operations&lt;ConstantExprInner&lt;F, ChallengeTerm&gt;&gt;
+        op: <a class="enum" href="../kimchi/circuits/expr/enum.Operations.html" title="enum kimchi::circuits::expr::Operations">Operations</a>&lt;<a class="enum" href="../kimchi/circuits/expr/enum.ConstantExprInner.html" title="enum kimchi::circuits::expr::ConstantExprInner">ConstantExprInner</a>&lt;F, ChallengeTerm&gt;&gt;
     ) -&gt; Self { ... }
 <span class="item-spacer"></span>    fn <a href="#method.from_expr" class="fn">from_expr</a>&lt;Column: <a class="trait" href="https://doc.rust-lang.org/1.72.1/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.usize.html">usize</a>&gt;, ChallengeTerm: <a class="trait" href="https://doc.rust-lang.org/1.72.1/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a>&gt;(
-        expr: Expr&lt;ConstantExpr&lt;F, ChallengeTerm&gt;, Column&gt;,
+        expr: <a class="type" href="../kimchi/circuits/expr/type.Expr.html" title="type kimchi::circuits::expr::Expr">Expr</a>&lt;<a class="type" href="../kimchi/circuits/expr/type.ConstantExpr.html" title="type kimchi::circuits::expr::ConstantExpr">ConstantExpr</a>&lt;F, ChallengeTerm&gt;, Column&gt;,
         offset_next_row: <a class="enum" href="https://doc.rust-lang.org/1.72.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.usize.html">usize</a>&gt;
     ) -&gt; Self { ... }
 </details>}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Generic trait to represent a multi-variate polynomial</p>
@@ -64,7 +64,7 @@ for this specific case.</p>
 <p>This is a dummy implementation. A cache can be used for the monomials to
 speed up the computation.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="tymethod.from_variable" class="method"><a class="srclink rightside" href="../src/mvpoly/lib.rs.html#100">source</a><h4 class="code-header">fn <a href="#tymethod.from_variable" class="fn">from_variable</a>&lt;Column: <a class="trait" href="https://doc.rust-lang.org/1.72.1/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.usize.html">usize</a>&gt;&gt;(
-    var: Variable&lt;Column&gt;,
+    var: <a class="struct" href="../kimchi/circuits/expr/struct.Variable.html" title="struct kimchi::circuits::expr::Variable">Variable</a>&lt;Column&gt;,
     offset_next_row: <a class="enum" href="https://doc.rust-lang.org/1.72.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.usize.html">usize</a>&gt;
 ) -&gt; Self</h4></section></summary><div class="docblock"><p>Build the univariate polynomial <code>x_i</code> from the variable <code>i</code>.
 The conversion into the type <code>usize</code> is unspecified by this trait. It
@@ -136,9 +136,9 @@ for each power of <code>r</code>.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="tymethod.is_multilinear" class="method"><a class="srclink rightside" href="../src/mvpoly/lib.rs.html#301">source</a><h4 class="code-header">fn <a href="#tymethod.is_multilinear" class="fn">is_multilinear</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Return true if the multi-variate polynomial is multilinear, i.e. if each
 variable in each monomial is of maximum degree 1.</p>
 </div></details></div><h2 id="provided-methods" class="small-section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><section id="method.from_constant" class="method"><a class="srclink rightside" href="../src/mvpoly/lib.rs.html#102-145">source</a><h4 class="code-header">fn <a href="#method.from_constant" class="fn">from_constant</a>&lt;ChallengeTerm: <a class="trait" href="https://doc.rust-lang.org/1.72.1/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a>&gt;(
-    op: Operations&lt;ConstantExprInner&lt;F, ChallengeTerm&gt;&gt;
+    op: <a class="enum" href="../kimchi/circuits/expr/enum.Operations.html" title="enum kimchi::circuits::expr::Operations">Operations</a>&lt;<a class="enum" href="../kimchi/circuits/expr/enum.ConstantExprInner.html" title="enum kimchi::circuits::expr::ConstantExprInner">ConstantExprInner</a>&lt;F, ChallengeTerm&gt;&gt;
 ) -&gt; Self</h4></section><details class="toggle method-toggle" open><summary><section id="method.from_expr" class="method"><a class="srclink rightside" href="../src/mvpoly/lib.rs.html#161-218">source</a><h4 class="code-header">fn <a href="#method.from_expr" class="fn">from_expr</a>&lt;Column: <a class="trait" href="https://doc.rust-lang.org/1.72.1/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.usize.html">usize</a>&gt;, ChallengeTerm: <a class="trait" href="https://doc.rust-lang.org/1.72.1/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a>&gt;(
-    expr: Expr&lt;ConstantExpr&lt;F, ChallengeTerm&gt;, Column&gt;,
+    expr: <a class="type" href="../kimchi/circuits/expr/type.Expr.html" title="type kimchi::circuits::expr::Expr">Expr</a>&lt;<a class="type" href="../kimchi/circuits/expr/type.ConstantExpr.html" title="type kimchi::circuits::expr::ConstantExpr">ConstantExpr</a>&lt;F, ChallengeTerm&gt;, Column&gt;,
     offset_next_row: <a class="enum" href="https://doc.rust-lang.org/1.72.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.usize.html">usize</a>&gt;
 ) -&gt; Self</h4></section></summary><div class="docblock"><p>Build a value from an expression.
 This method aims to be used to be retro-compatible with what we call

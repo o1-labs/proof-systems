@@ -1081,6 +1081,9 @@
 <a href="#1081" id="1081">1081</a>
 <a href="#1082" id="1082">1082</a>
 <a href="#1083" id="1083">1083</a>
+<a href="#1084" id="1084">1084</a>
+<a href="#1085" id="1085">1085</a>
+<a href="#1086" id="1086">1086</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
 <span class="kw">use </span>kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
@@ -1138,10 +1141,10 @@
     <span class="comment">// ----------------
     // Setup related (domains + SRS)
     </span><span class="doccomment">/// Domain for Fp
-    </span><span class="kw">pub </span>domain_fp: EvaluationDomains&lt;Fp&gt;,
+    </span><span class="kw">pub </span>domain_fp: EvaluationDomains&lt;E1::ScalarField&gt;,
 
     <span class="doccomment">/// Domain for Fq
-    </span><span class="kw">pub </span>domain_fq: EvaluationDomains&lt;Fq&gt;,
+    </span><span class="kw">pub </span>domain_fq: EvaluationDomains&lt;E2::ScalarField&gt;,
 
     <span class="doccomment">/// SRS for the first curve
     </span><span class="kw">pub </span>srs_e1: SRS&lt;E1&gt;,
@@ -1340,9 +1343,9 @@
             <span class="macro">unimplemented!</span>(<span class="string">&quot;Only works for private inputs&quot;</span>)
         };
         <span class="kw">let </span>modulus: BigInt = <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-            Fp::modulus_biguint().into()
+            E1::ScalarField::modulus_biguint().into()
         } <span class="kw">else </span>{
-            Fq::modulus_biguint().into()
+            E2::ScalarField::modulus_biguint().into()
         };
         <span class="kw">let </span>v = v.mod_floor(<span class="kw-2">&amp;</span>modulus);
         <span class="kw">match </span>row {
@@ -1362,9 +1365,9 @@
             <span class="macro">unimplemented!</span>(<span class="string">&quot;Only works for public input columns&quot;</span>)
         };
         <span class="kw">let </span>modulus: BigInt = <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-            Fp::modulus_biguint().into()
+            E1::ScalarField::modulus_biguint().into()
         } <span class="kw">else </span>{
-            Fq::modulus_biguint().into()
+            E2::ScalarField::modulus_biguint().into()
         };
         <span class="kw">let </span>v = v.mod_floor(<span class="kw-2">&amp;</span>modulus);
         <span class="self">self</span>.public_state[idx].clone_from(<span class="kw-2">&amp;</span>v);
@@ -1379,9 +1382,9 @@
 
     <span class="kw">fn </span>constrain_boolean(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable) {
         <span class="kw">let </span>modulus: BigInt = <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-            Fp::modulus_biguint().into()
+            E1::ScalarField::modulus_biguint().into()
         } <span class="kw">else </span>{
-            Fq::modulus_biguint().into()
+            E2::ScalarField::modulus_biguint().into()
         };
         <span class="kw">let </span>x = x.mod_floor(<span class="kw-2">&amp;</span>modulus);
         <span class="macro">assert!</span>(x == BigInt::from(<span class="number">0_usize</span>) || x == BigInt::from(<span class="number">1_usize</span>));
@@ -1513,10 +1516,10 @@
 
     <span class="kw">unsafe fn </span>save_poseidon_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable, i: usize) {
         <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-            <span class="kw">let </span>modulus: BigInt = Fp::modulus_biguint().into();
+            <span class="kw">let </span>modulus: BigInt = E1::ScalarField::modulus_biguint().into();
             <span class="self">self</span>.sponge_e1[i] = x.mod_floor(<span class="kw-2">&amp;</span>modulus)
         } <span class="kw">else </span>{
-            <span class="kw">let </span>modulus: BigInt = Fq::modulus_biguint().into();
+            <span class="kw">let </span>modulus: BigInt = E2::ScalarField::modulus_biguint().into();
             <span class="self">self</span>.sponge_e2[i] = x.mod_floor(<span class="kw-2">&amp;</span>modulus)
         }
     }
@@ -1732,14 +1735,14 @@
     /// Zero is not allowed as an input.
     </span><span class="kw">unsafe fn </span>inverse(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position, x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>res = <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-            Fp::from_biguint(<span class="kw-2">&amp;</span>x.to_biguint().unwrap())
+            E1::ScalarField::from_biguint(<span class="kw-2">&amp;</span>x.to_biguint().unwrap())
                 .unwrap()
                 .inverse()
                 .unwrap()
                 .to_biguint()
                 .into()
         } <span class="kw">else </span>{
-            Fq::from_biguint(<span class="kw-2">&amp;</span>x.to_biguint().unwrap())
+            E2::ScalarField::from_biguint(<span class="kw-2">&amp;</span>x.to_biguint().unwrap())
                 .unwrap()
                 .inverse()
                 .unwrap()
@@ -1759,9 +1762,9 @@
         y2: <span class="self">Self</span>::Variable,
     ) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>modulus: BigInt = <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-            Fp::modulus_biguint().into()
+            E1::ScalarField::modulus_biguint().into()
         } <span class="kw">else </span>{
-            Fq::modulus_biguint().into()
+            E2::ScalarField::modulus_biguint().into()
         };
         <span class="comment">// If it is not the same point, we compute lambda as:
         // - λ = (Y1 - Y2) / (X1 - X2)
@@ -1809,9 +1812,9 @@
         y1: <span class="self">Self</span>::Variable,
     ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
         <span class="kw">let </span>modulus: BigInt = <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-            Fp::modulus_biguint().into()
+            E1::ScalarField::modulus_biguint().into()
         } <span class="kw">else </span>{
-            Fq::modulus_biguint().into()
+            E2::ScalarField::modulus_biguint().into()
         };
         <span class="comment">// - λ = (3X1^2 + a) / (2Y1)
         // We compute λ and use an additional column as a temporary value
@@ -1859,6 +1862,9 @@
         E1: ArrabbiataCurve&lt;ScalarField = Fp, BaseField = Fq&gt;,
         E2: ArrabbiataCurve&lt;ScalarField = Fq, BaseField = Fp&gt;,
     &gt; Env&lt;Fp, Fq, E1, E2&gt;
+<span class="kw">where
+    </span>E1::BaseField: PrimeField,
+    E2::BaseField: PrimeField,
 {
     <span class="kw">pub fn </span>new(
         srs_log2_size: usize,
@@ -1867,16 +1873,16 @@
         sponge_e2: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
     ) -&gt; <span class="self">Self </span>{
         {
-            <span class="macro">assert!</span>(Fp::MODULUS_BIT_SIZE &lt;= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), <span class="string">&quot;The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}&quot;</span>);
+            <span class="macro">assert!</span>(E1::ScalarField::MODULUS_BIT_SIZE &lt;= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), <span class="string">&quot;The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}&quot;</span>);
             <span class="macro">assert!</span>(Fq::MODULUS_BIT_SIZE &lt;= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), <span class="string">&quot;The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}&quot;</span>);
-            <span class="kw">let </span>modulus_fp = Fp::modulus_biguint();
+            <span class="kw">let </span>modulus_fp = E1::ScalarField::modulus_biguint();
             <span class="kw">let </span>alpha = PlonkSpongeConstants::PERM_SBOX;
             <span class="macro">assert!</span>(
                 (modulus_fp - BigUint::from(<span class="number">1_u64</span>)).gcd(<span class="kw-2">&amp;</span>BigUint::from(alpha))
                     == BigUint::from(<span class="number">1_u64</span>),
                 <span class="string">&quot;The modulus of Fp should be coprime with {alpha}&quot;
             </span>);
-            <span class="kw">let </span>modulus_fq = Fq::modulus_biguint();
+            <span class="kw">let </span>modulus_fq = E2::ScalarField::modulus_biguint();
             <span class="kw">let </span>alpha = PlonkSpongeConstants::PERM_SBOX;
             <span class="macro">assert!</span>(
                 (modulus_fq - BigUint::from(<span class="number">1_u64</span>)).gcd(<span class="kw-2">&amp;</span>BigUint::from(alpha))
@@ -1885,8 +1891,8 @@
             </span>);
         }
         <span class="kw">let </span>srs_size = <span class="number">1 </span>&lt;&lt; srs_log2_size;
-        <span class="kw">let </span>domain_fp = EvaluationDomains::&lt;Fp&gt;::create(srs_size).unwrap();
-        <span class="kw">let </span>domain_fq = EvaluationDomains::&lt;Fq&gt;::create(srs_size).unwrap();
+        <span class="kw">let </span>domain_fp = EvaluationDomains::&lt;E1::ScalarField&gt;::create(srs_size).unwrap();
+        <span class="kw">let </span>domain_fq = EvaluationDomains::&lt;E2::ScalarField&gt;::create(srs_size).unwrap();
 
         <span class="macro">info!</span>(<span class="string">&quot;Create an SRS of size {srs_log2_size} for the first curve&quot;</span>);
         <span class="kw">let </span>srs_e1: SRS&lt;E1&gt; = {
@@ -2028,9 +2034,9 @@
                 </span>.witness
                 .par_iter()
                 .map(|evals| {
-                    <span class="kw">let </span>evals: Vec&lt;Fp&gt; = evals
+                    <span class="kw">let </span>evals: Vec&lt;E1::ScalarField&gt; = evals
                         .par_iter()
-                        .map(|x| Fp::from_biguint(<span class="kw-2">&amp;</span>x.to_biguint().unwrap()).unwrap())
+                        .map(|x| E1::ScalarField::from_biguint(<span class="kw-2">&amp;</span>x.to_biguint().unwrap()).unwrap())
                         .collect();
                     <span class="kw">let </span>evals = Evaluations::from_vec_and_domain(evals.to_vec(), <span class="self">self</span>.domain_fp.d1);
                     <span class="self">self</span>.srs_e1
@@ -2049,9 +2055,9 @@
                 </span>.witness
                 .iter()
                 .map(|evals| {
-                    <span class="kw">let </span>evals: Vec&lt;Fq&gt; = evals
+                    <span class="kw">let </span>evals: Vec&lt;E2::ScalarField&gt; = evals
                         .par_iter()
-                        .map(|x| Fq::from_biguint(<span class="kw-2">&amp;</span>x.to_biguint().unwrap()).unwrap())
+                        .map(|x| E2::ScalarField::from_biguint(<span class="kw-2">&amp;</span>x.to_biguint().unwrap()).unwrap())
                         .collect();
                     <span class="kw">let </span>evals = Evaluations::from_vec_and_domain(evals.to_vec(), <span class="self">self</span>.domain_fq.d1);
                     <span class="self">self</span>.srs_e2
