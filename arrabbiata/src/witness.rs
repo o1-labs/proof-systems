@@ -140,6 +140,21 @@ pub struct Env<
     pub sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
     pub sponge_e2: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
 
+    /// Sponge state used by the prover for the current iteration.
+    ///
+    /// This sponge is used at the current iteration to absorb commitments of
+    /// the program state and generate the challenges for the current iteration.
+    /// The outputs of the sponge will be verified by the verifier of the next
+    /// iteration.
+    pub prover_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
+
+    /// Sponge state used by the verifier for the current iteration.
+    ///
+    /// This sponge is used at the current iteration to build the verifier
+    /// circuit. The state will need to match with the previous prover sopnge
+    /// state.
+    pub verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
+
     /// The current iteration of the IVC
     pub current_iteration: u64,
 
@@ -876,6 +891,10 @@ where
         // FIXME: challenges
         let challenges: Vec<BigInt> = vec![];
 
+        let prover_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
+            std::array::from_fn(|_| BigInt::from(0_u64));
+        let verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
+            std::array::from_fn(|_| BigInt::from(0_u64));
         Self {
             // -------
             // Setup
@@ -904,6 +923,8 @@ where
             current_instruction: IVC_STARTING_INSTRUCTION,
             sponge_e1,
             sponge_e2,
+            prover_sponge_state,
+            verifier_sponge_state,
             current_iteration: 0,
             // FIXME: set a correct value
             last_program_digest_before_execution: BigInt::from(0_u64),
@@ -1018,7 +1039,14 @@ where
             E1::absorb_fq(&mut sponge, previous_state);
             self.previous_committed_state_e1
                 .iter()
-                .for_each(|comm| E1::absorb_curve_points(&mut sponge, &comm.chunks))
+                .for_each(|comm| E1::absorb_curve_points(&mut sponge, &comm.chunks));
+            let state: Vec<BigInt> = sponge
+                .sponge
+                .state
+                .iter()
+                .map(|x| x.to_biguint().into())
+                .collect();
+            self.prover_sponge_state = state.try_into().unwrap()
         } else {
             let mut sponge = E2::create_new_sponge();
             let previous_state: E2::BaseField = E2::BaseField::from_biguint(
@@ -1031,8 +1059,16 @@ where
             E2::absorb_fq(&mut sponge, previous_state);
             self.previous_committed_state_e2
                 .iter()
-                .for_each(|comm| E2::absorb_curve_points(&mut sponge, &comm.chunks))
-        };
+                .for_each(|comm| E2::absorb_curve_points(&mut sponge, &comm.chunks));
+
+            let state: Vec<BigInt> = sponge
+                .sponge
+                .state
+                .iter()
+                .map(|x| x.to_biguint().into())
+                .collect();
+            self.prover_sponge_state = state.try_into().unwrap()
+        }
     }
 
     /// Compute the output of the application on the previous output
