@@ -7,7 +7,7 @@ use kimchi::curve::KimchiCurve;
 use mina_poseidon::FqSponge;
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
-    commitment::{absorb_commitment, BatchEvaluationProof, CommitmentCurve, Evaluation},
+    commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
     utils::DensePolynomialOrEvaluations,
     PolyComm,
@@ -37,19 +37,15 @@ pub fn storage_proof<G: KimchiCurve, EFqSponge: Clone + FqSponge<G::BaseField, G
 where
     G::BaseField: PrimeField,
 {
-    let alpha = {
-        let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
-        for commitment in &blob.commitments {
-            absorb_commitment(&mut sponge, commitment)
-        }
-        sponge.challenge()
-    };
     let p = {
         let init = (DensePolynomial::zero(), G::ScalarField::one());
         blob.data
             .into_iter()
             .fold(init, |(acc_poly, curr_power), curr_poly| {
-                (acc_poly + curr_poly.scale(curr_power), curr_power * alpha)
+                (
+                    acc_poly + curr_poly.scale(curr_power),
+                    curr_power * blob.alpha,
+                )
             })
             .0
     };
@@ -154,7 +150,7 @@ mod tests {
     #[test]
     fn test_storage_prove_verify(BlobData(data) in BlobData::arbitrary()) {
         let mut rng = OsRng;
-        let commitment = {
+        let (commitment,_) = {
             let field_elems = encode_for_domain(&*DOMAIN, &data);
             let user_commitments = commit_to_field_elems(&*SRS, *DOMAIN, field_elems);
             let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
@@ -162,7 +158,7 @@ mod tests {
             );
             fold_commitments(&mut fq_sponge, &user_commitments)
         };
-        let blob = FieldBlob::<Vesta>::encode(&*SRS, *DOMAIN, &data);
+        let blob = FieldBlob::<Vesta>::encode::<_, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, *DOMAIN, &data);
         let evaluation_point = Fp::rand(&mut rng);
         let proof = storage_proof::<
             Vesta, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>
