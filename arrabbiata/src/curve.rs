@@ -5,7 +5,8 @@
 //! The goal of this trait is to parametrize the whole library with the
 //! different curves.
 
-use ark_ec::short_weierstrass::Affine;
+use ark_ec::short_weierstrass::{Affine, SWCurveConfig};
+use ark_ff::PrimeField;
 use kimchi::curve::{pallas_endos, vesta_endos};
 use mina_curves::pasta::curves::{pallas::PallasParameters, vesta::VestaParameters};
 use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSpongeParams};
@@ -28,7 +29,13 @@ impl SpongeConstants for PlonkSpongeConstants {
 
 /// Represents additional information that a curve needs in order to be used
 /// with Arrabbiata.
-pub trait ArrabbiataCurve: CommitmentCurve + EndoCurve {
+///
+/// The trait [CommitmentCurve] enforces the curve to be given in short
+/// Weierstrass form.
+pub trait ArrabbiataCurve: CommitmentCurve + EndoCurve
+where
+    Self::BaseField: PrimeField,
+{
     /// A human readable name.
     const NAME: &'static str;
 
@@ -52,6 +59,10 @@ pub trait ArrabbiataCurve: CommitmentCurve + EndoCurve {
     /// Provides the coefficient for the curve endomorphism over the other
     /// field, called q in some places.
     fn other_curve_endo() -> &'static Self::ScalarField;
+
+    /// Return the coefficients `a` and `b` of the equation
+    /// `y^2 = x^3 + a x + b` defining the curve.
+    fn get_curve_params() -> (Self::BaseField, Self::BaseField);
 }
 
 impl ArrabbiataCurve for Affine<PallasParameters> {
@@ -76,6 +87,10 @@ impl ArrabbiataCurve for Affine<PallasParameters> {
     fn other_curve_endo() -> &'static Self::ScalarField {
         &vesta_endos().0
     }
+
+    fn get_curve_params() -> (Self::BaseField, Self::BaseField) {
+        (PallasParameters::COEFF_A, PallasParameters::COEFF_B)
+    }
 }
 
 impl ArrabbiataCurve for Affine<VestaParameters> {
@@ -99,5 +114,9 @@ impl ArrabbiataCurve for Affine<VestaParameters> {
 
     fn other_curve_endo() -> &'static Self::ScalarField {
         &pallas_endos().0
+    }
+
+    fn get_curve_params() -> (Self::BaseField, Self::BaseField) {
+        (VestaParameters::COEFF_A, VestaParameters::COEFF_B)
     }
 }
