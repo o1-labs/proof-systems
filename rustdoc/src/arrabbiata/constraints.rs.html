@@ -386,6 +386,14 @@
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
 <a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{columns::Column, interpreter::InterpreterEnv};
 <span class="kw">use crate</span>::{
     columns::{Gadget, E},
@@ -393,7 +401,6 @@
     interpreter::{<span class="self">self</span>, Instruction, Side},
     MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
 };
-<span class="kw">use </span>ark_ec::{short_weierstrass::SWCurveConfig, CurveConfig};
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
@@ -402,10 +409,12 @@
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>num_bigint::BigInt;
 <span class="kw">use </span>o1_utils::FieldHelpers;
-<span class="kw">use </span>poly_commitment::commitment::CommitmentCurve;
 
 <span class="attr">#[derive(Clone, Debug)]
-</span><span class="kw">pub struct </span>Env&lt;C: ArrabbiataCurve&gt; {
+</span><span class="kw">pub struct </span>Env&lt;C: ArrabbiataCurve&gt;
+<span class="kw">where
+    </span>C::BaseField: PrimeField,
+{
     <span class="doccomment">/// The parameter a is the coefficients of the elliptic curve in affine
     /// coordinates.
     </span><span class="kw">pub </span>a: BigInt,
@@ -418,11 +427,12 @@
 
 <span class="kw">impl</span>&lt;C: ArrabbiataCurve&gt; Env&lt;C&gt;
 <span class="kw">where
-    </span>&lt;&lt;C <span class="kw">as </span>CommitmentCurve&gt;::Params <span class="kw">as </span>CurveConfig&gt;::BaseField: PrimeField,
+    </span>C::BaseField: PrimeField,
 {
     <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="comment">// This check might not be useful
-        </span><span class="kw">let </span>a: BigInt = &lt;C <span class="kw">as </span>CommitmentCurve&gt;::Params::COEFF_A.to_biguint().into();
+        </span><span class="kw">let </span>a: C::BaseField = C::get_curve_params().<span class="number">0</span>;
+        <span class="kw">let </span>a: BigInt = a.to_biguint().into();
         <span class="macro">assert!</span>(
             a &lt; C::ScalarField::modulus_biguint().into(),
             <span class="string">&quot;a is too large&quot;
@@ -443,7 +453,10 @@
 /// proof.
 /// The constraint environment must be instantiated only once, at the last step
 /// of the computation.
-</span><span class="kw">impl</span>&lt;C: ArrabbiataCurve&gt; InterpreterEnv <span class="kw">for </span>Env&lt;C&gt; {
+</span><span class="kw">impl</span>&lt;C: ArrabbiataCurve&gt; InterpreterEnv <span class="kw">for </span>Env&lt;C&gt;
+<span class="kw">where
+    </span>C::BaseField: PrimeField,
+{
     <span class="kw">type </span>Position = (Column, CurrOrNext);
 
     <span class="kw">type </span>Variable = E&lt;C::ScalarField&gt;;
@@ -699,7 +712,10 @@
     }
 }
 
-<span class="kw">impl</span>&lt;C: ArrabbiataCurve&gt; Env&lt;C&gt; {
+<span class="kw">impl</span>&lt;C: ArrabbiataCurve&gt; Env&lt;C&gt;
+<span class="kw">where
+    </span>C::BaseField: PrimeField,
+{
     <span class="doccomment">/// Get all the constraints for the IVC circuit, only.
     ///
     /// The following gadgets are used in the IVC circuit:
@@ -768,7 +784,7 @@
 
 <span class="kw">impl</span>&lt;C: ArrabbiataCurve&gt; Default <span class="kw">for </span>Env&lt;C&gt;
 <span class="kw">where
-    </span>&lt;&lt;C <span class="kw">as </span>CommitmentCurve&gt;::Params <span class="kw">as </span>CurveConfig&gt;::BaseField: PrimeField,
+    </span>C::BaseField: PrimeField,
 {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::new()

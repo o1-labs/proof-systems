@@ -1075,6 +1075,9 @@
 <a href="#1075" id="1075">1075</a>
 <a href="#1076" id="1076">1076</a>
 <a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::models::short_weierstrass::SWCurveConfig;
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
@@ -1126,7 +1129,10 @@
     Fq: PrimeField,
     E1: ArrabbiataCurve&lt;ScalarField = Fp, BaseField = Fq&gt;,
     E2: ArrabbiataCurve&lt;ScalarField = Fq, BaseField = Fp&gt;,
-&gt; {
+&gt; <span class="kw">where
+    </span>E1::BaseField: PrimeField,
+    E2::BaseField: PrimeField,
+{
     <span class="comment">// ----------------
     // Setup related (domains + SRS)
     </span><span class="doccomment">/// Domain for Fp
