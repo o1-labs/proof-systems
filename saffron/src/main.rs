@@ -139,5 +139,8 @@ pub fn main() -> Result<()> {
             println!("{}", proof);
             Ok(())
         }
+        cli::Commands::VerifyStorageProof(_) => {
+            todo!()
+        }
     }
 }
