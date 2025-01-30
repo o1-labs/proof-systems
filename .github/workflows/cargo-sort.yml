@@ -1,0 +1,32 @@
+name: Check Cargo.toml Sorting
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+
+jobs:
+  cargo-sort:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust_toolchain_version: ["stable"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain ${{ matrix.rust_toolchain_version }}
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf -o rustup-init https://sh.rustup.rs
+          chmod +x ./rustup-init
+          ./rustup-init -y --default-toolchain "${{ matrix.rust_toolchain_version }}" --profile default
+          rm ./rustup-init
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          # Overwriting default rust-toolchain
+          echo "${{ matrix.rust_toolchain_version }}" > rust-toolchain
+
+      - name: Install cargo-sort
+        run: cargo install cargo-sort
+
+      - name: Check Cargo.toml Sorting
+        run: cargo sort --check
