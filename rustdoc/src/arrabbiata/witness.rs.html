@@ -1048,6 +1048,20 @@
 <a href="#1048" id="1048">1048</a>
 <a href="#1049" id="1049">1049</a>
 <a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::models::short_weierstrass::SWCurveConfig;
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
@@ -1111,9 +1125,9 @@
     <span class="comment">// FIXME: use a blinded comm and also fold the blinder
     </span><span class="kw">pub </span>ivc_accumulator_e2: Vec&lt;PolyComm&lt;E2&gt;&gt;,
 
-    <span class="doccomment">/// Commitments to the previous instances
-    </span><span class="kw">pub </span>previous_commitments_e1: Vec&lt;PolyComm&lt;E1&gt;&gt;,
-    <span class="kw">pub </span>previous_commitments_e2: Vec&lt;PolyComm&lt;E2&gt;&gt;,
+    <span class="doccomment">/// Commitments to the previous program states.
+    </span><span class="kw">pub </span>previous_committed_state_e1: Vec&lt;PolyComm&lt;E1&gt;&gt;,
+    <span class="kw">pub </span>previous_committed_state_e2: Vec&lt;PolyComm&lt;E2&gt;&gt;,
     <span class="comment">// ----------------
 
     // ----------------
@@ -1548,7 +1562,7 @@
                     <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
                         <span class="kw">match </span>side {
                             Side::Left =&gt; {
-                                <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e2[i_comm].get_first_chunk();
+                                <span class="kw">let </span>pt = <span class="self">self</span>.previous_committed_state_e2[i_comm].get_first_chunk();
                                 <span class="comment">// We suppose we never have a commitment equals to the
                                 // point at infinity
                                 </span><span class="kw">let </span>(pt_x, pt_y) = pt.to_coordinates().unwrap();
@@ -1574,7 +1588,7 @@
                     } <span class="kw">else </span>{
                         <span class="kw">match </span>side {
                             Side::Left =&gt; {
-                                <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e1[i_comm].get_first_chunk();
+                                <span class="kw">let </span>pt = <span class="self">self</span>.previous_committed_state_e1[i_comm].get_first_chunk();
                                 <span class="comment">// We suppose we never have a commitment equals to the
                                 // point at infinity
                                 </span><span class="kw">let </span>(pt_x, pt_y) = pt.to_coordinates().unwrap();
@@ -1618,11 +1632,11 @@
                     }
                     Side::Right =&gt; {
                         <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-                            <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e2[i_comm].get_first_chunk();
+                            <span class="kw">let </span>pt = <span class="self">self</span>.previous_committed_state_e2[i_comm].get_first_chunk();
                             <span class="kw">let </span>(x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         } <span class="kw">else </span>{
-                            <span class="kw">let </span>pt = <span class="self">self</span>.previous_commitments_e1[i_comm].get_first_chunk();
+                            <span class="kw">let </span>pt = <span class="self">self</span>.previous_committed_state_e1[i_comm].get_first_chunk();
                             <span class="kw">let </span>(x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         }
@@ -1872,10 +1886,10 @@
         };
 
         <span class="comment">// Default set to the blinders. Using double to make the EC scaling happy.
-        </span><span class="kw">let </span>previous_commitments_e1: Vec&lt;PolyComm&lt;E1&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
+        </span><span class="kw">let </span>previous_committed_state_e1: Vec&lt;PolyComm&lt;E1&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
             .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[(srs_e1.h + srs_e1.h).into()]))
             .collect();
-        <span class="kw">let </span>previous_commitments_e2: Vec&lt;PolyComm&lt;E2&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
+        <span class="kw">let </span>previous_committed_state_e2: Vec&lt;PolyComm&lt;E2&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
             .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[(srs_e2.h + srs_e2.h).into()]))
             .collect();
         <span class="comment">// FIXME: zero will not work.
@@ -1901,8 +1915,8 @@
             // IVC only
             </span>ivc_accumulator_e1,
             ivc_accumulator_e2,
-            previous_commitments_e1,
-            previous_commitments_e2,
+            previous_committed_state_e1,
+            previous_committed_state_e2,
             <span class="comment">// ------
             // ------
             </span>idx_var: <span class="number">0</span>,
@@ -1959,11 +1973,19 @@
         <span class="comment">// TODO
     </span>}
 
-    <span class="doccomment">/// Compute the commitments to the current witness, and update the previous
-    /// instances.
-    </span><span class="comment">// Might be worth renaming this function
-    </span><span class="kw">pub fn </span>compute_and_update_previous_commitments(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    <span class="doccomment">/// Commit to the program state and updating the environment with the
+    /// result.
+    ///
+    /// This method is supposed to be called after a new iteration of the
+    /// program has been executed.
+    </span><span class="kw">pub fn </span>commit_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
+            <span class="macro">assert_eq!</span>(
+                <span class="self">self</span>.current_row <span class="kw">as </span>u64,
+                <span class="self">self</span>.domain_fp.d1.size,
+                <span class="string">&quot;The program has not been fully executed. Missing {} rows&quot;</span>,
+                <span class="self">self</span>.domain_fp.d1.size - <span class="self">self</span>.current_row <span class="kw">as </span>u64,
+            );
             <span class="kw">let </span>comms: Vec&lt;PolyComm&lt;E1&gt;&gt; = <span class="self">self
                 </span>.witness
                 .par_iter()
@@ -1977,8 +1999,14 @@
                         .commit_evaluations_non_hiding(<span class="self">self</span>.domain_fp.d1, <span class="kw-2">&amp;</span>evals)
                 })
                 .collect();
-            <span class="self">self</span>.previous_commitments_e1 = comms
+            <span class="self">self</span>.previous_committed_state_e1 = comms
         } <span class="kw">else </span>{
+            <span class="macro">assert_eq!</span>(
+                <span class="self">self</span>.current_row <span class="kw">as </span>u64,
+                <span class="self">self</span>.domain_fq.d1.size,
+                <span class="string">&quot;The program has not been fully executed. Missing {} rows&quot;</span>,
+                <span class="self">self</span>.domain_fq.d1.size - <span class="self">self</span>.current_row <span class="kw">as </span>u64,
+            );
             <span class="kw">let </span>comms: Vec&lt;PolyComm&lt;E2&gt;&gt; = <span class="self">self
                 </span>.witness
                 .iter()
@@ -1992,7 +2020,7 @@
                         .commit_evaluations_non_hiding(<span class="self">self</span>.domain_fq.d1, <span class="kw-2">&amp;</span>evals)
                 })
                 .collect();
-            <span class="self">self</span>.previous_commitments_e2 = comms
+            <span class="self">self</span>.previous_committed_state_e2 = comms
         }
     }
 
