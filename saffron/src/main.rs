@@ -10,7 +10,9 @@ use saffron::{
     blob::FieldBlob,
     cli::{self, HexString},
     commitment::user_commitment,
-    env, proof, utils,
+    env,
+    proof::{self, StorageProof},
+    utils,
 };
 use std::{
     fs::File,
@@ -119,6 +121,25 @@ pub fn storage_proof(args: cli::StorageProofArgs) -> Result<HexString> {
     Ok(HexString(res))
 }
 
+pub fn verify_storage_proof(args: cli::VerifyStorageProofArgs) -> Result<()> {
+    let (srs, _) = get_srs(args.srs_cache);
+    let group_map = <Vesta as CommitmentCurve>::Map::setup();
+    let commitment = rmp_serde::from_slice(&args.commitment.0)?;
+    let evaluation_point = utils::encode(&args.challenge.0);
+    let proof: StorageProof<Vesta> = rmp_serde::from_slice(&args.proof.0)?;
+    let mut rng = OsRng;
+    let res = proof::verify_storage_proof::<Vesta, FqSponge>(
+        &srs,
+        &group_map,
+        commitment,
+        evaluation_point,
+        &proof,
+        &mut rng,
+    );
+    assert!(res);
+    Ok(())
+}
+
 pub fn main() -> Result<()> {
     env::init_console_subscriber();
     let args = cli::Commands::parse();
@@ -135,8 +156,6 @@ pub fn main() -> Result<()> {
             println!("{}", proof);
             Ok(())
         }
-        cli::Commands::VerifyStorageProof(_) => {
-            todo!()
-        }
+        cli::Commands::VerifyStorageProof(args) => verify_storage_proof(args),
     }
 }
