@@ -1078,8 +1078,10 @@
 <a href="#1078" id="1078">1078</a>
 <a href="#1079" id="1079">1079</a>
 <a href="#1080" id="1080">1080</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::models::short_weierstrass::SWCurveConfig;
-<span class="kw">use </span>ark_ff::PrimeField;
+<a href="#1081" id="1081">1081</a>
+<a href="#1082" id="1082">1082</a>
+<a href="#1083" id="1083">1083</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
 <span class="kw">use </span>kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
 <span class="kw">use </span>log::{debug, info};
@@ -1287,8 +1289,8 @@
         E2: ArrabbiataCurve&lt;ScalarField = Fq, BaseField = Fp&gt;,
     &gt; InterpreterEnv <span class="kw">for </span>Env&lt;Fp, Fq, E1, E2&gt;
 <span class="kw">where
-    </span>&lt;E1::Params <span class="kw">as </span>ark_ec::CurveConfig&gt;::BaseField: PrimeField,
-    &lt;E2::Params <span class="kw">as </span>ark_ec::CurveConfig&gt;::BaseField: PrimeField,
+    </span>E1::BaseField: PrimeField,
+    E2::BaseField: PrimeField,
 {
     <span class="kw">type </span>Position = (Column, CurrOrNext);
 
@@ -1781,9 +1783,11 @@
             };
             <span class="kw">let </span>num = {
                 <span class="kw">let </span>a: BigInt = <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-                    (E2::Params::COEFF_A).to_biguint().into()
+                    <span class="kw">let </span>a: E2::BaseField = E2::get_curve_params().<span class="number">0</span>;
+                    a.to_biguint().into()
                 } <span class="kw">else </span>{
-                    (E1::Params::COEFF_A).to_biguint().into()
+                    <span class="kw">let </span>a: E1::BaseField = E1::get_curve_params().<span class="number">0</span>;
+                    a.to_biguint().into()
                 };
                 <span class="kw">let </span>x1_square = x1.clone() * x1.clone();
                 <span class="kw">let </span>two_x1_square = x1_square.clone() + x1_square.clone();
@@ -1821,9 +1825,11 @@
         };
         <span class="kw">let </span>num = {
             <span class="kw">let </span>a: BigInt = <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-                (E2::Params::COEFF_A).to_biguint().into()
+                <span class="kw">let </span>a: E2::BaseField = E2::get_curve_params().<span class="number">0</span>;
+                a.to_biguint().into()
             } <span class="kw">else </span>{
-                (E1::Params::COEFF_A).to_biguint().into()
+                <span class="kw">let </span>a: E1::BaseField = E1::get_curve_params().<span class="number">0</span>;
+                a.to_biguint().into()
             };
             <span class="kw">let </span>x1_square = x1.clone() * x1.clone();
             <span class="kw">let </span>two_x1_square = x1_square.clone() + x1_square.clone();
