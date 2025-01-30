@@ -1084,6 +1084,9 @@
 <a href="#1084" id="1084">1084</a>
 <a href="#1085" id="1085">1085</a>
 <a href="#1086" id="1086">1086</a>
+<a href="#1087" id="1087">1087</a>
+<a href="#1088" id="1088">1088</a>
+<a href="#1089" id="1089">1089</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
 <span class="kw">use </span>kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
@@ -1228,8 +1231,11 @@
     <span class="doccomment">/// The current iteration of the IVC
     </span><span class="kw">pub </span>current_iteration: u64,
 
-    <span class="doccomment">/// A previous hash, encoded in 2 chunks of 128 bits.
-    </span><span class="kw">pub </span>previous_hash: [u128; <span class="number">2</span>],
+    <span class="doccomment">/// The digest of the last program state, including the cross-terms
+    /// commitments.
+    /// The value is a 128 bits value, to be absorbed to initialize the sponge
+    /// state for both curves.
+    </span><span class="kw">pub </span>last_digest: BigInt,
 
     <span class="doccomment">/// The coin folding combiner will be used to generate the combinaison of
     /// folding instances
@@ -1976,7 +1982,7 @@
             sponge_e1,
             sponge_e2,
             current_iteration: <span class="number">0</span>,
-            previous_hash: [<span class="number">0</span>; <span class="number">2</span>],
+            last_digest: BigInt::from(<span class="number">0_u64</span>),
             r: BigInt::from(<span class="number">0_usize</span>),
             <span class="comment">// Initialize the temporary accumulators with 0
             </span>temporary_accumulators: (
