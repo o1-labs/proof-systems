@@ -70,6 +70,27 @@ pub struct ComputeCommitmentArgs {
 }
 
 #[derive(Parser)]
+pub struct StorageProofArgs {
+    #[arg(
+        long,
+        short = 'i',
+        value_name = "FILE",
+        help = "input file (encoded as field elements)"
+    )]
+    pub input: String,
+
+    #[arg(long = "srs-filepath", value_name = "SRS_FILEPATH")]
+    pub srs_cache: Option<String>,
+
+    #[arg(
+        long = "challenge",
+        value_name = "CHALLENGE",
+        help = "challenge (hex encoded"
+    )]
+    pub challenge: HexString,
+}
+
+#[derive(Parser)]
 #[command(
     name = "saffron",
     version = "0.1",
@@ -82,4 +103,6 @@ pub enum Commands {
     Decode(DecodeFileArgs),
     #[command(name = "compute-commitment")]
     ComputeCommitment(ComputeCommitmentArgs),
+    #[command(name = "storage-proof")]
+    StorageProof(StorageProofArgs),
 }
