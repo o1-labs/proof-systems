@@ -9,7 +9,9 @@ use ark_ec::short_weierstrass::{Affine, SWCurveConfig};
 use ark_ff::PrimeField;
 use kimchi::curve::{pallas_endos, vesta_endos};
 use mina_curves::pasta::curves::{pallas::PallasParameters, vesta::VestaParameters};
-use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSpongeParams};
+use mina_poseidon::{
+    constants::SpongeConstants, poseidon::ArithmeticSpongeParams, sponge::DefaultFqSponge, FqSponge,
+};
 use poly_commitment::commitment::{CommitmentCurve, EndoCurve};
 
 #[derive(Clone)]
@@ -63,6 +65,9 @@ where
     /// Return the coefficients `a` and `b` of the equation
     /// `y^2 = x^3 + a x + b` defining the curve.
     fn get_curve_params() -> (Self::BaseField, Self::BaseField);
+
+    /// Create a new sponge, with an empty state (i.e. initialized to zero).
+    fn create_new_sponge() -> DefaultFqSponge<Self::Params, Self::SpongeConstants>;
 }
 
 impl ArrabbiataCurve for Affine<PallasParameters> {
@@ -91,6 +96,12 @@ impl ArrabbiataCurve for Affine<PallasParameters> {
     fn get_curve_params() -> (Self::BaseField, Self::BaseField) {
         (PallasParameters::COEFF_A, PallasParameters::COEFF_B)
     }
+
+    fn create_new_sponge() -> DefaultFqSponge<Self::Params, Self::SpongeConstants> {
+        let sponge: DefaultFqSponge<PallasParameters, PlonkSpongeConstants> =
+            DefaultFqSponge::new(Self::other_curve_sponge_params());
+        sponge
+    }
 }
 
 impl ArrabbiataCurve for Affine<VestaParameters> {
@@ -118,5 +129,11 @@ impl ArrabbiataCurve for Affine<VestaParameters> {
 
     fn get_curve_params() -> (Self::BaseField, Self::BaseField) {
         (VestaParameters::COEFF_A, VestaParameters::COEFF_B)
+    }
+
+    fn create_new_sponge() -> DefaultFqSponge<Self::Params, Self::SpongeConstants> {
+        let sponge: DefaultFqSponge<VestaParameters, PlonkSpongeConstants> =
+            DefaultFqSponge::new(Self::other_curve_sponge_params());
+        sponge
     }
 }
