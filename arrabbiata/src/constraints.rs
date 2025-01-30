@@ -118,7 +118,7 @@ where
     fn add_constraint(&mut self, constraint: Self::Variable) {
         let degree = constraint.degree(1, 0);
         debug!("Adding constraint of degree {degree}: {:}", constraint);
-        assert!(degree <= MAX_DEGREE, "degree is too high: {}. The folding scheme used currently allows constraint up to degree {}", degree, MAX_DEGREE);
+        assert!(degree <= MAX_DEGREE.try_into().unwrap(), "degree is too high: {}. The folding scheme used currently allows constraint up to degree {}", degree, MAX_DEGREE);
         self.constraints.push(constraint);
     }
 
