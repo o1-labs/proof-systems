@@ -309,7 +309,7 @@
 }
 
 <span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>blob_test_utils {
+</span><span class="kw">pub mod </span>test_utils {
     <span class="kw">use </span>proptest::prelude::<span class="kw-2">*</span>;
 
     <span class="attr">#[derive(Debug)]
@@ -387,10 +387,10 @@
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>ark_poly::Radix2EvaluationDomain;
-    <span class="kw">use </span>blob_test_utils::<span class="kw-2">*</span>;
     <span class="kw">use </span>mina_curves::pasta::{Fp, Vesta};
     <span class="kw">use </span>once_cell::sync::Lazy;
     <span class="kw">use </span>proptest::prelude::<span class="kw-2">*</span>;
+    <span class="kw">use </span>test_utils::<span class="kw-2">*</span>;
 
     <span class="kw">static </span>SRS: Lazy&lt;SRS&lt;Vesta&gt;&gt; = Lazy::new(|| {
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(srs) = std::env::var(<span class="string">&quot;SRS_FILEPATH&quot;</span>) {
