@@ -976,6 +976,24 @@ impl<
         }
     }
 
+    fn absorb_state(&mut self) {
+        if self.current_iteration % 2 == 0 {
+            let sponge: DefaultFqSponge<E1::Params, PlonkSpongeConstants> =
+                DefaultFqSponge::new(E1::other_curve_sponge_params());
+            self.sponge_e1.iter().for_each(|v| {
+                let v = Fq::from_biguint(&v.to_biguint().unwrap()).unwrap();
+                sponge.absorb(v);
+            });
+        } else {
+            let sponge: DefaultFqSponge<E2::Params, PlonkSpongeConstants> =
+                DefaultFqSponge::new(E2::other_curve_sponge_params());
+            self.sponge_e2.iter().for_each(|v| {
+                let v = Fp::from_biguint(&v.to_biguint().unwrap()).unwrap();
+                sponge.absorb(v);
+            });
+        }
+    }
+
     /// Compute the output of the application on the previous output
     // TODO: we should compute the hash of the previous commitments, only on
     // CPU?
