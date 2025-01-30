@@ -1,12 +1,15 @@
 use anyhow::Result;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use clap::Parser;
-use mina_curves::pasta::{Fp, Vesta};
-use poly_commitment::{ipa::SRS, SRS as _};
+use kimchi::groupmap::GroupMap;
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
+use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
+use rand::rngs::OsRng;
 use saffron::{
     blob::FieldBlob,
     cli::{self, HexString},
-    commitment, env, utils,
+    commitment, env, proof, utils,
 };
 use sha3::{Digest, Sha3_256};
 use std::{
@@ -102,6 +105,24 @@ pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<HexString>
     Ok(HexString(hash))
 }
 
+pub fn storage_proof(args: cli::StorageProofArgs) -> Result<HexString> {
+    let file = File::open(args.input)?;
+    let blob: FieldBlob<Vesta> = rmp_serde::decode::from_read(file)?;
+    let proof =
+        {
+            let (srs, _) = get_srs(args.srs_cache);
+            let group_map = <Vesta as CommitmentCurve>::Map::setup();
+            let mut rng = OsRng;
+            let evaluation_point = utils::encode(&args.challenge.0);
+            proof::storage_proof::<
+                Vesta,
+                DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+            >(&srs, &group_map, blob, evaluation_point, &mut rng)
+        };
+    let bytes = rmp_serde::to_vec(&proof).unwrap();
+    Ok(HexString(bytes))
+}
+
 pub fn main() -> Result<()> {
     env::init_console_subscriber();
     let args = cli::Commands::parse();
@@ -111,6 +132,11 @@ pub fn main() -> Result<()> {
         cli::Commands::ComputeCommitment(args) => {
             let commitment = compute_commitment(args)?;
             println!("{}", commitment);
+            Ok(())
+        }
+        cli::Commands::StorageProof(args) => {
+            let proof = storage_proof(args)?;
+            println!("{}", proof);
             Ok(())
         }
     }
