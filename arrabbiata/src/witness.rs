@@ -142,8 +142,11 @@ pub struct Env<
     /// The current iteration of the IVC
     pub current_iteration: u64,
 
-    /// A previous hash, encoded in 2 chunks of 128 bits.
-    pub previous_hash: [u128; 2],
+    /// The digest of the last program state, including the cross-terms
+    /// commitments.
+    /// The value is a 128 bits value, to be absorbed to initialize the sponge
+    /// state for both curves.
+    pub last_digest: BigInt,
 
     /// The coin folding combiner will be used to generate the combinaison of
     /// folding instances
@@ -890,7 +893,7 @@ where
             sponge_e1,
             sponge_e2,
             current_iteration: 0,
-            previous_hash: [0; 2],
+            last_digest: BigInt::from(0_u64),
             r: BigInt::from(0_usize),
             // Initialize the temporary accumulators with 0
             temporary_accumulators: (
