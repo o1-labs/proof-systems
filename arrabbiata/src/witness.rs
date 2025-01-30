@@ -143,11 +143,20 @@ pub struct Env<
     /// The current iteration of the IVC
     pub current_iteration: u64,
 
-    /// The digest of the last program state, including the cross-terms
-    /// commitments.
-    /// The value is a 128 bits value, to be absorbed to initialize the sponge
-    /// state for both curves.
-    pub last_digest: BigInt,
+    /// The digest of the program state before executing the last iteration.
+    /// The value will be used to initialize the execution trace of the verifier
+    /// in the next iteration, in particular to verify that the challenges have
+    /// been generated correctly.
+    ///
+    /// The value is a 128bits value.
+    pub last_program_digest_before_execution: BigInt,
+
+    /// The digest of the program state after executing the last iteration.
+    /// The value will be used to initialize the sponge before committing to the
+    /// next iteration.
+    ///
+    /// The value is a 128bits value.
+    pub last_program_digest_after_execution: BigInt,
 
     /// The coin folding combiner will be used to generate the combinaison of
     /// folding instances
@@ -896,7 +905,10 @@ where
             sponge_e1,
             sponge_e2,
             current_iteration: 0,
-            last_digest: BigInt::from(0_u64),
+            // FIXME: set a correct value
+            last_program_digest_before_execution: BigInt::from(0_u64),
+            // FIXME: set a correct value
+            last_program_digest_after_execution: BigInt::from(0_u64),
             r: BigInt::from(0_usize),
             // Initialize the temporary accumulators with 0
             temporary_accumulators: (
@@ -996,16 +1008,26 @@ where
     pub fn absorb_state(&mut self) {
         if self.current_iteration % 2 == 0 {
             let mut sponge = E1::create_new_sponge();
-            let previous_state: E1::BaseField =
-                E1::BaseField::from_biguint(&self.last_digest.to_biguint().unwrap()).unwrap();
+            let previous_state: E1::BaseField = E1::BaseField::from_biguint(
+                &self
+                    .last_program_digest_after_execution
+                    .to_biguint()
+                    .unwrap(),
+            )
+            .unwrap();
             E1::absorb_fq(&mut sponge, previous_state);
             self.previous_committed_state_e1
                 .iter()
                 .for_each(|comm| E1::absorb_curve_points(&mut sponge, &comm.chunks))
         } else {
             let mut sponge = E2::create_new_sponge();
-            let previous_state: E2::BaseField =
-                E2::BaseField::from_biguint(&self.last_digest.to_biguint().unwrap()).unwrap();
+            let previous_state: E2::BaseField = E2::BaseField::from_biguint(
+                &self
+                    .last_program_digest_after_execution
+                    .to_biguint()
+                    .unwrap(),
+            )
+            .unwrap();
             E2::absorb_fq(&mut sponge, previous_state);
             self.previous_committed_state_e2
                 .iter()
