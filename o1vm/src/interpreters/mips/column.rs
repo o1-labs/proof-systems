@@ -47,8 +47,9 @@ pub const SCRATCH_SIZE_INVERSE: usize = 12;
 pub const N_MIPS_REL_COLS: usize = SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2;
 
 /// The number of witness columns used to store the instruction selectors.
+/// NOTE: The +1 is coming from the NoOp instruction.
 pub const N_MIPS_SEL_COLS: usize =
-    RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT;
+    RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT + 1;
 
 /// All the witness columns used in MIPS
 pub const N_MIPS_COLS: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
@@ -96,6 +97,12 @@ impl From<Instruction> for usize {
             JType(jtype) => N_MIPS_REL_COLS + RTypeInstruction::COUNT + jtype as usize,
             IType(itype) => {
                 N_MIPS_REL_COLS + RTypeInstruction::COUNT + JTypeInstruction::COUNT + itype as usize
+            }
+            Instruction::NoOp => {
+                N_MIPS_REL_COLS
+                    + RTypeInstruction::COUNT
+                    + JTypeInstruction::COUNT
+                    + ITypeInstruction::COUNT
             }
         }
     }
