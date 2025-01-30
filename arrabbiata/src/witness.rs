@@ -1,3 +1,4 @@
+use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
@@ -6,7 +7,7 @@ use mina_poseidon::constants::SpongeConstants;
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
-use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
+use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Instant;
 
@@ -782,6 +783,8 @@ impl<
 where
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
+    <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     pub fn new(
         srs_log2_size: usize,
@@ -983,6 +986,31 @@ where
                 .collect();
             self.previous_committed_state_e2 = comms
         }
+    }
+
+    /// Absorb the last committed program state in the correct sponge.
+    ///
+    /// For a description of the messages to be given to the sponge, including
+    /// the expected instantiation, refer to the section "Message Passing" in
+    /// [crate::interpreter].
+    pub fn absorb_state(&mut self) {
+        if self.current_iteration % 2 == 0 {
+            let mut sponge = E1::create_new_sponge();
+            let previous_state: E1::BaseField =
+                E1::BaseField::from_biguint(&self.last_digest.to_biguint().unwrap()).unwrap();
+            E1::absorb_fq(&mut sponge, previous_state);
+            self.previous_committed_state_e1
+                .iter()
+                .for_each(|comm| E1::absorb_curve_points(&mut sponge, &comm.chunks))
+        } else {
+            let mut sponge = E2::create_new_sponge();
+            let previous_state: E2::BaseField =
+                E2::BaseField::from_biguint(&self.last_digest.to_biguint().unwrap()).unwrap();
+            E2::absorb_fq(&mut sponge, previous_state);
+            self.previous_committed_state_e2
+                .iter()
+                .for_each(|comm| E2::absorb_curve_points(&mut sponge, &comm.chunks))
+        };
     }
 
     /// Compute the output of the application on the previous output
