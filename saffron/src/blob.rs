@@ -7,7 +7,7 @@ use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _}
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use tracing::{debug, instrument};
+use tracing::{debug, debug_span, instrument};
 
 // A FieldBlob<F> represents the encoding of a Vec<u8> as a list of polynomials over F,
 // where F is a prime field. The polyonomials are represented in the monomial basis.
@@ -43,10 +43,12 @@ impl<G: CommitmentCurve> FieldBlob<G> {
         let field_elements = encode_for_domain(&domain, bytes);
         let domain_size = domain.size();
 
-        let data: Vec<DensePolynomial<G::ScalarField>> = field_elements
-            .par_iter()
-            .map(|chunk| Evaluations::from_vec_and_domain(chunk.to_vec(), domain).interpolate())
-            .collect();
+        let data: Vec<DensePolynomial<G::ScalarField>> = debug_span!("fft").in_scope(|| {
+            field_elements
+                .par_iter()
+                .map(|chunk| Evaluations::from_vec_and_domain(chunk.to_vec(), domain).interpolate())
+                .collect()
+        });
 
         let commitments = commit_to_blob_data(srs, &data);
 

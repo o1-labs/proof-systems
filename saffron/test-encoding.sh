@@ -31,6 +31,19 @@ if ! cargo run --release --bin saffron encode -i "$INPUT_FILE" -o "$ENCODED_FILE
    exit 1
 fi
 
+# Generate 32-byte random challenge as hex string
+echo "Generating random challenge..."
+CHALLENGE=$(head -c 32 /dev/urandom | xxd -p -c 32)
+echo "Challenge: $CHALLENGE"
+
+# Generate storage proof and capture proof output
+echo "Generating storage proof..."
+PROOF=$(cargo run --release --bin saffron storage-proof -i "$ENCODED_FILE" --challenge "$CHALLENGE" $SRS_ARG | tee /dev/stderr | tail -n 1)
+if [ $? -ne 0 ]; then
+    echo "Storage proof generation failed"
+    exit 1
+fi
+
 # Run decode
 echo "Decoding $ENCODED_FILE to $DECODED_FILE"
 if ! cargo run --release --bin saffron decode -i "$ENCODED_FILE" -o "$DECODED_FILE" $SRS_ARG; then
