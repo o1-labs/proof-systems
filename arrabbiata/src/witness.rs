@@ -19,18 +19,31 @@ use crate::{
     NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
-/// The first instruction in the IVC is the Poseidon permutation. It is used to
-/// start hashing the public input.
+/// The first instruction in the verifier circuit (often shortened in "IVC" in
+/// the crate) is the Poseidon permutation. It is used to start hashing the
+/// public input.
 pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
 
-/// An environment that can be shared between IVC instances.
+/// An environment is used to contain the state of a long "running program".
 ///
-/// It contains all the accumulators that can be picked for a given fold
-/// instance k, including the sponges.
+/// The running program is composed of two parts: one user application and one
+/// verifier application. The verifier application is used to encode the
+/// correctness of previous program states computations.
+///
+/// The term "app(lication) state" will be used to refer to the state of the
+/// user application, and the term "IVC state" will be used to refer to the
+/// state of the verifier application. The term program state will be used to refer to
+/// the state of the whole program.
+///
+/// The environment contains all the accumulators that can be picked for a given
+/// fold instance k, including the sponges.
 ///
 /// The environment is run over big integers to avoid performing
 /// reduction at all step. Instead the user implementing the interpreter can
 /// reduce in the corresponding field when they want.
+///
+/// The environment is generic over two curves (called E1 and E2) that are
+/// supposed to form a cycle.
 pub struct Env<
     Fp: PrimeField,
     Fq: PrimeField,
