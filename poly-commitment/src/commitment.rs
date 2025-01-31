@@ -332,19 +332,42 @@ impl<C: AffineRepr> PolyComm<C> {
         let all_scalars: Vec<_> = elm.iter().map(|s| s.into_bigint()).collect();
 
         let elems_size = Iterator::max(com.iter().map(|c| c.chunks.len())).unwrap();
-        let mut chunks = Vec::with_capacity(elems_size);
 
-        for chunk in 0..elems_size {
-            let (points, scalars): (Vec<_>, Vec<_>) = com
-                .iter()
-                .zip(&all_scalars)
-                // get rid of scalars that don't have an associated chunk
-                .filter_map(|(com, scalar)| com.chunks.get(chunk).map(|c| (c, scalar)))
-                .unzip();
+        use rayon::prelude::*;
 
-            let chunk_msm = C::Group::msm_bigint(&points, &scalars);
-            chunks.push(chunk_msm.into_affine());
-        }
+        // @volhovm this seems to work only partially.
+
+        //let thread_num = rayon::max_num_threads();
+        let thread_num = 2;
+
+        let chunks = (0..elems_size)
+            .map(|chunk| {
+                let (points, scalars): (Vec<_>, Vec<_>) = com
+                    .iter()
+                    .zip(&all_scalars)
+                    // get rid of scalars that don't have an associated chunk
+                    .filter_map(|(com, scalar)| com.chunks.get(chunk).map(|c| (c, scalar)))
+                    .unzip();
+
+                let subchunk_size = std::cmp::max(points.len() / thread_num, 1);
+
+                let sub_msm_inputs: Vec<_> = points
+                    .chunks(subchunk_size)
+                    .zip(scalars.chunks(subchunk_size))
+                    .collect();
+
+                let chunk_msm_subchunks: Vec<_> = sub_msm_inputs
+                    .into_par_iter()
+                    .map(|(psc, ssc)| C::Group::msm_bigint(psc, ssc).into_affine())
+                    .collect();
+
+                let res = chunk_msm_subchunks
+                    .iter()
+                    .fold(C::zero(), |x, y| (x + y).into());
+                res
+            })
+            .collect();
+
         Self::new(chunks)
     }
 }

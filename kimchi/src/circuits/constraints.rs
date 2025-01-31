@@ -26,6 +26,7 @@ use ark_poly::{
 use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
 use poly_commitment::OpenProof;
+use rayon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::{array, default::Default, sync::Arc};
@@ -373,25 +374,53 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
 impl<F: PrimeField> ConstraintSystem<F> {
     /// evaluate witness polynomials over domains
     pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
-        // compute shifted witness polynomials
-        let w8: [E<F, D<F>>; COLUMNS] =
-            array::from_fn(|i| w[i].evaluate_over_domain_by_ref(self.domain.d8));
-        let z8 = z.evaluate_over_domain_by_ref(self.domain.d8);
+        // this optimisation saves 100ms
 
-        let w4: [E<F, D<F>>; COLUMNS] = array::from_fn(|i| {
-            E::<F, D<F>>::from_vec_and_domain(
-                (0..self.domain.d4.size)
-                    .map(|j| w8[i].evals[2 * j as usize])
-                    .collect(),
-                self.domain.d4,
-            )
-        });
-        let z4 = DP::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap());
+        // compute shifted witness polynomials
+        let w8: [E<F, D<F>>; COLUMNS] = (0..COLUMNS)
+            .into_par_iter()
+            .map(|i| w[i].evaluate_over_domain_by_ref(self.domain.d8))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
+        let w4: [E<F, D<F>>; COLUMNS] = (0..COLUMNS)
+            .into_par_iter()
+            .map(|i| {
+                E::<F, D<F>>::from_vec_and_domain(
+                    (0..self.domain.d4.size)
+                        .map(|j| w8[i].evals[2 * j as usize])
+                        .collect(),
+                    self.domain.d4,
+                )
+            })
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
+        let (z8, z4) = rayon::join(
+            || z.evaluate_over_domain_by_ref(self.domain.d8),
+            || DP::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap()),
+        );
+
+        let d4_next_w: [_; COLUMNS] = (0..COLUMNS)
+            .into_par_iter()
+            .map(|i| w4[i].shift(4))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
+        let d8_next_w: [_; COLUMNS] = (0..COLUMNS)
+            .into_par_iter()
+            .map(|i| w8[i].shift(8))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
 
         WitnessOverDomains {
             d4: WitnessShifts {
                 next: WitnessEvals {
-                    w: array::from_fn(|i| w4[i].shift(4)),
+                    w: d4_next_w,
                     // TODO(mimoo): change z to an Option? Or maybe not, we might actually need this dummy evaluation in the aggregated evaluation proof
                     z: z4.clone(), // dummy evaluation
                 },
@@ -402,7 +431,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             },
             d8: WitnessShifts {
                 next: WitnessEvals {
-                    w: array::from_fn(|i| w8[i].shift(8)),
+                    w: d8_next_w,
                     z: z8.shift(8),
                 },
                 this: WitnessEvals { w: w8, z: z8 },

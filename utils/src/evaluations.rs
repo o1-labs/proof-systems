@@ -45,12 +45,11 @@ impl<F: FftField> ExtendedEvaluations<F> for Evaluations<F, Radix2EvaluationDoma
     }
 
     fn shift(&self, len: usize) -> Self {
+        // @volhovm this saves another 70ms per run
         let len = len % self.evals.len();
-        let mut result = self.clone();
-        result.evals.clear();
-        result.evals = self.evals[len..].to_vec();
-        let mut tail = self.evals[0..len].to_vec();
-        result.evals.append(&mut tail);
+        let mut result = Self::from_vec_and_domain(vec![], self.domain());
+        result.evals.extend_from_slice(&self.evals[len..]);
+        result.evals.extend_from_slice(&self.evals[0..len]);
         result
     }
 }
