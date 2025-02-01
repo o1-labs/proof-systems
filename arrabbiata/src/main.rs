@@ -107,8 +107,8 @@ pub fn main() {
         // verify and accumulate it at the next iteration.
         env.commit_state();
 
-        // FIXME:
-        // Absorb all commitments in the sponge.
+        // Absorb the last program state.
+        env.absorb_state();
 
         // FIXME:
         // Coin chalenges β and γ for the permutation argument
