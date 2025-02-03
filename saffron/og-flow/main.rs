@@ -1,4 +1,4 @@
-use ark_ff::{One, UniformRand, Zero};
+use ark_ff::{One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain};
 use kimchi::groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
@@ -12,14 +12,20 @@ use poly_commitment::{
     PolyComm, SRS as _,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::process::ExitCode;
+use saffron::utils::encode_for_domain;
+use std::{fs::File, io::Read, process::ExitCode};
 
 // To run:
 // ```
-// cargo run --release -p data-storage
+// cargo run --bin saffron-og-flow --release -- <path-to-file>
 // ```
 
 pub fn main() -> ExitCode {
+    let input_file = std::env::args()
+        .nth(1)
+        .ok_or("Missing data filepath argument")
+        .unwrap();
+
     const SRS_SIZE: usize = 1 << 16;
 
     println!("Startup time (cacheable, 1-time cost)");
@@ -59,23 +65,20 @@ pub fn main() -> ExitCode {
         duration.as_nanos(),
     );
 
-    const DATA_SIZE: usize = 1 << 25;
-
-    println!("Set up test, not used in real system");
-
-    println!(
-        "- Generate some random data of size {} (represented as {} field elements)",
-        DATA_SIZE * 32,
-        DATA_SIZE
-    );
-    println!(
-        "  - Using cryptographically-secure randomness for test vector (warning: this may be slow)"
-    );
     let now = std::time::Instant::now();
     let rng = &mut rand::rngs::OsRng;
-    let data: Vec<Fp> = (0..DATA_SIZE)
-        .map(|_| <Fp as UniformRand>::rand(rng))
-        .collect::<Vec<_>>();
+
+    println!("Reading data from {}", input_file);
+    let data: Vec<Fp> = {
+        let mut file = File::open(input_file).unwrap();
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf).unwrap();
+        encode_for_domain(&domain, &buf)
+            .into_iter()
+            .flatten()
+            .collect()
+    };
+
     let duration = now.elapsed();
     println!(
         "  - Took {:?}s / {:?}ms / {:?}us / {:?}ns",

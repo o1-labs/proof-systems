@@ -47,5 +47,5 @@ proptest.workspace = true
 once_cell.workspace = true
 
 [[bin]]
-name = "og-flow"
+name = "saffron-og-flow"
 path = "og-flow/main.rs"
