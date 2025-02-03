@@ -2666,6 +2666,37 @@
 <a href="#2666" id="2666">2666</a>
 <a href="#2667" id="2667">2667</a>
 <a href="#2668" id="2668">2668</a>
+<a href="#2669" id="2669">2669</a>
+<a href="#2670" id="2670">2670</a>
+<a href="#2671" id="2671">2671</a>
+<a href="#2672" id="2672">2672</a>
+<a href="#2673" id="2673">2673</a>
+<a href="#2674" id="2674">2674</a>
+<a href="#2675" id="2675">2675</a>
+<a href="#2676" id="2676">2676</a>
+<a href="#2677" id="2677">2677</a>
+<a href="#2678" id="2678">2678</a>
+<a href="#2679" id="2679">2679</a>
+<a href="#2680" id="2680">2680</a>
+<a href="#2681" id="2681">2681</a>
+<a href="#2682" id="2682">2682</a>
+<a href="#2683" id="2683">2683</a>
+<a href="#2684" id="2684">2684</a>
+<a href="#2685" id="2685">2685</a>
+<a href="#2686" id="2686">2686</a>
+<a href="#2687" id="2687">2687</a>
+<a href="#2688" id="2688">2688</a>
+<a href="#2689" id="2689">2689</a>
+<a href="#2690" id="2690">2690</a>
+<a href="#2691" id="2691">2691</a>
+<a href="#2692" id="2692">2692</a>
+<a href="#2693" id="2693">2693</a>
+<a href="#2694" id="2694">2694</a>
+<a href="#2695" id="2695">2695</a>
+<a href="#2696" id="2696">2696</a>
+<a href="#2697" id="2697">2697</a>
+<a href="#2698" id="2698">2698</a>
+<a href="#2699" id="2699">2699</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     interpreters::mips::registers::{
@@ -2699,6 +2730,9 @@
     RType(RTypeInstruction),
     JType(JTypeInstruction),
     IType(ITypeInstruction),
+    <span class="comment">// A no-op operation that should only be used for testing. The semantic is
+    // not clearly defined.
+    </span>NoOp,
 }
 
 <span class="attr">#[derive(
@@ -2821,6 +2855,7 @@
                 }
                 iter_contents.into_iter()
             }
+            Instruction::NoOp =&gt; <span class="macro">vec!</span>[Instruction::NoOp].into_iter(),
         }
     }
 }
@@ -3638,7 +3673,34 @@
         Instruction::RType(instr) =&gt; interpret_rtype(env, instr),
         Instruction::JType(instr) =&gt; interpret_jtype(env, instr),
         Instruction::IType(instr) =&gt; interpret_itype(env, instr),
+        Instruction::NoOp =&gt; interpret_noop(env),
     }
+}
+
+<span class="comment">// FIXME: the noop should not be used in production. The interpreter semantic
+// should be refined. The padding is only for testing purposes when padding is
+// required to reach the size of the domain.
+</span><span class="kw">pub fn </span>interpret_noop&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env) {
+    <span class="kw">let </span>instruction_pointer = env.get_instruction_pointer();
+    <span class="kw">let </span>instruction = {
+        <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>instruction_pointer);
+        <span class="kw">let </span>v1 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">1</span>)));
+        <span class="kw">let </span>v2 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">2</span>)));
+        <span class="kw">let </span>v3 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">3</span>)));
+        (v0 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">24</span>))
+            + (v1 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>))
+            + (v2 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>))
+            + v3
+    };
+    <span class="kw">let </span>opcode = {
+        <span class="kw">let </span>pos = env.alloc_scratch();
+        <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">32</span>, <span class="number">26</span>, pos) }
+    };
+
+    env.assert_is_zero(opcode);
+    <span class="kw">let </span>next_instruction_pointer = env.get_next_instruction_pointer();
+    env.set_instruction_pointer(next_instruction_pointer.clone());
+    env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
 }
 
 <span class="kw">pub fn </span>interpret_rtype&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: RTypeInstruction) {

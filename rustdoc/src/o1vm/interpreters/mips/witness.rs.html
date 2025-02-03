@@ -1392,6 +1392,12 @@
 <a href="#1392" id="1392">1392</a>
 <a href="#1393" id="1393">1393</a>
 <a href="#1394" id="1394">1394</a>
+<a href="#1395" id="1395">1395</a>
+<a href="#1396" id="1396">1396</a>
+<a href="#1397" id="1397">1397</a>
+<a href="#1398" id="1398">1398</a>
+<a href="#1399" id="1399">1399</a>
+<a href="#1400" id="1400">1400</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
 <span class="kw">use crate</span>::{
     cannon::{
@@ -2470,7 +2476,13 @@
         <span class="kw">let </span>opcode = {
             <span class="kw">match </span>instruction &gt;&gt; <span class="number">26 </span>{
                 <span class="number">0x00 </span>=&gt; <span class="kw">match </span>instruction &amp; <span class="number">0x3F </span>{
-                    <span class="number">0x00 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftLeftLogical),
+                    <span class="number">0x00 </span>=&gt; {
+                        <span class="kw">if </span>instruction == <span class="number">0 </span>{
+                            Instruction::NoOp
+                        } <span class="kw">else </span>{
+                            Instruction::RType(RTypeInstruction::ShiftLeftLogical)
+                        }
+                    }
                     <span class="number">0x02 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftRightLogical),
                     <span class="number">0x03 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftRightArithmetic),
                     <span class="number">0x04 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftLeftLogicalVariable),

@@ -207,6 +207,13 @@
 <a href="#207" id="207">207</a>
 <a href="#208" id="208">208</a>
 <a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     interpreters::mips::Instruction::{<span class="self">self</span>, IType, JType, RType},
     RelationColumnType,
@@ -256,8 +263,9 @@
 </span><span class="kw">pub const </span>N_MIPS_REL_COLS: usize = SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + <span class="number">2</span>;
 
 <span class="doccomment">/// The number of witness columns used to store the instruction selectors.
+/// NOTE: The +1 is coming from the NoOp instruction.
 </span><span class="kw">pub const </span>N_MIPS_SEL_COLS: usize =
-    RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT;
+    RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT + <span class="number">1</span>;
 
 <span class="doccomment">/// All the witness columns used in MIPS
 </span><span class="kw">pub const </span>N_MIPS_COLS: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
@@ -305,6 +313,12 @@
             JType(jtype) =&gt; N_MIPS_REL_COLS + RTypeInstruction::COUNT + jtype <span class="kw">as </span>usize,
             IType(itype) =&gt; {
                 N_MIPS_REL_COLS + RTypeInstruction::COUNT + JTypeInstruction::COUNT + itype <span class="kw">as </span>usize
+            }
+            Instruction::NoOp =&gt; {
+                N_MIPS_REL_COLS
+                    + RTypeInstruction::COUNT
+                    + JTypeInstruction::COUNT
+                    + ITypeInstruction::COUNT
             }
         }
     }
