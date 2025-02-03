@@ -24,6 +24,7 @@ fi
 COMMITMENT=$(cargo run --release --bin saffron compute-commitment -i "$INPUT_FILE" $SRS_ARG | tee /dev/stderr | tail -n 1)
 
 
+
 # Run encode with captured commitment
 echo "Encoding $INPUT_FILE to $ENCODED_FILE"
 if ! cargo run --release --bin saffron encode -i "$INPUT_FILE" -o "$ENCODED_FILE" --assert-commitment "$COMMITMENT" $SRS_ARG; then
@@ -43,6 +44,15 @@ if [ $? -ne 0 ]; then
     echo "Storage proof generation failed"
     exit 1
 fi
+
+# Verify the storage proof
+echo "Verifying proof..."
+if ! cargo run --release --bin saffron verify-storage-proof --commitment "$COMMITMENT" --challenge "$CHALLENGE" --proof "$PROOF" $SRS_ARG; then
+    echo "Proof verification failed"
+    exit 1
+fi
+echo "✓ Proof verification successful"
+
 
 # Run decode
 echo "Decoding $ENCODED_FILE to $DECODED_FILE"

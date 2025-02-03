@@ -91,6 +91,30 @@ pub struct StorageProofArgs {
 }
 
 #[derive(Parser)]
+pub struct VerifyStorageProofArgs {
+    #[arg(long = "srs-filepath", value_name = "SRS_FILEPATH")]
+    pub srs_cache: Option<String>,
+
+    #[arg(
+        long,
+        short = 'c',
+        value_name = "COMMITMENT",
+        help = "commitment (hex encoded)"
+    )]
+    pub commitment: HexString,
+
+    #[arg(
+        long = "challenge",
+        value_name = "CHALLENGE",
+        help = "challenge (hex encoded"
+    )]
+    pub challenge: HexString,
+
+    #[arg(long, short = 'p', value_name = "PROOF", help = "proof (hex encoded)")]
+    pub proof: HexString,
+}
+
+#[derive(Parser)]
 #[command(
     name = "saffron",
     version = "0.1",
@@ -105,4 +129,6 @@ pub enum Commands {
     ComputeCommitment(ComputeCommitmentArgs),
     #[command(name = "storage-proof")]
     StorageProof(StorageProofArgs),
+    #[command(name = "verify-storage-proof")]
+    VerifyStorageProof(VerifyStorageProofArgs),
 }

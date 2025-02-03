@@ -1,7 +1,12 @@
-use crate::utils::{decode_into, encode_for_domain};
+use crate::{
+    commitment::fold_commitments,
+    utils::{decode_into, encode_for_domain},
+};
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Evaluations};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use kimchi::curve::KimchiCurve;
+use mina_poseidon::FqSponge;
 use o1_utils::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::prelude::*;
@@ -18,6 +23,9 @@ pub struct FieldBlob<G: CommitmentCurve> {
     pub n_bytes: usize,
     pub domain_size: usize,
     pub commitments: Vec<PolyComm<G>>,
+    pub folded_commitment: PolyComm<G>,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub alpha: G::ScalarField,
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub data: Vec<DensePolynomial<G::ScalarField>>,
 }
@@ -33,9 +41,12 @@ fn commit_to_blob_data<G: CommitmentCurve>(
         .collect()
 }
 
-impl<G: CommitmentCurve> FieldBlob<G> {
+impl<G: KimchiCurve> FieldBlob<G> {
     #[instrument(skip_all, level = "debug")]
-    pub fn encode<D: EvaluationDomain<G::ScalarField>>(
+    pub fn encode<
+        D: EvaluationDomain<G::ScalarField>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    >(
         srs: &SRS<G>,
         domain: D,
         bytes: &[u8],
@@ -52,6 +63,11 @@ impl<G: CommitmentCurve> FieldBlob<G> {
 
         let commitments = commit_to_blob_data(srs, &data);
 
+        let (folded_commitment, alpha) = {
+            let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
+            fold_commitments(&mut sponge, &commitments)
+        };
+
         debug!(
             "Encoded {:.2} MB into {} polynomials",
             bytes.len() as f32 / 1_000_000.0,
@@ -62,6 +78,8 @@ impl<G: CommitmentCurve> FieldBlob<G> {
             n_bytes: bytes.len(),
             domain_size,
             commitments,
+            folded_commitment,
+            alpha,
             data,
         }
     }
@@ -101,7 +119,8 @@ mod tests {
     use super::*;
     use crate::utils::test_utils::*;
     use ark_poly::Radix2EvaluationDomain;
-    use mina_curves::pasta::{Fp, Vesta};
+    use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+    use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
 
@@ -121,7 +140,7 @@ mod tests {
     #![proptest_config(ProptestConfig::with_cases(20))]
     #[test]
     fn test_round_trip_blob_encoding(UserData(xs) in UserData::arbitrary())
-      { let blob = FieldBlob::<Vesta>::encode(&*SRS, *DOMAIN, &xs);
+      { let blob = FieldBlob::<Vesta>::encode::<_, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, *DOMAIN, &xs);
         let bytes = rmp_serde::to_vec(&blob).unwrap();
         let a = rmp_serde::from_slice(&bytes).unwrap();
         // check that ark-serialize is behaving as expected
@@ -138,7 +157,7 @@ mod tests {
         fn test_user_and_storage_provider_commitments_equal(UserData(xs) in UserData::arbitrary())
           { let elems = encode_for_domain(&*DOMAIN, &xs);
             let user_commitments = commit_to_field_elems(&*SRS, *DOMAIN, elems);
-            let blob = FieldBlob::<Vesta>::encode(&*SRS, *DOMAIN, &xs);
+            let blob = FieldBlob::<Vesta>::encode::<_, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, *DOMAIN, &xs);
             prop_assert_eq!(user_commitments, blob.commitments);
           }
         }

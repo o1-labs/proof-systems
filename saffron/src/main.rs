@@ -9,9 +9,11 @@ use rand::rngs::OsRng;
 use saffron::{
     blob::FieldBlob,
     cli::{self, HexString},
-    commitment, env, proof, utils,
+    commitment::user_commitment,
+    env,
+    proof::{self, StorageProof},
+    utils,
 };
-use sha3::{Digest, Sha3_256};
 use std::{
     fs::File,
     io::{Read, Write},
@@ -19,6 +21,8 @@ use std::{
 use tracing::{debug, debug_span};
 
 pub const DEFAULT_SRS_SIZE: usize = 1 << 16;
+
+type FqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 
 fn get_srs(cache: Option<String>) -> (SRS<Vesta>, Radix2EvaluationDomain<Fp>) {
     let res = match cache {
@@ -73,17 +77,16 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
     let mut file = File::open(args.input)?;
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
-    let blob = FieldBlob::<Vesta>::encode(&srs, domain, &buf);
+    let blob = FieldBlob::<Vesta>::encode::<_, FqSponge>(&srs, domain, &buf);
     args.assert_commitment
         .into_iter()
         .for_each(|asserted_commitment| {
-            let bytes = rmp_serde::to_vec(&blob.commitments).unwrap();
-            let hash = Sha3_256::new().chain_update(bytes).finalize().to_vec();
-            if asserted_commitment.0 != hash {
+            let c = rmp_serde::from_slice(&asserted_commitment.0).unwrap();
+            if blob.folded_commitment != c {
                 panic!(
                     "commitment hash mismatch: asserted {}, computed {}",
                     asserted_commitment,
-                    HexString(hash)
+                    HexString(rmp_serde::encode::to_vec(&c).unwrap())
                 );
             }
         });
@@ -99,28 +102,42 @@ pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<HexString>
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
     let field_elems = utils::encode_for_domain(&domain_fp, &buf);
-    let commitments = commitment::commit_to_field_elems(&srs, domain_fp, field_elems);
-    let bytes = rmp_serde::to_vec(&commitments).unwrap();
-    let hash = Sha3_256::new().chain_update(bytes).finalize().to_vec();
-    Ok(HexString(hash))
+    let commitment = user_commitment::<_, FqSponge>(&srs, domain_fp, field_elems);
+    let res = rmp_serde::to_vec(&commitment)?;
+    Ok(HexString(res))
 }
 
 pub fn storage_proof(args: cli::StorageProofArgs) -> Result<HexString> {
     let file = File::open(args.input)?;
     let blob: FieldBlob<Vesta> = rmp_serde::decode::from_read(file)?;
-    let proof =
-        {
-            let (srs, _) = get_srs(args.srs_cache);
-            let group_map = <Vesta as CommitmentCurve>::Map::setup();
-            let mut rng = OsRng;
-            let evaluation_point = utils::encode(&args.challenge.0);
-            proof::storage_proof::<
-                Vesta,
-                DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-            >(&srs, &group_map, blob, evaluation_point, &mut rng)
-        };
-    let bytes = rmp_serde::to_vec(&proof).unwrap();
-    Ok(HexString(bytes))
+    let proof = {
+        let (srs, _) = get_srs(args.srs_cache);
+        let group_map = <Vesta as CommitmentCurve>::Map::setup();
+        let mut rng = OsRng;
+        let evaluation_point = utils::encode(&args.challenge.0);
+        proof::storage_proof::<Vesta, FqSponge>(&srs, &group_map, blob, evaluation_point, &mut rng)
+    };
+    let res = rmp_serde::to_vec(&proof)?;
+    Ok(HexString(res))
+}
+
+pub fn verify_storage_proof(args: cli::VerifyStorageProofArgs) -> Result<()> {
+    let (srs, _) = get_srs(args.srs_cache);
+    let group_map = <Vesta as CommitmentCurve>::Map::setup();
+    let commitment = rmp_serde::from_slice(&args.commitment.0)?;
+    let evaluation_point = utils::encode(&args.challenge.0);
+    let proof: StorageProof<Vesta> = rmp_serde::from_slice(&args.proof.0)?;
+    let mut rng = OsRng;
+    let res = proof::verify_storage_proof::<Vesta, FqSponge>(
+        &srs,
+        &group_map,
+        commitment,
+        evaluation_point,
+        &proof,
+        &mut rng,
+    );
+    assert!(res);
+    Ok(())
 }
 
 pub fn main() -> Result<()> {
@@ -139,5 +156,6 @@ pub fn main() -> Result<()> {
             println!("{}", proof);
             Ok(())
         }
+        cli::Commands::VerifyStorageProof(args) => verify_storage_proof(args),
     }
 }

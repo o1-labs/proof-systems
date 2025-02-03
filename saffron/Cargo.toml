@@ -34,7 +34,6 @@ rayon.workspace = true
 rmp-serde.workspace = true
 serde.workspace = true
 serde_with.workspace = true
-sha3.workspace = true
 thiserror.workspace = true
 time = { version = "0.3", features = ["macros"] }
 tracing = "0.1"
