@@ -113,89 +113,16 @@ impl<G: KimchiCurve> FieldBlob<G> {
 }
 
 #[cfg(test)]
-pub mod test_utils {
-    use proptest::prelude::*;
-
-    #[derive(Debug)]
-    pub struct BlobData(pub Vec<u8>);
-
-    #[derive(Clone, Debug)]
-    pub enum DataSize {
-        Small,
-        Medium,
-        Large,
-    }
-
-    impl DataSize {
-        const KB: usize = 1_000;
-        const MB: usize = 1_000_000;
-
-        fn size_range_bytes(&self) -> (usize, usize) {
-            match self {
-                // Small: 1KB - 1MB
-                Self::Small => (Self::KB, Self::MB),
-                // Medium: 1MB - 10MB
-                Self::Medium => (Self::MB, 10 * Self::MB),
-                // Large: 10MB - 100MB
-                Self::Large => (10 * Self::MB, 100 * Self::MB),
-            }
-        }
-    }
-
-    impl Arbitrary for DataSize {
-        type Parameters = ();
-        type Strategy = BoxedStrategy<Self>;
-
-        fn arbitrary_with(_: ()) -> Self::Strategy {
-            prop_oneof![
-                6 => Just(DataSize::Small), // 60% chance
-                3 => Just(DataSize::Medium),
-                1 => Just(DataSize::Large)
-            ]
-            .boxed()
-        }
-    }
-
-    impl Default for DataSize {
-        fn default() -> Self {
-            Self::Small
-        }
-    }
-
-    impl Arbitrary for BlobData {
-        type Parameters = DataSize;
-        type Strategy = BoxedStrategy<Self>;
-
-        fn arbitrary() -> Self::Strategy {
-            DataSize::arbitrary()
-                .prop_flat_map(|size| {
-                    let (min, max) = size.size_range_bytes();
-                    prop::collection::vec(any::<u8>(), min..max)
-                })
-                .prop_map(BlobData)
-                .boxed()
-        }
-
-        fn arbitrary_with(size: Self::Parameters) -> Self::Strategy {
-            let (min, max) = size.size_range_bytes();
-            prop::collection::vec(any::<u8>(), min..max)
-                .prop_map(BlobData)
-                .boxed()
-        }
-    }
-}
-
-#[cfg(test)]
 mod tests {
     use crate::{commitment::commit_to_field_elems, env};
 
     use super::*;
+    use crate::utils::test_utils::*;
     use ark_poly::Radix2EvaluationDomain;
     use mina_curves::pasta::{Fp, Vesta, VestaParameters};
     use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
-    use test_utils::*;
 
     static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
         if let Ok(srs) = std::env::var("SRS_FILEPATH") {
@@ -212,7 +139,7 @@ mod tests {
     proptest! {
     #![proptest_config(ProptestConfig::with_cases(20))]
     #[test]
-    fn test_round_trip_blob_encoding(BlobData(xs) in BlobData::arbitrary())
+    fn test_round_trip_blob_encoding(UserData(xs) in UserData::arbitrary())
       { let blob = FieldBlob::<Vesta>::encode::<_, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, *DOMAIN, &xs);
         let bytes = rmp_serde::to_vec(&blob).unwrap();
         let a = rmp_serde::from_slice(&bytes).unwrap();
@@ -227,7 +154,7 @@ mod tests {
     proptest! {
     #![proptest_config(ProptestConfig::with_cases(10))]
     #[test]
-        fn test_user_and_storage_provider_commitments_equal(BlobData(xs) in BlobData::arbitrary())
+        fn test_user_and_storage_provider_commitments_equal(UserData(xs) in UserData::arbitrary())
           { let elems = encode_for_domain(&*DOMAIN, &xs);
             let user_commitments = commit_to_field_elems(&*SRS, *DOMAIN, elems);
             let blob = FieldBlob::<Vesta>::encode::<_, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, *DOMAIN, &xs);

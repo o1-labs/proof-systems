@@ -20,7 +20,7 @@ use std::{
 };
 use tracing::{debug, debug_span};
 
-const DEFAULT_SRS_SIZE: usize = 1 << 16;
+pub const DEFAULT_SRS_SIZE: usize = 1 << 16;
 
 type FqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 

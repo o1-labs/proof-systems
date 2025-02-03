@@ -52,6 +52,8 @@ where
     let evaluation = p.evaluate(&evaluation_point);
     let opening_proof_sponge = {
         let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
+        // TODO: check and see if we need to also absorb the absorb the poly cm
+        // see https://github.com/o1-labs/proof-systems/blob/feature/test-data-storage-commitments/data-storage/src/main.rs#L265-L269
         sponge.absorb_fr(&[evaluation]);
         sponge
     };
@@ -66,8 +68,8 @@ where
                 },
             )],
             &[evaluation_point],
-            G::ScalarField::one(), // Single polynomial, so we don't care
-            G::ScalarField::one(), // Single polynomial, so we don't care
+            G::ScalarField::one(), // Single evaluation, so we don't care
+            G::ScalarField::one(), // Single evaluation, so we don't care
             opening_proof_sponge,
             rng,
         );
@@ -117,10 +119,9 @@ where
 mod tests {
     use super::*;
     use crate::{
-        blob::test_utils::*,
         commitment::{commit_to_field_elems, fold_commitments},
         env,
-        utils::encode_for_domain,
+        utils::{encode_for_domain, test_utils::UserData},
     };
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
     use ark_std::UniformRand;
@@ -148,7 +149,7 @@ mod tests {
     proptest! {
     #![proptest_config(ProptestConfig::with_cases(5))]
     #[test]
-    fn test_storage_prove_verify(BlobData(data) in BlobData::arbitrary()) {
+    fn test_storage_prove_verify(UserData(data) in UserData::arbitrary()) {
         let mut rng = OsRng;
         let (commitment,_) = {
             let field_elems = encode_for_domain(&*DOMAIN, &data);

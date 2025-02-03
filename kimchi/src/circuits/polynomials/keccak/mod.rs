@@ -1,7 +1,5 @@
 //! Keccak hash module
-pub mod circuitgates;
 pub mod constants;
-pub mod gadget;
 pub mod witness;
 
 use crate::circuits::expr::constraints::ExprOps;

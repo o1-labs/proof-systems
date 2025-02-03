@@ -329,8 +329,8 @@
 //! the messages are kept in an "application environment", located in the
 //! "witness environment". The structure [crate::witness::Env] is used to keep
 //! track of the messages that must be passed.
-//! Each step starts with an "application state" and end with another that are
-//! accumuated. The final state is passed through a "digest" to the next
+//! Each step starts with an "program state" and end with another that is
+//! accumulated. The final state is passed through a "digest" to the next
 //! instance. The digest is performed using a hash function (see [Hash -
 //! Poseidon](#hash---poseidon)). We often use the term "sponge" to refer to the
 //! hash function or the state of the hash function.
@@ -359,7 +359,7 @@
 //! - `Ct_(p, n, i)` for the commitments to the cross-terms of degree `i`.
 //! witness/commitments.
 //! - `u_(p, n)` for the challenge used to homogenize the constraints.
-//! - `o_(p, n)` for the final digest of the application state.
+//! - `o_(p, n)` for the final digest of the sponge state.
 //!
 //! Here a diagram (FIXME: this is not complete) that shows the messages that
 //! must be passed:
@@ -392,10 +392,10 @@
 //! |             Receive in PI                |                                   |
 //! |             --------------               |                                   |
 //! | - Commitments to w_(p, (n - 1))          |                                   |
-//! | - Final digest of the application        |                                   |
+//! | - Final digest of the program            |                                   |
 //! | state at instance (n - 1)                |                                   |
 //! | (o_(q, n - 1)).                          |                                   |
-//! | - Final digest of the application        |                                   |
+//! | - Final digest of the program            |                                   |
 //! | state at instance (n - 2)                |                                   |
 //! | (o_(p, n - 1)).                          |                                   |
 //! |                                          |                                   |

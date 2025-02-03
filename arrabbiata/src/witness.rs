@@ -1,4 +1,3 @@
-use ark_ec::models::short_weierstrass::SWCurveConfig;
 use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
@@ -19,31 +18,47 @@ use crate::{
     NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
-/// The first instruction in the IVC is the Poseidon permutation. It is used to
-/// start hashing the public input.
+/// The first instruction in the verifier circuit (often shortened in "IVC" in
+/// the crate) is the Poseidon permutation. It is used to start hashing the
+/// public input.
 pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
 
-/// An environment that can be shared between IVC instances.
+/// An environment is used to contain the state of a long "running program".
 ///
-/// It contains all the accumulators that can be picked for a given fold
-/// instance k, including the sponges.
+/// The running program is composed of two parts: one user application and one
+/// verifier application. The verifier application is used to encode the
+/// correctness of previous program states computations.
+///
+/// The term "app(lication) state" will be used to refer to the state of the
+/// user application, and the term "IVC state" will be used to refer to the
+/// state of the verifier application. The term program state will be used to refer to
+/// the state of the whole program.
+///
+/// The environment contains all the accumulators that can be picked for a given
+/// fold instance k, including the sponges.
 ///
 /// The environment is run over big integers to avoid performing
 /// reduction at all step. Instead the user implementing the interpreter can
 /// reduce in the corresponding field when they want.
+///
+/// The environment is generic over two curves (called E1 and E2) that are
+/// supposed to form a cycle.
 pub struct Env<
     Fp: PrimeField,
     Fq: PrimeField,
     E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
     E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
-> {
+> where
+    E1::BaseField: PrimeField,
+    E2::BaseField: PrimeField,
+{
     // ----------------
     // Setup related (domains + SRS)
     /// Domain for Fp
-    pub domain_fp: EvaluationDomains<Fp>,
+    pub domain_fp: EvaluationDomains<E1::ScalarField>,
 
     /// Domain for Fq
-    pub domain_fq: EvaluationDomains<Fq>,
+    pub domain_fq: EvaluationDomains<E2::ScalarField>,
 
     /// SRS for the first curve
     pub srs_e1: SRS<E1>,
@@ -61,9 +76,9 @@ pub struct Env<
     // FIXME: use a blinded comm and also fold the blinder
     pub ivc_accumulator_e2: Vec<PolyComm<E2>>,
 
-    /// Commitments to the previous instances
-    pub previous_commitments_e1: Vec<PolyComm<E1>>,
-    pub previous_commitments_e2: Vec<PolyComm<E2>>,
+    /// Commitments to the previous program states.
+    pub previous_committed_state_e1: Vec<PolyComm<E1>>,
+    pub previous_committed_state_e2: Vec<PolyComm<E2>>,
     // ----------------
 
     // ----------------
@@ -127,8 +142,11 @@ pub struct Env<
     /// The current iteration of the IVC
     pub current_iteration: u64,
 
-    /// A previous hash, encoded in 2 chunks of 128 bits.
-    pub previous_hash: [u128; 2],
+    /// The digest of the last program state, including the cross-terms
+    /// commitments.
+    /// The value is a 128 bits value, to be absorbed to initialize the sponge
+    /// state for both curves.
+    pub last_digest: BigInt,
 
     /// The coin folding combiner will be used to generate the combinaison of
     /// folding instances
@@ -191,8 +209,8 @@ impl<
         E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
     > InterpreterEnv for Env<Fp, Fq, E1, E2>
 where
-    <E1::Params as ark_ec::CurveConfig>::BaseField: PrimeField,
-    <E2::Params as ark_ec::CurveConfig>::BaseField: PrimeField,
+    E1::BaseField: PrimeField,
+    E2::BaseField: PrimeField,
 {
     type Position = (Column, CurrOrNext);
 
@@ -242,9 +260,9 @@ where
             unimplemented!("Only works for private inputs")
         };
         let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            Fp::modulus_biguint().into()
+            E1::ScalarField::modulus_biguint().into()
         } else {
-            Fq::modulus_biguint().into()
+            E2::ScalarField::modulus_biguint().into()
         };
         let v = v.mod_floor(&modulus);
         match row {
@@ -264,9 +282,9 @@ where
             unimplemented!("Only works for public input columns")
         };
         let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            Fp::modulus_biguint().into()
+            E1::ScalarField::modulus_biguint().into()
         } else {
-            Fq::modulus_biguint().into()
+            E2::ScalarField::modulus_biguint().into()
         };
         let v = v.mod_floor(&modulus);
         self.public_state[idx].clone_from(&v);
@@ -281,9 +299,9 @@ where
 
     fn constrain_boolean(&mut self, x: Self::Variable) {
         let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            Fp::modulus_biguint().into()
+            E1::ScalarField::modulus_biguint().into()
         } else {
-            Fq::modulus_biguint().into()
+            E2::ScalarField::modulus_biguint().into()
         };
         let x = x.mod_floor(&modulus);
         assert!(x == BigInt::from(0_usize) || x == BigInt::from(1_usize));
@@ -415,10 +433,10 @@ where
 
     unsafe fn save_poseidon_state(&mut self, x: Self::Variable, i: usize) {
         if self.current_iteration % 2 == 0 {
-            let modulus: BigInt = Fp::modulus_biguint().into();
+            let modulus: BigInt = E1::ScalarField::modulus_biguint().into();
             self.sponge_e1[i] = x.mod_floor(&modulus)
         } else {
-            let modulus: BigInt = Fq::modulus_biguint().into();
+            let modulus: BigInt = E2::ScalarField::modulus_biguint().into();
             self.sponge_e2[i] = x.mod_floor(&modulus)
         }
     }
@@ -498,7 +516,7 @@ where
                     if self.current_iteration % 2 == 0 {
                         match side {
                             Side::Left => {
-                                let pt = self.previous_commitments_e2[i_comm].get_first_chunk();
+                                let pt = self.previous_committed_state_e2[i_comm].get_first_chunk();
                                 // We suppose we never have a commitment equals to the
                                 // point at infinity
                                 let (pt_x, pt_y) = pt.to_coordinates().unwrap();
@@ -524,7 +542,7 @@ where
                     } else {
                         match side {
                             Side::Left => {
-                                let pt = self.previous_commitments_e1[i_comm].get_first_chunk();
+                                let pt = self.previous_committed_state_e1[i_comm].get_first_chunk();
                                 // We suppose we never have a commitment equals to the
                                 // point at infinity
                                 let (pt_x, pt_y) = pt.to_coordinates().unwrap();
@@ -568,11 +586,11 @@ where
                     }
                     Side::Right => {
                         if self.current_iteration % 2 == 0 {
-                            let pt = self.previous_commitments_e2[i_comm].get_first_chunk();
+                            let pt = self.previous_committed_state_e2[i_comm].get_first_chunk();
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         } else {
-                            let pt = self.previous_commitments_e1[i_comm].get_first_chunk();
+                            let pt = self.previous_committed_state_e1[i_comm].get_first_chunk();
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         }
@@ -634,14 +652,14 @@ where
     /// Zero is not allowed as an input.
     unsafe fn inverse(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable {
         let res = if self.current_iteration % 2 == 0 {
-            Fp::from_biguint(&x.to_biguint().unwrap())
+            E1::ScalarField::from_biguint(&x.to_biguint().unwrap())
                 .unwrap()
                 .inverse()
                 .unwrap()
                 .to_biguint()
                 .into()
         } else {
-            Fq::from_biguint(&x.to_biguint().unwrap())
+            E2::ScalarField::from_biguint(&x.to_biguint().unwrap())
                 .unwrap()
                 .inverse()
                 .unwrap()
@@ -661,9 +679,9 @@ where
         y2: Self::Variable,
     ) -> Self::Variable {
         let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            Fp::modulus_biguint().into()
+            E1::ScalarField::modulus_biguint().into()
         } else {
-            Fq::modulus_biguint().into()
+            E2::ScalarField::modulus_biguint().into()
         };
         // If it is not the same point, we compute lambda as:
         // - λ = (Y1 - Y2) / (X1 - X2)
@@ -685,9 +703,11 @@ where
             };
             let num = {
                 let a: BigInt = if self.current_iteration % 2 == 0 {
-                    (E2::Params::COEFF_A).to_biguint().into()
+                    let a: E2::BaseField = E2::get_curve_params().0;
+                    a.to_biguint().into()
                 } else {
-                    (E1::Params::COEFF_A).to_biguint().into()
+                    let a: E1::BaseField = E1::get_curve_params().0;
+                    a.to_biguint().into()
                 };
                 let x1_square = x1.clone() * x1.clone();
                 let two_x1_square = x1_square.clone() + x1_square.clone();
@@ -709,9 +729,9 @@ where
         y1: Self::Variable,
     ) -> (Self::Variable, Self::Variable) {
         let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            Fp::modulus_biguint().into()
+            E1::ScalarField::modulus_biguint().into()
         } else {
-            Fq::modulus_biguint().into()
+            E2::ScalarField::modulus_biguint().into()
         };
         // - λ = (3X1^2 + a) / (2Y1)
         // We compute λ and use an additional column as a temporary value
@@ -725,9 +745,11 @@ where
         };
         let num = {
             let a: BigInt = if self.current_iteration % 2 == 0 {
-                (E2::Params::COEFF_A).to_biguint().into()
+                let a: E2::BaseField = E2::get_curve_params().0;
+                a.to_biguint().into()
             } else {
-                (E1::Params::COEFF_A).to_biguint().into()
+                let a: E1::BaseField = E1::get_curve_params().0;
+                a.to_biguint().into()
             };
             let x1_square = x1.clone() * x1.clone();
             let two_x1_square = x1_square.clone() + x1_square.clone();
@@ -757,6 +779,9 @@ impl<
         E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
         E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
     > Env<Fp, Fq, E1, E2>
+where
+    E1::BaseField: PrimeField,
+    E2::BaseField: PrimeField,
 {
     pub fn new(
         srs_log2_size: usize,
@@ -765,16 +790,16 @@ impl<
         sponge_e2: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
     ) -> Self {
         {
-            assert!(Fp::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
+            assert!(E1::ScalarField::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
             assert!(Fq::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
-            let modulus_fp = Fp::modulus_biguint();
+            let modulus_fp = E1::ScalarField::modulus_biguint();
             let alpha = PlonkSpongeConstants::PERM_SBOX;
             assert!(
                 (modulus_fp - BigUint::from(1_u64)).gcd(&BigUint::from(alpha))
                     == BigUint::from(1_u64),
                 "The modulus of Fp should be coprime with {alpha}"
             );
-            let modulus_fq = Fq::modulus_biguint();
+            let modulus_fq = E2::ScalarField::modulus_biguint();
             let alpha = PlonkSpongeConstants::PERM_SBOX;
             assert!(
                 (modulus_fq - BigUint::from(1_u64)).gcd(&BigUint::from(alpha))
@@ -783,8 +808,8 @@ impl<
             );
         }
         let srs_size = 1 << srs_log2_size;
-        let domain_fp = EvaluationDomains::<Fp>::create(srs_size).unwrap();
-        let domain_fq = EvaluationDomains::<Fq>::create(srs_size).unwrap();
+        let domain_fp = EvaluationDomains::<E1::ScalarField>::create(srs_size).unwrap();
+        let domain_fq = EvaluationDomains::<E2::ScalarField>::create(srs_size).unwrap();
 
         info!("Create an SRS of size {srs_log2_size} for the first curve");
         let srs_e1: SRS<E1> = {
@@ -822,10 +847,10 @@ impl<
         };
 
         // Default set to the blinders. Using double to make the EC scaling happy.
-        let previous_commitments_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
+        let previous_committed_state_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
             .map(|_| PolyComm::new(vec![(srs_e1.h + srs_e1.h).into()]))
             .collect();
-        let previous_commitments_e2: Vec<PolyComm<E2>> = (0..NUMBER_OF_COLUMNS)
+        let previous_committed_state_e2: Vec<PolyComm<E2>> = (0..NUMBER_OF_COLUMNS)
             .map(|_| PolyComm::new(vec![(srs_e2.h + srs_e2.h).into()]))
             .collect();
         // FIXME: zero will not work.
@@ -851,8 +876,8 @@ impl<
             // IVC only
             ivc_accumulator_e1,
             ivc_accumulator_e2,
-            previous_commitments_e1,
-            previous_commitments_e2,
+            previous_committed_state_e1,
+            previous_committed_state_e2,
             // ------
             // ------
             idx_var: 0,
@@ -868,7 +893,7 @@ impl<
             sponge_e1,
             sponge_e2,
             current_iteration: 0,
-            previous_hash: [0; 2],
+            last_digest: BigInt::from(0_u64),
             r: BigInt::from(0_usize),
             // Initialize the temporary accumulators with 0
             temporary_accumulators: (
@@ -909,40 +934,54 @@ impl<
         // TODO
     }
 
-    /// Compute the commitments to the current witness, and update the previous
-    /// instances.
-    // Might be worth renaming this function
-    pub fn compute_and_update_previous_commitments(&mut self) {
+    /// Commit to the program state and updating the environment with the
+    /// result.
+    ///
+    /// This method is supposed to be called after a new iteration of the
+    /// program has been executed.
+    pub fn commit_state(&mut self) {
         if self.current_iteration % 2 == 0 {
+            assert_eq!(
+                self.current_row as u64,
+                self.domain_fp.d1.size,
+                "The program has not been fully executed. Missing {} rows",
+                self.domain_fp.d1.size - self.current_row as u64,
+            );
             let comms: Vec<PolyComm<E1>> = self
                 .witness
                 .par_iter()
                 .map(|evals| {
-                    let evals: Vec<Fp> = evals
+                    let evals: Vec<E1::ScalarField> = evals
                         .par_iter()
-                        .map(|x| Fp::from_biguint(&x.to_biguint().unwrap()).unwrap())
+                        .map(|x| E1::ScalarField::from_biguint(&x.to_biguint().unwrap()).unwrap())
                         .collect();
                     let evals = Evaluations::from_vec_and_domain(evals.to_vec(), self.domain_fp.d1);
                     self.srs_e1
                         .commit_evaluations_non_hiding(self.domain_fp.d1, &evals)
                 })
                 .collect();
-            self.previous_commitments_e1 = comms
+            self.previous_committed_state_e1 = comms
         } else {
+            assert_eq!(
+                self.current_row as u64,
+                self.domain_fq.d1.size,
+                "The program has not been fully executed. Missing {} rows",
+                self.domain_fq.d1.size - self.current_row as u64,
+            );
             let comms: Vec<PolyComm<E2>> = self
                 .witness
                 .iter()
                 .map(|evals| {
-                    let evals: Vec<Fq> = evals
+                    let evals: Vec<E2::ScalarField> = evals
                         .par_iter()
-                        .map(|x| Fq::from_biguint(&x.to_biguint().unwrap()).unwrap())
+                        .map(|x| E2::ScalarField::from_biguint(&x.to_biguint().unwrap()).unwrap())
                         .collect();
                     let evals = Evaluations::from_vec_and_domain(evals.to_vec(), self.domain_fq.d1);
                     self.srs_e2
                         .commit_evaluations_non_hiding(self.domain_fq.d1, &evals)
                 })
                 .collect();
-            self.previous_commitments_e2 = comms
+            self.previous_committed_state_e2 = comms
         }
     }
 
