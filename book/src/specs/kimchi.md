@@ -1937,7 +1937,7 @@ sequenceDiagram
     Prover->>Verifier: aggregated evaluation proof (involves more interaction)
 ```
 
-The Fiat-Shamir transform simulates the verifier messages via a hash function that hashes the transcript of the protocol so far before outputing verifier messages.
+The Fiat-Shamir transform simulates the verifier messages via a hash function that hashes the transcript of the protocol so far before outputting verifier messages.
 You can find these operations under the [proof creation](#proof-creation) and [proof verification](#proof-verification) algorithms as absorption and squeezing of values with the sponge.
 
 ### Proof Structure
