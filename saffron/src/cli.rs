@@ -1,4 +1,23 @@
 use clap::{arg, Parser};
+use std::{fmt::Display, str::FromStr};
+
+#[derive(Debug, Clone)]
+pub struct HexString(pub Vec<u8>);
+
+impl FromStr for HexString {
+    type Err = hex::FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let stripped = s.strip_prefix("0x").unwrap_or(s);
+        Ok(HexString(hex::decode(stripped)?))
+    }
+}
+
+impl Display for HexString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "0x{}", hex::encode(&self.0))
+    }
+}
 
 #[derive(Parser)]
 pub struct EncodeFileArgs {
@@ -16,8 +35,12 @@ pub struct EncodeFileArgs {
     #[arg(long = "srs-filepath", value_name = "SRS_FILEPATH")]
     pub srs_cache: Option<String>,
 
-    #[arg(long = "assert-commitment", value_name = "COMMITMENT")]
-    pub assert_commitment: Option<String>,
+    #[arg(
+        long = "assert-commitment",
+        value_name = "COMMITMENT",
+        help = "hash of commitments (hex encoded)"
+    )]
+    pub assert_commitment: Option<HexString>,
 }
 
 #[derive(Parser)]
@@ -47,6 +70,27 @@ pub struct ComputeCommitmentArgs {
 }
 
 #[derive(Parser)]
+pub struct StorageProofArgs {
+    #[arg(
+        long,
+        short = 'i',
+        value_name = "FILE",
+        help = "input file (encoded as field elements)"
+    )]
+    pub input: String,
+
+    #[arg(long = "srs-filepath", value_name = "SRS_FILEPATH")]
+    pub srs_cache: Option<String>,
+
+    #[arg(
+        long = "challenge",
+        value_name = "CHALLENGE",
+        help = "challenge (hex encoded"
+    )]
+    pub challenge: HexString,
+}
+
+#[derive(Parser)]
 #[command(
     name = "saffron",
     version = "0.1",
@@ -59,4 +103,6 @@ pub enum Commands {
     Decode(DecodeFileArgs),
     #[command(name = "compute-commitment")]
     ComputeCommitment(ComputeCommitmentArgs),
+    #[command(name = "storage-proof")]
+    StorageProof(StorageProofArgs),
 }
