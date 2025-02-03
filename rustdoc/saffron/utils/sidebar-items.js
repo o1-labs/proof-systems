@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["decode_into","encode_as_field_elements","encode_for_domain"]};
+window.SIDEBAR_ITEMS = {"enum":["QueryError"],"fn":["decode_into","encode_as_field_elements","encode_for_domain"],"struct":["QueryBytes","QueryField"]};

@@ -168,7 +168,6 @@
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::blob::FieldBlob;
 <span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
@@ -280,10 +279,9 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use crate</span>::{
-        blob::test_utils::<span class="kw-2">*</span>,
         commitment::{commit_to_field_elems, fold_commitments},
         env,
-        utils::encode_for_domain,
+        utils::{encode_for_domain, test_utils::UserData},
     };
     <span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
     <span class="kw">use </span>ark_std::UniformRand;
@@ -311,7 +309,7 @@
     <span class="macro">proptest! </span>{
     <span class="attr">#![proptest_config(ProptestConfig::with_cases(<span class="number">5</span>))]
     #[test]
-    </span><span class="kw">fn </span>test_storage_prove_verify(BlobData(data) <span class="kw">in </span>BlobData::arbitrary()) {
+    </span><span class="kw">fn </span>test_storage_prove_verify(UserData(data) <span class="kw">in </span>UserData::arbitrary()) {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = OsRng;
         <span class="kw">let </span>commitment = {
             <span class="kw">let </span>field_elems = encode_for_domain(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>data);
