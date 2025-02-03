@@ -3432,6 +3432,27 @@
 <a href="#3432" id="3432">3432</a>
 <a href="#3433" id="3433">3433</a>
 <a href="#3434" id="3434">3434</a>
+<a href="#3435" id="3435">3435</a>
+<a href="#3436" id="3436">3436</a>
+<a href="#3437" id="3437">3437</a>
+<a href="#3438" id="3438">3438</a>
+<a href="#3439" id="3439">3439</a>
+<a href="#3440" id="3440">3440</a>
+<a href="#3441" id="3441">3441</a>
+<a href="#3442" id="3442">3442</a>
+<a href="#3443" id="3443">3443</a>
+<a href="#3444" id="3444">3444</a>
+<a href="#3445" id="3445">3445</a>
+<a href="#3446" id="3446">3446</a>
+<a href="#3447" id="3447">3447</a>
+<a href="#3448" id="3448">3448</a>
+<a href="#3449" id="3449">3449</a>
+<a href="#3450" id="3450">3450</a>
+<a href="#3451" id="3451">3451</a>
+<a href="#3452" id="3452">3452</a>
+<a href="#3453" id="3453">3453</a>
+<a href="#3454" id="3454">3454</a>
+<a href="#3455" id="3455">3455</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -6582,6 +6603,27 @@
             res.extend(rhs);
         }
         res.push(e);
+        res
+    }
+
+    <span class="doccomment">/// Converts the expression in OCaml code
+    </span><span class="kw">pub fn </span>ocaml_str(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        <span class="kw">let </span><span class="kw-2">mut </span>env = HashMap::new();
+        <span class="kw">let </span>e = <span class="self">self</span>.ocaml(<span class="kw-2">&amp;mut </span>env);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>env: Vec&lt;<span class="kw">_</span>&gt; = env.into_iter().collect();
+        <span class="comment">// HashMap deliberately uses an unstable order; here we sort to ensure
+        // that the output is consistent when printing.
+        </span>env.sort_by(|(x, <span class="kw">_</span>), (y, <span class="kw">_</span>)| x.cmp(y));
+
+        <span class="kw">let </span><span class="kw-2">mut </span>res = String::new();
+        <span class="kw">for </span>(k, v) <span class="kw">in </span>env {
+            <span class="kw">let </span>rhs = v.ocaml_str();
+            <span class="kw">let </span>cached = <span class="macro">format!</span>(<span class="string">&quot;let {} = {rhs} in &quot;</span>, k.var_name());
+            res.push_str(<span class="kw-2">&amp;</span>cached);
+        }
+
+        res.push_str(<span class="kw-2">&amp;</span>e);
         res
     }
 }
