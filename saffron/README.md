@@ -17,8 +17,22 @@ Run `cargo run --release --bin saffron -- --help` for the list of features with 
 
 ## Test
 
-We provide an e2e test showing all the features executed sequentially in
-`./test-encoding.sh`. Use `./test-encoding.sh fixtures/lorem.txt`.
+We provide an e2e test showing all the features executed sequentially in `./e2e-test.sh`. While not required,
+it is recommended that you generate the Vesta SRS before running this script to avoid recomputing it several times.
+You run this one-time-setup using
+
+```bash
+# Good time to grab a coffee...
+cargo test -p kimchi heavy_test_srs_serialization --release
+```
+
+You can run this e2e test on any file. For example, to run with the provided lorem file using the SRS cache for testing:
+
+```bash
+./e2e-test.sh fixtures/lorem.txt ../srs/test_vesta.srs
+```
+
+Note that the log level can be controlled by setting the `RUST_LOG` environment variable.
 
 ## Resources
 
