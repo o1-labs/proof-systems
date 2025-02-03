@@ -514,7 +514,7 @@
     <span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, constraint: <span class="self">Self</span>::Variable) {
         <span class="kw">let </span>degree = constraint.degree(<span class="number">1</span>, <span class="number">0</span>);
         <span class="macro">debug!</span>(<span class="string">&quot;Adding constraint of degree {degree}: {:}&quot;</span>, constraint);
-        <span class="macro">assert!</span>(degree &lt;= MAX_DEGREE, <span class="string">&quot;degree is too high: {}. The folding scheme used currently allows constraint up to degree {}&quot;</span>, degree, MAX_DEGREE);
+        <span class="macro">assert!</span>(degree &lt;= MAX_DEGREE.try_into().unwrap(), <span class="string">&quot;degree is too high: {}. The folding scheme used currently allows constraint up to degree {}&quot;</span>, degree, MAX_DEGREE);
         <span class="self">self</span>.constraints.push(constraint);
     }
 

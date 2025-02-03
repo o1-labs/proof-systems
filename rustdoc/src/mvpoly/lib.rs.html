@@ -494,7 +494,7 @@
     ///
     /// The parameter `offset_next_row` is an optional argument that is used to
     /// support the case where the &quot;next row&quot; is used. In this case, the type
-    /// parameter `N` must include this offset (i.e. if 4 variables are in ued,
+    /// parameter `N` must include this offset (i.e. if 4 variables are in used,
     /// N should be at least `8 = 2 * 4`).
     </span><span class="kw">fn </span>from_expr&lt;Column: Into&lt;usize&gt;, ChallengeTerm: Clone&gt;(expr: Expr&lt;ConstantExpr&lt;F, ChallengeTerm&gt;, Column&gt;, offset_next_row: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">use </span>kimchi::circuits::expr::Operations::<span class="kw-2">*</span>;

@@ -580,6 +580,10 @@
 <a href="#580" id="580">580</a>
 <a href="#581" id="581">581</a>
 <a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     prime,
     utils::{compute_indices_nested_loop, naive_prime_factors, PrimeNumberGenerator},
@@ -924,6 +928,10 @@
         <span class="comment">// Build the corresponding monomial
         </span><span class="kw">let </span>var_usize: usize = col.into();
         <span class="kw">let </span>idx = offset + var_usize;
+        <span class="macro">assert!</span>(
+            idx &lt; N,
+            <span class="string">&quot;Only {N} variables can be used, and {idx} has been given. To get an equivalent mvpoly, you need to increase the number of variables&quot;
+        </span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>monomials = HashMap::new();
         <span class="kw">let </span>exponents: [usize; N] = std::array::from_fn(|i| <span class="kw">if </span>i == idx { <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>});
