@@ -147,7 +147,7 @@ fn test_gadget_elliptic_curve_scaling() {
 fn test_get_mvpoly_equivalent() {
     // Check that each constraint can be converted to a MVPoly. The type of the
     // MVPoly is crucial as it determines the maximum degree of the constraint
-    // and the number of wires. For this reason, no checkis performed on the
+    // and the number of wires. For this reason, no check is performed on the
     // result of the mapping.
     let constraints_fp: Vec<E<Fp>> = {
         let constraints_env: constraints::Env<Vesta> = constraints::Env::default();
