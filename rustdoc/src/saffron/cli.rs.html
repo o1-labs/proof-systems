@@ -60,7 +60,72 @@
 <a href="#60" id="60">60</a>
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>clap::{arg, Parser};
+<span class="kw">use </span>std::{fmt::Display, str::FromStr};
+
+<span class="attr">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>HexString(<span class="kw">pub </span>Vec&lt;u8&gt;);
+
+<span class="kw">impl </span>FromStr <span class="kw">for </span>HexString {
+    <span class="kw">type </span><span class="prelude-val">Err </span>= hex::FromHexError;
+
+    <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
+        <span class="kw">let </span>stripped = s.strip_prefix(<span class="string">&quot;0x&quot;</span>).unwrap_or(s);
+        <span class="prelude-val">Ok</span>(HexString(hex::decode(stripped)<span class="question-mark">?</span>))
+    }
+}
+
+<span class="kw">impl </span>Display <span class="kw">for </span>HexString {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">&quot;0x{}&quot;</span>, hex::encode(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>))
+    }
+}
 
 <span class="attr">#[derive(Parser)]
 </span><span class="kw">pub struct </span>EncodeFileArgs {
@@ -78,8 +143,12 @@
     <span class="attr">#[arg(long = <span class="string">&quot;srs-filepath&quot;</span>, value_name = <span class="string">&quot;SRS_FILEPATH&quot;</span>)]
     </span><span class="kw">pub </span>srs_cache: <span class="prelude-ty">Option</span>&lt;String&gt;,
 
-    <span class="attr">#[arg(long = <span class="string">&quot;assert-commitment&quot;</span>, value_name = <span class="string">&quot;COMMITMENT&quot;</span>)]
-    </span><span class="kw">pub </span>assert_commitment: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="attr">#[arg(
+        long = <span class="string">&quot;assert-commitment&quot;</span>,
+        value_name = <span class="string">&quot;COMMITMENT&quot;</span>,
+        help = <span class="string">&quot;hash of commitments (hex encoded)&quot;
+    </span>)]
+    </span><span class="kw">pub </span>assert_commitment: <span class="prelude-ty">Option</span>&lt;HexString&gt;,
 }
 
 <span class="attr">#[derive(Parser)]
@@ -109,6 +178,27 @@
 }
 
 <span class="attr">#[derive(Parser)]
+</span><span class="kw">pub struct </span>StorageProofArgs {
+    <span class="attr">#[arg(
+        long,
+        short = <span class="string">&#39;i&#39;</span>,
+        value_name = <span class="string">&quot;FILE&quot;</span>,
+        help = <span class="string">&quot;input file (encoded as field elements)&quot;
+    </span>)]
+    </span><span class="kw">pub </span>input: String,
+
+    <span class="attr">#[arg(long = <span class="string">&quot;srs-filepath&quot;</span>, value_name = <span class="string">&quot;SRS_FILEPATH&quot;</span>)]
+    </span><span class="kw">pub </span>srs_cache: <span class="prelude-ty">Option</span>&lt;String&gt;,
+
+    <span class="attr">#[arg(
+        long = <span class="string">&quot;challenge&quot;</span>,
+        value_name = <span class="string">&quot;CHALLENGE&quot;</span>,
+        help = <span class="string">&quot;challenge (hex encoded&quot;
+    </span>)]
+    </span><span class="kw">pub </span>challenge: HexString,
+}
+
+<span class="attr">#[derive(Parser)]
 #[command(
     name = <span class="string">&quot;saffron&quot;</span>,
     version = <span class="string">&quot;0.1&quot;</span>,
@@ -121,5 +211,7 @@
     </span>Decode(DecodeFileArgs),
     <span class="attr">#[command(name = <span class="string">&quot;compute-commitment&quot;</span>)]
     </span>ComputeCommitment(ComputeCommitmentArgs),
+    <span class="attr">#[command(name = <span class="string">&quot;storage-proof&quot;</span>)]
+    </span>StorageProof(StorageProofArgs),
 }
 </code></pre></div></section></main></body></html>

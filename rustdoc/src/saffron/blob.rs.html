@@ -141,6 +141,8 @@
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::utils::{decode_into, encode_for_domain};
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, EvaluationDomain, Evaluations};
@@ -150,7 +152,7 @@
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
-<span class="kw">use </span>tracing::{debug, instrument};
+<span class="kw">use </span>tracing::{debug, debug_span, instrument};
 
 <span class="comment">// A FieldBlob&lt;F&gt; represents the encoding of a Vec&lt;u8&gt; as a list of polynomials over F,
 // where F is a prime field. The polyonomials are represented in the monomial basis.
@@ -186,10 +188,12 @@
         <span class="kw">let </span>field_elements = encode_for_domain(<span class="kw-2">&amp;</span>domain, bytes);
         <span class="kw">let </span>domain_size = domain.size();
 
-        <span class="kw">let </span>data: Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt; = field_elements
-            .par_iter()
-            .map(|chunk| Evaluations::from_vec_and_domain(chunk.to_vec(), domain).interpolate())
-            .collect();
+        <span class="kw">let </span>data: Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt; = <span class="macro">debug_span!</span>(<span class="string">&quot;fft&quot;</span>).in_scope(|| {
+            field_elements
+                .par_iter()
+                .map(|chunk| Evaluations::from_vec_and_domain(chunk.to_vec(), domain).interpolate())
+                .collect()
+        });
 
         <span class="kw">let </span>commitments = commit_to_blob_data(srs, <span class="kw-2">&amp;</span>data);
 

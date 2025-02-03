@@ -168,21 +168,46 @@
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::blob::FieldBlob;
 <span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
+<span class="kw">use </span>ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 <span class="kw">use </span>kimchi::curve::KimchiCurve;
 <span class="kw">use </span>mina_poseidon::FqSponge;
 <span class="kw">use </span>o1_utils::ExtendedDensePolynomial;
 <span class="kw">use </span>poly_commitment::{
-    commitment::{absorb_commitment, BatchEvaluationProof, Evaluation},
+    commitment::{absorb_commitment, BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
     utils::DensePolynomialOrEvaluations,
     PolyComm,
 };
 <span class="kw">use </span>rand::rngs::OsRng;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>serde_with::serde_as;
 <span class="kw">use </span>tracing::instrument;
+
+<span class="attr">#[serde_as]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(bound = <span class="string">&quot;G::ScalarField : CanonicalDeserialize + CanonicalSerialize&quot;</span>)]
+</span><span class="kw">pub struct </span>StorageProof&lt;G: CommitmentCurve&gt; {
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>evaluation: G::ScalarField,
+    <span class="kw">pub </span>opening_proof: OpeningProof&lt;G&gt;,
+}
 
 <span class="attr">#[instrument(skip_all, level = <span class="string">&quot;debug&quot;</span>)]
 </span><span class="kw">pub fn </span>storage_proof&lt;G: KimchiCurve, EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
@@ -191,7 +216,7 @@
     blob: FieldBlob&lt;G&gt;,
     evaluation_point: G::ScalarField,
     rng: <span class="kw-2">&amp;mut </span>OsRng,
-) -&gt; (G::ScalarField, OpeningProof&lt;G&gt;)
+) -&gt; StorageProof&lt;G&gt;
 <span class="kw">where
     </span>G::BaseField: PrimeField,
 {
@@ -219,7 +244,7 @@
         </span>sponge.absorb_fr(<span class="kw-2">&amp;</span>[evaluation]);
         sponge
     };
-    <span class="kw">let </span>proof = srs.open(
+    <span class="kw">let </span>opening_proof = srs.open(
             group_map,
             <span class="kw-2">&amp;</span>[(
                 DensePolynomialOrEvaluations::&lt;&lt;G <span class="kw">as </span>AffineRepr&gt;::ScalarField, D&lt;G::ScalarField&gt;&gt; ::DensePolynomial(
@@ -235,7 +260,10 @@
             </span>opening_proof_sponge,
             rng,
         );
-    (evaluation, proof)
+    StorageProof {
+        evaluation,
+        opening_proof,
+    }
 }
 
 <span class="attr">#[instrument(skip_all, level = <span class="string">&quot;debug&quot;</span>)]
@@ -247,15 +275,14 @@
     group_map: <span class="kw-2">&amp;</span>G::Map,
     commitment: PolyComm&lt;G&gt;,
     evaluation_point: G::ScalarField,
-    evaluation: G::ScalarField,
-    opening_proof: <span class="kw-2">&amp;</span>OpeningProof&lt;G&gt;,
+    proof: <span class="kw-2">&amp;</span>StorageProof&lt;G&gt;,
     rng: <span class="kw-2">&amp;mut </span>OsRng,
 ) -&gt; bool
 <span class="kw">where
     </span>G::BaseField: PrimeField,
 {
     <span class="kw">let </span><span class="kw-2">mut </span>opening_proof_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    opening_proof_sponge.absorb_fr(<span class="kw-2">&amp;</span>[evaluation]);
+    opening_proof_sponge.absorb_fr(<span class="kw-2">&amp;</span>[proof.evaluation]);
 
     srs.verify(
         group_map,
@@ -266,10 +293,10 @@
             evalscale: G::ScalarField::one(),
             evaluations: <span class="macro">vec!</span>[Evaluation {
                 commitment,
-                evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[evaluation]],
+                evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[proof.evaluation]],
             }],
-            opening: opening_proof,
-            combined_inner_product: evaluation,
+            opening: <span class="kw-2">&amp;</span>proof.opening_proof,
+            combined_inner_product: proof.evaluation,
         }],
         rng,
     )
@@ -321,16 +348,15 @@
         };
         <span class="kw">let </span>blob = FieldBlob::&lt;Vesta&gt;::encode(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, <span class="kw-2">&amp;</span>data);
         <span class="kw">let </span>evaluation_point = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
-        <span class="kw">let </span>(evaluation, proof) = storage_proof::&lt;
-            Vesta,
-            DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;,
+        <span class="kw">let </span>proof = storage_proof::&lt;
+            Vesta, DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;
+
         &gt;(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">&amp;*</span>GROUP_MAP, blob, evaluation_point, <span class="kw-2">&amp;mut </span>rng);
         <span class="kw">let </span>res = verify_storage_proof::&lt;Vesta, DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;&gt;(
             <span class="kw-2">&amp;*</span>SRS,
             <span class="kw-2">&amp;*</span>GROUP_MAP,
             commitment,
             evaluation_point,
-            evaluation,
             <span class="kw-2">&amp;</span>proof,
             <span class="kw-2">&amp;mut </span>rng,
         );
