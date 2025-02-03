@@ -31,6 +31,8 @@ pub enum Instruction {
     RType(RTypeInstruction),
     JType(JTypeInstruction),
     IType(ITypeInstruction),
+    // A no-op operation that should only be used for testing. The semantic is
+    // not clearly defined.
     NoOp,
 }
 
@@ -976,6 +978,9 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
     }
 }
 
+// FIXME: the noop should not be used in production. The interpreter semantic
+// should be refined. The padding is only for testing purposes when padding is
+// required to reach the size of the domain.
 pub fn interpret_noop<Env: InterpreterEnv>(env: &mut Env) {
     let instruction_pointer = env.get_instruction_pointer();
     let instruction = {
