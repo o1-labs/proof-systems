@@ -45,3 +45,7 @@ ark-std.workspace = true
 ctor = "0.2"
 proptest.workspace = true
 once_cell.workspace = true
+
+[[bin]]
+name = "og-flow"
+path = "og-flow/main.rs"
