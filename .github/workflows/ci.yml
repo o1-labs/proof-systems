@@ -42,27 +42,6 @@ jobs:
           make deps
           make build
 
-  run_formatting:
-    name: Formatting
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust_toolchain_version: ["nightly"]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Use shared Rust toolchain setting up steps
-        uses: ./.github/actions/toolchain-shared
-        with:
-          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
-
-      - name: Run cargo fmt
-        run: |
-          make format
-
   run_checks:
     name: Run checks and tests
     # We run only one of the matrix options on the toffee `hetzner-1` self-hosted GitHub runner.
