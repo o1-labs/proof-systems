@@ -17,7 +17,7 @@ pub mod witness;
 
 /// The maximum degree of the polynomial that can be represented by the
 /// polynomial-time function the library supports.
-pub const MAX_DEGREE: u64 = 5;
+pub const MAX_DEGREE: usize = 5;
 
 /// The minimum SRS size required to use Nova, in base 2.
 /// Requiring at least 2^16 to perform 16bits range checks.
