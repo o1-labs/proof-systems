@@ -177,10 +177,6 @@
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
 <a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::blob::FieldBlob;
 <span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
@@ -190,7 +186,7 @@
 <span class="kw">use </span>mina_poseidon::FqSponge;
 <span class="kw">use </span>o1_utils::ExtendedDensePolynomial;
 <span class="kw">use </span>poly_commitment::{
-    commitment::{absorb_commitment, BatchEvaluationProof, CommitmentCurve, Evaluation},
+    commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
     utils::DensePolynomialOrEvaluations,
     PolyComm,
@@ -220,19 +216,15 @@
 <span class="kw">where
     </span>G::BaseField: PrimeField,
 {
-    <span class="kw">let </span>alpha = {
-        <span class="kw">let </span><span class="kw-2">mut </span>sponge = EFqSponge::new(G::other_curve_sponge_params());
-        <span class="kw">for </span>commitment <span class="kw">in </span><span class="kw-2">&amp;</span>blob.commitments {
-            absorb_commitment(<span class="kw-2">&amp;mut </span>sponge, commitment)
-        }
-        sponge.challenge()
-    };
     <span class="kw">let </span>p = {
         <span class="kw">let </span>init = (DensePolynomial::zero(), G::ScalarField::one());
         blob.data
             .into_iter()
             .fold(init, |(acc_poly, curr_power), curr_poly| {
-                (acc_poly + curr_poly.scale(curr_power), curr_power * alpha)
+                (
+                    acc_poly + curr_poly.scale(curr_power),
+                    curr_power * blob.alpha,
+                )
             })
             .<span class="number">0
     </span>};
@@ -338,7 +330,7 @@
     #[test]
     </span><span class="kw">fn </span>test_storage_prove_verify(UserData(data) <span class="kw">in </span>UserData::arbitrary()) {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = OsRng;
-        <span class="kw">let </span>commitment = {
+        <span class="kw">let </span>(commitment,<span class="kw">_</span>) = {
             <span class="kw">let </span>field_elems = encode_for_domain(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>data);
             <span class="kw">let </span>user_commitments = commit_to_field_elems(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, field_elems);
             <span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = DefaultFqSponge::&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;::new(
@@ -346,7 +338,7 @@
             );
             fold_commitments(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>user_commitments)
         };
-        <span class="kw">let </span>blob = FieldBlob::&lt;Vesta&gt;::encode(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, <span class="kw-2">&amp;</span>data);
+        <span class="kw">let </span>blob = FieldBlob::&lt;Vesta&gt;::encode::&lt;<span class="kw">_</span>, DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;&gt;(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, <span class="kw-2">&amp;</span>data);
         <span class="kw">let </span>evaluation_point = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
         <span class="kw">let </span>proof = storage_proof::&lt;
             Vesta, DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;

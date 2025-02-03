@@ -143,10 +143,34 @@
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
 <a href="#145" id="145">145</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::utils::{decode_into, encode_for_domain};
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    commitment::fold_commitments,
+    utils::{decode_into, encode_for_domain},
+};
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, EvaluationDomain, Evaluations};
 <span class="kw">use </span>ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+<span class="kw">use </span>kimchi::curve::KimchiCurve;
+<span class="kw">use </span>mina_poseidon::FqSponge;
 <span class="kw">use </span>o1_utils::FieldHelpers;
 <span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS <span class="kw">as _</span>};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
@@ -163,6 +187,9 @@
     <span class="kw">pub </span>n_bytes: usize,
     <span class="kw">pub </span>domain_size: usize,
     <span class="kw">pub </span>commitments: Vec&lt;PolyComm&lt;G&gt;&gt;,
+    <span class="kw">pub </span>folded_commitment: PolyComm&lt;G&gt;,
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>alpha: G::ScalarField,
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>data: Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt;,
 }
@@ -178,9 +205,12 @@
         .collect()
 }
 
-<span class="kw">impl</span>&lt;G: CommitmentCurve&gt; FieldBlob&lt;G&gt; {
+<span class="kw">impl</span>&lt;G: KimchiCurve&gt; FieldBlob&lt;G&gt; {
     <span class="attr">#[instrument(skip_all, level = <span class="string">&quot;debug&quot;</span>)]
-    </span><span class="kw">pub fn </span>encode&lt;D: EvaluationDomain&lt;G::ScalarField&gt;&gt;(
+    </span><span class="kw">pub fn </span>encode&lt;
+        D: EvaluationDomain&lt;G::ScalarField&gt;,
+        EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
+    &gt;(
         srs: <span class="kw-2">&amp;</span>SRS&lt;G&gt;,
         domain: D,
         bytes: <span class="kw-2">&amp;</span>[u8],
@@ -197,6 +227,11 @@
 
         <span class="kw">let </span>commitments = commit_to_blob_data(srs, <span class="kw-2">&amp;</span>data);
 
+        <span class="kw">let </span>(folded_commitment, alpha) = {
+            <span class="kw">let </span><span class="kw-2">mut </span>sponge = EFqSponge::new(G::other_curve_sponge_params());
+            fold_commitments(<span class="kw-2">&amp;mut </span>sponge, <span class="kw-2">&amp;</span>commitments)
+        };
+
         <span class="macro">debug!</span>(
             <span class="string">&quot;Encoded {:.2} MB into {} polynomials&quot;</span>,
             bytes.len() <span class="kw">as </span>f32 / <span class="number">1_000_000.0</span>,
@@ -207,6 +242,8 @@
             n_bytes: bytes.len(),
             domain_size,
             commitments,
+            folded_commitment,
+            alpha,
             data,
         }
     }
@@ -246,7 +283,8 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span><span class="kw">crate</span>::utils::test_utils::<span class="kw-2">*</span>;
     <span class="kw">use </span>ark_poly::Radix2EvaluationDomain;
-    <span class="kw">use </span>mina_curves::pasta::{Fp, Vesta};
+    <span class="kw">use </span>mina_curves::pasta::{Fp, Vesta, VestaParameters};
+    <span class="kw">use </span>mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
     <span class="kw">use </span>once_cell::sync::Lazy;
     <span class="kw">use </span>proptest::prelude::<span class="kw-2">*</span>;
 
@@ -266,7 +304,7 @@
     <span class="attr">#![proptest_config(ProptestConfig::with_cases(<span class="number">20</span>))]
     #[test]
     </span><span class="kw">fn </span>test_round_trip_blob_encoding(UserData(xs) <span class="kw">in </span>UserData::arbitrary())
-      { <span class="kw">let </span>blob = FieldBlob::&lt;Vesta&gt;::encode(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
+      { <span class="kw">let </span>blob = FieldBlob::&lt;Vesta&gt;::encode::&lt;<span class="kw">_</span>, DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;&gt;(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
         <span class="kw">let </span>bytes = rmp_serde::to_vec(<span class="kw-2">&amp;</span>blob).unwrap();
         <span class="kw">let </span>a = rmp_serde::from_slice(<span class="kw-2">&amp;</span>bytes).unwrap();
         <span class="comment">// check that ark-serialize is behaving as expected
@@ -283,7 +321,7 @@
         </span><span class="kw">fn </span>test_user_and_storage_provider_commitments_equal(UserData(xs) <span class="kw">in </span>UserData::arbitrary())
           { <span class="kw">let </span>elems = encode_for_domain(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
             <span class="kw">let </span>user_commitments = commit_to_field_elems(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, elems);
-            <span class="kw">let </span>blob = FieldBlob::&lt;Vesta&gt;::encode(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
+            <span class="kw">let </span>blob = FieldBlob::&lt;Vesta&gt;::encode::&lt;<span class="kw">_</span>, DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;&gt;(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
             <span class="macro">prop_assert_eq!</span>(user_commitments, blob.commitments);
           }
         }
