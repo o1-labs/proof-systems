@@ -101,15 +101,14 @@ pub fn main() {
             elapsed = start_iteration.elapsed().as_micros()
         );
 
-        // FIXME:
-        // update current instance with the previous "next" commitments (i.e.
-        // env.next_commitments)
-        // update next instance with current commitments
-        // FIXME: Check twice the updated commitments
-        env.compute_and_update_previous_commitments();
+        // Commit to the program state.
+        // Depending on the iteration, either E1 or E2 will be used.
+        // The environment will keep the commitments to the program state to
+        // verify and accumulate it at the next iteration.
+        env.commit_state();
 
-        // FIXME:
-        // Absorb all commitments in the sponge.
+        // Absorb the last program state.
+        env.absorb_state();
 
         // FIXME:
         // Coin chalenges β and γ for the permutation argument

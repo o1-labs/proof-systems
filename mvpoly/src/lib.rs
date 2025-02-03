@@ -156,7 +156,7 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     ///
     /// The parameter `offset_next_row` is an optional argument that is used to
     /// support the case where the "next row" is used. In this case, the type
-    /// parameter `N` must include this offset (i.e. if 4 variables are in ued,
+    /// parameter `N` must include this offset (i.e. if 4 variables are in used,
     /// N should be at least `8 = 2 * 4`).
     fn from_expr<Column: Into<usize>, ChallengeTerm: Clone>(expr: Expr<ConstantExpr<F, ChallengeTerm>, Column>, offset_next_row: Option<usize>) -> Self {
         use kimchi::circuits::expr::Operations::*;
@@ -258,7 +258,7 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// scalar.
     ///
     /// More explicitly, given a polynomial `P(X1, ..., Xn)` and a scalar α, the
-    /// method computes the the cross-terms of the polynomial `Q(X1, ..., Xn, α)
+    /// method computes the cross-terms of the polynomial `Q(X1, ..., Xn, α)
     /// = α * P(X1, ..., Xn)`. For this reason, the method takes as input the
     /// two different scalars `scalar1` and `scalar2` as we are considering the
     /// scaling factor as a variable.

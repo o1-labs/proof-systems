@@ -18,7 +18,8 @@ members = [
     "utils",
     "internal-tracing",
     "ivc",
-    "folding"
+    "folding",
+    "saffron"
 ]
 resolver = "2"
 
@@ -78,7 +79,7 @@ strum_macros = "0.26.1"
 syn = { version = "1.0.109", features = ["full"] }
 thiserror = "1.0.30"
 tinytemplate = "1.1"
-wasm-bindgen = "=0.2.90"
+wasm-bindgen = "=0.2.87"
 
 
 arrabbiata = { path = "./arrabbiata", version = "0.1.0" }
@@ -96,6 +97,7 @@ o1-utils = { path = "./utils", version = "0.1.0" }
 o1vm = { path = "./o1vm", version = "0.1.0" }
 optimism = { path = "./optimism", version = "0.1.0" }
 poly-commitment = { path = "./poly-commitment", version = "0.1.0" }
+saffron = { path = "./poly-commitment", version = "0.1.0" }
 signer = { path = "./signer", version = "0.1.0" }
 turshi = { path = "./turshi", version = "0.1.0" }
 utils = { path = "./utils", version = "0.1.0" }
