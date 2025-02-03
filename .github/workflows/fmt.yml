@@ -23,12 +23,9 @@ jobs:
         with:
           rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
 
-      - name: Run cargo fmt
-        run: |
-          make format
-
       - name: Install cargo-sort
         run: cargo install cargo-sort
 
-      - name: Check Cargo.toml Sorting
-        run: cargo sort --check
+      - name: Check formatting related to Rust code
+        run: |
+          make check-format
