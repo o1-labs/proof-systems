@@ -212,7 +212,7 @@ $$
 
 so the triple $(X, Y, Z)$ corresponds to the affine point $(X/Z^2, Y/Z^3)$. These are the fastest for computing group addition on a normal computer.
 
-#### Take aways
+#### Take always, away
 
 - Use affine coordinates when the cost of division doesn't matter and saving space is important. Specific contexts to keep in mind:
 
