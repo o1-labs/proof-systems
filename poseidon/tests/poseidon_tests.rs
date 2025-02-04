@@ -178,8 +178,8 @@ fn test_poseidon_challenge_multiple_times_without_absorbtion() {
     let mut challenges: Vec<_> = vec![];
 
     for i in 0..random_n {
-        old_state = new_state.clone();
-        new_state = sponge.sponge.state.clone();
+        old_state.clone_from(&new_state);
+        new_state.clone_from(&sponge.sponge.state);
         let chal = sponge.challenge();
         if i % 2 == 0 {
             assert_eq!(
