@@ -115,6 +115,10 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub scratch_state_inverse: [Fp; SCRATCH_SIZE_INVERSE],
     pub lookup_state_idx: usize,
     pub lookup_state: Vec<Fp>,
+    // tracks the arity of every lookup
+    // [1,1,3] means that the lookup state is of size 5,
+    // containing two lookup of arity one and one of arity three.
+    pub lookup_arity: Vec<usize>,
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub selector: usize,
@@ -963,6 +967,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             scratch_state_inverse: fresh_scratch_state(),
             lookup_state_idx: 0,
             lookup_state: vec![],
+            lookup_arity: vec![],
             halt: state.exited,
             syscall_env,
             selector,
