@@ -960,6 +960,9 @@ where
     }
 
     /// Reset the environment to build the next iteration
+    // FIXME: improve me by returning a new environment, with a different type,
+    // to avoid to have to handle the curve cycle.
+    // We could detect more type errors at compile time.
     pub fn reset_for_next_iteration(&mut self) {
         // Rest the state for the next row
         self.current_row = 0;
