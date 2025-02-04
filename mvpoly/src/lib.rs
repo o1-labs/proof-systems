@@ -271,11 +271,11 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// Q(X_1, ..., X_n, α_1, ..., α_m) =
     ///   α_1 P1(X_1, ..., X_n) +
     ///   ...
-    ///   α_m Pm(X_1, ..., X_n) +
+    ///   α_m Pm(X_1, ..., X_n)
     /// ```
     ///
     /// The polynomial must not necessarily be homogeneous. For this reason, the
-    /// values `u1` and `u2` represents the extra variable that is used to make
+    /// values `u1` and `u2` represent the extra variable that is used to make
     /// the polynomial homogeneous.
     ///
     /// The homogeneous degree is supposed to be the one defined by the type of
