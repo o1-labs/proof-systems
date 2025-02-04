@@ -115,6 +115,7 @@ pub fn main() {
         // Absorb the last program state.
         env.absorb_state();
 
+        // ----- Permutation argument -----
         // FIXME:
         // Coin chalenges β and γ for the permutation argument
 
@@ -123,9 +124,16 @@ pub fn main() {
 
         // FIXME:
         // Commit to the accumulator and absorb the commitment
+        // ----- Permutation argument -----
 
+        // ----- Quotient polynomial -----
         // FIXME:
         // Coin challenge α for combining the constraints
+        // ----- Quotient polynomial -----
+
+        // ----- Folding "argument" -----
+        // FIXME:
+        // Compute the homogeneous value `u`.
 
         // FIXME:
         // Compute the cross-terms
@@ -153,6 +161,7 @@ pub fn main() {
 
         // FIXME:
         // Compute the accumulated error
+        // ----- Folding "argument" -----
 
         debug!(
             "Iteration {i} fully proven in {elapsed} μs",
