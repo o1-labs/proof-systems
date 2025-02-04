@@ -1204,7 +1204,7 @@
 <span class="doccomment">/// The first instruction in the verifier circuit (often shortened in &quot;IVC&quot; in
 /// the crate) is the Poseidon permutation. It is used to start hashing the
 /// public input.
-</span><span class="kw">pub const </span>IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(<span class="number">0</span>);
+</span><span class="kw">pub const </span>VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(<span class="number">0</span>);
 
 <span class="doccomment">/// An environment is used to contain the state of a long &quot;running program&quot;.
 ///
@@ -1337,7 +1337,7 @@
     /// state.
     </span><span class="kw">pub </span>verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
 
-    <span class="doccomment">/// The current iteration of the IVC
+    <span class="doccomment">/// The current iteration of the IVC.
     </span><span class="kw">pub </span>current_iteration: u64,
 
     <span class="doccomment">/// The digest of the program state before executing the last iteration.
@@ -2093,7 +2093,7 @@
             srs_e2,
             <span class="comment">// -------
             // -------
-            // IVC only
+            // verifier only
             </span>ivc_accumulator_e1,
             ivc_accumulator_e2,
             previous_committed_state_e1,
@@ -2109,7 +2109,7 @@
             public_state: std::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_usize</span>)),
             selectors,
             challenges,
-            current_instruction: IVC_STARTING_INSTRUCTION,
+            current_instruction: VERIFIER_STARTING_INSTRUCTION,
             sponge_e1,
             sponge_e2,
             prover_sponge_state,
@@ -2147,12 +2147,12 @@
         </span><span class="self">self</span>.current_row = <span class="number">0</span>;
         <span class="self">self</span>.state = std::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_usize</span>));
         <span class="self">self</span>.idx_var = <span class="number">0</span>;
-        <span class="self">self</span>.current_instruction = IVC_STARTING_INSTRUCTION;
+        <span class="self">self</span>.current_instruction = VERIFIER_STARTING_INSTRUCTION;
         <span class="self">self</span>.idx_values_to_absorb = <span class="number">0</span>;
     }
 
     <span class="doccomment">/// The blinder used to commit, to avoid committing to the zero polynomial
-    /// and accumulate it in the IVC.
+    /// and accumulated in the IVC.
     ///
     /// It is part of the instance, and it is accumulated in the IVC.
     </span><span class="kw">pub fn </span>accumulate_commitment_blinder(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
@@ -2273,8 +2273,8 @@
 
     <span class="doccomment">/// Describe the control-flow for the IVC circuit.
     ///
-    /// For a step i + 1, the IVC circuit receives as public input the following
-    /// values:
+    /// For a step i + 1, the verifier circuit receives as public input the
+    /// following values:
     ///
     /// - The commitments to the previous witnesses.
     /// - The previous challenges (α_{i}, β_{i}, γ_{i}) - the challenges β and γ
