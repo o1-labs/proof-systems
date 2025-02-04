@@ -22,7 +22,7 @@ use crate::{
 /// The first instruction in the verifier circuit (often shortened in "IVC" in
 /// the crate) is the Poseidon permutation. It is used to start hashing the
 /// public input.
-pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
+pub const VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
 
 /// An environment is used to contain the state of a long "running program".
 ///
@@ -155,7 +155,7 @@ pub struct Env<
     /// state.
     pub verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
 
-    /// The current iteration of the IVC
+    /// The current iteration of the IVC.
     pub current_iteration: u64,
 
     /// The digest of the program state before executing the last iteration.
@@ -911,7 +911,7 @@ where
             srs_e2,
             // -------
             // -------
-            // IVC only
+            // verifier only
             ivc_accumulator_e1,
             ivc_accumulator_e2,
             previous_committed_state_e1,
@@ -927,7 +927,7 @@ where
             public_state: std::array::from_fn(|_| BigInt::from(0_usize)),
             selectors,
             challenges,
-            current_instruction: IVC_STARTING_INSTRUCTION,
+            current_instruction: VERIFIER_STARTING_INSTRUCTION,
             sponge_e1,
             sponge_e2,
             prover_sponge_state,
@@ -965,12 +965,12 @@ where
         self.current_row = 0;
         self.state = std::array::from_fn(|_| BigInt::from(0_usize));
         self.idx_var = 0;
-        self.current_instruction = IVC_STARTING_INSTRUCTION;
+        self.current_instruction = VERIFIER_STARTING_INSTRUCTION;
         self.idx_values_to_absorb = 0;
     }
 
     /// The blinder used to commit, to avoid committing to the zero polynomial
-    /// and accumulate it in the IVC.
+    /// and accumulated in the IVC.
     ///
     /// It is part of the instance, and it is accumulated in the IVC.
     pub fn accumulate_commitment_blinder(&mut self) {
@@ -1091,8 +1091,8 @@ where
 
     /// Describe the control-flow for the IVC circuit.
     ///
-    /// For a step i + 1, the IVC circuit receives as public input the following
-    /// values:
+    /// For a step i + 1, the verifier circuit receives as public input the
+    /// following values:
     ///
     /// - The commitments to the previous witnesses.
     /// - The previous challenges (α_{i}, β_{i}, γ_{i}) - the challenges β and γ
