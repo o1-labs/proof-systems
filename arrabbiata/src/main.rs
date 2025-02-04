@@ -129,6 +129,7 @@ pub fn main() {
         // ----- Quotient polynomial -----
         // FIXME:
         // Coin challenge α for combining the constraints
+        env.coin_challenge();
         // ----- Quotient polynomial -----
 
         // ----- Folding "argument" -----

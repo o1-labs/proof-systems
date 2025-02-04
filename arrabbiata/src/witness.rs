@@ -1182,4 +1182,26 @@ where
             Instruction::NoOp => Instruction::NoOp,
         }
     }
+
+    pub fn coin_challenge(&mut self) {
+        let _chal: BigInt = if self.current_iteration % 2 == 0 {
+            let mut sponge = E1::create_new_sponge();
+            self.prover_sponge_state.iter().for_each(|x| {
+                E1::absorb_fq(
+                    &mut sponge,
+                    E1::BaseField::from_biguint(&x.to_biguint().unwrap()).unwrap(),
+                )
+            });
+            E1::squeeze_challenge(&mut sponge).to_biguint().into()
+        } else {
+            let mut sponge = E2::create_new_sponge();
+            self.prover_sponge_state.iter().for_each(|x| {
+                E2::absorb_fq(
+                    &mut sponge,
+                    E2::BaseField::from_biguint(&x.to_biguint().unwrap()).unwrap(),
+                )
+            });
+            E2::squeeze_challenge(&mut sponge).to_biguint().into()
+        };
+    }
 }
