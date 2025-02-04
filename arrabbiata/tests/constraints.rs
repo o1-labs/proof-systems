@@ -103,7 +103,7 @@ fn test_gadget_elliptic_curve_addition() {
 fn test_ivc_total_number_of_constraints_ivc() {
     let constraints_fp = constraints::Env::<Vesta>::new();
 
-    let constraints = constraints_fp.get_all_constraints_for_ivc();
+    let constraints = constraints_fp.get_all_constraints_for_verifier();
     assert_eq!(constraints.len(), 28);
 }
 
@@ -111,7 +111,7 @@ fn test_ivc_total_number_of_constraints_ivc() {
 fn test_degree_of_constraints_ivc() {
     let constraints_fp = constraints::Env::<Vesta>::new();
 
-    let constraints = constraints_fp.get_all_constraints_for_ivc();
+    let constraints = constraints_fp.get_all_constraints_for_verifier();
 
     let mut degree_per_constraints = HashMap::new();
     constraints.iter().for_each(|c| {

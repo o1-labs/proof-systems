@@ -320,19 +320,19 @@ impl<C: ArrabbiataCurve> Env<C>
 where
     C::BaseField: PrimeField,
 {
-    /// Get all the constraints for the IVC circuit, only.
+    /// Get all the constraints for the verifier circuit, only.
     ///
-    /// The following gadgets are used in the IVC circuit:
+    /// The following gadgets are used in the verifier circuit:
     /// - [Instruction::Poseidon] to verify the challenges and the public
     /// IO
     /// - [Instruction::EllipticCurveScaling] and
     /// [Instruction::EllipticCurveAddition] to accumulate the commitments
-    // FIXME: the IVC circuit might not be complete, yet. For instance, we might
+    // FIXME: the verifier circuit might not be complete, yet. For instance, we might
     // need to accumulate the challenges and add a row to verify the output of
     // the computation of the challenges.
     // FIXME: add a test checking that whatever the value given in parameter of
     // the gadget, the constraints are the same
-    pub fn get_all_constraints_for_ivc(&self) -> Vec<E<C::ScalarField>> {
+    pub fn get_all_constraints_for_verifier(&self) -> Vec<E<C::ScalarField>> {
         // Copying the instance we got in parameter, and making it mutable to
         // avoid modifying the original instance.
         let mut env = self.clone();
@@ -365,12 +365,12 @@ where
         constraints
     }
 
-    /// Get all the constraints for the IVC circuit and the application.
+    /// Get all the constraints for the verifier circuit and the application.
     // FIXME: the application should be given as an argument to handle Rust
     // zkApp. It is only for the PoC.
     // FIXME: the selectors are not added for now.
     pub fn get_all_constraints(&self) -> Vec<E<C::ScalarField>> {
-        let mut constraints = self.get_all_constraints_for_ivc();
+        let mut constraints = self.get_all_constraints_for_verifier();
 
         // Copying the instance we got in parameter, and making it mutable to
         // avoid modifying the original instance.

@@ -277,7 +277,7 @@
 //!
 //! ## Fiat-Shamir challenges
 //!
-//! The challenges sent by the verifier must also be simulated by the IVC
+//! The challenges sent by the verifier must also be simulated by the verifier
 //! circuit. It is done by passing "messages" as public inputs to the next
 //! instances. Diagrams recapitulating the messages that must be passed are
 //! available in the section [Message passing](#message-passing).
@@ -443,8 +443,8 @@ use num_bigint::BigInt;
 /// `fetch_next_instruction` and `fetch_instruction` on a witness environnement.
 /// See the [Witness environment](crate::witness::Env) for more details.
 ///
-/// Mostly, the instructions will be used to build the IVC circuit, but it can be
-/// generalized.
+/// Mostly, the instructions will be used to build the verifier circuit, but it
+/// can be generalized.
 ///
 /// When the circuit is predefined, the instructions can be accompanied by a
 /// public selector. When implementing a virtual machine, where instructions are

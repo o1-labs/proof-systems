@@ -8,7 +8,7 @@ use arrabbiata::{
     curve::PlonkSpongeConstants,
     interpreter::{self, InterpreterEnv},
     witness::Env,
-    IVC_CIRCUIT_SIZE, MIN_SRS_LOG2_SIZE,
+    MIN_SRS_LOG2_SIZE, VERIFIER_CIRCUIT_SIZE,
 };
 use log::{debug, info};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
@@ -47,7 +47,7 @@ pub fn main() {
 
     assert!(
         *srs_log2_size >= MIN_SRS_LOG2_SIZE,
-        "SRS size must be at least 2^{MIN_SRS_LOG2_SIZE} to support IVC"
+        "SRS size must be at least 2^{MIN_SRS_LOG2_SIZE} to support the verifier circuit size"
     );
 
     info!("Instantiating environment to execute square-root {n_iteration} times with SRS of size 2^{srs_log2_size}");
@@ -65,7 +65,7 @@ pub fn main() {
         sponge_e1.clone(),
     );
 
-    let n_iteration_per_fold = domain_size - IVC_CIRCUIT_SIZE;
+    let n_iteration_per_fold = domain_size - VERIFIER_CIRCUIT_SIZE;
 
     while env.current_iteration < *n_iteration {
         let start_iteration = Instant::now();
@@ -80,17 +80,17 @@ pub fn main() {
         }
 
         info!(
-            "Building the IVC circuit. A total number of {} rows will be filled from the witness row {}",
-            IVC_CIRCUIT_SIZE, env.current_row,
+            "Building the verifier circuit. A total number of {} rows will be filled from the witness row {}",
+            VERIFIER_CIRCUIT_SIZE, env.current_row,
         );
         // Build the verifier circuit
         // FIXME: Minus one as the last row of the verifier circuit is a
         // Poseidon hash, and we write on the next row. We don't want to execute
         // a new instruction for the verifier circuit here.
-        for i in 0..IVC_CIRCUIT_SIZE - 1 {
+        for i in 0..VERIFIER_CIRCUIT_SIZE - 1 {
             let instr = env.fetch_instruction();
             debug!(
-                "Running IVC row {} (instruction = {:?}, witness row = {})",
+                "Running verifier row {} (instruction = {:?}, witness row = {})",
                 i, instr, env.current_row
             );
             interpreter::run_ivc(&mut env, instr);
