@@ -30,9 +30,11 @@ pub const NUMBER_OF_COLUMNS: usize = 15;
 // FIXME:
 // We will increase the IVC circuit size step by step, while we are finishing
 // the implementation.
-// 1. We start by absorbing all the accumulators of each column.
+// 1. We start by absorbing all the accumulators of each column. Adding one for
+// now as the Poseidon circuit writes on the next row. This would be changing in
+// the near future as we're polishing the circuit.
 pub const IVC_CIRCUIT_SIZE: usize =
-    (PlonkSpongeConstants::PERM_ROUNDS_FULL / 5) * NUMBER_OF_COLUMNS;
+    (PlonkSpongeConstants::PERM_ROUNDS_FULL / 5) * NUMBER_OF_COLUMNS + 1;
 
 /// The maximum number of public inputs the circuit can use per row
 /// We do have 15 for now as we want to compute 5 rounds of poseidon per row
