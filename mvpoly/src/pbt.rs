@@ -410,37 +410,37 @@ pub fn test_homogeneous_eval<F: PrimeField, const N: usize, const D: usize, T: M
 
     // Homogeneous form is u^2
     let p1 = T::one();
-    let homogenous_eval = p1.homogeneous_eval(&random_eval, u);
-    assert_eq!(homogenous_eval, u * u);
+    let homogeneous_eval = p1.homogeneous_eval(&random_eval, u);
+    assert_eq!(homogeneous_eval, u * u);
 
     let mut p2 = T::zero();
     let mut exp1 = [0; N];
     exp1[0] = 1;
     p2.add_monomial(exp1, F::one());
-    let homogenous_eval = p2.homogeneous_eval(&random_eval, u);
-    assert_eq!(homogenous_eval, random_eval[0] * u);
+    let homogeneous_eval = p2.homogeneous_eval(&random_eval, u);
+    assert_eq!(homogeneous_eval, random_eval[0] * u);
 
     let mut p3 = T::zero();
     let mut exp2 = [0; N];
     exp2[1] = 1;
     p3.add_monomial(exp2, F::one());
-    let homogenous_eval = p3.homogeneous_eval(&random_eval, u);
-    assert_eq!(homogenous_eval, random_eval[1] * u);
+    let homogeneous_eval = p3.homogeneous_eval(&random_eval, u);
+    assert_eq!(homogeneous_eval, random_eval[1] * u);
 
     let mut p4 = T::zero();
     let mut exp3 = [0; N];
     exp3[0] = 1;
     exp3[1] = 1;
     p4.add_monomial(exp3, F::one());
-    let homogenous_eval = p4.homogeneous_eval(&random_eval, u);
-    assert_eq!(homogenous_eval, random_eval[0] * random_eval[1]);
+    let homogeneous_eval = p4.homogeneous_eval(&random_eval, u);
+    assert_eq!(homogeneous_eval, random_eval[0] * random_eval[1]);
 
     let mut p5 = T::zero();
     let mut exp4 = [0; N];
     exp4[0] = 2;
     p5.add_monomial(exp4, F::one());
-    let homogenous_eval = p5.homogeneous_eval(&random_eval, u);
-    assert_eq!(homogenous_eval, random_eval[0] * random_eval[0]);
+    let homogeneous_eval = p5.homogeneous_eval(&random_eval, u);
+    assert_eq!(homogeneous_eval, random_eval[0] * random_eval[0]);
 
     let mut p6 = T::zero();
     let mut exp5a = [0; N];
@@ -449,9 +449,9 @@ pub fn test_homogeneous_eval<F: PrimeField, const N: usize, const D: usize, T: M
     exp5b[0] = 2;
     p6.add_monomial(exp5a, F::one());
     p6.add_monomial(exp5b, F::one());
-    let homogenous_eval = p6.homogeneous_eval(&random_eval, u);
+    let homogeneous_eval = p6.homogeneous_eval(&random_eval, u);
     assert_eq!(
-        homogenous_eval,
+        homogeneous_eval,
         random_eval[1] * random_eval[1] + random_eval[0] * random_eval[0]
     );
 
@@ -466,9 +466,9 @@ pub fn test_homogeneous_eval<F: PrimeField, const N: usize, const D: usize, T: M
     p7.add_monomial(exp6b, F::one());
     p7.add_monomial(exp6c, F::one());
     p7.add_monomial([0; N], F::from(42u32));
-    let homogenous_eval = p7.homogeneous_eval(&random_eval, u);
+    let homogeneous_eval = p7.homogeneous_eval(&random_eval, u);
     assert_eq!(
-        homogenous_eval,
+        homogeneous_eval,
         random_eval[1] * random_eval[1]
             + random_eval[0] * random_eval[0]
             + u * random_eval[0]
