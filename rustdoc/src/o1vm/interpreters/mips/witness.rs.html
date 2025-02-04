@@ -1397,6 +1397,7 @@
 <a href="#1397" id="1397">1397</a>
 <a href="#1398" id="1398">1398</a>
 <a href="#1399" id="1399">1399</a>
+<a href="#1400" id="1400">1400</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
 <span class="kw">use crate</span>::{
     cannon::{
@@ -2646,6 +2647,17 @@
         <span class="self">self</span>.pp_info(<span class="kw-2">&amp;</span>config.info_at, metadata, start);
         <span class="self">self</span>.snapshot_state_at(<span class="kw-2">&amp;</span>config.snapshot_state_at);
 
+        <span class="comment">// Force stops at given iteration
+        </span><span class="kw">if </span><span class="self">self</span>.should_trigger_at(<span class="kw-2">&amp;</span>config.stop_at) {
+            <span class="self">self</span>.halt = <span class="bool-val">true</span>;
+            <span class="macro">println!</span>(
+                <span class="string">&quot;Halted as requested at step={} instruction={:?}&quot;</span>,
+                <span class="self">self</span>.normalized_instruction_counter(),
+                opcode
+            );
+            <span class="kw">return </span>opcode;
+        }
+
         interpreter::interpret_instruction(<span class="self">self</span>, opcode);
 
         <span class="self">self</span>.instruction_counter = <span class="self">self</span>.next_instruction_counter();
@@ -2656,16 +2668,6 @@
                 <span class="self">self</span>.halt = <span class="bool-val">true</span>;
             }
         });
-
-        <span class="comment">// Force stops at given iteration
-        </span><span class="kw">if </span><span class="self">self</span>.should_trigger_at(<span class="kw-2">&amp;</span>config.stop_at) {
-            <span class="self">self</span>.halt = <span class="bool-val">true</span>;
-            <span class="macro">println!</span>(
-                <span class="string">&quot;Halted as requested at step={} instruction={:?}&quot;</span>,
-                <span class="self">self</span>.normalized_instruction_counter(),
-                opcode
-            );
-        }
 
         <span class="comment">// Integer division by MAX_ACC to obtain the actual instruction count
         </span><span class="kw">if </span><span class="self">self</span>.halt {

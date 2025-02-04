@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["cannon_main","gen_state_json","main","pad","prove_and_verify"]};
+window.SIDEBAR_ITEMS = {"fn":["cannon_main","gen_state_json","main"]};
