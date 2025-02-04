@@ -48,7 +48,7 @@ pub const NUMBER_OF_PUBLIC_INPUTS: usize = 15 + 2;
 /// verifier circuit.
 pub const MAXIMUM_FIELD_SIZE_IN_BITS: u64 = 255;
 
-/// Define the number of values we must absorb when computating the hash to the
+/// Define the number of values we must absorb when computation the hash to the
 /// public IO.
 ///
 /// FIXME:

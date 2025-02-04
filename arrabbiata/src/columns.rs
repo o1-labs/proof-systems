@@ -68,7 +68,7 @@ pub struct Challenges<F: Field> {
     pub gamma: F,
 
     /// Challenge to homogenize the constraints
-    pub homogenous_challenge: F,
+    pub homogeneous_challenge: F,
 
     /// Random coin used to aggregate witnesses while folding
     pub r: F,
@@ -82,7 +82,7 @@ pub enum ChallengeTerm {
     Beta,
     Gamma,
     /// Challenge to homogenize the constraints
-    HomogenousChallenge,
+    HomogeneousChallenge,
     /// Random coin used to aggregate witnesses while folding
     R,
 }
@@ -93,7 +93,7 @@ impl Display for ChallengeTerm {
             ChallengeTerm::Alpha => write!(f, "alpha"),
             ChallengeTerm::Beta => write!(f, "beta"),
             ChallengeTerm::Gamma => write!(f, "gamma"),
-            ChallengeTerm::HomogenousChallenge => write!(f, "u"),
+            ChallengeTerm::HomogeneousChallenge => write!(f, "u"),
             ChallengeTerm::R => write!(f, "r"),
         }
     }
@@ -106,7 +106,7 @@ impl<F: Field> Index<ChallengeTerm> for Challenges<F> {
             ChallengeTerm::Alpha => &self.alpha,
             ChallengeTerm::Beta => &self.beta,
             ChallengeTerm::Gamma => &self.gamma,
-            ChallengeTerm::HomogenousChallenge => &self.homogenous_challenge,
+            ChallengeTerm::HomogeneousChallenge => &self.homogeneous_challenge,
             ChallengeTerm::R => &self.r,
         }
     }

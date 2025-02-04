@@ -116,7 +116,7 @@ pub fn main() {
         env.absorb_state();
 
         // FIXME:
-        // Coin chalenges β and γ for the permutation argument
+        // Coin challenges β and γ for the permutation argument
 
         // FIXME:
         // Compute the accumulator for the permutation argument

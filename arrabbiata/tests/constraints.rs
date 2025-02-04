@@ -130,7 +130,7 @@ fn test_degree_of_constraints_ivc() {
 #[test]
 fn test_gadget_elliptic_curve_scaling() {
     let instr = Instruction::EllipticCurveScaling(0, 0);
-    // FIXME: update when the gadget is fnished
+    // FIXME: update when the gadget is finished
     helper_compute_constraints_gadget(instr, 10);
 
     let mut exp_degrees = HashMap::new();

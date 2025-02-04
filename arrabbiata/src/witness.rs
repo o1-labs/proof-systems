@@ -173,7 +173,7 @@ pub struct Env<
     /// The value is a 128bits value.
     pub last_program_digest_after_execution: BigInt,
 
-    /// The coin folding combiner will be used to generate the combinaison of
+    /// The coin folding combiner will be used to generate the combinations of
     /// folding instances
     pub r: BigInt,
 
@@ -558,7 +558,7 @@ where
                             }
                             // As it is the first iteration, we must use the point at infinity.
                             // However, to avoid handling the case equal to zero, we will
-                            // use a blinder, that we will substract at the end.
+                            // use a blinder, that we will subtract at the end.
                             // As we suppose the probability to get a folding combiner
                             // equals to zero is negligible, we know we have a negligible
                             // probability to request to compute `0 * P`.
@@ -584,7 +584,7 @@ where
                             }
                             // As it is the first iteration, we must use the point at infinity.
                             // However, to avoid handling the case equal to zero, we will
-                            // use a blinder, that we will substract at the end.
+                            // use a blinder, that we will subtract at the end.
                             // As we suppose the probability to get a folding combiner
                             // equals to zero is negligible, we know we have a negligible
                             // probability to request to compute `0 * P`.
@@ -1153,7 +1153,7 @@ where
                 }
             }
             Instruction::EllipticCurveScaling(i_comm, bit) => {
-                // TODO: we still need to substract (or not?) the blinder.
+                // TODO: we still need to subtract (or not?) the blinder.
                 // Maybe we can avoid this by aggregating them.
                 // TODO: we also need to aggregate the cross-terms.
                 // Therefore i_comm must also take into the account the number

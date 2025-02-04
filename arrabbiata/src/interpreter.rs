@@ -25,7 +25,7 @@
 //!     - [Gadget layout](#gadget-layout-1)
 //!   - [Elliptic curve scalar multiplication](#elliptic-curve-scalar-multiplication)
 //!     - [Gadget layout](#gadget-layout-2)
-//! - [Handle the combinaison of constraints](#handle-the-combinaison-of-constraints)
+//! - [Handle the combinations of constraints](#handle-the-combinations-of-constraints)
 //! - [Permutation argument](#permutation-argument)
 //! - [Fiat-Shamir challenges](#fiat-shamir-challenges)
 //! - [Folding](#folding)
@@ -102,7 +102,7 @@
 //!
 //! For a first version, we consider an instance of the Poseidon hash function
 //! that is suitable for curves whose field size is around 256 bits.
-//! A security analysis for these curves give us a recommandation of 60 full
+//! A security analysis for these curves give us a recommendation of 60 full
 //! rounds if we consider a 128-bit security level and a low-degree
 //! exponentiation of `5`, with only full rounds.
 //! In the near future, we will consider the partial rounds strategy to reduce
@@ -191,7 +191,7 @@
 //! Circuits](https://github.com/o1-labs/rfcs/blob/main/0013-efficient-msms-for-non-native-pickles-verification.md).
 //! We leave this for future work.
 //!
-//! ## Handle the combinaison of constraints
+//! ## Handle the combinations of constraints
 //!
 //! The prover will have to combine the constraints to generate the
 //! full circuit at the end. The constraints will be combined using a
@@ -440,7 +440,7 @@ use num_bigint::BigInt;
 
 /// A list of instruction/gadget implemented in the interpreter.
 /// The control flow can be managed by implementing a function
-/// `fetch_next_instruction` and `fetch_instruction` on a witness environnement.
+/// `fetch_next_instruction` and `fetch_instruction` on a witness environment.
 /// See the [Witness environment](crate::witness::Env) for more details.
 ///
 /// Mostly, the instructions will be used to build the verifier circuit, but it
@@ -762,7 +762,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             } else {
                 env.read_position(scalar_col)
             };
-            // FIXME: we do add the blinder. We must substract it at the end.
+            // FIXME: we do add the blinder. We must subtract it at the end.
             // Perform the following algorithm (double-and-add):
             // res = O <-- blinder
             // tmp = P
