@@ -182,9 +182,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
     }
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
+        let mut arity_counter = 0;
         let mut add_value = |x: Fp| {
             self.lookup_state_idx += 1;
             self.lookup_state.push(x);
+            arity_counter += 1;
         };
         let Lookup {
             table_id,
@@ -205,7 +207,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
         for value in values.iter() {
             add_value(*value);
         }
-
+        // Update multiplicities
         if let Some(idx) = table_id.ix_by_value(values.as_slice()) {
             match table_id {
                 LookupTableIDs::PadLookup => self.lookup_multiplicities.pad_lookup[idx] += 1,
@@ -228,6 +230,8 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 LookupTableIDs::KeccakStepLookup => (),
             }
         }
+        //Update arity
+        self.lookup_arity.push(arity_counter);
     }
 
     fn instruction_counter(&self) -> Self::Variable {
