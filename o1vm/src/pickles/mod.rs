@@ -17,6 +17,8 @@ pub mod proof;
 pub mod prover;
 pub mod verifier;
 
+pub mod lookup_columns;
+
 /// Maximum degree of the constraints.
 /// It does include the additional degree induced by the multiplication of the
 /// selectors.
