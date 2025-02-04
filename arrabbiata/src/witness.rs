@@ -1172,4 +1172,9 @@ where
             Instruction::NoOp => Instruction::NoOp,
         }
     }
+
+    pub fn print_state(&self) {
+        let state_str: Vec<String> = self.state.iter().map(|x| format!("0x{:x}", x)).collect();
+        println!("| {:?} |", state_str.join(" | "));
+    }
 }

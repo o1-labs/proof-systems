@@ -92,6 +92,7 @@ pub fn main() {
             );
             interpreter::run_ivc(&mut env, instr);
             env.current_instruction = env.fetch_next_instruction();
+            env.print_state();
             env.reset();
         }
 
