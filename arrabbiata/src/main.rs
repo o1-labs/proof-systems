@@ -83,8 +83,11 @@ pub fn main() {
             "Building the IVC circuit. A total number of {} rows will be filled from the witness row {}",
             IVC_CIRCUIT_SIZE, env.current_row,
         );
-        // Build the IVC circuit
-        for i in 0..IVC_CIRCUIT_SIZE {
+        // Build the verifier circuit
+        // FIXME: Minus one as the last row of the verifier circuit is a
+        // Poseidon hash, and we write on the next row. We don't want to execute
+        // a new instruction for the verifier circuit here.
+        for i in 0..IVC_CIRCUIT_SIZE - 1 {
             let instr = env.fetch_instruction();
             debug!(
                 "Running IVC row {} (instruction = {:?}, witness row = {})",
@@ -94,6 +97,8 @@ pub fn main() {
             env.current_instruction = env.fetch_next_instruction();
             env.reset();
         }
+        // FIXME: additional row for the Poseidon hash
+        env.reset();
 
         debug!(
             "Witness for iteration {i} computed in {elapsed} μs",

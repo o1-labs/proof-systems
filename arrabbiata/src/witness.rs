@@ -284,10 +284,16 @@ where
         let Column::X(idx) = col else {
             unimplemented!("Only works for private inputs")
         };
-        let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            E1::ScalarField::modulus_biguint().into()
+        let (modulus, srs_size): (BigInt, usize) = if self.current_iteration % 2 == 0 {
+            (
+                E1::ScalarField::modulus_biguint().into(),
+                self.srs_e1.size(),
+            )
         } else {
-            E2::ScalarField::modulus_biguint().into()
+            (
+                E2::ScalarField::modulus_biguint().into(),
+                self.srs_e2.size(),
+            )
         };
         let v = v.mod_floor(&modulus);
         match row {
@@ -295,6 +301,7 @@ where
                 self.state[idx].clone_from(&v);
             }
             CurrOrNext::Next => {
+                assert!(self.current_row < srs_size - 1, "The witness builder is writing on the last row. It does not make sense to write on the next row after the last row");
                 self.next_state[idx].clone_from(&v);
             }
         }
