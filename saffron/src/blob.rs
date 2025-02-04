@@ -1,9 +1,14 @@
+use std::collections::HashMap;
+
 use crate::{
     commitment::fold_commitments,
     utils::{decode_into, encode_for_domain},
 };
-use ark_ff::PrimeField;
-use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Evaluations};
+use ark_ec::AffineRepr;
+use ark_ff::{PrimeField, Zero};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain,
+};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use kimchi::curve::KimchiCurve;
 use mina_poseidon::FqSponge;
@@ -12,6 +17,7 @@ use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _}
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+use std::ops::Add;
 use tracing::{debug, debug_span, instrument};
 
 // A FieldBlob<F> represents the encoding of a Vec<u8> as a list of polynomials over F,
@@ -110,11 +116,55 @@ impl<G: KimchiCurve> FieldBlob<G> {
         bytes.truncate(blob.n_bytes);
         bytes
     }
+
+    #[instrument(skip_all, level = "debug")]
+    pub fn update<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
+        &mut self,
+        srs: &SRS<G>,
+        domain: &Radix2EvaluationDomain<G::ScalarField>,
+        diffs: Vec<HashMap<usize, G::ScalarField>>,
+    ) {
+        let basis = srs.get_lagrange_basis(*domain);
+        let updates: Vec<(usize, PolyComm<G>, DensePolynomial<G::ScalarField>)> = diffs
+            .into_par_iter()
+            .enumerate()
+            .map(|(index, diff)| {
+                let d_commitment = {
+                    let zero = PolyComm::<G>::new(vec![G::zero()]);
+                    diff.iter()
+                        .fold(zero, |acc, (i, a)| acc.add(&basis[*i].scale(*a)))
+                };
+                let d_p = {
+                    let evals = (0..domain.size())
+                        .map(|i| {
+                            diff.get(&i)
+                                .copied()
+                                .unwrap_or(<G as AffineRepr>::ScalarField::zero())
+                        })
+                        .collect();
+                    Evaluations::from_vec_and_domain(evals, *domain).interpolate()
+                };
+                (index, d_commitment, d_p)
+            })
+            .collect();
+        for (index, d_commitment, d_p) in updates {
+            self.commitments[index] = self.commitments[index].add(&d_commitment);
+            self.data[index] = (&self.data[index]).add(&d_p);
+        }
+
+        let (folded_commitment, alpha) = {
+            let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
+            fold_commitments(&mut sponge, &self.commitments)
+        };
+
+        self.alpha = alpha;
+        self.folded_commitment = folded_commitment;
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{commitment::commit_to_field_elems, env};
+    use crate::{commitment::commit_to_field_elems, env, utils::make_diff};
 
     use super::*;
     use crate::utils::test_utils::*;
@@ -123,6 +173,7 @@ mod tests {
     use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
+    use rand::Rng;
 
     static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
         if let Ok(srs) = std::env::var("SRS_FILEPATH") {
@@ -161,4 +212,46 @@ mod tests {
             prop_assert_eq!(user_commitments, blob.commitments);
           }
         }
+
+    fn random_perturbation(threshold: f64, data: &[u8]) -> Vec<u8> {
+        let mut rng = rand::thread_rng();
+        data.iter()
+            .map(|b| {
+                let n = rng.gen::<f64>();
+                if n < threshold {
+                    rng.gen::<u8>()
+                } else {
+                    *b
+                }
+            })
+            .collect()
+    }
+
+    proptest! {
+    #![proptest_config(ProptestConfig::with_cases(10))]
+    #[test]
+        fn test_update(UserData(xs) in UserData::arbitrary()
+        )
+        {
+            // start with some random user data
+            let mut xs_blob = FieldBlob::<Vesta>::encode::<_, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, *DOMAIN, &xs);
+
+            // randomly update this data and then update the blob
+            let ys = random_perturbation(0.25, &xs);
+            let d = make_diff(&*DOMAIN, &xs, &ys);
+            xs_blob.update::<DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, &*DOMAIN, d);
+
+            // check that the user and SP agree on the new data
+            let user_commitments = {
+                let elems = encode_for_domain(&*DOMAIN, &ys);
+                commit_to_field_elems(&*SRS, *DOMAIN, elems)
+            };
+            let ys_blob = FieldBlob::<Vesta>::encode::<_, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, *DOMAIN, &ys);
+            prop_assert_eq!(user_commitments.clone(), ys_blob.commitments.clone());
+
+            // the updated blob should be the same as if we just start with the new data
+            prop_assert_eq!(xs_blob, ys_blob)
+        }
+
+    }
 }

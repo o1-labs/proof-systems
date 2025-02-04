@@ -1,8 +1,9 @@
-use std::marker::PhantomData;
+use std::{collections::HashMap, marker::PhantomData};
 
 use ark_ff::{BigInteger, PrimeField};
 use ark_poly::EvaluationDomain;
 use o1_utils::FieldHelpers;
+use rayon::prelude::*;
 use thiserror::Error;
 use tracing::instrument;
 
@@ -177,6 +178,31 @@ impl QueryBytes {
             tag: std::marker::PhantomData,
         })
     }
+}
+
+pub fn make_diff<F: PrimeField, D: EvaluationDomain<F>>(
+    domain: &D,
+    old: &[u8],
+    new: &[u8],
+) -> Vec<HashMap<usize, F>> {
+    let old_elems: Vec<Vec<F>> = encode_for_domain(domain, old);
+    let new_elems: Vec<Vec<F>> = encode_for_domain(domain, new);
+    new_elems
+        .par_iter()
+        .zip(old_elems)
+        .map(|(n, o)| {
+            n.iter()
+                .zip(o)
+                .enumerate()
+                .fold(HashMap::new(), |mut acc, (index, (a, b))| {
+                    let c = *a - b;
+                    if !c.is_zero() {
+                        acc.insert(index, c);
+                    }
+                    acc
+                })
+        })
+        .collect()
 }
 
 #[cfg(test)]
