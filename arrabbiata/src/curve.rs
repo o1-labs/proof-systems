@@ -88,6 +88,11 @@ where
         sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
         comms: &[Self],
     );
+
+    /// Coin a challenge from the sponge.
+    fn squeeze_challenge(
+        sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
+    ) -> Self::ScalarField;
 }
 
 impl ArrabbiataCurve for Affine<PallasParameters> {
@@ -136,6 +141,12 @@ impl ArrabbiataCurve for Affine<PallasParameters> {
     ) {
         sponge.absorb_g(comms)
     }
+
+    fn squeeze_challenge(
+        sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
+    ) -> Self::ScalarField {
+        sponge.challenge()
+    }
 }
 
 impl ArrabbiataCurve for Affine<VestaParameters> {
@@ -183,5 +194,11 @@ impl ArrabbiataCurve for Affine<VestaParameters> {
         comms: &[Self],
     ) {
         sponge.absorb_g(comms)
+    }
+
+    fn squeeze_challenge(
+        sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
+    ) -> Self::ScalarField {
+        sponge.challenge()
     }
 }
