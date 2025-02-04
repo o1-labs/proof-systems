@@ -7,8 +7,8 @@
 The control flow can be managed by implementing a function
 <code>fetch_next_instruction</code> and <code>fetch_instruction</code> on a witness environnement.
 See the <a href="../witness/struct.Env.html" title="struct arrabbiata::witness::Env">Witness environment</a> for more details.</p>
-<p>Mostly, the instructions will be used to build the verifier circuit, but it
-can be generalized.</p>
+<p>Mostly, the instructions will be used to build the IVC circuit, but it can be
+generalized.</p>
 <p>When the circuit is predefined, the instructions can be accompanied by a
 public selector. When implementing a virtual machine, where instructions are
 unknown at compile time, other methods can be used. We leave this for future
