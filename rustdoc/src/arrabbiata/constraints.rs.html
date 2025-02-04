@@ -716,19 +716,19 @@
 <span class="kw">where
     </span>C::BaseField: PrimeField,
 {
-    <span class="doccomment">/// Get all the constraints for the IVC circuit, only.
+    <span class="doccomment">/// Get all the constraints for the verifier circuit, only.
     ///
-    /// The following gadgets are used in the IVC circuit:
+    /// The following gadgets are used in the verifier circuit:
     /// - [Instruction::Poseidon] to verify the challenges and the public
     /// IO
     /// - [Instruction::EllipticCurveScaling] and
     /// [Instruction::EllipticCurveAddition] to accumulate the commitments
-    </span><span class="comment">// FIXME: the IVC circuit might not be complete, yet. For instance, we might
+    </span><span class="comment">// FIXME: the verifier circuit might not be complete, yet. For instance, we might
     // need to accumulate the challenges and add a row to verify the output of
     // the computation of the challenges.
     // FIXME: add a test checking that whatever the value given in parameter of
     // the gadget, the constraints are the same
-    </span><span class="kw">pub fn </span>get_all_constraints_for_ivc(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;E&lt;C::ScalarField&gt;&gt; {
+    </span><span class="kw">pub fn </span>get_all_constraints_for_verifier(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;E&lt;C::ScalarField&gt;&gt; {
         <span class="comment">// Copying the instance we got in parameter, and making it mutable to
         // avoid modifying the original instance.
         </span><span class="kw">let </span><span class="kw-2">mut </span>env = <span class="self">self</span>.clone();
@@ -761,12 +761,12 @@
         constraints
     }
 
-    <span class="doccomment">/// Get all the constraints for the IVC circuit and the application.
+    <span class="doccomment">/// Get all the constraints for the verifier circuit and the application.
     </span><span class="comment">// FIXME: the application should be given as an argument to handle Rust
     // zkApp. It is only for the PoC.
     // FIXME: the selectors are not added for now.
     </span><span class="kw">pub fn </span>get_all_constraints(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;E&lt;C::ScalarField&gt;&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>constraints = <span class="self">self</span>.get_all_constraints_for_ivc();
+        <span class="kw">let </span><span class="kw-2">mut </span>constraints = <span class="self">self</span>.get_all_constraints_for_verifier();
 
         <span class="comment">// Copying the instance we got in parameter, and making it mutable to
         // avoid modifying the original instance.

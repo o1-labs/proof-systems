@@ -1173,6 +1173,13 @@
 <a href="#1173" id="1173">1173</a>
 <a href="#1174" id="1174">1174</a>
 <a href="#1175" id="1175">1175</a>
+<a href="#1176" id="1176">1176</a>
+<a href="#1177" id="1177">1177</a>
+<a href="#1178" id="1178">1178</a>
+<a href="#1179" id="1179">1179</a>
+<a href="#1180" id="1180">1180</a>
+<a href="#1181" id="1181">1181</a>
+<a href="#1182" id="1182">1182</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::CurveConfig;
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
@@ -1197,7 +1204,7 @@
 <span class="doccomment">/// The first instruction in the verifier circuit (often shortened in &quot;IVC&quot; in
 /// the crate) is the Poseidon permutation. It is used to start hashing the
 /// public input.
-</span><span class="kw">pub const </span>IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(<span class="number">0</span>);
+</span><span class="kw">pub const </span>VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(<span class="number">0</span>);
 
 <span class="doccomment">/// An environment is used to contain the state of a long &quot;running program&quot;.
 ///
@@ -1330,7 +1337,7 @@
     /// state.
     </span><span class="kw">pub </span>verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
 
-    <span class="doccomment">/// The current iteration of the IVC
+    <span class="doccomment">/// The current iteration of the IVC.
     </span><span class="kw">pub </span>current_iteration: u64,
 
     <span class="doccomment">/// The digest of the program state before executing the last iteration.
@@ -1459,10 +1466,16 @@
         <span class="kw">let </span>Column::X(idx) = col <span class="kw">else </span>{
             <span class="macro">unimplemented!</span>(<span class="string">&quot;Only works for private inputs&quot;</span>)
         };
-        <span class="kw">let </span>modulus: BigInt = <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-            E1::ScalarField::modulus_biguint().into()
+        <span class="kw">let </span>(modulus, srs_size): (BigInt, usize) = <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
+            (
+                E1::ScalarField::modulus_biguint().into(),
+                <span class="self">self</span>.srs_e1.size(),
+            )
         } <span class="kw">else </span>{
-            E2::ScalarField::modulus_biguint().into()
+            (
+                E2::ScalarField::modulus_biguint().into(),
+                <span class="self">self</span>.srs_e2.size(),
+            )
         };
         <span class="kw">let </span>v = v.mod_floor(<span class="kw-2">&amp;</span>modulus);
         <span class="kw">match </span>row {
@@ -1470,6 +1483,7 @@
                 <span class="self">self</span>.state[idx].clone_from(<span class="kw-2">&amp;</span>v);
             }
             CurrOrNext::Next =&gt; {
+                <span class="macro">assert!</span>(<span class="self">self</span>.current_row &lt; srs_size - <span class="number">1</span>, <span class="string">&quot;The witness builder is writing on the last row. It does not make sense to write on the next row after the last row&quot;</span>);
                 <span class="self">self</span>.next_state[idx].clone_from(<span class="kw-2">&amp;</span>v);
             }
         }
@@ -2079,7 +2093,7 @@
             srs_e2,
             <span class="comment">// -------
             // -------
-            // IVC only
+            // verifier only
             </span>ivc_accumulator_e1,
             ivc_accumulator_e2,
             previous_committed_state_e1,
@@ -2095,7 +2109,7 @@
             public_state: std::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_usize</span>)),
             selectors,
             challenges,
-            current_instruction: IVC_STARTING_INSTRUCTION,
+            current_instruction: VERIFIER_STARTING_INSTRUCTION,
             sponge_e1,
             sponge_e2,
             prover_sponge_state,
@@ -2133,12 +2147,12 @@
         </span><span class="self">self</span>.current_row = <span class="number">0</span>;
         <span class="self">self</span>.state = std::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_usize</span>));
         <span class="self">self</span>.idx_var = <span class="number">0</span>;
-        <span class="self">self</span>.current_instruction = IVC_STARTING_INSTRUCTION;
+        <span class="self">self</span>.current_instruction = VERIFIER_STARTING_INSTRUCTION;
         <span class="self">self</span>.idx_values_to_absorb = <span class="number">0</span>;
     }
 
     <span class="doccomment">/// The blinder used to commit, to avoid committing to the zero polynomial
-    /// and accumulate it in the IVC.
+    /// and accumulated in the IVC.
     ///
     /// It is part of the instance, and it is accumulated in the IVC.
     </span><span class="kw">pub fn </span>accumulate_commitment_blinder(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
@@ -2259,8 +2273,8 @@
 
     <span class="doccomment">/// Describe the control-flow for the IVC circuit.
     ///
-    /// For a step i + 1, the IVC circuit receives as public input the following
-    /// values:
+    /// For a step i + 1, the verifier circuit receives as public input the
+    /// following values:
     ///
     /// - The commitments to the previous witnesses.
     /// - The previous challenges (α_{i}, β_{i}, γ_{i}) - the challenges β and γ
