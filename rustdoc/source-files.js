@@ -20,6 +20,7 @@ var sourcesIndex = JSON.parse('{\
 "pickles_o1vm":["",[],["main.rs"]],\
 "poly_commitment":["",[],["combine.rs","commitment.rs","error.rs","hash_map_cache.rs","ipa.rs","kzg.rs","lib.rs","pbt_srs.rs","utils.rs"]],\
 "saffron":["",[],["blob.rs","cli.rs","commitment.rs","env.rs","lib.rs","proof.rs","utils.rs"]],\
+"saffron_og_flow":["",[],["main.rs"]],\
 "turshi":["",[],["flags.rs","helper.rs","lib.rs","memory.rs","runner.rs","word.rs"]]\
 }');
 createSourceSidebar();
