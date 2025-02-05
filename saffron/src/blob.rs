@@ -224,14 +224,15 @@ mod tests {
     proptest! {
     #![proptest_config(ProptestConfig::with_cases(10))]
     #[test]
-        fn test_update(UserData(xs) in UserData::arbitrary()
-        )
+        fn test_update((threshold, UserData(xs)) in (0.0..1.0f64).prop_flat_map(|t| {
+           UserData::arbitrary().prop_map(move |d| (t, d))
+        }))
         {
             // start with some random user data
             let mut xs_blob = FieldBlob::<Vesta>::encode::<_, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, *DOMAIN, &xs);
 
             // randomly update this data and then update the blob
-            let ys = random_perturbation(0.25, &xs);
+            let ys = random_perturbation(threshold, &xs);
             let d = make_diff(&*DOMAIN, &xs, &ys);
             xs_blob.update::<DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, &*DOMAIN, d);
 
