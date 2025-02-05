@@ -12,7 +12,7 @@ use saffron::{
     commitment::user_commitment,
     env,
     proof::{self, StorageProof},
-    utils::{self, make_diff},
+    utils::{self, make_diff, Diff},
 };
 use std::{
     fs::File,
@@ -140,7 +140,7 @@ pub fn verify_storage_proof(args: cli::VerifyStorageProofArgs) -> Result<()> {
     Ok(())
 }
 
-pub fn calculate_diff(args: cli::CalculateDiffArgs) -> Result<HexString> {
+pub fn calculate_diff(args: cli::CalculateDiffArgs) -> Result<()> {
     let (_, domain) = get_srs(args.srs_cache);
     let old_data = {
         let mut file = File::open(args.old)?;
@@ -155,8 +155,39 @@ pub fn calculate_diff(args: cli::CalculateDiffArgs) -> Result<HexString> {
         buf
     };
     let diff = make_diff(&domain, &old_data, &new_data);
-    let res = rmp_serde::to_vec(&diff)?;
-    Ok(HexString(res))
+    let mut writer = File::create(args.output)?;
+    rmp_serde::encode::write(&mut writer, &diff)?;
+    Ok(())
+}
+
+pub fn update(args: cli::UpdateArgs) -> Result<()> {
+    let (srs, domain) = get_srs(args.srs_cache);
+    let mut blob: FieldBlob<Vesta> = {
+        let file = File::open(args.input.clone())?;
+        rmp_serde::decode::from_read(file)
+    }?;
+    let diff: Diff<Fp> = {
+        let file = File::open(args.diff_file)?;
+        rmp_serde::decode::from_read(file)
+    }?;
+    blob.update::<DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(
+        &srs, &domain, diff,
+    );
+    args.assert_commitment
+        .into_iter()
+        .for_each(|asserted_commitment| {
+            let c = rmp_serde::from_slice(&asserted_commitment.0).unwrap();
+            if blob.folded_commitment != c {
+                panic!(
+                    "commitment hash mismatch: asserted {}, computed {}",
+                    asserted_commitment,
+                    HexString(rmp_serde::encode::to_vec(&c).unwrap())
+                );
+            }
+        });
+    let mut writer = File::create(args.input)?;
+    rmp_serde::encode::write(&mut writer, &blob)?;
+    Ok(())
 }
 
 pub fn main() -> Result<()> {
@@ -176,10 +207,7 @@ pub fn main() -> Result<()> {
             Ok(())
         }
         cli::Commands::VerifyStorageProof(args) => verify_storage_proof(args),
-        cli::Commands::CalculateDiff(args) => {
-            let d = calculate_diff(args)?;
-            println!("{}", d);
-            Ok(())
-        }
+        cli::Commands::CalculateDiff(args) => calculate_diff(args),
+        cli::Commands::Update(args) => update(args),
     }
 }

@@ -124,6 +124,32 @@ pub struct CalculateDiffArgs {
 
     #[arg(long, value_name = "FILE", help = "new data file")]
     pub new: String,
+
+    #[arg(long, short = 'o', value_name = "FILE", help = "output file")]
+    pub output: String,
+}
+
+#[derive(Parser)]
+pub struct UpdateArgs {
+    #[arg(long = "srs-filepath", value_name = "SRS_FILEPATH")]
+    pub srs_cache: Option<String>,
+
+    #[arg(long, short = 'i', value_name = "FILE", help = "input file")]
+    pub input: String,
+
+    #[arg(
+        long = "diff-file",
+        value_name = "FILE",
+        help = "hex encoded Diff struct"
+    )]
+    pub diff_file: String,
+
+    #[arg(
+        long = "assert-commitment",
+        value_name = "COMMITMENT",
+        help = "hash of commitments (hex encoded)"
+    )]
+    pub assert_commitment: Option<HexString>,
 }
 
 #[derive(Parser)]
@@ -145,4 +171,6 @@ pub enum Commands {
     VerifyStorageProof(VerifyStorageProofArgs),
     #[command(name = "calculate-diff")]
     CalculateDiff(CalculateDiffArgs),
+    #[command(name = "update")]
+    Update(UpdateArgs),
 }
