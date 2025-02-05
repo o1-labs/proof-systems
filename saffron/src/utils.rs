@@ -2,8 +2,11 @@ use std::{collections::HashMap, marker::PhantomData};
 
 use ark_ff::{BigInteger, PrimeField};
 use ark_poly::EvaluationDomain;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use o1_utils::FieldHelpers;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use thiserror::Error;
 use tracing::instrument;
 
@@ -180,29 +183,39 @@ impl QueryBytes {
     }
 }
 
+#[serde_as]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(bound = "F: CanonicalDeserialize + CanonicalSerialize")]
+pub struct Diff<F> {
+    #[serde_as(as = "Vec<HashMap<_, o1_utils::serialization::SerdeAs>>")]
+    pub evaluation_diffs: Vec<HashMap<usize, F>>,
+}
+
 pub fn make_diff<F: PrimeField, D: EvaluationDomain<F>>(
     domain: &D,
     old: &[u8],
     new: &[u8],
-) -> Vec<HashMap<usize, F>> {
+) -> Diff<F> {
     let old_elems: Vec<Vec<F>> = encode_for_domain(domain, old);
     let new_elems: Vec<Vec<F>> = encode_for_domain(domain, new);
-    new_elems
-        .par_iter()
-        .zip(old_elems)
-        .map(|(n, o)| {
-            n.iter()
-                .zip(o)
-                .enumerate()
-                .fold(HashMap::new(), |mut acc, (index, (a, b))| {
-                    let c = *a - b;
-                    if !c.is_zero() {
-                        acc.insert(index, c);
-                    }
-                    acc
-                })
-        })
-        .collect()
+    Diff {
+        evaluation_diffs: new_elems
+            .par_iter()
+            .zip(old_elems)
+            .map(|(n, o)| {
+                n.iter()
+                    .zip(o)
+                    .enumerate()
+                    .fold(HashMap::new(), |mut acc, (index, (a, b))| {
+                        let c = *a - b;
+                        if !c.is_zero() {
+                            acc.insert(index, c);
+                        }
+                        acc
+                    })
+            })
+            .collect(),
+    }
 }
 
 #[cfg(test)]

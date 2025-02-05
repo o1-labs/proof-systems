@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 use crate::{
     commitment::fold_commitments,
-    utils::{decode_into, encode_for_domain},
+    utils::{decode_into, encode_for_domain, Diff},
 };
 use ark_ec::AffineRepr;
 use ark_ff::{PrimeField, Zero};
@@ -122,16 +120,17 @@ impl<G: KimchiCurve> FieldBlob<G> {
         &mut self,
         srs: &SRS<G>,
         domain: &Radix2EvaluationDomain<G::ScalarField>,
-        diffs: Vec<HashMap<usize, G::ScalarField>>,
+        diff: Diff<G::ScalarField>,
     ) {
-        let updates: Vec<(usize, PolyComm<G>, DensePolynomial<G::ScalarField>)> = diffs
+        let updates: Vec<(usize, PolyComm<G>, DensePolynomial<G::ScalarField>)> = diff
+            .evaluation_diffs
             .into_par_iter()
             .enumerate()
-            .map(|(index, diff)| {
+            .map(|(index, d)| {
                 let d_p = {
                     let evals = (0..domain.size())
                         .map(|i| {
-                            diff.get(&i)
+                            d.get(&i)
                                 .copied()
                                 .unwrap_or(<G as AffineRepr>::ScalarField::zero())
                         })
