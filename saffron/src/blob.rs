@@ -18,7 +18,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::ops::Add;
-use tracing::{debug, debug_span, instrument};
+use tracing::{debug_span, info, instrument};
 
 // A FieldBlob<F> represents the encoding of a Vec<u8> as a list of polynomials over F,
 // where F is a prime field. The polyonomials are represented in the monomial basis.
@@ -74,7 +74,7 @@ impl<G: KimchiCurve> FieldBlob<G> {
             fold_commitments(&mut sponge, &commitments)
         };
 
-        debug!(
+        info!(
             "Encoded {:.2} MB into {} polynomials",
             bytes.len() as f32 / 1_000_000.0,
             data.len()
@@ -124,16 +124,10 @@ impl<G: KimchiCurve> FieldBlob<G> {
         domain: &Radix2EvaluationDomain<G::ScalarField>,
         diffs: Vec<HashMap<usize, G::ScalarField>>,
     ) {
-        let basis = srs.get_lagrange_basis(*domain);
         let updates: Vec<(usize, PolyComm<G>, DensePolynomial<G::ScalarField>)> = diffs
             .into_par_iter()
             .enumerate()
             .map(|(index, diff)| {
-                let d_commitment = {
-                    let zero = PolyComm::<G>::new(vec![G::zero()]);
-                    diff.iter()
-                        .fold(zero, |acc, (i, a)| acc.add(&basis[*i].scale(*a)))
-                };
                 let d_p = {
                     let evals = (0..domain.size())
                         .map(|i| {
@@ -144,6 +138,7 @@ impl<G: KimchiCurve> FieldBlob<G> {
                         .collect();
                     Evaluations::from_vec_and_domain(evals, *domain).interpolate()
                 };
+                let d_commitment = srs.commit_non_hiding(&d_p, 1);
                 (index, d_commitment, d_p)
             })
             .collect();
