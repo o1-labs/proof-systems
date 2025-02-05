@@ -115,6 +115,18 @@ pub struct VerifyStorageProofArgs {
 }
 
 #[derive(Parser)]
+pub struct CalculateDiffArgs {
+    #[arg(long = "srs-filepath", value_name = "SRS_FILEPATH")]
+    pub srs_cache: Option<String>,
+
+    #[arg(long, value_name = "FILE", help = "old data file")]
+    pub old: String,
+
+    #[arg(long, value_name = "FILE", help = "new data file")]
+    pub new: String,
+}
+
+#[derive(Parser)]
 #[command(
     name = "saffron",
     version = "0.1",
@@ -131,4 +143,6 @@ pub enum Commands {
     StorageProof(StorageProofArgs),
     #[command(name = "verify-storage-proof")]
     VerifyStorageProof(VerifyStorageProofArgs),
+    #[command(name = "calculate-diff")]
+    CalculateDiff(CalculateDiffArgs),
 }

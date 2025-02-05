@@ -12,7 +12,7 @@ use saffron::{
     commitment::user_commitment,
     env,
     proof::{self, StorageProof},
-    utils,
+    utils::{self, make_diff},
 };
 use std::{
     fs::File,
@@ -140,6 +140,25 @@ pub fn verify_storage_proof(args: cli::VerifyStorageProofArgs) -> Result<()> {
     Ok(())
 }
 
+pub fn calculate_diff(args: cli::CalculateDiffArgs) -> Result<HexString> {
+    let (_, domain) = get_srs(args.srs_cache);
+    let old_data = {
+        let mut file = File::open(args.old)?;
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
+        buf
+    };
+    let new_data = {
+        let mut file = File::open(args.new)?;
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
+        buf
+    };
+    let diff = make_diff(&domain, &old_data, &new_data);
+    let res = rmp_serde::to_vec(&diff)?;
+    Ok(HexString(res))
+}
+
 pub fn main() -> Result<()> {
     env::init_console_subscriber();
     let args = cli::Commands::parse();
@@ -157,5 +176,10 @@ pub fn main() -> Result<()> {
             Ok(())
         }
         cli::Commands::VerifyStorageProof(args) => verify_storage_proof(args),
+        cli::Commands::CalculateDiff(args) => {
+            let d = calculate_diff(args)?;
+            println!("{}", d);
+            Ok(())
+        }
     }
 }
