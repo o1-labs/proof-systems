@@ -11,10 +11,12 @@ SRS_ARG=""
 if [ $# -eq 2 ]; then
    SRS_ARG="--srs-filepath $2"
 fi
+
 ENCODED_FILE="${INPUT_FILE%.*}.bin"
 DECODED_FILE="${INPUT_FILE%.*}-decoded${INPUT_FILE##*.}"
-PERTURBED_FILE="${INPUT_FILE%.*}_perturbed"
+PERTURBED_FILE="${INPUT_FILE%.*}_perturbed${INPUT_FILE##*.}"
 ENCODED_DIFF_FILE="${ENCODED_FILE%.*}_diff.bin"
+DECODED_PERTURBED_FILE="${PERTURBED_FILE}-decoded${INPUT_FILE##*.}"
 
 compare_files() {
    local file1="$1"
@@ -35,8 +37,7 @@ perturb_bytes() {
    local input_file=$1
    local output_file=$2
    local threshold=${3:-0.1}  # Default 10% chance
-   
-   perl -pe "rand() < $threshold and \$_ = chr(rand(256))" "$input_file" > "$output_file"
+   perl -pe 'rand() < '$threshold' and $_ = chr(rand(256)) for split ""' "$input_file" > "$output_file"
 }
 
 # Ensure input file exists
@@ -98,14 +99,14 @@ cargo run --release --bin saffron update -i "$ENCODED_FILE" --diff-file "$ENCODE
 
 # Run decode
 echo "Decoding $ENCODED_FILE to $DECODED_FILE"
-if ! cargo run --release --bin saffron decode -i "$ENCODED_FILE" -o "$DECODED_FILE" $SRS_ARG; then
+if ! cargo run --release --bin saffron decode -i "$ENCODED_FILE" -o "$DECODED_PERTURBED_FILE" $SRS_ARG; then
     echo "Decoding failed"
     exit 1
 fi
 
 # Compare update file to perturbed file
-compare_files "$PERTURBED_FILE" "$DECODED_FILE"
+compare_files "$PERTURBED_FILE" "$DECODED_PERTURBED_FILE"
 
 echo "Cleaning up temporary files..."
-rm -f "$ENCODED_FILE" "$DECODED_FILE" "$PERTURBED_FILE" "$ENCODED_DIFF_FILE"
+rm -f "$ENCODED_FILE" "$DECODED_FILE" "$PERTURBED_FILE" "$ENCODED_DIFF_FILE" "$DECODED_PERTURBED_FILE"
 exit 0
