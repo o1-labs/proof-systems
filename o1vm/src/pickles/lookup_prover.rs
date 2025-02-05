@@ -40,18 +40,18 @@ impl<X> IntoIterator for ColumnEnv<X> {
 }
 
 pub struct AllColumns<X> {
-    cols: ColumnEnv<X>,
-    t_1: X,
-    t_2: X,
+    _cols: ColumnEnv<X>,
+    _t_1: X,
+    _t_2: X,
 }
 pub struct Eval<F: PrimeField> {
-    zeta: AllColumns<F>,
-    zeta_omega: AllColumns<F>,
+    _zeta: AllColumns<F>,
+    _zeta_omega: AllColumns<F>,
 }
 
 pub struct Proof<G: KimchiCurve> {
     //placeholder
-    a: G::ScalarField,
+    _a: G::ScalarField,
 }
 
 pub fn aux_prove<G: KimchiCurve, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone>(
@@ -59,8 +59,8 @@ pub fn aux_prove<G: KimchiCurve, EFqSponge: FqSponge<G::BaseField, G, G::ScalarF
     srs: &SRS<G>,
     domain: EvaluationDomains<G::ScalarField>,
     mut fq_sponge: EFqSponge,
-    constraints: &[E<G::ScalarField>],
-) ->  {
+    _constraints: &[E<G::ScalarField>],
+) {
     let AuxiliaryProofInput {
         wires,
         arity,
@@ -136,5 +136,5 @@ pub fn aux_prove<G: KimchiCurve, EFqSponge: FqSponge<G::BaseField, G, G::ScalarF
         .for_each(|com| absorb_commitment(&mut fq_sponge, &com));
 
     // Constraints combiner
-    let alpha: G::ScalarField = fq_sponge.challenge();
+    let _alpha: G::ScalarField = fq_sponge.challenge();
 }
