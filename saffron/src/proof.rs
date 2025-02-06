@@ -132,6 +132,8 @@ mod tests {
     use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
     use proptest::prelude::*;
 
+    type VestaFqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
+
     static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
         if let Ok(srs) = std::env::var("SRS_FILEPATH") {
             env::get_srs_from_cache(srs)
@@ -154,18 +156,18 @@ mod tests {
         let (commitment,_) = {
             let field_elems = encode_for_domain(&*DOMAIN, &data);
             let user_commitments = commit_to_field_elems(&*SRS, *DOMAIN, field_elems);
-            let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+            let mut fq_sponge = VestaFqSponge::new(
                 mina_poseidon::pasta::fq_kimchi::static_params(),
             );
             fold_commitments(&mut fq_sponge, &user_commitments)
         };
-        let blob = FieldBlob::<Vesta>::encode::<_, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, *DOMAIN, &data);
+        let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &data);
         let evaluation_point = Fp::rand(&mut rng);
         let proof = storage_proof::<
             Vesta, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>
 
         >(&*SRS, &*GROUP_MAP, blob, evaluation_point, &mut rng);
-        let res = verify_storage_proof::<Vesta, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(
+        let res = verify_storage_proof::<Vesta, VestaFqSponge>(
             &*SRS,
             &*GROUP_MAP,
             commitment,

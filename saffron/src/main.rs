@@ -22,7 +22,7 @@ use tracing::{debug, debug_span};
 
 pub const DEFAULT_SRS_SIZE: usize = 1 << 16;
 
-type FqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
+type VestaFqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 
 fn get_srs(cache: Option<String>) -> (SRS<Vesta>, Radix2EvaluationDomain<Fp>) {
     let res = match cache {
@@ -77,7 +77,7 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
     let mut file = File::open(args.input)?;
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
-    let blob = FieldBlob::<Vesta>::encode::<_, FqSponge>(&srs, domain, &buf);
+    let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&srs, domain, &buf);
     if let Some(asserted) = args.assert_commitment {
         let asserted_commitment =
             rmp_serde::from_slice(&asserted.0).expect("failed to decode asserted commitment");
@@ -105,7 +105,7 @@ pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<HexString>
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
     let field_elems = utils::encode_for_domain(&domain_fp, &buf);
-    let commitment = user_commitment::<_, FqSponge>(&srs, domain_fp, field_elems);
+    let commitment = user_commitment::<_, VestaFqSponge>(&srs, domain_fp, field_elems);
     let res = rmp_serde::to_vec(&commitment)?;
     Ok(HexString(res))
 }
@@ -118,7 +118,13 @@ pub fn storage_proof(args: cli::StorageProofArgs) -> Result<HexString> {
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
         let mut rng = OsRng;
         let evaluation_point = utils::encode(&args.challenge.0);
-        proof::storage_proof::<Vesta, FqSponge>(&srs, &group_map, blob, evaluation_point, &mut rng)
+        proof::storage_proof::<Vesta, VestaFqSponge>(
+            &srs,
+            &group_map,
+            blob,
+            evaluation_point,
+            &mut rng,
+        )
     };
     let res = rmp_serde::to_vec(&proof)?;
     Ok(HexString(res))
@@ -131,7 +137,7 @@ pub fn verify_storage_proof(args: cli::VerifyStorageProofArgs) -> Result<()> {
     let evaluation_point = utils::encode(&args.challenge.0);
     let proof: StorageProof<Vesta> = rmp_serde::from_slice(&args.proof.0)?;
     let mut rng = OsRng;
-    let res = proof::verify_storage_proof::<Vesta, FqSponge>(
+    let res = proof::verify_storage_proof::<Vesta, VestaFqSponge>(
         &srs,
         &group_map,
         commitment,

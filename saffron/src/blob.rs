@@ -169,6 +169,8 @@ mod tests {
     use proptest::prelude::*;
     use rand::Rng;
 
+    type VestaFqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
+
     static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
         if let Ok(srs) = std::env::var("SRS_FILEPATH") {
             env::get_srs_from_cache(srs)
@@ -185,7 +187,7 @@ mod tests {
     #![proptest_config(ProptestConfig::with_cases(20))]
     #[test]
     fn test_round_trip_blob_encoding(UserData(xs) in UserData::arbitrary())
-      { let blob = FieldBlob::<Vesta>::encode::<_, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, *DOMAIN, &xs);
+      { let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
         let bytes = rmp_serde::to_vec(&blob).unwrap();
         let a = rmp_serde::from_slice(&bytes).unwrap();
         // check that ark-serialize is behaving as expected
@@ -202,7 +204,7 @@ mod tests {
         fn test_user_and_storage_provider_commitments_equal(UserData(xs) in UserData::arbitrary())
           { let elems = encode_for_domain(&*DOMAIN, &xs);
             let user_commitments = commit_to_field_elems(&*SRS, *DOMAIN, elems);
-            let blob = FieldBlob::<Vesta>::encode::<_, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, *DOMAIN, &xs);
+            let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
             prop_assert_eq!(user_commitments, blob.commitments);
           }
         }
@@ -224,24 +226,24 @@ mod tests {
     proptest! {
     #![proptest_config(ProptestConfig::with_cases(10))]
     #[test]
-        fn test_update((threshold, UserData(xs)) in (0.0..1.0f64).prop_flat_map(|t| {
+        fn test_update((threshold, UserData(xs)) in (0.0..1.0).prop_flat_map(|t| {
            UserData::arbitrary().prop_map(move |d| (t, d))
         }))
         {
             // start with some random user data
-            let mut xs_blob = FieldBlob::<Vesta>::encode::<_, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, *DOMAIN, &xs);
+            let mut xs_blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
 
             // randomly update this data and then update the blob
             let ys = random_perturbation(threshold, &xs);
             let d = make_diff(&*DOMAIN, &xs, &ys);
-            xs_blob.update::<DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, &*DOMAIN, d);
+            xs_blob.update::<VestaFqSponge>(&*SRS, &*DOMAIN, d);
 
             // check that the user and SP agree on the new data
             let user_commitments = {
                 let elems = encode_for_domain(&*DOMAIN, &ys);
                 commit_to_field_elems(&*SRS, *DOMAIN, elems)
             };
-            let ys_blob = FieldBlob::<Vesta>::encode::<_, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, *DOMAIN, &ys);
+            let ys_blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &ys);
             prop_assert_eq!(user_commitments.clone(), ys_blob.commitments.clone());
 
             // the updated blob should be the same as if we just start with the new data
