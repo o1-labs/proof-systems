@@ -11,12 +11,13 @@ use kimchi::circuits::expr::{ConstantExpr, Expr};
 use serde::{Deserialize, Serialize};
 use std::iter::Chain;
 
+#[derive(Clone, PartialEq, Copy)]
 pub enum LookupColumns {
     Wires(usize),
     Inverses(usize),
     Acc,
 }
-
+#[derive(Clone)]
 pub struct ColumnEnv<X> {
     pub wires: Vec<X>,
     pub inverses: Vec<X>,
@@ -37,6 +38,33 @@ impl<X> IntoIterator for ColumnEnv<X> {
     }
 }
 
+impl<X> ColumnEnv<X> {
+    pub fn my_map<Y, F>(self: Self, f: F) -> ColumnEnv<Y>
+    where
+        F: FnMut(X) -> Y,
+        Self: Sized,
+    {
+        let nb_wires = self.wires.len();
+        let nb_inverses = self.inverses.len();
+        let mut iterator = self.into_iter().map(f);
+        let mut new_wires = vec![];
+        let mut new_inverses = vec![];
+        for _ in 0..nb_wires {
+            new_wires.push(iterator.next().unwrap());
+        }
+        for _ in 0..nb_inverses {
+            new_inverses.push(iterator.next().unwrap());
+        }
+        let new_acc = iterator.next().unwrap();
+        assert!(iterator.next().is_none());
+        ColumnEnv {
+            wires: new_wires,
+            inverses: new_inverses,
+            acc: new_acc,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LookupChallengeTerm {
     //The challenge to compute 1/(beta + lookupvalue)
@@ -48,9 +76,9 @@ pub enum LookupChallengeTerm {
 }
 
 pub struct LookupChallenges<F> {
-    beta: F,
-    gamma: F,
-    alpha: F,
+    pub beta: F,
+    pub gamma: F,
+    pub alpha: F,
 }
 
 impl<F: Field> Index<LookupChallengeTerm> for LookupChallenges<F> {
