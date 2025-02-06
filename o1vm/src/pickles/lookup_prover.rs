@@ -20,9 +20,9 @@ pub struct LookupProofInput<F: PrimeField> {
     gamma_challenge: F,
 }
 pub struct ColumnEnv<X> {
-    wires: Vec<X>,
-    inverses: Vec<X>,
-    acc: X,
+    pub wires: Vec<X>,
+    pub inverses: Vec<X>,
+    pub acc: X,
 }
 
 impl<X> IntoIterator for ColumnEnv<X> {
