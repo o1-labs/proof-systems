@@ -13,10 +13,10 @@ if [ $# -eq 2 ]; then
 fi
 
 ENCODED_FILE="${INPUT_FILE%.*}.bin"
-DECODED_FILE="${INPUT_FILE%.*}-decoded${INPUT_FILE##*.}"
-PERTURBED_FILE="${INPUT_FILE%.*}_perturbed${INPUT_FILE##*.}"
+DECODED_FILE="${INPUT_FILE%.*}_decoded.${INPUT_FILE##*.}"
+PERTURBED_FILE="${INPUT_FILE%.*}_perturbed.${INPUT_FILE##*.}"
 ENCODED_DIFF_FILE="${ENCODED_FILE%.*}_diff.bin"
-DECODED_PERTURBED_FILE="${PERTURBED_FILE}-decoded${INPUT_FILE##*.}"
+DECODED_PERTURBED_FILE="${PERTURBED_FILE%.*}_decoded.${PERTURBED_FILE##*.}"
 
 compare_files() {
    local file1="$1"
