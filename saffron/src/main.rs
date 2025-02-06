@@ -78,18 +78,21 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
     let blob = FieldBlob::<Vesta>::encode::<_, FqSponge>(&srs, domain, &buf);
-    args.assert_commitment
-        .into_iter()
-        .for_each(|asserted_commitment| {
-            let c = rmp_serde::from_slice(&asserted_commitment.0).unwrap();
-            if blob.folded_commitment != c {
-                panic!(
-                    "commitment hash mismatch: asserted {}, computed {}",
-                    asserted_commitment,
-                    HexString(rmp_serde::encode::to_vec(&c).unwrap())
-                );
-            }
-        });
+    if let Some(asserted) = args.assert_commitment {
+        let asserted_commitment =
+            rmp_serde::from_slice(&asserted.0).expect("failed to decode asserted commitment");
+
+        assert_eq!(
+            blob.folded_commitment,
+            asserted_commitment,
+            "commitment mismatch: asserted {}, computed {}",
+            asserted,
+            HexString(
+                rmp_serde::encode::to_vec(&blob.folded_commitment)
+                    .expect("failed to encode commitment")
+            )
+        );
+    }
     debug!(output_file = args.output, "Writing encoded blob to file",);
     let mut writer = File::create(args.output)?;
     rmp_serde::encode::write(&mut writer, &blob)?;
@@ -173,18 +176,21 @@ pub fn update(args: cli::UpdateArgs) -> Result<()> {
     blob.update::<DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(
         &srs, &domain, diff,
     );
-    args.assert_commitment
-        .into_iter()
-        .for_each(|asserted_commitment| {
-            let c = rmp_serde::from_slice(&asserted_commitment.0).unwrap();
-            if blob.folded_commitment != c {
-                panic!(
-                    "commitment hash mismatch: asserted {}, computed {}",
-                    asserted_commitment,
-                    HexString(rmp_serde::encode::to_vec(&c).unwrap())
-                );
-            }
-        });
+    if let Some(asserted) = args.assert_commitment {
+        let asserted_commitment =
+            rmp_serde::from_slice(&asserted.0).expect("failed to decode asserted commitment");
+
+        assert_eq!(
+            blob.folded_commitment,
+            asserted_commitment,
+            "commitment mismatch: asserted {}, computed {}",
+            asserted,
+            HexString(
+                rmp_serde::encode::to_vec(&blob.folded_commitment)
+                    .expect("failed to encode computed commitment")
+            )
+        );
+    }
     let mut writer = File::create(args.input)?;
     rmp_serde::encode::write(&mut writer, &blob)?;
     Ok(())
