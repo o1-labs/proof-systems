@@ -13,7 +13,7 @@ use std::iter::Chain;
 /// It then proves that the sum 1/(beta + table) = PI - PO
 /// where the table term are term from fixed lookup or RAMLookup
 
-pub struct AuxiliaryProofInput<F: PrimeField> {
+pub struct LookupProofInput<F: PrimeField> {
     wires: Vec<Vec<F>>,
     arity: Vec<Vec<usize>>,
     beta_challenge: F,
@@ -55,13 +55,13 @@ pub struct Proof<G: KimchiCurve> {
 }
 
 pub fn aux_prove<G: KimchiCurve, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone>(
-    input: AuxiliaryProofInput<G::ScalarField>,
+    input: LookupProofInput<G::ScalarField>,
     srs: &SRS<G>,
     domain: EvaluationDomains<G::ScalarField>,
     mut fq_sponge: EFqSponge,
     _constraints: &[E<G::ScalarField>],
 ) {
-    let AuxiliaryProofInput {
+    let LookupProofInput {
         wires,
         arity,
         beta_challenge,
