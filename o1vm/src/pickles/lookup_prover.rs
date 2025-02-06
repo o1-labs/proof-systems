@@ -1,13 +1,12 @@
 use crate::E;
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
-use core::iter::Once;
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
 use mina_poseidon::FqSponge;
 use poly_commitment::{commitment::absorb_commitment, ipa::SRS, SRS as _};
 //TODO Parralelize
 //use rayon::prelude::*;
-use std::iter::Chain;
+use crate::pickles::lookup_columns::ColumnEnv;
 
 /// This prover takes one Public Input and one Public Output
 /// It then proves that the sum 1/(beta + table) = PI - PO
@@ -19,25 +18,7 @@ pub struct LookupProofInput<F: PrimeField> {
     beta_challenge: F,
     gamma_challenge: F,
 }
-pub struct ColumnEnv<X> {
-    pub wires: Vec<X>,
-    pub inverses: Vec<X>,
-    pub acc: X,
-}
 
-impl<X> IntoIterator for ColumnEnv<X> {
-    type Item = X;
-    type IntoIter = Chain<
-        Chain<<Vec<X> as IntoIterator>::IntoIter, <Vec<X> as IntoIterator>::IntoIter>,
-        <Once<X> as IntoIterator>::IntoIter,
-    >;
-    fn into_iter(self) -> Self::IntoIter {
-        self.wires
-            .into_iter()
-            .chain(self.inverses)
-            .chain(std::iter::once(self.acc))
-    }
-}
 
 pub struct AllColumns<X> {
     _cols: ColumnEnv<X>,

@@ -1,6 +1,6 @@
-use crate::pickles::lookup_prover::ColumnEnv;
 use ark_ff::{FftField, Field};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
+use core::iter::Once;
 use core::ops::Index;
 use kimchi::circuits::domains::Domain;
 use kimchi::circuits::domains::EvaluationDomains;
@@ -9,12 +9,34 @@ use kimchi::circuits::expr::ColumnEnvironment;
 use kimchi::circuits::expr::Constants;
 use kimchi::circuits::expr::{ConstantExpr, Expr};
 use serde::{Deserialize, Serialize};
+use std::iter::Chain;
 
 pub enum LookupColumns {
     Wires(usize),
     Inverses(usize),
     Acc,
 }
+
+pub struct ColumnEnv<X> {
+    pub wires: Vec<X>,
+    pub inverses: Vec<X>,
+    pub acc: X,
+}
+
+impl<X> IntoIterator for ColumnEnv<X> {
+    type Item = X;
+    type IntoIter = Chain<
+        Chain<<Vec<X> as IntoIterator>::IntoIter, <Vec<X> as IntoIterator>::IntoIter>,
+        <Once<X> as IntoIterator>::IntoIter,
+    >;
+    fn into_iter(self) -> Self::IntoIter {
+        self.wires
+            .into_iter()
+            .chain(self.inverses)
+            .chain(std::iter::once(self.acc))
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LookupChallengeTerm {
     //The challenge to compute 1/(beta + lookupvalue)
