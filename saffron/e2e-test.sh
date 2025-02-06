@@ -33,11 +33,39 @@ compare_files() {
    fi
 }
 
-perturb_bytes() {
+perturb_file_bytes() {
    local input_file=$1
    local output_file=$2
    local threshold=${3:-0.1}  # Default 10% chance
-   perl -pe 'rand() < '$threshold' and $_ = chr(rand(256)) for split ""' "$input_file" > "$output_file"
+
+   python3 -c '
+import sys
+import random
+
+threshold = float(sys.argv[3])
+
+with open(sys.argv[1], "rb") as f:
+   data = bytearray(f.read())
+
+changed = False
+for i in range(len(data)):
+   if random.random() < threshold:
+       data[i] = random.randrange(256)
+       changed = True
+
+# Force at least one change if none made
+if not changed:
+   pos = random.randrange(len(data))
+   data[pos] = random.randrange(256)
+
+with open(sys.argv[2], "wb") as f:
+   f.write(data)
+' "$input_file" "$output_file" "$threshold"
+
+   if cmp -s "$input_file" "$output_file"; then
+       echo "Error: Output file is identical to input file. Perturbation failed."
+       exit 1
+   fi
 }
 
 # Ensure input file exists
@@ -88,8 +116,8 @@ fi
 # Compare file to original
 compare_files "$INPUT_FILE" "$DECODED_FILE"
 
-# Usage example in your script:
-perturb_bytes "$INPUT_FILE" "$PERTURBED_FILE" 0.1
+# create a random update to the original data
+perturb_file_bytes "$INPUT_FILE" "$PERTURBED_FILE" 0.25
 
 echo "Calculating diff for upated $INPUT_FILE (stored updated data in $PERTURBED_FILE)"
 cargo run --release --bin saffron calculate-diff --old "$INPUT_FILE" --new "$PERTURBED_FILE" -o "$ENCODED_DIFF_FILE" $SRS_ARG
