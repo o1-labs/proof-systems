@@ -1,9 +1,9 @@
 use crate::{
     commitment::Commitment,
-    utils::{decode_into, encode_for_domain},
+    utils::{decode_into, encode_for_domain}, diff::Diff,
 };
 use ark_ff::PrimeField;
-use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Evaluations};
+use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use kimchi::curve::KimchiCurve;
 use mina_poseidon::FqSponge;
@@ -103,6 +103,29 @@ impl<G: KimchiCurve> FieldBlob<G> {
         bytes.truncate(blob.n_bytes);
         bytes
     }
+
+    #[instrument(skip_all, level = "debug")]
+    pub fn update<EFqSponge>(
+        &mut self,
+        srs: &SRS<G>,
+        domain: &Radix2EvaluationDomain<G::ScalarField>,
+        diff: &Diff<G::ScalarField>,
+    ) where
+        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
+    {
+        self.data = diff
+            .evaluation_diffs
+            .par_iter() // Changed to par_iter()
+            .zip(self.data.par_iter()) // Also parallelize this iterator
+            .map(|(evals, p)| {
+                let d_p =
+                    // TODO: Want to use lagrange polynomials here, not fft.
+                    { Evaluations::from_vec_and_domain(evals.clone(), *domain).interpolate() };
+                p + &d_p
+            })
+            .collect::<Vec<_>>();
+        self.commitment = self.commitment.update::<EFqSponge>(srs, *domain, diff);
+    }
 }
 
 #[cfg(test)]
@@ -156,4 +179,47 @@ mod tests {
             prop_assert_eq!(user_commitments, blob.commitment);
           }
         }
+
+    fn random_perturbation(threshold: f64, data: &[u8]) -> Vec<u8> {
+        let mut rng = rand::thread_rng();
+        data.iter()
+            .map(|b| {
+                let n = rng.gen::<f64>();
+                if n < threshold {
+                    rng.gen::<u8>()
+                } else {
+                    *b
+                }
+            })
+            .collect()
+    }
+
+        proptest! {
+    #![proptest_config(ProptestConfig::with_cases(10))]
+    #[test]
+        fn test_update((threshold, UserData(xs)) in (0.0..1.0).prop_flat_map(|t| {
+           UserData::arbitrary().prop_map(move |d| (t, d))
+        }))
+        {
+            // start with some random user data
+            let mut xs_blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
+
+            // randomly update this data and then update the blob
+            let ys = random_perturbation(threshold, &xs);
+            let d = Diff::create(&*DOMAIN, &xs, &ys);
+            xs_blob.update::<VestaFqSponge>(&*SRS, &*DOMAIN, &d);
+
+            // check that the user and SP agree on the new data
+            let user_commitment = {
+                let elems = encode_for_domain(&*DOMAIN, &ys);
+                commit_to_field_elems::<Vesta, VestaFqSponge>(&*SRS, *DOMAIN, elems)
+            };
+            let ys_blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &ys);
+            prop_assert_eq!(user_commitment.clone(), ys_blob.commitment.clone());
+
+            // the updated blob should be the same as if we just start with the new data
+            prop_assert_eq!(xs_blob, ys_blob)
+        }
+
+    }
 }
