@@ -98,13 +98,22 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
 
 pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<HexString> {
     let (srs, domain_fp) = get_srs(args.srs_cache);
-    let mut file = File::open(args.input)?;
-    let mut buf = Vec::new();
-    file.read_to_end(&mut buf)?;
-    let field_elems = utils::encode_for_domain(&domain_fp, &buf);
-    let commitment = commit_to_field_elems::<_, VestaFqSponge>(&srs, domain_fp, field_elems);
-    let res = rmp_serde::to_vec(&commitment)?;
-    Ok(HexString(res))
+    let buf = {
+        let mut file = File::open(args.input)?;
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
+        buf
+    };
+    let commitment = {
+        let field_elems = utils::encode_for_domain(&domain_fp, &buf);
+        commit_to_field_elems::<_, VestaFqSponge>(&srs, domain_fp, field_elems)
+    };
+    {
+        let mut writer = File::create(args.output)?;
+        rmp_serde::encode::write(&mut writer, &commitment)?;
+    }
+    let c = rmp_serde::encode::to_vec(&commitment.folded)?;
+    Ok(HexString(c))
 }
 
 pub fn storage_proof(args: cli::StorageProofArgs) -> Result<HexString> {
