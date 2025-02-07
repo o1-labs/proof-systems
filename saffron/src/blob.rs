@@ -1,5 +1,5 @@
 use crate::{
-    commitment::fold_commitments,
+    commitment::Commitment,
     utils::{decode_into, encode_for_domain},
 };
 use ark_ff::PrimeField;
@@ -22,10 +22,7 @@ use tracing::{debug, debug_span, instrument};
 pub struct FieldBlob<G: CommitmentCurve> {
     pub n_bytes: usize,
     pub domain_size: usize,
-    pub commitments: Vec<PolyComm<G>>,
-    pub folded_commitment: PolyComm<G>,
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub alpha: G::ScalarField,
+    pub commitment: Commitment<G>,
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub data: Vec<DensePolynomial<G::ScalarField>>,
 }
@@ -60,12 +57,10 @@ impl<G: KimchiCurve> FieldBlob<G> {
                 .map(|chunk| Evaluations::from_vec_and_domain(chunk.to_vec(), domain).interpolate())
                 .collect()
         });
-
-        let commitments = commit_to_blob_data(srs, &data);
-
-        let (folded_commitment, alpha) = {
+        let commitment = {
+            let chunks = commit_to_blob_data(srs, &data);
             let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
-            fold_commitments(&mut sponge, &commitments)
+            Commitment::from_chunks(chunks, &mut sponge)
         };
 
         debug!(
@@ -77,9 +72,7 @@ impl<G: KimchiCurve> FieldBlob<G> {
         FieldBlob {
             n_bytes: bytes.len(),
             domain_size,
-            commitments,
-            folded_commitment,
-            alpha,
+            commitment,
             data,
         }
     }
@@ -160,7 +153,7 @@ mod tests {
           { let elems = encode_for_domain(&*DOMAIN, &xs);
             let user_commitments = commit_to_field_elems(&*SRS, *DOMAIN, elems);
             let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
-            prop_assert_eq!(user_commitments, blob.commitments);
+            prop_assert_eq!(user_commitments, blob.commitment.chunks);
           }
         }
 }

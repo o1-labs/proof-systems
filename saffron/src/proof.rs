@@ -44,7 +44,7 @@ where
             .fold(init, |(acc_poly, curr_power), curr_poly| {
                 (
                     acc_poly + curr_poly.scale(curr_power),
-                    curr_power * blob.alpha,
+                    curr_power * blob.commitment.alpha,
                 )
             })
             .0

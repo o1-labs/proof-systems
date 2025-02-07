@@ -82,7 +82,7 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
         .into_iter()
         .for_each(|asserted_commitment| {
             let c = rmp_serde::from_slice(&asserted_commitment.0).unwrap();
-            if blob.folded_commitment != c {
+            if blob.commitment.folded != c {
                 panic!(
                     "commitment hash mismatch: asserted {}, computed {}",
                     asserted_commitment,
