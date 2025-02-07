@@ -1,9 +1,8 @@
 use crate::{
-    commitment::fold_commitments,
+    commitment::Commitment,
     utils::{decode_into, encode_for_domain, Diff},
 };
-use ark_ec::AffineRepr;
-use ark_ff::{PrimeField, Zero};
+use ark_ff::PrimeField;
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain,
 };
@@ -15,7 +14,6 @@ use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _}
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::ops::Add;
 use tracing::{debug_span, info, instrument};
 
 // A FieldBlob<F> represents the encoding of a Vec<u8> as a list of polynomials over F,
@@ -26,10 +24,7 @@ use tracing::{debug_span, info, instrument};
 pub struct FieldBlob<G: CommitmentCurve> {
     pub n_bytes: usize,
     pub domain_size: usize,
-    pub commitments: Vec<PolyComm<G>>,
-    pub folded_commitment: PolyComm<G>,
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub alpha: G::ScalarField,
+    pub commitment: Commitment<G>,
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub data: Vec<DensePolynomial<G::ScalarField>>,
 }
@@ -65,11 +60,10 @@ impl<G: KimchiCurve> FieldBlob<G> {
                 .collect()
         });
 
-        let commitments = commit_to_blob_data(srs, &data);
-
-        let (folded_commitment, alpha) = {
+        let commitment = {
+            let commitments = commit_to_blob_data(srs, &data);
             let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
-            fold_commitments(&mut sponge, &commitments)
+            Commitment::from_commitments(commitments, &mut sponge)
         };
 
         info!(
@@ -81,9 +75,7 @@ impl<G: KimchiCurve> FieldBlob<G> {
         FieldBlob {
             n_bytes: bytes.len(),
             domain_size,
-            commitments,
-            folded_commitment,
-            alpha,
+            commitment,
             data,
         }
     }
@@ -116,43 +108,25 @@ impl<G: KimchiCurve> FieldBlob<G> {
     }
 
     #[instrument(skip_all, level = "debug")]
-    pub fn update<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
+    pub fn update<EFqSponge>(
         &mut self,
         srs: &SRS<G>,
         domain: &Radix2EvaluationDomain<G::ScalarField>,
-        diff: Diff<G::ScalarField>,
-    ) {
-        let updates: Vec<(usize, PolyComm<G>, DensePolynomial<G::ScalarField>)> = diff
+        diff: &Diff<G::ScalarField>,
+    ) where
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    {
+        self.data = diff
             .evaluation_diffs
-            .into_par_iter()
-            .enumerate()
-            .map(|(index, d)| {
-                let d_p = {
-                    let evals = (0..domain.size())
-                        .map(|i| {
-                            d.get(&i)
-                                .copied()
-                                .unwrap_or(<G as AffineRepr>::ScalarField::zero())
-                        })
-                        .collect();
-                    Evaluations::from_vec_and_domain(evals, *domain).interpolate()
-                };
-                let d_commitment = srs.commit_non_hiding(&d_p, 1);
-                (index, d_commitment, d_p)
+            .par_iter() // Changed to par_iter()
+            .zip(self.data.par_iter()) // Also parallelize this iterator
+            .map(|(evals, p)| {
+                let d_p =
+                    { Evaluations::from_vec_and_domain(evals.clone(), *domain).interpolate() };
+                p + &d_p
             })
-            .collect();
-        for (index, d_commitment, d_p) in updates {
-            self.commitments[index] = self.commitments[index].add(&d_commitment);
-            self.data[index] = (&self.data[index]).add(&d_p);
-        }
-
-        let (folded_commitment, alpha) = {
-            let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
-            fold_commitments(&mut sponge, &self.commitments)
-        };
-
-        self.alpha = alpha;
-        self.folded_commitment = folded_commitment;
+            .collect::<Vec<_>>();
+        self.commitment.update::<EFqSponge>(srs, *domain, diff);
     }
 }
 
@@ -203,9 +177,9 @@ mod tests {
     #[test]
         fn test_user_and_storage_provider_commitments_equal(UserData(xs) in UserData::arbitrary())
           { let elems = encode_for_domain(&*DOMAIN, &xs);
-            let user_commitments = commit_to_field_elems(&*SRS, *DOMAIN, elems);
+            let user_commitment = commit_to_field_elems::<Vesta, VestaFqSponge>(&*SRS, *DOMAIN, elems);
             let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
-            prop_assert_eq!(user_commitments, blob.commitments);
+            prop_assert_eq!(user_commitment, blob.commitment);
           }
         }
 
@@ -236,15 +210,15 @@ mod tests {
             // randomly update this data and then update the blob
             let ys = random_perturbation(threshold, &xs);
             let d = make_diff(&*DOMAIN, &xs, &ys);
-            xs_blob.update::<VestaFqSponge>(&*SRS, &*DOMAIN, d);
+            xs_blob.update::<VestaFqSponge>(&*SRS, &*DOMAIN, &d);
 
             // check that the user and SP agree on the new data
-            let user_commitments = {
+            let user_commitment = {
                 let elems = encode_for_domain(&*DOMAIN, &ys);
-                commit_to_field_elems(&*SRS, *DOMAIN, elems)
+                commit_to_field_elems::<Vesta, VestaFqSponge>(&*SRS, *DOMAIN, elems)
             };
             let ys_blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &ys);
-            prop_assert_eq!(user_commitments.clone(), ys_blob.commitments.clone());
+            prop_assert_eq!(user_commitment.clone(), ys_blob.commitment.clone());
 
             // the updated blob should be the same as if we just start with the new data
             prop_assert_eq!(xs_blob, ys_blob)

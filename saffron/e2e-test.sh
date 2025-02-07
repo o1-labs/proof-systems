@@ -13,10 +13,14 @@ if [ $# -eq 2 ]; then
 fi
 
 ENCODED_FILE="${INPUT_FILE%.*}.bin"
+COMMITMENT_FILE="${INPUT_FILE%.*}_commitment.bin"
 DECODED_FILE="${INPUT_FILE%.*}_decoded.${INPUT_FILE##*.}"
 PERTURBED_FILE="${INPUT_FILE%.*}_perturbed.${INPUT_FILE##*.}"
+PERTURBED_COMMITMENT_FILE="${PERTURBED_FILE%.*}_commitment.bin"
 ENCODED_DIFF_FILE="${ENCODED_FILE%.*}_diff.bin"
 DECODED_PERTURBED_FILE="${PERTURBED_FILE%.*}_decoded.${PERTURBED_FILE##*.}"
+
+
 
 compare_files() {
    local file1="$1"
@@ -75,7 +79,7 @@ if [ ! -f "$INPUT_FILE" ]; then
 fi
 
 # Compute commitment and capture last line
-COMMITMENT=$(cargo run --release --bin saffron compute-commitment -i "$INPUT_FILE" $SRS_ARG | tee /dev/stderr | tail -n 1)
+COMMITMENT=$(cargo run --release --bin saffron compute-commitment -i "$INPUT_FILE" -o "$COMMITMENT_FILE" $SRS_ARG | tee /dev/stderr | tail -n 1)
 
 # Run encode with captured commitment
 echo "Encoding $INPUT_FILE to $ENCODED_FILE"
@@ -120,7 +124,7 @@ compare_files "$INPUT_FILE" "$DECODED_FILE"
 perturb_file_bytes "$INPUT_FILE" "$PERTURBED_FILE" 0.25
 
 echo "Calculating diff for upated $INPUT_FILE (stored updated data in $PERTURBED_FILE)"
-cargo run --release --bin saffron calculate-diff --old "$INPUT_FILE" --new "$PERTURBED_FILE" -o "$ENCODED_DIFF_FILE" $SRS_ARG
+COMMITMENT=$(cargo run --release --bin saffron calculate-diff --old "$INPUT_FILE" --new "$PERTURBED_FILE" -o "$ENCODED_DIFF_FILE" --old-commitment-file "$COMMITMENT_FILE" --new-commitment-file "$PERTURBED_COMMITMENT_FILE" $SRS_ARG | tee /dev/stderr | tail -n 1)
 
 echo "Updating file with Storage Provider"
 cargo run --release --bin saffron update -i "$ENCODED_FILE" --diff-file "$ENCODED_DIFF_FILE" --assert-commitment "$COMMITMENT" $SRS_ARG
@@ -136,5 +140,5 @@ fi
 compare_files "$PERTURBED_FILE" "$DECODED_PERTURBED_FILE"
 
 echo "Cleaning up temporary files..."
-rm -f "$ENCODED_FILE" "$DECODED_FILE" "$PERTURBED_FILE" "$ENCODED_DIFF_FILE" "$DECODED_PERTURBED_FILE"
+rm -f "$ENCODED_FILE" "$DECODED_FILE" "$PERTURBED_FILE" "$ENCODED_DIFF_FILE" "$DECODED_PERTURBED_FILE" "$COMMITMENT_FILE" "$PERTURBED_COMMITMENT_FILE"
 exit 0

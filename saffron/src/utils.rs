@@ -184,11 +184,57 @@ impl QueryBytes {
 }
 
 #[serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(bound = "F: CanonicalDeserialize + CanonicalSerialize")]
-pub struct Diff<F> {
+pub struct SparseDiff<F: PrimeField> {
     #[serde_as(as = "Vec<HashMap<_, o1_utils::serialization::SerdeAs>>")]
     pub evaluation_diffs: Vec<HashMap<usize, F>>,
+    pub domain_size: usize,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Diff<F: PrimeField> {
+    pub evaluation_diffs: Vec<Vec<F>>,
+}
+
+impl<F: PrimeField> From<SparseDiff<F>> for Diff<F> {
+    fn from(sparse: SparseDiff<F>) -> Self {
+        let evaluation_diffs = sparse
+            .evaluation_diffs
+            .iter()
+            .map(|map| {
+                let mut vec = vec![F::zero(); sparse.domain_size];
+                for (&idx, &val) in map {
+                    vec[idx] = val;
+                }
+                vec
+            })
+            .collect();
+
+        Diff { evaluation_diffs }
+    }
+}
+
+impl<F: PrimeField> From<Diff<F>> for SparseDiff<F> {
+    fn from(diff: Diff<F>) -> Self {
+        let domain_size = diff.evaluation_diffs[0].len();
+        let evaluation_diffs = diff
+            .evaluation_diffs
+            .iter()
+            .map(|vec| {
+                vec.iter()
+                    .enumerate()
+                    .filter(|(_i, &v)| !v.is_zero())
+                    .map(|(i, &v)| (i, v))
+                    .collect::<HashMap<_, _>>()
+            })
+            .collect();
+
+        SparseDiff {
+            evaluation_diffs,
+            domain_size,
+        }
+    }
 }
 
 pub fn make_diff<F: PrimeField, D: EvaluationDomain<F>>(
@@ -202,18 +248,7 @@ pub fn make_diff<F: PrimeField, D: EvaluationDomain<F>>(
         evaluation_diffs: new_elems
             .par_iter()
             .zip(old_elems)
-            .map(|(n, o)| {
-                n.iter()
-                    .zip(o)
-                    .enumerate()
-                    .fold(HashMap::new(), |mut acc, (index, (a, b))| {
-                        let c = *a - b;
-                        if !c.is_zero() {
-                            acc.insert(index, c);
-                        }
-                        acc
-                    })
-            })
+            .map(|(n, o)| n.iter().zip(o).map(|(a, b)| *a - b).collect())
             .collect(),
     }
 }

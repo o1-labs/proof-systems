@@ -9,10 +9,10 @@ use rand::rngs::OsRng;
 use saffron::{
     blob::FieldBlob,
     cli::{self, HexString},
-    commitment::user_commitment,
+    commitment::{commit_to_field_elems, Commitment},
     env,
     proof::{self, StorageProof},
-    utils::{self, make_diff, Diff},
+    utils::{self, make_diff, Diff, SparseDiff},
 };
 use std::{
     fs::File,
@@ -83,12 +83,12 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
             rmp_serde::from_slice(&asserted.0).expect("failed to decode asserted commitment");
 
         assert_eq!(
-            blob.folded_commitment,
+            blob.commitment.folded_commitment,
             asserted_commitment,
             "commitment mismatch: asserted {}, computed {}",
             asserted,
             HexString(
-                rmp_serde::encode::to_vec(&blob.folded_commitment)
+                rmp_serde::encode::to_vec(&blob.commitment.folded_commitment)
                     .expect("failed to encode commitment")
             )
         );
@@ -105,9 +105,11 @@ pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<HexString>
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
     let field_elems = utils::encode_for_domain(&domain_fp, &buf);
-    let commitment = user_commitment::<_, VestaFqSponge>(&srs, domain_fp, field_elems);
-    let res = rmp_serde::to_vec(&commitment)?;
-    Ok(HexString(res))
+    let commitment = commit_to_field_elems::<_, VestaFqSponge>(&srs, domain_fp, field_elems);
+    let mut writer = File::create(args.output)?;
+    rmp_serde::encode::write(&mut writer, &commitment)?;
+    let c = rmp_serde::encode::to_vec(&commitment.folded_commitment)?;
+    Ok(HexString(c))
 }
 
 pub fn storage_proof(args: cli::StorageProofArgs) -> Result<HexString> {
@@ -149,8 +151,8 @@ pub fn verify_storage_proof(args: cli::VerifyStorageProofArgs) -> Result<()> {
     Ok(())
 }
 
-pub fn calculate_diff(args: cli::CalculateDiffArgs) -> Result<()> {
-    let (_, domain) = get_srs(args.srs_cache);
+pub fn calculate_diff(args: cli::CalculateDiffArgs) -> Result<HexString> {
+    let (srs, domain) = get_srs(args.srs_cache);
     let old_data = {
         let mut file = File::open(args.old)?;
         let mut buf = Vec::new();
@@ -164,9 +166,22 @@ pub fn calculate_diff(args: cli::CalculateDiffArgs) -> Result<()> {
         buf
     };
     let diff = make_diff(&domain, &old_data, &new_data);
-    let mut writer = File::create(args.output)?;
-    rmp_serde::encode::write(&mut writer, &diff)?;
-    Ok(())
+    let commitment = {
+        let file = File::open(args.old_commitment)?;
+        let mut commitment: Commitment<Vesta> = rmp_serde::decode::from_read(file)?;
+        commitment.update::<VestaFqSponge>(&srs, domain, &diff);
+        commitment
+    };
+    {
+        let mut writer = File::create(args.output)?;
+        let sparse_diff: SparseDiff<Fp> = diff.into();
+        rmp_serde::encode::write(&mut writer, &sparse_diff)?;
+    }
+
+    let mut writer = File::create(args.new_commitment_file)?;
+    rmp_serde::encode::write(&mut writer, &commitment)?;
+    let c = rmp_serde::encode::to_vec(&commitment.folded_commitment)?;
+    Ok(HexString(c))
 }
 
 pub fn update(args: cli::UpdateArgs) -> Result<()> {
@@ -177,22 +192,23 @@ pub fn update(args: cli::UpdateArgs) -> Result<()> {
     }?;
     let diff: Diff<Fp> = {
         let file = File::open(args.diff_file)?;
-        rmp_serde::decode::from_read(file)
-    }?;
+        let sparse_diff: SparseDiff<Fp> = rmp_serde::decode::from_read(file)?;
+        Diff::<Fp>::from(sparse_diff)
+    };
     blob.update::<DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(
-        &srs, &domain, diff,
+        &srs, &domain, &diff,
     );
     if let Some(asserted) = args.assert_commitment {
         let asserted_commitment =
             rmp_serde::from_slice(&asserted.0).expect("failed to decode asserted commitment");
 
         assert_eq!(
-            blob.folded_commitment,
+            blob.commitment.folded_commitment,
             asserted_commitment,
             "commitment mismatch: asserted {}, computed {}",
             asserted,
             HexString(
-                rmp_serde::encode::to_vec(&blob.folded_commitment)
+                rmp_serde::encode::to_vec(&blob.commitment.folded_commitment)
                     .expect("failed to encode computed commitment")
             )
         );
@@ -209,8 +225,8 @@ pub fn main() -> Result<()> {
         cli::Commands::Encode(args) => encode_file(args),
         cli::Commands::Decode(args) => decode_file(args),
         cli::Commands::ComputeCommitment(args) => {
-            let commitment = compute_commitment(args)?;
-            println!("{}", commitment);
+            let c = compute_commitment(args)?;
+            println!("{}", c);
             Ok(())
         }
         cli::Commands::StorageProof(args) => {
@@ -219,7 +235,11 @@ pub fn main() -> Result<()> {
             Ok(())
         }
         cli::Commands::VerifyStorageProof(args) => verify_storage_proof(args),
-        cli::Commands::CalculateDiff(args) => calculate_diff(args),
+        cli::Commands::CalculateDiff(args) => {
+            let c = calculate_diff(args)?;
+            println!("{}", c);
+            Ok(())
+        }
         cli::Commands::Update(args) => update(args),
     }
 }

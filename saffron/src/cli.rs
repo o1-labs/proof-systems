@@ -65,6 +65,9 @@ pub struct ComputeCommitmentArgs {
     #[arg(long, short = 'i', value_name = "FILE", help = "input file")]
     pub input: String,
 
+    #[arg(long, short = 'o', value_name = "FILE", help = "output file")]
+    pub output: String,
+
     #[arg(long = "srs-filepath", value_name = "SRS_FILEPATH")]
     pub srs_cache: Option<String>,
 }
@@ -122,8 +125,22 @@ pub struct CalculateDiffArgs {
     #[arg(long, value_name = "FILE", help = "old data file")]
     pub old: String,
 
+    #[arg(
+        long = "old-commitment-file",
+        value_name = "FILE",
+        help = "commitment file for old data"
+    )]
+    pub old_commitment: String,
+
     #[arg(long, value_name = "FILE", help = "new data file")]
     pub new: String,
+
+    #[arg(
+        long = "new-commitment-file",
+        value_name = "FILE",
+        help = "file to write new commitment"
+    )]
+    pub new_commitment_file: String,
 
     #[arg(long, short = 'o', value_name = "FILE", help = "output file")]
     pub output: String,
