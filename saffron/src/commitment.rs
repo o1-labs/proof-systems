@@ -1,6 +1,7 @@
 use ark_ec::AffineRepr;
 use ark_ff::One;
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use kimchi::curve::KimchiCurve;
 use mina_poseidon::FqSponge;
 use poly_commitment::{
@@ -9,7 +10,33 @@ use poly_commitment::{
     PolyComm, SRS as _,
 };
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use tracing::instrument;
+
+#[serde_as]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(bound = "G::ScalarField: CanonicalDeserialize + CanonicalSerialize")]
+pub struct Commitment<G: CommitmentCurve> {
+    pub chunks: Vec<PolyComm<G>>,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub alpha: G::ScalarField,
+    pub folded: PolyComm<G>,
+}
+
+impl<G: KimchiCurve> Commitment<G> {
+    pub fn from_chunks<EFqSponge>(chunks: Vec<PolyComm<G>>, sponge: &mut EFqSponge) -> Self
+    where
+        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
+    {
+        let (folded, alpha) = fold_commitments(sponge, &chunks);
+        Self {
+            chunks,
+            alpha,
+            folded,
+        }
+    }
+}
 
 #[instrument(skip_all, level = "debug")]
 pub fn commit_to_field_elems<G: CommitmentCurve>(
@@ -27,10 +54,7 @@ pub fn commit_to_field_elems<G: CommitmentCurve>(
 }
 
 #[instrument(skip_all, level = "debug")]
-pub fn fold_commitments<
-    G: AffineRepr,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
->(
+pub fn fold_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
     sponge: &mut EFqSponge,
     commitments: &[PolyComm<G>],
 ) -> (PolyComm<G>, G::ScalarField) {
@@ -54,7 +78,7 @@ pub fn fold_commitments<
 
 pub fn user_commitment<
     G: KimchiCurve,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
 >(
     srs: &SRS<G>,
     domain: D<G::ScalarField>,
