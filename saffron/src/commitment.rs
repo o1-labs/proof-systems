@@ -14,6 +14,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use tracing::instrument;
 
+use crate::diff::Diff;
+
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(bound = "G::ScalarField: CanonicalDeserialize + CanonicalSerialize")]
@@ -35,6 +37,32 @@ impl<G: KimchiCurve> Commitment<G> {
             alpha,
             folded,
         }
+    }
+    pub fn update<EFqSponge>(
+        &self,
+        srs: &SRS<G>,
+        domain: D<G::ScalarField>,
+        diff: &Diff<G::ScalarField>,
+    ) -> Self
+    where
+        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
+    {
+        let ds: Vec<PolyComm<G>> = diff
+            .evaluation_diffs
+            .par_iter()
+            .map(|diff| {
+                let evals = Evaluations::from_vec_and_domain(diff.to_vec(), domain);
+                srs.commit_evaluations_non_hiding(domain, &evals)
+            })
+            .collect();
+        let chunks: Vec<PolyComm<G>> = self
+            .chunks
+            .iter()
+            .zip(ds.iter())
+            .map(|(c, d)| c + d)
+            .collect();
+        let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
+        Commitment::from_chunks(chunks, &mut sponge)
     }
 }
 
