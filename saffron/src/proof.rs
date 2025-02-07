@@ -119,7 +119,7 @@ where
 mod tests {
     use super::*;
     use crate::{
-        commitment::{commit_to_field_elems, fold_commitments},
+        commitment::commit_to_field_elems,
         env,
         utils::{encode_for_domain, test_utils::UserData},
     };
@@ -153,13 +153,9 @@ mod tests {
     #[test]
     fn test_storage_prove_verify(UserData(data) in UserData::arbitrary()) {
         let mut rng = OsRng;
-        let (commitment,_) = {
+        let commitment = {
             let field_elems = encode_for_domain(&*DOMAIN, &data);
-            let user_commitments = commit_to_field_elems(&*SRS, *DOMAIN, field_elems);
-            let mut fq_sponge = VestaFqSponge::new(
-                mina_poseidon::pasta::fq_kimchi::static_params(),
-            );
-            fold_commitments(&mut fq_sponge, &user_commitments)
+            commit_to_field_elems::<_, VestaFqSponge>(&*SRS, *DOMAIN, field_elems)
         };
         let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &data);
         let evaluation_point = Fp::rand(&mut rng);
@@ -170,7 +166,7 @@ mod tests {
         let res = verify_storage_proof::<Vesta, VestaFqSponge>(
             &*SRS,
             &*GROUP_MAP,
-            commitment,
+            commitment.folded,
             evaluation_point,
             &proof,
             &mut rng,

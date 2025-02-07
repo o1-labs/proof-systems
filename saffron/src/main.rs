@@ -9,7 +9,7 @@ use rand::rngs::OsRng;
 use saffron::{
     blob::FieldBlob,
     cli::{self, HexString},
-    commitment::user_commitment,
+    commitment::commit_to_field_elems,
     env,
     proof::{self, StorageProof},
     utils,
@@ -102,7 +102,7 @@ pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<HexString>
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
     let field_elems = utils::encode_for_domain(&domain_fp, &buf);
-    let commitment = user_commitment::<_, VestaFqSponge>(&srs, domain_fp, field_elems);
+    let commitment = commit_to_field_elems::<_, VestaFqSponge>(&srs, domain_fp, field_elems);
     let res = rmp_serde::to_vec(&commitment)?;
     Ok(HexString(res))
 }

@@ -42,7 +42,7 @@ impl<G: KimchiCurve> FieldBlob<G> {
     #[instrument(skip_all, level = "debug")]
     pub fn encode<
         D: EvaluationDomain<G::ScalarField>,
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
     >(
         srs: &SRS<G>,
         domain: D,
@@ -151,9 +151,9 @@ mod tests {
     #[test]
         fn test_user_and_storage_provider_commitments_equal(UserData(xs) in UserData::arbitrary())
           { let elems = encode_for_domain(&*DOMAIN, &xs);
-            let user_commitments = commit_to_field_elems(&*SRS, *DOMAIN, elems);
+            let user_commitments = commit_to_field_elems::<_, VestaFqSponge>(&*SRS, *DOMAIN, elems);
             let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
-            prop_assert_eq!(user_commitments, blob.commitment.chunks);
+            prop_assert_eq!(user_commitments, blob.commitment);
           }
         }
 }

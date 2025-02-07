@@ -39,22 +39,27 @@ impl<G: KimchiCurve> Commitment<G> {
 }
 
 #[instrument(skip_all, level = "debug")]
-pub fn commit_to_field_elems<G: CommitmentCurve>(
+pub fn commit_to_field_elems<G: KimchiCurve, EFqSponge>(
     srs: &SRS<G>,
     domain: D<G::ScalarField>,
     field_elems: Vec<Vec<G::ScalarField>>,
-) -> Vec<PolyComm<G>> {
-    field_elems
+) -> Commitment<G>
+where
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+{
+    let commitments = field_elems
         .par_iter()
         .map(|chunk| {
             let evals = Evaluations::from_vec_and_domain(chunk.to_vec(), domain);
             srs.commit_evaluations_non_hiding(domain, &evals)
         })
-        .collect()
+        .collect();
+    let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
+    Commitment::from_chunks(commitments, &mut sponge)
 }
 
 #[instrument(skip_all, level = "debug")]
-pub fn fold_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
+fn fold_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
     sponge: &mut EFqSponge,
     commitments: &[PolyComm<G>],
 ) -> (PolyComm<G>, G::ScalarField) {
@@ -74,17 +79,4 @@ pub fn fold_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::S
         PolyComm::multi_scalar_mul(&commitments.iter().collect::<Vec<_>>(), &powers),
         alpha,
     )
-}
-
-pub fn user_commitment<G: KimchiCurve, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
-    srs: &SRS<G>,
-    domain: D<G::ScalarField>,
-    field_elems: Vec<Vec<G::ScalarField>>,
-) -> PolyComm<G> {
-    let commitments = commit_to_field_elems(srs, domain, field_elems);
-    let (commitment, _) = {
-        let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
-        fold_commitments(&mut sponge, &commitments)
-    };
-    commitment
 }
