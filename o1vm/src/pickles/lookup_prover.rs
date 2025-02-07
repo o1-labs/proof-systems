@@ -1,6 +1,7 @@
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{Evaluations, Polynomial, Radix2EvaluationDomain};
+use kimchi::plonk_sponge::FrSponge;
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
 use mina_poseidon::FqSponge;
 use o1_utils::ExtendedDensePolynomial;
@@ -12,7 +13,12 @@ use super::lookup_columns::ELookup;
 use super::lookup_columns::{LookupChallenges, LookupEvalEnvironment};
 use crate::pickles::lookup_columns::ColumnEnv;
 use kimchi::circuits::expr::l0_1;
+use kimchi::groupmap::GroupMap;
 use poly_commitment::ipa::OpeningProof;
+use poly_commitment::utils::DensePolynomialOrEvaluations;
+use poly_commitment::PolyComm;
+use rand::CryptoRng;
+use rand::RngCore;
 use std::iter::Chain;
 use std::iter::Once;
 use std::vec::IntoIter;
@@ -26,7 +32,7 @@ pub struct LookupProofInput<F: PrimeField> {
     beta_challenge: F,
     gamma_challenge: F,
 }
-
+#[derive(Clone)]
 pub struct AllColumns<X> {
     pub cols: ColumnEnv<X>,
     pub t_shares: Vec<X>,
@@ -41,6 +47,7 @@ impl<X> IntoIterator for AllColumns<X> {
     }
 }
 
+#[derive(Clone)]
 pub struct Eval<F: PrimeField> {
     pub zeta: AllColumns<F>,
     pub zeta_omega: AllColumns<F>,
@@ -64,13 +71,20 @@ pub struct Proof<G: KimchiCurve> {
 pub fn lookup_prove<
     G: KimchiCurve,
     EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone,
+    EFrSponge: FrSponge<G::ScalarField>,
+    RNG,
 >(
     input: LookupProofInput<G::ScalarField>,
     srs: &SRS<G>,
     domain: EvaluationDomains<G::ScalarField>,
     mut fq_sponge: EFqSponge,
     constraint: &ELookup<G::ScalarField>,
-) {
+    rng: &mut RNG,
+) -> Proof<G>
+where
+    G::BaseField: PrimeField,
+    RNG: RngCore + CryptoRng,
+{
     // TODO check that
     let num_chunk = 8;
     let LookupProofInput {
@@ -137,18 +151,24 @@ pub fn lookup_prove<
     };
     let columns_poly = columns.my_map(interpolate_col);
     // commiting
+    // TODO avoid cloning
     let columns_com = columns_poly
         .clone()
         .my_map(|poly| srs.commit_non_hiding(&poly, 1).chunks[0]);
 
     // eval on d8
     //TODO: check the degree
-    let columns_eval_d8 = columns_poly.my_map(|poly| poly.evaluate_over_domain_by_ref(domain.d8));
+    // TODO: avoid cloning
+    let columns_eval_d8 = columns_poly
+        .clone()
+        .my_map(|poly| poly.evaluate_over_domain_by_ref(domain.d8));
     // abosrbing commit
     // TODO don't absorb the wires which already have been
+    // TODO avoid cloning
     columns_com
+        .clone()
         .into_iter()
-        .for_each(|com| absorb_commitment(&mut fq_sponge, &com));
+        .for_each(|com| absorb_commitment(&mut fq_sponge, &PolyComm { chunks: vec![com] }));
 
     // Constraints combiner
     let alpha: G::ScalarField = fq_sponge.challenge();
@@ -176,29 +196,79 @@ pub fn lookup_prove<
     let t_commitment = srs.commit_non_hiding(
         &t, 8, //TODO: check the degree,
     );
+    // TODO avoid cloning
     let commitments = AllColumns {
         cols: columns_com,
-        t_shares: t_commitment.chunks,
+        t_shares: t_commitment.chunks.clone(),
     };
     // Absorb t
     absorb_commitment(&mut fq_sponge, &t_commitment);
-    // TODO check num_chunks and srs
+    // evaluate and prepare for IPA proof
+    // TODO check num_chunks and srs length
     let t_chunks = t.to_chunked_polynomial(num_chunk, srs.size());
     let zeta = fq_sponge.challenge();
     let zeta_omega = zeta * domain.d1.group_gen;
-    let eval = |x| AllColumns {
-        cols: columns_poly.my_map(|poly| poly.evaluate(&x)),
-        t_shares: t_chunks
-            .polys
-            .into_iter()
-            .map(|poly| poly.evaluate(&x))
-            .collect(),
+    let eval =
+        |x,
+         cols_poly: ColumnEnv<DensePolynomial<_>>,
+         t_chunks: o1_utils::chunked_polynomial::ChunkedPolynomial<_>| AllColumns {
+            cols: cols_poly.my_map(|poly| poly.evaluate(&x)),
+            t_shares: t_chunks
+                .polys
+                .into_iter()
+                .map(|poly| poly.evaluate(&x))
+                .collect(),
+        };
+    // TODO avoid cloning
+    let evaluations = Eval {
+        zeta: eval(zeta, columns_poly.clone(), t_chunks.clone()),
+        zeta_omega: eval(zeta_omega, columns_poly.clone(), t_chunks.clone()),
     };
-    let eval = Eval {
-        zeta: eval(zeta),
-        zeta_omega: eval(zeta_omega),
-    };
+    let fq_sponge_before_evaluations = fq_sponge.clone();
+    // Creating fr_sponge, abosrning eval to crate challenges for IPA
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
-    //    let openingProof = OpeningProof::open(srs, group_map, plnms, elm, polyscale, evalscale, sponge, rng)
+    // TODO avoid cloning
+    evaluations
+        .clone()
+        .into_iter()
+        .for_each(|x| fr_sponge.absorb(&x));
+    let (_, endo_r) = G::endos();
+    // poly scale
+    let poly_scale_chal = fr_sponge.challenge();
+    let poly_scale = poly_scale_chal.to_field(endo_r);
+    // eval scale
+    let eval_scale_chal = fr_sponge.challenge();
+    let eval_scale = eval_scale_chal.to_field(endo_r);
+    let group_map = G::Map::setup();
+    // prepare polynomials for IPA proof
+    let all_columns_poly = AllColumns {
+        cols: columns_poly,
+        t_shares: t_chunks.polys,
+    };
+    let  polynomials: Vec<_> = all_columns_poly
+        .into_iter()
+        .map(|poly| {
+            (
+                DensePolynomialOrEvaluations::<_,Radix2EvaluationDomain<G::ScalarField>>::DensePolynomial(&poly),
+                // We do not have any blinder, therefore we set to 1.
+                PolyComm::new(vec![G::ScalarField::one()]),
+            )
+        })
+        .collect();
+    let ipa_proof = OpeningProof::open(
+        srs,
+        &group_map,
+        polynomials.as_slice(),
+        &[zeta, zeta_omega],
+        poly_scale,
+        eval_scale,
+        fq_sponge_before_evaluations,
+        rng,
+    );
+    Proof {
+        commitments,
+        evaluations,
+        ipa_proof,
+    }
 }
