@@ -124,6 +124,8 @@ mod tests {
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
 
+    type VestaFqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
+
     static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
         if let Ok(srs) = std::env::var("SRS_FILEPATH") {
             env::get_srs_from_cache(srs)
@@ -140,7 +142,7 @@ mod tests {
     #![proptest_config(ProptestConfig::with_cases(20))]
     #[test]
     fn test_round_trip_blob_encoding(UserData(xs) in UserData::arbitrary())
-      { let blob = FieldBlob::<Vesta>::encode::<_, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, *DOMAIN, &xs);
+      { let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
         let bytes = rmp_serde::to_vec(&blob).unwrap();
         let a = rmp_serde::from_slice(&bytes).unwrap();
         // check that ark-serialize is behaving as expected
@@ -157,7 +159,7 @@ mod tests {
         fn test_user_and_storage_provider_commitments_equal(UserData(xs) in UserData::arbitrary())
           { let elems = encode_for_domain(&*DOMAIN, &xs);
             let user_commitments = commit_to_field_elems(&*SRS, *DOMAIN, elems);
-            let blob = FieldBlob::<Vesta>::encode::<_, DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>(&*SRS, *DOMAIN, &xs);
+            let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
             prop_assert_eq!(user_commitments, blob.commitments);
           }
         }

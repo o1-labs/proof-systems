@@ -76,10 +76,7 @@ pub fn fold_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::S
     )
 }
 
-pub fn user_commitment<
-    G: KimchiCurve,
-    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
->(
+pub fn user_commitment<G: KimchiCurve, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
     srs: &SRS<G>,
     domain: D<G::ScalarField>,
     field_elems: Vec<Vec<G::ScalarField>>,
