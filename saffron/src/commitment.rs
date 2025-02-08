@@ -48,12 +48,9 @@ impl<G: KimchiCurve> Commitment<G> {
         EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
     {
         let ds: Vec<PolyComm<G>> = diff
-            .evaluation_diffs
+            .as_evaulations(&domain)
             .par_iter()
-            .map(|diff| {
-                let evals = Evaluations::from_vec_and_domain(diff.to_vec(), domain);
-                srs.commit_evaluations_non_hiding(domain, &evals)
-            })
+            .map(|evals| srs.commit_evaluations_non_hiding(domain, evals))
             .collect();
         let chunks: Vec<PolyComm<G>> = self
             .chunks

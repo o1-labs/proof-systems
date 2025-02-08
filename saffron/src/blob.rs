@@ -1,9 +1,12 @@
 use crate::{
     commitment::Commitment,
-    utils::{decode_into, encode_for_domain}, diff::Diff,
+    diff::Diff,
+    utils::{decode_into, encode_for_domain},
 };
 use ark_ff::PrimeField;
-use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain,
+};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use kimchi::curve::KimchiCurve;
 use mina_poseidon::FqSponge;
@@ -113,14 +116,14 @@ impl<G: KimchiCurve> FieldBlob<G> {
     ) where
         EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
     {
+        self.n_bytes = diff.new_size_in_bytes;
         self.data = diff
-            .evaluation_diffs
-            .par_iter() // Changed to par_iter()
+            .as_evaulations(domain)
+            .into_par_iter() // Changed to par_iter()
             .zip(self.data.par_iter()) // Also parallelize this iterator
             .map(|(evals, p)| {
-                let d_p =
-                    // TODO: Want to use lagrange polynomials here, not fft.
-                    { Evaluations::from_vec_and_domain(evals.clone(), *domain).interpolate() };
+                // TODO: Want to use lagrange polynomials here, not fft.
+                let d_p: DensePolynomial<G::ScalarField> = evals.interpolate();
                 p + &d_p
             })
             .collect::<Vec<_>>();
@@ -130,10 +133,12 @@ impl<G: KimchiCurve> FieldBlob<G> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{commitment::commit_to_field_elems, env};
+    use crate::{commitment::commit_to_field_elems, diff::tests::random_legal_perturbation, env};
 
     use super::*;
     use crate::utils::test_utils::*;
+    use ark_ec::AffineRepr;
+    use ark_ff::Zero;
     use ark_poly::Radix2EvaluationDomain;
     use mina_curves::pasta::{Fp, Vesta, VestaParameters};
     use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
@@ -180,42 +185,64 @@ mod tests {
           }
         }
 
-    fn random_perturbation(threshold: f64, data: &[u8]) -> Vec<u8> {
-        let mut rng = rand::thread_rng();
-        data.iter()
-            .map(|b| {
-                let n = rng.gen::<f64>();
-                if n < threshold {
-                    rng.gen::<u8>()
-                } else {
-                    *b
-                }
-            })
-            .collect()
+    // This helper function allows us to encode data into a blob with more space than we need
+    // at the time of encoding.
+    fn encode_with_prescribed_size(bytes: &[u8], n_chunks: usize) -> FieldBlob<Vesta> {
+        let mut blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, bytes);
+        assert!(
+            n_chunks >= blob.data.len(),
+            "encode_with_prescribed size can only be used to reserve extra space"
+        );
+        // pad the data
+        {
+            let pad = DensePolynomial::<Fp>::zero();
+            DOMAIN.size();
+            blob.data.resize(n_chunks, pad);
+        }
+        // adjust the commitments
+        {
+            let pad = PolyComm::new(vec![Vesta::zero(); 1]);
+            let mut cs = blob.commitment.chunks.clone();
+            cs.resize(n_chunks, pad);
+            let mut sponge = VestaFqSponge::new(Vesta::other_curve_sponge_params());
+            let commitment = Commitment::from_chunks(cs, &mut sponge);
+            blob.commitment = commitment;
+        }
+        blob
     }
 
-        proptest! {
+    proptest! {
     #![proptest_config(ProptestConfig::with_cases(10))]
     #[test]
-        fn test_update((threshold, UserData(xs)) in (0.0..1.0).prop_flat_map(|t| {
-           UserData::arbitrary().prop_map(move |d| (t, d))
-        }))
+
+        fn test_update((threshold, (UserData(xs), n)) in
+            (0.0..1.0, UserData::arbitrary().prop_flat_map(|d| {
+                let len = d.len();
+                (Just(d), 0..len)
+            }))
+        )
         {
             // start with some random user data
             let mut xs_blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
 
             // randomly update this data and then update the blob
-            let ys = random_perturbation(threshold, &xs);
-            let d = Diff::create(&*DOMAIN, &xs, &ys);
+            let ys = random_legal_perturbation(threshold, n, &xs);
+            let d = Diff::create(&*DOMAIN, &xs, &ys).unwrap();
             xs_blob.update::<VestaFqSponge>(&*SRS, &*DOMAIN, &d);
+
+            let n = xs_blob.data.len();
 
             // check that the user and SP agree on the new data
             let user_commitment = {
-                let elems = encode_for_domain(&*DOMAIN, &ys);
+                let mut elems = encode_for_domain(&*DOMAIN, &ys);
+                let pad = vec![Fp::zero(); DOMAIN.size()];
+                elems.resize(n, pad);
                 commit_to_field_elems::<Vesta, VestaFqSponge>(&*SRS, *DOMAIN, elems)
             };
-            let ys_blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &ys);
-            prop_assert_eq!(user_commitment.clone(), ys_blob.commitment.clone());
+
+            let ys_blob = encode_with_prescribed_size(&ys, n);
+
+            prop_assert_eq!(user_commitment, ys_blob.commitment.clone());
 
             // the updated blob should be the same as if we just start with the new data
             prop_assert_eq!(xs_blob, ys_blob)
