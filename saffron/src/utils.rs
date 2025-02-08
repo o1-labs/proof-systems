@@ -262,6 +262,14 @@ pub mod test_utils {
     }
 }
 
+// returns the minimum number of polynomials required to encode the data
+pub fn min_encoding_chunks<F: PrimeField, D: EvaluationDomain<F>>(domain: &D, xs: &[u8]) -> usize {
+    let m = F::MODULUS_BIT_SIZE as usize / 8;
+    let n = xs.len();
+    let num_field_elems = (n + m - 1) / m;
+    (num_field_elems + domain.size() - 1) / domain.size()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -337,12 +345,10 @@ mod tests {
           }
         }
 
+    // The number of field elements required to encode the data, including the padding
     fn padded_field_length(xs: &[u8]) -> usize {
-        let m = Fp::MODULUS_BIT_SIZE as usize / 8;
-        let n = xs.len();
-        let num_field_elems = (n + m - 1) / m;
-        let num_polys = (num_field_elems + DOMAIN.size() - 1) / DOMAIN.size();
-        DOMAIN.size() * num_polys
+        let n = min_encoding_chunks(&*DOMAIN, xs);
+        n * DOMAIN.size()
     }
 
     proptest! {
