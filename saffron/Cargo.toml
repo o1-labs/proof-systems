@@ -16,6 +16,10 @@ license = "Apache-2.0"
 name = "saffron"
 path = "src/main.rs"
 
+[[bin]]
+name = "benchmark_diff"
+path = "src/bench_diff.rs"
+
 [dependencies]
 anyhow = "1.0"
 ark-ec.workspace = true
