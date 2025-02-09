@@ -270,6 +270,11 @@ pub fn min_encoding_chunks<F: PrimeField, D: EvaluationDomain<F>>(domain: &D, xs
     (num_field_elems + domain.size() - 1) / domain.size()
 }
 
+pub fn chunk_size_in_bytes<F: PrimeField, D: EvaluationDomain<F>>(domain: &D) -> usize {
+    let m = F::MODULUS_BIT_SIZE as usize / 8;
+    domain.size() * m
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

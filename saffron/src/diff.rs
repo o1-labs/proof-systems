@@ -56,7 +56,7 @@ impl<F: PrimeField> Diff<F> {
     }
 
     #[instrument(skip_all, level = "debug")]
-    pub fn as_evaulations(
+    pub fn as_evaluations(
         &self,
         domain: &Radix2EvaluationDomain<F>,
     ) -> Vec<Evaluations<F, Radix2EvaluationDomain<F>>> {
@@ -76,7 +76,7 @@ impl<F: PrimeField> Diff<F> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::utils::{min_encoding_chunks, test_utils::UserData};
+    use crate::utils::{chunk_size_in_bytes, min_encoding_chunks, test_utils::UserData};
     use ark_ff::Zero;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
     use mina_curves::pasta::Fp;
@@ -87,12 +87,9 @@ pub mod tests {
     static DOMAIN: Lazy<Radix2EvaluationDomain<Fp>> =
         Lazy::new(|| Radix2EvaluationDomain::new(1 << 16).unwrap());
 
-    // Take a prefix of the data and randomly modify it according to the threshold
-    pub fn random_legal_perturbation(threshold: f64, prefix_len: usize, data: &[u8]) -> Vec<u8> {
-        assert!(prefix_len <= data.len());
+    pub fn randomize_data(threshold: f64, data: &[u8]) -> Vec<u8> {
         let mut rng = rand::thread_rng();
         data.iter()
-            .take(prefix_len)
             .map(|b| {
                 let n = rng.gen::<f64>();
                 if n < threshold {
@@ -102,6 +99,19 @@ pub mod tests {
                 }
             })
             .collect()
+    }
+
+    pub fn random_diff(UserData(xs): UserData) -> BoxedStrategy<(UserData, UserData)> {
+        let n_chunks = min_encoding_chunks(&*DOMAIN, &xs);
+        let max_byte_len = n_chunks * chunk_size_in_bytes(&*DOMAIN);
+        (0.0..=1.0, 0..=max_byte_len)
+            .prop_flat_map(move |(threshold, n)| {
+                let mut ys = randomize_data(threshold, &xs);
+                // NOTE: n could be less than xs.len(), in which case this is just truncation
+                ys.resize_with(n, rand::random);
+                Just((UserData(xs.clone()), UserData(ys)))
+            })
+            .boxed()
     }
 
     fn add(mut evals: Vec<Vec<Fp>>, diff: &Diff<Fp>) -> Vec<Vec<Fp>> {
@@ -117,20 +127,15 @@ pub mod tests {
     }
 
     proptest! {
-        #![proptest_config(ProptestConfig::with_cases(10))]
+        #![proptest_config(ProptestConfig::with_cases(20))]
         #[test]
 
-        // Adding a diff to the original data should give the new data, including possible truncation scenario
-        fn test_add_diff((threshold, (UserData(data), n)) in
-            (0.0..1.0, UserData::arbitrary().prop_flat_map(|d| {
-                let len = d.len();
-                (Just(d), 0..len)
-            }))
+        fn test_allow_legal_updates((UserData(xs), UserData(ys)) in
+            (UserData::arbitrary().prop_flat_map(random_diff))
         ) {
-            let ys = random_legal_perturbation(threshold, n, &data);
-            let diff = Diff::<Fp>::create(&*DOMAIN, &data, &ys);
+            let diff = Diff::<Fp>::create(&*DOMAIN, &xs, &ys);
             prop_assert!(diff.is_ok());
-            let xs_elems = encode_for_domain(&*DOMAIN, &data);
+            let xs_elems = encode_for_domain(&*DOMAIN, &xs);
             let ys_elems = {
                 let pad = vec![Fp::zero(); DOMAIN.size()];
                 let mut elems = encode_for_domain(&*DOMAIN, &ys);
@@ -142,7 +147,7 @@ pub mod tests {
         }
     }
 
-    // Check that we can't construct a diff that requires more polynomial chunks than the original data
+    // Check that we CAN'T construct a diff that requires more polynomial chunks than the original data
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(10))]
         #[test]
@@ -167,7 +172,7 @@ pub mod tests {
                 })
             )
         ) {
-            let mut ys = random_legal_perturbation(threshold, data.len(), &data);
+            let mut ys = randomize_data(threshold, &data);
             ys.append(&mut extra);
             let diff = Diff::<Fp>::create(&*DOMAIN, &data, &ys);
             prop_assert!(diff.is_err());
