@@ -65,6 +65,9 @@ pub struct ComputeCommitmentArgs {
     #[arg(long, short = 'i', value_name = "FILE", help = "input file")]
     pub input: String,
 
+    #[arg(long, short = 'o', value_name = "FILE", help = "output file")]
+    pub output: String,
+
     #[arg(long = "srs-filepath", value_name = "SRS_FILEPATH")]
     pub srs_cache: Option<String>,
 }
