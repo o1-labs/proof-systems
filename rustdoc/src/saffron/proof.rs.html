@@ -175,8 +175,6 @@
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::blob::FieldBlob;
 <span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
@@ -223,7 +221,7 @@
             .fold(init, |(acc_poly, curr_power), curr_poly| {
                 (
                     acc_poly + curr_poly.scale(curr_power),
-                    curr_power * blob.alpha,
+                    curr_power * blob.commitment.alpha,
                 )
             })
             .<span class="number">0
@@ -298,7 +296,7 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use crate</span>::{
-        commitment::{commit_to_field_elems, fold_commitments},
+        commitment::commit_to_field_elems,
         env,
         utils::{encode_for_domain, test_utils::UserData},
     };
@@ -310,6 +308,8 @@
     <span class="kw">use </span>once_cell::sync::Lazy;
     <span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS <span class="kw">as _</span>};
     <span class="kw">use </span>proptest::prelude::<span class="kw-2">*</span>;
+
+    <span class="kw">type </span>VestaFqSponge = DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;;
 
     <span class="kw">static </span>SRS: Lazy&lt;SRS&lt;Vesta&gt;&gt; = Lazy::new(|| {
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(srs) = std::env::var(<span class="string">&quot;SRS_FILEPATH&quot;</span>) {
@@ -330,24 +330,20 @@
     #[test]
     </span><span class="kw">fn </span>test_storage_prove_verify(UserData(data) <span class="kw">in </span>UserData::arbitrary()) {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = OsRng;
-        <span class="kw">let </span>(commitment,<span class="kw">_</span>) = {
+        <span class="kw">let </span>commitment = {
             <span class="kw">let </span>field_elems = encode_for_domain(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>data);
-            <span class="kw">let </span>user_commitments = commit_to_field_elems(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, field_elems);
-            <span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = DefaultFqSponge::&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;::new(
-                mina_poseidon::pasta::fq_kimchi::static_params(),
-            );
-            fold_commitments(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>user_commitments)
+            commit_to_field_elems::&lt;<span class="kw">_</span>, VestaFqSponge&gt;(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, field_elems)
         };
-        <span class="kw">let </span>blob = FieldBlob::&lt;Vesta&gt;::encode::&lt;<span class="kw">_</span>, DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;&gt;(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, <span class="kw-2">&amp;</span>data);
+        <span class="kw">let </span>blob = FieldBlob::&lt;Vesta&gt;::encode::&lt;<span class="kw">_</span>, VestaFqSponge&gt;(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, <span class="kw-2">&amp;</span>data);
         <span class="kw">let </span>evaluation_point = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
         <span class="kw">let </span>proof = storage_proof::&lt;
-            Vesta, DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;
+            Vesta, VestaFqSponge
 
         &gt;(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">&amp;*</span>GROUP_MAP, blob, evaluation_point, <span class="kw-2">&amp;mut </span>rng);
-        <span class="kw">let </span>res = verify_storage_proof::&lt;Vesta, DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;&gt;(
+        <span class="kw">let </span>res = verify_storage_proof::&lt;Vesta, VestaFqSponge&gt;(
             <span class="kw-2">&amp;*</span>SRS,
             <span class="kw-2">&amp;*</span>GROUP_MAP,
-            commitment,
+            commitment.folded,
             evaluation_point,
             <span class="kw-2">&amp;</span>proof,
             <span class="kw-2">&amp;mut </span>rng,

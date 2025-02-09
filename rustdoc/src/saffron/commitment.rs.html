@@ -67,9 +67,23 @@
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::One;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D};
+<span class="kw">use </span>ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 <span class="kw">use </span>kimchi::curve::KimchiCurve;
 <span class="kw">use </span>mina_poseidon::FqSponge;
 <span class="kw">use </span>poly_commitment::{
@@ -78,28 +92,56 @@
     PolyComm, SRS <span class="kw">as _</span>,
 };
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>serde_with::serde_as;
 <span class="kw">use </span>tracing::instrument;
 
+<span class="attr">#[serde_as]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(bound = <span class="string">&quot;G::ScalarField: CanonicalDeserialize + CanonicalSerialize&quot;</span>)]
+</span><span class="kw">pub struct </span>Commitment&lt;G: CommitmentCurve&gt; {
+    <span class="kw">pub </span>chunks: Vec&lt;PolyComm&lt;G&gt;&gt;,
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>alpha: G::ScalarField,
+    <span class="kw">pub </span>folded: PolyComm&lt;G&gt;,
+}
+
+<span class="kw">impl</span>&lt;G: KimchiCurve&gt; Commitment&lt;G&gt; {
+    <span class="kw">pub fn </span>from_chunks&lt;EFqSponge&gt;(chunks: Vec&lt;PolyComm&lt;G&gt;&gt;, sponge: <span class="kw-2">&amp;mut </span>EFqSponge) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
+    {
+        <span class="kw">let </span>(folded, alpha) = fold_commitments(sponge, <span class="kw-2">&amp;</span>chunks);
+        <span class="self">Self </span>{
+            chunks,
+            alpha,
+            folded,
+        }
+    }
+}
+
 <span class="attr">#[instrument(skip_all, level = <span class="string">&quot;debug&quot;</span>)]
-</span><span class="kw">pub fn </span>commit_to_field_elems&lt;G: CommitmentCurve&gt;(
+</span><span class="kw">pub fn </span>commit_to_field_elems&lt;G: KimchiCurve, EFqSponge&gt;(
     srs: <span class="kw-2">&amp;</span>SRS&lt;G&gt;,
     domain: D&lt;G::ScalarField&gt;,
     field_elems: Vec&lt;Vec&lt;G::ScalarField&gt;&gt;,
-) -&gt; Vec&lt;PolyComm&lt;G&gt;&gt; {
-    field_elems
+) -&gt; Commitment&lt;G&gt;
+<span class="kw">where
+    </span>EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
+{
+    <span class="kw">let </span>commitments = field_elems
         .par_iter()
         .map(|chunk| {
             <span class="kw">let </span>evals = Evaluations::from_vec_and_domain(chunk.to_vec(), domain);
             srs.commit_evaluations_non_hiding(domain, <span class="kw-2">&amp;</span>evals)
         })
-        .collect()
+        .collect();
+    <span class="kw">let </span><span class="kw-2">mut </span>sponge = EFqSponge::new(G::other_curve_sponge_params());
+    Commitment::from_chunks(commitments, <span class="kw-2">&amp;mut </span>sponge)
 }
 
 <span class="attr">#[instrument(skip_all, level = <span class="string">&quot;debug&quot;</span>)]
-</span><span class="kw">pub fn </span>fold_commitments&lt;
-    G: AffineRepr,
-    EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
-&gt;(
+</span><span class="kw">fn </span>fold_commitments&lt;G: AffineRepr, EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
     sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
     commitments: <span class="kw-2">&amp;</span>[PolyComm&lt;G&gt;],
 ) -&gt; (PolyComm&lt;G&gt;, G::ScalarField) {
@@ -119,21 +161,5 @@
         PolyComm::multi_scalar_mul(<span class="kw-2">&amp;</span>commitments.iter().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(), <span class="kw-2">&amp;</span>powers),
         alpha,
     )
-}
-
-<span class="kw">pub fn </span>user_commitment&lt;
-    G: KimchiCurve,
-    EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
-&gt;(
-    srs: <span class="kw-2">&amp;</span>SRS&lt;G&gt;,
-    domain: D&lt;G::ScalarField&gt;,
-    field_elems: Vec&lt;Vec&lt;G::ScalarField&gt;&gt;,
-) -&gt; PolyComm&lt;G&gt; {
-    <span class="kw">let </span>commitments = commit_to_field_elems(srs, domain, field_elems);
-    <span class="kw">let </span>(commitment, <span class="kw">_</span>) = {
-        <span class="kw">let </span><span class="kw-2">mut </span>sponge = EFqSponge::new(G::other_curve_sponge_params());
-        fold_commitments(<span class="kw-2">&amp;mut </span>sponge, <span class="kw-2">&amp;</span>commitments)
-    };
-    commitment
 }
 </code></pre></div></section></main></body></html>

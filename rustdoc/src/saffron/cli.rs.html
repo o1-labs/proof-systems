@@ -132,6 +132,9 @@
 <a href="#132" id="132">132</a>
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>clap::{arg, Parser};
 <span class="kw">use </span>std::{fmt::Display, str::FromStr};
 
@@ -198,6 +201,9 @@
 </span><span class="kw">pub struct </span>ComputeCommitmentArgs {
     <span class="attr">#[arg(long, short = <span class="string">&#39;i&#39;</span>, value_name = <span class="string">&quot;FILE&quot;</span>, help = <span class="string">&quot;input file&quot;</span>)]
     </span><span class="kw">pub </span>input: String,
+
+    <span class="attr">#[arg(long, short = <span class="string">&#39;o&#39;</span>, value_name = <span class="string">&quot;FILE&quot;</span>, help = <span class="string">&quot;output file&quot;</span>)]
+    </span><span class="kw">pub </span>output: String,
 
     <span class="attr">#[arg(long = <span class="string">&quot;srs-filepath&quot;</span>, value_name = <span class="string">&quot;SRS_FILEPATH&quot;</span>)]
     </span><span class="kw">pub </span>srs_cache: <span class="prelude-ty">Option</span>&lt;String&gt;,
