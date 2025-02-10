@@ -12,6 +12,7 @@ use poly_commitment::{
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+use std::ops::Add;
 use tracing::instrument;
 
 #[serde_as]
@@ -35,6 +36,14 @@ impl<G: KimchiCurve> Commitment<G> {
             alpha,
             folded,
         }
+    }
+
+    pub fn update<EFqSponge>(&self, diff: Vec<PolyComm<G>>, sponge: &mut EFqSponge) -> Self
+    where
+        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
+    {
+        let new_chunks = self.chunks.iter().zip(diff).map(|(g, d)| g.add(&d));
+        Self::from_chunks(new_chunks.collect(), sponge)
     }
 }
 
