@@ -24,7 +24,7 @@ pub struct FieldBlob<G: CommitmentCurve> {
     pub domain_size: usize,
     pub commitment: Commitment<G>,
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub data: Vec<DensePolynomial<G::ScalarField>>,
+    pub chunks: Vec<DensePolynomial<G::ScalarField>>,
 }
 
 #[instrument(skip_all, level = "debug")]
@@ -51,14 +51,14 @@ impl<G: KimchiCurve> FieldBlob<G> {
         let field_elements = encode_for_domain(&domain, bytes);
         let domain_size = domain.size();
 
-        let data: Vec<DensePolynomial<G::ScalarField>> = debug_span!("fft").in_scope(|| {
+        let chunks: Vec<DensePolynomial<G::ScalarField>> = debug_span!("fft").in_scope(|| {
             field_elements
                 .par_iter()
                 .map(|chunk| Evaluations::from_vec_and_domain(chunk.to_vec(), domain).interpolate())
                 .collect()
         });
         let commitment = {
-            let chunks = commit_to_blob_data(srs, &data);
+            let chunks = commit_to_blob_data(srs, &chunks);
             let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
             Commitment::from_chunks(chunks, &mut sponge)
         };
@@ -66,14 +66,14 @@ impl<G: KimchiCurve> FieldBlob<G> {
         debug!(
             "Encoded {:.2} MB into {} polynomials",
             bytes.len() as f32 / 1_000_000.0,
-            data.len()
+            chunks.len()
         );
 
         FieldBlob {
             n_bytes: bytes.len(),
             domain_size,
             commitment,
-            data,
+            chunks,
         }
     }
 
@@ -92,7 +92,7 @@ impl<G: KimchiCurve> FieldBlob<G> {
         let mut bytes = Vec::with_capacity(blob.n_bytes);
         let mut buffer = vec![0u8; m];
 
-        for p in blob.data {
+        for p in blob.chunks {
             let evals = p.evaluate_over_domain(domain).evals;
             for x in evals {
                 decode_into(&mut buffer, x);
