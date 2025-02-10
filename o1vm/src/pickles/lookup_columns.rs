@@ -1,4 +1,4 @@
-use ark_ff::{FftField, Field};
+use ark_ff::{FftField, Field, PrimeField};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use core::iter::Once;
 use core::ops::Index;
@@ -8,6 +8,9 @@ use kimchi::circuits::expr::AlphaChallengeTerm;
 use kimchi::circuits::expr::ColumnEnvironment;
 use kimchi::circuits::expr::Constants;
 use kimchi::circuits::expr::{ConstantExpr, Expr};
+use kimchi::curve::KimchiCurve;
+use poly_commitment::ipa::OpeningProof;
+use poly_commitment::OpenProof;
 use serde::{Deserialize, Serialize};
 use std::iter::Chain;
 
@@ -63,6 +66,48 @@ impl<X> ColumnEnv<X> {
             acc: new_acc,
         }
     }
+}
+
+pub struct LookupProofInput<F: PrimeField> {
+    pub wires: Vec<Vec<F>>,
+    pub arity: Vec<Vec<usize>>,
+    pub beta_challenge: F,
+    pub gamma_challenge: F,
+}
+#[derive(Clone)]
+pub struct AllColumns<X> {
+    pub cols: ColumnEnv<X>,
+    pub t_shares: Vec<X>,
+}
+
+impl<X> IntoIterator for AllColumns<X> {
+    type Item = X;
+    type IntoIter =
+        Chain<<ColumnEnv<X> as IntoIterator>::IntoIter, <Vec<X> as IntoIterator>::IntoIter>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.cols.into_iter().chain(self.t_shares)
+    }
+}
+
+#[derive(Clone)]
+pub struct Eval<F: PrimeField> {
+    pub zeta: AllColumns<F>,
+    pub zeta_omega: AllColumns<F>,
+}
+
+impl<F: PrimeField> IntoIterator for Eval<F> {
+    type Item = F;
+    type IntoIter =
+        Chain<<AllColumns<F> as IntoIterator>::IntoIter, <AllColumns<F> as IntoIterator>::IntoIter>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.zeta.into_iter().chain(self.zeta_omega)
+    }
+}
+
+pub struct Proof<G: KimchiCurve> {
+    pub commitments: AllColumns<G>,
+    pub evaluations: Eval<G::ScalarField>,
+    pub ipa_proof: OpeningProof<G>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

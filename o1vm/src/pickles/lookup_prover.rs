@@ -12,7 +12,7 @@ use poly_commitment::{commitment::absorb_commitment, ipa::SRS, SRS as _};
 //use rayon::prelude::*;
 use super::lookup_columns::ELookup;
 use super::lookup_columns::{LookupChallenges, LookupEvalEnvironment};
-use crate::pickles::lookup_columns::ColumnEnv;
+use crate::pickles::lookup_columns::*;
 use kimchi::circuits::expr::l0_1;
 use kimchi::groupmap::GroupMap;
 use poly_commitment::ipa::OpeningProof;
@@ -26,48 +26,6 @@ use std::vec::IntoIter;
 /// This prover takes one Public Input and one Public Output
 /// It then proves that the sum 1/(beta + table) = PI - PO
 /// where the table term are term from fixed lookup or RAMLookup
-
-pub struct LookupProofInput<F: PrimeField> {
-    wires: Vec<Vec<F>>,
-    arity: Vec<Vec<usize>>,
-    beta_challenge: F,
-    gamma_challenge: F,
-}
-#[derive(Clone)]
-pub struct AllColumns<X> {
-    pub cols: ColumnEnv<X>,
-    pub t_shares: Vec<X>,
-}
-
-impl<X> IntoIterator for AllColumns<X> {
-    type Item = X;
-    type IntoIter =
-        Chain<<ColumnEnv<X> as IntoIterator>::IntoIter, <Vec<X> as IntoIterator>::IntoIter>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.cols.into_iter().chain(self.t_shares)
-    }
-}
-
-#[derive(Clone)]
-pub struct Eval<F: PrimeField> {
-    pub zeta: AllColumns<F>,
-    pub zeta_omega: AllColumns<F>,
-}
-
-impl<F: PrimeField> IntoIterator for Eval<F> {
-    type Item = F;
-    type IntoIter =
-        Chain<<AllColumns<F> as IntoIterator>::IntoIter, <AllColumns<F> as IntoIterator>::IntoIter>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.zeta.into_iter().chain(self.zeta_omega)
-    }
-}
-
-pub struct Proof<G: KimchiCurve> {
-    pub commitments: AllColumns<G>,
-    pub evaluations: Eval<G::ScalarField>,
-    pub ipa_proof: OpeningProof<G>,
-}
 
 pub fn lookup_prove<
     G: KimchiCurve,
