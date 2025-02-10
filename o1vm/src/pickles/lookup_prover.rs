@@ -1,6 +1,7 @@
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{Evaluations, Polynomial, Radix2EvaluationDomain};
+use kimchi::circuits::polynomials;
 use kimchi::plonk_sponge::FrSponge;
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
 use mina_poseidon::FqSponge;
@@ -246,16 +247,24 @@ where
         cols: columns_poly,
         t_shares: t_chunks.polys,
     };
-    let  polynomials: Vec<_> = all_columns_poly
-        .into_iter()
-        .map(|poly| {
-            (
-                DensePolynomialOrEvaluations::<_,Radix2EvaluationDomain<G::ScalarField>>::DensePolynomial(&poly),
-                // We do not have any blinder, therefore we set to 1.
-                PolyComm::new(vec![G::ScalarField::one()]),
-            )
-        })
-        .collect();
+    let polynomials: Vec<_> = all_columns_poly.into_iter().collect();
+    let polynomials : Vec<_> = polynomials.iter().map(|poly| {
+        (
+            DensePolynomialOrEvaluations::<_,Radix2EvaluationDomain<G::ScalarField>>::DensePolynomial(poly),
+            // We do not have any blinder, therefore we set to 1.
+            PolyComm::new(vec![G::ScalarField::one()]),
+        )
+    }).collect();
+    /*  let  polynomials: Vec<_> = all_columns_poly
+    .into_iter().by_ref()
+    .map(|poly| {
+        (
+            DensePolynomialOrEvaluations::<_,Radix2EvaluationDomain<G::ScalarField>>::DensePolynomial(poly),
+            // We do not have any blinder, therefore we set to 1.
+            PolyComm::new(vec![G::ScalarField::one()]),
+        )
+    })
+    .collect(); */
     let ipa_proof = OpeningProof::open(
         srs,
         &group_map,
