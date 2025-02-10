@@ -9,6 +9,7 @@ use tracing::instrument;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Diff<F: PrimeField> {
     pub chunks: Vec<Vec<(usize, F)>>,
+    pub new_byte_len: usize,
 }
 
 #[derive(Debug, Error, Clone, PartialEq)]
@@ -40,6 +41,7 @@ impl<F: PrimeField> Diff<F> {
             new_elems.resize(old_elems.len(), padding);
         }
         Ok(Diff {
+            new_byte_len: new.len(),
             chunks: new_elems
                 .par_iter()
                 .zip(old_elems)
@@ -130,7 +132,7 @@ pub mod tests {
         #![proptest_config(ProptestConfig::with_cases(20))]
         #[test]
 
-        fn test_allow_legal_updates((UserData(xs), UserData(ys)) in
+        fn test_allow_legal_diff((UserData(xs), UserData(ys)) in
             (UserData::arbitrary().prop_flat_map(random_diff))
         ) {
             let diff = Diff::<Fp>::create(&*DOMAIN, &xs, &ys);
