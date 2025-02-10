@@ -13,7 +13,7 @@ if [ $# -eq 2 ]; then
 fi
 COMMITMENT_FILE="${INPUT_FILE%.*}_commitment.bin"
 ENCODED_FILE="${INPUT_FILE%.*}.bin"
-DECODED_FILE="${INPUT_FILE%.*}-decoded${INPUT_FILE##*.}"
+DECODED_FILE="${INPUT_FILE%.*}_decoded.${INPUT_FILE##*.}"
 
 # Ensure input file exists
 if [ ! -f "$INPUT_FILE" ]; then
