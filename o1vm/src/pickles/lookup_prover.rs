@@ -76,12 +76,13 @@ pub fn lookup_prove<
     RNG,
 >(
     input: LookupProofInput<G::ScalarField>,
+    acc_init: G::ScalarField,
     srs: &SRS<G>,
     domain: EvaluationDomains<G::ScalarField>,
     mut fq_sponge: EFqSponge,
     constraint: &ELookup<G::ScalarField>,
     rng: &mut RNG,
-) -> Proof<G>
+) -> (Proof<G>, G::ScalarField)
 where
     G::BaseField: PrimeField,
     RNG: RngCore + CryptoRng,
@@ -130,7 +131,8 @@ where
         .iter_mut()
         .for_each(|inner_vec| ark_ff::batch_inversion(inner_vec));
     // compute the accumulator
-    let mut partial_sum = G::ScalarField::zero();
+    // init at acc_init
+    let mut partial_sum = acc_init;
     let mut acc = vec![];
     for inner in inverses.iter_mut() {
         for x in inner.iter_mut() {
@@ -138,6 +140,7 @@ where
             acc.push(partial_sum)
         }
     }
+    let acc_final = acc[acc.len()];
     let columns = ColumnEnv {
         wires,
         inverses,
@@ -158,7 +161,7 @@ where
         .my_map(|poly| srs.commit_non_hiding(&poly, 1).chunks[0]);
 
     // eval on d8
-    //TODO: check the degree
+    // TODO: check the degree
     // TODO: avoid cloning
     let columns_eval_d8 = columns_poly
         .clone()
@@ -255,16 +258,6 @@ where
             PolyComm::new(vec![G::ScalarField::one()]),
         )
     }).collect();
-    /*  let  polynomials: Vec<_> = all_columns_poly
-    .into_iter().by_ref()
-    .map(|poly| {
-        (
-            DensePolynomialOrEvaluations::<_,Radix2EvaluationDomain<G::ScalarField>>::DensePolynomial(poly),
-            // We do not have any blinder, therefore we set to 1.
-            PolyComm::new(vec![G::ScalarField::one()]),
-        )
-    })
-    .collect(); */
     let ipa_proof = OpeningProof::open(
         srs,
         &group_map,
@@ -275,9 +268,12 @@ where
         fq_sponge_before_evaluations,
         rng,
     );
-    Proof {
-        commitments,
-        evaluations,
-        ipa_proof,
-    }
+    (
+        Proof {
+            commitments,
+            evaluations,
+            ipa_proof,
+        },
+        acc_final,
+    )
 }
