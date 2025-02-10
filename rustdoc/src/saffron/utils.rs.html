@@ -436,6 +436,17 @@
 <a href="#436" id="436">436</a>
 <a href="#437" id="437">437</a>
 <a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::marker::PhantomData;
 
 <span class="kw">use </span>ark_ff::{BigInteger, PrimeField};
@@ -700,6 +711,19 @@
     }
 }
 
+<span class="comment">// returns the minimum number of polynomials required to encode the data
+</span><span class="kw">pub fn </span>min_encoding_chunks&lt;F: PrimeField, D: EvaluationDomain&lt;F&gt;&gt;(domain: <span class="kw-2">&amp;</span>D, xs: <span class="kw-2">&amp;</span>[u8]) -&gt; usize {
+    <span class="kw">let </span>m = F::MODULUS_BIT_SIZE <span class="kw">as </span>usize / <span class="number">8</span>;
+    <span class="kw">let </span>n = xs.len();
+    <span class="kw">let </span>num_field_elems = (n + m - <span class="number">1</span>) / m;
+    (num_field_elems + domain.size() - <span class="number">1</span>) / domain.size()
+}
+
+<span class="kw">pub fn </span>chunk_size_in_bytes&lt;F: PrimeField, D: EvaluationDomain&lt;F&gt;&gt;(domain: <span class="kw-2">&amp;</span>D) -&gt; usize {
+    <span class="kw">let </span>m = F::MODULUS_BIT_SIZE <span class="kw">as </span>usize / <span class="number">8</span>;
+    domain.size() * m
+}
+
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -775,12 +799,10 @@
           }
         }
 
-    <span class="kw">fn </span>padded_field_length(xs: <span class="kw-2">&amp;</span>[u8]) -&gt; usize {
-        <span class="kw">let </span>m = Fp::MODULUS_BIT_SIZE <span class="kw">as </span>usize / <span class="number">8</span>;
-        <span class="kw">let </span>n = xs.len();
-        <span class="kw">let </span>num_field_elems = (n + m - <span class="number">1</span>) / m;
-        <span class="kw">let </span>num_polys = (num_field_elems + DOMAIN.size() - <span class="number">1</span>) / DOMAIN.size();
-        DOMAIN.size() * num_polys
+    <span class="comment">// The number of field elements required to encode the data, including the padding
+    </span><span class="kw">fn </span>padded_field_length(xs: <span class="kw-2">&amp;</span>[u8]) -&gt; usize {
+        <span class="kw">let </span>n = min_encoding_chunks(<span class="kw-2">&amp;*</span>DOMAIN, xs);
+        n * DOMAIN.size()
     }
 
     <span class="macro">proptest! </span>{
