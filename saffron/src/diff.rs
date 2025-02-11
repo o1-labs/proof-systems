@@ -8,7 +8,8 @@ use tracing::instrument;
 // sparse representation, keeping only the non-zero differences
 #[derive(Clone, Debug, PartialEq)]
 pub struct Diff<F: PrimeField> {
-    pub evaluation_diffs: Vec<Vec<(usize, F)>>,
+    pub chunks: Vec<Vec<(usize, F)>>,
+    pub new_byte_len: usize,
 }
 
 #[derive(Debug, Error, Clone, PartialEq)]
@@ -40,7 +41,8 @@ impl<F: PrimeField> Diff<F> {
             new_elems.resize(old_elems.len(), padding);
         }
         Ok(Diff {
-            evaluation_diffs: new_elems
+            new_byte_len: new.len(),
+            chunks: new_elems
                 .par_iter()
                 .zip(old_elems)
                 .map(|(n, o)| {
@@ -60,7 +62,7 @@ impl<F: PrimeField> Diff<F> {
         &self,
         domain: &Radix2EvaluationDomain<F>,
     ) -> Vec<Evaluations<F, Radix2EvaluationDomain<F>>> {
-        self.evaluation_diffs
+        self.chunks
             .par_iter()
             .map(|diff| {
                 let mut evals = vec![F::zero(); domain.size()];
@@ -117,7 +119,7 @@ pub mod tests {
     fn add(mut evals: Vec<Vec<Fp>>, diff: &Diff<Fp>) -> Vec<Vec<Fp>> {
         evals
             .par_iter_mut()
-            .zip(diff.evaluation_diffs.par_iter())
+            .zip(diff.chunks.par_iter())
             .for_each(|(eval_chunk, diff_chunk)| {
                 diff_chunk.iter().for_each(|(j, val)| {
                     eval_chunk[*j] += val;
@@ -130,7 +132,7 @@ pub mod tests {
         #![proptest_config(ProptestConfig::with_cases(20))]
         #[test]
 
-        fn test_allow_legal_updates((UserData(xs), UserData(ys)) in
+        fn test_allow_legal_diff((UserData(xs), UserData(ys)) in
             (UserData::arbitrary().prop_flat_map(random_diff))
         ) {
             let diff = Diff::<Fp>::create(&*DOMAIN, &xs, &ys);

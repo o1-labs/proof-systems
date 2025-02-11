@@ -39,7 +39,7 @@ where
 {
     let p = {
         let init = (DensePolynomial::zero(), G::ScalarField::one());
-        blob.data
+        blob.chunks
             .into_iter()
             .fold(init, |(acc_poly, curr_power), curr_poly| {
                 (
