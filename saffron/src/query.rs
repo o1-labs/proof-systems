@@ -13,6 +13,10 @@ pub struct QueryBytes {
     pub len: usize,
 }
 
+pub struct IndexQuery {
+    pub chunks: Vec<Vec<usize>>,
+}
+
 #[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Debug)]
 /// We store the data in a vector of vector of field element
 /// The inner vector represent polynomials
@@ -57,16 +61,16 @@ impl<F: PrimeField> QueryField<F> {
         answer[(self.leftover_start)..(answer.len() - self.leftover_end)].to_vec()
     }
 
-    pub fn as_indices(self) -> Vec<Vec<usize>> {
+    pub fn as_index_query(self) -> IndexQuery {
         let n_chunks = self.start.n_polys;
-        let mut result: Vec<Vec<usize>> = vec![Vec::new(); n_chunks];
+        let mut chunks: Vec<Vec<usize>> = vec![Vec::new(); n_chunks];
         self.start
             .into_iter()
             .take_while(|x| x <= &self.end)
             .for_each(|x| {
-                result[x.poly_index].push(x.eval_index);
+                chunks[x.poly_index].push(x.eval_index);
             });
-        result
+        IndexQuery { chunks }
     }
 }
 

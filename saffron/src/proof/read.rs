@@ -1,3 +1,4 @@
+use crate::{blob::FieldBlob, query::IndexQuery};
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain,
@@ -17,11 +18,6 @@ use rand::rngs::OsRng;
 use std::ops::{Mul, Sub};
 use thiserror::Error;
 use tracing::instrument;
-use crate::blob::FieldBlob;
-
-pub struct IndexQuery {
-    chunks: Vec<Vec<usize>>,
-}
 
 pub struct ReadProof<G: CommitmentCurve> {
     pub commitment: Commitment<G>,
@@ -303,7 +299,7 @@ mod tests {
             let index_queries: Vec<IndexQuery> =
               queries.into_iter().map(|q| {
                 let field_query: QueryField<Fp> = q.into_query_field(DOMAIN.size(), blob.n_chunks()).expect("QueryBytes should be valid");
-                IndexQuery { chunks: field_query.as_indices() }
+                field_query.as_index_query()
               }
             ).collect();
             index_queries.into_iter().for_each(|q| {
@@ -335,7 +331,7 @@ mod tests {
             let index_queries: Vec<IndexQuery> =
               queries.into_iter().map(|q| {
                 let field_query: QueryField<Fp> = q.into_query_field(DOMAIN.size(), blob.n_chunks()).expect("QueryBytes should be valid");
-                IndexQuery { chunks: field_query.as_indices() }
+                field_query.as_index_query()
               }
             ).collect();
             index_queries.into_iter().for_each(|q| {
