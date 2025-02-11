@@ -278,9 +278,26 @@ impl<G: CommitmentCurve> SRS<G> {
             sg_rand_base_i *= &sg_rand_base;
         }
 
-        // verify the equation
-        let scalars: Vec<_> = scalars.iter().map(|x| x.into_bigint()).collect();
-        G::Group::msm_bigint(&points, &scalars) == G::Group::zero()
+        // Verify the equation in two chunks, which is optimal for our SRS size.
+        // (see the comment to the `benchmark_msm_parallel_vesta` MSM benchmark)
+        let chunk_size = points.len() / 2;
+        let msm_res = points
+            .into_par_iter()
+            .chunks(chunk_size)
+            .zip(scalars.into_par_iter().chunks(chunk_size))
+            .map(|(bases, coeffs)| {
+                let coeffs_bigint = coeffs
+                    .into_iter()
+                    .map(|c| c.into_bigint())
+                    .collect::<Vec<_>>();
+                G::Group::msm_bigint(&bases, &coeffs_bigint)
+            })
+            .reduce(G::Group::zero, |mut l, r| {
+                l += r;
+                l
+            });
+
+        msm_res == G::Group::zero()
     }
 
     /// This function creates a trusted-setup SRS instance for circuits with
