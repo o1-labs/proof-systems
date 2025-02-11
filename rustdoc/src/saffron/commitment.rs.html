@@ -80,6 +80,15 @@
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::One;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D};
@@ -94,6 +103,7 @@
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
+<span class="kw">use </span>std::ops::Add;
 <span class="kw">use </span>tracing::instrument;
 
 <span class="attr">#[serde_as]
@@ -117,6 +127,14 @@
             alpha,
             folded,
         }
+    }
+
+    <span class="kw">pub fn </span>update&lt;EFqSponge&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, diff: Vec&lt;PolyComm&lt;G&gt;&gt;, sponge: <span class="kw-2">&amp;mut </span>EFqSponge) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
+    {
+        <span class="kw">let </span>new_chunks = <span class="self">self</span>.chunks.iter().zip(diff).map(|(g, d)| g.add(<span class="kw-2">&amp;</span>d));
+        <span class="self">Self</span>::from_chunks(new_chunks.collect(), sponge)
     }
 }
 

@@ -179,6 +179,8 @@
 <a href="#179" id="179">179</a>
 <a href="#180" id="180">180</a>
 <a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::utils::encode_for_domain;
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
@@ -189,7 +191,8 @@
 <span class="comment">// sparse representation, keeping only the non-zero differences
 </span><span class="attr">#[derive(Clone, Debug, PartialEq)]
 </span><span class="kw">pub struct </span>Diff&lt;F: PrimeField&gt; {
-    <span class="kw">pub </span>evaluation_diffs: Vec&lt;Vec&lt;(usize, F)&gt;&gt;,
+    <span class="kw">pub </span>chunks: Vec&lt;Vec&lt;(usize, F)&gt;&gt;,
+    <span class="kw">pub </span>new_byte_len: usize,
 }
 
 <span class="attr">#[derive(Debug, Error, Clone, PartialEq)]
@@ -221,7 +224,8 @@
             new_elems.resize(old_elems.len(), padding);
         }
         <span class="prelude-val">Ok</span>(Diff {
-            evaluation_diffs: new_elems
+            new_byte_len: new.len(),
+            chunks: new_elems
                 .par_iter()
                 .zip(old_elems)
                 .map(|(n, o)| {
@@ -241,7 +245,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         domain: <span class="kw-2">&amp;</span>Radix2EvaluationDomain&lt;F&gt;,
     ) -&gt; Vec&lt;Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;&gt; {
-        <span class="self">self</span>.evaluation_diffs
+        <span class="self">self</span>.chunks
             .par_iter()
             .map(|diff| {
                 <span class="kw">let </span><span class="kw-2">mut </span>evals = <span class="macro">vec!</span>[F::zero(); domain.size()];
@@ -298,7 +302,7 @@
     <span class="kw">fn </span>add(<span class="kw-2">mut </span>evals: Vec&lt;Vec&lt;Fp&gt;&gt;, diff: <span class="kw-2">&amp;</span>Diff&lt;Fp&gt;) -&gt; Vec&lt;Vec&lt;Fp&gt;&gt; {
         evals
             .par_iter_mut()
-            .zip(diff.evaluation_diffs.par_iter())
+            .zip(diff.chunks.par_iter())
             .for_each(|(eval_chunk, diff_chunk)| {
                 diff_chunk.iter().for_each(|(j, val)| {
                     eval_chunk[<span class="kw-2">*</span>j] += val;
@@ -311,7 +315,7 @@
         <span class="attr">#![proptest_config(ProptestConfig::with_cases(<span class="number">20</span>))]
         #[test]
 
-        </span><span class="kw">fn </span>test_allow_legal_updates((UserData(xs), UserData(ys)) <span class="kw">in
+        </span><span class="kw">fn </span>test_allow_legal_diff((UserData(xs), UserData(ys)) <span class="kw">in
             </span>(UserData::arbitrary().prop_flat_map(random_diff))
         ) {
             <span class="kw">let </span>diff = Diff::&lt;Fp&gt;::create(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>xs, <span class="kw-2">&amp;</span>ys);
