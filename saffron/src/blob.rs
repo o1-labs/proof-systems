@@ -42,6 +42,10 @@ fn commit_to_blob_data<G: CommitmentCurve>(
 }
 
 impl<G: KimchiCurve> FieldBlob<G> {
+    pub fn n_chunks(&self) -> usize {
+        self.chunks.len()
+    }
+
     #[instrument(skip_all, level = "debug")]
     pub fn encode<
         D: EvaluationDomain<G::ScalarField>,
