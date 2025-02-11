@@ -1736,7 +1736,7 @@ pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
-    pub verifier_index: Option<VerifierIndex<G, OpeningProof>>,
+    pub verifier_index: Option<Arc<VerifierIndex<G, OpeningProof>>>,
 
     /// The verifier index digest corresponding to this prover index
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
