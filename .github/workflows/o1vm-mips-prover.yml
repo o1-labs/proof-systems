@@ -1,0 +1,56 @@
+name: O1VM MIPS Prover CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  run:
+    name: Run o1vm prover on all mips tests
+
+    runs-on: ["ubuntu-latest"]
+
+    strategy:
+      matrix:
+        rust_toolchain_version: ["1.74"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+
+      - name: Apply the Rust smart cacheing
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build MIPS binaries
+        uses: ./.github/actions/build-mips
+
+      - name: Cache SRS data
+        id: cache-srs
+        uses: actions/cache@v3
+        with:
+          path: ./srs
+          # The SRS generation never changes, so we don't need a content-based key
+          key: srs-cache-key
+
+      - name: Generate and Cache SRS
+        if: steps.cache-srs.outputs.cache-hit != 'true'
+        run: cargo test -p kimchi heavy_test_srs_serialization --release
+
+      - name: Run the MIPS prover on all the test files
+        run: |
+          find o1vm/resources/programs/mips/bin -type f \
+            ! -name "*.*" \
+            ! -name "oracle*" \
+            ! -name "exit_group" \
+            ! -name "mul" | \
+            xargs -I {} env RUST_LOG=debug ./o1vm/test-mips-program-prover.sh {} ./srs/test_vesta.srs
