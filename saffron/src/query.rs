@@ -57,8 +57,9 @@ impl<F: PrimeField> QueryField<F> {
         answer[(self.leftover_start)..(answer.len() - self.leftover_end)].to_vec()
     }
 
-    pub fn as_indices(self, n_chunks: usize) -> Vec<Vec<usize>> {
-        let mut result: Vec<Vec<usize>> = Vec::with_capacity(n_chunks);
+    pub fn as_indices(self) -> Vec<Vec<usize>> {
+        let n_chunks = self.start.n_polys;
+        let mut result: Vec<Vec<usize>> = vec![Vec::new(); n_chunks];
         self.start
             .into_iter()
             .take_while(|x| x <= &self.end)
