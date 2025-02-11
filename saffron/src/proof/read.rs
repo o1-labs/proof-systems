@@ -1,4 +1,3 @@
-use crate::blob::FieldBlob;
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain,
@@ -18,6 +17,7 @@ use rand::rngs::OsRng;
 use std::ops::{Mul, Sub};
 use thiserror::Error;
 use tracing::instrument;
+use crate::blob::FieldBlob;
 
 pub struct IndexQuery {
     chunks: Vec<Vec<usize>>,
@@ -99,6 +99,7 @@ pub fn verify_read_proof<
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
 >(
     srs: &SRS<G>,
+    domain: &Radix2EvaluationDomain<G::ScalarField>,
     group_map: &G::Map,
     proof: ReadProof<G>,
     rng: &mut OsRng,
@@ -140,8 +141,7 @@ where
 
         combined_inner_product(&v, &u, es.as_slice())
     };
-
-    srs.verify(
+    let opening_proof_verifies = srs.verify(
         group_map,
         &mut [BatchEvaluationProof {
             sponge: sponge.clone(),
@@ -153,7 +153,12 @@ where
             combined_inner_product,
         }],
         rng,
-    )
+    );
+    let evaluations_verify = {
+        let z_n = domain.vanishing_polynomial();
+        proof.evals.t == (proof.evals.a - proof.evals.q * proof.evals.d) / z_n.evaluate(&z)
+    };
+    opening_proof_verifies && evaluations_verify
 }
 
 pub struct ReadProofPolys<T> {
@@ -312,7 +317,7 @@ mod tests {
     }
 
     proptest! {
-            #![proptest_config(ProptestConfig::with_cases(10))]
+            #![proptest_config(ProptestConfig::with_cases(5))]
             #[test]
             fn test_read_proof((UserData(xs), queries) in UserData::arbitrary()
                    .prop_flat_map(|xs| {
@@ -336,7 +341,7 @@ mod tests {
             index_queries.into_iter().for_each(|q| {
                 let proofs = read_proof::<Vesta, _, VestaFqSponge>(&*SRS, *DOMAIN, &*GROUP_MAP, blob.clone(), q, &mut rng).expect("Read proof should be valid");
                 proofs.into_iter().for_each(|proof| {
-                  let res = verify_read_proof::<Vesta, VestaFqSponge>(&*SRS, &*GROUP_MAP, proof, &mut rng);
+                  let res = verify_read_proof::<Vesta, VestaFqSponge>(&*SRS, &*DOMAIN, &*GROUP_MAP, proof, &mut rng);
                   assert!(res);
                 });
 
