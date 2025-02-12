@@ -60,31 +60,43 @@ impl From<Column> for usize {
 }
 
 pub struct Challenges<F: Field> {
-    /// Challenge used to aggregate the constraints
+    /// Used to aggregate the constraints describing the relation. It is used to
+    /// enforce all constraints are satisfied at the same time.
     pub alpha: F,
 
-    /// Both challenges used in the permutation argument
+    /// Both challenges used in the permutation argument.
     pub beta: F,
     pub gamma: F,
 
-    /// Challenge to homogenize the constraints
-    pub homogenous_challenge: F,
+    /// Used to homogenize the constraints and allow the protocol to fold two
+    /// instances of the same relation into a new one.
+    /// Often noted `u` in the paper mentioning "folding protocols".
+    pub homogeniser: F,
 
-    /// Random coin used to aggregate witnesses while folding
+    /// Used by the accumulation protocol.
+    /// (folding) to perform a random linear transformation of the witnesses and
+    /// the public values.
+    /// Often noted `r` in the paper mentioning "folding protocols".
     pub r: F,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChallengeTerm {
-    /// Challenge used to aggregate the constraints
+    /// Used to aggregate the constraints describing the relation. It is used to
+    /// enforce all constraints are satisfied at the same time.
     Alpha,
     /// Both challenges used in the permutation argument
     Beta,
     Gamma,
-    /// Challenge to homogenize the constraints
-    HomogenousChallenge,
-    /// Random coin used to aggregate witnesses while folding
-    R,
+    /// Used to homogenize the constraints and allow the protocol to fold two
+    /// instances of the same relation into a new one.
+    /// Often noted `u` in the paper mentioning "folding protocols".
+    Homogeniser,
+    /// Used by the accumulation protocol
+    /// (folding) to perform a random linear transformation of the witnesses and
+    /// the public values.
+    /// Often noted `r` in the paper mentioning "folding protocols".
+    Randomiser,
 }
 
 impl Display for ChallengeTerm {
@@ -93,8 +105,8 @@ impl Display for ChallengeTerm {
             ChallengeTerm::Alpha => write!(f, "alpha"),
             ChallengeTerm::Beta => write!(f, "beta"),
             ChallengeTerm::Gamma => write!(f, "gamma"),
-            ChallengeTerm::HomogenousChallenge => write!(f, "u"),
-            ChallengeTerm::R => write!(f, "r"),
+            ChallengeTerm::Homogeniser => write!(f, "u"),
+            ChallengeTerm::Randomiser => write!(f, "r"),
         }
     }
 }
@@ -106,8 +118,8 @@ impl<F: Field> Index<ChallengeTerm> for Challenges<F> {
             ChallengeTerm::Alpha => &self.alpha,
             ChallengeTerm::Beta => &self.beta,
             ChallengeTerm::Gamma => &self.gamma,
-            ChallengeTerm::HomogenousChallenge => &self.homogenous_challenge,
-            ChallengeTerm::R => &self.r,
+            ChallengeTerm::Homogeniser => &self.homogeniser,
+            ChallengeTerm::Randomiser => &self.r,
         }
     }
 }
