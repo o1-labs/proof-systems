@@ -1,4 +1,7 @@
-use crate::blob::FieldBlob;
+use crate::{
+    blob::FieldBlob,
+    commitment::{fold_commitments, Commitment},
+};
 use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as D};
@@ -33,6 +36,7 @@ pub fn storage_proof<G: KimchiCurve, EFqSponge: Clone + FqSponge<G::BaseField, G
     blob: FieldBlob<G>,
     evaluation_point: G::ScalarField,
     rng: &mut OsRng,
+    alpha: G::ScalarField,
 ) -> StorageProof<G>
 where
     G::BaseField: PrimeField,
@@ -42,10 +46,7 @@ where
         blob.chunks
             .into_iter()
             .fold(init, |(acc_poly, curr_power), curr_poly| {
-                (
-                    acc_poly + curr_poly.scale(curr_power),
-                    curr_power * blob.commitment.alpha,
-                )
+                (acc_poly + curr_poly.scale(curr_power), curr_power * alpha)
             })
             .0
     };
@@ -68,7 +69,7 @@ where
                 },
             )],
             &[evaluation_point],
-            G::ScalarField::one(), // Single evaluation, so we don't care
+            G::ScalarField::one(), // Single polynomial, so we don't care
             G::ScalarField::one(), // Single evaluation, so we don't care
             opening_proof_sponge,
             rng,
@@ -86,17 +87,18 @@ pub fn verify_storage_proof<
 >(
     srs: &SRS<G>,
     group_map: &G::Map,
-    commitment: PolyComm<G>,
+    commitment: Commitment<G>,
     evaluation_point: G::ScalarField,
     proof: &StorageProof<G>,
     rng: &mut OsRng,
+    alpha: G::ScalarField,
 ) -> bool
 where
     G::BaseField: PrimeField,
 {
     let mut opening_proof_sponge = EFqSponge::new(G::other_curve_sponge_params());
     opening_proof_sponge.absorb_fr(&[proof.evaluation]);
-
+    let combined_commitment = fold_commitments::<_, EFqSponge>(alpha, &commitment.chunks);
     srs.verify(
         group_map,
         &mut [BatchEvaluationProof {
@@ -105,7 +107,7 @@ where
             polyscale: G::ScalarField::one(),
             evalscale: G::ScalarField::one(),
             evaluations: vec![Evaluation {
-                commitment,
+                commitment: combined_commitment,
                 evaluations: vec![vec![proof.evaluation]],
             }],
             opening: &proof.opening_proof,
@@ -159,17 +161,19 @@ mod tests {
         };
         let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &data);
         let evaluation_point = Fp::rand(&mut rng);
+        let alpha = Fp::rand(&mut rng);
         let proof = storage_proof::<
             Vesta, VestaFqSponge
 
-        >(&*SRS, &*GROUP_MAP, blob, evaluation_point, &mut rng);
+        >(&*SRS, &*GROUP_MAP, blob, evaluation_point, &mut rng, alpha);
         let res = verify_storage_proof::<Vesta, VestaFqSponge>(
             &*SRS,
             &*GROUP_MAP,
-            commitment.folded,
+            commitment,
             evaluation_point,
             &proof,
             &mut rng,
+            alpha,
         );
         prop_assert!(res);
       }

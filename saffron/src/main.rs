@@ -83,13 +83,12 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
             rmp_serde::from_slice(&asserted.0).expect("failed to decode asserted commitment");
 
         assert_eq!(
-            blob.commitment.folded,
+            blob.commitment,
             asserted_commitment,
             "commitment mismatch: asserted {}, computed {}",
             asserted,
             HexString(
-                rmp_serde::encode::to_vec(&blob.commitment.folded)
-                    .expect("failed to encode commitment")
+                rmp_serde::encode::to_vec(&blob.commitment).expect("failed to encode commitment")
             )
         );
     };
@@ -115,7 +114,7 @@ pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<HexString>
         let mut writer = File::create(args.output)?;
         rmp_serde::encode::write(&mut writer, &commitment)?;
     }
-    let c = rmp_serde::encode::to_vec(&commitment.folded)?;
+    let c = rmp_serde::encode::to_vec(&commitment)?;
     Ok(HexString(c))
 }
 
@@ -133,6 +132,9 @@ pub fn storage_proof(args: cli::StorageProofArgs) -> Result<HexString> {
             blob,
             evaluation_point,
             &mut rng,
+            // We can reuse the same challenge to combine commitment
+            // and to choose the eval point
+            evaluation_point,
         )
     };
     let res = rmp_serde::to_vec(&proof)?;
@@ -153,6 +155,9 @@ pub fn verify_storage_proof(args: cli::VerifyStorageProofArgs) -> Result<()> {
         evaluation_point,
         &proof,
         &mut rng,
+        // We can reuse the same challenge to combine commitment
+        // and to choose the eval point
+        evaluation_point,
     );
     assert!(res);
     Ok(())
