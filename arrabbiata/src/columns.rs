@@ -60,7 +60,7 @@ impl From<Column> for usize {
     }
 }
 
-pub struct Challenges<F: Field> {
+pub struct Challenges<F> {
     /// Used to aggregate the constraints describing the relation. It is used to
     /// enforce all constraints are satisfied at the same time.
     pub alpha: F,
@@ -81,7 +81,7 @@ pub struct Challenges<F: Field> {
     pub r: F,
 }
 
-impl<F: Field> Index<usize> for Challenges<F> {
+impl<F> Index<usize> for Challenges<F> {
     type Output = F;
 
     fn index(&self, index: usize) -> &Self::Output {
