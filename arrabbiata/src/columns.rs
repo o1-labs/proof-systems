@@ -6,6 +6,7 @@ use std::{
     fmt::{Display, Formatter, Result},
     ops::Index,
 };
+use strum::EnumCount;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
 use crate::NUMBER_OF_COLUMNS;
@@ -80,7 +81,30 @@ pub struct Challenges<F: Field> {
     pub r: F,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+impl<F: Field> Index<usize> for Challenges<F> {
+    type Output = F;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        if index == 0 {
+            &self.alpha
+        } else if index == 1 {
+            &self.beta
+        } else if index == 2 {
+            &self.gamma
+        } else if index == 3 {
+            &self.homogeniser
+        } else if index == 4 {
+            &self.r
+        } else {
+            panic!(
+                "Index out of bounds, only {} are defined",
+                ChallengeTerm::COUNT
+            )
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, EnumCountMacro)]
 pub enum ChallengeTerm {
     /// Used to aggregate the constraints describing the relation. It is used to
     /// enforce all constraints are satisfied at the same time.
