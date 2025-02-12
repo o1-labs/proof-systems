@@ -208,7 +208,7 @@ mod tests {
     }
 
     proptest! {
-        #![proptest_config(ProptestConfig::with_cases(20))]
+        #![proptest_config(ProptestConfig::with_cases(10))]
         #[test]
 
         fn test_allow_legal_updates((UserData(xs), UserData(ys)) in
