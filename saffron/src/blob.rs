@@ -1,7 +1,7 @@
 use crate::{
     commitment::Commitment,
     diff::Diff,
-    query::IndexQuery,
+    query::{QueryField, QueryResult},
     utils::{decode_into, encode_for_domain},
 };
 use ark_ff::PrimeField;
@@ -143,30 +143,18 @@ impl<G: KimchiCurve> FieldBlob<G> {
     pub fn query(
         &self,
         domain: Radix2EvaluationDomain<G::ScalarField>,
-        indices: IndexQuery,
-    ) -> IndexQueryResult<G::ScalarField> {
-        IndexQueryResult {
-            chunks: indices
-                .chunks
-                .into_iter()
-                .enumerate()
-                .map(|(poly_index, eval_indices)| {
-                    let evals = self.chunks[poly_index].clone().evaluate_over_domain(domain);
-                    eval_indices
-                        .into_iter()
-                        .map(move |eval_index| (eval_index, evals[eval_index]))
-                        .collect::<Vec<_>>()
-                })
-                .collect(),
-        }
+        query: &QueryField<G::ScalarField>,
+    ) -> QueryResult<G::ScalarField> {
+        let evals: Vec<Vec<G::ScalarField>> = self
+            .chunks
+            .par_iter()
+            .map(|p| p.evaluate_over_domain_by_ref(domain).evals)
+            .collect();
+        query.apply(&evals)
     }
 }
 
-pub struct IndexQueryResult<F> {
-    pub chunks: Vec<Vec<(usize, F)>>,
-}
-
-impl<F: PrimeField> IndexQueryResult<F> {
+impl<F: PrimeField> QueryResult<F> {
     pub fn as_evaluations(
         &self,
         domain: Radix2EvaluationDomain<F>,

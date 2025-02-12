@@ -147,7 +147,7 @@ pub fn padded_field_length<F: PrimeField, D: EvaluationDomain<F>>(domain: &D, xs
     n * domain.size()
 }
 
-pub fn decode_from_field_elements<F: PrimeField>(xs: Vec<F>) -> Vec<u8> {
+pub fn decode_from_field_elements<F: PrimeField>(xs: &[F]) -> Vec<u8> {
     let n = (F::MODULUS_BIT_SIZE / 8) as usize;
     let m = F::size_in_bytes();
     let mut buffer = vec![0u8; F::size_in_bytes()];

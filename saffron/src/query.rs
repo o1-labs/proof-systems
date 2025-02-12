@@ -1,8 +1,7 @@
 use std::marker::PhantomData;
 
-use crate::utils::decode_into;
+use crate::utils::decode_from_field_elements;
 use ark_ff::PrimeField;
-use o1_utils::FieldHelpers;
 use thiserror::Error;
 use tracing::instrument;
 
@@ -13,58 +12,74 @@ pub struct QueryBytes {
     pub len: usize,
 }
 
-#[derive(Clone, Debug)]
-pub struct IndexQuery {
-    pub chunks: Vec<Vec<usize>>,
-}
-
 #[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Debug)]
 /// We store the data in a vector of vector of field element
 /// The inner vector represent polynomials
-struct FieldElt {
+pub struct FieldElt {
     /// the index of the polynomial the data point is attached too
-    poly_index: usize,
+    pub poly_index: usize,
     /// the index of the root of unity the data point is attached too
-    eval_index: usize,
+    pub eval_index: usize,
     domain_size: usize,
     n_polys: usize,
 }
 /// Represents a query in term of Field element
 #[derive(Debug)]
 pub struct QueryField<F> {
-    start: FieldElt,
+    pub start: FieldElt,
     /// how many bytes we need to trim from the first chunk
     /// we get from the first field element we decode
     pub leftover_start: usize,
-    end: FieldElt,
+    pub end: FieldElt,
     /// how many bytes we need to trim from the last chunk
     /// we get from the last field element we decode
     pub leftover_end: usize,
     tag: PhantomData<F>,
 }
 
+pub struct IndexQuery {
+    pub chunks: Vec<Vec<usize>>,
+}
+
+pub struct QueryResult<F> {
+    pub chunks: Vec<Vec<(usize, F)>>,
+}
+
 impl<F: PrimeField> QueryField<F> {
+    fn n_polys(&self) -> usize {
+        self.start.n_polys
+    }
+
     #[instrument(skip_all, level = "debug")]
-    pub fn apply(self, data: &[Vec<F>]) -> Vec<u8> {
-        let n = (F::MODULUS_BIT_SIZE / 8) as usize;
-        let m = F::size_in_bytes();
-        let mut buffer = vec![0u8; m];
-        let mut answer = Vec::new();
+    pub fn apply(&self, data: &[Vec<F>]) -> QueryResult<F> {
+        let mut chunks = vec![Vec::new(); self.n_polys()];
         self.start
             .into_iter()
             .take_while(|x| x <= &self.end)
             .for_each(|x| {
                 let value = data[x.poly_index][x.eval_index];
-                decode_into(&mut buffer, value);
-                answer.extend_from_slice(&buffer[(m - n)..m]);
+                chunks[x.poly_index].push((x.eval_index, value));
             });
-
-        answer[(self.leftover_start)..(answer.len() - self.leftover_end)].to_vec()
+        QueryResult { chunks }
     }
 
-    pub fn as_index_query(self) -> IndexQuery {
-        let n_chunks = self.start.n_polys;
-        let mut chunks: Vec<Vec<usize>> = vec![Vec::new(); n_chunks];
+    #[instrument(skip_all, level = "debug")]
+    pub fn result_decoder(self) -> impl Fn(&QueryResult<F>) -> Vec<u8> {
+        let leftover_start = self.leftover_start;
+        let leftover_end = self.leftover_end;
+        move |res: &QueryResult<F>| -> Vec<u8> {
+            let elems: Vec<F> = res
+                .chunks
+                .iter()
+                .flat_map(|x| x.iter().map(|x| x.1).collect::<Vec<_>>())
+                .collect();
+            let answer = decode_from_field_elements(&elems);
+            answer[(leftover_start)..(answer.len() - leftover_end)].to_vec()
+        }
+    }
+
+    pub fn as_indices(&self) -> IndexQuery {
+        let mut chunks = vec![Vec::new(); self.start.n_polys];
         self.start
             .into_iter()
             .take_while(|x| x <= &self.end)
@@ -189,8 +204,12 @@ mod tests {
             let chunked = encode_for_domain(&*DOMAIN, &xs);
             for query in queries {
                 let expected = &xs[query.start..(query.start+query.len)];
-                let field_query: QueryField<Fp> = query.into_query_field(DOMAIN.size(), chunked.len()).unwrap();
-                let got_answer = field_query.apply(&chunked);
+                let got_answer = {
+                    let field_query: QueryField<Fp> = query.into_query_field(DOMAIN.size(), chunked.len()).unwrap();
+                    let res = field_query.apply(&chunked);
+                    let decode = field_query.result_decoder();
+                    decode(&res)
+                };
                 prop_assert_eq!(expected, got_answer);
             }
         }
@@ -245,8 +264,12 @@ mod tests {
         ) {
             let chunked = encode_for_domain(&*DOMAIN, &xs);
             let n_polys = chunked.len();
-            let field_query: QueryField<Fp> = query.into_query_field(DOMAIN.size(), n_polys).unwrap();
-            let got_answer = field_query.apply(&chunked);
+            let got_answer = {
+                let field_query: QueryField<Fp> = query.into_query_field(DOMAIN.size(), n_polys).unwrap();
+                let res = field_query.apply(&chunked);
+                let decode = field_query.result_decoder();
+                decode(&res)
+            };
             prop_assert!(got_answer.is_empty());
             }
 

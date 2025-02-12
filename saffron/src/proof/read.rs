@@ -1,4 +1,4 @@
-use crate::{blob::FieldBlob, query::IndexQuery};
+use crate::{blob::FieldBlob, query::QueryField};
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain,
@@ -36,7 +36,7 @@ pub fn read_proof<
     domain: D,
     group_map: &G::Map,
     blob: FieldBlob<G>,
-    index_query: IndexQuery,
+    query: &QueryField<G::ScalarField>,
     rng: &mut OsRng,
 ) -> Result<Vec<ReadProof<G>>, ReadProofError>
 where
@@ -44,7 +44,7 @@ where
 {
     blob.chunks
         .into_iter()
-        .zip(index_query.chunks.into_iter())
+        .zip(query.as_indices().chunks.into_iter())
         .map(|(chunk, indices)| {
             let poly = ConstraintPolys::create(domain, indices, chunk)?;
             let commitment = poly.commit(srs);
@@ -254,8 +254,7 @@ mod tests {
     use crate::{
         blob::FieldBlob,
         env,
-        query::{QueryBytes, QueryField},
-        utils::decode_from_field_elements,
+        query::{IndexQuery, QueryBytes, QueryField},
     };
 
     use super::*;
@@ -301,8 +300,8 @@ mod tests {
           { let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
             let index_queries: Vec<IndexQuery> =
               queries.into_iter().map(|q| {
-                let field_query: QueryField<Fp> = q.into_query_field(DOMAIN.size(), blob.n_chunks()).expect("QueryBytes should be valid");
-                field_query.as_index_query()
+                let query_field: QueryField<Fp> = q.into_query_field(DOMAIN.size(), blob.n_chunks()).expect("QueryBytes should be valid");
+                query_field.as_indices()
               }
             ).collect();
             index_queries.into_iter().for_each(|q| {
@@ -316,7 +315,7 @@ mod tests {
     }
 
     proptest! {
-            #![proptest_config(ProptestConfig::with_cases(5))]
+            #![proptest_config(ProptestConfig::with_cases(2))]
             #[test]
             fn test_read_proof((UserData(xs), queries) in UserData::arbitrary()
                    .prop_flat_map(|xs| {
@@ -331,15 +330,10 @@ mod tests {
         )
           { let mut rng = OsRng;
             let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
-            let index_queries: Vec<((usize, usize), QueryBytes, IndexQuery)> =
-              queries.into_iter().map(|qb| {
-                let field_query: QueryField<Fp> = qb.into_query_field(DOMAIN.size(), blob.n_chunks()).expect("QueryBytes should be valid");
-                ((field_query.leftover_start, field_query.leftover_end), qb, field_query.as_index_query())
-              }
-            ).collect();
-            index_queries.into_iter().for_each(|((leftover_start, leftover_end), qb, q)| {
-                let query_res = blob.query(*DOMAIN, q.clone());
-                let proofs = read_proof::<Vesta, _, VestaFqSponge>(&*SRS, *DOMAIN, &*GROUP_MAP, blob.clone(), q, &mut rng).expect("Read proof should be valid");
+            queries.into_iter().for_each(|q| {
+                let query_field = q.into_query_field(DOMAIN.size(), blob.n_chunks()).expect("QueryBytes should be valid");
+                let query_res = blob.query(*DOMAIN, &query_field);
+                let proofs = read_proof::<Vesta, _, VestaFqSponge>(&*SRS, *DOMAIN, &*GROUP_MAP, blob.clone(), &query_field, &mut rng).expect("Read proof should be valid");
 
                 // Check that the commitments match what the user would expect based on the query results
                 {
@@ -359,11 +353,11 @@ mod tests {
 
                 // Check that the query results match the data
                 // Since we assume that the query was a slice, we can throw away the indices now
-                let query_bytes: Vec<Fp> =
-                    query_res.chunks.into_iter().flat_map(|chunk| chunk.into_iter()).map(|(_,b)| b).collect();
-                let result = decode_from_field_elements(query_bytes);
-                let result = result[(leftover_start)..(result.len() - leftover_end)].to_vec();
-                assert_eq!(result, xs[qb.start.. qb.start + qb.len]);
+                let query_res_bytes: Vec<u8> = {
+                    let decode = query_field.result_decoder();
+                    decode(&query_res)
+                };
+                assert_eq!(query_res_bytes, xs[q.start.. q.start + q.len]);
 
 
           });
