@@ -1,5 +1,6 @@
 use ark_ec::AffineRepr;
 use ark_ff::One;
+use ark_ff::Zero;
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use kimchi::curve::KimchiCurve;
@@ -21,6 +22,8 @@ use tracing::instrument;
 pub struct Commitment<G: CommitmentCurve> {
     pub chunks: Vec<PolyComm<G>>,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    // TODO: we don't want to store alpha and folded anymore
+    // We'll delete that in a follow-up commit
     pub alpha: G::ScalarField,
     pub folded: PolyComm<G>,
 }
@@ -30,10 +33,10 @@ impl<G: KimchiCurve> Commitment<G> {
     where
         EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
     {
-        let (folded, alpha) = fold_commitments(sponge, &chunks);
+        let folded: PolyComm<G> = fold_commitments::<_, EFqSponge>(G::ScalarField::zero(), &chunks);
         Self {
             chunks,
-            alpha,
+            alpha: G::ScalarField::zero(),
             folded,
         }
     }
@@ -69,13 +72,9 @@ where
 
 #[instrument(skip_all, level = "debug")]
 fn fold_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
-    sponge: &mut EFqSponge,
+    alpha: G::ScalarField,
     commitments: &[PolyComm<G>],
-) -> (PolyComm<G>, G::ScalarField) {
-    for commitment in commitments {
-        absorb_commitment(sponge, commitment)
-    }
-    let alpha = sponge.challenge();
+) -> PolyComm<G> {
     let powers: Vec<G::ScalarField> = commitments
         .iter()
         .scan(G::ScalarField::one(), |acc, _| {
@@ -84,8 +83,5 @@ fn fold_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::Scala
             Some(res)
         })
         .collect::<Vec<_>>();
-    (
-        PolyComm::multi_scalar_mul(&commitments.iter().collect::<Vec<_>>(), &powers),
-        alpha,
-    )
+    PolyComm::multi_scalar_mul(&commitments.iter().collect::<Vec<_>>(), &powers)
 }
