@@ -141,7 +141,7 @@ where
     let opening_proof_verifies = srs.verify(
         group_map,
         &mut [BatchEvaluationProof {
-            sponge: sponge.clone(),
+            sponge,
             evaluation_points: vec![z],
             polyscale: v,
             evalscale: u,
@@ -254,7 +254,7 @@ mod tests {
     use crate::{
         blob::FieldBlob,
         env,
-        query::{IndexQuery, QueryBytes, QueryField},
+        query::{tests::random_queries, IndexQuery, QueryField},
     };
 
     use super::*;
@@ -288,11 +288,7 @@ mod tests {
         #[test]
         fn test_constraint_poly_creation((UserData(xs), queries) in UserData::arbitrary()
                .prop_flat_map(|xs| {
-                   let n = xs.len();
-                   let query_strategy = (0..(n - 1)).prop_flat_map(move |start| {
-                       ((start + 1)..n).prop_map(move |end| QueryBytes { start, len: end - start})
-                   });
-                   let queries_strategy = prop::collection::vec(query_strategy, 5);
+                   let queries_strategy = random_queries(&xs, 5);
                    (Just(xs), queries_strategy)
                })
 
@@ -319,11 +315,7 @@ mod tests {
             #[test]
             fn test_read_proof((UserData(xs), queries) in UserData::arbitrary()
                    .prop_flat_map(|xs| {
-                       let n = xs.len();
-                       let query_strategy = (0..(n - 1)).prop_flat_map(move |start| {
-                           ((start + 1)..n).prop_map(move |end| QueryBytes { start, len: end - start})
-                       });
-                       let queries_strategy = prop::collection::vec(query_strategy, 5);
+                       let queries_strategy = random_queries(&xs, 5);
                        (Just(xs), queries_strategy)
                    })
 

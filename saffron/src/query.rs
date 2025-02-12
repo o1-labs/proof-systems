@@ -184,7 +184,7 @@ impl QueryBytes {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use crate::utils::{
         encode_for_domain, padded_field_length,
@@ -202,17 +202,25 @@ mod tests {
         Radix2EvaluationDomain::new(SRS_SIZE).unwrap()
     });
 
+    pub fn random_queries(xs: &UserData, n_queries: usize) -> BoxedStrategy<Vec<QueryBytes>> {
+        let n = xs.len();
+        let query_strategy = (0..(n - 1)).prop_flat_map(move |start| {
+            ((start + 1)..n).prop_map(move |end| QueryBytes {
+                start,
+                len: end - start,
+            })
+        });
+        let queries_strategy = prop::collection::vec(query_strategy, n_queries);
+        queries_strategy.boxed()
+    }
+
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(20))]
         #[test]
         fn test_query(
             (UserData(xs), queries) in UserData::arbitrary()
                 .prop_flat_map(|xs| {
-                    let n = xs.len();
-                    let query_strategy = (0..(n - 1)).prop_flat_map(move |start| {
-                        ((start + 1)..n).prop_map(move |end| QueryBytes { start, len: end - start})
-                    });
-                    let queries_strategy = prop::collection::vec(query_strategy, 10);
+                    let queries_strategy = random_queries(&xs, 5);
                     (Just(xs), queries_strategy)
                 })
         ) {
