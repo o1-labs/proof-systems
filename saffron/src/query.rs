@@ -81,16 +81,14 @@ impl<F: PrimeField> QueryField<F> {
         QueryResult { chunks }
     }
 
-    pub fn result_decoder(self) -> impl Fn(&QueryResult<F>) -> Vec<u8> {
-        move |res: &QueryResult<F>| -> Vec<u8> {
-            let elems: Vec<F> = res
-                .chunks
-                .iter()
-                .flat_map(|x| x.iter().map(|x| x.1).collect::<Vec<_>>())
-                .collect();
-            let answer = decode_from_field_elements(&elems);
-            answer[(self.leftover_start)..(answer.len() - self.leftover_end)].to_vec()
-        }
+    pub fn result_decoder(self, res: &QueryResult<F>) -> Vec<u8> {
+        let elems: Vec<F> = res
+            .chunks
+            .iter()
+            .flat_map(|x| x.iter().map(|x| x.1).collect::<Vec<_>>())
+            .collect();
+        let answer = decode_from_field_elements(&elems);
+        answer[(self.leftover_start)..(answer.len() - self.leftover_end)].to_vec()
     }
 
     pub fn as_indices(&self) -> IndexQuery {
@@ -219,11 +217,10 @@ mod tests {
             let chunked = encode_for_domain(&*DOMAIN, &xs);
             for query in queries {
                 let expected = &xs[query.start..(query.start+query.len)];
-                let got_answer = {
+                let got_answer: Vec<u8> = {
                     let field_query: QueryField<Fp> = query.into_query_field(DOMAIN.size(), chunked.len()).unwrap();
-                    let res = field_query.apply(&chunked);
-                    let decode = field_query.result_decoder();
-                    decode(&res)
+                    let res: QueryResult<Fp> = field_query.apply(&chunked);
+                    field_query.result_decoder(&res)
                 };
                 prop_assert_eq!(expected, got_answer);
             }
@@ -282,8 +279,7 @@ mod tests {
             let got_answer = {
                 let field_query: QueryField<Fp> = query.into_query_field(DOMAIN.size(), n_polys).unwrap();
                 let res = field_query.apply(&chunked);
-                let decode = field_query.result_decoder();
-                decode(&res)
+                field_query.result_decoder(&res)
             };
             prop_assert!(got_answer.is_empty());
             }
