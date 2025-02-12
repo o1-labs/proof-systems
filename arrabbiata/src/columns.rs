@@ -63,7 +63,8 @@ impl From<Column> for usize {
 pub struct Challenges<F> {
     /// Used to aggregate the constraints describing the relation. It is used to
     /// enforce all constraints are satisfied at the same time.
-    pub alpha: F,
+    /// Often noted `α`.
+    pub constraint_randomiser: F,
 
     /// Both challenges used in the permutation argument.
     pub beta: F,
@@ -72,13 +73,13 @@ pub struct Challenges<F> {
     /// Used to homogenize the constraints and allow the protocol to fold two
     /// instances of the same relation into a new one.
     /// Often noted `u` in the paper mentioning "folding protocols".
-    pub homogeniser: F,
+    pub constraint_homogeniser: F,
 
     /// Used by the accumulation protocol.
     /// (folding) to perform a random linear transformation of the witnesses and
     /// the public values.
     /// Often noted `r` in the paper mentioning "folding protocols".
-    pub r: F,
+    pub relation_randomiser: F,
 }
 
 impl<F> Index<usize> for Challenges<F> {
@@ -86,15 +87,15 @@ impl<F> Index<usize> for Challenges<F> {
 
     fn index(&self, index: usize) -> &Self::Output {
         if index == 0 {
-            &self.alpha
+            &self.constraint_randomiser
         } else if index == 1 {
             &self.beta
         } else if index == 2 {
             &self.gamma
         } else if index == 3 {
-            &self.homogeniser
+            &self.constraint_homogeniser
         } else if index == 4 {
-            &self.r
+            &self.relation_randomiser
         } else {
             panic!(
                 "Index out of bounds, only {} are defined",
@@ -107,11 +108,11 @@ impl<F> Index<usize> for Challenges<F> {
 impl<F: Zero> Default for Challenges<F> {
     fn default() -> Self {
         Self {
-            alpha: F::zero(),
+            constraint_randomiser: F::zero(),
             beta: F::zero(),
             gamma: F::zero(),
-            homogeniser: F::zero(),
-            r: F::zero(),
+            constraint_homogeniser: F::zero(),
+            relation_randomiser: F::zero(),
         }
     }
 }
@@ -120,29 +121,30 @@ impl<F: Zero> Default for Challenges<F> {
 pub enum ChallengeTerm {
     /// Used to aggregate the constraints describing the relation. It is used to
     /// enforce all constraints are satisfied at the same time.
-    Alpha,
+    /// Often noted `α`.
+    ConstraintRandomiser,
     /// Both challenges used in the permutation argument
     Beta,
     Gamma,
     /// Used to homogenize the constraints and allow the protocol to fold two
     /// instances of the same relation into a new one.
     /// Often noted `u` in the paper mentioning "folding protocols".
-    Homogeniser,
+    ConstraintHomogeniser,
     /// Used by the accumulation protocol
     /// (folding) to perform a random linear transformation of the witnesses and
     /// the public values.
     /// Often noted `r` in the paper mentioning "folding protocols".
-    Randomiser,
+    RelationRandomiser,
 }
 
 impl Display for ChallengeTerm {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match self {
-            ChallengeTerm::Alpha => write!(f, "alpha"),
+            ChallengeTerm::ConstraintRandomiser => write!(f, "alpha"),
             ChallengeTerm::Beta => write!(f, "beta"),
             ChallengeTerm::Gamma => write!(f, "gamma"),
-            ChallengeTerm::Homogeniser => write!(f, "u"),
-            ChallengeTerm::Randomiser => write!(f, "r"),
+            ChallengeTerm::ConstraintHomogeniser => write!(f, "u"),
+            ChallengeTerm::RelationRandomiser => write!(f, "r"),
         }
     }
 }
@@ -151,17 +153,17 @@ impl<F: Field> Index<ChallengeTerm> for Challenges<F> {
 
     fn index(&self, term: ChallengeTerm) -> &Self::Output {
         match term {
-            ChallengeTerm::Alpha => &self.alpha,
+            ChallengeTerm::ConstraintRandomiser => &self.constraint_randomiser,
             ChallengeTerm::Beta => &self.beta,
             ChallengeTerm::Gamma => &self.gamma,
-            ChallengeTerm::Homogeniser => &self.homogeniser,
-            ChallengeTerm::Randomiser => &self.r,
+            ChallengeTerm::ConstraintHomogeniser => &self.constraint_homogeniser,
+            ChallengeTerm::RelationRandomiser => &self.relation_randomiser,
         }
     }
 }
 
 impl<'a> AlphaChallengeTerm<'a> for ChallengeTerm {
-    const ALPHA: Self = Self::Alpha;
+    const ALPHA: Self = Self::ConstraintRandomiser;
 }
 
 pub type E<Fp> = Expr<ConstantExpr<Fp, ChallengeTerm>, Column>;
