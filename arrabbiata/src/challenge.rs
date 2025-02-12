@@ -1,4 +1,4 @@
-use ark_ff::{Field, Zero};
+use ark_ff::Zero;
 use core::{
     fmt::{Display, Formatter, Result},
     ops::Index,
@@ -95,7 +95,7 @@ impl<F: Zero> Default for Challenges<F> {
     }
 }
 
-impl<F: Field> Index<ChallengeTerm> for Challenges<F> {
+impl<F> Index<ChallengeTerm> for Challenges<F> {
     type Output = F;
 
     fn index(&self, term: ChallengeTerm) -> &Self::Output {
