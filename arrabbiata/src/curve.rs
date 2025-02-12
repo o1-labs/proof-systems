@@ -88,6 +88,20 @@ where
         sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
         comms: &[Self],
     );
+
+    /// Coin a challenge from the sponge.
+    /// Note that a challenge set might not be covering the whole set the scalar
+    /// field is defined on.
+    ///
+    /// In particular, for the Pasta curves, a 128-bits value is expected as an
+    /// output.
+    ///
+    /// This method is supposed to be an alias to `sponge.challenge()`.
+    /// However, it seems that the compiler requests some additional type
+    /// constraints if there is generic code over the trait `ArrabbiataCurve`.
+    fn squeeze_challenge(
+        sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
+    ) -> Self::ScalarField;
 }
 
 impl ArrabbiataCurve for Affine<PallasParameters> {
@@ -136,6 +150,13 @@ impl ArrabbiataCurve for Affine<PallasParameters> {
     ) {
         sponge.absorb_g(comms)
     }
+
+    fn squeeze_challenge(
+        sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
+    ) -> Self::ScalarField {
+        // This gives a 128 bits value.
+        sponge.challenge()
+    }
 }
 
 impl ArrabbiataCurve for Affine<VestaParameters> {
@@ -183,5 +204,12 @@ impl ArrabbiataCurve for Affine<VestaParameters> {
         comms: &[Self],
     ) {
         sponge.absorb_g(comms)
+    }
+
+    fn squeeze_challenge(
+        sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
+    ) -> Self::ScalarField {
+        // This gives a 128 bits value.
+        sponge.challenge()
     }
 }
