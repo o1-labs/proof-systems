@@ -5,7 +5,6 @@ use ark_ff::PrimeField;
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use rayon::prelude::*;
 use thiserror::Error;
-use tracing::instrument;
 
 #[derive(Clone, Debug)]
 /// Represents the bytes a user query
@@ -70,7 +69,6 @@ impl<F: PrimeField> QueryField<F> {
         self.start.n_polys
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn apply(&self, data: &[Vec<F>]) -> QueryResult<F> {
         let mut chunks = vec![Vec::new(); self.n_polys()];
         self.start
@@ -83,7 +81,6 @@ impl<F: PrimeField> QueryField<F> {
         QueryResult { chunks }
     }
 
-    #[instrument(skip_all, level = "debug")]
     pub fn result_decoder(self) -> impl Fn(&QueryResult<F>) -> Vec<u8> {
         move |res: &QueryResult<F>| -> Vec<u8> {
             let elems: Vec<F> = res
