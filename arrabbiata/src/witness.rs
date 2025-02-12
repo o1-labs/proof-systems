@@ -13,7 +13,7 @@ use std::time::Instant;
 
 use crate::{
     challenge::Challenges,
-    columns::{Column, Gadget},
+    column::{Column, Gadget},
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side},
     MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS,
