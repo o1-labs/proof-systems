@@ -3,9 +3,9 @@ use mina_poseidon::constants::SpongeConstants;
 use strum::EnumCount as _;
 
 pub mod challenge;
+pub mod column;
 pub mod column_env;
-pub mod columns;
-pub mod constraints;
+pub mod constraint;
 pub mod curve;
 pub mod interpreter;
 pub mod logup;
@@ -39,7 +39,7 @@ pub const VERIFIER_CIRCUIT_SIZE: usize =
 
 /// The maximum number of public inputs the circuit can use per row
 /// We do have 15 for now as we want to compute 5 rounds of poseidon per row
-/// using the gadget [crate::columns::Gadget::Poseidon]. In addition to
+/// using the gadget [crate::column::Gadget::Poseidon]. In addition to
 /// the 12 public inputs required for the rounds, we add 2 more for the values
 /// to absorb.
 pub const NUMBER_OF_PUBLIC_INPUTS: usize = 15 + 2;
@@ -62,4 +62,4 @@ pub const MAXIMUM_FIELD_SIZE_IN_BITS: u64 = 255;
 pub const NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO: usize = NUMBER_OF_COLUMNS * 2;
 
 /// The number of selectors used in the circuit.
-pub const NUMBER_OF_SELECTORS: usize = columns::Gadget::COUNT;
+pub const NUMBER_OF_SELECTORS: usize = column::Gadget::COUNT;

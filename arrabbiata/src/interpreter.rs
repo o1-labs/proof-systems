@@ -122,7 +122,7 @@
 //! [crate::MAX_DEGREE].
 //! Therefore, we can compute 5 full rounds per row by using the "next row"
 //! (i.e. adding an evaluation point at ζω). An implementation is provided in
-//! the gadget [crate::columns::Gadget::Poseidon].
+//! the gadget [crate::column::Gadget::Poseidon].
 //!
 //! The layout for the one using the "next row" is as follow (5 full rounds):
 //! ```text
@@ -570,7 +570,7 @@
 //! ```
 
 use crate::{
-    columns::Gadget, curve::PlonkSpongeConstants, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
+    column::Gadget, curve::PlonkSpongeConstants, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
 };
 use ark_ff::{One, Zero};
 use log::debug;
