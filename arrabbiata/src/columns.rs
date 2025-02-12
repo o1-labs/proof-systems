@@ -75,9 +75,8 @@ pub struct Challenges<F> {
     /// Often noted `u` in the paper mentioning "folding protocols".
     pub constraint_homogeniser: F,
 
-    /// Used by the accumulation protocol.
-    /// (folding) to perform a random linear transformation of the witnesses and
-    /// the public values.
+    /// Used by the accumulation protocol (folding) to perform a random linear
+    /// transformation of the witnesses and the public values.
     /// Often noted `r` in the paper mentioning "folding protocols".
     pub relation_randomiser: F,
 }
@@ -130,9 +129,8 @@ pub enum ChallengeTerm {
     /// instances of the same relation into a new one.
     /// Often noted `u` in the paper mentioning "folding protocols".
     ConstraintHomogeniser,
-    /// Used by the accumulation protocol
-    /// (folding) to perform a random linear transformation of the witnesses and
-    /// the public values.
+    /// Used by the accumulation protocol (folding) to perform a random linear
+    /// transformation of the witnesses and the public values.
     /// Often noted `r` in the paper mentioning "folding protocols".
     RelationRandomiser,
 }
