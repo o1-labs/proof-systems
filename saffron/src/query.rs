@@ -13,6 +13,7 @@ pub struct QueryBytes {
     pub len: usize,
 }
 
+#[derive(Clone, Debug)]
 pub struct IndexQuery {
     pub chunks: Vec<Vec<usize>>,
 }
@@ -34,11 +35,11 @@ pub struct QueryField<F> {
     start: FieldElt,
     /// how many bytes we need to trim from the first chunk
     /// we get from the first field element we decode
-    leftover_start: usize,
+    pub leftover_start: usize,
     end: FieldElt,
     /// how many bytes we need to trim from the last chunk
     /// we get from the last field element we decode
-    leftover_end: usize,
+    pub leftover_end: usize,
     tag: PhantomData<F>,
 }
 

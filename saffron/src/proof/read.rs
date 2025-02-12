@@ -19,6 +19,7 @@ use std::ops::{Mul, Sub};
 use thiserror::Error;
 use tracing::instrument;
 
+#[derive(Clone, Debug)]
 pub struct ReadProof<G: CommitmentCurve> {
     pub commitment: Commitment<G>,
     pub evals: Evals<G::ScalarField>,
@@ -157,6 +158,7 @@ where
     opening_proof_verifies && evaluations_verify
 }
 
+#[derive(Clone, Debug)]
 pub struct ReadProofPolys<T> {
     pub q: T,
     pub d: T,
@@ -253,6 +255,7 @@ mod tests {
         blob::FieldBlob,
         env,
         query::{QueryBytes, QueryField},
+        utils::decode_from_field_elements,
     };
 
     use super::*;
@@ -328,18 +331,40 @@ mod tests {
         )
           { let mut rng = OsRng;
             let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
-            let index_queries: Vec<IndexQuery> =
-              queries.into_iter().map(|q| {
-                let field_query: QueryField<Fp> = q.into_query_field(DOMAIN.size(), blob.n_chunks()).expect("QueryBytes should be valid");
-                field_query.as_index_query()
+            let index_queries: Vec<((usize, usize), QueryBytes, IndexQuery)> =
+              queries.into_iter().map(|qb| {
+                let field_query: QueryField<Fp> = qb.into_query_field(DOMAIN.size(), blob.n_chunks()).expect("QueryBytes should be valid");
+                ((field_query.leftover_start, field_query.leftover_end), qb, field_query.as_index_query())
               }
             ).collect();
-            index_queries.into_iter().for_each(|q| {
+            index_queries.into_iter().for_each(|((leftover_start, leftover_end), qb, q)| {
+                let query_res = blob.query(*DOMAIN, q.clone());
                 let proofs = read_proof::<Vesta, _, VestaFqSponge>(&*SRS, *DOMAIN, &*GROUP_MAP, blob.clone(), q, &mut rng).expect("Read proof should be valid");
+
+                // Check that the commitments match what the user would expect based on the query results
+                {
+                  let query_evals = query_res.as_evaluations(*DOMAIN);
+                  proofs.clone().into_iter().zip(query_evals.into_iter()).for_each(|(proof, evals)| {
+                      let user_commitment = SRS.commit_evaluations_non_hiding(*DOMAIN, &evals);
+                      assert_eq!(user_commitment, proof.commitment.a);
+                  });
+
+                }
+
+                // Check that the proof verifies
                 proofs.into_iter().for_each(|proof| {
                   let res = verify_read_proof::<Vesta, VestaFqSponge>(&*SRS, &*DOMAIN, &*GROUP_MAP, proof, &mut rng);
                   assert!(res);
                 });
+
+                // Check that the query results match the data
+                // Since we assume that the query was a slice, we can throw away the indices now
+                let query_bytes: Vec<Fp> =
+                    query_res.chunks.into_iter().flat_map(|chunk| chunk.into_iter()).map(|(_,b)| b).collect();
+                let result = decode_from_field_elements(query_bytes);
+                let result = result[(leftover_start)..(result.len() - leftover_end)].to_vec();
+                assert_eq!(result, xs[qb.start.. qb.start + qb.len]);
+
 
           });
         }

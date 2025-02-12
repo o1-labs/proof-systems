@@ -1,5 +1,6 @@
 use ark_ff::{BigInteger, PrimeField};
 use ark_poly::EvaluationDomain;
+use o1_utils::FieldHelpers;
 
 // For injectivity, you can only use this on inputs of length at most
 // 'F::MODULUS_BIT_SIZE / 8', e.g. for Vesta this is 31.
@@ -146,13 +147,24 @@ pub fn padded_field_length<F: PrimeField, D: EvaluationDomain<F>>(domain: &D, xs
     n * domain.size()
 }
 
+pub fn decode_from_field_elements<F: PrimeField>(xs: Vec<F>) -> Vec<u8> {
+    let n = (F::MODULUS_BIT_SIZE / 8) as usize;
+    let m = F::size_in_bytes();
+    let mut buffer = vec![0u8; F::size_in_bytes()];
+    xs.iter()
+        .flat_map(|x| {
+            decode_into(&mut buffer, *x);
+            buffer[(m - n)..m].to_vec()
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use ark_poly::Radix2EvaluationDomain;
     use ark_std::UniformRand;
     use mina_curves::pasta::Fp;
-    use o1_utils::FieldHelpers;
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
     use test_utils::UserData;

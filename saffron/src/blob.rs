@@ -1,6 +1,7 @@
 use crate::{
     commitment::Commitment,
     diff::Diff,
+    query::IndexQuery,
     utils::{decode_into, encode_for_domain},
 };
 use ark_ff::PrimeField;
@@ -137,6 +138,49 @@ impl<G: KimchiCurve> FieldBlob<G> {
         self.commitment = commitment;
         self.chunks = chunks;
         self.n_bytes = diff.new_byte_len;
+    }
+
+    pub fn query(
+        &self,
+        domain: Radix2EvaluationDomain<G::ScalarField>,
+        indices: IndexQuery,
+    ) -> IndexQueryResult<G::ScalarField> {
+        IndexQueryResult {
+            chunks: indices
+                .chunks
+                .into_iter()
+                .enumerate()
+                .map(|(poly_index, eval_indices)| {
+                    let evals = self.chunks[poly_index].clone().evaluate_over_domain(domain);
+                    eval_indices
+                        .into_iter()
+                        .map(move |eval_index| (eval_index, evals[eval_index]))
+                        .collect::<Vec<_>>()
+                })
+                .collect(),
+        }
+    }
+}
+
+pub struct IndexQueryResult<F> {
+    pub chunks: Vec<Vec<(usize, F)>>,
+}
+
+impl<F: PrimeField> IndexQueryResult<F> {
+    pub fn as_evaluations(
+        &self,
+        domain: Radix2EvaluationDomain<F>,
+    ) -> Vec<Evaluations<F, Radix2EvaluationDomain<F>>> {
+        self.chunks
+            .par_iter()
+            .map(|chunk| {
+                let mut evals = vec![F::zero(); domain.size()];
+                chunk.iter().for_each(|(j, val)| {
+                    evals[*j] = *val;
+                });
+                Evaluations::from_vec_and_domain(evals, domain)
+            })
+            .collect()
     }
 }
 
