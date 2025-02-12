@@ -142,6 +142,22 @@ pub struct Env<
     pub challenges: Vec<BigInt>,
 
     /// Keep the current executed instruction
+    /// List of the accumulated challenges over time, over the curve E1.
+    pub accumulated_challenges_e1: Vec<BigInt>,
+
+    /// List of the accumulated challenges over time, over the curve E2.
+    pub accumulated_challenges_e2: Vec<BigInt>,
+
+    /// Challenges coined over E1 during the last computation.
+    /// This field is useful to keep track of the challenges that must be
+    /// verified in circuit.
+    pub previous_challenges_e1: Vec<BigInt>,
+
+    /// Challenges coined over E2 during the last computation.
+    /// This field is useful to keep track of the challenges that must be
+    /// verified in circuit.
+    pub previous_challenges_e2: Vec<BigInt>,
+
     /// This can be used to identify which gadget the interpreter is currently
     /// building.
     pub current_instruction: Instruction,
@@ -925,6 +941,10 @@ where
 
         // FIXME: challenges
         let challenges: Vec<BigInt> = vec![];
+        let accumulated_challenges_e1: Vec<BigInt> = vec![];
+        let accumulated_challenges_e2: Vec<BigInt> = vec![];
+        let previous_challenges_e1: Vec<BigInt> = vec![];
+        let previous_challenges_e2: Vec<BigInt> = vec![];
 
         let prover_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
             std::array::from_fn(|_| BigInt::from(0_u64));
@@ -956,7 +976,13 @@ where
             next_state: std::array::from_fn(|_| BigInt::from(0_usize)),
             public_state: std::array::from_fn(|_| BigInt::from(0_usize)),
             selectors,
+
             challenges,
+            accumulated_challenges_e1,
+            accumulated_challenges_e2,
+            previous_challenges_e1,
+            previous_challenges_e2,
+
             current_instruction: VERIFIER_STARTING_INSTRUCTION,
             sponge_e1,
             sponge_e2,
