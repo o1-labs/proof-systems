@@ -70,7 +70,7 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
         full_round::<F, SC>(self.params, &mut self.state, r);
     }
 
-    fn poseidon_block_cipher(&mut self) {
+    pub fn poseidon_block_cipher(&mut self) {
         poseidon_block_cipher::<F, SC>(self.params, &mut self.state);
     }
 }
