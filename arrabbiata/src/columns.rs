@@ -1,4 +1,4 @@
-use ark_ff::Field;
+use ark_ff::{Field, Zero};
 use kimchi::circuits::expr::{AlphaChallengeTerm, CacheId, ConstantExpr, Expr, FormattedOutput};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -100,6 +100,18 @@ impl<F> Index<usize> for Challenges<F> {
                 "Index out of bounds, only {} are defined",
                 ChallengeTerm::COUNT
             )
+        }
+    }
+}
+
+impl<F: Zero> Default for Challenges<F> {
+    fn default() -> Self {
+        Self {
+            alpha: F::zero(),
+            beta: F::zero(),
+            gamma: F::zero(),
+            homogeniser: F::zero(),
+            r: F::zero(),
         }
     }
 }
