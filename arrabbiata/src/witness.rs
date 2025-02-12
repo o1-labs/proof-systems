@@ -80,6 +80,20 @@ pub struct Env<
     /// Commitments to the previous program states.
     pub previous_committed_state_e1: Vec<PolyComm<E1>>,
     pub previous_committed_state_e2: Vec<PolyComm<E2>>,
+
+    /// Accumulated witness for the program state over E1
+    /// The size of the outer vector must be equal to the number of columns in
+    /// the circuit.
+    /// The size of the inner vector must be equal to the number of rows in
+    /// the circuit.
+    pub accumulated_witness_e1: Vec<Vec<BigInt>>,
+
+    /// Accumulated witness for the program state over E2
+    /// The size of the outer vector must be equal to the number of columns in
+    /// the circuit.
+    /// The size of the inner vector must be equal to the number of rows in
+    /// the circuit.
+    pub accumulated_witness_e2: Vec<Vec<BigInt>>,
     // ----------------
 
     // ----------------
@@ -197,8 +211,8 @@ pub struct Env<
     pub idx_values_to_absorb: usize,
     // ----------------
     /// The witness of the current instance of the circuit.
-    /// The size of the outer vector must be equal to the number of columns in the
-    /// circuit.
+    /// The size of the outer vector must be equal to the number of columns in
+    /// the circuit.
     /// The size of the inner vector must be equal to the number of rows in
     /// the circuit.
     ///
@@ -873,6 +887,20 @@ where
             (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
         };
 
+        let accumulated_witness_e1: Vec<Vec<BigInt>> = Vec::with_capacity(NUMBER_OF_COLUMNS);
+        {
+            let mut vec: Vec<BigInt> = Vec::with_capacity(srs_size);
+            (0..srs_size).for_each(|_| vec.push(BigInt::from(0_usize)));
+            (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
+        };
+
+        let accumulated_witness_e2: Vec<Vec<BigInt>> = Vec::with_capacity(NUMBER_OF_COLUMNS);
+        {
+            let mut vec: Vec<BigInt> = Vec::with_capacity(srs_size);
+            (0..srs_size).for_each(|_| vec.push(BigInt::from(0_usize)));
+            (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
+        };
+
         let mut selectors: Vec<Vec<bool>> = Vec::with_capacity(NUMBER_OF_SELECTORS);
         {
             let mut vec: Vec<bool> = Vec::with_capacity(srs_size);
@@ -916,6 +944,8 @@ where
             accumulated_committed_state_e2,
             previous_committed_state_e1,
             previous_committed_state_e2,
+            accumulated_witness_e1,
+            accumulated_witness_e2,
             // ------
             // ------
             idx_var: 0,
