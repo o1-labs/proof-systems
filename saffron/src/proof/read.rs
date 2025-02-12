@@ -352,7 +352,6 @@ mod tests {
                 });
 
                 // Check that the query results match the data
-                // Since we assume that the query was a slice, we can throw away the indices now
                 let query_res_bytes: Vec<u8> = {
                     let decode = query_field.result_decoder();
                     decode(&query_res)

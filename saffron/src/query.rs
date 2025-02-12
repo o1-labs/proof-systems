@@ -2,6 +2,8 @@ use std::marker::PhantomData;
 
 use crate::utils::decode_from_field_elements;
 use ark_ff::PrimeField;
+use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
+use rayon::prelude::*;
 use thiserror::Error;
 use tracing::instrument;
 
@@ -45,6 +47,24 @@ pub struct QueryResult<F> {
     pub chunks: Vec<Vec<(usize, F)>>,
 }
 
+impl<F: PrimeField> QueryResult<F> {
+    pub fn as_evaluations(
+        &self,
+        domain: Radix2EvaluationDomain<F>,
+    ) -> Vec<Evaluations<F, Radix2EvaluationDomain<F>>> {
+        self.chunks
+            .par_iter()
+            .map(|chunk| {
+                let mut evals = vec![F::zero(); domain.size()];
+                chunk.iter().for_each(|(j, val)| {
+                    evals[*j] = *val;
+                });
+                Evaluations::from_vec_and_domain(evals, domain)
+            })
+            .collect()
+    }
+}
+
 impl<F: PrimeField> QueryField<F> {
     fn n_polys(&self) -> usize {
         self.start.n_polys
@@ -65,8 +85,6 @@ impl<F: PrimeField> QueryField<F> {
 
     #[instrument(skip_all, level = "debug")]
     pub fn result_decoder(self) -> impl Fn(&QueryResult<F>) -> Vec<u8> {
-        let leftover_start = self.leftover_start;
-        let leftover_end = self.leftover_end;
         move |res: &QueryResult<F>| -> Vec<u8> {
             let elems: Vec<F> = res
                 .chunks
@@ -74,7 +92,7 @@ impl<F: PrimeField> QueryField<F> {
                 .flat_map(|x| x.iter().map(|x| x.1).collect::<Vec<_>>())
                 .collect();
             let answer = decode_from_field_elements(&elems);
-            answer[(leftover_start)..(answer.len() - leftover_end)].to_vec()
+            answer[(self.leftover_start)..(answer.len() - self.leftover_end)].to_vec()
         }
     }
 

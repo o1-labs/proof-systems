@@ -154,24 +154,6 @@ impl<G: KimchiCurve> FieldBlob<G> {
     }
 }
 
-impl<F: PrimeField> QueryResult<F> {
-    pub fn as_evaluations(
-        &self,
-        domain: Radix2EvaluationDomain<F>,
-    ) -> Vec<Evaluations<F, Radix2EvaluationDomain<F>>> {
-        self.chunks
-            .par_iter()
-            .map(|chunk| {
-                let mut evals = vec![F::zero(); domain.size()];
-                chunk.iter().for_each(|(j, val)| {
-                    evals[*j] = *val;
-                });
-                Evaluations::from_vec_and_domain(evals, domain)
-            })
-            .collect()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::{commitment::commit_to_field_elems, env};
