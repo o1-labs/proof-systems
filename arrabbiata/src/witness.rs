@@ -12,7 +12,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Instant;
 
 use crate::{
-    columns::{Column, Gadget},
+    columns::{Challenges, Column, Gadget},
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side},
     MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS,
@@ -139,23 +139,23 @@ pub struct Env<
     /// have sent in the SNARK, and we must aggregate them.
     // FIXME: nothing is done yet, and the challenges haven't been decided yet.
     // See top-level documentation of the interpreter for more information.
-    pub challenges: Vec<BigInt>,
+    pub challenges: Challenges<BigInt>,
 
     /// List of the accumulated challenges over time, over the curve E1.
-    pub accumulated_challenges_e1: Vec<BigInt>,
+    pub accumulated_challenges_e1: Challenges<BigInt>,
 
     /// List of the accumulated challenges over time, over the curve E2.
-    pub accumulated_challenges_e2: Vec<BigInt>,
+    pub accumulated_challenges_e2: Challenges<BigInt>,
 
     /// Challenges coined over E1 during the last computation.
     /// This field is useful to keep track of the challenges that must be
     /// verified in circuit.
-    pub previous_challenges_e1: Vec<BigInt>,
+    pub previous_challenges_e1: Challenges<BigInt>,
 
     /// Challenges coined over E2 during the last computation.
     /// This field is useful to keep track of the challenges that must be
     /// verified in circuit.
-    pub previous_challenges_e2: Vec<BigInt>,
+    pub previous_challenges_e2: Challenges<BigInt>,
 
     /// Keep the current executed instruction.
     /// This can be used to identify which gadget the interpreter is currently
@@ -940,11 +940,11 @@ where
             .collect();
 
         // FIXME: challenges
-        let challenges: Vec<BigInt> = vec![];
-        let accumulated_challenges_e1: Vec<BigInt> = vec![];
-        let accumulated_challenges_e2: Vec<BigInt> = vec![];
-        let previous_challenges_e1: Vec<BigInt> = vec![];
-        let previous_challenges_e2: Vec<BigInt> = vec![];
+        let challenges: Challenges<BigInt> = Challenges::default();
+        let accumulated_challenges_e1: Challenges<BigInt> = Challenges::default();
+        let accumulated_challenges_e2: Challenges<BigInt> = Challenges::default();
+        let previous_challenges_e1: Challenges<BigInt> = Challenges::default();
+        let previous_challenges_e2: Challenges<BigInt> = Challenges::default();
 
         let prover_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
             std::array::from_fn(|_| BigInt::from(0_u64));
