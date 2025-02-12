@@ -2,6 +2,7 @@ use curve::PlonkSpongeConstants;
 use mina_poseidon::constants::SpongeConstants;
 use strum::EnumCount as _;
 
+pub mod challenge;
 pub mod column_env;
 pub mod columns;
 pub mod constraints;

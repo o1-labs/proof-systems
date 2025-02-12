@@ -12,7 +12,8 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Instant;
 
 use crate::{
-    columns::{Challenges, Column, Gadget},
+    challenge::Challenges,
+    columns::{Column, Gadget},
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side},
     MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS,
