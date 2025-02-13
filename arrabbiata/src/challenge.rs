@@ -13,7 +13,7 @@ pub enum ChallengeTerm {
     /// Used to aggregate the constraints describing the relation. It is used to
     /// enforce all constraints are satisfied at the same time.
     /// Often noted `α`.
-    ConstraintRandomiser,
+    ConstraintCombiner,
     /// Both challenges used in the permutation argument
     Beta,
     Gamma,
@@ -24,17 +24,17 @@ pub enum ChallengeTerm {
     /// Used by the accumulation protocol (folding) to perform a random linear
     /// transformation of the witnesses and the public values.
     /// Often noted `r` in the paper mentioning "folding protocols".
-    RelationRandomiser,
+    RelationCombiner,
 }
 
 impl Display for ChallengeTerm {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match self {
-            ChallengeTerm::ConstraintRandomiser => write!(f, "alpha"),
+            ChallengeTerm::ConstraintCombiner => write!(f, "alpha"),
             ChallengeTerm::Beta => write!(f, "beta"),
             ChallengeTerm::Gamma => write!(f, "gamma"),
             ChallengeTerm::ConstraintHomogeniser => write!(f, "u"),
-            ChallengeTerm::RelationRandomiser => write!(f, "r"),
+            ChallengeTerm::RelationCombiner => write!(f, "r"),
         }
     }
 }
@@ -43,7 +43,7 @@ pub struct Challenges<F> {
     /// Used to aggregate the constraints describing the relation. It is used to
     /// enforce all constraints are satisfied at the same time.
     /// Often noted `α`.
-    pub constraint_randomiser: F,
+    pub constraint_combiner: F,
 
     /// Both challenges used in the permutation argument.
     pub beta: F,
@@ -57,7 +57,7 @@ pub struct Challenges<F> {
     /// Used by the accumulation protocol (folding) to perform a random linear
     /// transformation of the witnesses and the public values.
     /// Often noted `r` in the paper mentioning "folding protocols".
-    pub relation_randomiser: F,
+    pub relation_combiner: F,
 }
 
 impl<F> Index<usize> for Challenges<F> {
@@ -65,7 +65,7 @@ impl<F> Index<usize> for Challenges<F> {
 
     fn index(&self, index: usize) -> &Self::Output {
         if index == 0 {
-            &self.constraint_randomiser
+            &self.constraint_combiner
         } else if index == 1 {
             &self.beta
         } else if index == 2 {
@@ -73,7 +73,7 @@ impl<F> Index<usize> for Challenges<F> {
         } else if index == 3 {
             &self.constraint_homogeniser
         } else if index == 4 {
-            &self.relation_randomiser
+            &self.relation_combiner
         } else {
             panic!(
                 "Index out of bounds, only {} are defined",
@@ -86,7 +86,7 @@ impl<F> Index<usize> for Challenges<F> {
 impl<F> IndexMut<usize> for Challenges<F> {
     fn index_mut(&mut self, index: usize) -> &mut F {
         if index == 0 {
-            &mut self.constraint_randomiser
+            &mut self.constraint_combiner
         } else if index == 1 {
             &mut self.beta
         } else if index == 2 {
@@ -94,7 +94,7 @@ impl<F> IndexMut<usize> for Challenges<F> {
         } else if index == 3 {
             &mut self.constraint_homogeniser
         } else if index == 4 {
-            &mut self.relation_randomiser
+            &mut self.relation_combiner
         } else {
             panic!(
                 "Index out of bounds, only {} are defined",
@@ -107,11 +107,11 @@ impl<F> IndexMut<usize> for Challenges<F> {
 impl<F> IndexMut<ChallengeTerm> for Challenges<F> {
     fn index_mut(&mut self, term: ChallengeTerm) -> &mut F {
         match term {
-            ChallengeTerm::ConstraintRandomiser => &mut self.constraint_randomiser,
+            ChallengeTerm::ConstraintCombiner => &mut self.constraint_combiner,
             ChallengeTerm::Beta => &mut self.beta,
             ChallengeTerm::Gamma => &mut self.gamma,
             ChallengeTerm::ConstraintHomogeniser => &mut self.constraint_homogeniser,
-            ChallengeTerm::RelationRandomiser => &mut self.relation_randomiser,
+            ChallengeTerm::RelationCombiner => &mut self.relation_combiner,
         }
     }
 }
@@ -119,11 +119,11 @@ impl<F> IndexMut<ChallengeTerm> for Challenges<F> {
 impl<F: Zero> Default for Challenges<F> {
     fn default() -> Self {
         Self {
-            constraint_randomiser: F::zero(),
+            constraint_combiner: F::zero(),
             beta: F::zero(),
             gamma: F::zero(),
             constraint_homogeniser: F::zero(),
-            relation_randomiser: F::zero(),
+            relation_combiner: F::zero(),
         }
     }
 }
@@ -133,15 +133,15 @@ impl<F> Index<ChallengeTerm> for Challenges<F> {
 
     fn index(&self, term: ChallengeTerm) -> &Self::Output {
         match term {
-            ChallengeTerm::ConstraintRandomiser => &self.constraint_randomiser,
+            ChallengeTerm::ConstraintCombiner => &self.constraint_combiner,
             ChallengeTerm::Beta => &self.beta,
             ChallengeTerm::Gamma => &self.gamma,
             ChallengeTerm::ConstraintHomogeniser => &self.constraint_homogeniser,
-            ChallengeTerm::RelationRandomiser => &self.relation_randomiser,
+            ChallengeTerm::RelationCombiner => &self.relation_combiner,
         }
     }
 }
 
 impl<'a> AlphaChallengeTerm<'a> for ChallengeTerm {
-    const ALPHA: Self = Self::ConstraintRandomiser;
+    const ALPHA: Self = Self::ConstraintCombiner;
 }
