@@ -87,14 +87,14 @@ pub struct Env<
     /// the circuit.
     /// The size of the inner vector must be equal to the number of rows in
     /// the circuit.
-    pub accumulated_witness_e1: Vec<Vec<BigInt>>,
+    pub accumulated_witness_e1: Vec<Vec<E1::ScalarField>>,
 
     /// Accumulated witness for the program state over E2
     /// The size of the outer vector must be equal to the number of columns in
     /// the circuit.
     /// The size of the inner vector must be equal to the number of rows in
     /// the circuit.
-    pub accumulated_witness_e2: Vec<Vec<BigInt>>,
+    pub accumulated_witness_e2: Vec<Vec<E2::ScalarField>>,
     // ----------------
 
     // ----------------
@@ -904,18 +904,20 @@ where
             (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
         };
 
-        let accumulated_witness_e1: Vec<Vec<BigInt>> = Vec::with_capacity(NUMBER_OF_COLUMNS);
+        let mut accumulated_witness_e1: Vec<Vec<E1::ScalarField>> =
+            Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
-            let mut vec: Vec<BigInt> = Vec::with_capacity(srs_size);
-            (0..srs_size).for_each(|_| vec.push(BigInt::from(0_usize)));
-            (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
+            let mut vec: Vec<E1::ScalarField> = Vec::with_capacity(srs_size);
+            (0..srs_size).for_each(|_| vec.push(E1::ScalarField::zero()));
+            (0..NUMBER_OF_COLUMNS).for_each(|_| accumulated_witness_e1.push(vec.clone()));
         };
 
-        let accumulated_witness_e2: Vec<Vec<BigInt>> = Vec::with_capacity(NUMBER_OF_COLUMNS);
+        let mut accumulated_witness_e2: Vec<Vec<E2::ScalarField>> =
+            Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
-            let mut vec: Vec<BigInt> = Vec::with_capacity(srs_size);
-            (0..srs_size).for_each(|_| vec.push(BigInt::from(0_usize)));
-            (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
+            let mut vec: Vec<E2::ScalarField> = Vec::with_capacity(srs_size);
+            (0..srs_size).for_each(|_| vec.push(E2::ScalarField::zero()));
+            (0..NUMBER_OF_COLUMNS).for_each(|_| accumulated_witness_e2.push(vec.clone()));
         };
 
         let mut selectors: Vec<Vec<bool>> = Vec::with_capacity(NUMBER_OF_SELECTORS);
@@ -1332,7 +1334,12 @@ where
                     evals_accumulator
                         .iter()
                         .zip(evals_witness.iter()) // This iterate over the rows
-                        .map(|(acc, w)| (acc + chal.clone() * w).mod_floor(&modulus))
+                        .map(|(acc, w)| {
+                            let rhs: BigInt = (chal.clone() * w).mod_floor(&modulus);
+                            let rhs: BigUint = rhs.to_biguint().unwrap();
+                            let res = E1::ScalarField::from_biguint(&rhs).unwrap();
+                            *acc + res
+                        })
                         .collect()
                 })
                 .collect();
@@ -1346,7 +1353,12 @@ where
                     evals_accumulator
                         .iter()
                         .zip(evals_witness.iter()) // This iterate over the rows
-                        .map(|(acc, w)| (acc + chal.clone() * w).mod_floor(&modulus))
+                        .map(|(acc, w)| {
+                            let rhs: BigInt = (chal.clone() * w).mod_floor(&modulus);
+                            let rhs: BigUint = rhs.to_biguint().unwrap();
+                            let res = E2::ScalarField::from_biguint(&rhs).unwrap();
+                            *acc + res
+                        })
                         .collect()
                 })
                 .collect();
