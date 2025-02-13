@@ -129,6 +129,10 @@ pub fn main() {
 
         // Coin challenge α for combining the constraints
         env.coin_challenge(ChallengeTerm::ConstraintRandomiser);
+        debug!(
+            "Coin challenge α: 0x{chal}",
+            chal = env.challenges[ChallengeTerm::ConstraintRandomiser].to_str_radix(16)
+        );
 
         // ----- Accumulation/folding argument -----
         // FIXME:
