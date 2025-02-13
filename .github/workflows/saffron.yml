@@ -49,7 +49,7 @@ jobs:
 
       - name: Run the saffron unit tests
         run: |
-          SRS_FILEPATH=./srs/test_vesta.srs RUST_LOG=debug cargo test -p saffron  --release -- --nocapture
+          SRS_FILEPATH=../srs/test_vesta.srs RUST_LOG=debug cargo test -p saffron  --release -- --nocapture
 
       - name: Run the saffron e2e encoding tests on small lorem file
         run: |
