@@ -6,16 +6,17 @@
 
 use arrabbiata::{
     challenge::ChallengeTerm,
+    column::{Gadget, E},
+    constraint,
     curve::PlonkSpongeConstants,
     interpreter::{self, InterpreterEnv},
-    witness::Env,
-    MIN_SRS_LOG2_SIZE, VERIFIER_CIRCUIT_SIZE,
+    witness, MIN_SRS_LOG2_SIZE, VERIFIER_CIRCUIT_SIZE,
 };
 use log::{debug, info};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 use mina_poseidon::constants::SpongeConstants;
 use num_bigint::BigInt;
-use std::time::Instant;
+use std::{collections::HashMap, time::Instant};
 
 pub fn main() {
     // See https://github.com/rust-lang/log
@@ -59,12 +60,23 @@ pub fn main() {
     let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
         std::array::from_fn(|_i| BigInt::from(42u64));
     // FIXME: make a setup phase to build the selectors
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
+    let mut env = witness::Env::<Fp, Fq, Vesta, Pallas>::new(
         *srs_log2_size,
         BigInt::from(1u64),
         sponge_e1.clone(),
         sponge_e1.clone(),
     );
+
+    // FIXME: move this in the setup phase
+    let _constraints_fp: HashMap<Gadget, Vec<E<Fp>>> = {
+        let env: constraint::Env<Vesta> = constraint::Env::new();
+        env.get_all_constraints_indexed_by_gadget()
+    };
+
+    let _constraints_fq: HashMap<Gadget, Vec<E<Fq>>> = {
+        let env: constraint::Env<Pallas> = constraint::Env::new();
+        env.get_all_constraints_indexed_by_gadget()
+    };
 
     let n_iteration_per_fold = domain_size - VERIFIER_CIRCUIT_SIZE;
 
