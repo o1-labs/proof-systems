@@ -243,6 +243,10 @@
 <a href="#243" id="243">243</a>
 <a href="#244" id="244">244</a>
 <a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     commitment::Commitment,
     diff::Diff,
@@ -453,37 +457,41 @@
     }
 
     <span class="macro">proptest! </span>{
-        <span class="attr">#![proptest_config(ProptestConfig::with_cases(<span class="number">20</span>))]
+        <span class="attr">#![proptest_config(ProptestConfig::with_cases(<span class="number">10</span>))]
         #[test]
 
         </span><span class="kw">fn </span>test_allow_legal_updates((UserData(xs), UserData(ys)) <span class="kw">in
-            </span>(UserData::arbitrary().prop_flat_map(random_diff))
+            </span>(UserData::arbitrary_with(DataSize::Medium).prop_flat_map(random_diff))
         ) {
             <span class="comment">// start with some random user data
             </span><span class="kw">let </span><span class="kw-2">mut </span>xs_blob = FieldBlob::&lt;Vesta&gt;::encode::&lt;<span class="kw">_</span>, VestaFqSponge&gt;(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
             <span class="kw">let </span>diff = Diff::&lt;Fp&gt;::create(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>xs, <span class="kw-2">&amp;</span>ys).unwrap();
-            xs_blob.update::&lt;VestaFqSponge&gt;(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">&amp;*</span>DOMAIN, diff.clone());
 
-            <span class="comment">// check that the user and SP agree on the new data
+            <span class="comment">// check that the user and SP agree on the data
             </span><span class="kw">let </span>user_commitment = {
                 <span class="kw">let </span>elems = encode_for_domain(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
-                <span class="kw">let </span>commitment = commit_to_field_elems::&lt;Vesta, VestaFqSponge&gt;(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, elems);
+                commit_to_field_elems::&lt;Vesta, VestaFqSponge&gt;(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">*</span>DOMAIN, elems)
 
+            };
+            <span class="macro">prop_assert_eq!</span>(user_commitment.clone(), xs_blob.commitment.clone());
+
+            <span class="comment">// Update the blob with the diff and check the user can match the commitment
+            </span>xs_blob.update::&lt;VestaFqSponge&gt;(<span class="kw-2">&amp;*</span>SRS, <span class="kw-2">&amp;*</span>DOMAIN, diff.clone());
+
+            <span class="kw">let </span>updated_user_commitment = {
                 <span class="kw">let </span>commitment_diffs = diff.as_evaluations(<span class="kw-2">&amp;*</span>DOMAIN)
                     .par_iter()
                     .map(|evals| SRS.commit_evaluations_non_hiding(<span class="kw-2">*</span>DOMAIN, evals))
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
                 <span class="kw">let </span><span class="kw-2">mut </span>sponge = VestaFqSponge::new(Vesta::other_curve_sponge_params());
-                commitment.update(commitment_diffs, <span class="kw-2">&amp;mut </span>sponge)
-
+                user_commitment.update(commitment_diffs, <span class="kw-2">&amp;mut </span>sponge)
             };
+            <span class="macro">prop_assert_eq!</span>(updated_user_commitment, xs_blob.commitment.clone());
 
-            <span class="kw">let </span>ys_blob = encode_to_chunk_size(<span class="kw-2">&amp;</span>ys, xs_blob.chunks.len());
-            <span class="macro">prop_assert_eq!</span>(user_commitment.clone(), ys_blob.commitment.clone());
-
-            <span class="comment">// the updated blob should be the same as if we just start with the new data
-            </span><span class="macro">prop_assert_eq!</span>(xs_blob, ys_blob)
+            <span class="comment">// the updated blob should be the same as if we just start with the new data (with appropriate padding)
+            </span><span class="kw">let </span>ys_blob = encode_to_chunk_size(<span class="kw-2">&amp;</span>ys, xs_blob.chunks.len());
+            <span class="macro">prop_assert_eq!</span>(xs_blob, ys_blob)
         }
 
     }
