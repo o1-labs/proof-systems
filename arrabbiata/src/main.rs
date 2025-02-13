@@ -141,8 +141,15 @@ pub fn main() {
         // FIXME:
         // Absorb the cross-terms
 
-        // FIXME:
-        // Coin challenge r to fold
+        // Coin challenge r to fold the instances of the relation.
+        // FIXME: we must do the step before first! Skipping for now to achieve
+        // the next step, i.e. accumulating on the prover side the different
+        // values below.
+        env.coin_challenge(ChallengeTerm::RelationRandomiser);
+        debug!(
+            "Coin challenge r: 0x{r}",
+            r = env.challenges[ChallengeTerm::RelationRandomiser].to_str_radix(16)
+        );
 
         // FIXME:
         // Compute the accumulated witness
