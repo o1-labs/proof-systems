@@ -9,7 +9,7 @@ on:
 
 jobs:
   run:
-    name: Run saffron unit and e2e tests
+    name: Run saffron e2e tests
 
     runs-on: ["ubuntu-latest"]
 
