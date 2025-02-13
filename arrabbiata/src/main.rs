@@ -150,9 +150,7 @@ pub fn main() {
             "Coin challenge r: 0x{r}",
             r = env.challenges[ChallengeTerm::RelationRandomiser].to_str_radix(16)
         );
-
-        // FIXME:
-        // Compute the accumulated witness
+        env.accumulate_program_state();
 
         // FIXME:
         // Compute the accumulation of the commitments to the witness columns
