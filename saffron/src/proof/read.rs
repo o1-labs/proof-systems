@@ -15,6 +15,7 @@ use poly_commitment::{
     PolyComm, SRS as _,
 };
 use rand::rngs::OsRng;
+use rayon::prelude::*;
 use std::ops::{Mul, Sub};
 use thiserror::Error;
 use tracing::instrument;
@@ -41,10 +42,11 @@ pub fn read_proof<
 ) -> Result<Vec<ReadProof<G>>, ReadProofError>
 where
     G::BaseField: PrimeField,
+    G::Map: Sync,
 {
     blob.chunks
-        .into_iter()
-        .zip(query.as_indices().chunks.into_iter())
+        .into_par_iter()
+        .zip(query.as_indices().chunks.into_par_iter())
         .map(|(chunk, indices)| {
             let poly = ConstraintPolys::create(domain, indices, chunk)?;
             let commitment = poly.commit(srs);
@@ -79,7 +81,7 @@ where
                 G::ScalarField::one(), // Single evaluation, so we don't care
                 G::ScalarField::one(), // Single evaluation, so we don't care
                 sponge,
-                rng,
+                &mut rng.clone(),
             );
             Ok(ReadProof {
                 commitment,
