@@ -346,10 +346,7 @@ mod tests {
                 });
 
                 // Check that the query results match the data
-                let query_res_bytes: Vec<u8> = {
-                    let decode = query_field.result_decoder();
-                    decode(&query_res)
-                };
+                let query_res_bytes: Vec<u8> = query_field.result_decoder(&query_res);
                 assert_eq!(query_res_bytes, xs[q.start.. q.start + q.len]);
 
 
