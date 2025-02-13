@@ -120,7 +120,7 @@ where
     // -- Preparing for opening proof verification
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
-    let zeta: G::ScalarField = zeta_chal.to_field(endo_r);
+    let zeta = zeta_chal.to_field(endo_r);
     let omega = domain.d1.group_gen;
     let zeta_omega = zeta * omega;
 
