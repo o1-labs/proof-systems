@@ -21,8 +21,8 @@ use crate::{
 };
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+pub type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 pub struct BenchmarkCtx {
     pub num_gates: usize,
