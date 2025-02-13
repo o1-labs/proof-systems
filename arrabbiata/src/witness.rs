@@ -1364,4 +1364,46 @@ where
                 .collect();
         }
     }
+
+    /// Accumulate the committed state by adding the last committed state into
+    /// the committed state accumulator.
+    ///
+    /// The commitments are accumulated into a different accumulator, depending
+    /// on the curve currently being used.
+    ///
+    /// This is part of the work the prover of the accumulation/folding scheme.
+    ///
+    /// This must translate the following equation:
+    /// ```text
+    /// C_(p, n + 1) = C_(p, n) + chal * comm
+    ///               OR
+    /// C_(q, n + 1) = C_(q, n) + chal * comm
+    /// ```
+    ///
+    /// Note that the committed program state is encoded in
+    /// [crate::NUMBER_OF_COLUMNS] values, therefore we must iterate over all
+    /// the columns to accumulate the committed state.
+    pub fn accumulate_committed_state(&mut self) {
+        if self.current_iteration % 2 == 0 {
+            let chal = self.challenges[ChallengeTerm::RelationRandomiser].clone();
+            let chal: BigUint = chal.to_biguint().unwrap();
+            let chal: E2::ScalarField = E2::ScalarField::from_biguint(&chal).unwrap();
+            self.accumulated_committed_state_e2 = self
+                .accumulated_committed_state_e2
+                .iter()
+                .zip(self.previous_committed_state_e2.iter())
+                .map(|(l, r)| l + &r.scale(chal))
+                .collect();
+        } else {
+            let chal = self.challenges[ChallengeTerm::RelationRandomiser].clone();
+            let chal: BigUint = chal.to_biguint().unwrap();
+            let chal: E1::ScalarField = E1::ScalarField::from_biguint(&chal).unwrap();
+            self.accumulated_committed_state_e1 = self
+                .accumulated_committed_state_e1
+                .iter()
+                .zip(self.previous_committed_state_e1.iter())
+                .map(|(l, r)| l + &r.scale(chal))
+                .collect();
+        }
+    }
 }
