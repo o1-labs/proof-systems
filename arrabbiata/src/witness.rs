@@ -72,10 +72,10 @@ pub struct Env<
     // Information related to the IVC, which will be used by the prover/verifier
     // at the end of the whole execution
     // FIXME: use a blinded comm and also fold the blinder
-    pub ivc_accumulator_e1: Vec<PolyComm<E1>>,
+    pub accumulated_committed_state_e1: Vec<PolyComm<E1>>,
 
     // FIXME: use a blinded comm and also fold the blinder
-    pub ivc_accumulator_e2: Vec<PolyComm<E2>>,
+    pub accumulated_committed_state_e2: Vec<PolyComm<E2>>,
 
     /// Commitments to the previous program states.
     pub previous_committed_state_e1: Vec<PolyComm<E1>>,
@@ -502,7 +502,7 @@ where
                 let idx_col = idx / 2;
                 debug!("Absorbing the accumulator for the column index {idx_col}. After this, there will still be {} elements to absorb", NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO - idx - 1);
                 if self.current_iteration % 2 == 0 {
-                    let (pt_x, pt_y) = self.ivc_accumulator_e2[idx_col]
+                    let (pt_x, pt_y) = self.accumulated_committed_state_e2[idx_col]
                         .get_first_chunk()
                         .to_coordinates()
                         .unwrap();
@@ -512,7 +512,7 @@ where
                         self.write_public_input(pos, pt_y.to_biguint().into())
                     }
                 } else {
-                    let (pt_x, pt_y) = self.ivc_accumulator_e1[idx_col]
+                    let (pt_x, pt_y) = self.accumulated_committed_state_e1[idx_col]
                         .get_first_chunk()
                         .to_coordinates()
                         .unwrap();
@@ -607,11 +607,11 @@ where
                 let (pt_x, pt_y): (BigInt, BigInt) = match side {
                     Side::Left => {
                         if self.current_iteration % 2 == 0 {
-                            let pt = self.ivc_accumulator_e2[i_comm].get_first_chunk();
+                            let pt = self.accumulated_committed_state_e2[i_comm].get_first_chunk();
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         } else {
-                            let pt = self.ivc_accumulator_e1[i_comm].get_first_chunk();
+                            let pt = self.accumulated_committed_state_e1[i_comm].get_first_chunk();
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         }
@@ -888,10 +888,10 @@ where
             .map(|_| PolyComm::new(vec![(srs_e2.h + srs_e2.h).into()]))
             .collect();
         // FIXME: zero will not work.
-        let ivc_accumulator_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
+        let accumulated_committed_state_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
             .map(|_| PolyComm::new(vec![srs_e1.h]))
             .collect();
-        let ivc_accumulator_e2: Vec<PolyComm<E2>> = (0..NUMBER_OF_COLUMNS)
+        let accumulated_committed_state_e2: Vec<PolyComm<E2>> = (0..NUMBER_OF_COLUMNS)
             .map(|_| PolyComm::new(vec![srs_e2.h]))
             .collect();
 
@@ -912,8 +912,8 @@ where
             // -------
             // -------
             // verifier only
-            ivc_accumulator_e1,
-            ivc_accumulator_e2,
+            accumulated_committed_state_e1,
+            accumulated_committed_state_e2,
             previous_committed_state_e1,
             previous_committed_state_e2,
             // ------
