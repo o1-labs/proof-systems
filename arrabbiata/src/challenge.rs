@@ -1,7 +1,7 @@
-use ark_ff::{Field, Zero};
+use ark_ff::Zero;
 use core::{
     fmt::{Display, Formatter, Result},
-    ops::Index,
+    ops::{Index, IndexMut},
 };
 use kimchi::circuits::expr::AlphaChallengeTerm;
 use serde::{Deserialize, Serialize};
@@ -83,6 +83,39 @@ impl<F> Index<usize> for Challenges<F> {
     }
 }
 
+impl<F> IndexMut<usize> for Challenges<F> {
+    fn index_mut(&mut self, index: usize) -> &mut F {
+        if index == 0 {
+            &mut self.constraint_randomiser
+        } else if index == 1 {
+            &mut self.beta
+        } else if index == 2 {
+            &mut self.gamma
+        } else if index == 3 {
+            &mut self.constraint_homogeniser
+        } else if index == 4 {
+            &mut self.relation_randomiser
+        } else {
+            panic!(
+                "Index out of bounds, only {} are defined",
+                ChallengeTerm::COUNT
+            )
+        }
+    }
+}
+
+impl<F> IndexMut<ChallengeTerm> for Challenges<F> {
+    fn index_mut(&mut self, term: ChallengeTerm) -> &mut F {
+        match term {
+            ChallengeTerm::ConstraintRandomiser => &mut self.constraint_randomiser,
+            ChallengeTerm::Beta => &mut self.beta,
+            ChallengeTerm::Gamma => &mut self.gamma,
+            ChallengeTerm::ConstraintHomogeniser => &mut self.constraint_homogeniser,
+            ChallengeTerm::RelationRandomiser => &mut self.relation_randomiser,
+        }
+    }
+}
+
 impl<F: Zero> Default for Challenges<F> {
     fn default() -> Self {
         Self {
@@ -95,7 +128,7 @@ impl<F: Zero> Default for Challenges<F> {
     }
 }
 
-impl<F: Field> Index<ChallengeTerm> for Challenges<F> {
+impl<F> Index<ChallengeTerm> for Challenges<F> {
     type Output = F;
 
     fn index(&self, term: ChallengeTerm) -> &Self::Output {

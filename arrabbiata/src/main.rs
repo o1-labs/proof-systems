@@ -5,6 +5,7 @@
 //! specify the number of iterations, and keep this file relatively simple.
 
 use arrabbiata::{
+    challenge::ChallengeTerm,
     curve::PlonkSpongeConstants,
     interpreter::{self, InterpreterEnv},
     witness::Env,
@@ -115,6 +116,7 @@ pub fn main() {
         // Absorb the last program state.
         env.absorb_state();
 
+        // ----- Permutation argument -----
         // FIXME:
         // Coin chalenges β and γ for the permutation argument
 
@@ -123,10 +125,12 @@ pub fn main() {
 
         // FIXME:
         // Commit to the accumulator and absorb the commitment
+        // ----- Permutation argument -----
 
-        // FIXME:
         // Coin challenge α for combining the constraints
+        env.coin_challenge(ChallengeTerm::ConstraintRandomiser);
 
+        // ----- Accumulation/folding argument -----
         // FIXME:
         // Compute the cross-terms
 
@@ -153,6 +157,7 @@ pub fn main() {
 
         // FIXME:
         // Compute the accumulated error
+        // ----- Accumulation/folding argument -----
 
         debug!(
             "Iteration {i} fully proven in {elapsed} μs",
