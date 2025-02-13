@@ -245,12 +245,6 @@ pub struct Env<
     /// Current input
     pub zi: BigInt,
     // ---------------
-
-    // ---------------
-    // Only used to have type safety and think about the design at the
-    // type-level
-    pub _marker: std::marker::PhantomData<(Fp, Fq, E1, E2)>,
-    // ---------------
 }
 
 // The condition on the parameters for E1 and E2 is to get the coefficients and
@@ -1013,8 +1007,6 @@ where
             // Inputs
             z0: z0.clone(),
             zi: z0,
-            // ------
-            _marker: std::marker::PhantomData,
         }
     }
 
