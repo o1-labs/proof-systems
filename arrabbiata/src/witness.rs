@@ -87,14 +87,14 @@ pub struct Env<
     /// the circuit.
     /// The size of the inner vector must be equal to the number of rows in
     /// the circuit.
-    pub accumulated_witness_e1: Vec<Vec<E1::ScalarField>>,
+    pub accumulated_program_state_e1: Vec<Vec<E1::ScalarField>>,
 
     /// Accumulated witness for the program state over E2
     /// The size of the outer vector must be equal to the number of columns in
     /// the circuit.
     /// The size of the inner vector must be equal to the number of rows in
     /// the circuit.
-    pub accumulated_witness_e2: Vec<Vec<E2::ScalarField>>,
+    pub accumulated_program_state_e2: Vec<Vec<E2::ScalarField>>,
     // ----------------
 
     // ----------------
@@ -904,20 +904,20 @@ where
             (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
         };
 
-        let mut accumulated_witness_e1: Vec<Vec<E1::ScalarField>> =
+        let mut accumulated_program_state_e1: Vec<Vec<E1::ScalarField>> =
             Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
             let mut vec: Vec<E1::ScalarField> = Vec::with_capacity(srs_size);
             (0..srs_size).for_each(|_| vec.push(E1::ScalarField::zero()));
-            (0..NUMBER_OF_COLUMNS).for_each(|_| accumulated_witness_e1.push(vec.clone()));
+            (0..NUMBER_OF_COLUMNS).for_each(|_| accumulated_program_state_e1.push(vec.clone()));
         };
 
-        let mut accumulated_witness_e2: Vec<Vec<E2::ScalarField>> =
+        let mut accumulated_program_state_e2: Vec<Vec<E2::ScalarField>> =
             Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
             let mut vec: Vec<E2::ScalarField> = Vec::with_capacity(srs_size);
             (0..srs_size).for_each(|_| vec.push(E2::ScalarField::zero()));
-            (0..NUMBER_OF_COLUMNS).for_each(|_| accumulated_witness_e2.push(vec.clone()));
+            (0..NUMBER_OF_COLUMNS).for_each(|_| accumulated_program_state_e2.push(vec.clone()));
         };
 
         let mut selectors: Vec<Vec<bool>> = Vec::with_capacity(NUMBER_OF_SELECTORS);
@@ -967,8 +967,8 @@ where
             accumulated_committed_state_e2,
             previous_committed_state_e1,
             previous_committed_state_e2,
-            accumulated_witness_e1,
-            accumulated_witness_e2,
+            accumulated_program_state_e1,
+            accumulated_program_state_e2,
             // ------
             // ------
             idx_var: 0,
@@ -1326,8 +1326,8 @@ where
         let chal = self.challenges[ChallengeTerm::RelationRandomiser].clone();
         if self.current_iteration % 2 == 0 {
             let modulus: BigInt = E1::ScalarField::modulus_biguint().into();
-            self.accumulated_witness_e1 = self
-                .accumulated_witness_e1
+            self.accumulated_program_state_e1 = self
+                .accumulated_program_state_e1
                 .iter()
                 .zip(self.witness.iter()) // This iterate over the columns
                 .map(|(evals_accumulator, evals_witness)| {
@@ -1345,8 +1345,8 @@ where
                 .collect();
         } else {
             let modulus: BigInt = E2::ScalarField::modulus_biguint().into();
-            self.accumulated_witness_e2 = self
-                .accumulated_witness_e2
+            self.accumulated_program_state_e2 = self
+                .accumulated_program_state_e2
                 .iter()
                 .zip(self.witness.iter()) // This iterate over the columns
                 .map(|(evals_accumulator, evals_witness)| {
