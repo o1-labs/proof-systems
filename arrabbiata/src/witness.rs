@@ -1270,6 +1270,13 @@ where
             let verifier_answer = E1::squeeze_challenge(&mut sponge).to_biguint().into();
             self.challenges[chal] = verifier_answer;
             sponge.sponge.poseidon_block_cipher();
+            let state: Vec<BigInt> = sponge
+                .sponge
+                .state
+                .iter()
+                .map(|x| x.to_biguint().into())
+                .collect();
+            self.prover_sponge_state = state.try_into().unwrap();
         } else {
             let mut sponge = E2::create_new_sponge();
             self.prover_sponge_state.iter().for_each(|x| {
@@ -1281,6 +1288,13 @@ where
             let verifier_answer = E2::squeeze_challenge(&mut sponge).to_biguint().into();
             self.challenges[chal] = verifier_answer;
             sponge.sponge.poseidon_block_cipher();
-        };
+            let state: Vec<BigInt> = sponge
+                .sponge
+                .state
+                .iter()
+                .map(|x| x.to_biguint().into())
+                .collect();
+            self.prover_sponge_state = state.try_into().unwrap();
+        }
     }
 }
