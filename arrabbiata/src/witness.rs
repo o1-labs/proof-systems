@@ -1323,7 +1323,7 @@ where
     /// ```
     /// where acc and w are vectors of the same size.
     pub fn accumulate_program_state(&mut self) {
-        let chal = self.challenges[ChallengeTerm::RelationRandomiser].clone();
+        let chal = self.challenges[ChallengeTerm::RelationCombiner].clone();
         if self.current_iteration % 2 == 0 {
             let modulus: BigInt = E1::ScalarField::modulus_biguint().into();
             self.accumulated_program_state_e1 = self
@@ -1385,7 +1385,7 @@ where
     /// the columns to accumulate the committed state.
     pub fn accumulate_committed_state(&mut self) {
         if self.current_iteration % 2 == 0 {
-            let chal = self.challenges[ChallengeTerm::RelationRandomiser].clone();
+            let chal = self.challenges[ChallengeTerm::RelationCombiner].clone();
             let chal: BigUint = chal.to_biguint().unwrap();
             let chal: E2::ScalarField = E2::ScalarField::from_biguint(&chal).unwrap();
             self.accumulated_committed_state_e2 = self
@@ -1395,7 +1395,7 @@ where
                 .map(|(l, r)| l + &r.scale(chal))
                 .collect();
         } else {
-            let chal = self.challenges[ChallengeTerm::RelationRandomiser].clone();
+            let chal = self.challenges[ChallengeTerm::RelationCombiner].clone();
             let chal: BigUint = chal.to_biguint().unwrap();
             let chal: E1::ScalarField = E1::ScalarField::from_biguint(&chal).unwrap();
             self.accumulated_committed_state_e1 = self
