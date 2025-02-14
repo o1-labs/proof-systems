@@ -89,4 +89,4 @@ jobs:
           eval $(opam env)
           cd o1vm
           unzip -q -o /tmp/o1vm-e2e-testing-cache.zip -d ./
-          RUN_WITH_CACHED_DATA="y" FILENAME="env-for-latest-l2-block.sh" O1VM_FLAVOR="pickles" STOP_AT="=3000000" ./run-code.sh
+          RUST_LOG=debug RUN_WITH_CACHED_DATA="y" FILENAME="env-for-latest-l2-block.sh" O1VM_FLAVOR="pickles" STOP_AT="=3000000" ./run-code.sh

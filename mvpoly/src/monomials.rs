@@ -342,6 +342,10 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
         // Build the corresponding monomial
         let var_usize: usize = col.into();
         let idx = offset + var_usize;
+        assert!(
+            idx < N,
+            "Only {N} variables can be used, and {idx} has been given. To get an equivalent mvpoly, you need to increase the number of variables"
+        );
 
         let mut monomials = HashMap::new();
         let exponents: [usize; N] = std::array::from_fn(|i| if i == idx { 1 } else { 0 });

@@ -277,7 +277,7 @@
 //!
 //! ## Fiat-Shamir challenges
 //!
-//! The challenges sent by the verifier must also be simulated by the IVC
+//! The challenges sent by the verifier must also be simulated by the verifier
 //! circuit. It is done by passing "messages" as public inputs to the next
 //! instances. Diagrams recapitulating the messages that must be passed are
 //! available in the section [Message passing](#message-passing).
@@ -429,6 +429,145 @@
 //!                                    |                            |
 //!                                    +----------------------------+
 //! ```
+//!
+//! ### Workflow example for handling a challenge
+//!
+//! Handling challenges is performed in two steps. Let's take the example of the
+//! verifier coin `u` used to homogenize the constraints/polynomials in the
+//! accumulation protocol. For the sake of simplicity, we only focus on the work
+//! related to the challenges. In addition to that, a verifier coin `r` is used
+//! to accumulate the challenges. Therefore, we start with the following
+//! diagram:
+//!
+//! ```text
+//! +------------------------------------------+
+//! |            Instance n                    |
+//! |        (witness w_(p, n))                |
+//! |            ----------                    |
+//! |               Vesta                      |
+//! |         (scalar field = Fp)              |
+//! |         (base field   = Fq)              |
+//! |          (Sponge over Fq)                |
+//! |                                          |
+//! | Generate as output:                      |
+//! | - u_(p, n)                               |
+//! | - r                                      |
+//! | - "accumulated u": u_p + r * u_(p, n)    |
+//! |     (note the operations are over Fp)    |
+//! +------------------------------------------+
+//! ```
+//!
+//! The coins `u_(p, n)` and `r` are generated after absorbing a few committed
+//! values (i.e. points over Fq). The verifier will have to check the following:
+//! - `u_(p, n)` has been coined correctly (i.e. check a sponge state).
+//! - `r` has been coined correctly (i.e. check a sponge staet).
+//! - "accumulated u" has been computed correctly
+//!
+//! At the next iteration, the verifier is working over the field `Fq`, i.e. the
+//! field that is used to generate the challenges. Therefore, it can perform the
+//! first two checks. We have then the following diagram.
+//!
+//! ```text
+//! +------------------------------------------+
+//! |            Instance n                    |
+//! |        (witness w_(p, n))                |
+//! |            ----------                    |
+//! |               Vesta                      |
+//! |         (scalar field = Fp)              |
+//! |         (base field   = Fq)              |
+//! |          (Sponge over Fq)                |
+//! |                                          |
+//! | Generate as output:                      |
+//! | - u_(p, n)                               |
+//! | - r                                      |
+//! | - "accumulated u": u_p + r * u_(p, n)    |
+//! |     (note the operations are over Fp)    |
+//! +------------------------------------------+
+//!       |
+//!       |
+//!       |
+//!       |               +-----------------------------+
+//!       |               |       Instance (n + 1)      |
+//!       |               |      (witness w_(q, n))     |
+//!       |-------------> |          ----------         |
+//!                       |          Pallas             |
+//!                       |    (scalar field = Fq)      |
+//!                       |    (base field   = Fp)      |
+//!                       |     (Sponge over Fp)        |
+//!                       |                             |
+//!                       |     Receive as (public)     |
+//!                       |           inputs            |
+//!                       |       ---------------       |
+//!                       | - commitments generated     |
+//!                       | by instance n (Fq elements) |
+//!                       | - u_(p, n)                  |
+//!                       | - r                         |
+//!                       | - (more but unused by       |
+//!                       | the verifier)               |
+//!                       |                             |
+//!                       |      Verifier circuit       |
+//!                       |      ----------------       |
+//!                       | - run the sponge to         |
+//!                       | check the value u_(p, n)    |
+//!                       | and r                       |
+//!                       +-----------------------------+
+//! ```
+//!
+//! The last check, i.e. checking the accumulation of `u`, is "delayed" for the
+//! instance (n + 2), to be able to perform the accumulation over Fp.
+//!
+//! Therefore, we end up with the following diagram:
+//!
+//! ```text
+//! +------------------------------------------+            +-------------------------------------+
+//! |            Instance n                    |            |            Instance (n + 2)         |
+//! |        (witness w_(p, n))                |            |         (witness w_(p, n + 1))      |
+//! |            ----------                    |            |            ----------               |
+//! |               Vesta                      |            |               Vesta                 |
+//! |         (scalar field = Fp)              |            |         (scalar field = Fp)         |
+//! |         (base field   = Fq)              |            |         (base field   = Fq)         |
+//! |          (Sponge over Fq)                |            |          (Sponge over Fq)           |
+//! |                                          |            |                                     |
+//!            Generate as output:             |            |        Receive as (public inputs)   |
+//!              ---------------               |            |           -------------------       |
+//! | - u_(p, n)                               |            | - `u_(p, n)`                        |
+//! | - r                                      |            | - accumulated u, `acc_u`            |
+//! | - "accumulated u": u_p + r * u_(p, n)    |            | - random coin `r`                   |
+//! |     (note the operations are over Fp)    |            | - "old accumulated value" u_p       |
+//! +------------------------------------------+            |           Verifier circuit          |
+//!       |                                                 |           ----------------          |
+//!       |                                                 | - check that                        |
+//!       |                                                 | `acc_u = u_p + r * u_(p, n)`        |
+//!       |                                                 +-------------------------------------+
+//!       |                                                                 ^
+//!       |                                                                 |
+//!       |                                                                 |
+//!       |               +-----------------------------+                   |
+//!       |               |       Instance (n + 1)      |                   |
+//!       |               |      (witness w_(q, n))     |                   |
+//!       |-------------> |          ----------         |  ------------------
+//!                       |          Pallas             |
+//!                       |    (scalar field = Fq)      |
+//!                       |    (base field   = Fp)      |
+//!                       |     (Sponge over Fp)        |
+//!                       |                             |
+//!                       |     Receive as (public)     |
+//!                       |           inputs            |
+//!                       |       ---------------       |
+//!                       | - commitments generated     |
+//!                       | by instance n (Fq elements) |
+//!                       | - u_(p, n)                  |
+//!                       | - r                         |
+//!                       | - (more but unused by       |
+//!                       | the verifier)               |
+//!                       |                             |
+//!                       |      Verifier circuit       |
+//!                       |      ----------------       |
+//!                       | - run the sponge to         |
+//!                       | check the value u_(p, n)    |
+//!                       | and r                       |
+//!                       +-----------------------------+
+//! ```
 
 use crate::{
     columns::Gadget, curve::PlonkSpongeConstants, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
@@ -443,8 +582,8 @@ use num_bigint::BigInt;
 /// `fetch_next_instruction` and `fetch_instruction` on a witness environnement.
 /// See the [Witness environment](crate::witness::Env) for more details.
 ///
-/// Mostly, the instructions will be used to build the IVC circuit, but it can be
-/// generalized.
+/// Mostly, the instructions will be used to build the verifier circuit, but it
+/// can be generalized.
 ///
 /// When the circuit is predefined, the instructions can be accompanied by a
 /// public selector. When implementing a virtual machine, where instructions are

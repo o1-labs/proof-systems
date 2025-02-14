@@ -31,6 +31,9 @@ pub enum Instruction {
     RType(RTypeInstruction),
     JType(JTypeInstruction),
     IType(ITypeInstruction),
+    // A no-op operation that should only be used for testing. The semantic is
+    // not clearly defined.
+    NoOp,
 }
 
 #[derive(
@@ -153,6 +156,7 @@ impl IntoIterator for Instruction {
                 }
                 iter_contents.into_iter()
             }
+            Instruction::NoOp => vec![Instruction::NoOp].into_iter(),
         }
     }
 }
@@ -970,7 +974,34 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
         Instruction::RType(instr) => interpret_rtype(env, instr),
         Instruction::JType(instr) => interpret_jtype(env, instr),
         Instruction::IType(instr) => interpret_itype(env, instr),
+        Instruction::NoOp => interpret_noop(env),
     }
+}
+
+// FIXME: the noop should not be used in production. The interpreter semantic
+// should be refined. The padding is only for testing purposes when padding is
+// required to reach the size of the domain.
+pub fn interpret_noop<Env: InterpreterEnv>(env: &mut Env) {
+    let instruction_pointer = env.get_instruction_pointer();
+    let instruction = {
+        let v0 = env.read_memory(&instruction_pointer);
+        let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
+        let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
+        let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
+        (v0 * Env::constant(1 << 24))
+            + (v1 * Env::constant(1 << 16))
+            + (v2 * Env::constant(1 << 8))
+            + v3
+    };
+    let opcode = {
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 32, 26, pos) }
+    };
+
+    env.assert_is_zero(opcode);
+    let next_instruction_pointer = env.get_next_instruction_pointer();
+    env.set_instruction_pointer(next_instruction_pointer.clone());
+    env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
 }
 
 pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstruction) {

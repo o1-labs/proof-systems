@@ -1,3 +1,4 @@
+use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
@@ -6,7 +7,7 @@ use mina_poseidon::constants::SpongeConstants;
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
-use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
+use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Instant;
 
@@ -21,7 +22,7 @@ use crate::{
 /// The first instruction in the verifier circuit (often shortened in "IVC" in
 /// the crate) is the Poseidon permutation. It is used to start hashing the
 /// public input.
-pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
+pub const VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
 
 /// An environment is used to contain the state of a long "running program".
 ///
@@ -139,14 +140,38 @@ pub struct Env<
     pub sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
     pub sponge_e2: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
 
-    /// The current iteration of the IVC
+    /// Sponge state used by the prover for the current iteration.
+    ///
+    /// This sponge is used at the current iteration to absorb commitments of
+    /// the program state and generate the challenges for the current iteration.
+    /// The outputs of the sponge will be verified by the verifier of the next
+    /// iteration.
+    pub prover_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
+
+    /// Sponge state used by the verifier for the current iteration.
+    ///
+    /// This sponge is used at the current iteration to build the verifier
+    /// circuit. The state will need to match with the previous prover sopnge
+    /// state.
+    pub verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
+
+    /// The current iteration of the IVC.
     pub current_iteration: u64,
 
-    /// The digest of the last program state, including the cross-terms
-    /// commitments.
-    /// The value is a 128 bits value, to be absorbed to initialize the sponge
-    /// state for both curves.
-    pub last_digest: BigInt,
+    /// The digest of the program state before executing the last iteration.
+    /// The value will be used to initialize the execution trace of the verifier
+    /// in the next iteration, in particular to verify that the challenges have
+    /// been generated correctly.
+    ///
+    /// The value is a 128bits value.
+    pub last_program_digest_before_execution: BigInt,
+
+    /// The digest of the program state after executing the last iteration.
+    /// The value will be used to initialize the sponge before committing to the
+    /// next iteration.
+    ///
+    /// The value is a 128bits value.
+    pub last_program_digest_after_execution: BigInt,
 
     /// The coin folding combiner will be used to generate the combinaison of
     /// folding instances
@@ -259,10 +284,16 @@ where
         let Column::X(idx) = col else {
             unimplemented!("Only works for private inputs")
         };
-        let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            E1::ScalarField::modulus_biguint().into()
+        let (modulus, srs_size): (BigInt, usize) = if self.current_iteration % 2 == 0 {
+            (
+                E1::ScalarField::modulus_biguint().into(),
+                self.srs_e1.size(),
+            )
         } else {
-            E2::ScalarField::modulus_biguint().into()
+            (
+                E2::ScalarField::modulus_biguint().into(),
+                self.srs_e2.size(),
+            )
         };
         let v = v.mod_floor(&modulus);
         match row {
@@ -270,6 +301,7 @@ where
                 self.state[idx].clone_from(&v);
             }
             CurrOrNext::Next => {
+                assert!(self.current_row < srs_size - 1, "The witness builder is writing on the last row. It does not make sense to write on the next row after the last row");
                 self.next_state[idx].clone_from(&v);
             }
         }
@@ -782,6 +814,8 @@ impl<
 where
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
+    <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     pub fn new(
         srs_log2_size: usize,
@@ -864,6 +898,10 @@ where
         // FIXME: challenges
         let challenges: Vec<BigInt> = vec![];
 
+        let prover_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
+            std::array::from_fn(|_| BigInt::from(0_u64));
+        let verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
+            std::array::from_fn(|_| BigInt::from(0_u64));
         Self {
             // -------
             // Setup
@@ -873,7 +911,7 @@ where
             srs_e2,
             // -------
             // -------
-            // IVC only
+            // verifier only
             ivc_accumulator_e1,
             ivc_accumulator_e2,
             previous_committed_state_e1,
@@ -889,11 +927,16 @@ where
             public_state: std::array::from_fn(|_| BigInt::from(0_usize)),
             selectors,
             challenges,
-            current_instruction: IVC_STARTING_INSTRUCTION,
+            current_instruction: VERIFIER_STARTING_INSTRUCTION,
             sponge_e1,
             sponge_e2,
+            prover_sponge_state,
+            verifier_sponge_state,
             current_iteration: 0,
-            last_digest: BigInt::from(0_u64),
+            // FIXME: set a correct value
+            last_program_digest_before_execution: BigInt::from(0_u64),
+            // FIXME: set a correct value
+            last_program_digest_after_execution: BigInt::from(0_u64),
             r: BigInt::from(0_usize),
             // Initialize the temporary accumulators with 0
             temporary_accumulators: (
@@ -922,12 +965,12 @@ where
         self.current_row = 0;
         self.state = std::array::from_fn(|_| BigInt::from(0_usize));
         self.idx_var = 0;
-        self.current_instruction = IVC_STARTING_INSTRUCTION;
+        self.current_instruction = VERIFIER_STARTING_INSTRUCTION;
         self.idx_values_to_absorb = 0;
     }
 
     /// The blinder used to commit, to avoid committing to the zero polynomial
-    /// and accumulate it in the IVC.
+    /// and accumulated in the IVC.
     ///
     /// It is part of the instance, and it is accumulated in the IVC.
     pub fn accumulate_commitment_blinder(&mut self) {
@@ -985,6 +1028,56 @@ where
         }
     }
 
+    /// Absorb the last committed program state in the correct sponge.
+    ///
+    /// For a description of the messages to be given to the sponge, including
+    /// the expected instantiation, refer to the section "Message Passing" in
+    /// [crate::interpreter].
+    pub fn absorb_state(&mut self) {
+        if self.current_iteration % 2 == 0 {
+            let mut sponge = E1::create_new_sponge();
+            let previous_state: E1::BaseField = E1::BaseField::from_biguint(
+                &self
+                    .last_program_digest_after_execution
+                    .to_biguint()
+                    .unwrap(),
+            )
+            .unwrap();
+            E1::absorb_fq(&mut sponge, previous_state);
+            self.previous_committed_state_e1
+                .iter()
+                .for_each(|comm| E1::absorb_curve_points(&mut sponge, &comm.chunks));
+            let state: Vec<BigInt> = sponge
+                .sponge
+                .state
+                .iter()
+                .map(|x| x.to_biguint().into())
+                .collect();
+            self.prover_sponge_state = state.try_into().unwrap()
+        } else {
+            let mut sponge = E2::create_new_sponge();
+            let previous_state: E2::BaseField = E2::BaseField::from_biguint(
+                &self
+                    .last_program_digest_after_execution
+                    .to_biguint()
+                    .unwrap(),
+            )
+            .unwrap();
+            E2::absorb_fq(&mut sponge, previous_state);
+            self.previous_committed_state_e2
+                .iter()
+                .for_each(|comm| E2::absorb_curve_points(&mut sponge, &comm.chunks));
+
+            let state: Vec<BigInt> = sponge
+                .sponge
+                .state
+                .iter()
+                .map(|x| x.to_biguint().into())
+                .collect();
+            self.prover_sponge_state = state.try_into().unwrap()
+        }
+    }
+
     /// Compute the output of the application on the previous output
     // TODO: we should compute the hash of the previous commitments, only on
     // CPU?
@@ -998,8 +1091,8 @@ where
 
     /// Describe the control-flow for the IVC circuit.
     ///
-    /// For a step i + 1, the IVC circuit receives as public input the following
-    /// values:
+    /// For a step i + 1, the verifier circuit receives as public input the
+    /// following values:
     ///
     /// - The commitments to the previous witnesses.
     /// - The previous challenges (α_{i}, β_{i}, γ_{i}) - the challenges β and γ

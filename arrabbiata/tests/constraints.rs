@@ -1,9 +1,11 @@
 use arrabbiata::{
-    columns::Gadget,
+    columns::{Gadget, E},
     constraints,
     interpreter::{self, Instruction},
+    MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
 };
-use mina_curves::pasta::{curves::vesta::Vesta, Pallas};
+use mina_curves::pasta::{curves::vesta::Vesta, Fp, Pallas};
+use mvpoly::{monomials::Sparse, MVPoly};
 use std::collections::HashMap;
 
 fn helper_compute_constraints_gadget(instr: Instruction, exp_constraints: usize) {
@@ -101,7 +103,7 @@ fn test_gadget_elliptic_curve_addition() {
 fn test_ivc_total_number_of_constraints_ivc() {
     let constraints_fp = constraints::Env::<Vesta>::new();
 
-    let constraints = constraints_fp.get_all_constraints_for_ivc();
+    let constraints = constraints_fp.get_all_constraints_for_verifier();
     assert_eq!(constraints.len(), 28);
 }
 
@@ -109,7 +111,7 @@ fn test_ivc_total_number_of_constraints_ivc() {
 fn test_degree_of_constraints_ivc() {
     let constraints_fp = constraints::Env::<Vesta>::new();
 
-    let constraints = constraints_fp.get_all_constraints_for_ivc();
+    let constraints = constraints_fp.get_all_constraints_for_verifier();
 
     let mut degree_per_constraints = HashMap::new();
     constraints.iter().for_each(|c| {
@@ -139,4 +141,22 @@ fn test_gadget_elliptic_curve_scaling() {
     helper_gadget_number_of_columns_used(instr, 10, 0);
 
     helper_check_gadget_activated(instr, Gadget::EllipticCurveScaling);
+}
+
+#[test]
+fn test_get_mvpoly_equivalent() {
+    // Check that each constraint can be converted to a MVPoly. The type of the
+    // MVPoly is crucial as it determines the maximum degree of the constraint
+    // and the number of wires. For this reason, no check is performed on the
+    // result of the mapping.
+    let constraints_fp: Vec<E<Fp>> = {
+        let constraints_env: constraints::Env<Vesta> = constraints::Env::default();
+        constraints_env.get_all_constraints()
+    };
+    let _constraints_fp: Vec<
+        Sparse<Fp, { (NUMBER_OF_PUBLIC_INPUTS + NUMBER_OF_COLUMNS) * 2 }, { MAX_DEGREE }>,
+    > = constraints_fp
+        .into_iter()
+        .map(|expr| Sparse::from_expr(expr, Some(NUMBER_OF_COLUMNS + NUMBER_OF_PUBLIC_INPUTS)))
+        .collect();
 }

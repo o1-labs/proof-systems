@@ -34,14 +34,17 @@ rayon.workspace = true
 rmp-serde.workspace = true
 serde.workspace = true
 serde_with.workspace = true
-sha3.workspace = true
+thiserror.workspace = true
 time = { version = "0.3", features = ["macros"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = [ "ansi", "env-filter", "fmt", "time" ] }
-
 
 [dev-dependencies]
 ark-std.workspace = true
 ctor = "0.2"
 proptest.workspace = true
 once_cell.workspace = true
+
+[[bin]]
+name = "saffron-og-flow"
+path = "og-flow/main.rs"

@@ -1,13 +1,21 @@
-use crate::utils::{decode_into, encode_for_domain};
+use crate::{
+    commitment::Commitment,
+    diff::Diff,
+    utils::{decode_into, encode_for_domain},
+};
 use ark_ff::PrimeField;
-use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Evaluations};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain,
+};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use kimchi::curve::KimchiCurve;
+use mina_poseidon::FqSponge;
 use o1_utils::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use tracing::{debug, instrument};
+use tracing::{debug, debug_span, instrument};
 
 // A FieldBlob<F> represents the encoding of a Vec<u8> as a list of polynomials over F,
 // where F is a prime field. The polyonomials are represented in the monomial basis.
@@ -17,9 +25,9 @@ use tracing::{debug, instrument};
 pub struct FieldBlob<G: CommitmentCurve> {
     pub n_bytes: usize,
     pub domain_size: usize,
-    pub commitments: Vec<PolyComm<G>>,
+    pub commitment: Commitment<G>,
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub data: Vec<DensePolynomial<G::ScalarField>>,
+    pub chunks: Vec<DensePolynomial<G::ScalarField>>,
 }
 
 #[instrument(skip_all, level = "debug")]
@@ -33,9 +41,12 @@ fn commit_to_blob_data<G: CommitmentCurve>(
         .collect()
 }
 
-impl<G: CommitmentCurve> FieldBlob<G> {
+impl<G: KimchiCurve> FieldBlob<G> {
     #[instrument(skip_all, level = "debug")]
-    pub fn encode<D: EvaluationDomain<G::ScalarField>>(
+    pub fn encode<
+        D: EvaluationDomain<G::ScalarField>,
+        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
+    >(
         srs: &SRS<G>,
         domain: D,
         bytes: &[u8],
@@ -43,24 +54,29 @@ impl<G: CommitmentCurve> FieldBlob<G> {
         let field_elements = encode_for_domain(&domain, bytes);
         let domain_size = domain.size();
 
-        let data: Vec<DensePolynomial<G::ScalarField>> = field_elements
-            .par_iter()
-            .map(|chunk| Evaluations::from_vec_and_domain(chunk.to_vec(), domain).interpolate())
-            .collect();
-
-        let commitments = commit_to_blob_data(srs, &data);
+        let chunks: Vec<DensePolynomial<G::ScalarField>> = debug_span!("fft").in_scope(|| {
+            field_elements
+                .par_iter()
+                .map(|chunk| Evaluations::from_vec_and_domain(chunk.to_vec(), domain).interpolate())
+                .collect()
+        });
+        let commitment = {
+            let chunks = commit_to_blob_data(srs, &chunks);
+            let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
+            Commitment::from_chunks(chunks, &mut sponge)
+        };
 
         debug!(
             "Encoded {:.2} MB into {} polynomials",
             bytes.len() as f32 / 1_000_000.0,
-            data.len()
+            chunks.len()
         );
 
         FieldBlob {
             n_bytes: bytes.len(),
             domain_size,
-            commitments,
-            data,
+            commitment,
+            chunks,
         }
     }
 
@@ -79,7 +95,7 @@ impl<G: CommitmentCurve> FieldBlob<G> {
         let mut bytes = Vec::with_capacity(blob.n_bytes);
         let mut buffer = vec![0u8; m];
 
-        for p in blob.data {
+        for p in blob.chunks {
             let evals = p.evaluate_over_domain(domain).evals;
             for x in evals {
                 decode_into(&mut buffer, x);
@@ -90,78 +106,33 @@ impl<G: CommitmentCurve> FieldBlob<G> {
         bytes.truncate(blob.n_bytes);
         bytes
     }
-}
 
-#[cfg(test)]
-pub mod test_utils {
-    use proptest::prelude::*;
-
-    #[derive(Debug)]
-    pub struct BlobData(pub Vec<u8>);
-
-    #[derive(Clone, Debug)]
-    pub enum DataSize {
-        Small,
-        Medium,
-        Large,
-    }
-
-    impl DataSize {
-        const KB: usize = 1_000;
-        const MB: usize = 1_000_000;
-
-        fn size_range_bytes(&self) -> (usize, usize) {
-            match self {
-                // Small: 1KB - 1MB
-                Self::Small => (Self::KB, Self::MB),
-                // Medium: 1MB - 10MB
-                Self::Medium => (Self::MB, 10 * Self::MB),
-                // Large: 10MB - 100MB
-                Self::Large => (10 * Self::MB, 100 * Self::MB),
-            }
-        }
-    }
-
-    impl Arbitrary for DataSize {
-        type Parameters = ();
-        type Strategy = BoxedStrategy<Self>;
-
-        fn arbitrary_with(_: ()) -> Self::Strategy {
-            prop_oneof![
-                6 => Just(DataSize::Small), // 60% chance
-                3 => Just(DataSize::Medium),
-                1 => Just(DataSize::Large)
-            ]
-            .boxed()
-        }
-    }
-
-    impl Default for DataSize {
-        fn default() -> Self {
-            Self::Small
-        }
-    }
-
-    impl Arbitrary for BlobData {
-        type Parameters = DataSize;
-        type Strategy = BoxedStrategy<Self>;
-
-        fn arbitrary() -> Self::Strategy {
-            DataSize::arbitrary()
-                .prop_flat_map(|size| {
-                    let (min, max) = size.size_range_bytes();
-                    prop::collection::vec(any::<u8>(), min..max)
-                })
-                .prop_map(BlobData)
-                .boxed()
-        }
-
-        fn arbitrary_with(size: Self::Parameters) -> Self::Strategy {
-            let (min, max) = size.size_range_bytes();
-            prop::collection::vec(any::<u8>(), min..max)
-                .prop_map(BlobData)
-                .boxed()
-        }
+    pub fn update<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
+        &mut self,
+        srs: &SRS<G>,
+        domain: &Radix2EvaluationDomain<G::ScalarField>,
+        diff: Diff<G::ScalarField>,
+    ) {
+        let diff_evaluations = diff.as_evaluations(domain);
+        let commitment = {
+            let commitment_diffs = diff_evaluations
+                .par_iter()
+                .map(|evals| srs.commit_evaluations_non_hiding(*domain, evals))
+                .collect::<Vec<_>>();
+            let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
+            self.commitment.update(commitment_diffs, &mut sponge)
+        };
+        let chunks: Vec<DensePolynomial<G::ScalarField>> = diff_evaluations
+            .into_par_iter()
+            .zip(self.chunks.par_iter())
+            .map(|(evals, p)| {
+                let d_p: DensePolynomial<G::ScalarField> = evals.interpolate();
+                p + &d_p
+            })
+            .collect();
+        self.commitment = commitment;
+        self.chunks = chunks;
+        self.n_bytes = diff.new_byte_len;
     }
 }
 
@@ -170,11 +141,16 @@ mod tests {
     use crate::{commitment::commit_to_field_elems, env};
 
     use super::*;
+    use crate::{diff::tests::*, utils::test_utils::*};
+    use ark_ec::AffineRepr;
+    use ark_ff::Zero;
     use ark_poly::Radix2EvaluationDomain;
-    use mina_curves::pasta::{Fp, Vesta};
+    use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+    use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
-    use test_utils::*;
+
+    type VestaFqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 
     static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
         if let Ok(srs) = std::env::var("SRS_FILEPATH") {
@@ -191,8 +167,8 @@ mod tests {
     proptest! {
     #![proptest_config(ProptestConfig::with_cases(20))]
     #[test]
-    fn test_round_trip_blob_encoding(BlobData(xs) in BlobData::arbitrary())
-      { let blob = FieldBlob::<Vesta>::encode(&*SRS, *DOMAIN, &xs);
+    fn test_round_trip_blob_encoding(UserData(xs) in UserData::arbitrary())
+      { let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
         let bytes = rmp_serde::to_vec(&blob).unwrap();
         let a = rmp_serde::from_slice(&bytes).unwrap();
         // check that ark-serialize is behaving as expected
@@ -206,11 +182,68 @@ mod tests {
     proptest! {
     #![proptest_config(ProptestConfig::with_cases(10))]
     #[test]
-        fn test_user_and_storage_provider_commitments_equal(BlobData(xs) in BlobData::arbitrary())
-          { let elems = encode_for_domain(&*DOMAIN, &xs);
-            let user_commitments = commit_to_field_elems(&*SRS, *DOMAIN, elems);
-            let blob = FieldBlob::<Vesta>::encode(&*SRS, *DOMAIN, &xs);
-            prop_assert_eq!(user_commitments, blob.commitments);
-          }
+    fn test_user_and_storage_provider_commitments_equal(UserData(xs) in UserData::arbitrary())
+      { let elems = encode_for_domain(&*DOMAIN, &xs);
+        let user_commitments = commit_to_field_elems::<_, VestaFqSponge>(&*SRS, *DOMAIN, elems);
+        let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
+        prop_assert_eq!(user_commitments, blob.commitment);
+      }
+    }
+
+    fn encode_to_chunk_size(xs: &[u8], chunk_size: usize) -> FieldBlob<Vesta> {
+        let mut blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, xs);
+        assert!(blob.chunks.len() <= chunk_size);
+        {
+            let pad = DensePolynomial::zero();
+            blob.chunks.resize(chunk_size, pad);
         }
+        {
+            let pad = PolyComm::new(vec![Vesta::zero()]);
+            let mut commitments = blob.commitment.chunks.clone();
+            commitments.resize(chunk_size, pad);
+            let mut sponge = VestaFqSponge::new(Vesta::other_curve_sponge_params());
+            blob.commitment = Commitment::from_chunks(commitments, &mut sponge);
+        }
+        blob
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(10))]
+        #[test]
+
+        fn test_allow_legal_updates((UserData(xs), UserData(ys)) in
+            (UserData::arbitrary_with(DataSize::Medium).prop_flat_map(random_diff))
+        ) {
+            // start with some random user data
+            let mut xs_blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
+            let diff = Diff::<Fp>::create(&*DOMAIN, &xs, &ys).unwrap();
+
+            // check that the user and SP agree on the data
+            let user_commitment = {
+                let elems = encode_for_domain(&*DOMAIN, &xs);
+                commit_to_field_elems::<Vesta, VestaFqSponge>(&*SRS, *DOMAIN, elems)
+
+            };
+            prop_assert_eq!(user_commitment.clone(), xs_blob.commitment.clone());
+
+            // Update the blob with the diff and check the user can match the commitment
+            xs_blob.update::<VestaFqSponge>(&*SRS, &*DOMAIN, diff.clone());
+
+            let updated_user_commitment = {
+                let commitment_diffs = diff.as_evaluations(&*DOMAIN)
+                    .par_iter()
+                    .map(|evals| SRS.commit_evaluations_non_hiding(*DOMAIN, evals))
+                    .collect::<Vec<_>>();
+
+                let mut sponge = VestaFqSponge::new(Vesta::other_curve_sponge_params());
+                user_commitment.update(commitment_diffs, &mut sponge)
+            };
+            prop_assert_eq!(updated_user_commitment, xs_blob.commitment.clone());
+
+            // the updated blob should be the same as if we just start with the new data (with appropriate padding)
+            let ys_blob = encode_to_chunk_size(&ys, xs_blob.chunks.len());
+            prop_assert_eq!(xs_blob, ys_blob)
+        }
+
+    }
 }
