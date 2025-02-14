@@ -36,7 +36,7 @@ pub fn read_proof<
     srs: &SRS<G>,
     domain: D,
     group_map: &G::Map,
-    blob: FieldBlob<G>,
+    blob: &FieldBlob<G>,
     query: &QueryField<G::ScalarField>,
     rng: &mut OsRng,
 ) -> Result<Vec<ReadProof<G>>, ReadProofError>
@@ -45,10 +45,10 @@ where
     G::Map: Sync,
 {
     blob.chunks
-        .into_par_iter()
+        .par_iter()
         .zip(query.as_indices().chunks.into_par_iter())
         .map(|(chunk, indices)| {
-            let poly = ConstraintPolys::create(domain, indices, chunk)?;
+            let poly = ConstraintPolys::create(domain, indices, chunk.clone())?;
             let commitment = poly.commit(srs);
             let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
             let z = commitment.derive_challenge_point(&mut sponge);
@@ -327,7 +327,7 @@ mod tests {
             queries.into_iter().for_each(|q| {
                 let query_field = q.into_query_field(DOMAIN.size(), blob.n_chunks()).expect("QueryBytes should be valid");
                 let query_res = blob.query(*DOMAIN, &query_field);
-                let proofs = read_proof::<Vesta, _, VestaFqSponge>(&*SRS, *DOMAIN, &*GROUP_MAP, blob.clone(), &query_field, &mut rng).expect("Read proof should be valid");
+                let proofs = read_proof::<Vesta, _, VestaFqSponge>(&*SRS, *DOMAIN, &*GROUP_MAP, &blob, &query_field, &mut rng).expect("Read proof should be valid");
 
                 // Check that the commitments match what the user would expect based on the query results
                 {

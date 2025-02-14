@@ -25,7 +25,7 @@ pub struct FieldElt {
     n_polys: usize,
 }
 /// Represents a query in term of Field element
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct QueryField<F> {
     pub start: FieldElt,
     /// how many bytes we need to trim from the first chunk
@@ -42,6 +42,7 @@ pub struct IndexQuery {
     pub chunks: Vec<Vec<usize>>,
 }
 
+#[derive(Debug, Clone)]
 pub struct QueryResult<F> {
     pub chunks: Vec<Vec<(usize, F)>>,
 }
