@@ -66,7 +66,12 @@ jobs:
 
   run_checks:
     name: Run checks and tests
-    runs-on: 'ubuntu-latest'
+    # We run only one of the matrix options on the toffee `hetzner-1` self-hosted GitHub runner.
+    # Only in this configuration we enable tests with the code coverage data gathering.
+    # runs-on: [hetzner-proof-systems-runners-group-1]
+    runs-on: ${{ matrix.rust_toolchain_version == '1.74' && 'hetzner-1' || 'ubuntu-latest' }}
+    env:
+      RUST_TOOLCHAIN_COVERAGE_VERSION: "1.74"
     strategy:
       matrix:
         rust_toolchain_version: ["1.72", "1.73", "1.74", "1.75", "1.76", "1.77", "1.78", "1.79"]
@@ -157,11 +162,31 @@ jobs:
         uses: ./.github/actions/build-mips
 
       - name: Doc tests
+        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
           make test-doc
 
       - name: Run non-heavy tests without the code coverage
+        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
           make nextest
+
+      - name: Run non-heavy tests with the code coverage
+        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
+        run: |
+          eval $(opam env)
+          make nextest-with-coverage
+          make test-doc-with-coverage
+          make generate-test-coverage-report
+
+      - name: Use shared code coverage summary
+        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
+        uses: ./.github/actions/coverage-summary-shared
+
+      - name: Use shared Codecov reporting steps
+        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
+        uses: ./.github/actions/codecov-shared
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
