@@ -181,6 +181,8 @@ mod tests {
         info!("Testing Proof flows for the user and storage provider on the initial data");
         test_proof_flows(&user, &blob, &mut rng);
 
+        let og_commitment = user.commitment.clone();
+
         info!("Updating the data with random bytes within the allowed allocated space");
         let updated_data = {
             let len = {
@@ -193,6 +195,11 @@ mod tests {
             bytes
         };
         let diff = user.update(&updated_data);
+
+        assert_ne!(
+            og_commitment, user.commitment,
+            "Commitment to the data changes when the data changes"
+        );
 
         blob.update::<VestaFqSponge>(&*SRS, &*DOMAIN, diff.clone());
 
