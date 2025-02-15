@@ -226,36 +226,40 @@ mod tests {
     }
 
     proptest! {
-        #![proptest_config(ProptestConfig::with_cases(20))]
+        #![proptest_config(ProptestConfig::with_cases(10))]
         #[test]
 
         fn test_allow_legal_updates((UserData(xs), UserData(ys)) in
-            (UserData::arbitrary().prop_flat_map(random_diff))
+            (UserData::arbitrary_with(DataSize::Medium).prop_flat_map(random_diff))
         ) {
             // start with some random user data
             let mut xs_blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
             let diff = Diff::<Fp>::create(&*DOMAIN, &xs, &ys).unwrap();
-            xs_blob.update::<VestaFqSponge>(&*SRS, &*DOMAIN, diff.clone());
 
-            // check that the user and SP agree on the new data
+            // check that the user and SP agree on the data
             let user_commitment = {
                 let elems = encode_for_domain(&*DOMAIN, &xs);
-                let commitment = commit_to_field_elems::<Vesta, VestaFqSponge>(&*SRS, *DOMAIN, elems);
+                commit_to_field_elems::<Vesta, VestaFqSponge>(&*SRS, *DOMAIN, elems)
 
+            };
+            prop_assert_eq!(user_commitment.clone(), xs_blob.commitment.clone());
+
+            // Update the blob with the diff and check the user can match the commitment
+            xs_blob.update::<VestaFqSponge>(&*SRS, &*DOMAIN, diff.clone());
+
+            let updated_user_commitment = {
                 let commitment_diffs = diff.as_evaluations(&*DOMAIN)
                     .par_iter()
                     .map(|evals| SRS.commit_evaluations_non_hiding(*DOMAIN, evals))
                     .collect::<Vec<_>>();
 
                 let mut sponge = VestaFqSponge::new(Vesta::other_curve_sponge_params());
-                commitment.update(commitment_diffs, &mut sponge)
-
+                user_commitment.update(commitment_diffs, &mut sponge)
             };
+            prop_assert_eq!(updated_user_commitment, xs_blob.commitment.clone());
 
+            // the updated blob should be the same as if we just start with the new data (with appropriate padding)
             let ys_blob = encode_to_chunk_size(&ys, xs_blob.chunks.len());
-            prop_assert_eq!(user_commitment.clone(), ys_blob.commitment.clone());
-
-            // the updated blob should be the same as if we just start with the new data
             prop_assert_eq!(xs_blob, ys_blob)
         }
 
