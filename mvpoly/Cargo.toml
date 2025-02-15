@@ -10,7 +10,7 @@ edition = "2021"
 license = "Apache-2.0"
 
 [[bin]]
-path = "bench_cross_terms"
+path = "src/bin/bench_cross_terms.rs"
 name = "bench-cross-terms"
 
 [lib]
