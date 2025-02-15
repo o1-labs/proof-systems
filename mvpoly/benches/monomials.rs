@@ -22,8 +22,8 @@ fn bench_sparse_mul(c: &mut Criterion) {
         b.iter(|| {
             // IMPROVEME: implement mul on references and define the random
             // values before the benchmark
-            let p1: Sparse<Fp, 10, 3> = unsafe { Sparse::random(&mut rng, None) };
-            let p2: Sparse<Fp, 10, 3> = unsafe { Sparse::random(&mut rng, None) };
+            let p1: Sparse<Fp, 10, 6> = unsafe { Sparse::random(&mut rng, Some(3)) };
+            let p2: Sparse<Fp, 10, 6> = unsafe { Sparse::random(&mut rng, Some(3)) };
             let _ = black_box(p1) * black_box(p2);
         })
     });
