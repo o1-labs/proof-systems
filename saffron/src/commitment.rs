@@ -38,11 +38,11 @@ impl<G: KimchiCurve> Commitment<G> {
         }
     }
 
-    pub fn update<EFqSponge>(&self, diff: Vec<PolyComm<G>>, sponge: &mut EFqSponge) -> Self
+    pub fn update<EFqSponge>(&self, diff: &[PolyComm<G>], sponge: &mut EFqSponge) -> Self
     where
         EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
     {
-        let new_chunks = self.chunks.iter().zip(diff).map(|(g, d)| g.add(&d));
+        let new_chunks = self.chunks.iter().zip(diff).map(|(g, d)| g.add(d));
         Self::from_chunks(new_chunks.collect(), sponge)
     }
 }
@@ -51,7 +51,7 @@ impl<G: KimchiCurve> Commitment<G> {
 pub fn commit_to_field_elems<G: KimchiCurve, EFqSponge>(
     srs: &SRS<G>,
     domain: D<G::ScalarField>,
-    field_elems: Vec<Vec<G::ScalarField>>,
+    field_elems: &Vec<Vec<G::ScalarField>>,
 ) -> Commitment<G>
 where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,

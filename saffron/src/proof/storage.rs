@@ -30,7 +30,7 @@ pub struct StorageProof<G: CommitmentCurve> {
 pub fn storage_proof<G: KimchiCurve, EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
     srs: &SRS<G>,
     group_map: &G::Map,
-    blob: FieldBlob<G>,
+    blob: &FieldBlob<G>,
     evaluation_point: G::ScalarField,
     rng: &mut OsRng,
 ) -> StorageProof<G>
@@ -40,7 +40,7 @@ where
     let p = {
         let init = (DensePolynomial::zero(), G::ScalarField::one());
         blob.chunks
-            .into_iter()
+            .iter()
             .fold(init, |(acc_poly, curr_power), curr_poly| {
                 (
                     acc_poly + curr_poly.scale(curr_power),
@@ -155,14 +155,14 @@ mod tests {
         let mut rng = OsRng;
         let commitment = {
             let field_elems = encode_for_domain(&*DOMAIN, &data);
-            commit_to_field_elems::<_, VestaFqSponge>(&*SRS, *DOMAIN, field_elems)
+            commit_to_field_elems::<_, VestaFqSponge>(&*SRS, *DOMAIN, &field_elems)
         };
         let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &data);
         let evaluation_point = Fp::rand(&mut rng);
         let proof = storage_proof::<
             Vesta, VestaFqSponge
 
-        >(&*SRS, &*GROUP_MAP, blob, evaluation_point, &mut rng);
+        >(&*SRS, &*GROUP_MAP, &blob, evaluation_point, &mut rng);
         let res = verify_storage_proof::<Vesta, VestaFqSponge>(
             &*SRS,
             &*GROUP_MAP,

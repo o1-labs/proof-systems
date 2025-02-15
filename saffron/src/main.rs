@@ -109,7 +109,7 @@ pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<HexString>
     };
     let commitment = {
         let field_elems = utils::encode_for_domain(&domain_fp, &buf);
-        commit_to_field_elems::<_, VestaFqSponge>(&srs, domain_fp, field_elems)
+        commit_to_field_elems::<_, VestaFqSponge>(&srs, domain_fp, &field_elems)
     };
     {
         let mut writer = File::create(args.output)?;
@@ -130,7 +130,7 @@ pub fn storage_proof(args: cli::StorageProofArgs) -> Result<HexString> {
         storage::storage_proof::<Vesta, VestaFqSponge>(
             &srs,
             &group_map,
-            blob,
+            &blob,
             evaluation_point,
             &mut rng,
         )

@@ -125,7 +125,7 @@ impl<G: KimchiCurve> FieldBlob<G> {
                 .map(|evals| srs.commit_evaluations_non_hiding(*domain, evals))
                 .collect::<Vec<_>>();
             let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
-            self.commitment.update(commitment_diffs, &mut sponge)
+            self.commitment.update(&commitment_diffs, &mut sponge)
         };
         let chunks: Vec<DensePolynomial<G::ScalarField>> = diff_evaluations
             .into_par_iter()
@@ -202,7 +202,7 @@ mod tests {
     #[test]
     fn test_user_and_storage_provider_commitments_equal(UserData(xs) in UserData::arbitrary())
       { let elems = encode_for_domain(&*DOMAIN, &xs);
-        let user_commitments = commit_to_field_elems::<_, VestaFqSponge>(&*SRS, *DOMAIN, elems);
+        let user_commitments = commit_to_field_elems::<_, VestaFqSponge>(&*SRS, *DOMAIN, &elems);
         let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &xs);
         prop_assert_eq!(user_commitments, blob.commitment);
       }
@@ -239,7 +239,7 @@ mod tests {
             // check that the user and SP agree on the data
             let user_commitment = {
                 let elems = encode_for_domain(&*DOMAIN, &xs);
-                commit_to_field_elems::<Vesta, VestaFqSponge>(&*SRS, *DOMAIN, elems)
+                commit_to_field_elems::<Vesta, VestaFqSponge>(&*SRS, *DOMAIN, &elems)
 
             };
             prop_assert_eq!(user_commitment.clone(), xs_blob.commitment.clone());
@@ -254,7 +254,7 @@ mod tests {
                     .collect::<Vec<_>>();
 
                 let mut sponge = VestaFqSponge::new(Vesta::other_curve_sponge_params());
-                user_commitment.update(commitment_diffs, &mut sponge)
+                user_commitment.update(&commitment_diffs, &mut sponge)
             };
             prop_assert_eq!(updated_user_commitment, xs_blob.commitment.clone());
 
