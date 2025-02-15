@@ -1,4 +1,4 @@
-use ark_ff::{UniformRand, Zero};
+use ark_ff::{One, UniformRand, Zero};
 use kimchi::circuits::{
     berkeley_columns::BerkeleyChallengeTerm,
     expr::{ConstantExpr, Expr, ExprInner, Variable},
@@ -172,7 +172,9 @@ fn bench_sparse_cross_terms_computation_ec_addition() {
         }
     });
     let u1 = Fp::rand(&mut rng);
-    let u2 = Fp::rand(&mut rng);
+    // The right u is always one as we suppose the constraints are not
+    // "relaxed".
+    let u2 = Fp::one();
     let combiner1 = Fp::rand(&mut rng);
     let combiner2 = Fp::rand(&mut rng);
 
