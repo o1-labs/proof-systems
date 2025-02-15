@@ -162,32 +162,72 @@ fn bench_sparse_cross_terms_computation_ec_addition() {
         })
         .collect();
 
-    let mut rng = o1_utils::tests::make_test_rng(None);
-    let eval_left: [Fp; 45] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let eval_right: [Fp; 45] = std::array::from_fn(|i| {
-        if i < 7 {
-            Fp::rand(&mut rng)
-        } else {
-            Fp::zero()
-        }
-    });
-    let u1 = Fp::rand(&mut rng);
-    // The right u is always one as we suppose the constraints are not
-    // "relaxed".
-    let u2 = Fp::one();
-    let combiner1 = Fp::rand(&mut rng);
-    let combiner2 = Fp::rand(&mut rng);
+    {
+        let mut rng = o1_utils::tests::make_test_rng(None);
+        let eval_left: [Fp; 45] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        let eval_right: [Fp; 45] = std::array::from_fn(|i| {
+            if i < 7 {
+                Fp::rand(&mut rng)
+            } else {
+                Fp::zero()
+            }
+        });
+        let u1 = Fp::rand(&mut rng);
+        let u2 = Fp::rand(&mut rng);
+        let combiner1 = Fp::rand(&mut rng);
+        let combiner2 = Fp::rand(&mut rng);
 
-    let start_timer = Instant::now();
-    let res = mvpoly::compute_combined_cross_terms(
-        circuits, eval_left, eval_right, u1, u2, combiner1, combiner2,
-    );
-    let elapsed = start_timer.elapsed();
-    // Only printing to be sure that the compiler does not optimize the code and
-    // remove the computation.
-    // We know how compilers can be annoying sometimes.
-    println!("res: {:?}", res);
-    println!("Sparse cross terms computation ec addition: {:?}", elapsed);
+        let start_timer = Instant::now();
+        let res = mvpoly::compute_combined_cross_terms(
+            circuits.clone(),
+            eval_left,
+            eval_right,
+            u1,
+            u2,
+            combiner1,
+            combiner2,
+        );
+        let elapsed = start_timer.elapsed();
+        // Only printing to be sure that the compiler does not optimize the code and
+        // remove the computation.
+        // We know how compilers can be annoying sometimes.
+        println!("res: {:?}", res);
+        println!(
+            "Sparse cross terms computation ec addition when used on row: {:?}",
+            elapsed
+        );
+    }
+
+    // Regenerating everything to avoid having the CPU cache reused.
+    {
+        let mut rng = o1_utils::tests::make_test_rng(None);
+        let eval_left: [Fp; 45] = std::array::from_fn(|_| Fp::rand(&mut rng));
+        let eval_right: [Fp; 45] = std::array::from_fn(|i| {
+            if i < 7 {
+                Fp::rand(&mut rng)
+            } else {
+                Fp::zero()
+            }
+        });
+        let u1 = Fp::rand(&mut rng);
+        let u2 = Fp::rand(&mut rng);
+        let combiner1 = Fp::rand(&mut rng);
+        let combiner2 = Fp::zero();
+
+        let start_timer = Instant::now();
+        let res = mvpoly::compute_combined_cross_terms(
+            circuits, eval_left, eval_right, u1, u2, combiner1, combiner2,
+        );
+        let elapsed = start_timer.elapsed();
+        // Only printing to be sure that the compiler does not optimize the code and
+        // remove the computation.
+        // We know how compilers can be annoying sometimes.
+        println!("res: {:?}", res);
+        println!(
+            "Sparse cross terms computation ec addition when unused on current row: {:?}",
+            elapsed
+        );
+    }
 }
 
 fn main() {

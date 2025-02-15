@@ -336,3 +336,50 @@ pub fn compute_combined_cross_terms<
             acc
         })
 }
+
+/// Compute the cross terms of a list of gadgets, i.e. a circuit, defined by
+/// multivariate polynomials. The outer size of the parameter `circuit` defines
+/// the number of different gadgets in the circuit. And for each circuit, a
+/// different number of constraints can be used to define each gadget, the
+/// powers of the combiner for each gadget will be handled automatically.
+///
+/// We suppose that only one gadget can be activated per row, i.e. we have the
+/// following global constraint:
+/// ```text
+/// ∑_{i=0}^{N-1} selector[i] = 1
+/// Circuit = ∑_{i=0}^{N-1} selector[i] * gadget[i]
+/// selector[i] ∈ {0, 1}
+/// ```
+///
+/// This method is not responsible to handle differently the constraints that
+/// selectors are booleans and the constraint saying that only one is activated.
+/// We do suppose it is somehow encoded in the gadgets directly.
+pub fn compute_combined_cross_terms_with_selectors<
+    F: PrimeField,
+    const N: usize,
+    const D: usize,
+    T: MVPoly<F, N, D>,
+>(
+    circuit: Vec<Vec<T>>,
+    eval1: [F; N],
+    eval2: [F; N],
+    u1: F,
+    u2: F,
+    combiner1: F,
+    combiner2: F,
+    accumulated_gadget_selectors: Vec<F>,
+    selected_gadget: usize,
+    //
+) -> HashMap<usize, F> {
+    assert!(
+        combiner1 != F::zero(),
+        "We suppose that combiner1 is not zero as we want to have a random value"
+    );
+    assert!(
+        combiner2 != F::zero(),
+        "We suppose that combiner2 is not zero as we want to have a random value"
+    );
+    assert!(u1 != F::zero(), "We suppose that u1 is not zero");
+    assert!(u2 != F::zero(), "We suppose that u2 is not zero");
+    assert!(selected_gadget < circuit.len(), "The selected gadget must be in the circuit, given idx = {}, where only {} gadgets are present", selected_gadget, circuit.len());
+}
