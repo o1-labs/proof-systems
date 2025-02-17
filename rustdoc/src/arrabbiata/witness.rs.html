@@ -1254,10 +1254,10 @@
     // Information related to the IVC, which will be used by the prover/verifier
     // at the end of the whole execution
     // FIXME: use a blinded comm and also fold the blinder
-    </span><span class="kw">pub </span>ivc_accumulator_e1: Vec&lt;PolyComm&lt;E1&gt;&gt;,
+    </span><span class="kw">pub </span>accumulated_committed_state_e1: Vec&lt;PolyComm&lt;E1&gt;&gt;,
 
     <span class="comment">// FIXME: use a blinded comm and also fold the blinder
-    </span><span class="kw">pub </span>ivc_accumulator_e2: Vec&lt;PolyComm&lt;E2&gt;&gt;,
+    </span><span class="kw">pub </span>accumulated_committed_state_e2: Vec&lt;PolyComm&lt;E2&gt;&gt;,
 
     <span class="doccomment">/// Commitments to the previous program states.
     </span><span class="kw">pub </span>previous_committed_state_e1: Vec&lt;PolyComm&lt;E1&gt;&gt;,
@@ -1684,7 +1684,7 @@
                 <span class="kw">let </span>idx_col = idx / <span class="number">2</span>;
                 <span class="macro">debug!</span>(<span class="string">&quot;Absorbing the accumulator for the column index {idx_col}. After this, there will still be {} elements to absorb&quot;</span>, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO - idx - <span class="number">1</span>);
                 <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-                    <span class="kw">let </span>(pt_x, pt_y) = <span class="self">self</span>.ivc_accumulator_e2[idx_col]
+                    <span class="kw">let </span>(pt_x, pt_y) = <span class="self">self</span>.accumulated_committed_state_e2[idx_col]
                         .get_first_chunk()
                         .to_coordinates()
                         .unwrap();
@@ -1694,7 +1694,7 @@
                         <span class="self">self</span>.write_public_input(pos, pt_y.to_biguint().into())
                     }
                 } <span class="kw">else </span>{
-                    <span class="kw">let </span>(pt_x, pt_y) = <span class="self">self</span>.ivc_accumulator_e1[idx_col]
+                    <span class="kw">let </span>(pt_x, pt_y) = <span class="self">self</span>.accumulated_committed_state_e1[idx_col]
                         .get_first_chunk()
                         .to_coordinates()
                         .unwrap();
@@ -1789,11 +1789,11 @@
                 </span><span class="kw">let </span>(pt_x, pt_y): (BigInt, BigInt) = <span class="kw">match </span>side {
                     Side::Left =&gt; {
                         <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-                            <span class="kw">let </span>pt = <span class="self">self</span>.ivc_accumulator_e2[i_comm].get_first_chunk();
+                            <span class="kw">let </span>pt = <span class="self">self</span>.accumulated_committed_state_e2[i_comm].get_first_chunk();
                             <span class="kw">let </span>(x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         } <span class="kw">else </span>{
-                            <span class="kw">let </span>pt = <span class="self">self</span>.ivc_accumulator_e1[i_comm].get_first_chunk();
+                            <span class="kw">let </span>pt = <span class="self">self</span>.accumulated_committed_state_e1[i_comm].get_first_chunk();
                             <span class="kw">let </span>(x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         }
@@ -2070,10 +2070,10 @@
             .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[(srs_e2.h + srs_e2.h).into()]))
             .collect();
         <span class="comment">// FIXME: zero will not work.
-        </span><span class="kw">let </span>ivc_accumulator_e1: Vec&lt;PolyComm&lt;E1&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
+        </span><span class="kw">let </span>accumulated_committed_state_e1: Vec&lt;PolyComm&lt;E1&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
             .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[srs_e1.h]))
             .collect();
-        <span class="kw">let </span>ivc_accumulator_e2: Vec&lt;PolyComm&lt;E2&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
+        <span class="kw">let </span>accumulated_committed_state_e2: Vec&lt;PolyComm&lt;E2&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
             .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[srs_e2.h]))
             .collect();
 
@@ -2094,8 +2094,8 @@
             <span class="comment">// -------
             // -------
             // verifier only
-            </span>ivc_accumulator_e1,
-            ivc_accumulator_e2,
+            </span>accumulated_committed_state_e1,
+            accumulated_committed_state_e2,
             previous_committed_state_e1,
             previous_committed_state_e2,
             <span class="comment">// ------
