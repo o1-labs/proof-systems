@@ -343,10 +343,12 @@ pub mod network {
     pub fn main(_arg: cli::Args) -> ExitCode {
         println!("I'm a network!");
 
-        let listener = match TcpListener::bind("127.0.0.1:3088") {
+        let address = "127.0.0.1:3088";
+
+        let listener = match TcpListener::bind(address) {
             Ok(listener) => listener,
             Err(e) => {
-                println!("Oh no: {}", e);
+                println!("Could not bind to address {}: {}", address, e);
                 return ExitCode::FAILURE;
             }
         };
