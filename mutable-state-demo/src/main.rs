@@ -381,27 +381,42 @@ pub mod state_provider {
     use std::io::Write;
     use std::net::TcpStream;
     use std::process::ExitCode;
+    use std::sync::mpsc;
+
+    enum Event {
+        SendNumber(u8),
+    }
 
     pub fn main(_arg: cli::Args) -> ExitCode {
         println!("I'm a state provider!");
 
+        let (event_queue_sender, event_queue_receiver) = mpsc::channel();
+
         let network_address = "127.0.0.1:3088";
 
         for i in 0..10 {
-            let mut stream = match TcpStream::connect(network_address) {
-                Ok(listener) => listener,
-                Err(e) => {
-                    println!("Could not connect to network at {}: {}", network_address, e);
-                    return ExitCode::FAILURE;
-                }
-            };
-            let data = format!("{}", i);
-            println!("sending data {}", data);
-            match stream.write(data.as_ref()) {
-                Ok(_bytes_written) => (),
-                Err(e) => {
-                    println!("Could not send data ({}) to network: {}", data, e);
-                    return ExitCode::FAILURE;
+            event_queue_sender.send(Event::SendNumber(i)).unwrap();
+        }
+
+        for event in event_queue_receiver.into_iter() {
+            match event {
+                Event::SendNumber(i) => {
+                    let mut stream = match TcpStream::connect(network_address) {
+                        Ok(listener) => listener,
+                        Err(e) => {
+                            println!("Could not connect to network at {}: {}", network_address, e);
+                            return ExitCode::FAILURE;
+                        }
+                    };
+                    let data = format!("{}", i);
+                    println!("sending data {}", data);
+                    match stream.write(data.as_ref()) {
+                        Ok(_bytes_written) => (),
+                        Err(e) => {
+                            println!("Could not send data ({}) to network: {}", data, e);
+                            return ExitCode::FAILURE;
+                        }
+                    }
                 }
             }
         }
