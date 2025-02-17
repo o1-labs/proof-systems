@@ -378,10 +378,32 @@ pub mod state_provider {
         pub struct Args {}
     }
 
+    use std::io::Write;
+    use std::net::TcpStream;
     use std::process::ExitCode;
 
     pub fn main(_arg: cli::Args) -> ExitCode {
-        println!("I'm a state_provider!");
+        println!("I'm a state provider!");
+
+        let network_address = "127.0.0.1:3088";
+
+        for i in 0..10 {
+            let mut stream = match TcpStream::connect(network_address) {
+                Ok(listener) => listener,
+                Err(e) => {
+                    println!("Could not connect to network at {}: {}", network_address, e);
+                    return ExitCode::FAILURE;
+                }
+            };
+            println!("sending data {}", i);
+            match stream.write(format!("{}", i).as_ref()) {
+                Ok(_bytes_written) => (),
+                Err(e) => {
+                    println!("Could not send data ({}) to network: {}", i, e);
+                    return ExitCode::FAILURE;
+                }
+            }
+        }
 
         ExitCode::SUCCESS
     }
