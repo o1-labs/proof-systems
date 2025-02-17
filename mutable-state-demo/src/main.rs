@@ -336,10 +336,33 @@ pub mod network {
         pub struct Args {}
     }
 
+    use std::io::Read;
+    use std::net::TcpListener;
     use std::process::ExitCode;
 
     pub fn main(_arg: cli::Args) -> ExitCode {
         println!("I'm a network!");
+
+        let listener = match TcpListener::bind("127.0.0.1:3088") {
+            Ok(listener) => listener,
+            Err(e) => {
+                println!("Oh no: {}", e);
+                return ExitCode::FAILURE;
+            }
+        };
+        for stream in listener.incoming() {
+            let mut stream = match stream {
+                Ok(stream) => stream,
+                Err(e) => {
+                    println!("Stream error: {}", e);
+                    return ExitCode::FAILURE;
+                }
+            };
+            let mut res = [0; 128];
+            let len = stream.read(&mut res).unwrap();
+            let res_string = std::str::from_utf8(&res[0..len]).unwrap();
+            println!("stream got data: {}", res_string);
+        }
 
         ExitCode::SUCCESS
     }
