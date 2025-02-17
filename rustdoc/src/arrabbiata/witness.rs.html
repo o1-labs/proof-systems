@@ -1236,7 +1236,6 @@
 <a href="#1236" id="1236">1236</a>
 <a href="#1237" id="1237">1237</a>
 <a href="#1238" id="1238">1238</a>
-<a href="#1239" id="1239">1239</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::CurveConfig;
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
@@ -1251,8 +1250,7 @@
 <span class="kw">use </span>std::time::Instant;
 
 <span class="kw">use crate</span>::{
-    challenge::Challenges,
-    columns::{Column, Gadget},
+    columns::{Challenges, Column, Gadget},
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side},
     MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS,
