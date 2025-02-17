@@ -1,5 +1,5 @@
 [package]
-name = "data-storage"
+name = "mutable-state"
 version = "0.1.0"
 description = "The kimchi proof system"
 repository = "https://github.com/o1-labs/proof-systems"
@@ -68,5 +68,5 @@ criterion = "0.3"
 iai = "0.1"
 
 [[bin]]
-name = "data-storage-profiling"
+name = "mutable-state-demo"
 path = "src/main.rs"

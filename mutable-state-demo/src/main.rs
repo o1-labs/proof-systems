@@ -17,7 +17,7 @@ use std::process::ExitCode;
 
 // To run:
 // ```
-// cargo run --release -p data-storage
+// cargo run --release --bin mutable-state-demo
 // ```
 
 pub fn run_main() -> ExitCode {
