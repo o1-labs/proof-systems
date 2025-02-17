@@ -1937,7 +1937,7 @@ sequenceDiagram
     Prover->>Verifier: aggregated evaluation proof (involves more interaction)
 ```
 
-The Fiat-Shamir transform simulates the verifier messages via a hash function that hashes the transcript of the protocol so far before outputing verifier messages.
+The Fiat-Shamir transform simulates the verifier messages via a hash function that hashes the transcript of the protocol so far before outputting verifier messages.
 You can find these operations under the [proof creation](#proof-creation) and [proof verification](#proof-verification) algorithms as absorption and squeezing of values with the sponge.
 
 ### Proof Structure
@@ -2119,7 +2119,7 @@ The following sections specify how a prover creates a proof, and how a verifier 
 
 To create a proof, the prover expects:
 
-* A prover index, containing a representation of the circuit (and optionaly pre-computed values to be used in the proof creation).
+* A prover index, containing a representation of the circuit (and optionally pre-computed values to be used in the proof creation).
 * The (filled) registers table, representing parts of the execution trace of the circuit.
 
 ```admonish
