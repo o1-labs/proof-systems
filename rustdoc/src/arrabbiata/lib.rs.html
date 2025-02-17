@@ -62,13 +62,15 @@
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>curve::PlonkSpongeConstants;
 <span class="kw">use </span>mina_poseidon::constants::SpongeConstants;
 <span class="kw">use </span>strum::EnumCount <span class="kw">as _</span>;
 
+<span class="kw">pub mod </span>challenge;
+<span class="kw">pub mod </span>column;
 <span class="kw">pub mod </span>column_env;
-<span class="kw">pub mod </span>columns;
-<span class="kw">pub mod </span>constraints;
+<span class="kw">pub mod </span>constraint;
 <span class="kw">pub mod </span>curve;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>logup;
@@ -102,7 +104,7 @@
 
 <span class="doccomment">/// The maximum number of public inputs the circuit can use per row
 /// We do have 15 for now as we want to compute 5 rounds of poseidon per row
-/// using the gadget [crate::columns::Gadget::Poseidon]. In addition to
+/// using the gadget [crate::column::Gadget::Poseidon]. In addition to
 /// the 12 public inputs required for the rounds, we add 2 more for the values
 /// to absorb.
 </span><span class="kw">pub const </span>NUMBER_OF_PUBLIC_INPUTS: usize = <span class="number">15 </span>+ <span class="number">2</span>;
@@ -125,5 +127,5 @@
 </span><span class="kw">pub const </span>NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO: usize = NUMBER_OF_COLUMNS * <span class="number">2</span>;
 
 <span class="doccomment">/// The number of selectors used in the circuit.
-</span><span class="kw">pub const </span>NUMBER_OF_SELECTORS: usize = columns::Gadget::COUNT;
+</span><span class="kw">pub const </span>NUMBER_OF_SELECTORS: usize = column::Gadget::COUNT;
 </code></pre></div></section></main></body></html>
