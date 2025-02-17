@@ -142,7 +142,6 @@ pub struct Env<
     // See top-level documentation of the interpreter for more information.
     pub challenges: Challenges<BigInt>,
 
-    /// Keep the current executed instruction
     /// List of the accumulated challenges over time, over the curve E1.
     pub accumulated_challenges_e1: Challenges<BigInt>,
 
@@ -159,6 +158,7 @@ pub struct Env<
     /// verified in circuit.
     pub previous_challenges_e2: Challenges<BigInt>,
 
+    /// Keep the current executed instruction.
     /// This can be used to identify which gadget the interpreter is currently
     /// building.
     pub current_instruction: Instruction,
