@@ -20,7 +20,7 @@ use std::process::ExitCode;
 // cargo run --release -p data-storage
 // ```
 
-pub fn main() -> ExitCode {
+pub fn run_main() -> ExitCode {
     const SRS_SIZE: usize = 1 << 16;
 
     println!("Startup time (cacheable, 1-time cost)");
@@ -326,4 +326,54 @@ pub fn main() -> ExitCode {
     }
 
     ExitCode::SUCCESS
+}
+
+mod cli {
+    use clap::{Parser, Subcommand};
+
+    #[derive(Parser, Debug, Clone)]
+    pub struct NetworkArgs {}
+
+    #[derive(Parser, Debug, Clone)]
+    pub struct StateProviderArgs {}
+
+    #[derive(Parser, Debug, Clone)]
+    pub struct ClientArgs {}
+
+    #[derive(Parser, Debug, Clone)]
+    pub struct PingArgs {}
+
+    #[derive(Subcommand, Clone, Debug)]
+    pub enum RequestCommands {
+        #[command(name = "ping")]
+        TestPreimageRead(PingArgs),
+    }
+
+    #[derive(Parser, Debug, Clone)]
+    #[command(
+        name = "mutable-state-demo",
+        version = "0.1",
+        about = "mutable-state-demo"
+    )]
+    pub enum Commands {
+        #[command(name = "network")]
+        Network(NetworkArgs),
+        #[command(name = "state-provider")]
+        StateProvider(StateProviderArgs),
+        #[command(name = "client")]
+        Client(ClientArgs),
+        #[command(subcommand, name = "request")]
+        Request(RequestCommands),
+    }
+}
+
+pub fn main() -> ExitCode {
+    use clap::Parser;
+    let args = cli::Commands::parse();
+    match args {
+        cli::Commands::Network(_args) => run_main(),
+        cli::Commands::StateProvider(_args) => run_main(),
+        cli::Commands::Client(_args) => run_main(),
+        cli::Commands::Request(_subcommand) => run_main(),
+    }
 }
