@@ -20,7 +20,7 @@ use std::process::ExitCode;
 // cargo run --release --bin mutable-state-demo
 // ```
 
-pub fn run_main() -> ExitCode {
+pub fn run_profiling_demo() -> ExitCode {
     const SRS_SIZE: usize = 1 << 16;
 
     println!("Startup time (cacheable, 1-time cost)");
@@ -333,36 +333,78 @@ pub mod network {
         use clap::Parser;
 
         #[derive(Parser, Debug, Clone)]
-        pub struct NetworkArgs {}
+        pub struct Args {}
     }
 
     use std::process::ExitCode;
 
-    pub fn main(_arg: cli::NetworkArgs) -> ExitCode {
+    pub fn main(_arg: cli::Args) -> ExitCode {
         println!("I'm a network!");
 
         ExitCode::SUCCESS
     }
 }
 
-pub mod cli {
-    use super::network;
-    use clap::{Parser, Subcommand};
+pub mod state_provider {
+    pub mod cli {
+        use clap::Parser;
 
-    #[derive(Parser, Debug, Clone)]
-    pub struct StateProviderArgs {}
-
-    #[derive(Parser, Debug, Clone)]
-    pub struct ClientArgs {}
-
-    #[derive(Parser, Debug, Clone)]
-    pub struct PingArgs {}
-
-    #[derive(Subcommand, Clone, Debug)]
-    pub enum RequestCommands {
-        #[command(name = "ping")]
-        TestPreimageRead(PingArgs),
+        #[derive(Parser, Debug, Clone)]
+        pub struct Args {}
     }
+
+    use std::process::ExitCode;
+
+    pub fn main(_arg: cli::Args) -> ExitCode {
+        println!("I'm a state_provider!");
+
+        ExitCode::SUCCESS
+    }
+}
+
+pub mod client {
+    pub mod cli {
+        use clap::Parser;
+
+        #[derive(Parser, Debug, Clone)]
+        pub struct Args {}
+    }
+
+    use std::process::ExitCode;
+
+    pub fn main(_arg: cli::Args) -> ExitCode {
+        println!("I'm a client!");
+
+        ExitCode::SUCCESS
+    }
+}
+
+pub mod request {
+    pub mod cli {
+        use clap::{Parser, Subcommand};
+
+        #[derive(Parser, Debug, Clone)]
+        pub struct DemoArgs {}
+
+        #[derive(Subcommand, Clone, Debug)]
+        pub enum Command {
+            #[command(name = "demo")]
+            Demo(DemoArgs),
+        }
+    }
+
+    use std::process::ExitCode;
+
+    pub fn main(sub_command: cli::Command) -> ExitCode {
+        match sub_command {
+            cli::Command::Demo(_args) => super::run_profiling_demo(),
+        }
+    }
+}
+
+pub mod cli {
+    use super::{client, network, request, state_provider};
+    use clap::Parser;
 
     #[derive(Parser, Debug, Clone)]
     #[command(
@@ -370,25 +412,25 @@ pub mod cli {
         version = "0.1",
         about = "mutable-state-demo"
     )]
-    pub enum Commands {
+    pub enum Command {
         #[command(name = "network")]
-        Network(network::cli::NetworkArgs),
+        Network(network::cli::Args),
         #[command(name = "state-provider")]
-        StateProvider(StateProviderArgs),
+        StateProvider(state_provider::cli::Args),
         #[command(name = "client")]
-        Client(ClientArgs),
+        Client(client::cli::Args),
         #[command(subcommand, name = "request")]
-        Request(RequestCommands),
+        Request(request::cli::Command),
     }
 }
 
 pub fn main() -> ExitCode {
     use clap::Parser;
-    let args = cli::Commands::parse();
+    let args = cli::Command::parse();
     match args {
-        cli::Commands::Network(args) => network::main(args),
-        cli::Commands::StateProvider(_args) => run_main(),
-        cli::Commands::Client(_args) => run_main(),
-        cli::Commands::Request(_subcommand) => run_main(),
+        cli::Command::Network(args) => network::main(args),
+        cli::Command::StateProvider(args) => state_provider::main(args),
+        cli::Command::Client(args) => client::main(args),
+        cli::Command::Request(subcommand) => request::main(subcommand),
     }
 }
