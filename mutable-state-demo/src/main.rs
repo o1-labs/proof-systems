@@ -328,11 +328,26 @@ pub fn run_main() -> ExitCode {
     ExitCode::SUCCESS
 }
 
-mod cli {
-    use clap::{Parser, Subcommand};
+pub mod network {
+    pub mod cli {
+        use clap::Parser;
 
-    #[derive(Parser, Debug, Clone)]
-    pub struct NetworkArgs {}
+        #[derive(Parser, Debug, Clone)]
+        pub struct NetworkArgs {}
+    }
+
+    use std::process::ExitCode;
+
+    pub fn main(_arg: cli::NetworkArgs) -> ExitCode {
+        println!("I'm a network!");
+
+        ExitCode::SUCCESS
+    }
+}
+
+pub mod cli {
+    use super::network;
+    use clap::{Parser, Subcommand};
 
     #[derive(Parser, Debug, Clone)]
     pub struct StateProviderArgs {}
@@ -357,7 +372,7 @@ mod cli {
     )]
     pub enum Commands {
         #[command(name = "network")]
-        Network(NetworkArgs),
+        Network(network::cli::NetworkArgs),
         #[command(name = "state-provider")]
         StateProvider(StateProviderArgs),
         #[command(name = "client")]
@@ -371,7 +386,7 @@ pub fn main() -> ExitCode {
     use clap::Parser;
     let args = cli::Commands::parse();
     match args {
-        cli::Commands::Network(_args) => run_main(),
+        cli::Commands::Network(args) => network::main(args),
         cli::Commands::StateProvider(_args) => run_main(),
         cli::Commands::Client(_args) => run_main(),
         cli::Commands::Request(_subcommand) => run_main(),
