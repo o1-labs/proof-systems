@@ -1,6 +1,6 @@
-use super::{columns::Column, interpreter::InterpreterEnv};
+use super::{column::Column, interpreter::InterpreterEnv};
 use crate::{
-    columns::{Gadget, E},
+    column::{Gadget, E},
     curve::ArrabbiataCurve,
     interpreter::{self, Instruction, Side},
     MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
