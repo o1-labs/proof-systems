@@ -279,7 +279,7 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// the polynomial homogeneous.
     ///
     /// The homogeneous degree is supposed to be the one defined by the type of
-    /// the polynomial `P`, i.e. `D`.
+    /// the polynomial `P`, i.e. `D`, given as input.
     ///
     /// The output is a map of `D` values that represents the cross-terms
     /// for each power of `r`.
@@ -361,8 +361,8 @@ pub fn compute_combined_cross_terms_with_selectors<
     T: MVPoly<F, N, D>,
 >(
     circuit: Vec<Vec<T>>,
-    eval1: [F; N],
-    eval2: [F; N],
+    eval1: &[F; N],
+    eval2: &[F; N],
     u1: F,
     u2: F,
     combiner1: F,
@@ -382,4 +382,13 @@ pub fn compute_combined_cross_terms_with_selectors<
     assert!(u1 != F::zero(), "We suppose that u1 is not zero");
     assert!(u2 != F::zero(), "We suppose that u2 is not zero");
     assert!(selected_gadget < circuit.len(), "The selected gadget must be in the circuit, given idx = {}, where only {} gadgets are present", selected_gadget, circuit.len());
+    assert_eq!(accumulated_gadget_selectors.len(), circuit.len(), "The number of accumulators given for the selectors must be the same than the number of actual gadgets used in the circuit");
+
+    let mut res: HashMap<usize, F> = HashMap::new();
+    circuit.iter().for_each(|gadget| {
+        let cross_terms = self.compute_cross_terms_scaled(eval1, eval2, u1, u2, scalar1, scalar2);
+        cross_terms.iter().for_each(|(power_r, coeff)| {
+            res.insert(*power_r, *coeff * scalar1);
+        })
+    })
 }
