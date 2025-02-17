@@ -385,10 +385,26 @@ pub fn compute_combined_cross_terms_with_selectors<
     assert_eq!(accumulated_gadget_selectors.len(), circuit.len(), "The number of accumulators given for the selectors must be the same than the number of actual gadgets used in the circuit");
 
     let mut res: HashMap<usize, F> = HashMap::new();
-    circuit.iter().for_each(|gadget| {
-        let cross_terms = self.compute_cross_terms_scaled(eval1, eval2, u1, u2, scalar1, scalar2);
-        cross_terms.iter().for_each(|(power_r, coeff)| {
-            res.insert(*power_r, *coeff * scalar1);
-        })
+    circuit.iter().enumerate().for_each(|(gadget_idx, gadget)| {
+        let accumulated_selector: F = accumulated_gadget_selectors[gadget_idx];
+        gadget
+            .into_iter()
+            .enumerate()
+            .fold(HashMap::new(), |mut acc, (j, poly)| {
+                let scalar1 = cmbiner.pow([j as u64]);
+                let scalar2 = cmbiner.pow([j as u64]);
+                // q1 * α1
+                let lrs_scalar = scalar1 * accumulated_selector;
+                // r (q1 * α2 + q2 * α1)
+                let mid_scalar = if selected_gadget == gadget_idx {
+                    scalar1 + scalar2 * accumulated_selector
+                } else {
+                    scalar2 * accumulated_selector
+                };
+                let cross_terms =
+                    self.compute_cross_terms(eval1, eval2, u1, u2, lrs_scalar, mid_scalar);
+                // FIXME: if q2
+                if selected_gadget == gadget_idx {}
+            })
     })
 }
