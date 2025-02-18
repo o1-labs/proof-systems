@@ -390,17 +390,20 @@ pub mod state_provider {
     }
 
     use super::network::Message as NetworkMessage;
-    use serde::Serialize;
-    use std::io::Read;
+    use serde::{Deserialize, Serialize};
     use std::net::{TcpListener, TcpStream};
     use std::process::ExitCode;
     use std::sync::mpsc;
     use std::thread;
 
+    #[derive(Serialize, Deserialize)]
+    pub enum Message {
+        StringMessage(String),
+    }
+
     enum Event {
         SendNumber(u8),
-        HandleStreamMessage(String),
-        Failure,
+        HandleStreamMessage(Message),
     }
 
     pub fn main(_arg: cli::Args) -> ExitCode {
@@ -413,28 +416,12 @@ pub mod state_provider {
         let event_queue_stream_sender = event_queue_sender.clone();
 
         thread::spawn(move || {
-            let listener = match TcpListener::bind(address) {
-                Ok(listener) => listener,
-                Err(e) => {
-                    println!("Could not bind to address {}: {}", address, e);
-                    event_queue_stream_sender.send(Event::Failure).unwrap();
-                    return;
-                }
-            };
+            let listener = TcpListener::bind(address).unwrap();
             for stream in listener.incoming() {
-                let mut stream = match stream {
-                    Ok(stream) => stream,
-                    Err(e) => {
-                        println!("Stream error: {}", e);
-                        event_queue_stream_sender.send(Event::Failure).unwrap();
-                        return;
-                    }
-                };
-                let mut res = [0; 128];
-                let len = stream.read(&mut res).unwrap();
-                let res_string = String::from_utf8(res[0..len].to_vec()).unwrap();
+                let mut deserializer = rmp_serde::Deserializer::new(stream.unwrap());
+                let message = Message::deserialize(&mut deserializer).unwrap();
                 event_queue_stream_sender
-                    .send(Event::HandleStreamMessage(res_string))
+                    .send(Event::HandleStreamMessage(message))
                     .unwrap();
             }
         });
@@ -463,14 +450,14 @@ pub mod state_provider {
                         .serialize(&mut serializer)
                         .unwrap();
                 }
-                Event::HandleStreamMessage(data) => {
-                    NetworkMessage::StringMessage(data)
-                        .serialize(&mut serializer)
-                        .unwrap();
-                }
-                Event::Failure => {
-                    return ExitCode::FAILURE;
-                }
+                Event::HandleStreamMessage(message) => match message {
+                    Message::StringMessage(data) => {
+                        println!("forwarding data {}", data);
+                        NetworkMessage::StringMessage(data)
+                            .serialize(&mut serializer)
+                            .unwrap();
+                    }
+                },
             }
         }
 
@@ -486,9 +473,10 @@ pub mod client {
         pub struct Args {}
     }
 
-    use super::network::Message as NetworkMessage;
+    use super::{
+        network::Message as NetworkMessage, state_provider::Message as StateProviderMessage,
+    };
     use serde::Serialize;
-    use std::io::Write;
     use std::net::TcpStream;
     use std::process::ExitCode;
 
@@ -514,8 +502,8 @@ pub mod client {
         }
 
         for i in 0..30 {
-            let mut stream = match TcpStream::connect(storage_provider_address) {
-                Ok(listener) => listener,
+            let mut serializer = match TcpStream::connect(storage_provider_address) {
+                Ok(listener) => rmp_serde::Serializer::new(listener),
                 Err(e) => {
                     println!(
                         "Could not connect to network at {}: {}",
@@ -526,13 +514,9 @@ pub mod client {
             };
             let data = format!("client {}", i);
             println!("sending data {}", data);
-            match stream.write(data.as_ref()) {
-                Ok(_bytes_written) => (),
-                Err(e) => {
-                    println!("Could not send data ({}) to network: {}", data, e);
-                    return ExitCode::FAILURE;
-                }
-            }
+            StateProviderMessage::StringMessage(data)
+                .serialize(&mut serializer)
+                .unwrap();
         }
 
         ExitCode::SUCCESS
