@@ -20,9 +20,20 @@ use std::process::ExitCode;
 // cargo run --release --bin mutable-state-demo
 // ```
 
+const SRS_SIZE: usize = 1 << 16;
+
 pub struct VerifyContext {
     pub srs: SRS<Vesta>,
     pub group_map: <Vesta as CommitmentCurve>::Map,
+}
+
+impl VerifyContext {
+    pub fn new() -> Self {
+        let srs = SRS::<Vesta>::create(SRS_SIZE);
+        let group_map = <Vesta as CommitmentCurve>::Map::setup();
+
+        VerifyContext { srs, group_map }
+    }
 }
 
 pub struct Proof {
@@ -68,14 +79,11 @@ pub fn verify(context: &VerifyContext, proof: &Proof) -> bool {
 }
 
 pub fn run_profiling_demo() -> ExitCode {
-    const SRS_SIZE: usize = 1 << 16;
-
     println!("Startup time (cacheable, 1-time cost)");
 
-    println!("- Generate SRS");
+    println!("- Generate SRS and group map");
     let now = std::time::Instant::now();
-    let domain = Radix2EvaluationDomain::new(SRS_SIZE).unwrap();
-    let srs = SRS::<Vesta>::create(SRS_SIZE);
+    let verify_context = VerifyContext::new();
     let duration = now.elapsed();
     println!(
         "  - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
@@ -84,7 +92,11 @@ pub fn run_profiling_demo() -> ExitCode {
         duration.as_micros(),
         duration.as_nanos(),
     );
+
+    let VerifyContext { srs, group_map } = &verify_context;
+
     println!("- Generate SRS lagrange basis");
+    let domain = Radix2EvaluationDomain::new(SRS_SIZE).unwrap();
     let basis = srs
         .get_lagrange_basis(domain)
         .iter()
@@ -99,22 +111,6 @@ pub fn run_profiling_demo() -> ExitCode {
         duration.as_micros(),
         duration.as_nanos(),
     );
-
-    println!("- Generate 'group map' parameters");
-    let now = std::time::Instant::now();
-    let group_map = <Vesta as CommitmentCurve>::Map::setup();
-    let duration = now.elapsed();
-    println!(
-        "  - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-        duration.as_secs(),
-        duration.as_millis(),
-        duration.as_micros(),
-        duration.as_nanos(),
-    );
-
-    let verify_context = VerifyContext { srs, group_map };
-
-    let VerifyContext { srs, group_map } = &verify_context;
 
     const DATA_SIZE: usize = 1 << 25;
 
