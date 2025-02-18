@@ -18,8 +18,17 @@ use serde_with::serde_as;
 use std::process::ExitCode;
 
 // To run:
+// * open a new terminal window, start the network daemon
 // ```
-// cargo run --release --bin mutable-state-demo
+// cargo run --release --bin mutable-state-demo -- network
+// ```
+// * open a new terminal window, start the state provider daemon
+// ```
+// cargo run --release --bin mutable-state-demo -- network
+// ```
+// * open a new terminal window, run the client
+// ```
+// cargo run --release --bin mutable-state-demo -- client
 // ```
 
 const SRS_SIZE: usize = 1 << 16;
