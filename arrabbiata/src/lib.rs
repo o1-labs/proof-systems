@@ -63,3 +63,14 @@ pub const NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO: usize = NUMBER_OF_COLUMNS * 2;
 
 /// The number of selectors used in the circuit.
 pub const NUMBER_OF_SELECTORS: usize = column::Gadget::COUNT;
+
+/// The arity of the multivariate polynomials describing the constraints.
+/// We consider, maybe errorneously, that a public input is full and fit an
+/// entire polynomial. The arity of the multivariate polynomials describing the
+/// constraints.
+/// We consider, maybe errorneously, that a public input can be considered as a
+/// column and fit an entire polynomial. We also suppose that the private
+/// inputs on the next row can be used, hence the times 2.
+///
+/// It is going to be used to convert into the representation used in [mvpoly].
+pub const MV_POLYNOMIAL_ARITY: usize = NUMBER_OF_PUBLIC_INPUTS + NUMBER_OF_COLUMNS * 2;
