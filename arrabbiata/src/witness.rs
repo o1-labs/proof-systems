@@ -31,7 +31,7 @@ pub const VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
 /// verifier application. The verifier application is used to encode the
 /// correctness of previous program states computations.
 ///
-/// The term "app(lication) state" will be used to refer to the state of the
+/// The term "app(location) state" will be used to refer to the state of the
 /// user application, and the term "IVC state" will be used to refer to the
 /// state of the verifier application. The term program state will be used to refer to
 /// the state of the whole program.
