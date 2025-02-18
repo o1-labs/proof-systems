@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["ChallengeTerm","Column","Gadget"],"struct":["Challenges","GadgetIter"],"type":["E"]};
