@@ -312,17 +312,13 @@ pub fn run_profiling_demo() -> ExitCode {
                 randomized_data_eval,
             } = proof;
             let rng = &mut rand::rngs::OsRng;
-            println!("- Verifier protocol iteration {i}");
-            println!("  - Verify opening proof");
-            let now = std::time::Instant::now();
-
             let mut opening_proof_sponge =
                 DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
                     mina_poseidon::pasta::fq_kimchi::static_params(),
                 );
             opening_proof_sponge.absorb_fr(&[randomized_data_eval]);
 
-            let opening_proof_verifies = srs.verify(
+            srs.verify(
                 group_map,
                 &mut [BatchEvaluationProof {
                     sponge: opening_proof_sponge.clone(),
@@ -339,28 +335,32 @@ pub fn run_profiling_demo() -> ExitCode {
                     combined_inner_product: randomized_data_eval,
                 }],
                 rng,
-            );
-            let duration = now.elapsed();
-            println!("    - Verifies: {}", opening_proof_verifies);
-            println!(
-                "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-                duration.as_secs(),
-                duration.as_millis(),
-                duration.as_micros(),
-                duration.as_nanos(),
-            );
+            )
         };
         let proof = Proof {
             evaluation_point,
             final_commitment,
             randomized_data_eval,
         };
-        verify(
+
+        println!("- Verifier protocol iteration {i}");
+        println!("  - Verify opening proof");
+        let now = std::time::Instant::now();
+        let opening_proof_verifies = verify(
             VerifyContext {
                 srs: &srs,
                 group_map: &group_map,
             },
             proof,
+        );
+        let duration = now.elapsed();
+        println!("    - Verifies: {}", opening_proof_verifies);
+        println!(
+            "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
+            duration.as_secs(),
+            duration.as_millis(),
+            duration.as_micros(),
+            duration.as_nanos(),
         );
     }
 
