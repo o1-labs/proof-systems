@@ -380,6 +380,7 @@ pub mod network {
         pub struct Args {}
     }
 
+    use super::{Proof, VerifyContext};
     use serde::{Deserialize, Serialize};
     use std::net::TcpListener;
     use std::process::ExitCode;
@@ -387,10 +388,15 @@ pub mod network {
     #[derive(Serialize, Deserialize)]
     pub enum Message {
         StringMessage(String),
+        VerifyProof(Proof),
     }
 
     pub fn main(_arg: cli::Args) -> ExitCode {
         println!("I'm a network!");
+
+        let verify_context = VerifyContext::new();
+
+        println!("Set up verify context");
 
         let address = "127.0.0.1:3088";
 
@@ -400,6 +406,10 @@ pub mod network {
             let message = Message::deserialize(&mut deserializer).unwrap();
             match message {
                 Message::StringMessage(i) => println!("stream got data: {}", i),
+                Message::VerifyProof(proof) => {
+                    let valid = super::verify(&verify_context, &proof);
+                    println!("proof verifies? {}", valid);
+                }
             }
         }
 
