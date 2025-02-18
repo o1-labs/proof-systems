@@ -196,9 +196,7 @@ pub fn run_profiling_demo() -> ExitCode {
         duration.as_nanos(),
     );
 
-    for i in 0..2 {
-        println!("");
-        println!("- Storage protocol iteration {i}");
+    let mut prove = || {
         println!("  - Computing randomizers for data chunks");
         let now = std::time::Instant::now();
         let powers = committed_chunks
@@ -347,12 +345,19 @@ pub fn run_profiling_demo() -> ExitCode {
             duration.as_nanos(),
         );
 
-        let proof = Proof {
+        Proof {
             evaluation_point,
             final_commitment,
             randomized_data_eval,
             opening_proof,
-        };
+        }
+    };
+
+    for i in 0..2 {
+        println!("");
+        println!("- Storage protocol iteration {i}");
+
+        let proof = prove();
 
         println!("- Verifier protocol iteration {i}");
         println!("  - Verify opening proof");
