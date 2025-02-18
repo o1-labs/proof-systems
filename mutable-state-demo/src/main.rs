@@ -226,7 +226,16 @@ pub mod network {
         use clap::Parser;
 
         #[derive(Parser, Debug, Clone)]
-        pub struct Args {}
+        pub struct Args {
+            #[arg(
+                short = 'a',
+                long,
+                value_name = "ADDRESS",
+                help = "Address to bind to",
+                default_value = "127.0.0.1:3088"
+            )]
+            pub address: String,
+        }
     }
 
     use super::{Proof, VerifyContext};
@@ -240,14 +249,14 @@ pub mod network {
         VerifyProof(Proof),
     }
 
-    pub fn main(_arg: cli::Args) -> ExitCode {
+    pub fn main(arg: cli::Args) -> ExitCode {
         println!("I'm a network!");
+
+        let cli::Args { address } = arg;
 
         let verify_context = VerifyContext::new();
 
         println!("Set up verify context");
-
-        let address = "127.0.0.1:3088";
 
         let listener = TcpListener::bind(address).unwrap();
         for stream in listener.incoming() {
@@ -281,7 +290,24 @@ pub mod state_provider {
         use clap::Parser;
 
         #[derive(Parser, Debug, Clone)]
-        pub struct Args {}
+        pub struct Args {
+            #[arg(
+                short = 'a',
+                long,
+                value_name = "ADDRESS",
+                help = "Address to bind to",
+                default_value = "127.0.0.1:3089"
+            )]
+            pub address: String,
+            #[arg(
+                short = 'n',
+                long,
+                value_name = "NETWORK_ADDRESS",
+                help = "Address of the network node",
+                default_value = "127.0.0.1:3088"
+            )]
+            pub network_address: String,
+        }
     }
 
     use super::{network::Message as NetworkMessage, prove, ProverInputs, VerifyContext};
@@ -304,12 +330,15 @@ pub mod state_provider {
         HandleStreamMessage(Message),
     }
 
-    pub fn main(_arg: cli::Args) -> ExitCode {
+    pub fn main(arg: cli::Args) -> ExitCode {
         println!("I'm a state provider!");
 
-        let (event_queue_sender, event_queue_receiver) = mpsc::channel();
+        let cli::Args {
+            network_address,
+            address,
+        } = arg;
 
-        let address = "127.0.0.1:3089";
+        let (event_queue_sender, event_queue_receiver) = mpsc::channel();
 
         let event_queue_stream_sender = event_queue_sender.clone();
 
@@ -323,8 +352,6 @@ pub mod state_provider {
                     .unwrap();
             }
         });
-
-        let network_address = "127.0.0.1:3088";
 
         for i in 0..2 {
             event_queue_sender.send(Event::SendNumber(i)).unwrap();
@@ -340,7 +367,7 @@ pub mod state_provider {
 
         for event in event_queue_receiver.into_iter() {
             let network_serializer =
-                || rmp_serde::Serializer::new(TcpStream::connect(network_address).unwrap());
+                || rmp_serde::Serializer::new(TcpStream::connect(network_address.clone()).unwrap());
 
             match event {
                 Event::SendNumber(i) => {
@@ -407,7 +434,24 @@ pub mod client {
         use clap::Parser;
 
         #[derive(Parser, Debug, Clone)]
-        pub struct Args {}
+        pub struct Args {
+            #[arg(
+                short = 's',
+                long,
+                value_name = "ADDRESS",
+                help = "Address to bind to",
+                default_value = "127.0.0.1:3089"
+            )]
+            pub state_provider_address: String,
+            #[arg(
+                short = 'n',
+                long,
+                value_name = "NETWORK_ADDRESS",
+                help = "Address of the network node",
+                default_value = "127.0.0.1:3088"
+            )]
+            pub network_address: String,
+        }
     }
 
     use super::{
@@ -417,17 +461,20 @@ pub mod client {
     use std::net::TcpStream;
     use std::process::ExitCode;
 
-    pub fn main(_arg: cli::Args) -> ExitCode {
+    pub fn main(arg: cli::Args) -> ExitCode {
         println!("I'm a client!");
 
-        let network_address = "127.0.0.1:3088";
-        let state_provider_address = "127.0.0.1:3089";
+        let cli::Args {
+            state_provider_address,
+            network_address,
+        } = arg;
 
         let network_serializer =
-            || rmp_serde::Serializer::new(TcpStream::connect(network_address).unwrap());
+            || rmp_serde::Serializer::new(TcpStream::connect(network_address.clone()).unwrap());
 
-        let state_provider_serializer =
-            || rmp_serde::Serializer::new(TcpStream::connect(state_provider_address).unwrap());
+        let state_provider_serializer = || {
+            rmp_serde::Serializer::new(TcpStream::connect(state_provider_address.clone()).unwrap())
+        };
 
         for i in 0..2 {
             let mut serializer = network_serializer();
