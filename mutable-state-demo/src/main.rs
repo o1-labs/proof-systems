@@ -422,7 +422,7 @@ pub mod state_provider {
         println!("number of field elements: {}", data.len());
 
         for i in 0..data.len() {
-            data[i] = Fp::from(i as u64);
+            data[i] = Fp::from(0u64);
         }
         let mut prover_inputs = ProverInputs::from_data(&verify_context, data);
 
