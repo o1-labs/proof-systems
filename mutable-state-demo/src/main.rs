@@ -307,12 +307,20 @@ pub mod state_provider {
                 default_value = "127.0.0.1:3088"
             )]
             pub network_address: String,
+            #[arg(
+                short = 'f',
+                long,
+                value_name = "FILENAME",
+                help = "File to use as storage"
+            )]
+            pub mmap_file: Option<String>,
         }
     }
 
-    use super::{network::Message as NetworkMessage, prove, ProverInputs, VerifyContext};
+    use super::{network::Message as NetworkMessage, prove, ProverInputs, VerifyContext, SRS_SIZE};
     use mina_curves::pasta::Fp;
     use serde::{Deserialize, Serialize};
+    use std::fs::{File, OpenOptions};
     use std::net::{TcpListener, TcpStream};
     use std::process::ExitCode;
     use std::sync::mpsc;
@@ -330,12 +338,18 @@ pub mod state_provider {
         HandleStreamMessage(Message),
     }
 
+    enum DataSource {
+        Data(Vec<Fp>),
+        Mmap { _file: File, mmap: memmap::MmapMut },
+    }
+
     pub fn main(arg: cli::Args) -> ExitCode {
         println!("I'm a state provider!");
 
         let cli::Args {
             network_address,
             address,
+            mmap_file,
         } = arg;
 
         let (event_queue_sender, event_queue_receiver) = mpsc::channel();
@@ -361,9 +375,52 @@ pub mod state_provider {
 
         let verify_context = VerifyContext::new();
 
-        // TODO: mmap data
-        let mut data: Vec<_> = (0..1 << 20).map(|i| Fp::from(i)).collect();
-        let mut prover_inputs = ProverInputs::from_data(&verify_context, &mut data);
+        let mut data_source = match mmap_file {
+            None => DataSource::Data((0..1 << 20).map(|i| Fp::from(i)).collect()),
+            Some(mmap_file) => {
+                let file = {
+                    OpenOptions::new()
+                        .read(true)
+                        .write(true)
+                        .open(mmap_file)
+                        .unwrap()
+                };
+                let mmap = { unsafe { memmap::MmapMut::map_mut(&file).unwrap() } };
+                DataSource::Mmap { _file: file, mmap }
+            }
+        };
+
+        let data = {
+            match &mut data_source {
+                DataSource::Data(v) => v.as_mut_slice(),
+                DataSource::Mmap { _file: _, mmap } => {
+                    let mmap_data = mmap.as_mut();
+                    let (prefix, mmap_data, suffix) = unsafe { mmap_data.align_to_mut::<Fp>() };
+                    if prefix.len() != 0 || suffix.len() != 0 {
+                        panic!(
+                        "Expected zero lengths of rejected space around mmapped file, but got prefix={} and suffix={}",
+                        prefix.len(),
+                        suffix.len()
+                    );
+                    }
+                    let num_regions = mmap_data.len() / SRS_SIZE;
+                    if num_regions * SRS_SIZE != mmap_data.len() {
+                        panic!(
+                            "Expected file size to be a multiple of {} bytes",
+                            std::mem::size_of::<Fp>() * SRS_SIZE
+                        );
+                    }
+                    mmap_data
+                }
+            }
+        };
+
+        println!("number of field elements: {}", data.len());
+
+        for i in 0..data.len() {
+            data[i] = Fp::from(i as u64);
+        }
+        let mut prover_inputs = ProverInputs::from_data(&verify_context, data);
 
         for event in event_queue_receiver.into_iter() {
             let network_serializer =
