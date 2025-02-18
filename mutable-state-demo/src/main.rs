@@ -381,6 +381,7 @@ pub mod state_provider {
     #[derive(Serialize, Deserialize)]
     pub enum Message {
         StringMessage(String),
+        RunDemo,
     }
 
     enum Event {
@@ -434,6 +435,9 @@ pub mod state_provider {
                             .serialize(&mut serializer)
                             .unwrap();
                     }
+                    Message::RunDemo => {
+                        super::run_profiling_demo();
+                    }
                 },
             }
         }
@@ -482,6 +486,13 @@ pub mod client {
                 .serialize(&mut serializer)
                 .unwrap();
         }
+
+        let mut serializer =
+            rmp_serde::Serializer::new(TcpStream::connect(storage_provider_address).unwrap());
+        println!("Requesting demo run");
+        StateProviderMessage::RunDemo
+            .serialize(&mut serializer)
+            .unwrap();
 
         ExitCode::SUCCESS
     }
