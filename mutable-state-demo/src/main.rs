@@ -225,16 +225,32 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
     }
 }
 
+pub fn stream_read<'a, T: serde::Deserialize<'a>>(
+    stream: std::net::TcpStream,
+) -> (std::net::TcpStream, T) {
+    let mut deserializer = rmp_serde::Deserializer::new(stream);
+    let msg = T::deserialize(&mut deserializer).unwrap();
+    let stream = deserializer.into_inner();
+    (stream, msg)
+}
+
+pub fn stream_write<'a, T: serde::Serialize>(
+    stream: std::net::TcpStream,
+    response: T,
+) -> std::net::TcpStream {
+    let mut serializer = rmp_serde::Serializer::new(stream);
+    response.serialize(&mut serializer).unwrap();
+    serializer.into_inner()
+}
+
 pub fn rpc<'a, A: std::net::ToSocketAddrs, T: serde::Serialize, U: serde::Deserialize<'a>>(
     address: A,
     msg: T,
 ) -> U {
-    use std::net::TcpStream;
-    let mut serializer = rmp_serde::Serializer::new(TcpStream::connect(address).unwrap());
-    msg.serialize(&mut serializer).unwrap();
-    let stream = serializer.into_inner();
-    let mut deserializer = rmp_serde::Deserializer::new(stream);
-    U::deserialize(&mut deserializer).unwrap()
+    let stream = std::net::TcpStream::connect(address).unwrap();
+    let stream = stream_write(stream, msg);
+    let (_stream, response) = stream_read(stream);
+    response
 }
 
 pub fn unit_rpc<'a, A: std::net::ToSocketAddrs, T: serde::Serialize>(address: A, msg: T) {
@@ -245,12 +261,9 @@ pub fn rpc_handle<'a, T: serde::Deserialize<'a>, U: serde::Serialize, F: FnOnce(
     stream: std::net::TcpStream,
     f: F,
 ) {
-    let mut deserializer = rmp_serde::Deserializer::new(stream);
-    let msg = T::deserialize(&mut deserializer).unwrap();
+    let (stream, msg) = stream_read(stream);
     let response = f(msg);
-    let stream = deserializer.into_inner();
-    let mut serializer = rmp_serde::Serializer::new(stream);
-    response.serialize(&mut serializer).unwrap();
+    stream_write(stream, response);
 }
 
 pub mod network {
@@ -351,7 +364,7 @@ pub mod state_provider {
     use mina_curves::pasta::Fp;
     use serde::{Deserialize, Serialize};
     use std::fs::{File, OpenOptions};
-    use std::net::TcpListener;
+    use std::net::{TcpListener, TcpStream};
     use std::process::ExitCode;
     use std::sync::mpsc;
     use std::thread;
@@ -365,7 +378,7 @@ pub mod state_provider {
 
     enum Event {
         SendNumber(u8),
-        HandleStreamMessage(Message),
+        HandleStreamMessage(TcpStream, Message),
     }
 
     enum DataSource {
@@ -389,11 +402,10 @@ pub mod state_provider {
         thread::spawn(move || {
             let listener = TcpListener::bind(address).unwrap();
             for stream in listener.incoming() {
-                super::rpc_handle(stream.unwrap(), |message| {
-                    event_queue_stream_sender
-                        .send(Event::HandleStreamMessage(message))
-                        .unwrap();
-                });
+                let (stream, message) = super::stream_read(stream.unwrap());
+                event_queue_stream_sender
+                    .send(Event::HandleStreamMessage(stream, message))
+                    .unwrap();
             }
         });
 
@@ -460,39 +472,42 @@ pub mod state_provider {
 
                     super::rpc(network_address.clone(), NetworkMessage::StringMessage(data))
                 }
-                Event::HandleStreamMessage(message) => match message {
-                    Message::StringMessage(data) => {
-                        println!("forwarding data {}", data);
-                        super::rpc(network_address.clone(), NetworkMessage::StringMessage(data))
+                Event::HandleStreamMessage(stream, message) => {
+                    match message {
+                        Message::StringMessage(data) => {
+                            println!("forwarding data {}", data);
+                            super::rpc(network_address.clone(), NetworkMessage::StringMessage(data))
+                        }
+                        Message::StateRetentionProof => {
+                            println!("Creating storage proof");
+                            let now = std::time::Instant::now();
+                            let proof = prove(&verify_context, &prover_inputs);
+                            let duration = now.elapsed();
+                            println!(
+                                "Took {:?}s / {:?}ms / {:?}us / {:?}ns",
+                                duration.as_secs(),
+                                duration.as_millis(),
+                                duration.as_micros(),
+                                duration.as_nanos(),
+                            );
+                            super::rpc(network_address.clone(), NetworkMessage::VerifyProof(proof))
+                        }
+                        Message::UpdateProverInputs => {
+                            println!("Updating prover inputs from scratch");
+                            let now = std::time::Instant::now();
+                            prover_inputs = ProverInputs::from_data(&verify_context, data);
+                            let duration = now.elapsed();
+                            println!(
+                                "Took {:?}s / {:?}ms / {:?}us / {:?}ns",
+                                duration.as_secs(),
+                                duration.as_millis(),
+                                duration.as_micros(),
+                                duration.as_nanos(),
+                            );
+                        }
                     }
-                    Message::StateRetentionProof => {
-                        println!("Creating storage proof");
-                        let now = std::time::Instant::now();
-                        let proof = prove(&verify_context, &prover_inputs);
-                        let duration = now.elapsed();
-                        println!(
-                            "Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-                            duration.as_secs(),
-                            duration.as_millis(),
-                            duration.as_micros(),
-                            duration.as_nanos(),
-                        );
-                        super::rpc(network_address.clone(), NetworkMessage::VerifyProof(proof))
-                    }
-                    Message::UpdateProverInputs => {
-                        println!("Updating prover inputs from scratch");
-                        let now = std::time::Instant::now();
-                        prover_inputs = ProverInputs::from_data(&verify_context, data);
-                        let duration = now.elapsed();
-                        println!(
-                            "Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-                            duration.as_secs(),
-                            duration.as_millis(),
-                            duration.as_micros(),
-                            duration.as_nanos(),
-                        );
-                    }
-                },
+                    super::stream_write(stream, ());
+                }
             }
         }
 
