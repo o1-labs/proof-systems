@@ -196,8 +196,24 @@ pub fn run_profiling_demo() -> ExitCode {
         duration.as_nanos(),
     );
 
-    let mut prove = || {
-        let powers = committed_chunks
+    let data = data
+        .iter()
+        .map(|x| Fp::from_bigint(*x).unwrap())
+        .collect::<Vec<_>>();
+
+    struct ProverInputs {
+        challenge: Fp,
+        data: Vec<Fp>,
+        affine_committed_chunks: Vec<Vesta>,
+    }
+
+    let mut prove = |inputs: &ProverInputs| {
+        let ProverInputs {
+            challenge,
+            data,
+            affine_committed_chunks,
+        } = inputs;
+        let powers = affine_committed_chunks
             .iter()
             .scan(Fp::one(), |acc, _| {
                 let res = *acc;
@@ -210,19 +226,14 @@ pub fn run_profiling_demo() -> ExitCode {
             ProjectiveVesta::msm_bigint(affine_committed_chunks.as_slice(), powers.as_slice())
                 .into_affine();
 
-        let mongomeryized_data = data
-            .iter()
-            .map(|x| Fp::from_bigint(*x).unwrap())
-            .collect::<Vec<_>>();
-
-        let final_chunk = (mongomeryized_data.len() / SRS_SIZE) - 1;
+        let final_chunk = (data.len() / SRS_SIZE) - 1;
         let randomized_data = (0..SRS_SIZE)
             .into_par_iter()
             .map(|idx| {
-                let mut acc = mongomeryized_data[final_chunk * SRS_SIZE + idx];
+                let mut acc = data[final_chunk * SRS_SIZE + idx];
                 (0..final_chunk).into_iter().rev().for_each(|chunk| {
                     acc *= challenge;
-                    acc += mongomeryized_data[chunk * SRS_SIZE + idx];
+                    acc += data[chunk * SRS_SIZE + idx];
                 });
                 acc
             })
@@ -269,11 +280,17 @@ pub fn run_profiling_demo() -> ExitCode {
         }
     };
 
+    let prover_inputs = ProverInputs {
+        challenge,
+        data,
+        affine_committed_chunks,
+    };
+
     for i in 0..2 {
         println!("");
         println!("- Storage protocol iteration {i}");
         let now = std::time::Instant::now();
-        let proof = prove();
+        let proof = prove(&prover_inputs);
         let duration = now.elapsed();
         println!(
             "  - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
