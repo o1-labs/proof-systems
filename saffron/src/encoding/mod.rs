@@ -53,3 +53,17 @@ pub fn commit<State: AbstractState, E1: CommitmentCurve>(
     println!("Commit time: {:?}", elapsed);
     commitments
 }
+
+pub fn compute_diff<State: AbstractState, E1: CommitmentCurve>(
+    state_before: State,
+    state_after: State,
+) -> Vec<PolyComm<E1>> {
+    // The commitments to the diffs are way smaller if we have a sparse state
+    // for bytes. We can also avoid using the encoding into montgomery form and
+    // speed up the commitments as we we will only have to commit to values [0,
+    // 255] * G_i, and the diff will still be between [0, 255] * G_i.
+    // (if we have to commit to (x - y)) and x > y, x - y will be in [0, 255],
+    // and committing is fast. If y > x, we can commit to (y - x) and negate the
+    // commitment. Pretty fast.
+    vec![]
+}
