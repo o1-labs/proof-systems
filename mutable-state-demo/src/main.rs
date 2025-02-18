@@ -473,7 +473,7 @@ pub mod client {
         let network_address = "127.0.0.1:3088";
         let storage_provider_address = "127.0.0.1:3089";
 
-        for i in 0..10 {
+        for i in 0..2 {
             let mut serializer =
                 rmp_serde::Serializer::new(TcpStream::connect(network_address).unwrap());
             let data = format!("client {}", i);
@@ -483,7 +483,7 @@ pub mod client {
                 .unwrap();
         }
 
-        for i in 0..30 {
+        for i in 0..3 {
             let mut serializer =
                 rmp_serde::Serializer::new(TcpStream::connect(storage_provider_address).unwrap());
             let data = format!("client {}", i);
