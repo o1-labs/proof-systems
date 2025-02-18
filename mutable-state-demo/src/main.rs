@@ -119,6 +119,7 @@ impl<'a> ProverInputs<'a> {
             .into_par_iter()
             .map(|idx| {
                 ProjectiveVesta::msm(basis, &data[SRS_SIZE * idx..SRS_SIZE * (idx + 1)]).unwrap()
+                    + srs.h
             })
             .collect::<Vec<_>>();
 
@@ -149,10 +150,13 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
         affine_committed_chunks,
     } = inputs;
 
+    let mut blinder_sum = Fp::zero();
+
     let powers = affine_committed_chunks
         .iter()
         .scan(Fp::one(), |acc, _| {
             let res = *acc;
+            blinder_sum += res;
             *acc *= challenge;
             Some(res.into_bigint())
         })
@@ -203,7 +207,7 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
                 &randomized_data_poly,
             ),
             PolyComm {
-                chunks: vec![Fp::zero()],
+                chunks: vec![blinder_sum],
             },
         )],
         &[evaluation_point],
