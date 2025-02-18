@@ -397,8 +397,18 @@ pub mod network {
             match message {
                 Message::StringMessage(i) => println!("stream got data: {}", i),
                 Message::VerifyProof(proof) => {
+                    println!("Verifying proof");
+                    let now = std::time::Instant::now();
                     let valid = super::verify(&verify_context, &proof);
+                    let duration = now.elapsed();
                     println!("proof verifies? {}", valid);
+                    println!(
+                        "Took {:?}s / {:?}ms / {:?}us / {:?}ns",
+                        duration.as_secs(),
+                        duration.as_millis(),
+                        duration.as_micros(),
+                        duration.as_nanos(),
+                    );
                 }
             }
         }
