@@ -295,15 +295,24 @@ pub fn run_profiling_demo() -> ExitCode {
 
         struct VerifyContext<'a> {
             srs: &'a SRS<Vesta>,
+            group_map: &'a <Vesta as CommitmentCurve>::Map,
         }
 
-        let mut verify = |args: VerifyContext| {
-            let VerifyContext { srs } = args;
+        let verify = |args: VerifyContext| {
+            let VerifyContext { srs, group_map } = args;
+            let rng = &mut rand::rngs::OsRng;
             println!("- Verifier protocol iteration {i}");
             println!("  - Verify opening proof");
             let now = std::time::Instant::now();
+
+            let mut opening_proof_sponge =
+                DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+                    mina_poseidon::pasta::fq_kimchi::static_params(),
+                );
+            opening_proof_sponge.absorb_fr(&[randomized_data_eval]);
+
             let opening_proof_verifies = srs.verify(
-                &group_map,
+                group_map,
                 &mut [BatchEvaluationProof {
                     sponge: opening_proof_sponge.clone(),
                     evaluation_points: vec![evaluation_point],
@@ -330,7 +339,10 @@ pub fn run_profiling_demo() -> ExitCode {
                 duration.as_nanos(),
             );
         };
-        verify(VerifyContext { srs: &srs });
+        verify(VerifyContext {
+            srs: &srs,
+            group_map: &group_map,
+        });
     }
 
     ExitCode::SUCCESS
