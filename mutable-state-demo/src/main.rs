@@ -336,9 +336,14 @@ pub mod network {
         pub struct Args {}
     }
 
-    use std::io::Read;
+    use serde::{Deserialize, Serialize};
     use std::net::TcpListener;
     use std::process::ExitCode;
+
+    #[derive(Serialize, Deserialize)]
+    pub enum Message {
+        StringMessage(String),
+    }
 
     pub fn main(_arg: cli::Args) -> ExitCode {
         println!("I'm a network!");
@@ -353,17 +358,23 @@ pub mod network {
             }
         };
         for stream in listener.incoming() {
-            let mut stream = match stream {
-                Ok(stream) => stream,
+            let mut deserializer = match stream {
+                Ok(stream) => rmp_serde::Deserializer::new(stream),
                 Err(e) => {
                     println!("Stream error: {}", e);
                     return ExitCode::FAILURE;
                 }
             };
-            let mut res = [0; 128];
-            let len = stream.read(&mut res).unwrap();
-            let res_string = std::str::from_utf8(&res[0..len]).unwrap();
-            println!("stream got data: {}", res_string);
+            let message = match Message::deserialize(&mut deserializer) {
+                Ok(message) => message,
+                Err(e) => {
+                    println!("Bad message: {}", e);
+                    return ExitCode::FAILURE;
+                }
+            };
+            match message {
+                Message::StringMessage(i) => println!("stream got data: {}", i),
+            }
         }
 
         ExitCode::SUCCESS
@@ -378,7 +389,9 @@ pub mod state_provider {
         pub struct Args {}
     }
 
-    use std::io::{Read, Write};
+    use super::network::Message as NetworkMessage;
+    use serde::Serialize;
+    use std::io::Read;
     use std::net::{TcpListener, TcpStream};
     use std::process::ExitCode;
     use std::sync::mpsc;
@@ -433,41 +446,27 @@ pub mod state_provider {
         }
 
         for event in event_queue_receiver.into_iter() {
+            let mut serializer = match TcpStream::connect(network_address) {
+                Ok(listener) => rmp_serde::Serializer::new(listener),
+                Err(e) => {
+                    println!("Could not connect to network at {}: {}", network_address, e);
+                    return ExitCode::FAILURE;
+                }
+            };
+
             match event {
                 Event::SendNumber(i) => {
-                    let mut stream = match TcpStream::connect(network_address) {
-                        Ok(listener) => listener,
-                        Err(e) => {
-                            println!("Could not connect to network at {}: {}", network_address, e);
-                            return ExitCode::FAILURE;
-                        }
-                    };
                     let data = format!("{}", i);
                     println!("sending data {}", data);
-                    match stream.write(data.as_ref()) {
-                        Ok(_bytes_written) => (),
-                        Err(e) => {
-                            println!("Could not send data ({}) to network: {}", data, e);
-                            return ExitCode::FAILURE;
-                        }
-                    }
+
+                    NetworkMessage::StringMessage(data)
+                        .serialize(&mut serializer)
+                        .unwrap();
                 }
                 Event::HandleStreamMessage(data) => {
-                    let mut stream = match TcpStream::connect(network_address) {
-                        Ok(listener) => listener,
-                        Err(e) => {
-                            println!("Could not connect to network at {}: {}", network_address, e);
-                            return ExitCode::FAILURE;
-                        }
-                    };
-                    println!("forwarding data {}", data);
-                    match stream.write(data.as_ref()) {
-                        Ok(_bytes_written) => (),
-                        Err(e) => {
-                            println!("Could not forward data ({}) to network: {}", data, e);
-                            return ExitCode::FAILURE;
-                        }
-                    }
+                    NetworkMessage::StringMessage(data)
+                        .serialize(&mut serializer)
+                        .unwrap();
                 }
                 Event::Failure => {
                     return ExitCode::FAILURE;
@@ -487,6 +486,8 @@ pub mod client {
         pub struct Args {}
     }
 
+    use super::network::Message as NetworkMessage;
+    use serde::Serialize;
     use std::io::Write;
     use std::net::TcpStream;
     use std::process::ExitCode;
@@ -498,8 +499,8 @@ pub mod client {
         let storage_provider_address = "127.0.0.1:3089";
 
         for i in 0..10 {
-            let mut stream = match TcpStream::connect(network_address) {
-                Ok(listener) => listener,
+            let mut serializer = match TcpStream::connect(network_address) {
+                Ok(listener) => rmp_serde::Serializer::new(listener),
                 Err(e) => {
                     println!("Could not connect to network at {}: {}", network_address, e);
                     return ExitCode::FAILURE;
@@ -507,13 +508,9 @@ pub mod client {
             };
             let data = format!("client {}", i);
             println!("sending data {}", data);
-            match stream.write(data.as_ref()) {
-                Ok(_bytes_written) => (),
-                Err(e) => {
-                    println!("Could not send data ({}) to network: {}", data, e);
-                    return ExitCode::FAILURE;
-                }
-            }
+            NetworkMessage::StringMessage(data)
+                .serialize(&mut serializer)
+                .unwrap();
         }
 
         for i in 0..30 {
