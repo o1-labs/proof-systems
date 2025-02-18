@@ -129,6 +129,10 @@ pub fn main() {
 
         // Coin challenge α for combining the constraints
         env.coin_challenge(ChallengeTerm::ConstraintRandomiser);
+        debug!(
+            "Coin challenge α: 0x{chal}",
+            chal = env.challenges[ChallengeTerm::ConstraintRandomiser].to_str_radix(16)
+        );
 
         // ----- Accumulation/folding argument -----
         // FIXME:
@@ -137,11 +141,16 @@ pub fn main() {
         // FIXME:
         // Absorb the cross-terms
 
-        // FIXME:
-        // Coin challenge r to fold
-
-        // FIXME:
-        // Compute the accumulated witness
+        // Coin challenge r to fold the instances of the relation.
+        // FIXME: we must do the step before first! Skipping for now to achieve
+        // the next step, i.e. accumulating on the prover side the different
+        // values below.
+        env.coin_challenge(ChallengeTerm::RelationRandomiser);
+        debug!(
+            "Coin challenge r: 0x{r}",
+            r = env.challenges[ChallengeTerm::RelationRandomiser].to_str_radix(16)
+        );
+        env.accumulate_program_state();
 
         // FIXME:
         // Compute the accumulation of the commitments to the witness columns

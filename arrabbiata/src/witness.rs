@@ -1297,4 +1297,59 @@ where
             self.prover_sponge_state = state.try_into().unwrap();
         }
     }
+
+    /// Accumulate the program state (or in other words,
+    /// the witness), by adding the last computed program state into the
+    /// program state accumulator.
+    ///
+    /// This method is supposed to be called after the program state has been
+    /// committed (by calling [self.commit_state]) and absorbed (by calling
+    /// [self.absorb_state]). The "relation randomiser" must also have been
+    /// coined and saved in the environment before, by calling
+    /// [self.coin_challenge].
+    ///
+    /// The program state is accumulated into a different accumulator, depending
+    /// on the curve currently being used.
+    ///
+    /// This is part of the work the prover of the accumulation/folding scheme.
+    ///
+    /// This must translate the following equation:
+    /// ```text
+    /// acc_(p, n + 1) = acc_(p, n) * chal w
+    ///               OR
+    /// acc_(q, n + 1) = acc_(q, n) * chal w
+    /// ```
+    /// where acc and w are vectors of the same size.
+    pub fn accumulate_program_state(&mut self) {
+        let chal = self.challenges[ChallengeTerm::RelationRandomiser].clone();
+        if self.current_iteration % 2 == 0 {
+            let modulus: BigInt = E1::ScalarField::modulus_biguint().into();
+            self.accumulated_witness_e1 = self
+                .accumulated_witness_e1
+                .iter()
+                .zip(self.witness.iter()) // This iterate over the columns
+                .map(|(evals_accumulator, evals_witness)| {
+                    evals_accumulator
+                        .iter()
+                        .zip(evals_witness.iter()) // This iterate over the rows
+                        .map(|(acc, w)| (acc + chal.clone() * w).mod_floor(&modulus))
+                        .collect()
+                })
+                .collect();
+        } else {
+            let modulus: BigInt = E2::ScalarField::modulus_biguint().into();
+            self.accumulated_witness_e2 = self
+                .accumulated_witness_e2
+                .iter()
+                .zip(self.witness.iter()) // This iterate over the columns
+                .map(|(evals_accumulator, evals_witness)| {
+                    evals_accumulator
+                        .iter()
+                        .zip(evals_witness.iter()) // This iterate over the rows
+                        .map(|(acc, w)| (acc + chal.clone() * w).mod_floor(&modulus))
+                        .collect()
+                })
+                .collect();
+        }
+    }
 }
