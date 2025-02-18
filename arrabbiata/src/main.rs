@@ -128,10 +128,10 @@ pub fn main() {
         // ----- Permutation argument -----
 
         // Coin challenge α for combining the constraints
-        env.coin_challenge(ChallengeTerm::ConstraintRandomiser);
+        env.coin_challenge(ChallengeTerm::ConstraintCombiner);
         debug!(
             "Coin challenge α: 0x{chal}",
-            chal = env.challenges[ChallengeTerm::ConstraintRandomiser].to_str_radix(16)
+            chal = env.challenges[ChallengeTerm::ConstraintCombiner].to_str_radix(16)
         );
 
         // ----- Accumulation/folding argument -----
@@ -145,10 +145,10 @@ pub fn main() {
         // FIXME: we must do the step before first! Skipping for now to achieve
         // the next step, i.e. accumulating on the prover side the different
         // values below.
-        env.coin_challenge(ChallengeTerm::RelationRandomiser);
+        env.coin_challenge(ChallengeTerm::RelationCombiner);
         debug!(
             "Coin challenge r: 0x{r}",
-            r = env.challenges[ChallengeTerm::RelationRandomiser].to_str_radix(16)
+            r = env.challenges[ChallengeTerm::RelationCombiner].to_str_radix(16)
         );
         env.accumulate_program_state();
 
