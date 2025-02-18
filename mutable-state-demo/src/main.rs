@@ -225,6 +225,34 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
     }
 }
 
+pub fn rpc<'a, A: std::net::ToSocketAddrs, T: serde::Serialize, U: serde::Deserialize<'a>>(
+    address: A,
+    msg: T,
+) -> U {
+    use std::net::TcpStream;
+    let mut serializer = rmp_serde::Serializer::new(TcpStream::connect(address).unwrap());
+    msg.serialize(&mut serializer).unwrap();
+    let stream = serializer.into_inner();
+    let mut deserializer = rmp_serde::Deserializer::new(stream);
+    U::deserialize(&mut deserializer).unwrap()
+}
+
+pub fn unit_rpc<'a, A: std::net::ToSocketAddrs, T: serde::Serialize>(address: A, msg: T) {
+    rpc::<'a, A, T, ()>(address, msg)
+}
+
+pub fn rpc_handle<'a, T: serde::Deserialize<'a>, U: serde::Serialize, F: FnOnce(T) -> U>(
+    stream: std::net::TcpStream,
+    f: F,
+) {
+    let mut deserializer = rmp_serde::Deserializer::new(stream);
+    let msg = T::deserialize(&mut deserializer).unwrap();
+    let response = f(msg);
+    let stream = deserializer.into_inner();
+    let mut serializer = rmp_serde::Serializer::new(stream);
+    response.serialize(&mut serializer).unwrap();
+}
+
 pub mod network {
     pub mod cli {
         use clap::Parser;
@@ -264,9 +292,7 @@ pub mod network {
 
         let listener = TcpListener::bind(address).unwrap();
         for stream in listener.incoming() {
-            let mut deserializer = rmp_serde::Deserializer::new(stream.unwrap());
-            let message = Message::deserialize(&mut deserializer).unwrap();
-            match message {
+            super::rpc_handle(stream.unwrap(), |message| match message {
                 Message::StringMessage(i) => println!("stream got data: {}", i),
                 Message::VerifyProof(proof) => {
                     println!("Verifying proof");
@@ -282,7 +308,7 @@ pub mod network {
                         duration.as_nanos(),
                     );
                 }
-            }
+            });
         }
 
         ExitCode::SUCCESS
@@ -325,7 +351,7 @@ pub mod state_provider {
     use mina_curves::pasta::Fp;
     use serde::{Deserialize, Serialize};
     use std::fs::{File, OpenOptions};
-    use std::net::{TcpListener, TcpStream};
+    use std::net::TcpListener;
     use std::process::ExitCode;
     use std::sync::mpsc;
     use std::thread;
@@ -363,11 +389,11 @@ pub mod state_provider {
         thread::spawn(move || {
             let listener = TcpListener::bind(address).unwrap();
             for stream in listener.incoming() {
-                let mut deserializer = rmp_serde::Deserializer::new(stream.unwrap());
-                let message = Message::deserialize(&mut deserializer).unwrap();
-                event_queue_stream_sender
-                    .send(Event::HandleStreamMessage(message))
-                    .unwrap();
+                super::rpc_handle(stream.unwrap(), |message| {
+                    event_queue_stream_sender
+                        .send(Event::HandleStreamMessage(message))
+                        .unwrap();
+                });
             }
         });
 
@@ -427,26 +453,17 @@ pub mod state_provider {
         let mut prover_inputs = ProverInputs::from_data(&verify_context, data);
 
         for event in event_queue_receiver.into_iter() {
-            let network_serializer =
-                || rmp_serde::Serializer::new(TcpStream::connect(network_address.clone()).unwrap());
-
             match event {
                 Event::SendNumber(i) => {
-                    let mut serializer = network_serializer();
                     let data = format!("{}", i);
                     println!("sending data {}", data);
 
-                    NetworkMessage::StringMessage(data)
-                        .serialize(&mut serializer)
-                        .unwrap();
+                    super::rpc(network_address.clone(), NetworkMessage::StringMessage(data))
                 }
                 Event::HandleStreamMessage(message) => match message {
                     Message::StringMessage(data) => {
-                        let mut serializer = network_serializer();
                         println!("forwarding data {}", data);
-                        NetworkMessage::StringMessage(data)
-                            .serialize(&mut serializer)
-                            .unwrap();
+                        super::rpc(network_address.clone(), NetworkMessage::StringMessage(data))
                     }
                     Message::StateRetentionProof => {
                         println!("Creating storage proof");
@@ -460,10 +477,7 @@ pub mod state_provider {
                             duration.as_micros(),
                             duration.as_nanos(),
                         );
-                        let mut serializer = network_serializer();
-                        NetworkMessage::VerifyProof(proof)
-                            .serialize(&mut serializer)
-                            .unwrap();
+                        super::rpc(network_address.clone(), NetworkMessage::VerifyProof(proof))
                     }
                     Message::UpdateProverInputs => {
                         println!("Updating prover inputs from scratch");
@@ -514,8 +528,6 @@ pub mod client {
     use super::{
         network::Message as NetworkMessage, state_provider::Message as StateProviderMessage,
     };
-    use serde::Serialize;
-    use std::net::TcpStream;
     use std::process::ExitCode;
 
     pub fn main(arg: cli::Args) -> ExitCode {
@@ -526,61 +538,50 @@ pub mod client {
             network_address,
         } = arg;
 
-        let network_serializer =
-            || rmp_serde::Serializer::new(TcpStream::connect(network_address.clone()).unwrap());
-
-        let state_provider_serializer = || {
-            rmp_serde::Serializer::new(TcpStream::connect(state_provider_address.clone()).unwrap())
-        };
-
         for i in 0..2 {
-            let mut serializer = network_serializer();
-
             let data = format!("client {}", i);
             println!("sending data {}", data);
-            NetworkMessage::StringMessage(data)
-                .serialize(&mut serializer)
-                .unwrap();
+            super::rpc(network_address.clone(), NetworkMessage::StringMessage(data))
         }
 
         for i in 0..3 {
-            let mut serializer = state_provider_serializer();
             let data = format!("client {}", i);
             println!("sending data {}", data);
-            StateProviderMessage::StringMessage(data)
-                .serialize(&mut serializer)
-                .unwrap();
+            super::rpc(
+                state_provider_address.clone(),
+                NetworkMessage::StringMessage(data),
+            )
         }
 
-        let mut serializer = state_provider_serializer();
         println!("Requesting state proof");
-        StateProviderMessage::StateRetentionProof
-            .serialize(&mut serializer)
-            .unwrap();
+        super::unit_rpc(
+            state_provider_address.clone(),
+            StateProviderMessage::StateRetentionProof,
+        );
 
-        let mut serializer = state_provider_serializer();
         println!("Requesting state proof");
-        StateProviderMessage::StateRetentionProof
-            .serialize(&mut serializer)
-            .unwrap();
+        super::unit_rpc(
+            state_provider_address.clone(),
+            StateProviderMessage::StateRetentionProof,
+        );
 
-        let mut serializer = state_provider_serializer();
         println!("Requesting prover input update");
-        StateProviderMessage::UpdateProverInputs
-            .serialize(&mut serializer)
-            .unwrap();
+        super::unit_rpc(
+            state_provider_address.clone(),
+            StateProviderMessage::UpdateProverInputs,
+        );
 
-        let mut serializer = state_provider_serializer();
         println!("Requesting state proof");
-        StateProviderMessage::StateRetentionProof
-            .serialize(&mut serializer)
-            .unwrap();
+        super::unit_rpc(
+            state_provider_address.clone(),
+            StateProviderMessage::StateRetentionProof,
+        );
 
-        let mut serializer = state_provider_serializer();
         println!("Requesting state proof");
-        StateProviderMessage::StateRetentionProof
-            .serialize(&mut serializer)
-            .unwrap();
+        super::unit_rpc(
+            state_provider_address.clone(),
+            StateProviderMessage::StateRetentionProof,
+        );
 
         ExitCode::SUCCESS
     }
