@@ -197,8 +197,6 @@ pub fn run_profiling_demo() -> ExitCode {
     );
 
     let mut prove = || {
-        println!("  - Computing randomizers for data chunks");
-        let now = std::time::Instant::now();
         let powers = committed_chunks
             .iter()
             .scan(Fp::one(), |acc, _| {
@@ -207,47 +205,16 @@ pub fn run_profiling_demo() -> ExitCode {
                 Some(res.into_bigint())
             })
             .collect::<Vec<_>>();
-        let duration = now.elapsed();
-        println!(
-            "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-            duration.as_secs(),
-            duration.as_millis(),
-            duration.as_micros(),
-            duration.as_nanos(),
-        );
 
-        println!("  - Combining the data chunk commitments");
-        let now = std::time::Instant::now();
         let final_commitment =
             ProjectiveVesta::msm_bigint(affine_committed_chunks.as_slice(), powers.as_slice())
                 .into_affine();
-        let duration = now.elapsed();
-        println!(
-            "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-            duration.as_secs(),
-            duration.as_millis(),
-            duration.as_micros(),
-            duration.as_nanos(),
-        );
 
-        println!("  - Convert data");
-        println!("    - Temporary step until we have Montgomery representation preprocessing");
-        let now = std::time::Instant::now();
         let mongomeryized_data = data
             .iter()
             .map(|x| Fp::from_bigint(*x).unwrap())
             .collect::<Vec<_>>();
-        let duration = now.elapsed();
-        println!(
-            "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-            duration.as_secs(),
-            duration.as_millis(),
-            duration.as_micros(),
-            duration.as_nanos(),
-        );
 
-        println!("  - Combine randomized data chunks");
-        let now = std::time::Instant::now();
         let final_chunk = (mongomeryized_data.len() / SRS_SIZE) - 1;
         let randomized_data = (0..SRS_SIZE)
             .into_par_iter()
@@ -260,66 +227,23 @@ pub fn run_profiling_demo() -> ExitCode {
                 acc
             })
             .collect::<Vec<_>>();
-        let duration = now.elapsed();
-        println!(
-            "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-            duration.as_secs(),
-            duration.as_millis(),
-            duration.as_micros(),
-            duration.as_nanos(),
-        );
 
-        println!("  - Sample evaluation point");
-        let now = std::time::Instant::now();
         let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
             mina_poseidon::pasta::fq_kimchi::static_params(),
         );
         fq_sponge.absorb_g(&[final_commitment]);
         let evaluation_point = fq_sponge.squeeze(2);
-        let duration = now.elapsed();
-        println!(
-            "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-            duration.as_secs(),
-            duration.as_millis(),
-            duration.as_micros(),
-            duration.as_nanos(),
-        );
 
-        println!("  - Interpolate polynomial");
-        println!("    - Fixed cost regardless of data size");
-        let now = std::time::Instant::now();
         let randomized_data_poly =
             Evaluations::from_vec_and_domain(randomized_data, domain).interpolate();
-        let duration = now.elapsed();
-        println!(
-            "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-            duration.as_secs(),
-            duration.as_millis(),
-            duration.as_micros(),
-            duration.as_nanos(),
-        );
 
-        println!("  - Evaluate polynomial and absorb evaluation");
-        println!("    - Fixed cost regardless of data size");
-        let now = std::time::Instant::now();
         let randomized_data_eval = randomized_data_poly.evaluate(&evaluation_point);
         let mut opening_proof_sponge =
             DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
                 mina_poseidon::pasta::fq_kimchi::static_params(),
             );
         opening_proof_sponge.absorb_fr(&[randomized_data_eval]);
-        let duration = now.elapsed();
-        println!(
-            "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-            duration.as_secs(),
-            duration.as_millis(),
-            duration.as_micros(),
-            duration.as_nanos(),
-        );
 
-        println!("  - Opening proof");
-        println!("    - Fixed cost regardless of data size");
-        let now = std::time::Instant::now();
         let opening_proof = srs.open(
             &group_map,
             &[(
@@ -336,14 +260,6 @@ pub fn run_profiling_demo() -> ExitCode {
             opening_proof_sponge.clone(),
             rng,
         );
-        let duration = now.elapsed();
-        println!(
-            "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-            duration.as_secs(),
-            duration.as_millis(),
-            duration.as_micros(),
-            duration.as_nanos(),
-        );
 
         Proof {
             evaluation_point,
@@ -356,8 +272,16 @@ pub fn run_profiling_demo() -> ExitCode {
     for i in 0..2 {
         println!("");
         println!("- Storage protocol iteration {i}");
-
+        let now = std::time::Instant::now();
         let proof = prove();
+        let duration = now.elapsed();
+        println!(
+            "  - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
+            duration.as_secs(),
+            duration.as_millis(),
+            duration.as_micros(),
+            duration.as_nanos(),
+        );
 
         println!("- Verifier protocol iteration {i}");
         println!("  - Verify opening proof");
