@@ -11,18 +11,24 @@ pub mod sparse;
 /// A user is supposed to implement this trait for their state
 /// The user has to choice to encode their state as they want.
 /// The efficiency of the readand write operations will depend on the encoding.
-pub trait AbstractState {
+pub trait AbstractState<F: PrimeField> {
     /// Encode the state into field elements
-    fn encode<F: PrimeField>(
+    fn encode(
         &self,
         domain: Radix2EvaluationDomain<F>,
     ) -> Vec<Evaluations<F, Radix2EvaluationDomain<F>>>;
 
     /// The number of field elements that are required to encode the state
     fn encoded_length(&self) -> usize;
+
+    fn sub(
+        self,
+        other: Self,
+        domain: Radix2EvaluationDomain<F>,
+    ) -> Vec<Evaluations<F, Radix2EvaluationDomain<F>>>;
 }
 
-pub fn commit<State: AbstractState, E1: CommitmentCurve>(
+pub fn commit<E1: CommitmentCurve, State: AbstractState<<E1 as AffineRepr>::ScalarField>>(
     state: State,
     srs: SRS<E1>,
     domain: Radix2EvaluationDomain<<E1 as AffineRepr>::ScalarField>,
@@ -34,7 +40,7 @@ pub fn commit<State: AbstractState, E1: CommitmentCurve>(
             <E1 as AffineRepr>::ScalarField,
             Radix2EvaluationDomain<<E1 as AffineRepr>::ScalarField>,
         >,
-    > = state.encode::<<E1 as AffineRepr>::ScalarField>(domain);
+    > = state.encode(domain);
     let elapsed = start_time.elapsed();
     println!(
         "Encoding time: {:?}. {} bytes encoded in {} field elements",
@@ -54,10 +60,13 @@ pub fn commit<State: AbstractState, E1: CommitmentCurve>(
     commitments
 }
 
-pub fn compute_diff<State: AbstractState, E1: CommitmentCurve>(
-    _state_before: State,
-    _state_after: State,
+pub fn compute_diff<E1: CommitmentCurve, State: AbstractState<<E1 as AffineRepr>::ScalarField>>(
+    state_before: State,
+    state_after: State,
+    domain: Radix2EvaluationDomain<<E1 as AffineRepr>::ScalarField>,
 ) -> Vec<PolyComm<E1>> {
+    let _diff = state_before.sub(state_after, domain);
+    // FIXME: commit when non zero
     // The commitments to the diffs are way smaller if we have a sparse state
     // for bytes. We can also avoid using the encoding into montgomery form and
     // speed up the commitments as we we will only have to commit to values [0,
