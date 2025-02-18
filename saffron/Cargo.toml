@@ -16,6 +16,10 @@ license = "Apache-2.0"
 name = "saffron"
 path = "src/main.rs"
 
+[[bin]]
+name = "bench-encoding-variants"
+path = "src/bin/bench_encoding_variants.rs"
+
 [dependencies]
 anyhow = "1.0"
 ark-ec.workspace = true
