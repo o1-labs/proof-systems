@@ -1,5 +1,5 @@
 use ark_ec::{CurveGroup, VariableBaseMSM};
-use ark_ff::{One, PrimeField, UniformRand, Zero};
+use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain};
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, ProjectiveVesta, Vesta, VestaParameters};
@@ -217,160 +217,6 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
     }
 }
 
-pub fn run_profiling_demo() -> ExitCode {
-    println!("Startup time (cacheable, 1-time cost)");
-
-    println!("- Generate SRS and group map");
-    let now = std::time::Instant::now();
-    let verify_context = VerifyContext::new();
-    let duration = now.elapsed();
-    println!(
-        "  - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-        duration.as_secs(),
-        duration.as_millis(),
-        duration.as_micros(),
-        duration.as_nanos(),
-    );
-
-    let VerifyContext { srs, group_map: _ } = &verify_context;
-
-    println!("- Generate SRS lagrange basis");
-    let domain = Radix2EvaluationDomain::new(SRS_SIZE).unwrap();
-    let basis = srs
-        .get_lagrange_basis(domain)
-        .iter()
-        .map(|x| x.chunks[0])
-        .collect::<Vec<_>>();
-    let basis = basis.as_slice();
-    let duration = now.elapsed();
-    println!(
-        "  - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-        duration.as_secs(),
-        duration.as_millis(),
-        duration.as_micros(),
-        duration.as_nanos(),
-    );
-
-    const DATA_SIZE: usize = 1 << 25;
-
-    println!("");
-    println!("Set up test, not used in real system");
-
-    println!(
-        "- Generate some random data of size {} (represented as {} field elements)",
-        DATA_SIZE * 32,
-        DATA_SIZE
-    );
-    println!(
-        "  - Using cryptographically-secure randomness for test vector (warning: this may be slow)"
-    );
-    let now = std::time::Instant::now();
-    let rng = &mut rand::rngs::OsRng;
-    let data = (0..DATA_SIZE)
-        .map(|_| <Fp as UniformRand>::rand(rng).into_bigint())
-        .collect::<Vec<_>>();
-    let duration = now.elapsed();
-    println!(
-        "  - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-        duration.as_secs(),
-        duration.as_millis(),
-        duration.as_micros(),
-        duration.as_nanos(),
-    );
-
-    println!("");
-    println!("Main protocol");
-
-    println!("- One-time setup for newly-stored data");
-    println!("  - Generate cryptographic commitments");
-    let now = std::time::Instant::now();
-    let committed_chunks = (0..data.len() / SRS_SIZE)
-        .into_par_iter()
-        .map(|idx| ProjectiveVesta::msm_bigint(basis, &data[SRS_SIZE * idx..SRS_SIZE * (idx + 1)]))
-        .collect::<Vec<_>>();
-    let duration = now.elapsed();
-    println!(
-        "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-        duration.as_secs(),
-        duration.as_millis(),
-        duration.as_micros(),
-        duration.as_nanos(),
-    );
-
-    println!(" - Convert to affine coordinates");
-    let now = std::time::Instant::now();
-    let affine_committed_chunks = ProjectiveVesta::normalize_batch(committed_chunks.as_slice());
-    let duration = now.elapsed();
-    println!(
-        "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-        duration.as_secs(),
-        duration.as_millis(),
-        duration.as_micros(),
-        duration.as_nanos(),
-    );
-
-    println!("  - Combine the commitments");
-    println!("    - Using a merkle commitment (poseidon hashing)");
-    let now = std::time::Instant::now();
-    let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
-        mina_poseidon::pasta::fq_kimchi::static_params(),
-    );
-    affine_committed_chunks.iter().for_each(|commitment| {
-        fq_sponge.absorb_g(&[*commitment]);
-    });
-    let challenge = fq_sponge.squeeze(2);
-    let duration = now.elapsed();
-    println!(
-        "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-        duration.as_secs(),
-        duration.as_millis(),
-        duration.as_micros(),
-        duration.as_nanos(),
-    );
-
-    let data = data
-        .iter()
-        .map(|x| Fp::from_bigint(*x).unwrap())
-        .collect::<Vec<_>>();
-
-    let prover_inputs = ProverInputs {
-        challenge,
-        data,
-        affine_committed_chunks,
-    };
-
-    for i in 0..2 {
-        println!("");
-        println!("- Storage protocol iteration {i}");
-        let now = std::time::Instant::now();
-        let proof = prove(&verify_context, &prover_inputs);
-        let duration = now.elapsed();
-        println!(
-            "  - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-            duration.as_secs(),
-            duration.as_millis(),
-            duration.as_micros(),
-            duration.as_nanos(),
-        );
-
-        println!("- Verifier protocol iteration {i}");
-        println!("  - Verify opening proof");
-        let now = std::time::Instant::now();
-        let opening_proof_verifies = verify(&verify_context, &proof);
-        let duration = now.elapsed();
-        println!("    - Verifies: {}", opening_proof_verifies);
-        println!(
-            "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-            duration.as_secs(),
-            duration.as_millis(),
-            duration.as_micros(),
-            duration.as_nanos(),
-        );
-    }
-
-    ExitCode::SUCCESS
-}
-
 pub mod network {
     pub mod cli {
         use clap::Parser;
@@ -445,7 +291,6 @@ pub mod state_provider {
     #[derive(Serialize, Deserialize)]
     pub enum Message {
         StringMessage(String),
-        RunDemo,
         StateRetentionProof,
         UpdateProverInputs(usize),
     }
@@ -510,9 +355,6 @@ pub mod state_provider {
                         NetworkMessage::StringMessage(data)
                             .serialize(&mut serializer)
                             .unwrap();
-                    }
-                    Message::RunDemo => {
-                        super::run_profiling_demo();
                     }
                     Message::StateRetentionProof => {
                         println!("Creating storage proof");
@@ -602,12 +444,6 @@ pub mod client {
         }
 
         let mut serializer = state_provider_serializer();
-        println!("Requesting demo run");
-        StateProviderMessage::RunDemo
-            .serialize(&mut serializer)
-            .unwrap();
-
-        let mut serializer = state_provider_serializer();
         println!("Requesting state proof");
         StateProviderMessage::StateRetentionProof
             .serialize(&mut serializer)
@@ -659,7 +495,7 @@ pub mod request {
 
     pub fn main(sub_command: cli::Command) -> ExitCode {
         match sub_command {
-            cli::Command::Demo(_args) => super::run_profiling_demo(),
+            cli::Command::Demo(_args) => todo!("Deleted, add some proper commands here"),
         }
     }
 }
