@@ -13,6 +13,8 @@ use poly_commitment::{
     PolyComm, SRS as _,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::process::ExitCode;
 
 // To run:
@@ -36,9 +38,14 @@ impl VerifyContext {
     }
 }
 
+#[serde_as]
+#[derive(Serialize, Deserialize)]
 pub struct Proof {
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub evaluation_point: Fp,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub final_commitment: Vesta,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub randomized_data_eval: Fp,
     pub opening_proof: OpeningProof<Vesta>,
 }
