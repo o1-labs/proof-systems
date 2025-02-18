@@ -22,5 +22,11 @@ pub fn main() {
         srs
     };
 
+    let _ = commit(sparse_state, srs_e1.clone(), domain_fp.d1);
+
+    let sparse_state = SparseState {
+        bytes: vec![1; (1 << 16) + 1],
+    };
+
     let _ = commit(sparse_state, srs_e1, domain_fp.d1);
 }

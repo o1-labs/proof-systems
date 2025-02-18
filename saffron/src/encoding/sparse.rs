@@ -20,7 +20,7 @@ impl AbstractState for SparseState {
     fn encode<F: PrimeField>(
         &self,
         domain: Radix2EvaluationDomain<F>,
-    ) -> Evaluations<F, Radix2EvaluationDomain<F>> {
+    ) -> Vec<Evaluations<F, Radix2EvaluationDomain<F>>> {
         // Encoding sparse state
         let mut evals: Vec<F> = self.bytes.iter().map(|b| F::from(*b as u64)).collect();
         // We pad to the next multiple of the domain size
@@ -30,6 +30,10 @@ impl AbstractState for SparseState {
             domain_size * ((current_length + domain_size - 1) / domain_size);
         let pad_length: usize = padded_length_to_multiple_domain_size - current_length;
         evals.extend(std::iter::repeat(F::zero()).take(pad_length));
-        Evaluations::from_vec_and_domain(evals, domain)
+        let splitted_evals: Vec<Vec<F>> = evals.chunks(domain_size).map(|c| c.to_vec()).collect();
+        splitted_evals
+            .into_iter()
+            .map(|e| Evaluations::from_vec_and_domain(e, domain))
+            .collect()
     }
 }
