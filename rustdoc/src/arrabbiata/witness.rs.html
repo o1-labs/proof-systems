@@ -2732,7 +2732,7 @@
     /// ```
     /// where acc and w are vectors of the same size.
     </span><span class="kw">pub fn </span>accumulate_program_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>chal = <span class="self">self</span>.challenges[ChallengeTerm::RelationRandomiser].clone();
+        <span class="kw">let </span>chal = <span class="self">self</span>.challenges[ChallengeTerm::RelationCombiner].clone();
         <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
             <span class="kw">let </span>modulus: BigInt = E1::ScalarField::modulus_biguint().into();
             <span class="self">self</span>.accumulated_program_state_e1 = <span class="self">self
@@ -2794,7 +2794,7 @@
     /// the columns to accumulate the committed state.
     </span><span class="kw">pub fn </span>accumulate_committed_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-            <span class="kw">let </span>chal = <span class="self">self</span>.challenges[ChallengeTerm::RelationRandomiser].clone();
+            <span class="kw">let </span>chal = <span class="self">self</span>.challenges[ChallengeTerm::RelationCombiner].clone();
             <span class="kw">let </span>chal: BigUint = chal.to_biguint().unwrap();
             <span class="kw">let </span>chal: E2::ScalarField = E2::ScalarField::from_biguint(<span class="kw-2">&amp;</span>chal).unwrap();
             <span class="self">self</span>.accumulated_committed_state_e2 = <span class="self">self
@@ -2804,7 +2804,7 @@
                 .map(|(l, r)| l + <span class="kw-2">&amp;</span>r.scale(chal))
                 .collect();
         } <span class="kw">else </span>{
-            <span class="kw">let </span>chal = <span class="self">self</span>.challenges[ChallengeTerm::RelationRandomiser].clone();
+            <span class="kw">let </span>chal = <span class="self">self</span>.challenges[ChallengeTerm::RelationCombiner].clone();
             <span class="kw">let </span>chal: BigUint = chal.to_biguint().unwrap();
             <span class="kw">let </span>chal: E1::ScalarField = E1::ScalarField::from_biguint(<span class="kw-2">&amp;</span>chal).unwrap();
             <span class="self">self</span>.accumulated_committed_state_e1 = <span class="self">self

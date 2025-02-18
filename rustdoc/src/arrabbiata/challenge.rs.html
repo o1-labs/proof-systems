@@ -160,7 +160,7 @@
     <span class="doccomment">/// Used to aggregate the constraints describing the relation. It is used to
     /// enforce all constraints are satisfied at the same time.
     /// Often noted `α`.
-    </span>ConstraintRandomiser,
+    </span>ConstraintCombiner,
     <span class="doccomment">/// Both challenges used in the permutation argument
     </span>Beta,
     Gamma,
@@ -171,17 +171,17 @@
     <span class="doccomment">/// Used by the accumulation protocol (folding) to perform a random linear
     /// transformation of the witnesses and the public values.
     /// Often noted `r` in the paper mentioning &quot;folding protocols&quot;.
-    </span>RelationRandomiser,
+    </span>RelationCombiner,
 }
 
 <span class="kw">impl </span>Display <span class="kw">for </span>ChallengeTerm {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; <span class="prelude-ty">Result </span>{
         <span class="kw">match </span><span class="self">self </span>{
-            ChallengeTerm::ConstraintRandomiser =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;alpha&quot;</span>),
+            ChallengeTerm::ConstraintCombiner =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;alpha&quot;</span>),
             ChallengeTerm::Beta =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;beta&quot;</span>),
             ChallengeTerm::Gamma =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;gamma&quot;</span>),
             ChallengeTerm::ConstraintHomogeniser =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;u&quot;</span>),
-            ChallengeTerm::RelationRandomiser =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;r&quot;</span>),
+            ChallengeTerm::RelationCombiner =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;r&quot;</span>),
         }
     }
 }
@@ -190,7 +190,7 @@
     <span class="doccomment">/// Used to aggregate the constraints describing the relation. It is used to
     /// enforce all constraints are satisfied at the same time.
     /// Often noted `α`.
-    </span><span class="kw">pub </span>constraint_randomiser: F,
+    </span><span class="kw">pub </span>constraint_combiner: F,
 
     <span class="doccomment">/// Both challenges used in the permutation argument.
     </span><span class="kw">pub </span>beta: F,
@@ -204,7 +204,7 @@
     <span class="doccomment">/// Used by the accumulation protocol (folding) to perform a random linear
     /// transformation of the witnesses and the public values.
     /// Often noted `r` in the paper mentioning &quot;folding protocols&quot;.
-    </span><span class="kw">pub </span>relation_randomiser: F,
+    </span><span class="kw">pub </span>relation_combiner: F,
 }
 
 <span class="kw">impl</span>&lt;F&gt; Index&lt;usize&gt; <span class="kw">for </span>Challenges&lt;F&gt; {
@@ -212,7 +212,7 @@
 
     <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
         <span class="kw">if </span>index == <span class="number">0 </span>{
-            <span class="kw-2">&amp;</span><span class="self">self</span>.constraint_randomiser
+            <span class="kw-2">&amp;</span><span class="self">self</span>.constraint_combiner
         } <span class="kw">else if </span>index == <span class="number">1 </span>{
             <span class="kw-2">&amp;</span><span class="self">self</span>.beta
         } <span class="kw">else if </span>index == <span class="number">2 </span>{
@@ -220,7 +220,7 @@
         } <span class="kw">else if </span>index == <span class="number">3 </span>{
             <span class="kw-2">&amp;</span><span class="self">self</span>.constraint_homogeniser
         } <span class="kw">else if </span>index == <span class="number">4 </span>{
-            <span class="kw-2">&amp;</span><span class="self">self</span>.relation_randomiser
+            <span class="kw-2">&amp;</span><span class="self">self</span>.relation_combiner
         } <span class="kw">else </span>{
             <span class="macro">panic!</span>(
                 <span class="string">&quot;Index out of bounds, only {} are defined&quot;</span>,
@@ -233,7 +233,7 @@
 <span class="kw">impl</span>&lt;F&gt; IndexMut&lt;usize&gt; <span class="kw">for </span>Challenges&lt;F&gt; {
     <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: usize) -&gt; <span class="kw-2">&amp;mut </span>F {
         <span class="kw">if </span>index == <span class="number">0 </span>{
-            <span class="kw-2">&amp;mut </span><span class="self">self</span>.constraint_randomiser
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>.constraint_combiner
         } <span class="kw">else if </span>index == <span class="number">1 </span>{
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.beta
         } <span class="kw">else if </span>index == <span class="number">2 </span>{
@@ -241,7 +241,7 @@
         } <span class="kw">else if </span>index == <span class="number">3 </span>{
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.constraint_homogeniser
         } <span class="kw">else if </span>index == <span class="number">4 </span>{
-            <span class="kw-2">&amp;mut </span><span class="self">self</span>.relation_randomiser
+            <span class="kw-2">&amp;mut </span><span class="self">self</span>.relation_combiner
         } <span class="kw">else </span>{
             <span class="macro">panic!</span>(
                 <span class="string">&quot;Index out of bounds, only {} are defined&quot;</span>,
@@ -254,11 +254,11 @@
 <span class="kw">impl</span>&lt;F&gt; IndexMut&lt;ChallengeTerm&gt; <span class="kw">for </span>Challenges&lt;F&gt; {
     <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, term: ChallengeTerm) -&gt; <span class="kw-2">&amp;mut </span>F {
         <span class="kw">match </span>term {
-            ChallengeTerm::ConstraintRandomiser =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.constraint_randomiser,
+            ChallengeTerm::ConstraintCombiner =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.constraint_combiner,
             ChallengeTerm::Beta =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.beta,
             ChallengeTerm::Gamma =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.gamma,
             ChallengeTerm::ConstraintHomogeniser =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.constraint_homogeniser,
-            ChallengeTerm::RelationRandomiser =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.relation_randomiser,
+            ChallengeTerm::RelationCombiner =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.relation_combiner,
         }
     }
 }
@@ -266,11 +266,11 @@
 <span class="kw">impl</span>&lt;F: Zero&gt; Default <span class="kw">for </span>Challenges&lt;F&gt; {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            constraint_randomiser: F::zero(),
+            constraint_combiner: F::zero(),
             beta: F::zero(),
             gamma: F::zero(),
             constraint_homogeniser: F::zero(),
-            relation_randomiser: F::zero(),
+            relation_combiner: F::zero(),
         }
     }
 }
@@ -280,16 +280,16 @@
 
     <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, term: ChallengeTerm) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
         <span class="kw">match </span>term {
-            ChallengeTerm::ConstraintRandomiser =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.constraint_randomiser,
+            ChallengeTerm::ConstraintCombiner =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.constraint_combiner,
             ChallengeTerm::Beta =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.beta,
             ChallengeTerm::Gamma =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.gamma,
             ChallengeTerm::ConstraintHomogeniser =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.constraint_homogeniser,
-            ChallengeTerm::RelationRandomiser =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.relation_randomiser,
+            ChallengeTerm::RelationCombiner =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.relation_combiner,
         }
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; AlphaChallengeTerm&lt;<span class="lifetime">&#39;a</span>&gt; <span class="kw">for </span>ChallengeTerm {
-    <span class="kw">const </span>ALPHA: <span class="self">Self </span>= <span class="self">Self</span>::ConstraintRandomiser;
+    <span class="kw">const </span>ALPHA: <span class="self">Self </span>= <span class="self">Self</span>::ConstraintCombiner;
 }
 </code></pre></div></section></main></body></html>
