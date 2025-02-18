@@ -417,7 +417,7 @@ pub mod state_provider {
 
         let network_address = "127.0.0.1:3088";
 
-        for i in 0..10 {
+        for i in 0..2 {
             event_queue_sender.send(Event::SendNumber(i)).unwrap();
         }
 
