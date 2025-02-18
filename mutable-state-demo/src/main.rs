@@ -350,28 +350,10 @@ pub mod network {
 
         let address = "127.0.0.1:3088";
 
-        let listener = match TcpListener::bind(address) {
-            Ok(listener) => listener,
-            Err(e) => {
-                println!("Could not bind to address {}: {}", address, e);
-                return ExitCode::FAILURE;
-            }
-        };
+        let listener = TcpListener::bind(address).unwrap();
         for stream in listener.incoming() {
-            let mut deserializer = match stream {
-                Ok(stream) => rmp_serde::Deserializer::new(stream),
-                Err(e) => {
-                    println!("Stream error: {}", e);
-                    return ExitCode::FAILURE;
-                }
-            };
-            let message = match Message::deserialize(&mut deserializer) {
-                Ok(message) => message,
-                Err(e) => {
-                    println!("Bad message: {}", e);
-                    return ExitCode::FAILURE;
-                }
-            };
+            let mut deserializer = rmp_serde::Deserializer::new(stream.unwrap());
+            let message = Message::deserialize(&mut deserializer).unwrap();
             match message {
                 Message::StringMessage(i) => println!("stream got data: {}", i),
             }
@@ -433,13 +415,8 @@ pub mod state_provider {
         }
 
         for event in event_queue_receiver.into_iter() {
-            let mut serializer = match TcpStream::connect(network_address) {
-                Ok(listener) => rmp_serde::Serializer::new(listener),
-                Err(e) => {
-                    println!("Could not connect to network at {}: {}", network_address, e);
-                    return ExitCode::FAILURE;
-                }
-            };
+            let mut serializer =
+                rmp_serde::Serializer::new(TcpStream::connect(network_address).unwrap());
 
             match event {
                 Event::SendNumber(i) => {
@@ -487,13 +464,8 @@ pub mod client {
         let storage_provider_address = "127.0.0.1:3089";
 
         for i in 0..10 {
-            let mut serializer = match TcpStream::connect(network_address) {
-                Ok(listener) => rmp_serde::Serializer::new(listener),
-                Err(e) => {
-                    println!("Could not connect to network at {}: {}", network_address, e);
-                    return ExitCode::FAILURE;
-                }
-            };
+            let mut serializer =
+                rmp_serde::Serializer::new(TcpStream::connect(network_address).unwrap());
             let data = format!("client {}", i);
             println!("sending data {}", data);
             NetworkMessage::StringMessage(data)
@@ -502,16 +474,8 @@ pub mod client {
         }
 
         for i in 0..30 {
-            let mut serializer = match TcpStream::connect(storage_provider_address) {
-                Ok(listener) => rmp_serde::Serializer::new(listener),
-                Err(e) => {
-                    println!(
-                        "Could not connect to network at {}: {}",
-                        storage_provider_address, e
-                    );
-                    return ExitCode::FAILURE;
-                }
-            };
+            let mut serializer =
+                rmp_serde::Serializer::new(TcpStream::connect(storage_provider_address).unwrap());
             let data = format!("client {}", i);
             println!("sending data {}", data);
             StateProviderMessage::StringMessage(data)
