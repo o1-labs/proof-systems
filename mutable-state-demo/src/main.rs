@@ -85,6 +85,91 @@ pub fn verify(context: &VerifyContext, proof: &Proof) -> bool {
     )
 }
 
+pub struct ProverInputs {
+    pub challenge: Fp,
+    pub data: Vec<Fp>,
+    pub affine_committed_chunks: Vec<Vesta>,
+}
+
+fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
+    let VerifyContext { srs, group_map } = context;
+    let rng = &mut rand::rngs::OsRng;
+    let ProverInputs {
+        challenge,
+        data,
+        affine_committed_chunks,
+    } = inputs;
+
+    let powers = affine_committed_chunks
+        .iter()
+        .scan(Fp::one(), |acc, _| {
+            let res = *acc;
+            *acc *= challenge;
+            Some(res.into_bigint())
+        })
+        .collect::<Vec<_>>();
+
+    let final_commitment =
+        ProjectiveVesta::msm_bigint(affine_committed_chunks.as_slice(), powers.as_slice())
+            .into_affine();
+
+    let final_chunk = (data.len() / SRS_SIZE) - 1;
+    let randomized_data = (0..SRS_SIZE)
+        .into_par_iter()
+        .map(|idx| {
+            let mut acc = data[final_chunk * SRS_SIZE + idx];
+            (0..final_chunk).into_iter().rev().for_each(|chunk| {
+                acc *= challenge;
+                acc += data[chunk * SRS_SIZE + idx];
+            });
+            acc
+        })
+        .collect::<Vec<_>>();
+
+    let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+        mina_poseidon::pasta::fq_kimchi::static_params(),
+    );
+    fq_sponge.absorb_g(&[final_commitment]);
+    let evaluation_point = fq_sponge.squeeze(2);
+
+    // TODO: Cache this somewhere
+    let domain = Radix2EvaluationDomain::new(SRS_SIZE).unwrap();
+
+    let randomized_data_poly =
+        Evaluations::from_vec_and_domain(randomized_data, domain).interpolate();
+
+    let randomized_data_eval = randomized_data_poly.evaluate(&evaluation_point);
+    let mut opening_proof_sponge =
+        DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+            mina_poseidon::pasta::fq_kimchi::static_params(),
+        );
+    opening_proof_sponge.absorb_fr(&[randomized_data_eval]);
+
+    let opening_proof = srs.open(
+        &group_map,
+        &[(
+            DensePolynomialOrEvaluations::<_, Radix2EvaluationDomain<_>>::DensePolynomial(
+                &randomized_data_poly,
+            ),
+            PolyComm {
+                chunks: vec![Fp::zero()],
+            },
+        )],
+        &[evaluation_point],
+        Fp::one(), // Single polynomial, so we don't care
+        Fp::one(), // Single polynomial, so we don't care
+        opening_proof_sponge.clone(),
+        rng,
+    );
+
+    Proof {
+        evaluation_point,
+        final_commitment,
+        randomized_data_eval,
+        opening_proof,
+    }
+}
+
 pub fn run_profiling_demo() -> ExitCode {
     println!("Startup time (cacheable, 1-time cost)");
 
@@ -200,88 +285,6 @@ pub fn run_profiling_demo() -> ExitCode {
         .iter()
         .map(|x| Fp::from_bigint(*x).unwrap())
         .collect::<Vec<_>>();
-
-    struct ProverInputs {
-        challenge: Fp,
-        data: Vec<Fp>,
-        affine_committed_chunks: Vec<Vesta>,
-    }
-
-    let prove = |context: &VerifyContext, inputs: &ProverInputs| {
-        let VerifyContext { srs, group_map } = context;
-        let rng = &mut rand::rngs::OsRng;
-        let ProverInputs {
-            challenge,
-            data,
-            affine_committed_chunks,
-        } = inputs;
-
-        let powers = affine_committed_chunks
-            .iter()
-            .scan(Fp::one(), |acc, _| {
-                let res = *acc;
-                *acc *= challenge;
-                Some(res.into_bigint())
-            })
-            .collect::<Vec<_>>();
-
-        let final_commitment =
-            ProjectiveVesta::msm_bigint(affine_committed_chunks.as_slice(), powers.as_slice())
-                .into_affine();
-
-        let final_chunk = (data.len() / SRS_SIZE) - 1;
-        let randomized_data = (0..SRS_SIZE)
-            .into_par_iter()
-            .map(|idx| {
-                let mut acc = data[final_chunk * SRS_SIZE + idx];
-                (0..final_chunk).into_iter().rev().for_each(|chunk| {
-                    acc *= challenge;
-                    acc += data[chunk * SRS_SIZE + idx];
-                });
-                acc
-            })
-            .collect::<Vec<_>>();
-
-        let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
-            mina_poseidon::pasta::fq_kimchi::static_params(),
-        );
-        fq_sponge.absorb_g(&[final_commitment]);
-        let evaluation_point = fq_sponge.squeeze(2);
-
-        let randomized_data_poly =
-            Evaluations::from_vec_and_domain(randomized_data, domain).interpolate();
-
-        let randomized_data_eval = randomized_data_poly.evaluate(&evaluation_point);
-        let mut opening_proof_sponge =
-            DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
-                mina_poseidon::pasta::fq_kimchi::static_params(),
-            );
-        opening_proof_sponge.absorb_fr(&[randomized_data_eval]);
-
-        let opening_proof = srs.open(
-            &group_map,
-            &[(
-                DensePolynomialOrEvaluations::<_, Radix2EvaluationDomain<_>>::DensePolynomial(
-                    &randomized_data_poly,
-                ),
-                PolyComm {
-                    chunks: vec![Fp::zero()],
-                },
-            )],
-            &[evaluation_point],
-            Fp::one(), // Single polynomial, so we don't care
-            Fp::one(), // Single polynomial, so we don't care
-            opening_proof_sponge.clone(),
-            rng,
-        );
-
-        Proof {
-            evaluation_point,
-            final_commitment,
-            randomized_data_eval,
-            opening_proof,
-        }
-    };
 
     let prover_inputs = ProverInputs {
         challenge,
