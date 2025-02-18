@@ -102,7 +102,7 @@
 //!
 //! For a first version, we consider an instance of the Poseidon hash function
 //! that is suitable for curves whose field size is around 256 bits.
-//! A security analysis for these curves give us a recommandation of 60 full
+//! A security analysis for these curves give us a recommendation of 60 full
 //! rounds if we consider a 128-bit security level and a low-degree
 //! exponentiation of `5`, with only full rounds.
 //! In the near future, we will consider the partial rounds strategy to reduce
