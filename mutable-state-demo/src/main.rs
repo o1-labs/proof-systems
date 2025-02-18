@@ -8,7 +8,7 @@ use mina_poseidon::{
 };
 use poly_commitment::{
     commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
-    ipa::SRS,
+    ipa::{OpeningProof, SRS},
     utils::DensePolynomialOrEvaluations,
     PolyComm, SRS as _,
 };
@@ -302,6 +302,7 @@ pub fn run_profiling_demo() -> ExitCode {
             evaluation_point: Fp,
             final_commitment: Vesta,
             randomized_data_eval: Fp,
+            opening_proof: OpeningProof<Vesta>,
         }
 
         let verify = |context: VerifyContext, proof: Proof| {
@@ -310,6 +311,7 @@ pub fn run_profiling_demo() -> ExitCode {
                 evaluation_point,
                 final_commitment,
                 randomized_data_eval,
+                opening_proof,
             } = proof;
             let rng = &mut rand::rngs::OsRng;
             let mut opening_proof_sponge =
@@ -341,6 +343,7 @@ pub fn run_profiling_demo() -> ExitCode {
             evaluation_point,
             final_commitment,
             randomized_data_eval,
+            opening_proof,
         };
 
         println!("- Verifier protocol iteration {i}");
