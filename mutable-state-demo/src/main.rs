@@ -298,8 +298,19 @@ pub fn run_profiling_demo() -> ExitCode {
             group_map: &'a <Vesta as CommitmentCurve>::Map,
         }
 
-        let verify = |args: VerifyContext| {
-            let VerifyContext { srs, group_map } = args;
+        struct Proof {
+            evaluation_point: Fp,
+            final_commitment: Vesta,
+            randomized_data_eval: Fp,
+        }
+
+        let verify = |context: VerifyContext, proof: Proof| {
+            let VerifyContext { srs, group_map } = context;
+            let Proof {
+                evaluation_point,
+                final_commitment,
+                randomized_data_eval,
+            } = proof;
             let rng = &mut rand::rngs::OsRng;
             println!("- Verifier protocol iteration {i}");
             println!("  - Verify opening proof");
@@ -339,10 +350,18 @@ pub fn run_profiling_demo() -> ExitCode {
                 duration.as_nanos(),
             );
         };
-        verify(VerifyContext {
-            srs: &srs,
-            group_map: &group_map,
-        });
+        let proof = Proof {
+            evaluation_point,
+            final_commitment,
+            randomized_data_eval,
+        };
+        verify(
+            VerifyContext {
+                srs: &srs,
+                group_map: &group_map,
+            },
+            proof,
+        );
     }
 
     ExitCode::SUCCESS
