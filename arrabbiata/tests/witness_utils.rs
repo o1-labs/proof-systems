@@ -3,6 +3,8 @@
 //! A user is expected to use the gadget methods.
 //! The API of the utilities is more subject to changes.
 
+use std::collections::HashMap;
+
 use arrabbiata::{curve::PlonkSpongeConstants, interpreter::InterpreterEnv, witness::Env};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 use mina_poseidon::constants::SpongeConstants;
@@ -17,7 +19,14 @@ fn test_constrain_boolean_witness_negative_value() {
         let z0 = BigInt::from(1u64);
         let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
             std::array::from_fn(|_i| BigInt::from(0u64));
-        Env::<Fp, Fq, Vesta, Pallas>::new(srs_log2_size, z0, sponge_e1.clone(), sponge_e1.clone())
+        Env::<Fp, Fq, Vesta, Pallas>::new(
+            srs_log2_size,
+            z0,
+            sponge_e1.clone(),
+            sponge_e1.clone(),
+            HashMap::new(),
+            HashMap::new(),
+        )
     };
 
     env.constrain_boolean(BigInt::from(-42));
@@ -30,7 +39,14 @@ fn test_constrain_boolean_witness_positive_and_negative_modulus() {
         let z0 = BigInt::from(1u64);
         let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
             std::array::from_fn(|_i| BigInt::from(0u64));
-        Env::<Fp, Fq, Vesta, Pallas>::new(srs_log2_size, z0, sponge_e1.clone(), sponge_e1.clone())
+        Env::<Fp, Fq, Vesta, Pallas>::new(
+            srs_log2_size,
+            z0,
+            sponge_e1.clone(),
+            sponge_e1.clone(),
+            HashMap::new(),
+            HashMap::new(),
+        )
     };
 
     let modulus: BigInt = Fp::modulus_biguint().into();
@@ -50,6 +66,8 @@ fn test_write_column_return_the_result_reduced_in_field() {
         BigInt::from(1u64),
         sponge_e1.clone(),
         sponge_e1.clone(),
+        HashMap::new(),
+        HashMap::new(),
     );
     let modulus: BigInt = Fp::modulus_biguint().into();
     let pos_x = env.allocate();
@@ -68,6 +86,8 @@ fn test_write_public_return_the_result_reduced_in_field() {
         BigInt::from(1u64),
         sponge_e1.clone(),
         sponge_e1.clone(),
+        HashMap::new(),
+        HashMap::new(),
     );
     let modulus: BigInt = Fp::modulus_biguint().into();
     let pos_x = env.allocate_public_input();

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use ark_ec::{AffineRepr, Group};
 use ark_ff::{PrimeField, UniformRand};
 use arrabbiata::{
@@ -24,6 +26,8 @@ fn test_unit_witness_poseidon_next_row_gadget_one_full_hash() {
         BigInt::from(1u64),
         sponge.clone(),
         sponge.clone(),
+        HashMap::new(),
+        HashMap::new(),
     );
 
     env.current_instruction = Instruction::Poseidon(0);
@@ -69,6 +73,8 @@ fn test_unit_witness_elliptic_curve_addition() {
         BigInt::from(1u64),
         sponge_e1.clone(),
         sponge_e1.clone(),
+        HashMap::new(),
+        HashMap::new(),
     );
 
     let instr = Instruction::EllipticCurveAddition(0);
@@ -144,6 +150,8 @@ fn test_witness_double_elliptic_curve_point() {
         BigInt::from(1u64),
         sponge_e1.clone(),
         sponge_e1.clone(),
+        HashMap::new(),
+        HashMap::new(),
     );
 
     env.current_instruction = Instruction::EllipticCurveAddition(0);
@@ -181,6 +189,8 @@ where
         BigInt::from(1u64),
         sponge_e1.clone(),
         sponge_e1.clone(),
+        HashMap::new(),
+        HashMap::new(),
     );
 
     let i_comm = 0;
