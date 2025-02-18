@@ -152,8 +152,8 @@ pub fn main() {
         );
         env.accumulate_program_state();
 
-        // FIXME:
         // Compute the accumulation of the commitments to the witness columns
+        env.accumulate_committed_state();
 
         // FIXME:
         // Compute the accumulation of the challenges
