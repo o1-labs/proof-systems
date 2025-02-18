@@ -100,7 +100,7 @@ pub fn run_profiling_demo() -> ExitCode {
         duration.as_nanos(),
     );
 
-    let VerifyContext { srs, group_map } = &verify_context;
+    let VerifyContext { srs, group_map: _ } = &verify_context;
 
     println!("- Generate SRS lagrange basis");
     let domain = Radix2EvaluationDomain::new(SRS_SIZE).unwrap();
@@ -207,12 +207,15 @@ pub fn run_profiling_demo() -> ExitCode {
         affine_committed_chunks: Vec<Vesta>,
     }
 
-    let mut prove = |inputs: &ProverInputs| {
+    let prove = |context: &VerifyContext, inputs: &ProverInputs| {
+        let VerifyContext { srs, group_map } = context;
+        let rng = &mut rand::rngs::OsRng;
         let ProverInputs {
             challenge,
             data,
             affine_committed_chunks,
         } = inputs;
+
         let powers = affine_committed_chunks
             .iter()
             .scan(Fp::one(), |acc, _| {
@@ -290,7 +293,7 @@ pub fn run_profiling_demo() -> ExitCode {
         println!("");
         println!("- Storage protocol iteration {i}");
         let now = std::time::Instant::now();
-        let proof = prove(&prover_inputs);
+        let proof = prove(&verify_context, &prover_inputs);
         let duration = now.elapsed();
         println!(
             "  - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
