@@ -85,46 +85,48 @@ pub fn verify(context: &VerifyContext, proof: &Proof) -> bool {
     )
 }
 
-pub fn prover_inputs_from_data(context: &VerifyContext, data: Vec<Fp>) -> ProverInputs {
-    let VerifyContext { srs, group_map: _ } = context;
-
-    // TODO: Cache this somewhere
-    let domain = Radix2EvaluationDomain::new(SRS_SIZE).unwrap();
-
-    let basis = srs
-        .get_lagrange_basis(domain)
-        .iter()
-        .map(|x| x.chunks[0])
-        .collect::<Vec<_>>();
-    let basis = basis.as_slice();
-    let committed_chunks = (0..data.len() / SRS_SIZE)
-        .into_par_iter()
-        .map(|idx| {
-            ProjectiveVesta::msm(basis, &data[SRS_SIZE * idx..SRS_SIZE * (idx + 1)]).unwrap()
-        })
-        .collect::<Vec<_>>();
-
-    let affine_committed_chunks = ProjectiveVesta::normalize_batch(committed_chunks.as_slice());
-
-    let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
-        mina_poseidon::pasta::fq_kimchi::static_params(),
-    );
-    affine_committed_chunks.iter().for_each(|commitment| {
-        fq_sponge.absorb_g(&[*commitment]);
-    });
-    let challenge = fq_sponge.squeeze(2);
-
-    ProverInputs {
-        challenge,
-        data,
-        affine_committed_chunks,
-    }
-}
-
 pub struct ProverInputs {
     pub challenge: Fp,
     pub data: Vec<Fp>,
     pub affine_committed_chunks: Vec<Vesta>,
+}
+
+impl ProverInputs {
+    pub fn from_data(context: &VerifyContext, data: Vec<Fp>) -> ProverInputs {
+        let VerifyContext { srs, group_map: _ } = context;
+
+        // TODO: Cache this somewhere
+        let domain = Radix2EvaluationDomain::new(SRS_SIZE).unwrap();
+
+        let basis = srs
+            .get_lagrange_basis(domain)
+            .iter()
+            .map(|x| x.chunks[0])
+            .collect::<Vec<_>>();
+        let basis = basis.as_slice();
+        let committed_chunks = (0..data.len() / SRS_SIZE)
+            .into_par_iter()
+            .map(|idx| {
+                ProjectiveVesta::msm(basis, &data[SRS_SIZE * idx..SRS_SIZE * (idx + 1)]).unwrap()
+            })
+            .collect::<Vec<_>>();
+
+        let affine_committed_chunks = ProjectiveVesta::normalize_batch(committed_chunks.as_slice());
+
+        let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+            mina_poseidon::pasta::fq_kimchi::static_params(),
+        );
+        affine_committed_chunks.iter().for_each(|commitment| {
+            fq_sponge.absorb_g(&[*commitment]);
+        });
+        let challenge = fq_sponge.squeeze(2);
+
+        ProverInputs {
+            challenge,
+            data,
+            affine_committed_chunks,
+        }
+    }
 }
 
 fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
