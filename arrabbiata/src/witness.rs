@@ -4,20 +4,21 @@ use ark_poly::Evaluations;
 use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
 use log::{debug, info};
 use mina_poseidon::constants::SpongeConstants;
+use mvpoly::monomials::Sparse;
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::time::Instant;
+use std::{collections::HashMap, time::Instant};
 
 use crate::{
     challenge::{ChallengeTerm, Challenges},
     column::{Column, Gadget},
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side},
-    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS,
-    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    MAXIMUM_FIELD_SIZE_IN_BITS, MAX_DEGREE, MV_POLYNOMIAL_ARITY, NUMBER_OF_COLUMNS,
+    NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
 /// The first instruction in the verifier circuit (often shortened in "IVC" in
@@ -67,6 +68,9 @@ pub struct Env<
 
     /// SRS for the second curve
     pub srs_e2: SRS<E2>,
+
+    pub constraints_fp: HashMap<Gadget, Vec<Sparse<Fp, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>>,
+    pub constraints_fq: HashMap<Gadget, Vec<Sparse<Fq, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>>,
     // ----------------
 
     // ----------------
@@ -847,6 +851,8 @@ where
         z0: BigInt,
         sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
         sponge_e2: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
+        constraints_fp: HashMap<Gadget, Vec<Sparse<Fp, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>>,
+        constraints_fq: HashMap<Gadget, Vec<Sparse<Fq, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>>,
     ) -> Self {
         {
             assert!(E1::ScalarField::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
@@ -954,6 +960,8 @@ where
             domain_fq,
             srs_e1,
             srs_e2,
+            constraints_fp,
+            constraints_fq,
             // -------
             // -------
             // verifier only
