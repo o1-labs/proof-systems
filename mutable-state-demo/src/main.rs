@@ -422,11 +422,12 @@ pub mod state_provider {
         }
 
         for event in event_queue_receiver.into_iter() {
-            let mut serializer =
-                rmp_serde::Serializer::new(TcpStream::connect(network_address).unwrap());
+            let network_serializer =
+                || rmp_serde::Serializer::new(TcpStream::connect(network_address).unwrap());
 
             match event {
                 Event::SendNumber(i) => {
+                    let mut serializer = network_serializer();
                     let data = format!("{}", i);
                     println!("sending data {}", data);
 
@@ -436,6 +437,7 @@ pub mod state_provider {
                 }
                 Event::HandleStreamMessage(message) => match message {
                     Message::StringMessage(data) => {
+                        let mut serializer = network_serializer();
                         println!("forwarding data {}", data);
                         NetworkMessage::StringMessage(data)
                             .serialize(&mut serializer)
