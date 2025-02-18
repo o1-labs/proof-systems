@@ -322,7 +322,7 @@ pub mod state_provider {
     pub enum Message {
         StringMessage(String),
         StateRetentionProof,
-        UpdateProverInputs(usize),
+        UpdateProverInputs,
     }
 
     enum Event {
@@ -404,14 +404,10 @@ pub mod state_provider {
                             .serialize(&mut serializer)
                             .unwrap();
                     }
-                    Message::UpdateProverInputs(i) => {
+                    Message::UpdateProverInputs => {
                         println!("Updating prover inputs from scratch");
                         let now = std::time::Instant::now();
-                        // WARNING: Changing the length of data is incredibly unsafe if we don't
-                        // also immediately update prover_inputs!
-                        // This shouldn't happen in production, at least.
-                        data = (0..1 << i).map(|i| Fp::from(i)).collect();
-                        prover_inputs = ProverInputs::from_data(&verify_context, &mut data);
+                        prover_inputs = ProverInputs::from_data(&verify_context, data);
                         let duration = now.elapsed();
                         println!(
                             "Took {:?}s / {:?}ms / {:?}us / {:?}ns",
@@ -508,8 +504,8 @@ pub mod client {
             .unwrap();
 
         let mut serializer = state_provider_serializer();
-        println!("Requesting data of size 2^18");
-        StateProviderMessage::UpdateProverInputs(18)
+        println!("Requesting prover input update");
+        StateProviderMessage::UpdateProverInputs
             .serialize(&mut serializer)
             .unwrap();
 
