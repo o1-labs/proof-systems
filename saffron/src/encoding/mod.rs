@@ -55,8 +55,8 @@ pub fn commit<State: AbstractState, E1: CommitmentCurve>(
 }
 
 pub fn compute_diff<State: AbstractState, E1: CommitmentCurve>(
-    state_before: State,
-    state_after: State,
+    _state_before: State,
+    _state_after: State,
 ) -> Vec<PolyComm<E1>> {
     // The commitments to the diffs are way smaller if we have a sparse state
     // for bytes. We can also avoid using the encoding into montgomery form and

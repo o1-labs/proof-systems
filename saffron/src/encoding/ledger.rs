@@ -17,6 +17,10 @@ impl AbstractState for Ledger {
         &self,
         domain: Radix2EvaluationDomain<F>,
     ) -> Vec<Evaluations<F, Radix2EvaluationDomain<F>>> {
+        // Modifying an account is publishing one diff.
+        // If we would have used bytes, we would have needed sometimes to do
+        // some padding and weird parsing, and one account update could have
+        // cost 2 diffs, instead of one.
         let mut evals: Vec<F> = self
             .accounts
             .iter()
