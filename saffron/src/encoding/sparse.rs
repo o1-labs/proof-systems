@@ -22,6 +22,12 @@ impl AbstractState for SparseState {
         domain: Radix2EvaluationDomain<F>,
     ) -> Vec<Evaluations<F, Radix2EvaluationDomain<F>>> {
         // Encoding sparse state
+        //                                                 here we use
+        //                                                 Montgomery, so the Fp
+        //                                                 value is NOT the
+        //                                                 actual value between
+        //                                                 0 and 255
+        //                                                    |
         let mut evals: Vec<F> = self.bytes.iter().map(|b| F::from(*b as u64)).collect();
         // We pad to the next multiple of the domain size
         let current_length: usize = evals.len();
