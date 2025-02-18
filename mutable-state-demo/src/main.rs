@@ -293,36 +293,39 @@ pub fn run_profiling_demo() -> ExitCode {
             duration.as_nanos(),
         );
 
-        println!("- Verifier protocol iteration {i}");
-        println!("  - Verify opening proof");
-        let now = std::time::Instant::now();
-        let opening_proof_verifies = srs.verify(
-            &group_map,
-            &mut [BatchEvaluationProof {
-                sponge: opening_proof_sponge.clone(),
-                evaluation_points: vec![evaluation_point],
-                polyscale: Fp::one(),
-                evalscale: Fp::one(),
-                evaluations: vec![Evaluation {
-                    commitment: PolyComm {
-                        chunks: vec![final_commitment],
-                    },
-                    evaluations: vec![vec![randomized_data_eval]],
+        let mut verify = || {
+            println!("- Verifier protocol iteration {i}");
+            println!("  - Verify opening proof");
+            let now = std::time::Instant::now();
+            let opening_proof_verifies = srs.verify(
+                &group_map,
+                &mut [BatchEvaluationProof {
+                    sponge: opening_proof_sponge.clone(),
+                    evaluation_points: vec![evaluation_point],
+                    polyscale: Fp::one(),
+                    evalscale: Fp::one(),
+                    evaluations: vec![Evaluation {
+                        commitment: PolyComm {
+                            chunks: vec![final_commitment],
+                        },
+                        evaluations: vec![vec![randomized_data_eval]],
+                    }],
+                    opening: &opening_proof,
+                    combined_inner_product: randomized_data_eval,
                 }],
-                opening: &opening_proof,
-                combined_inner_product: randomized_data_eval,
-            }],
-            rng,
-        );
-        let duration = now.elapsed();
-        println!("    - Verifies: {}", opening_proof_verifies);
-        println!(
-            "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-            duration.as_secs(),
-            duration.as_millis(),
-            duration.as_micros(),
-            duration.as_nanos(),
-        );
+                rng,
+            );
+            let duration = now.elapsed();
+            println!("    - Verifies: {}", opening_proof_verifies);
+            println!(
+                "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
+                duration.as_secs(),
+                duration.as_millis(),
+                duration.as_micros(),
+                duration.as_nanos(),
+            );
+        };
+        verify();
     }
 
     ExitCode::SUCCESS
