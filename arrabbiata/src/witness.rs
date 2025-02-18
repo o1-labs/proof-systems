@@ -12,7 +12,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Instant;
 
 use crate::{
-    challenge::Challenges,
+    challenge::{ChallengeTerm, Challenges},
     column::{Column, Gadget},
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side},
@@ -1234,6 +1234,67 @@ where
                 }
             }
             Instruction::NoOp => Instruction::NoOp,
+        }
+    }
+
+    /// Simulate an interaction with the verifier by requesting to coin a
+    /// challenge from the current prover sponge state.
+    ///
+    /// This method supposes that all the messages have been sent to the
+    /// verifier previously, and the attribute [self.prover_sponge_state] has
+    /// been updated accordingly by absorbing all the messages correctly.
+    ///
+    /// The side-effect of this method will be to run a permutation on the
+    /// sponge state _after_ coining the challenge.
+    /// There is an hypothesis on the sponge state that the inner permutation
+    /// has been correctly executed if the absorbtion rate had been reached at
+    /// the last absorbtion.
+    ///
+    /// The challenge will be added to the [self.challenges] attribute at the
+    /// position given by the challenge `chal`.
+    ///
+    /// Internally, the method is implemented by simply loading the prover
+    /// sponge state, and squeezing a challenge from it, relying on the
+    /// implementation of the sponge. Usually, the challenge would be the first
+    /// N bits of the first element, but it is left as an implementation detail
+    /// of the sponge given by the curve.
+    pub fn coin_challenge(&mut self, chal: ChallengeTerm) {
+        if self.current_iteration % 2 == 0 {
+            let mut sponge = E1::create_new_sponge();
+            self.prover_sponge_state.iter().for_each(|x| {
+                E1::absorb_fq(
+                    &mut sponge,
+                    E1::BaseField::from_biguint(&x.to_biguint().unwrap()).unwrap(),
+                )
+            });
+            let verifier_answer = E1::squeeze_challenge(&mut sponge).to_biguint().into();
+            self.challenges[chal] = verifier_answer;
+            sponge.sponge.poseidon_block_cipher();
+            let state: Vec<BigInt> = sponge
+                .sponge
+                .state
+                .iter()
+                .map(|x| x.to_biguint().into())
+                .collect();
+            self.prover_sponge_state = state.try_into().unwrap();
+        } else {
+            let mut sponge = E2::create_new_sponge();
+            self.prover_sponge_state.iter().for_each(|x| {
+                E2::absorb_fq(
+                    &mut sponge,
+                    E2::BaseField::from_biguint(&x.to_biguint().unwrap()).unwrap(),
+                )
+            });
+            let verifier_answer = E2::squeeze_challenge(&mut sponge).to_biguint().into();
+            self.challenges[chal] = verifier_answer;
+            sponge.sponge.poseidon_block_cipher();
+            let state: Vec<BigInt> = sponge
+                .sponge
+                .state
+                .iter()
+                .map(|x| x.to_biguint().into())
+                .collect();
+            self.prover_sponge_state = state.try_into().unwrap();
         }
     }
 }
