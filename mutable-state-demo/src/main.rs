@@ -425,7 +425,8 @@ pub mod state_provider {
         pub struct Args {}
     }
 
-    use super::network::Message as NetworkMessage;
+    use super::{network::Message as NetworkMessage, prove, ProverInputs, VerifyContext};
+    use mina_curves::pasta::Fp;
     use serde::{Deserialize, Serialize};
     use std::net::{TcpListener, TcpStream};
     use std::process::ExitCode;
@@ -436,6 +437,8 @@ pub mod state_provider {
     pub enum Message {
         StringMessage(String),
         RunDemo,
+        StateRetentionProof,
+        UpdateProverInputs(usize),
     }
 
     enum Event {
@@ -469,6 +472,14 @@ pub mod state_provider {
             event_queue_sender.send(Event::SendNumber(i)).unwrap();
         }
 
+        println!("Setting up initial prover inputs");
+
+        let verify_context = VerifyContext::new();
+
+        // TODO: mmap data
+        let mut prover_inputs =
+            ProverInputs::from_data(&verify_context, (0..1 << 20).map(|i| Fp::from(i)).collect());
+
         for event in event_queue_receiver.into_iter() {
             let network_serializer =
                 || rmp_serde::Serializer::new(TcpStream::connect(network_address).unwrap());
@@ -493,6 +504,39 @@ pub mod state_provider {
                     }
                     Message::RunDemo => {
                         super::run_profiling_demo();
+                    }
+                    Message::StateRetentionProof => {
+                        println!("Creating storage proof");
+                        let now = std::time::Instant::now();
+                        let proof = prove(&verify_context, &prover_inputs);
+                        let duration = now.elapsed();
+                        println!(
+                            "Took {:?}s / {:?}ms / {:?}us / {:?}ns",
+                            duration.as_secs(),
+                            duration.as_millis(),
+                            duration.as_micros(),
+                            duration.as_nanos(),
+                        );
+                        let mut serializer = network_serializer();
+                        NetworkMessage::VerifyProof(proof)
+                            .serialize(&mut serializer)
+                            .unwrap();
+                    }
+                    Message::UpdateProverInputs(i) => {
+                        println!("Updating prover inputs from scratch");
+                        let now = std::time::Instant::now();
+                        prover_inputs = ProverInputs::from_data(
+                            &verify_context,
+                            (0..1 << i).map(|i| Fp::from(i)).collect(),
+                        );
+                        let duration = now.elapsed();
+                        println!(
+                            "Took {:?}s / {:?}ms / {:?}us / {:?}ns",
+                            duration.as_secs(),
+                            duration.as_millis(),
+                            duration.as_micros(),
+                            duration.as_nanos(),
+                        );
                     }
                 },
             }
@@ -521,11 +565,17 @@ pub mod client {
         println!("I'm a client!");
 
         let network_address = "127.0.0.1:3088";
-        let storage_provider_address = "127.0.0.1:3089";
+        let state_provider_address = "127.0.0.1:3089";
+
+        let network_serializer =
+            || rmp_serde::Serializer::new(TcpStream::connect(network_address).unwrap());
+
+        let state_provider_serializer =
+            || rmp_serde::Serializer::new(TcpStream::connect(state_provider_address).unwrap());
 
         for i in 0..2 {
-            let mut serializer =
-                rmp_serde::Serializer::new(TcpStream::connect(network_address).unwrap());
+            let mut serializer = network_serializer();
+
             let data = format!("client {}", i);
             println!("sending data {}", data);
             NetworkMessage::StringMessage(data)
@@ -534,8 +584,7 @@ pub mod client {
         }
 
         for i in 0..3 {
-            let mut serializer =
-                rmp_serde::Serializer::new(TcpStream::connect(storage_provider_address).unwrap());
+            let mut serializer = state_provider_serializer();
             let data = format!("client {}", i);
             println!("sending data {}", data);
             StateProviderMessage::StringMessage(data)
@@ -543,10 +592,39 @@ pub mod client {
                 .unwrap();
         }
 
-        let mut serializer =
-            rmp_serde::Serializer::new(TcpStream::connect(storage_provider_address).unwrap());
+        let mut serializer = state_provider_serializer();
         println!("Requesting demo run");
         StateProviderMessage::RunDemo
+            .serialize(&mut serializer)
+            .unwrap();
+
+        let mut serializer = state_provider_serializer();
+        println!("Requesting state proof");
+        StateProviderMessage::StateRetentionProof
+            .serialize(&mut serializer)
+            .unwrap();
+
+        let mut serializer = state_provider_serializer();
+        println!("Requesting state proof");
+        StateProviderMessage::StateRetentionProof
+            .serialize(&mut serializer)
+            .unwrap();
+
+        let mut serializer = state_provider_serializer();
+        println!("Requesting data of size 2^18");
+        StateProviderMessage::UpdateProverInputs(18)
+            .serialize(&mut serializer)
+            .unwrap();
+
+        let mut serializer = state_provider_serializer();
+        println!("Requesting state proof");
+        StateProviderMessage::StateRetentionProof
+            .serialize(&mut serializer)
+            .unwrap();
+
+        let mut serializer = state_provider_serializer();
+        println!("Requesting state proof");
+        StateProviderMessage::StateRetentionProof
             .serialize(&mut serializer)
             .unwrap();
 
