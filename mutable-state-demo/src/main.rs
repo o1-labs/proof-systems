@@ -94,14 +94,14 @@ pub fn verify(context: &VerifyContext, proof: &Proof) -> bool {
     )
 }
 
-pub struct ProverInputs {
+pub struct ProverInputs<'a> {
     pub challenge: Fp,
-    pub data: Vec<Fp>,
+    pub data: &'a mut [Fp],
     pub affine_committed_chunks: Vec<Vesta>,
 }
 
-impl ProverInputs {
-    pub fn from_data(context: &VerifyContext, data: Vec<Fp>) -> ProverInputs {
+impl<'a> ProverInputs<'a> {
+    pub fn from_data(context: &VerifyContext, data: &'a mut [Fp]) -> Self {
         let VerifyContext { srs, group_map: _ } = context;
 
         // TODO: Cache this somewhere
@@ -331,8 +331,8 @@ pub mod state_provider {
         let verify_context = VerifyContext::new();
 
         // TODO: mmap data
-        let mut prover_inputs =
-            ProverInputs::from_data(&verify_context, (0..1 << 20).map(|i| Fp::from(i)).collect());
+        let mut data: Vec<_> = (0..1 << 20).map(|i| Fp::from(i)).collect();
+        let mut prover_inputs = ProverInputs::from_data(&verify_context, &mut data);
 
         for event in event_queue_receiver.into_iter() {
             let network_serializer =
@@ -376,10 +376,11 @@ pub mod state_provider {
                     Message::UpdateProverInputs(i) => {
                         println!("Updating prover inputs from scratch");
                         let now = std::time::Instant::now();
-                        prover_inputs = ProverInputs::from_data(
-                            &verify_context,
-                            (0..1 << i).map(|i| Fp::from(i)).collect(),
-                        );
+                        // WARNING: Changing the length of data is incredibly unsafe if we don't
+                        // also immediately update prover_inputs!
+                        // This shouldn't happen in production, at least.
+                        data = (0..1 << i).map(|i| Fp::from(i)).collect();
+                        prover_inputs = ProverInputs::from_data(&verify_context, &mut data);
                         let duration = now.elapsed();
                         println!(
                             "Took {:?}s / {:?}ms / {:?}us / {:?}ns",
