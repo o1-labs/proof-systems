@@ -12,7 +12,9 @@ use poly_commitment::{
     utils::DensePolynomialOrEvaluations,
     PolyComm, SRS as _,
 };
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::iter::{
+    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefMutIterator, ParallelIterator,
+};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::process::ExitCode;
@@ -161,17 +163,19 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
             .into_affine();
 
     let final_chunk = (data.len() / SRS_SIZE) - 1;
-    let randomized_data = (0..SRS_SIZE)
-        .into_par_iter()
-        .map(|idx| {
-            let mut acc = data[final_chunk * SRS_SIZE + idx];
-            (0..final_chunk).into_iter().rev().for_each(|chunk| {
-                acc *= challenge;
-                acc += data[chunk * SRS_SIZE + idx];
+    let randomized_data = {
+        let mut initial: Vec<_> = data[final_chunk * SRS_SIZE..(final_chunk + 1) * SRS_SIZE]
+            .iter()
+            .cloned()
+            .collect();
+        (0..final_chunk).into_iter().rev().for_each(|chunk| {
+            initial.par_iter_mut().enumerate().for_each(|(idx, acc)| {
+                *acc *= challenge;
+                *acc += data[chunk * SRS_SIZE + idx];
             });
-            acc
-        })
-        .collect::<Vec<_>>();
+        });
+        initial
+    };
 
     let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
         mina_poseidon::pasta::fq_kimchi::static_params(),
