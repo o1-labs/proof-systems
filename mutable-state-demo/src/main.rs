@@ -20,6 +20,53 @@ use std::process::ExitCode;
 // cargo run --release --bin mutable-state-demo
 // ```
 
+pub struct VerifyContext<'a> {
+    pub srs: &'a SRS<Vesta>,
+    pub group_map: &'a <Vesta as CommitmentCurve>::Map,
+}
+
+pub struct Proof {
+    pub evaluation_point: Fp,
+    pub final_commitment: Vesta,
+    pub randomized_data_eval: Fp,
+    pub opening_proof: OpeningProof<Vesta>,
+}
+
+pub fn verify(context: VerifyContext, proof: &Proof) -> bool {
+    let VerifyContext { srs, group_map } = context;
+    let Proof {
+        evaluation_point,
+        final_commitment,
+        randomized_data_eval,
+        opening_proof,
+    } = proof;
+    let rng = &mut rand::rngs::OsRng;
+    let mut opening_proof_sponge =
+        DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+            mina_poseidon::pasta::fq_kimchi::static_params(),
+        );
+    opening_proof_sponge.absorb_fr(&[*randomized_data_eval]);
+
+    srs.verify(
+        group_map,
+        &mut [BatchEvaluationProof {
+            sponge: opening_proof_sponge.clone(),
+            evaluation_points: vec![*evaluation_point],
+            polyscale: Fp::one(),
+            evalscale: Fp::one(),
+            evaluations: vec![Evaluation {
+                commitment: PolyComm {
+                    chunks: vec![*final_commitment],
+                },
+                evaluations: vec![vec![*randomized_data_eval]],
+            }],
+            opening: opening_proof,
+            combined_inner_product: *randomized_data_eval,
+        }],
+        rng,
+    )
+}
+
 pub fn run_profiling_demo() -> ExitCode {
     const SRS_SIZE: usize = 1 << 16;
 
@@ -293,52 +340,6 @@ pub fn run_profiling_demo() -> ExitCode {
             duration.as_nanos(),
         );
 
-        struct VerifyContext<'a> {
-            srs: &'a SRS<Vesta>,
-            group_map: &'a <Vesta as CommitmentCurve>::Map,
-        }
-
-        struct Proof {
-            evaluation_point: Fp,
-            final_commitment: Vesta,
-            randomized_data_eval: Fp,
-            opening_proof: OpeningProof<Vesta>,
-        }
-
-        let verify = |context: VerifyContext, proof: &Proof| {
-            let VerifyContext { srs, group_map } = context;
-            let Proof {
-                evaluation_point,
-                final_commitment,
-                randomized_data_eval,
-                opening_proof,
-            } = proof;
-            let rng = &mut rand::rngs::OsRng;
-            let mut opening_proof_sponge =
-                DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
-                    mina_poseidon::pasta::fq_kimchi::static_params(),
-                );
-            opening_proof_sponge.absorb_fr(&[*randomized_data_eval]);
-
-            srs.verify(
-                group_map,
-                &mut [BatchEvaluationProof {
-                    sponge: opening_proof_sponge.clone(),
-                    evaluation_points: vec![*evaluation_point],
-                    polyscale: Fp::one(),
-                    evalscale: Fp::one(),
-                    evaluations: vec![Evaluation {
-                        commitment: PolyComm {
-                            chunks: vec![*final_commitment],
-                        },
-                        evaluations: vec![vec![*randomized_data_eval]],
-                    }],
-                    opening: opening_proof,
-                    combined_inner_product: *randomized_data_eval,
-                }],
-                rng,
-            )
-        };
         let proof = Proof {
             evaluation_point,
             final_commitment,
