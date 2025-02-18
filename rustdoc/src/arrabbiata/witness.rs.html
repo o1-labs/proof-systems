@@ -1353,6 +1353,18 @@
 <a href="#1353" id="1353">1353</a>
 <a href="#1354" id="1354">1354</a>
 <a href="#1355" id="1355">1355</a>
+<a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
+<a href="#1358" id="1358">1358</a>
+<a href="#1359" id="1359">1359</a>
+<a href="#1360" id="1360">1360</a>
+<a href="#1361" id="1361">1361</a>
+<a href="#1362" id="1362">1362</a>
+<a href="#1363" id="1363">1363</a>
+<a href="#1364" id="1364">1364</a>
+<a href="#1365" id="1365">1365</a>
+<a href="#1366" id="1366">1366</a>
+<a href="#1367" id="1367">1367</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::CurveConfig;
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
@@ -1442,14 +1454,14 @@
     /// the circuit.
     /// The size of the inner vector must be equal to the number of rows in
     /// the circuit.
-    </span><span class="kw">pub </span>accumulated_witness_e1: Vec&lt;Vec&lt;BigInt&gt;&gt;,
+    </span><span class="kw">pub </span>accumulated_program_state_e1: Vec&lt;Vec&lt;E1::ScalarField&gt;&gt;,
 
     <span class="doccomment">/// Accumulated witness for the program state over E2
     /// The size of the outer vector must be equal to the number of columns in
     /// the circuit.
     /// The size of the inner vector must be equal to the number of rows in
     /// the circuit.
-    </span><span class="kw">pub </span>accumulated_witness_e2: Vec&lt;Vec&lt;BigInt&gt;&gt;,
+    </span><span class="kw">pub </span>accumulated_program_state_e2: Vec&lt;Vec&lt;E2::ScalarField&gt;&gt;,
     <span class="comment">// ----------------
 
     // ----------------
@@ -2259,18 +2271,20 @@
             (<span class="number">0</span>..NUMBER_OF_COLUMNS).for_each(|<span class="kw">_</span>| witness.push(vec.clone()));
         };
 
-        <span class="kw">let </span>accumulated_witness_e1: Vec&lt;Vec&lt;BigInt&gt;&gt; = Vec::with_capacity(NUMBER_OF_COLUMNS);
+        <span class="kw">let </span><span class="kw-2">mut </span>accumulated_program_state_e1: Vec&lt;Vec&lt;E1::ScalarField&gt;&gt; =
+            Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
-            <span class="kw">let </span><span class="kw-2">mut </span>vec: Vec&lt;BigInt&gt; = Vec::with_capacity(srs_size);
-            (<span class="number">0</span>..srs_size).for_each(|<span class="kw">_</span>| vec.push(BigInt::from(<span class="number">0_usize</span>)));
-            (<span class="number">0</span>..NUMBER_OF_COLUMNS).for_each(|<span class="kw">_</span>| witness.push(vec.clone()));
+            <span class="kw">let </span><span class="kw-2">mut </span>vec: Vec&lt;E1::ScalarField&gt; = Vec::with_capacity(srs_size);
+            (<span class="number">0</span>..srs_size).for_each(|<span class="kw">_</span>| vec.push(E1::ScalarField::zero()));
+            (<span class="number">0</span>..NUMBER_OF_COLUMNS).for_each(|<span class="kw">_</span>| accumulated_program_state_e1.push(vec.clone()));
         };
 
-        <span class="kw">let </span>accumulated_witness_e2: Vec&lt;Vec&lt;BigInt&gt;&gt; = Vec::with_capacity(NUMBER_OF_COLUMNS);
+        <span class="kw">let </span><span class="kw-2">mut </span>accumulated_program_state_e2: Vec&lt;Vec&lt;E2::ScalarField&gt;&gt; =
+            Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
-            <span class="kw">let </span><span class="kw-2">mut </span>vec: Vec&lt;BigInt&gt; = Vec::with_capacity(srs_size);
-            (<span class="number">0</span>..srs_size).for_each(|<span class="kw">_</span>| vec.push(BigInt::from(<span class="number">0_usize</span>)));
-            (<span class="number">0</span>..NUMBER_OF_COLUMNS).for_each(|<span class="kw">_</span>| witness.push(vec.clone()));
+            <span class="kw">let </span><span class="kw-2">mut </span>vec: Vec&lt;E2::ScalarField&gt; = Vec::with_capacity(srs_size);
+            (<span class="number">0</span>..srs_size).for_each(|<span class="kw">_</span>| vec.push(E2::ScalarField::zero()));
+            (<span class="number">0</span>..NUMBER_OF_COLUMNS).for_each(|<span class="kw">_</span>| accumulated_program_state_e2.push(vec.clone()));
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>selectors: Vec&lt;Vec&lt;bool&gt;&gt; = Vec::with_capacity(NUMBER_OF_SELECTORS);
@@ -2320,8 +2334,8 @@
             accumulated_committed_state_e2,
             previous_committed_state_e1,
             previous_committed_state_e2,
-            accumulated_witness_e1,
-            accumulated_witness_e2,
+            accumulated_program_state_e1,
+            accumulated_program_state_e2,
             <span class="comment">// ------
             // ------
             </span>idx_var: <span class="number">0</span>,
@@ -2679,29 +2693,39 @@
         <span class="kw">let </span>chal = <span class="self">self</span>.challenges[ChallengeTerm::RelationRandomiser].clone();
         <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
             <span class="kw">let </span>modulus: BigInt = E1::ScalarField::modulus_biguint().into();
-            <span class="self">self</span>.accumulated_witness_e1 = <span class="self">self
-                </span>.accumulated_witness_e1
+            <span class="self">self</span>.accumulated_program_state_e1 = <span class="self">self
+                </span>.accumulated_program_state_e1
                 .iter()
                 .zip(<span class="self">self</span>.witness.iter()) <span class="comment">// This iterate over the columns
                 </span>.map(|(evals_accumulator, evals_witness)| {
                     evals_accumulator
                         .iter()
                         .zip(evals_witness.iter()) <span class="comment">// This iterate over the rows
-                        </span>.map(|(acc, w)| (acc + chal.clone() * w).mod_floor(<span class="kw-2">&amp;</span>modulus))
+                        </span>.map(|(acc, w)| {
+                            <span class="kw">let </span>rhs: BigInt = (chal.clone() * w).mod_floor(<span class="kw-2">&amp;</span>modulus);
+                            <span class="kw">let </span>rhs: BigUint = rhs.to_biguint().unwrap();
+                            <span class="kw">let </span>res = E1::ScalarField::from_biguint(<span class="kw-2">&amp;</span>rhs).unwrap();
+                            <span class="kw-2">*</span>acc + res
+                        })
                         .collect()
                 })
                 .collect();
         } <span class="kw">else </span>{
             <span class="kw">let </span>modulus: BigInt = E2::ScalarField::modulus_biguint().into();
-            <span class="self">self</span>.accumulated_witness_e2 = <span class="self">self
-                </span>.accumulated_witness_e2
+            <span class="self">self</span>.accumulated_program_state_e2 = <span class="self">self
+                </span>.accumulated_program_state_e2
                 .iter()
                 .zip(<span class="self">self</span>.witness.iter()) <span class="comment">// This iterate over the columns
                 </span>.map(|(evals_accumulator, evals_witness)| {
                     evals_accumulator
                         .iter()
                         .zip(evals_witness.iter()) <span class="comment">// This iterate over the rows
-                        </span>.map(|(acc, w)| (acc + chal.clone() * w).mod_floor(<span class="kw-2">&amp;</span>modulus))
+                        </span>.map(|(acc, w)| {
+                            <span class="kw">let </span>rhs: BigInt = (chal.clone() * w).mod_floor(<span class="kw-2">&amp;</span>modulus);
+                            <span class="kw">let </span>rhs: BigUint = rhs.to_biguint().unwrap();
+                            <span class="kw">let </span>res = E2::ScalarField::from_biguint(<span class="kw-2">&amp;</span>rhs).unwrap();
+                            <span class="kw-2">*</span>acc + res
+                        })
                         .collect()
                 })
                 .collect();
