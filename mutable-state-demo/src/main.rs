@@ -378,19 +378,53 @@ pub mod state_provider {
         pub struct Args {}
     }
 
-    use std::io::Write;
-    use std::net::TcpStream;
+    use std::io::{Read, Write};
+    use std::net::{TcpListener, TcpStream};
     use std::process::ExitCode;
     use std::sync::mpsc;
+    use std::thread;
 
     enum Event {
         SendNumber(u8),
+        HandleStreamMessage(String),
+        Failure,
     }
 
     pub fn main(_arg: cli::Args) -> ExitCode {
         println!("I'm a state provider!");
 
         let (event_queue_sender, event_queue_receiver) = mpsc::channel();
+
+        let address = "127.0.0.1:3089";
+
+        let event_queue_stream_sender = event_queue_sender.clone();
+
+        thread::spawn(move || {
+            let listener = match TcpListener::bind(address) {
+                Ok(listener) => listener,
+                Err(e) => {
+                    println!("Could not bind to address {}: {}", address, e);
+                    event_queue_stream_sender.send(Event::Failure).unwrap();
+                    return;
+                }
+            };
+            for stream in listener.incoming() {
+                let mut stream = match stream {
+                    Ok(stream) => stream,
+                    Err(e) => {
+                        println!("Stream error: {}", e);
+                        event_queue_stream_sender.send(Event::Failure).unwrap();
+                        return;
+                    }
+                };
+                let mut res = [0; 128];
+                let len = stream.read(&mut res).unwrap();
+                let res_string = String::from_utf8(res[0..len].to_vec()).unwrap();
+                event_queue_stream_sender
+                    .send(Event::HandleStreamMessage(res_string))
+                    .unwrap();
+            }
+        });
 
         let network_address = "127.0.0.1:3088";
 
@@ -418,6 +452,26 @@ pub mod state_provider {
                         }
                     }
                 }
+                Event::HandleStreamMessage(data) => {
+                    let mut stream = match TcpStream::connect(network_address) {
+                        Ok(listener) => listener,
+                        Err(e) => {
+                            println!("Could not connect to network at {}: {}", network_address, e);
+                            return ExitCode::FAILURE;
+                        }
+                    };
+                    println!("forwarding data {}", data);
+                    match stream.write(data.as_ref()) {
+                        Ok(_bytes_written) => (),
+                        Err(e) => {
+                            println!("Could not forward data ({}) to network: {}", data, e);
+                            return ExitCode::FAILURE;
+                        }
+                    }
+                }
+                Event::Failure => {
+                    return ExitCode::FAILURE;
+                }
             }
         }
 
@@ -441,12 +495,35 @@ pub mod client {
         println!("I'm a client!");
 
         let network_address = "127.0.0.1:3088";
+        let storage_provider_address = "127.0.0.1:3089";
 
         for i in 0..10 {
             let mut stream = match TcpStream::connect(network_address) {
                 Ok(listener) => listener,
                 Err(e) => {
                     println!("Could not connect to network at {}: {}", network_address, e);
+                    return ExitCode::FAILURE;
+                }
+            };
+            let data = format!("client {}", i);
+            println!("sending data {}", data);
+            match stream.write(data.as_ref()) {
+                Ok(_bytes_written) => (),
+                Err(e) => {
+                    println!("Could not send data ({}) to network: {}", data, e);
+                    return ExitCode::FAILURE;
+                }
+            }
+        }
+
+        for i in 0..30 {
+            let mut stream = match TcpStream::connect(storage_provider_address) {
+                Ok(listener) => listener,
+                Err(e) => {
+                    println!(
+                        "Could not connect to network at {}: {}",
+                        storage_provider_address, e
+                    );
                     return ExitCode::FAILURE;
                 }
             };
