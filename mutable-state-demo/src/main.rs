@@ -20,9 +20,9 @@ use std::process::ExitCode;
 // cargo run --release --bin mutable-state-demo
 // ```
 
-pub struct VerifyContext<'a> {
-    pub srs: &'a SRS<Vesta>,
-    pub group_map: &'a <Vesta as CommitmentCurve>::Map,
+pub struct VerifyContext {
+    pub srs: SRS<Vesta>,
+    pub group_map: <Vesta as CommitmentCurve>::Map,
 }
 
 pub struct Proof {
@@ -32,7 +32,7 @@ pub struct Proof {
     pub opening_proof: OpeningProof<Vesta>,
 }
 
-pub fn verify(context: VerifyContext, proof: &Proof) -> bool {
+pub fn verify(context: &VerifyContext, proof: &Proof) -> bool {
     let VerifyContext { srs, group_map } = context;
     let Proof {
         evaluation_point,
@@ -111,6 +111,10 @@ pub fn run_profiling_demo() -> ExitCode {
         duration.as_micros(),
         duration.as_nanos(),
     );
+
+    let verify_context = VerifyContext { srs, group_map };
+
+    let VerifyContext { srs, group_map } = &verify_context;
 
     const DATA_SIZE: usize = 1 << 25;
 
@@ -350,13 +354,7 @@ pub fn run_profiling_demo() -> ExitCode {
         println!("- Verifier protocol iteration {i}");
         println!("  - Verify opening proof");
         let now = std::time::Instant::now();
-        let opening_proof_verifies = verify(
-            VerifyContext {
-                srs: &srs,
-                group_map: &group_map,
-            },
-            &proof,
-        );
+        let opening_proof_verifies = verify(&verify_context, &proof);
         let duration = now.elapsed();
         println!("    - Verifies: {}", opening_proof_verifies);
         println!(
