@@ -305,7 +305,7 @@ pub fn run_profiling_demo() -> ExitCode {
             opening_proof: OpeningProof<Vesta>,
         }
 
-        let verify = |context: VerifyContext, proof: Proof| {
+        let verify = |context: VerifyContext, proof: &Proof| {
             let VerifyContext { srs, group_map } = context;
             let Proof {
                 evaluation_point,
@@ -318,23 +318,23 @@ pub fn run_profiling_demo() -> ExitCode {
                 DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
                     mina_poseidon::pasta::fq_kimchi::static_params(),
                 );
-            opening_proof_sponge.absorb_fr(&[randomized_data_eval]);
+            opening_proof_sponge.absorb_fr(&[*randomized_data_eval]);
 
             srs.verify(
                 group_map,
                 &mut [BatchEvaluationProof {
                     sponge: opening_proof_sponge.clone(),
-                    evaluation_points: vec![evaluation_point],
+                    evaluation_points: vec![*evaluation_point],
                     polyscale: Fp::one(),
                     evalscale: Fp::one(),
                     evaluations: vec![Evaluation {
                         commitment: PolyComm {
-                            chunks: vec![final_commitment],
+                            chunks: vec![*final_commitment],
                         },
-                        evaluations: vec![vec![randomized_data_eval]],
+                        evaluations: vec![vec![*randomized_data_eval]],
                     }],
-                    opening: &opening_proof,
-                    combined_inner_product: randomized_data_eval,
+                    opening: opening_proof,
+                    combined_inner_product: *randomized_data_eval,
                 }],
                 rng,
             )
@@ -354,7 +354,7 @@ pub fn run_profiling_demo() -> ExitCode {
                 srs: &srs,
                 group_map: &group_map,
             },
-            proof,
+            &proof,
         );
         let duration = now.elapsed();
         println!("    - Verifies: {}", opening_proof_verifies);
