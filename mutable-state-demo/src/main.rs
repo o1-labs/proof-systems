@@ -293,7 +293,12 @@ pub fn run_profiling_demo() -> ExitCode {
             duration.as_nanos(),
         );
 
-        let mut verify = || {
+        struct VerifyContext<'a> {
+            srs: &'a SRS<Vesta>,
+        }
+
+        let mut verify = |args: VerifyContext| {
+            let VerifyContext { srs } = args;
             println!("- Verifier protocol iteration {i}");
             println!("  - Verify opening proof");
             let now = std::time::Instant::now();
@@ -325,7 +330,7 @@ pub fn run_profiling_demo() -> ExitCode {
                 duration.as_nanos(),
             );
         };
-        verify();
+        verify(VerifyContext { srs: &srs });
     }
 
     ExitCode::SUCCESS
