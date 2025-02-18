@@ -253,7 +253,7 @@ pub fn rpc<'a, A: std::net::ToSocketAddrs, T: serde::Serialize, U: serde::Deseri
     response
 }
 
-pub fn unit_rpc<'a, A: std::net::ToSocketAddrs, T: serde::Serialize>(address: A, msg: T) {
+pub fn rpc_unit<'a, A: std::net::ToSocketAddrs, T: serde::Serialize>(address: A, msg: T) {
     rpc::<'a, A, T, ()>(address, msg)
 }
 
@@ -522,6 +522,14 @@ pub mod client {
         #[derive(Parser, Debug, Clone)]
         pub struct Args {
             #[arg(
+                short = 'a',
+                long,
+                value_name = "ADDRESS",
+                help = "Address to bind to",
+                default_value = "127.0.0.1:3090"
+            )]
+            pub address: String,
+            #[arg(
                 short = 's',
                 long,
                 value_name = "ADDRESS",
@@ -543,7 +551,18 @@ pub mod client {
     use super::{
         network::Message as NetworkMessage, state_provider::Message as StateProviderMessage,
     };
+    use serde::{Deserialize, Serialize};
+    use std::net::TcpListener;
     use std::process::ExitCode;
+
+    #[derive(Serialize, Deserialize)]
+    pub enum Message {
+        NetworkStringMessage(String),
+        StateProviderStringMessage(String),
+        StateRetentionProof,
+        UpdateProverInputs,
+        Quit,
+    }
 
     pub fn main(arg: cli::Args) -> ExitCode {
         println!("I'm a client!");
@@ -551,52 +570,44 @@ pub mod client {
         let cli::Args {
             state_provider_address,
             network_address,
+            address,
         } = arg;
 
-        for i in 0..2 {
-            let data = format!("client {}", i);
-            println!("sending data {}", data);
-            super::rpc(network_address.clone(), NetworkMessage::StringMessage(data))
+        let listener = TcpListener::bind(address).unwrap();
+        for stream in listener.incoming() {
+            let (stream, message) = super::stream_read(stream.unwrap());
+            match message {
+                Message::NetworkStringMessage(s) => {
+                    super::stream_write(stream, ());
+                    super::rpc_unit(network_address.clone(), NetworkMessage::StringMessage(s));
+                }
+                Message::StateProviderStringMessage(s) => {
+                    super::stream_write(stream, ());
+                    super::rpc_unit(
+                        state_provider_address.clone(),
+                        StateProviderMessage::StringMessage(s),
+                    );
+                }
+                Message::StateRetentionProof => {
+                    super::rpc_unit(
+                        state_provider_address.clone(),
+                        StateProviderMessage::StateRetentionProof,
+                    );
+                    super::stream_write(stream, ());
+                }
+                Message::UpdateProverInputs => {
+                    super::rpc_unit(
+                        state_provider_address.clone(),
+                        StateProviderMessage::UpdateProverInputs,
+                    );
+                    super::stream_write(stream, ());
+                }
+                Message::Quit => {
+                    super::stream_write(stream, ());
+                    break;
+                }
+            };
         }
-
-        for i in 0..3 {
-            let data = format!("client {}", i);
-            println!("sending data {}", data);
-            super::rpc(
-                state_provider_address.clone(),
-                NetworkMessage::StringMessage(data),
-            )
-        }
-
-        println!("Requesting state proof");
-        super::unit_rpc(
-            state_provider_address.clone(),
-            StateProviderMessage::StateRetentionProof,
-        );
-
-        println!("Requesting state proof");
-        super::unit_rpc(
-            state_provider_address.clone(),
-            StateProviderMessage::StateRetentionProof,
-        );
-
-        println!("Requesting prover input update");
-        super::unit_rpc(
-            state_provider_address.clone(),
-            StateProviderMessage::UpdateProverInputs,
-        );
-
-        println!("Requesting state proof");
-        super::unit_rpc(
-            state_provider_address.clone(),
-            StateProviderMessage::StateRetentionProof,
-        );
-
-        println!("Requesting state proof");
-        super::unit_rpc(
-            state_provider_address.clone(),
-            StateProviderMessage::StateRetentionProof,
-        );
 
         ExitCode::SUCCESS
     }
@@ -607,20 +618,78 @@ pub mod request {
         use clap::{Parser, Subcommand};
 
         #[derive(Parser, Debug, Clone)]
-        pub struct DemoArgs {}
+        pub struct Args {
+            #[arg(
+                short = 'c',
+                long,
+                value_name = "ADDRESS",
+                help = "Client address to connect to",
+                default_value = "127.0.0.1:3090"
+            )]
+            pub client_address: String,
+        }
 
         #[derive(Subcommand, Clone, Debug)]
         pub enum Command {
-            #[command(name = "demo")]
-            Demo(DemoArgs),
+            #[command(name = "network-messages")]
+            NetworkStringMessages(Args),
+            #[command(name = "state-provider-message")]
+            StateProviderStringMessage(Args),
+            #[command(name = "state-retention-proof")]
+            StateRetentionProof(Args),
+            #[command(name = "update-inputs")]
+            UpdateProverInputs(Args),
+            #[command(name = "quit")]
+            Quit(Args),
         }
     }
 
+    use super::client::Message as ClientMessage;
+    use std::io::Read;
     use std::process::ExitCode;
 
     pub fn main(sub_command: cli::Command) -> ExitCode {
         match sub_command {
-            cli::Command::Demo(_args) => todo!("Deleted, add some proper commands here"),
+            cli::Command::NetworkStringMessages(args) => {
+                let cli::Args { client_address } = args;
+                loop {
+                    let mut input = String::new();
+                    match std::io::stdin().read_line(&mut input) {
+                        Ok(_) => super::rpc_unit(
+                            client_address.clone(),
+                            ClientMessage::NetworkStringMessage(input),
+                        ),
+                        Err(_) => break,
+                    }
+                }
+                ExitCode::SUCCESS
+            }
+            cli::Command::StateProviderStringMessage(args) => {
+                let cli::Args { client_address } = args;
+                let mut input = String::new();
+                if let Ok(_) = std::io::stdin().read_to_string(&mut input) {
+                    super::rpc_unit(
+                        client_address,
+                        ClientMessage::StateProviderStringMessage(input),
+                    );
+                }
+                ExitCode::SUCCESS
+            }
+            cli::Command::StateRetentionProof(args) => {
+                let cli::Args { client_address } = args;
+                super::rpc_unit(client_address, ClientMessage::StateRetentionProof);
+                ExitCode::SUCCESS
+            }
+            cli::Command::UpdateProverInputs(args) => {
+                let cli::Args { client_address } = args;
+                super::rpc_unit(client_address, ClientMessage::UpdateProverInputs);
+                ExitCode::SUCCESS
+            }
+            cli::Command::Quit(args) => {
+                let cli::Args { client_address } = args;
+                super::rpc_unit(client_address, ClientMessage::Quit);
+                ExitCode::SUCCESS
+            }
         }
     }
 }
