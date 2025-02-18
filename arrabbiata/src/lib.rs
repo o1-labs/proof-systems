@@ -13,6 +13,7 @@ pub mod poseidon_3_60_0_5_5_fp;
 pub mod poseidon_3_60_0_5_5_fq;
 pub mod proof;
 pub mod prover;
+pub mod setup;
 pub mod verifier;
 pub mod witness;
 
