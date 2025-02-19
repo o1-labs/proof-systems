@@ -28,6 +28,7 @@ rand = { version = "0.8.0", features = ["std_rng"] }
 rand_core = "0.6.3"
 rayon = "1.5.0"
 rmp-serde.workspace = true
+serde_json.workspace = true
 serde.workspace = true
 serde_with.workspace = true
 thiserror = "1.0.30"

@@ -361,13 +361,23 @@ pub mod state_provider {
     }
 
     use super::{network::Message as NetworkMessage, prove, ProverInputs, VerifyContext, SRS_SIZE};
-    use mina_curves::pasta::Fp;
+    use mina_curves::pasta::{Fp, Vesta};
     use serde::{Deserialize, Serialize};
+    use serde_with::serde_as;
     use std::fs::{File, OpenOptions};
     use std::net::{TcpListener, TcpStream};
     use std::process::ExitCode;
     use std::sync::mpsc;
     use std::thread;
+
+    #[serde_as]
+    #[derive(Serialize, Deserialize)]
+    pub struct ReadQuery {
+        pub region: u64,
+        pub addresses: Vec<u64>,
+        #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+        pub commitment: Vesta,
+    }
 
     #[derive(Serialize, Deserialize)]
     pub enum Message {
@@ -551,9 +561,24 @@ pub mod client {
     use super::{
         network::Message as NetworkMessage, state_provider::Message as StateProviderMessage,
     };
+    use mina_curves::pasta::Fp;
     use serde::{Deserialize, Serialize};
+    use serde_with::serde_as;
     use std::net::TcpListener;
     use std::process::ExitCode;
+
+    #[derive(Serialize, Deserialize)]
+    pub struct ReadQuery {
+        pub region: u64,
+        pub addresses: Vec<u64>,
+    }
+
+    #[serde_as]
+    #[derive(Serialize, Deserialize)]
+    pub struct ReadResponse {
+        #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+        pub values: Vec<Fp>,
+    }
 
     #[derive(Serialize, Deserialize)]
     pub enum Message {
@@ -561,6 +586,7 @@ pub mod client {
         StateProviderStringMessage(String),
         StateRetentionProof,
         UpdateProverInputs,
+        Read(ReadQuery),
         Quit,
     }
 
@@ -602,6 +628,17 @@ pub mod client {
                     );
                     super::stream_write(stream, ());
                 }
+                Message::Read(ReadQuery {
+                    region: _,
+                    addresses,
+                }) => {
+                    super::stream_write(
+                        stream,
+                        ReadResponse {
+                            values: addresses.into_iter().map(Fp::from).collect(),
+                        },
+                    );
+                }
                 Message::Quit => {
                     super::stream_write(stream, ());
                     break;
@@ -639,12 +676,15 @@ pub mod request {
             StateRetentionProof(Args),
             #[command(name = "update-inputs")]
             UpdateProverInputs(Args),
+            #[command(name = "read")]
+            Read(Args),
             #[command(name = "quit")]
             Quit(Args),
         }
     }
 
-    use super::client::Message as ClientMessage;
+    use super::client::{Message as ClientMessage, ReadQuery, ReadResponse};
+    use serde::{Deserialize, Serialize};
     use std::io::Read;
     use std::process::ExitCode;
 
@@ -683,6 +723,20 @@ pub mod request {
             cli::Command::UpdateProverInputs(args) => {
                 let cli::Args { client_address } = args;
                 super::rpc_unit(client_address, ClientMessage::UpdateProverInputs);
+                ExitCode::SUCCESS
+            }
+            cli::Command::Read(args) => {
+                let cli::Args { client_address } = args;
+                let query = {
+                    let reader = serde_json::de::IoRead::new(std::io::stdin());
+                    let mut deserializer = serde_json::Deserializer::new(reader);
+                    ReadQuery::deserialize(&mut deserializer).unwrap()
+                };
+                let response: ReadResponse = super::rpc(client_address, ClientMessage::Read(query));
+                {
+                    let mut serializer = serde_json::Serializer::new(std::io::stdout());
+                    response.serialize(&mut serializer).unwrap();
+                }
                 ExitCode::SUCCESS
             }
             cli::Command::Quit(args) => {
