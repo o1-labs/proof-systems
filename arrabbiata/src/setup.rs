@@ -1,3 +1,28 @@
+//! This module defines methods and structures for setting up the circuit, or in
+//! a more theoretical language, the "NP relation" that the circuit will be
+//! related to.
+//! Note that when mentioning "circuit" in this context, we are referring to
+//! a specific user application in addition to the circuit used to encode the
+//! verifier.
+//!
+//! The setup phase defines the constraints that the computation/the app must
+//! satisfy, the evaluation domains, and the SRS for the polynomial commitment
+//! scheme. Generally, the setup phase is an agreement between the prover and
+//! the verifier on the language and the protocol parameters (cryptographic
+//! primitives, security level, etc). The setup phase will also contain some
+//! pre-computed values to ease both the prover's and the verifier's work.
+//!
+//! As part of the setup phase, the parties will also agree on a set of
+//! predefined values that will shape the selectors and the computation.
+//!
+//! A prover will be providing a proof of a particular [IndexedRelation] created
+//! during the setup phase, by encapsulating a value of this type in its
+//! [crate::witness::Env] structure. The prover will then refer to the values
+//! saved in the type [IndexedRelation].
+//!
+//! On the other side, a verifier will be instantiated with the relevant indexed
+//! relation.
+//!
 use ark_ff::PrimeField;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::{debug, info};
@@ -17,6 +42,13 @@ use crate::{
     NUMBER_OF_PUBLIC_INPUTS,
 };
 
+/// An indexed relation is a structure that contains all the information needed
+/// describing a specialised sub-class of the NP relation. It includes some
+/// (protocol) parameters like the SRS, the evaluation domains, and the
+/// constraints describing the computation.
+///
+/// The prover will be instantiated for a particular indexed relation, and the
+/// verifier will be instantiated with (relatively) the same indexed relation.
 pub struct IndexedRelation<
     Fp: PrimeField,
     Fq: PrimeField,
