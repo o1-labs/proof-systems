@@ -82,6 +82,41 @@ pub struct Env<
     /// The size of the inner vector must be equal to the number of rows in
     /// the circuit.
     pub accumulated_program_state_e2: Vec<Vec<E2::ScalarField>>,
+
+    /// Accumulation of the public inputs over `E1`.
+    /// It is included in the "instance" part of the accumulation scheme.
+    /// In the usual notation R(x, w), this field will represent the x part.
+    ///
+    /// (FIXME)
+    /// The public inputs are considered as (sparse) polynomials. It can
+    /// be seen as a list of a certain number of values that each row can refer
+    /// to, and known by the verifier. At the moment, [NUMBER_OF_PUBLIC_INPUTS]
+    /// is considered as the maximum number of public inputs that can be used in
+    /// each row of the circuit. The design is subject to change.
+    ///
+    /// For instance, some of these values are simply "fixed public values",
+    /// like the round constants for the Poseidon hash, as they are predefined
+    /// by the relation itself. We should consider them as "selectors", defined
+    /// at setup time, and fixed for any inputs of the relation. It will lower
+    /// the work of the accumulation scheme.
+    /// It will come soon as the setup "phase" is being implemented. Some of
+    /// these values will be moved into the field `indexed_relation`.
+    ///
+    /// The size of the outer vector must be equal to the number of columns in
+    /// the circuit.
+    /// The size of the inner vector must be equal to the number of rows in
+    /// the circuit.
+    pub accumulated_public_inputs_e1: Vec<Vec<E1::ScalarField>>,
+
+    /// Accumulation of the public inputs over `E2`.
+    /// Same than [`accumulated_public_inputs_e1`], but over `E2`.
+    pub accumulated_public_inputs_e2: Vec<Vec<E2::ScalarField>>,
+
+    /// Commitments to the accumulated public inputs over E1.
+    pub accumulated_committed_public_inputs_e1: Vec<PolyComm<E1>>,
+
+    /// Commitments to the accumulated public inputs over E2.
+    pub accumulated_committed_public_inputs_e2: Vec<PolyComm<E2>>,
     // ----------------
 
     // ----------------
@@ -884,6 +919,35 @@ where
             .map(|_| PolyComm::new(vec![blinder_e2]))
             .collect();
 
+        // FIXME: they must probably be initialized to some values when creating
+        // the environment.
+        let accumulated_public_inputs_e1: Vec<Vec<E1::ScalarField>> = (0..NUMBER_OF_PUBLIC_INPUTS)
+            .map(|_| {
+                let mut vec: Vec<E1::ScalarField> = Vec::with_capacity(srs_size);
+                (0..srs_size).for_each(|_| vec.push(E1::ScalarField::zero()));
+                vec
+            })
+            .collect();
+
+        let accumulated_public_inputs_e2: Vec<Vec<E2::ScalarField>> = (0..NUMBER_OF_PUBLIC_INPUTS)
+            .map(|_| {
+                let mut vec: Vec<E2::ScalarField> = Vec::with_capacity(srs_size);
+                (0..srs_size).for_each(|_| vec.push(E2::ScalarField::zero()));
+                vec
+            })
+            .collect();
+
+        // FIXME: using blinder for now
+        let accumulated_committed_public_inputs_e1: Vec<PolyComm<E1>> = (0
+            ..NUMBER_OF_PUBLIC_INPUTS)
+            .map(|_| PolyComm::new(vec![blinder_e1]))
+            .collect();
+
+        let accumulated_committed_public_inputs_e2: Vec<PolyComm<E2>> = (0
+            ..NUMBER_OF_PUBLIC_INPUTS)
+            .map(|_| PolyComm::new(vec![blinder_e2]))
+            .collect();
+
         // FIXME: challenges
         let challenges: Challenges<BigInt> = Challenges::default();
         let accumulated_challenges_e1: Challenges<BigInt> = Challenges::default();
@@ -901,16 +965,23 @@ where
             // Setup
             indexed_relation,
             // -------
-            // -------
-            // verifier only
+            // Accumulation scheme related values
             accumulated_committed_state_e1,
             accumulated_committed_state_e2,
+
             previous_committed_state_e1,
             previous_committed_state_e2,
+
             accumulated_program_state_e1,
             accumulated_program_state_e2,
+
+            accumulated_public_inputs_e1,
+            accumulated_public_inputs_e2,
+
+            accumulated_committed_public_inputs_e1,
+            accumulated_committed_public_inputs_e2,
             // ------
-            // ------
+            // Witness builder related fields
             idx_var: 0,
             idx_var_next_row: 0,
             idx_var_pi: 0,
