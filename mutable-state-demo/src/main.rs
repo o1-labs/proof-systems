@@ -361,7 +361,11 @@ pub mod state_provider {
     }
 
     use super::{network::Message as NetworkMessage, prove, ProverInputs, VerifyContext, SRS_SIZE};
-    use mina_curves::pasta::{Fp, Vesta};
+    use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
+    use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
+    use mina_curves::pasta::{Fp, ProjectiveVesta, Vesta};
+    use poly_commitment::SRS;
+    use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
     use serde::{Deserialize, Serialize};
     use serde_with::serde_as;
     use std::fs::{File, OpenOptions};
@@ -379,11 +383,21 @@ pub mod state_provider {
         pub commitment: Vesta,
     }
 
+    #[serde_as]
+    #[derive(Serialize, Deserialize)]
+    pub struct ReadResponse {
+        #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+        pub values: Vec<Fp>,
+        #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+        pub commitment: Vesta,
+    }
+
     #[derive(Serialize, Deserialize)]
     pub enum Message {
         StringMessage(String),
         StateRetentionProof,
         UpdateProverInputs,
+        Read(ReadQuery),
     }
 
     enum Event {
@@ -426,6 +440,14 @@ pub mod state_provider {
         println!("Setting up initial prover inputs");
 
         let verify_context = VerifyContext::new();
+        let VerifyContext { srs, group_map: _ } = &verify_context;
+        let domain = Radix2EvaluationDomain::new(SRS_SIZE).unwrap();
+        let basis = srs
+            .get_lagrange_basis(domain)
+            .iter()
+            .map(|x| x.chunks[0])
+            .collect::<Vec<_>>();
+        let basis = basis.as_slice();
 
         let mut data_source = match mmap_file {
             None => DataSource::Data((0..1 << 20).map(|i| Fp::from(i)).collect()),
@@ -482,44 +504,84 @@ pub mod state_provider {
 
                     super::rpc(network_address.clone(), NetworkMessage::StringMessage(data))
                 }
-                Event::HandleStreamMessage(stream, message) => {
-                    match message {
-                        Message::StringMessage(data) => {
-                            println!("forwarding data {}", data);
-                            super::rpc_unit(network_address.clone(), NetworkMessage::StringMessage(data));
-                            super::stream_write(stream, ());
-                        }
-                        Message::StateRetentionProof => {
-                            println!("Creating storage proof");
-                            let now = std::time::Instant::now();
-                            let proof = prove(&verify_context, &prover_inputs);
-                            let duration = now.elapsed();
-                            println!(
-                                "Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-                                duration.as_secs(),
-                                duration.as_millis(),
-                                duration.as_micros(),
-                                duration.as_nanos(),
-                            );
-                            super::rpc_unit(network_address.clone(), NetworkMessage::VerifyProof(proof));
-                            super::stream_write(stream, ());
-                        }
-                        Message::UpdateProverInputs => {
-                            println!("Updating prover inputs from scratch");
-                            let now = std::time::Instant::now();
-                            prover_inputs = ProverInputs::from_data(&verify_context, data);
-                            let duration = now.elapsed();
-                            println!(
-                                "Took {:?}s / {:?}ms / {:?}us / {:?}ns",
-                                duration.as_secs(),
-                                duration.as_millis(),
-                                duration.as_micros(),
-                                duration.as_nanos(),
-                            );
-                            super::stream_write(stream, ());
-                        }
+                Event::HandleStreamMessage(stream, message) => match message {
+                    Message::StringMessage(data) => {
+                        println!("forwarding data {}", data);
+                        super::rpc_unit(
+                            network_address.clone(),
+                            NetworkMessage::StringMessage(data),
+                        );
+                        super::stream_write(stream, ());
                     }
-                }
+                    Message::StateRetentionProof => {
+                        println!("Creating storage proof");
+                        let now = std::time::Instant::now();
+                        let proof = prove(&verify_context, &prover_inputs);
+                        let duration = now.elapsed();
+                        println!(
+                            "Took {:?}s / {:?}ms / {:?}us / {:?}ns",
+                            duration.as_secs(),
+                            duration.as_millis(),
+                            duration.as_micros(),
+                            duration.as_nanos(),
+                        );
+                        super::rpc_unit(
+                            network_address.clone(),
+                            NetworkMessage::VerifyProof(proof),
+                        );
+                        super::stream_write(stream, ());
+                    }
+                    Message::UpdateProverInputs => {
+                        println!("Updating prover inputs from scratch");
+                        let now = std::time::Instant::now();
+                        prover_inputs = ProverInputs::from_data(&verify_context, data);
+                        let duration = now.elapsed();
+                        println!(
+                            "Took {:?}s / {:?}ms / {:?}us / {:?}ns",
+                            duration.as_secs(),
+                            duration.as_millis(),
+                            duration.as_micros(),
+                            duration.as_nanos(),
+                        );
+                        super::stream_write(stream, ());
+                    }
+                    Message::Read(ReadQuery {
+                        region,
+                        addresses,
+                        commitment,
+                    }) => {
+                        let address_basis: Vec<_> = addresses
+                            .par_iter()
+                            .map(|idx| basis[*idx as usize])
+                            .collect();
+                        let computed_commitment = {
+                            address_basis
+                                .par_iter()
+                                .map(|x| x.into_group())
+                                .reduce(|| Vesta::zero().into_group(), |x, y| x + y)
+                                + srs.h
+                        }
+                        .into_affine();
+                        let response = if commitment != computed_commitment {
+                            Err(())
+                        } else {
+                            let values: Vec<_> = addresses
+                                .into_iter()
+                                .map(|idx| {
+                                    prover_inputs.data[region as usize * SRS_SIZE + idx as usize]
+                                })
+                                .collect();
+                            let commitment = {
+                                ProjectiveVesta::msm(address_basis.as_slice(), values.as_slice())
+                                    .unwrap()
+                                    + srs.h
+                            }
+                            .into_affine();
+                            Ok(ReadResponse { values, commitment })
+                        };
+                        super::stream_write(stream, response);
+                    }
+                },
             }
         }
 
@@ -561,9 +623,18 @@ pub mod client {
     }
 
     use super::{
-        network::Message as NetworkMessage, state_provider::Message as StateProviderMessage,
+        network::Message as NetworkMessage,
+        state_provider::{
+            Message as StateProviderMessage, ReadQuery as StateProviderReadQuery,
+            ReadResponse as StateProviderReadResponse,
+        },
+        VerifyContext, SRS_SIZE,
     };
-    use mina_curves::pasta::Fp;
+    use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
+    use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
+    use mina_curves::pasta::{Fp, ProjectiveVesta, Vesta};
+    use poly_commitment::SRS;
+    use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
     use serde::{Deserialize, Serialize};
     use serde_with::serde_as;
     use std::net::TcpListener;
@@ -601,6 +672,15 @@ pub mod client {
             address,
         } = arg;
 
+        let VerifyContext { srs, group_map: _ } = VerifyContext::new();
+        let domain = Radix2EvaluationDomain::new(SRS_SIZE).unwrap();
+        let basis = srs
+            .get_lagrange_basis(domain)
+            .iter()
+            .map(|x| x.chunks[0])
+            .collect::<Vec<_>>();
+        let basis = basis.as_slice();
+
         let listener = TcpListener::bind(address).unwrap();
         for stream in listener.incoming() {
             let (stream, message) = super::stream_read(stream.unwrap());
@@ -630,16 +710,38 @@ pub mod client {
                     );
                     super::stream_write(stream, ());
                 }
-                Message::Read(ReadQuery {
-                    region: _,
-                    addresses,
-                }) => {
-                    super::stream_write(
-                        stream,
-                        ReadResponse {
-                            values: addresses.into_iter().map(Fp::from).collect(),
-                        },
-                    );
+                Message::Read(ReadQuery { region, addresses }) => {
+                    let address_basis: Vec<_> = addresses
+                        .par_iter()
+                        .map(|idx| basis[*idx as usize])
+                        .collect();
+                    let commitment = {
+                        address_basis
+                            .par_iter()
+                            .map(|x| x.into_group())
+                            .reduce(|| Vesta::zero().into_group(), |x, y| x + y)
+                            + srs.h
+                    }
+                    .into_affine();
+                    if let Ok(StateProviderReadResponse { values, commitment }) =
+                        super::rpc::<_, _, Result<StateProviderReadResponse, ()>>(
+                            state_provider_address.clone(),
+                            StateProviderMessage::Read(StateProviderReadQuery {
+                                region,
+                                addresses,
+                                commitment,
+                            }),
+                        )
+                    {
+                        let computed_commitment = {
+                            ProjectiveVesta::msm(address_basis.as_slice(), values.as_slice())
+                                .unwrap()
+                                + srs.h
+                        }
+                        .into_affine();
+                        assert_eq!(commitment, computed_commitment);
+                        super::stream_write(stream, ReadResponse { values });
+                    }
                 }
                 Message::Quit => {
                     super::stream_write(stream, ());
