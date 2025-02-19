@@ -66,6 +66,7 @@ impl SyscallEnv {
     }
 }
 
+#[derive(Clone)]
 pub struct LookupMultiplicities {
     pub pad_lookup: Vec<u64>,
     pub round_constants_lookup: Vec<u64>,
