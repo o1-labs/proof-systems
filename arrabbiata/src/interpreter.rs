@@ -596,11 +596,10 @@ use num_bigint::BigInt;
 #[derive(Copy, Clone, Debug)]
 pub enum Instruction {
     /// This gadget implement the Poseidon hash instance described in the
-    /// top-level documentation. Compared to the previous one (that might be
-    /// deprecated in the future), this implementation does use the "next row"
-    /// to allow the computation of one additional round per row. In the current
-    /// setup, with [NUMBER_OF_COLUMNS] columns, we can compute 5 full rounds
-    /// per row.
+    /// top-level documentation. In the current setup, with [NUMBER_OF_COLUMNS]
+    /// columns, we can compute 5 full rounds per row.
+    /// The parameter to the constructor is the round number, and would
+    /// naturally be a multiple of five as 5rounds are computed per row.
     Poseidon(usize),
     EllipticCurveScaling(usize, u64),
     EllipticCurveAddition(usize),
