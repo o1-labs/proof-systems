@@ -284,14 +284,36 @@ pub mod network {
     }
 
     use super::{Proof, VerifyContext};
+    use mina_curves::pasta::Vesta;
     use serde::{Deserialize, Serialize};
+    use serde_with::serde_as;
     use std::net::TcpListener;
     use std::process::ExitCode;
+
+    #[serde_as]
+    #[derive(Serialize, Deserialize)]
+    pub struct ReadIntent {
+        pub region: u64,
+        #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+        pub query: Vesta,
+    }
+
+    #[serde_as]
+    #[derive(Serialize, Deserialize)]
+    pub struct ReadResponse {
+        pub region: u64,
+        #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+        pub query: Vesta,
+        #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+        pub response: Vesta,
+    }
 
     #[derive(Serialize, Deserialize)]
     pub enum Message {
         StringMessage(String),
         VerifyProof(Proof),
+        ReadIntent(ReadIntent),
+        ReadResponse(ReadResponse),
     }
 
     pub fn main(arg: cli::Args) -> ExitCode {
@@ -319,6 +341,19 @@ pub mod network {
                         duration.as_millis(),
                         duration.as_micros(),
                         duration.as_nanos(),
+                    );
+                }
+                Message::ReadIntent(ReadIntent { region, query }) => {
+                    println!("Saw read intent for {region}:\n{:?}", query);
+                }
+                Message::ReadResponse(ReadResponse {
+                    region,
+                    query,
+                    response,
+                }) => {
+                    println!(
+                        "Saw read response for {region}:\n{:?}\n{:?}",
+                        query, response
                     );
                 }
             });
@@ -360,7 +395,10 @@ pub mod state_provider {
         }
     }
 
-    use super::{network::Message as NetworkMessage, prove, ProverInputs, VerifyContext, SRS_SIZE};
+    use super::{
+        network::{Message as NetworkMessage, ReadResponse as NetworkReadResponse},
+        prove, ProverInputs, VerifyContext, SRS_SIZE,
+    };
     use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
     use mina_curves::pasta::{Fp, ProjectiveVesta, Vesta};
@@ -548,7 +586,7 @@ pub mod state_provider {
                     Message::Read(ReadQuery {
                         region,
                         addresses,
-                        commitment,
+                        commitment: query_commitment,
                     }) => {
                         let address_basis: Vec<_> = addresses
                             .par_iter()
@@ -562,8 +600,8 @@ pub mod state_provider {
                                 + srs.h
                         }
                         .into_affine();
-                        let response = if commitment != computed_commitment {
-                            Err(())
+                        let (response, broadcast) = if query_commitment != computed_commitment {
+                            (Err(()), None)
                         } else {
                             let values: Vec<_> = addresses
                                 .into_iter()
@@ -577,9 +615,19 @@ pub mod state_provider {
                                     + srs.h
                             }
                             .into_affine();
-                            Ok(ReadResponse { values, commitment })
+                            (
+                                Ok(ReadResponse { values, commitment }),
+                                Some(NetworkMessage::ReadResponse(NetworkReadResponse {
+                                    region,
+                                    query: query_commitment,
+                                    response: commitment,
+                                })),
+                            )
                         };
                         super::stream_write(stream, response);
+                        if let Some(broadcast) = broadcast {
+                            super::rpc_unit(network_address.clone(), broadcast);
+                        }
                     }
                 },
             }
@@ -623,7 +671,7 @@ pub mod client {
     }
 
     use super::{
-        network::Message as NetworkMessage,
+        network::{Message as NetworkMessage, ReadIntent as NetworkReadIntent},
         state_provider::{
             Message as StateProviderMessage, ReadQuery as StateProviderReadQuery,
             ReadResponse as StateProviderReadResponse,
@@ -723,6 +771,13 @@ pub mod client {
                             + srs.h
                     }
                     .into_affine();
+                    super::rpc_unit(
+                        network_address.clone(),
+                        NetworkMessage::ReadIntent(NetworkReadIntent {
+                            region,
+                            query: commitment,
+                        }),
+                    );
                     if let Ok(StateProviderReadResponse { values, commitment }) =
                         super::rpc::<_, _, Result<StateProviderReadResponse, ()>>(
                             state_provider_address.clone(),
