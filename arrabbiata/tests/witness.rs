@@ -239,3 +239,17 @@ fn test_witness_elliptic_curve_scalar_multiplication() {
     let r: BigInt = Fp::rand(&mut rng).to_biguint().to_bigint().unwrap();
     helper_elliptic_curve_scalar_multiplication(r, &mut rng);
 }
+
+#[test]
+fn test_regression_witness_structure_sizeof() {
+    // Keeping track of the size (in bytes) of the witness environment
+    // structure. It is for optimisation later.
+    // It will probably be annoying to update this test every time we update the
+    // structure of the environment, but it will be useful to remind us to keep
+    // thining about the memory efficiency of the codebase.
+    assert_eq!(
+        std::mem::size_of::<Env<Fp, Fq, Vesta, Pallas>>(),
+        5464,
+        "The witness environment structure probably changed"
+    );
+}
