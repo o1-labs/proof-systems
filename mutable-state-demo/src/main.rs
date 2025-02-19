@@ -486,7 +486,8 @@ pub mod state_provider {
                     match message {
                         Message::StringMessage(data) => {
                             println!("forwarding data {}", data);
-                            super::rpc(network_address.clone(), NetworkMessage::StringMessage(data))
+                            super::rpc_unit(network_address.clone(), NetworkMessage::StringMessage(data));
+                            super::stream_write(stream, ());
                         }
                         Message::StateRetentionProof => {
                             println!("Creating storage proof");
@@ -500,7 +501,8 @@ pub mod state_provider {
                                 duration.as_micros(),
                                 duration.as_nanos(),
                             );
-                            super::rpc(network_address.clone(), NetworkMessage::VerifyProof(proof))
+                            super::rpc_unit(network_address.clone(), NetworkMessage::VerifyProof(proof));
+                            super::stream_write(stream, ());
                         }
                         Message::UpdateProverInputs => {
                             println!("Updating prover inputs from scratch");
@@ -514,9 +516,9 @@ pub mod state_provider {
                                 duration.as_micros(),
                                 duration.as_nanos(),
                             );
+                            super::stream_write(stream, ());
                         }
                     }
-                    super::stream_write(stream, ());
                 }
             }
         }
