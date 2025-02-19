@@ -308,12 +308,51 @@ pub mod network {
         pub response_commitment: Vesta,
     }
 
+    #[serde_as]
+    #[derive(Serialize, Deserialize)]
+    pub struct WriteIntent {
+        pub region: u64,
+        #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+        pub query_commitment: Vesta,
+        #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+        pub precondition_commitment: Option<Vesta>,
+        #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+        pub data_commitment: Vesta,
+    }
+
+    #[serde_as]
+    #[derive(Serialize, Deserialize)]
+    pub enum WriteResult {
+        Success {
+            region: u64,
+            #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+            query_commitment: Vesta,
+            #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+            precondition_commitment: Option<Vesta>,
+            #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+            old_data_commitment: Option<Vesta>,
+            #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+            data_commitment: Vesta,
+        },
+        Failure {
+            region: u64,
+            #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+            query_commitment: Vesta,
+            #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+            precondition_commitment: Vesta,
+            #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+            data_commitment: Vesta,
+        },
+    }
+
     #[derive(Serialize, Deserialize)]
     pub enum Message {
         StringMessage(String),
         VerifyProof(Proof),
         ReadIntent(ReadIntent),
         ReadResponse(ReadResponse),
+        WriteIntent(WriteIntent),
+        WriteResult(WriteResult),
     }
 
     pub fn main(arg: cli::Args) -> ExitCode {
@@ -357,6 +396,43 @@ pub mod network {
                     println!(
                         "Saw read response for {region}:\n{:?}\n{:?}",
                         query_commitment, response_commitment
+                    );
+                }
+                Message::WriteIntent(WriteIntent {
+                    region,
+                    query_commitment,
+                    precondition_commitment,
+                    data_commitment,
+                }) => {
+                    println!(
+                        "Saw read write for {region}:\n{:?}\n{:?}\n{:?}",
+                        query_commitment, precondition_commitment, data_commitment
+                    );
+                }
+                Message::WriteResult(WriteResult::Success {
+                    region,
+                    query_commitment,
+                    precondition_commitment,
+                    data_commitment,
+                    old_data_commitment,
+                }) => {
+                    println!(
+                        "Saw read response for {region}:\n{:?}\n{:?}\n{:?}\n{:?}",
+                        query_commitment,
+                        precondition_commitment,
+                        data_commitment,
+                        old_data_commitment,
+                    );
+                }
+                Message::WriteResult(WriteResult::Failure {
+                    region,
+                    query_commitment,
+                    precondition_commitment,
+                    data_commitment,
+                }) => {
+                    println!(
+                        "Saw read response for {region}:\n{:?}\n{:?}\n{:?}",
+                        query_commitment, precondition_commitment, data_commitment,
                     );
                 }
             });
