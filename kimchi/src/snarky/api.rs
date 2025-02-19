@@ -329,8 +329,9 @@ pub trait SnarkyCircuit: Sized {
         // create indexes
         let endo_q = <<Self as SnarkyCircuit>::Curve as KimchiCurve>::other_curve_endo();
 
-        let prover_index =
-            crate::prover_index::ProverIndex::<Self::Curve, Self::Proof>::create(cs, *endo_q, srs);
+        let prover_index = crate::prover_index::ProverIndex::<Self::Curve, Self::Proof>::create(
+            cs, *endo_q, srs, false,
+        );
         let verifier_index = prover_index.verifier_index();
 
         let prover_index = ProverIndexWrapper {

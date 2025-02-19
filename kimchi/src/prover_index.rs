@@ -45,7 +45,7 @@ pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub max_poly_size: usize,
 
     #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub column_evaluations: ColumnEvaluations<G::ScalarField>,
+    pub column_evaluations: Option<ColumnEvaluations<G::ScalarField>>,
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
@@ -66,6 +66,7 @@ where
         mut cs: ConstraintSystem<G::ScalarField>,
         endo_q: G::ScalarField,
         srs: Arc<OpeningProof::SRS>,
+        wasm_memory: bool,
     ) -> Self {
         let max_poly_size = srs.max_poly_size();
         cs.endo = endo_q;
@@ -75,7 +76,11 @@ where
 
         let evaluated_column_coefficients = cs.evaluated_column_coefficients();
 
-        let column_evaluations = cs.column_evaluations(&evaluated_column_coefficients);
+        let column_evaluations = if !wasm_memory {
+            Some(cs.column_evaluations(&evaluated_column_coefficients))
+        } else {
+            None
+        };
 
         ProverIndex {
             cs,
@@ -184,7 +189,7 @@ pub mod testing {
         let srs = Arc::new(srs);
 
         let &endo_q = G::other_curve_endo();
-        ProverIndex::create(cs, endo_q, srs)
+        ProverIndex::create(cs, endo_q, srs, false)
     }
 
     /// Create new index for lookups.
