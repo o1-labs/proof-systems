@@ -32,8 +32,8 @@ pub const VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
 ///
 /// The term "app(lication) state" will be used to refer to the state of the
 /// user application, and the term "IVC state" will be used to refer to the
-/// state of the verifier application. The term program state will be used to refer to
-/// the state of the whole program.
+/// state of the verifier application. The term program state will be used to
+/// refer to the state of the whole program.
 ///
 /// The environment contains all the accumulators that can be picked for a given
 /// fold instance k, including the sponges.
