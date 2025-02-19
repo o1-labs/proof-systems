@@ -295,7 +295,7 @@ pub mod network {
     pub struct ReadIntent {
         pub region: u64,
         #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-        pub query: Vesta,
+        pub query_commitment: Vesta,
     }
 
     #[serde_as]
@@ -303,9 +303,9 @@ pub mod network {
     pub struct ReadResponse {
         pub region: u64,
         #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-        pub query: Vesta,
+        pub query_commitment: Vesta,
         #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-        pub response: Vesta,
+        pub response_commitment: Vesta,
     }
 
     #[derive(Serialize, Deserialize)]
@@ -343,17 +343,20 @@ pub mod network {
                         duration.as_nanos(),
                     );
                 }
-                Message::ReadIntent(ReadIntent { region, query }) => {
-                    println!("Saw read intent for {region}:\n{:?}", query);
+                Message::ReadIntent(ReadIntent {
+                    region,
+                    query_commitment,
+                }) => {
+                    println!("Saw read intent for {region}:\n{:?}", query_commitment);
                 }
                 Message::ReadResponse(ReadResponse {
                     region,
-                    query,
-                    response,
+                    query_commitment,
+                    response_commitment,
                 }) => {
                     println!(
                         "Saw read response for {region}:\n{:?}\n{:?}",
-                        query, response
+                        query_commitment, response_commitment
                     );
                 }
             });
@@ -415,7 +418,7 @@ pub mod state_provider {
         pub region: u64,
         pub addresses: Vec<u64>,
         #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-        pub commitment: Vesta,
+        pub query_commitment: Vesta,
     }
 
     #[serde_as]
@@ -424,7 +427,7 @@ pub mod state_provider {
         #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
         pub values: Vec<Fp>,
         #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-        pub commitment: Vesta,
+        pub response_commitment: Vesta,
     }
 
     #[derive(Serialize, Deserialize)]
@@ -586,7 +589,7 @@ pub mod state_provider {
                     Message::Read(ReadQuery {
                         region,
                         addresses,
-                        commitment: query_commitment,
+                        query_commitment,
                     }) => {
                         let address_basis: Vec<_> = addresses
                             .par_iter()
@@ -609,18 +612,21 @@ pub mod state_provider {
                                     prover_inputs.data[region as usize * SRS_SIZE + idx as usize]
                                 })
                                 .collect();
-                            let commitment = {
+                            let response_commitment = {
                                 ProjectiveVesta::msm(address_basis.as_slice(), values.as_slice())
                                     .unwrap()
                                     + srs.h
                             }
                             .into_affine();
                             (
-                                Ok(ReadResponse { values, commitment }),
+                                Ok(ReadResponse {
+                                    values,
+                                    response_commitment,
+                                }),
                                 Some(network::Message::ReadResponse(network::ReadResponse {
                                     region,
-                                    query: query_commitment,
-                                    response: commitment,
+                                    query_commitment,
+                                    response_commitment,
                                 })),
                             )
                         };
@@ -756,7 +762,7 @@ pub mod client {
                         .par_iter()
                         .map(|idx| basis[*idx as usize])
                         .collect();
-                    let commitment = {
+                    let query_commitment = {
                         address_basis
                             .par_iter()
                             .map(|x| x.into_group())
@@ -768,26 +774,27 @@ pub mod client {
                         network_address.clone(),
                         network::Message::ReadIntent(network::ReadIntent {
                             region,
-                            query: commitment,
+                            query_commitment,
                         }),
                     );
-                    if let Ok(state_provider::ReadResponse { values, commitment }) =
-                        super::rpc::<_, _, Result<state_provider::ReadResponse, ()>>(
-                            state_provider_address.clone(),
-                            state_provider::Message::Read(state_provider::ReadQuery {
-                                region,
-                                addresses,
-                                commitment,
-                            }),
-                        )
-                    {
-                        let computed_commitment = {
+                    if let Ok(state_provider::ReadResponse {
+                        values,
+                        response_commitment,
+                    }) = super::rpc::<_, _, Result<state_provider::ReadResponse, ()>>(
+                        state_provider_address.clone(),
+                        state_provider::Message::Read(state_provider::ReadQuery {
+                            region,
+                            addresses,
+                            query_commitment,
+                        }),
+                    ) {
+                        let computed_response_commitment = {
                             ProjectiveVesta::msm(address_basis.as_slice(), values.as_slice())
                                 .unwrap()
                                 + srs.h
                         }
                         .into_affine();
-                        assert_eq!(commitment, computed_commitment);
+                        assert_eq!(response_commitment, computed_response_commitment);
                         super::stream_write(stream, ReadResponse { values });
                     }
                 }
