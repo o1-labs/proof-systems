@@ -2142,6 +2142,7 @@ The prover then follows the following steps to create the proof:
    but instead be of the length of the (smaller) circuit.
    If we cannot add `zk_rows` rows to the columns of the witness before reaching
    the size of the domain, abort.
+1. Either read the precomputed column evaluations or compute them all for WASM memory boosting mode
 1. Pad the witness columns with Zero gates to make them the same length as the domain.
    Then, randomize the last `zk_rows` of each columns.
 1. Setup the Fq-Sponge.

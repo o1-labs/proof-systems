@@ -1076,7 +1076,7 @@ fn verify_64_bit_range_check() {
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)
+        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs, false)
     };
 
     // Witness layout (positive test case)

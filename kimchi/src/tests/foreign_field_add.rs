@@ -325,7 +325,7 @@ fn create_test_constraint_system_ffadd(
     let srs = Arc::new(srs);
 
     let (endo_q, _endo_r) = endos::<Pallas>();
-    ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)
+    ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs, false)
 }
 
 // helper to reduce lines of code in repetitive test structure
@@ -1506,7 +1506,7 @@ fn test_ffadd_finalization() {
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)
+        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs, false)
     };
 
     for row in 0..witness[0].len() {

@@ -40,7 +40,7 @@
 //~
 use crate::{
     circuits::{
-        constraints::ConstraintSystem,
+        constraints::{ColumnEvaluations, ConstraintSystem},
         polynomial::WitnessOverDomains,
         wires::{Wire, COLUMNS, PERMUTS},
     },
@@ -213,6 +213,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         gamma: F,
         z: &DensePolynomial<F>,
         mut alphas: impl Iterator<Item = F>,
+        column_evaluations: &ColumnEvaluations<F>,
     ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>), ProverError> {
         let alpha0 = alphas.next().expect("missing power of alpha");
         let alpha1 = alphas.next().expect("missing power of alpha");
@@ -270,12 +271,13 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
             // (w8[6] + gamma + sigma[6] * beta)
             // in evaluation form in d8
             let mut sigmas = lagrange.d8.next.z.clone();
-            for (witness, sigma) in lagrange.d8.this.w.iter().zip(
-                self.column_evaluations
-                    .unwrap()
-                    .permutation_coefficients8
-                    .iter(),
-            ) {
+            for (witness, sigma) in lagrange
+                .d8
+                .this
+                .w
+                .iter()
+                .zip(column_evaluations.permutation_coefficients8.iter())
+            {
                 let term = witness + &(gamma + &sigma.scale(beta));
                 sigmas = &sigmas * &term;
             }
@@ -335,6 +337,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         beta: F,
         gamma: F,
         alphas: impl Iterator<Item = F>,
+        column_evaluations: &ColumnEvaluations<F>,
     ) -> Evaluations<F, D<F>> {
         //~
         //~ The linearization:
@@ -347,7 +350,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
             .permutation_vanishing_polynomial_m
             .evaluate(&zeta);
         let scalar = ConstraintSystem::<F>::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
-        let evals8 = &self.column_evaluations.unwrap().permutation_coefficients8[PERMUTS - 1].evals;
+        let evals8 = &column_evaluations.permutation_coefficients8[PERMUTS - 1].evals;
         const STRIDE: usize = 8;
         let n = evals8.len() / STRIDE;
         let evals = (0..n)
@@ -418,6 +421,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         beta: &F,
         gamma: &F,
         rng: &mut (impl RngCore + CryptoRng),
+        column_evaluations: &ColumnEvaluations<F>,
     ) -> Result<DensePolynomial<F>, ProverError> {
         let n = self.cs.domain.d1.size();
 
@@ -470,12 +474,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         for j in 0..n - 1 {
             z[j + 1] = witness
                 .iter()
-                .zip(
-                    self.column_evaluations
-                        .unwrap()
-                        .permutation_coefficients8
-                        .iter(),
-                )
+                .zip(column_evaluations.permutation_coefficients8.iter())
                 .map(|(w, s)| w[j] + (s[8 * j] * beta) + gamma)
                 .fold(F::one(), |x, y| x * y);
         }

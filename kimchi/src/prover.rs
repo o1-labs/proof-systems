@@ -232,6 +232,17 @@ where
             return Err(ProverError::NoRoomForZkInWitness);
         }
 
+        //~1. Either read the precomputed column evaluations or compute them all for WASM memory boosting mode
+        let evals;
+        let column_evaluations = if let Some(evaluations) = index.column_evaluations.as_ref() {
+            evaluations
+        } else {
+            evals = index
+                .cs
+                .column_evaluations(&index.cs.evaluated_column_coefficients());
+            &evals
+        };
+
         //~ 1. Pad the witness columns with Zero gates to make them the same length as the domain.
         //~    Then, randomize the last `zk_rows` of each columns.
         internal_tracing::checkpoint!(internal_traces; pad_witness);
@@ -617,7 +628,7 @@ where
 
         //~ 1. Compute the permutation aggregation polynomial $z$.
         internal_tracing::checkpoint!(internal_traces; z_permutation_aggregation_polynomial);
-        let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
+        let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng, &column_evaluations)?;
 
         //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
         let z_comm = index.srs.commit(&z_poly, num_chunks, rng);
@@ -664,58 +675,26 @@ where
         let env = {
             let mut index_evals = HashMap::new();
             use GateType::*;
-            index_evals.insert(
-                Generic,
-                &index.column_evaluations.unwrap().generic_selector4,
-            );
-            index_evals.insert(
-                Poseidon,
-                &index.column_evaluations.unwrap().poseidon_selector8,
-            );
-            index_evals.insert(
-                CompleteAdd,
-                &index.column_evaluations.unwrap().complete_add_selector4,
-            );
-            index_evals.insert(VarBaseMul, &index.column_evaluations.unwrap().mul_selector8);
-            index_evals.insert(EndoMul, &index.column_evaluations.unwrap().emul_selector8);
-            index_evals.insert(
-                EndoMulScalar,
-                &index.column_evaluations.unwrap().endomul_scalar_selector8,
-            );
+            index_evals.insert(Generic, &column_evaluations.generic_selector4);
+            index_evals.insert(Poseidon, &column_evaluations.poseidon_selector8);
+            index_evals.insert(CompleteAdd, &column_evaluations.complete_add_selector4);
+            index_evals.insert(VarBaseMul, &column_evaluations.mul_selector8);
+            index_evals.insert(EndoMul, &column_evaluations.emul_selector8);
+            index_evals.insert(EndoMulScalar, &column_evaluations.endomul_scalar_selector8);
 
-            if let Some(selector) = &index
-                .column_evaluations
-                .unwrap()
-                .range_check0_selector8
-                .as_ref()
-            {
+            if let Some(selector) = &column_evaluations.range_check0_selector8.as_ref() {
                 index_evals.insert(GateType::RangeCheck0, selector);
             }
 
-            if let Some(selector) = &index
-                .column_evaluations
-                .unwrap()
-                .range_check1_selector8
-                .as_ref()
-            {
+            if let Some(selector) = &column_evaluations.range_check1_selector8.as_ref() {
                 index_evals.insert(GateType::RangeCheck1, selector);
             }
 
-            if let Some(selector) = index
-                .column_evaluations
-                .unwrap()
-                .foreign_field_add_selector8
-                .as_ref()
-            {
+            if let Some(selector) = column_evaluations.foreign_field_add_selector8.as_ref() {
                 index_evals.insert(GateType::ForeignFieldAdd, selector);
             }
 
-            if let Some(selector) = index
-                .column_evaluations
-                .unwrap()
-                .foreign_field_mul_selector8
-                .as_ref()
-            {
+            if let Some(selector) = column_evaluations.foreign_field_mul_selector8.as_ref() {
                 index_evals.extend(
                     foreign_field_mul::gadget::circuit_gates()
                         .iter()
@@ -723,11 +702,11 @@ where
                 );
             }
 
-            if let Some(selector) = index.column_evaluations.unwrap().xor_selector8.as_ref() {
+            if let Some(selector) = column_evaluations.xor_selector8.as_ref() {
                 index_evals.insert(GateType::Xor16, selector);
             }
 
-            if let Some(selector) = index.column_evaluations.unwrap().rot_selector8.as_ref() {
+            if let Some(selector) = column_evaluations.rot_selector8.as_ref() {
                 index_evals.insert(GateType::Rot64, selector);
             }
 
@@ -747,7 +726,7 @@ where
                         .unwrap_or(G::ScalarField::zero()),
                 },
                 witness: &lagrange.d8.this.w,
-                coefficient: &index.column_evaluations.unwrap().coefficients8,
+                coefficient: &column_evaluations.coefficients8,
                 vanishes_on_zero_knowledge_and_previous_rows: &index
                     .cs
                     .precomputations()
@@ -784,7 +763,14 @@ where
             let (mut t8, bnd) = {
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                let (perm, bnd) = index.perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
+                let (perm, bnd) = index.perm_quot(
+                    &lagrange,
+                    beta,
+                    gamma,
+                    &z_poly,
+                    alphas,
+                    &column_evaluations,
+                )?;
 
                 check_constraint!(index, perm);
 
@@ -794,28 +780,14 @@ where
             {
                 use crate::circuits::argument::DynArgument;
 
-                let range_check0_enabled = index
-                    .column_evaluations
-                    .unwrap()
-                    .range_check0_selector8
-                    .is_some();
-                let range_check1_enabled = index
-                    .column_evaluations
-                    .unwrap()
-                    .range_check1_selector8
-                    .is_some();
-                let foreign_field_addition_enabled = index
-                    .column_evaluations
-                    .unwrap()
-                    .foreign_field_add_selector8
-                    .is_some();
-                let foreign_field_multiplication_enabled = index
-                    .column_evaluations
-                    .unwrap()
-                    .foreign_field_mul_selector8
-                    .is_some();
-                let xor_enabled = index.column_evaluations.unwrap().xor_selector8.is_some();
-                let rot_enabled = index.column_evaluations.unwrap().rot_selector8.is_some();
+                let range_check0_enabled = column_evaluations.range_check0_selector8.is_some();
+                let range_check1_enabled = column_evaluations.range_check1_selector8.is_some();
+                let foreign_field_addition_enabled =
+                    column_evaluations.foreign_field_add_selector8.is_some();
+                let foreign_field_multiplication_enabled =
+                    column_evaluations.foreign_field_mul_selector8.is_some();
+                let xor_enabled = column_evaluations.xor_selector8.is_some();
+                let rot_enabled = column_evaluations.rot_selector8.is_some();
 
                 for gate in [
                     (
@@ -1022,12 +994,10 @@ where
                 })
             },
             s: array::from_fn(|i| {
-                chunked_evals_for_evaluations(
-                    &index.column_evaluations.unwrap().permutation_coefficients8[i],
-                )
+                chunked_evals_for_evaluations(&column_evaluations.permutation_coefficients8[i])
             }),
             coefficients: array::from_fn(|i| {
-                chunked_evals_for_evaluations(&index.column_evaluations.unwrap().coefficients8[i])
+                chunked_evals_for_evaluations(&column_evaluations.coefficients8[i])
             }),
             w: array::from_fn(|i| {
                 let chunked =
@@ -1050,58 +1020,38 @@ where
             lookup_table: lookup_context.lookup_table_eval.take(),
             lookup_sorted: array::from_fn(|i| lookup_context.lookup_sorted_eval[i].take()),
             runtime_lookup_table: lookup_context.runtime_lookup_table_eval.take(),
-            generic_selector: chunked_evals_for_selector(
-                &index.column_evaluations.unwrap().generic_selector4,
-            ),
-            poseidon_selector: chunked_evals_for_selector(
-                &index.column_evaluations.unwrap().poseidon_selector8,
-            ),
+            generic_selector: chunked_evals_for_selector(&column_evaluations.generic_selector4),
+            poseidon_selector: chunked_evals_for_selector(&column_evaluations.poseidon_selector8),
             complete_add_selector: chunked_evals_for_selector(
-                &index.column_evaluations.unwrap().complete_add_selector4,
+                &column_evaluations.complete_add_selector4,
             ),
-            mul_selector: chunked_evals_for_selector(
-                &index.column_evaluations.unwrap().mul_selector8,
-            ),
-            emul_selector: chunked_evals_for_selector(
-                &index.column_evaluations.unwrap().emul_selector8,
-            ),
+            mul_selector: chunked_evals_for_selector(&column_evaluations.mul_selector8),
+            emul_selector: chunked_evals_for_selector(&column_evaluations.emul_selector8),
             endomul_scalar_selector: chunked_evals_for_selector(
-                &index.column_evaluations.unwrap().endomul_scalar_selector8,
+                &column_evaluations.endomul_scalar_selector8,
             ),
 
-            range_check0_selector: index
-                .column_evaluations
-                .unwrap()
+            range_check0_selector: column_evaluations
                 .range_check0_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
-            range_check1_selector: index
-                .column_evaluations
-                .unwrap()
+            range_check1_selector: column_evaluations
                 .range_check1_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
-            foreign_field_add_selector: index
-                .column_evaluations
-                .unwrap()
+            foreign_field_add_selector: column_evaluations
                 .foreign_field_add_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
-            foreign_field_mul_selector: index
-                .column_evaluations
-                .unwrap()
+            foreign_field_mul_selector: column_evaluations
                 .foreign_field_mul_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
-            xor_selector: index
-                .column_evaluations
-                .unwrap()
+            xor_selector: column_evaluations
                 .xor_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
-            rot_selector: index
-                .column_evaluations
-                .unwrap()
+            rot_selector: column_evaluations
                 .rot_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
@@ -1171,7 +1121,7 @@ where
                 // permutation (not part of linearization yet)
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                let f = index.perm_lnrz(&evals, zeta, beta, gamma, alphas);
+                let f = index.perm_lnrz(&evals, zeta, beta, gamma, alphas, &column_evaluations);
 
                 // the circuit polynomial
                 let f = {
@@ -1301,27 +1251,27 @@ where
         polynomials.push((coefficients_form(&ft), blinding_ft));
         polynomials.push((coefficients_form(&z_poly), z_comm.blinders));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.unwrap().generic_selector4),
+            evaluations_form(&column_evaluations.generic_selector4),
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.unwrap().poseidon_selector8),
+            evaluations_form(&column_evaluations.poseidon_selector8),
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.unwrap().complete_add_selector4),
+            evaluations_form(&column_evaluations.complete_add_selector4),
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.unwrap().mul_selector8),
+            evaluations_form(&column_evaluations.mul_selector8),
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.unwrap().emul_selector8),
+            evaluations_form(&column_evaluations.emul_selector8),
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.unwrap().endomul_scalar_selector8),
+            evaluations_form(&column_evaluations.endomul_scalar_selector8),
             fixed_hiding(num_chunks),
         ));
         polynomials.extend(
@@ -1332,70 +1282,52 @@ where
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
-            index
-                .column_evaluations
-                .unwrap()
+            column_evaluations
                 .coefficients8
                 .iter()
                 .map(|coefficientm| (evaluations_form(coefficientm), non_hiding(num_chunks)))
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
-            index.column_evaluations.unwrap().permutation_coefficients8[0..PERMUTS - 1]
+            column_evaluations.permutation_coefficients8[0..PERMUTS - 1]
                 .iter()
                 .map(|w| (evaluations_form(w), non_hiding(num_chunks)))
                 .collect::<Vec<_>>(),
         );
 
         //~~ * the optional gates
-        if let Some(range_check0_selector8) = index
-            .column_evaluations
-            .unwrap()
-            .range_check0_selector8
-            .as_ref()
-        {
+        if let Some(range_check0_selector8) = column_evaluations.range_check0_selector8.as_ref() {
             polynomials.push((
                 evaluations_form(range_check0_selector8),
                 non_hiding(num_chunks),
             ));
         }
-        if let Some(range_check1_selector8) = index
-            .column_evaluations
-            .unwrap()
-            .range_check1_selector8
-            .as_ref()
-        {
+        if let Some(range_check1_selector8) = column_evaluations.range_check1_selector8.as_ref() {
             polynomials.push((
                 evaluations_form(range_check1_selector8),
                 non_hiding(num_chunks),
             ));
         }
-        if let Some(foreign_field_add_selector8) = index
-            .column_evaluations
-            .unwrap()
-            .foreign_field_add_selector8
-            .as_ref()
+        if let Some(foreign_field_add_selector8) =
+            column_evaluations.foreign_field_add_selector8.as_ref()
         {
             polynomials.push((
                 evaluations_form(foreign_field_add_selector8),
                 non_hiding(num_chunks),
             ));
         }
-        if let Some(foreign_field_mul_selector8) = index
-            .column_evaluations
-            .unwrap()
-            .foreign_field_mul_selector8
-            .as_ref()
+        if let Some(foreign_field_mul_selector8) =
+            column_evaluations.foreign_field_mul_selector8.as_ref()
         {
             polynomials.push((
                 evaluations_form(foreign_field_mul_selector8),
                 non_hiding(num_chunks),
             ));
         }
-        if let Some(xor_selector8) = index.column_evaluations.unwrap().xor_selector8.as_ref() {
+        if let Some(xor_selector8) = column_evaluations.xor_selector8.as_ref() {
             polynomials.push((evaluations_form(xor_selector8), non_hiding(num_chunks)));
         }
-        if let Some(rot_selector8) = index.column_evaluations.unwrap().rot_selector8.as_ref() {
+        if let Some(rot_selector8) = column_evaluations.rot_selector8.as_ref() {
             polynomials.push((evaluations_form(rot_selector8), non_hiding(num_chunks)));
         }
 

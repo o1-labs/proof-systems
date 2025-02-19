@@ -324,7 +324,7 @@ pub mod testing {
             public: &DensePolynomial<F>,
         ) -> bool {
             let coefficientsm: [_; COLUMNS] = array::from_fn(|i| {
-                self.column_evaluations.unwrap().coefficients8[i]
+                self.column_evaluations.as_ref().unwrap().coefficients8[i]
                     .clone()
                     .interpolate()
             });
@@ -355,6 +355,7 @@ pub mod testing {
             res = &res
                 * &self
                     .column_evaluations
+                    .as_ref()
                     .unwrap()
                     .generic_selector4
                     .interpolate_by_ref();
