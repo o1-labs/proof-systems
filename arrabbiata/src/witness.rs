@@ -156,6 +156,10 @@ pub struct Env<
     ///
     /// The layout columns/rows is used to avoid rebuilding the arrays per
     /// column when committing to the witness.
+    ///
+    /// FIXME: this must be moved to the "setup phrase", i.e. the
+    /// "indexed_relation" field. In addition to that, some values like the
+    /// round constants should appear here.
     pub selectors: Vec<Vec<bool>>,
 
     /// While folding, we must keep track of the challenges the verifier would
