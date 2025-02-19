@@ -1427,4 +1427,19 @@ where
                 .collect();
         }
     }
+
+    // pub fn compute_cross_terms(&mut self) {
+    //     let srs_size = self.indexed_relation.get_srs_size();
+    //     if self.current_iteration % 2 == 0 {
+    //         (0..srs_size).for_each(|row| {
+    //             let mut eval_lft: [E1::ScalarField; MV_POLYNOMIAL_ARITY] = [E1::ScalarField::zero(); MV_POLYNOMIAL_ARITY];
+    //             (0..NUMBER_OF_COLUMNS).for_each(|col| {
+    //                 eval_lft[i] = self.accumulated_program_state_e1[col][row as usize];
+    //             });
+    //             (0..NUMBER_OF_PUBLIC_INPUTS).for_each(|pi_idx| {
+    //                 eval_lft[NUMBER_OF_COLUMNS + pi_idx] = self.
+    //             });
+    //     }
+
+    // }
 }
