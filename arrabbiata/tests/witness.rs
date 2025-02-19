@@ -246,7 +246,7 @@ fn test_regression_witness_structure_sizeof() {
     // It is for optimisation later.
     assert_eq!(
         std::mem::size_of::<Env<Fp, Fq, Vesta, Pallas>>(),
-        5464,
+        5560,
         "The witness environment structure probably changed"
     );
 }
