@@ -395,10 +395,7 @@ pub mod state_provider {
         }
     }
 
-    use super::{
-        network::{Message as NetworkMessage, ReadResponse as NetworkReadResponse},
-        prove, ProverInputs, VerifyContext, SRS_SIZE,
-    };
+    use super::{network, prove, ProverInputs, VerifyContext, SRS_SIZE};
     use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
     use mina_curves::pasta::{Fp, ProjectiveVesta, Vesta};
@@ -540,14 +537,17 @@ pub mod state_provider {
                     let data = format!("{}", i);
                     println!("sending data {}", data);
 
-                    super::rpc(network_address.clone(), NetworkMessage::StringMessage(data))
+                    super::rpc(
+                        network_address.clone(),
+                        network::Message::StringMessage(data),
+                    )
                 }
                 Event::HandleStreamMessage(stream, message) => match message {
                     Message::StringMessage(data) => {
                         println!("forwarding data {}", data);
                         super::rpc_unit(
                             network_address.clone(),
-                            NetworkMessage::StringMessage(data),
+                            network::Message::StringMessage(data),
                         );
                         super::stream_write(stream, ());
                     }
@@ -565,7 +565,7 @@ pub mod state_provider {
                         );
                         super::rpc_unit(
                             network_address.clone(),
-                            NetworkMessage::VerifyProof(proof),
+                            network::Message::VerifyProof(proof),
                         );
                         super::stream_write(stream, ());
                     }
@@ -617,7 +617,7 @@ pub mod state_provider {
                             .into_affine();
                             (
                                 Ok(ReadResponse { values, commitment }),
-                                Some(NetworkMessage::ReadResponse(NetworkReadResponse {
+                                Some(network::Message::ReadResponse(network::ReadResponse {
                                     region,
                                     query: query_commitment,
                                     response: commitment,
@@ -670,14 +670,7 @@ pub mod client {
         }
     }
 
-    use super::{
-        network::{Message as NetworkMessage, ReadIntent as NetworkReadIntent},
-        state_provider::{
-            Message as StateProviderMessage, ReadQuery as StateProviderReadQuery,
-            ReadResponse as StateProviderReadResponse,
-        },
-        VerifyContext, SRS_SIZE,
-    };
+    use super::{network, state_provider, VerifyContext, SRS_SIZE};
     use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
     use mina_curves::pasta::{Fp, ProjectiveVesta, Vesta};
@@ -735,26 +728,26 @@ pub mod client {
             match message {
                 Message::NetworkStringMessage(s) => {
                     super::stream_write(stream, ());
-                    super::rpc_unit(network_address.clone(), NetworkMessage::StringMessage(s));
+                    super::rpc_unit(network_address.clone(), network::Message::StringMessage(s));
                 }
                 Message::StateProviderStringMessage(s) => {
                     super::stream_write(stream, ());
                     super::rpc_unit(
                         state_provider_address.clone(),
-                        StateProviderMessage::StringMessage(s),
+                        state_provider::Message::StringMessage(s),
                     );
                 }
                 Message::StateRetentionProof => {
                     super::rpc_unit(
                         state_provider_address.clone(),
-                        StateProviderMessage::StateRetentionProof,
+                        state_provider::Message::StateRetentionProof,
                     );
                     super::stream_write(stream, ());
                 }
                 Message::UpdateProverInputs => {
                     super::rpc_unit(
                         state_provider_address.clone(),
-                        StateProviderMessage::UpdateProverInputs,
+                        state_provider::Message::UpdateProverInputs,
                     );
                     super::stream_write(stream, ());
                 }
@@ -773,15 +766,15 @@ pub mod client {
                     .into_affine();
                     super::rpc_unit(
                         network_address.clone(),
-                        NetworkMessage::ReadIntent(NetworkReadIntent {
+                        network::Message::ReadIntent(network::ReadIntent {
                             region,
                             query: commitment,
                         }),
                     );
-                    if let Ok(StateProviderReadResponse { values, commitment }) =
-                        super::rpc::<_, _, Result<StateProviderReadResponse, ()>>(
+                    if let Ok(state_provider::ReadResponse { values, commitment }) =
+                        super::rpc::<_, _, Result<state_provider::ReadResponse, ()>>(
                             state_provider_address.clone(),
-                            StateProviderMessage::Read(StateProviderReadQuery {
+                            state_provider::Message::Read(state_provider::ReadQuery {
                                 region,
                                 addresses,
                                 commitment,
