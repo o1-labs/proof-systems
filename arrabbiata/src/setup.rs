@@ -70,6 +70,21 @@ pub struct IndexedRelation<
     /// SRS for the second curve
     pub srs_e2: SRS<E2>,
 
+    /// The constraints given as multivariate polynomials using the [mvpoly]
+    /// library, indexed by the gadget to ease the selection of the constraints
+    /// while computing the cross-terms during the accumulation process.
+    ///
+    /// When the accumulation scheme is implemented, this structure will
+    /// probably be subject to changes as the SNARK used for the accumulation
+    /// scheme will probably work over expressions used in
+    /// [kimchi::circuits::expr]. We leave that for the future, and focus
+    /// on the accumulation scheme implementation.
+    ///
+    /// We keep two sets of constraints for the time being as we might want in
+    /// the future to have different circuits for one of the curves, as inspired
+    /// by [CycleFold](https://eprint.iacr.org/2023/1192).
+    /// In the current design, both circuits are the same and the prover will do
+    /// the same job over both curves.
     pub constraints_fp: HashMap<Gadget, Vec<Sparse<Fp, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>>,
     pub constraints_fq: HashMap<Gadget, Vec<Sparse<Fq, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>>,
 }
