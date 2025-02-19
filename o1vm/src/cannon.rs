@@ -15,7 +15,7 @@ pub const PAGE_ADDRESS_SIZE: u32 = 12;
 pub const PAGE_SIZE: u32 = 1 << PAGE_ADDRESS_SIZE;
 pub const PAGE_ADDRESS_MASK: u32 = PAGE_SIZE - 1;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Page {
     pub index: u32,
     #[serde(deserialize_with = "from_base64", serialize_with = "to_base64")]
@@ -48,7 +48,7 @@ where
 }
 
 // The renaming below keeps compatibility with OP Cannon's state format
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct State {
     pub memory: Vec<Page>,
     #[serde(
