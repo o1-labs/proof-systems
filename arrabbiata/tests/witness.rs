@@ -53,6 +53,61 @@ fn test_unit_witness_poseidon_gadget_one_full_hash() {
             .map(|x| x.to_biguint().into())
             .collect::<Vec<_>>()
     };
+
+    // Check correctness for current iteration
+    assert_eq!(env.sponge_e1.to_vec(), exp_output);
+    // Check the other sponge hasn't been modified
+    assert_eq!(env.sponge_e2, sponge.clone());
+
+    // Number of rows used by one full hash
+    assert_eq!(env.current_row, 12);
+}
+
+#[test]
+fn test_unit_witness_poseidon_permutation_gadget_one_full_hash() {
+    // Expected output:
+    // 13562506435502224548799089445428941958058503946524561166818119397766682137724
+    // 27423099486669760867028539664936216880884888701599404075691059826529320129892
+    // 736058628407775696076653472820678709906041621699240400715815852096937303940
+    let srs_log2_size = 6;
+    let indexed_relation: IndexedRelation<Fp, Fq, Vesta, Pallas> =
+        IndexedRelation::new(srs_log2_size);
+
+    let sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] = [
+        BigInt::from(42u64),
+        BigInt::from(42u64),
+        BigInt::from(42u64),
+    ];
+
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
+        BigInt::from(1u64),
+        sponge.clone(),
+        sponge.clone(),
+        indexed_relation,
+    );
+
+    env.current_instruction = Instruction::PoseidonPermutation(0);
+
+    (0..(PlonkSpongeConstants::PERM_ROUNDS_FULL / 5)).for_each(|i| {
+        interpreter::run_ivc(&mut env, Instruction::PoseidonPermutation(5 * i));
+        env.reset();
+    });
+    let exp_output = {
+        let mut state = sponge
+            .clone()
+            .to_vec()
+            .iter()
+            .map(|x| Fp::from_biguint(&x.to_biguint().unwrap()).unwrap())
+            .collect::<Vec<_>>();
+        poseidon_block_cipher::<Fp, PlonkSpongeConstants>(
+            poseidon_3_60_0_5_5_fp::static_params(),
+            &mut state,
+        );
+        state
+            .iter()
+            .map(|x| x.to_biguint().into())
+            .collect::<Vec<_>>()
+    };
     // Check correctness for current iteration
     assert_eq!(env.sponge_e1.to_vec(), exp_output);
     // Check the other sponge hasn't been modified
