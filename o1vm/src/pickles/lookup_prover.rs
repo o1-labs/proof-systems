@@ -35,6 +35,9 @@ pub fn lookup_prove<
     mut fq_sponge: EFqSponge,
     constraint: &ELookup<G::ScalarField>,
     rng: &mut RNG,
+    // some commitments are already computed
+    // we give them as auxiliary input
+    _cm_wires: Vec<PolyComm<G>>,
 ) -> (Proof<G>, G::ScalarField)
 where
     G::BaseField: PrimeField,
