@@ -1,3 +1,19 @@
+//! Arrabbiata is a Rust framework for building zkApps in Rust, using the
+//! cryptographic primitive called "Folding scheme". It uses the Pasta curves
+//! and IPA polynomial commitment scheme.
+//!
+//! The library provides multiple components.
+//!
+//! First, it provides an implementation of a generalisation of the folding
+//! scheme described in [Nova](https://eprint.iacr.org/2021/370) to handle
+//! arbitrary PlonK-ish custom gates. The generalised accumulation scheme starts
+//! from the observation that the concept of "relaxed R1CS" in Nova is a special
+//! case of the process of homogenizing a multivariate polynomial. More details
+//! can be found in [Behind Nova](https://hackmd.io/@dannywillems/Syo5MBq90).
+//!
+//! Second, it provides a [prover](crate::prover) and a
+//! [verifier](crate::verifier) for the folding scheme, to achieve IVC.
+//!
 use curve::PlonkSpongeConstants;
 use mina_poseidon::constants::SpongeConstants;
 use strum::EnumCount as _;
@@ -17,8 +33,7 @@ pub mod setup;
 pub mod verifier;
 pub mod witness;
 
-/// The maximum degree of the polynomial that can be represented by the
-/// polynomial-time function the library supports.
+/// The maximum degree of the library supports.
 pub const MAX_DEGREE: usize = 5;
 
 /// The minimum SRS size required to use Nova, in base 2.
