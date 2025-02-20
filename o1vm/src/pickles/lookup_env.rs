@@ -16,6 +16,9 @@ pub struct LookupEnvironment<G: KimchiCurve> {
     pub tables_comm: Vec<Vec<BlindedCommitment<G>>>,
     ///multiplicities
     pub multiplicities: LookupMultiplicities,
+    ///commitments to the lookup state
+    ///separated by the proof they come from
+    pub cms: Vec<Vec<PolyComm<G>>>,
 }
 
 /// The persistent envirionement accross all proofs.
@@ -55,8 +58,10 @@ impl<G: KimchiCurve> LookupEnvironment<G> {
             tables_poly,
             tables_comm,
             multiplicities: LookupMultiplicities::new(),
+            cms: vec![],
         }
     }
+
     /// Take a prover environment, a multiplicities, and returns
     /// a prover environment with the multiplicities being the addition of both
     pub fn add_multiplicities(&mut self, multiplicities: LookupMultiplicities) {
@@ -122,5 +127,11 @@ impl<G: KimchiCurve> LookupEnvironment<G> {
         {
             *x += y
         }
+    }
+
+    /// Cherry picks the commimtments to the lookup state from a proof
+    /// and add it to the env
+    pub fn add_cms(&mut self, cms: &[PolyComm<G>]) {
+        self.cms.push(cms.to_vec())
     }
 }
