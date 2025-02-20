@@ -28,7 +28,9 @@ use o1vm::{
     preimage_oracle::{NullPreImageOracle, PreImageOracle, PreImageOracleT},
     test_preimage_read, E,
 };
-use poly_commitment::{ipa::SRS, precomputed_srs::TestSRS, SRS as _};
+use poly_commitment::{
+    commitment::absorb_commitment, ipa::SRS, precomputed_srs::TestSRS, SRS as _,
+};
 use rand::rngs::ThreadRng;
 use std::{fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant};
 
@@ -194,10 +196,15 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     }
     // Second loop, do the lookup delayed argument
     // TODO: use a lighter interpreter specialised for lookups
-    // TODO: get sponge from the first loop
-    let sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+
+    // Prepare the sponge
+    let sponge = &mut DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
         Vesta::other_curve_sponge_params(),
     );
+    lookup_env
+        .cms
+        .iter()
+        .for_each(|cm_list| cm_list.iter().for_each(|cm| absorb_commitment(sponge, cm)));
 
     // TODO use lookup proof input type, containing the arity
     curr_proof_inputs = ProofInputs::new(domain_size);
