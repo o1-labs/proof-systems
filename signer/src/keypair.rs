@@ -93,6 +93,13 @@ impl Keypair {
     pub fn to_hex(&self) -> String {
         hex::encode(self.to_bytes())
     }
+
+    /// Performs scalar multiplication with the secret key
+    pub fn secret_multiply_with_curve_point(&self, multiplicand: CurvePoint) -> CurvePoint {
+        use ark_ec::AffineCurve;
+        use ark_ec::ProjectiveCurve;
+        multiplicand.mul(self.secret.clone().into_scalar()).into_affine()
+    }
 }
 
 impl fmt::Debug for Keypair {
