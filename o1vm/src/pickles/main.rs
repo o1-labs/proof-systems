@@ -1,5 +1,6 @@
 use ark_ff::{UniformRand, Zero};
 use clap::Parser;
+
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
 use log::debug;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
@@ -238,8 +239,8 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
 
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
-        // TODO factorise the addtion of the wit env to the proof input in a seprate function
         // Lookup state
+        // TODO factorise the addtion of the wit env to the proof input in a seprate function
         // TODO factorise padding of lookup in a separate function
         {
             let proof_inputs_length = curr_proof_inputs.evaluations.lookup_state.len();
@@ -388,6 +389,7 @@ fn lookup_prove_and_verify(
         "Lookup verification done in {elapsed} μs",
         elapsed = start_iteration.elapsed().as_micros()
     );
+    assert!(verif);
     acc
 }
 
