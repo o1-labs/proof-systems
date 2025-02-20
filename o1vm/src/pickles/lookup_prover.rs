@@ -16,6 +16,8 @@ use rand::{CryptoRng, RngCore};
 /// It then proves that the sum 1/(beta + table) = PI - PO
 /// where the table term are term from fixed lookup or RAMLookup
 
+// TODO: add selectors
+// TODO: add multiplicities
 pub fn lookup_prove<
     G: KimchiCurve,
     EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone,
