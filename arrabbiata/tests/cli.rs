@@ -19,6 +19,7 @@ fn test_arrabbiata_binary() {
         .join("target")
         .join(build_mode)
         .join("arrabbiata");
+    println!("Executing binary {:?}", binary_path);
 
     // Build the command
     let output = Command::new(binary_path)
