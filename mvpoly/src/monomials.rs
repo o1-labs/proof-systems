@@ -519,6 +519,8 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
             res.entry(D)
                 .and_modify(|e| *e += eval2_hom * scalar1)
                 .or_insert(eval2_hom * scalar1);
+        } else {
+            res.entry(D).or_insert(F::zero());
         }
         res
     }
