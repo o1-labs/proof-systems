@@ -329,8 +329,8 @@ pub mod network {
             query_commitment: Vesta,
             #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
             precondition_commitment: Option<Vesta>,
-            #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-            old_data_commitment: Option<Vesta>,
+            #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+            old_data_commitment: Vesta,
             #[serde_as(as = "o1_utils::serialization::SerdeAs")]
             data_commitment: Vesta,
         },
@@ -506,12 +506,38 @@ pub mod state_provider {
         pub response_commitment: Vesta,
     }
 
+    #[serde_as]
+    #[derive(Serialize, Deserialize)]
+    pub struct WriteQuery {
+        pub region: u64,
+        pub addresses: Vec<u64>,
+        #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+        pub values: Vec<Fp>,
+        #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+        pub query_commitment: Vesta,
+        #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+        pub precondition_commitment: Option<Vesta>,
+        #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+        pub data_commitment: Vesta,
+    }
+
+    #[serde_as]
+    #[derive(Serialize, Deserialize)]
+    pub enum WriteResponse {
+        Success,
+        Failed {
+            #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+            old_data_commitment: Vesta,
+        },
+    }
+
     #[derive(Serialize, Deserialize)]
     pub enum Message {
         StringMessage(String),
         StateRetentionProof,
         UpdateProverInputs,
         Read(ReadQuery),
+        Write(WriteQuery),
     }
 
     enum Event {
@@ -667,6 +693,14 @@ pub mod state_provider {
                         addresses,
                         query_commitment,
                     }) => {
+                        let is_sorted = (0..addresses.len() - 1)
+                            .map(|idx| addresses[idx] < addresses[idx + 1])
+                            .reduce(|x, y| x && y)
+                            .unwrap_or(true);
+                        if !is_sorted {
+                            super::stream_write(stream, Err::<ReadResponse, ()>(()));
+                            continue;
+                        }
                         let address_basis: Vec<_> = addresses
                             .par_iter()
                             .map(|idx| basis[*idx as usize])
@@ -710,6 +744,95 @@ pub mod state_provider {
                         if let Some(broadcast) = broadcast {
                             super::rpc_unit(network_address.clone(), broadcast);
                         }
+                    }
+                    Message::Write(WriteQuery {
+                        region,
+                        addresses,
+                        values,
+                        query_commitment,
+                        precondition_commitment,
+                        data_commitment,
+                    }) => {
+                        let is_sorted = (0..addresses.len() - 1)
+                            .map(|idx| addresses[idx] < addresses[idx + 1])
+                            .reduce(|x, y| x && y)
+                            .unwrap_or(true);
+                        if !is_sorted {
+                            super::stream_write(stream, Err::<ReadResponse, ()>(()));
+                            continue;
+                        }
+                        let address_basis: Vec<_> = addresses
+                            .par_iter()
+                            .map(|idx| basis[*idx as usize])
+                            .collect();
+                        let computed_query_commitment = {
+                            address_basis
+                                .par_iter()
+                                .map(|x| x.into_group())
+                                .reduce(|| Vesta::zero().into_group(), |x, y| x + y)
+                                + srs.h
+                        }
+                        .into_affine();
+                        let respond =
+                            |msg: Result<WriteResponse, ()>| super::stream_write(stream, msg);
+                        if addresses.len() != values.len() {
+                            respond(Err(()));
+                            continue;
+                        }
+                        if query_commitment != computed_query_commitment {
+                            respond(Err(()));
+                            continue;
+                        }
+                        let computed_data_commitment = {
+                            ProjectiveVesta::msm(address_basis.as_slice(), values.as_slice())
+                                .unwrap()
+                                + srs.h
+                        }
+                        .into_affine();
+                        if data_commitment != computed_data_commitment {
+                            respond(Err(()));
+                            continue;
+                        }
+                        let old_values: Vec<_> = addresses
+                            .iter()
+                            .map(|idx| {
+                                prover_inputs.data[region as usize * SRS_SIZE + *idx as usize]
+                            })
+                            .collect();
+                        let old_data_commitment = {
+                            ProjectiveVesta::msm(address_basis.as_slice(), old_values.as_slice())
+                                .unwrap()
+                                + srs.h
+                        }
+                        .into_affine();
+                        if precondition_commitment.is_some()
+                            && precondition_commitment.unwrap() != old_data_commitment
+                        {
+                            respond(Ok(WriteResponse::Failed {
+                                old_data_commitment,
+                            }));
+                            super::rpc_unit(
+                                network_address.clone(),
+                                network::Message::WriteResult(network::WriteResult::Failure {
+                                    region,
+                                    query_commitment,
+                                    precondition_commitment: precondition_commitment.unwrap(),
+                                    data_commitment,
+                                }),
+                            );
+                            continue;
+                        }
+                        respond(Ok(WriteResponse::Success));
+                        super::rpc_unit(
+                            network_address.clone(),
+                            network::Message::WriteResult(network::WriteResult::Success {
+                                region,
+                                query_commitment,
+                                precondition_commitment,
+                                data_commitment,
+                                old_data_commitment,
+                            }),
+                        );
                     }
                 },
             }
