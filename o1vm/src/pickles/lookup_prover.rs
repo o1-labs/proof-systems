@@ -110,8 +110,7 @@ where
         .interpolate()
     };
     let columns_poly = columns.my_map(interpolate_col);
-
-    // Commiting. Note that we do not commit to the wires, it is already done.
+    // commiting. Note that we do not commit to the wires, it is already done.
     // TODO avoid cloning
     let columns_com = ColumnEnv {
         wires: cm_wires.into_iter().map(|x| x.chunks[0]).collect(),
