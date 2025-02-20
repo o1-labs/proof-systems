@@ -37,7 +37,7 @@ pub fn lookup_prove<
     rng: &mut RNG,
     // some commitments are already computed
     // we give them as auxiliary input
-    _cm_wires: Vec<PolyComm<G>>,
+    cm_wires: Vec<PolyComm<G>>,
 ) -> (Proof<G>, G::ScalarField)
 where
     G::BaseField: PrimeField,
@@ -110,11 +110,19 @@ where
         .interpolate()
     };
     let columns_poly = columns.my_map(interpolate_col);
-    // Commiting
+
+    // Commiting. Note that we do not commit to the wires, it is already done.
     // TODO avoid cloning
-    let columns_com = columns_poly
-        .clone()
-        .my_map(|poly| srs.commit_non_hiding(&poly, 1).chunks[0]);
+    let columns_com = ColumnEnv {
+        wires: cm_wires.into_iter().map(|x| x.chunks[0]).collect(),
+        inverses: columns_poly
+            .inverses
+            .clone()
+            .into_iter()
+            .map(|poly| srs.commit_non_hiding(&poly, 1).chunks[0])
+            .collect(),
+        acc: srs.commit_non_hiding(&columns_poly.acc.clone(), 1).chunks[0],
+    };
 
     // eval on d8
     // TODO: check the degree
