@@ -28,7 +28,7 @@ use o1vm::{
     preimage_oracle::{NullPreImageOracle, PreImageOracle, PreImageOracleT},
     test_preimage_read, E,
 };
-use poly_commitment::{commitment::absorb_commitment, ipa::SRS, SRS as _};
+use poly_commitment::{commitment::absorb_commitment, ipa::SRS, PolyComm, SRS as _};
 use rand::rngs::ThreadRng;
 use std::{fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant};
 
@@ -277,6 +277,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                 rng,
                 sponge.clone(),
                 acc,
+                lookup_env.cms.pop().unwrap(),
             );
 
             curr_proof_inputs = ProofInputs::new(domain_size);
@@ -322,6 +323,7 @@ fn prove_and_verify(
     assert!(verif);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn lookup_prove_and_verify(
     domain_fp: EvaluationDomains<Fp>,
     srs: &SRS<Vesta>,
@@ -331,6 +333,7 @@ fn lookup_prove_and_verify(
     rng: &mut ThreadRng,
     mut sponge: DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
     acc: Fp,
+    cm_wires: Vec<PolyComm<Vesta>>,
 ) -> Fp {
     let start_iteration = Instant::now();
     let sponge_verifier = sponge.clone();
@@ -355,6 +358,7 @@ fn lookup_prove_and_verify(
         sponge,
         &constraint,
         rng,
+        cm_wires,
     );
     debug!(
         "Lookup proof generated in {elapsed} μs",
