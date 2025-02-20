@@ -16,8 +16,10 @@ fn test_arrabbiata_binary() {
 
     // Build the command
     let output = Command::new(binary_path)
+        .arg("execute")
+        .arg("--zkapp")
         .arg("square-root")
-        .arg("--n")
+        .arg("-n")
         .arg("10")
         .arg("--srs-size")
         .arg("16")
