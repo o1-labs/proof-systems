@@ -209,6 +209,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     // TODO use lookup proof input type, containing the arity
     curr_proof_inputs = ProofInputs::new(domain_size);
     let mut arity: Vec<Vec<usize>> = vec![];
+    let mut lookup_env = LookupEnvironment::new(&srs, domain_fp);
     let mut acc = Fp::zero();
 
     // Initialize the environments
@@ -259,7 +260,6 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             arity.push(mips_wit_env.lookup_arity.clone());
             lookup_env.add_multiplicities(mips_wit_env.lookup_multiplicities.clone());
         }
-
         // TODO get rid of this rng creation
         let rng = &mut rand::thread_rng();
         if curr_proof_inputs.evaluations.lookup_state[0].len() == domain_size {
