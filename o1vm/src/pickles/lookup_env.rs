@@ -18,10 +18,14 @@ pub struct LookupEnvironment<G: KimchiCurve> {
     pub multiplicities: LookupMultiplicities,
 }
 
-/// Create a new prover environment, which interpolates the fixed tables
-/// and commit to them.
-/// Fills the multiplicities with zeroes
+/// The persistent envirionement accross all proofs.
+/// It stores the some fixed values (fixed lookup),
+/// and some proof dependant values: an accumulation
+/// of the multiplicities and the commitments to the lookup state
 impl<G: KimchiCurve> LookupEnvironment<G> {
+    /// Create a new prover environment, which interpolates the fixed tables
+    /// and commit to them.
+    /// Fills the multiplicities with zeroes
     pub fn new(srs: &SRS<G>, domain: EvaluationDomains<G::ScalarField>) -> Self {
         let tables: Vec<LookupTable<G::ScalarField>> =
             LookupTable::<G::ScalarField>::get_all_tables_transposed();
