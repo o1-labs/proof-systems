@@ -2,10 +2,10 @@ use crate::{
     interpreters::mips::witness::LookupMultiplicities,
     lookups::{FixedLookupTables, LookupTable},
 };
-use ark_ff::One;
+
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain};
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
-use poly_commitment::{commitment::BlindedCommitment, ipa::SRS, PolyComm, SRS as _};
+use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
 
 /// This is what the prover needs to rembember
 /// while doing individual proofs, in order
@@ -13,7 +13,7 @@ use poly_commitment::{commitment::BlindedCommitment, ipa::SRS, PolyComm, SRS as 
 pub struct LookupEnvironment<G: KimchiCurve> {
     /// fixed tables pre-existing the protocol
     pub tables_poly: Vec<Vec<DensePolynomial<G::ScalarField>>>,
-    pub tables_comm: Vec<Vec<BlindedCommitment<G>>>,
+    pub tables_comm: Vec<Vec<PolyComm<G>>>,
     ///multiplicities
     pub multiplicities: LookupMultiplicities,
     ///commitments to the lookup state
@@ -42,15 +42,12 @@ impl<G: KimchiCurve> LookupEnvironment<G> {
             .into_iter()
             .map(|lookup| eval_columns(lookup.entries))
             .collect();
-        let tables_comm: Vec<Vec<BlindedCommitment<G>>> = tables_poly
+        let tables_comm: Vec<Vec<_>> = tables_poly
             .iter()
             .map(|poly_vec| {
                 poly_vec
                     .iter()
-                    .map(|poly| {
-                        srs.commit_custom(poly, 1, &PolyComm::new(vec![G::ScalarField::one()]))
-                            .unwrap()
-                    })
+                    .map(|poly| srs.commit_non_hiding(poly, 1))
                     .collect()
             })
             .collect();
