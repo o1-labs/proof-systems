@@ -3150,6 +3150,27 @@ where
         res.push(e);
         res
     }
+
+    /// Converts the expression in OCaml code
+    pub fn ocaml_str(&self) -> String {
+        let mut env = HashMap::new();
+        let e = self.ocaml(&mut env);
+
+        let mut env: Vec<_> = env.into_iter().collect();
+        // HashMap deliberately uses an unstable order; here we sort to ensure
+        // that the output is consistent when printing.
+        env.sort_by(|(x, _), (y, _)| x.cmp(y));
+
+        let mut res = String::new();
+        for (k, v) in env {
+            let rhs = v.ocaml_str();
+            let cached = format!("let {} = {rhs} in ", k.var_name());
+            res.push_str(&cached);
+        }
+
+        res.push_str(&e);
+        res
+    }
 }
 
 //

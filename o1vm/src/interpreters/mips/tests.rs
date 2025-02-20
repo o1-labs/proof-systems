@@ -342,7 +342,8 @@ fn test_regression_selectors_for_instructions() {
         constraints.len() - 1,
         // We could use N_MIPS_SEL_COLS, but sanity check in case this value is
         // changed.
-        RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT
+        // the +1 is coming from NoOp instruction
+        RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT + 1
     );
     // All instructions are degree 1 or 2.
     constraints

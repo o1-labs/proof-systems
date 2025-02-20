@@ -5,10 +5,11 @@
 //! specify the number of iterations, and keep this file relatively simple.
 
 use arrabbiata::{
+    challenge::ChallengeTerm,
     curve::PlonkSpongeConstants,
     interpreter::{self, InterpreterEnv},
     witness::Env,
-    IVC_CIRCUIT_SIZE, MIN_SRS_LOG2_SIZE,
+    MIN_SRS_LOG2_SIZE, VERIFIER_CIRCUIT_SIZE,
 };
 use log::{debug, info};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
@@ -47,7 +48,7 @@ pub fn main() {
 
     assert!(
         *srs_log2_size >= MIN_SRS_LOG2_SIZE,
-        "SRS size must be at least 2^{MIN_SRS_LOG2_SIZE} to support IVC"
+        "SRS size must be at least 2^{MIN_SRS_LOG2_SIZE} to support the verifier circuit size"
     );
 
     info!("Instantiating environment to execute square-root {n_iteration} times with SRS of size 2^{srs_log2_size}");
@@ -65,7 +66,7 @@ pub fn main() {
         sponge_e1.clone(),
     );
 
-    let n_iteration_per_fold = domain_size - IVC_CIRCUIT_SIZE;
+    let n_iteration_per_fold = domain_size - VERIFIER_CIRCUIT_SIZE;
 
     while env.current_iteration < *n_iteration {
         let start_iteration = Instant::now();
@@ -80,20 +81,25 @@ pub fn main() {
         }
 
         info!(
-            "Building the IVC circuit. A total number of {} rows will be filled from the witness row {}",
-            IVC_CIRCUIT_SIZE, env.current_row,
+            "Building the verifier circuit. A total number of {} rows will be filled from the witness row {}",
+            VERIFIER_CIRCUIT_SIZE, env.current_row,
         );
-        // Build the IVC circuit
-        for i in 0..IVC_CIRCUIT_SIZE {
+        // Build the verifier circuit
+        // FIXME: Minus one as the last row of the verifier circuit is a
+        // Poseidon hash, and we write on the next row. We don't want to execute
+        // a new instruction for the verifier circuit here.
+        for i in 0..VERIFIER_CIRCUIT_SIZE - 1 {
             let instr = env.fetch_instruction();
             debug!(
-                "Running IVC row {} (instruction = {:?}, witness row = {})",
+                "Running verifier row {} (instruction = {:?}, witness row = {})",
                 i, instr, env.current_row
             );
             interpreter::run_ivc(&mut env, instr);
             env.current_instruction = env.fetch_next_instruction();
             env.reset();
         }
+        // FIXME: additional row for the Poseidon hash
+        env.reset();
 
         debug!(
             "Witness for iteration {i} computed in {elapsed} μs",
@@ -101,16 +107,16 @@ pub fn main() {
             elapsed = start_iteration.elapsed().as_micros()
         );
 
-        // FIXME:
-        // update current instance with the previous "next" commitments (i.e.
-        // env.next_commitments)
-        // update next instance with current commitments
-        // FIXME: Check twice the updated commitments
-        env.compute_and_update_previous_commitments();
+        // Commit to the program state.
+        // Depending on the iteration, either E1 or E2 will be used.
+        // The environment will keep the commitments to the program state to
+        // verify and accumulate it at the next iteration.
+        env.commit_state();
 
-        // FIXME:
-        // Absorb all commitments in the sponge.
+        // Absorb the last program state.
+        env.absorb_state();
 
+        // ----- Permutation argument -----
         // FIXME:
         // Coin chalenges β and γ for the permutation argument
 
@@ -119,24 +125,35 @@ pub fn main() {
 
         // FIXME:
         // Commit to the accumulator and absorb the commitment
+        // ----- Permutation argument -----
 
-        // FIXME:
         // Coin challenge α for combining the constraints
+        env.coin_challenge(ChallengeTerm::ConstraintCombiner);
+        debug!(
+            "Coin challenge α: 0x{chal}",
+            chal = env.challenges[ChallengeTerm::ConstraintCombiner].to_str_radix(16)
+        );
 
+        // ----- Accumulation/folding argument -----
         // FIXME:
         // Compute the cross-terms
 
         // FIXME:
         // Absorb the cross-terms
 
-        // FIXME:
-        // Coin challenge r to fold
+        // Coin challenge r to fold the instances of the relation.
+        // FIXME: we must do the step before first! Skipping for now to achieve
+        // the next step, i.e. accumulating on the prover side the different
+        // values below.
+        env.coin_challenge(ChallengeTerm::RelationCombiner);
+        debug!(
+            "Coin challenge r: 0x{r}",
+            r = env.challenges[ChallengeTerm::RelationCombiner].to_str_radix(16)
+        );
+        env.accumulate_program_state();
 
-        // FIXME:
-        // Compute the accumulated witness
-
-        // FIXME:
         // Compute the accumulation of the commitments to the witness columns
+        env.accumulate_committed_state();
 
         // FIXME:
         // Compute the accumulation of the challenges
@@ -149,6 +166,7 @@ pub fn main() {
 
         // FIXME:
         // Compute the accumulated error
+        // ----- Accumulation/folding argument -----
 
         debug!(
             "Iteration {i} fully proven in {elapsed} μs",

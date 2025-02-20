@@ -1,6 +1,25 @@
 use clap::{arg, Parser};
+use std::{fmt::Display, str::FromStr};
 
-#[derive(Parser, Debug, Clone)]
+#[derive(Debug, Clone)]
+pub struct HexString(pub Vec<u8>);
+
+impl FromStr for HexString {
+    type Err = hex::FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let stripped = s.strip_prefix("0x").unwrap_or(s);
+        Ok(HexString(hex::decode(stripped)?))
+    }
+}
+
+impl Display for HexString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "0x{}", hex::encode(&self.0))
+    }
+}
+
+#[derive(Parser)]
 pub struct EncodeFileArgs {
     #[arg(long, short = 'i', value_name = "FILE", help = "input file")]
     pub input: String,
@@ -12,9 +31,19 @@ pub struct EncodeFileArgs {
         help = "output file (encoded as field elements)"
     )]
     pub output: String,
+
+    #[arg(long = "srs-filepath", value_name = "SRS_FILEPATH")]
+    pub srs_cache: Option<String>,
+
+    #[arg(
+        long = "assert-commitment",
+        value_name = "COMMITMENT",
+        help = "hash of commitments (hex encoded)"
+    )]
+    pub assert_commitment: Option<HexString>,
 }
 
-#[derive(Parser, Debug, Clone)]
+#[derive(Parser)]
 pub struct DecodeFileArgs {
     #[arg(
         long,
@@ -26,9 +55,69 @@ pub struct DecodeFileArgs {
 
     #[arg(long, short = 'o', value_name = "FILE", help = "output file")]
     pub output: String,
+
+    #[arg(long = "srs-filepath", value_name = "SRS_FILEPATH")]
+    pub srs_cache: Option<String>,
 }
 
-#[derive(Parser, Debug, Clone)]
+#[derive(Parser)]
+pub struct ComputeCommitmentArgs {
+    #[arg(long, short = 'i', value_name = "FILE", help = "input file")]
+    pub input: String,
+
+    #[arg(long, short = 'o', value_name = "FILE", help = "output file")]
+    pub output: String,
+
+    #[arg(long = "srs-filepath", value_name = "SRS_FILEPATH")]
+    pub srs_cache: Option<String>,
+}
+
+#[derive(Parser)]
+pub struct StorageProofArgs {
+    #[arg(
+        long,
+        short = 'i',
+        value_name = "FILE",
+        help = "input file (encoded as field elements)"
+    )]
+    pub input: String,
+
+    #[arg(long = "srs-filepath", value_name = "SRS_FILEPATH")]
+    pub srs_cache: Option<String>,
+
+    #[arg(
+        long = "challenge",
+        value_name = "CHALLENGE",
+        help = "challenge (hex encoded"
+    )]
+    pub challenge: HexString,
+}
+
+#[derive(Parser)]
+pub struct VerifyStorageProofArgs {
+    #[arg(long = "srs-filepath", value_name = "SRS_FILEPATH")]
+    pub srs_cache: Option<String>,
+
+    #[arg(
+        long,
+        short = 'c',
+        value_name = "COMMITMENT",
+        help = "commitment (hex encoded)"
+    )]
+    pub commitment: HexString,
+
+    #[arg(
+        long = "challenge",
+        value_name = "CHALLENGE",
+        help = "challenge (hex encoded"
+    )]
+    pub challenge: HexString,
+
+    #[arg(long, short = 'p', value_name = "PROOF", help = "proof (hex encoded)")]
+    pub proof: HexString,
+}
+
+#[derive(Parser)]
 #[command(
     name = "saffron",
     version = "0.1",
@@ -39,4 +128,10 @@ pub enum Commands {
     Encode(EncodeFileArgs),
     #[command(name = "decode")]
     Decode(DecodeFileArgs),
+    #[command(name = "compute-commitment")]
+    ComputeCommitment(ComputeCommitmentArgs),
+    #[command(name = "storage-proof")]
+    StorageProof(StorageProofArgs),
+    #[command(name = "verify-storage-proof")]
+    VerifyStorageProof(VerifyStorageProofArgs),
 }

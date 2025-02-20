@@ -159,3 +159,43 @@ fn test_poseidon_vesta_absorb_point_to_infinity() {
     let exp_output = [Fq::from(0); 3];
     assert_eq!(sponge.sponge.state, exp_output);
 }
+
+#[test]
+fn test_poseidon_challenge_multiple_times_without_absorbtion() {
+    let mut sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+        fq_kimchi::static_params(),
+    );
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let random_n = rng.gen_range(10..50);
+
+    let mut old_state = sponge.sponge.state.clone();
+    let mut new_state = sponge.sponge.state.clone();
+    // Only to avoid a warning. old_state must be used.
+    assert_eq!(
+        old_state, new_state,
+        "States must be the same after initialization"
+    );
+    let mut challenges: Vec<_> = vec![];
+
+    for i in 0..random_n {
+        old_state.clone_from(&new_state);
+        new_state.clone_from(&sponge.sponge.state);
+        let chal = sponge.challenge();
+        if i % 2 == 0 {
+            assert_eq!(
+                old_state, new_state,
+                "States must be the same after squeezing an even number of times"
+            );
+        } else {
+            assert_ne!(
+                old_state, new_state,
+                "States must not be the same after squeezing an odd number of times"
+            );
+        }
+        assert!(
+            !challenges.contains(&chal),
+            "Challenges must always be different, even without any absorbtion"
+        );
+        challenges.push(chal);
+    }
+}

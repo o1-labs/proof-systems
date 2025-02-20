@@ -1,11 +1,10 @@
-use super::{columns::Column, interpreter::InterpreterEnv};
+use super::{column::Column, interpreter::InterpreterEnv};
 use crate::{
-    columns::{Gadget, E},
+    column::{Gadget, E},
     curve::ArrabbiataCurve,
     interpreter::{self, Instruction, Side},
     MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
 };
-use ark_ec::{short_weierstrass::SWCurveConfig, CurveConfig};
 use ark_ff::PrimeField;
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
@@ -14,10 +13,12 @@ use kimchi::circuits::{
 use log::debug;
 use num_bigint::BigInt;
 use o1_utils::FieldHelpers;
-use poly_commitment::commitment::CommitmentCurve;
 
 #[derive(Clone, Debug)]
-pub struct Env<C: ArrabbiataCurve> {
+pub struct Env<C: ArrabbiataCurve>
+where
+    C::BaseField: PrimeField,
+{
     /// The parameter a is the coefficients of the elliptic curve in affine
     /// coordinates.
     pub a: BigInt,
@@ -30,11 +31,12 @@ pub struct Env<C: ArrabbiataCurve> {
 
 impl<C: ArrabbiataCurve> Env<C>
 where
-    <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    C::BaseField: PrimeField,
 {
     pub fn new() -> Self {
         // This check might not be useful
-        let a: BigInt = <C as CommitmentCurve>::Params::COEFF_A.to_biguint().into();
+        let a: C::BaseField = C::get_curve_params().0;
+        let a: BigInt = a.to_biguint().into();
         assert!(
             a < C::ScalarField::modulus_biguint().into(),
             "a is too large"
@@ -55,7 +57,10 @@ where
 /// proof.
 /// The constraint environment must be instantiated only once, at the last step
 /// of the computation.
-impl<C: ArrabbiataCurve> InterpreterEnv for Env<C> {
+impl<C: ArrabbiataCurve> InterpreterEnv for Env<C>
+where
+    C::BaseField: PrimeField,
+{
     type Position = (Column, CurrOrNext);
 
     type Variable = E<C::ScalarField>;
@@ -113,7 +118,7 @@ impl<C: ArrabbiataCurve> InterpreterEnv for Env<C> {
     fn add_constraint(&mut self, constraint: Self::Variable) {
         let degree = constraint.degree(1, 0);
         debug!("Adding constraint of degree {degree}: {:}", constraint);
-        assert!(degree <= MAX_DEGREE, "degree is too high: {}. The folding scheme used currently allows constraint up to degree {}", degree, MAX_DEGREE);
+        assert!(degree <= MAX_DEGREE.try_into().unwrap(), "degree is too high: {}. The folding scheme used currently allows constraint up to degree {}", degree, MAX_DEGREE);
         self.constraints.push(constraint);
     }
 
@@ -311,20 +316,23 @@ impl<C: ArrabbiataCurve> InterpreterEnv for Env<C> {
     }
 }
 
-impl<C: ArrabbiataCurve> Env<C> {
-    /// Get all the constraints for the IVC circuit, only.
+impl<C: ArrabbiataCurve> Env<C>
+where
+    C::BaseField: PrimeField,
+{
+    /// Get all the constraints for the verifier circuit, only.
     ///
-    /// The following gadgets are used in the IVC circuit:
+    /// The following gadgets are used in the verifier circuit:
     /// - [Instruction::Poseidon] to verify the challenges and the public
     /// IO
     /// - [Instruction::EllipticCurveScaling] and
     /// [Instruction::EllipticCurveAddition] to accumulate the commitments
-    // FIXME: the IVC circuit might not be complete, yet. For instance, we might
+    // FIXME: the verifier circuit might not be complete, yet. For instance, we might
     // need to accumulate the challenges and add a row to verify the output of
     // the computation of the challenges.
     // FIXME: add a test checking that whatever the value given in parameter of
     // the gadget, the constraints are the same
-    pub fn get_all_constraints_for_ivc(&self) -> Vec<E<C::ScalarField>> {
+    pub fn get_all_constraints_for_verifier(&self) -> Vec<E<C::ScalarField>> {
         // Copying the instance we got in parameter, and making it mutable to
         // avoid modifying the original instance.
         let mut env = self.clone();
@@ -357,12 +365,12 @@ impl<C: ArrabbiataCurve> Env<C> {
         constraints
     }
 
-    /// Get all the constraints for the IVC circuit and the application.
+    /// Get all the constraints for the verifier circuit and the application.
     // FIXME: the application should be given as an argument to handle Rust
     // zkApp. It is only for the PoC.
     // FIXME: the selectors are not added for now.
     pub fn get_all_constraints(&self) -> Vec<E<C::ScalarField>> {
-        let mut constraints = self.get_all_constraints_for_ivc();
+        let mut constraints = self.get_all_constraints_for_verifier();
 
         // Copying the instance we got in parameter, and making it mutable to
         // avoid modifying the original instance.
@@ -380,7 +388,7 @@ impl<C: ArrabbiataCurve> Env<C> {
 
 impl<C: ArrabbiataCurve> Default for Env<C>
 where
-    <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    C::BaseField: PrimeField,
 {
     fn default() -> Self {
         Self::new()

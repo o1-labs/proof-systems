@@ -5,7 +5,7 @@ use ark_ff::PrimeField;
 
 use crate::witness::Env;
 
-/// Generate a proof for the IVC circuit.
+/// Generate a proof.
 /// All the information to make a proof is available in the environment given in
 /// parameter.
 pub fn prove<

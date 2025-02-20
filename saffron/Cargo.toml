@@ -18,16 +18,33 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0"
+ark-ec.workspace = true
 ark-ff.workspace = true
+ark-poly.workspace = true
 ark-serialize = { workspace = true, features = ["derive"]}
 clap = { workspace = true, features = ["derive"] }
+hex.workspace = true
+kimchi.workspace = true
 mina-curves.workspace = true
+mina-poseidon.workspace = true
 o1-utils.workspace = true
+poly-commitment.workspace = true
+rand.workspace = true
+rayon.workspace = true
+rmp-serde.workspace = true
+serde.workspace = true
+serde_with.workspace = true
+thiserror.workspace = true
 time = { version = "0.3", features = ["macros"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = [ "ansi", "env-filter", "fmt", "time" ] }
 
-
 [dev-dependencies]
 ark-std.workspace = true
+ctor = "0.2"
 proptest.workspace = true
+once_cell.workspace = true
+
+[[bin]]
+name = "saffron-og-flow"
+path = "og-flow/main.rs"
