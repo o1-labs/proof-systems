@@ -405,7 +405,7 @@ pub mod network {
                     data_commitment,
                 }) => {
                     println!(
-                        "Saw read write for {region}:\n{:?}\n{:?}\n{:?}",
+                        "Saw write intent for {region}:\n{:?}\n{:?}\n{:?}",
                         query_commitment, precondition_commitment, data_commitment
                     );
                 }
@@ -417,7 +417,7 @@ pub mod network {
                     old_data_commitment,
                 }) => {
                     println!(
-                        "Saw read response for {region}:\n{:?}\n{:?}\n{:?}\n{:?}",
+                        "Saw write response for {region}:\n{:?}\n{:?}\n{:?}\n{:?}",
                         query_commitment,
                         precondition_commitment,
                         data_commitment,
@@ -431,7 +431,7 @@ pub mod network {
                     data_commitment,
                 }) => {
                     println!(
-                        "Saw read response for {region}:\n{:?}\n{:?}\n{:?}",
+                        "Saw write failure for {region}:\n{:?}\n{:?}\n{:?}",
                         query_commitment, precondition_commitment, data_commitment,
                     );
                 }
@@ -753,6 +753,10 @@ pub mod state_provider {
                         precondition_commitment,
                         data_commitment,
                     }) => {
+                        if addresses.len() != values.len() {
+                            super::stream_write(stream, Err::<ReadResponse, ()>(()));
+                            continue;
+                        }
                         let is_sorted = (0..addresses.len() - 1)
                             .map(|idx| addresses[idx] < addresses[idx + 1])
                             .reduce(|x, y| x && y)
