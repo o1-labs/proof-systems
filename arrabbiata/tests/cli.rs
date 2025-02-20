@@ -5,13 +5,19 @@ fn test_arrabbiata_binary() {
     // Build the binary path
     let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
+    let build_mode = if cfg!(debug_assertions) {
+        "debug"
+    } else {
+        "release"
+    };
+
     // Build the path to the binary. It is assumed that no package is selected
     // when running the test, i.e. no `-p arrabbiata` in the `cargo test`
     // command. It is the behavior in the CI.
     let binary_path = project_root
         .join("..")
         .join("target")
-        .join("release")
+        .join(build_mode)
         .join("arrabbiata");
 
     // Build the command
