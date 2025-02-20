@@ -64,7 +64,8 @@ pub const MAXIMUM_FIELD_SIZE_IN_BITS: u64 = 255;
 pub const NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO: usize = NUMBER_OF_COLUMNS * 2;
 
 /// The number of selectors used in the circuit.
-pub const NUMBER_OF_SELECTORS: usize = column::Gadget::COUNT;
+pub const NUMBER_OF_SELECTORS: usize =
+    column::Gadget::COUNT + (PlonkSpongeConstants::PERM_ROUNDS_FULL / 5);
 
 /// The arity of the multivariate polynomials describing the constraints.
 /// We consider, erroneously, that a public input can be considered as a

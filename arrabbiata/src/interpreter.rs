@@ -596,12 +596,17 @@ use num_bigint::BigInt;
 #[derive(Copy, Clone, Debug)]
 pub enum Instruction {
     /// This gadget implement the Poseidon hash instance described in the
-    /// top-level documentation. Compared to the previous one (that might be
-    /// deprecated in the future), this implementation does use the "next row"
-    /// to allow the computation of one additional round per row. In the current
-    /// setup, with [NUMBER_OF_COLUMNS] columns, we can compute 5 full rounds
-    /// per row.
+    /// top-level documentation. In the current setup, with [NUMBER_OF_COLUMNS]
+    /// columns, we can compute 5 full rounds per row.
     Poseidon(usize),
+    /// We provide a new Poseidon gadget that allows computing 5 rounds, without
+    /// using "public inputs".
+    ///
+    /// We split the Poseidon gadget in 13 sub-gadgets, one for each set of 5
+    /// permutations and one for the absorbtion. The parameteris the starting
+    /// round of Poseidon. It is expected to be a multiple of five.
+    PoseidonPermutation(usize),
+    PoseidonSpongeAbsorb,
     EllipticCurveScaling(usize, u64),
     EllipticCurveAddition(usize),
     // The NoOp will simply do nothing
@@ -729,6 +734,11 @@ pub trait InterpreterEnv {
         round: usize,
         i: usize,
     ) -> Self::Variable;
+
+    /// Return the Poseidon round constants as a constant.
+    /// It aims to replace [InterpreterEnv::get_poseidon_round_constant] when
+    /// we get rid of the gadget [Gadget::Poseidon].
+    fn get_poseidon_round_constant_as_constant(&self, round: usize, i: usize) -> Self::Variable;
 
     /// Return the requested MDS matrix coefficient
     fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable;
@@ -1165,6 +1175,94 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                     PlonkSpongeConstants::PERM_ROUNDS_FULL
                 );
             }
+        }
+        Instruction::PoseidonPermutation(starting_round) => {
+            assert!(
+                starting_round < PlonkSpongeConstants::PERM_ROUNDS_FULL,
+                "Invalid round index. Only values below {} are allowed.",
+                PlonkSpongeConstants::PERM_ROUNDS_FULL
+            );
+            assert!(
+                starting_round % 5 == 0,
+                "Invalid round index. Only values that are multiple of 5 are allowed."
+            );
+            debug!(
+                "Executing instruction Poseidon starting from round {starting_round} to {}",
+                starting_round + 5
+            );
+
+            env.activate_gadget(Gadget::PoseidonPermutation(starting_round));
+
+            let round_input_positions: Vec<E::Position> = (0..PlonkSpongeConstants::SPONGE_WIDTH)
+                .map(|_i| env.allocate())
+                .collect();
+
+            let round_output_positions: Vec<E::Position> = (0..PlonkSpongeConstants::SPONGE_WIDTH)
+                .map(|_i| env.allocate_next_row())
+                .collect();
+
+            let state: Vec<E::Variable> = if starting_round == 0 {
+                round_input_positions
+                    .iter()
+                    .enumerate()
+                    .map(|(i, pos)| env.load_poseidon_state(*pos, i))
+                    .collect()
+            } else {
+                round_input_positions
+                    .iter()
+                    .map(|pos| env.read_position(*pos))
+                    .collect()
+            };
+
+            // 5 is the number of rounds we treat per row
+            (0..5).fold(state, |state, idx_round| {
+                let state: Vec<E::Variable> =
+                    state.iter().map(|x| env.compute_x5(x.clone())).collect();
+
+                let round = starting_round + idx_round;
+
+                let rcs: Vec<E::Variable> = (0..PlonkSpongeConstants::SPONGE_WIDTH)
+                    .map(|i| env.get_poseidon_round_constant_as_constant(round, i))
+                    .collect();
+
+                let state: Vec<E::Variable> = rcs
+                    .iter()
+                    .enumerate()
+                    .map(|(i, rc)| {
+                        let acc: E::Variable =
+                            state.iter().enumerate().fold(env.zero(), |acc, (j, x)| {
+                                acc + env.get_poseidon_mds_matrix(i, j) * x.clone()
+                            });
+                        // The last iteration is written on the next row.
+                        if idx_round == 4 {
+                            env.write_column(round_output_positions[i], acc + rc.clone())
+                        } else {
+                            // Otherwise, we simply allocate a new position
+                            // in the circuit.
+                            let pos = env.allocate();
+                            env.write_column(pos, acc + rc.clone())
+                        }
+                    })
+                    .collect();
+
+                // If we are at the last round, we save the state in the
+                // environment.
+                // FIXME/IMPROVEME: we might want to execute more Poseidon
+                // full hash in sequentially, and then save one row. For
+                // now, we will save the state at the end of the last round
+                // and reload it at the beginning of the next Poseidon full
+                // hash.
+                if round == PlonkSpongeConstants::PERM_ROUNDS_FULL - 1 {
+                    state.iter().enumerate().for_each(|(i, x)| {
+                        unsafe { env.save_poseidon_state(x.clone(), i) };
+                    });
+                };
+
+                state
+            });
+        }
+        Instruction::PoseidonSpongeAbsorb => {
+            todo!()
         }
         Instruction::NoOp => {}
     }
