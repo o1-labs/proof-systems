@@ -143,6 +143,20 @@ fn test_gadget_elliptic_curve_scaling() {
 }
 
 #[test]
+fn test_gadget_poseidon_permutation() {
+    let instr = Instruction::PoseidonPermutation(0);
+    helper_compute_constraints_gadget(instr, 15);
+
+    let mut exp_degrees = HashMap::new();
+    exp_degrees.insert(5, 15);
+    helper_check_expected_degree_constraints(instr, exp_degrees);
+
+    helper_gadget_number_of_columns_used(instr, 15, 0);
+
+    helper_check_gadget_activated(instr, Gadget::PoseidonPermutation(0));
+}
+
+#[test]
 fn test_get_mvpoly_equivalent() {
     // Check that each constraint can be converted to a MVPoly. The type of the
     // MVPoly is crucial as it determines the maximum degree of the constraint
