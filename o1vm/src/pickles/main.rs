@@ -207,6 +207,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     // TODO use lookup proof input type, containing the arity
     curr_proof_inputs = ProofInputs::new(domain_size);
     let mut arity: Vec<Vec<usize>> = vec![];
+    let mut lookup_env = LookupEnvironment::new(&srs, domain_fp);
     let mut acc = Fp::zero();
 
     // Initialize the environments
