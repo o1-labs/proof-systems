@@ -168,7 +168,14 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
 
         if curr_proof_inputs.evaluations.instruction_counter.len() == domain_size {
-            prove_and_verify(domain_fp, &srs, &constraints, curr_proof_inputs, &mut rng);
+            prove_and_verify(
+                domain_fp,
+                &srs,
+                &constraints,
+                curr_proof_inputs,
+                &mut rng,
+                lookup_env,
+            );
 
             curr_proof_inputs = ProofInputs::new(domain_size);
         }
@@ -176,7 +183,14 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     if curr_proof_inputs.evaluations.instruction_counter.len() < domain_size {
         debug!("Padding witness for proof generation");
         pad(&mips_wit_env, &mut curr_proof_inputs, &mut rng);
-        prove_and_verify(domain_fp, &srs, &constraints, curr_proof_inputs, &mut rng);
+        prove_and_verify(
+            domain_fp,
+            &srs,
+            &constraints,
+            curr_proof_inputs,
+            &mut rng,
+            lookup_env,
+        );
     }
     // Second loop, do the lookup delayed argument
     // TODO: use a lighter interpreter specialised for lookups
@@ -274,6 +288,7 @@ fn prove_and_verify(
     constraints: &[E<Fp>],
     curr_proof_inputs: ProofInputs<Vesta>,
     rng: &mut ThreadRng,
+    lookup_env: &mut LookupEnvironment<Vesta>,
 ) {
     let start_iteration = Instant::now();
     let proof = prover::prove::<
@@ -288,6 +303,8 @@ fn prove_and_verify(
         elapsed = start_iteration.elapsed().as_micros()
     );
     let start_iteration = Instant::now();
+    // update the lookup env
+    lookup_env.add_cms(&proof.commitments.lookup_state);
     let verif = verifier::verify::<
         Vesta,
         DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
