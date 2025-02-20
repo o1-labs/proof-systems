@@ -16,7 +16,7 @@ use poly_commitment::{commitment::CommitmentCurve, PolyComm};
 use rand::{CryptoRng, RngCore};
 
 #[test]
-fn test_unit_witness_poseidon_next_row_gadget_one_full_hash() {
+fn test_unit_witness_poseidon_gadget_one_full_hash() {
     let srs_log2_size = 6;
     let sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
         std::array::from_fn(|_i| BigInt::from(42u64));
