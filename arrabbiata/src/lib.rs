@@ -1,3 +1,19 @@
+//! Arrabbiata is a Rust framework for building zkApps in Rust, using the
+//! cryptographic primitive called "Folding scheme". It uses the Pasta curves
+//! and IPA polynomial commitment scheme.
+//!
+//! The library provides multiple components.
+//!
+//! First, it provides an implementation of a generalisation of the folding
+//! scheme described in [Nova](https://eprint.iacr.org/2021/370) to handle
+//! arbitrary PlonK-ish custom gates. The generalised accumulation scheme starts
+//! from the observation that the concept of "relaxed R1CS" in Nova is a special
+//! case of the process of homogenizing a multivariate polynomial. More details
+//! can be found in [Behind Nova](https://hackmd.io/@dannywillems/Syo5MBq90).
+//!
+//! Second, it provides a [prover](crate::prover) and a
+//! [verifier](crate::verifier) for the folding scheme, to achieve IVC.
+//!
 use curve::PlonkSpongeConstants;
 use mina_poseidon::constants::SpongeConstants;
 use strum::EnumCount as _;
@@ -13,11 +29,11 @@ pub mod poseidon_3_60_0_5_5_fp;
 pub mod poseidon_3_60_0_5_5_fq;
 pub mod proof;
 pub mod prover;
+pub mod setup;
 pub mod verifier;
 pub mod witness;
 
-/// The maximum degree of the polynomial that can be represented by the
-/// polynomial-time function the library supports.
+/// The maximum degree of the library supports.
 pub const MAX_DEGREE: usize = 5;
 
 /// The minimum SRS size required to use Nova, in base 2.
@@ -63,3 +79,14 @@ pub const NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO: usize = NUMBER_OF_COLUMNS * 2;
 
 /// The number of selectors used in the circuit.
 pub const NUMBER_OF_SELECTORS: usize = column::Gadget::COUNT;
+
+/// The arity of the multivariate polynomials describing the constraints.
+/// We consider, maybe errorneously, that a public input is full and fit an
+/// entire polynomial. The arity of the multivariate polynomials describing the
+/// constraints.
+/// We consider, maybe errorneously, that a public input can be considered as a
+/// column and fit an entire polynomial. We also suppose that the private
+/// inputs on the next row can be used, hence the times 2.
+///
+/// It is going to be used to convert into the representation used in [mvpoly].
+pub const MV_POLYNOMIAL_ARITY: usize = NUMBER_OF_PUBLIC_INPUTS + NUMBER_OF_COLUMNS * 2;

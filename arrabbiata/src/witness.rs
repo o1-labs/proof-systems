@@ -1,23 +1,22 @@
 use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
 use ark_poly::Evaluations;
-use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
-use log::{debug, info};
+use kimchi::circuits::gate::CurrOrNext;
+use log::debug;
 use mina_poseidon::constants::SpongeConstants;
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
-use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
+use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::time::Instant;
 
 use crate::{
     challenge::{ChallengeTerm, Challenges},
     column::{Column, Gadget},
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side},
-    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS,
-    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    setup, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
+    NUMBER_OF_SELECTORS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
 /// The first instruction in the verifier circuit (often shortened in "IVC" in
@@ -33,8 +32,8 @@ pub const VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
 ///
 /// The term "app(lication) state" will be used to refer to the state of the
 /// user application, and the term "IVC state" will be used to refer to the
-/// state of the verifier application. The term program state will be used to refer to
-/// the state of the whole program.
+/// state of the verifier application. The term program state will be used to
+/// refer to the state of the whole program.
 ///
 /// The environment contains all the accumulators that can be picked for a given
 /// fold instance k, including the sponges.
@@ -54,20 +53,8 @@ pub struct Env<
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
 {
-    // ----------------
-    // Setup related (domains + SRS)
-    /// Domain for Fp
-    pub domain_fp: EvaluationDomains<E1::ScalarField>,
-
-    /// Domain for Fq
-    pub domain_fq: EvaluationDomains<E2::ScalarField>,
-
-    /// SRS for the first curve
-    pub srs_e1: SRS<E1>,
-
-    /// SRS for the second curve
-    pub srs_e2: SRS<E2>,
-    // ----------------
+    /// The relation this witness environment is related to.
+    pub indexed_relation: setup::IndexedRelation<Fp, Fq, E1, E2>,
 
     // ----------------
     // Information related to the IVC, which will be used by the prover/verifier
@@ -95,6 +82,41 @@ pub struct Env<
     /// The size of the inner vector must be equal to the number of rows in
     /// the circuit.
     pub accumulated_program_state_e2: Vec<Vec<E2::ScalarField>>,
+
+    /// Accumulation of the public inputs over `E1`.
+    /// It is included in the "instance" part of the accumulation scheme.
+    /// In the usual notation R(x, w), this field will represent the x part.
+    ///
+    /// (FIXME)
+    /// Erroneously, the public inputs are considered as non-continuous filled
+    /// polynomials, probably sparse (i.e. P(ω) might be a non-zero value, but
+    /// P(ω^2), P(ω^3) might be zero and P(ω^4) might be non zero). It can be
+    /// seen as a list of a certain number of values that each row can refer to,
+    /// and known by the verifier. At the moment, [NUMBER_OF_PUBLIC_INPUTS] is
+    /// considered as the maximum number of public inputs that can be used in
+    /// each row of the circuit. The design is subject to change.
+    /// For instance, some of these values are simply "fixed public values",
+    /// like the round constants for the Poseidon hash, as they are predefined
+    /// by the relation itself. We should consider them as "selectors", defined
+    /// at setup time, and fixed for any inputs of the relation.
+    /// It will come soon as the setup "phase" is being implemented. Some of
+    /// these values will be moved into the field `indexed_relation`.
+    ///
+    /// The size of the outer vector must be equal to the number of columns in
+    /// the circuit.
+    /// The size of the inner vector must be equal to the number of rows in
+    /// the circuit.
+    pub accumulated_public_inputs_e1: Vec<Vec<E1::ScalarField>>,
+
+    /// Accumulation of the public inputs over `E2`.
+    /// Same than [`accumulated_public_inputs_e1`], but over `E2`.
+    pub accumulated_public_inputs_e2: Vec<Vec<E2::ScalarField>>,
+
+    /// Commitments to the accumulated public inputs over E1.
+    pub accumulated_committed_public_inputs_e1: Vec<PolyComm<E1>>,
+
+    /// Commitments to the accumulated public inputs over E2.
+    pub accumulated_committed_public_inputs_e2: Vec<PolyComm<E2>>,
     // ----------------
 
     // ----------------
@@ -134,6 +156,10 @@ pub struct Env<
     ///
     /// The layout columns/rows is used to avoid rebuilding the arrays per
     /// column when committing to the witness.
+    ///
+    /// FIXME: this must be moved to the "setup phrase", i.e. the
+    /// "indexed_relation" field. In addition to that, some values like the
+    /// round constants should appear here.
     pub selectors: Vec<Vec<bool>>,
 
     /// While folding, we must keep track of the challenges the verifier would
@@ -312,12 +338,12 @@ where
         let (modulus, srs_size): (BigInt, usize) = if self.current_iteration % 2 == 0 {
             (
                 E1::ScalarField::modulus_biguint().into(),
-                self.srs_e1.size(),
+                self.indexed_relation.get_srs_size(),
             )
         } else {
             (
                 E2::ScalarField::modulus_biguint().into(),
-                self.srs_e2.size(),
+                self.indexed_relation.get_srs_size(),
             )
         };
         let v = v.mod_floor(&modulus);
@@ -589,7 +615,7 @@ where
                             // probability to request to compute `0 * P`.
                             // FIXME: ! check this statement !
                             Side::Right => {
-                                let pt = self.srs_e2.h;
+                                let pt = self.indexed_relation.srs_e2.h;
                                 let (pt_x, pt_y) = pt.to_coordinates().unwrap();
                                 let pt_x = self.write_column(pos_x, pt_x.to_biguint().into());
                                 let pt_y = self.write_column(pos_y, pt_y.to_biguint().into());
@@ -615,7 +641,8 @@ where
                             // probability to request to compute `0 * P`.
                             // FIXME: ! check this statement !
                             Side::Right => {
-                                let pt = self.srs_e1.h;
+                                let blinder = self.indexed_relation.srs_e1.h;
+                                let pt = blinder;
                                 let (pt_x, pt_y) = pt.to_coordinates().unwrap();
                                 let pt_x = self.write_column(pos_x, pt_x.to_biguint().into());
                                 let pt_y = self.write_column(pos_x, pt_y.to_biguint().into());
@@ -843,53 +870,13 @@ where
     <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     pub fn new(
-        srs_log2_size: usize,
         z0: BigInt,
         sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
         sponge_e2: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
+        indexed_relation: setup::IndexedRelation<Fp, Fq, E1, E2>,
     ) -> Self {
-        {
-            assert!(E1::ScalarField::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
-            assert!(Fq::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
-            let modulus_fp = E1::ScalarField::modulus_biguint();
-            let alpha = PlonkSpongeConstants::PERM_SBOX;
-            assert!(
-                (modulus_fp - BigUint::from(1_u64)).gcd(&BigUint::from(alpha))
-                    == BigUint::from(1_u64),
-                "The modulus of Fp should be coprime with {alpha}"
-            );
-            let modulus_fq = E2::ScalarField::modulus_biguint();
-            let alpha = PlonkSpongeConstants::PERM_SBOX;
-            assert!(
-                (modulus_fq - BigUint::from(1_u64)).gcd(&BigUint::from(alpha))
-                    == BigUint::from(1_u64),
-                "The modulus of Fq should be coprime with {alpha}"
-            );
-        }
-        let srs_size = 1 << srs_log2_size;
-        let domain_fp = EvaluationDomains::<E1::ScalarField>::create(srs_size).unwrap();
-        let domain_fq = EvaluationDomains::<E2::ScalarField>::create(srs_size).unwrap();
-
-        info!("Create an SRS of size {srs_log2_size} for the first curve");
-        let srs_e1: SRS<E1> = {
-            let start = Instant::now();
-            let srs = SRS::create(srs_size);
-            debug!("SRS for E1 created in {:?}", start.elapsed());
-            let start = Instant::now();
-            srs.get_lagrange_basis(domain_fp.d1);
-            debug!("Lagrange basis for E1 added in {:?}", start.elapsed());
-            srs
-        };
-        info!("Create an SRS of size {srs_log2_size} for the second curve");
-        let srs_e2: SRS<E2> = {
-            let start = Instant::now();
-            let srs = SRS::create(srs_size);
-            debug!("SRS for E2 created in {:?}", start.elapsed());
-            let start = Instant::now();
-            srs.get_lagrange_basis(domain_fq.d1);
-            debug!("Lagrange basis for E2 added in {:?}", start.elapsed());
-            srs
-        };
+        let srs_size = indexed_relation.get_srs_size();
+        let (blinder_e1, blinder_e2) = indexed_relation.get_srs_blinders();
 
         let mut witness: Vec<Vec<BigInt>> = Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
@@ -923,17 +910,46 @@ where
 
         // Default set to the blinders. Using double to make the EC scaling happy.
         let previous_committed_state_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
-            .map(|_| PolyComm::new(vec![(srs_e1.h + srs_e1.h).into()]))
+            .map(|_| PolyComm::new(vec![(blinder_e1 + blinder_e1).into()]))
             .collect();
         let previous_committed_state_e2: Vec<PolyComm<E2>> = (0..NUMBER_OF_COLUMNS)
-            .map(|_| PolyComm::new(vec![(srs_e2.h + srs_e2.h).into()]))
+            .map(|_| PolyComm::new(vec![(blinder_e2 + blinder_e2).into()]))
             .collect();
         // FIXME: zero will not work.
         let accumulated_committed_state_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
-            .map(|_| PolyComm::new(vec![srs_e1.h]))
+            .map(|_| PolyComm::new(vec![blinder_e1]))
             .collect();
         let accumulated_committed_state_e2: Vec<PolyComm<E2>> = (0..NUMBER_OF_COLUMNS)
-            .map(|_| PolyComm::new(vec![srs_e2.h]))
+            .map(|_| PolyComm::new(vec![blinder_e2]))
+            .collect();
+
+        // FIXME: they must probably be initialized to some values when creating
+        // the environment.
+        let accumulated_public_inputs_e1: Vec<Vec<E1::ScalarField>> = (0..NUMBER_OF_PUBLIC_INPUTS)
+            .map(|_| {
+                let mut vec: Vec<E1::ScalarField> = Vec::with_capacity(srs_size);
+                (0..srs_size).for_each(|_| vec.push(E1::ScalarField::zero()));
+                vec
+            })
+            .collect();
+
+        let accumulated_public_inputs_e2: Vec<Vec<E2::ScalarField>> = (0..NUMBER_OF_PUBLIC_INPUTS)
+            .map(|_| {
+                let mut vec: Vec<E2::ScalarField> = Vec::with_capacity(srs_size);
+                (0..srs_size).for_each(|_| vec.push(E2::ScalarField::zero()));
+                vec
+            })
+            .collect();
+
+        // FIXME: using blinder for now
+        let accumulated_committed_public_inputs_e1: Vec<PolyComm<E1>> = (0
+            ..NUMBER_OF_PUBLIC_INPUTS)
+            .map(|_| PolyComm::new(vec![blinder_e1]))
+            .collect();
+
+        let accumulated_committed_public_inputs_e2: Vec<PolyComm<E2>> = (0
+            ..NUMBER_OF_PUBLIC_INPUTS)
+            .map(|_| PolyComm::new(vec![blinder_e2]))
             .collect();
 
         // FIXME: challenges
@@ -947,24 +963,29 @@ where
             std::array::from_fn(|_| BigInt::from(0_u64));
         let verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
             std::array::from_fn(|_| BigInt::from(0_u64));
+
         Self {
             // -------
             // Setup
-            domain_fp,
-            domain_fq,
-            srs_e1,
-            srs_e2,
+            indexed_relation,
             // -------
-            // -------
-            // verifier only
+            // Accumulation scheme related values
             accumulated_committed_state_e1,
             accumulated_committed_state_e2,
+
             previous_committed_state_e1,
             previous_committed_state_e2,
+
             accumulated_program_state_e1,
             accumulated_program_state_e2,
+
+            accumulated_public_inputs_e1,
+            accumulated_public_inputs_e2,
+
+            accumulated_committed_public_inputs_e1,
+            accumulated_committed_public_inputs_e2,
             // ------
-            // ------
+            // Witness builder related fields
             idx_var: 0,
             idx_var_next_row: 0,
             idx_var_pi: 0,
@@ -1037,9 +1058,9 @@ where
         if self.current_iteration % 2 == 0 {
             assert_eq!(
                 self.current_row as u64,
-                self.domain_fp.d1.size,
+                self.indexed_relation.domain_fp.d1.size,
                 "The program has not been fully executed. Missing {} rows",
-                self.domain_fp.d1.size - self.current_row as u64,
+                self.indexed_relation.domain_fp.d1.size - self.current_row as u64,
             );
             let comms: Vec<PolyComm<E1>> = self
                 .witness
@@ -1049,18 +1070,22 @@ where
                         .par_iter()
                         .map(|x| E1::ScalarField::from_biguint(&x.to_biguint().unwrap()).unwrap())
                         .collect();
-                    let evals = Evaluations::from_vec_and_domain(evals.to_vec(), self.domain_fp.d1);
-                    self.srs_e1
-                        .commit_evaluations_non_hiding(self.domain_fp.d1, &evals)
+                    let evals = Evaluations::from_vec_and_domain(
+                        evals.to_vec(),
+                        self.indexed_relation.domain_fp.d1,
+                    );
+                    self.indexed_relation
+                        .srs_e1
+                        .commit_evaluations_non_hiding(self.indexed_relation.domain_fp.d1, &evals)
                 })
                 .collect();
             self.previous_committed_state_e1 = comms
         } else {
             assert_eq!(
                 self.current_row as u64,
-                self.domain_fq.d1.size,
+                self.indexed_relation.domain_fq.d1.size,
                 "The program has not been fully executed. Missing {} rows",
-                self.domain_fq.d1.size - self.current_row as u64,
+                self.indexed_relation.domain_fq.d1.size - self.current_row as u64,
             );
             let comms: Vec<PolyComm<E2>> = self
                 .witness
@@ -1070,9 +1095,13 @@ where
                         .par_iter()
                         .map(|x| E2::ScalarField::from_biguint(&x.to_biguint().unwrap()).unwrap())
                         .collect();
-                    let evals = Evaluations::from_vec_and_domain(evals.to_vec(), self.domain_fq.d1);
-                    self.srs_e2
-                        .commit_evaluations_non_hiding(self.domain_fq.d1, &evals)
+                    let evals = Evaluations::from_vec_and_domain(
+                        evals.to_vec(),
+                        self.indexed_relation.domain_fq.d1,
+                    );
+                    self.indexed_relation
+                        .srs_e2
+                        .commit_evaluations_non_hiding(self.indexed_relation.domain_fq.d1, &evals)
                 })
                 .collect();
             self.previous_committed_state_e2 = comms
@@ -1398,4 +1427,19 @@ where
                 .collect();
         }
     }
+
+    // pub fn compute_cross_terms(&mut self) {
+    //     let srs_size = self.indexed_relation.get_srs_size();
+    //     if self.current_iteration % 2 == 0 {
+    //         (0..srs_size).for_each(|row| {
+    //             let mut eval_lft: [E1::ScalarField; MV_POLYNOMIAL_ARITY] = [E1::ScalarField::zero(); MV_POLYNOMIAL_ARITY];
+    //             (0..NUMBER_OF_COLUMNS).for_each(|col| {
+    //                 eval_lft[i] = self.accumulated_program_state_e1[col][row as usize];
+    //             });
+    //             (0..NUMBER_OF_PUBLIC_INPUTS).for_each(|pi_idx| {
+    //                 eval_lft[NUMBER_OF_COLUMNS + pi_idx] = self.
+    //             });
+    //     }
+
+    // }
 }

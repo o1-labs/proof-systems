@@ -12,7 +12,7 @@ use crate::NUMBER_OF_COLUMNS;
 // It might not be that obvious to do so, as the Instruction enum could be
 // defining operations that are not "fixed" in the circuit, but rather
 // depend on runtime values (e.g. in a zero-knowledge virtual machine).
-#[derive(Debug, Clone, Copy, PartialEq, EnumCountMacro, EnumIter)]
+#[derive(Debug, Clone, Copy, PartialEq, EnumCountMacro, EnumIter, Eq, Hash)]
 pub enum Gadget {
     App,
     // Elliptic curve related gadgets
