@@ -894,6 +894,17 @@ pub mod client {
 
     #[serde_as]
     #[derive(Serialize, Deserialize)]
+    pub struct WriteQuery {
+        pub region: u64,
+        pub addresses: Vec<u64>,
+        #[serde_as(as = "Option<Vec<o1_utils::serialization::SerdeAs>>")]
+        pub precondition: Option<Vec<Fp>>,
+        #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+        pub values: Vec<Fp>,
+    }
+
+    #[serde_as]
+    #[derive(Serialize, Deserialize)]
     pub struct ReadResponse {
         #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
         pub values: Vec<Fp>,
@@ -906,6 +917,7 @@ pub mod client {
         StateRetentionProof,
         UpdateProverInputs,
         Read(ReadQuery),
+        Write(WriteQuery),
         Quit,
     }
 
@@ -997,6 +1009,71 @@ pub mod client {
                         super::stream_write(stream, ReadResponse { values });
                     }
                 }
+                Message::Write(WriteQuery {
+                    region,
+                    addresses,
+                    precondition,
+                    values,
+                }) => {
+                    let address_basis: Vec<_> = addresses
+                        .par_iter()
+                        .map(|idx| basis[*idx as usize])
+                        .collect();
+                    let query_commitment = {
+                        address_basis
+                            .par_iter()
+                            .map(|x| x.into_group())
+                            .reduce(|| Vesta::zero().into_group(), |x, y| x + y)
+                            + srs.h
+                    }
+                    .into_affine();
+                    let precondition_commitment = if let Some(precondition) = precondition {
+                        Some(
+                            {
+                                ProjectiveVesta::msm(
+                                    address_basis.as_slice(),
+                                    precondition.as_slice(),
+                                )
+                                .unwrap()
+                                    + srs.h
+                            }
+                            .into_affine(),
+                        )
+                    } else {
+                        None
+                    };
+                    let data_commitment = {
+                        ProjectiveVesta::msm(address_basis.as_slice(), values.as_slice()).unwrap()
+                            + srs.h
+                    }
+                    .into_affine();
+                    super::rpc_unit(
+                        network_address.clone(),
+                        network::Message::WriteIntent(network::WriteIntent {
+                            region,
+                            query_commitment,
+                            precondition_commitment,
+                            data_commitment,
+                        }),
+                    );
+                    if let Ok(state_provider::WriteResponse::Success) =
+                        super::rpc::<_, _, Result<state_provider::WriteResponse, ()>>(
+                            state_provider_address.clone(),
+                            state_provider::Message::Write(state_provider::WriteQuery {
+                                region,
+                                addresses,
+                                query_commitment,
+                                precondition_commitment,
+                                data_commitment,
+                                values,
+                            }),
+                        )
+                    {
+                        super::stream_write(stream, true);
+                    } else {
+                        super::stream_write(stream, false);
+                    }
+                }
                 Message::Quit => {
                     super::stream_write(stream, ());
                     break;
@@ -1036,12 +1113,14 @@ pub mod request {
             UpdateProverInputs(Args),
             #[command(name = "read")]
             Read(Args),
+            #[command(name = "write")]
+            Write(Args),
             #[command(name = "quit")]
             Quit(Args),
         }
     }
 
-    use super::client::{Message as ClientMessage, ReadQuery, ReadResponse};
+    use super::client::{Message as ClientMessage, ReadQuery, ReadResponse, WriteQuery};
     use serde::{Deserialize, Serialize};
     use std::io::Read;
     use std::process::ExitCode;
@@ -1091,6 +1170,20 @@ pub mod request {
                     ReadQuery::deserialize(&mut deserializer).unwrap()
                 };
                 let response: ReadResponse = super::rpc(client_address, ClientMessage::Read(query));
+                {
+                    let mut serializer = serde_json::Serializer::new(std::io::stdout());
+                    response.serialize(&mut serializer).unwrap();
+                }
+                ExitCode::SUCCESS
+            }
+            cli::Command::Write(args) => {
+                let cli::Args { client_address } = args;
+                let query = {
+                    let reader = serde_json::de::IoRead::new(std::io::stdin());
+                    let mut deserializer = serde_json::Deserializer::new(reader);
+                    WriteQuery::deserialize(&mut deserializer).unwrap()
+                };
+                let response: bool = super::rpc(client_address, ClientMessage::Write(query));
                 {
                     let mut serializer = serde_json::Serializer::new(std::io::stdout());
                     response.serialize(&mut serializer).unwrap();
