@@ -826,6 +826,14 @@ pub mod state_provider {
                             );
                             continue;
                         }
+                        for (idx, value) in addresses.iter().zip(values.iter()) {
+                            prover_inputs.data[SRS_SIZE * region as usize + *idx as usize] = *value;
+                        }
+                        prover_inputs.affine_committed_chunks[region as usize] = (prover_inputs
+                            .affine_committed_chunks[region as usize]
+                            + data_commitment
+                            - old_data_commitment)
+                            .into();
                         respond(Ok(WriteResponse::Success));
                         super::rpc_unit(
                             network_address.clone(),
