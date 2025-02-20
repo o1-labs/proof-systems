@@ -156,37 +156,58 @@ impl LookupTableID for LookupTableIDs {
 }
 
 /// Trait that creates all the fixed lookup tables used in the VM
+///  Each table can be returned in a 'defauly form with the outer vector
+/// indexing the row, and the inner the vector, or the transposed:
+/// eg. a range check for n
+/// would be [[0],[1],...,[n]]
+/// or its transposed version [[0,...,n]]
 pub(crate) trait FixedLookupTables<F> {
     /// Checks whether a value is in a table and returns the position if it is
     /// or None otherwise.
     fn is_in_table(table: &LookupTable<F>, value: Vec<F>) -> Option<usize>;
+
     /// Returns the pad table
     fn table_pad() -> LookupTable<F>;
+    fn table_pad_transposed() -> LookupTable<F>;
+
     /// Returns the round constants table
     fn table_round_constants() -> LookupTable<F>;
+    fn table_round_constants_transposed() -> LookupTable<F>;
+
     /// Returns the at most 4 table
     fn table_at_most_4() -> LookupTable<F>;
+    fn table_at_most_4_transposed() -> LookupTable<F>;
+
     /// Returns the byte table
     fn table_byte() -> LookupTable<F>;
+    fn table_byte_transposed() -> LookupTable<F>;
+
     /// Returns the range check 16 table
     fn table_range_check_16() -> LookupTable<F>;
+    fn table_range_check_16_transposed() -> LookupTable<F>;
+
     /// Returns the sparse table
     fn table_sparse() -> LookupTable<F>;
+    fn table_sparse_transposed() -> LookupTable<F>;
+
     /// Returns the reset table
     fn table_reset() -> LookupTable<F>;
+    fn table_reset_transposed() -> LookupTable<F>;
+
     /// Returns a vector containing all fixed tables
-    fn get_all_tables() -> Vec<LookupTable<F>>;
+    fn get_all_tables_transposed() -> Vec<LookupTable<F>>;
 }
 
 impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
-    fn get_all_tables() -> Vec<LookupTable<F>> {
+    fn get_all_tables_transposed() -> Vec<LookupTable<F>> {
         vec![
-            Self::table_pad(),
-            Self::table_round_constants(),
-            Self::table_byte(),
-            Self::table_range_check_16(),
-            Self::table_sparse(),
-            Self::table_reset(),
+            Self::table_pad_transposed(),
+            Self::table_round_constants_transposed(),
+            Self::table_at_most_4_transposed(),
+            Self::table_byte_transposed(),
+            Self::table_range_check_16_transposed(),
+            Self::table_sparse_transposed(),
+            Self::table_reset_transposed(),
         ]
     }
 
@@ -254,6 +275,22 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
         }
     }
 
+    fn table_pad_transposed() -> Self {
+        let mut entries = vec![vec![]; 7];
+        for i in 1..=PadLookup.length() {
+            let suffix = pad_blocks(i);
+            entries[0].push(F::from(i as u64));
+            entries[1].push(F::two_pow(i as u64));
+            for j in 0..=4 {
+                entries[j + 2].push(suffix[j]);
+            }
+        }
+        Self {
+            table_id: PadLookup,
+            entries,
+        }
+    }
+
     fn table_round_constants() -> Self {
         Self {
             table_id: RoundConstantsLookup,
@@ -271,12 +308,39 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
         }
     }
 
+    // Allow neeless_range_loop to stick closer to 'table_round_constants' code
+    #[allow(clippy::needless_range_loop)]
+    fn table_round_constants_transposed() -> Self {
+        let mut entries = vec![vec![]; 5];
+        for i in 0..RoundConstantsLookup.length() {
+            entries[0].push(F::from(i as u64));
+            for j in 0..=3 {
+                entries[j + 1].push(F::from(Keccak::sparse(RC[i])[3 - j]));
+            }
+        }
+        Self {
+            table_id: RoundConstantsLookup,
+            entries,
+        }
+    }
+
     fn table_at_most_4() -> LookupTable<F> {
         Self {
             table_id: AtMost4Lookup,
             entries: (0..AtMost4Lookup.length())
                 .map(|i| vec![F::from(i as u32)])
                 .collect(),
+        }
+    }
+
+    fn table_at_most_4_transposed() -> Self {
+        let mut entries = vec![vec![]; 1];
+        for i in 0..AtMost4Lookup.length() {
+            entries[0].push(F::from(i as u32));
+        }
+        Self {
+            table_id: AtMost4Lookup,
+            entries,
         }
     }
 
@@ -289,12 +353,34 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
         }
     }
 
+    fn table_byte_transposed() -> Self {
+        let mut entries = vec![vec![]; 1];
+        for i in 0..ByteLookup.length() {
+            entries[0].push(F::from(i as u32));
+        }
+        Self {
+            table_id: ByteLookup,
+            entries,
+        }
+    }
+
     fn table_range_check_16() -> Self {
         Self {
             table_id: RangeCheck16Lookup,
             entries: (0..RangeCheck16Lookup.length())
                 .map(|i| vec![F::from(i as u32)])
                 .collect(),
+        }
+    }
+
+    fn table_range_check_16_transposed() -> Self {
+        let mut entries = vec![vec![]; 1];
+        for i in 0..RangeCheck16Lookup.length() {
+            entries[0].push(F::from(i as u32));
+        }
+        Self {
+            table_id: RangeCheck16Lookup,
+            entries,
         }
     }
 
@@ -308,6 +394,18 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
                     )]
                 })
                 .collect(),
+        }
+    }
+    fn table_sparse_transposed() -> Self {
+        let mut entries = vec![vec![]; 1];
+        for i in 0..SparseLookup.length() {
+            entries[0].push(F::from(
+                u64::from_str_radix(&format!("{:b}", i), 16).unwrap(),
+            ));
+        }
+        Self {
+            table_id: SparseLookup,
+            entries,
         }
     }
 
@@ -324,4 +422,60 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
                 .collect(),
         }
     }
+    fn table_reset_transposed() -> Self {
+        let mut entries = vec![vec![]; 2];
+        for i in 0..ResetLookup.length() {
+            entries[0].push(F::from(i as u32));
+            entries[1].push(F::from(
+                u64::from_str_radix(&format!("{:b}", i), 16).unwrap(),
+            ));
+        }
+        Self {
+            table_id: ResetLookup,
+            entries,
+        }
+    }
+}
+#[test]
+fn test_transpose() {
+    use ark_ec::AffineRepr;
+    use mina_curves::pasta::Vesta;
+    let test_one_table =
+        |table: LookupTable<<Vesta as AffineRepr>::ScalarField>,
+         table_transposed: LookupTable<<Vesta as AffineRepr>::ScalarField>| {
+            assert_eq!(table.table_id, table_transposed.table_id);
+            for i in 0..table.entries.len() {
+                for j in 0..table.entries[0].len() {
+                    assert_eq!(table.entries[i][j], table_transposed.entries[j][i])
+                }
+            }
+        };
+    test_one_table(
+        LookupTable::table_pad(),
+        LookupTable::table_pad_transposed(),
+    );
+    test_one_table(
+        LookupTable::table_round_constants(),
+        LookupTable::table_round_constants_transposed(),
+    );
+    test_one_table(
+        LookupTable::table_at_most_4(),
+        LookupTable::table_at_most_4_transposed(),
+    );
+    test_one_table(
+        LookupTable::table_byte(),
+        LookupTable::table_byte_transposed(),
+    );
+    test_one_table(
+        LookupTable::table_range_check_16(),
+        LookupTable::table_range_check_16_transposed(),
+    );
+    test_one_table(
+        LookupTable::table_reset(),
+        LookupTable::table_reset_transposed(),
+    );
+    test_one_table(
+        LookupTable::table_reset(),
+        LookupTable::table_reset_transposed(),
+    )
 }
