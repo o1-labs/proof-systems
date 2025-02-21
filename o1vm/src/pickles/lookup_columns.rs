@@ -168,6 +168,7 @@ impl<'a> AlphaChallengeTerm<'a> for LookupChallengeTerm {
 pub struct LookupEvalEnvironment<'a, F: FftField> {
     pub columns: &'a ColumnEnv<Evaluations<F, D<F>>>,
     pub challenges: LookupChallenges<F>,
+    pub constants: Constants<F>,
     pub domain: &'a EvaluationDomains<F>,
     pub l0_1: F,
 }
@@ -201,7 +202,7 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F, LookupChallengeTerm, LookupChalle
     }
     // We do not have constants here
     fn get_constants(&self) -> &Constants<F> {
-        panic!("no constants are supposed to be used in this protocol")
+        &self.constants
     }
 
     fn get_challenges(&self) -> &LookupChallenges<F> {
