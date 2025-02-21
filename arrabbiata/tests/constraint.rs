@@ -130,7 +130,6 @@ fn test_degree_of_constraints_ivc() {
 #[test]
 fn test_gadget_elliptic_curve_scaling() {
     let instr = Instruction::EllipticCurveScaling(0, 0);
-    // FIXME: update when the gadget is fnished
     helper_compute_constraints_gadget(instr, 10);
 
     let mut exp_degrees = HashMap::new();
@@ -141,6 +140,20 @@ fn test_gadget_elliptic_curve_scaling() {
     helper_gadget_number_of_columns_used(instr, 10, 0);
 
     helper_check_gadget_activated(instr, Gadget::EllipticCurveScaling);
+}
+
+#[test]
+fn test_gadget_poseidon_permutation() {
+    let instr = Instruction::PoseidonPermutation(0);
+    helper_compute_constraints_gadget(instr, 15);
+
+    let mut exp_degrees = HashMap::new();
+    exp_degrees.insert(5, 15);
+    helper_check_expected_degree_constraints(instr, exp_degrees);
+
+    helper_gadget_number_of_columns_used(instr, 15, 0);
+
+    helper_check_gadget_activated(instr, Gadget::PoseidonPermutation(0));
 }
 
 #[test]

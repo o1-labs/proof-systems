@@ -338,7 +338,8 @@ where
     /// Activate the gadget for the current row
     fn activate_gadget(&mut self, gadget: Gadget) {
         // IMPROVEME: it should be called only once per row
-        self.selectors[gadget as usize][self.current_row] = true;
+        let gadget = usize::from(gadget);
+        self.selectors[gadget][self.current_row] = true;
     }
 
     fn constrain_boolean(&mut self, x: Self::Variable) {
@@ -465,6 +466,18 @@ where
                 .into()
         };
         self.write_public_input(pos, rc)
+    }
+
+    fn get_poseidon_round_constant_as_constant(&self, round: usize, i: usize) -> Self::Variable {
+        if self.current_iteration % 2 == 0 {
+            E1::sponge_params().round_constants[round][i]
+                .to_biguint()
+                .into()
+        } else {
+            E2::sponge_params().round_constants[round][i]
+                .to_biguint()
+                .into()
+        }
     }
 
     fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable {
@@ -1182,6 +1195,12 @@ where
                 }
             }
             Instruction::NoOp => Instruction::NoOp,
+            Instruction::PoseidonSpongeAbsorb => {
+                todo!()
+            }
+            Instruction::PoseidonPermutation(_) => {
+                todo!()
+            }
         }
     }
 

@@ -193,6 +193,12 @@ where
         Expr::Atom(ExprInner::Cell(Variable { col, row }))
     }
 
+    fn get_poseidon_round_constant_as_constant(&self, round: usize, i: usize) -> Self::Variable {
+        let cst = C::sponge_params().round_constants[round][i];
+        let cst_inner = Operations::from(Literal(cst));
+        Self::Variable::constant(cst_inner)
+    }
+
     fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable {
         let v = C::sponge_params().mds[i][j];
         let v_inner = Operations::from(Literal(v));

@@ -18,12 +18,19 @@ pub enum Gadget {
     // Elliptic curve related gadgets
     EllipticCurveAddition,
     EllipticCurveScaling,
-    /// This gadget implement the Poseidon hash instance described in the
-    /// top-level documentation. This implementation does use the "next row"
-    /// to allow the computation of one additional round per row. In the current
-    /// setup, with [crate::NUMBER_OF_COLUMNS] columns, we can compute 5 full
+    /// The following gadgets implement the Poseidon hash instance described in
+    /// the top-level documentation. In the current setup, with
+    /// [crate::NUMBER_OF_COLUMNS] columns, we can compute 5 full
     /// rounds per row.
     Poseidon,
+    /// We provide a new Poseidon gadget that allows computing 5 rounds, without
+    /// using "public inputs".
+    ///
+    /// We split the Poseidon gadget in 13 sub-gadgets, one for each set of 5
+    /// permutations and one for the absorbtion. The parameteris the starting
+    /// round of Poseidon. It is expected to be a multiple of five.
+    PoseidonPermutation(usize),
+    PoseidonSpongeAbsorb,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -56,6 +63,19 @@ impl From<Column> for usize {
 
 pub type E<Fp> = Expr<ConstantExpr<Fp, ChallengeTerm>, Column>;
 
+impl From<Gadget> for usize {
+    fn from(val: Gadget) -> usize {
+        match val {
+            Gadget::App => 0,
+            Gadget::EllipticCurveAddition => 1,
+            Gadget::EllipticCurveScaling => 2,
+            Gadget::Poseidon => 3,
+            Gadget::PoseidonSpongeAbsorb => 4,
+            Gadget::PoseidonPermutation(starting_round) => 5 + starting_round / 5,
+        }
+    }
+}
+
 // Code to allow for pretty printing of the expressions
 impl FormattedOutput for Column {
     fn latex(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
@@ -65,6 +85,10 @@ impl FormattedOutput for Column {
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
                 Gadget::Poseidon => "q_pos".to_string(),
+                Gadget::PoseidonSpongeAbsorb => "q_pos_sponge_absorb".to_string(),
+                Gadget::PoseidonPermutation(starting_round) => {
+                    format!("q_pos_permutation{}", starting_round)
+                }
             },
             Column::PublicInput(i) => format!("pi_{{{i}}}").to_string(),
             Column::X(i) => format!("x_{{{i}}}").to_string(),
@@ -77,7 +101,11 @@ impl FormattedOutput for Column {
                 Gadget::App => "q_app".to_string(),
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
-                Gadget::Poseidon => "q_pos_next_row".to_string(),
+                Gadget::Poseidon => "q_pos".to_string(),
+                Gadget::PoseidonSpongeAbsorb => "q_pos_sponge_absorb".to_string(),
+                Gadget::PoseidonPermutation(starting_round) => {
+                    format!("q_pos_permutation{}", starting_round)
+                }
             },
             Column::PublicInput(i) => format!("pi[{i}]"),
             Column::X(i) => format!("x[{i}]"),
