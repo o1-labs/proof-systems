@@ -1,5 +1,5 @@
 var sourcesIndex = JSON.parse('{\
-"arrabbiata":["",[],["challenge.rs","column.rs","column_env.rs","constraint.rs","curve.rs","interpreter.rs","lib.rs","logup.rs","poseidon_3_60_0_5_5_fp.rs","poseidon_3_60_0_5_5_fq.rs","proof.rs","prover.rs","verifier.rs","witness.rs"]],\
+"arrabbiata":["",[],["challenge.rs","column.rs","column_env.rs","constraint.rs","curve.rs","interpreter.rs","lib.rs","logup.rs","poseidon_3_60_0_5_5_fp.rs","poseidon_3_60_0_5_5_fq.rs","proof.rs","prover.rs","setup.rs","verifier.rs","witness.rs"]],\
 "bench_cross_terms":["",[],["bench_cross_terms.rs"]],\
 "export_test_vectors":["",[],["main.rs","vectors.rs"]],\
 "flamegraph":["",[],["flamegraph.rs"]],\

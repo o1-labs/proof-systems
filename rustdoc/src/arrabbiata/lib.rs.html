@@ -63,6 +63,17 @@
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
 <a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>curve::PlonkSpongeConstants;
 <span class="kw">use </span>mina_poseidon::constants::SpongeConstants;
 <span class="kw">use </span>strum::EnumCount <span class="kw">as _</span>;
@@ -78,6 +89,7 @@
 <span class="kw">pub mod </span>poseidon_3_60_0_5_5_fq;
 <span class="kw">pub mod </span>proof;
 <span class="kw">pub mod </span>prover;
+<span class="kw">pub mod </span>setup;
 <span class="kw">pub mod </span>verifier;
 <span class="kw">pub mod </span>witness;
 
@@ -128,4 +140,14 @@
 
 <span class="doccomment">/// The number of selectors used in the circuit.
 </span><span class="kw">pub const </span>NUMBER_OF_SELECTORS: usize = column::Gadget::COUNT;
+
+<span class="doccomment">/// The arity of the multivariate polynomials describing the constraints.
+/// We consider, erroneously, that a public input can be considered as a
+/// column and fit an entire polynomial. This is subject to change, as most
+/// values considered as public inputs at the moment are fixed for the
+/// relation. We also suppose that the private inputs on the next row can be
+/// used, hence the multiplication by two.
+///
+/// It is going to be used to convert into the representation used in [mvpoly].
+</span><span class="kw">pub const </span>MV_POLYNOMIAL_ARITY: usize = NUMBER_OF_PUBLIC_INPUTS + NUMBER_OF_COLUMNS * <span class="number">2</span>;
 </code></pre></div></section></main></body></html>

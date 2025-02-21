@@ -1353,72 +1353,25 @@
 <a href="#1353" id="1353">1353</a>
 <a href="#1354" id="1354">1354</a>
 <a href="#1355" id="1355">1355</a>
-<a href="#1356" id="1356">1356</a>
-<a href="#1357" id="1357">1357</a>
-<a href="#1358" id="1358">1358</a>
-<a href="#1359" id="1359">1359</a>
-<a href="#1360" id="1360">1360</a>
-<a href="#1361" id="1361">1361</a>
-<a href="#1362" id="1362">1362</a>
-<a href="#1363" id="1363">1363</a>
-<a href="#1364" id="1364">1364</a>
-<a href="#1365" id="1365">1365</a>
-<a href="#1366" id="1366">1366</a>
-<a href="#1367" id="1367">1367</a>
-<a href="#1368" id="1368">1368</a>
-<a href="#1369" id="1369">1369</a>
-<a href="#1370" id="1370">1370</a>
-<a href="#1371" id="1371">1371</a>
-<a href="#1372" id="1372">1372</a>
-<a href="#1373" id="1373">1373</a>
-<a href="#1374" id="1374">1374</a>
-<a href="#1375" id="1375">1375</a>
-<a href="#1376" id="1376">1376</a>
-<a href="#1377" id="1377">1377</a>
-<a href="#1378" id="1378">1378</a>
-<a href="#1379" id="1379">1379</a>
-<a href="#1380" id="1380">1380</a>
-<a href="#1381" id="1381">1381</a>
-<a href="#1382" id="1382">1382</a>
-<a href="#1383" id="1383">1383</a>
-<a href="#1384" id="1384">1384</a>
-<a href="#1385" id="1385">1385</a>
-<a href="#1386" id="1386">1386</a>
-<a href="#1387" id="1387">1387</a>
-<a href="#1388" id="1388">1388</a>
-<a href="#1389" id="1389">1389</a>
-<a href="#1390" id="1390">1390</a>
-<a href="#1391" id="1391">1391</a>
-<a href="#1392" id="1392">1392</a>
-<a href="#1393" id="1393">1393</a>
-<a href="#1394" id="1394">1394</a>
-<a href="#1395" id="1395">1395</a>
-<a href="#1396" id="1396">1396</a>
-<a href="#1397" id="1397">1397</a>
-<a href="#1398" id="1398">1398</a>
-<a href="#1399" id="1399">1399</a>
-<a href="#1400" id="1400">1400</a>
-<a href="#1401" id="1401">1401</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::CurveConfig;
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
-<span class="kw">use </span>kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
-<span class="kw">use </span>log::{debug, info};
+<span class="kw">use </span>kimchi::circuits::gate::CurrOrNext;
+<span class="kw">use </span>log::debug;
 <span class="kw">use </span>mina_poseidon::constants::SpongeConstants;
 <span class="kw">use </span>num_bigint::{BigInt, BigUint};
 <span class="kw">use </span>num_integer::Integer;
 <span class="kw">use </span>o1_utils::field_helpers::FieldHelpers;
-<span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS <span class="kw">as _</span>};
+<span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS <span class="kw">as _</span>};
 <span class="kw">use </span>rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-<span class="kw">use </span>std::time::Instant;
 
 <span class="kw">use crate</span>::{
     challenge::{ChallengeTerm, Challenges},
     column::{Column, Gadget},
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side},
-    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS,
-    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    setup, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
+    NUMBER_OF_SELECTORS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
 <span class="doccomment">/// The first instruction in the verifier circuit (often shortened in &quot;IVC&quot; in
@@ -1455,22 +1408,10 @@
     </span>E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
 {
+    <span class="doccomment">/// The relation this witness environment is related to.
+    </span><span class="kw">pub </span>indexed_relation: setup::IndexedRelation&lt;Fp, Fq, E1, E2&gt;,
+
     <span class="comment">// ----------------
-    // Setup related (domains + SRS)
-    </span><span class="doccomment">/// Domain for Fp
-    </span><span class="kw">pub </span>domain_fp: EvaluationDomains&lt;E1::ScalarField&gt;,
-
-    <span class="doccomment">/// Domain for Fq
-    </span><span class="kw">pub </span>domain_fq: EvaluationDomains&lt;E2::ScalarField&gt;,
-
-    <span class="doccomment">/// SRS for the first curve
-    </span><span class="kw">pub </span>srs_e1: SRS&lt;E1&gt;,
-
-    <span class="doccomment">/// SRS for the second curve
-    </span><span class="kw">pub </span>srs_e2: SRS&lt;E2&gt;,
-    <span class="comment">// ----------------
-
-    // ----------------
     // Information related to the IVC, which will be used by the prover/verifier
     // at the end of the whole execution
     // FIXME: use a blinded comm and also fold the blinder
@@ -1713,12 +1654,12 @@
         <span class="kw">let </span>(modulus, srs_size): (BigInt, usize) = <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
             (
                 E1::ScalarField::modulus_biguint().into(),
-                <span class="self">self</span>.srs_e1.size(),
+                <span class="self">self</span>.indexed_relation.get_srs_size(),
             )
         } <span class="kw">else </span>{
             (
                 E2::ScalarField::modulus_biguint().into(),
-                <span class="self">self</span>.srs_e2.size(),
+                <span class="self">self</span>.indexed_relation.get_srs_size(),
             )
         };
         <span class="kw">let </span>v = v.mod_floor(<span class="kw-2">&amp;</span>modulus);
@@ -1990,7 +1931,7 @@
                             // probability to request to compute `0 * P`.
                             // FIXME: ! check this statement !
                             </span>Side::Right =&gt; {
-                                <span class="kw">let </span>pt = <span class="self">self</span>.srs_e2.h;
+                                <span class="kw">let </span>pt = <span class="self">self</span>.indexed_relation.srs_e2.h;
                                 <span class="kw">let </span>(pt_x, pt_y) = pt.to_coordinates().unwrap();
                                 <span class="kw">let </span>pt_x = <span class="self">self</span>.write_column(pos_x, pt_x.to_biguint().into());
                                 <span class="kw">let </span>pt_y = <span class="self">self</span>.write_column(pos_y, pt_y.to_biguint().into());
@@ -2016,7 +1957,8 @@
                             // probability to request to compute `0 * P`.
                             // FIXME: ! check this statement !
                             </span>Side::Right =&gt; {
-                                <span class="kw">let </span>pt = <span class="self">self</span>.srs_e1.h;
+                                <span class="kw">let </span>blinder = <span class="self">self</span>.indexed_relation.srs_e1.h;
+                                <span class="kw">let </span>pt = blinder;
                                 <span class="kw">let </span>(pt_x, pt_y) = pt.to_coordinates().unwrap();
                                 <span class="kw">let </span>pt_x = <span class="self">self</span>.write_column(pos_x, pt_x.to_biguint().into());
                                 <span class="kw">let </span>pt_y = <span class="self">self</span>.write_column(pos_x, pt_y.to_biguint().into());
@@ -2244,53 +2186,13 @@
     &lt;&lt;E2 <span class="kw">as </span>CommitmentCurve&gt;::Params <span class="kw">as </span>CurveConfig&gt;::BaseField: PrimeField,
 {
     <span class="kw">pub fn </span>new(
-        srs_log2_size: usize,
         z0: BigInt,
         sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
         sponge_e2: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
+        indexed_relation: setup::IndexedRelation&lt;Fp, Fq, E1, E2&gt;,
     ) -&gt; <span class="self">Self </span>{
-        {
-            <span class="macro">assert!</span>(E1::ScalarField::MODULUS_BIT_SIZE &lt;= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), <span class="string">&quot;The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}&quot;</span>);
-            <span class="macro">assert!</span>(Fq::MODULUS_BIT_SIZE &lt;= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), <span class="string">&quot;The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}&quot;</span>);
-            <span class="kw">let </span>modulus_fp = E1::ScalarField::modulus_biguint();
-            <span class="kw">let </span>alpha = PlonkSpongeConstants::PERM_SBOX;
-            <span class="macro">assert!</span>(
-                (modulus_fp - BigUint::from(<span class="number">1_u64</span>)).gcd(<span class="kw-2">&amp;</span>BigUint::from(alpha))
-                    == BigUint::from(<span class="number">1_u64</span>),
-                <span class="string">&quot;The modulus of Fp should be coprime with {alpha}&quot;
-            </span>);
-            <span class="kw">let </span>modulus_fq = E2::ScalarField::modulus_biguint();
-            <span class="kw">let </span>alpha = PlonkSpongeConstants::PERM_SBOX;
-            <span class="macro">assert!</span>(
-                (modulus_fq - BigUint::from(<span class="number">1_u64</span>)).gcd(<span class="kw-2">&amp;</span>BigUint::from(alpha))
-                    == BigUint::from(<span class="number">1_u64</span>),
-                <span class="string">&quot;The modulus of Fq should be coprime with {alpha}&quot;
-            </span>);
-        }
-        <span class="kw">let </span>srs_size = <span class="number">1 </span>&lt;&lt; srs_log2_size;
-        <span class="kw">let </span>domain_fp = EvaluationDomains::&lt;E1::ScalarField&gt;::create(srs_size).unwrap();
-        <span class="kw">let </span>domain_fq = EvaluationDomains::&lt;E2::ScalarField&gt;::create(srs_size).unwrap();
-
-        <span class="macro">info!</span>(<span class="string">&quot;Create an SRS of size {srs_log2_size} for the first curve&quot;</span>);
-        <span class="kw">let </span>srs_e1: SRS&lt;E1&gt; = {
-            <span class="kw">let </span>start = Instant::now();
-            <span class="kw">let </span>srs = SRS::create(srs_size);
-            <span class="macro">debug!</span>(<span class="string">&quot;SRS for E1 created in {:?}&quot;</span>, start.elapsed());
-            <span class="kw">let </span>start = Instant::now();
-            srs.get_lagrange_basis(domain_fp.d1);
-            <span class="macro">debug!</span>(<span class="string">&quot;Lagrange basis for E1 added in {:?}&quot;</span>, start.elapsed());
-            srs
-        };
-        <span class="macro">info!</span>(<span class="string">&quot;Create an SRS of size {srs_log2_size} for the second curve&quot;</span>);
-        <span class="kw">let </span>srs_e2: SRS&lt;E2&gt; = {
-            <span class="kw">let </span>start = Instant::now();
-            <span class="kw">let </span>srs = SRS::create(srs_size);
-            <span class="macro">debug!</span>(<span class="string">&quot;SRS for E2 created in {:?}&quot;</span>, start.elapsed());
-            <span class="kw">let </span>start = Instant::now();
-            srs.get_lagrange_basis(domain_fq.d1);
-            <span class="macro">debug!</span>(<span class="string">&quot;Lagrange basis for E2 added in {:?}&quot;</span>, start.elapsed());
-            srs
-        };
+        <span class="kw">let </span>srs_size = indexed_relation.get_srs_size();
+        <span class="kw">let </span>(blinder_e1, blinder_e2) = indexed_relation.get_srs_blinders();
 
         <span class="kw">let </span><span class="kw-2">mut </span>witness: Vec&lt;Vec&lt;BigInt&gt;&gt; = Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
@@ -2324,17 +2226,17 @@
 
         <span class="comment">// Default set to the blinders. Using double to make the EC scaling happy.
         </span><span class="kw">let </span>previous_committed_state_e1: Vec&lt;PolyComm&lt;E1&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
-            .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[(srs_e1.h + srs_e1.h).into()]))
+            .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[(blinder_e1 + blinder_e1).into()]))
             .collect();
         <span class="kw">let </span>previous_committed_state_e2: Vec&lt;PolyComm&lt;E2&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
-            .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[(srs_e2.h + srs_e2.h).into()]))
+            .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[(blinder_e2 + blinder_e2).into()]))
             .collect();
         <span class="comment">// FIXME: zero will not work.
         </span><span class="kw">let </span>accumulated_committed_state_e1: Vec&lt;PolyComm&lt;E1&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
-            .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[srs_e1.h]))
+            .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[blinder_e1]))
             .collect();
         <span class="kw">let </span>accumulated_committed_state_e2: Vec&lt;PolyComm&lt;E2&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
-            .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[srs_e2.h]))
+            .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[blinder_e2]))
             .collect();
 
         <span class="comment">// FIXME: challenges
@@ -2348,13 +2250,11 @@
             std::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_u64</span>));
         <span class="kw">let </span>verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
             std::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_u64</span>));
+
         <span class="self">Self </span>{
             <span class="comment">// -------
             // Setup
-            </span>domain_fp,
-            domain_fq,
-            srs_e1,
-            srs_e2,
+            </span>indexed_relation,
             <span class="comment">// -------
             // -------
             // verifier only
@@ -2438,9 +2338,9 @@
         <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
             <span class="macro">assert_eq!</span>(
                 <span class="self">self</span>.current_row <span class="kw">as </span>u64,
-                <span class="self">self</span>.domain_fp.d1.size,
+                <span class="self">self</span>.indexed_relation.domain_fp.d1.size,
                 <span class="string">&quot;The program has not been fully executed. Missing {} rows&quot;</span>,
-                <span class="self">self</span>.domain_fp.d1.size - <span class="self">self</span>.current_row <span class="kw">as </span>u64,
+                <span class="self">self</span>.indexed_relation.domain_fp.d1.size - <span class="self">self</span>.current_row <span class="kw">as </span>u64,
             );
             <span class="kw">let </span>comms: Vec&lt;PolyComm&lt;E1&gt;&gt; = <span class="self">self
                 </span>.witness
@@ -2450,18 +2350,22 @@
                         .par_iter()
                         .map(|x| E1::ScalarField::from_biguint(<span class="kw-2">&amp;</span>x.to_biguint().unwrap()).unwrap())
                         .collect();
-                    <span class="kw">let </span>evals = Evaluations::from_vec_and_domain(evals.to_vec(), <span class="self">self</span>.domain_fp.d1);
-                    <span class="self">self</span>.srs_e1
-                        .commit_evaluations_non_hiding(<span class="self">self</span>.domain_fp.d1, <span class="kw-2">&amp;</span>evals)
+                    <span class="kw">let </span>evals = Evaluations::from_vec_and_domain(
+                        evals.to_vec(),
+                        <span class="self">self</span>.indexed_relation.domain_fp.d1,
+                    );
+                    <span class="self">self</span>.indexed_relation
+                        .srs_e1
+                        .commit_evaluations_non_hiding(<span class="self">self</span>.indexed_relation.domain_fp.d1, <span class="kw-2">&amp;</span>evals)
                 })
                 .collect();
             <span class="self">self</span>.previous_committed_state_e1 = comms
         } <span class="kw">else </span>{
             <span class="macro">assert_eq!</span>(
                 <span class="self">self</span>.current_row <span class="kw">as </span>u64,
-                <span class="self">self</span>.domain_fq.d1.size,
+                <span class="self">self</span>.indexed_relation.domain_fq.d1.size,
                 <span class="string">&quot;The program has not been fully executed. Missing {} rows&quot;</span>,
-                <span class="self">self</span>.domain_fq.d1.size - <span class="self">self</span>.current_row <span class="kw">as </span>u64,
+                <span class="self">self</span>.indexed_relation.domain_fq.d1.size - <span class="self">self</span>.current_row <span class="kw">as </span>u64,
             );
             <span class="kw">let </span>comms: Vec&lt;PolyComm&lt;E2&gt;&gt; = <span class="self">self
                 </span>.witness
@@ -2471,9 +2375,13 @@
                         .par_iter()
                         .map(|x| E2::ScalarField::from_biguint(<span class="kw-2">&amp;</span>x.to_biguint().unwrap()).unwrap())
                         .collect();
-                    <span class="kw">let </span>evals = Evaluations::from_vec_and_domain(evals.to_vec(), <span class="self">self</span>.domain_fq.d1);
-                    <span class="self">self</span>.srs_e2
-                        .commit_evaluations_non_hiding(<span class="self">self</span>.domain_fq.d1, <span class="kw-2">&amp;</span>evals)
+                    <span class="kw">let </span>evals = Evaluations::from_vec_and_domain(
+                        evals.to_vec(),
+                        <span class="self">self</span>.indexed_relation.domain_fq.d1,
+                    );
+                    <span class="self">self</span>.indexed_relation
+                        .srs_e2
+                        .commit_evaluations_non_hiding(<span class="self">self</span>.indexed_relation.domain_fq.d1, <span class="kw-2">&amp;</span>evals)
                 })
                 .collect();
             <span class="self">self</span>.previous_committed_state_e2 = comms
