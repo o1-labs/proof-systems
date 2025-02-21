@@ -584,6 +584,18 @@
 <a href="#584" id="584">584</a>
 <a href="#585" id="585">585</a>
 <a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     prime,
     utils::{compute_indices_nested_loop, naive_prime_factors, PrimeNumberGenerator},
@@ -1083,19 +1095,31 @@
         cross_terms.iter().for_each(|(power_r, coeff)| {
             res.insert(<span class="kw-2">*</span>power_r, <span class="kw-2">*</span>coeff * scalar1);
         });
-        cross_terms.iter().for_each(|(power_r, coeff)| {
-            res.entry(<span class="kw-2">*</span>power_r + <span class="number">1</span>)
-                .and_modify(|e| <span class="kw-2">*</span>e += <span class="kw-2">*</span>coeff * scalar2)
-                .or_insert(<span class="kw-2">*</span>coeff * scalar2);
-        });
-        <span class="kw">let </span>eval1_hom = <span class="self">self</span>.homogeneous_eval(eval1, u1);
-        res.entry(<span class="number">1</span>)
-            .and_modify(|e| <span class="kw-2">*</span>e += eval1_hom * scalar2)
-            .or_insert(eval1_hom * scalar2);
-        <span class="kw">let </span>eval2_hom = <span class="self">self</span>.homogeneous_eval(eval2, u2);
-        res.entry(D)
-            .and_modify(|e| <span class="kw-2">*</span>e += eval2_hom * scalar1)
-            .or_insert(eval2_hom * scalar1);
+        <span class="comment">// Small speed-up, avoid going through the whole set of cross-terms if
+        // scalar2 is zero
+        // In addition to that, it won&#39;t compute the homogeneous evaluation,
+        // which can be relatively expensive
+        </span><span class="kw">if </span>scalar2 != F::zero() {
+            cross_terms.iter().for_each(|(power_r, coeff)| {
+                res.entry(<span class="kw-2">*</span>power_r + <span class="number">1</span>)
+                    .and_modify(|e| <span class="kw-2">*</span>e += <span class="kw-2">*</span>coeff * scalar2)
+                    .or_insert(<span class="kw-2">*</span>coeff * scalar2);
+            });
+            <span class="kw">let </span>eval1_hom = <span class="self">self</span>.homogeneous_eval(eval1, u1);
+            res.entry(<span class="number">1</span>)
+                .and_modify(|e| <span class="kw-2">*</span>e += eval1_hom * scalar2)
+                .or_insert(eval1_hom * scalar2);
+        }
+        <span class="comment">// Small speed-up, avoid computing the homogeneous evaluation if scalar1
+        // is zero
+        </span><span class="kw">if </span>scalar1 != F::zero() {
+            <span class="kw">let </span>eval2_hom = <span class="self">self</span>.homogeneous_eval(eval2, u2);
+            res.entry(D)
+                .and_modify(|e| <span class="kw-2">*</span>e += eval2_hom * scalar1)
+                .or_insert(eval2_hom * scalar1);
+        } <span class="kw">else </span>{
+            res.entry(D).or_insert(F::zero());
+        }
         res
     }
 
