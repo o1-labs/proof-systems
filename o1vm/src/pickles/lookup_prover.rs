@@ -155,7 +155,7 @@ where
     let (t, rem) = t_numerator_poly
         .divide_by_vanishing_poly(domain.d1)
         .unwrap();
-    assert!(!rem.is_zero());
+    assert!(rem.is_zero());
     let t_commitment = srs.commit_non_hiding(
         &t, 8, //TODO: check the degree,
     );
