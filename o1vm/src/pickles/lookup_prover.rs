@@ -41,7 +41,7 @@ where
     RNG: RngCore + CryptoRng,
 {
     // TODO check that
-    let num_chunk = 8;
+    let num_chunk = 1;
     let LookupProofInput {
         wires,
         arity,
@@ -157,7 +157,9 @@ where
         .unwrap();
     assert!(rem.is_zero());
     let t_commitment = srs.commit_non_hiding(
-        &t, 8, //TODO: check the degree,
+        // TODO: change the nb of chunks later
+        // For now we use this because the constraints null
+        &t, 1,
     );
     // TODO avoid cloning
     let commitments = AllColumns {
