@@ -1,6 +1,10 @@
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain};
-use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_sponge::FrSponge};
+use kimchi::{
+    circuits::{domains::EvaluationDomains, expr::Constants},
+    curve::KimchiCurve,
+    plonk_sponge::FrSponge,
+};
 use mina_poseidon::FqSponge;
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{commitment::absorb_commitment, ipa::SRS, OpenProof, SRS as _};
@@ -16,6 +20,8 @@ use rand::{CryptoRng, RngCore};
 /// It then proves that the sum 1/(beta + table) = PI - PO
 /// where the table term are term from fixed lookup or RAMLookup
 
+// TODO: add selectors
+// TODO: add multiplicities
 pub fn lookup_prove<
     G: KimchiCurve,
     EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone,
@@ -87,7 +93,7 @@ where
             acc.push(partial_sum)
         }
     }
-    let acc_final = acc[acc.len()];
+    let acc_final = acc[acc.len() - 1];
     let columns = ColumnEnv {
         wires,
         inverses,
@@ -133,6 +139,12 @@ where
         challenges,
         columns: &columns_eval_d8,
         domain: &domain,
+        constants: Constants {
+            endo_coefficient: G::ScalarField::zero(),
+            mds: &G::sponge_params().mds,
+            zk_rows: 0,
+        },
+
         l0_1: l0_1(domain.d1),
     };
     let t_numerator_evaluation: Evaluations<
@@ -143,9 +155,11 @@ where
     let (t, rem) = t_numerator_poly
         .divide_by_vanishing_poly(domain.d1)
         .unwrap();
-    assert!(!rem.is_zero());
+    assert!(rem.is_zero());
     let t_commitment = srs.commit_non_hiding(
-        &t, 8, //TODO: check the degree,
+        // TODO: change the nb of chunks later
+        // For now we use this because the constraints null
+        &t, 1,
     );
     // TODO avoid cloning
     let commitments = AllColumns {

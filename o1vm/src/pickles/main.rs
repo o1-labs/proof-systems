@@ -1,11 +1,12 @@
 use ark_ff::{UniformRand, Zero};
 use clap::Parser;
-use kimchi::{circuits::domains::EvaluationDomains, precomputed_srs::TestSRS};
+use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, precomputed_srs::TestSRS};
 use log::debug;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
+    FqSponge,
 };
 use o1vm::{
     cannon::{self, Start, State},
@@ -16,11 +17,18 @@ use o1vm::{
         witness::{self as mips_witness},
         Instruction,
     },
-    pickles::{proof::ProofInputs, prover, verifier},
+    pickles::{
+        lookup_columns::{ELookup, LookupProofInput},
+        lookup_env::LookupEnvironment,
+        lookup_prover::lookup_prove,
+        lookup_verifier::lookup_verify,
+        proof::ProofInputs,
+        prover, verifier,
+    },
     preimage_oracle::{NullPreImageOracle, PreImageOracle, PreImageOracleT},
     test_preimage_read, E,
 };
-use poly_commitment::{ipa::SRS, SRS as _};
+use poly_commitment::{commitment::absorb_commitment, ipa::SRS, SRS as _};
 use rand::rngs::ThreadRng;
 use std::{fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant};
 
@@ -35,7 +43,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     let reader = BufReader::new(file);
     // Read the JSON contents of the file as an instance of `State`.
     let state: State = serde_json::from_reader(reader).expect("Error reading input state file");
-
+    let state_lookup = state.clone();
     let meta = &configuration.metadata_file.as_ref().map(|f| {
         let meta_file =
             File::open(f).unwrap_or_else(|_| panic!("Could not open metadata file {}", f));
@@ -103,11 +111,12 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             )
         }
     };
-
     let constraints = mips_constraints::get_all_constraints::<Fp>();
     let domain_size = domain_fp.d1.size as usize;
+    let lookup_env = &mut LookupEnvironment::new(&srs, domain_fp);
 
     let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(domain_size);
+    // First loop, do the proof without lookup
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
         for (scratch, scratch_chunk) in mips_wit_env
@@ -159,17 +168,126 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
 
         if curr_proof_inputs.evaluations.instruction_counter.len() == domain_size {
-            prove_and_verify(domain_fp, &srs, &constraints, curr_proof_inputs, &mut rng);
+            prove_and_verify(
+                domain_fp,
+                &srs,
+                &constraints,
+                curr_proof_inputs,
+                &mut rng,
+                lookup_env,
+            );
 
             curr_proof_inputs = ProofInputs::new(domain_size);
         }
     }
-
     if curr_proof_inputs.evaluations.instruction_counter.len() < domain_size {
         debug!("Padding witness for proof generation");
         pad(&mips_wit_env, &mut curr_proof_inputs, &mut rng);
-        prove_and_verify(domain_fp, &srs, &constraints, curr_proof_inputs, &mut rng);
+        prove_and_verify(
+            domain_fp,
+            &srs,
+            &constraints,
+            curr_proof_inputs,
+            &mut rng,
+            lookup_env,
+        );
     }
+    // Second loop, do the lookup delayed argument
+    // TODO: use a lighter interpreter specialised for lookups
+
+    // Prepare the sponge
+    let sponge = &mut DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+        Vesta::other_curve_sponge_params(),
+    );
+    lookup_env
+        .cms
+        .iter()
+        .for_each(|cm_list| cm_list.iter().for_each(|cm| absorb_commitment(sponge, cm)));
+
+    // TODO use lookup proof input type, containing the arity
+    curr_proof_inputs = ProofInputs::new(domain_size);
+    let mut arity: Vec<Vec<usize>> = vec![];
+    let mut acc = Fp::zero();
+
+    debug!("1");
+    // Initialize the environments
+    let mut mips_wit_env = match configuration.host.clone() {
+        Some(host) => {
+            debug!("2");
+            let mut po = PreImageOracle::create(host);
+            debug!("3");
+            let _child = po.start();
+            debug!("4");
+            mips_witness::Env::<Fp, Box<dyn PreImageOracleT>>::create(
+                cannon::PAGE_SIZE as usize,
+                state_lookup,
+                Box::new(po),
+            )
+        }
+        None => {
+            debug!("No preimage oracle provided 🤞");
+            // warning: the null preimage oracle has no data and will crash the program if used
+            mips_witness::Env::<Fp, Box<dyn PreImageOracleT>>::create(
+                cannon::PAGE_SIZE as usize,
+                state_lookup,
+                Box::new(NullPreImageOracle),
+            )
+        }
+    };
+    while !mips_wit_env.halt {
+        let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
+        // Lookup state
+        {
+            let proof_inputs_length = curr_proof_inputs.evaluations.lookup_state.len();
+            let environment_length = mips_wit_env.lookup_state.len();
+            let lookup_state_size = std::cmp::max(proof_inputs_length, environment_length);
+            for idx in 0..lookup_state_size {
+                if idx >= environment_length {
+                    // We pad with 0s for dummy lookups missing from the environment.
+                    curr_proof_inputs.evaluations.lookup_state[idx].push(Fp::zero());
+                } else if idx >= proof_inputs_length {
+                    // We create a new column filled with 0s in the proof inputs.
+                    let mut new_vec =
+                        vec![Fp::zero(); curr_proof_inputs.evaluations.instruction_counter.len()];
+                    new_vec.push(Fp::from(mips_wit_env.lookup_state[idx]));
+                    curr_proof_inputs.evaluations.lookup_state.push(new_vec);
+                } else {
+                    // Push the value to the column.
+                    curr_proof_inputs.evaluations.lookup_state[idx]
+                        .push(Fp::from(mips_wit_env.lookup_state[idx]));
+                }
+            }
+            arity.push(mips_wit_env.lookup_arity.clone());
+            lookup_env.add_multiplicities(mips_wit_env.lookup_multiplicities.clone());
+        }
+
+        /*     // TODO use selectors
+               curr_proof_inputs
+                   .evaluations
+                   .selector
+                   .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
+        */
+
+        // TODO get rid of this rng creation
+        let rng = &mut rand::thread_rng();
+        if curr_proof_inputs.evaluations.lookup_state[0].len() == domain_size {
+            acc = lookup_prove_and_verify(
+                domain_fp,
+                &srs,
+                ELookup::zero(),
+                curr_proof_inputs,
+                arity,
+                rng,
+                sponge.clone(),
+                acc,
+            );
+
+            curr_proof_inputs = ProofInputs::new(domain_size);
+            arity = vec![];
+        }
+    }
+    //TODO pad and do last iteration
+    //TODO: substract multiplicities
 }
 
 fn prove_and_verify(
@@ -178,6 +296,7 @@ fn prove_and_verify(
     constraints: &[E<Fp>],
     curr_proof_inputs: ProofInputs<Vesta>,
     rng: &mut ThreadRng,
+    lookup_env: &mut LookupEnvironment<Vesta>,
 ) {
     let start_iteration = Instant::now();
     let proof = prover::prove::<
@@ -192,6 +311,8 @@ fn prove_and_verify(
         elapsed = start_iteration.elapsed().as_micros()
     );
     let start_iteration = Instant::now();
+    // update the lookup env
+    lookup_env.add_cms(&proof.commitments.lookup_state);
     let verif = verifier::verify::<
         Vesta,
         DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
@@ -202,6 +323,66 @@ fn prove_and_verify(
         elapsed = start_iteration.elapsed().as_micros()
     );
     assert!(verif);
+}
+
+fn lookup_prove_and_verify(
+    domain_fp: EvaluationDomains<Fp>,
+    srs: &SRS<Vesta>,
+    constraint: ELookup<Fp>,
+    curr_proof_inputs: ProofInputs<Vesta>,
+    arity: Vec<Vec<usize>>,
+    rng: &mut ThreadRng,
+    mut sponge: DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+    acc: Fp,
+) -> Fp {
+    let start_iteration = Instant::now();
+    let sponge_verifier = sponge.clone();
+    let beta_challenge = sponge.challenge();
+    let gamma_challenge = sponge.challenge();
+    let lookup_proof_input = LookupProofInput {
+        beta_challenge,
+        gamma_challenge,
+        wires: curr_proof_inputs.evaluations.lookup_state,
+        arity,
+    };
+    let (proof, acc) = lookup_prove::<
+        Vesta,
+        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+        ThreadRng,
+    >(
+        lookup_proof_input,
+        acc,
+        srs,
+        domain_fp,
+        sponge,
+        &constraint,
+        rng,
+    );
+    debug!(
+        "Lookup proof generated in {elapsed} μs",
+        elapsed = start_iteration.elapsed().as_micros()
+    );
+    let start_iteration = Instant::now();
+    let verif = lookup_verify::<
+        Vesta,
+        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+    >(
+        beta_challenge,
+        gamma_challenge,
+        constraint,
+        sponge_verifier,
+        domain_fp,
+        srs,
+        &proof,
+    );
+    debug!(
+        "Lookup verification done in {elapsed} μs",
+        elapsed = start_iteration.elapsed().as_micros()
+    );
+    assert!(verif);
+    acc
 }
 
 fn pad(
