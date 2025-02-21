@@ -51,6 +51,7 @@ where
     num_prev_challenges: usize,
     disable_gates_checks: bool,
     override_srs_size: Option<usize>,
+    wasm_mode: bool,
 
     prover_index: Option<ProverIndex<G, OpeningProof>>,
     verifier_index: Option<VerifierIndex<G, OpeningProof>>,
@@ -122,6 +123,12 @@ where
         self
     }
 
+    #[must_use]
+    pub(crate) fn wasm_mode(mut self, wasm_mode: bool) -> Self {
+        self.wasm_mode = wasm_mode;
+        self
+    }
+
     // Re allow(dead_code): this method is used in tests; without the annotation it warns unnecessarily.
     /// creates the indexes
     #[must_use]
@@ -144,6 +151,7 @@ where
             self.disable_gates_checks,
             self.override_srs_size,
             get_srs,
+            self.wasm_mode,
         );
         println!(
             "- time to create prover index: {:?}s",
@@ -177,6 +185,7 @@ where
             runtime_tables_setup,
             self.disable_gates_checks,
             self.override_srs_size,
+            self.wasm_mode,
         );
         println!(
             "- time to create prover index: {:?}s",

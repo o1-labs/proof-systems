@@ -17,4 +17,5 @@ mod recursion;
 mod rot;
 mod serde;
 mod varbasemul;
+mod wasm_mode;
 mod xor;

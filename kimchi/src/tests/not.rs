@@ -402,6 +402,7 @@ fn test_bad_not_gnrc() {
         None,
         false,
         None,
+        false,
     );
     assert_eq!(
         index.cs.gates[1].verify::<Vesta, OpeningProof<Vesta>>(1, &witness, &index, &[]),
