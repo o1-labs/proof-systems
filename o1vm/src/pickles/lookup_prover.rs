@@ -89,7 +89,7 @@ where
             acc.push(partial_sum)
         }
     }
-    let acc_final = acc[acc.len()];
+    let acc_final = acc[acc.len() - 1];
     let columns = ColumnEnv {
         wires,
         inverses,
