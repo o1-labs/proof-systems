@@ -1002,6 +1002,10 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         self.lookup_state = vec![];
     }
 
+    pub fn reset_arity(&mut self) {
+        self.lookup_arity = vec![];
+    }
+
     pub fn write_column(&mut self, column: Column, value: u64) {
         self.write_field_column(column, value.into())
     }
@@ -1252,6 +1256,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         self.reset_scratch_state();
         self.reset_scratch_state_inverse();
         self.reset_lookup_state();
+        self.reset_arity();
         let (opcode, _instruction) = self.decode_instruction();
 
         self.pp_info(&config.info_at, metadata, start);
