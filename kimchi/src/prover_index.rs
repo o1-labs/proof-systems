@@ -182,6 +182,7 @@ pub mod testing {
             .prev_challenges(prev_challenges)
             .disable_gates_checks(disable_gates_checks)
             .max_poly_size(override_srs_size)
+            .wasm_mode(wasm_mode)
             .build()
             .unwrap();
 

@@ -21,7 +21,7 @@ type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[test]
-fn test_large_circuit() {
+fn test_wasm_mode_benchmark() {
     let public = vec![Fp::from(1u8); 5];
     let circuit_size = 1 << 16;
 

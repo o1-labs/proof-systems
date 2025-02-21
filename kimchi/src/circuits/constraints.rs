@@ -201,7 +201,7 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
     /// precomputes
     #[serde(skip)]
-    precomputations: OnceCell<Arc<DomainConstantEvaluations<F>>>,
+    precomputations: OnceCell<Option<Arc<DomainConstantEvaluations<F>>>>,
 
     /// Disable gates checks (for testing; only enables with development builds)
     pub disable_gates_checks: bool,
@@ -227,6 +227,7 @@ pub struct Builder<F: PrimeField> {
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
     disable_gates_checks: bool,
     max_poly_size: Option<usize>,
+    wasm_mode: bool,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -285,18 +286,21 @@ impl<F: PrimeField> ConstraintSystem<F> {
             precomputations: None,
             disable_gates_checks: false,
             max_poly_size: None,
+            wasm_mode: false,
         }
     }
 
-    pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<F>> {
+    pub fn precomputations(&self) -> &Option<Arc<DomainConstantEvaluations<F>>> {
         self.precomputations.get_or_init(|| {
-            Arc::new(DomainConstantEvaluations::create(self.domain, self.zk_rows).unwrap())
+            Some(Arc::new(
+                DomainConstantEvaluations::create(self.domain, self.zk_rows).unwrap(),
+            ))
         })
     }
 
     pub fn set_precomputations(&self, precomputations: Arc<DomainConstantEvaluations<F>>) {
         self.precomputations
-            .set(precomputations)
+            .set(Some(precomputations))
             .expect("Precomputation has been set before");
     }
 
@@ -775,6 +779,11 @@ impl<F: PrimeField> Builder<F> {
         self
     }
 
+    pub fn wasm_mode(mut self, wasm_mode: bool) -> Self {
+        self.wasm_mode = wasm_mode;
+        self
+    }
+
     /// Build the [ConstraintSystem] from a [Builder].
     pub fn build(self) -> Result<ConstraintSystem<F>, SetupError> {
         let mut gates = self.gates;
@@ -955,7 +964,9 @@ impl<F: PrimeField> Builder<F> {
                 constraints.set_precomputations(t);
             }
             None => {
-                constraints.precomputations();
+                if !self.wasm_mode {
+                    constraints.precomputations();
+                } // if WASM mode, do not precompute
             }
         }
         Ok(constraints)

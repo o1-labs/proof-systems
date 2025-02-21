@@ -96,6 +96,8 @@ fn test_degree_tracking() {
         vanishes_on_zero_knowledge_and_previous_rows: &index
             .cs
             .precomputations()
+            .as_ref()
+            .unwrap()
             .vanishes_on_zero_knowledge_and_previous_rows,
         z: &domain_evals.d8.this.z,
         l0_1: l0_1(index.cs.domain.d1),
