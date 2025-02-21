@@ -269,7 +269,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
 
         // TODO get rid of this rng creation
         let rng = &mut rand::thread_rng();
-        if curr_proof_inputs.evaluations.instruction_counter.len() == domain_size {
+        if curr_proof_inputs.evaluations.lookup_state[0].len() == domain_size {
             acc = lookup_prove_and_verify(
                 domain_fp,
                 &srs,
