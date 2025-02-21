@@ -209,11 +209,15 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     let mut arity: Vec<Vec<usize>> = vec![];
     let mut acc = Fp::zero();
 
+    debug!("1");
     // Initialize the environments
     let mut mips_wit_env = match configuration.host.clone() {
         Some(host) => {
+            debug!("2");
             let mut po = PreImageOracle::create(host);
+            debug!("3");
             let _child = po.start();
+            debug!("4");
             mips_witness::Env::<Fp, Box<dyn PreImageOracleT>>::create(
                 cannon::PAGE_SIZE as usize,
                 state_lookup,
@@ -230,9 +234,13 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             )
         }
     };
-
+    debug!("5");
     while !mips_wit_env.halt {
+        debug!("6");
+
         let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
+        debug!("7");
+
         // Lookup state
         {
             let proof_inputs_length = curr_proof_inputs.evaluations.lookup_state.len();
@@ -332,6 +340,8 @@ fn lookup_prove_and_verify(
     mut sponge: DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
     acc: Fp,
 ) -> Fp {
+    debug!("8");
+
     let start_iteration = Instant::now();
     let sponge_verifier = sponge.clone();
     let beta_challenge = sponge.challenge();
