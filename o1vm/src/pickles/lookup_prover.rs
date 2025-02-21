@@ -1,6 +1,10 @@
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain};
-use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_sponge::FrSponge};
+use kimchi::{
+    circuits::{domains::EvaluationDomains, expr::Constants},
+    curve::KimchiCurve,
+    plonk_sponge::FrSponge,
+};
 use mina_poseidon::FqSponge;
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{commitment::absorb_commitment, ipa::SRS, OpenProof, SRS as _};
@@ -135,6 +139,12 @@ where
         challenges,
         columns: &columns_eval_d8,
         domain: &domain,
+        constants: Constants {
+            endo_coefficient: G::ScalarField::zero(),
+            mds: &G::sponge_params().mds,
+            zk_rows: 0,
+        },
+
         l0_1: l0_1(domain.d1),
     };
     let t_numerator_evaluation: Evaluations<
