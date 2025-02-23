@@ -957,4 +957,15 @@ impl<Fp: Field> Env<Fp> {
     pub fn normalized_instruction_counter(&self) -> u64 {
         self.instruction_counter / MAX_ACC
     }
+
+    /// Get a u32 from memory, starting from address `addr`.
+    pub fn get_uint32(&mut self, addr: u32) -> u32 {
+        let page = addr >> PAGE_ADDRESS_SIZE;
+        let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
+        let memory_page_idx = self.get_memory_page_index(page);
+        let value = self.memory[memory_page_idx].1[page_address..page_address + 4]
+            .try_into()
+            .expect("get_uint32 values fit in a u32");
+        u32::from_be_bytes(value)
+    }
 }
