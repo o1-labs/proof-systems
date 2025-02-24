@@ -603,9 +603,19 @@ pub enum Instruction {
     /// using "public inputs".
     ///
     /// We split the Poseidon gadget in 13 sub-gadgets, one for each set of 5
-    /// permutations and one for the absorbtion. The parameteris the starting
-    /// round of Poseidon. It is expected to be a multiple of five.
+    /// permutations and one for the absorbtion. The parameter is the starting
+    /// round of the permutation. It is expected to be a multiple of five.
+    ///
+    /// Note that, for now, the gadget can only be used by the verifier circuit.
     PoseidonPermutation(usize),
+    /// Absorb [PlonkSpongeConstants::SPONGE_WIDTH - 1] elements into the
+    /// sponge. The elements are absorbed into the last
+    /// [PlonkSpongeConstants::SPONGE_WIDTH - 1] elements of the sponge state.
+    ///
+    /// The values to be absorbed depend on the state of the environment while
+    /// executing this instruction.
+    ///
+    /// Note that, for now, the gadget can only be used by the verifier circuit.
     PoseidonSpongeAbsorb,
     EllipticCurveScaling(usize, u64),
     EllipticCurveAddition(usize),
