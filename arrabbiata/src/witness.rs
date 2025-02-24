@@ -22,7 +22,7 @@ use crate::{
 /// The first instruction in the verifier circuit (often shortened in "IVC" in
 /// the crate) is the Poseidon permutation. It is used to start hashing the
 /// public input.
-pub const VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
+pub const VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::PoseidonSpongeAbsorb;
 
 /// An environment is used to contain the state of a long "running program".
 ///
