@@ -213,6 +213,10 @@ where
         self.read_position(pos)
     }
 
+    unsafe fn fetch_value_to_absorb_in_sponge(&mut self, pos: Self::Position) -> Self::Variable {
+        self.read_position(pos)
+    }
+
     unsafe fn load_temporary_accumulators(
         &mut self,
         pos_x: Self::Position,

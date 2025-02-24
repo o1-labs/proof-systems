@@ -758,6 +758,21 @@ pub trait InterpreterEnv {
         pos: Self::Position,
         curr_round: usize,
     ) -> Self::Variable;
+
+    /// Load the value to absorb at the current step at the position given by
+    /// `pos`.
+    ///
+    /// The values and the absorption order is defined by the
+    /// state of the environment itself.
+    ///
+    /// IMPROVEME: we could have in the environment an heterogeneous typed list,
+    /// and we pop values call after call. However, we try to keep the
+    /// interpreter simple.
+    ///
+    /// # Safety
+    ///
+    /// No constraint is added. It should be used with caution.
+    unsafe fn fetch_value_to_absorb_in_sponge(&mut self, pos: Self::Position) -> Self::Variable;
     // -------------------------
 
     /// Check if the points given by (x1, y1) and (x2, y2) are equals.
@@ -1262,7 +1277,39 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             });
         }
         Instruction::PoseidonSpongeAbsorb => {
-            todo!()
+            env.activate_gadget(Gadget::PoseidonSpongeAbsorb);
+
+            let round_input_positions: Vec<E::Position> = (0..PlonkSpongeConstants::SPONGE_WIDTH
+                - 1)
+                .map(|_i| env.allocate())
+                .collect();
+
+            let state: Vec<E::Variable> = round_input_positions
+                .iter()
+                .enumerate()
+                .map(|(i, pos)| env.load_poseidon_state(*pos, i + 1))
+                .collect();
+
+            let values_to_absorb: Vec<E::Variable> = (0..PlonkSpongeConstants::SPONGE_WIDTH - 1)
+                .map(|_i| unsafe {
+                    let pos = env.allocate();
+                    env.fetch_value_to_absorb_in_sponge(pos)
+                })
+                .collect();
+
+            let output: Vec<E::Variable> = state
+                .iter()
+                .zip(values_to_absorb.iter())
+                .map(|(s, v)| {
+                    let pos = env.allocate();
+                    env.write_column(pos, s.clone() + v.clone())
+                })
+                .collect();
+
+            output
+                .iter()
+                .enumerate()
+                .for_each(|(i, o)| unsafe { env.save_poseidon_state(o.clone(), i + 1) })
         }
         Instruction::NoOp => {}
     }
