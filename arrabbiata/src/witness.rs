@@ -1206,13 +1206,8 @@ where
     /// ```
     pub fn fetch_next_instruction(&mut self) -> Instruction {
         match self.current_instruction {
-            Instruction::Poseidon(i) => {
-                if i < PlonkSpongeConstants::PERM_ROUNDS_FULL - 5 {
-                    Instruction::Poseidon(i + 5)
-                } else {
-                    // FIXME: we continue absorbing
-                    Instruction::Poseidon(0)
-                }
+            Instruction::Poseidon(_i) => {
+                panic!("Deprecated gadget. It should not be used in any control flow. Use PoseidonPermutation and PoseidonSpongeAbsorb")
             }
             Instruction::PoseidonPermutation(i) => {
                 if i < PlonkSpongeConstants::PERM_ROUNDS_FULL - 5 {
