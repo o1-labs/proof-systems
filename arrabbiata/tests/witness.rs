@@ -118,6 +118,68 @@ fn test_unit_witness_poseidon_permutation_gadget_one_full_hash() {
 }
 
 #[test]
+fn test_unit_witness_poseidon_with_absorb_one_full_hash() {
+    let srs_log2_size = 6;
+    let indexed_relation: IndexedRelation<Fp, Fq, Vesta, Pallas> =
+        IndexedRelation::new(srs_log2_size);
+
+    let sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] = [
+        BigInt::from(42u64),
+        BigInt::from(42u64),
+        BigInt::from(42u64),
+    ];
+
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
+        BigInt::from(1u64),
+        sponge.clone(),
+        sponge.clone(),
+        indexed_relation,
+    );
+
+    env.current_instruction = Instruction::PoseidonSpongeAbsorb;
+    interpreter::run_ivc(&mut env, Instruction::PoseidonSpongeAbsorb);
+    env.reset();
+
+    (0..(PlonkSpongeConstants::PERM_ROUNDS_FULL / 5)).for_each(|i| {
+        interpreter::run_ivc(&mut env, Instruction::PoseidonPermutation(5 * i));
+        env.reset();
+    });
+
+    let exp_output = {
+        let mut state = sponge
+            .clone()
+            .to_vec()
+            .iter()
+            .map(|x| Fp::from_biguint(&x.to_biguint().unwrap()).unwrap())
+            .collect::<Vec<_>>();
+        // Absorbing the first commitment
+        let (pt_x, pt_y) = env.accumulated_committed_state_e2[0]
+            .get_first_chunk()
+            .to_coordinates()
+            .unwrap();
+        state[1] += pt_x;
+        state[2] += pt_y;
+
+        poseidon_block_cipher::<Fp, PlonkSpongeConstants>(
+            poseidon_3_60_0_5_5_fp::static_params(),
+            &mut state,
+        );
+        state
+            .iter()
+            .map(|x| x.to_biguint().into())
+            .collect::<Vec<_>>()
+    };
+
+    // Check correctness for current iteration
+    assert_eq!(env.sponge_e1.to_vec(), exp_output);
+    // Check the other sponge hasn't been modified
+    assert_eq!(env.sponge_e2, sponge.clone());
+
+    // Number of rows used by one full hash
+    assert_eq!(env.current_row, 13);
+}
+
+#[test]
 fn test_unit_witness_elliptic_curve_addition() {
     let srs_log2_size = 6;
     let indexed_relation = IndexedRelation::new(srs_log2_size);
