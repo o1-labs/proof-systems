@@ -6,6 +6,7 @@ use kimchi::{
     plonk_sponge::FrSponge,
 };
 use mina_poseidon::FqSponge;
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{commitment::absorb_commitment, ipa::SRS, OpenProof, SRS as _};
 //TODO Parralelize
@@ -171,7 +172,12 @@ where
     // evaluate and prepare for IPA proof
     // TODO check num_chunks and srs length
     let t_chunks = t.to_chunked_polynomial(num_chunk, srs.size());
-    let zeta = fq_sponge.challenge();
+    // squeeze zeta
+    // TODO: understand why we use the endo here and for IPA ,
+    // but not for alpha
+    let (_, endo_r) = G::endos();
+    let zeta_chal = ScalarChallenge(fq_sponge.challenge());
+    let zeta: G::ScalarField = zeta_chal.to_field(endo_r);
     let zeta_omega = zeta * domain.d1.group_gen;
     let eval =
         |x,
@@ -198,7 +204,6 @@ where
         .clone()
         .into_iter()
         .for_each(|x| fr_sponge.absorb(&x));
-    let (_, endo_r) = G::endos();
     // poly scale
     let poly_scale_chal = fr_sponge.challenge();
     let poly_scale = poly_scale_chal.to_field(endo_r);
