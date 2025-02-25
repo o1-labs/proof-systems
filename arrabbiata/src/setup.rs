@@ -28,7 +28,7 @@ use kimchi::circuits::domains::EvaluationDomains;
 use log::{debug, info};
 use mina_poseidon::constants::SpongeConstants;
 use mvpoly::{monomials::Sparse, MVPoly};
-use num_bigint::BigUint;
+use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::FieldHelpers;
 use poly_commitment::{ipa::SRS, SRS as _};
@@ -86,6 +86,14 @@ pub struct IndexedRelation<
     /// the same job over both curves.
     pub constraints_fp: HashMap<Gadget, Vec<Sparse<Fp, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>>,
     pub constraints_fq: HashMap<Gadget, Vec<Sparse<Fq, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>>,
+
+    /// Initial state of the sponge, containing circuit specific
+    /// information.
+    // FIXME: setup correctly with the initial transcript.
+    // The sponge must be initialized correctly with all the information
+    // related to the actual relation being accumulated/proved.
+    // Note that it must include the information of both circuits!
+    pub initial_sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
 }
 
 impl<
@@ -179,6 +187,10 @@ where
                 .collect()
         };
 
+        // FIXME: setup correctly the initial sponge state
+        let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
+            std::array::from_fn(|_i| BigInt::from(42u64));
+
         Self {
             domain_fp,
             domain_fq,
@@ -186,6 +198,7 @@ where
             srs_e2,
             constraints_fp,
             constraints_fq,
+            initial_sponge: sponge_e1,
         }
     }
 
