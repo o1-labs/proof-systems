@@ -304,15 +304,8 @@ where
                 .collect(),
             Some(blinders_arr) => blinders_arr
                 .into_iter()
-                .zip(witness.iter())
-                .map(|(blinder_el, witness)| match blinder_el {
-                    None => {
-                        // `(a + b - 1) / b` is `ceil(a / b)`, gives number of chunks in the
-                        // witness vector
-                        let wit_chunks = (witness.len() + index.cs.domain.d1.size() - 1)
-                            / index.cs.domain.d1.size();
-                        PolyComm::new(vec![UniformRand::rand(rng); wit_chunks])
-                    }
+                .map(|blinder_el| match blinder_el {
+                    None => PolyComm::new(vec![UniformRand::rand(rng); num_chunks]),
                     Some(blinder_el_some) => blinder_el_some,
                 })
                 .collect(),
