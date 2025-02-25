@@ -71,18 +71,6 @@ impl From<Column> for usize {
 
 pub type E<Fp> = Expr<ConstantExpr<Fp, ChallengeTerm>, Column>;
 
-impl From<Gadget> for usize {
-    fn from(val: Gadget) -> usize {
-        match val {
-            Gadget::App => 0,
-            Gadget::EllipticCurveAddition => 1,
-            Gadget::EllipticCurveScaling => 2,
-            Gadget::PoseidonSpongeAbsorb => 3,
-            Gadget::PoseidonFullRound(starting_round) => 4 + starting_round / 5,
-        }
-    }
-}
-
 // Code to allow for pretty printing of the expressions
 impl FormattedOutput for Column {
     fn latex(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
