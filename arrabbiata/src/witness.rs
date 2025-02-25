@@ -15,8 +15,7 @@ use crate::{
     column::{Column, Gadget},
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side},
-    setup, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_SELECTORS,
-    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    setup, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
 /// The first instruction in the verifier circuit (often shortened in "IVC" in
@@ -109,15 +108,14 @@ pub struct Env<
     /// evaluate at ζ and ζω.
     pub next_state: [BigInt; NUMBER_OF_COLUMNS],
 
-    /// Selectors to activate the gadgets.
-    /// The size of the outer vector must be equal to the number of gadgets in
-    /// the circuit.
-    /// The size of the inner vector must be equal to the number of rows in
-    /// the circuit.
+    /// Gadgets activated for each row.
+    /// The size of the vector is the number of row, and the value is the
+    /// activated gadget.
     ///
-    /// The layout columns/rows is used to avoid rebuilding the arrays per
-    /// column when committing to the witness.
-    pub selectors: Vec<Vec<bool>>,
+    /// By design, it enforces the activation of only one gadget per row.
+    ///
+    /// FIXME: this should go into the setup.
+    pub selectors: Vec<Option<Gadget>>,
 
     /// While folding, we must keep track of the challenges the verifier would
     /// have sent in the SNARK, and we must aggregate them.
@@ -311,9 +309,11 @@ where
 
     /// Activate the gadget for the current row
     fn activate_gadget(&mut self, gadget: Gadget) {
-        // IMPROVEME: it should be called only once per row
-        let gadget = usize::from(gadget);
-        self.selectors[gadget][self.current_row] = true;
+        assert!(
+            self.selectors[self.current_row].is_none(),
+            "Only one gadget can be activated per row"
+        );
+        self.selectors[self.current_row] = Some(gadget);
     }
 
     fn constrain_boolean(&mut self, x: Self::Variable) {
@@ -811,11 +811,9 @@ where
             (0..NUMBER_OF_COLUMNS).for_each(|_| accumulated_program_state_e2.push(vec.clone()));
         };
 
-        let mut selectors: Vec<Vec<bool>> = Vec::with_capacity(NUMBER_OF_SELECTORS);
+        let mut selectors: Vec<Option<Gadget>> = Vec::with_capacity(srs_size);
         {
-            let mut vec: Vec<bool> = Vec::with_capacity(srs_size);
-            (0..srs_size).for_each(|_| vec.push(false));
-            (0..NUMBER_OF_SELECTORS).for_each(|_| selectors.push(vec.clone()));
+            (0..srs_size).for_each(|_| selectors.push(None));
         };
 
         // Default set to the blinders. Using double to make the EC scaling happy.
