@@ -122,7 +122,7 @@
 //! [crate::MAX_DEGREE].
 //! Therefore, we can compute 5 full rounds per row by using the "next row"
 //! (i.e. adding an evaluation point at ζω). An implementation is provided in
-//! the gadget [crate::column::Gadget::PoseidonPermutation] and
+//! the gadget [crate::column::Gadget::PoseidonFullRound] and
 //! [crate::column::Gadget::PoseidonSpongeAbsorb].
 //!
 //! The layout for the one using the "next row" is as follow (5 full rounds):
@@ -601,11 +601,11 @@ pub enum Instruction {
     /// columns, we can compute 5 full rounds per row.
     ///
     /// We split the Poseidon gadget in 13 sub-gadgets, one for each set of 5
-    /// permutations and one for the absorbtion. The parameter is the starting
+    /// full rounds and one for the absorbtion. The parameter is the starting
     /// round of the permutation. It is expected to be a multiple of five.
     ///
     /// Note that, for now, the gadget can only be used by the verifier circuit.
-    PoseidonPermutation(usize),
+    PoseidonFullRound(usize),
     /// Absorb [PlonkSpongeConstants::SPONGE_WIDTH - 1] elements into the
     /// sponge. The elements are absorbed into the last
     /// [PlonkSpongeConstants::SPONGE_WIDTH - 1] elements of the sponge state.
@@ -1060,7 +1060,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 env.write_column(pos, res)
             };
         }
-        Instruction::PoseidonPermutation(starting_round) => {
+        Instruction::PoseidonFullRound(starting_round) => {
             assert!(
                 starting_round < PlonkSpongeConstants::PERM_ROUNDS_FULL,
                 "Invalid round index. Only values below {} are allowed.",
@@ -1075,7 +1075,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 starting_round + 5
             );
 
-            env.activate_gadget(Gadget::PoseidonPermutation(starting_round));
+            env.activate_gadget(Gadget::PoseidonFullRound(starting_round));
 
             let round_input_positions: Vec<E::Position> = (0..PlonkSpongeConstants::SPONGE_WIDTH)
                 .map(|_i| env.allocate())

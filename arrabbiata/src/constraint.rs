@@ -299,7 +299,7 @@ where
     /// Get all the constraints for the verifier circuit, only.
     ///
     /// The following gadgets are used in the verifier circuit:
-    /// - [Instruction::PoseidonPermutation] and
+    /// - [Instruction::PoseidonFullRound] and
     /// [Instruction::PoseidonSpongeAbsorb] to verify the challenges and the
     /// public IO.
     /// - [Instruction::EllipticCurveScaling] and
@@ -320,7 +320,7 @@ where
 
         // Poseidon constraints
         (0..PlonkSpongeConstants::PERM_ROUNDS_FULL / 12).for_each(|i| {
-            interpreter::run_ivc(&mut env, Instruction::PoseidonPermutation(5 * i));
+            interpreter::run_ivc(&mut env, Instruction::PoseidonFullRound(5 * i));
             constraints.extend(env.constraints.clone());
             env.reset();
         });
@@ -372,8 +372,8 @@ where
 
         // Poseidon constraints
         (0..PlonkSpongeConstants::PERM_ROUNDS_FULL / 12).for_each(|i| {
-            interpreter::run_ivc(&mut env, Instruction::PoseidonPermutation(5 * i));
-            hashmap.insert(Gadget::PoseidonPermutation(5 * i), env.constraints.clone());
+            interpreter::run_ivc(&mut env, Instruction::PoseidonFullRound(5 * i));
+            hashmap.insert(Gadget::PoseidonFullRound(5 * i), env.constraints.clone());
             env.reset();
         });
 
