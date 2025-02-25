@@ -50,3 +50,7 @@ harness = false
 [[bench]]
 name = "ipa"
 harness = false
+
+[[bench]]
+name = "msm"
+harness = false
