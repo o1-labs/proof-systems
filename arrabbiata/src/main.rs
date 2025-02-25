@@ -162,6 +162,18 @@ pub fn execute(args: cli::ExecuteArgs) {
         env.reset_for_next_iteration();
         env.current_iteration += 1;
     }
+
+    // Regression test in case we change the Poseidon gadget or the verifier circuit.
+    // These values define the state of the application at the end of the
+    // execution.
+    assert_eq!(
+        env.challenges[ChallengeTerm::RelationCombiner].to_str_radix(16),
+        "7e5b4619e8590389954d2b2fde0ba28e"
+    );
+    assert_eq!(
+        env.challenges[ChallengeTerm::ConstraintCombiner].to_str_radix(16),
+        "7cf0f01bcec63ca82ca3251f3f462117"
+    );
 }
 
 pub fn main() {
