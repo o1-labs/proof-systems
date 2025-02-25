@@ -1314,4 +1314,72 @@ where
                 .collect();
         }
     }
+
+    pub fn compute_cross_terms(&mut self) {
+        let domain_size = self.indexed_relation.get_srs_size();
+        if self.current_iteration % 2 == 0 {
+            (0..domain_size).for_each(|row| {
+                // wrap around if necessary
+                let next_row = (row + 1) % domain_size;
+                let state_left: [E1::ScalarField; NUMBER_OF_COLUMNS * 2] =
+                    std::array::from_fn(|i| {
+                        if i < NUMBER_OF_COLUMNS {
+                            self.accumulated_program_state_e1[i][row]
+                        } else {
+                            self.accumulated_program_state_e1[i - NUMBER_OF_COLUMNS][next_row]
+                        }
+                    });
+                let state_right: [E1::ScalarField; NUMBER_OF_COLUMNS * 2] =
+                    std::array::from_fn(|i| {
+                        if i < NUMBER_OF_COLUMNS {
+                            let v: BigUint = self.witness[i][row].to_biguint().unwrap();
+                            E1::ScalarField::from_biguint(&v).unwrap()
+                        } else {
+                            let v: BigUint = self.witness[i - NUMBER_OF_COLUMNS][row]
+                                .to_biguint()
+                                .unwrap();
+                            E1::ScalarField::from_biguint(&v).unwrap()
+                        }
+                    });
+                let alpha_left = {
+                    let v: BigUint = self.accumulated_challenges_e1
+                        [ChallengeTerm::ConstraintCombiner]
+                        .to_biguint()
+                        .unwrap();
+                    E1::ScalarField::from_biguint(&v).unwrap()
+                };
+                let alpha_right = {
+                    let v: BigUint = self.challenges[ChallengeTerm::ConstraintCombiner]
+                        .to_biguint()
+                        .unwrap();
+                    E1::ScalarField::from_biguint(&v).unwrap()
+                };
+                let u_left = {
+                    let v: BigUint = self.accumulated_challenges_e1
+                        [ChallengeTerm::ConstraintHomogeniser]
+                        .to_biguint()
+                        .unwrap();
+                    E1::ScalarField::from_biguint(&v).unwrap()
+                };
+                let u_right = {
+                    let v: BigUint = self.challenges[ChallengeTerm::ConstraintHomogeniser]
+                        .to_biguint()
+                        .unwrap();
+                    E1::ScalarField::from_biguint(&v).unwrap()
+                };
+                let activated_gadget: Gadget = self.selectors[row].unwrap();
+                let constraints: Vec<_> =
+                    self.indexed_relation.constraints_fp[&activated_gadget].clone();
+                let _cross_terms = mvpoly::compute_combined_cross_terms(
+                    constraints,
+                    state_left,
+                    state_right,
+                    u_left,
+                    u_right,
+                    alpha_left,
+                    alpha_right,
+                );
+            })
+        }
+    }
 }
