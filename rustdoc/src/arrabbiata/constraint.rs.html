@@ -427,6 +427,16 @@
 <a href="#427" id="427">427</a>
 <a href="#428" id="428">428</a>
 <a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{column::Column, interpreter::InterpreterEnv};
 <span class="kw">use crate</span>::{
     column::{Gadget, E},
@@ -622,6 +632,12 @@
         Expr::Atom(ExprInner::Cell(Variable { col, row }))
     }
 
+    <span class="kw">fn </span>get_poseidon_round_constant_as_constant(<span class="kw-2">&amp;</span><span class="self">self</span>, round: usize, i: usize) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>cst = C::sponge_params().round_constants[round][i];
+        <span class="kw">let </span>cst_inner = Operations::from(Literal(cst));
+        <span class="self">Self</span>::Variable::constant(cst_inner)
+    }
+
     <span class="kw">fn </span>get_poseidon_mds_matrix(<span class="kw-2">&amp;mut </span><span class="self">self</span>, i: usize, j: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>v = C::sponge_params().mds[i][j];
         <span class="kw">let </span>v_inner = Operations::from(Literal(v));
@@ -633,6 +649,10 @@
         pos: <span class="self">Self</span>::Position,
         _curr_round: usize,
     ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.read_position(pos)
+    }
+
+    <span class="kw">unsafe fn </span>fetch_value_to_absorb_in_sponge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.read_position(pos)
     }
 
