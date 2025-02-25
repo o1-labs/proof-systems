@@ -208,6 +208,8 @@
 <a href="#208" id="208">208</a>
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines methods and structures for setting up the circuit, or in
 //! a more theoretical language, the &quot;NP relation&quot; that the circuit will be
 //! related to.
@@ -238,7 +240,7 @@
 <span class="kw">use </span>log::{debug, info};
 <span class="kw">use </span>mina_poseidon::constants::SpongeConstants;
 <span class="kw">use </span>mvpoly::{monomials::Sparse, MVPoly};
-<span class="kw">use </span>num_bigint::BigUint;
+<span class="kw">use </span>num_bigint::{BigInt, BigUint};
 <span class="kw">use </span>num_integer::Integer;
 <span class="kw">use </span>o1_utils::FieldHelpers;
 <span class="kw">use </span>poly_commitment::{ipa::SRS, SRS <span class="kw">as _</span>};
@@ -249,7 +251,6 @@
     constraint,
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     MAXIMUM_FIELD_SIZE_IN_BITS, MAX_DEGREE, MV_POLYNOMIAL_ARITY, NUMBER_OF_COLUMNS,
-    NUMBER_OF_PUBLIC_INPUTS,
 };
 
 <span class="doccomment">/// An indexed relation is a structure that contains all the information needed
@@ -297,6 +298,14 @@
     /// the same job over both curves.
     </span><span class="kw">pub </span>constraints_fp: HashMap&lt;Gadget, Vec&lt;Sparse&lt;Fp, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }&gt;&gt;&gt;,
     <span class="kw">pub </span>constraints_fq: HashMap&lt;Gadget, Vec&lt;Sparse&lt;Fq, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }&gt;&gt;&gt;,
+
+    <span class="doccomment">/// Initial state of the sponge, containing circuit specific
+    /// information.
+    </span><span class="comment">// FIXME: setup correctly with the initial transcript.
+    // The sponge must be initialized correctly with all the information
+    // related to the actual relation being accumulated/proved.
+    // Note that it must include the information of both circuits!
+    </span><span class="kw">pub </span>initial_sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
 }
 
 <span class="kw">impl</span>&lt;
@@ -363,12 +372,7 @@
                         k,
                         polynomials
                             .into_iter()
-                            .map(|p| {
-                                Sparse::from_expr(
-                                    p,
-                                    <span class="prelude-val">Some</span>(NUMBER_OF_COLUMNS + NUMBER_OF_PUBLIC_INPUTS),
-                                )
-                            })
+                            .map(|p| Sparse::from_expr(p, <span class="prelude-val">Some</span>(NUMBER_OF_COLUMNS)))
                             .collect(),
                     )
                 })
@@ -388,17 +392,16 @@
                         k,
                         polynomials
                             .into_iter()
-                            .map(|p| {
-                                Sparse::from_expr(
-                                    p,
-                                    <span class="prelude-val">Some</span>(NUMBER_OF_COLUMNS + NUMBER_OF_PUBLIC_INPUTS),
-                                )
-                            })
+                            .map(|p| Sparse::from_expr(p, <span class="prelude-val">Some</span>(NUMBER_OF_COLUMNS)))
                             .collect(),
                     )
                 })
                 .collect()
         };
+
+        <span class="comment">// FIXME: setup correctly the initial sponge state
+        </span><span class="kw">let </span>sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
+            std::array::from_fn(|_i| BigInt::from(<span class="number">42u64</span>));
 
         <span class="self">Self </span>{
             domain_fp,
@@ -407,6 +410,7 @@
             srs_e2,
             constraints_fp,
             constraints_fq,
+            initial_sponge: sponge_e1,
         }
     }
 
