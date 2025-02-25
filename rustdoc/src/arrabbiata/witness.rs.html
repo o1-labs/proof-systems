@@ -1416,6 +1416,16 @@
 <a href="#1416" id="1416">1416</a>
 <a href="#1417" id="1417">1417</a>
 <a href="#1418" id="1418">1418</a>
+<a href="#1419" id="1419">1419</a>
+<a href="#1420" id="1420">1420</a>
+<a href="#1421" id="1421">1421</a>
+<a href="#1422" id="1422">1422</a>
+<a href="#1423" id="1423">1423</a>
+<a href="#1424" id="1424">1424</a>
+<a href="#1425" id="1425">1425</a>
+<a href="#1426" id="1426">1426</a>
+<a href="#1427" id="1427">1427</a>
+<a href="#1428" id="1428">1428</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::CurveConfig;
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
@@ -2632,6 +2642,22 @@
                     </span>Instruction::Poseidon(<span class="number">0</span>)
                 }
             }
+            Instruction::PoseidonPermutation(i) =&gt; {
+                <span class="kw">if </span>i &lt; PlonkSpongeConstants::PERM_ROUNDS_FULL - <span class="number">5 </span>{
+                    Instruction::PoseidonPermutation(i + <span class="number">5</span>)
+                } <span class="kw">else </span>{
+                    <span class="comment">// FIXME: for now, we continue absorbing because the current
+                    // code, while fetching the values to absorb, raises an
+                    // exception when we absorbed everythimg, and the main file
+                    // handles the halt by filling as many rows as expected (see
+                    // [VERIFIER_CIRCUIT_SIZE]).
+                    </span>Instruction::PoseidonSpongeAbsorb
+                }
+            }
+            Instruction::PoseidonSpongeAbsorb =&gt; {
+                <span class="comment">// Whenever we absorbed a value, we run the permutation.
+                </span>Instruction::PoseidonPermutation(<span class="number">0</span>)
+            }
             Instruction::EllipticCurveScaling(i_comm, bit) =&gt; {
                 <span class="comment">// TODO: we still need to substract (or not?) the blinder.
                 // Maybe we can avoid this by aggregating them.
@@ -2657,12 +2683,6 @@
                 }
             }
             Instruction::NoOp =&gt; Instruction::NoOp,
-            Instruction::PoseidonSpongeAbsorb =&gt; {
-                <span class="macro">todo!</span>()
-            }
-            Instruction::PoseidonPermutation(<span class="kw">_</span>) =&gt; {
-                <span class="macro">todo!</span>()
-            }
         }
     }
 
