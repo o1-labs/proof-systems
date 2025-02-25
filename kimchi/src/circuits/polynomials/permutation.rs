@@ -481,10 +481,13 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
 
         // We compute z such that:
         // z[0] = 1
-        // z[j+1] = \Prod_{i=0}^{COLUMNS}(wit[i][j] + (s[i][8*j] * beta) + gamma)     for j ∈ 0..n-1
+        // z[j+1] = \Prod_{i=0}^{PERMUTS}(wit[i][j] + (s[i][8*j] * beta) + gamma)     for j ∈ 0..n-1
         //
         // We compute every product batch separately first (one batch
         // per i∈[COLUMNS]), and then multiply all batches together.
+        //
+        // Note that we zip array of COLUMNS with array of PERMUTS;
+        // Since PERMUTS < COLUMNS, that's what's actually used.
         let mut z: Vec<F> = witness
             .par_iter()
             .zip(self.column_evaluations.permutation_coefficients8.par_iter())
