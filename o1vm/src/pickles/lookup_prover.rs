@@ -1,7 +1,11 @@
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain};
-use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_sponge::FrSponge};
-use mina_poseidon::FqSponge;
+use kimchi::{
+    circuits::{domains::EvaluationDomains, expr::Constants},
+    curve::KimchiCurve,
+    plonk_sponge::FrSponge,
+};
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{commitment::absorb_commitment, ipa::SRS, OpenProof, SRS as _};
 //TODO Parralelize
@@ -16,6 +20,8 @@ use rand::{CryptoRng, RngCore};
 /// It then proves that the sum 1/(beta + table) = PI - PO
 /// where the table term are term from fixed lookup or RAMLookup
 
+// TODO: add selectors
+// TODO: add multiplicities
 pub fn lookup_prove<
     G: KimchiCurve,
     EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone,
@@ -35,7 +41,7 @@ where
     RNG: RngCore + CryptoRng,
 {
     // TODO check that
-    let num_chunk = 8;
+    let num_chunk = 1;
     let LookupProofInput {
         wires,
         arity,
@@ -87,7 +93,7 @@ where
             acc.push(partial_sum)
         }
     }
-    let acc_final = acc[acc.len()];
+    let acc_final = acc[acc.len() - 1];
     let columns = ColumnEnv {
         wires,
         inverses,
@@ -133,6 +139,12 @@ where
         challenges,
         columns: &columns_eval_d8,
         domain: &domain,
+        constants: Constants {
+            endo_coefficient: G::ScalarField::zero(),
+            mds: &G::sponge_params().mds,
+            zk_rows: 0,
+        },
+
         l0_1: l0_1(domain.d1),
     };
     let t_numerator_evaluation: Evaluations<
@@ -143,9 +155,11 @@ where
     let (t, rem) = t_numerator_poly
         .divide_by_vanishing_poly(domain.d1)
         .unwrap();
-    assert!(!rem.is_zero());
+    assert!(rem.is_zero());
     let t_commitment = srs.commit_non_hiding(
-        &t, 8, //TODO: check the degree,
+        // TODO: change the nb of chunks later
+        // For now we use this because the constraints null
+        &t, 1,
     );
     // TODO avoid cloning
     let commitments = AllColumns {
@@ -157,7 +171,12 @@ where
     // evaluate and prepare for IPA proof
     // TODO check num_chunks and srs length
     let t_chunks = t.to_chunked_polynomial(num_chunk, srs.size());
-    let zeta = fq_sponge.challenge();
+    // squeeze zeta
+    // TODO: understand why we use the endo here and for IPA ,
+    // but not for alpha
+    let (_, endo_r) = G::endos();
+    let zeta_chal = ScalarChallenge(fq_sponge.challenge());
+    let zeta: G::ScalarField = zeta_chal.to_field(endo_r);
     let zeta_omega = zeta * domain.d1.group_gen;
     let eval =
         |x,
@@ -184,7 +203,6 @@ where
         .clone()
         .into_iter()
         .for_each(|x| fr_sponge.absorb(&x));
-    let (_, endo_r) = G::endos();
     // poly scale
     let poly_scale_chal = fr_sponge.challenge();
     let poly_scale = poly_scale_chal.to_field(endo_r);
@@ -202,7 +220,7 @@ where
         (
             DensePolynomialOrEvaluations::<_,Radix2EvaluationDomain<G::ScalarField>>::DensePolynomial(poly),
             // We do not have any blinder, therefore we set to 1.
-            PolyComm::new(vec![G::ScalarField::one()]),
+            PolyComm::new(vec![G::ScalarField::zero()]),
         )
     }).collect();
     let ipa_proof = OpeningProof::open(

@@ -47,7 +47,7 @@ where
     // Reproduce plonkish FS challenges
     //////
 
-    // absorbing commit
+    // absorbing commit except the quotient
     // TODO don't absorb the wires which already have been
     // when the same TODO is done in the prover
     commitments

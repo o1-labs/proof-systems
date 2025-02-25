@@ -66,6 +66,7 @@ impl SyscallEnv {
     }
 }
 
+#[derive(Clone)]
 pub struct LookupMultiplicities {
     pub pad_lookup: Vec<u64>,
     pub round_constants_lookup: Vec<u64>,
@@ -115,6 +116,10 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub scratch_state_inverse: [Fp; SCRATCH_SIZE_INVERSE],
     pub lookup_state_idx: usize,
     pub lookup_state: Vec<Fp>,
+    // tracks the arity of every lookup
+    // [1,1,3] means that the lookup state is of size 5,
+    // containing two lookup of arity one and one of arity three.
+    pub lookup_arity: Vec<usize>,
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub selector: usize,
@@ -178,9 +183,11 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
     }
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
+        let mut arity_counter = 0;
         let mut add_value = |x: Fp| {
             self.lookup_state_idx += 1;
             self.lookup_state.push(x);
+            arity_counter += 1;
         };
         let Lookup {
             table_id,
@@ -201,7 +208,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
         for value in values.iter() {
             add_value(*value);
         }
-
+        // Update multiplicities
         if let Some(idx) = table_id.ix_by_value(values.as_slice()) {
             match table_id {
                 LookupTableIDs::PadLookup => self.lookup_multiplicities.pad_lookup[idx] += 1,
@@ -224,6 +231,8 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 LookupTableIDs::KeccakStepLookup => (),
             }
         }
+        //Update arity
+        self.lookup_arity.push(arity_counter);
     }
 
     fn instruction_counter(&self) -> Self::Variable {
@@ -963,6 +972,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             scratch_state_inverse: fresh_scratch_state(),
             lookup_state_idx: 0,
             lookup_state: vec![],
+            lookup_arity: vec![],
             halt: state.exited,
             syscall_env,
             selector,
@@ -990,6 +1000,10 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
     pub fn reset_lookup_state(&mut self) {
         self.lookup_state_idx = 0;
         self.lookup_state = vec![];
+    }
+
+    pub fn reset_arity(&mut self) {
+        self.lookup_arity = vec![];
     }
 
     pub fn write_column(&mut self, column: Column, value: u64) {
@@ -1242,6 +1256,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         self.reset_scratch_state();
         self.reset_scratch_state_inverse();
         self.reset_lookup_state();
+        self.reset_arity();
         let (opcode, _instruction) = self.decode_instruction();
 
         self.pp_info(&config.info_at, metadata, start);
