@@ -30,10 +30,10 @@ fn test_unit_witness_poseidon_permutation_gadget_one_full_hash() {
 
     let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
 
-    env.current_instruction = Instruction::PoseidonPermutation(0);
+    env.current_instruction = Instruction::PoseidonFullRound(0);
 
     (0..(PlonkSpongeConstants::PERM_ROUNDS_FULL / 5)).for_each(|i| {
-        interpreter::run_ivc(&mut env, Instruction::PoseidonPermutation(5 * i));
+        interpreter::run_ivc(&mut env, Instruction::PoseidonFullRound(5 * i));
         env.reset();
     });
     let exp_output = {
@@ -77,7 +77,7 @@ fn test_unit_witness_poseidon_with_absorb_one_full_hash() {
     env.reset();
 
     (0..(PlonkSpongeConstants::PERM_ROUNDS_FULL / 5)).for_each(|i| {
-        interpreter::run_ivc(&mut env, Instruction::PoseidonPermutation(5 * i));
+        interpreter::run_ivc(&mut env, Instruction::PoseidonFullRound(5 * i));
         env.reset();
     });
 

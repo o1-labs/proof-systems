@@ -119,7 +119,7 @@ fn test_gadget_elliptic_curve_scaling() {
 
 #[test]
 fn test_gadget_poseidon_permutation() {
-    let instr = Instruction::PoseidonPermutation(0);
+    let instr = Instruction::PoseidonFullRound(0);
     helper_compute_constraints_gadget(instr, 15);
 
     let mut exp_degrees = HashMap::new();
@@ -128,7 +128,7 @@ fn test_gadget_poseidon_permutation() {
 
     helper_gadget_number_of_columns_used(instr, 15);
 
-    helper_check_gadget_activated(instr, Gadget::PoseidonPermutation(0));
+    helper_check_gadget_activated(instr, Gadget::PoseidonFullRound(0));
 }
 
 #[test]

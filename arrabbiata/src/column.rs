@@ -24,11 +24,11 @@ pub enum Gadget {
     /// rounds per row.
     ///
     /// We split the Poseidon gadget in 13 sub-gadgets, one for each set of 5
-    /// permutations and one for the absorbtion. The parameteris the starting
+    /// full rounds and one for the absorbtion. The parameter is the starting
     /// round of Poseidon. It is expected to be a multiple of five.
     ///
     /// Note that, for now, the gadget can only be used by the verifier circuit.
-    PoseidonPermutation(usize),
+    PoseidonFullRound(usize),
     /// Absorb [PlonkSpongeConstants::SPONGE_WIDTH - 1] elements into the
     /// sponge. The elements are absorbed into the last
     /// [PlonkSpongeConstants::SPONGE_WIDTH - 1] elements of the permutation
@@ -78,7 +78,7 @@ impl From<Gadget> for usize {
             Gadget::EllipticCurveAddition => 1,
             Gadget::EllipticCurveScaling => 2,
             Gadget::PoseidonSpongeAbsorb => 3,
-            Gadget::PoseidonPermutation(starting_round) => 4 + starting_round / 5,
+            Gadget::PoseidonFullRound(starting_round) => 4 + starting_round / 5,
         }
     }
 }
@@ -92,8 +92,8 @@ impl FormattedOutput for Column {
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
                 Gadget::PoseidonSpongeAbsorb => "q_pos_sponge_absorb".to_string(),
-                Gadget::PoseidonPermutation(starting_round) => {
-                    format!("q_pos_permutation{}", starting_round)
+                Gadget::PoseidonFullRound(starting_round) => {
+                    format!("q_pos_full_round_{}", starting_round)
                 }
             },
             Column::PublicInput(i) => format!("pi_{{{i}}}").to_string(),
@@ -108,8 +108,8 @@ impl FormattedOutput for Column {
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
                 Gadget::PoseidonSpongeAbsorb => "q_pos_sponge_absorb".to_string(),
-                Gadget::PoseidonPermutation(starting_round) => {
-                    format!("q_pos_permutation{}", starting_round)
+                Gadget::PoseidonFullRound(starting_round) => {
+                    format!("q_pos_full_round_{}", starting_round)
                 }
             },
             Column::PublicInput(i) => format!("pi[{i}]"),
