@@ -12,7 +12,7 @@ fn benchmark_ipa_commit_vesta(c: &mut Criterion) {
     let mut group = c.benchmark_group("IPA Commit");
     let mut rng = o1_utils::tests::make_test_rng(None);
 
-    for srs_size_log in [8, 12, 16].into_iter() {
+    for srs_size_log in [12, 15, 16].into_iter() {
         let n = 1 << srs_size_log;
         let srs = SRS::<Vesta>::create(n);
         srs.get_lagrange_basis_from_domain_size(n);
