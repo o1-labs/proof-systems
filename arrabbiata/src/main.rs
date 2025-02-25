@@ -7,7 +7,6 @@
 use arrabbiata::{
     challenge::ChallengeTerm,
     cli,
-    curve::PlonkSpongeConstants,
     interpreter::{self, InterpreterEnv},
     setup::IndexedRelation,
     witness, MIN_SRS_LOG2_SIZE, VERIFIER_CIRCUIT_SIZE,
@@ -15,7 +14,6 @@ use arrabbiata::{
 use clap::Parser;
 use log::{debug, info};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
-use mina_poseidon::constants::SpongeConstants;
 use num_bigint::BigInt;
 use std::time::Instant;
 
@@ -35,21 +33,12 @@ pub fn execute(args: cli::ExecuteArgs) {
 
     info!("Instantiating environment to execute square-root {n_iteration} times with SRS of size 2^{srs_log2_size}");
 
+    // FIXME: correctly setup
     let indexed_relation = IndexedRelation::new(srs_log2_size);
 
     let domain_size = 1 << srs_log2_size;
 
-    // FIXME: setup correctly the initial sponge state
-    let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-        std::array::from_fn(|_i| BigInt::from(42u64));
-
-    // FIXME: make a setup phase to build the selectors
-    let mut env = witness::Env::<Fp, Fq, Vesta, Pallas>::new(
-        BigInt::from(1u64),
-        sponge_e1.clone(),
-        sponge_e1.clone(),
-        indexed_relation,
-    );
+    let mut env = witness::Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
 
     let n_iteration_per_fold = domain_size - VERIFIER_CIRCUIT_SIZE;
 

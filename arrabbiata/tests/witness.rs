@@ -25,18 +25,10 @@ fn test_unit_witness_poseidon_permutation_gadget_one_full_hash() {
     let indexed_relation: IndexedRelation<Fp, Fq, Vesta, Pallas> =
         IndexedRelation::new(srs_log2_size);
 
-    let sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] = [
-        BigInt::from(42u64),
-        BigInt::from(42u64),
-        BigInt::from(42u64),
-    ];
+    let sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
+        indexed_relation.initial_sponge.clone();
 
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
-        BigInt::from(1u64),
-        sponge.clone(),
-        sponge.clone(),
-        indexed_relation,
-    );
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
 
     env.current_instruction = Instruction::PoseidonPermutation(0);
 
@@ -75,18 +67,10 @@ fn test_unit_witness_poseidon_with_absorb_one_full_hash() {
     let indexed_relation: IndexedRelation<Fp, Fq, Vesta, Pallas> =
         IndexedRelation::new(srs_log2_size);
 
-    let sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] = [
-        BigInt::from(42u64),
-        BigInt::from(42u64),
-        BigInt::from(42u64),
-    ];
+    let sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
+        indexed_relation.initial_sponge.clone();
 
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
-        BigInt::from(1u64),
-        sponge.clone(),
-        sponge.clone(),
-        indexed_relation,
-    );
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
 
     env.current_instruction = Instruction::PoseidonSpongeAbsorb;
     interpreter::run_ivc(&mut env, Instruction::PoseidonSpongeAbsorb);
@@ -136,14 +120,7 @@ fn test_unit_witness_elliptic_curve_addition() {
     let srs_log2_size = 6;
     let indexed_relation = IndexedRelation::new(srs_log2_size);
 
-    let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-        std::array::from_fn(|_i| BigInt::from(42u64));
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
-        BigInt::from(1u64),
-        sponge_e1.clone(),
-        sponge_e1.clone(),
-        indexed_relation,
-    );
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
 
     let instr = Instruction::EllipticCurveAddition(0);
     env.current_instruction = instr;
@@ -212,14 +189,8 @@ fn test_witness_double_elliptic_curve_point() {
     let mut rng = o1_utils::tests::make_test_rng(None);
     let srs_log2_size = 6;
     let indexed_relation = IndexedRelation::new(srs_log2_size);
-    let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-        std::array::from_fn(|_i| BigInt::from(42u64));
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
-        BigInt::from(1u64),
-        sponge_e1.clone(),
-        sponge_e1.clone(),
-        indexed_relation,
-    );
+
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
 
     env.current_instruction = Instruction::EllipticCurveAddition(0);
 
@@ -249,16 +220,14 @@ where
     RNG: RngCore + CryptoRng,
 {
     let srs_log2_size = 10;
-    let indexed_relation = IndexedRelation::new(srs_log2_size);
 
-    let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-        std::array::from_fn(|_i| r.clone());
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
-        BigInt::from(1u64),
-        sponge_e1.clone(),
-        sponge_e1.clone(),
-        indexed_relation,
-    );
+    // FIXME: For test purposes, to get a deterministic result, changing the
+    // initial sponge state. The challenge in the circuit will be the first
+    // element of the state.
+    let mut indexed_relation = IndexedRelation::new(srs_log2_size);
+    indexed_relation.initial_sponge = std::array::from_fn(|_i| r.clone());
+
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
 
     let i_comm = 0;
     let p1: Pallas = {
@@ -318,7 +287,7 @@ fn test_regression_witness_structure_sizeof() {
     // thining about the memory efficiency of the codebase.
     assert_eq!(
         std::mem::size_of::<Env<Fp, Fq, Vesta, Pallas>>(),
-        4920,
+        5016,
         "The witness environment structure probably changed"
     );
 }

@@ -784,12 +784,7 @@ where
     <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
     <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
-    pub fn new(
-        z0: BigInt,
-        sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
-        sponge_e2: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
-        indexed_relation: setup::IndexedRelation<Fp, Fq, E1, E2>,
-    ) -> Self {
+    pub fn new(z0: BigInt, indexed_relation: setup::IndexedRelation<Fp, Fq, E1, E2>) -> Self {
         let srs_size = indexed_relation.get_srs_size();
         let (blinder_e1, blinder_e2) = indexed_relation.get_srs_blinders();
 
@@ -845,10 +840,16 @@ where
         let previous_challenges_e1: Challenges<BigInt> = Challenges::default();
         let previous_challenges_e2: Challenges<BigInt> = Challenges::default();
 
+        // FIXME: use setup
         let prover_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
             std::array::from_fn(|_| BigInt::from(0_u64));
         let verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
             std::array::from_fn(|_| BigInt::from(0_u64));
+
+        // FIXME: set this up correctly. Temporary as we're moving the initial
+        // transcript state into the setup
+        let sponge_e1 = indexed_relation.initial_sponge.clone();
+        let sponge_e2 = indexed_relation.initial_sponge.clone();
 
         Self {
             // -------
