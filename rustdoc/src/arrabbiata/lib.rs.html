@@ -71,6 +71,13 @@
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>curve::PlonkSpongeConstants;
 <span class="kw">use </span>mina_poseidon::constants::SpongeConstants;
 <span class="kw">use </span>strum::EnumCount <span class="kw">as _</span>;
@@ -114,6 +121,13 @@
 </span><span class="kw">pub const </span>VERIFIER_CIRCUIT_SIZE: usize =
     (PlonkSpongeConstants::PERM_ROUNDS_FULL / <span class="number">5 </span>+ <span class="number">1</span>) * NUMBER_OF_COLUMNS + <span class="number">1</span>;
 
+<span class="doccomment">/// The maximum number of public inputs the circuit can use per row
+/// We do have 15 for now as we want to compute 5 rounds of poseidon per row
+/// using the gadget [crate::column::Gadget::Poseidon]. In addition to
+/// the 12 public inputs required for the rounds, we add 2 more for the values
+/// to absorb.
+</span><span class="kw">pub const </span>NUMBER_OF_PUBLIC_INPUTS: usize = <span class="number">15 </span>+ <span class="number">2</span>;
+
 <span class="doccomment">/// The maximum number of bits the fields can be.
 /// It is critical as we have some assumptions for the gadgets describing the
 /// verifier circuit.
@@ -143,5 +157,5 @@
 /// used, hence the multiplication by two.
 ///
 /// It is going to be used to convert into the representation used in [mvpoly].
-</span><span class="kw">pub const </span>MV_POLYNOMIAL_ARITY: usize = NUMBER_OF_COLUMNS * <span class="number">2</span>;
+</span><span class="kw">pub const </span>MV_POLYNOMIAL_ARITY: usize = NUMBER_OF_PUBLIC_INPUTS + NUMBER_OF_COLUMNS * <span class="number">2</span>;
 </code></pre></div></section></main></body></html>

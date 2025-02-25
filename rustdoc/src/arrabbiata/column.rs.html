@@ -127,6 +127,12 @@
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::challenge::ChallengeTerm;
 <span class="kw">use </span>kimchi::circuits::expr::{CacheId, ConstantExpr, Expr, FormattedOutput};
 <span class="kw">use </span>std::collections::HashMap;
@@ -151,6 +157,9 @@
     /// the top-level documentation. In the current setup, with
     /// [crate::NUMBER_OF_COLUMNS] columns, we can compute 5 full
     /// rounds per row.
+    </span>Poseidon,
+    <span class="doccomment">/// We provide a new Poseidon gadget that allows computing 5 rounds, without
+    /// using &quot;public inputs&quot;.
     ///
     /// We split the Poseidon gadget in 13 sub-gadgets, one for each set of 5
     /// permutations and one for the absorbtion. The parameteris the starting
@@ -206,8 +215,9 @@
             Gadget::App =&gt; <span class="number">0</span>,
             Gadget::EllipticCurveAddition =&gt; <span class="number">1</span>,
             Gadget::EllipticCurveScaling =&gt; <span class="number">2</span>,
-            Gadget::PoseidonSpongeAbsorb =&gt; <span class="number">3</span>,
-            Gadget::PoseidonPermutation(starting_round) =&gt; <span class="number">4 </span>+ starting_round / <span class="number">5</span>,
+            Gadget::Poseidon =&gt; <span class="number">3</span>,
+            Gadget::PoseidonSpongeAbsorb =&gt; <span class="number">4</span>,
+            Gadget::PoseidonPermutation(starting_round) =&gt; <span class="number">5 </span>+ starting_round / <span class="number">5</span>,
         }
     }
 }
@@ -220,6 +230,7 @@
                 Gadget::App =&gt; <span class="string">&quot;q_app&quot;</span>.to_string(),
                 Gadget::EllipticCurveAddition =&gt; <span class="string">&quot;q_ec_add&quot;</span>.to_string(),
                 Gadget::EllipticCurveScaling =&gt; <span class="string">&quot;q_ec_mul&quot;</span>.to_string(),
+                Gadget::Poseidon =&gt; <span class="string">&quot;q_pos&quot;</span>.to_string(),
                 Gadget::PoseidonSpongeAbsorb =&gt; <span class="string">&quot;q_pos_sponge_absorb&quot;</span>.to_string(),
                 Gadget::PoseidonPermutation(starting_round) =&gt; {
                     <span class="macro">format!</span>(<span class="string">&quot;q_pos_permutation{}&quot;</span>, starting_round)
@@ -236,6 +247,7 @@
                 Gadget::App =&gt; <span class="string">&quot;q_app&quot;</span>.to_string(),
                 Gadget::EllipticCurveAddition =&gt; <span class="string">&quot;q_ec_add&quot;</span>.to_string(),
                 Gadget::EllipticCurveScaling =&gt; <span class="string">&quot;q_ec_mul&quot;</span>.to_string(),
+                Gadget::Poseidon =&gt; <span class="string">&quot;q_pos&quot;</span>.to_string(),
                 Gadget::PoseidonSpongeAbsorb =&gt; <span class="string">&quot;q_pos_sponge_absorb&quot;</span>.to_string(),
                 Gadget::PoseidonPermutation(starting_round) =&gt; {
                     <span class="macro">format!</span>(<span class="string">&quot;q_pos_permutation{}&quot;</span>, starting_round)
