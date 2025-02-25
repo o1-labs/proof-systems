@@ -328,7 +328,6 @@ where
                         index.cs.domain.d1,
                     );
 
-                // TODO: make this a function rather no? mask_with_custom()
                 let witness_com = index
                     .srs
                     .commit_evaluations_non_hiding(index.cs.domain.d1, &witness_eval);
