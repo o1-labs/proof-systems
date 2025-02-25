@@ -300,7 +300,7 @@ where
         // generate blinders if not given externally
         let blinders_final: Vec<PolyComm<G::ScalarField>> = match blinders {
             None => (0..COLUMNS)
-                .map(|_| PolyComm::new(vec![UniformRand::rand(rng)]))
+                .map(|_| PolyComm::new(vec![UniformRand::rand(rng); num_chunks]))
                 .collect(),
             Some(blinders_arr) => blinders_arr
                 .into_iter()
