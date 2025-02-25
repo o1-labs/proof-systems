@@ -174,9 +174,22 @@ pub(crate) trait FixedLookupTables<F> {
     fn table_sparse() -> LookupTable<F>;
     /// Returns the reset table
     fn table_reset() -> LookupTable<F>;
+    /// Returns a vector containing all fixed tables
+    fn get_all_tables() -> Vec<LookupTable<F>>;
 }
 
 impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
+    fn get_all_tables() -> Vec<LookupTable<F>> {
+        vec![
+            Self::table_pad(),
+            Self::table_round_constants(),
+            Self::table_byte(),
+            Self::table_range_check_16(),
+            Self::table_sparse(),
+            Self::table_reset(),
+        ]
+    }
+
     fn is_in_table(table: &LookupTable<F>, value: Vec<F>) -> Option<usize> {
         let id = table.table_id;
         // In these tables, the first value of the vector is related to the
