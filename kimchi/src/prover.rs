@@ -313,7 +313,6 @@ where
                     .commit_evaluations(index.cs.domain.d1, &witness_eval, rng),
                 // blinders: blind the witness with them
                 Some(blinder) => {
-                    // TODO: make this a function rather no? mask_with_custom()
                     let witness_com = index
                         .srs
                         .commit_evaluations_non_hiding(index.cs.domain.d1, &witness_eval);
