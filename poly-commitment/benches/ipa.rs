@@ -1,3 +1,5 @@
+//! Run this bench using `cargo criterion -p poly-commitment --bench ipa`
+
 use ark_ff::UniformRand;
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Radix2EvaluationDomain};
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
