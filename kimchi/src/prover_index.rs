@@ -6,6 +6,7 @@ use crate::{
         berkeley_columns::{BerkeleyChallengeTerm, Column},
         constraints::{ColumnEvaluations, ConstraintSystem},
         expr::{Linearization, PolishToken},
+        lazycache::LazyCache,
     },
     curve::KimchiCurve,
     linearization::expr_linearization,
@@ -25,7 +26,7 @@ use std::sync::Arc;
 pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub cs: ConstraintSystem<G::ScalarField>,
+    pub cs: Arc<ConstraintSystem<G::ScalarField>>,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
@@ -44,8 +45,8 @@ pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
-    #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub column_evaluations: Option<ColumnEvaluations<G::ScalarField>>,
+    #[serde(bound = "LazyCache<ColumnEvaluations<G::ScalarField>>: Serialize + DeserializeOwned")]
+    pub column_evaluations: LazyCache<ColumnEvaluations<G::ScalarField>>,
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
@@ -66,7 +67,7 @@ where
         mut cs: ConstraintSystem<G::ScalarField>,
         endo_q: G::ScalarField,
         srs: Arc<OpeningProof::SRS>,
-        wasm_mode: bool,
+        lazy_cache: bool,
     ) -> Self {
         let max_poly_size = srs.max_poly_size();
         cs.endo = endo_q;
@@ -76,10 +77,17 @@ where
 
         let evaluated_column_coefficients = cs.evaluated_column_coefficients();
 
-        let column_evaluations = if !wasm_mode {
-            Some(cs.column_evaluations(&evaluated_column_coefficients))
+        let cs = Arc::new(cs);
+
+        let column_evaluations = if lazy_cache {
+            LazyCache::Cached(cs.column_evaluations(&evaluated_column_coefficients))
         } else {
-            None
+            LazyCache::OnDemand {
+                compute_fn: Some(Arc::new({
+                    let cs = Arc::clone(&cs);
+                    move || cs.column_evaluations(&evaluated_column_coefficients)
+                })),
+            }
         };
 
         ProverIndex {
@@ -119,7 +127,7 @@ where
 
     /// Retrieve or compute the digest for the corresponding verifier index.
     pub fn verifier_index_digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
-        &self,
+        &mut self,
     ) -> G::BaseField
     where
         VerifierIndex<G, OpeningProof>: Clone,
@@ -130,7 +138,7 @@ where
 
         match &self.verifier_index {
             None => {
-                let verifier_index = self.verifier_index();
+                let verifier_index = &self.verifier_index();
                 verifier_index.digest::<EFqSponge>()
             }
             Some(verifier_index) => verifier_index.digest::<EFqSponge>(),
@@ -168,7 +176,7 @@ pub mod testing {
         disable_gates_checks: bool,
         override_srs_size: Option<usize>,
         mut get_srs: F,
-        wasm_mode: bool,
+        cache: bool,
     ) -> ProverIndex<G, OpeningProof>
     where
         G::BaseField: PrimeField,
@@ -182,7 +190,7 @@ pub mod testing {
             .prev_challenges(prev_challenges)
             .disable_gates_checks(disable_gates_checks)
             .max_poly_size(override_srs_size)
-            .wasm_mode(wasm_mode)
+            .cache(cache)
             .build()
             .unwrap();
 
@@ -191,7 +199,7 @@ pub mod testing {
         let srs = Arc::new(srs);
 
         let &endo_q = G::other_curve_endo();
-        ProverIndex::create(cs, endo_q, srs, wasm_mode)
+        ProverIndex::create(cs, endo_q, srs, cache)
     }
 
     /// Create new index for lookups.
@@ -207,7 +215,7 @@ pub mod testing {
         runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
         disable_gates_checks: bool,
         override_srs_size: Option<usize>,
-        wasm_mode: bool,
+        cache: bool,
     ) -> ProverIndex<G, OpeningProof<G>>
     where
         G::BaseField: PrimeField,
@@ -234,7 +242,7 @@ pub mod testing {
                 srs.get_lagrange_basis(d1);
                 srs
             },
-            wasm_mode,
+            cache,
         )
     }
 

@@ -61,7 +61,7 @@ impl BenchmarkCtx {
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
         // create the index
-        let index = new_index_for_test(gates, 0);
+        let mut index = new_index_for_test(gates, 0);
 
         assert_eq!(index.cs.domain.d1.log_size_of_group, srs_size_log2, "the test wanted to use an SRS of size {srs_size_log2} but the domain size ended up being {}", index.cs.domain.d1.log_size_of_group);
 
@@ -78,7 +78,7 @@ impl BenchmarkCtx {
     }
 
     /// Produces a proof
-    pub fn create_proof(&self) -> (ProverProof<Vesta, OpeningProof<Vesta>>, Vec<Fp>) {
+    pub fn create_proof(&mut self) -> (ProverProof<Vesta, OpeningProof<Vesta>>, Vec<Fp>) {
         // create witness
         let witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![1u32.into(); self.num_gates]);
 
@@ -90,7 +90,7 @@ impl BenchmarkCtx {
                 &self.group_map,
                 witness,
                 &[],
-                &self.index,
+                &mut self.index,
                 &mut rand::rngs::OsRng,
             )
             .unwrap(),

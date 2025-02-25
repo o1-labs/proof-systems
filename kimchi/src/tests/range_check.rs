@@ -994,7 +994,7 @@ fn verify_range_check1_test_curr_row_lookups() {
 
 #[test]
 fn verify_range_check1_test_next_row_lookups() {
-    let index = create_test_prover_index(0, false);
+    let mut index = create_test_prover_index(0, false);
 
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
@@ -1176,7 +1176,7 @@ fn compact_multi_range_check() {
 #[test]
 fn verify_range_check_valid_proof1() {
     // Create prover index
-    let prover_index = create_test_prover_index(0, false);
+    let mut prover_index = create_test_prover_index(0, false);
 
     // Create witness
     let witness = range_check::witness::create_multi::<PallasField>(
@@ -1198,7 +1198,7 @@ fn verify_range_check_valid_proof1() {
         &group_map,
         witness,
         &[],
-        &prover_index,
+        &mut prover_index,
         &mut rand::rngs::OsRng,
     )
     .expect("failed to generate proof");

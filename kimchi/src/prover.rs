@@ -51,7 +51,7 @@ use poly_commitment::{
 };
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
-use std::{array, collections::HashMap};
+use std::{array, collections::HashMap, mem};
 
 /// The result of a proof creation or verification.
 type Result<T> = std::result::Result<T, ProverError>;
@@ -140,7 +140,7 @@ where
         groupmap: &G::Map,
         witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G, OpeningProof>,
+        index: &mut ProverIndex<G, OpeningProof>,
         rng: &mut RNG,
     ) -> Result<Self>
     where
@@ -176,7 +176,7 @@ where
         group_map: &G::Map,
         mut witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G, OpeningProof>,
+        index: &mut ProverIndex<G, OpeningProof>,
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
         rng: &mut RNG,
@@ -231,17 +231,6 @@ where
         if length_padding < index.cs.zk_rows as usize {
             return Err(ProverError::NoRoomForZkInWitness);
         }
-
-        //~1. Either read the precomputed column evaluations or compute them all for WASM memory boosting mode
-        let evals;
-        let column_evaluations = if let Some(evaluations) = index.column_evaluations.as_ref() {
-            evaluations
-        } else {
-            evals = index
-                .cs
-                .column_evaluations(&index.cs.evaluated_column_coefficients());
-            &evals
-        };
 
         //~ 1. Pad the witness columns with Zero gates to make them the same length as the domain.
         //~    Then, randomize the last `zk_rows` of each columns.
@@ -626,9 +615,12 @@ where
             lookup_context.aggreg8 = Some(aggreg8);
         }
 
+        let mut temp = mem::take(&mut index.column_evaluations);
+        let column_evaluations = temp.get();
+
         //~ 1. Compute the permutation aggregation polynomial $z$.
         internal_tracing::checkpoint!(internal_traces; z_permutation_aggregation_polynomial);
-        let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng, &column_evaluations)?;
+        let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng, column_evaluations)?;
 
         //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
         let z_comm = index.srs.commit(&z_poly, num_chunks, rng);
@@ -682,11 +674,11 @@ where
             index_evals.insert(EndoMul, &column_evaluations.emul_selector8);
             index_evals.insert(EndoMulScalar, &column_evaluations.endomul_scalar_selector8);
 
-            if let Some(selector) = &column_evaluations.range_check0_selector8.as_ref() {
+            if let Some(selector) = column_evaluations.range_check0_selector8.as_ref() {
                 index_evals.insert(GateType::RangeCheck0, selector);
             }
 
-            if let Some(selector) = &column_evaluations.range_check1_selector8.as_ref() {
+            if let Some(selector) = column_evaluations.range_check1_selector8.as_ref() {
                 index_evals.insert(GateType::RangeCheck1, selector);
             }
 
@@ -765,14 +757,8 @@ where
             let (mut t8, bnd) = {
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                let (perm, bnd) = index.perm_quot(
-                    &lagrange,
-                    beta,
-                    gamma,
-                    &z_poly,
-                    alphas,
-                    &column_evaluations,
-                )?;
+                let (perm, bnd) =
+                    index.perm_quot(&lagrange, beta, gamma, &z_poly, alphas, column_evaluations)?;
 
                 check_constraint!(index, perm);
 
@@ -1123,7 +1109,7 @@ where
                 // permutation (not part of linearization yet)
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                let f = index.perm_lnrz(&evals, zeta, beta, gamma, alphas, &column_evaluations);
+                let f = index.perm_lnrz(&evals, zeta, beta, gamma, alphas, column_evaluations);
 
                 // the circuit polynomial
                 let f = {
@@ -1463,6 +1449,9 @@ where
             ft_eval1,
             prev_challenges,
         };
+
+        // Restore the original lazy cache of column evaluations
+        index.column_evaluations = temp;
 
         internal_tracing::checkpoint!(internal_traces; create_recursive_done);
         Ok(proof)

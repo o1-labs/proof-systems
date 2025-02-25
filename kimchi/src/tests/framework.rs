@@ -238,7 +238,7 @@ where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
     {
-        let prover = self.0.prover_index.unwrap();
+        let mut prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
 
         if !self.0.disable_gates_checks {
@@ -255,7 +255,7 @@ where
             &group_map,
             witness,
             &self.0.runtime_tables,
-            &prover,
+            &mut prover,
             self.0.recursion,
             None,
             &mut rand::rngs::OsRng,
@@ -270,7 +270,7 @@ where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
     {
-        let prover = self.0.prover_index.unwrap();
+        let mut prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
 
         if !self.0.disable_gates_checks {
@@ -290,7 +290,7 @@ where
             &group_map,
             witness,
             &self.0.runtime_tables,
-            &prover,
+            &mut prover,
             self.0.recursion,
             None,
             &mut rand::rngs::OsRng,
@@ -342,7 +342,7 @@ where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
     {
-        let prover = self.0.prover_index.unwrap();
+        let mut prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
 
         if !self.0.disable_gates_checks {
@@ -359,7 +359,7 @@ where
             &group_map,
             witness,
             &self.0.runtime_tables,
-            &prover,
+            &mut prover,
             self.0.recursion,
             None,
             rng,

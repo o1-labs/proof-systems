@@ -65,7 +65,7 @@ fn test_degree_tracking() {
             None,
         ),
     ];
-    let index = {
+    let mut index = {
         let constraint_system = ConstraintSystem::fp_for_testing(gates);
         let srs = SRS::<Vesta>::create(constraint_system.domain.d1.size());
         srs.get_lagrange_basis(constraint_system.domain.d1);
@@ -92,7 +92,7 @@ fn test_degree_tracking() {
             joint_combiner: one,
         },
         witness: &domain_evals.d8.this.w,
-        coefficient: &index.column_evaluations.unwrap().coefficients8,
+        coefficient: &index.column_evaluations.get().coefficients8,
         vanishes_on_zero_knowledge_and_previous_rows: &index
             .cs
             .precomputations()

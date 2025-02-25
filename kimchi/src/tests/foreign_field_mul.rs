@@ -195,7 +195,7 @@ where
     };
 
     let cs = if let Some(runner) = runner.as_ref() {
-        runner.clone().prover_index().cs.clone()
+        *runner.clone().prover_index().cs.clone()
     } else {
         // If not full mode, just create constraint system (this is much faster)
         ConstraintSystem::create(gates.clone()).build().unwrap()

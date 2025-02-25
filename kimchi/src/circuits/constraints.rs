@@ -227,7 +227,7 @@ pub struct Builder<F: PrimeField> {
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
     disable_gates_checks: bool,
     max_poly_size: Option<usize>,
-    wasm_mode: bool,
+    cache: bool,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -286,7 +286,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             precomputations: None,
             disable_gates_checks: false,
             max_poly_size: None,
-            wasm_mode: false,
+            cache: true,
         }
     }
 
@@ -779,8 +779,8 @@ impl<F: PrimeField> Builder<F> {
         self
     }
 
-    pub fn wasm_mode(mut self, wasm_mode: bool) -> Self {
-        self.wasm_mode = wasm_mode;
+    pub fn cache(mut self, cache: bool) -> Self {
+        self.cache = cache;
         self
     }
 
@@ -933,6 +933,7 @@ impl<F: PrimeField> Builder<F> {
             runtime_tables,
             &domain,
             zk_rows as usize,
+            self.cache,
         )
         .map_err(SetupError::LookupCreation)?;
 
@@ -964,7 +965,7 @@ impl<F: PrimeField> Builder<F> {
                 constraints.set_precomputations(t);
             }
             None => {
-                if !self.wasm_mode {
+                if self.cache {
                     constraints.precomputations();
                 } // if WASM mode, do not precompute
             }

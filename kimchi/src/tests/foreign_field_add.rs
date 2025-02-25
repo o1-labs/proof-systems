@@ -1061,7 +1061,7 @@ fn test_bad_bound() {
     let foreign_mod = secp256k1_modulus();
     let left_input = BigUint::from_bytes_be(&random_input(rng, foreign_mod.clone(), false));
     let right_input = BigUint::from_bytes_be(&random_input(rng, foreign_mod.clone(), false));
-    let (mut witness, mut index) = test_ffadd(
+    let (mut witness, index) = test_ffadd(
         foreign_mod,
         vec![left_input, right_input],
         &[FFOps::Add],
