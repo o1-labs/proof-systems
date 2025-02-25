@@ -109,8 +109,7 @@ pub fn execute(args: cli::ExecuteArgs) {
         );
 
         // ----- Accumulation/folding argument -----
-        // FIXME:
-        // Compute the cross-terms
+        env.compute_cross_terms();
 
         // FIXME:
         // Absorb the cross-terms
