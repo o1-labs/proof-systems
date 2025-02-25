@@ -916,6 +916,7 @@ where
         self.idx_var = 0;
         self.current_instruction = VERIFIER_STARTING_INSTRUCTION;
         self.idx_values_to_absorb = 0;
+        self.selectors.iter_mut().for_each(|s| *s = None);
     }
 
     /// The blinder used to commit, to avoid committing to the zero polynomial
