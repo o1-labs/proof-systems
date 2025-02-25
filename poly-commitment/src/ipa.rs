@@ -435,6 +435,7 @@ where
                 .into_affine()]
         } else if plnm.len() == self.g.len() {
             // when processing a single chunk, it's faster to parallelise vertically in 2 threads
+            // (see the comment to the `benchmark_msm_parallel_vesta` MSM benchmark)
             let n = self.g.len();
             let (r1, r2) = rayon::join(
                 || G::Group::msm(&self.g[..n / 2], &plnm.coeffs[..n / 2]).unwrap(),
