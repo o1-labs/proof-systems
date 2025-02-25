@@ -712,7 +712,7 @@
     <span class="doccomment">/// Get all the constraints for the verifier circuit, only.
     ///
     /// The following gadgets are used in the verifier circuit:
-    /// - [Instruction::PoseidonFullRound] and
+    /// - [Instruction::PoseidonPermutation] and
     /// [Instruction::PoseidonSpongeAbsorb] to verify the challenges and the
     /// public IO.
     /// - [Instruction::EllipticCurveScaling] and
@@ -733,7 +733,7 @@
 
         <span class="comment">// Poseidon constraints
         </span>(<span class="number">0</span>..PlonkSpongeConstants::PERM_ROUNDS_FULL / <span class="number">12</span>).for_each(|i| {
-            interpreter::run_ivc(<span class="kw-2">&amp;mut </span>env, Instruction::PoseidonFullRound(<span class="number">5 </span>* i));
+            interpreter::run_ivc(<span class="kw-2">&amp;mut </span>env, Instruction::PoseidonPermutation(<span class="number">5 </span>* i));
             constraints.extend(env.constraints.clone());
             env.reset();
         });
@@ -785,8 +785,8 @@
 
         <span class="comment">// Poseidon constraints
         </span>(<span class="number">0</span>..PlonkSpongeConstants::PERM_ROUNDS_FULL / <span class="number">12</span>).for_each(|i| {
-            interpreter::run_ivc(<span class="kw-2">&amp;mut </span>env, Instruction::PoseidonFullRound(<span class="number">5 </span>* i));
-            hashmap.insert(Gadget::PoseidonFullRound(<span class="number">5 </span>* i), env.constraints.clone());
+            interpreter::run_ivc(<span class="kw-2">&amp;mut </span>env, Instruction::PoseidonPermutation(<span class="number">5 </span>* i));
+            hashmap.insert(Gadget::PoseidonPermutation(<span class="number">5 </span>* i), env.constraints.clone());
             env.reset();
         });
 
