@@ -221,7 +221,7 @@ where
         (
             DensePolynomialOrEvaluations::<_,Radix2EvaluationDomain<G::ScalarField>>::DensePolynomial(poly),
             // We do not have any blinder, therefore we set to 1.
-            PolyComm::new(vec![G::ScalarField::one()]),
+            PolyComm::new(vec![G::ScalarField::zero()]),
         )
     }).collect();
     let ipa_proof = OpeningProof::open(
