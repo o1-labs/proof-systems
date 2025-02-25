@@ -1214,6 +1214,22 @@ where
                     Instruction::Poseidon(0)
                 }
             }
+            Instruction::PoseidonPermutation(i) => {
+                if i < PlonkSpongeConstants::PERM_ROUNDS_FULL - 5 {
+                    Instruction::PoseidonPermutation(i + 5)
+                } else {
+                    // FIXME: for now, we continue absorbing because the current
+                    // code, while fetching the values to absorb, raises an
+                    // exception when we absorbed everythimg, and the main file
+                    // handles the halt by filling as many rows as expected (see
+                    // [VERIFIER_CIRCUIT_SIZE]).
+                    Instruction::PoseidonSpongeAbsorb
+                }
+            }
+            Instruction::PoseidonSpongeAbsorb => {
+                // Whenever we absorbed a value, we run the permutation.
+                Instruction::PoseidonPermutation(0)
+            }
             Instruction::EllipticCurveScaling(i_comm, bit) => {
                 // TODO: we still need to substract (or not?) the blinder.
                 // Maybe we can avoid this by aggregating them.
@@ -1239,12 +1255,6 @@ where
                 }
             }
             Instruction::NoOp => Instruction::NoOp,
-            Instruction::PoseidonSpongeAbsorb => {
-                todo!()
-            }
-            Instruction::PoseidonPermutation(_) => {
-                todo!()
-            }
         }
     }
 
