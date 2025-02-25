@@ -343,8 +343,10 @@ impl<C: AffineRepr> PolyComm<C> {
                     .filter_map(|(com, scalar)| com.chunks.get(chunk).map(|c| (c, scalar)))
                     .unzip();
 
-                // splitting into 2 chunks seems optimal; but in
+                // Splitting into 2 chunks seems optimal; but in
                 // practice elems_size is almost always 1
+                //
+                // (see the comment to the `benchmark_msm_parallel_vesta` MSM benchmark)
                 let subchunk_size = std::cmp::max(points.len() / 2, 1);
 
                 points
