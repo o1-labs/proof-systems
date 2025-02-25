@@ -433,10 +433,6 @@
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{column::Column, interpreter::InterpreterEnv};
 <span class="kw">use crate</span>::{
     column::{Gadget, E},
@@ -649,10 +645,6 @@
         pos: <span class="self">Self</span>::Position,
         _curr_round: usize,
     ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.read_position(pos)
-    }
-
-    <span class="kw">unsafe fn </span>fetch_value_to_absorb_in_sponge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.read_position(pos)
     }
 
