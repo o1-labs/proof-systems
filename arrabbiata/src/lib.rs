@@ -3,6 +3,7 @@ use mina_poseidon::constants::SpongeConstants;
 use strum::EnumCount as _;
 
 pub mod challenge;
+pub mod cli;
 pub mod column;
 pub mod column_env;
 pub mod constraint;
@@ -13,6 +14,7 @@ pub mod poseidon_3_60_0_5_5_fp;
 pub mod poseidon_3_60_0_5_5_fq;
 pub mod proof;
 pub mod prover;
+pub mod setup;
 pub mod verifier;
 pub mod witness;
 
@@ -63,3 +65,13 @@ pub const NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO: usize = NUMBER_OF_COLUMNS * 2;
 
 /// The number of selectors used in the circuit.
 pub const NUMBER_OF_SELECTORS: usize = column::Gadget::COUNT;
+
+/// The arity of the multivariate polynomials describing the constraints.
+/// We consider, erroneously, that a public input can be considered as a
+/// column and fit an entire polynomial. This is subject to change, as most
+/// values considered as public inputs at the moment are fixed for the
+/// relation. We also suppose that the private inputs on the next row can be
+/// used, hence the multiplication by two.
+///
+/// It is going to be used to convert into the representation used in [mvpoly].
+pub const MV_POLYNOMIAL_ARITY: usize = NUMBER_OF_PUBLIC_INPUTS + NUMBER_OF_COLUMNS * 2;

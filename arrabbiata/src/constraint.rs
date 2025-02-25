@@ -5,6 +5,7 @@ use crate::{
     interpreter::{self, Instruction, Side},
     MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
 };
+
 use ark_ff::PrimeField;
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
@@ -13,6 +14,7 @@ use kimchi::circuits::{
 use log::debug;
 use num_bigint::BigInt;
 use o1_utils::FieldHelpers;
+use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct Env<C: ArrabbiataCurve>
@@ -323,8 +325,7 @@ where
     /// Get all the constraints for the verifier circuit, only.
     ///
     /// The following gadgets are used in the verifier circuit:
-    /// - [Instruction::Poseidon] to verify the challenges and the public
-    /// IO
+    /// - [Instruction::Poseidon] to verify the challenges and the public IO
     /// - [Instruction::EllipticCurveScaling] and
     /// [Instruction::EllipticCurveAddition] to accumulate the commitments
     // FIXME: the verifier circuit might not be complete, yet. For instance, we might
@@ -383,6 +384,38 @@ where
         constraints.extend(env.constraints.clone());
 
         constraints
+    }
+
+    pub fn get_all_constraints_indexed_by_gadget(&self) -> HashMap<Gadget, Vec<E<C::ScalarField>>> {
+        let mut hashmap = HashMap::new();
+        let mut env = self.clone();
+
+        // Poseidon constraints
+        // The constraints are the same for all the value given in parameter,
+        // therefore picking 0
+        interpreter::run_ivc(&mut env, Instruction::Poseidon(0));
+        hashmap.insert(Gadget::Poseidon, env.constraints.clone());
+        env.reset();
+
+        // EC scaling
+        // The constraints are the same whatever the value given in parameter,
+        // therefore picking 0, 0
+        interpreter::run_ivc(&mut env, Instruction::EllipticCurveScaling(0, 0));
+        hashmap.insert(Gadget::EllipticCurveScaling, env.constraints.clone());
+        env.reset();
+
+        // EC addition
+        // The constraints are the same whatever the value given in parameter,
+        // therefore picking 0
+        interpreter::run_ivc(&mut env, Instruction::EllipticCurveAddition(0));
+        hashmap.insert(Gadget::EllipticCurveAddition, env.constraints.clone());
+        env.reset();
+
+        interpreter::run_app(&mut env);
+        hashmap.insert(Gadget::App, env.constraints.clone());
+        env.reset();
+
+        hashmap
     }
 }
 

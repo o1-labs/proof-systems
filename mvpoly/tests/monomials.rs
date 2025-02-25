@@ -791,19 +791,95 @@ fn test_cross_terms_scaled() {
         };
         scaling_variable.clone() * p1.clone()
     };
-    let random_eval1: [Fp; 5] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let random_eval2: [Fp; 5] = std::array::from_fn(|_| Fp::rand(&mut rng));
-    let scalar1 = random_eval1[4];
-    let scalar2 = random_eval2[4];
     let u1 = Fp::rand(&mut rng);
     let u2 = Fp::rand(&mut rng);
-    let cross_terms = {
-        let eval1: [Fp; 4] = random_eval1[0..4].try_into().unwrap();
-        let eval2: [Fp; 4] = random_eval2[0..4].try_into().unwrap();
-        p1.compute_cross_terms_scaled(&eval1, &eval2, u1, u2, scalar1, scalar2)
-    };
-    let scaled_cross_terms = scaled_p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2);
-    assert_eq!(cross_terms, scaled_cross_terms);
+    let eval1: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let eval2: [Fp; 4] = std::array::from_fn(|_| Fp::rand(&mut rng));
+    let scalar1 = Fp::rand(&mut rng);
+    let scalar2 = Fp::rand(&mut rng);
+
+    {
+        let cross_terms =
+            { p1.compute_cross_terms_scaled(&eval1, &eval2, u1, u2, scalar1, scalar2) };
+        let scaled_cross_terms = {
+            let random_eval1 = {
+                let mut random_eval1: [Fp; 5] = [Fp::zero(); 5];
+                random_eval1[0..4].copy_from_slice(&eval1);
+                random_eval1[4] = scalar1;
+                random_eval1
+            };
+            let random_eval2 = {
+                let mut random_eval2: [Fp; 5] = [Fp::zero(); 5];
+                random_eval2[0..4].copy_from_slice(&eval2);
+                random_eval2[4] = scalar2;
+                random_eval2
+            };
+            scaled_p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2)
+        };
+        assert_eq!(cross_terms, scaled_cross_terms);
+    }
+
+    // Scalar 1 is zero
+    {
+        let cross_terms =
+            { p1.compute_cross_terms_scaled(&eval1, &eval2, u1, u2, Fp::zero(), scalar2) };
+        let scaled_cross_terms = {
+            let random_eval1 = {
+                let mut random_eval1: [Fp; 5] = [Fp::zero(); 5];
+                random_eval1[0..4].copy_from_slice(&eval1);
+                random_eval1
+            };
+            let random_eval2 = {
+                let mut random_eval2: [Fp; 5] = [Fp::zero(); 5];
+                random_eval2[0..4].copy_from_slice(&eval2);
+                random_eval2[4] = scalar2;
+                random_eval2
+            };
+            scaled_p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2)
+        };
+        assert_eq!(cross_terms, scaled_cross_terms);
+    }
+
+    // Scalar 2 is zero
+    {
+        let cross_terms =
+            { p1.compute_cross_terms_scaled(&eval1, &eval2, u1, u2, scalar1, Fp::zero()) };
+        let scaled_cross_terms = {
+            let random_eval1 = {
+                let mut random_eval1: [Fp; 5] = [Fp::zero(); 5];
+                random_eval1[0..4].copy_from_slice(&eval1);
+                random_eval1[4] = scalar1;
+                random_eval1
+            };
+            let random_eval2 = {
+                let mut random_eval2: [Fp; 5] = [Fp::zero(); 5];
+                random_eval2[0..4].copy_from_slice(&eval2);
+                random_eval2
+            };
+            scaled_p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2)
+        };
+        assert_eq!(cross_terms, scaled_cross_terms);
+    }
+
+    // Both scalars are zero
+    {
+        let cross_terms =
+            { p1.compute_cross_terms_scaled(&eval1, &eval2, u1, u2, Fp::zero(), Fp::zero()) };
+        let scaled_cross_terms = {
+            let random_eval1 = {
+                let mut random_eval1: [Fp; 5] = [Fp::zero(); 5];
+                random_eval1[0..4].copy_from_slice(&eval1);
+                random_eval1
+            };
+            let random_eval2 = {
+                let mut random_eval2: [Fp; 5] = [Fp::zero(); 5];
+                random_eval2[0..4].copy_from_slice(&eval2);
+                random_eval2
+            };
+            scaled_p1.compute_cross_terms(&random_eval1, &random_eval2, u1, u2)
+        };
+        assert_eq!(cross_terms, scaled_cross_terms);
+    }
 }
 
 #[test]
