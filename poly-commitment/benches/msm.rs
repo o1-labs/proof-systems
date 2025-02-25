@@ -1,3 +1,5 @@
+//! Run this bench using `cargo criterion -p poly-commitment --bench msm`
+
 use ark_ff::UniformRand;
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
 use mina_curves::pasta::{Fp, Vesta};
