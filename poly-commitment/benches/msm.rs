@@ -3,7 +3,7 @@ use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion
 use mina_curves::pasta::{Fp, Vesta};
 use poly_commitment::{ipa::SRS, SRS as _};
 
-fn benchmark_msm(c: &mut Criterion) {
+fn benchmark_msm_vesta(c: &mut Criterion) {
     use ark_ec::{AffineRepr, VariableBaseMSM};
     use ark_ff::PrimeField;
 
@@ -66,7 +66,7 @@ fn benchmark_msm(c: &mut Criterion) {
     }
 }
 
-fn benchmark_msm_parallel(c: &mut Criterion) {
+fn benchmark_msm_parallel_vesta(c: &mut Criterion) {
     use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
     use rayon::prelude::*;
 
@@ -234,5 +234,5 @@ fn benchmark_msm_parallel(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, benchmark_msm_parallel, benchmark_msm);
+criterion_group!(benches, benchmark_msm_parallel_vesta, benchmark_msm_vesta);
 criterion_main!(benches);

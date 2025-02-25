@@ -8,7 +8,7 @@ use poly_commitment::{
     commitment::CommitmentCurve, ipa::SRS, utils::DensePolynomialOrEvaluations, PolyComm, SRS as _,
 };
 
-fn benchmark_ipa_commit(c: &mut Criterion) {
+fn benchmark_ipa_commit_vesta(c: &mut Criterion) {
     let mut group = c.benchmark_group("IPA Commit");
     let mut rng = o1_utils::tests::make_test_rng(None);
 
@@ -39,7 +39,7 @@ fn benchmark_ipa_commit(c: &mut Criterion) {
     }
 }
 
-fn benchmark_ipa_open(c: &mut Criterion) {
+fn benchmark_ipa_open_vesta(c: &mut Criterion) {
     let mut group = c.benchmark_group("IPA");
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
     let mut rng = o1_utils::tests::make_test_rng(None);
@@ -83,5 +83,9 @@ fn benchmark_ipa_open(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, benchmark_ipa_commit, benchmark_ipa_open);
+criterion_group!(
+    benches,
+    benchmark_ipa_commit_vesta,
+    benchmark_ipa_open_vesta
+);
 criterion_main!(benches);
