@@ -5,7 +5,6 @@ use kimchi::{
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
 };
-use mina_poseidon::FqSponge;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{commitment::absorb_commitment, ipa::SRS, OpenProof, SRS as _};
