@@ -66,6 +66,27 @@ fn benchmark_msm_vesta(c: &mut Criterion) {
     }
 }
 
+/// Experimental results (16 cores desktop, 16 core server) show that
+/// splitting the msm function in two leads to fastest performance
+/// possible. This effect is most notable for MSM sizes starting from
+/// 1024 and more, e.g.:
+///
+/// MSM/msm vertical (size 2^{10}, threads 1)
+///                         time:   [2.0154 ms 2.0276 ms 2.0401 ms]
+/// MSM/msm vertical (size 2^{10}, threads 2)
+///                         time:   [1.7544 ms 1.7665 ms 1.7815 ms]
+/// MSM/msm vertical (size 2^{10}, threads 4)
+///                         time:   [1.9586 ms 1.9749 ms 1.9931 ms]
+/// MSM/msm vertical (size 2^{10}, threads 8)
+///                         time:   [2.2679 ms 2.2902 ms 2.3137 ms]
+///
+/// For MSM of size 2^8 it's barely noticeable ([787µs, 775µs, 815µs, 954µs]).
+///
+/// For 2^16 MSM, splitting in 4 chunks is slightly faster than two,
+/// but the speedup is not worth the complexity.
+///
+/// For even bigger MSMs (larger than 2^16), splitting in more chunks
+/// (e.g. 4) might be the best solution.
 fn benchmark_msm_parallel_vesta(c: &mut Criterion) {
     use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
     use rayon::prelude::*;
