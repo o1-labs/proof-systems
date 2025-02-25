@@ -1,14 +1,11 @@
 use ark_ec::AffineRepr;
 use ark_ff::One;
+
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use kimchi::curve::KimchiCurve;
 use mina_poseidon::FqSponge;
-use poly_commitment::{
-    commitment::{absorb_commitment, CommitmentCurve},
-    ipa::SRS,
-    PolyComm, SRS as _,
-};
+use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -20,22 +17,14 @@ use tracing::instrument;
 #[serde(bound = "G::ScalarField: CanonicalDeserialize + CanonicalSerialize")]
 pub struct Commitment<G: CommitmentCurve> {
     pub chunks: Vec<PolyComm<G>>,
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub alpha: G::ScalarField,
-    pub folded: PolyComm<G>,
 }
 
 impl<G: KimchiCurve> Commitment<G> {
-    pub fn from_chunks<EFqSponge>(chunks: Vec<PolyComm<G>>, sponge: &mut EFqSponge) -> Self
+    pub fn from_chunks<EFqSponge>(chunks: Vec<PolyComm<G>>, _sponge: &mut EFqSponge) -> Self
     where
         EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
     {
-        let (folded, alpha) = fold_commitments(sponge, &chunks);
-        Self {
-            chunks,
-            alpha,
-            folded,
-        }
+        Self { chunks }
     }
 
     pub fn update<EFqSponge>(&self, diff: Vec<PolyComm<G>>, sponge: &mut EFqSponge) -> Self
@@ -68,14 +57,10 @@ where
 }
 
 #[instrument(skip_all, level = "debug")]
-fn fold_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
-    sponge: &mut EFqSponge,
+pub fn fold_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
+    alpha: G::ScalarField,
     commitments: &[PolyComm<G>],
-) -> (PolyComm<G>, G::ScalarField) {
-    for commitment in commitments {
-        absorb_commitment(sponge, commitment)
-    }
-    let alpha = sponge.challenge();
+) -> PolyComm<G> {
     let powers: Vec<G::ScalarField> = commitments
         .iter()
         .scan(G::ScalarField::one(), |acc, _| {
@@ -84,8 +69,5 @@ fn fold_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::Scala
             Some(res)
         })
         .collect::<Vec<_>>();
-    (
-        PolyComm::multi_scalar_mul(&commitments.iter().collect::<Vec<_>>(), &powers),
-        alpha,
-    )
+    PolyComm::multi_scalar_mul(&commitments.iter().collect::<Vec<_>>(), &powers)
 }
