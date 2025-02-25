@@ -65,7 +65,7 @@ fn test_degree_tracking() {
             None,
         ),
     ];
-    let mut index = {
+    let index = {
         let constraint_system = ConstraintSystem::fp_for_testing(gates);
         let srs = SRS::<Vesta>::create(constraint_system.domain.d1.size());
         srs.get_lagrange_basis(constraint_system.domain.d1);

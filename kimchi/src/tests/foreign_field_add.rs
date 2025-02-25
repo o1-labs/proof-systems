@@ -1067,23 +1067,25 @@ fn test_bad_bound() {
         &[FFOps::Add],
         true,
     );
+
+    let mut cs = match Arc::try_unwrap(index.cs) {
+        Ok(cs) => cs,
+        Err(_) => panic!("Multiple references of Arc"),
+    };
+
     // Modify sign of bound
     // It should be constrained that sign needs to be 1
-    index.cs.gates[2].coeffs[3] = -PallasField::two();
+
+    cs.gates[2].coeffs[3] = -PallasField::two();
     assert_eq!(
-        index.cs.gates[2].check_ffadd_sign(FFOps::Add),
+        cs.gates[2].check_ffadd_sign(FFOps::Add),
         Err("Gate is not performing addition".to_string()),
     );
-    index.cs.gates[2].coeffs[3] = PallasField::one();
+    cs.gates[2].coeffs[3] = PallasField::one();
     // Modify overflow to check first the copy constraint and then the ovf constraint
     witness[6][2] = -PallasField::one();
     assert_eq!(
-        index.cs.gates[2].verify_witness::<Vesta>(
-            2,
-            &witness,
-            &index.cs,
-            &witness[0][0..index.cs.public]
-        ),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::CopyConstraint {
             typ: GateType::ForeignFieldAdd,
             src: Wire { row: 2, col: 6 },
@@ -1092,23 +1094,13 @@ fn test_bad_bound() {
     );
     witness[0][0] = -PallasField::one();
     assert_eq!(
-        index.cs.gates[2].verify_witness::<Vesta>(
-            2,
-            &witness,
-            &index.cs,
-            &witness[0][0..index.cs.public]
-        ),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 1)),
     );
     witness[6][2] = PallasField::one();
     witness[0][0] = PallasField::one();
     assert_eq!(
-        index.cs.gates[2].verify_witness::<Vesta>(
-            2,
-            &witness,
-            &index.cs,
-            &witness[0][0..index.cs.public]
-        ),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Ok(()),
     );
 }
@@ -1164,7 +1156,7 @@ fn test_random_bad_parameters() {
     let foreign_mod = secp256k1_modulus();
     let left_input = random_input(rng, foreign_mod.clone(), false);
     let right_input = random_input(rng, foreign_mod, false);
-    let (mut witness, mut index) = test_ffadd(
+    let (mut witness, index) = test_ffadd(
         secp256k1_modulus(),
         vec![
             BigUint::from_bytes_be(&left_input),
@@ -1173,50 +1165,36 @@ fn test_random_bad_parameters() {
         &[FFOps::Add],
         false,
     );
+
+    let mut cs = match Arc::try_unwrap(index.cs) {
+        Ok(cs) => cs,
+        Err(_) => panic!("Multiple references of Arc"),
+    };
+
     // Modify bot carry
     witness[7][1] += PallasField::one();
     assert_eq!(
-        index.cs.gates[1].verify_witness::<Vesta>(
-            1,
-            &witness,
-            &index.cs,
-            &witness[0][0..index.cs.public]
-        ),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 3)),
     );
     witness[7][1] -= PallasField::one();
     // Modify overflow
     witness[6][1] += PallasField::one();
     assert_eq!(
-        index.cs.gates[1].verify_witness::<Vesta>(
-            1,
-            &witness,
-            &index.cs,
-            &witness[0][0..index.cs.public]
-        ),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 3)),
     );
     witness[6][1] -= PallasField::one();
     // Modify sign
-    index.cs.gates[1].coeffs[3] = PallasField::zero() - index.cs.gates[1].coeffs[3];
+    cs.gates[1].coeffs[3] = PallasField::zero() - cs.gates[1].coeffs[3];
     assert_eq!(
-        index.cs.gates[1].verify_witness::<Vesta>(
-            1,
-            &witness,
-            &index.cs,
-            &witness[0][0..index.cs.public]
-        ),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 3)),
     );
-    index.cs.gates[1].coeffs[3] = PallasField::zero() - index.cs.gates[1].coeffs[3];
+    cs.gates[1].coeffs[3] = PallasField::zero() - cs.gates[1].coeffs[3];
     // Check back to normal
     assert_eq!(
-        index.cs.gates[1].verify_witness::<Vesta>(
-            1,
-            &witness,
-            &index.cs,
-            &witness[0][0..index.cs.public]
-        ),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Ok(()),
     );
 }

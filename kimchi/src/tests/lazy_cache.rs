@@ -21,7 +21,7 @@ type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[test]
-fn test_wasm_mode_benchmark() {
+fn test_lazy_cache_benchmark() {
     let public = vec![Fp::from(1u8); 5];
     let circuit_size = 1 << 16;
 
@@ -56,8 +56,8 @@ fn test_wasm_mode_benchmark() {
     ConstraintSystem::create(gates.clone()).build().unwrap();
 
     {
-        // WASM MEMORY FALSE
-        eprintln!("WASM MEMORY: false");
+        // LAZY CACHE FALSE
+        eprintln!("LAZY CACHE: false (default)");
         let gates_ = gates.clone();
         let witness_ = witness.clone();
         let public_ = public.clone();
@@ -65,20 +65,20 @@ fn test_wasm_mode_benchmark() {
             .gates(gates_)
             .witness(witness_)
             .public_inputs(public_)
-            .wasm_mode(false) // optional, default is false
+            .lazy_cache(false) // optional, default is false
             .setup()
             .prove_and_verify::<BaseSponge, ScalarSponge>()
             .unwrap();
     }
 
     {
-        // WASM MEMORY TRUE
-        eprintln!("WASM MEMORY: true");
+        // LAZY CACHE TRUE
+        eprintln!("LAZY CACHE: true");
         TestFramework::<Vesta>::default()
             .gates(gates)
             .witness(witness)
             .public_inputs(public)
-            .wasm_mode(true)
+            .lazy_cache(true)
             .setup()
             .prove_and_verify::<BaseSponge, ScalarSponge>()
             .unwrap();

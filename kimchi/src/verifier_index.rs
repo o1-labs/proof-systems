@@ -162,7 +162,7 @@ where
     /// # Panics
     ///
     /// Will panic if `srs` cannot be in `cell`.
-    pub fn verifier_index(&mut self) -> VerifierIndex<G, OpeningProof>
+    pub fn verifier_index(&self) -> VerifierIndex<G, OpeningProof>
     where
         VerifierIndex<G, OpeningProof>: Clone,
     {

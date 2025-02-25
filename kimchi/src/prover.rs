@@ -51,7 +51,7 @@ use poly_commitment::{
 };
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
-use std::{array, collections::HashMap, mem};
+use std::{array, collections::HashMap};
 
 /// The result of a proof creation or verification.
 type Result<T> = std::result::Result<T, ProverError>;
@@ -140,7 +140,7 @@ where
         groupmap: &G::Map,
         witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &mut ProverIndex<G, OpeningProof>,
+        index: &ProverIndex<G, OpeningProof>,
         rng: &mut RNG,
     ) -> Result<Self>
     where
@@ -176,7 +176,7 @@ where
         group_map: &G::Map,
         mut witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &mut ProverIndex<G, OpeningProof>,
+        index: &ProverIndex<G, OpeningProof>,
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
         rng: &mut RNG,
@@ -615,8 +615,7 @@ where
             lookup_context.aggreg8 = Some(aggreg8);
         }
 
-        let mut temp = mem::take(&mut index.column_evaluations);
-        let column_evaluations = temp.get();
+        let column_evaluations = index.column_evaluations.get();
 
         //~ 1. Compute the permutation aggregation polynomial $z$.
         internal_tracing::checkpoint!(internal_traces; z_permutation_aggregation_polynomial);
@@ -1449,9 +1448,6 @@ where
             ft_eval1,
             prev_challenges,
         };
-
-        // Restore the original lazy cache of column evaluations
-        index.column_evaluations = temp;
 
         internal_tracing::checkpoint!(internal_traces; create_recursive_done);
         Ok(proof)

@@ -8,7 +8,7 @@ pub mod domain_constant_evaluation;
 pub mod domains;
 pub mod expr;
 pub mod gate;
-pub mod lazycache;
+pub mod lazy_cache;
 pub mod lookup;
 pub mod polynomial;
 pub mod polynomials;

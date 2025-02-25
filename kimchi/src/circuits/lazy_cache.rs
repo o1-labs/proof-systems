@@ -1,14 +1,21 @@
+use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::{fmt, sync::Arc};
 
+/// A memory-efficient container that caches or computes `T` on demand.
 #[derive(Clone, Serialize)]
 pub enum LazyCache<T>
 where
     T: Send + Sync,
 {
+    /// Precomputed value
     Cached(T),
+
+    /// Deferred computation that is evaluated only once when accessed
     #[serde(skip)]
     OnDemand {
+        // The value once computed
+        cached: OnceCell<T>,
         // The function to compute the value
         compute_fn: Option<Arc<dyn Fn() -> T + Send + Sync>>,
     },
@@ -26,19 +33,26 @@ where
     T: Send + Sync,
 {
     /// Returns a reference, computing and caching if necessary.
-    pub fn get(&mut self) -> &T {
-        if let LazyCache::OnDemand { compute_fn } = self {
-            if let Some(fn_ptr) = compute_fn.as_ref() {
-                let computed_value = (fn_ptr)(); // Compute the result
-                *self = LazyCache::Cached(computed_value); // Store it permanently
-            } else {
-                panic!("LazyCache::OnDemand::compute_fn is None");
-            }
-        }
-
+    pub fn get(&self) -> &T {
         match self {
             LazyCache::Cached(value) => value,
-            _ => unreachable!(), // Should never happen
+            LazyCache::OnDemand { cached, compute_fn } => cached.get_or_init(|| {
+                /*         (compute_fn
+                .as_ref()
+                .expect("no function inside LazyCache::OnDemand"))()*/
+                let result = compute_fn
+                    .as_ref()
+                    .expect("no function inside LazyCache::OnDemand")(
+                ); // Compute value
+                   // After initialization, remove `compute_fn` (workaround for interior mutability)
+                unsafe {
+                    let mut_self = self as *const _ as *mut Self;
+                    if let LazyCache::OnDemand { compute_fn, .. } = &mut *mut_self {
+                        *compute_fn = None; // Remove reference to `cs`
+                    }
+                }
+                result
+            }),
         }
     }
 }
@@ -60,7 +74,10 @@ where
     T: Send + Sync,
 {
     fn default() -> Self {
-        LazyCache::OnDemand { compute_fn: None }
+        LazyCache::OnDemand {
+            cached: OnceCell::new(),
+            compute_fn: None,
+        }
     }
 }
 
@@ -75,7 +92,10 @@ where
         let maybe_value = Option::<T>::deserialize(deserializer)?;
         Ok(match maybe_value {
             Some(value) => LazyCache::Cached(value),
-            None => LazyCache::OnDemand { compute_fn: None },
+            None => LazyCache::OnDemand {
+                cached: OnceCell::new(),
+                compute_fn: None,
+            },
         })
     }
 }
