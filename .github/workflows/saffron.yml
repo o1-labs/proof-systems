@@ -15,7 +15,7 @@ jobs:
 
     strategy:
       matrix:
-        rust_toolchain_version: ["1.74"]
+        rust_toolchain_version: ["1.79"]
 
     steps:
       - name: Checkout repository
