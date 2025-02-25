@@ -122,6 +122,11 @@
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::challenge::ChallengeTerm;
 <span class="kw">use </span>kimchi::circuits::expr::{CacheId, ConstantExpr, Expr, FormattedOutput};
 <span class="kw">use </span>std::collections::HashMap;
@@ -146,15 +151,23 @@
     /// the top-level documentation. In the current setup, with
     /// [crate::NUMBER_OF_COLUMNS] columns, we can compute 5 full
     /// rounds per row.
-    </span>Poseidon,
-    <span class="doccomment">/// We provide a new Poseidon gadget that allows computing 5 rounds, without
-    /// using &quot;public inputs&quot;.
     ///
     /// We split the Poseidon gadget in 13 sub-gadgets, one for each set of 5
     /// permutations and one for the absorbtion. The parameteris the starting
     /// round of Poseidon. It is expected to be a multiple of five.
+    ///
+    /// Note that, for now, the gadget can only be used by the verifier circuit.
     </span>PoseidonPermutation(usize),
-    PoseidonSpongeAbsorb,
+    <span class="doccomment">/// Absorb [PlonkSpongeConstants::SPONGE_WIDTH - 1] elements into the
+    /// sponge. The elements are absorbed into the last
+    /// [PlonkSpongeConstants::SPONGE_WIDTH - 1] elements of the permutation
+    /// state.
+    ///
+    /// The values to be absorbed depend on the state of the environment while
+    /// executing this instruction.
+    ///
+    /// Note that, for now, the gadget can only be used by the verifier circuit.
+    </span>PoseidonSpongeAbsorb,
 }
 
 <span class="attr">#[derive(Debug, Clone, Copy, PartialEq)]
@@ -193,9 +206,8 @@
             Gadget::App =&gt; <span class="number">0</span>,
             Gadget::EllipticCurveAddition =&gt; <span class="number">1</span>,
             Gadget::EllipticCurveScaling =&gt; <span class="number">2</span>,
-            Gadget::Poseidon =&gt; <span class="number">3</span>,
-            Gadget::PoseidonSpongeAbsorb =&gt; <span class="number">4</span>,
-            Gadget::PoseidonPermutation(starting_round) =&gt; <span class="number">5 </span>+ starting_round / <span class="number">5</span>,
+            Gadget::PoseidonSpongeAbsorb =&gt; <span class="number">3</span>,
+            Gadget::PoseidonPermutation(starting_round) =&gt; <span class="number">4 </span>+ starting_round / <span class="number">5</span>,
         }
     }
 }
@@ -208,7 +220,6 @@
                 Gadget::App =&gt; <span class="string">&quot;q_app&quot;</span>.to_string(),
                 Gadget::EllipticCurveAddition =&gt; <span class="string">&quot;q_ec_add&quot;</span>.to_string(),
                 Gadget::EllipticCurveScaling =&gt; <span class="string">&quot;q_ec_mul&quot;</span>.to_string(),
-                Gadget::Poseidon =&gt; <span class="string">&quot;q_pos&quot;</span>.to_string(),
                 Gadget::PoseidonSpongeAbsorb =&gt; <span class="string">&quot;q_pos_sponge_absorb&quot;</span>.to_string(),
                 Gadget::PoseidonPermutation(starting_round) =&gt; {
                     <span class="macro">format!</span>(<span class="string">&quot;q_pos_permutation{}&quot;</span>, starting_round)
@@ -225,7 +236,6 @@
                 Gadget::App =&gt; <span class="string">&quot;q_app&quot;</span>.to_string(),
                 Gadget::EllipticCurveAddition =&gt; <span class="string">&quot;q_ec_add&quot;</span>.to_string(),
                 Gadget::EllipticCurveScaling =&gt; <span class="string">&quot;q_ec_mul&quot;</span>.to_string(),
-                Gadget::Poseidon =&gt; <span class="string">&quot;q_pos&quot;</span>.to_string(),
                 Gadget::PoseidonSpongeAbsorb =&gt; <span class="string">&quot;q_pos_sponge_absorb&quot;</span>.to_string(),
                 Gadget::PoseidonPermutation(starting_round) =&gt; {
                     <span class="macro">format!</span>(<span class="string">&quot;q_pos_permutation{}&quot;</span>, starting_round)

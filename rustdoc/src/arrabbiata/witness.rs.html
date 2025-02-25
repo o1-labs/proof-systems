@@ -1314,64 +1314,6 @@
 <a href="#1314" id="1314">1314</a>
 <a href="#1315" id="1315">1315</a>
 <a href="#1316" id="1316">1316</a>
-<a href="#1317" id="1317">1317</a>
-<a href="#1318" id="1318">1318</a>
-<a href="#1319" id="1319">1319</a>
-<a href="#1320" id="1320">1320</a>
-<a href="#1321" id="1321">1321</a>
-<a href="#1322" id="1322">1322</a>
-<a href="#1323" id="1323">1323</a>
-<a href="#1324" id="1324">1324</a>
-<a href="#1325" id="1325">1325</a>
-<a href="#1326" id="1326">1326</a>
-<a href="#1327" id="1327">1327</a>
-<a href="#1328" id="1328">1328</a>
-<a href="#1329" id="1329">1329</a>
-<a href="#1330" id="1330">1330</a>
-<a href="#1331" id="1331">1331</a>
-<a href="#1332" id="1332">1332</a>
-<a href="#1333" id="1333">1333</a>
-<a href="#1334" id="1334">1334</a>
-<a href="#1335" id="1335">1335</a>
-<a href="#1336" id="1336">1336</a>
-<a href="#1337" id="1337">1337</a>
-<a href="#1338" id="1338">1338</a>
-<a href="#1339" id="1339">1339</a>
-<a href="#1340" id="1340">1340</a>
-<a href="#1341" id="1341">1341</a>
-<a href="#1342" id="1342">1342</a>
-<a href="#1343" id="1343">1343</a>
-<a href="#1344" id="1344">1344</a>
-<a href="#1345" id="1345">1345</a>
-<a href="#1346" id="1346">1346</a>
-<a href="#1347" id="1347">1347</a>
-<a href="#1348" id="1348">1348</a>
-<a href="#1349" id="1349">1349</a>
-<a href="#1350" id="1350">1350</a>
-<a href="#1351" id="1351">1351</a>
-<a href="#1352" id="1352">1352</a>
-<a href="#1353" id="1353">1353</a>
-<a href="#1354" id="1354">1354</a>
-<a href="#1355" id="1355">1355</a>
-<a href="#1356" id="1356">1356</a>
-<a href="#1357" id="1357">1357</a>
-<a href="#1358" id="1358">1358</a>
-<a href="#1359" id="1359">1359</a>
-<a href="#1360" id="1360">1360</a>
-<a href="#1361" id="1361">1361</a>
-<a href="#1362" id="1362">1362</a>
-<a href="#1363" id="1363">1363</a>
-<a href="#1364" id="1364">1364</a>
-<a href="#1365" id="1365">1365</a>
-<a href="#1366" id="1366">1366</a>
-<a href="#1367" id="1367">1367</a>
-<a href="#1368" id="1368">1368</a>
-<a href="#1369" id="1369">1369</a>
-<a href="#1370" id="1370">1370</a>
-<a href="#1371" id="1371">1371</a>
-<a href="#1372" id="1372">1372</a>
-<a href="#1373" id="1373">1373</a>
-<a href="#1374" id="1374">1374</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::CurveConfig;
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::Evaluations;
@@ -1389,14 +1331,14 @@
     column::{Column, Gadget},
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side},
-    setup, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
-    NUMBER_OF_SELECTORS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    setup, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_SELECTORS,
+    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
 <span class="doccomment">/// The first instruction in the verifier circuit (often shortened in &quot;IVC&quot; in
 /// the crate) is the Poseidon permutation. It is used to start hashing the
 /// public input.
-</span><span class="kw">pub const </span>VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(<span class="number">0</span>);
+</span><span class="kw">pub const </span>VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::PoseidonSpongeAbsorb;
 
 <span class="doccomment">/// An environment is used to contain the state of a long &quot;running program&quot;.
 ///
@@ -1482,10 +1424,6 @@
     /// polynomials accessing &quot;the next row&quot;, i.e. witness columns where we do
     /// evaluate at ζ and ζω.
     </span><span class="kw">pub </span>next_state: [BigInt; NUMBER_OF_COLUMNS],
-
-    <span class="doccomment">/// Contain the public state
-    </span><span class="comment">// FIXME: I don&#39;t like this design. Feel free to suggest a better solution
-    </span><span class="kw">pub </span>public_state: [BigInt; NUMBER_OF_PUBLIC_INPUTS],
 
     <span class="doccomment">/// Selectors to activate the gadgets.
     /// The size of the outer vector must be equal to the number of gadgets in
@@ -1658,13 +1596,6 @@
         }
     }
 
-    <span class="kw">fn </span>allocate_public_input(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position {
-        <span class="macro">assert!</span>(<span class="self">self</span>.idx_var_pi &lt; NUMBER_OF_PUBLIC_INPUTS, <span class="string">&quot;Maximum number of public inputs reached ({NUMBER_OF_PUBLIC_INPUTS}), increase the number of public inputs&quot;</span>);
-        <span class="kw">let </span>pos = Column::PublicInput(<span class="self">self</span>.idx_var_pi);
-        <span class="self">self</span>.idx_var_pi += <span class="number">1</span>;
-        (pos, CurrOrNext::Curr)
-    }
-
     <span class="kw">fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position, v: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>(col, row) = pos;
         <span class="kw">let </span>Column::X(idx) = col <span class="kw">else </span>{
@@ -1691,21 +1622,6 @@
                 <span class="self">self</span>.next_state[idx].clone_from(<span class="kw-2">&amp;</span>v);
             }
         }
-        v
-    }
-
-    <span class="kw">fn </span>write_public_input(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position, v: BigInt) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>(col, _row) = pos;
-        <span class="kw">let </span>Column::PublicInput(idx) = col <span class="kw">else </span>{
-            <span class="macro">unimplemented!</span>(<span class="string">&quot;Only works for public input columns&quot;</span>)
-        };
-        <span class="kw">let </span>modulus: BigInt = <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-            E1::ScalarField::modulus_biguint().into()
-        } <span class="kw">else </span>{
-            E2::ScalarField::modulus_biguint().into()
-        };
-        <span class="kw">let </span>v = v.mod_floor(<span class="kw-2">&amp;</span>modulus);
-        <span class="self">self</span>.public_state[idx].clone_from(<span class="kw-2">&amp;</span>v);
         v
     }
 
@@ -1824,25 +1740,7 @@
         <span class="self">self</span>.write_column(pos, state)
     }
 
-    <span class="kw">fn </span>get_poseidon_round_constant(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        pos: <span class="self">Self</span>::Position,
-        round: usize,
-        i: usize,
-    ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>rc = <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-            E1::sponge_params().round_constants[round][i]
-                .to_biguint()
-                .into()
-        } <span class="kw">else </span>{
-            E2::sponge_params().round_constants[round][i]
-                .to_biguint()
-                .into()
-        };
-        <span class="self">self</span>.write_public_input(pos, rc)
-    }
-
-    <span class="kw">fn </span>get_poseidon_round_constant_as_constant(<span class="kw-2">&amp;</span><span class="self">self</span>, round: usize, i: usize) -&gt; <span class="self">Self</span>::Variable {
+    <span class="kw">fn </span>get_poseidon_round_constant(<span class="kw-2">&amp;</span><span class="self">self</span>, round: usize, i: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
             E1::sponge_params().round_constants[round][i]
                 .to_biguint()
@@ -1872,63 +1770,48 @@
         }
     }
 
-    <span class="comment">// The following values are expected to be absorbed in order:
-    // - z0
-    // - z1
-    // - acc[0]
-    // - acc[1]
-    // - ...
-    // - acc[N_COL - 1]
-    // FIXME: for now, we will only absorb the accumulators as z0 and z1 are not
-    // updated yet.
-    </span><span class="kw">unsafe fn </span>fetch_value_to_absorb(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        pos: <span class="self">Self</span>::Position,
-        curr_round: usize,
-    ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>(col, <span class="kw">_</span>) = pos;
-        <span class="kw">let </span>Column::PublicInput(_idx) = col <span class="kw">else </span>{
-            <span class="macro">panic!</span>(<span class="string">&quot;Only works for public inputs&quot;</span>)
+    <span class="kw">unsafe fn </span>fetch_value_to_absorb(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>(col, curr_or_next) = pos;
+        <span class="comment">// Purely arbitrary for now
+        </span><span class="kw">let </span>Column::X(_idx) = col <span class="kw">else </span>{
+            <span class="macro">panic!</span>(<span class="string">&quot;Only private inputs can be accepted to load the values to be absorbed&quot;</span>)
         };
-        <span class="comment">// If we are not the round 0, we must absorb nothing.
-        </span><span class="kw">if </span>curr_round != <span class="number">0 </span>{
-            <span class="self">self</span>.write_public_input(pos, <span class="self">self</span>.zero())
-        } <span class="kw">else </span>{
-            <span class="comment">// FIXME: we must absorb z0, z1 and i!
-            // We multiply by 2 as we have two coordinates
-            </span><span class="kw">let </span>idx = <span class="self">self</span>.idx_values_to_absorb;
-            <span class="kw">let </span>res = <span class="kw">if </span>idx &lt; <span class="number">2 </span>* NUMBER_OF_COLUMNS {
-                <span class="kw">let </span>idx_col = idx / <span class="number">2</span>;
-                <span class="macro">debug!</span>(<span class="string">&quot;Absorbing the accumulator for the column index {idx_col}. After this, there will still be {} elements to absorb&quot;</span>, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO - idx - <span class="number">1</span>);
-                <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
-                    <span class="kw">let </span>(pt_x, pt_y) = <span class="self">self</span>.accumulated_committed_state_e2[idx_col]
-                        .get_first_chunk()
-                        .to_coordinates()
-                        .unwrap();
-                    <span class="kw">if </span>idx % <span class="number">2 </span>== <span class="number">0 </span>{
-                        <span class="self">self</span>.write_public_input(pos, pt_x.to_biguint().into())
-                    } <span class="kw">else </span>{
-                        <span class="self">self</span>.write_public_input(pos, pt_y.to_biguint().into())
-                    }
+        <span class="macro">assert_eq!</span>(
+            curr_or_next,
+            CurrOrNext::Curr,
+            <span class="string">&quot;Only the current row can be used to load the values to be absorbed&quot;
+        </span>);
+        <span class="comment">// FIXME: for now, we only absorb the commitments to the columns
+        </span><span class="kw">let </span>idx = <span class="self">self</span>.idx_values_to_absorb;
+        <span class="kw">let </span>res = <span class="kw">if </span>idx &lt; <span class="number">2 </span>* NUMBER_OF_COLUMNS {
+            <span class="kw">let </span>idx_col = idx / <span class="number">2</span>;
+            <span class="macro">debug!</span>(<span class="string">&quot;Absorbing the accumulator for the column index {idx_col}. After this, there will still be {} elements to absorb&quot;</span>, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO - idx - <span class="number">1</span>);
+            <span class="kw">if </span><span class="self">self</span>.current_iteration % <span class="number">2 </span>== <span class="number">0 </span>{
+                <span class="kw">let </span>(pt_x, pt_y) = <span class="self">self</span>.accumulated_committed_state_e2[idx_col]
+                    .get_first_chunk()
+                    .to_coordinates()
+                    .unwrap();
+                <span class="kw">if </span>idx % <span class="number">2 </span>== <span class="number">0 </span>{
+                    <span class="self">self</span>.write_column(pos, pt_x.to_biguint().into())
                 } <span class="kw">else </span>{
-                    <span class="kw">let </span>(pt_x, pt_y) = <span class="self">self</span>.accumulated_committed_state_e1[idx_col]
-                        .get_first_chunk()
-                        .to_coordinates()
-                        .unwrap();
-                    <span class="kw">if </span>idx % <span class="number">2 </span>== <span class="number">0 </span>{
-                        <span class="self">self</span>.write_public_input(pos, pt_x.to_biguint().into())
-                    } <span class="kw">else </span>{
-                        <span class="self">self</span>.write_public_input(pos, pt_y.to_biguint().into())
-                    }
+                    <span class="self">self</span>.write_column(pos, pt_y.to_biguint().into())
                 }
             } <span class="kw">else </span>{
-                <span class="macro">unimplemented!</span>(
-                    <span class="string">&quot;We only absorb the accumulators for now. Of course, this is not sound.&quot;
-                </span>)
-            };
-            <span class="self">self</span>.idx_values_to_absorb += <span class="number">1</span>;
-            res
-        }
+                <span class="kw">let </span>(pt_x, pt_y) = <span class="self">self</span>.accumulated_committed_state_e1[idx_col]
+                    .get_first_chunk()
+                    .to_coordinates()
+                    .unwrap();
+                <span class="kw">if </span>idx % <span class="number">2 </span>== <span class="number">0 </span>{
+                    <span class="self">self</span>.write_column(pos, pt_x.to_biguint().into())
+                } <span class="kw">else </span>{
+                    <span class="self">self</span>.write_column(pos, pt_y.to_biguint().into())
+                }
+            }
+        } <span class="kw">else </span>{
+            <span class="macro">unimplemented!</span>(<span class="string">&quot;We only absorb the accumulators for now. Of course, this is not sound.&quot;</span>)
+        };
+        <span class="self">self</span>.idx_values_to_absorb += <span class="number">1</span>;
+        res
     }
 
     <span class="kw">unsafe fn </span>load_temporary_accumulators(
@@ -2304,7 +2187,6 @@
             current_row: <span class="number">0</span>,
             state: std::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_usize</span>)),
             next_state: std::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_usize</span>)),
-            public_state: std::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_usize</span>)),
             selectors,
 
             challenges,
@@ -2536,13 +2418,21 @@
     /// ```
     </span><span class="kw">pub fn </span>fetch_next_instruction(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Instruction {
         <span class="kw">match </span><span class="self">self</span>.current_instruction {
-            Instruction::Poseidon(i) =&gt; {
+            Instruction::PoseidonPermutation(i) =&gt; {
                 <span class="kw">if </span>i &lt; PlonkSpongeConstants::PERM_ROUNDS_FULL - <span class="number">5 </span>{
-                    Instruction::Poseidon(i + <span class="number">5</span>)
+                    Instruction::PoseidonPermutation(i + <span class="number">5</span>)
                 } <span class="kw">else </span>{
-                    <span class="comment">// FIXME: we continue absorbing
-                    </span>Instruction::Poseidon(<span class="number">0</span>)
+                    <span class="comment">// FIXME: for now, we continue absorbing because the current
+                    // code, while fetching the values to absorb, raises an
+                    // exception when we absorbed everythimg, and the main file
+                    // handles the halt by filling as many rows as expected (see
+                    // [VERIFIER_CIRCUIT_SIZE]).
+                    </span>Instruction::PoseidonSpongeAbsorb
                 }
+            }
+            Instruction::PoseidonSpongeAbsorb =&gt; {
+                <span class="comment">// Whenever we absorbed a value, we run the permutation.
+                </span>Instruction::PoseidonPermutation(<span class="number">0</span>)
             }
             Instruction::EllipticCurveScaling(i_comm, bit) =&gt; {
                 <span class="comment">// TODO: we still need to substract (or not?) the blinder.
@@ -2569,12 +2459,6 @@
                 }
             }
             Instruction::NoOp =&gt; Instruction::NoOp,
-            Instruction::PoseidonSpongeAbsorb =&gt; {
-                <span class="macro">todo!</span>()
-            }
-            Instruction::PoseidonPermutation(<span class="kw">_</span>) =&gt; {
-                <span class="macro">todo!</span>()
-            }
         }
     }
 
