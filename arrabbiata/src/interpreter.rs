@@ -840,6 +840,7 @@ pub trait InterpreterEnv {
 
 /// Run the application
 pub fn run_app<E: InterpreterEnv>(env: &mut E) {
+    env.activate_gadget(Gadget::App);
     let x1 = {
         let pos = env.allocate();
         env.fetch_input(pos)
