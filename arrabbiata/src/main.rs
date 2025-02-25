@@ -9,7 +9,9 @@ use arrabbiata::{
     cli,
     interpreter::{self, InterpreterEnv},
     setup::IndexedRelation,
-    witness, MIN_SRS_LOG2_SIZE, VERIFIER_CIRCUIT_SIZE,
+    witness,
+    zkapp_registry::Registry,
+    MIN_SRS_LOG2_SIZE, VERIFIER_CIRCUIT_SIZE,
 };
 use clap::Parser;
 use log::{debug, info};
