@@ -278,10 +278,9 @@ impl<G: CommitmentCurve> SRS<G> {
             sg_rand_base_i *= &sg_rand_base;
         }
 
-        // verify the equation in two chunks, which is optimal
-        // according to our MSM benches. But don't parallelise at all
-        // if the MSM is too small (heuristically).
-        let chunk_size = std::cmp::max(1 << 12, points.len() / 2);
+        // Verify the equation in two chunks, which is optimal for our SRS size.
+        // (see the comment to the `benchmark_msm_parallel_vesta` MSM benchmark)
+        let chunk_size = points.len() / 2;
         let msm_res = points
             .into_par_iter()
             .chunks(chunk_size)
