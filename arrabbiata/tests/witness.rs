@@ -16,54 +16,6 @@ use poly_commitment::{commitment::CommitmentCurve, PolyComm};
 use rand::{CryptoRng, RngCore};
 
 #[test]
-fn test_unit_witness_poseidon_gadget_one_full_hash() {
-    let srs_log2_size = 6;
-    let sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-        std::array::from_fn(|_i| BigInt::from(42u64));
-
-    let indexed_relation = IndexedRelation::new(srs_log2_size);
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
-        BigInt::from(1u64),
-        sponge.clone(),
-        sponge.clone(),
-        indexed_relation,
-    );
-
-    env.current_instruction = Instruction::Poseidon(0);
-
-    (0..(PlonkSpongeConstants::PERM_ROUNDS_FULL / 5)).for_each(|i| {
-        interpreter::run_ivc(&mut env, Instruction::Poseidon(5 * i));
-        env.reset();
-    });
-    let exp_output = {
-        let mut state = sponge
-            .clone()
-            .to_vec()
-            .iter()
-            .map(|x| Fp::from_biguint(&x.to_biguint().unwrap()).unwrap())
-            .collect::<Vec<_>>();
-        state[0] += env.indexed_relation.srs_e2.h.x;
-        state[1] += env.indexed_relation.srs_e2.h.y;
-        poseidon_block_cipher::<Fp, PlonkSpongeConstants>(
-            poseidon_3_60_0_5_5_fp::static_params(),
-            &mut state,
-        );
-        state
-            .iter()
-            .map(|x| x.to_biguint().into())
-            .collect::<Vec<_>>()
-    };
-
-    // Check correctness for current iteration
-    assert_eq!(env.sponge_e1.to_vec(), exp_output);
-    // Check the other sponge hasn't been modified
-    assert_eq!(env.sponge_e2, sponge.clone());
-
-    // Number of rows used by one full hash
-    assert_eq!(env.current_row, 12);
-}
-
-#[test]
 fn test_unit_witness_poseidon_permutation_gadget_one_full_hash() {
     // Expected output:
     // 13562506435502224548799089445428941958058503946524561166818119397766682137724
@@ -366,7 +318,7 @@ fn test_regression_witness_structure_sizeof() {
     // thining about the memory efficiency of the codebase.
     assert_eq!(
         std::mem::size_of::<Env<Fp, Fq, Vesta, Pallas>>(),
-        5464,
+        4920,
         "The witness environment structure probably changed"
     );
 }

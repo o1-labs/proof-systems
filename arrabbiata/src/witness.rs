@@ -15,8 +15,8 @@ use crate::{
     column::{Column, Gadget},
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side},
-    setup, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
-    NUMBER_OF_SELECTORS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    setup, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_SELECTORS,
+    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
 /// The first instruction in the verifier circuit (often shortened in "IVC" in
@@ -108,10 +108,6 @@ pub struct Env<
     /// polynomials accessing "the next row", i.e. witness columns where we do
     /// evaluate at ζ and ζω.
     pub next_state: [BigInt; NUMBER_OF_COLUMNS],
-
-    /// Contain the public state
-    // FIXME: I don't like this design. Feel free to suggest a better solution
-    pub public_state: [BigInt; NUMBER_OF_PUBLIC_INPUTS],
 
     /// Selectors to activate the gadgets.
     /// The size of the outer vector must be equal to the number of gadgets in
@@ -284,13 +280,6 @@ where
         }
     }
 
-    fn allocate_public_input(&mut self) -> Self::Position {
-        assert!(self.idx_var_pi < NUMBER_OF_PUBLIC_INPUTS, "Maximum number of public inputs reached ({NUMBER_OF_PUBLIC_INPUTS}), increase the number of public inputs");
-        let pos = Column::PublicInput(self.idx_var_pi);
-        self.idx_var_pi += 1;
-        (pos, CurrOrNext::Curr)
-    }
-
     fn write_column(&mut self, pos: Self::Position, v: Self::Variable) -> Self::Variable {
         let (col, row) = pos;
         let Column::X(idx) = col else {
@@ -317,21 +306,6 @@ where
                 self.next_state[idx].clone_from(&v);
             }
         }
-        v
-    }
-
-    fn write_public_input(&mut self, pos: Self::Position, v: BigInt) -> Self::Variable {
-        let (col, _row) = pos;
-        let Column::PublicInput(idx) = col else {
-            unimplemented!("Only works for public input columns")
-        };
-        let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            E1::ScalarField::modulus_biguint().into()
-        } else {
-            E2::ScalarField::modulus_biguint().into()
-        };
-        let v = v.mod_floor(&modulus);
-        self.public_state[idx].clone_from(&v);
         v
     }
 
@@ -450,25 +424,7 @@ where
         self.write_column(pos, state)
     }
 
-    fn get_poseidon_round_constant(
-        &mut self,
-        pos: Self::Position,
-        round: usize,
-        i: usize,
-    ) -> Self::Variable {
-        let rc = if self.current_iteration % 2 == 0 {
-            E1::sponge_params().round_constants[round][i]
-                .to_biguint()
-                .into()
-        } else {
-            E2::sponge_params().round_constants[round][i]
-                .to_biguint()
-                .into()
-        };
-        self.write_public_input(pos, rc)
-    }
-
-    fn get_poseidon_round_constant_as_constant(&self, round: usize, i: usize) -> Self::Variable {
+    fn get_poseidon_round_constant(&self, round: usize, i: usize) -> Self::Variable {
         if self.current_iteration % 2 == 0 {
             E1::sponge_params().round_constants[round][i]
                 .to_biguint()
@@ -498,66 +454,7 @@ where
         }
     }
 
-    // The following values are expected to be absorbed in order:
-    // - z0
-    // - z1
-    // - acc[0]
-    // - acc[1]
-    // - ...
-    // - acc[N_COL - 1]
-    // FIXME: for now, we will only absorb the accumulators as z0 and z1 are not
-    // updated yet.
-    unsafe fn fetch_value_to_absorb(
-        &mut self,
-        pos: Self::Position,
-        curr_round: usize,
-    ) -> Self::Variable {
-        let (col, _) = pos;
-        let Column::PublicInput(_idx) = col else {
-            panic!("Only works for public inputs")
-        };
-        // If we are not the round 0, we must absorb nothing.
-        if curr_round != 0 {
-            self.write_public_input(pos, self.zero())
-        } else {
-            // FIXME: we must absorb z0, z1 and i!
-            // We multiply by 2 as we have two coordinates
-            let idx = self.idx_values_to_absorb;
-            let res = if idx < 2 * NUMBER_OF_COLUMNS {
-                let idx_col = idx / 2;
-                debug!("Absorbing the accumulator for the column index {idx_col}. After this, there will still be {} elements to absorb", NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO - idx - 1);
-                if self.current_iteration % 2 == 0 {
-                    let (pt_x, pt_y) = self.accumulated_committed_state_e2[idx_col]
-                        .get_first_chunk()
-                        .to_coordinates()
-                        .unwrap();
-                    if idx % 2 == 0 {
-                        self.write_public_input(pos, pt_x.to_biguint().into())
-                    } else {
-                        self.write_public_input(pos, pt_y.to_biguint().into())
-                    }
-                } else {
-                    let (pt_x, pt_y) = self.accumulated_committed_state_e1[idx_col]
-                        .get_first_chunk()
-                        .to_coordinates()
-                        .unwrap();
-                    if idx % 2 == 0 {
-                        self.write_public_input(pos, pt_x.to_biguint().into())
-                    } else {
-                        self.write_public_input(pos, pt_y.to_biguint().into())
-                    }
-                }
-            } else {
-                unimplemented!(
-                    "We only absorb the accumulators for now. Of course, this is not sound."
-                )
-            };
-            self.idx_values_to_absorb += 1;
-            res
-        }
-    }
-
-    unsafe fn fetch_value_to_absorb_in_sponge(&mut self, pos: Self::Position) -> Self::Variable {
+    unsafe fn fetch_value_to_absorb(&mut self, pos: Self::Position) -> Self::Variable {
         let (col, curr_or_next) = pos;
         // Purely arbitrary for now
         let Column::X(_idx) = col else {
@@ -974,7 +871,6 @@ where
             current_row: 0,
             state: std::array::from_fn(|_| BigInt::from(0_usize)),
             next_state: std::array::from_fn(|_| BigInt::from(0_usize)),
-            public_state: std::array::from_fn(|_| BigInt::from(0_usize)),
             selectors,
 
             challenges,
@@ -1206,9 +1102,6 @@ where
     /// ```
     pub fn fetch_next_instruction(&mut self) -> Instruction {
         match self.current_instruction {
-            Instruction::Poseidon(_i) => {
-                panic!("Deprecated gadget. It should not be used in any control flow. Use PoseidonPermutation and PoseidonSpongeAbsorb")
-            }
             Instruction::PoseidonPermutation(i) => {
                 if i < PlonkSpongeConstants::PERM_ROUNDS_FULL - 5 {
                     Instruction::PoseidonPermutation(i + 5)
