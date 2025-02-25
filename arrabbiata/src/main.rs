@@ -168,11 +168,11 @@ pub fn execute(args: cli::ExecuteArgs) {
     // execution.
     assert_eq!(
         env.challenges[ChallengeTerm::RelationCombiner].to_str_radix(16),
-        "7e5b4619e8590389954d2b2fde0ba28e"
+        "f900168373307589ea461f97f47ca7d7"
     );
     assert_eq!(
         env.challenges[ChallengeTerm::ConstraintCombiner].to_str_radix(16),
-        "7cf0f01bcec63ca82ca3251f3f462117"
+        "fc5ac212f5f89cbd3a04a3eb39ce2999"
     );
 }
 
