@@ -6,6 +6,7 @@ use ark_ff::Field;
 use ark_poly::polynomial::{univariate::DensePolynomial, Polynomial};
 
 /// This struct contains multiple chunk polynomials with degree `size-1`.
+#[derive(Clone)]
 pub struct ChunkedPolynomial<F: Field> {
     /// The chunk polynomials.
     pub polys: Vec<DensePolynomial<F>>,
