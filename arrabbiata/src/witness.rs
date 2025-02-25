@@ -4,18 +4,21 @@ use ark_poly::Evaluations;
 use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
 use log::debug;
 use mina_poseidon::constants::SpongeConstants;
+use mvpoly::monomials::Sparse;
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use std::collections::HashMap;
 
 use crate::{
     challenge::{ChallengeTerm, Challenges},
-    column::Column,
+    column::{Column, Gadget},
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side, VERIFIER_STARTING_INSTRUCTION},
-    setup, NUMBER_OF_COLUMNS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    setup, MAX_DEGREE, MV_POLYNOMIAL_ARITY, NUMBER_OF_COLUMNS,
+    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
 /// A running program that the (folding) interpreter has access to.
@@ -54,6 +57,10 @@ pub struct Program<
     /// This field is useful to keep track of the challenges that must be
     /// verified in circuit.
     pub previous_challenges: Challenges<BigInt>,
+
+    /// The key is the power of the relation combiner `r`, as used in the
+    /// HashMap given by the compute_cross_terms method.
+    pub cross_terms: HashMap<usize, Vec<E1::ScalarField>>,
 }
 
 impl<Fp: PrimeField, Fq: PrimeField, E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>>
@@ -85,12 +92,25 @@ where
 
         let previous_challenges: Challenges<BigInt> = Challenges::default();
 
+        let mut cross_terms: HashMap<usize, Vec<E1::ScalarField>> = HashMap::new();
+        {
+            let mut vec = Vec::with_capacity(srs_size);
+            (0..srs_size).for_each(|_| vec.push(E1::ScalarField::zero()));
+            // There is a + 1 because the constraint combiner increases the
+            // degree by one.
+            // Note that the upper bound is not included in the range.
+            (1..MAX_DEGREE + 1).for_each(|i| {
+                cross_terms.insert(i, vec.clone());
+            });
+        };
+
         Self {
             accumulated_committed_state,
             previous_committed_state,
             accumulated_program_state,
             accumulated_challenges,
             previous_challenges,
+            cross_terms,
         }
     }
 
@@ -251,6 +271,77 @@ where
             .zip(self.previous_committed_state.iter())
             .map(|(l, r)| l + &r.scale(chal))
             .collect();
+    }
+
+    pub fn compute_cross_terms(
+        &mut self,
+        witness: &[Vec<BigInt>],
+        challenges: &Challenges<BigInt>,
+        domain_size: usize,
+        gadgets: &[Gadget],
+        constraints: &HashMap<Gadget, Vec<Sparse<Fp, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>>,
+    ) {
+        (0..domain_size).for_each(|row| {
+            // wrap around if necessary
+            let next_row = (row + 1) % domain_size;
+            let state_left: [E1::ScalarField; NUMBER_OF_COLUMNS * 2] = std::array::from_fn(|i| {
+                if i < NUMBER_OF_COLUMNS {
+                    self.accumulated_program_state[i][row]
+                } else {
+                    self.accumulated_program_state[i - NUMBER_OF_COLUMNS][next_row]
+                }
+            });
+            let state_right: [E1::ScalarField; NUMBER_OF_COLUMNS * 2] = std::array::from_fn(|i| {
+                if i < NUMBER_OF_COLUMNS {
+                    let v: BigUint = witness[i][row].to_biguint().unwrap();
+                    E1::ScalarField::from_biguint(&v).unwrap()
+                } else {
+                    let v: BigUint = witness[i - NUMBER_OF_COLUMNS][row].to_biguint().unwrap();
+                    E1::ScalarField::from_biguint(&v).unwrap()
+                }
+            });
+            let alpha_left = {
+                let v: BigUint = self.accumulated_challenges[ChallengeTerm::ConstraintCombiner]
+                    .to_biguint()
+                    .unwrap();
+                E1::ScalarField::from_biguint(&v).unwrap()
+            };
+            let alpha_right = {
+                let v: BigUint = challenges[ChallengeTerm::ConstraintCombiner]
+                    .to_biguint()
+                    .unwrap();
+                E1::ScalarField::from_biguint(&v).unwrap()
+            };
+            let u_left = {
+                let v: BigUint = self.accumulated_challenges[ChallengeTerm::ConstraintHomogeniser]
+                    .to_biguint()
+                    .unwrap();
+                E1::ScalarField::from_biguint(&v).unwrap()
+            };
+            let u_right = {
+                let v: BigUint = challenges[ChallengeTerm::ConstraintHomogeniser]
+                    .to_biguint()
+                    .unwrap();
+                E1::ScalarField::from_biguint(&v).unwrap()
+            };
+            let activated_gadget = &gadgets[row];
+            let constraint_set: Vec<_> = constraints[activated_gadget].clone();
+            let cross_terms = mvpoly::compute_combined_cross_terms(
+                constraint_set,
+                state_left,
+                state_right,
+                u_left,
+                u_right,
+                alpha_left,
+                alpha_right,
+            );
+            // Use the hypothesis that each power appears even if the value is
+            // zero.
+            cross_terms.iter().for_each(|(power, term)| {
+                let ct = self.cross_terms.get_mut(power).unwrap();
+                ct[row] = *term;
+            });
+        })
     }
 }
 
@@ -969,7 +1060,7 @@ where
             (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
         };
 
-        // Initialize Program instances for both curves
+        // Initialize Program instances for both curves without the gadgets and constraints
         let program_e1 = Program::new(srs_size, blinder_e1);
         let program_e2 = Program::new(srs_size, blinder_e2);
 
@@ -1216,6 +1307,27 @@ where
             self.program_e2.accumulate_committed_state(chal);
         } else {
             self.program_e1.accumulate_committed_state(chal);
+        }
+    }
+
+    pub fn compute_cross_terms(&mut self) {
+        let domain_size = self.indexed_relation.get_srs_size();
+        if self.current_iteration % 2 == 0 {
+            self.program_e1.compute_cross_terms(
+                &self.witness,
+                &self.challenges,
+                domain_size,
+                &self.indexed_relation.circuit_gates,
+                &self.indexed_relation.constraints_fp,
+            )
+        } else {
+            self.program_e2.compute_cross_terms(
+                &self.witness,
+                &self.challenges,
+                domain_size,
+                &self.indexed_relation.circuit_gates,
+                &self.indexed_relation.constraints_fq,
+            );
         }
     }
 }

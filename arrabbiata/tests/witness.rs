@@ -283,7 +283,7 @@ fn test_regression_witness_structure_sizeof() {
     let size = std::mem::size_of::<Env<Fp, Fq, Vesta, Pallas>>();
     println!("Current size of Env structure: {}", size);
     assert_eq!(
-        size, 5888,
+        size, 6080,
         "The witness environment structure probably changed"
     )
 }
