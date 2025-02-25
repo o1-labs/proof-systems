@@ -41,13 +41,6 @@ pub const NUMBER_OF_COLUMNS: usize = 15;
 pub const VERIFIER_CIRCUIT_SIZE: usize =
     (PlonkSpongeConstants::PERM_ROUNDS_FULL / 5 + 1) * NUMBER_OF_COLUMNS + 1;
 
-/// The maximum number of public inputs the circuit can use per row
-/// We do have 15 for now as we want to compute 5 rounds of poseidon per row
-/// using the gadget [crate::column::Gadget::Poseidon]. In addition to
-/// the 12 public inputs required for the rounds, we add 2 more for the values
-/// to absorb.
-pub const NUMBER_OF_PUBLIC_INPUTS: usize = 15 + 2;
-
 /// The maximum number of bits the fields can be.
 /// It is critical as we have some assumptions for the gadgets describing the
 /// verifier circuit.
@@ -77,4 +70,4 @@ pub const NUMBER_OF_SELECTORS: usize =
 /// used, hence the multiplication by two.
 ///
 /// It is going to be used to convert into the representation used in [mvpoly].
-pub const MV_POLYNOMIAL_ARITY: usize = NUMBER_OF_PUBLIC_INPUTS + NUMBER_OF_COLUMNS * 2;
+pub const MV_POLYNOMIAL_ARITY: usize = NUMBER_OF_COLUMNS * 2;

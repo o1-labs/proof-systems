@@ -39,7 +39,6 @@ use crate::{
     constraint,
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     MAXIMUM_FIELD_SIZE_IN_BITS, MAX_DEGREE, MV_POLYNOMIAL_ARITY, NUMBER_OF_COLUMNS,
-    NUMBER_OF_PUBLIC_INPUTS,
 };
 
 /// An indexed relation is a structure that contains all the information needed
@@ -153,12 +152,7 @@ where
                         k,
                         polynomials
                             .into_iter()
-                            .map(|p| {
-                                Sparse::from_expr(
-                                    p,
-                                    Some(NUMBER_OF_COLUMNS + NUMBER_OF_PUBLIC_INPUTS),
-                                )
-                            })
+                            .map(|p| Sparse::from_expr(p, Some(NUMBER_OF_COLUMNS)))
                             .collect(),
                     )
                 })
@@ -178,12 +172,7 @@ where
                         k,
                         polynomials
                             .into_iter()
-                            .map(|p| {
-                                Sparse::from_expr(
-                                    p,
-                                    Some(NUMBER_OF_COLUMNS + NUMBER_OF_PUBLIC_INPUTS),
-                                )
-                            })
+                            .map(|p| Sparse::from_expr(p, Some(NUMBER_OF_COLUMNS)))
                             .collect(),
                     )
                 })

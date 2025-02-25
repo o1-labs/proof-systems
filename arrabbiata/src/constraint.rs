@@ -1,9 +1,9 @@
 use super::{column::Column, interpreter::InterpreterEnv};
 use crate::{
     column::{Gadget, E},
-    curve::ArrabbiataCurve,
+    curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{self, Instruction, Side},
-    MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
+    MAX_DEGREE, NUMBER_OF_COLUMNS,
 };
 
 use ark_ff::PrimeField;
@@ -12,6 +12,7 @@ use kimchi::circuits::{
     gate::CurrOrNext,
 };
 use log::debug;
+use mina_poseidon::constants::SpongeConstants;
 use num_bigint::BigInt;
 use o1_utils::FieldHelpers;
 use std::collections::HashMap;
@@ -26,7 +27,6 @@ where
     pub a: BigInt,
     pub idx_var: usize,
     pub idx_var_next_row: usize,
-    pub idx_var_pi: usize,
     pub constraints: Vec<E<C::ScalarField>>,
     pub activated_gadget: Option<Gadget>,
 }
@@ -47,7 +47,6 @@ where
             a,
             idx_var: 0,
             idx_var_next_row: 0,
-            idx_var_pi: 0,
             constraints: Vec::new(),
             activated_gadget: None,
         }
@@ -86,23 +85,11 @@ where
         Expr::Atom(ExprInner::Cell(Variable { col, row }))
     }
 
-    fn allocate_public_input(&mut self) -> Self::Position {
-        assert!(self.idx_var_pi < NUMBER_OF_PUBLIC_INPUTS, "Maximum number of public inputs reached ({NUMBER_OF_PUBLIC_INPUTS}), increase the number of public inputs");
-        let pos = Column::PublicInput(self.idx_var_pi);
-        self.idx_var_pi += 1;
-        (pos, CurrOrNext::Curr)
-    }
-
     fn constant(&self, value: BigInt) -> Self::Variable {
         let v = value.to_biguint().unwrap();
         let v = C::ScalarField::from_biguint(&v).unwrap();
         let v_inner = Operations::from(Literal(v));
         Self::Variable::constant(v_inner)
-    }
-
-    /// Return the corresponding expression regarding the selected public input
-    fn write_public_input(&mut self, pos: Self::Position, _v: BigInt) -> Self::Variable {
-        self.read_position(pos)
     }
 
     /// Return the corresponding expression regarding the selected column
@@ -163,7 +150,6 @@ where
     fn reset(&mut self) {
         self.idx_var = 0;
         self.idx_var_next_row = 0;
-        self.idx_var_pi = 0;
         self.constraints.clear();
         self.activated_gadget = None;
     }
@@ -179,21 +165,7 @@ where
     // Witness-only
     unsafe fn save_poseidon_state(&mut self, _x: Self::Variable, _i: usize) {}
 
-    fn get_poseidon_round_constant(
-        &mut self,
-        pos: Self::Position,
-        _round: usize,
-        _i: usize,
-    ) -> Self::Variable {
-        let (col, row) = pos;
-        match col {
-            Column::PublicInput(_) => (),
-            _ => panic!("Only public inputs can be used as round constants"),
-        };
-        Expr::Atom(ExprInner::Cell(Variable { col, row }))
-    }
-
-    fn get_poseidon_round_constant_as_constant(&self, round: usize, i: usize) -> Self::Variable {
+    fn get_poseidon_round_constant(&self, round: usize, i: usize) -> Self::Variable {
         let cst = C::sponge_params().round_constants[round][i];
         let cst_inner = Operations::from(Literal(cst));
         Self::Variable::constant(cst_inner)
@@ -205,15 +177,7 @@ where
         Self::Variable::constant(v_inner)
     }
 
-    unsafe fn fetch_value_to_absorb(
-        &mut self,
-        pos: Self::Position,
-        _curr_round: usize,
-    ) -> Self::Variable {
-        self.read_position(pos)
-    }
-
-    unsafe fn fetch_value_to_absorb_in_sponge(&mut self, pos: Self::Position) -> Self::Variable {
+    unsafe fn fetch_value_to_absorb(&mut self, pos: Self::Position) -> Self::Variable {
         self.read_position(pos)
     }
 
@@ -335,7 +299,9 @@ where
     /// Get all the constraints for the verifier circuit, only.
     ///
     /// The following gadgets are used in the verifier circuit:
-    /// - [Instruction::Poseidon] to verify the challenges and the public IO
+    /// - [Instruction::PoseidonPermutation] and
+    /// [Instruction::PoseidonSpongeAbsorb] to verify the challenges and the
+    /// public IO.
     /// - [Instruction::EllipticCurveScaling] and
     /// [Instruction::EllipticCurveAddition] to accumulate the commitments
     // FIXME: the verifier circuit might not be complete, yet. For instance, we might
@@ -353,9 +319,13 @@ where
         let mut constraints = vec![];
 
         // Poseidon constraints
-        // The constraints are the same for all the value given in parameter,
-        // therefore picking 0
-        interpreter::run_ivc(&mut env, Instruction::Poseidon(0));
+        (0..PlonkSpongeConstants::PERM_ROUNDS_FULL / 12).for_each(|i| {
+            interpreter::run_ivc(&mut env, Instruction::PoseidonPermutation(5 * i));
+            constraints.extend(env.constraints.clone());
+            env.reset();
+        });
+
+        interpreter::run_ivc(&mut env, Instruction::PoseidonSpongeAbsorb);
         constraints.extend(env.constraints.clone());
         env.reset();
 
@@ -401,10 +371,14 @@ where
         let mut env = self.clone();
 
         // Poseidon constraints
-        // The constraints are the same for all the value given in parameter,
-        // therefore picking 0
-        interpreter::run_ivc(&mut env, Instruction::Poseidon(0));
-        hashmap.insert(Gadget::Poseidon, env.constraints.clone());
+        (0..PlonkSpongeConstants::PERM_ROUNDS_FULL / 12).for_each(|i| {
+            interpreter::run_ivc(&mut env, Instruction::PoseidonPermutation(5 * i));
+            hashmap.insert(Gadget::PoseidonPermutation(5 * i), env.constraints.clone());
+            env.reset();
+        });
+
+        interpreter::run_ivc(&mut env, Instruction::PoseidonSpongeAbsorb);
+        hashmap.insert(Gadget::PoseidonSpongeAbsorb, env.constraints.clone());
         env.reset();
 
         // EC scaling

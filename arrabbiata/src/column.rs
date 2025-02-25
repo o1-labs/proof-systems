@@ -22,9 +22,6 @@ pub enum Gadget {
     /// the top-level documentation. In the current setup, with
     /// [crate::NUMBER_OF_COLUMNS] columns, we can compute 5 full
     /// rounds per row.
-    Poseidon,
-    /// We provide a new Poseidon gadget that allows computing 5 rounds, without
-    /// using "public inputs".
     ///
     /// We split the Poseidon gadget in 13 sub-gadgets, one for each set of 5
     /// permutations and one for the absorbtion. The parameteris the starting
@@ -80,9 +77,8 @@ impl From<Gadget> for usize {
             Gadget::App => 0,
             Gadget::EllipticCurveAddition => 1,
             Gadget::EllipticCurveScaling => 2,
-            Gadget::Poseidon => 3,
-            Gadget::PoseidonSpongeAbsorb => 4,
-            Gadget::PoseidonPermutation(starting_round) => 5 + starting_round / 5,
+            Gadget::PoseidonSpongeAbsorb => 3,
+            Gadget::PoseidonPermutation(starting_round) => 4 + starting_round / 5,
         }
     }
 }
@@ -95,7 +91,6 @@ impl FormattedOutput for Column {
                 Gadget::App => "q_app".to_string(),
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
-                Gadget::Poseidon => "q_pos".to_string(),
                 Gadget::PoseidonSpongeAbsorb => "q_pos_sponge_absorb".to_string(),
                 Gadget::PoseidonPermutation(starting_round) => {
                     format!("q_pos_permutation{}", starting_round)
@@ -112,7 +107,6 @@ impl FormattedOutput for Column {
                 Gadget::App => "q_app".to_string(),
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
-                Gadget::Poseidon => "q_pos".to_string(),
                 Gadget::PoseidonSpongeAbsorb => "q_pos_sponge_absorb".to_string(),
                 Gadget::PoseidonPermutation(starting_round) => {
                     format!("q_pos_permutation{}", starting_round)
