@@ -1,4 +1,4 @@
-use crate::challenge::ChallengeTerm;
+use crate::{challenge::ChallengeTerm, interpreter::Instruction};
 use kimchi::circuits::expr::{CacheId, ConstantExpr, Expr, FormattedOutput};
 use std::collections::HashMap;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
@@ -42,6 +42,21 @@ pub enum Gadget {
     ///
     /// Note that, for now, the gadget can only be used by the verifier circuit.
     PoseidonSpongeAbsorb,
+}
+
+/// Convert an instruction into the corresponding gadget.
+impl From<Instruction> for Gadget {
+    fn from(val: Instruction) -> Gadget {
+        match val {
+            Instruction::NoOp => Gadget::NoOp,
+            Instruction::PoseidonFullRound(starting_round) => {
+                Gadget::PoseidonFullRound(starting_round)
+            }
+            Instruction::PoseidonSpongeAbsorb => Gadget::PoseidonSpongeAbsorb,
+            Instruction::EllipticCurveScaling(_i_comm, _s) => Gadget::EllipticCurveScaling,
+            Instruction::EllipticCurveAddition(_i) => Gadget::EllipticCurveAddition,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
