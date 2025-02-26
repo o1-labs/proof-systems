@@ -302,8 +302,6 @@ where
                 cell.set(
                     self.cs
                         .precomputations()
-                        .as_ref()
-                        .unwrap()
                         .permutation_vanishing_polynomial_m
                         .clone(),
                 )

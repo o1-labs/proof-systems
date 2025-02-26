@@ -5,6 +5,7 @@ use crate::{
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
+        lazy_cache::LazyCache,
         lookup::{
             index::LookupConstraintSystem,
             lookups::{LookupFeatures, LookupPatterns},
@@ -201,7 +202,7 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
     /// precomputes
     #[serde(skip)]
-    precomputations: OnceCell<Option<Arc<DomainConstantEvaluations<F>>>>,
+    precomputations: LazyCache<Arc<DomainConstantEvaluations<F>>>,
 
     /// Disable gates checks (for testing; only enables with development builds)
     pub disable_gates_checks: bool,
@@ -290,18 +291,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
         }
     }
 
-    pub fn precomputations(&self) -> &Option<Arc<DomainConstantEvaluations<F>>> {
-        self.precomputations.get_or_init(|| {
-            Some(Arc::new(
-                DomainConstantEvaluations::create(self.domain, self.zk_rows).unwrap(),
-            ))
-        })
-    }
-
-    pub fn set_precomputations(&self, precomputations: Arc<DomainConstantEvaluations<F>>) {
-        self.precomputations
-            .set(Some(precomputations))
-            .expect("Precomputation has been set before");
+    pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<F>> {
+        self.precomputations.get()
     }
 
     /// test helpers
@@ -942,7 +933,21 @@ impl<F: PrimeField> Builder<F> {
         // TODO: remove endo as a field
         let endo = F::zero();
 
-        let domain_constant_evaluation = OnceCell::new();
+        let precomputations = if !self.lazy_cache {
+            match self.precomputations {
+                Some(t) => LazyCache::Cached(t),
+                None => LazyCache::Cached(Arc::new(
+                    DomainConstantEvaluations::create(domain, zk_rows).unwrap(),
+                )),
+            }
+        } else {
+            LazyCache::OnDemand {
+                cached: OnceCell::new(),
+                compute_fn: Some(Arc::new(move || {
+                    Arc::new(DomainConstantEvaluations::create(domain, zk_rows).unwrap())
+                })),
+            }
+        };
 
         let constraints = ConstraintSystem {
             domain,
@@ -956,20 +961,10 @@ impl<F: PrimeField> Builder<F> {
             //fr_sponge_params: self.sponge_params,
             lookup_constraint_system,
             feature_flags,
-            precomputations: domain_constant_evaluation,
+            precomputations,
             disable_gates_checks: self.disable_gates_checks,
         };
 
-        match self.precomputations {
-            Some(t) => {
-                constraints.set_precomputations(t);
-            }
-            None => {
-                if !self.lazy_cache {
-                    constraints.precomputations();
-                } // if WASM lazy cache mode, do not precompute yet
-            }
-        }
         Ok(constraints)
     }
 }

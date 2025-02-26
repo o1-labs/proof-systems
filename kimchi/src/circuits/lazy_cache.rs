@@ -9,6 +9,7 @@ where
     T: Send + Sync,
 {
     /// Precomputed value
+    // TODO: Cached(OnceCell<T>),?
     Cached(T),
 
     /// Deferred computation that is evaluated only once when accessed
@@ -37,9 +38,6 @@ where
         match self {
             LazyCache::Cached(value) => value,
             LazyCache::OnDemand { cached, compute_fn } => cached.get_or_init(|| {
-                /*         (compute_fn
-                .as_ref()
-                .expect("no function inside LazyCache::OnDemand"))()*/
                 let result = compute_fn
                     .as_ref()
                     .expect("no function inside LazyCache::OnDemand")(
