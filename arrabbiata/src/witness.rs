@@ -14,14 +14,9 @@ use crate::{
     challenge::{ChallengeTerm, Challenges},
     column::{Column, Gadget},
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
-    interpreter::{Instruction, InterpreterEnv, Side},
+    interpreter::{Instruction, InterpreterEnv, Side, VERIFIER_STARTING_INSTRUCTION},
     setup, NUMBER_OF_COLUMNS, NUMBER_OF_SELECTORS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
-
-/// The first instruction in the verifier circuit (often shortened in "IVC" in
-/// the crate) is the Poseidon permutation. It is used to start hashing the
-/// public input.
-pub const VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::PoseidonSpongeAbsorb;
 
 /// An environment is used to contain the state of a long "running program".
 ///

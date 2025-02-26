@@ -621,6 +621,11 @@ pub enum Instruction {
     NoOp,
 }
 
+/// The first instruction in the verifier circuit (often shortened in "IVC" in
+/// the crate) is the Poseidon permutation. It is used to start hashing the
+/// public input.
+pub const VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::PoseidonSpongeAbsorb;
+
 /// Define the side of the temporary accumulator.
 /// When computing G1 + G2, the interpreter will load G1 and after that G2.
 /// This enum is used to decide which side fetching into the cells.
