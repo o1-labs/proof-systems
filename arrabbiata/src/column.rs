@@ -17,6 +17,13 @@ pub enum Gadget {
     /// A dummy gadget, doing nothing. Use for padding.
     NoOp,
 
+    /// The gadget defining the app.
+    ///
+    /// For now, the application is considered to be a one-line computation.
+    /// However, we want to see the application as a collection of reusable
+    /// gadgets.
+    ///
+    /// See `<https://github.com/o1-labs/proof-systems/issues/3074>`
     App,
     // Elliptic curve related gadgets
     EllipticCurveAddition,
