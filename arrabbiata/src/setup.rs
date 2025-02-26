@@ -31,17 +31,16 @@ use mvpoly::{monomials::Sparse, MVPoly};
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::FieldHelpers;
-use poly_commitment::{ipa::SRS, SRS as _};
+use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
 use std::{collections::HashMap, time::Instant};
 
 use crate::{
     column::Gadget,
     constraint,
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
-    interpreter,
-    interpreter::VERIFIER_STARTING_INSTRUCTION,
+    interpreter::{self, VERIFIER_STARTING_INSTRUCTION},
     MAXIMUM_FIELD_SIZE_IN_BITS, MAX_DEGREE, MV_POLYNOMIAL_ARITY, NUMBER_OF_COLUMNS,
-    VERIFIER_CIRCUIT_SIZE,
+    NUMBER_OF_GADGETS, VERIFIER_CIRCUIT_SIZE,
 };
 
 /// An indexed relation is a structure that contains all the information needed
@@ -84,6 +83,12 @@ pub struct IndexedRelation<
     ///
     /// The number of elements is exactly the size of the SRS.
     pub circuit_gates: Vec<Gadget>,
+
+    /// Commitments to the selectors used by both circuits
+    pub selectors_comm: (
+        [PolyComm<E1>; NUMBER_OF_GADGETS],
+        [PolyComm<E2>; NUMBER_OF_GADGETS],
+    ),
 
     /// The constraints given as multivariate polynomials using the [mvpoly]
     /// library, indexed by the gadget to ease the selection of the constraints
@@ -228,6 +233,34 @@ where
             v
         };
 
+        let selectors_comm: (
+            [PolyComm<E1>; NUMBER_OF_GADGETS],
+            [PolyComm<E2>; NUMBER_OF_GADGETS],
+        ) = {
+            // We initialize to the blinder to avoid the identity element.
+            let init: (
+                [PolyComm<E1>; NUMBER_OF_GADGETS],
+                [PolyComm<E2>; NUMBER_OF_GADGETS],
+            ) = (
+                std::array::from_fn(|_| PolyComm::new(vec![srs_e1.h])),
+                std::array::from_fn(|_| PolyComm::new(vec![srs_e2.h])),
+            );
+            // We commit to the selectors using evaluations.
+            // As they are supposed to be one or zero, each row adds a small
+            // contribution to the commitment.
+            // We explicity commit to all gadgets, even if they are not used in
+            // this indexed relation.
+            circuit_gates
+                .iter()
+                .enumerate()
+                .fold(init, |mut acc, (row, g)| {
+                    let i = usize::from(*g);
+                    acc.0[i] = &acc.0[i] + &srs_e1.get_lagrange_basis(domain_fp.d1)[row];
+                    acc.1[i] = &acc.1[i] + &srs_e2.get_lagrange_basis(domain_fq.d1)[row];
+                    acc
+                })
+        };
+
         // FIXME: setup correctly the initial sponge state
         let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
             std::array::from_fn(|_i| BigInt::from(42u64));
@@ -239,6 +272,7 @@ where
             srs_e2,
             app_size,
             circuit_gates,
+            selectors_comm,
             constraints_fp,
             constraints_fq,
             initial_sponge: sponge_e1,
