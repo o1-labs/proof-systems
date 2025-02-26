@@ -36,11 +36,7 @@ pub fn execute(args: cli::ExecuteArgs) {
     // FIXME: correctly setup
     let indexed_relation = IndexedRelation::new(srs_log2_size);
 
-    let domain_size = 1 << srs_log2_size;
-
     let mut env = witness::Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
-
-    let n_iteration_per_fold = domain_size - VERIFIER_CIRCUIT_SIZE;
 
     while env.current_iteration < n_iteration {
         let start_iteration = Instant::now();
@@ -48,8 +44,11 @@ pub fn execute(args: cli::ExecuteArgs) {
         info!("Run iteration: {}/{}", env.current_iteration, n_iteration);
 
         // Build the application circuit
-        info!("Running {n_iteration_per_fold} iterations of the application circuit");
-        for _i in 0..n_iteration_per_fold {
+        info!(
+            "Running {} iterations of the application circuit",
+            env.indexed_relation.app_size
+        );
+        for _i in 0..env.indexed_relation.app_size {
             interpreter::run_app(&mut env);
             env.reset();
         }

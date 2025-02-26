@@ -39,6 +39,7 @@ use crate::{
     constraint,
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     MAXIMUM_FIELD_SIZE_IN_BITS, MAX_DEGREE, MV_POLYNOMIAL_ARITY, NUMBER_OF_COLUMNS,
+    VERIFIER_CIRCUIT_SIZE,
 };
 
 /// An indexed relation is a structure that contains all the information needed
@@ -68,6 +69,13 @@ pub struct IndexedRelation<
 
     /// SRS for the second curve
     pub srs_e2: SRS<E2>,
+
+    /// The application size, i.e. the number of rows per accumulation an
+    /// application can use.
+    ///
+    /// Note that the value is the same for both circuits. We do suppose both
+    /// SRS are of the same sizes and the verifier circuits are the same.
+    pub app_size: usize,
 
     /// The constraints given as multivariate polynomials using the [mvpoly]
     /// library, indexed by the gadget to ease the selection of the constraints
@@ -187,6 +195,10 @@ where
                 .collect()
         };
 
+        // FIXME: note that the app size can be different for both curves. We
+        // suppose we have the same circuit on both curves for now.
+        let app_size = srs_size - VERIFIER_CIRCUIT_SIZE;
+
         // FIXME: setup correctly the initial sponge state
         let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
             std::array::from_fn(|_i| BigInt::from(42u64));
@@ -196,6 +208,7 @@ where
             domain_fq,
             srs_e1,
             srs_e2,
+            app_size,
             constraints_fp,
             constraints_fq,
             initial_sponge: sponge_e1,
