@@ -15,7 +15,7 @@ use crate::{
     column::Column,
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side, VERIFIER_STARTING_INSTRUCTION},
-    setup, NUMBER_OF_COLUMNS, NUMBER_OF_SELECTORS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    setup, NUMBER_OF_COLUMNS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
 /// An environment is used to contain the state of a long "running program".
@@ -102,16 +102,6 @@ pub struct Env<
     /// polynomials accessing "the next row", i.e. witness columns where we do
     /// evaluate at ζ and ζω.
     pub next_state: [BigInt; NUMBER_OF_COLUMNS],
-
-    /// Selectors to activate the gadgets.
-    /// The size of the outer vector must be equal to the number of gadgets in
-    /// the circuit.
-    /// The size of the inner vector must be equal to the number of rows in
-    /// the circuit.
-    ///
-    /// The layout columns/rows is used to avoid rebuilding the arrays per
-    /// column when committing to the witness.
-    pub selectors: Vec<Vec<bool>>,
 
     /// While folding, we must keep track of the challenges the verifier would
     /// have sent in the SNARK, and we must aggregate them.
@@ -798,13 +788,6 @@ where
             (0..NUMBER_OF_COLUMNS).for_each(|_| accumulated_program_state_e2.push(vec.clone()));
         };
 
-        let mut selectors: Vec<Vec<bool>> = Vec::with_capacity(NUMBER_OF_SELECTORS);
-        {
-            let mut vec: Vec<bool> = Vec::with_capacity(srs_size);
-            (0..srs_size).for_each(|_| vec.push(false));
-            (0..NUMBER_OF_SELECTORS).for_each(|_| selectors.push(vec.clone()));
-        };
-
         // Default set to the blinders. Using double to make the EC scaling happy.
         let previous_committed_state_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
             .map(|_| PolyComm::new(vec![(blinder_e1 + blinder_e1).into()]))
@@ -859,7 +842,6 @@ where
             current_row: 0,
             state: std::array::from_fn(|_| BigInt::from(0_usize)),
             next_state: std::array::from_fn(|_| BigInt::from(0_usize)),
-            selectors,
 
             challenges,
             accumulated_challenges_e1,
