@@ -57,8 +57,8 @@ pub const MAXIMUM_FIELD_SIZE_IN_BITS: u64 = 255;
 /// verifier circuit.
 pub const NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO: usize = NUMBER_OF_COLUMNS * 2;
 
-/// The number of selectors used in the circuit.
-pub const NUMBER_OF_SELECTORS: usize =
+/// The number of gadgets supported by the program
+pub const NUMBER_OF_GADGETS: usize =
     column::Gadget::COUNT + (PlonkSpongeConstants::PERM_ROUNDS_FULL / 5);
 
 /// The arity of the multivariate polynomials describing the constraints.
