@@ -7,7 +7,7 @@ pub fn bench_proof_creation(c: &mut Criterion) {
     group.sampling_mode(SamplingMode::Flat); // for slow benchmarks
     group.measurement_time(std::time::Duration::from_secs(90));
 
-    for size in [10, 16] {
+    for size in [10, 15, 16] {
         let ctx = BenchmarkCtx::new(size);
 
         group.bench_function(
@@ -29,7 +29,7 @@ pub fn bench_proof_verification(c: &mut Criterion) {
     group.sampling_mode(SamplingMode::Linear);
     group.measurement_time(std::time::Duration::from_secs(300));
 
-    for n_gates_log in [10, 14] {
+    for n_gates_log in [10, 15, 16] {
         // averaging over several proofs and contexts, since using
         // just one seems to introduce extra variance.
         let inputs: Vec<_> = (0..20)
