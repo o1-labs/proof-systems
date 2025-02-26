@@ -23,8 +23,7 @@ pub mod witness;
 pub const MAX_DEGREE: usize = 5;
 
 /// The minimum SRS size required to use Nova, in base 2.
-/// Requiring at least 2^16 to perform 16bits range checks.
-pub const MIN_SRS_LOG2_SIZE: usize = 16;
+pub const MIN_SRS_LOG2_SIZE: usize = 8;
 
 /// The maximum number of columns that can be used in the circuit.
 pub const NUMBER_OF_COLUMNS: usize = 15;
