@@ -63,13 +63,15 @@ pub fn execute(args: cli::ExecuteArgs) {
         // Poseidon hash, and we write on the next row. We don't want to execute
         // a new instruction for the verifier circuit here.
         for i in 0..VERIFIER_CIRCUIT_SIZE - 1 {
-            let instr = env.fetch_instruction();
+            let current_instr = env.fetch_instruction();
             debug!(
                 "Running verifier row {} (instruction = {:?}, witness row = {})",
-                i, instr, env.current_row
+                i,
+                current_instr.clone(),
+                env.current_row
             );
-            interpreter::run_ivc(&mut env, instr);
-            env.current_instruction = env.fetch_next_instruction();
+            interpreter::run_ivc(&mut env, current_instr);
+            env.current_instruction = interpreter::fetch_next_instruction(current_instr);
             env.reset();
         }
         // FIXME: additional row for the Poseidon hash

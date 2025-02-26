@@ -1187,3 +1187,50 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
     // Compute the hash of the public input
     // FIXME: add the verification key. We should have a hash of it.
 }
+
+/// Describe the control-flow for the verifier circuit.
+pub fn fetch_next_instruction(current_instruction: Instruction) -> Instruction {
+    match current_instruction {
+        Instruction::PoseidonFullRound(i) => {
+            if i < PlonkSpongeConstants::PERM_ROUNDS_FULL - 5 {
+                Instruction::PoseidonFullRound(i + 5)
+            } else {
+                // FIXME: for now, we continue absorbing because the current
+                // code, while fetching the values to absorb, raises an
+                // exception when we absorbed everythimg, and the main file
+                // handles the halt by filling as many rows as expected (see
+                // [VERIFIER_CIRCUIT_SIZE]).
+                Instruction::PoseidonSpongeAbsorb
+            }
+        }
+        Instruction::PoseidonSpongeAbsorb => {
+            // Whenever we absorbed a value, we run the permutation.
+            Instruction::PoseidonFullRound(0)
+        }
+        Instruction::EllipticCurveScaling(i_comm, bit) => {
+            // TODO: we still need to substract (or not?) the blinder.
+            // Maybe we can avoid this by aggregating them.
+            // TODO: we also need to aggregate the cross-terms.
+            // Therefore i_comm must also take into the account the number
+            // of cross-terms.
+            assert!(i_comm < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
+            assert!(bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Maximum number of bits reached ({MAXIMUM_FIELD_SIZE_IN_BITS}), increase the number of bits");
+            if bit < MAXIMUM_FIELD_SIZE_IN_BITS - 1 {
+                Instruction::EllipticCurveScaling(i_comm, bit + 1)
+            } else if i_comm < NUMBER_OF_COLUMNS - 1 {
+                Instruction::EllipticCurveScaling(i_comm + 1, 0)
+            } else {
+                // We have computed all the bits for all the columns
+                Instruction::NoOp
+            }
+        }
+        Instruction::EllipticCurveAddition(i_comm) => {
+            if i_comm < NUMBER_OF_COLUMNS - 1 {
+                Instruction::EllipticCurveAddition(i_comm + 1)
+            } else {
+                Instruction::NoOp
+            }
+        }
+        Instruction::NoOp => Instruction::NoOp,
+    }
+}
