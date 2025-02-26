@@ -14,6 +14,9 @@ use crate::NUMBER_OF_COLUMNS;
 // depend on runtime values (e.g. in a zero-knowledge virtual machine).
 #[derive(Debug, Clone, Copy, PartialEq, EnumCountMacro, EnumIter, Eq, Hash)]
 pub enum Gadget {
+    /// A dummy gadget, doing nothing. Use for padding.
+    NoOp,
+
     App,
     // Elliptic curve related gadgets
     EllipticCurveAddition,
@@ -74,11 +77,12 @@ pub type E<Fp> = Expr<ConstantExpr<Fp, ChallengeTerm>, Column>;
 impl From<Gadget> for usize {
     fn from(val: Gadget) -> usize {
         match val {
-            Gadget::App => 0,
-            Gadget::EllipticCurveAddition => 1,
-            Gadget::EllipticCurveScaling => 2,
-            Gadget::PoseidonSpongeAbsorb => 3,
-            Gadget::PoseidonFullRound(starting_round) => 4 + starting_round / 5,
+            Gadget::NoOp => 0,
+            Gadget::App => 1,
+            Gadget::EllipticCurveAddition => 2,
+            Gadget::EllipticCurveScaling => 3,
+            Gadget::PoseidonSpongeAbsorb => 4,
+            Gadget::PoseidonFullRound(starting_round) => 5 + starting_round / 5,
         }
     }
 }
@@ -88,6 +92,7 @@ impl FormattedOutput for Column {
     fn latex(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         match self {
             Column::Selector(sel) => match sel {
+                Gadget::NoOp => "q_noop".to_string(),
                 Gadget::App => "q_app".to_string(),
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
@@ -104,6 +109,7 @@ impl FormattedOutput for Column {
     fn text(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         match self {
             Column::Selector(sel) => match sel {
+                Gadget::NoOp => "q_noop".to_string(),
                 Gadget::App => "q_app".to_string(),
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
