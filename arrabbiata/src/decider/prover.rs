@@ -1,6 +1,6 @@
 //! A prover for the folding/accumulation scheme
 
-use crate::{curve::ArrabbiataCurve, proof::Proof};
+use crate::{curve::ArrabbiataCurve, decider::proof::Proof};
 use ark_ff::PrimeField;
 
 use crate::witness::Env;

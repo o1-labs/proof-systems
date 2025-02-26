@@ -5,17 +5,17 @@ use strum::EnumCount as _;
 pub mod challenge;
 pub mod cli;
 pub mod column;
-pub mod column_env;
 pub mod constraint;
 pub mod curve;
+
+/// The final decider, i.e. the SNARK used on the accumulation scheme.
+pub mod decider;
+
 pub mod interpreter;
 pub mod logup;
 pub mod poseidon_3_60_0_5_5_fp;
 pub mod poseidon_3_60_0_5_5_fq;
-pub mod proof;
-pub mod prover;
 pub mod setup;
-pub mod verifier;
 pub mod witness;
 
 /// The maximum degree of the polynomial that can be represented by the
