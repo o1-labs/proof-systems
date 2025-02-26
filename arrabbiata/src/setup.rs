@@ -38,6 +38,8 @@ use crate::{
     column::Gadget,
     constraint,
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
+    interpreter,
+    interpreter::VERIFIER_STARTING_INSTRUCTION,
     MAXIMUM_FIELD_SIZE_IN_BITS, MAX_DEGREE, MV_POLYNOMIAL_ARITY, NUMBER_OF_COLUMNS,
     VERIFIER_CIRCUIT_SIZE,
 };
@@ -76,6 +78,12 @@ pub struct IndexedRelation<
     /// Note that the value is the same for both circuits. We do suppose both
     /// SRS are of the same sizes and the verifier circuits are the same.
     pub app_size: usize,
+
+    /// The description of the program, in terms of gadgets.
+    /// For now, the program is the same for both curves.
+    ///
+    /// The number of elements is exactly the size of the SRS.
+    pub circuit_gates: Vec<Gadget>,
 
     /// The constraints given as multivariate polynomials using the [mvpoly]
     /// library, indexed by the gadget to ease the selection of the constraints
@@ -199,6 +207,27 @@ where
         // suppose we have the same circuit on both curves for now.
         let app_size = srs_size - VERIFIER_CIRCUIT_SIZE;
 
+        // Build the selectors for both circuits.
+        // FIXME: we suppose we have the same circuit on both curve for now.
+        let circuit_gates: Vec<Gadget> = {
+            let mut v: Vec<Gadget> = Vec::with_capacity(srs_size);
+            // The first [app_size] rows are for the application
+            v.extend([Gadget::App].repeat(app_size));
+
+            // Verifier circuit structure
+            {
+                let mut curr_instruction = VERIFIER_STARTING_INSTRUCTION;
+                for _i in 0..VERIFIER_CIRCUIT_SIZE - 1 {
+                    v.push(Gadget::from(curr_instruction));
+                    curr_instruction = interpreter::fetch_next_instruction(curr_instruction);
+                }
+                // Additional row for the Poseidon hash
+                v.push(Gadget::NoOp);
+            }
+            assert_eq!(v.len(), srs_size);
+            v
+        };
+
         // FIXME: setup correctly the initial sponge state
         let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
             std::array::from_fn(|_i| BigInt::from(42u64));
@@ -209,6 +238,7 @@ where
             srs_e1,
             srs_e2,
             app_size,
+            circuit_gates,
             constraints_fp,
             constraints_fq,
             initial_sponge: sponge_e1,
