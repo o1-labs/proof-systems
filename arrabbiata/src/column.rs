@@ -82,7 +82,10 @@ impl From<Gadget> for usize {
             Gadget::EllipticCurveAddition => 2,
             Gadget::EllipticCurveScaling => 3,
             Gadget::PoseidonSpongeAbsorb => 4,
-            Gadget::PoseidonFullRound(starting_round) => 5 + starting_round / 5,
+            Gadget::PoseidonFullRound(starting_round) => {
+                assert_eq!(starting_round % 5, 0);
+                5 + starting_round / 5
+            }
         }
     }
 }
