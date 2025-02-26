@@ -570,9 +570,7 @@
 //!                       +-----------------------------+
 //! ```
 
-use crate::{
-    column::Gadget, curve::PlonkSpongeConstants, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
-};
+use crate::{curve::PlonkSpongeConstants, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS};
 use ark_ff::{One, Zero};
 use log::debug;
 use mina_poseidon::constants::SpongeConstants;
@@ -666,9 +664,6 @@ pub trait InterpreterEnv {
 
     /// Set the value of the variable at the given position for the current row
     fn write_column(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable;
-
-    /// Activate the gadget for the row.
-    fn activate_gadget(&mut self, gadget: Gadget);
 
     /// Build the constant zero
     fn zero(&self) -> Self::Variable;
@@ -845,7 +840,6 @@ pub trait InterpreterEnv {
 
 /// Run the application
 pub fn run_app<E: InterpreterEnv>(env: &mut E) {
-    env.activate_gadget(Gadget::App);
     let x1 = {
         let pos = env.allocate();
         env.fetch_input(pos)
@@ -880,7 +874,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             assert!(processing_bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Invalid bit index. The fields are maximum on {MAXIMUM_FIELD_SIZE_IN_BITS} bits, therefore we cannot process the bit {processing_bit}");
             assert!(i_comm < NUMBER_OF_COLUMNS, "Invalid index. We do only support the scaling of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms");
             debug!("Processing scaling of commitment {i_comm}, bit {processing_bit}");
-            env.activate_gadget(Gadget::EllipticCurveScaling);
             // When processing the first bit, we must load the scalar, and it
             // comes from previous computation.
             // The two first columns are supposed to be used for the output.
@@ -1024,7 +1017,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             };
         }
         Instruction::EllipticCurveAddition(i_comm) => {
-            env.activate_gadget(Gadget::EllipticCurveAddition);
             assert!(i_comm < NUMBER_OF_COLUMNS, "Invalid index. We do only support the addition of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms");
             let (x1, y1) = {
                 let x1 = env.allocate();
@@ -1080,8 +1072,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 "Executing instruction Poseidon starting from round {starting_round} to {}",
                 starting_round + 5
             );
-
-            env.activate_gadget(Gadget::PoseidonFullRound(starting_round));
 
             let round_input_positions: Vec<E::Position> = (0..PlonkSpongeConstants::SPONGE_WIDTH)
                 .map(|_i| env.allocate())
@@ -1152,8 +1142,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             });
         }
         Instruction::PoseidonSpongeAbsorb => {
-            env.activate_gadget(Gadget::PoseidonSpongeAbsorb);
-
             let round_input_positions: Vec<E::Position> = (0..PlonkSpongeConstants::SPONGE_WIDTH
                 - 1)
                 .map(|_i| env.allocate())

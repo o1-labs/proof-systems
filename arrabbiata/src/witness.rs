@@ -12,7 +12,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::{
     challenge::{ChallengeTerm, Challenges},
-    column::{Column, Gadget},
+    column::Column,
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side, VERIFIER_STARTING_INSTRUCTION},
     setup, NUMBER_OF_COLUMNS, NUMBER_OF_SELECTORS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
@@ -301,13 +301,6 @@ where
             }
         }
         v
-    }
-
-    /// Activate the gadget for the current row
-    fn activate_gadget(&mut self, gadget: Gadget) {
-        // IMPROVEME: it should be called only once per row
-        let gadget = usize::from(gadget);
-        self.selectors[gadget][self.current_row] = true;
     }
 
     fn constrain_boolean(&mut self, x: Self::Variable) {
