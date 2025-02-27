@@ -214,11 +214,6 @@ pub struct Env<
     // ---------------
 }
 
-// The condition on the parameters for E1 and E2 is to get the coefficients and
-// convert them into biguint.
-// The condition SWModelParameters is to get the parameters of the curve as
-// biguint to use them to compute the slope in the elliptic curve addition
-// algorithm.
 impl<
         Fp: PrimeField,
         Fq: PrimeField,
