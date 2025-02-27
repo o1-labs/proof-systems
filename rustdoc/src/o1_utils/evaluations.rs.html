@@ -52,8 +52,6 @@
 <a href="#52" id="52">52</a>
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
-<a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This adds a few utility functions for the [Evaluations] arkworks type.
 
 </span><span class="kw">use </span>ark_ff::FftField;
@@ -101,12 +99,10 @@
     }
 
     <span class="kw">fn </span>shift(<span class="kw-2">&amp;</span><span class="self">self</span>, len: usize) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>len = len % <span class="self">self</span>.evals.len();
-        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="self">self</span>.clone();
-        result.evals.clear();
-        result.evals = <span class="self">self</span>.evals[len..].to_vec();
-        <span class="kw">let </span><span class="kw-2">mut </span>tail = <span class="self">self</span>.evals[<span class="number">0</span>..len].to_vec();
-        result.evals.append(<span class="kw-2">&amp;mut </span>tail);
+        <span class="kw">let </span>len_new = len % <span class="self">self</span>.evals.len();
+        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="self">Self</span>::from_vec_and_domain(Vec::with_capacity(len), <span class="self">self</span>.domain());
+        result.evals.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.evals[len_new..]);
+        result.evals.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.evals[<span class="number">0</span>..len_new]);
         result
     }
 }

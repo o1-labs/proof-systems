@@ -115,7 +115,6 @@
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::array;
 
 <span class="kw">use </span>groupmap::{BWParameters, GroupMap};
@@ -125,7 +124,7 @@
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 <span class="kw">use </span>o1_utils::math;
-<span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, ipa::OpeningProof, SRS <span class="kw">as _</span>};
+<span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, ipa::OpeningProof, SRS};
 
 <span class="kw">use crate</span>::{
     circuits::{
@@ -136,7 +135,6 @@
     proof::ProverProof,
     prover_index::{testing::new_index_for_test, ProverIndex},
     verifier::{batch_verify, Context},
-    verifier_index::VerifierIndex,
 };
 
 <span class="kw">type </span>SpongeParams = PlonkSpongeConstantsKimchi;
@@ -147,7 +145,6 @@
     <span class="kw">pub </span>num_gates: usize,
     group_map: BWParameters&lt;VestaParameters&gt;,
     index: ProverIndex&lt;Vesta, OpeningProof&lt;Vesta&gt;&gt;,
-    verifier_index: VerifierIndex&lt;Vesta, OpeningProof&lt;Vesta&gt;&gt;,
 }
 
 <span class="kw">impl </span>BenchmarkCtx {
@@ -179,19 +176,20 @@
         </span><span class="kw">let </span>group_map = &lt;Vesta <span class="kw">as </span>CommitmentCurve&gt;::Map::setup();
 
         <span class="comment">// create the index
-        </span><span class="kw">let </span>index = new_index_for_test(gates, <span class="number">0</span>);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>index = new_index_for_test(gates, <span class="number">0</span>);
 
         <span class="macro">assert_eq!</span>(index.cs.domain.d1.log_size_of_group, srs_size_log2, <span class="string">&quot;the test wanted to use an SRS of size {srs_size_log2} but the domain size ended up being {}&quot;</span>, index.cs.domain.d1.log_size_of_group);
 
         <span class="comment">// create the verifier index
-        </span><span class="kw">let </span>verifier_index = index.verifier_index();
+        </span>index.compute_verifier_index_digest::&lt;BaseSponge&gt;();
 
-        <span class="comment">//
-        </span>BenchmarkCtx {
+        <span class="comment">// just in case check that lagrange bases are generated
+        </span>index.srs.get_lagrange_basis(index.cs.domain.d1);
+
+        BenchmarkCtx {
             num_gates,
             group_map,
             index,
-            verifier_index,
         }
     }
 
@@ -222,7 +220,7 @@
         </span><span class="kw">let </span>batch: Vec&lt;<span class="kw">_</span>&gt; = batch
             .iter()
             .map(|(proof, public)| Context {
-                verifier_index: <span class="kw-2">&amp;</span><span class="self">self</span>.verifier_index,
+                verifier_index: <span class="self">self</span>.index.verifier_index.as_ref().unwrap(),
                 proof,
                 public_input: public,
             })

@@ -153,11 +153,11 @@
     /// rounds per row.
     ///
     /// We split the Poseidon gadget in 13 sub-gadgets, one for each set of 5
-    /// permutations and one for the absorbtion. The parameteris the starting
+    /// full rounds and one for the absorbtion. The parameter is the starting
     /// round of Poseidon. It is expected to be a multiple of five.
     ///
     /// Note that, for now, the gadget can only be used by the verifier circuit.
-    </span>PoseidonPermutation(usize),
+    </span>PoseidonFullRound(usize),
     <span class="doccomment">/// Absorb [PlonkSpongeConstants::SPONGE_WIDTH - 1] elements into the
     /// sponge. The elements are absorbed into the last
     /// [PlonkSpongeConstants::SPONGE_WIDTH - 1] elements of the permutation
@@ -207,7 +207,7 @@
             Gadget::EllipticCurveAddition =&gt; <span class="number">1</span>,
             Gadget::EllipticCurveScaling =&gt; <span class="number">2</span>,
             Gadget::PoseidonSpongeAbsorb =&gt; <span class="number">3</span>,
-            Gadget::PoseidonPermutation(starting_round) =&gt; <span class="number">4 </span>+ starting_round / <span class="number">5</span>,
+            Gadget::PoseidonFullRound(starting_round) =&gt; <span class="number">4 </span>+ starting_round / <span class="number">5</span>,
         }
     }
 }
@@ -221,8 +221,8 @@
                 Gadget::EllipticCurveAddition =&gt; <span class="string">&quot;q_ec_add&quot;</span>.to_string(),
                 Gadget::EllipticCurveScaling =&gt; <span class="string">&quot;q_ec_mul&quot;</span>.to_string(),
                 Gadget::PoseidonSpongeAbsorb =&gt; <span class="string">&quot;q_pos_sponge_absorb&quot;</span>.to_string(),
-                Gadget::PoseidonPermutation(starting_round) =&gt; {
-                    <span class="macro">format!</span>(<span class="string">&quot;q_pos_permutation{}&quot;</span>, starting_round)
+                Gadget::PoseidonFullRound(starting_round) =&gt; {
+                    <span class="macro">format!</span>(<span class="string">&quot;q_pos_full_round_{}&quot;</span>, starting_round)
                 }
             },
             Column::PublicInput(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;pi_{{{i}}}&quot;</span>).to_string(),
@@ -237,8 +237,8 @@
                 Gadget::EllipticCurveAddition =&gt; <span class="string">&quot;q_ec_add&quot;</span>.to_string(),
                 Gadget::EllipticCurveScaling =&gt; <span class="string">&quot;q_ec_mul&quot;</span>.to_string(),
                 Gadget::PoseidonSpongeAbsorb =&gt; <span class="string">&quot;q_pos_sponge_absorb&quot;</span>.to_string(),
-                Gadget::PoseidonPermutation(starting_round) =&gt; {
-                    <span class="macro">format!</span>(<span class="string">&quot;q_pos_permutation{}&quot;</span>, starting_round)
+                Gadget::PoseidonFullRound(starting_round) =&gt; {
+                    <span class="macro">format!</span>(<span class="string">&quot;q_pos_full_round_{}&quot;</span>, starting_round)
                 }
             },
             Column::PublicInput(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;pi[{i}]&quot;</span>),

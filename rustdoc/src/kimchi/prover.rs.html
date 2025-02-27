@@ -1786,6 +1786,24 @@
 <a href="#1786" id="1786">1786</a>
 <a href="#1787" id="1787">1787</a>
 <a href="#1788" id="1788">1788</a>
+<a href="#1789" id="1789">1789</a>
+<a href="#1790" id="1790">1790</a>
+<a href="#1791" id="1791">1791</a>
+<a href="#1792" id="1792">1792</a>
+<a href="#1793" id="1793">1793</a>
+<a href="#1794" id="1794">1794</a>
+<a href="#1795" id="1795">1795</a>
+<a href="#1796" id="1796">1796</a>
+<a href="#1797" id="1797">1797</a>
+<a href="#1798" id="1798">1798</a>
+<a href="#1799" id="1799">1799</a>
+<a href="#1800" id="1800">1800</a>
+<a href="#1801" id="1801">1801</a>
+<a href="#1802" id="1802">1802</a>
+<a href="#1803" id="1803">1803</a>
+<a href="#1804" id="1804">1804</a>
+<a href="#1805" id="1805">1805</a>
+<a href="#1806" id="1806">1806</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -2085,35 +2103,46 @@
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
         </span><span class="macro">internal_tracing::checkpoint!</span>(internal_traces; commit_to_witness_columns);
-        <span class="kw">let </span><span class="kw-2">mut </span>w_comm = <span class="macro">vec!</span>[];
-        <span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..COLUMNS {
-            <span class="comment">// witness coeff -&gt; witness eval
-            </span><span class="kw">let </span>witness_eval =
-                Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
-                    witness[col].clone(),
-                    index.cs.domain.d1,
-                );
+        <span class="comment">// generate blinders if not given externally
+        </span><span class="kw">let </span>blinders_final: Vec&lt;PolyComm&lt;G::ScalarField&gt;&gt; = <span class="kw">match </span>blinders {
+            <span class="prelude-val">None </span>=&gt; (<span class="number">0</span>..COLUMNS)
+                .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[UniformRand::rand(rng); num_chunks]))
+                .collect(),
+            <span class="prelude-val">Some</span>(blinders_arr) =&gt; blinders_arr
+                .into_iter()
+                .map(|blinder_el| <span class="kw">match </span>blinder_el {
+                    <span class="prelude-val">None </span>=&gt; PolyComm::new(<span class="macro">vec!</span>[UniformRand::rand(rng); num_chunks]),
+                    <span class="prelude-val">Some</span>(blinder_el_some) =&gt; blinder_el_some,
+                })
+                .collect(),
+        };
+        <span class="kw">let </span>w_comm_opt_res: Vec&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>&gt;&gt; = witness
+            .clone()
+            .into_par_iter()
+            .zip(blinders_final.into_par_iter())
+            .map(|(witness, blinder)| {
+                <span class="kw">let </span>witness_eval =
+                    Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
+                        witness,
+                        index.cs.domain.d1,
+                    );
 
-            <span class="kw">let </span>com = <span class="kw">match </span>blinders.as_ref().and_then(|b| b[col].as_ref()) {
-                <span class="comment">// no blinders: blind the witness
-                </span><span class="prelude-val">None </span>=&gt; index
+                <span class="comment">// TODO: make this a function rather no? mask_with_custom()
+                </span><span class="kw">let </span>witness_com = index
                     .srs
-                    .commit_evaluations(index.cs.domain.d1, <span class="kw-2">&amp;</span>witness_eval, rng),
-                <span class="comment">// blinders: blind the witness with them
-                </span><span class="prelude-val">Some</span>(blinder) =&gt; {
-                    <span class="comment">// TODO: make this a function rather no? mask_with_custom()
-                    </span><span class="kw">let </span>witness_com = index
-                        .srs
-                        .commit_evaluations_non_hiding(index.cs.domain.d1, <span class="kw-2">&amp;</span>witness_eval);
-                    index
-                        .srs
-                        .mask_custom(witness_com, blinder)
-                        .map_err(ProverError::WrongBlinders)<span class="question-mark">?
-                </span>}
-            };
+                    .commit_evaluations_non_hiding(index.cs.domain.d1, <span class="kw-2">&amp;</span>witness_eval);
+                <span class="kw">let </span>com = index
+                    .srs
+                    .mask_custom(witness_com, <span class="kw-2">&amp;</span>blinder)
+                    .map_err(ProverError::WrongBlinders)<span class="question-mark">?</span>;
 
-            w_comm.push(com);
-        }
+                <span class="prelude-val">Ok</span>(com)
+            })
+            .collect();
+
+        <span class="kw">let </span>w_comm_res: <span class="prelude-ty">Result</span>&lt;Vec&lt;BlindedCommitment&lt;G&gt;&gt;&gt; = w_comm_opt_res.into_iter().collect();
+
+        <span class="kw">let </span>w_comm = w_comm_res<span class="question-mark">?</span>;
 
         <span class="kw">let </span>w_comm: [BlindedCommitment&lt;G&gt;; COLUMNS] = w_comm
             .try_into()
@@ -2128,13 +2157,18 @@
         //~    As mentioned above, we commit using the evaluations form rather than the coefficients
         //~    form so we can take advantage of the sparsity of the evaluations (i.e., there are many
         //~    0 entries and entries that have less-than-full-size field elemnts.)
-        </span><span class="kw">let </span>witness_poly: [DensePolynomial&lt;G::ScalarField&gt;; COLUMNS] = array::from_fn(|i| {
-            Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
-                witness[i].clone(),
-                index.cs.domain.d1,
-            )
-            .interpolate()
-        });
+        </span><span class="kw">let </span>witness_poly: [DensePolynomial&lt;G::ScalarField&gt;; COLUMNS] = (<span class="number">0</span>..COLUMNS)
+            .into_par_iter()
+            .map(|i| {
+                Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
+                    witness[i].clone(),
+                    index.cs.domain.d1,
+                )
+                .interpolate()
+            })
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+            .try_into()
+            .unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>lookup_context = LookupContext::default();
 
@@ -2550,6 +2584,7 @@
 
                 generic4
             };
+
             <span class="comment">// permutation
             </span><span class="kw">let </span>(<span class="kw-2">mut </span>t8, bnd) = {
                 <span class="kw">let </span>alphas =
@@ -3274,6 +3309,7 @@
         };
 
         <span class="macro">internal_tracing::checkpoint!</span>(internal_traces; create_recursive_done);
+
         <span class="prelude-val">Ok</span>(proof)
     }
 }

@@ -961,6 +961,35 @@
 <a href="#961" id="961">961</a>
 <a href="#962" id="962">962</a>
 <a href="#963" id="963">963</a>
+<a href="#964" id="964">964</a>
+<a href="#965" id="965">965</a>
+<a href="#966" id="966">966</a>
+<a href="#967" id="967">967</a>
+<a href="#968" id="968">968</a>
+<a href="#969" id="969">969</a>
+<a href="#970" id="970">970</a>
+<a href="#971" id="971">971</a>
+<a href="#972" id="972">972</a>
+<a href="#973" id="973">973</a>
+<a href="#974" id="974">974</a>
+<a href="#975" id="975">975</a>
+<a href="#976" id="976">976</a>
+<a href="#977" id="977">977</a>
+<a href="#978" id="978">978</a>
+<a href="#979" id="979">979</a>
+<a href="#980" id="980">980</a>
+<a href="#981" id="981">981</a>
+<a href="#982" id="982">982</a>
+<a href="#983" id="983">983</a>
+<a href="#984" id="984">984</a>
+<a href="#985" id="985">985</a>
+<a href="#986" id="986">986</a>
+<a href="#987" id="987">987</a>
+<a href="#988" id="988">988</a>
+<a href="#989" id="989">989</a>
+<a href="#990" id="990">990</a>
+<a href="#991" id="991">991</a>
+<a href="#992" id="992">992</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
 </span><span class="kw">use </span><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg;
 <span class="kw">use crate</span>::{
@@ -989,6 +1018,7 @@
 <span class="kw">use </span>o1_utils::ExtendedEvaluations;
 <span class="kw">use </span>once_cell::sync::OnceCell;
 <span class="kw">use </span>poly_commitment::OpenProof;
+<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
 <span class="kw">use </span>std::{array, default::Default, sync::Arc};
@@ -1336,25 +1366,53 @@
 <span class="kw">impl</span>&lt;F: PrimeField&gt; ConstraintSystem&lt;F&gt; {
     <span class="doccomment">/// evaluate witness polynomials over domains
     </span><span class="kw">pub fn </span>evaluate(<span class="kw-2">&amp;</span><span class="self">self</span>, w: <span class="kw-2">&amp;</span>[DP&lt;F&gt;; COLUMNS], z: <span class="kw-2">&amp;</span>DP&lt;F&gt;) -&gt; WitnessOverDomains&lt;F&gt; {
-        <span class="comment">// compute shifted witness polynomials
-        </span><span class="kw">let </span>w8: [E&lt;F, D&lt;F&gt;&gt;; COLUMNS] =
-            array::from_fn(|i| w[i].evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8));
-        <span class="kw">let </span>z8 = z.evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8);
+        <span class="comment">// compute shifted witness polynomials and z8, all in parallel
+        </span><span class="kw">let </span>(w8, z8): ([E&lt;F, D&lt;F&gt;&gt;; COLUMNS], <span class="kw">_</span>) = {
+            <span class="kw">let </span><span class="kw-2">mut </span>res = w
+                .par_iter()
+                .chain(rayon::iter::once(z))
+                .map(|elem| elem.evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8))
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+            <span class="kw">let </span>z8 = res[COLUMNS].clone();
+            res.truncate(COLUMNS);
+            (res.try_into().unwrap(), z8)
+        };
 
-        <span class="kw">let </span>w4: [E&lt;F, D&lt;F&gt;&gt;; COLUMNS] = array::from_fn(|i| {
-            E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
-                (<span class="number">0</span>..<span class="self">self</span>.domain.d4.size)
-                    .map(|j| w8[i].evals[<span class="number">2 </span>* j <span class="kw">as </span>usize])
-                    .collect(),
-                <span class="self">self</span>.domain.d4,
-            )
-        });
+        <span class="kw">let </span>w4: [E&lt;F, D&lt;F&gt;&gt;; COLUMNS] = (<span class="number">0</span>..COLUMNS)
+            .into_par_iter()
+            .map(|i| {
+                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
+                    (<span class="number">0</span>..<span class="self">self</span>.domain.d4.size)
+                        .map(|j| w8[i].evals[<span class="number">2 </span>* j <span class="kw">as </span>usize])
+                        .collect(),
+                    <span class="self">self</span>.domain.d4,
+                )
+            })
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+            .try_into()
+            .unwrap();
+
         <span class="kw">let </span>z4 = DP::&lt;F&gt;::zero().evaluate_over_domain_by_ref(D::&lt;F&gt;::new(<span class="number">1</span>).unwrap());
+        <span class="kw">let </span>z8_shift8 = z8.shift(<span class="number">8</span>);
+
+        <span class="kw">let </span>d4_next_w: [<span class="kw">_</span>; COLUMNS] = w4
+            .par_iter()
+            .map(|w4_i| w4_i.shift(<span class="number">4</span>))
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+            .try_into()
+            .unwrap();
+
+        <span class="kw">let </span>d8_next_w: [<span class="kw">_</span>; COLUMNS] = w8
+            .par_iter()
+            .map(|w8_i| w8_i.shift(<span class="number">8</span>))
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+            .try_into()
+            .unwrap();
 
         WitnessOverDomains {
             d4: WitnessShifts {
                 next: WitnessEvals {
-                    w: array::from_fn(|i| w4[i].shift(<span class="number">4</span>)),
+                    w: d4_next_w,
                     <span class="comment">// TODO(mimoo): change z to an Option? Or maybe not, we might actually need this dummy evaluation in the aggregated evaluation proof
                     </span>z: z4.clone(), <span class="comment">// dummy evaluation
                 </span>},
@@ -1365,8 +1423,8 @@
             },
             d8: WitnessShifts {
                 next: WitnessEvals {
-                    w: array::from_fn(|i| w8[i].shift(<span class="number">8</span>)),
-                    z: z8.shift(<span class="number">8</span>),
+                    w: d8_next_w,
+                    z: z8_shift8,
                 },
                 this: WitnessEvals { w: w8, z: z8 },
             },

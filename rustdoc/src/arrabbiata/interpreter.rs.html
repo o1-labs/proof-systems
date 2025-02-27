@@ -1310,7 +1310,7 @@
 //! [crate::MAX_DEGREE].
 //! Therefore, we can compute 5 full rounds per row by using the &quot;next row&quot;
 //! (i.e. adding an evaluation point at ζω). An implementation is provided in
-//! the gadget [crate::column::Gadget::PoseidonPermutation] and
+//! the gadget [crate::column::Gadget::PoseidonFullRound] and
 //! [crate::column::Gadget::PoseidonSpongeAbsorb].
 //!
 //! The layout for the one using the &quot;next row&quot; is as follow (5 full rounds):
@@ -1789,11 +1789,11 @@
     /// columns, we can compute 5 full rounds per row.
     ///
     /// We split the Poseidon gadget in 13 sub-gadgets, one for each set of 5
-    /// permutations and one for the absorbtion. The parameter is the starting
+    /// full rounds and one for the absorbtion. The parameter is the starting
     /// round of the permutation. It is expected to be a multiple of five.
     ///
     /// Note that, for now, the gadget can only be used by the verifier circuit.
-    </span>PoseidonPermutation(usize),
+    </span>PoseidonFullRound(usize),
     <span class="doccomment">/// Absorb [PlonkSpongeConstants::SPONGE_WIDTH - 1] elements into the
     /// sponge. The elements are absorbed into the last
     /// [PlonkSpongeConstants::SPONGE_WIDTH - 1] elements of the sponge state.
@@ -2248,7 +2248,7 @@
                 env.write_column(pos, res)
             };
         }
-        Instruction::PoseidonPermutation(starting_round) =&gt; {
+        Instruction::PoseidonFullRound(starting_round) =&gt; {
             <span class="macro">assert!</span>(
                 starting_round &lt; PlonkSpongeConstants::PERM_ROUNDS_FULL,
                 <span class="string">&quot;Invalid round index. Only values below {} are allowed.&quot;</span>,
@@ -2263,7 +2263,7 @@
                 starting_round + <span class="number">5
             </span>);
 
-            env.activate_gadget(Gadget::PoseidonPermutation(starting_round));
+            env.activate_gadget(Gadget::PoseidonFullRound(starting_round));
 
             <span class="kw">let </span>round_input_positions: Vec&lt;E::Position&gt; = (<span class="number">0</span>..PlonkSpongeConstants::SPONGE_WIDTH)
                 .map(|_i| env.allocate())

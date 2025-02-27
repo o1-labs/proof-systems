@@ -696,6 +696,19 @@
 <a href="#696" id="696">696</a>
 <a href="#697" id="697">697</a>
 <a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The following functionality is implemented
 //!
@@ -714,6 +727,7 @@
 <span class="kw">use </span>groupmap::{BWParameters, GroupMap};
 <span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>o1_utils::{field_helpers::product, ExtendedDensePolynomial <span class="kw">as _</span>};
+<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{de::Visitor, Deserialize, Serialize};
 <span class="kw">use </span>serde_with::{
     de::DeserializeAsWrap, ser::SerializeAsWrap, serde_as, DeserializeAs, SerializeAs,
@@ -1030,19 +1044,31 @@
         <span class="kw">let </span>all_scalars: Vec&lt;<span class="kw">_</span>&gt; = elm.iter().map(|s| s.into_bigint()).collect();
 
         <span class="kw">let </span>elems_size = Iterator::max(com.iter().map(|c| c.chunks.len())).unwrap();
-        <span class="kw">let </span><span class="kw-2">mut </span>chunks = Vec::with_capacity(elems_size);
 
-        <span class="kw">for </span>chunk <span class="kw">in </span><span class="number">0</span>..elems_size {
-            <span class="kw">let </span>(points, scalars): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = com
-                .iter()
-                .zip(<span class="kw-2">&amp;</span>all_scalars)
-                <span class="comment">// get rid of scalars that don&#39;t have an associated chunk
-                </span>.filter_map(|(com, scalar)| com.chunks.get(chunk).map(|c| (c, scalar)))
-                .unzip();
+        <span class="kw">let </span>chunks = (<span class="number">0</span>..elems_size)
+            .map(|chunk| {
+                <span class="kw">let </span>(points, scalars): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = com
+                    .iter()
+                    .zip(<span class="kw-2">&amp;</span>all_scalars)
+                    <span class="comment">// get rid of scalars that don&#39;t have an associated chunk
+                    </span>.filter_map(|(com, scalar)| com.chunks.get(chunk).map(|c| (c, scalar)))
+                    .unzip();
 
-            <span class="kw">let </span>chunk_msm = C::Group::msm_bigint(<span class="kw-2">&amp;</span>points, <span class="kw-2">&amp;</span>scalars);
-            chunks.push(chunk_msm.into_affine());
-        }
+                <span class="comment">// Splitting into 2 chunks seems optimal; but in
+                // practice elems_size is almost always 1
+                //
+                // (see the comment to the `benchmark_msm_parallel_vesta` MSM benchmark)
+                </span><span class="kw">let </span>subchunk_size = std::cmp::max(points.len() / <span class="number">2</span>, <span class="number">1</span>);
+
+                points
+                    .into_par_iter()
+                    .chunks(subchunk_size)
+                    .zip(scalars.into_par_iter().chunks(subchunk_size))
+                    .map(|(psc, ssc)| C::Group::msm_bigint(<span class="kw-2">&amp;</span>psc, <span class="kw-2">&amp;</span>ssc).into_affine())
+                    .reduce(C::zero, |x, y| (x + y).into())
+            })
+            .collect();
+
         <span class="self">Self</span>::new(chunks)
     }
 }

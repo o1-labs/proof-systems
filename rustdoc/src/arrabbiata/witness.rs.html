@@ -2420,9 +2420,9 @@
     /// ```
     </span><span class="kw">pub fn </span>fetch_next_instruction(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Instruction {
         <span class="kw">match </span><span class="self">self</span>.current_instruction {
-            Instruction::PoseidonPermutation(i) =&gt; {
+            Instruction::PoseidonFullRound(i) =&gt; {
                 <span class="kw">if </span>i &lt; PlonkSpongeConstants::PERM_ROUNDS_FULL - <span class="number">5 </span>{
-                    Instruction::PoseidonPermutation(i + <span class="number">5</span>)
+                    Instruction::PoseidonFullRound(i + <span class="number">5</span>)
                 } <span class="kw">else </span>{
                     <span class="comment">// FIXME: for now, we continue absorbing because the current
                     // code, while fetching the values to absorb, raises an
@@ -2434,7 +2434,7 @@
             }
             Instruction::PoseidonSpongeAbsorb =&gt; {
                 <span class="comment">// Whenever we absorbed a value, we run the permutation.
-                </span>Instruction::PoseidonPermutation(<span class="number">0</span>)
+                </span>Instruction::PoseidonFullRound(<span class="number">0</span>)
             }
             Instruction::EllipticCurveScaling(i_comm, bit) =&gt; {
                 <span class="comment">// TODO: we still need to substract (or not?) the blinder.

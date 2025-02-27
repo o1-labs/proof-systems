@@ -248,7 +248,7 @@
 <span class="kw">use </span>mina_poseidon::FqSponge;
 <span class="kw">use </span>rand_core::{CryptoRng, RngCore};
 
-<span class="kw">pub trait </span>SRS&lt;G: CommitmentCurve&gt;: Clone + Sized {
+<span class="kw">pub trait </span>SRS&lt;G: CommitmentCurve&gt;: Clone + Sized + Sync + Send {
     <span class="doccomment">/// The maximum polynomial degree that can be committed to
     </span><span class="kw">fn </span>max_poly_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 
