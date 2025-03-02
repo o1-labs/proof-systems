@@ -4,4 +4,5 @@ pub mod commitment;
 pub mod diff;
 pub mod env;
 pub mod proof;
+pub mod query;
 pub mod utils;

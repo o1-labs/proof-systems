@@ -1,6 +1,7 @@
 use crate::{
     commitment::Commitment,
     diff::Diff,
+    query::{QueryField, QueryResult},
     utils::{decode_into, encode_for_domain},
 };
 use ark_ff::PrimeField;
@@ -42,6 +43,10 @@ fn commit_to_blob_data<G: CommitmentCurve>(
 }
 
 impl<G: KimchiCurve> FieldBlob<G> {
+    pub fn n_chunks(&self) -> usize {
+        self.chunks.len()
+    }
+
     #[instrument(skip_all, level = "debug")]
     pub fn encode<
         D: EvaluationDomain<G::ScalarField>,
@@ -133,6 +138,19 @@ impl<G: KimchiCurve> FieldBlob<G> {
         self.commitment = commitment;
         self.chunks = chunks;
         self.n_bytes = diff.new_byte_len;
+    }
+
+    pub fn query(
+        &self,
+        domain: Radix2EvaluationDomain<G::ScalarField>,
+        query: &QueryField<G::ScalarField>,
+    ) -> QueryResult<G::ScalarField> {
+        let evals: Vec<Vec<G::ScalarField>> = self
+            .chunks
+            .par_iter()
+            .map(|p| p.evaluate_over_domain_by_ref(domain).evals)
+            .collect();
+        query.apply(&evals)
     }
 }
 
