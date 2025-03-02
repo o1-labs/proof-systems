@@ -16,6 +16,16 @@ use std::{
 /// Represents a multivariate polynomial in `N` variables with coefficients in
 /// `F`. The polynomial is represented as a sparse polynomial, where each
 /// monomial is represented by a vector of `N` exponents.
+///
+/// For instance, the multivariate polynomial `3x^2 y + 2 x z` will be
+/// represented by the HashMap:
+/// ```text
+/// [2, 1, 0] -> 3
+///  |  |  |
+///  x  y  z
+///  |  |  |
+/// [1, 0, 1] -> 2
+/// ```
 // We could use u8 instead of usize for the exponents
 // FIXME: the maximum degree D is encoded in the type to match the type
 // prime::Dense
