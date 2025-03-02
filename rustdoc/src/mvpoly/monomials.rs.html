@@ -596,6 +596,16 @@
 <a href="#596" id="596">596</a>
 <a href="#597" id="597">597</a>
 <a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     prime,
     utils::{compute_indices_nested_loop, naive_prime_factors, PrimeNumberGenerator},
@@ -614,6 +624,16 @@
 <span class="doccomment">/// Represents a multivariate polynomial in `N` variables with coefficients in
 /// `F`. The polynomial is represented as a sparse polynomial, where each
 /// monomial is represented by a vector of `N` exponents.
+///
+/// For instance, the multivariate polynomial `3x^2 y + 2 x z` will be
+/// represented by the HashMap:
+/// ```text
+/// [2, 1, 0] -&gt; 3
+///  |  |  |
+///  x  y  z
+///  |  |  |
+/// [1, 0, 1] -&gt; 2
+/// ```
 </span><span class="comment">// We could use u8 instead of usize for the exponents
 // FIXME: the maximum degree D is encoded in the type to match the type
 // prime::Dense
