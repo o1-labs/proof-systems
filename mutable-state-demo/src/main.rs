@@ -31,7 +31,15 @@ pub mod merkle_tree {
     }
 
     impl MerkleTree {
-        /// Build the Merkle tree.
+        pub fn hash(left: Fp, right: Fp) -> Fp {
+            let mut sponge = DefaultFrSponge::<Fp, PlonkSpongeConstantsKimchi>::new(
+                mina_poseidon::pasta::fp_kimchi::static_params(),
+            );
+            sponge.absorb(&left);
+            sponge.absorb(&right);
+            sponge.digest()
+        }
+
         pub fn new(leaf_hashes: Vec<Fp>) -> Self {
             let leaf_count = leaf_hashes.len();
             let pow2_len = leaf_count.next_power_of_two();
@@ -39,15 +47,6 @@ pub mod merkle_tree {
             let internal_node_count = pow2_len - 1; // Internal nodes count
 
             let mut tree_hashes = vec![Fp::zero(); internal_node_count];
-
-            let hash = |left: Fp, right: Fp| {
-                let mut sponge = DefaultFrSponge::<Fp, PlonkSpongeConstantsKimchi>::new(
-                    mina_poseidon::pasta::fp_kimchi::static_params(),
-                );
-                sponge.absorb(&left);
-                sponge.absorb(&right);
-                sponge.digest()
-            };
 
             // Pad leaf hashes to power of 2
             let mut padded_leaves = leaf_hashes.clone();
@@ -74,7 +73,7 @@ pub mod merkle_tree {
                         tree_hashes[2 * level_start + right_index + 1]
                     };
 
-                    tree_hashes[level_start + i] = hash(left_hash, right_hash);
+                    tree_hashes[level_start + i] = Self::hash(left_hash, right_hash);
                 }
             }
 
@@ -506,7 +505,8 @@ pub mod network {
         }
     }
 
-    use super::{Proof, VerifyContext};
+    use super::{merkle_tree::MerkleTree, Proof, VerifyContext};
+    use ark_ff::Zero;
     use mina_curves::pasta::{Fp, Vesta};
     use serde::{Deserialize, Serialize};
     use serde_with::serde_as;
@@ -576,6 +576,7 @@ pub mod network {
         },
     }
 
+    #[serde_as]
     #[derive(Serialize, Deserialize)]
     pub enum Message {
         StringMessage(String),
@@ -584,6 +585,11 @@ pub mod network {
         ReadResponse(ReadResponse),
         WriteIntent(WriteIntent),
         WriteResult(WriteResult),
+        StorageInitialized {
+            depth: u32,
+            #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+            merkle_root: Fp,
+        },
     }
 
     pub fn main(arg: cli::Args) -> ExitCode {
@@ -668,6 +674,22 @@ pub mod network {
                     println!(
                         "Saw write failure for {region}:\n{:?}\n{:?}\n{:?}",
                         query_commitment, precondition_commitment, data_commitment,
+                    );
+                }
+                Message::StorageInitialized { depth, merkle_root } => {
+                    let expected_merkle_root = {
+                        let mut computed_depth = 0;
+                        let mut root = Fp::zero();
+                        while computed_depth < depth {
+                            computed_depth += 1;
+                            let last_root = root;
+                            root = MerkleTree::hash(last_root, last_root);
+                        }
+                        root
+                    };
+                    let is_valid = expected_merkle_root == merkle_root;
+                    println!(
+                        "Saw new memory region of depth {depth}. Merkle root valid? {is_valid}"
                     );
                 }
             });
