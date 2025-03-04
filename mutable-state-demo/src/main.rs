@@ -239,6 +239,11 @@ impl VerifyContext {
     }
 }
 
+pub struct CommitmentView {
+    pub merkle_tree: merkle_tree::MerkleTree,
+    pub affine_committed_chunks: Vec<Vesta>,
+}
+
 #[serde_as]
 #[derive(Serialize, Deserialize)]
 pub struct Proof {
@@ -287,9 +292,8 @@ pub fn verify(context: &VerifyContext, proof: &Proof) -> bool {
 }
 
 pub struct ProverInputs<'a> {
-    pub merkle_tree: merkle_tree::MerkleTree,
     pub data: &'a mut [Fp],
-    pub affine_committed_chunks: Vec<Vesta>,
+    pub commitment_view: CommitmentView,
 }
 
 impl<'a> ProverInputs<'a> {
@@ -331,9 +335,11 @@ impl<'a> ProverInputs<'a> {
         };
 
         ProverInputs {
-            merkle_tree,
+            commitment_view: CommitmentView {
+                affine_committed_chunks,
+                merkle_tree,
+            },
             data,
-            affine_committed_chunks,
         }
     }
 }
@@ -342,9 +348,12 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
     let VerifyContext { srs, group_map } = context;
     let rng = &mut rand::rngs::OsRng;
     let ProverInputs {
-        merkle_tree,
+        commitment_view:
+            CommitmentView {
+                merkle_tree,
+                affine_committed_chunks,
+            },
         data,
-        affine_committed_chunks,
     } = inputs;
 
     let mut blinder_sum = Fp::zero();
@@ -1028,11 +1037,12 @@ pub mod state_provider {
                         for (idx, value) in addresses.iter().zip(values.iter()) {
                             prover_inputs.data[SRS_SIZE * region as usize + *idx as usize] = *value;
                         }
-                        prover_inputs.affine_committed_chunks[region as usize] = (prover_inputs
-                            .affine_committed_chunks[region as usize]
-                            + data_commitment
-                            - old_data_commitment)
-                            .into();
+                        prover_inputs.commitment_view.affine_committed_chunks[region as usize] =
+                            (prover_inputs.commitment_view.affine_committed_chunks
+                                [region as usize]
+                                + data_commitment
+                                - old_data_commitment)
+                                .into();
                         respond(Ok(WriteResponse::Success));
                         super::rpc_unit(
                             network_address.clone(),
