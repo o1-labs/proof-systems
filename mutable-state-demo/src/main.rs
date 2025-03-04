@@ -271,8 +271,6 @@ pub struct Proof {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub challenge: Fp,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub evaluation_point: Fp,
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub randomized_data_commitment: Vesta,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub randomized_data_eval: Fp,
@@ -287,7 +285,6 @@ pub fn fast_verify(context: &VerifyContext, proof: &Proof) -> bool {
     let VerifyContext { srs, group_map } = context;
     let Proof {
         challenge: _,
-        evaluation_point,
         randomized_data_commitment,
         randomized_data_eval,
         query_commitment,
@@ -295,6 +292,14 @@ pub fn fast_verify(context: &VerifyContext, proof: &Proof) -> bool {
         opening_proof,
     } = proof;
     let rng = &mut rand::rngs::OsRng;
+    let evaluation_point = {
+        let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+            mina_poseidon::pasta::fq_kimchi::static_params(),
+        );
+        fq_sponge.absorb_g(&[*randomized_data_commitment]);
+        fq_sponge.absorb_g(&[*query_commitment]);
+        fq_sponge.squeeze(2)
+    };
     let mut opening_proof_sponge =
         DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
             mina_poseidon::pasta::fq_kimchi::static_params(),
@@ -306,7 +311,7 @@ pub fn fast_verify(context: &VerifyContext, proof: &Proof) -> bool {
         group_map,
         &mut [BatchEvaluationProof {
             sponge: opening_proof_sponge.clone(),
-            evaluation_points: vec![*evaluation_point],
+            evaluation_points: vec![evaluation_point],
             polyscale: Fp::one(),
             evalscale: Fp::one(),
             evaluations: vec![Evaluation {
@@ -331,7 +336,6 @@ pub fn fast_verify(context: &VerifyContext, proof: &Proof) -> bool {
 pub fn verify(context: &VerifyContext, commitments: &[Vesta], proof: &Proof) -> bool {
     let Proof {
         challenge,
-        evaluation_point: _,
         randomized_data_commitment,
         randomized_data_eval: _,
         query_commitment: _,
@@ -491,7 +495,6 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
 
     Proof {
         challenge,
-        evaluation_point,
         randomized_data_commitment,
         randomized_data_eval,
         query_commitment,
