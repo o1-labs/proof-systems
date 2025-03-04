@@ -269,6 +269,8 @@ impl CommitmentView {
 #[derive(Serialize, Deserialize)]
 pub struct Proof {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub challenge: Fp,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub evaluation_point: Fp,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub final_commitment: Vesta,
@@ -277,9 +279,10 @@ pub struct Proof {
     pub opening_proof: OpeningProof<Vesta>,
 }
 
-pub fn verify(context: &VerifyContext, proof: &Proof) -> bool {
+pub fn fast_verify(context: &VerifyContext, proof: &Proof) -> bool {
     let VerifyContext { srs, group_map } = context;
     let Proof {
+        challenge: _,
         evaluation_point,
         final_commitment,
         randomized_data_eval,
@@ -310,6 +313,30 @@ pub fn verify(context: &VerifyContext, proof: &Proof) -> bool {
         }],
         rng,
     )
+}
+
+pub fn verify(context: &VerifyContext, commitments: &[Vesta], proof: &Proof) -> bool {
+    let Proof {
+        challenge,
+        evaluation_point: _,
+        final_commitment,
+        randomized_data_eval: _,
+        opening_proof: _,
+    } = proof;
+
+    let powers = commitments
+        .iter()
+        .scan(Fp::one(), |acc, _| {
+            let res = *acc;
+            *acc *= challenge;
+            Some(res.into_bigint())
+        })
+        .collect::<Vec<_>>();
+
+    let final_commitment_expected =
+        ProjectiveVesta::msm_bigint(commitments, powers.as_slice()).into_affine();
+
+    *final_commitment == final_commitment_expected && fast_verify(context, proof)
 }
 
 pub struct ProverInputs<'a> {
@@ -430,6 +457,7 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
     );
 
     Proof {
+        challenge,
         evaluation_point,
         final_commitment,
         randomized_data_eval,
@@ -601,8 +629,22 @@ pub mod network {
                 Message::StringMessage(i) => println!("stream got data: {}", i),
                 Message::VerifyProof(proof) => {
                     println!("Verifying proof");
+                    println!("- Fast (non-snark worker) verify");
                     let now = std::time::Instant::now();
-                    let valid = super::verify(&verify_context, &proof);
+                    let valid = super::fast_verify(&verify_context, &proof);
+                    let duration = now.elapsed();
+                    println!("proof verifies? {}", valid);
+                    println!(
+                        "Took {:?}s / {:?}ms / {:?}us / {:?}ns",
+                        duration.as_secs(),
+                        duration.as_millis(),
+                        duration.as_micros(),
+                        duration.as_nanos(),
+                    );
+                    println!("- Slow (snark worker) verify");
+                    let now = std::time::Instant::now();
+                    let valid =
+                        super::verify(&verify_context, &state_replicator_commitments, &proof);
                     let duration = now.elapsed();
                     println!("proof verifies? {}", valid);
                     println!(
