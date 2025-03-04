@@ -25,6 +25,7 @@ pub mod merkle_tree {
     use mina_curves::pasta::Fp;
     use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFrSponge};
 
+    // TODO: Make opaque
     pub struct MerkleTree {
         pub leaf_hashes: Vec<Fp>,
         pub tree_hashes: Vec<Fp>, // Internal nodes only — no direct leaf hashes
@@ -92,6 +93,13 @@ pub mod merkle_tree {
             }
         }
 
+        /// Returns the merkle tree depth
+        pub fn depth(&self) -> u32 {
+            let leaf_count = self.leaf_hashes.len();
+            let pow2_len = leaf_count.next_power_of_two();
+            pow2_len.trailing_zeros()
+        }
+
         /// Returns the Merkle path for a given leaf index.
         pub fn merkle_path(&self, leaf_index: usize) -> Vec<(Fp, bool)> {
             let leaf_count = self.leaf_hashes.len();
@@ -100,9 +108,8 @@ pub mod merkle_tree {
 
             let mut path = Vec::new();
             let mut current_index = leaf_index;
-            let mut parent_index = (pow2_len + current_index) / 2 - 1; // Parent in tree_hashes
 
-            for level in 0..tree_depth {
+            for level in (0..tree_depth).rev() {
                 let is_left = current_index % 2 != 0;
                 let sibling_index = if is_left {
                     current_index - 1
@@ -119,7 +126,7 @@ pub mod merkle_tree {
                     }
                 } else {
                     // Internal node
-                    let level_start = (1 << level) - 1;
+                    let level_start = (1 << (level + 1)) - 1;
                     self.tree_hashes[level_start + sibling_index / 2]
                 };
 
@@ -127,35 +134,27 @@ pub mod merkle_tree {
 
                 // Move up the tree
                 current_index /= 2;
-                if level < tree_depth - 1 {
-                    parent_index = (parent_index - 1) / 2;
-                }
             }
 
             path
         }
 
-        /// Verifies a leaf hash against a root hash using a Merkle path.
-        pub fn verify_merkle_path(leaf: Fp, path: &[(Fp, bool)], root: Fp) -> bool {
-            let hash = |left: Fp, right: Fp| {
-                let mut sponge = DefaultFrSponge::<Fp, PlonkSpongeConstantsKimchi>::new(
-                    mina_poseidon::pasta::fp_kimchi::static_params(),
-                );
-                sponge.absorb(&left);
-                sponge.absorb(&right);
-                sponge.digest()
-            };
-
+        /// Computes the merkle root from a leaf hash and a merkle path.
+        pub fn compute_merkle_root(leaf: Fp, path: &[(Fp, bool)]) -> Fp {
             let mut computed = leaf;
             for (sibling, is_left) in path.iter() {
                 if *is_left {
-                    computed = hash(*sibling, computed);
+                    computed = Self::hash(*sibling, computed);
                 } else {
-                    computed = hash(computed, *sibling);
+                    computed = Self::hash(computed, *sibling);
                 }
             }
+            computed
+        }
 
-            computed == root
+        /// Verifies a leaf hash against a root hash using a Merkle path.
+        pub fn verify_merkle_path(leaf: Fp, path: &[(Fp, bool)], root: Fp) -> bool {
+            Self::compute_merkle_root(leaf, path) == root
         }
 
         /// Update a leaf hash and recompute the tree up to the root.
@@ -165,15 +164,6 @@ pub mod merkle_tree {
             let leaf_count = self.leaf_hashes.len();
             let pow2_len = leaf_count.next_power_of_two();
             let tree_depth = pow2_len.trailing_zeros() as usize;
-
-            let hash = |left: Fp, right: Fp| {
-                let mut sponge = DefaultFrSponge::<Fp, PlonkSpongeConstantsKimchi>::new(
-                    mina_poseidon::pasta::fp_kimchi::static_params(),
-                );
-                sponge.absorb(&left);
-                sponge.absorb(&right);
-                sponge.digest()
-            };
 
             let mut current_index = leaf_index;
             let mut parent_index = (pow2_len + current_index) / 2 - 1;
@@ -195,7 +185,7 @@ pub mod merkle_tree {
                     self.leaf_hashes[current_index]
                 };
 
-                let parent_hash = hash(left_child_hash, right_child_hash);
+                let parent_hash = Self::hash(left_child_hash, right_child_hash);
                 self.tree_hashes[parent_index] = parent_hash;
 
                 // Move up
@@ -899,6 +889,14 @@ pub mod state_provider {
             data[i] = Fp::from(0u64);
         }
         let mut prover_inputs = ProverInputs::from_data(&verify_context, data);
+
+        super::rpc_unit(
+            network_address.clone(),
+            network::Message::StorageInitialized {
+                depth: prover_inputs.commitment_view.merkle_tree.depth(),
+                merkle_root: prover_inputs.commitment_view.merkle_tree.root_hash(),
+            },
+        );
 
         for event in event_queue_receiver.into_iter() {
             match event {
