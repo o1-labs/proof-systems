@@ -1898,6 +1898,7 @@ dependencies = [
  "iai",
  "internal-tracing",
  "itertools 0.10.5",
+ "kimchi",
  "memmap",
  "mina-curves",
  "mina-poseidon",

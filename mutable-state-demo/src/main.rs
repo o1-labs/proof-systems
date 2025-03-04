@@ -19,6 +19,196 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::process::ExitCode;
 
+pub mod merkle_tree {
+    use ark_ff::Zero;
+    use kimchi::plonk_sponge::FrSponge as _;
+    use mina_curves::pasta::Fp;
+    use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFrSponge};
+
+    pub struct MerkleTree {
+        pub leaf_hashes: Vec<Fp>,
+        pub tree_hashes: Vec<Fp>, // Internal nodes only — no direct leaf hashes
+    }
+
+    impl MerkleTree {
+        /// Build the Merkle tree.
+        pub fn new(leaf_hashes: Vec<Fp>) -> Self {
+            let leaf_count = leaf_hashes.len();
+            let pow2_len = leaf_count.next_power_of_two();
+            let tree_depth = pow2_len.trailing_zeros() as usize;
+            let internal_node_count = pow2_len - 1; // Internal nodes count
+
+            let mut tree_hashes = vec![Fp::zero(); internal_node_count];
+
+            let hash = |left: Fp, right: Fp| {
+                let mut sponge = DefaultFrSponge::<Fp, PlonkSpongeConstantsKimchi>::new(
+                    mina_poseidon::pasta::fp_kimchi::static_params(),
+                );
+                sponge.absorb(&left);
+                sponge.absorb(&right);
+                sponge.digest()
+            };
+
+            // Pad leaf hashes to power of 2
+            let mut padded_leaves = leaf_hashes.clone();
+            padded_leaves.resize(pow2_len, Fp::zero());
+
+            // Compute hashes for internal nodes, bottom-up
+            for level in (0..tree_depth).rev() {
+                let nodes_at_level = 1 << level;
+                let level_start = nodes_at_level - 1;
+
+                for i in 0..nodes_at_level {
+                    let left_index = 2 * i;
+                    let right_index = left_index + 1;
+
+                    let left_hash = if level == tree_depth - 1 {
+                        padded_leaves[left_index]
+                    } else {
+                        tree_hashes[2 * level_start + left_index + 1]
+                    };
+
+                    let right_hash = if level == tree_depth - 1 {
+                        padded_leaves[right_index]
+                    } else {
+                        tree_hashes[2 * level_start + right_index + 1]
+                    };
+
+                    tree_hashes[level_start + i] = hash(left_hash, right_hash);
+                }
+            }
+
+            MerkleTree {
+                leaf_hashes,
+                tree_hashes,
+            }
+        }
+
+        /// Returns the root hash.
+        pub fn root_hash(&self) -> Fp {
+            if self.tree_hashes.is_empty() {
+                Fp::zero()
+            } else {
+                self.tree_hashes[0]
+            }
+        }
+
+        /// Returns the Merkle path for a given leaf index.
+        pub fn merkle_path(&self, leaf_index: usize) -> Vec<(Fp, bool)> {
+            let leaf_count = self.leaf_hashes.len();
+            let pow2_len = leaf_count.next_power_of_two();
+            let tree_depth = pow2_len.trailing_zeros() as usize;
+
+            let mut path = Vec::new();
+            let mut current_index = leaf_index;
+            let mut parent_index = (pow2_len + current_index) / 2 - 1; // Parent in tree_hashes
+
+            for level in 0..tree_depth {
+                let is_left = current_index % 2 != 0;
+                let sibling_index = if is_left {
+                    current_index - 1
+                } else {
+                    current_index + 1
+                };
+
+                let sibling_hash = if level == tree_depth - 1 {
+                    // Sibling at leaf level
+                    if sibling_index < self.leaf_hashes.len() {
+                        self.leaf_hashes[sibling_index]
+                    } else {
+                        Fp::zero()
+                    }
+                } else {
+                    // Internal node
+                    let level_start = (1 << level) - 1;
+                    self.tree_hashes[level_start + sibling_index / 2]
+                };
+
+                path.push((sibling_hash, is_left));
+
+                // Move up the tree
+                current_index /= 2;
+                if level < tree_depth - 1 {
+                    parent_index = (parent_index - 1) / 2;
+                }
+            }
+
+            path
+        }
+
+        /// Verifies a leaf hash against a root hash using a Merkle path.
+        pub fn verify_merkle_path(leaf: Fp, path: &[(Fp, bool)], root: Fp) -> bool {
+            let hash = |left: Fp, right: Fp| {
+                let mut sponge = DefaultFrSponge::<Fp, PlonkSpongeConstantsKimchi>::new(
+                    mina_poseidon::pasta::fp_kimchi::static_params(),
+                );
+                sponge.absorb(&left);
+                sponge.absorb(&right);
+                sponge.digest()
+            };
+
+            let mut computed = leaf;
+            for (sibling, is_left) in path.iter() {
+                if *is_left {
+                    computed = hash(*sibling, computed);
+                } else {
+                    computed = hash(computed, *sibling);
+                }
+            }
+
+            computed == root
+        }
+
+        /// Update a leaf hash and recompute the tree up to the root.
+        pub fn update_leaf_and_recompute(&mut self, leaf_index: usize, new_leaf_hash: Fp) {
+            self.leaf_hashes[leaf_index] = new_leaf_hash;
+
+            let leaf_count = self.leaf_hashes.len();
+            let pow2_len = leaf_count.next_power_of_two();
+            let tree_depth = pow2_len.trailing_zeros() as usize;
+
+            let hash = |left: Fp, right: Fp| {
+                let mut sponge = DefaultFrSponge::<Fp, PlonkSpongeConstantsKimchi>::new(
+                    mina_poseidon::pasta::fp_kimchi::static_params(),
+                );
+                sponge.absorb(&left);
+                sponge.absorb(&right);
+                sponge.digest()
+            };
+
+            let mut current_index = leaf_index;
+            let mut parent_index = (pow2_len + current_index) / 2 - 1;
+
+            for level in 0..tree_depth {
+                let left_child_hash = if current_index % 2 == 0 {
+                    self.leaf_hashes[current_index]
+                } else {
+                    self.leaf_hashes[current_index - 1]
+                };
+
+                let right_child_hash = if current_index % 2 == 0 {
+                    if current_index + 1 < self.leaf_hashes.len() {
+                        self.leaf_hashes[current_index + 1]
+                    } else {
+                        Fp::zero()
+                    }
+                } else {
+                    self.leaf_hashes[current_index]
+                };
+
+                let parent_hash = hash(left_child_hash, right_child_hash);
+                self.tree_hashes[parent_index] = parent_hash;
+
+                // Move up
+                current_index /= 2;
+                if level < tree_depth - 1 {
+                    parent_index = (parent_index - 1) / 2;
+                }
+            }
+        }
+    }
+}
+
 // To run:
 // * open a new terminal window, start the network daemon
 // ```
