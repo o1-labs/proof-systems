@@ -245,18 +245,20 @@ pub struct CommitmentView {
 }
 
 impl CommitmentView {
+    fn hash_vesta(commitment: Vesta) -> Fp {
+        let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+            mina_poseidon::pasta::fq_kimchi::static_params(),
+        );
+        fq_sponge.absorb_g(&[commitment]);
+        fq_sponge.digest()
+    }
+
     pub fn new(affine_committed_chunks: Vec<Vesta>) -> Self {
         let merkle_tree = {
             let merkle_tree_leaf_hashes = affine_committed_chunks
                 .iter()
-                .map(|commitment| {
-                    let mut fq_sponge =
-                        DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
-                            mina_poseidon::pasta::fq_kimchi::static_params(),
-                        );
-                    fq_sponge.absorb_g(&[*commitment]);
-                    fq_sponge.digest()
-                })
+                .cloned()
+                .map(Self::hash_vesta)
                 .collect();
             merkle_tree::MerkleTree::new(merkle_tree_leaf_hashes)
         };
@@ -265,6 +267,12 @@ impl CommitmentView {
             merkle_tree,
             affine_committed_chunks,
         }
+    }
+
+    pub fn update(&mut self, index: usize, new_commitment: Vesta) {
+        self.affine_committed_chunks[index as usize] = new_commitment;
+        let new_hash = Self::hash_vesta(new_commitment);
+        self.merkle_tree.update_leaf_and_recompute(index, new_hash);
     }
 }
 
@@ -1044,12 +1052,14 @@ pub mod state_provider {
                         for (idx, value) in addresses.iter().zip(values.iter()) {
                             prover_inputs.data[SRS_SIZE * region as usize + *idx as usize] = *value;
                         }
-                        prover_inputs.commitment_view.affine_committed_chunks[region as usize] =
+                        prover_inputs.commitment_view.update(
+                            region as usize,
                             (prover_inputs.commitment_view.affine_committed_chunks
                                 [region as usize]
                                 + data_commitment
                                 - old_data_commitment)
-                                .into();
+                                .into(),
+                        );
                         respond(Ok(WriteResponse::Success));
                         super::rpc_unit(
                             network_address.clone(),
