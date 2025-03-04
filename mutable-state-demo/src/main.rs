@@ -711,6 +711,7 @@ pub mod state_provider {
 
     use super::{network, prove, ProverInputs, VerifyContext, SRS_SIZE};
     use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
+    use ark_ff::Zero;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
     use mina_curves::pasta::{Fp, ProjectiveVesta, Vesta};
     use poly_commitment::SRS;
@@ -825,7 +826,7 @@ pub mod state_provider {
         let basis = basis.as_slice();
 
         let mut data_source = match mmap_file {
-            None => DataSource::Data((0..1 << 20).map(|i| Fp::from(i)).collect()),
+            None => DataSource::Data(vec![Fp::zero(); 1 << 20]),
             Some(mmap_file) => {
                 let file = {
                     OpenOptions::new()
