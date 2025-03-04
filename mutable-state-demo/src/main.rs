@@ -689,13 +689,27 @@ pub mod network {
                     query_commitment,
                     precondition_commitment,
                     data_commitment,
-                    merkle_path: _,
-                    merkle_directions: _,
+                    merkle_path,
+                    merkle_directions,
                 }) => {
                     println!(
                         "Saw write failure for {region}:\n{:?}\n{:?}\n{:?}",
                         query_commitment, precondition_commitment, data_commitment,
                     );
+                    let merkle_path: Vec<_> = merkle_path
+                        .into_iter()
+                        .zip(merkle_directions.into_iter())
+                        .collect();
+                    let leaf_hash =
+                        CommitmentView::hash_vesta(state_replicator_commitments[region as usize]);
+                    let is_valid = MerkleTree::verify_merkle_path(
+                        leaf_hash,
+                        &merkle_path,
+                        state_replicator_root_hash,
+                    );
+                    if !is_valid {
+                        println!("SLASH");
+                    }
                 }
                 Message::StorageInitialized { size, merkle_root } => {
                     let predicted_state_replicator_commitments =
