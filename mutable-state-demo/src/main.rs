@@ -127,7 +127,7 @@ pub mod merkle_tree {
                 } else {
                     // Internal node
                     let level_start = (1 << (level + 1)) - 1;
-                    self.tree_hashes[level_start + sibling_index / 2]
+                    self.tree_hashes[level_start + sibling_index]
                 };
 
                 path.push((sibling_hash, is_left));
@@ -166,33 +166,33 @@ pub mod merkle_tree {
             let tree_depth = pow2_len.trailing_zeros() as usize;
 
             let mut current_index = leaf_index;
-            let mut parent_index = (pow2_len + current_index) / 2 - 1;
 
-            for level in 0..tree_depth {
-                let left_child_hash = if current_index % 2 == 0 {
-                    self.leaf_hashes[current_index]
-                } else {
-                    self.leaf_hashes[current_index - 1]
-                };
+            for level in (0..tree_depth).rev() {
+                let left_index = (current_index / 2) * 2;
+                let right_index = left_index + 1;
 
-                let right_child_hash = if current_index % 2 == 0 {
-                    if current_index + 1 < self.leaf_hashes.len() {
-                        self.leaf_hashes[current_index + 1]
+                let (left_hash, right_hash) = if level == tree_depth - 1 {
+                    let left_hash = self.leaf_hashes[left_index];
+                    let right_hash = if right_index < self.leaf_hashes.len() {
+                        self.leaf_hashes[right_index]
                     } else {
                         Fp::zero()
-                    }
+                    };
+                    (left_hash, right_hash)
                 } else {
-                    self.leaf_hashes[current_index]
+                    let level_start = (1 << (level + 1)) - 1;
+                    (
+                        self.tree_hashes[level_start + left_index],
+                        self.tree_hashes[level_start + right_index],
+                    )
                 };
 
-                let parent_hash = Self::hash(left_child_hash, right_child_hash);
-                self.tree_hashes[parent_index] = parent_hash;
-
-                // Move up
+                // Move up the tree
                 current_index /= 2;
-                if level < tree_depth - 1 {
-                    parent_index = (parent_index - 1) / 2;
-                }
+
+                let level_start = (1 << level) - 1;
+
+                self.tree_hashes[level_start + current_index] = Self::hash(left_hash, right_hash);
             }
         }
     }
