@@ -276,6 +276,10 @@ pub struct Proof {
     pub randomized_data_commitment: Vesta,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub randomized_data_eval: Fp,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub query_commitment: Vesta,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub query_eval: Fp,
     pub opening_proof: OpeningProof<Vesta>,
 }
 
@@ -286,6 +290,8 @@ pub fn fast_verify(context: &VerifyContext, proof: &Proof) -> bool {
         evaluation_point,
         randomized_data_commitment,
         randomized_data_eval,
+        query_commitment,
+        query_eval,
         opening_proof,
     } = proof;
     let rng = &mut rand::rngs::OsRng;
@@ -294,6 +300,7 @@ pub fn fast_verify(context: &VerifyContext, proof: &Proof) -> bool {
             mina_poseidon::pasta::fq_kimchi::static_params(),
         );
     opening_proof_sponge.absorb_fr(&[*randomized_data_eval]);
+    opening_proof_sponge.absorb_fr(&[*query_eval]);
 
     srs.verify(
         group_map,
@@ -307,7 +314,13 @@ pub fn fast_verify(context: &VerifyContext, proof: &Proof) -> bool {
                     chunks: vec![*randomized_data_commitment],
                 },
                 evaluations: vec![vec![*randomized_data_eval]],
-            }],
+            },Evaluation {
+                commitment: PolyComm {
+                    chunks: vec![*query_commitment],
+                },
+                evaluations: vec![vec![*query_eval]],
+            }
+            ],
             opening: opening_proof,
             combined_inner_product: *randomized_data_eval,
         }],
@@ -321,6 +334,8 @@ pub fn verify(context: &VerifyContext, commitments: &[Vesta], proof: &Proof) -> 
         evaluation_point: _,
         randomized_data_commitment,
         randomized_data_eval: _,
+        query_commitment: _,
+        query_eval: _,
         opening_proof: _,
     } = proof;
 
@@ -421,10 +436,13 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
         initial
     };
 
+    let query_commitment = srs.h;
+
     let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
         mina_poseidon::pasta::fq_kimchi::static_params(),
     );
     fq_sponge.absorb_g(&[randomized_data_commitment]);
+    fq_sponge.absorb_g(&[query_commitment]);
     let evaluation_point = fq_sponge.squeeze(2);
 
     // TODO: Cache this somewhere
@@ -438,7 +456,13 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
         DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
             mina_poseidon::pasta::fq_kimchi::static_params(),
         );
+
+    let query_poly = ark_poly::univariate::DensePolynomial::zero();
+
+    let query_eval = Fp::zero();
+
     opening_proof_sponge.absorb_fr(&[randomized_data_eval]);
+    opening_proof_sponge.absorb_fr(&[query_eval]);
 
     let opening_proof = srs.open(
         &group_map,
@@ -449,10 +473,18 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
             PolyComm {
                 chunks: vec![blinder_sum],
             },
-        )],
+        ),(
+            DensePolynomialOrEvaluations::<_, Radix2EvaluationDomain<_>>::DensePolynomial(
+                &query_poly,
+            ),
+            PolyComm {
+                chunks: vec![Fp::one()],
+            },
+        )
+        ],
         &[evaluation_point],
-        Fp::one(), // Single polynomial, so we don't care
-        Fp::one(), // Single polynomial, so we don't care
+        Fp::one(), // TODO
+        Fp::one(), // Single evaluation point, so we don't care
         opening_proof_sponge.clone(),
         rng,
     );
@@ -462,6 +494,8 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
         evaluation_point,
         randomized_data_commitment,
         randomized_data_eval,
+        query_commitment,
+        query_eval,
         opening_proof,
     }
 }
