@@ -495,7 +495,8 @@ pub mod network {
         }
     }
 
-    use super::{merkle_tree::MerkleTree, Proof, VerifyContext};
+    use super::{merkle_tree::MerkleTree, CommitmentView, Proof, VerifyContext};
+    use ark_ec::CurveGroup;
     use ark_ff::Zero;
     use mina_curves::pasta::{Fp, Vesta};
     use serde::{Deserialize, Serialize};
@@ -576,7 +577,7 @@ pub mod network {
         WriteIntent(WriteIntent),
         WriteResult(WriteResult),
         StorageInitialized {
-            depth: u32,
+            size: u64,
             #[serde_as(as = "o1_utils::serialization::SerdeAs")]
             merkle_root: Fp,
         },
@@ -592,6 +593,7 @@ pub mod network {
         println!("Set up verify context");
 
         let mut state_replicator_root_hash = Fp::zero();
+        let mut state_replicator_commitments = vec![];
 
         let listener = TcpListener::bind(address).unwrap();
         for stream in listener.incoming() {
@@ -610,6 +612,9 @@ pub mod network {
                         duration.as_micros(),
                         duration.as_nanos(),
                     );
+                    if !valid {
+                        println!("SLASH");
+                    }
                 }
                 Message::ReadIntent(ReadIntent {
                     region,
@@ -644,9 +649,20 @@ pub mod network {
                     precondition_commitment,
                     data_commitment,
                     old_data_commitment,
-                    merkle_path: _,
-                    merkle_directions: _,
+                    merkle_path,
+                    merkle_directions,
                 }) => {
+                    let merkle_path: Vec<_> = merkle_path
+                        .into_iter()
+                        .zip(merkle_directions.into_iter())
+                        .collect();
+                    let leaf_hash =
+                        CommitmentView::hash_vesta(state_replicator_commitments[region as usize]);
+                    let is_valid = MerkleTree::verify_merkle_path(
+                        leaf_hash,
+                        &merkle_path,
+                        state_replicator_root_hash,
+                    );
                     println!(
                         "Saw write response for {region}:\n{:?}\n{:?}\n{:?}\n{:?}",
                         query_commitment,
@@ -654,6 +670,19 @@ pub mod network {
                         data_commitment,
                         old_data_commitment,
                     );
+                    if is_valid {
+                        let new_commitment = (state_replicator_commitments[region as usize]
+                            + data_commitment
+                            - old_data_commitment)
+                            .into_affine();
+                        state_replicator_commitments[region as usize] = new_commitment;
+                        let new_leaf_hash = CommitmentView::hash_vesta(new_commitment);
+                        state_replicator_root_hash =
+                            MerkleTree::compute_merkle_root(new_leaf_hash, &merkle_path);
+                        println!("New root hash:\n{state_replicator_root_hash}");
+                    } else {
+                        println!("SLASH");
+                    }
                 }
                 Message::WriteResult(WriteResult::Failure {
                     region,
@@ -668,25 +697,28 @@ pub mod network {
                         query_commitment, precondition_commitment, data_commitment,
                     );
                 }
-                Message::StorageInitialized { depth, merkle_root } => {
+                Message::StorageInitialized { size, merkle_root } => {
+                    let predicted_state_replicator_commitments =
+                        vec![verify_context.srs.h; size as usize];
+                    // TODO: This can be *way* faster, but this is easy.
                     let expected_merkle_root = {
-                        let mut computed_depth = 0;
-                        let mut root = Fp::zero();
-                        while computed_depth < depth {
-                            computed_depth += 1;
-                            let last_root = root;
-                            root = MerkleTree::hash(last_root, last_root);
-                        }
-                        root
+                        let merkle_tree_leaf_hashes = predicted_state_replicator_commitments
+                            .iter()
+                            .cloned()
+                            .map(CommitmentView::hash_vesta)
+                            .collect();
+                        MerkleTree::new(merkle_tree_leaf_hashes).root_hash()
                     };
                     let is_valid = expected_merkle_root == merkle_root;
-                    if is_valid {
-                        state_replicator_root_hash = merkle_root
-                    }
                     println!(
-                        "Saw new memory region of depth {depth}. Merkle root valid? {is_valid}"
+                        "Saw new memory region of size {size}. Merkle root is valid? {is_valid} Root:\n{merkle_root}"
                     );
-                    println!("{merkle_root}");
+                    if is_valid {
+                        state_replicator_commitments = predicted_state_replicator_commitments;
+                        state_replicator_root_hash = merkle_root;
+                    } else {
+                        println!("SLASH");
+                    }
                 }
             });
         }
@@ -893,7 +925,7 @@ pub mod state_provider {
         super::rpc_unit(
             network_address.clone(),
             network::Message::StorageInitialized {
-                depth: prover_inputs.commitment_view.merkle_tree.depth(),
+                size: prover_inputs.commitment_view.merkle_tree.leaf_hashes.len() as u64,
                 merkle_root: prover_inputs.commitment_view.merkle_tree.root_hash(),
             },
         );
