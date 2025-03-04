@@ -507,7 +507,7 @@ pub mod network {
     }
 
     use super::{Proof, VerifyContext};
-    use mina_curves::pasta::Vesta;
+    use mina_curves::pasta::{Fp, Vesta};
     use serde::{Deserialize, Serialize};
     use serde_with::serde_as;
     use std::net::TcpListener;
@@ -556,6 +556,10 @@ pub mod network {
             old_data_commitment: Vesta,
             #[serde_as(as = "o1_utils::serialization::SerdeAs")]
             data_commitment: Vesta,
+            #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+            merkle_path: Vec<Fp>,
+            // FIXME: This is necessary because serde_as doesn't like the tuple inside the vec
+            merkle_directions: Vec<bool>,
         },
         Failure {
             region: u64,
@@ -565,6 +569,10 @@ pub mod network {
             precondition_commitment: Vesta,
             #[serde_as(as = "o1_utils::serialization::SerdeAs")]
             data_commitment: Vesta,
+            #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+            merkle_path: Vec<Fp>,
+            // FIXME: This is necessary because serde_as doesn't like the tuple inside the vec
+            merkle_directions: Vec<bool>,
         },
     }
 
@@ -638,6 +646,8 @@ pub mod network {
                     precondition_commitment,
                     data_commitment,
                     old_data_commitment,
+                    merkle_path: _,
+                    merkle_directions: _,
                 }) => {
                     println!(
                         "Saw write response for {region}:\n{:?}\n{:?}\n{:?}\n{:?}",
@@ -652,6 +662,8 @@ pub mod network {
                     query_commitment,
                     precondition_commitment,
                     data_commitment,
+                    merkle_path: _,
+                    merkle_directions: _,
                 }) => {
                     println!(
                         "Saw write failure for {region}:\n{:?}\n{:?}\n{:?}",
@@ -1032,6 +1044,12 @@ pub mod state_provider {
                                 + srs.h
                         }
                         .into_affine();
+                        let merkle_path = prover_inputs
+                            .commitment_view
+                            .merkle_tree
+                            .merkle_path(region as usize);
+                        let (merkle_path, merkle_directions): (Vec<_>, Vec<_>) =
+                            merkle_path.into_iter().unzip();
                         if precondition_commitment.is_some()
                             && precondition_commitment.unwrap() != old_data_commitment
                         {
@@ -1045,6 +1063,8 @@ pub mod state_provider {
                                     query_commitment,
                                     precondition_commitment: precondition_commitment.unwrap(),
                                     data_commitment,
+                                    merkle_path,
+                                    merkle_directions,
                                 }),
                             );
                             continue;
@@ -1069,6 +1089,8 @@ pub mod state_provider {
                                 precondition_commitment,
                                 data_commitment,
                                 old_data_commitment,
+                                merkle_path,
+                                merkle_directions,
                             }),
                         );
                     }
