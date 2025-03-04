@@ -601,6 +601,8 @@ pub mod network {
 
         println!("Set up verify context");
 
+        let mut state_replicator_root_hash = Fp::zero();
+
         let listener = TcpListener::bind(address).unwrap();
         for stream in listener.incoming() {
             super::rpc_handle(stream.unwrap(), |message| match message {
@@ -688,9 +690,13 @@ pub mod network {
                         root
                     };
                     let is_valid = expected_merkle_root == merkle_root;
+                    if is_valid {
+                        state_replicator_root_hash = merkle_root
+                    }
                     println!(
                         "Saw new memory region of depth {depth}. Merkle root valid? {is_valid}"
                     );
+                    println!("{merkle_root}");
                 }
             });
         }
