@@ -314,17 +314,19 @@ pub fn fast_verify(context: &VerifyContext, proof: &Proof) -> bool {
             evaluation_points: vec![evaluation_point],
             polyscale: Fp::one(),
             evalscale: Fp::one(),
-            evaluations: vec![Evaluation {
-                commitment: PolyComm {
-                    chunks: vec![*randomized_data_commitment],
+            evaluations: vec![
+                Evaluation {
+                    commitment: PolyComm {
+                        chunks: vec![*randomized_data_commitment],
+                    },
+                    evaluations: vec![vec![*randomized_data_eval]],
                 },
-                evaluations: vec![vec![*randomized_data_eval]],
-            },Evaluation {
-                commitment: PolyComm {
-                    chunks: vec![*query_commitment],
+                Evaluation {
+                    commitment: PolyComm {
+                        chunks: vec![*query_commitment],
+                    },
+                    evaluations: vec![vec![*query_eval]],
                 },
-                evaluations: vec![vec![*query_eval]],
-            }
             ],
             opening: opening_proof,
             combined_inner_product: *randomized_data_eval,
@@ -470,21 +472,23 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
 
     let opening_proof = srs.open(
         &group_map,
-        &[(
-            DensePolynomialOrEvaluations::<_, Radix2EvaluationDomain<_>>::DensePolynomial(
-                &randomized_data_poly,
+        &[
+            (
+                DensePolynomialOrEvaluations::<_, Radix2EvaluationDomain<_>>::DensePolynomial(
+                    &randomized_data_poly,
+                ),
+                PolyComm {
+                    chunks: vec![blinder_sum],
+                },
             ),
-            PolyComm {
-                chunks: vec![blinder_sum],
-            },
-        ),(
-            DensePolynomialOrEvaluations::<_, Radix2EvaluationDomain<_>>::DensePolynomial(
-                &query_poly,
+            (
+                DensePolynomialOrEvaluations::<_, Radix2EvaluationDomain<_>>::DensePolynomial(
+                    &query_poly,
+                ),
+                PolyComm {
+                    chunks: vec![Fp::one()],
+                },
             ),
-            PolyComm {
-                chunks: vec![Fp::one()],
-            },
-        )
         ],
         &[evaluation_point],
         Fp::one(), // TODO
