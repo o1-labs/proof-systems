@@ -273,7 +273,7 @@ pub struct Proof {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub evaluation_point: Fp,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub final_commitment: Vesta,
+    pub randomized_data_commitment: Vesta,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub randomized_data_eval: Fp,
     pub opening_proof: OpeningProof<Vesta>,
@@ -284,7 +284,7 @@ pub fn fast_verify(context: &VerifyContext, proof: &Proof) -> bool {
     let Proof {
         challenge: _,
         evaluation_point,
-        final_commitment,
+        randomized_data_commitment,
         randomized_data_eval,
         opening_proof,
     } = proof;
@@ -304,7 +304,7 @@ pub fn fast_verify(context: &VerifyContext, proof: &Proof) -> bool {
             evalscale: Fp::one(),
             evaluations: vec![Evaluation {
                 commitment: PolyComm {
-                    chunks: vec![*final_commitment],
+                    chunks: vec![*randomized_data_commitment],
                 },
                 evaluations: vec![vec![*randomized_data_eval]],
             }],
@@ -319,7 +319,7 @@ pub fn verify(context: &VerifyContext, commitments: &[Vesta], proof: &Proof) -> 
     let Proof {
         challenge,
         evaluation_point: _,
-        final_commitment,
+        randomized_data_commitment,
         randomized_data_eval: _,
         opening_proof: _,
     } = proof;
@@ -333,10 +333,11 @@ pub fn verify(context: &VerifyContext, commitments: &[Vesta], proof: &Proof) -> 
         })
         .collect::<Vec<_>>();
 
-    let final_commitment_expected =
+    let randomized_data_commitment_expected =
         ProjectiveVesta::msm_bigint(commitments, powers.as_slice()).into_affine();
 
-    *final_commitment == final_commitment_expected && fast_verify(context, proof)
+    *randomized_data_commitment == randomized_data_commitment_expected
+        && fast_verify(context, proof)
 }
 
 pub struct ProverInputs<'a> {
@@ -401,7 +402,7 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
         })
         .collect::<Vec<_>>();
 
-    let final_commitment =
+    let randomized_data_commitment =
         ProjectiveVesta::msm_bigint(affine_committed_chunks.as_slice(), powers.as_slice())
             .into_affine();
 
@@ -423,7 +424,7 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
     let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
         mina_poseidon::pasta::fq_kimchi::static_params(),
     );
-    fq_sponge.absorb_g(&[final_commitment]);
+    fq_sponge.absorb_g(&[randomized_data_commitment]);
     let evaluation_point = fq_sponge.squeeze(2);
 
     // TODO: Cache this somewhere
@@ -459,7 +460,7 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
     Proof {
         challenge,
         evaluation_point,
-        final_commitment,
+        randomized_data_commitment,
         randomized_data_eval,
         opening_proof,
     }
