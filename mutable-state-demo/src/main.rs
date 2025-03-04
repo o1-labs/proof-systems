@@ -315,18 +315,20 @@ impl<'a> ProverInputs<'a> {
 
         let affine_committed_chunks = ProjectiveVesta::normalize_batch(committed_chunks.as_slice());
 
-        let merkle_tree_leaf_hashes = affine_committed_chunks
-            .iter()
-            .map(|commitment| {
-                let mut fq_sponge =
-                    DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
-                        mina_poseidon::pasta::fq_kimchi::static_params(),
-                    );
-                fq_sponge.absorb_g(&[*commitment]);
-                fq_sponge.digest()
-            })
-            .collect();
-        let merkle_tree = merkle_tree::MerkleTree::new(merkle_tree_leaf_hashes);
+        let merkle_tree = {
+            let merkle_tree_leaf_hashes = affine_committed_chunks
+                .iter()
+                .map(|commitment| {
+                    let mut fq_sponge =
+                        DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+                            mina_poseidon::pasta::fq_kimchi::static_params(),
+                        );
+                    fq_sponge.absorb_g(&[*commitment]);
+                    fq_sponge.digest()
+                })
+                .collect();
+            merkle_tree::MerkleTree::new(merkle_tree_leaf_hashes)
+        };
 
         ProverInputs {
             merkle_tree,
