@@ -244,6 +244,30 @@ pub struct CommitmentView {
     pub affine_committed_chunks: Vec<Vesta>,
 }
 
+impl CommitmentView {
+    pub fn new(affine_committed_chunks: Vec<Vesta>) -> Self {
+        let merkle_tree = {
+            let merkle_tree_leaf_hashes = affine_committed_chunks
+                .iter()
+                .map(|commitment| {
+                    let mut fq_sponge =
+                        DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+                            mina_poseidon::pasta::fq_kimchi::static_params(),
+                        );
+                    fq_sponge.absorb_g(&[*commitment]);
+                    fq_sponge.digest()
+                })
+                .collect();
+            merkle_tree::MerkleTree::new(merkle_tree_leaf_hashes)
+        };
+
+        CommitmentView {
+            merkle_tree,
+            affine_committed_chunks,
+        }
+    }
+}
+
 #[serde_as]
 #[derive(Serialize, Deserialize)]
 pub struct Proof {
@@ -318,27 +342,10 @@ impl<'a> ProverInputs<'a> {
             .collect::<Vec<_>>();
 
         let affine_committed_chunks = ProjectiveVesta::normalize_batch(committed_chunks.as_slice());
-
-        let merkle_tree = {
-            let merkle_tree_leaf_hashes = affine_committed_chunks
-                .iter()
-                .map(|commitment| {
-                    let mut fq_sponge =
-                        DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
-                            mina_poseidon::pasta::fq_kimchi::static_params(),
-                        );
-                    fq_sponge.absorb_g(&[*commitment]);
-                    fq_sponge.digest()
-                })
-                .collect();
-            merkle_tree::MerkleTree::new(merkle_tree_leaf_hashes)
-        };
+        let commitment_view = CommitmentView::new(affine_committed_chunks);
 
         ProverInputs {
-            commitment_view: CommitmentView {
-                affine_committed_chunks,
-                merkle_tree,
-            },
+            commitment_view,
             data,
         }
     }
