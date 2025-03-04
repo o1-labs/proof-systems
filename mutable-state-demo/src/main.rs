@@ -287,7 +287,7 @@ pub fn verify(context: &VerifyContext, proof: &Proof) -> bool {
 }
 
 pub struct ProverInputs<'a> {
-    pub challenge: Fp,
+    pub merkle_tree: merkle_tree::MerkleTree,
     pub data: &'a mut [Fp],
     pub affine_committed_chunks: Vec<Vesta>,
 }
@@ -315,16 +315,21 @@ impl<'a> ProverInputs<'a> {
 
         let affine_committed_chunks = ProjectiveVesta::normalize_batch(committed_chunks.as_slice());
 
-        let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
-            mina_poseidon::pasta::fq_kimchi::static_params(),
-        );
-        affine_committed_chunks.iter().for_each(|commitment| {
-            fq_sponge.absorb_g(&[*commitment]);
-        });
-        let challenge = fq_sponge.squeeze(2);
+        let merkle_tree_leaf_hashes = affine_committed_chunks
+            .iter()
+            .map(|commitment| {
+                let mut fq_sponge =
+                    DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+                        mina_poseidon::pasta::fq_kimchi::static_params(),
+                    );
+                fq_sponge.absorb_g(&[*commitment]);
+                fq_sponge.digest()
+            })
+            .collect();
+        let merkle_tree = merkle_tree::MerkleTree::new(merkle_tree_leaf_hashes);
 
         ProverInputs {
-            challenge,
+            merkle_tree,
             data,
             affine_committed_chunks,
         }
@@ -335,12 +340,14 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
     let VerifyContext { srs, group_map } = context;
     let rng = &mut rand::rngs::OsRng;
     let ProverInputs {
-        challenge,
+        merkle_tree,
         data,
         affine_committed_chunks,
     } = inputs;
 
     let mut blinder_sum = Fp::zero();
+
+    let challenge = merkle_tree.root_hash();
 
     let powers = affine_committed_chunks
         .iter()
