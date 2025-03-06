@@ -103,7 +103,7 @@ where
         &mut self,
         srs: &SRS<E1>,
         domain: EvaluationDomains<E1::ScalarField>,
-        witness: Vec<Vec<BigInt>>,
+        witness: &[Vec<BigInt>],
     ) {
         let comms: Vec<PolyComm<E1>> = witness
             .par_iter()
@@ -112,7 +112,7 @@ where
                     .par_iter()
                     .map(|x| E1::ScalarField::from_biguint(&x.to_biguint().unwrap()).unwrap())
                     .collect();
-                let evals = Evaluations::from_vec_and_domain(evals.to_vec(), domain.d1);
+                let evals = Evaluations::from_vec_and_domain(evals, domain.d1);
                 srs.commit_evaluations_non_hiding(domain.d1, &evals)
             })
             .collect();
@@ -203,7 +203,7 @@ where
     /// acc_(q, n + 1) = acc_(q, n) * chal w
     /// ```
     /// where acc and w are vectors of the same size.
-    pub fn accumulate_program_state(&mut self, chal: BigInt, witness: Vec<Vec<BigInt>>) {
+    pub fn accumulate_program_state(&mut self, chal: BigInt, witness: &[Vec<BigInt>]) {
         let modulus: BigInt = E1::ScalarField::modulus_biguint().into();
         self.accumulated_program_state = self
             .accumulated_program_state
@@ -1071,7 +1071,7 @@ where
             self.program_e1.commit_state(
                 &self.indexed_relation.srs_e1,
                 self.indexed_relation.domain_fp,
-                self.witness.clone(),
+                &self.witness,
             )
         } else {
             assert_eq!(
@@ -1084,7 +1084,7 @@ where
             self.program_e2.commit_state(
                 &self.indexed_relation.srs_e2,
                 self.indexed_relation.domain_fq,
-                self.witness.clone(),
+                &self.witness,
             )
         }
     }
@@ -1184,10 +1184,10 @@ where
 
         if self.current_iteration % 2 == 0 {
             self.program_e1
-                .accumulate_program_state(chal, self.witness.clone());
+                .accumulate_program_state(chal, &self.witness);
         } else {
             self.program_e2
-                .accumulate_program_state(chal, self.witness.clone());
+                .accumulate_program_state(chal, &self.witness);
         }
     }
 
