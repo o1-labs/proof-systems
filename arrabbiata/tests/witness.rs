@@ -86,7 +86,7 @@ fn test_unit_witness_poseidon_with_absorb_one_full_hash() {
             .map(|x| Fp::from_biguint(&x.to_biguint().unwrap()).unwrap())
             .collect::<Vec<_>>();
         // Absorbing the first commitment
-        let (pt_x, pt_y) = env.accumulated_committed_state_e2[0]
+        let (pt_x, pt_y) = env.program_e2.accumulated_committed_state[0]
             .get_first_chunk()
             .to_coordinates()
             .unwrap();
@@ -126,8 +126,8 @@ fn test_unit_witness_elliptic_curve_addition() {
     // Pallas, whose scalar field is Fp.
     assert_eq!(env.current_iteration, 0);
     let (exp_x3, exp_y3) = {
-        let res: Pallas = (env.accumulated_committed_state_e2[0].get_first_chunk()
-            + env.previous_committed_state_e2[0].get_first_chunk())
+        let res: Pallas = (env.program_e2.accumulated_committed_state[0].get_first_chunk()
+            + env.program_e2.previous_committed_state[0].get_first_chunk())
         .into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
@@ -146,8 +146,8 @@ fn test_unit_witness_elliptic_curve_addition() {
 
     assert_eq!(env.current_iteration, 1);
     let (exp_x3, exp_y3) = {
-        let res: Vesta = (env.accumulated_committed_state_e1[0].get_first_chunk()
-            + env.previous_committed_state_e1[0].get_first_chunk())
+        let res: Vesta = (env.program_e1.accumulated_committed_state[0].get_first_chunk()
+            + env.program_e1.previous_committed_state[0].get_first_chunk())
         .into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
@@ -166,8 +166,8 @@ fn test_unit_witness_elliptic_curve_addition() {
 
     assert_eq!(env.current_iteration, 2);
     let (exp_x3, exp_y3) = {
-        let res: Pallas = (env.accumulated_committed_state_e2[0].get_first_chunk()
-            + env.previous_committed_state_e2[0].get_first_chunk())
+        let res: Pallas = (env.program_e2.accumulated_committed_state[0].get_first_chunk()
+            + env.program_e2.previous_committed_state[0].get_first_chunk())
         .into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
@@ -229,7 +229,7 @@ where
         let x = Fq::rand(rng);
         Pallas::generator().mul_bigint(x.into_bigint()).into()
     };
-    env.previous_committed_state_e2[0] = PolyComm::new(vec![p1]);
+    env.program_e2.previous_committed_state[0] = PolyComm::new(vec![p1]);
 
     // We only go up to the maximum bit field size.
     (0..MAXIMUM_FIELD_SIZE_IN_BITS).for_each(|bit_idx| {
@@ -280,9 +280,10 @@ fn test_regression_witness_structure_sizeof() {
     // It will probably be annoying to update this test every time we update the
     // structure of the environment, but it will be useful to remind us to keep
     // thining about the memory efficiency of the codebase.
+    let size = std::mem::size_of::<Env<Fp, Fq, Vesta, Pallas>>();
+    println!("Current size of Env structure: {}", size);
     assert_eq!(
-        std::mem::size_of::<Env<Fp, Fq, Vesta, Pallas>>(),
-        5888,
+        size, 5888,
         "The witness environment structure probably changed"
-    );
+    )
 }
