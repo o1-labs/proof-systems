@@ -23,6 +23,7 @@
 //! On the other side, a verifier will be instantiated with the relevant indexed
 //! relation.
 //!
+use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::{debug, info};
@@ -31,7 +32,7 @@ use mvpoly::{monomials::Sparse, MVPoly};
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::FieldHelpers;
-use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
+use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use std::{collections::HashMap, time::Instant};
 
 use crate::{
@@ -126,6 +127,8 @@ impl<
 where
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
+    <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     pub fn new(srs_log2_size: usize) -> Self {
         assert!(E1::ScalarField::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
@@ -261,9 +264,16 @@ where
                 })
         };
 
-        // FIXME: setup correctly the initial sponge state
-        let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-            std::array::from_fn(|_i| BigInt::from(42u64));
+        let mut sponge = E1::create_new_sponge();
+        selectors_comm.0.iter().for_each(|comm| {
+            E1::absorb_curve_points(&mut sponge, &comm.chunks);
+        });
+        let initial_sponge: Vec<BigInt> = sponge
+            .sponge
+            .state
+            .iter()
+            .map(|x| x.to_biguint().into())
+            .collect();
 
         Self {
             domain_fp,
@@ -275,7 +285,7 @@ where
             selectors_comm,
             constraints_fp,
             constraints_fq,
-            initial_sponge: sponge_e1,
+            initial_sponge: initial_sponge.try_into().unwrap(),
         }
     }
 
