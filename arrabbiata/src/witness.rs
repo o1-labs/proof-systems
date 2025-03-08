@@ -1135,6 +1135,12 @@ where
         self.idx_var = 0;
         self.current_instruction = VERIFIER_STARTING_INSTRUCTION;
         self.idx_values_to_absorb = 0;
+        // Challenges
+        if self.current_iteration % 2 == 0 {
+            self.program_e1.previous_challenges = self.challenges.clone();
+        } else {
+            self.program_e2.previous_challenges = self.challenges.clone();
+        }
     }
 
     /// The blinder used to commit, to avoid committing to the zero polynomial

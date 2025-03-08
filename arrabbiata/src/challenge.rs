@@ -39,6 +39,7 @@ impl Display for ChallengeTerm {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Challenges<F> {
     /// Used to aggregate the constraints describing the relation. It is used to
     /// enforce all constraints are satisfied at the same time.
