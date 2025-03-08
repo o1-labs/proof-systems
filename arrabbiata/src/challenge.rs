@@ -1,4 +1,4 @@
-use ark_ff::Zero;
+use ark_ff::{One, Zero};
 use core::{
     fmt::{Display, Formatter, Result},
     ops::{Index, IndexMut},
@@ -116,13 +116,13 @@ impl<F> IndexMut<ChallengeTerm> for Challenges<F> {
     }
 }
 
-impl<F: Zero> Default for Challenges<F> {
+impl<F: Zero + One> Default for Challenges<F> {
     fn default() -> Self {
         Self {
             constraint_combiner: F::zero(),
             beta: F::zero(),
             gamma: F::zero(),
-            constraint_homogeniser: F::zero(),
+            constraint_homogeniser: F::one(),
             relation_combiner: F::zero(),
         }
     }
