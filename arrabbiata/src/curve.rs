@@ -102,6 +102,15 @@ where
     fn squeeze_challenge(
         sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
     ) -> Self::ScalarField;
+
+    /// Return a digest of the sponge.
+    ///
+    /// This method is supposed to be an alias to `sponge.digest()`.
+    /// However, it seems that the compiler requests some additional type
+    /// constraints if there is generic code over the trait `ArrabbiataCurve`.
+    fn digest(
+        sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
+    ) -> Self::ScalarField;
 }
 
 impl ArrabbiataCurve for Affine<PallasParameters> {
@@ -157,6 +166,12 @@ impl ArrabbiataCurve for Affine<PallasParameters> {
         // This gives a 128 bits value.
         sponge.challenge()
     }
+
+    fn digest(
+        sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
+    ) -> Self::ScalarField {
+        sponge.clone().digest()
+    }
 }
 
 impl ArrabbiataCurve for Affine<VestaParameters> {
@@ -211,5 +226,11 @@ impl ArrabbiataCurve for Affine<VestaParameters> {
     ) -> Self::ScalarField {
         // This gives a 128 bits value.
         sponge.challenge()
+    }
+
+    fn digest(
+        sponge: &mut DefaultFqSponge<Self::Params, Self::SpongeConstants>,
+    ) -> Self::ScalarField {
+        sponge.clone().digest()
     }
 }
