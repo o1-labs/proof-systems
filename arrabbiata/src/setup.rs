@@ -110,11 +110,15 @@ pub struct IndexedRelation<
     pub constraints_fq: HashMap<Gadget, Vec<Sparse<Fq, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>>,
 
     /// Initial state of the sponge, containing circuit specific
-    /// information.
-    // FIXME: setup correctly with the initial transcript.
-    // The sponge must be initialized correctly with all the information
-    // related to the actual relation being accumulated/proved.
-    // Note that it must include the information of both circuits!
+    /// information. The sponge is used to perform the Fiat-Shamir
+    /// transformation.
+    ///
+    /// The initial sponge is a condensed representation of all the messages the
+    /// prover and verifier have communicated over the wires and agreed upon
+    /// before any computation happens - often called the transcript.
+    /// For instance, the commitments to the selectors are information available
+    /// to both parties before any computation happens, and therefore are part
+    /// of the initial transcript.
     pub initial_sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
 }
 
@@ -264,11 +268,31 @@ where
                 })
         };
 
-        let mut sponge = E1::create_new_sponge();
+        // The initial transcript state, i.e. all the messages the verifier and
+        // prover know before any computation, are all the commitments to the
+        // selectors for both circuit.
+        // We create an initial sponge state by instantiating a sponge on both
+        // curves and absorb the corresponding commitments.
+        // After that, we squeeze the state of one sponge to absorb in the
+        // other.
+        // Arbitrarily, we pick the sponge over second curve to output a digest,
+        // and we take the state of the sponge over the first curve.
+        let mut sponge_e1 = E1::create_new_sponge();
         selectors_comm.0.iter().for_each(|comm| {
-            E1::absorb_curve_points(&mut sponge, &comm.chunks);
+            E1::absorb_curve_points(&mut sponge_e1, &comm.chunks);
         });
-        let initial_sponge: Vec<BigInt> = sponge
+
+        let mut sponge_e2 = E2::create_new_sponge();
+        selectors_comm.1.iter().for_each(|comm| {
+            E2::absorb_curve_points(&mut sponge_e2, &comm.chunks);
+        });
+        let digest = E2::digest(&mut sponge_e2);
+        E1::absorb_fq(&mut sponge_e1, digest);
+
+        // FIXME: this value will be used to initialize both sponge state.
+        // However, there is a negligeable probability that values are not in
+        // both fields.
+        let initial_sponge: Vec<BigInt> = sponge_e1
             .sponge
             .state
             .iter()
