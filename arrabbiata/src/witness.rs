@@ -1060,7 +1060,8 @@ where
             (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
         };
 
-        // Initialize Program instances for both curves without the gadgets and constraints
+        // Initialize Program instances for both curves without the gadgets and
+        // constraints
         let program_e1 = Program::new(srs_size, blinder_e1);
         let program_e2 = Program::new(srs_size, blinder_e2);
 
