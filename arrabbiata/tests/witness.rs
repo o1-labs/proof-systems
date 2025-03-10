@@ -279,11 +279,8 @@ fn test_regression_witness_structure_sizeof() {
     // structure. It is for optimisation later.
     // It will probably be annoying to update this test every time we update the
     // structure of the environment, but it will be useful to remind us to keep
-    // thining about the memory efficiency of the codebase.
+    // thinking about the memory efficiency of the codebase.
     let size = std::mem::size_of::<Env<Fp, Fq, Vesta, Pallas>>();
     println!("Current size of Env structure: {}", size);
-    assert_eq!(
-        size, 5888,
-        "The witness environment structure probably changed"
-    )
+    assert_eq!(size, 5888, "The witness environment structure changed")
 }
