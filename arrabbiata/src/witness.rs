@@ -324,8 +324,11 @@ where
                     .unwrap();
                 E1::ScalarField::from_biguint(&v).unwrap()
             };
-            let activated_gadget = &gadgets[row];
-            let constraint_set: Vec<_> = constraints[activated_gadget].clone();
+            let activated_gadget = gadgets[row];
+            if activated_gadget == Gadget::NoOp {
+                return;
+            };
+            let constraint_set: Vec<_> = constraints[&activated_gadget].clone();
             let cross_terms = mvpoly::compute_combined_cross_terms(
                 constraint_set,
                 state_left,
