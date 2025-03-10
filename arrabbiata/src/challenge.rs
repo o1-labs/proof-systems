@@ -120,11 +120,11 @@ impl<F> IndexMut<ChallengeTerm> for Challenges<F> {
 impl<F: Zero + One> Default for Challenges<F> {
     fn default() -> Self {
         Self {
-            constraint_combiner: F::zero(),
+            constraint_combiner: F::one(),
             beta: F::zero(),
             gamma: F::zero(),
             constraint_homogeniser: F::one(),
-            relation_combiner: F::zero(),
+            relation_combiner: F::one(),
         }
     }
 }
