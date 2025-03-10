@@ -1,4 +1,4 @@
-use crate::challenge::ChallengeTerm;
+use crate::{challenge::ChallengeTerm, interpreter::Instruction};
 use kimchi::circuits::expr::{CacheId, ConstantExpr, Expr, FormattedOutput};
 use std::collections::HashMap;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
@@ -14,6 +14,16 @@ use crate::NUMBER_OF_COLUMNS;
 // depend on runtime values (e.g. in a zero-knowledge virtual machine).
 #[derive(Debug, Clone, Copy, PartialEq, EnumCountMacro, EnumIter, Eq, Hash)]
 pub enum Gadget {
+    /// A dummy gadget, doing nothing. Use for padding.
+    NoOp,
+
+    /// The gadget defining the app.
+    ///
+    /// For now, the application is considered to be a one-line computation.
+    /// However, we want to see the application as a collection of reusable
+    /// gadgets.
+    ///
+    /// See `<https://github.com/o1-labs/proof-systems/issues/3074>`
     App,
     // Elliptic curve related gadgets
     EllipticCurveAddition,
@@ -39,6 +49,21 @@ pub enum Gadget {
     ///
     /// Note that, for now, the gadget can only be used by the verifier circuit.
     PoseidonSpongeAbsorb,
+}
+
+/// Convert an instruction into the corresponding gadget.
+impl From<Instruction> for Gadget {
+    fn from(val: Instruction) -> Gadget {
+        match val {
+            Instruction::NoOp => Gadget::NoOp,
+            Instruction::PoseidonFullRound(starting_round) => {
+                Gadget::PoseidonFullRound(starting_round)
+            }
+            Instruction::PoseidonSpongeAbsorb => Gadget::PoseidonSpongeAbsorb,
+            Instruction::EllipticCurveScaling(_i_comm, _s) => Gadget::EllipticCurveScaling,
+            Instruction::EllipticCurveAddition(_i) => Gadget::EllipticCurveAddition,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -74,11 +99,15 @@ pub type E<Fp> = Expr<ConstantExpr<Fp, ChallengeTerm>, Column>;
 impl From<Gadget> for usize {
     fn from(val: Gadget) -> usize {
         match val {
-            Gadget::App => 0,
-            Gadget::EllipticCurveAddition => 1,
-            Gadget::EllipticCurveScaling => 2,
-            Gadget::PoseidonSpongeAbsorb => 3,
-            Gadget::PoseidonFullRound(starting_round) => 4 + starting_round / 5,
+            Gadget::NoOp => 0,
+            Gadget::App => 1,
+            Gadget::EllipticCurveAddition => 2,
+            Gadget::EllipticCurveScaling => 3,
+            Gadget::PoseidonSpongeAbsorb => 4,
+            Gadget::PoseidonFullRound(starting_round) => {
+                assert_eq!(starting_round % 5, 0);
+                5 + starting_round / 5
+            }
         }
     }
 }
@@ -88,6 +117,7 @@ impl FormattedOutput for Column {
     fn latex(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         match self {
             Column::Selector(sel) => match sel {
+                Gadget::NoOp => "q_noop".to_string(),
                 Gadget::App => "q_app".to_string(),
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
@@ -104,6 +134,7 @@ impl FormattedOutput for Column {
     fn text(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         match self {
             Column::Selector(sel) => match sel {
+                Gadget::NoOp => "q_noop".to_string(),
                 Gadget::App => "q_app".to_string(),
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),

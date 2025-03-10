@@ -12,17 +12,11 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::{
     challenge::{ChallengeTerm, Challenges},
-    column::{Column, Gadget},
+    column::Column,
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
-    interpreter::{Instruction, InterpreterEnv, Side},
-    setup, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_SELECTORS,
-    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    interpreter::{Instruction, InterpreterEnv, Side, VERIFIER_STARTING_INSTRUCTION},
+    setup, NUMBER_OF_COLUMNS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
-
-/// The first instruction in the verifier circuit (often shortened in "IVC" in
-/// the crate) is the Poseidon permutation. It is used to start hashing the
-/// public input.
-pub const VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::PoseidonSpongeAbsorb;
 
 /// An environment is used to contain the state of a long "running program".
 ///
@@ -108,16 +102,6 @@ pub struct Env<
     /// polynomials accessing "the next row", i.e. witness columns where we do
     /// evaluate at ζ and ζω.
     pub next_state: [BigInt; NUMBER_OF_COLUMNS],
-
-    /// Selectors to activate the gadgets.
-    /// The size of the outer vector must be equal to the number of gadgets in
-    /// the circuit.
-    /// The size of the inner vector must be equal to the number of rows in
-    /// the circuit.
-    ///
-    /// The layout columns/rows is used to avoid rebuilding the arrays per
-    /// column when committing to the witness.
-    pub selectors: Vec<Vec<bool>>,
 
     /// While folding, we must keep track of the challenges the verifier would
     /// have sent in the SNARK, and we must aggregate them.
@@ -307,13 +291,6 @@ where
             }
         }
         v
-    }
-
-    /// Activate the gadget for the current row
-    fn activate_gadget(&mut self, gadget: Gadget) {
-        // IMPROVEME: it should be called only once per row
-        let gadget = usize::from(gadget);
-        self.selectors[gadget][self.current_row] = true;
     }
 
     fn constrain_boolean(&mut self, x: Self::Variable) {
@@ -811,13 +788,6 @@ where
             (0..NUMBER_OF_COLUMNS).for_each(|_| accumulated_program_state_e2.push(vec.clone()));
         };
 
-        let mut selectors: Vec<Vec<bool>> = Vec::with_capacity(NUMBER_OF_SELECTORS);
-        {
-            let mut vec: Vec<bool> = Vec::with_capacity(srs_size);
-            (0..srs_size).for_each(|_| vec.push(false));
-            (0..NUMBER_OF_SELECTORS).for_each(|_| selectors.push(vec.clone()));
-        };
-
         // Default set to the blinders. Using double to make the EC scaling happy.
         let previous_committed_state_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
             .map(|_| PolyComm::new(vec![(blinder_e1 + blinder_e1).into()]))
@@ -872,7 +842,6 @@ where
             current_row: 0,
             state: std::array::from_fn(|_| BigInt::from(0_usize)),
             next_state: std::array::from_fn(|_| BigInt::from(0_usize)),
-            selectors,
 
             challenges,
             accumulated_challenges_e1,
@@ -1046,105 +1015,6 @@ where
 
     pub fn fetch_instruction(&self) -> Instruction {
         self.current_instruction
-    }
-
-    /// Describe the control-flow for the IVC circuit.
-    ///
-    /// For a step i + 1, the verifier circuit receives as public input the
-    /// following values:
-    ///
-    /// - The commitments to the previous witnesses.
-    /// - The previous challenges (α_{i}, β_{i}, γ_{i}) - the challenges β and γ
-    /// are used by the permutation argument where α is used by the quotient
-    /// polynomial, generated after also absorbing the accumulator of the
-    /// permutation argument.
-    /// - The previous accumulators (acc_1, ..., acc_17).
-    /// - The previous output z_i.
-    /// - The initial input z_0.
-    /// - The natural i describing the previous step.
-    ///
-    /// The control flow is as follow:
-    /// - We compute the hash of the previous commitments and verify the hash
-    /// corresponds to the public input:
-    ///
-    /// ```text
-    /// hash = H(i, acc_1, ..., acc_17, z_0, z_i)
-    /// ```
-    ///
-    /// - We also have to check that the previous challenges (α, β, γ) have been
-    /// correctly generated. Therefore, we must compute the hashes of the
-    /// witnesses and verify they correspond to the public input.
-    ///
-    /// TODO
-    ///
-    /// - We compute the output of the application (TODO)
-    ///
-    /// ```text
-    /// z_(i + 1) = F(w_i, z_i)
-    /// ```
-    ///
-    /// - We compute the MSM (verifier)
-    ///
-    /// ```text
-    /// acc_(i + 1)_j = acc_i + r C_j
-    /// ```
-    /// And also the cross-terms:
-    ///
-    /// ```text
-    /// E = E1 - r T1 - r^2 T2 - ... - r^d T^d + r^(d+1) E2
-    ///   = E1 - r (T1 + r (T2 + ... + r T^(d - 1)) - r E2)
-    /// ```
-    /// where (d + 1) is the degree of the highest gate.
-    ///
-    /// - We compute the next hash we give to the next instance
-    ///
-    /// ```text
-    /// hash' = H(i + 1, acc'_1, ..., acc'_17, z_0, z_(i + 1))
-    /// ```
-    pub fn fetch_next_instruction(&mut self) -> Instruction {
-        match self.current_instruction {
-            Instruction::PoseidonFullRound(i) => {
-                if i < PlonkSpongeConstants::PERM_ROUNDS_FULL - 5 {
-                    Instruction::PoseidonFullRound(i + 5)
-                } else {
-                    // FIXME: for now, we continue absorbing because the current
-                    // code, while fetching the values to absorb, raises an
-                    // exception when we absorbed everythimg, and the main file
-                    // handles the halt by filling as many rows as expected (see
-                    // [VERIFIER_CIRCUIT_SIZE]).
-                    Instruction::PoseidonSpongeAbsorb
-                }
-            }
-            Instruction::PoseidonSpongeAbsorb => {
-                // Whenever we absorbed a value, we run the permutation.
-                Instruction::PoseidonFullRound(0)
-            }
-            Instruction::EllipticCurveScaling(i_comm, bit) => {
-                // TODO: we still need to substract (or not?) the blinder.
-                // Maybe we can avoid this by aggregating them.
-                // TODO: we also need to aggregate the cross-terms.
-                // Therefore i_comm must also take into the account the number
-                // of cross-terms.
-                assert!(i_comm < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
-                assert!(bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Maximum number of bits reached ({MAXIMUM_FIELD_SIZE_IN_BITS}), increase the number of bits");
-                if bit < MAXIMUM_FIELD_SIZE_IN_BITS - 1 {
-                    Instruction::EllipticCurveScaling(i_comm, bit + 1)
-                } else if i_comm < NUMBER_OF_COLUMNS - 1 {
-                    Instruction::EllipticCurveScaling(i_comm + 1, 0)
-                } else {
-                    // We have computed all the bits for all the columns
-                    Instruction::NoOp
-                }
-            }
-            Instruction::EllipticCurveAddition(i_comm) => {
-                if i_comm < NUMBER_OF_COLUMNS - 1 {
-                    Instruction::EllipticCurveAddition(i_comm + 1)
-                } else {
-                    Instruction::NoOp
-                }
-            }
-            Instruction::NoOp => Instruction::NoOp,
-        }
     }
 
     /// Simulate an interaction with the verifier by requesting to coin a
