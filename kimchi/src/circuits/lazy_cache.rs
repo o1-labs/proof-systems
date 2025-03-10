@@ -1,9 +1,12 @@
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-use std::{fmt, sync::Arc};
+use std::{
+    fmt,
+    sync::{Arc, Mutex},
+};
 
 /// A memory-efficient container that caches or computes `T` on demand.
-#[derive(Clone, Serialize)]
+#[derive(Serialize)]
 pub enum LazyCache<T>
 where
     T: Send + Sync,
@@ -18,7 +21,7 @@ where
         // The value once computed
         computed: OnceCell<T>,
         // The function to compute the value
-        compute_fn: Option<Arc<dyn Fn() -> T + Send + Sync>>,
+        compute_fn: Mutex<Option<Arc<dyn Fn() -> T + Send + Sync>>>,
     },
 }
 
@@ -42,7 +45,7 @@ where
     pub fn lazy(compute_fn: impl Fn() -> T + Send + Sync + 'static) -> Self {
         LazyCache::Lazy {
             computed: OnceCell::new(),
-            compute_fn: Some(Arc::new(compute_fn)),
+            compute_fn: Mutex::new(Some(Arc::new(compute_fn))),
         }
     }
 
@@ -54,17 +57,11 @@ where
                 computed,
                 compute_fn,
             } => computed.get_or_init(|| {
-                let result = compute_fn
-                    .as_ref()
-                    .expect("no function inside LazyCache::Lazy")(); // Compute value
-                                                                     // After initialization, remove `compute_fn` (workaround for interior mutability)
-                unsafe {
-                    let mut_self = self as *const _ as *mut Self;
-                    if let LazyCache::Lazy { compute_fn, .. } = &mut *mut_self {
-                        *compute_fn = None; // Remove reference to `cs`
-                    }
-                }
-                result
+                compute_fn
+                    .lock()
+                    .unwrap()
+                    .take()
+                    .expect("no function inside LazyCache::Lazy")()
             }),
         }
     }
@@ -89,7 +86,25 @@ where
     fn default() -> Self {
         LazyCache::Lazy {
             computed: OnceCell::new(),
-            compute_fn: None,
+            compute_fn: Mutex::new(None),
+        }
+    }
+}
+
+impl<T> Clone for LazyCache<T>
+where
+    T: Clone + Send + Sync,
+{
+    fn clone(&self) -> Self {
+        match self {
+            LazyCache::Cached(value) => LazyCache::Cached(value.clone()),
+            LazyCache::Lazy {
+                computed,
+                compute_fn,
+            } => LazyCache::Lazy {
+                computed: computed.clone(),
+                compute_fn: Mutex::new(compute_fn.lock().unwrap().as_ref().map(Arc::clone)),
+            },
         }
     }
 }
@@ -107,7 +122,7 @@ where
             Some(value) => LazyCache::Cached(value),
             None => LazyCache::Lazy {
                 computed: OnceCell::new(),
-                compute_fn: None,
+                compute_fn: Mutex::new(None),
             },
         })
     }

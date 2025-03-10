@@ -30,7 +30,11 @@ use poly_commitment::OpenProof;
 use rayon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{array, default::Default, sync::Arc};
+use std::{
+    array,
+    default::Default,
+    sync::{Arc, Mutex},
+};
 
 //
 // ConstraintSystem
@@ -991,9 +995,9 @@ impl<F: PrimeField> Builder<F> {
         } else {
             LazyCache::Lazy {
                 computed: OnceCell::new(),
-                compute_fn: Some(Arc::new(move || {
+                compute_fn: Mutex::new(Some(Arc::new(move || {
                     Arc::new(DomainConstantEvaluations::create(domain, zk_rows).unwrap())
-                })),
+                }))),
             }
         };
 
