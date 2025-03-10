@@ -22,20 +22,20 @@ use crate::{
 pub struct Program<
     Fp: PrimeField,
     Fq: PrimeField,
-    E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
+    E: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
 > where
-    E1::BaseField: PrimeField,
-    <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    E::BaseField: PrimeField,
+    <<E as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     /// Commitments to the accumulated program state.
     ///
     /// In Nova language, this is the commitment to the witness accumulator.
-    pub accumulated_committed_state: Vec<PolyComm<E1>>,
+    pub accumulated_committed_state: Vec<PolyComm<E>>,
 
     /// Commitments to the previous program states.
     ///
     /// In Nova language, this is the commitment to the previous witness.
-    pub previous_committed_state: Vec<PolyComm<E1>>,
+    pub previous_committed_state: Vec<PolyComm<E>>,
 
     /// Accumulated witness for the program state.
     ///
@@ -45,7 +45,7 @@ pub struct Program<
     /// the circuit.
     /// The size of the inner vector must be equal to the number of rows in
     /// the circuit.
-    pub accumulated_program_state: Vec<Vec<E1::ScalarField>>,
+    pub accumulated_program_state: Vec<Vec<E::ScalarField>>,
 
     /// List of the accumulated challenges over time.
     pub accumulated_challenges: Challenges<BigInt>,
@@ -56,28 +56,28 @@ pub struct Program<
     pub previous_challenges: Challenges<BigInt>,
 }
 
-impl<Fp: PrimeField, Fq: PrimeField, E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>>
-    Program<Fp, Fq, E1>
+impl<Fp: PrimeField, Fq: PrimeField, E: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>>
+    Program<Fp, Fq, E>
 where
-    E1::BaseField: PrimeField,
-    <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    E::BaseField: PrimeField,
+    <<E as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
-    pub fn new(srs_size: usize, blinder: E1) -> Self {
+    pub fn new(srs_size: usize, blinder: E) -> Self {
         // Default set to the blinders. Using double to make the EC scaling happy.
-        let previous_committed_state: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
+        let previous_committed_state: Vec<PolyComm<E>> = (0..NUMBER_OF_COLUMNS)
             .map(|_| PolyComm::new(vec![(blinder + blinder).into()]))
             .collect();
 
         // FIXME: zero will not work.
-        let accumulated_committed_state: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
+        let accumulated_committed_state: Vec<PolyComm<E>> = (0..NUMBER_OF_COLUMNS)
             .map(|_| PolyComm::new(vec![blinder]))
             .collect();
 
-        let mut accumulated_program_state: Vec<Vec<E1::ScalarField>> =
+        let mut accumulated_program_state: Vec<Vec<E::ScalarField>> =
             Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
-            let mut vec: Vec<E1::ScalarField> = Vec::with_capacity(srs_size);
-            (0..srs_size).for_each(|_| vec.push(E1::ScalarField::zero()));
+            let mut vec: Vec<E::ScalarField> = Vec::with_capacity(srs_size);
+            (0..srs_size).for_each(|_| vec.push(E::ScalarField::zero()));
             (0..NUMBER_OF_COLUMNS).for_each(|_| accumulated_program_state.push(vec.clone()));
         };
 
@@ -101,16 +101,16 @@ where
     /// program has been executed.
     pub fn commit_state(
         &mut self,
-        srs: &SRS<E1>,
-        domain: EvaluationDomains<E1::ScalarField>,
+        srs: &SRS<E>,
+        domain: EvaluationDomains<E::ScalarField>,
         witness: &[Vec<BigInt>],
     ) {
-        let comms: Vec<PolyComm<E1>> = witness
+        let comms: Vec<PolyComm<E>> = witness
             .par_iter()
             .map(|evals| {
-                let evals: Vec<E1::ScalarField> = evals
+                let evals: Vec<E::ScalarField> = evals
                     .par_iter()
-                    .map(|x| E1::ScalarField::from_biguint(&x.to_biguint().unwrap()).unwrap())
+                    .map(|x| E::ScalarField::from_biguint(&x.to_biguint().unwrap()).unwrap())
                     .collect();
                 let evals = Evaluations::from_vec_and_domain(evals, domain.d1);
                 srs.commit_evaluations_non_hiding(domain.d1, &evals)
@@ -125,13 +125,13 @@ where
     /// the expected instantiation, refer to the section "Message Passing" in
     /// [crate::interpreter].
     pub fn absorb_state(&mut self, digest: BigInt) -> Vec<BigInt> {
-        let mut sponge = E1::create_new_sponge();
-        let previous_state: E1::BaseField =
-            E1::BaseField::from_biguint(&digest.to_biguint().unwrap()).unwrap();
-        E1::absorb_fq(&mut sponge, previous_state);
+        let mut sponge = E::create_new_sponge();
+        let previous_state: E::BaseField =
+            E::BaseField::from_biguint(&digest.to_biguint().unwrap()).unwrap();
+        E::absorb_fq(&mut sponge, previous_state);
         self.previous_committed_state
             .iter()
-            .for_each(|comm| E1::absorb_curve_points(&mut sponge, &comm.chunks));
+            .for_each(|comm| E::absorb_curve_points(&mut sponge, &comm.chunks));
         let state: Vec<BigInt> = sponge
             .sponge
             .state
@@ -163,14 +163,14 @@ where
     /// N bits of the first element, but it is left as an implementation detail
     /// of the sponge given by the curve.
     pub fn coin_challenge(&self, sponge_state: Vec<BigInt>) -> (BigInt, Vec<BigInt>) {
-        let mut sponge = E1::create_new_sponge();
+        let mut sponge = E::create_new_sponge();
         sponge_state.iter().for_each(|x| {
-            E1::absorb_fq(
+            E::absorb_fq(
                 &mut sponge,
-                E1::BaseField::from_biguint(&x.to_biguint().unwrap()).unwrap(),
+                E::BaseField::from_biguint(&x.to_biguint().unwrap()).unwrap(),
             )
         });
-        let verifier_answer = E1::squeeze_challenge(&mut sponge).to_biguint().into();
+        let verifier_answer = E::squeeze_challenge(&mut sponge).to_biguint().into();
         sponge.sponge.poseidon_block_cipher();
         let state: Vec<BigInt> = sponge
             .sponge
@@ -204,7 +204,7 @@ where
     /// ```
     /// where acc and w are vectors of the same size.
     pub fn accumulate_program_state(&mut self, chal: BigInt, witness: &[Vec<BigInt>]) {
-        let modulus: BigInt = E1::ScalarField::modulus_biguint().into();
+        let modulus: BigInt = E::ScalarField::modulus_biguint().into();
         self.accumulated_program_state = self
             .accumulated_program_state
             .iter()
@@ -216,7 +216,7 @@ where
                     .map(|(acc, w)| {
                         let rhs: BigInt = (chal.clone() * w).mod_floor(&modulus);
                         let rhs: BigUint = rhs.to_biguint().unwrap();
-                        let res = E1::ScalarField::from_biguint(&rhs).unwrap();
+                        let res = E::ScalarField::from_biguint(&rhs).unwrap();
                         *acc + res
                     })
                     .collect()
@@ -244,7 +244,7 @@ where
     /// the columns to accumulate the committed state.
     pub fn accumulate_committed_state(&mut self, chal: BigInt) {
         let chal: BigUint = chal.to_biguint().unwrap();
-        let chal: E1::ScalarField = E1::ScalarField::from_biguint(&chal).unwrap();
+        let chal: E::ScalarField = E::ScalarField::from_biguint(&chal).unwrap();
         self.accumulated_committed_state = self
             .accumulated_committed_state
             .iter()
