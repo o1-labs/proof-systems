@@ -404,13 +404,6 @@
 <a href="#404" id="404">404</a>
 <a href="#405" id="405">405</a>
 <a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{column::Column, interpreter::InterpreterEnv};
 <span class="kw">use crate</span>::{
     column::{Gadget, E},
@@ -441,7 +434,6 @@
     <span class="kw">pub </span>idx_var: usize,
     <span class="kw">pub </span>idx_var_next_row: usize,
     <span class="kw">pub </span>constraints: Vec&lt;E&lt;C::ScalarField&gt;&gt;,
-    <span class="kw">pub </span>activated_gadget: <span class="prelude-ty">Option</span>&lt;Gadget&gt;,
 }
 
 <span class="kw">impl</span>&lt;C: ArrabbiataCurve&gt; Env&lt;C&gt;
@@ -461,7 +453,6 @@
             idx_var: <span class="number">0</span>,
             idx_var_next_row: <span class="number">0</span>,
             constraints: Vec::new(),
-            activated_gadget: <span class="prelude-val">None</span>,
         }
     }
 }
@@ -513,10 +504,6 @@
         res
     }
 
-    <span class="kw">fn </span>activate_gadget(<span class="kw-2">&amp;mut </span><span class="self">self</span>, gadget: Gadget) {
-        <span class="self">self</span>.activated_gadget = <span class="prelude-val">Some</span>(gadget);
-    }
-
     <span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, constraint: <span class="self">Self</span>::Variable) {
         <span class="kw">let </span>degree = constraint.degree(<span class="number">1</span>, <span class="number">0</span>);
         <span class="macro">debug!</span>(<span class="string">&quot;Adding constraint of degree {degree}: {:}&quot;</span>, constraint);
@@ -564,7 +551,6 @@
         <span class="self">self</span>.idx_var = <span class="number">0</span>;
         <span class="self">self</span>.idx_var_next_row = <span class="number">0</span>;
         <span class="self">self</span>.constraints.clear();
-        <span class="self">self</span>.activated_gadget = <span class="prelude-val">None</span>;
     }
 
     <span class="kw">fn </span>coin_folding_combiner(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {

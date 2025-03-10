@@ -1186,6 +1186,47 @@
 <a href="#1186" id="1186">1186</a>
 <a href="#1187" id="1187">1187</a>
 <a href="#1188" id="1188">1188</a>
+<a href="#1189" id="1189">1189</a>
+<a href="#1190" id="1190">1190</a>
+<a href="#1191" id="1191">1191</a>
+<a href="#1192" id="1192">1192</a>
+<a href="#1193" id="1193">1193</a>
+<a href="#1194" id="1194">1194</a>
+<a href="#1195" id="1195">1195</a>
+<a href="#1196" id="1196">1196</a>
+<a href="#1197" id="1197">1197</a>
+<a href="#1198" id="1198">1198</a>
+<a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
+<a href="#1201" id="1201">1201</a>
+<a href="#1202" id="1202">1202</a>
+<a href="#1203" id="1203">1203</a>
+<a href="#1204" id="1204">1204</a>
+<a href="#1205" id="1205">1205</a>
+<a href="#1206" id="1206">1206</a>
+<a href="#1207" id="1207">1207</a>
+<a href="#1208" id="1208">1208</a>
+<a href="#1209" id="1209">1209</a>
+<a href="#1210" id="1210">1210</a>
+<a href="#1211" id="1211">1211</a>
+<a href="#1212" id="1212">1212</a>
+<a href="#1213" id="1213">1213</a>
+<a href="#1214" id="1214">1214</a>
+<a href="#1215" id="1215">1215</a>
+<a href="#1216" id="1216">1216</a>
+<a href="#1217" id="1217">1217</a>
+<a href="#1218" id="1218">1218</a>
+<a href="#1219" id="1219">1219</a>
+<a href="#1220" id="1220">1220</a>
+<a href="#1221" id="1221">1221</a>
+<a href="#1222" id="1222">1222</a>
+<a href="#1223" id="1223">1223</a>
+<a href="#1224" id="1224">1224</a>
+<a href="#1225" id="1225">1225</a>
+<a href="#1226" id="1226">1226</a>
+<a href="#1227" id="1227">1227</a>
+<a href="#1228" id="1228">1228</a>
+<a href="#1229" id="1229">1229</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the implementation of the IVC scheme in addition to
 //! running an arbitrary function that can use up to [crate::NUMBER_OF_COLUMNS]
 //! columns.
@@ -1758,9 +1799,7 @@
 //!                       +-----------------------------+
 //! ```
 
-</span><span class="kw">use crate</span>::{
-    column::Gadget, curve::PlonkSpongeConstants, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
-};
+</span><span class="kw">use crate</span>::{curve::PlonkSpongeConstants, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS};
 <span class="kw">use </span>ark_ff::{One, Zero};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>mina_poseidon::constants::SpongeConstants;
@@ -1809,6 +1848,11 @@
     </span>NoOp,
 }
 
+<span class="doccomment">/// The first instruction in the verifier circuit (often shortened in &quot;IVC&quot; in
+/// the crate) is the Poseidon permutation. It is used to start hashing the
+/// public input.
+</span><span class="kw">pub const </span>VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::PoseidonSpongeAbsorb;
+
 <span class="doccomment">/// Define the side of the temporary accumulator.
 /// When computing G1 + G2, the interpreter will load G1 and after that G2.
 /// This enum is used to decide which side fetching into the cells.
@@ -1849,9 +1893,6 @@
 
     <span class="doccomment">/// Set the value of the variable at the given position for the current row
     </span><span class="kw">fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, col: <span class="self">Self</span>::Position, v: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="doccomment">/// Activate the gadget for the row.
-    </span><span class="kw">fn </span>activate_gadget(<span class="kw-2">&amp;mut </span><span class="self">self</span>, gadget: Gadget);
 
     <span class="doccomment">/// Build the constant zero
     </span><span class="kw">fn </span>zero(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
@@ -2062,7 +2103,6 @@
             <span class="macro">assert!</span>(processing_bit &lt; MAXIMUM_FIELD_SIZE_IN_BITS, <span class="string">&quot;Invalid bit index. The fields are maximum on {MAXIMUM_FIELD_SIZE_IN_BITS} bits, therefore we cannot process the bit {processing_bit}&quot;</span>);
             <span class="macro">assert!</span>(i_comm &lt; NUMBER_OF_COLUMNS, <span class="string">&quot;Invalid index. We do only support the scaling of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms&quot;</span>);
             <span class="macro">debug!</span>(<span class="string">&quot;Processing scaling of commitment {i_comm}, bit {processing_bit}&quot;</span>);
-            env.activate_gadget(Gadget::EllipticCurveScaling);
             <span class="comment">// When processing the first bit, we must load the scalar, and it
             // comes from previous computation.
             // The two first columns are supposed to be used for the output.
@@ -2206,7 +2246,6 @@
             };
         }
         Instruction::EllipticCurveAddition(i_comm) =&gt; {
-            env.activate_gadget(Gadget::EllipticCurveAddition);
             <span class="macro">assert!</span>(i_comm &lt; NUMBER_OF_COLUMNS, <span class="string">&quot;Invalid index. We do only support the addition of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms&quot;</span>);
             <span class="kw">let </span>(x1, y1) = {
                 <span class="kw">let </span>x1 = env.allocate();
@@ -2262,8 +2301,6 @@
                 <span class="string">&quot;Executing instruction Poseidon starting from round {starting_round} to {}&quot;</span>,
                 starting_round + <span class="number">5
             </span>);
-
-            env.activate_gadget(Gadget::PoseidonFullRound(starting_round));
 
             <span class="kw">let </span>round_input_positions: Vec&lt;E::Position&gt; = (<span class="number">0</span>..PlonkSpongeConstants::SPONGE_WIDTH)
                 .map(|_i| env.allocate())
@@ -2334,8 +2371,6 @@
             });
         }
         Instruction::PoseidonSpongeAbsorb =&gt; {
-            env.activate_gadget(Gadget::PoseidonSpongeAbsorb);
-
             <span class="kw">let </span>round_input_positions: Vec&lt;E::Position&gt; = (<span class="number">0</span>..PlonkSpongeConstants::SPONGE_WIDTH
                 - <span class="number">1</span>)
                 .map(|_i| env.allocate())
@@ -2374,4 +2409,51 @@
     <span class="comment">// Compute the hash of the public input
     // FIXME: add the verification key. We should have a hash of it.
 </span>}
+
+<span class="doccomment">/// Describe the control-flow for the verifier circuit.
+</span><span class="kw">pub fn </span>fetch_next_instruction(current_instruction: Instruction) -&gt; Instruction {
+    <span class="kw">match </span>current_instruction {
+        Instruction::PoseidonFullRound(i) =&gt; {
+            <span class="kw">if </span>i &lt; PlonkSpongeConstants::PERM_ROUNDS_FULL - <span class="number">5 </span>{
+                Instruction::PoseidonFullRound(i + <span class="number">5</span>)
+            } <span class="kw">else </span>{
+                <span class="comment">// FIXME: for now, we continue absorbing because the current
+                // code, while fetching the values to absorb, raises an
+                // exception when we absorbed everythimg, and the main file
+                // handles the halt by filling as many rows as expected (see
+                // [VERIFIER_CIRCUIT_SIZE]).
+                </span>Instruction::PoseidonSpongeAbsorb
+            }
+        }
+        Instruction::PoseidonSpongeAbsorb =&gt; {
+            <span class="comment">// Whenever we absorbed a value, we run the permutation.
+            </span>Instruction::PoseidonFullRound(<span class="number">0</span>)
+        }
+        Instruction::EllipticCurveScaling(i_comm, bit) =&gt; {
+            <span class="comment">// TODO: we still need to substract (or not?) the blinder.
+            // Maybe we can avoid this by aggregating them.
+            // TODO: we also need to aggregate the cross-terms.
+            // Therefore i_comm must also take into the account the number
+            // of cross-terms.
+            </span><span class="macro">assert!</span>(i_comm &lt; NUMBER_OF_COLUMNS, <span class="string">&quot;Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns&quot;</span>);
+            <span class="macro">assert!</span>(bit &lt; MAXIMUM_FIELD_SIZE_IN_BITS, <span class="string">&quot;Maximum number of bits reached ({MAXIMUM_FIELD_SIZE_IN_BITS}), increase the number of bits&quot;</span>);
+            <span class="kw">if </span>bit &lt; MAXIMUM_FIELD_SIZE_IN_BITS - <span class="number">1 </span>{
+                Instruction::EllipticCurveScaling(i_comm, bit + <span class="number">1</span>)
+            } <span class="kw">else if </span>i_comm &lt; NUMBER_OF_COLUMNS - <span class="number">1 </span>{
+                Instruction::EllipticCurveScaling(i_comm + <span class="number">1</span>, <span class="number">0</span>)
+            } <span class="kw">else </span>{
+                <span class="comment">// We have computed all the bits for all the columns
+                </span>Instruction::NoOp
+            }
+        }
+        Instruction::EllipticCurveAddition(i_comm) =&gt; {
+            <span class="kw">if </span>i_comm &lt; NUMBER_OF_COLUMNS - <span class="number">1 </span>{
+                Instruction::EllipticCurveAddition(i_comm + <span class="number">1</span>)
+            } <span class="kw">else </span>{
+                Instruction::NoOp
+            }
+        }
+        Instruction::NoOp =&gt; Instruction::NoOp,
+    }
+}
 </code></pre></div></section></main></body></html>

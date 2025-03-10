@@ -127,7 +127,38 @@
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::challenge::ChallengeTerm;
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{challenge::ChallengeTerm, interpreter::Instruction};
 <span class="kw">use </span>kimchi::circuits::expr::{CacheId, ConstantExpr, Expr, FormattedOutput};
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>strum_macros::{EnumCount <span class="kw">as </span>EnumCountMacro, EnumIter};
@@ -143,7 +174,17 @@
 // depend on runtime values (e.g. in a zero-knowledge virtual machine).
 </span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, EnumCountMacro, EnumIter, Eq, Hash)]
 </span><span class="kw">pub enum </span>Gadget {
-    App,
+    <span class="doccomment">/// A dummy gadget, doing nothing. Use for padding.
+    </span>NoOp,
+
+    <span class="doccomment">/// The gadget defining the app.
+    ///
+    /// For now, the application is considered to be a one-line computation.
+    /// However, we want to see the application as a collection of reusable
+    /// gadgets.
+    ///
+    /// See `&lt;https://github.com/o1-labs/proof-systems/issues/3074&gt;`
+    </span>App,
     <span class="comment">// Elliptic curve related gadgets
     </span>EllipticCurveAddition,
     EllipticCurveScaling,
@@ -168,6 +209,21 @@
     ///
     /// Note that, for now, the gadget can only be used by the verifier circuit.
     </span>PoseidonSpongeAbsorb,
+}
+
+<span class="doccomment">/// Convert an instruction into the corresponding gadget.
+</span><span class="kw">impl </span>From&lt;Instruction&gt; <span class="kw">for </span>Gadget {
+    <span class="kw">fn </span>from(val: Instruction) -&gt; Gadget {
+        <span class="kw">match </span>val {
+            Instruction::NoOp =&gt; Gadget::NoOp,
+            Instruction::PoseidonFullRound(starting_round) =&gt; {
+                Gadget::PoseidonFullRound(starting_round)
+            }
+            Instruction::PoseidonSpongeAbsorb =&gt; Gadget::PoseidonSpongeAbsorb,
+            Instruction::EllipticCurveScaling(_i_comm, _s) =&gt; Gadget::EllipticCurveScaling,
+            Instruction::EllipticCurveAddition(_i) =&gt; Gadget::EllipticCurveAddition,
+        }
+    }
 }
 
 <span class="attr">#[derive(Debug, Clone, Copy, PartialEq)]
@@ -203,11 +259,15 @@
 <span class="kw">impl </span>From&lt;Gadget&gt; <span class="kw">for </span>usize {
     <span class="kw">fn </span>from(val: Gadget) -&gt; usize {
         <span class="kw">match </span>val {
-            Gadget::App =&gt; <span class="number">0</span>,
-            Gadget::EllipticCurveAddition =&gt; <span class="number">1</span>,
-            Gadget::EllipticCurveScaling =&gt; <span class="number">2</span>,
-            Gadget::PoseidonSpongeAbsorb =&gt; <span class="number">3</span>,
-            Gadget::PoseidonFullRound(starting_round) =&gt; <span class="number">4 </span>+ starting_round / <span class="number">5</span>,
+            Gadget::NoOp =&gt; <span class="number">0</span>,
+            Gadget::App =&gt; <span class="number">1</span>,
+            Gadget::EllipticCurveAddition =&gt; <span class="number">2</span>,
+            Gadget::EllipticCurveScaling =&gt; <span class="number">3</span>,
+            Gadget::PoseidonSpongeAbsorb =&gt; <span class="number">4</span>,
+            Gadget::PoseidonFullRound(starting_round) =&gt; {
+                <span class="macro">assert_eq!</span>(starting_round % <span class="number">5</span>, <span class="number">0</span>);
+                <span class="number">5 </span>+ starting_round / <span class="number">5
+            </span>}
         }
     }
 }
@@ -217,6 +277,7 @@
     <span class="kw">fn </span>latex(<span class="kw-2">&amp;</span><span class="self">self</span>, _cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, <span class="self">Self</span>&gt;) -&gt; String {
         <span class="kw">match </span><span class="self">self </span>{
             Column::Selector(sel) =&gt; <span class="kw">match </span>sel {
+                Gadget::NoOp =&gt; <span class="string">&quot;q_noop&quot;</span>.to_string(),
                 Gadget::App =&gt; <span class="string">&quot;q_app&quot;</span>.to_string(),
                 Gadget::EllipticCurveAddition =&gt; <span class="string">&quot;q_ec_add&quot;</span>.to_string(),
                 Gadget::EllipticCurveScaling =&gt; <span class="string">&quot;q_ec_mul&quot;</span>.to_string(),
@@ -233,6 +294,7 @@
     <span class="kw">fn </span>text(<span class="kw-2">&amp;</span><span class="self">self</span>, _cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, <span class="self">Self</span>&gt;) -&gt; String {
         <span class="kw">match </span><span class="self">self </span>{
             Column::Selector(sel) =&gt; <span class="kw">match </span>sel {
+                Gadget::NoOp =&gt; <span class="string">&quot;q_noop&quot;</span>.to_string(),
                 Gadget::App =&gt; <span class="string">&quot;q_app&quot;</span>.to_string(),
                 Gadget::EllipticCurveAddition =&gt; <span class="string">&quot;q_ec_add&quot;</span>.to_string(),
                 Gadget::EllipticCurveScaling =&gt; <span class="string">&quot;q_ec_mul&quot;</span>.to_string(),

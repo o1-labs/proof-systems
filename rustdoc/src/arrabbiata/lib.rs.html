@@ -70,7 +70,6 @@
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>curve::PlonkSpongeConstants;
 <span class="kw">use </span>mina_poseidon::constants::SpongeConstants;
 <span class="kw">use </span>strum::EnumCount <span class="kw">as _</span>;
@@ -78,17 +77,17 @@
 <span class="kw">pub mod </span>challenge;
 <span class="kw">pub mod </span>cli;
 <span class="kw">pub mod </span>column;
-<span class="kw">pub mod </span>column_env;
 <span class="kw">pub mod </span>constraint;
 <span class="kw">pub mod </span>curve;
+
+<span class="doccomment">/// The final decider, i.e. the SNARK used on the accumulation scheme.
+</span><span class="kw">pub mod </span>decider;
+
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>logup;
 <span class="kw">pub mod </span>poseidon_3_60_0_5_5_fp;
 <span class="kw">pub mod </span>poseidon_3_60_0_5_5_fq;
-<span class="kw">pub mod </span>proof;
-<span class="kw">pub mod </span>prover;
 <span class="kw">pub mod </span>setup;
-<span class="kw">pub mod </span>verifier;
 <span class="kw">pub mod </span>witness;
 
 <span class="doccomment">/// The maximum degree of the polynomial that can be represented by the
@@ -96,8 +95,7 @@
 </span><span class="kw">pub const </span>MAX_DEGREE: usize = <span class="number">5</span>;
 
 <span class="doccomment">/// The minimum SRS size required to use Nova, in base 2.
-/// Requiring at least 2^16 to perform 16bits range checks.
-</span><span class="kw">pub const </span>MIN_SRS_LOG2_SIZE: usize = <span class="number">16</span>;
+</span><span class="kw">pub const </span>MIN_SRS_LOG2_SIZE: usize = <span class="number">8</span>;
 
 <span class="doccomment">/// The maximum number of columns that can be used in the circuit.
 </span><span class="kw">pub const </span>NUMBER_OF_COLUMNS: usize = <span class="number">15</span>;
@@ -131,8 +129,8 @@
 /// verifier circuit.
 </span><span class="kw">pub const </span>NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO: usize = NUMBER_OF_COLUMNS * <span class="number">2</span>;
 
-<span class="doccomment">/// The number of selectors used in the circuit.
-</span><span class="kw">pub const </span>NUMBER_OF_SELECTORS: usize =
+<span class="doccomment">/// The number of gadgets supported by the program
+</span><span class="kw">pub const </span>NUMBER_OF_GADGETS: usize =
     column::Gadget::COUNT + (PlonkSpongeConstants::PERM_ROUNDS_FULL / <span class="number">5</span>);
 
 <span class="doccomment">/// The arity of the multivariate polynomials describing the constraints.

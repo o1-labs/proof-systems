@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["VERIFIER_STARTING_INSTRUCTION"],"struct":["Env"]};
+window.SIDEBAR_ITEMS = {"struct":["Env"]};
