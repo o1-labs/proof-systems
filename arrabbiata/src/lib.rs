@@ -17,6 +17,7 @@ pub mod prover;
 pub mod setup;
 pub mod verifier;
 pub mod witness;
+pub mod zkapp_registry;
 
 /// The maximum degree of the polynomial that can be represented by the
 /// polynomial-time function the library supports.
