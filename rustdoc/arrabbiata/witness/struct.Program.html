@@ -26,8 +26,8 @@ verified in circuit.</p>
     &lt;&lt;E1 as CommitmentCurve&gt;::Params as CurveConfig&gt;::BaseField: PrimeField,</span></h3></section></summary><div class="impl-items"><section id="method.new" class="method"><a class="srclink rightside" href="../../src/arrabbiata/witness.rs.html#65-95">source</a><h4 class="code-header">pub fn <a href="#method.new" class="fn">new</a>(srs_size: <a class="primitive" href="https://doc.rust-lang.org/1.72.1/std/primitive.usize.html">usize</a>, blinder: E1) -&gt; Self</h4></section><details class="toggle method-toggle" open><summary><section id="method.commit_state" class="method"><a class="srclink rightside" href="../../src/arrabbiata/witness.rs.html#102-120">source</a><h4 class="code-header">pub fn <a href="#method.commit_state" class="fn">commit_state</a>(
     &amp;mut self,
     srs: &amp;SRS&lt;E1&gt;,
-    domain: <a class="struct" href="../../kimchi/circuits/domains/struct.EvaluationDomains.html" title="struct kimchi::circuits::domains::EvaluationDomains">EvaluationDomains</a>&lt;E1::ScalarField&gt;,
-    witness: <a class="struct" href="https://doc.rust-lang.org/1.72.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.72.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="https://docs.rs/num-bigint/0.4/num_bigint/bigint/struct.BigInt.html" title="struct num_bigint::bigint::BigInt">BigInt</a>&gt;&gt;
+    domain: EvaluationDomains&lt;E1::ScalarField&gt;,
+    witness: &amp;[<a class="struct" href="https://doc.rust-lang.org/1.72.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="https://docs.rs/num-bigint/0.4/num_bigint/bigint/struct.BigInt.html" title="struct num_bigint::bigint::BigInt">BigInt</a>&gt;]
 )</h4></section></summary><div class="docblock"><p>Commit to the program state and updating the environment with the
 result.</p>
 <p>This method is supposed to be called after a new iteration of the
@@ -56,7 +56,7 @@ of the sponge given by the curve.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.accumulate_program_state" class="method"><a class="srclink rightside" href="../../src/arrabbiata/witness.rs.html#206-225">source</a><h4 class="code-header">pub fn <a href="#method.accumulate_program_state" class="fn">accumulate_program_state</a>(
     &amp;mut self,
     chal: <a class="struct" href="https://docs.rs/num-bigint/0.4/num_bigint/bigint/struct.BigInt.html" title="struct num_bigint::bigint::BigInt">BigInt</a>,
-    witness: <a class="struct" href="https://doc.rust-lang.org/1.72.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.72.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="https://docs.rs/num-bigint/0.4/num_bigint/bigint/struct.BigInt.html" title="struct num_bigint::bigint::BigInt">BigInt</a>&gt;&gt;
+    witness: &amp;[<a class="struct" href="https://doc.rust-lang.org/1.72.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="https://docs.rs/num-bigint/0.4/num_bigint/bigint/struct.BigInt.html" title="struct num_bigint::bigint::BigInt">BigInt</a>&gt;]
 )</h4></section></summary><div class="docblock"><p>Accumulate the program state (or in other words,
 the witness), by adding the last computed program state into the
 program state accumulator.</p>

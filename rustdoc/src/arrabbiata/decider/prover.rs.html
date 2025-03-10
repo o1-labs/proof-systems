@@ -18,10 +18,18 @@
 <a href="#18" id="18">18</a>
 <a href="#19" id="19">19</a>
 <a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A prover for the folding/accumulation scheme
 
 </span><span class="kw">use crate</span>::{curve::ArrabbiataCurve, decider::proof::Proof};
+<span class="kw">use </span>ark_ec::CurveConfig;
 <span class="kw">use </span>ark_ff::PrimeField;
+<span class="kw">use </span>poly_commitment::commitment::CommitmentCurve;
 
 <span class="kw">use </span><span class="kw">crate</span>::witness::Env;
 
@@ -35,7 +43,11 @@
     E2: ArrabbiataCurve&lt;ScalarField = Fq, BaseField = Fp&gt;,
 &gt;(
     _env: <span class="kw-2">&amp;</span>Env&lt;Fp, Fq, E1, E2&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Proof, String&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;Proof, String&gt;
+<span class="kw">where
+    </span>&lt;&lt;E1 <span class="kw">as </span>CommitmentCurve&gt;::Params <span class="kw">as </span>CurveConfig&gt;::BaseField: PrimeField,
+    &lt;&lt;E2 <span class="kw">as </span>CommitmentCurve&gt;::Params <span class="kw">as </span>CurveConfig&gt;::BaseField: PrimeField,
+{
     <span class="macro">unimplemented!</span>()
 }
 </code></pre></div></section></main></body></html>
