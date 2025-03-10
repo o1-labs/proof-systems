@@ -16,6 +16,16 @@ use std::{
 /// Represents a multivariate polynomial in `N` variables with coefficients in
 /// `F`. The polynomial is represented as a sparse polynomial, where each
 /// monomial is represented by a vector of `N` exponents.
+///
+/// For instance, the multivariate polynomial `3x^2 y + 2 x z` will be
+/// represented by the HashMap:
+/// ```text
+/// [2, 1, 0] -> 3
+///  |  |  |
+///  x  y  z
+///  |  |  |
+/// [1, 0, 1] -> 2
+/// ```
 // We could use u8 instead of usize for the exponents
 // FIXME: the maximum degree D is encoded in the type to match the type
 // prime::Dense
@@ -497,19 +507,31 @@ impl<const N: usize, const D: usize, F: PrimeField> MVPoly<F, N, D> for Sparse<F
         cross_terms.iter().for_each(|(power_r, coeff)| {
             res.insert(*power_r, *coeff * scalar1);
         });
-        cross_terms.iter().for_each(|(power_r, coeff)| {
-            res.entry(*power_r + 1)
-                .and_modify(|e| *e += *coeff * scalar2)
-                .or_insert(*coeff * scalar2);
-        });
-        let eval1_hom = self.homogeneous_eval(eval1, u1);
-        res.entry(1)
-            .and_modify(|e| *e += eval1_hom * scalar2)
-            .or_insert(eval1_hom * scalar2);
-        let eval2_hom = self.homogeneous_eval(eval2, u2);
-        res.entry(D)
-            .and_modify(|e| *e += eval2_hom * scalar1)
-            .or_insert(eval2_hom * scalar1);
+        // Small speed-up, avoid going through the whole set of cross-terms if
+        // scalar2 is zero
+        // In addition to that, it won't compute the homogeneous evaluation,
+        // which can be relatively expensive
+        if scalar2 != F::zero() {
+            cross_terms.iter().for_each(|(power_r, coeff)| {
+                res.entry(*power_r + 1)
+                    .and_modify(|e| *e += *coeff * scalar2)
+                    .or_insert(*coeff * scalar2);
+            });
+            let eval1_hom = self.homogeneous_eval(eval1, u1);
+            res.entry(1)
+                .and_modify(|e| *e += eval1_hom * scalar2)
+                .or_insert(eval1_hom * scalar2);
+        }
+        // Small speed-up, avoid computing the homogeneous evaluation if scalar1
+        // is zero
+        if scalar1 != F::zero() {
+            let eval2_hom = self.homogeneous_eval(eval2, u2);
+            res.entry(D)
+                .and_modify(|e| *e += eval2_hom * scalar1)
+                .or_insert(eval2_hom * scalar1);
+        } else {
+            res.entry(D).or_insert(F::zero());
+        }
         res
     }
 

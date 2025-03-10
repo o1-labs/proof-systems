@@ -297,35 +297,46 @@ where
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
         internal_tracing::checkpoint!(internal_traces; commit_to_witness_columns);
-        let mut w_comm = vec![];
-        for col in 0..COLUMNS {
-            // witness coeff -> witness eval
-            let witness_eval =
-                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                    witness[col].clone(),
-                    index.cs.domain.d1,
-                );
+        // generate blinders if not given externally
+        let blinders_final: Vec<PolyComm<G::ScalarField>> = match blinders {
+            None => (0..COLUMNS)
+                .map(|_| PolyComm::new(vec![UniformRand::rand(rng); num_chunks]))
+                .collect(),
+            Some(blinders_arr) => blinders_arr
+                .into_iter()
+                .map(|blinder_el| match blinder_el {
+                    None => PolyComm::new(vec![UniformRand::rand(rng); num_chunks]),
+                    Some(blinder_el_some) => blinder_el_some,
+                })
+                .collect(),
+        };
+        let w_comm_opt_res: Vec<Result<_>> = witness
+            .clone()
+            .into_par_iter()
+            .zip(blinders_final.into_par_iter())
+            .map(|(witness, blinder)| {
+                let witness_eval =
+                    Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                        witness,
+                        index.cs.domain.d1,
+                    );
 
-            let com = match blinders.as_ref().and_then(|b| b[col].as_ref()) {
-                // no blinders: blind the witness
-                None => index
+                // TODO: make this a function rather no? mask_with_custom()
+                let witness_com = index
                     .srs
-                    .commit_evaluations(index.cs.domain.d1, &witness_eval, rng),
-                // blinders: blind the witness with them
-                Some(blinder) => {
-                    // TODO: make this a function rather no? mask_with_custom()
-                    let witness_com = index
-                        .srs
-                        .commit_evaluations_non_hiding(index.cs.domain.d1, &witness_eval);
-                    index
-                        .srs
-                        .mask_custom(witness_com, blinder)
-                        .map_err(ProverError::WrongBlinders)?
-                }
-            };
+                    .commit_evaluations_non_hiding(index.cs.domain.d1, &witness_eval);
+                let com = index
+                    .srs
+                    .mask_custom(witness_com, &blinder)
+                    .map_err(ProverError::WrongBlinders)?;
 
-            w_comm.push(com);
-        }
+                Ok(com)
+            })
+            .collect();
+
+        let w_comm_res: Result<Vec<BlindedCommitment<G>>> = w_comm_opt_res.into_iter().collect();
+
+        let w_comm = w_comm_res?;
 
         let w_comm: [BlindedCommitment<G>; COLUMNS] = w_comm
             .try_into()
@@ -340,13 +351,18 @@ where
         //~    As mentioned above, we commit using the evaluations form rather than the coefficients
         //~    form so we can take advantage of the sparsity of the evaluations (i.e., there are many
         //~    0 entries and entries that have less-than-full-size field elemnts.)
-        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array::from_fn(|i| {
-            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                witness[i].clone(),
-                index.cs.domain.d1,
-            )
-            .interpolate()
-        });
+        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = (0..COLUMNS)
+            .into_par_iter()
+            .map(|i| {
+                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                    witness[i].clone(),
+                    index.cs.domain.d1,
+                )
+                .interpolate()
+            })
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
 
         let mut lookup_context = LookupContext::default();
 
@@ -619,7 +635,7 @@ where
 
         //~ 1. Compute the permutation aggregation polynomial $z$.
         internal_tracing::checkpoint!(internal_traces; z_permutation_aggregation_polynomial);
-        let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng, column_evaluations)?;
+        let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
 
         //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
         let z_comm = index.srs.commit(&z_poly, num_chunks, rng);
@@ -750,12 +766,12 @@ where
 
                 generic4
             };
+
             // permutation
             let (mut t8, bnd) = {
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                let (perm, bnd) =
-                    index.perm_quot(&lagrange, beta, gamma, &z_poly, alphas, column_evaluations)?;
+                let (perm, bnd) = index.perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
 
                 check_constraint!(index, perm);
 
@@ -1117,7 +1133,7 @@ where
                 // permutation (not part of linearization yet)
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                let f = index.perm_lnrz(&evals, zeta, beta, gamma, alphas, column_evaluations);
+                let f = index.perm_lnrz(&evals, zeta, beta, gamma, alphas);
 
                 // the circuit polynomial
                 let f = {
@@ -1459,6 +1475,7 @@ where
         };
 
         internal_tracing::checkpoint!(internal_traces; create_recursive_done);
+
         Ok(proof)
     }
 }

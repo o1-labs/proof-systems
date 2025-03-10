@@ -13,7 +13,7 @@ on the Mina blockchain verifying the recursive proof*. This way, any user can ru
 arbitrarily large computation on their machine, make a proof, and rely on the
 SNARK workers to verify the proof is correct and include it on-chains.
 
-The first iteration of the project will allow to fold a polynomial-time function
+The first iteration of the project will allow to fold a polynomial
 `f` (which can be, in a near future, a zkApp), of degree 2**. No generic lookup
 argument will be implemented in the first version, even though a "runtime"
 lookup/permutation argument will be required
@@ -54,10 +54,10 @@ activated gate on each row.
 
 Different built-in examples are provided. For instance:
 ```
-cargo run --bin arrabbiata --release -- square-root --n 10 --srs-size 16
+RUST_LOG=debug cargo run --bin arrabbiata --release -- execute -n 10 --zkapp "square-root" --srs-size 16
 ```
 
-will generate 10 full folding iterations of the polynomial-time function `f(X, Y) =
+will generate 10 full folding iterations of the function `f(X, Y) =
 X^2 - Y` and for each witness, generates random values, and make an IVC proof at
 the end.
 

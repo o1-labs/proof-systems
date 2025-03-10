@@ -45,12 +45,10 @@ impl<F: FftField> ExtendedEvaluations<F> for Evaluations<F, Radix2EvaluationDoma
     }
 
     fn shift(&self, len: usize) -> Self {
-        let len = len % self.evals.len();
-        let mut result = self.clone();
-        result.evals.clear();
-        result.evals = self.evals[len..].to_vec();
-        let mut tail = self.evals[0..len].to_vec();
-        result.evals.append(&mut tail);
+        let len_new = len % self.evals.len();
+        let mut result = Self::from_vec_and_domain(Vec::with_capacity(len), self.domain());
+        result.evals.extend_from_slice(&self.evals[len_new..]);
+        result.evals.extend_from_slice(&self.evals[0..len_new]);
         result
     }
 }

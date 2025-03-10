@@ -9,7 +9,6 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use poly_commitment::SRS;
 use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
@@ -93,6 +92,8 @@ fn test_generic_gate_pub_empty() {
 #[cfg(feature = "bn254")]
 #[test]
 fn test_generic_gate_kzg() {
+    use poly_commitment::SRS;
+
     type Fp = ark_bn254::Fr;
     type SpongeParams = PlonkSpongeConstantsKimchi;
     type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams>;

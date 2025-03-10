@@ -1,11 +1,6 @@
-use ark_ff::Field;
-use kimchi::circuits::expr::{AlphaChallengeTerm, CacheId, ConstantExpr, Expr, FormattedOutput};
-use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    fmt::{Display, Formatter, Result},
-    ops::Index,
-};
+use crate::challenge::ChallengeTerm;
+use kimchi::circuits::expr::{CacheId, ConstantExpr, Expr, FormattedOutput};
+use std::collections::HashMap;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
 use crate::NUMBER_OF_COLUMNS;
@@ -17,18 +12,33 @@ use crate::NUMBER_OF_COLUMNS;
 // It might not be that obvious to do so, as the Instruction enum could be
 // defining operations that are not "fixed" in the circuit, but rather
 // depend on runtime values (e.g. in a zero-knowledge virtual machine).
-#[derive(Debug, Clone, Copy, PartialEq, EnumCountMacro, EnumIter)]
+#[derive(Debug, Clone, Copy, PartialEq, EnumCountMacro, EnumIter, Eq, Hash)]
 pub enum Gadget {
     App,
     // Elliptic curve related gadgets
     EllipticCurveAddition,
     EllipticCurveScaling,
-    /// This gadget implement the Poseidon hash instance described in the
-    /// top-level documentation. This implementation does use the "next row"
-    /// to allow the computation of one additional round per row. In the current
-    /// setup, with [crate::NUMBER_OF_COLUMNS] columns, we can compute 5 full
+    /// The following gadgets implement the Poseidon hash instance described in
+    /// the top-level documentation. In the current setup, with
+    /// [crate::NUMBER_OF_COLUMNS] columns, we can compute 5 full
     /// rounds per row.
-    Poseidon,
+    ///
+    /// We split the Poseidon gadget in 13 sub-gadgets, one for each set of 5
+    /// full rounds and one for the absorbtion. The parameter is the starting
+    /// round of Poseidon. It is expected to be a multiple of five.
+    ///
+    /// Note that, for now, the gadget can only be used by the verifier circuit.
+    PoseidonFullRound(usize),
+    /// Absorb [PlonkSpongeConstants::SPONGE_WIDTH - 1] elements into the
+    /// sponge. The elements are absorbed into the last
+    /// [PlonkSpongeConstants::SPONGE_WIDTH - 1] elements of the permutation
+    /// state.
+    ///
+    /// The values to be absorbed depend on the state of the environment while
+    /// executing this instruction.
+    ///
+    /// Note that, for now, the gadget can only be used by the verifier circuit.
+    PoseidonSpongeAbsorb,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -59,64 +69,19 @@ impl From<Column> for usize {
     }
 }
 
-pub struct Challenges<F: Field> {
-    /// Challenge used to aggregate the constraints
-    pub alpha: F,
-
-    /// Both challenges used in the permutation argument
-    pub beta: F,
-    pub gamma: F,
-
-    /// Challenge to homogenize the constraints
-    pub homogenous_challenge: F,
-
-    /// Random coin used to aggregate witnesses while folding
-    pub r: F,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ChallengeTerm {
-    /// Challenge used to aggregate the constraints
-    Alpha,
-    /// Both challenges used in the permutation argument
-    Beta,
-    Gamma,
-    /// Challenge to homogenize the constraints
-    HomogenousChallenge,
-    /// Random coin used to aggregate witnesses while folding
-    R,
-}
-
-impl Display for ChallengeTerm {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        match self {
-            ChallengeTerm::Alpha => write!(f, "alpha"),
-            ChallengeTerm::Beta => write!(f, "beta"),
-            ChallengeTerm::Gamma => write!(f, "gamma"),
-            ChallengeTerm::HomogenousChallenge => write!(f, "u"),
-            ChallengeTerm::R => write!(f, "r"),
-        }
-    }
-}
-impl<F: Field> Index<ChallengeTerm> for Challenges<F> {
-    type Output = F;
-
-    fn index(&self, term: ChallengeTerm) -> &Self::Output {
-        match term {
-            ChallengeTerm::Alpha => &self.alpha,
-            ChallengeTerm::Beta => &self.beta,
-            ChallengeTerm::Gamma => &self.gamma,
-            ChallengeTerm::HomogenousChallenge => &self.homogenous_challenge,
-            ChallengeTerm::R => &self.r,
-        }
-    }
-}
-
-impl<'a> AlphaChallengeTerm<'a> for ChallengeTerm {
-    const ALPHA: Self = Self::Alpha;
-}
-
 pub type E<Fp> = Expr<ConstantExpr<Fp, ChallengeTerm>, Column>;
+
+impl From<Gadget> for usize {
+    fn from(val: Gadget) -> usize {
+        match val {
+            Gadget::App => 0,
+            Gadget::EllipticCurveAddition => 1,
+            Gadget::EllipticCurveScaling => 2,
+            Gadget::PoseidonSpongeAbsorb => 3,
+            Gadget::PoseidonFullRound(starting_round) => 4 + starting_round / 5,
+        }
+    }
+}
 
 // Code to allow for pretty printing of the expressions
 impl FormattedOutput for Column {
@@ -126,7 +91,10 @@ impl FormattedOutput for Column {
                 Gadget::App => "q_app".to_string(),
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
-                Gadget::Poseidon => "q_pos".to_string(),
+                Gadget::PoseidonSpongeAbsorb => "q_pos_sponge_absorb".to_string(),
+                Gadget::PoseidonFullRound(starting_round) => {
+                    format!("q_pos_full_round_{}", starting_round)
+                }
             },
             Column::PublicInput(i) => format!("pi_{{{i}}}").to_string(),
             Column::X(i) => format!("x_{{{i}}}").to_string(),
@@ -139,7 +107,10 @@ impl FormattedOutput for Column {
                 Gadget::App => "q_app".to_string(),
                 Gadget::EllipticCurveAddition => "q_ec_add".to_string(),
                 Gadget::EllipticCurveScaling => "q_ec_mul".to_string(),
-                Gadget::Poseidon => "q_pos_next_row".to_string(),
+                Gadget::PoseidonSpongeAbsorb => "q_pos_sponge_absorb".to_string(),
+                Gadget::PoseidonFullRound(starting_round) => {
+                    format!("q_pos_full_round_{}", starting_round)
+                }
             },
             Column::PublicInput(i) => format!("pi[{i}]"),
             Column::X(i) => format!("x[{i}]"),

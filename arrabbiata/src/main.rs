@@ -5,69 +5,44 @@
 //! specify the number of iterations, and keep this file relatively simple.
 
 use arrabbiata::{
-    curve::PlonkSpongeConstants,
+    challenge::ChallengeTerm,
+    cli,
     interpreter::{self, InterpreterEnv},
-    witness::Env,
-    MIN_SRS_LOG2_SIZE, VERIFIER_CIRCUIT_SIZE,
+    setup::IndexedRelation,
+    witness, MIN_SRS_LOG2_SIZE, VERIFIER_CIRCUIT_SIZE,
 };
+use clap::Parser;
 use log::{debug, info};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
-use mina_poseidon::constants::SpongeConstants;
 use num_bigint::BigInt;
 use std::time::Instant;
 
-pub fn main() {
-    // See https://github.com/rust-lang/log
-    env_logger::init();
-
-    let arg_n =
-        clap::arg!(--"n" <U64> "Number of iterations").value_parser(clap::value_parser!(u64));
-
-    let arg_srs_size = clap::arg!(--"srs-size" <U64> "Size of the SRS in base 2")
-        .value_parser(clap::value_parser!(usize));
-
-    let cmd = clap::Command::new("cargo")
-        .bin_name("cargo")
-        .subcommand_required(true)
-        .subcommand(
-            clap::Command::new("square-root")
-                .arg(arg_n)
-                .arg(arg_srs_size)
-                .arg_required_else_help(true),
-        );
-    let matches = cmd.get_matches();
-    let matches = match matches.subcommand() {
-        Some(("square-root", matches)) => matches,
-        _ => unreachable!("clap should ensure we don't get here"),
-    };
-    let n_iteration = matches.get_one::<u64>("n").unwrap();
-    let srs_log2_size = matches
-        .get_one::<usize>("srs-size")
-        .unwrap_or(&MIN_SRS_LOG2_SIZE);
+pub fn execute(args: cli::ExecuteArgs) {
+    let srs_log2_size = args.srs_size;
+    let n_iteration = args.n;
+    let zkapp = args.zkapp;
+    assert_eq!(
+        zkapp, "square-root",
+        "This is a dummy value for now. This argument does nothing, but it is while we're changing the CLI interface"
+    );
 
     assert!(
-        *srs_log2_size >= MIN_SRS_LOG2_SIZE,
+        srs_log2_size >= MIN_SRS_LOG2_SIZE,
         "SRS size must be at least 2^{MIN_SRS_LOG2_SIZE} to support the verifier circuit size"
     );
 
     info!("Instantiating environment to execute square-root {n_iteration} times with SRS of size 2^{srs_log2_size}");
 
+    // FIXME: correctly setup
+    let indexed_relation = IndexedRelation::new(srs_log2_size);
+
     let domain_size = 1 << srs_log2_size;
 
-    // FIXME: setup correctly the initial sponge state
-    let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-        std::array::from_fn(|_i| BigInt::from(42u64));
-    // FIXME: make a setup phase to build the selectors
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
-        *srs_log2_size,
-        BigInt::from(1u64),
-        sponge_e1.clone(),
-        sponge_e1.clone(),
-    );
+    let mut env = witness::Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
 
     let n_iteration_per_fold = domain_size - VERIFIER_CIRCUIT_SIZE;
 
-    while env.current_iteration < *n_iteration {
+    while env.current_iteration < n_iteration {
         let start_iteration = Instant::now();
 
         info!("Run iteration: {}/{}", env.current_iteration, n_iteration);
@@ -115,6 +90,7 @@ pub fn main() {
         // Absorb the last program state.
         env.absorb_state();
 
+        // ----- Permutation argument -----
         // FIXME:
         // Coin chalenges β and γ for the permutation argument
 
@@ -123,24 +99,35 @@ pub fn main() {
 
         // FIXME:
         // Commit to the accumulator and absorb the commitment
+        // ----- Permutation argument -----
 
-        // FIXME:
         // Coin challenge α for combining the constraints
+        env.coin_challenge(ChallengeTerm::ConstraintCombiner);
+        debug!(
+            "Coin challenge α: 0x{chal}",
+            chal = env.challenges[ChallengeTerm::ConstraintCombiner].to_str_radix(16)
+        );
 
+        // ----- Accumulation/folding argument -----
         // FIXME:
         // Compute the cross-terms
 
         // FIXME:
         // Absorb the cross-terms
 
-        // FIXME:
-        // Coin challenge r to fold
+        // Coin challenge r to fold the instances of the relation.
+        // FIXME: we must do the step before first! Skipping for now to achieve
+        // the next step, i.e. accumulating on the prover side the different
+        // values below.
+        env.coin_challenge(ChallengeTerm::RelationCombiner);
+        debug!(
+            "Coin challenge r: 0x{r}",
+            r = env.challenges[ChallengeTerm::RelationCombiner].to_str_radix(16)
+        );
+        env.accumulate_program_state();
 
-        // FIXME:
-        // Compute the accumulated witness
-
-        // FIXME:
         // Compute the accumulation of the commitments to the witness columns
+        env.accumulate_committed_state();
 
         // FIXME:
         // Compute the accumulation of the challenges
@@ -153,6 +140,7 @@ pub fn main() {
 
         // FIXME:
         // Compute the accumulated error
+        // ----- Accumulation/folding argument -----
 
         debug!(
             "Iteration {i} fully proven in {elapsed} μs",
@@ -162,5 +150,27 @@ pub fn main() {
 
         env.reset_for_next_iteration();
         env.current_iteration += 1;
+    }
+
+    // Regression test in case we change the Poseidon gadget or the verifier circuit.
+    // These values define the state of the application at the end of the
+    // execution.
+    assert_eq!(
+        env.challenges[ChallengeTerm::RelationCombiner].to_str_radix(16),
+        "f900168373307589ea461f97f47ca7d7"
+    );
+    assert_eq!(
+        env.challenges[ChallengeTerm::ConstraintCombiner].to_str_radix(16),
+        "fc5ac212f5f89cbd3a04a3eb39ce2999"
+    );
+}
+
+pub fn main() {
+    // See https://github.com/rust-lang/log
+    env_logger::init();
+
+    let args = cli::Commands::parse();
+    match args {
+        cli::Commands::Execute(args) => execute(args),
     }
 }
