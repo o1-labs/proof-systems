@@ -151,7 +151,7 @@ where
                 &group_map,
                 witness.0,
                 &[],
-                &mut self.index,
+                &self.index,
                 &mut rand::rngs::OsRng,
             )
             .unwrap();
