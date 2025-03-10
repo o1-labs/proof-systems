@@ -53,7 +53,10 @@ fn test_lazy_cache_benchmark() {
         xor::extend_xor_witness(&mut witness, input1, input2, bits);
     }
 
-    ConstraintSystem::create(gates.clone()).build().unwrap();
+    ConstraintSystem::create(gates.clone())
+        .lazy_cache(false)
+        .build()
+        .unwrap();
 
     {
         // LAZY CACHE FALSE

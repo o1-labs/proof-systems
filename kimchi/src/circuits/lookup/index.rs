@@ -206,7 +206,6 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
         runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
         domain: &EvaluationDomains<F>,
         zk_rows: usize,
-        lazy_cache: bool,
     ) -> Result<Option<Self>, LookupError> {
         //~ 1. If no lookup is used in the circuit, do not create a lookup index
         match LookupInfo::create_from_gates(gates, runtime_tables.is_some()) {

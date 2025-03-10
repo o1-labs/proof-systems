@@ -14,9 +14,9 @@ where
 
     /// Deferred computation that is evaluated only once when accessed
     #[serde(skip)]
-    OnDemand {
+    Lazy {
         // The value once computed
-        cached: OnceCell<T>,
+        computed: OnceCell<T>,
         // The function to compute the value
         compute_fn: Option<Arc<dyn Fn() -> T + Send + Sync>>,
     },
@@ -24,7 +24,7 @@ where
 
 /// A memory-efficient container that either stores a cached value or computes it on demand.
 ///
-/// `LazyCache<T, F>` optimizes memory and computation by either:
+/// `LazyCache<T>` optimizes memory and computation by either:
 /// - Storing a **precomputed** value in the `Cached` variant.
 /// - Storing a **computation function** in the `OnDemand` variant, which computes the value
 ///   only when first accessed, then transitions to `Cached` to avoid recomputation.
@@ -33,19 +33,34 @@ impl<T> LazyCache<T>
 where
     T: Send + Sync,
 {
+    // Create a new `LazyCache` with a cached computation
+    pub fn cache(value: T) -> Self {
+        LazyCache::Cached(value)
+    }
+
+    // Create a new `LazyCache` with a deferred computation
+    pub fn lazy(compute_fn: impl Fn() -> T + Send + Sync + 'static) -> Self {
+        LazyCache::Lazy {
+            computed: OnceCell::new(),
+            compute_fn: Some(Arc::new(compute_fn)),
+        }
+    }
+
     /// Returns a reference, computing and caching if necessary.
     pub fn get(&self) -> &T {
         match self {
             LazyCache::Cached(value) => value,
-            LazyCache::OnDemand { cached, compute_fn } => cached.get_or_init(|| {
+            LazyCache::Lazy {
+                computed,
+                compute_fn,
+            } => computed.get_or_init(|| {
                 let result = compute_fn
                     .as_ref()
-                    .expect("no function inside LazyCache::OnDemand")(
-                ); // Compute value
-                   // After initialization, remove `compute_fn` (workaround for interior mutability)
+                    .expect("no function inside LazyCache::Lazy")(); // Compute value
+                                                                     // After initialization, remove `compute_fn` (workaround for interior mutability)
                 unsafe {
                     let mut_self = self as *const _ as *mut Self;
-                    if let LazyCache::OnDemand { compute_fn, .. } = &mut *mut_self {
+                    if let LazyCache::Lazy { compute_fn, .. } = &mut *mut_self {
                         *compute_fn = None; // Remove reference to `cs`
                     }
                 }
@@ -62,7 +77,7 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             LazyCache::Cached(value) => f.debug_tuple("Cached").field(value).finish(),
-            LazyCache::OnDemand { .. } => f.write_str("OnDemand { <function> }"),
+            LazyCache::Lazy { .. } => f.write_str("Lazy { <function> }"),
         }
     }
 }
@@ -72,8 +87,8 @@ where
     T: Send + Sync,
 {
     fn default() -> Self {
-        LazyCache::OnDemand {
-            cached: OnceCell::new(),
+        LazyCache::Lazy {
+            computed: OnceCell::new(),
             compute_fn: None,
         }
     }
@@ -90,8 +105,8 @@ where
         let maybe_value = Option::<T>::deserialize(deserializer)?;
         Ok(match maybe_value {
             Some(value) => LazyCache::Cached(value),
-            None => LazyCache::OnDemand {
-                cached: OnceCell::new(),
+            None => LazyCache::Lazy {
+                computed: OnceCell::new(),
                 compute_fn: None,
             },
         })

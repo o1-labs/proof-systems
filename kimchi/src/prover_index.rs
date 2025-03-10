@@ -14,7 +14,6 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use mina_poseidon::FqSponge;
-use once_cell::sync::OnceCell;
 use poly_commitment::{OpenProof, SRS as _};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -80,15 +79,12 @@ where
 
         let cs = Arc::new(cs);
         let column_evaluations = if !lazy_cache {
-            LazyCache::Cached(cs.column_evaluations(&evaluated_column_coefficients))
+            LazyCache::cache(cs.column_evaluations(&evaluated_column_coefficients))
         } else {
-            LazyCache::OnDemand {
-                cached: OnceCell::new(),
-                compute_fn: Some(Arc::new({
-                    let cs = Arc::clone(&cs);
-                    move || cs.column_evaluations(&evaluated_column_coefficients)
-                })),
-            }
+            LazyCache::lazy({
+                let cs = Arc::clone(&cs);
+                move || cs.column_evaluations(&evaluated_column_coefficients)
+            })
         };
 
         ProverIndex {

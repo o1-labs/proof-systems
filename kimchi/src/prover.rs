@@ -351,7 +351,7 @@ where
         let mut lookup_context = LookupContext::default();
 
         //~ 1. If using lookup:
-        if let Some(lcs) = &index.cs.lookup_constraint_system {
+        if let Some(lcs) = index.cs.lookup_constraint_system.get() {
             internal_tracing::checkpoint!(internal_traces; use_lookup, {
                 "uses_lookup": true,
                 "uses_runtime_tables": lcs.runtime_tables.is_some(),
@@ -576,7 +576,7 @@ where
         let gamma = fq_sponge.challenge();
 
         //~ 1. If using lookup:
-        if let Some(lcs) = &index.cs.lookup_constraint_system {
+        if let Some(lcs) = index.cs.lookup_constraint_system.get() {
             //~~ * Compute the lookup aggregation polynomial.
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
@@ -645,7 +645,7 @@ where
         //~~ * the negated public polynomial
         //~    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
         //~    TODO: specify the split of the permutation polynomial into perm and bnd?
-        let lookup_env = if let Some(lcs) = &index.cs.lookup_constraint_system {
+        let lookup_env = if let Some(lcs) = index.cs.lookup_constraint_system.get() {
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
             Some(LookupEnvironment {
@@ -816,7 +816,7 @@ where
 
             // lookup
             {
-                if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
+                if let Some(lcs) = index.cs.lookup_constraint_system.get() {
                     let constraints = lookup::constraints::constraints(&lcs.configuration, false);
                     let constraints_len = u32::try_from(constraints.len())
                         .expect("not expecting a large amount of constraints");
@@ -880,7 +880,7 @@ where
         let zeta_omega = zeta * omega;
 
         //~ 1. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
-        if index.cs.lookup_constraint_system.is_some() {
+        if index.cs.lookup_constraint_system.get().is_some() {
             //~~ * the aggregation polynomial
             let aggreg = lookup_context
                 .aggreg_coeffs
@@ -1041,20 +1041,28 @@ where
                 .as_ref()
                 .map(chunked_evals_for_selector),
 
-            runtime_lookup_table_selector: index.cs.lookup_constraint_system.as_ref().and_then(
-                |lcs| {
+            runtime_lookup_table_selector: index
+                .cs
+                .lookup_constraint_system
+                .get()
+                .as_ref()
+                .and_then(|lcs| {
                     lcs.runtime_selector
                         .as_ref()
                         .map(chunked_evals_for_selector)
-                },
-            ),
-            xor_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(|lcs| {
-                lcs.lookup_selectors
-                    .xor
-                    .as_ref()
-                    .map(chunked_evals_for_selector)
-            }),
-            lookup_gate_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+                }),
+            xor_lookup_selector: index
+                .cs
+                .lookup_constraint_system
+                .get()
+                .as_ref()
+                .and_then(|lcs| {
+                    lcs.lookup_selectors
+                        .xor
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                }),
+            lookup_gate_lookup_selector: index.cs.lookup_constraint_system.get().as_ref().and_then(
                 |lcs| {
                     lcs.lookup_selectors
                         .lookup
@@ -1062,7 +1070,7 @@ where
                         .map(chunked_evals_for_selector)
                 },
             ),
-            range_check_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+            range_check_lookup_selector: index.cs.lookup_constraint_system.get().as_ref().and_then(
                 |lcs| {
                     lcs.lookup_selectors
                         .range_check
@@ -1070,14 +1078,17 @@ where
                         .map(chunked_evals_for_selector)
                 },
             ),
-            foreign_field_mul_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
-                |lcs| {
+            foreign_field_mul_lookup_selector: index
+                .cs
+                .lookup_constraint_system
+                .get()
+                .as_ref()
+                .and_then(|lcs| {
                     lcs.lookup_selectors
                         .ffmul
                         .as_ref()
                         .map(chunked_evals_for_selector)
-                },
-            ),
+                }),
         };
 
         let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);
@@ -1318,7 +1329,7 @@ where
 
         //~~ * optionally, the runtime table
         //~ 1. if using lookup:
-        if let Some(lcs) = &index.cs.lookup_constraint_system {
+        if let Some(lcs) = index.cs.lookup_constraint_system.get() {
             //~~ * add the lookup sorted polynomials
             let sorted_poly = lookup_context.sorted_coeffs.as_ref().unwrap();
             let sorted_comms = lookup_context.sorted_comms.as_ref().unwrap();

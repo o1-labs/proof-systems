@@ -199,7 +199,7 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub endo: F,
     /// lookup constraint system
     #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
-    pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
+    pub lookup_constraint_system: LazyCache<Option<LookupConstraintSystem<F>>>,
     /// precomputes
     #[serde(skip)]
     precomputations: LazyCache<Arc<DomainConstantEvaluations<F>>>,
@@ -272,10 +272,11 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// - `runtime_tables: None`,
     /// - `precomputations: None`,
     /// - `disable_gates_checks: false`,
+    /// - `lazy_cache: false`,
     ///
     /// How to use it:
     /// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`
-    /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations()``
+    /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations(), lazy_cache()`
     /// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`
     pub fn create(gates: Vec<CircuitGate<F>>) -> Builder<F> {
         Builder {
@@ -778,8 +779,8 @@ impl<F: PrimeField> Builder<F> {
     /// Build the [ConstraintSystem] from a [Builder].
     pub fn build(self) -> Result<ConstraintSystem<F>, SetupError> {
         let mut gates = self.gates;
-        let lookup_tables = self.lookup_tables;
-        let runtime_tables = self.runtime_tables;
+        let lookup_tables = self.lookup_tables.clone();
+        let runtime_tables = self.runtime_tables.clone();
 
         //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
@@ -920,13 +921,31 @@ impl<F: PrimeField> Builder<F> {
         // ------
         let lookup_constraint_system = LookupConstraintSystem::create(
             &gates,
-            lookup_tables,
-            runtime_tables,
+            self.lookup_tables,
+            self.runtime_tables,
             &domain,
             zk_rows as usize,
-            self.lazy_cache,
         )
         .map_err(SetupError::LookupCreation)?;
+
+        let lookup_constraint_system = if !self.lazy_cache {
+            LazyCache::cache(lookup_constraint_system)
+        } else {
+            // Lookup constraint creation does not fail, we discard the struct
+            // to prevent cacheing in memory and store in the lazy cache the
+            // function needed to recompute it afterwards when needed.
+            let gates = gates.clone();
+            LazyCache::lazy(move || {
+                LookupConstraintSystem::create(
+                    &gates,
+                    lookup_tables.clone(),
+                    runtime_tables.clone(),
+                    &domain,
+                    zk_rows as usize,
+                )
+                .unwrap()
+            })
+        };
 
         let sid = shifts.map[0].clone();
 
@@ -941,8 +960,8 @@ impl<F: PrimeField> Builder<F> {
                 )),
             }
         } else {
-            LazyCache::OnDemand {
-                cached: OnceCell::new(),
+            LazyCache::Lazy {
+                computed: OnceCell::new(),
                 compute_fn: Some(Arc::new(move || {
                     Arc::new(DomainConstantEvaluations::create(domain, zk_rows).unwrap())
                 })),
