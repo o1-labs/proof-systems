@@ -25,16 +25,11 @@ use ark_poly::{
     Radix2EvaluationDomain as D,
 };
 use o1_utils::ExtendedEvaluations;
-use once_cell::sync::OnceCell;
 use poly_commitment::OpenProof;
 use rayon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{
-    array,
-    default::Default,
-    sync::{Arc, Mutex},
-};
+use std::{array, default::Default, sync::Arc};
 
 //
 // ConstraintSystem
@@ -987,18 +982,15 @@ impl<F: PrimeField> Builder<F> {
 
         let precomputations = if !self.lazy_cache {
             match self.precomputations {
-                Some(t) => LazyCache::Cached(t),
-                None => LazyCache::Cached(Arc::new(
+                Some(t) => LazyCache::cache(t),
+                None => LazyCache::cache(Arc::new(
                     DomainConstantEvaluations::create(domain, zk_rows).unwrap(),
                 )),
             }
         } else {
-            LazyCache::Lazy {
-                computed: OnceCell::new(),
-                compute_fn: Mutex::new(Some(Arc::new(move || {
-                    Arc::new(DomainConstantEvaluations::create(domain, zk_rows).unwrap())
-                }))),
-            }
+            LazyCache::lazy(move || {
+                Arc::new(DomainConstantEvaluations::create(domain, zk_rows).unwrap())
+            })
         };
 
         let constraints = ConstraintSystem {

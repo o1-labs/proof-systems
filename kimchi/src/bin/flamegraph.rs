@@ -16,7 +16,7 @@ fn main() {
     let mode = env::args().nth(1);
     match mode.as_deref() {
         Some("prove") => {
-            let ctx: BenchmarkCtx = BenchmarkCtx::new(14);
+            let ctx = BenchmarkCtx::new(14);
             loop {
                 let proof_and_public = ctx.create_proof();
                 black_box(proof_and_public);

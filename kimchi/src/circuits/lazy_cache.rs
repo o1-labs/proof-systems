@@ -1,22 +1,19 @@
 use once_cell::sync::OnceCell;
-use serde::{Deserialize, Serialize};
+use serde::{ser, Deserialize, Serialize, Serializer};
 use std::{
     fmt,
     sync::{Arc, Mutex},
 };
 
 /// A memory-efficient container that caches or computes `T` on demand.
-#[derive(Serialize)]
 pub enum LazyCache<T>
 where
     T: Send + Sync,
 {
     /// Precomputed value
-    // TODO: Cached(OnceCell<T>),?
-    Cached(T),
+    Cached(OnceCell<T>),
 
     /// Deferred computation that is evaluated only once when accessed
-    #[serde(skip)]
     Lazy {
         // The value once computed
         computed: OnceCell<T>,
@@ -38,7 +35,9 @@ where
 {
     // Create a new `LazyCache` with a cached computation
     pub fn cache(value: T) -> Self {
-        LazyCache::Cached(value)
+        let cell = OnceCell::new();
+        let _ = cell.set(value);
+        LazyCache::Cached(cell)
     }
 
     // Create a new `LazyCache` with a deferred computation
@@ -52,7 +51,7 @@ where
     /// Returns a reference, computing and caching if necessary.
     pub fn get(&self) -> &T {
         match self {
-            LazyCache::Cached(value) => value,
+            LazyCache::Cached(value) => value.get().unwrap(),
             LazyCache::Lazy {
                 computed,
                 compute_fn,
@@ -109,6 +108,27 @@ where
     }
 }
 
+impl<T> Serialize for LazyCache<T>
+where
+    T: Serialize + Send + Sync,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            LazyCache::Cached(cell) => cell
+                .get()
+                .ok_or_else(|| serde::ser::Error::custom("LazyCache::Cached is uninitialized"))?
+                .serialize(serializer),
+            LazyCache::Lazy { computed, .. } => computed.get().map_or_else(
+                || Err(ser::Error::custom("LazyCache:Lazy is not computed")),
+                |value| value.serialize(serializer),
+            ),
+        }
+    }
+}
+
 impl<'de, T> Deserialize<'de> for LazyCache<T>
 where
     T: Deserialize<'de> + Send + Sync,
@@ -119,7 +139,11 @@ where
     {
         let maybe_value = Option::<T>::deserialize(deserializer)?;
         Ok(match maybe_value {
-            Some(value) => LazyCache::Cached(value),
+            Some(value) => {
+                let cell = OnceCell::new();
+                let _ = cell.set(value);
+                LazyCache::Cached(cell)
+            }
             None => LazyCache::Lazy {
                 computed: OnceCell::new(),
                 compute_fn: Mutex::new(None),
