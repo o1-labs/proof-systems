@@ -61,6 +61,9 @@ pub struct Program<
     /// The key is the power of the relation combiner `r`, as used in the
     /// HashMap given by the compute_cross_terms method.
     pub cross_terms: HashMap<usize, Vec<E1::ScalarField>>,
+
+    /// Commitments to the cross terms.
+    pub committed_cross_terms: HashMap<usize, PolyComm<E1>>,
 }
 
 impl<Fp: PrimeField, Fq: PrimeField, E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>>
@@ -104,6 +107,11 @@ where
             });
         };
 
+        let mut committed_cross_terms: HashMap<usize, PolyComm<E1>> = HashMap::new();
+        (0..MAX_DEGREE + 1).for_each(|i| {
+            committed_cross_terms.insert(i, PolyComm::new(vec![blinder]));
+        });
+
         Self {
             accumulated_committed_state,
             previous_committed_state,
@@ -111,6 +119,7 @@ where
             accumulated_challenges,
             previous_challenges,
             cross_terms,
+            committed_cross_terms,
         }
     }
 
@@ -345,6 +354,19 @@ where
                 ct[row] = *term;
             });
         })
+    }
+
+    pub fn commit_cross_terms(
+        &mut self,
+        srs: &SRS<E1>,
+        domain: EvaluationDomains<E1::ScalarField>,
+    ) {
+        self.cross_terms.iter().for_each(|(power, terms)| {
+            let evals: Vec<E1::ScalarField> = terms.clone();
+            let evals = Evaluations::from_vec_and_domain(evals, domain.d1);
+            let res = srs.commit_evaluations_non_hiding(domain.d1, &evals);
+            self.committed_cross_terms.insert(*power, res);
+        });
     }
 }
 
@@ -1337,6 +1359,20 @@ where
                 domain_size,
                 &self.indexed_relation.circuit_gates,
                 &self.indexed_relation.constraints_fq,
+            );
+        }
+    }
+
+    pub fn commit_cross_terms(&mut self) {
+        if self.current_iteration % 2 == 0 {
+            self.program_e1.commit_cross_terms(
+                &self.indexed_relation.srs_e1,
+                self.indexed_relation.domain_fp,
+            );
+        } else {
+            self.program_e2.commit_cross_terms(
+                &self.indexed_relation.srs_e2,
+                self.indexed_relation.domain_fq,
             );
         }
     }
