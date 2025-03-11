@@ -1154,6 +1154,9 @@ where
     }
 
     /// Reset the environment to build the next iteration
+    ///
+    /// The cross terms evaluations are not reset because the values are
+    /// overwritten in [self.compute_cross_terms].
     pub fn reset_for_next_iteration(&mut self) {
         // Rest the state for the next row
         self.current_row = 0;
