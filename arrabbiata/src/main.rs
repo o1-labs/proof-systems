@@ -36,7 +36,10 @@ pub fn execute(args: cli::ExecuteArgs) {
     // FIXME: correctly setup
     let indexed_relation = IndexedRelation::new(srs_log2_size);
 
-    let mut env = witness::Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
+    // FIXME: the initial value z0 is wrong.
+    // This should probably come from the user inputs.
+    let z0 = BigInt::from(1u64);
+    let mut env = witness::Env::<Fp, Fq, Vesta, Pallas>::new(z0, indexed_relation);
 
     while env.current_iteration < n_iteration {
         let start_iteration = Instant::now();
