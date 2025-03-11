@@ -123,6 +123,9 @@ pub fn execute(args: cli::ExecuteArgs) {
         );
 
         // FIXME:
+        // Commit to the cross-terms
+
+        // FIXME:
         // Absorb the cross-terms
 
         // Coin challenge r to fold the instances of the relation.
