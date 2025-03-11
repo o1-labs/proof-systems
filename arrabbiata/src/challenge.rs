@@ -1,4 +1,4 @@
-use ark_ff::Zero;
+use ark_ff::{One, Zero};
 use core::{
     fmt::{Display, Formatter, Result},
     ops::{Index, IndexMut},
@@ -39,6 +39,7 @@ impl Display for ChallengeTerm {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Challenges<F> {
     /// Used to aggregate the constraints describing the relation. It is used to
     /// enforce all constraints are satisfied at the same time.
@@ -116,14 +117,14 @@ impl<F> IndexMut<ChallengeTerm> for Challenges<F> {
     }
 }
 
-impl<F: Zero> Default for Challenges<F> {
+impl<F: Zero + One> Default for Challenges<F> {
     fn default() -> Self {
         Self {
-            constraint_combiner: F::zero(),
+            constraint_combiner: F::one(),
             beta: F::zero(),
             gamma: F::zero(),
-            constraint_homogeniser: F::zero(),
-            relation_combiner: F::zero(),
+            constraint_homogeniser: F::one(),
+            relation_combiner: F::one(),
         }
     }
 }

@@ -70,7 +70,7 @@ fn test_ivc_total_number_of_constraints_ivc() {
     let constraints_fp = constraint::Env::<Vesta>::new();
 
     let constraints = constraints_fp.get_all_constraints_for_verifier();
-    assert_eq!(constraints.len(), 90);
+    assert_eq!(constraints.len(), 195);
 }
 
 #[test]
@@ -90,7 +90,7 @@ fn test_degree_of_constraints_ivc() {
     assert_eq!(degree_per_constraints.get(&2), Some(&11));
     assert_eq!(degree_per_constraints.get(&3), Some(&1));
     assert_eq!(degree_per_constraints.get(&4), None);
-    assert_eq!(degree_per_constraints.get(&5), Some(&75));
+    assert_eq!(degree_per_constraints.get(&5), Some(&180));
 }
 
 #[test]

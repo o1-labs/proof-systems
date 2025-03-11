@@ -312,7 +312,7 @@ where
         let mut constraints = vec![];
 
         // Poseidon constraints
-        (0..PlonkSpongeConstants::PERM_ROUNDS_FULL / 12).for_each(|i| {
+        (0..PlonkSpongeConstants::PERM_ROUNDS_FULL / 5).for_each(|i| {
             interpreter::run_ivc(&mut env, Instruction::PoseidonFullRound(5 * i));
             constraints.extend(env.constraints.clone());
             env.reset();
@@ -364,7 +364,7 @@ where
         let mut env = self.clone();
 
         // Poseidon constraints
-        (0..PlonkSpongeConstants::PERM_ROUNDS_FULL / 12).for_each(|i| {
+        (0..PlonkSpongeConstants::PERM_ROUNDS_FULL / 5).for_each(|i| {
             interpreter::run_ivc(&mut env, Instruction::PoseidonFullRound(5 * i));
             hashmap.insert(Gadget::PoseidonFullRound(5 * i), env.constraints.clone());
             env.reset();
