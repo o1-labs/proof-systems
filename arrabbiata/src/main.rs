@@ -116,10 +116,9 @@ pub fn execute(args: cli::ExecuteArgs) {
         debug!("Computing the cross-terms");
         let start_iteration = Instant::now();
         env.compute_cross_terms();
-        let end_iteration = Instant::now();
         debug!(
             "Cross-terms computed in {elapsed} μs",
-            elapsed = end_iteration.elapsed().as_micros()
+            elapsed = start_iteration.elapsed().as_micros()
         );
 
         // FIXME:
