@@ -113,22 +113,26 @@ pub fn execute(args: cli::ExecuteArgs) {
         );
 
         // ----- Accumulation/folding argument -----
-        debug!("Computing the cross-terms");
-        let start_iteration = Instant::now();
-        env.compute_cross_terms();
-        debug!(
-            "Cross-terms computed in {elapsed} μs",
-            elapsed = start_iteration.elapsed().as_micros()
-        );
+        {
+            debug!("Computing the cross-terms");
+            let start_iteration = Instant::now();
+            env.compute_cross_terms();
+            debug!(
+                "Cross-terms computed in {elapsed} μs",
+                elapsed = start_iteration.elapsed().as_micros()
+            );
+        }
 
         // Commit to the cross-terms
-        debug!("Committing the cross-terms");
-        let start_iteration = Instant::now();
-        env.commit_cross_terms();
-        debug!(
-            "Cross-terms committed in {elapsed} μs",
-            elapsed = start_iteration.elapsed().as_micros()
-        );
+        {
+            debug!("Committing the cross-terms");
+            let start_iteration = Instant::now();
+            env.commit_cross_terms();
+            debug!(
+                "Cross-terms committed in {elapsed} μs",
+                elapsed = start_iteration.elapsed().as_micros()
+            );
+        }
 
         // FIXME:
         // Absorb the cross-terms
