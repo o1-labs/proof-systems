@@ -7,7 +7,7 @@ pub struct MinRoot<F: PrimeField> {
 }
 
 impl<F: PrimeField, E: InterpreterEnv> ZkApp<E> for MinRoot<F> {
-    fn dummy_witness<F: PrimeField>(&self, _srs_log2_size: usize) -> Vec<Vec<F>> {}
+    fn dummy_witness<F: PrimeField>(&self, srs_size: usize) -> Vec<Vec<F>> {}
 
     fn run(&self, env: &mut E) {
         let x1 = {
