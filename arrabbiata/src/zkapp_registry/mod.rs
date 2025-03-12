@@ -21,6 +21,10 @@ use crate::{interpreter::InterpreterEnv, NUMBER_OF_COLUMNS};
 /// that describe the shape of the execution trace.
 /// The shape is defined by a list of "selectors" that are used to select the
 /// columns that are used in the computation, and how constrained they are.
+/// The method "run" will be responsible to build the execution trace, using the
+/// selectors the setup phase defined.
+/// The method "run" will use the interpreter environment to build the execution
+/// trace, based on previously computed values.
 pub trait ZkApp<E: InterpreterEnv> {
     /// Provide a dummy witness, used to generate a first non-folded instance.
     fn dummy_witness<F: PrimeField>(&self, srs_size: usize) -> Vec<Vec<F>>;
