@@ -40,6 +40,7 @@ use crate::{
     constraint,
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{self, VERIFIER_STARTING_INSTRUCTION},
+    zkapp_registry::{verifier::Verifier, ZkApp},
     MAXIMUM_FIELD_SIZE_IN_BITS, MAX_DEGREE, MV_POLYNOMIAL_ARITY, NUMBER_OF_COLUMNS,
     NUMBER_OF_GADGETS, VERIFIER_CIRCUIT_SIZE,
 };
@@ -290,5 +291,206 @@ where
 
     pub fn get_srs_blinders(&self) -> (E1, E2) {
         (self.srs_e1.h, self.srs_e2.h)
+    }
+}
+
+/// An indexed relation is a structure that contains all the information needed
+/// describing a specialised sub-class of the NP relation. It includes some
+/// (protocol) parameters like the SRS, the evaluation domains, and the
+/// constraints describing the computation.
+///
+/// The prover will be instantiated for a particular indexed relation, and the
+/// verifier will be instantiated with (relatively) the same indexed relation.
+pub struct IndexedRelationTwo<
+    Fp: PrimeField,
+    Fq: PrimeField,
+    E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
+    E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
+    App1: ZkApp<E1>,
+    App2: ZkApp<E2>,
+> where
+    E1::BaseField: PrimeField,
+    E2::BaseField: PrimeField,
+    <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+{
+    /// Domain for Fp
+    pub domain_fp: EvaluationDomains<E1::ScalarField>,
+
+    /// Domain for Fq
+    pub domain_fq: EvaluationDomains<E2::ScalarField>,
+
+    /// SRS for the first curve
+    pub srs_e1: SRS<E1>,
+
+    /// SRS for the second curve
+    pub srs_e2: SRS<E2>,
+
+    /// The application size, i.e. the number of rows per accumulation an
+    /// application can use.
+    ///
+    /// Note that the value is the same for both circuits. We do suppose both
+    /// SRS are of the same sizes and the verifier circuits are the same.
+    pub app_size: usize,
+
+    /// The description of the program, in terms of gadgets.
+    /// For now, the program is the same for both curves.
+    ///
+    /// The number of elements is exactly the size of the SRS.
+    pub circuit_fp: Vec<Gadget>,
+    pub circuit_fq: Vec<Gadget>,
+
+    /// Commitments to the selectors used by both circuits
+    pub selectors_comm: (
+        [PolyComm<E1>; NUMBER_OF_GADGETS],
+        [PolyComm<E2>; NUMBER_OF_GADGETS],
+    ),
+
+    /// Application over both curves
+    pub zkapp_fp: App1,
+    pub zkapp_fq: App2,
+
+    /// Initial state of the sponge, containing circuit specific
+    /// information.
+    // FIXME: setup correctly with the initial transcript.
+    // The sponge must be initialized correctly with all the information
+    // related to the actual relation being accumulated/proved.
+    // Note that it must include the information of both circuits!
+    pub initial_sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
+}
+
+impl<
+        Fp: PrimeField,
+        Fq: PrimeField,
+        E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
+        E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
+        App1: ZkApp<E1>,
+        App2: ZkApp<E2>,
+    > IndexedRelationTwo<Fp, Fq, E1, E2, App1, App2>
+where
+    E1::BaseField: PrimeField,
+    E2::BaseField: PrimeField,
+    <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+{
+    pub fn new(zkapp_fp: App1, zkapp_fq: App2, srs_log2_size: usize) -> Self {
+        assert!(E1::ScalarField::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
+        assert!(Fq::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
+        let modulus_fp = E1::ScalarField::modulus_biguint();
+        let alpha = PlonkSpongeConstants::PERM_SBOX;
+        assert!(
+            (modulus_fp - BigUint::from(1_u64)).gcd(&BigUint::from(alpha)) == BigUint::from(1_u64),
+            "The modulus of Fp should be coprime with {alpha}"
+        );
+        let modulus_fq = E2::ScalarField::modulus_biguint();
+        let alpha = PlonkSpongeConstants::PERM_SBOX;
+        assert!(
+            (modulus_fq - BigUint::from(1_u64)).gcd(&BigUint::from(alpha)) == BigUint::from(1_u64),
+            "The modulus of Fq should be coprime with {alpha}"
+        );
+
+        let srs_size = 1 << srs_log2_size;
+        let domain_fp = EvaluationDomains::<E1::ScalarField>::create(srs_size).unwrap();
+        let domain_fq = EvaluationDomains::<E2::ScalarField>::create(srs_size).unwrap();
+
+        info!("Create an SRS of size {srs_log2_size} for the first curve");
+        let srs_e1: SRS<E1> = {
+            let start = Instant::now();
+            let srs = SRS::create(srs_size);
+            debug!("SRS for E1 created in {:?}", start.elapsed());
+            let start = Instant::now();
+            srs.get_lagrange_basis(domain_fp.d1);
+            debug!("Lagrange basis for E1 added in {:?}", start.elapsed());
+            srs
+        };
+        info!("Create an SRS of size {srs_log2_size} for the second curve");
+        let srs_e2: SRS<E2> = {
+            let start = Instant::now();
+            let srs = SRS::create(srs_size);
+            debug!("SRS for E2 created in {:?}", start.elapsed());
+            let start = Instant::now();
+            srs.get_lagrange_basis(domain_fq.d1);
+            debug!("Lagrange basis for E2 added in {:?}", start.elapsed());
+            srs
+        };
+
+        // FIXME: note that the app size can be different for both curves. We
+        // suppose we have the same circuit on both curves for now.
+        let app_size = srs_size - VERIFIER_CIRCUIT_SIZE;
+
+        let circuit_fp: Vec<Gadget> = {
+            let app_circuit: Vec<Gadget> = zkapp_fp.setup(app_size);
+            let verifier_circuit: Verifier<E1> = Verifier::<E1> {
+                _field: std::marker::PhantomData,
+            };
+            let verifier_circuit: Vec<Gadget> = verifier_circuit.setup(VERIFIER_CIRCUIT_SIZE);
+            app_circuit.into_iter().chain(verifier_circuit).collect()
+        };
+
+        let circuit_fq: Vec<Gadget> = {
+            let app_circuit: Vec<Gadget> = zkapp_fq.setup(app_size);
+            let verifier_circuit: Verifier<E2> = Verifier::<E2> {
+                _field: std::marker::PhantomData,
+            };
+            let verifier_circuit: Vec<Gadget> = verifier_circuit.setup(VERIFIER_CIRCUIT_SIZE);
+            app_circuit.into_iter().chain(verifier_circuit).collect()
+        };
+
+        let selectors_comm_e1: [PolyComm<E1>; NUMBER_OF_GADGETS] = {
+            // We initialize to the blinder to avoid the identity element.
+            let init: [PolyComm<E1>; NUMBER_OF_GADGETS] =
+                std::array::from_fn(|_| PolyComm::new(vec![srs_e1.h]));
+            // We commit to the selectors using evaluations.
+            // As they are supposed to be one or zero, each row adds a small
+            // contribution to the commitment.
+            // We explicity commit to all gadgets, even if they are not used in
+            // this indexed relation.
+            circuit_fp
+                .iter()
+                .enumerate()
+                .fold(init, |mut acc, (row, g)| {
+                    let i = usize::from(*g);
+                    acc[i] = &acc[i] + &srs_e1.get_lagrange_basis(domain_fp.d1)[row];
+                    acc
+                })
+        };
+
+        let selectors_comm_e2: [PolyComm<E2>; NUMBER_OF_GADGETS] = {
+            // We initialize to the blinder to avoid the identity element.
+            let init: [PolyComm<E2>; NUMBER_OF_GADGETS] =
+                std::array::from_fn(|_| PolyComm::new(vec![srs_e2.h]));
+            // We commit to the selectors using evaluations.
+            // As they are supposed to be one or zero, each row adds a small
+            // contribution to the commitment.
+            // We explicity commit to all gadgets, even if they are not used in
+            // this indexed relation.
+            circuit_fq
+                .iter()
+                .enumerate()
+                .fold(init, |mut acc, (row, g)| {
+                    let i = usize::from(*g);
+                    acc[i] = &acc[i] + &srs_e2.get_lagrange_basis(domain_fq.d1)[row];
+                    acc
+                })
+        };
+        let selectors_comm = (selectors_comm_e1, selectors_comm_e2);
+
+        // FIXME: setup correctly the initial sponge state
+        let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
+            std::array::from_fn(|_i| BigInt::from(42u64));
+
+        Self {
+            domain_fp,
+            domain_fq,
+            srs_e1,
+            srs_e2,
+            app_size,
+            circuit_fp,
+            circuit_fq,
+            selectors_comm,
+            zkapp_fp,
+            zkapp_fq,
+            initial_sponge: sponge_e1,
+        }
     }
 }

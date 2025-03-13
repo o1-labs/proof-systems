@@ -1,6 +1,8 @@
+use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
+use poly_commitment::commitment::CommitmentCurve;
 
-use crate::{interpreter::InterpreterEnv, NUMBER_OF_COLUMNS};
+use crate::{column::Gadget, curve::ArrabbiataCurve, interpreter::InterpreterEnv};
 
 /// A ZkApp for Arrabbiata is a program that is built over a generic interpreter
 /// environment `E`.
@@ -23,14 +25,31 @@ use crate::{interpreter::InterpreterEnv, NUMBER_OF_COLUMNS};
 /// columns that are used in the computation, and how constrained they are.
 /// The method "run" will be responsible to build the execution trace, using the
 /// selectors the setup phase defined.
+///
 /// The method "run" will use the interpreter environment to build the execution
 /// trace, based on previously computed values.
-pub trait ZkApp<E: InterpreterEnv> {
+pub trait ZkApp<C: ArrabbiataCurve>
+where
+    C::BaseField: PrimeField,
+    <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+{
     /// Provide a dummy witness, used to generate a first non-folded instance.
-    fn dummy_witness<F: PrimeField>(&self, srs_size: usize) -> Vec<Vec<F>>;
+    fn dummy_witness(&self, srs_size: usize) -> Vec<Vec<C::ScalarField>>;
 
-    /// Execute the ZkApp
-    fn run(&self, env: &mut E);
+    /// Execute the ZkApp over the interpreter environment `E`.
+    fn run<E: InterpreterEnv>(&self, env: &mut E);
 
-    fn setup(&mut self, env: &mut E);
+    /// Create a setup for the ZkApp.
+    /// The setup will define the shape of the execution trace.
+    /// It is mostly consisting of the list of selectors that are used to select
+    /// the columns that are used in the computation, and how constrained they are.
+    ///
+    /// For now, the concept of gadget and selectors are mixed together. We
+    /// should separate them in the future to allow more flexibility.
+    fn setup(&self, app_size: usize) -> Vec<Gadget>;
 }
+
+pub mod minroot;
+
+/// An app implemening the verifier of Arrabbiata.
+pub mod verifier;

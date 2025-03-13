@@ -2,29 +2,41 @@ use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
 use poly_commitment::commitment::CommitmentCurve;
 
+use crate::{column::Gadget, curve::ArrabbiataCurve, interpreter::InterpreterEnv};
+
+use super::ZkApp;
+
 pub struct MinRoot<F: PrimeField> {
     pub x: F,
     pub y: F,
     pub n: u64,
 }
 
-impl<F: PrimeField, E: InterpreterEnv> ZkApp<E> for MinRoot<F> {
-    fn dummy_witness<F: PrimeField>(&self, srs_size: usize) -> Vec<Vec<F>> {}
+impl<C: ArrabbiataCurve> ZkApp<C> for MinRoot<C::ScalarField>
+where
+    C::BaseField: PrimeField,
+    <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+{
+    fn dummy_witness(&self, _srs_size: usize) -> Vec<Vec<C::ScalarField>> {
+        unimplemented!()
+    }
 
-    fn run(&self, env: &mut E) {
-        let x1 = {
+    fn run<E: InterpreterEnv>(&self, env: &mut E) {
+        let _x1 = {
             let pos = env.allocate();
             env.fetch_input(pos)
         };
-        let y1 = {
+        let _y1 = {
             let pos = env.allocate();
             env.fetch_input(pos)
         };
-        let n = {
+        let _n = {
             let pos = env.allocate();
             env.fetch_input(pos)
         };
     }
 
-    fn setup(&mut self, _env: &mut E) {}
+    fn setup(&self, _app_size: usize) -> Vec<Gadget> {
+        unimplemented!()
+    }
 }
