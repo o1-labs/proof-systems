@@ -28,9 +28,24 @@ pub fn bench_proof_creation_mina(c: &mut Criterion) {
             bench_arguments_from_file, BaseSpongePallas, BaseSpongeVesta, ScalarSpongePallas,
             ScalarSpongeVesta,
         },
+        curve::KimchiCurve,
         proof::ProverProof,
     };
     use mina_curves::pasta::{Pallas, Vesta};
+
+    let filename = std::env::var("BENCH_PROOF_CREATION_MINA_INPUTS").unwrap();
+
+    // Parse filename "kimchi_inputs_CURVENAME_SEED.ser" into two parameters
+    let (curve_name, seed): (&str, &str) = filename
+        .split('/')
+        .last()
+        .unwrap()
+        .strip_prefix("kimchi_inputs_")
+        .unwrap()
+        .strip_suffix(".ser")
+        .unwrap()
+        .split_once('_')
+        .unwrap();
 
     let mut group = c.benchmark_group("Proof creation (mina circuit)");
 
@@ -38,99 +53,62 @@ pub fn bench_proof_creation_mina(c: &mut Criterion) {
     group.sampling_mode(SamplingMode::Flat); // for slow benchmarks
     group.sample_size(10); // Limits the number of samples
 
-    // Vesta
-    {
-        let seeds_vesta: Vec<u64> = vec![
-            10596861074504661741,
-            11905291666876899086,
-            11944131969684269701,
-            11989028466209190542,
-            12479452507099265722,
-            14327630479687750080,
-            15291293990426965937,
-            15792116159270623099,
-            16106463403161176923,
-            17016866561918195054,
-            1702566697096426944,
-        ];
-
+    if curve_name == Vesta::NAME {
+        // Vesta
         let srs = kimchi::precomputed_srs::get_srs_test();
+        let (index, witness, runtime_tables, prev) =
+            bench_arguments_from_file::<Vesta, BaseSpongeVesta>(srs.clone(), filename.clone());
 
-        for seed in seeds_vesta {
-            let (index, witness, runtime_tables, prev) =
-                bench_arguments_from_file::<Vesta, BaseSpongeVesta>(srs.clone(), seed.to_string());
-
-            let group_map = GroupMap::<_>::setup();
-            group.bench_function(
-                format!("proof creation (mina, vesta, circuit seed {})", seed),
-                |b| {
-                    b.iter(|| {
-                        black_box(ProverProof::create_recursive::<
-                            BaseSpongeVesta,
-                            ScalarSpongeVesta,
-                            _,
-                        >(
-                            &group_map,
-                            witness.clone(),
-                            &runtime_tables,
-                            &index,
-                            prev.clone(),
-                            None,
-                            &mut rand::rngs::OsRng,
-                        ))
-                    })
-                },
-            );
-        }
-    }
-
-    // Palas
-    {
-        let seeds_pallas: Vec<u64> = vec![
-            1046902090469669730,
-            10666926878093284941,
-            11077595827393350400,
-            11931396553360658508,
-            12076254163870571246,
-            12283305969043888103,
-            14036036535646723534,
-            14723393858825727067,
-            1492142480766064234,
-            1540046002904207613,
-            15891712075838566059,
-        ];
-
+        let group_map = GroupMap::<_>::setup();
+        group.bench_function(
+            format!("proof creation (mina, vesta, circuit seed {})", seed),
+            |b| {
+                b.iter(|| {
+                    black_box(ProverProof::create_recursive::<
+                        BaseSpongeVesta,
+                        ScalarSpongeVesta,
+                        _,
+                    >(
+                        &group_map,
+                        witness.clone(),
+                        &runtime_tables,
+                        &index,
+                        prev.clone(),
+                        None,
+                        &mut rand::rngs::OsRng,
+                    ))
+                })
+            },
+        );
+    } else if curve_name == Pallas::NAME {
+        // Pallas
         let srs = kimchi::precomputed_srs::get_srs_test();
+        let (index, witness, runtime_tables, prev) =
+            bench_arguments_from_file::<Pallas, BaseSpongePallas>(srs.clone(), filename.clone());
 
-        for seed in seeds_pallas {
-            let (index, witness, runtime_tables, prev) =
-                bench_arguments_from_file::<Pallas, BaseSpongePallas>(
-                    srs.clone(),
-                    seed.to_string(),
-                );
-
-            let group_map = GroupMap::<_>::setup();
-            group.bench_function(
-                format!("proof creation (mina, pallas, circuit seed {})", seed),
-                |b| {
-                    b.iter(|| {
-                        black_box(ProverProof::create_recursive::<
-                            BaseSpongePallas,
-                            ScalarSpongePallas,
-                            _,
-                        >(
-                            &group_map,
-                            witness.clone(),
-                            &runtime_tables,
-                            &index,
-                            prev.clone(),
-                            None,
-                            &mut rand::rngs::OsRng,
-                        ))
-                    })
-                },
-            );
-        }
+        let group_map = GroupMap::<_>::setup();
+        group.bench_function(
+            format!("proof creation (mina, pallas, circuit seed {})", seed),
+            |b| {
+                b.iter(|| {
+                    black_box(ProverProof::create_recursive::<
+                        BaseSpongePallas,
+                        ScalarSpongePallas,
+                        _,
+                    >(
+                        &group_map,
+                        witness.clone(),
+                        &runtime_tables,
+                        &index,
+                        prev.clone(),
+                        None,
+                        &mut rand::rngs::OsRng,
+                    ))
+                })
+            },
+        );
+    } else {
+        panic!("Unsupported curve: {}", curve_name);
     }
 }
 

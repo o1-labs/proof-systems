@@ -15,7 +15,7 @@ use poly_commitment::{
     SRS,
 };
 use rand::Rng;
-use std::{array, fs::File, io::BufReader, path::PathBuf};
+use std::{array, path::PathBuf};
 
 use crate::{
     circuits::{
@@ -140,14 +140,13 @@ pub fn bench_arguments_dump_into_file<G: KimchiCurve>(
 ) {
     let seed: u64 = rand::thread_rng().gen();
 
-    let filename1 = format!("./kimchi_input_{}_{}.ser", G::NAME, seed);
-    let filename2 = format!("./kimchi_cs_{}_{}.ser", G::NAME, seed);
+    let filename = format!("./kimchi_inputs_{}_{:08x}.ser", G::NAME, seed);
 
-    let mut file1 = std::fs::OpenOptions::new()
+    let mut file = std::fs::OpenOptions::new()
         .create(true)
         .truncate(true)
         .write(true)
-        .open(PathBuf::from(filename1))
+        .open(PathBuf::from(filename))
         .expect("failed to open file to write pasta_fp inputs");
 
     let runtime_tables_as_vec: Vec<(u32, Vec<G::ScalarField>)> = runtime_tables
@@ -168,38 +167,32 @@ pub fn bench_arguments_dump_into_file<G: KimchiCurve>(
         })
         .collect();
 
-    let mut bytes1: Vec<u8> = vec![];
+    let bytes_cs: Vec<u8> = rmp_serde::to_vec(&cs).unwrap();
+
+    let mut bytes: Vec<u8> = vec![];
     CanonicalSerialize::serialize_uncompressed(
         &(
             witness.clone(),
             runtime_tables_as_vec.clone(),
             prev_as_pairs.clone(),
+            bytes_cs,
         ),
-        &mut bytes1,
+        &mut bytes,
     )
     .unwrap();
 
-    file1.write_all(&bytes1).expect("failed to write file");
-    file1.flush().expect("failed to flush file");
-
-    let mut file2 = std::fs::OpenOptions::new()
-        .create(true)
-        .truncate(true)
-        .write(true)
-        .open(filename2)
-        .expect("failed to open file to write pasta_fp inputs");
-
-    let bytes2: Vec<u8> = rmp_serde::to_vec(&cs).unwrap();
-    file2.write_all(&bytes2).expect("failed to write file");
-    file2.flush().expect("failed to flush file");
+    file.write_all(&bytes).expect("failed to write file");
+    file.flush().expect("failed to flush file");
 }
 
+/// Given a filename with encoded (witness, runtime table, prev rec
+/// challenges, constrain system), returns arguments necessary to run a prover.
 pub fn bench_arguments_from_file<
     G: KimchiCurve,
     BaseSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
 >(
     srs: poly_commitment::ipa::SRS<G>,
-    seed: String,
+    filename: String,
 ) -> (
     ProverIndex<G, OpeningProof<G>>,
     [Vec<G::ScalarField>; COLUMNS],
@@ -209,26 +202,14 @@ pub fn bench_arguments_from_file<
 where
     G::BaseField: PrimeField,
 {
-    let root_dir = match std::env::var("SERIALISED_CIRCUITS_PATH") {
-        Err(_) => {
-            // this will return .../kimchi/
-            let cargo_root = env!("CARGO_MANIFEST_DIR");
-            // Default path is ./kimchi/serialized-test-circuits
-            format!("{}/serialised-test-circuits/", cargo_root)
-        }
-        Ok(x) => x,
-    };
-
-    let filename1 = format!("{}/kimchi_input_{}_{}.ser", root_dir, G::NAME, seed);
-    let filename2 = format!("{}/kimchi_cs_{}_{}.ser", root_dir, G::NAME, seed);
-
-    let bytes1: Vec<u8> = std::fs::read(filename1.clone())
-        .unwrap_or_else(|e| panic!("{}. Couldn't read file: {}", e, filename1));
-    let (witness, runtime_tables_as_vec, prev_as_pairs): (
+    let bytes: Vec<u8> = std::fs::read(filename.clone())
+        .unwrap_or_else(|e| panic!("{}. Couldn't read file: {}", e, filename));
+    let (witness, runtime_tables_as_vec, prev_as_pairs, bytes_cs): (
         [Vec<_>; COLUMNS],
         Vec<(u32, Vec<G::ScalarField>)>,
         Vec<_>,
-    ) = CanonicalDeserialize::deserialize_uncompressed(bytes1.as_slice()).unwrap();
+        Vec<u8>,
+    ) = CanonicalDeserialize::deserialize_uncompressed(bytes.as_slice()).unwrap();
 
     let runtime_tables: Vec<RuntimeTable<_>> = runtime_tables_as_vec
         .into_iter()
@@ -247,11 +228,7 @@ where
         .collect();
 
     // serialized index does not have many fields including SRS
-    let mut reader2 = BufReader::new(
-        File::open(filename2.clone())
-            .unwrap_or_else(|e| panic!("{}. Couldn't read file: {}", e, filename2)),
-    );
-    let cs: ConstraintSystem<G::ScalarField> = rmp_serde::from_read(&mut reader2).unwrap();
+    let cs: ConstraintSystem<G::ScalarField> = rmp_serde::from_read(bytes_cs.as_slice()).unwrap();
 
     let endo = cs.endo;
     let mut index: ProverIndex<G, OpeningProof<G>> = ProverIndex::create(cs, endo, srs.into());
