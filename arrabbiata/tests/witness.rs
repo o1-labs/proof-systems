@@ -21,17 +21,27 @@ fn test_unit_witness_poseidon_permutation_gadget_one_full_hash() {
     // 13562506435502224548799089445428941958058503946524561166818119397766682137724
     // 27423099486669760867028539664936216880884888701599404075691059826529320129892
     // 736058628407775696076653472820678709906041621699240400715815852096937303940
-    let indexed_relation = IndexedRelation::new(MIN_SRS_LOG2_SIZE);
+    let zkapp_fp: MinRoot<Fp> = MinRoot {
+        x: Fp::from(0),
+        y: Fp::from(0),
+        n: 0,
+    };
+    let zkapp_fq: MinRoot<Fq> = MinRoot {
+        x: Fq::from(0),
+        y: Fq::from(0),
+        n: 0,
+    };
+    let indexed_relation = IndexedRelation::new(zkapp_fp, zkapp_fq, MIN_SRS_LOG2_SIZE);
 
     let sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
         indexed_relation.initial_sponge.clone();
 
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
+    let mut env = Env::<Fp, Fq, Vesta, Pallas, MinRoot<Fp>, MinRoot<Fq>>::new(indexed_relation);
 
     env.current_instruction = Instruction::PoseidonFullRound(0);
 
     (0..(PlonkSpongeConstants::PERM_ROUNDS_FULL / 5)).for_each(|i| {
-        interpreter::run_ivc(&mut env, Instruction::PoseidonFullRound(5 * i));
+        interpreter::run(&mut env, Instruction::PoseidonFullRound(5 * i));
         env.reset();
     });
     let exp_output = {
@@ -61,20 +71,29 @@ fn test_unit_witness_poseidon_permutation_gadget_one_full_hash() {
 
 #[test]
 fn test_unit_witness_poseidon_with_absorb_one_full_hash() {
-    let indexed_relation: IndexedRelation<Fp, Fq, Vesta, Pallas> =
-        IndexedRelation::new(MIN_SRS_LOG2_SIZE);
+    let zkapp_fp: MinRoot<Fp> = MinRoot {
+        x: Fp::from(0),
+        y: Fp::from(0),
+        n: 0,
+    };
+    let zkapp_fq: MinRoot<Fq> = MinRoot {
+        x: Fq::from(0),
+        y: Fq::from(0),
+        n: 0,
+    };
+    let indexed_relation = IndexedRelation::new(zkapp_fp, zkapp_fq, MIN_SRS_LOG2_SIZE);
 
     let sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
         indexed_relation.initial_sponge.clone();
 
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
+    let mut env = Env::<Fp, Fq, Vesta, Pallas, MinRoot<Fp>, MinRoot<Fq>>::new(indexed_relation);
 
     env.current_instruction = Instruction::PoseidonSpongeAbsorb;
-    interpreter::run_ivc(&mut env, Instruction::PoseidonSpongeAbsorb);
+    interpreter::run(&mut env, Instruction::PoseidonSpongeAbsorb);
     env.reset();
 
     (0..(PlonkSpongeConstants::PERM_ROUNDS_FULL / 5)).for_each(|i| {
-        interpreter::run_ivc(&mut env, Instruction::PoseidonFullRound(5 * i));
+        interpreter::run(&mut env, Instruction::PoseidonFullRound(5 * i));
         env.reset();
     });
 
@@ -114,10 +133,18 @@ fn test_unit_witness_poseidon_with_absorb_one_full_hash() {
 
 #[test]
 fn test_unit_witness_elliptic_curve_addition() {
-    let indexed_relation: IndexedRelation<Fp, Fq, Vesta, Pallas> =
-        IndexedRelation::new(MIN_SRS_LOG2_SIZE);
-
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
+    let zkapp_fp: MinRoot<Fp> = MinRoot {
+        x: Fp::from(0),
+        y: Fp::from(0),
+        n: 0,
+    };
+    let zkapp_fq: MinRoot<Fq> = MinRoot {
+        x: Fq::from(0),
+        y: Fq::from(0),
+        n: 0,
+    };
+    let indexed_relation = IndexedRelation::new(zkapp_fp, zkapp_fq, MIN_SRS_LOG2_SIZE);
+    let mut env = Env::<Fp, Fq, Vesta, Pallas, MinRoot<Fp>, MinRoot<Fq>>::new(indexed_relation);
 
     let instr = Instruction::EllipticCurveAddition(0);
     env.current_instruction = instr;
@@ -135,7 +162,7 @@ fn test_unit_witness_elliptic_curve_addition() {
             y3.to_biguint().to_bigint().unwrap(),
         )
     };
-    interpreter::run_ivc(&mut env, instr);
+    interpreter::run(&mut env, instr);
     assert_eq!(exp_x3, env.state[6], "The x coordinate is incorrect");
     assert_eq!(exp_y3, env.state[7], "The y coordinate is incorrect");
 
@@ -155,7 +182,7 @@ fn test_unit_witness_elliptic_curve_addition() {
             y3.to_biguint().to_bigint().unwrap(),
         )
     };
-    interpreter::run_ivc(&mut env, instr);
+    interpreter::run(&mut env, instr);
     assert_eq!(exp_x3, env.state[6], "The x coordinate is incorrect");
     assert_eq!(exp_y3, env.state[7], "The y coordinate is incorrect");
 
@@ -175,7 +202,7 @@ fn test_unit_witness_elliptic_curve_addition() {
             y3.to_biguint().to_bigint().unwrap(),
         )
     };
-    interpreter::run_ivc(&mut env, instr);
+    interpreter::run(&mut env, instr);
 
     assert_eq!(exp_x3, env.state[6], "The x coordinate is incorrect");
     assert_eq!(exp_y3, env.state[7], "The y coordinate is incorrect");
@@ -184,10 +211,18 @@ fn test_unit_witness_elliptic_curve_addition() {
 #[test]
 fn test_witness_double_elliptic_curve_point() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let indexed_relation: IndexedRelation<Fp, Fq, Vesta, Pallas> =
-        IndexedRelation::new(MIN_SRS_LOG2_SIZE);
-
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
+    let zkapp_fp: MinRoot<Fp> = MinRoot {
+        x: Fp::from(0),
+        y: Fp::from(0),
+        n: 0,
+    };
+    let zkapp_fq: MinRoot<Fq> = MinRoot {
+        x: Fq::from(0),
+        y: Fq::from(0),
+        n: 0,
+    };
+    let indexed_relation = IndexedRelation::new(zkapp_fp, zkapp_fq, MIN_SRS_LOG2_SIZE);
+    let mut env = Env::<Fp, Fq, Vesta, Pallas, MinRoot<Fp>, MinRoot<Fq>>::new(indexed_relation);
 
     env.current_instruction = Instruction::EllipticCurveAddition(0);
 
@@ -216,13 +251,25 @@ fn helper_elliptic_curve_scalar_multiplication<RNG>(r: BigInt, rng: &mut RNG)
 where
     RNG: RngCore + CryptoRng,
 {
-    let mut indexed_relation = IndexedRelation::new(MIN_SRS_LOG2_SIZE);
+    let zkapp_fp: MinRoot<Fp> = MinRoot {
+        x: Fp::from(0),
+        y: Fp::from(0),
+        n: 0,
+    };
+    let zkapp_fq: MinRoot<Fq> = MinRoot {
+        x: Fq::from(0),
+        y: Fq::from(0),
+        n: 0,
+    };
+    let indexed_relation = IndexedRelation::new(zkapp_fp, zkapp_fq, MIN_SRS_LOG2_SIZE);
     // FIXME: For test purposes, to get a deterministic result, changing the
     // initial sponge state. The challenge in the circuit will be the first
     // element of the state.
     indexed_relation.initial_sponge = std::array::from_fn(|_i| r.clone());
 
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
+    let mut env = { Env::<Fp, Fq, Vesta, Pallas, MinRoot<Fp>, MinRoot<Fq>>::new(indexed_relation) };
+
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(indexed_relation);
 
     let i_comm = 0;
     let p1: Pallas = {
@@ -235,7 +282,7 @@ where
     (0..MAXIMUM_FIELD_SIZE_IN_BITS).for_each(|bit_idx| {
         let instr = Instruction::EllipticCurveScaling(i_comm, bit_idx);
         env.current_instruction = instr;
-        interpreter::run_ivc(&mut env, instr);
+        interpreter::run(&mut env, instr);
         env.reset();
     });
 

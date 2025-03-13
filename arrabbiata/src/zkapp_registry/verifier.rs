@@ -9,14 +9,14 @@
 
 use crate::{
     column::Gadget,
-    curve::ArrabbiataCurve,
-    interpreter::{self, InterpreterEnv, VERIFIER_STARTING_INSTRUCTION},
+    curve::{ArrabbiataCurve, PlonkSpongeConstants},
+    interpreter::{self, Instruction, InterpreterEnv, VERIFIER_STARTING_INSTRUCTION},
     zkapp_registry::ZkApp,
-    VERIFIER_CIRCUIT_SIZE,
+    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, VERIFIER_CIRCUIT_SIZE,
 };
 use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
-use log::{debug, info};
+use mina_poseidon::constants::SpongeConstants;
 use poly_commitment::commitment::CommitmentCurve;
 
 pub struct Verifier<C: ArrabbiataCurve>
@@ -36,22 +36,58 @@ where
         unimplemented!("Dummy witness for the verifier is not implemented yet")
     }
 
-    fn run<E: InterpreterEnv>(&self, env: &mut E) {
-        info!(
-            "Building the verifier circuit. A total number of {} rows will be filled from the witness row {}",
-            VERIFIER_CIRCUIT_SIZE, self.current_row,
-        );
+    /// Describe the control-flow for the verifier circuit.
+    fn fetch_next_instruction(&self, current_instruction: Instruction) -> Instruction {
+        match current_instruction {
+            Instruction::PoseidonFullRound(i) => {
+                if i < PlonkSpongeConstants::PERM_ROUNDS_FULL - 5 {
+                    Instruction::PoseidonFullRound(i + 5)
+                } else {
+                    // FIXME: for now, we continue absorbing because the current
+                    // code, while fetching the values to absorb, raises an
+                    // exception when we absorbed everythimg, and the main file
+                    // handles the halt by filling as many rows as expected (see
+                    // [VERIFIER_CIRCUIT_SIZE]).
+                    Instruction::PoseidonSpongeAbsorb
+                }
+            }
+            Instruction::PoseidonSpongeAbsorb => {
+                // Whenever we absorbed a value, we run the permutation.
+                Instruction::PoseidonFullRound(0)
+            }
+            Instruction::EllipticCurveScaling(i_comm, bit) => {
+                // TODO: we still need to substract (or not?) the blinder.
+                // Maybe we can avoid this by aggregating them.
+                // TODO: we also need to aggregate the cross-terms.
+                // Therefore i_comm must also take into the account the number
+                // of cross-terms.
+                assert!(i_comm < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
+                assert!(bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Maximum number of bits reached ({MAXIMUM_FIELD_SIZE_IN_BITS}), increase the number of bits");
+                if bit < 255 - 1 {
+                    Instruction::EllipticCurveScaling(i_comm, bit + 1)
+                } else if i_comm < NUMBER_OF_COLUMNS - 1 {
+                    Instruction::EllipticCurveScaling(i_comm + 1, 0)
+                } else {
+                    // We have computed all the bits for all the columns
+                    Instruction::NoOp
+                }
+            }
+            Instruction::EllipticCurveAddition(i_comm) => {
+                if i_comm < NUMBER_OF_COLUMNS - 1 {
+                    Instruction::EllipticCurveAddition(i_comm + 1)
+                } else {
+                    Instruction::NoOp
+                }
+            }
+            Instruction::NoOp => Instruction::NoOp,
+        }
+    }
 
-        for i in 0..VERIFIER_CIRCUIT_SIZE - 1 {
-            let current_instr = env.fetch_instruction();
-            debug!(
-                "Running verifier row {} (instruction = {:?}, witness row = {})",
-                i,
-                current_instr.clone(),
-                env.current_row
-            );
-            interpreter::run_ivc(&mut env, current_instr);
-            env.current_instruction = interpreter::fetch_next_instruction(current_instr);
+    fn run<E: InterpreterEnv>(&self, env: &mut E) {
+        let mut current_instr = VERIFIER_STARTING_INSTRUCTION;
+        for _i in 0..VERIFIER_CIRCUIT_SIZE - 1 {
+            interpreter::run(env, current_instr);
+            current_instr = self.fetch_next_instruction(current_instr);
             env.reset();
         }
         // FIXME: additional row for the Poseidon hash
@@ -63,7 +99,7 @@ where
         let mut curr_instruction = VERIFIER_STARTING_INSTRUCTION;
         for _i in 0..app_size - 1 {
             circuit.push(Gadget::from(curr_instruction));
-            curr_instruction = interpreter::fetch_next_instruction(curr_instruction);
+            curr_instruction = self.fetch_next_instruction(curr_instruction);
         }
         // Additional row for the Poseidon hash
         circuit.push(Gadget::NoOp);

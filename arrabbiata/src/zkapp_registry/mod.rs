@@ -2,7 +2,11 @@ use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
 use poly_commitment::commitment::CommitmentCurve;
 
-use crate::{column::Gadget, curve::ArrabbiataCurve, interpreter::InterpreterEnv};
+use crate::{
+    column::Gadget,
+    curve::ArrabbiataCurve,
+    interpreter::{Instruction, InterpreterEnv},
+};
 
 /// A ZkApp for Arrabbiata is a program that is built over a generic interpreter
 /// environment `E`.
@@ -36,14 +40,11 @@ where
     /// Provide a dummy witness, used to generate a first non-folded instance.
     fn dummy_witness(&self, srs_size: usize) -> Vec<Vec<C::ScalarField>>;
 
+    /// Describe the control-flow of the ZkApp.
+    fn fetch_next_instruction(&self, current_instr: Instruction) -> Instruction;
+
     /// Execute the ZkApp over the interpreter environment `E`.
     fn run<E: InterpreterEnv>(&self, env: &mut E);
-
-    // FIXME``
-    // Add a fetch_next_instruction method??
-    // fn fetch_next_instruction(&self, current_instr: Instruction) -> Instruction {
-    //     current_instr
-    // }
 
     /// Create a setup for the ZkApp.
     /// The setup will define the shape of the execution trace.

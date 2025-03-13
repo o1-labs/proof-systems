@@ -16,7 +16,9 @@ use crate::{
     column::Column,
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side, VERIFIER_STARTING_INSTRUCTION},
-    setup, NUMBER_OF_COLUMNS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    setup,
+    zkapp_registry::ZkApp,
+    NUMBER_OF_COLUMNS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
 /// A running program that the (folding) interpreter has access to.
@@ -280,6 +282,8 @@ pub struct Env<
     Fq: PrimeField,
     E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
     E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
+    App1: ZkApp<E1>,
+    App2: ZkApp<E2>,
 > where
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
@@ -287,7 +291,7 @@ pub struct Env<
     <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     /// The relation this witness environment is related to.
-    pub indexed_relation: setup::IndexedRelation<Fp, Fq, E1, E2>,
+    pub indexed_relation: setup::IndexedRelation<Fp, Fq, E1, E2, App1, App2>,
 
     /// Program state for curve E1
     pub program_e1: Program<Fp, Fq, E1>,
@@ -404,15 +408,6 @@ pub struct Env<
     /// The layout columns/rows is used to avoid rebuilding the witness per
     /// column when committing to the witness.
     pub witness: Vec<Vec<BigInt>>,
-
-    // --------------
-    // Inputs
-    /// Initial input
-    pub z0: BigInt,
-
-    /// Current input
-    pub zi: BigInt,
-    // ---------------
 }
 
 impl<
@@ -420,7 +415,9 @@ impl<
         Fq: PrimeField,
         E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
         E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
-    > InterpreterEnv for Env<Fp, Fq, E1, E2>
+        App1: ZkApp<E1>,
+        App2: ZkApp<E2>,
+    > InterpreterEnv for Env<Fp, Fq, E1, E2, App1, App2>
 where
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
@@ -952,14 +949,16 @@ impl<
         Fq: PrimeField,
         E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
         E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
-    > Env<Fp, Fq, E1, E2>
+        App1: ZkApp<E1>,
+        App2: ZkApp<E2>,
+    > Env<Fp, Fq, E1, E2, App1, App2>
 where
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
     <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
     <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
-    pub fn new(z0: BigInt, indexed_relation: setup::IndexedRelation<Fp, Fq, E1, E2>) -> Self {
+    pub fn new(indexed_relation: setup::IndexedRelation<Fp, Fq, E1, E2, App1, App2>) -> Self {
         let srs_size = indexed_relation.get_srs_size();
         let (blinder_e1, blinder_e2) = indexed_relation.get_srs_blinders();
 
@@ -1030,10 +1029,6 @@ where
             // Used to allocate variables
             // Witness builder related
             witness,
-            // ------
-            // Inputs
-            z0: z0.clone(),
-            zi: z0,
         }
     }
 
@@ -1111,13 +1106,6 @@ where
         };
 
         self.prover_sponge_state = state;
-    }
-
-    /// Compute the output of the application on the previous output
-    // TODO: we should compute the hash of the previous commitments, only on
-    // CPU?
-    pub fn compute_output(&mut self) {
-        self.zi = BigInt::from(42_usize)
     }
 
     pub fn fetch_instruction(&self) -> Instruction {
@@ -1233,14 +1221,18 @@ where
             );
             for _i in 0..self.indexed_relation.app_size {
                 if self.current_iteration % 2 == 0 {
-                    self.indexed_relation.circuit_fp.run(&mut self);
+                    self.indexed_relation.zkapp_fp.run(self);
                 } else {
-                    self.indexed_relation.circuit_fq.run(&mut self);
+                    self.indexed_relation.zkapp_fq.run(self);
                 }
                 self.reset();
             }
 
-            self.indexed_relation.verifier_circuit.run(&mut self);
+            if self.current_iteration % 2 == 0 {
+                self.indexed_relation.verifier_fp.run(self);
+            } else {
+                self.indexed_relation.verifier_fq.run(self);
+            }
 
             debug!(
                 "Witness for iteration {i} computed in {elapsed} μs",

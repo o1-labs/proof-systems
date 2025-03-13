@@ -319,26 +319,26 @@ where
 
         // Poseidon constraints
         (0..PlonkSpongeConstants::PERM_ROUNDS_FULL / 12).for_each(|i| {
-            interpreter::run_ivc(&mut env, Instruction::PoseidonFullRound(5 * i));
+            interpreter::run(&mut env, Instruction::PoseidonFullRound(5 * i));
             constraints.extend(env.constraints.clone());
             env.reset();
         });
 
-        interpreter::run_ivc(&mut env, Instruction::PoseidonSpongeAbsorb);
+        interpreter::run(&mut env, Instruction::PoseidonSpongeAbsorb);
         constraints.extend(env.constraints.clone());
         env.reset();
 
         // EC scaling
         // The constraints are the same whatever the value given in parameter,
         // therefore picking 0, 0
-        interpreter::run_ivc(&mut env, Instruction::EllipticCurveScaling(0, 0));
+        interpreter::run(&mut env, Instruction::EllipticCurveScaling(0, 0));
         constraints.extend(env.constraints.clone());
         env.reset();
 
         // EC addition
         // The constraints are the same whatever the value given in parameter,
         // therefore picking 0
-        interpreter::run_ivc(&mut env, Instruction::EllipticCurveAddition(0));
+        interpreter::run(&mut env, Instruction::EllipticCurveAddition(0));
         constraints.extend(env.constraints.clone());
         env.reset();
 
@@ -371,26 +371,26 @@ where
 
         // Poseidon constraints
         (0..PlonkSpongeConstants::PERM_ROUNDS_FULL / 12).for_each(|i| {
-            interpreter::run_ivc(&mut env, Instruction::PoseidonFullRound(5 * i));
+            interpreter::run(&mut env, Instruction::PoseidonFullRound(5 * i));
             hashmap.insert(Gadget::PoseidonFullRound(5 * i), env.constraints.clone());
             env.reset();
         });
 
-        interpreter::run_ivc(&mut env, Instruction::PoseidonSpongeAbsorb);
+        interpreter::run(&mut env, Instruction::PoseidonSpongeAbsorb);
         hashmap.insert(Gadget::PoseidonSpongeAbsorb, env.constraints.clone());
         env.reset();
 
         // EC scaling
         // The constraints are the same whatever the value given in parameter,
         // therefore picking 0, 0
-        interpreter::run_ivc(&mut env, Instruction::EllipticCurveScaling(0, 0));
+        interpreter::run(&mut env, Instruction::EllipticCurveScaling(0, 0));
         hashmap.insert(Gadget::EllipticCurveScaling, env.constraints.clone());
         env.reset();
 
         // EC addition
         // The constraints are the same whatever the value given in parameter,
         // therefore picking 0
-        interpreter::run_ivc(&mut env, Instruction::EllipticCurveAddition(0));
+        interpreter::run(&mut env, Instruction::EllipticCurveAddition(0));
         hashmap.insert(Gadget::EllipticCurveAddition, env.constraints.clone());
         env.reset();
 
