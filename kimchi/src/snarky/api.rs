@@ -287,7 +287,7 @@ pub trait SnarkyCircuit: Sized {
     /// The circuit. It takes:
     ///
     /// - `self`: to parameterize it at compile time.
-    /// - `sys`: to construct the circuit or generate the witness (dpeending on mode)
+    /// - `sys`: to construct the circuit or generate the witness (depending on mode)
     /// - `public_input`: the public input (as defined above)
     /// - `private_input`: the private input as an option, set to `None` for compilation.
     ///
@@ -302,8 +302,10 @@ pub trait SnarkyCircuit: Sized {
     ) -> SnarkyResult<Self::PublicOutput>;
 
     /// Compiles the circuit to a prover index ([ProverIndexWrapper]) and a verifier index ([VerifierIndexWrapper]).
+    /// If `lazy_mode` is set, it will compute the index evaluations lazily.
     fn compile_to_indexes(
         self,
+        lazy_mode: bool,
     ) -> SnarkyResult<(ProverIndexWrapper<Self>, VerifierIndexWrapper<Self>)>
     where
         <Self::Curve as AffineRepr>::BaseField: PrimeField,
@@ -330,7 +332,7 @@ pub trait SnarkyCircuit: Sized {
         let endo_q = <<Self as SnarkyCircuit>::Curve as KimchiCurve>::other_curve_endo();
 
         let prover_index = crate::prover_index::ProverIndex::<Self::Curve, Self::Proof>::create(
-            cs, *endo_q, srs, false,
+            cs, *endo_q, srs, lazy_mode,
         );
         let verifier_index = prover_index.verifier_index();
 

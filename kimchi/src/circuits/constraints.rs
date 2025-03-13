@@ -228,7 +228,7 @@ pub struct Builder<F: PrimeField> {
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
     disable_gates_checks: bool,
     max_poly_size: Option<usize>,
-    lazy_cache: bool,
+    lazy_mode: bool,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -272,11 +272,11 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// - `runtime_tables: None`,
     /// - `precomputations: None`,
     /// - `disable_gates_checks: false`,
-    /// - `lazy_cache: false`,
+    /// - `lazy_mode: false`,
     ///
     /// How to use it:
     /// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`
-    /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations(), lazy_cache()`
+    /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations(), lazy_mode()`
     /// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`
     pub fn create(gates: Vec<CircuitGate<F>>) -> Builder<F> {
         Builder {
@@ -288,7 +288,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             precomputations: None,
             disable_gates_checks: false,
             max_poly_size: None,
-            lazy_cache: false,
+            lazy_mode: false,
         }
     }
 
@@ -799,8 +799,8 @@ impl<F: PrimeField> Builder<F> {
         self
     }
 
-    pub fn lazy_cache(mut self, lazy_cache: bool) -> Self {
-        self.lazy_cache = lazy_cache;
+    pub fn lazy_mode(mut self, lazy_mode: bool) -> Self {
+        self.lazy_mode = lazy_mode;
         self
     }
 
@@ -956,7 +956,7 @@ impl<F: PrimeField> Builder<F> {
         )
         .map_err(SetupError::LookupCreation)?;
 
-        let lookup_constraint_system = if !self.lazy_cache {
+        let lookup_constraint_system = if !self.lazy_mode {
             LazyCache::cache(lookup_constraint_system)
         } else {
             // Lookup constraint creation does not fail, we discard the struct
@@ -980,7 +980,7 @@ impl<F: PrimeField> Builder<F> {
         // TODO: remove endo as a field
         let endo = F::zero();
 
-        let precomputations = if !self.lazy_cache {
+        let precomputations = if !self.lazy_mode {
             match self.precomputations {
                 Some(t) => LazyCache::cache(t),
                 None => LazyCache::cache(Arc::new(

@@ -51,7 +51,7 @@ where
     num_prev_challenges: usize,
     disable_gates_checks: bool,
     override_srs_size: Option<usize>,
-    lazy_cache: bool,
+    lazy_mode: bool,
 
     prover_index: Option<ProverIndex<G, OpeningProof>>,
     verifier_index: Option<VerifierIndex<G, OpeningProof>>,
@@ -124,8 +124,8 @@ where
     }
 
     #[must_use]
-    pub(crate) fn lazy_cache(mut self, lazy_cache: bool) -> Self {
-        self.lazy_cache = lazy_cache;
+    pub(crate) fn lazy_mode(mut self, lazy_mode: bool) -> Self {
+        self.lazy_mode = lazy_mode;
         self
     }
 
@@ -151,7 +151,7 @@ where
             self.disable_gates_checks,
             self.override_srs_size,
             get_srs,
-            self.lazy_cache,
+            self.lazy_mode,
         );
         println!(
             "- time to create prover index: {:?}s",
@@ -185,7 +185,7 @@ where
             runtime_tables_setup,
             self.disable_gates_checks,
             self.override_srs_size,
-            self.lazy_cache,
+            self.lazy_mode,
         );
         println!(
             "- time to create prover index: {:?}s",

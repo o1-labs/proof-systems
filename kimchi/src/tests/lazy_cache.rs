@@ -21,7 +21,7 @@ type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[test]
-fn test_lazy_cache_benchmark() {
+fn test_lazy_mode_benchmark() {
     let public = vec![Fp::from(1u8); 5];
     let circuit_size = 1 << 16;
 
@@ -54,7 +54,7 @@ fn test_lazy_cache_benchmark() {
     }
 
     ConstraintSystem::create(gates.clone())
-        .lazy_cache(false)
+        .lazy_mode(false)
         .build()
         .unwrap();
 
@@ -68,7 +68,7 @@ fn test_lazy_cache_benchmark() {
             .gates(gates_)
             .witness(witness_)
             .public_inputs(public_)
-            .lazy_cache(false) // optional, default is false
+            .lazy_mode(false) // optional, default is false
             .setup()
             .prove_and_verify::<BaseSponge, ScalarSponge>()
             .unwrap();
@@ -81,7 +81,7 @@ fn test_lazy_cache_benchmark() {
             .gates(gates)
             .witness(witness)
             .public_inputs(public)
-            .lazy_cache(true)
+            .lazy_mode(true)
             .setup()
             .prove_and_verify::<BaseSponge, ScalarSponge>()
             .unwrap();
