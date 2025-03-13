@@ -2,20 +2,23 @@ use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
-use log::debug;
+use log::{debug, info};
 use mina_poseidon::constants::SpongeConstants;
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use std::time::Instant;
 
 use crate::{
     challenge::{ChallengeTerm, Challenges},
     column::Column,
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{Instruction, InterpreterEnv, Side, VERIFIER_STARTING_INSTRUCTION},
-    setup, NUMBER_OF_COLUMNS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    setup,
+    zkapp_registry::ZkApp,
+    NUMBER_OF_COLUMNS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
 /// A running program that the (folding) interpreter has access to.
@@ -279,6 +282,8 @@ pub struct Env<
     Fq: PrimeField,
     E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
     E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
+    App1: ZkApp<E1>,
+    App2: ZkApp<E2>,
 > where
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
@@ -286,7 +291,7 @@ pub struct Env<
     <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     /// The relation this witness environment is related to.
-    pub indexed_relation: setup::IndexedRelation<Fp, Fq, E1, E2>,
+    pub indexed_relation: setup::IndexedRelation<Fp, Fq, E1, E2, App1, App2>,
 
     /// Program state for curve E1
     pub program_e1: Program<Fp, Fq, E1>,
@@ -403,15 +408,6 @@ pub struct Env<
     /// The layout columns/rows is used to avoid rebuilding the witness per
     /// column when committing to the witness.
     pub witness: Vec<Vec<BigInt>>,
-
-    // --------------
-    // Inputs
-    /// Initial input
-    pub z0: BigInt,
-
-    /// Current input
-    pub zi: BigInt,
-    // ---------------
 }
 
 impl<
@@ -419,7 +415,9 @@ impl<
         Fq: PrimeField,
         E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
         E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
-    > InterpreterEnv for Env<Fp, Fq, E1, E2>
+        App1: ZkApp<E1>,
+        App2: ZkApp<E2>,
+    > InterpreterEnv for Env<Fp, Fq, E1, E2, App1, App2>
 where
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
@@ -951,14 +949,16 @@ impl<
         Fq: PrimeField,
         E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
         E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
-    > Env<Fp, Fq, E1, E2>
+        App1: ZkApp<E1>,
+        App2: ZkApp<E2>,
+    > Env<Fp, Fq, E1, E2, App1, App2>
 where
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
     <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
     <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
-    pub fn new(z0: BigInt, indexed_relation: setup::IndexedRelation<Fp, Fq, E1, E2>) -> Self {
+    pub fn new(indexed_relation: setup::IndexedRelation<Fp, Fq, E1, E2, App1, App2>) -> Self {
         let srs_size = indexed_relation.get_srs_size();
         let (blinder_e1, blinder_e2) = indexed_relation.get_srs_blinders();
 
@@ -1029,10 +1029,6 @@ where
             // Used to allocate variables
             // Witness builder related
             witness,
-            // ------
-            // Inputs
-            z0: z0.clone(),
-            zi: z0,
         }
     }
 
@@ -1110,13 +1106,6 @@ where
         };
 
         self.prover_sponge_state = state;
-    }
-
-    /// Compute the output of the application on the previous output
-    // TODO: we should compute the hash of the previous commitments, only on
-    // CPU?
-    pub fn compute_output(&mut self) {
-        self.zi = BigInt::from(42_usize)
     }
 
     pub fn fetch_instruction(&self) -> Instruction {
@@ -1216,6 +1205,110 @@ where
             self.program_e2.accumulate_committed_state(chal);
         } else {
             self.program_e1.accumulate_committed_state(chal);
+        }
+    }
+
+    pub fn execute(&mut self, n: u64) {
+        while self.current_iteration < n {
+            let start_iteration = Instant::now();
+
+            info!("Run iteration: {}/{}", self.current_iteration, n);
+
+            // Build the application circuit
+            info!(
+                "Running {} iterations of the application circuit",
+                self.indexed_relation.app_size
+            );
+            for _i in 0..self.indexed_relation.app_size {
+                if self.current_iteration % 2 == 0 {
+                    self.indexed_relation.zkapp_fp.run(self);
+                } else {
+                    self.indexed_relation.zkapp_fq.run(self);
+                }
+                self.reset();
+            }
+
+            if self.current_iteration % 2 == 0 {
+                self.indexed_relation.verifier_fp.run(self);
+            } else {
+                self.indexed_relation.verifier_fq.run(self);
+            }
+
+            debug!(
+                "Witness for iteration {i} computed in {elapsed} μs",
+                i = self.current_iteration,
+                elapsed = start_iteration.elapsed().as_micros()
+            );
+
+            // Commit to the program state.
+            // Depending on the iteration, either E1 or E2 will be used.
+            // The environment will keep the commitments to the program state to
+            // verify and accumulate it at the next iteration.
+            self.commit_state();
+
+            // Absorb the last program state.
+            self.absorb_state();
+
+            // ----- Permutation argument -----
+            // FIXME:
+            // Coin chalenges β and γ for the permutation argument
+
+            // FIXME:
+            // Compute the accumulator for the permutation argument
+
+            // FIXME:
+            // Commit to the accumulator and absorb the commitment
+            // ----- Permutation argument -----
+
+            // Coin challenge α for combining the constraints
+            self.coin_challenge(ChallengeTerm::ConstraintCombiner);
+            debug!(
+                "Coin challenge α: 0x{chal}",
+                chal = self.challenges[ChallengeTerm::ConstraintCombiner].to_str_radix(16)
+            );
+
+            // ----- Accumulation/folding argument -----
+            // FIXME:
+            // Compute the cross-terms
+
+            // FIXME:
+            // Absorb the cross-terms
+
+            // Coin challenge r to fold the instances of the relation.
+            // FIXME: we must do the step before first! Skipping for now to achieve
+            // the next step, i.e. accumulating on the prover side the different
+            // values below.
+            self.coin_challenge(ChallengeTerm::RelationCombiner);
+            debug!(
+                "Coin challenge r: 0x{r}",
+                r = self.challenges[ChallengeTerm::RelationCombiner].to_str_radix(16)
+            );
+            self.accumulate_program_state();
+
+            // Compute the accumulation of the commitments to the witness columns
+            self.accumulate_committed_state();
+
+            // FIXME:
+            // Compute the accumulation of the challenges
+
+            // FIXME:
+            // Compute the accumulation of the public inputs/selectors
+
+            // FIXME:
+            // Compute the accumulation of the blinders for the PCS
+
+            // FIXME:
+            // Compute the accumulated error
+            // ----- Accumulation/folding argument -----
+
+            debug!(
+                "Iteration {i} fully proven in {elapsed} μs",
+                i = self.current_iteration,
+                elapsed = start_iteration.elapsed().as_micros()
+            );
+
+            self.reset_for_next_iteration();
+            self.current_iteration += 1;
         }
     }
 }

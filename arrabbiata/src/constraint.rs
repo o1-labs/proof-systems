@@ -6,6 +6,7 @@ use crate::{
     MAX_DEGREE, NUMBER_OF_COLUMNS,
 };
 
+use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
@@ -15,12 +16,14 @@ use log::debug;
 use mina_poseidon::constants::SpongeConstants;
 use num_bigint::BigInt;
 use o1_utils::FieldHelpers;
+use poly_commitment::commitment::CommitmentCurve;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct Env<C: ArrabbiataCurve>
 where
     C::BaseField: PrimeField,
+    <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     /// The parameter a is the coefficients of the elliptic curve in affine
     /// coordinates.
@@ -33,6 +36,7 @@ where
 impl<C: ArrabbiataCurve> Env<C>
 where
     C::BaseField: PrimeField,
+    <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     pub fn new() -> Self {
         // This check might not be useful
@@ -59,6 +63,7 @@ where
 impl<C: ArrabbiataCurve> InterpreterEnv for Env<C>
 where
     C::BaseField: PrimeField,
+    <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     type Position = (Column, CurrOrNext);
 
@@ -288,6 +293,7 @@ where
 impl<C: ArrabbiataCurve> Env<C>
 where
     C::BaseField: PrimeField,
+    <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     /// Get all the constraints for the verifier circuit, only.
     ///
@@ -313,26 +319,26 @@ where
 
         // Poseidon constraints
         (0..PlonkSpongeConstants::PERM_ROUNDS_FULL / 12).for_each(|i| {
-            interpreter::run_ivc(&mut env, Instruction::PoseidonFullRound(5 * i));
+            interpreter::run(&mut env, Instruction::PoseidonFullRound(5 * i));
             constraints.extend(env.constraints.clone());
             env.reset();
         });
 
-        interpreter::run_ivc(&mut env, Instruction::PoseidonSpongeAbsorb);
+        interpreter::run(&mut env, Instruction::PoseidonSpongeAbsorb);
         constraints.extend(env.constraints.clone());
         env.reset();
 
         // EC scaling
         // The constraints are the same whatever the value given in parameter,
         // therefore picking 0, 0
-        interpreter::run_ivc(&mut env, Instruction::EllipticCurveScaling(0, 0));
+        interpreter::run(&mut env, Instruction::EllipticCurveScaling(0, 0));
         constraints.extend(env.constraints.clone());
         env.reset();
 
         // EC addition
         // The constraints are the same whatever the value given in parameter,
         // therefore picking 0
-        interpreter::run_ivc(&mut env, Instruction::EllipticCurveAddition(0));
+        interpreter::run(&mut env, Instruction::EllipticCurveAddition(0));
         constraints.extend(env.constraints.clone());
         env.reset();
 
@@ -365,26 +371,26 @@ where
 
         // Poseidon constraints
         (0..PlonkSpongeConstants::PERM_ROUNDS_FULL / 12).for_each(|i| {
-            interpreter::run_ivc(&mut env, Instruction::PoseidonFullRound(5 * i));
+            interpreter::run(&mut env, Instruction::PoseidonFullRound(5 * i));
             hashmap.insert(Gadget::PoseidonFullRound(5 * i), env.constraints.clone());
             env.reset();
         });
 
-        interpreter::run_ivc(&mut env, Instruction::PoseidonSpongeAbsorb);
+        interpreter::run(&mut env, Instruction::PoseidonSpongeAbsorb);
         hashmap.insert(Gadget::PoseidonSpongeAbsorb, env.constraints.clone());
         env.reset();
 
         // EC scaling
         // The constraints are the same whatever the value given in parameter,
         // therefore picking 0, 0
-        interpreter::run_ivc(&mut env, Instruction::EllipticCurveScaling(0, 0));
+        interpreter::run(&mut env, Instruction::EllipticCurveScaling(0, 0));
         hashmap.insert(Gadget::EllipticCurveScaling, env.constraints.clone());
         env.reset();
 
         // EC addition
         // The constraints are the same whatever the value given in parameter,
         // therefore picking 0
-        interpreter::run_ivc(&mut env, Instruction::EllipticCurveAddition(0));
+        interpreter::run(&mut env, Instruction::EllipticCurveAddition(0));
         hashmap.insert(Gadget::EllipticCurveAddition, env.constraints.clone());
         env.reset();
 
@@ -399,6 +405,7 @@ where
 impl<C: ArrabbiataCurve> Default for Env<C>
 where
     C::BaseField: PrimeField,
+    <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     fn default() -> Self {
         Self::new()

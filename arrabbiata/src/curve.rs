@@ -5,7 +5,10 @@
 //! The goal of this trait is to parametrize the whole library with the
 //! different curves.
 
-use ark_ec::short_weierstrass::{Affine, SWCurveConfig};
+use ark_ec::{
+    short_weierstrass::{Affine, SWCurveConfig},
+    CurveConfig,
+};
 use ark_ff::PrimeField;
 use kimchi::curve::{pallas_endos, vesta_endos};
 use mina_curves::pasta::curves::{pallas::PallasParameters, vesta::VestaParameters};
@@ -37,6 +40,7 @@ impl SpongeConstants for PlonkSpongeConstants {
 pub trait ArrabbiataCurve: CommitmentCurve + EndoCurve
 where
     Self::BaseField: PrimeField,
+    <<Self as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     /// A human readable name.
     const NAME: &'static str;

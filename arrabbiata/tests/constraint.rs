@@ -11,17 +11,17 @@ use std::collections::HashMap;
 fn helper_compute_constraints_gadget(instr: Instruction, exp_constraints: usize) {
     let mut constraints_fp = constraint::Env::<Vesta>::new();
 
-    interpreter::run_ivc(&mut constraints_fp, instr);
+    interpreter::run(&mut constraints_fp, instr);
     assert_eq!(constraints_fp.constraints.len(), exp_constraints);
 
     let mut constraints_fq = constraint::Env::<Pallas>::new();
-    interpreter::run_ivc(&mut constraints_fq, instr);
+    interpreter::run(&mut constraints_fq, instr);
     assert_eq!(constraints_fq.constraints.len(), exp_constraints);
 }
 
 fn helper_check_expected_degree_constraints(instr: Instruction, exp_degrees: HashMap<u64, usize>) {
     let mut constraints_fp = constraint::Env::<Vesta>::new();
-    interpreter::run_ivc(&mut constraints_fp, instr);
+    interpreter::run(&mut constraints_fp, instr);
 
     let mut actual_degrees: HashMap<u64, usize> = HashMap::new();
     constraints_fp.constraints.iter().for_each(|c| {
@@ -46,7 +46,7 @@ fn helper_check_expected_degree_constraints(instr: Instruction, exp_degrees: Has
 // Helper to verify the number of columns each gadget uses
 fn helper_gadget_number_of_columns_used(instr: Instruction, exp_nb_columns: usize) {
     let mut constraints_fp = constraint::Env::<Vesta>::new();
-    interpreter::run_ivc(&mut constraints_fp, instr);
+    interpreter::run(&mut constraints_fp, instr);
 
     let nb_columns = constraints_fp.idx_var;
     assert_eq!(nb_columns, exp_nb_columns);
