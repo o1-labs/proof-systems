@@ -12,9 +12,11 @@ use crate::{
     curve::ArrabbiataCurve,
     interpreter::{self, InterpreterEnv, VERIFIER_STARTING_INSTRUCTION},
     zkapp_registry::ZkApp,
+    VERIFIER_CIRCUIT_SIZE,
 };
 use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
+use log::{debug, info};
 use poly_commitment::commitment::CommitmentCurve;
 
 pub struct Verifier<C: ArrabbiataCurve>
@@ -34,7 +36,27 @@ where
         unimplemented!("Dummy witness for the verifier is not implemented yet")
     }
 
-    fn run<E: InterpreterEnv>(&self, _env: &mut E) {}
+    fn run<E: InterpreterEnv>(&self, env: &mut E) {
+        info!(
+            "Building the verifier circuit. A total number of {} rows will be filled from the witness row {}",
+            VERIFIER_CIRCUIT_SIZE, self.current_row,
+        );
+
+        for i in 0..VERIFIER_CIRCUIT_SIZE - 1 {
+            let current_instr = env.fetch_instruction();
+            debug!(
+                "Running verifier row {} (instruction = {:?}, witness row = {})",
+                i,
+                current_instr.clone(),
+                env.current_row
+            );
+            interpreter::run_ivc(&mut env, current_instr);
+            env.current_instruction = interpreter::fetch_next_instruction(current_instr);
+            env.reset();
+        }
+        // FIXME: additional row for the Poseidon hash
+        env.reset();
+    }
 
     fn setup(&self, app_size: usize) -> Vec<Gadget> {
         let mut circuit: Vec<Gadget> = vec![];

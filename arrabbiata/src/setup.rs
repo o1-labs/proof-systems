@@ -348,7 +348,10 @@ pub struct IndexedRelationTwo<
 
     /// Application over both curves
     pub zkapp_fp: App1,
+    pub verifier_fp: Verifier<E1>,
+
     pub zkapp_fq: App2,
+    pub verifier_fq: Verifier<E2>,
 
     /// Initial state of the sponge, containing circuit specific
     /// information.
@@ -418,21 +421,23 @@ where
         // suppose we have the same circuit on both curves for now.
         let app_size = srs_size - VERIFIER_CIRCUIT_SIZE;
 
+        let verifier_fp: Verifier<E1> = Verifier::<E1> {
+            _field: std::marker::PhantomData,
+        };
+
         let circuit_fp: Vec<Gadget> = {
             let app_circuit: Vec<Gadget> = zkapp_fp.setup(app_size);
-            let verifier_circuit: Verifier<E1> = Verifier::<E1> {
-                _field: std::marker::PhantomData,
-            };
-            let verifier_circuit: Vec<Gadget> = verifier_circuit.setup(VERIFIER_CIRCUIT_SIZE);
+            let verifier_circuit: Vec<Gadget> = verifier_fp.setup(VERIFIER_CIRCUIT_SIZE);
             app_circuit.into_iter().chain(verifier_circuit).collect()
+        };
+
+        let verifier_fq: Verifier<E2> = Verifier::<E2> {
+            _field: std::marker::PhantomData,
         };
 
         let circuit_fq: Vec<Gadget> = {
             let app_circuit: Vec<Gadget> = zkapp_fq.setup(app_size);
-            let verifier_circuit: Verifier<E2> = Verifier::<E2> {
-                _field: std::marker::PhantomData,
-            };
-            let verifier_circuit: Vec<Gadget> = verifier_circuit.setup(VERIFIER_CIRCUIT_SIZE);
+            let verifier_circuit: Vec<Gadget> = verifier_fq.setup(VERIFIER_CIRCUIT_SIZE);
             app_circuit.into_iter().chain(verifier_circuit).collect()
         };
 
@@ -486,7 +491,9 @@ where
             srs_e2,
             app_size,
             circuit_fp,
+            verifier_fp,
             circuit_fq,
+            verifier_fq,
             selectors_comm,
             zkapp_fp,
             zkapp_fq,

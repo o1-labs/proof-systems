@@ -39,6 +39,12 @@ where
     /// Execute the ZkApp over the interpreter environment `E`.
     fn run<E: InterpreterEnv>(&self, env: &mut E);
 
+    // FIXME``
+    // Add a fetch_next_instruction method??
+    // fn fetch_next_instruction(&self, current_instr: Instruction) -> Instruction {
+    //     current_instr
+    // }
+
     /// Create a setup for the ZkApp.
     /// The setup will define the shape of the execution trace.
     /// It is mostly consisting of the list of selectors that are used to select

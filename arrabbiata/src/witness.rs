@@ -2,13 +2,14 @@ use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
-use log::debug;
+use log::{debug, info};
 use mina_poseidon::constants::SpongeConstants;
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use std::time::Instant;
 
 use crate::{
     challenge::{ChallengeTerm, Challenges},
@@ -1216,6 +1217,106 @@ where
             self.program_e2.accumulate_committed_state(chal);
         } else {
             self.program_e1.accumulate_committed_state(chal);
+        }
+    }
+
+    pub fn execute(&mut self, n: u64) {
+        while self.current_iteration < n {
+            let start_iteration = Instant::now();
+
+            info!("Run iteration: {}/{}", self.current_iteration, n);
+
+            // Build the application circuit
+            info!(
+                "Running {} iterations of the application circuit",
+                self.indexed_relation.app_size
+            );
+            for _i in 0..self.indexed_relation.app_size {
+                if self.current_iteration % 2 == 0 {
+                    self.indexed_relation.circuit_fp.run(&mut self);
+                } else {
+                    self.indexed_relation.circuit_fq.run(&mut self);
+                }
+                self.reset();
+            }
+
+            self.indexed_relation.verifier_circuit.run(&mut self);
+
+            debug!(
+                "Witness for iteration {i} computed in {elapsed} μs",
+                i = self.current_iteration,
+                elapsed = start_iteration.elapsed().as_micros()
+            );
+
+            // Commit to the program state.
+            // Depending on the iteration, either E1 or E2 will be used.
+            // The environment will keep the commitments to the program state to
+            // verify and accumulate it at the next iteration.
+            self.commit_state();
+
+            // Absorb the last program state.
+            self.absorb_state();
+
+            // ----- Permutation argument -----
+            // FIXME:
+            // Coin chalenges β and γ for the permutation argument
+
+            // FIXME:
+            // Compute the accumulator for the permutation argument
+
+            // FIXME:
+            // Commit to the accumulator and absorb the commitment
+            // ----- Permutation argument -----
+
+            // Coin challenge α for combining the constraints
+            self.coin_challenge(ChallengeTerm::ConstraintCombiner);
+            debug!(
+                "Coin challenge α: 0x{chal}",
+                chal = self.challenges[ChallengeTerm::ConstraintCombiner].to_str_radix(16)
+            );
+
+            // ----- Accumulation/folding argument -----
+            // FIXME:
+            // Compute the cross-terms
+
+            // FIXME:
+            // Absorb the cross-terms
+
+            // Coin challenge r to fold the instances of the relation.
+            // FIXME: we must do the step before first! Skipping for now to achieve
+            // the next step, i.e. accumulating on the prover side the different
+            // values below.
+            self.coin_challenge(ChallengeTerm::RelationCombiner);
+            debug!(
+                "Coin challenge r: 0x{r}",
+                r = self.challenges[ChallengeTerm::RelationCombiner].to_str_radix(16)
+            );
+            self.accumulate_program_state();
+
+            // Compute the accumulation of the commitments to the witness columns
+            self.accumulate_committed_state();
+
+            // FIXME:
+            // Compute the accumulation of the challenges
+
+            // FIXME:
+            // Compute the accumulation of the public inputs/selectors
+
+            // FIXME:
+            // Compute the accumulation of the blinders for the PCS
+
+            // FIXME:
+            // Compute the accumulated error
+            // ----- Accumulation/folding argument -----
+
+            debug!(
+                "Iteration {i} fully proven in {elapsed} μs",
+                i = self.current_iteration,
+                elapsed = start_iteration.elapsed().as_micros()
+            );
+
+            self.reset_for_next_iteration();
+            self.current_iteration += 1;
         }
     }
 }
