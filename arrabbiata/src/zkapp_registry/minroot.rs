@@ -1,4 +1,6 @@
+use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
+use poly_commitment::commitment::CommitmentCurve;
 
 pub struct MinRoot<F: PrimeField> {
     pub x: F,

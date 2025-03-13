@@ -23,6 +23,7 @@
 //! On the other side, a verifier will be instantiated with the relevant indexed
 //! relation.
 //!
+use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::{debug, info};
@@ -31,7 +32,7 @@ use mvpoly::{monomials::Sparse, MVPoly};
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::FieldHelpers;
-use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
+use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use std::{collections::HashMap, time::Instant};
 
 use crate::{
@@ -58,6 +59,8 @@ pub struct IndexedRelation<
 > where
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
+    <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     /// Domain for Fp
     pub domain_fp: EvaluationDomains<E1::ScalarField>,
@@ -126,6 +129,8 @@ impl<
 where
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
+    <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     pub fn new(srs_log2_size: usize) -> Self {
         assert!(E1::ScalarField::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
