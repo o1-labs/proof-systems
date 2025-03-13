@@ -5,6 +5,7 @@ use crate::{
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
+        lazy_cache::LazyCache,
         lookup::{
             index::LookupConstraintSystem,
             lookups::{LookupFeatures, LookupPatterns},
@@ -24,7 +25,6 @@ use ark_poly::{
     Radix2EvaluationDomain as D,
 };
 use o1_utils::ExtendedEvaluations;
-use once_cell::sync::OnceCell;
 use poly_commitment::OpenProof;
 use rayon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -199,10 +199,10 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub endo: F,
     /// lookup constraint system
     #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
-    pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
+    pub lookup_constraint_system: LazyCache<Option<LookupConstraintSystem<F>>>,
     /// precomputes
     #[serde(skip)]
-    precomputations: OnceCell<Arc<DomainConstantEvaluations<F>>>,
+    precomputations: LazyCache<Arc<DomainConstantEvaluations<F>>>,
 
     /// Disable gates checks (for testing; only enables with development builds)
     pub disable_gates_checks: bool,
@@ -228,6 +228,7 @@ pub struct Builder<F: PrimeField> {
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
     disable_gates_checks: bool,
     max_poly_size: Option<usize>,
+    lazy_mode: bool,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -271,10 +272,11 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// - `runtime_tables: None`,
     /// - `precomputations: None`,
     /// - `disable_gates_checks: false`,
+    /// - `lazy_mode: false`,
     ///
     /// How to use it:
     /// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`
-    /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations()``
+    /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations(), lazy_mode()`
     /// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`
     pub fn create(gates: Vec<CircuitGate<F>>) -> Builder<F> {
         Builder {
@@ -286,19 +288,12 @@ impl<F: PrimeField> ConstraintSystem<F> {
             precomputations: None,
             disable_gates_checks: false,
             max_poly_size: None,
+            lazy_mode: false,
         }
     }
 
     pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<F>> {
-        self.precomputations.get_or_init(|| {
-            Arc::new(DomainConstantEvaluations::create(self.domain, self.zk_rows).unwrap())
-        })
-    }
-
-    pub fn set_precomputations(&self, precomputations: Arc<DomainConstantEvaluations<F>>) {
-        self.precomputations
-            .set(precomputations)
-            .expect("Precomputation has been set before");
+        self.precomputations.get()
     }
 
     /// test helpers
@@ -804,11 +799,16 @@ impl<F: PrimeField> Builder<F> {
         self
     }
 
+    pub fn lazy_mode(mut self, lazy_mode: bool) -> Self {
+        self.lazy_mode = lazy_mode;
+        self
+    }
+
     /// Build the [ConstraintSystem] from a [Builder].
     pub fn build(self) -> Result<ConstraintSystem<F>, SetupError> {
         let mut gates = self.gates;
-        let lookup_tables = self.lookup_tables;
-        let runtime_tables = self.runtime_tables;
+        let lookup_tables = self.lookup_tables.clone();
+        let runtime_tables = self.runtime_tables.clone();
 
         //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
@@ -949,19 +949,49 @@ impl<F: PrimeField> Builder<F> {
         // ------
         let lookup_constraint_system = LookupConstraintSystem::create(
             &gates,
-            lookup_tables,
-            runtime_tables,
+            self.lookup_tables,
+            self.runtime_tables,
             &domain,
             zk_rows as usize,
         )
         .map_err(SetupError::LookupCreation)?;
+
+        let lookup_constraint_system = if !self.lazy_mode {
+            LazyCache::cache(lookup_constraint_system)
+        } else {
+            // Lookup constraint creation does not fail, we discard the struct
+            // to prevent cacheing in memory and store in the lazy cache the
+            // function needed to recompute it afterwards when needed.
+            let gates = gates.clone();
+            LazyCache::lazy(move || {
+                LookupConstraintSystem::create(
+                    &gates,
+                    lookup_tables.clone(),
+                    runtime_tables.clone(),
+                    &domain,
+                    zk_rows as usize,
+                )
+                .unwrap()
+            })
+        };
 
         let sid = shifts.map[0].clone();
 
         // TODO: remove endo as a field
         let endo = F::zero();
 
-        let domain_constant_evaluation = OnceCell::new();
+        let precomputations = if !self.lazy_mode {
+            match self.precomputations {
+                Some(t) => LazyCache::cache(t),
+                None => LazyCache::cache(Arc::new(
+                    DomainConstantEvaluations::create(domain, zk_rows).unwrap(),
+                )),
+            }
+        } else {
+            LazyCache::lazy(move || {
+                Arc::new(DomainConstantEvaluations::create(domain, zk_rows).unwrap())
+            })
+        };
 
         let constraints = ConstraintSystem {
             domain,
@@ -975,18 +1005,10 @@ impl<F: PrimeField> Builder<F> {
             //fr_sponge_params: self.sponge_params,
             lookup_constraint_system,
             feature_flags,
-            precomputations: domain_constant_evaluation,
+            precomputations,
             disable_gates_checks: self.disable_gates_checks,
         };
 
-        match self.precomputations {
-            Some(t) => {
-                constraints.set_precomputations(t);
-            }
-            None => {
-                constraints.precomputations();
-            }
-        }
         Ok(constraints)
     }
 }
