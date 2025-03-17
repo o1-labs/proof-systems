@@ -191,7 +191,9 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             &constraints,
             curr_proof_inputs,
             &mut rng,
-            lookup_env,
+            // FIXME: we use a dummy lookup env here,
+            // we do not pad the lookup arg yet
+            &mut LookupEnvironment::new(&srs, domain_fp),
         );
     }
     // Second loop, do the lookup delayed argument
