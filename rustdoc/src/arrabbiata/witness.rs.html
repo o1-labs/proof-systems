@@ -1243,20 +1243,20 @@
 </span><span class="kw">pub struct </span>Program&lt;
     Fp: PrimeField,
     Fq: PrimeField,
-    E1: ArrabbiataCurve&lt;ScalarField = Fp, BaseField = Fq&gt;,
+    E: ArrabbiataCurve&lt;ScalarField = Fp, BaseField = Fq&gt;,
 &gt; <span class="kw">where
-    </span>E1::BaseField: PrimeField,
-    &lt;&lt;E1 <span class="kw">as </span>CommitmentCurve&gt;::Params <span class="kw">as </span>CurveConfig&gt;::BaseField: PrimeField,
+    </span>E::BaseField: PrimeField,
+    &lt;&lt;E <span class="kw">as </span>CommitmentCurve&gt;::Params <span class="kw">as </span>CurveConfig&gt;::BaseField: PrimeField,
 {
     <span class="doccomment">/// Commitments to the accumulated program state.
     ///
     /// In Nova language, this is the commitment to the witness accumulator.
-    </span><span class="kw">pub </span>accumulated_committed_state: Vec&lt;PolyComm&lt;E1&gt;&gt;,
+    </span><span class="kw">pub </span>accumulated_committed_state: Vec&lt;PolyComm&lt;E&gt;&gt;,
 
     <span class="doccomment">/// Commitments to the previous program states.
     ///
     /// In Nova language, this is the commitment to the previous witness.
-    </span><span class="kw">pub </span>previous_committed_state: Vec&lt;PolyComm&lt;E1&gt;&gt;,
+    </span><span class="kw">pub </span>previous_committed_state: Vec&lt;PolyComm&lt;E&gt;&gt;,
 
     <span class="doccomment">/// Accumulated witness for the program state.
     ///
@@ -1266,7 +1266,7 @@
     /// the circuit.
     /// The size of the inner vector must be equal to the number of rows in
     /// the circuit.
-    </span><span class="kw">pub </span>accumulated_program_state: Vec&lt;Vec&lt;E1::ScalarField&gt;&gt;,
+    </span><span class="kw">pub </span>accumulated_program_state: Vec&lt;Vec&lt;E::ScalarField&gt;&gt;,
 
     <span class="doccomment">/// List of the accumulated challenges over time.
     </span><span class="kw">pub </span>accumulated_challenges: Challenges&lt;BigInt&gt;,
@@ -1277,28 +1277,28 @@
     </span><span class="kw">pub </span>previous_challenges: Challenges&lt;BigInt&gt;,
 }
 
-<span class="kw">impl</span>&lt;Fp: PrimeField, Fq: PrimeField, E1: ArrabbiataCurve&lt;ScalarField = Fp, BaseField = Fq&gt;&gt;
-    Program&lt;Fp, Fq, E1&gt;
+<span class="kw">impl</span>&lt;Fp: PrimeField, Fq: PrimeField, E: ArrabbiataCurve&lt;ScalarField = Fp, BaseField = Fq&gt;&gt;
+    Program&lt;Fp, Fq, E&gt;
 <span class="kw">where
-    </span>E1::BaseField: PrimeField,
-    &lt;&lt;E1 <span class="kw">as </span>CommitmentCurve&gt;::Params <span class="kw">as </span>CurveConfig&gt;::BaseField: PrimeField,
+    </span>E::BaseField: PrimeField,
+    &lt;&lt;E <span class="kw">as </span>CommitmentCurve&gt;::Params <span class="kw">as </span>CurveConfig&gt;::BaseField: PrimeField,
 {
-    <span class="kw">pub fn </span>new(srs_size: usize, blinder: E1) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(srs_size: usize, blinder: E) -&gt; <span class="self">Self </span>{
         <span class="comment">// Default set to the blinders. Using double to make the EC scaling happy.
-        </span><span class="kw">let </span>previous_committed_state: Vec&lt;PolyComm&lt;E1&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
+        </span><span class="kw">let </span>previous_committed_state: Vec&lt;PolyComm&lt;E&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
             .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[(blinder + blinder).into()]))
             .collect();
 
         <span class="comment">// FIXME: zero will not work.
-        </span><span class="kw">let </span>accumulated_committed_state: Vec&lt;PolyComm&lt;E1&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
+        </span><span class="kw">let </span>accumulated_committed_state: Vec&lt;PolyComm&lt;E&gt;&gt; = (<span class="number">0</span>..NUMBER_OF_COLUMNS)
             .map(|<span class="kw">_</span>| PolyComm::new(<span class="macro">vec!</span>[blinder]))
             .collect();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>accumulated_program_state: Vec&lt;Vec&lt;E1::ScalarField&gt;&gt; =
+        <span class="kw">let </span><span class="kw-2">mut </span>accumulated_program_state: Vec&lt;Vec&lt;E::ScalarField&gt;&gt; =
             Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
-            <span class="kw">let </span><span class="kw-2">mut </span>vec: Vec&lt;E1::ScalarField&gt; = Vec::with_capacity(srs_size);
-            (<span class="number">0</span>..srs_size).for_each(|<span class="kw">_</span>| vec.push(E1::ScalarField::zero()));
+            <span class="kw">let </span><span class="kw-2">mut </span>vec: Vec&lt;E::ScalarField&gt; = Vec::with_capacity(srs_size);
+            (<span class="number">0</span>..srs_size).for_each(|<span class="kw">_</span>| vec.push(E::ScalarField::zero()));
             (<span class="number">0</span>..NUMBER_OF_COLUMNS).for_each(|<span class="kw">_</span>| accumulated_program_state.push(vec.clone()));
         };
 
@@ -1322,16 +1322,16 @@
     /// program has been executed.
     </span><span class="kw">pub fn </span>commit_state(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        srs: <span class="kw-2">&amp;</span>SRS&lt;E1&gt;,
-        domain: EvaluationDomains&lt;E1::ScalarField&gt;,
+        srs: <span class="kw-2">&amp;</span>SRS&lt;E&gt;,
+        domain: EvaluationDomains&lt;E::ScalarField&gt;,
         witness: <span class="kw-2">&amp;</span>[Vec&lt;BigInt&gt;],
     ) {
-        <span class="kw">let </span>comms: Vec&lt;PolyComm&lt;E1&gt;&gt; = witness
+        <span class="kw">let </span>comms: Vec&lt;PolyComm&lt;E&gt;&gt; = witness
             .par_iter()
             .map(|evals| {
-                <span class="kw">let </span>evals: Vec&lt;E1::ScalarField&gt; = evals
+                <span class="kw">let </span>evals: Vec&lt;E::ScalarField&gt; = evals
                     .par_iter()
-                    .map(|x| E1::ScalarField::from_biguint(<span class="kw-2">&amp;</span>x.to_biguint().unwrap()).unwrap())
+                    .map(|x| E::ScalarField::from_biguint(<span class="kw-2">&amp;</span>x.to_biguint().unwrap()).unwrap())
                     .collect();
                 <span class="kw">let </span>evals = Evaluations::from_vec_and_domain(evals, domain.d1);
                 srs.commit_evaluations_non_hiding(domain.d1, <span class="kw-2">&amp;</span>evals)
@@ -1346,13 +1346,13 @@
     /// the expected instantiation, refer to the section &quot;Message Passing&quot; in
     /// [crate::interpreter].
     </span><span class="kw">pub fn </span>absorb_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>, digest: BigInt) -&gt; Vec&lt;BigInt&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>sponge = E1::create_new_sponge();
-        <span class="kw">let </span>previous_state: E1::BaseField =
-            E1::BaseField::from_biguint(<span class="kw-2">&amp;</span>digest.to_biguint().unwrap()).unwrap();
-        E1::absorb_fq(<span class="kw-2">&amp;mut </span>sponge, previous_state);
+        <span class="kw">let </span><span class="kw-2">mut </span>sponge = E::create_new_sponge();
+        <span class="kw">let </span>previous_state: E::BaseField =
+            E::BaseField::from_biguint(<span class="kw-2">&amp;</span>digest.to_biguint().unwrap()).unwrap();
+        E::absorb_fq(<span class="kw-2">&amp;mut </span>sponge, previous_state);
         <span class="self">self</span>.previous_committed_state
             .iter()
-            .for_each(|comm| E1::absorb_curve_points(<span class="kw-2">&amp;mut </span>sponge, <span class="kw-2">&amp;</span>comm.chunks));
+            .for_each(|comm| E::absorb_curve_points(<span class="kw-2">&amp;mut </span>sponge, <span class="kw-2">&amp;</span>comm.chunks));
         <span class="kw">let </span>state: Vec&lt;BigInt&gt; = sponge
             .sponge
             .state
@@ -1384,14 +1384,14 @@
     /// N bits of the first element, but it is left as an implementation detail
     /// of the sponge given by the curve.
     </span><span class="kw">pub fn </span>coin_challenge(<span class="kw-2">&amp;</span><span class="self">self</span>, sponge_state: Vec&lt;BigInt&gt;) -&gt; (BigInt, Vec&lt;BigInt&gt;) {
-        <span class="kw">let </span><span class="kw-2">mut </span>sponge = E1::create_new_sponge();
+        <span class="kw">let </span><span class="kw-2">mut </span>sponge = E::create_new_sponge();
         sponge_state.iter().for_each(|x| {
-            E1::absorb_fq(
+            E::absorb_fq(
                 <span class="kw-2">&amp;mut </span>sponge,
-                E1::BaseField::from_biguint(<span class="kw-2">&amp;</span>x.to_biguint().unwrap()).unwrap(),
+                E::BaseField::from_biguint(<span class="kw-2">&amp;</span>x.to_biguint().unwrap()).unwrap(),
             )
         });
-        <span class="kw">let </span>verifier_answer = E1::squeeze_challenge(<span class="kw-2">&amp;mut </span>sponge).to_biguint().into();
+        <span class="kw">let </span>verifier_answer = E::squeeze_challenge(<span class="kw-2">&amp;mut </span>sponge).to_biguint().into();
         sponge.sponge.poseidon_block_cipher();
         <span class="kw">let </span>state: Vec&lt;BigInt&gt; = sponge
             .sponge
@@ -1425,7 +1425,7 @@
     /// ```
     /// where acc and w are vectors of the same size.
     </span><span class="kw">pub fn </span>accumulate_program_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>, chal: BigInt, witness: <span class="kw-2">&amp;</span>[Vec&lt;BigInt&gt;]) {
-        <span class="kw">let </span>modulus: BigInt = E1::ScalarField::modulus_biguint().into();
+        <span class="kw">let </span>modulus: BigInt = E::ScalarField::modulus_biguint().into();
         <span class="self">self</span>.accumulated_program_state = <span class="self">self
             </span>.accumulated_program_state
             .iter()
@@ -1437,7 +1437,7 @@
                     </span>.map(|(acc, w)| {
                         <span class="kw">let </span>rhs: BigInt = (chal.clone() * w).mod_floor(<span class="kw-2">&amp;</span>modulus);
                         <span class="kw">let </span>rhs: BigUint = rhs.to_biguint().unwrap();
-                        <span class="kw">let </span>res = E1::ScalarField::from_biguint(<span class="kw-2">&amp;</span>rhs).unwrap();
+                        <span class="kw">let </span>res = E::ScalarField::from_biguint(<span class="kw-2">&amp;</span>rhs).unwrap();
                         <span class="kw-2">*</span>acc + res
                     })
                     .collect()
@@ -1465,7 +1465,7 @@
     /// the columns to accumulate the committed state.
     </span><span class="kw">pub fn </span>accumulate_committed_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>, chal: BigInt) {
         <span class="kw">let </span>chal: BigUint = chal.to_biguint().unwrap();
-        <span class="kw">let </span>chal: E1::ScalarField = E1::ScalarField::from_biguint(<span class="kw-2">&amp;</span>chal).unwrap();
+        <span class="kw">let </span>chal: E::ScalarField = E::ScalarField::from_biguint(<span class="kw-2">&amp;</span>chal).unwrap();
         <span class="self">self</span>.accumulated_committed_state = <span class="self">self
             </span>.accumulated_committed_state
             .iter()
