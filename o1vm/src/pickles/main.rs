@@ -382,11 +382,11 @@ fn lookup_prove_and_verify(
         srs,
         &proof,
     );
+    assert!(verif);
     debug!(
         "Lookup verification done in {elapsed} μs",
         elapsed = start_iteration.elapsed().as_micros()
     );
-    assert!(verif);
     acc
 }
 
