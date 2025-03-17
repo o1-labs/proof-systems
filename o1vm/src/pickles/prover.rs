@@ -150,15 +150,16 @@ where
             srs.commit_custom(
                 poly,
                 num_chunks,
-                &PolyComm::new(vec![G::ScalarField::one()]),
+                &PolyComm::new(vec![G::ScalarField::zero()]),
             )
             .unwrap()
             .commitment
         };
+        let comm_lookup = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
         // Doing in parallel
         let scratch = scratch.par_iter().map(comm).collect::<Vec<_>>();
         let scratch_inverse = scratch_inverse.par_iter().map(comm).collect::<Vec<_>>();
-        let lookup_state = lookup_state.par_iter().map(comm).collect::<Vec<_>>();
+        let lookup_state = lookup_state.par_iter().map(comm_lookup).collect::<Vec<_>>();
         let selector = selector.par_iter().map(comm).collect::<Vec<_>>();
         WitnessColumns {
             scratch: scratch.try_into().unwrap(),
@@ -311,7 +312,7 @@ where
             &quotient_poly,
             DEGREE_QUOTIENT_POLYNOMIAL as usize,
             &PolyComm::new(vec![
-                G::ScalarField::one();
+                G::ScalarField::zero();
                 DEGREE_QUOTIENT_POLYNOMIAL as usize
             ]),
         )
@@ -442,8 +443,8 @@ where
         .map(|poly| {
             (
                 DensePolynomialOrEvaluations::DensePolynomial(poly),
-                // We do not have any blinder, therefore we set to 1.
-                PolyComm::new(vec![G::ScalarField::one()]),
+                // We do not have any blinder, therefore we set to 0.
+                PolyComm::new(vec![G::ScalarField::zero()]),
             )
         })
         .collect();
