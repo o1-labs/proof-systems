@@ -274,7 +274,8 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                 rng,
                 sponge.clone(),
                 acc,
-                lookup_env.cms.pop().unwrap(),
+                // TODO O(n) complexity, use a better data structure
+                lookup_env.cms.remove(0),
             );
 
             curr_proof_inputs = ProofInputs::new(domain_size);
