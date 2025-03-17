@@ -238,7 +238,9 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
 
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
+        // TODO factorise the addtion of the wit env to the proof input in a seprate function
         // Lookup state
+        // TODO factorise padding of lookup in a separate function
         {
             let proof_inputs_length = curr_proof_inputs.evaluations.lookup_state.len();
             let environment_length = mips_wit_env.lookup_state.len();
