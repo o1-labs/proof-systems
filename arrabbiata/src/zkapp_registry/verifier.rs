@@ -32,14 +32,18 @@ where
     C::BaseField: PrimeField,
     <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
+    type Instruction = interpreter::Instruction;
+
+    type Gadget = column::Gadget;
+
     fn dummy_witness(&self, _srs_size: usize) -> Vec<Vec<C::ScalarField>> {
         unimplemented!("Dummy witness for the verifier is not implemented yet")
     }
 
     /// Describe the control-flow for the verifier circuit.
-    fn fetch_next_instruction(&self, current_instruction: Instruction) -> Instruction {
+    fn fetch_next_instruction(&self, current_instruction: Self::Instruction) -> Self::Instruction {
         match current_instruction {
-            Instruction::PoseidonFullRound(i) => {
+            Self::Instruction::PoseidonFullRound(i) => {
                 if i < PlonkSpongeConstants::PERM_ROUNDS_FULL - 5 {
                     Instruction::PoseidonFullRound(i + 5)
                 } else {
@@ -48,14 +52,14 @@ where
                     // exception when we absorbed everythimg, and the main file
                     // handles the halt by filling as many rows as expected (see
                     // [VERIFIER_CIRCUIT_SIZE]).
-                    Instruction::PoseidonSpongeAbsorb
+                    Self::Instruction::PoseidonSpongeAbsorb
                 }
             }
-            Instruction::PoseidonSpongeAbsorb => {
+            Self::Instruction::PoseidonSpongeAbsorb => {
                 // Whenever we absorbed a value, we run the permutation.
-                Instruction::PoseidonFullRound(0)
+                Self::Instruction::PoseidonFullRound(0)
             }
-            Instruction::EllipticCurveScaling(i_comm, bit) => {
+            Self::Instruction::EllipticCurveScaling(i_comm, bit) => {
                 // TODO: we still need to substract (or not?) the blinder.
                 // Maybe we can avoid this by aggregating them.
                 // TODO: we also need to aggregate the cross-terms.
@@ -64,26 +68,26 @@ where
                 assert!(i_comm < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
                 assert!(bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Maximum number of bits reached ({MAXIMUM_FIELD_SIZE_IN_BITS}), increase the number of bits");
                 if bit < 255 - 1 {
-                    Instruction::EllipticCurveScaling(i_comm, bit + 1)
+                    Self::Instruction::EllipticCurveScaling(i_comm, bit + 1)
                 } else if i_comm < NUMBER_OF_COLUMNS - 1 {
-                    Instruction::EllipticCurveScaling(i_comm + 1, 0)
+                    Self::Instruction::EllipticCurveScaling(i_comm + 1, 0)
                 } else {
                     // We have computed all the bits for all the columns
-                    Instruction::NoOp
+                    Self::Instruction::NoOp
                 }
             }
-            Instruction::EllipticCurveAddition(i_comm) => {
+            Self::Instruction::EllipticCurveAddition(i_comm) => {
                 if i_comm < NUMBER_OF_COLUMNS - 1 {
-                    Instruction::EllipticCurveAddition(i_comm + 1)
+                    Self::Instruction::EllipticCurveAddition(i_comm + 1)
                 } else {
-                    Instruction::NoOp
+                    Self::Instruction::NoOp
                 }
             }
-            Instruction::NoOp => Instruction::NoOp,
+            Self::Instruction::NoOp => Self::Instruction::NoOp,
         }
     }
 
-    fn run<E: InterpreterEnv>(&self, env: &mut E) {
+    fn run<E: InterpreterEnv>(&self, env: &mut E, instr: Self::Instruction) {
         let mut current_instr = VERIFIER_STARTING_INSTRUCTION;
         for _i in 0..VERIFIER_CIRCUIT_SIZE - 1 {
             interpreter::run(env, current_instr);

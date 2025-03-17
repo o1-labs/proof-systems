@@ -637,6 +637,9 @@ pub enum Side {
 /// interpreter should be seen as a state machine with some built-in
 /// functionality whose state is a matrix, and whose transitions are described
 /// by polynomial functions.
+///
+/// The interpreter gives access to some arguments, like the lookup argument or
+/// the permutation argument.
 pub trait InterpreterEnv {
     type Position: Clone + Copy;
 

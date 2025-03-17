@@ -28,7 +28,7 @@ where
         unimplemented!()
     }
 
-    fn run<E: InterpreterEnv>(&self, env: &mut E) {
+    fn run<E: InterpreterEnv>(&self, env: &mut E, instr: Self::Instruction) {
         let _x1 = {
             let pos = env.allocate();
             env.fetch_input(pos)

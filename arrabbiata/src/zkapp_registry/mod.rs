@@ -37,14 +37,20 @@ where
     C::BaseField: PrimeField,
     <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
+    /// The type of the instructions used in the ZkApp.
+    type Instruction;
+
+    /// The type of gadget used in the ZkApp.
+    type Gadget;
+
     /// Provide a dummy witness, used to generate a first non-folded instance.
     fn dummy_witness(&self, srs_size: usize) -> Vec<Vec<C::ScalarField>>;
 
     /// Describe the control-flow of the ZkApp.
-    fn fetch_next_instruction(&self, current_instr: Instruction) -> Instruction;
+    fn fetch_next_instruction(&self, current_instr: Self::Instruction) -> Self::Instruction;
 
     /// Execute the ZkApp over the interpreter environment `E`.
-    fn run<E: InterpreterEnv>(&self, env: &mut E);
+    fn run<E: InterpreterEnv>(&self, env: &mut E, instr: Self::Instruction);
 
     /// Create a setup for the ZkApp.
     /// The setup will define the shape of the execution trace.
