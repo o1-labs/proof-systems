@@ -230,7 +230,7 @@ where
     let polynomials : Vec<_> = polynomials.iter().map(|poly| {
         (
             DensePolynomialOrEvaluations::<_,Radix2EvaluationDomain<G::ScalarField>>::DensePolynomial(poly),
-            // We do not have any blinder, therefore we set to 1.
+            // We do not have any blinder, therefore we set to 0.
             PolyComm::new(vec![G::ScalarField::zero()]),
         )
     }).collect();
