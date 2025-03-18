@@ -1016,6 +1016,13 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             Column::ScratchStateInverse(idx) => self.scratch_state_inverse[idx] = value,
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
             Column::Selector(s) => self.selector = s,
+            Column::LookupColumn(idx) => {
+                // We should write only at the idx the environment gives us.
+                // This case is handled differently than that scratch state,
+                // as the lookup state is a vector, not an array.
+                assert!(idx == self.lookup_state_idx);
+                self.lookup_state.push(value)
+            }
         }
     }
 

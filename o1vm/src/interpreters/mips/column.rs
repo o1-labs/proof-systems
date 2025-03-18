@@ -65,6 +65,8 @@ pub enum ColumnAlias {
     ScratchStateInverse(usize),
     InstructionCounter,
     Selector(usize),
+    // Specialised columns we'll run the lookup argument on
+    LookupColumn(usize),
 }
 
 /// The columns used by the MIPS circuit. The MIPS circuit is split into three
@@ -85,6 +87,9 @@ impl From<ColumnAlias> for usize {
             }
             ColumnAlias::InstructionCounter => SCRATCH_SIZE + SCRATCH_SIZE_INVERSE,
             ColumnAlias::Selector(s) => SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 1 + s,
+            ColumnAlias::LookupColumn(i) => {
+                SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 1 + N_MIPS_SEL_COLS + i
+            }
         }
     }
 }
@@ -187,6 +192,7 @@ impl ColumnIndexer<RelationColumnType> for ColumnAlias {
                 );
                 Column::DynamicSelector(s)
             }
+            Self::LookupColumn(i) => Column::Relation(RelationColumnType::LookupState(i)),
         }
     }
 }
