@@ -266,12 +266,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             lookup_env.add_multiplicities(mips_wit_env.lookup_multiplicities.clone());
         }
 
-        /*     // TODO use selectors
-               curr_proof_inputs
-                   .evaluations
-                   .selector
-                   .push(Fp::from((mips_wit_env.selector - N_MIPS_REL_COLS) as u64));
-        */
+        // TODO add selectors to proof input
 
         // TODO get rid of this rng creation
         let rng = &mut rand::thread_rng();
