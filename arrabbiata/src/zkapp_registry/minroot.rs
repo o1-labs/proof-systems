@@ -15,16 +15,20 @@ pub struct MinRoot<F: PrimeField> {
     pub n: u64,
 }
 
-impl<C: ArrabbiataCurve> ZkApp<C> for MinRoot<C::ScalarField>
+impl<C: ArrabbiataCurve> ZkApp<C, Gadget, Instruction> for MinRoot<C::ScalarField>
 where
     C::BaseField: PrimeField,
     <<C as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
+    type Gadget = Gadget;
+
+    type Instruction = Instruction;
+
     fn dummy_witness(&self, _srs_size: usize) -> Vec<Vec<C::ScalarField>> {
         unimplemented!()
     }
 
-    fn fetch_next_instruction(&self, _current_instr: Instruction) -> Instruction {
+    fn fetch_next_instruction(&self, _current_instr: Self::Instruction) -> Self::Instruction {
         unimplemented!()
     }
 
