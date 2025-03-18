@@ -261,6 +261,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                         .push(Fp::from(mips_wit_env.lookup_state[idx]));
                 }
             }
+            // TODO: understand why we need to update the instruction counter
             curr_proof_inputs
                 .evaluations
                 .instruction_counter
