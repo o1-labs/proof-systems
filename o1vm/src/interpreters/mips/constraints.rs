@@ -10,14 +10,15 @@ use crate::{
         Instruction,
     },
     lookups::{Lookup, LookupTableIDs},
+    ramlookup::LookupMode,
     E,
 };
-use ark_ff::{Field, One};
+use ark_ff::{Field, One, Zero};
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
-use kimchi_msm::columns::ColumnIndexer as _;
+use kimchi_msm::{columns::ColumnIndexer as _, LogupTableID};
 use std::{array, collections::HashSet};
 use strum::IntoEnumIterator;
 
@@ -106,6 +107,38 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
+        // Constraint the columns to lookup to be correctly copied in the lookup state
+        // This function mirrors the add_lookup function in witness.rs
+
+        let mut add_value = |x: Self::Variable| {
+            self.add_constraint(x - self.variable(MIPSColumn::LookupColumn(self.lookup_idx)));
+            self.lookup_idx += 1;
+        };
+        let Lookup {
+            table_id,
+            magnitude: numerator,
+            mode,
+            value: values,
+        } = lookup.clone();
+        // Add lookup numerator
+        match mode {
+            LookupMode::Write => add_value(numerator),
+            LookupMode::Read => {
+                add_value(Self::Variable::zero() - numerator);
+                /*  //This is add_value(-numerator), but we do not have an opposite
+                self.add_constraint(
+                    self.variable(MIPSColumn::LookupColumn(self.lookup_idx)) - numerator,
+                );
+                self.lookup_idx += 1; */
+            }
+        };
+        // Add lookup table ID
+        add_value(Self::constant(table_id.to_u32()));
+        // Add values
+        for value in values.into_iter() {
+            add_value(value);
+        }
+        // Rembember that we did this lookup to constraint the lookup prover later
         self.lookups.push(lookup);
     }
 
