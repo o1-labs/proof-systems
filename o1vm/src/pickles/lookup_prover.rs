@@ -35,6 +35,9 @@ pub fn lookup_prove<
     mut fq_sponge: EFqSponge,
     constraint: &ELookup<G::ScalarField>,
     rng: &mut RNG,
+    // some commitments are already computed
+    // we give them as auxiliary input
+    cm_wires: Vec<PolyComm<G>>,
 ) -> (Proof<G>, G::ScalarField)
 where
     G::BaseField: PrimeField,
@@ -107,11 +110,18 @@ where
         .interpolate()
     };
     let columns_poly = columns.my_map(interpolate_col);
-    // commiting
+    // commiting. Note that we do not commit to the wires, it is already done.
     // TODO avoid cloning
-    let columns_com = columns_poly
-        .clone()
-        .my_map(|poly| srs.commit_non_hiding(&poly, 1).chunks[0]);
+    let columns_com = ColumnEnv {
+        wires: cm_wires.into_iter().map(|x| x.chunks[0]).collect(),
+        inverses: columns_poly
+            .inverses
+            .clone()
+            .into_iter()
+            .map(|poly| srs.commit_non_hiding(&poly, 1).chunks[0])
+            .collect(),
+        acc: srs.commit_non_hiding(&columns_poly.acc.clone(), 1).chunks[0],
+    };
 
     // eval on d8
     // TODO: check the degree
@@ -219,7 +229,7 @@ where
     let polynomials : Vec<_> = polynomials.iter().map(|poly| {
         (
             DensePolynomialOrEvaluations::<_,Radix2EvaluationDomain<G::ScalarField>>::DensePolynomial(poly),
-            // We do not have any blinder, therefore we set to 1.
+            // We do not have any blinder, therefore we set to 0.
             PolyComm::new(vec![G::ScalarField::zero()]),
         )
     }).collect();
