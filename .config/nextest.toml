@@ -88,7 +88,7 @@ slow-timeout = { period = "60s" }
 # it inherit those handles, but doesn't clean the child process up (especially
 # when it fails).
 #
-# See <https://nexte.st/book/leaky-tests> for more information.
+# See <https://nexte.st/docs/features/leaky-tests/> for more information.
 leak-timeout = "100ms"
 
 [profile.default.junit]
