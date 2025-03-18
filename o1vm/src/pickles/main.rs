@@ -270,6 +270,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             arity.push(mips_wit_env.lookup_arity.clone());
             lookup_env.add_multiplicities(mips_wit_env.lookup_multiplicities.clone());
         }
+        // TODO add selectors to proof input
         // TODO get rid of this rng creation
         let rng = &mut rand::thread_rng();
         if curr_proof_inputs.evaluations.lookup_state[0].len() == domain_size {
