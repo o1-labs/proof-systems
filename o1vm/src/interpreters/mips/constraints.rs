@@ -27,6 +27,7 @@ use super::column::N_MIPS_SEL_COLS;
 pub struct Env<Fp> {
     scratch_state_idx: usize,
     scratch_state_idx_inverse: usize,
+    lookup_idx: usize,
     /// A list of constraints, which are multi-variate polynomials over a field,
     /// represented using the expression framework of `kimchi`.
     constraints: Vec<E<Fp>>,
@@ -40,6 +41,7 @@ impl<Fp: Field> Default for Env<Fp> {
         Self {
             scratch_state_idx: 0,
             scratch_state_idx_inverse: 0,
+            lookup_idx: 0,
             constraints: Vec::new(),
             lookups: Vec::new(),
             selector: None,
