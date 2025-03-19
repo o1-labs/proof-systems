@@ -25,10 +25,7 @@ pub enum LazyCache<T> {
     },
 }
 
-impl<T> LazyCache<T>
-where
-    T: Send + Sync,
-{
+impl<T> LazyCache<T> {
     // Create a new `LazyCache` with a cached computation
     pub fn cache(value: T) -> Self {
         let cell = OnceCell::new();
