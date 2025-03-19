@@ -88,12 +88,16 @@ impl<F: PrimeField> CircuitGate<F> {
         CircuitGate::new(GateType::Poseidon, wires, coeffs)
     }
 
-    /// `create_poseidon_gadget(row, first_and_last_row, round_constants)`  creates an entire set of constraint for a Poseidon hash.
+    /// `create_poseidon_gadget(row, first_and_last_row, round_constants)`
+    /// creates an entire set of constraint for a Poseidon hash.
+    ///
     /// For that, you need to pass:
     /// - the index of the first `row`
     /// - the first and last rows' wires (because they are used in the permutation)
     /// - the round constants
-    /// The function returns a set of gates, as well as the next pointer to the circuit (next empty absolute row)
+    ///
+    /// The function returns a set of gates, as well as the next pointer to the
+    /// circuit (next empty absolute row)
     pub fn create_poseidon_gadget(
         // the absolute row in the circuit
         row: usize,

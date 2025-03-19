@@ -3,7 +3,7 @@
 //!
 //! 1. Commit to polynomial with its max degree
 //! 2. Open polynomial commitment batch at the given evaluation point and
-//! scaling factor scalar producing the batched opening proof
+//!    scaling factor scalar producing the batched opening proof
 //! 3. Verify batch of batched opening proofs
 
 use ark_ec::{
