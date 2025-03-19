@@ -45,7 +45,7 @@ pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
-    #[serde(bound = "LazyCache<ColumnEvaluations<G::ScalarField>>: Serialize + DeserializeOwned")]
+    #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
     pub column_evaluations: LazyCache<ColumnEvaluations<G::ScalarField>>,
 
     /// The verifier index corresponding to this prover index

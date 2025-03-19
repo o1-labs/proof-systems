@@ -5,11 +5,14 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-/// A memory-efficient container that caches or computes `T` on demand.
-pub enum LazyCache<T>
-where
-    T: Send + Sync,
-{
+/// A memory-efficient container that either stores a cached value or computes it on demand.
+///
+/// `LazyCache<T>` optimizes memory and computation by either:
+/// - Storing a **precomputed** value in the `Cached` variant.
+/// - Storing a **computation function** in the `OnDemand` variant, which computes the value
+///   only when first accessed, then transitions to `Cached` to avoid recomputation.
+///
+pub enum LazyCache<T> {
     /// Precomputed value
     Cached(OnceCell<T>),
 
@@ -22,13 +25,6 @@ where
     },
 }
 
-/// A memory-efficient container that either stores a cached value or computes it on demand.
-///
-/// `LazyCache<T>` optimizes memory and computation by either:
-/// - Storing a **precomputed** value in the `Cached` variant.
-/// - Storing a **computation function** in the `OnDemand` variant, which computes the value
-///   only when first accessed, then transitions to `Cached` to avoid recomputation.
-///
 impl<T> LazyCache<T>
 where
     T: Send + Sync,
@@ -68,7 +64,7 @@ where
 
 impl<T> fmt::Debug for LazyCache<T>
 where
-    T: fmt::Debug + Send + Sync,
+    T: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -78,10 +74,7 @@ where
     }
 }
 
-impl<T> Default for LazyCache<T>
-where
-    T: Send + Sync,
-{
+impl<T> Default for LazyCache<T> {
     fn default() -> Self {
         LazyCache::Lazy {
             computed: OnceCell::new(),
@@ -92,7 +85,7 @@ where
 
 impl<T> Clone for LazyCache<T>
 where
-    T: Clone + Send + Sync,
+    T: Clone,
 {
     fn clone(&self) -> Self {
         match self {
@@ -110,7 +103,7 @@ where
 
 impl<T> Serialize for LazyCache<T>
 where
-    T: Serialize + Send + Sync,
+    T: Serialize,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -131,7 +124,7 @@ where
 
 impl<'de, T> Deserialize<'de> for LazyCache<T>
 where
-    T: Deserialize<'de> + Send + Sync,
+    T: Deserialize<'de>,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

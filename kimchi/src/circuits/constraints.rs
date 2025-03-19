@@ -292,8 +292,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
         }
     }
 
-    pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<F>> {
-        self.precomputations.get()
+    pub fn precomputations(&self) -> Arc<DomainConstantEvaluations<F>> {
+        self.precomputations.get().clone()
     }
 
     /// test helpers
@@ -834,7 +834,7 @@ impl<F: PrimeField> Builder<F> {
                 })
                 .sum();
             // After that on the runtime tables
-            if let Some(runtime_tables) = runtime_tables.as_ref() {
+            if let Some(runtime_tables) = &runtime_tables {
                 // FIXME: Check that a runtime table with ID 0 is enforced to
                 // contain a zero entry row.
                 for runtime_table in runtime_tables.iter() {

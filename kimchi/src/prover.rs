@@ -690,19 +690,19 @@ where
             index_evals.insert(EndoMul, &column_evaluations.emul_selector8);
             index_evals.insert(EndoMulScalar, &column_evaluations.endomul_scalar_selector8);
 
-            if let Some(selector) = column_evaluations.range_check0_selector8.as_ref() {
+            if let Some(selector) = &column_evaluations.range_check0_selector8 {
                 index_evals.insert(GateType::RangeCheck0, selector);
             }
 
-            if let Some(selector) = column_evaluations.range_check1_selector8.as_ref() {
+            if let Some(selector) = &column_evaluations.range_check1_selector8 {
                 index_evals.insert(GateType::RangeCheck1, selector);
             }
 
-            if let Some(selector) = column_evaluations.foreign_field_add_selector8.as_ref() {
+            if let Some(selector) = &column_evaluations.foreign_field_add_selector8 {
                 index_evals.insert(GateType::ForeignFieldAdd, selector);
             }
 
-            if let Some(selector) = column_evaluations.foreign_field_mul_selector8.as_ref() {
+            if let Some(selector) = &column_evaluations.foreign_field_mul_selector8 {
                 index_evals.extend(
                     foreign_field_mul::gadget::circuit_gates()
                         .iter()
@@ -710,11 +710,11 @@ where
                 );
             }
 
-            if let Some(selector) = column_evaluations.xor_selector8.as_ref() {
+            if let Some(selector) = &column_evaluations.xor_selector8 {
                 index_evals.insert(GateType::Xor16, selector);
             }
 
-            if let Some(selector) = column_evaluations.rot_selector8.as_ref() {
+            if let Some(selector) = &column_evaluations.rot_selector8 {
                 index_evals.insert(GateType::Rot64, selector);
             }
 
@@ -1290,38 +1290,34 @@ where
         );
 
         //~~ * the optional gates
-        if let Some(range_check0_selector8) = column_evaluations.range_check0_selector8.as_ref() {
+        if let Some(range_check0_selector8) = &column_evaluations.range_check0_selector8 {
             polynomials.push((
                 evaluations_form(range_check0_selector8),
                 non_hiding(num_chunks),
             ));
         }
-        if let Some(range_check1_selector8) = column_evaluations.range_check1_selector8.as_ref() {
+        if let Some(range_check1_selector8) = &column_evaluations.range_check1_selector8 {
             polynomials.push((
                 evaluations_form(range_check1_selector8),
                 non_hiding(num_chunks),
             ));
         }
-        if let Some(foreign_field_add_selector8) =
-            column_evaluations.foreign_field_add_selector8.as_ref()
-        {
+        if let Some(foreign_field_add_selector8) = &column_evaluations.foreign_field_add_selector8 {
             polynomials.push((
                 evaluations_form(foreign_field_add_selector8),
                 non_hiding(num_chunks),
             ));
         }
-        if let Some(foreign_field_mul_selector8) =
-            column_evaluations.foreign_field_mul_selector8.as_ref()
-        {
+        if let Some(foreign_field_mul_selector8) = &column_evaluations.foreign_field_mul_selector8 {
             polynomials.push((
                 evaluations_form(foreign_field_mul_selector8),
                 non_hiding(num_chunks),
             ));
         }
-        if let Some(xor_selector8) = column_evaluations.xor_selector8.as_ref() {
+        if let Some(xor_selector8) = &column_evaluations.xor_selector8 {
             polynomials.push((evaluations_form(xor_selector8), non_hiding(num_chunks)));
         }
-        if let Some(rot_selector8) = column_evaluations.rot_selector8.as_ref() {
+        if let Some(rot_selector8) = &column_evaluations.rot_selector8 {
             polynomials.push((evaluations_form(rot_selector8), non_hiding(num_chunks)));
         }
 
@@ -1398,22 +1394,22 @@ where
 
             //~~ * the lookup selectors
 
-            if let Some(runtime_lookup_table_selector) = lcs.runtime_selector.as_ref() {
+            if let Some(runtime_lookup_table_selector) = &lcs.runtime_selector {
                 polynomials.push((
                     evaluations_form(runtime_lookup_table_selector),
                     non_hiding(1),
                 ))
             }
-            if let Some(xor_lookup_selector) = lcs.lookup_selectors.xor.as_ref() {
+            if let Some(xor_lookup_selector) = &lcs.lookup_selectors.xor {
                 polynomials.push((evaluations_form(xor_lookup_selector), non_hiding(1)))
             }
-            if let Some(lookup_gate_selector) = lcs.lookup_selectors.lookup.as_ref() {
+            if let Some(lookup_gate_selector) = &lcs.lookup_selectors.lookup {
                 polynomials.push((evaluations_form(lookup_gate_selector), non_hiding(1)))
             }
-            if let Some(range_check_lookup_selector) = lcs.lookup_selectors.range_check.as_ref() {
+            if let Some(range_check_lookup_selector) = &lcs.lookup_selectors.range_check {
                 polynomials.push((evaluations_form(range_check_lookup_selector), non_hiding(1)))
             }
-            if let Some(foreign_field_mul_lookup_selector) = lcs.lookup_selectors.ffmul.as_ref() {
+            if let Some(foreign_field_mul_lookup_selector) = &lcs.lookup_selectors.ffmul {
                 polynomials.push((
                     evaluations_form(foreign_field_mul_lookup_selector),
                     non_hiding(1),

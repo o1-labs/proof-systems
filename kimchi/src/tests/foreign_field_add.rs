@@ -1067,11 +1067,7 @@ fn test_bad_bound() {
         &[FFOps::Add],
         true,
     );
-
-    let mut cs = match Arc::try_unwrap(index.cs) {
-        Ok(cs) => cs,
-        Err(_) => panic!("Multiple references of Arc"),
-    };
+    let mut cs = Arc::try_unwrap(index.cs).unwrap();
 
     // Modify sign of bound
     // It should be constrained that sign needs to be 1
