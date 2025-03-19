@@ -76,10 +76,7 @@ where
 
 impl<T> Default for LazyCache<T> {
     fn default() -> Self {
-        LazyCache::Lazy {
-            computed: OnceCell::new(),
-            compute_fn: Mutex::new(None),
-        }
+        LazyCache::Cached { 0: OnceCell::new() }
     }
 }
 
