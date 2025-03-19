@@ -15,55 +15,6 @@ mod tests {
     use ark_ff::{Field, One, UniformRand};
     use kimchi::circuits::expr::{ConstantExpr, ConstantTerm};
 
-    #[cfg(dead_code)]
-    fn test_soundness_generic<const N: usize, RNG>(
-        constraints: Vec<E<Fp>>,
-        evaluations: Witness<N, Vec<Fp>>,
-        domain_size: usize,
-        rng: &mut RNG,
-    ) where
-        RNG: RngCore + CryptoRng,
-    {
-        let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
-
-        let mut srs: PairingSRS<BN254> = {
-            // Trusted setup toxic waste
-            let x = Fp::rand(rng);
-            PairingSRS::create(x, domain.d1.size as usize)
-        };
-        srs.get_lagrange_basis(domain.d1);
-
-        let mut evaluations_prime = evaluations.clone();
-        {
-            let i = rng.gen_range(0..N);
-            let j = rng.gen_range(0..domain_size);
-            evaluations_prime.cols[i][j] = Fp::rand(rng);
-        }
-
-        let proof_inputs = ProofInputs {
-            evaluations: evaluations_prime,
-            logups: vec![],
-        };
-
-        let proof =
-            prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
-                domain,
-                &srs,
-                &constraints,
-                proof_inputs,
-                rng,
-            )
-            .unwrap();
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N, 0, LookupTableIDs>(
-            domain,
-            &srs,
-            &constraints,
-            &proof,
-            Witness::zero_vec(domain_size),
-        );
-        assert!(!verifies)
-    }
-
     // Test a constraint of degree one: X_{0} - X_{1}
     #[test]
     fn test_completeness_degree_one() {
