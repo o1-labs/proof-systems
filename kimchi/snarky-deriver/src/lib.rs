@@ -1,5 +1,5 @@
 //! **This crate is not meant to be imported directly by users**.
-//! You should import [kimchi](https://crates.io/crates/kimchi) instead.
+//! You should import [kimchi]() instead.
 //!
 //! snarky-deriver adds a number of derives to make snarky easier to use.
 //! Refer to the [snarky](https://o1-labs.github.io/proof-systems/rustdoc/kimchi/snarky/index.html) documentation.
