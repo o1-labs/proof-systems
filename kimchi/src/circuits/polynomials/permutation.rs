@@ -297,10 +297,8 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
                 .unwrap()
                 * &lagrange.d8.next.z.clone();
 
-            let res = &(&shifts - &sigmas).scale(alpha0)
-                * &self.cs.precomputations().permutation_vanishing_polynomial_l;
-
-            res
+            &(&shifts - &sigmas).scale(alpha0)
+                * &self.cs.precomputations().permutation_vanishing_polynomial_l
         };
 
         //~ and `bnd`:

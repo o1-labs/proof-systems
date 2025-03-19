@@ -1,5 +1,5 @@
 use once_cell::sync::OnceCell;
-use serde::{ser, Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 use std::{
     fmt,
     sync::{Arc, Mutex},
@@ -73,7 +73,7 @@ where
 
 impl<T> Default for LazyCache<T> {
     fn default() -> Self {
-        LazyCache::Cached { 0: OnceCell::new() }
+        LazyCache::Cached(OnceCell::new())
     }
 }
 
@@ -104,14 +104,8 @@ where
         S: Serializer,
     {
         match self {
-            LazyCache::Cached(cell) => cell
-                .get()
-                .ok_or_else(|| serde::ser::Error::custom("LazyCache::Cached is uninitialized"))?
-                .serialize(serializer),
-            LazyCache::Lazy { computed, .. } => computed.get().map_or_else(
-                || Err(ser::Error::custom("LazyCache:Lazy is not computed")),
-                |value| value.serialize(serializer),
-            ),
+            LazyCache::Cached(cell) => cell.get().serialize(serializer),
+            LazyCache::Lazy { .. } => self.get().serialize(serializer),
         }
     }
 }
@@ -120,6 +114,7 @@ impl<'de, T> Deserialize<'de> for LazyCache<T>
 where
     T: Deserialize<'de>,
 {
+    // Deserializing will create a `LazyCache` with a cached value
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
