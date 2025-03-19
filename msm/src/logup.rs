@@ -129,15 +129,15 @@
 //! To summarize, the prover will:
 //! - commit to the multiplicities m.
 //! - commit to individual looked-up values f (which include the table t) which
-//! should be already included in the PlonK protocol as columns.
+//!   should be already included in the PlonK protocol as columns.
 //! - coin an evaluation point β.
 //! - coin a random combiner j (used to aggregate the table ID and concatenate
-//! vector lookups, if any).
+//!   vector lookups, if any).
 //! - commit to the inner sums/lookup terms h.
 //! - commit to the running sum φ.
 //! - add constraints to the quotient polynomial.
 //! - evaluate all polynomials at the evaluation points ζ and ζω (because we
-//! access the "next" row for the accumulator in the quotient polynomial).
+//!   access the "next" row for the accumulator in the quotient polynomial).
 use ark_ff::{Field, PrimeField, Zero};
 use kimchi::circuits::{
     berkeley_columns::BerkeleyChallengeTerm,

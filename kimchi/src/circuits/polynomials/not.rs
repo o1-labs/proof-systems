@@ -57,20 +57,30 @@ use super::{
 //~ | i   | `Generic`     | Negate one or two words of the length given by the length of the all-one word |
 //~
 impl<F: PrimeField> CircuitGate<F> {
-    /// Extends a bitwise negation gadget with `n` NOT components of some length previously constrained using a generic gate
-    /// (checking that a cell stores `2^bits-1` value). Assumes that the inputs are known to have at most `bits` length.
+    /// Extends a bitwise negation gadget with `n` NOT components of some length
+    /// previously constrained using a generic gate (checking that a cell stores
+    /// `2^bits-1` value).
+    /// Assumes that the inputs are known to have at most `bits` length.
     /// Starts the gates in the `new_row` position.
+    ///
     /// Includes:
-    /// - ceil(n/2) Double Generic gates to perform the `( 2^(bits) - 1 ) - input` operation for every two inputs in each row
+    /// - ceil(n/2) Double Generic gates to perform the `( 2^(bits) - 1 ) -
+    ///   input` operation for every two inputs in each row
+    ///
     /// Input:
     /// - gates     : full circuit
     /// - n         : number of negations to perform
     /// - pub_row   : row containing the public input with the all-one word of the given length
+    ///
     /// Important:
-    /// - If the bit length of the input is not fixed, then it must be constrained somewhere else.
-    /// - Otherwise, use the `extend_neg_checked_length` instead (but this one requires about 8 times more rows).
+    /// - If the bit length of the input is not fixed, then it must be
+    ///   constrained somewhere else.
+    /// - Otherwise, use the `extend_neg_checked_length` instead (but this one
+    ///   requires about 8 times more rows).
+    ///
     /// Warning:
-    /// - don't forget to include a public input in `pub_row` to constrain the left of each generic gate for negation to be `2^bits - 1`
+    /// - don't forget to include a public input in `pub_row` to constrain the
+    ///   left of each generic gate for negation to be `2^bits - 1`
     pub fn extend_not_gadget_unchecked_length(
         gates: &mut Vec<Self>,
         n: usize,
@@ -137,13 +147,13 @@ impl<F: PrimeField> CircuitGate<F> {
     /// Includes:
     /// - num_xors Xor16 gates
     /// - 1 Generic gate to constrain the final row to be zero with itself
-    /// Input:
+    ///   Input:
     /// - gates : full circuit
     /// - pub_row : row containing the public input with the all-one word of the given length
     /// - bits    : number of bits of the input
-    /// Precndition:
+    ///   Precndition:
     /// - 1 initial public input generic gate in `all_ones_row` to constrain the input to be `2^bits-1`.
-    /// Warning:
+    ///   Warning:
     /// - don't forget to connect the left input to a public input row containing the `2^bits - 1` value
     pub fn extend_not_gadget_checked_length(
         gates: &mut Vec<Self>,
