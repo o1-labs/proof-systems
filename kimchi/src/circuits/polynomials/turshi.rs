@@ -46,31 +46,31 @@
 //!  - `off_op1` (= offset from second operand): used to compute address of second operand in instruction
 //! * 15 bits of flags divided into 7 groups
 //!   When multiple bits, at most one can be 1 and the rest must be 0
-//!  - `dst_reg` \[0\] = fDST_REG : indicates what pointer `off_dst` refers to ( 0 => ap , 1 => fp )
-//!  - `op0_reg` \[1\] = fOP0_REG : indicates what pointer `off_op0` refers to ( 0 => ap , 1 => fp )
-//!  - `op1_src` \[2..4\] : encodes the type of second operand
-//!   · 0: indicates `off_op1` is b in the double indexing \[\[ point + a \] + b \]
-//!    · 1: indicates `off_op1` is an immediate value = `fOP1_VAL` = 1
-//!    · 2: indicates offset `off_op1` relative to fp = `fOP1_FP` = 1
-//!    · 4: indicates offset `off_op1` relative to ap = `fOP1_AP` = 1
-//!  - `res_logic` \[5..6\]: defines (if any) arithmetic operation in right part
-//!   · 0: right part is single operand
-//!   · 1: right part is addition = `fRES_ADD` = 1
-//!   · 2: right part is multiplication = `fRES_MUL` = 1
-//!  - `pc_update` \[7..9\]: defines the type of update for the pc
-//!   · 0 = regular increase by size of current instruction
-//!   · 1 = absolute jump to res address = `fPC_ABS_JMP` = 1
-//!   · 2 = relative jump of step res = `fPC_REL_JMP` = 1
-//!   · 4 = conditional jump (jnz) with step in op1 = `fPC_JNZ` = 1
-//!  - `ap_update` \[10..11\]: defines the type of update for the ap
-//!   · 0: means the new ap is the same, same free position
-//!   · 1: means there is an ap+=<`op`> instruction = `fAP_INC` = 1
-//!   · 2: means there is an ap++ instruction = `fAP_ADD1` = 1
-//!  - opcode \[12..14\]: encodes type of assembly instruction
-//!    · 0: jumps or increments instruction
-//!    · 1: call instruction = `fOPC_CALL` = 1
-//!    · 2: return instruction = `fOPC_RET` = 1
-//!    · 4: assert equal instruction (assignment to value or check equality) = `fOPC_ASSEQ` = 1
+//!   - `dst_reg` \[0\] = fDST_REG : indicates what pointer `off_dst` refers to ( 0 => ap , 1 => fp )
+//!   - `op0_reg` \[1\] = fOP0_REG : indicates what pointer `off_op0` refers to ( 0 => ap , 1 => fp )
+//!   - `op1_src` \[2..4\] : encodes the type of second operand
+//!     · 0: indicates `off_op1` is b in the double indexing \[\[ point + a \] + b \]
+//!       · 1: indicates `off_op1` is an immediate value = `fOP1_VAL` = 1
+//!       · 2: indicates offset `off_op1` relative to fp = `fOP1_FP` = 1
+//!       · 4: indicates offset `off_op1` relative to ap = `fOP1_AP` = 1
+//!   - `res_logic` \[5..6\]: defines (if any) arithmetic operation in right part
+//!     · 0: right part is single operand
+//!     · 1: right part is addition = `fRES_ADD` = 1
+//!     · 2: right part is multiplication = `fRES_MUL` = 1
+//!   - `pc_update` \[7..9\]: defines the type of update for the pc
+//!     · 0 = regular increase by size of current instruction
+//!     · 1 = absolute jump to res address = `fPC_ABS_JMP` = 1
+//!     · 2 = relative jump of step res = `fPC_REL_JMP` = 1
+//!     · 4 = conditional jump (jnz) with step in op1 = `fPC_JNZ` = 1
+//!   - `ap_update` \[10..11\]: defines the type of update for the ap
+//!     · 0: means the new ap is the same, same free position
+//!     · 1: means there is an ap+=<`op`> instruction = `fAP_INC` = 1
+//!     · 2: means there is an ap++ instruction = `fAP_ADD1` = 1
+//!   - opcode \[12..14\]: encodes type of assembly instruction
+//!     · 0: jumps or increments instruction
+//!     · 1: call instruction = `fOPC_CALL` = 1
+//!     · 2: return instruction = `fOPC_RET` = 1
+//!     · 4: assert equal instruction (assignment to value or check equality) = `fOPC_ASSEQ` = 1
 //! * in little-endian form = leftmost least significant bit
 //!
 //! The transition function uses 4 auxiliary values:
