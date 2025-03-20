@@ -23,24 +23,22 @@
 //! On the other side, a verifier will be instantiated with the relevant indexed
 //! relation.
 //!
+use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::{debug, info};
 use mina_poseidon::constants::SpongeConstants;
-use mvpoly::{monomials::Sparse, MVPoly};
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::FieldHelpers;
-use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
-use std::{collections::HashMap, time::Instant};
+use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
+use std::time::Instant;
 
 use crate::{
     column::Gadget,
-    constraint,
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
-    interpreter::{self, VERIFIER_STARTING_INSTRUCTION},
-    MAXIMUM_FIELD_SIZE_IN_BITS, MAX_DEGREE, MV_POLYNOMIAL_ARITY, NUMBER_OF_COLUMNS,
-    NUMBER_OF_GADGETS, VERIFIER_CIRCUIT_SIZE,
+    zkapp_registry::{verifier::Verifier, ZkApp},
+    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_GADGETS, VERIFIER_CIRCUIT_SIZE,
 };
 
 /// An indexed relation is a structure that contains all the information needed
@@ -55,9 +53,13 @@ pub struct IndexedRelation<
     Fq: PrimeField,
     E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
     E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
+    App1: ZkApp<E1>,
+    App2: ZkApp<E2>,
 > where
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
+    <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     /// Domain for Fp
     pub domain_fp: EvaluationDomains<E1::ScalarField>,
@@ -82,7 +84,8 @@ pub struct IndexedRelation<
     /// For now, the program is the same for both curves.
     ///
     /// The number of elements is exactly the size of the SRS.
-    pub circuit_gates: Vec<Gadget>,
+    pub circuit_fp: Vec<Gadget>,
+    pub circuit_fq: Vec<Gadget>,
 
     /// Commitments to the selectors used by both circuits
     pub selectors_comm: (
@@ -90,23 +93,12 @@ pub struct IndexedRelation<
         [PolyComm<E2>; NUMBER_OF_GADGETS],
     ),
 
-    /// The constraints given as multivariate polynomials using the [mvpoly]
-    /// library, indexed by the gadget to ease the selection of the constraints
-    /// while computing the cross-terms during the accumulation process.
-    ///
-    /// When the accumulation scheme is implemented, this structure will
-    /// probably be subject to changes as the SNARK used for the accumulation
-    /// scheme will probably work over expressions used in
-    /// [kimchi::circuits::expr]. We leave that for the future, and focus
-    /// on the accumulation scheme implementation.
-    ///
-    /// We keep two sets of constraints for the time being as we might want in
-    /// the future to have different circuits for one of the curves, as inspired
-    /// by [CycleFold](https://eprint.iacr.org/2023/1192).
-    /// In the current design, both circuits are the same and the prover will do
-    /// the same job over both curves.
-    pub constraints_fp: HashMap<Gadget, Vec<Sparse<Fp, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>>,
-    pub constraints_fq: HashMap<Gadget, Vec<Sparse<Fq, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>>,
+    /// Application over both curves
+    pub zkapp_fp: App1,
+    pub verifier_fp: Verifier<E1>,
+
+    pub zkapp_fq: App2,
+    pub verifier_fq: Verifier<E2>,
 
     /// Initial state of the sponge, containing circuit specific
     /// information.
@@ -122,12 +114,16 @@ impl<
         Fq: PrimeField,
         E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
         E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
-    > IndexedRelation<Fp, Fq, E1, E2>
+        App1: ZkApp<E1>,
+        App2: ZkApp<E2>,
+    > IndexedRelation<Fp, Fq, E1, E2, App1, App2>
 where
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
+    <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
-    pub fn new(srs_log2_size: usize) -> Self {
+    pub fn new(zkapp_fp: App1, zkapp_fq: App2, srs_log2_size: usize) -> Self {
         assert!(E1::ScalarField::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
         assert!(Fq::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
         let modulus_fp = E1::ScalarField::modulus_biguint();
@@ -168,98 +164,68 @@ where
             srs
         };
 
-        let constraints_fp: HashMap<
-            Gadget,
-            Vec<Sparse<E1::ScalarField, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>,
-        > = {
-            let env: constraint::Env<E1> = constraint::Env::new();
-            let constraints = env.get_all_constraints_indexed_by_gadget();
-            constraints
-                .into_iter()
-                .map(|(k, polynomials)| {
-                    (
-                        k,
-                        polynomials
-                            .into_iter()
-                            .map(|p| Sparse::from_expr(p, Some(NUMBER_OF_COLUMNS)))
-                            .collect(),
-                    )
-                })
-                .collect()
-        };
-
-        let constraints_fq: HashMap<
-            Gadget,
-            Vec<Sparse<E2::ScalarField, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>,
-        > = {
-            let env: constraint::Env<E2> = constraint::Env::new();
-            let constraints = env.get_all_constraints_indexed_by_gadget();
-            constraints
-                .into_iter()
-                .map(|(k, polynomials)| {
-                    (
-                        k,
-                        polynomials
-                            .into_iter()
-                            .map(|p| Sparse::from_expr(p, Some(NUMBER_OF_COLUMNS)))
-                            .collect(),
-                    )
-                })
-                .collect()
-        };
-
         // FIXME: note that the app size can be different for both curves. We
         // suppose we have the same circuit on both curves for now.
         let app_size = srs_size - VERIFIER_CIRCUIT_SIZE;
 
-        // Build the selectors for both circuits.
-        // FIXME: we suppose we have the same circuit on both curve for now.
-        let circuit_gates: Vec<Gadget> = {
-            let mut v: Vec<Gadget> = Vec::with_capacity(srs_size);
-            // The first [app_size] rows are for the application
-            v.extend([Gadget::App].repeat(app_size));
-
-            // Verifier circuit structure
-            {
-                let mut curr_instruction = VERIFIER_STARTING_INSTRUCTION;
-                for _i in 0..VERIFIER_CIRCUIT_SIZE - 1 {
-                    v.push(Gadget::from(curr_instruction));
-                    curr_instruction = interpreter::fetch_next_instruction(curr_instruction);
-                }
-                // Additional row for the Poseidon hash
-                v.push(Gadget::NoOp);
-            }
-            assert_eq!(v.len(), srs_size);
-            v
+        let verifier_fp: Verifier<E1> = Verifier::<E1> {
+            _field: std::marker::PhantomData,
         };
 
-        let selectors_comm: (
-            [PolyComm<E1>; NUMBER_OF_GADGETS],
-            [PolyComm<E2>; NUMBER_OF_GADGETS],
-        ) = {
+        let circuit_fp: Vec<Gadget> = {
+            let app_circuit: Vec<Gadget> = zkapp_fp.setup(app_size);
+            let verifier_circuit: Vec<Gadget> = verifier_fp.setup(VERIFIER_CIRCUIT_SIZE);
+            app_circuit.into_iter().chain(verifier_circuit).collect()
+        };
+
+        let verifier_fq: Verifier<E2> = Verifier::<E2> {
+            _field: std::marker::PhantomData,
+        };
+
+        let circuit_fq: Vec<Gadget> = {
+            let app_circuit: Vec<Gadget> = zkapp_fq.setup(app_size);
+            let verifier_circuit: Vec<Gadget> = verifier_fq.setup(VERIFIER_CIRCUIT_SIZE);
+            app_circuit.into_iter().chain(verifier_circuit).collect()
+        };
+
+        let selectors_comm_e1: [PolyComm<E1>; NUMBER_OF_GADGETS] = {
             // We initialize to the blinder to avoid the identity element.
-            let init: (
-                [PolyComm<E1>; NUMBER_OF_GADGETS],
-                [PolyComm<E2>; NUMBER_OF_GADGETS],
-            ) = (
-                std::array::from_fn(|_| PolyComm::new(vec![srs_e1.h])),
-                std::array::from_fn(|_| PolyComm::new(vec![srs_e2.h])),
-            );
+            let init: [PolyComm<E1>; NUMBER_OF_GADGETS] =
+                std::array::from_fn(|_| PolyComm::new(vec![srs_e1.h]));
             // We commit to the selectors using evaluations.
             // As they are supposed to be one or zero, each row adds a small
             // contribution to the commitment.
             // We explicity commit to all gadgets, even if they are not used in
             // this indexed relation.
-            circuit_gates
+            circuit_fp
                 .iter()
                 .enumerate()
                 .fold(init, |mut acc, (row, g)| {
                     let i = usize::from(*g);
-                    acc.0[i] = &acc.0[i] + &srs_e1.get_lagrange_basis(domain_fp.d1)[row];
-                    acc.1[i] = &acc.1[i] + &srs_e2.get_lagrange_basis(domain_fq.d1)[row];
+                    acc[i] = &acc[i] + &srs_e1.get_lagrange_basis(domain_fp.d1)[row];
                     acc
                 })
         };
+
+        let selectors_comm_e2: [PolyComm<E2>; NUMBER_OF_GADGETS] = {
+            // We initialize to the blinder to avoid the identity element.
+            let init: [PolyComm<E2>; NUMBER_OF_GADGETS] =
+                std::array::from_fn(|_| PolyComm::new(vec![srs_e2.h]));
+            // We commit to the selectors using evaluations.
+            // As they are supposed to be one or zero, each row adds a small
+            // contribution to the commitment.
+            // We explicity commit to all gadgets, even if they are not used in
+            // this indexed relation.
+            circuit_fq
+                .iter()
+                .enumerate()
+                .fold(init, |mut acc, (row, g)| {
+                    let i = usize::from(*g);
+                    acc[i] = &acc[i] + &srs_e2.get_lagrange_basis(domain_fq.d1)[row];
+                    acc
+                })
+        };
+        let selectors_comm = (selectors_comm_e1, selectors_comm_e2);
 
         // FIXME: setup correctly the initial sponge state
         let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
@@ -271,10 +237,13 @@ where
             srs_e1,
             srs_e2,
             app_size,
-            circuit_gates,
+            circuit_fp,
+            verifier_fp,
+            circuit_fq,
+            verifier_fq,
             selectors_comm,
-            constraints_fp,
-            constraints_fq,
+            zkapp_fp,
+            zkapp_fq,
             initial_sponge: sponge_e1,
         }
     }
