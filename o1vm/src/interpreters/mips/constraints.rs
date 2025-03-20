@@ -18,7 +18,7 @@ use kimchi::circuits::{
     gate::CurrOrNext,
 };
 use kimchi_msm::columns::ColumnIndexer as _;
-use std::array;
+use std::{array, collections::HashSet};
 use strum::IntoEnumIterator;
 
 use super::column::N_MIPS_SEL_COLS;
@@ -688,6 +688,29 @@ pub fn get_all_constraints<Fp: Field>() -> Vec<E<Fp>> {
                 .map(|c| selector.clone() * c)
                 .collect();
             acc.extend(constraints_with_selector);
+            mips_con_env.reset();
+            acc
+        });
+    constraints.extend(mips_con_env.get_selector_constraints());
+    constraints
+}
+
+// Gather the constraints iff the instruction is present in the instruction_set
+pub fn get_constraints<Fp: Field>(instrunction_set: HashSet<Instruction>) -> Vec<E<Fp>> {
+    let mut mips_con_env = Env::<Fp>::default();
+    let mut constraints = Instruction::iter()
+        .flat_map(|instr_typ| instr_typ.into_iter())
+        .fold(vec![], |mut acc, instr| {
+            if instrunction_set.contains(&instr) {
+                interpret_instruction(&mut mips_con_env, instr);
+                let selector = mips_con_env.get_selector();
+                let constraints_with_selector: Vec<E<Fp>> = mips_con_env
+                    .get_constraints()
+                    .into_iter()
+                    .map(|c| selector.clone() * c)
+                    .collect();
+                acc.extend(constraints_with_selector);
+            }
             mips_con_env.reset();
             acc
         });
