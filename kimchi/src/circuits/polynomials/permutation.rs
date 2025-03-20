@@ -221,7 +221,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         let zk_rows = self.cs.zk_rows as usize;
 
         // constant gamma in evaluation form (in domain d8)
-        let gamma = &self.cs.precomputations().constant_1_d8.scale(gamma);
+        let gamma = &self.cs.precomputations().get().constant_1_d8.scale(gamma);
 
         //~ The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.
         //~ They will be used by the prover.
@@ -264,7 +264,13 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
                 .par_iter()
                 .zip(self.cs.shift.par_iter())
                 .map(|(witness, shift)| {
-                    &(witness + gamma) + &self.cs.precomputations().poly_x_d1.scale(beta * shift)
+                    &(witness + gamma)
+                        + &self
+                            .cs
+                            .precomputations()
+                            .get()
+                            .poly_x_d1
+                            .scale(beta * shift)
                 })
                 .reduce_with(|mut l, r| {
                     l *= &r;
@@ -298,7 +304,11 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
                 * &lagrange.d8.next.z.clone();
 
             &(&shifts - &sigmas).scale(alpha0)
-                * &self.cs.precomputations().permutation_vanishing_polynomial_l
+                * &self
+                    .cs
+                    .precomputations()
+                    .get()
+                    .permutation_vanishing_polynomial_l
         };
 
         //~ and `bnd`:
@@ -360,6 +370,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         let zkpm_zeta = self
             .cs
             .precomputations()
+            .get()
             .permutation_vanishing_polynomial_m
             .evaluate(&zeta);
         let scalar = ConstraintSystem::<F>::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);

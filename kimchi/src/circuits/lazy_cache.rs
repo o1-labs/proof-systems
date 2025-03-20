@@ -1,9 +1,14 @@
-use once_cell::sync::OnceCell;
-use serde::{Deserialize, Serialize, Serializer};
-use std::{
-    fmt,
-    sync::{Arc, Mutex},
-};
+use serde::{de::DeserializeOwned, Deserialize, Serialize, Serializer};
+use std::sync::LazyLock;
+
+trait SendSyncFunction<T>: FnOnce() -> T + Send + Sync + 'static {}
+
+impl<T, U> SendSyncFunction<T> for U
+where
+    U: FnOnce() -> T + Send + Sync + 'static,
+    T: Send + Sync + 'static,
+{
+}
 
 /// A memory-efficient container that either stores a cached value or computes it on demand.
 ///
@@ -12,124 +17,68 @@ use std::{
 /// - Storing a **computation function** in the `OnDemand` variant, which computes the value
 ///   only when first accessed, then transitions to `Cached` to avoid recomputation.
 ///
-pub enum LazyCache<T> {
-    /// Precomputed value
-    Cached(OnceCell<T>),
-
-    /// Deferred computation that is evaluated only once when accessed
-    Lazy {
-        // The value once computed
-        computed: OnceCell<T>,
-        // The function to compute the value
-        compute_fn: Mutex<Option<Arc<dyn Fn() -> T + Send + Sync>>>,
-    },
+#[derive(Debug)]
+pub struct LazyCache<T> {
+    // The value once computed
+    computed: LazyLock<T, Box<dyn SendSyncFunction<T>>>,
 }
 
-impl<T> LazyCache<T> {
+impl<T: Send + Sync + 'static> LazyCache<T> {
     // Create a new `LazyCache` with a cached computation
     pub fn cache(value: T) -> Self {
-        let cell = OnceCell::new();
-        let _ = cell.set(value);
-        LazyCache::Cached(cell)
+        let f = move || value;
+        Self {
+            computed: LazyLock::new(Box::new(f)),
+        }
     }
 
     // Create a new `LazyCache` with a deferred computation
-    pub fn lazy(compute_fn: impl Fn() -> T + Send + Sync + 'static) -> Self {
-        LazyCache::Lazy {
-            computed: OnceCell::new(),
-            compute_fn: Mutex::new(Some(Arc::new(compute_fn))),
+    pub fn lazy<F>(compute_fn: F) -> Self
+    where
+        F: FnOnce() -> T + Send + Sync + 'static,
+    {
+        Self {
+            computed: LazyLock::new(Box::new(compute_fn)),
         }
     }
 
     /// Returns a reference, computing and caching if necessary.
     pub fn get(&self) -> &T {
-        match self {
-            LazyCache::Cached(value) => value.get().unwrap(),
-            LazyCache::Lazy {
-                computed,
-                compute_fn,
-            } => computed.get_or_init(|| {
-                compute_fn
-                    .lock()
-                    .unwrap()
-                    .take()
-                    .expect("no function inside LazyCache::Lazy")()
-            }),
-        }
+        &*self.computed
     }
 }
 
-impl<T> fmt::Debug for LazyCache<T>
+impl<T> Default for LazyCache<T>
 where
-    T: fmt::Debug,
+    T: Default + Send + Sync + 'static,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            LazyCache::Cached(value) => f.debug_tuple("Cached").field(value).finish(),
-            LazyCache::Lazy { .. } => f.write_str("Lazy { <function> }"),
-        }
-    }
-}
-
-impl<T> Default for LazyCache<T> {
     fn default() -> Self {
-        LazyCache::Cached(OnceCell::new())
-    }
-}
-
-impl<T> Clone for LazyCache<T>
-where
-    T: Clone,
-{
-    fn clone(&self) -> Self {
-        match self {
-            LazyCache::Cached(value) => LazyCache::Cached(value.clone()),
-            LazyCache::Lazy {
-                computed,
-                compute_fn,
-            } => LazyCache::Lazy {
-                computed: computed.clone(),
-                compute_fn: Mutex::new(compute_fn.lock().unwrap().as_ref().map(Arc::clone)),
-            },
-        }
+        Self::cache(T::default())
     }
 }
 
 impl<T> Serialize for LazyCache<T>
 where
-    T: Serialize,
+    T: Serialize + Send + Sync + 'static,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        match self {
-            LazyCache::Cached(cell) => cell.get().serialize(serializer),
-            LazyCache::Lazy { .. } => self.get().serialize(serializer),
-        }
+        self.get().serialize(serializer)
     }
 }
 
 impl<'de, T> Deserialize<'de> for LazyCache<T>
 where
-    T: Deserialize<'de>,
+    T: DeserializeOwned + Send + Sync + 'static,
 {
     // Deserializing will create a `LazyCache` with a cached value
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let maybe_value = Option::<T>::deserialize(deserializer)?;
-        Ok(match maybe_value {
-            Some(value) => {
-                let cell = OnceCell::new();
-                let _ = cell.set(value);
-                LazyCache::Cached(cell)
-            }
-            None => LazyCache::Lazy {
-                computed: OnceCell::new(),
-                compute_fn: Mutex::new(None),
-            },
-        })
+        let value = T::deserialize(deserializer)?;
+        Ok(LazyCache::cache(value))
     }
 }

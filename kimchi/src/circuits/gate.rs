@@ -151,16 +151,11 @@ pub struct CircuitGate<F: PrimeField> {
     pub coeffs: Vec<F>,
 }
 
-impl<F> CircuitGate<F>
-where
-    F: PrimeField,
-{
+impl<F: PrimeField> CircuitGate<F> {
     pub fn new(typ: GateType, wires: GateWires, coeffs: Vec<F>) -> Self {
         Self { typ, wires, coeffs }
     }
-}
 
-impl<F: PrimeField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate::new(GateType::Zero, wires, vec![])

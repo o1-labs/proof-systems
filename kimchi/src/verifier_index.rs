@@ -294,6 +294,7 @@ where
                 cell.set(
                     self.cs
                         .precomputations()
+                        .get()
                         .permutation_vanishing_polynomial_m
                         .clone(),
                 )
