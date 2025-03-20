@@ -14,10 +14,11 @@ use crate::{
 
 use kimchi::o1_utils;
 use mina_curves::pasta::Fp;
+use mvpoly::{monomials::Sparse, MVPoly};
 use rand::Rng;
 use strum::{EnumCount, IntoEnumIterator};
 
-use super::Instruction;
+use super::{column::N_MIPS_COLS, Instruction};
 
 pub(crate) fn sign_extend(x: u32, bitlength: u32) -> u32 {
     let high_bit = (x >> (bitlength - 1)) & 1;
@@ -380,4 +381,16 @@ fn test_regression_constraints_with_selectors() {
 
     let max_degree = constraints.iter().map(|c| c.degree(1, 0)).max().unwrap() as usize;
     assert_eq!(max_degree, MAXIMUM_DEGREE_CONSTRAINTS);
+}
+
+#[test]
+fn test_mips_interpreter_can_use_mvpoly_for_cross_terms() {
+    let mut rng = o1_utils::tests::make_test_rng(None);
+    let constraints: Vec<E<Fp>> = constraints::get_all_constraints();
+
+    let sparse_mvpoly: Vec<Sparse<Fp, { N_MIPS_COLS }, { MAXIMUM_DEGREE_CONSTRAINTS }>> =
+        constraints
+            .into_iter()
+            .map(|c| Sparse::from_expr(c, None))
+            .collect();
 }
