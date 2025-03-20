@@ -2031,6 +2031,7 @@ dependencies = [
  "log",
  "mina-curves",
  "mina-poseidon",
+ "mvpoly",
  "o1-utils",
  "os_pipe",
  "poly-commitment",
