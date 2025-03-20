@@ -5,6 +5,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+type LazyFn<T> = Box<dyn FnOnce() -> T + Send + Sync + 'static>;
+type LockedLazyFn<T> = Arc<Mutex<Option<LazyFn<T>>>>;
+
 /// A memory-efficient container that either stores a cached value or computes it on demand.
 ///
 /// `LazyCache<T>` optimizes memory and computation by either:
@@ -22,7 +25,7 @@ pub enum LazyCache<T> {
         // The value once computed
         computed: OnceCell<T>,
         // The function to compute the value
-        compute_fn: Arc<Mutex<Option<Box<dyn FnOnce() -> T + Send + Sync + 'static>>>>,
+        compute_fn: LockedLazyFn<T>,
     },
 }
 
