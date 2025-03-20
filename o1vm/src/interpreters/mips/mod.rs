@@ -31,7 +31,7 @@ pub use interpreter::{ITypeInstruction, Instruction, JTypeInstruction, RTypeInst
 /// Maximum degree of the constraints.
 /// It does include the additional degree induced by the multiplication of the
 /// selectors.
-pub const MAXIMUM_DEGREE_CONSTRAINTS: u64 = 6;
+pub const MAXIMUM_DEGREE_CONSTRAINTS: usize = 6;
 
 /// Total number of constraints for all instructions, including the constraints
 /// added for the selectors.

@@ -378,6 +378,6 @@ fn test_regression_constraints_with_selectors() {
 
     assert_eq!(constraints.len(), TOTAL_NUMBER_OF_CONSTRAINTS);
 
-    let max_degree = constraints.iter().map(|c| c.degree(1, 0)).max().unwrap();
+    let max_degree = constraints.iter().map(|c| c.degree(1, 0)).max().unwrap() as usize;
     assert_eq!(max_degree, MAXIMUM_DEGREE_CONSTRAINTS);
 }
