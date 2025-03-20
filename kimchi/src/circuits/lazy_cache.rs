@@ -9,8 +9,9 @@ use std::{
 ///
 /// `LazyCache<T>` optimizes memory and computation by either:
 /// - Storing a **precomputed** value in the `Cached` variant.
-/// - Storing a **computation function** in the `OnDemand` variant, which computes the value
-///   only when first accessed, then transitions to `Cached` to avoid recomputation.
+/// - Storing a **computation function** in the `Lazy` variant, which computes the value
+///   only when first accessed, then stores the value in `computed` to avoid recomputation
+///   and the function is dropped.
 ///
 pub enum LazyCache<T> {
     /// Precomputed value
@@ -21,7 +22,7 @@ pub enum LazyCache<T> {
         // The value once computed
         computed: OnceCell<T>,
         // The function to compute the value
-        compute_fn: Mutex<Option<Arc<dyn Fn() -> T + Send + Sync>>>,
+        compute_fn: Arc<Mutex<Option<Box<dyn FnOnce() -> T + Send + Sync + 'static>>>>,
     },
 }
 
@@ -34,10 +35,10 @@ impl<T> LazyCache<T> {
     }
 
     // Create a new `LazyCache` with a deferred computation
-    pub fn lazy(compute_fn: impl Fn() -> T + Send + Sync + 'static) -> Self {
+    pub fn lazy(compute_fn: impl FnOnce() -> T + Send + Sync + 'static) -> Self {
         LazyCache::Lazy {
             computed: OnceCell::new(),
-            compute_fn: Mutex::new(Some(Arc::new(compute_fn))),
+            compute_fn: Arc::new(Mutex::new(Some(Box::new(compute_fn)))),
         }
     }
 
@@ -49,12 +50,34 @@ impl<T> LazyCache<T> {
                 computed,
                 compute_fn,
             } => computed.get_or_init(|| {
+                // When `computed` is empty, that means the function was not used.
+                // First we lock the access to the function, move out the function
+                // from memory and then call and consume it. The result is stored
+                // in `computed` and the function is dropped.
                 compute_fn
                     .lock()
                     .unwrap()
                     .take()
-                    .expect("no function inside LazyCache::Lazy")()
+                    .expect("No function inside LazyCache::Lazy")()
             }),
+        }
+    }
+}
+
+impl<T: Clone> Clone for LazyCache<T> {
+    fn clone(&self) -> Self {
+        match self {
+            LazyCache::Cached(value) => LazyCache::Cached(value.clone()),
+
+            LazyCache::Lazy {
+                computed,
+                compute_fn,
+            } => LazyCache::Lazy {
+                computed: computed.clone(),
+                // This will clone references to `compute_fn`, but the function
+                // itself will be executed only once when accessed.
+                compute_fn: Arc::clone(compute_fn),
+            },
         }
     }
 }
@@ -77,24 +100,6 @@ impl<T> Default for LazyCache<T> {
     }
 }
 
-impl<T> Clone for LazyCache<T>
-where
-    T: Clone,
-{
-    fn clone(&self) -> Self {
-        match self {
-            LazyCache::Cached(value) => LazyCache::Cached(value.clone()),
-            LazyCache::Lazy {
-                computed,
-                compute_fn,
-            } => LazyCache::Lazy {
-                computed: computed.clone(),
-                compute_fn: Mutex::new(compute_fn.lock().unwrap().as_ref().map(Arc::clone)),
-            },
-        }
-    }
-}
-
 impl<T> Serialize for LazyCache<T>
 where
     T: Serialize,
@@ -114,22 +119,19 @@ impl<'de, T> Deserialize<'de> for LazyCache<T>
 where
     T: Deserialize<'de>,
 {
-    // Deserializing will create a `LazyCache` with a cached value
+    // Deserializing will create a `LazyCache` with a cached value or an error
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let maybe_value = Option::<T>::deserialize(deserializer)?;
-        Ok(match maybe_value {
-            Some(value) => {
-                let cell = OnceCell::new();
-                let _ = cell.set(value);
-                LazyCache::Cached(cell)
-            }
-            None => LazyCache::Lazy {
-                computed: OnceCell::new(),
-                compute_fn: Mutex::new(None),
-            },
-        })
+        if let Some(value) = Option::<T>::deserialize(deserializer)? {
+            let cell = OnceCell::new();
+            let _ = cell.set(value);
+            Ok(LazyCache::Cached(cell))
+        } else {
+            Err(serde::de::Error::custom(
+                "Cannot deserialize empty LazyCache",
+            ))
+        }
     }
 }
