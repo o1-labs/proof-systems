@@ -167,7 +167,7 @@ pub struct ColumnEvaluations<F: PrimeField> {
 }
 
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Debug)]
 pub struct ConstraintSystem<F: PrimeField> {
     // Basics
     // ------
@@ -199,13 +199,84 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub endo: F,
     /// lookup constraint system
     #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
-    pub lookup_constraint_system: LazyCache<Option<LookupConstraintSystem<F>>>,
+    pub lookup_constraint_system: Arc<LazyCache<Option<LookupConstraintSystem<F>>>>,
     /// precomputes
     #[serde(skip)]
-    precomputations: LazyCache<Arc<DomainConstantEvaluations<F>>>,
+    precomputations: Arc<LazyCache<Arc<DomainConstantEvaluations<F>>>>,
 
     /// Disable gates checks (for testing; only enables with development builds)
     pub disable_gates_checks: bool,
+}
+
+impl<'de, F> Deserialize<'de> for ConstraintSystem<F>
+where
+    F: PrimeField,
+    EvaluationDomains<F>: Serialize + DeserializeOwned,
+    CircuitGate<F>: Serialize + DeserializeOwned,
+    LookupConstraintSystem<F>: Serialize + DeserializeOwned,
+{
+    fn deserialize<D>(deserializer: D) -> Result<ConstraintSystem<F>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[serde_as]
+        #[derive(Clone, Serialize, Deserialize, Debug)]
+        struct ConstraintSystemWithoutPrecomputes<F: PrimeField> {
+            // Basics
+            // ------
+            /// number of public inputs
+            pub public: usize,
+            /// number of previous evaluation challenges, for recursive proving
+            pub prev_challenges: usize,
+            /// evaluation domains
+            #[serde(bound = "EvaluationDomains<F>: Serialize + DeserializeOwned")]
+            pub domain: EvaluationDomains<F>,
+            /// circuit gates
+            #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
+            pub gates: Vec<CircuitGate<F>>,
+
+            pub zk_rows: u64,
+
+            /// flags for optional features
+            pub feature_flags: FeatureFlags,
+
+            /// SID polynomial
+            #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+            pub sid: Vec<F>,
+
+            /// wire coordinate shifts
+            #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
+            pub shift: [F; PERMUTS],
+            /// coefficient for the group endomorphism
+            #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+            pub endo: F,
+            /// lookup constraint system
+            #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
+            pub lookup_constraint_system: Arc<LazyCache<Option<LookupConstraintSystem<F>>>>,
+
+            /// Disable gates checks (for testing; only enables with development builds)
+            pub disable_gates_checks: bool,
+        }
+
+        let cs = ConstraintSystemWithoutPrecomputes::<F>::deserialize(deserializer)?;
+
+        Ok(ConstraintSystem {
+            public: cs.public,
+            prev_challenges: cs.prev_challenges,
+            domain: cs.domain,
+            gates: cs.gates,
+            zk_rows: cs.zk_rows,
+            feature_flags: cs.feature_flags,
+            sid: cs.sid,
+            shift: cs.shift,
+            endo: cs.endo,
+            lookup_constraint_system: cs.lookup_constraint_system,
+            disable_gates_checks: cs.disable_gates_checks,
+            precomputations: Arc::new(LazyCache::lazy(move || {
+                Arc::new(DomainConstantEvaluations::create(cs.domain, cs.zk_rows).unwrap())
+            })),
+        })
+    }
 }
 
 /// Represents an error found when verifying a witness with a gate
@@ -292,8 +363,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
         }
     }
 
-    pub fn precomputations(&self) -> Arc<DomainConstantEvaluations<F>> {
-        self.precomputations.get().clone()
+    pub fn precomputations(&self) -> Arc<LazyCache<Arc<DomainConstantEvaluations<F>>>> {
+        self.precomputations.clone()
     }
 
     /// test helpers
@@ -975,6 +1046,8 @@ impl<F: PrimeField> Builder<F> {
             })
         };
 
+        let lookup_constraint_system = Arc::new(lookup_constraint_system);
+
         let sid = shifts.map[0].clone();
 
         // TODO: remove endo as a field
@@ -992,6 +1065,8 @@ impl<F: PrimeField> Builder<F> {
                 Arc::new(DomainConstantEvaluations::create(domain, zk_rows).unwrap())
             })
         };
+
+        let precomputations = Arc::new(precomputations);
 
         let constraints = ConstraintSystem {
             domain,

@@ -738,6 +738,8 @@ where
                 vanishes_on_zero_knowledge_and_previous_rows: &index
                     .cs
                     .precomputations()
+                    .get()
+                    .clone()
                     .vanishes_on_zero_knowledge_and_previous_rows,
                 z: &lagrange.d8.this.z,
                 l0_1: l0_1(index.cs.domain.d1),

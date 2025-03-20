@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 /// The index used by the prover
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 //~spec:startcode
 pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// constraints system polynomials
