@@ -30,7 +30,9 @@ use o1vm::{
 };
 use poly_commitment::{commitment::absorb_commitment, ipa::SRS, PolyComm, SRS as _};
 use rand::rngs::ThreadRng;
-use std::{fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant};
+use std::{
+    collections::HashSet, fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant,
+};
 
 pub fn cannon_main(args: cli::cannon::RunArgs) {
     let mut rng = rand::thread_rng();
@@ -111,14 +113,15 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             )
         }
     };
-    let constraints = mips_constraints::get_all_constraints::<Fp>();
+    let mut instruction_set = HashSet::new();
     let domain_size = domain_fp.d1.size as usize;
     let lookup_env = &mut LookupEnvironment::new(&srs, domain_fp);
 
     let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(domain_size);
     // First loop, do the proof without lookup
     while !mips_wit_env.halt {
-        let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
+        let instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
+        instruction_set.insert(instr);
         for (scratch, scratch_chunk) in mips_wit_env
             .scratch_state
             .iter()
@@ -171,13 +174,14 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             prove_and_verify(
                 domain_fp,
                 &srs,
-                &constraints,
+                &mips_constraints::get_constraints(instruction_set),
                 curr_proof_inputs,
                 &mut rng,
                 lookup_env,
             );
 
             curr_proof_inputs = ProofInputs::new(domain_size);
+            instruction_set = HashSet::new();
         }
     }
     if curr_proof_inputs.evaluations.instruction_counter.len() < domain_size {
@@ -186,7 +190,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
         prove_and_verify(
             domain_fp,
             &srs,
-            &constraints,
+            &mips_constraints::get_constraints(instruction_set),
             curr_proof_inputs,
             &mut rng,
             // FIXME: we use a dummy lookup env here,
