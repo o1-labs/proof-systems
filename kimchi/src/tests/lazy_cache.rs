@@ -1,6 +1,5 @@
 use super::framework::TestFramework;
 use crate::circuits::{
-    constraints::ConstraintSystem,
     gate::CircuitGate,
     polynomial::COLUMNS,
     polynomials::{generic::GenericGateSpec, xor},
