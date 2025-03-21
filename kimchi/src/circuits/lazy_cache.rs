@@ -56,7 +56,7 @@ impl<T> LazyCache<T> {
                 // in `computed` and the function is dropped.
                 compute_fn
                     .lock()
-                    .unwrap()
+                    .expect("Could not lock LazyCache::Lazy")
                     .take()
                     .expect("No function inside LazyCache::Lazy")()
             }),
