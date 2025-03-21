@@ -70,3 +70,5 @@ pub const NUMBER_OF_GADGETS: usize =
 ///
 /// It is going to be used to convert into the representation used in [mvpoly].
 pub const MV_POLYNOMIAL_ARITY: usize = NUMBER_OF_COLUMNS * 2;
+
+pub mod zkapp_registry;
