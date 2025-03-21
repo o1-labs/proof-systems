@@ -15,7 +15,6 @@ use mina_poseidon::{
 };
 use once_cell::sync::OnceCell;
 use rand::Rng;
-use serde_json;
 use std::{
     array,
     sync::{Arc, Mutex},
@@ -35,6 +34,7 @@ fn test_lazycache() {
         // Cached variant
         let cache = LazyCache::cache(100);
         assert_eq!(*cache.get(), 100);
+        assert!(!cache.lazy_mode());
 
         // Lazy variant
         let lazy = LazyCache::lazy(|| {
@@ -45,6 +45,7 @@ fn test_lazycache() {
         assert_eq!(*lazy.get(), 30);
         // Ensure the value is cached and can be accessed multiple times
         assert_eq!(*lazy.get(), 30);
+        assert!(lazy.lazy_mode());
     }
 
     // function called only once
@@ -62,16 +63,6 @@ fn test_lazycache() {
         assert_eq!(*cache.get(), 99);
         assert_eq!(*cache.get(), 99); // Ensure cached
         assert_eq!(*counter.lock().unwrap(), 1); // Function was called exactly once
-    }
-    // clone
-    {
-        let cache = LazyCache::cache(10);
-        let clone = cache.clone();
-        assert_eq!(*clone.get(), 10);
-
-        let lazy = LazyCache::lazy(|| 20);
-        let clone = lazy.clone();
-        assert_eq!(*clone.get(), 20);
     }
     // serde
     {
@@ -95,7 +86,7 @@ fn test_lazycache() {
 fn test_lazy_panic_when_no_function() {
     let cache: LazyCache<i32> = LazyCache::Lazy {
         computed: OnceCell::new(),
-        compute_fn: Arc::new(Mutex::new(None)), // No function set
+        compute_fn: Mutex::new(None), // No function set
     };
     let _ = cache.get();
 }

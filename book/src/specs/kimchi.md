@@ -1732,7 +1732,7 @@ pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub max_poly_size: usize,
 
     #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub column_evaluations: LazyCache<ColumnEvaluations<G::ScalarField>>,
+    pub column_evaluations: Arc<LazyCache<ColumnEvaluations<G::ScalarField>>>,
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]

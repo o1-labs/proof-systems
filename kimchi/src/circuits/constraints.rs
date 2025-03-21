@@ -167,7 +167,7 @@ pub struct ColumnEvaluations<F: PrimeField> {
 }
 
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Debug)]
 pub struct ConstraintSystem<F: PrimeField> {
     // Basics
     // ------
@@ -199,13 +199,78 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub endo: F,
     /// lookup constraint system
     #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
-    pub lookup_constraint_system: LazyCache<Option<LookupConstraintSystem<F>>>,
+    pub lookup_constraint_system: Arc<LazyCache<Option<LookupConstraintSystem<F>>>>,
     /// precomputes
     #[serde(skip)]
-    precomputations: LazyCache<Arc<DomainConstantEvaluations<F>>>,
+    precomputations: Arc<LazyCache<Arc<DomainConstantEvaluations<F>>>>,
 
     /// Disable gates checks (for testing; only enables with development builds)
     pub disable_gates_checks: bool,
+}
+
+impl<'de, F> Deserialize<'de> for ConstraintSystem<F>
+where
+    F: PrimeField,
+    EvaluationDomains<F>: Serialize + DeserializeOwned,
+    CircuitGate<F>: Serialize + DeserializeOwned,
+    LookupConstraintSystem<F>: Serialize + DeserializeOwned,
+{
+    fn deserialize<D>(deserializer: D) -> Result<ConstraintSystem<F>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[serde_as]
+        #[derive(Clone, Serialize, Deserialize, Debug)]
+        struct ConstraintSystemSerde<F: PrimeField> {
+            public: usize,
+            prev_challenges: usize,
+            #[serde(bound = "EvaluationDomains<F>: Serialize + DeserializeOwned")]
+            domain: EvaluationDomains<F>,
+            #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
+            gates: Vec<CircuitGate<F>>,
+            zk_rows: u64,
+            feature_flags: FeatureFlags,
+            #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+            sid: Vec<F>,
+            #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
+            shift: [F; PERMUTS],
+            #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+            endo: F,
+            #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
+            lookup_constraint_system: Arc<LazyCache<Option<LookupConstraintSystem<F>>>>,
+            disable_gates_checks: bool,
+        }
+
+        // This is to avoid implementing a default value for LazyCache
+        let cs = ConstraintSystemSerde::<F>::deserialize(deserializer)?;
+
+        let precomputations = Arc::new({
+            if cs.lookup_constraint_system.lazy_mode() {
+                LazyCache::lazy(move || {
+                    Arc::new(DomainConstantEvaluations::create(cs.domain, cs.zk_rows).unwrap())
+                })
+            } else {
+                LazyCache::cache(Arc::new(
+                    DomainConstantEvaluations::create(cs.domain, cs.zk_rows).unwrap(),
+                ))
+            }
+        });
+
+        Ok(ConstraintSystem {
+            public: cs.public,
+            prev_challenges: cs.prev_challenges,
+            domain: cs.domain,
+            gates: cs.gates,
+            zk_rows: cs.zk_rows,
+            feature_flags: cs.feature_flags,
+            sid: cs.sid,
+            shift: cs.shift,
+            endo: cs.endo,
+            lookup_constraint_system: cs.lookup_constraint_system,
+            disable_gates_checks: cs.disable_gates_checks,
+            precomputations,
+        })
+    }
 }
 
 /// Represents an error found when verifying a witness with a gate
@@ -1003,9 +1068,9 @@ impl<F: PrimeField> Builder<F> {
             endo,
             zk_rows,
             //fr_sponge_params: self.sponge_params,
-            lookup_constraint_system,
+            lookup_constraint_system: Arc::new(lookup_constraint_system),
             feature_flags,
-            precomputations,
+            precomputations: Arc::new(precomputations),
             disable_gates_checks: self.disable_gates_checks,
         };
 

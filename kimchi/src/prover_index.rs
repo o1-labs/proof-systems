@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 /// The index used by the prover
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 //~spec:startcode
 pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// constraints system polynomials
@@ -46,7 +46,7 @@ pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub max_poly_size: usize,
 
     #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub column_evaluations: LazyCache<ColumnEvaluations<G::ScalarField>>,
+    pub column_evaluations: Arc<LazyCache<ColumnEvaluations<G::ScalarField>>>,
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
@@ -93,7 +93,7 @@ where
             powers_of_alpha,
             srs,
             max_poly_size,
-            column_evaluations,
+            column_evaluations: Arc::new(column_evaluations),
             verifier_index: None,
             verifier_index_digest: None,
         }

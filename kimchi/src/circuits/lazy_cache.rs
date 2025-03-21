@@ -1,12 +1,9 @@
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize, Serializer};
-use std::{
-    fmt,
-    sync::{Arc, Mutex},
-};
+use std::{fmt, sync::Mutex};
 
 type LazyFn<T> = Box<dyn FnOnce() -> T + Send + Sync + 'static>;
-type LockedLazyFn<T> = Arc<Mutex<Option<LazyFn<T>>>>;
+type LockedLazyFn<T> = Mutex<Option<LazyFn<T>>>;
 
 /// A memory-efficient container that either stores a cached value or computes it on demand.
 ///
@@ -41,7 +38,7 @@ impl<T> LazyCache<T> {
     pub fn lazy(compute_fn: impl FnOnce() -> T + Send + Sync + 'static) -> Self {
         LazyCache::Lazy {
             computed: OnceCell::new(),
-            compute_fn: Arc::new(Mutex::new(Some(Box::new(compute_fn)))),
+            compute_fn: Mutex::new(Some(Box::new(compute_fn))),
         }
     }
 
@@ -65,22 +62,12 @@ impl<T> LazyCache<T> {
             }),
         }
     }
-}
 
-impl<T: Clone> Clone for LazyCache<T> {
-    fn clone(&self) -> Self {
+    /// Given a `LazyCache`, return whether it is a lazy variant
+    pub fn lazy_mode(&self) -> bool {
         match self {
-            LazyCache::Cached(value) => LazyCache::Cached(value.clone()),
-
-            LazyCache::Lazy {
-                computed,
-                compute_fn,
-            } => LazyCache::Lazy {
-                computed: computed.clone(),
-                // This will clone references to `compute_fn`, but the function
-                // itself will be executed only once when accessed.
-                compute_fn: Arc::clone(compute_fn),
-            },
+            LazyCache::Cached(_) => false,
+            LazyCache::Lazy { .. } => true,
         }
     }
 }
@@ -94,12 +81,6 @@ where
             LazyCache::Cached(value) => f.debug_tuple("Cached").field(value).finish(),
             LazyCache::Lazy { .. } => f.write_str("Lazy { <function> }"),
         }
-    }
-}
-
-impl<T> Default for LazyCache<T> {
-    fn default() -> Self {
-        LazyCache::Cached(OnceCell::new())
     }
 }
 
