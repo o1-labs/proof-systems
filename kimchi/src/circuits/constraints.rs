@@ -1031,8 +1031,8 @@ impl<F: PrimeField> Builder<F> {
             LazyCache::lazy(move || {
                 LookupConstraintSystem::create(
                     &gates,
-                    lookup_tables.clone(),
-                    runtime_tables.clone(),
+                    lookup_tables,
+                    runtime_tables,
                     &domain,
                     zk_rows as usize,
                 )
