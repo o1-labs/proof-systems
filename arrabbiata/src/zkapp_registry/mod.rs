@@ -143,4 +143,6 @@ where
     constraints
 }
 
+pub mod minroot;
+
 pub mod verifier;
