@@ -18,6 +18,7 @@ use crate::{
     MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
 };
 use ark_ff::PrimeField;
+use core::hash::Hash;
 use log::debug;
 use mina_poseidon::constants::SpongeConstants;
 use num_bigint::BigInt;
@@ -51,6 +52,7 @@ pub enum Instruction {
     NoOp,
 }
 
+#[derive(Eq, Hash, PartialEq)]
 pub enum Gadget {
     /// The following gadgets implement the Poseidon hash instance described in
     /// the top-level documentation. In the current setup, with

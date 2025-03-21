@@ -1,6 +1,6 @@
+use crate::{column::E, curve::ArrabbiataCurve, interpreter::InterpreterEnv};
 use ark_ff::PrimeField;
-
-use crate::{curve::ArrabbiataCurve, interpreter::InterpreterEnv};
+use std::{collections::HashMap, hash::Hash};
 
 /// A ZkApp is a program that can be executed and proven using a
 /// (zero-knowledge) succinct non-interactive argument of knowledge or in short
@@ -29,7 +29,7 @@ use crate::{curve::ArrabbiataCurve, interpreter::InterpreterEnv};
 /// A ZkApp structure is responsible to provide a dummy witness, used to
 /// generate a first non-folded instance. The dummy witness is a satisfying
 /// execution trace for dummy inputs.
-pub trait ZkApp<C: ArrabbiataCurve, Instruction: Copy, Gadget: From<Instruction>>
+pub trait ZkApp<C: ArrabbiataCurve, Instruction: Copy, Gadget: From<Instruction> + Eq + Hash>
 where
     C::BaseField: PrimeField,
 {
@@ -67,7 +67,7 @@ pub fn execute<
     E: InterpreterEnv,
     C: ArrabbiataCurve,
     Instruction: Copy,
-    Gadget: From<Instruction>,
+    Gadget: From<Instruction> + Eq + Hash,
     Z: ZkApp<C, Instruction, Gadget>,
 >(
     zkapp: &Z,
@@ -94,7 +94,7 @@ pub fn execute<
 pub fn setup<
     C: ArrabbiataCurve,
     Instruction: Copy,
-    Gadget: From<Instruction>,
+    Gadget: From<Instruction> + Eq + Hash,
     Z: ZkApp<C, Instruction, Gadget>,
 >(
     zkapp: &Z,
@@ -109,6 +109,38 @@ where
         instr = zkapp.fetch_next_instruction(i);
     }
     circuit
+}
+
+/// Get the constraints per gadget for the ZkApp `zkapp`.
+/// The constraints are the polynomials that are used to define the execution
+/// trace.
+///
+/// The hypothesis is that each instruction of the ZkApp gives the same
+/// constraints.
+///
+/// The output will contain all the constraints that would be used in a single
+/// execution.
+pub fn get_constraints_per_gadget<
+    C: ArrabbiataCurve,
+    Instruction: Copy,
+    Gadget: From<Instruction> + Eq + Hash,
+    Z: ZkApp<C, Instruction, Gadget>,
+>(
+    zkapp: &Z,
+) -> HashMap<Gadget, Vec<E<C::ScalarField>>>
+where
+    C::BaseField: PrimeField,
+{
+    let mut env = crate::constraint::Env::<C>::new();
+    let mut constraints = HashMap::new();
+    let mut instr: Option<Instruction> = Some(zkapp.fetch_instruction());
+    while let Some(i) = instr {
+        zkapp.run(&mut env, i);
+        constraints.insert(Gadget::from(i), env.constraints.clone());
+        env.reset();
+        instr = zkapp.fetch_next_instruction(i);
+    }
+    constraints
 }
 
 pub mod verifier;
