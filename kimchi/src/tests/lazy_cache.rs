@@ -1,7 +1,7 @@
 use super::framework::TestFramework;
 use crate::circuits::{
     gate::CircuitGate,
-    lazy_cache::LazyCache,
+    lazy_cache::{LazyCache, LazyCacheError},
     polynomial::COLUMNS,
     polynomials::{generic::GenericGateSpec, xor},
     wires::Wire,
@@ -79,16 +79,15 @@ fn test_lazycache() {
         let lazy = LazyCache::lazy(|| 20);
         assert_eq!(format!("{:?}", lazy), "Lazy { <function> }");
     }
-}
-
-#[test]
-#[should_panic(expected = "No function inside LazyCache::Lazy")]
-fn test_lazy_panic_when_no_function() {
-    let cache: LazyCache<i32> = LazyCache::Lazy {
-        computed: OnceCell::new(),
-        compute_fn: Mutex::new(None), // No function set
-    };
-    let _ = cache.get();
+    // errors
+    {
+        let cache: LazyCache<i32> = LazyCache::Lazy {
+            computed: OnceCell::new(),
+            compute_fn: Mutex::new(None), // No function set
+        };
+        let err = cache.try_get();
+        assert_eq!(err.unwrap_err(), LazyCacheError::MissingFunction);
+    }
 }
 
 #[test]

@@ -6,11 +6,11 @@ use std::{fmt, sync::Mutex};
 type LazyFn<T> = Box<dyn FnOnce() -> T + Send + Sync + 'static>;
 type LockedLazyFn<T> = Mutex<Option<LazyFn<T>>>;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum LazyCacheError {
     LockPoisoned,
-    MissingComputation,
-    UninitializedCachedValue,
+    MissingFunction,
+    UninitializedCache,
 }
 
 /// A memory-efficient container that either stores a cached value or computes it on demand.
@@ -53,7 +53,7 @@ impl<T> LazyCache<T> {
     /// If the LazyCache is well formed, it returns a reference, computing and caching if necessary.
     pub fn try_get(&self) -> Result<&T, LazyCacheError> {
         match self {
-            LazyCache::Cached(value) => value.get().ok_or(LazyCacheError::UninitializedCachedValue),
+            LazyCache::Cached(value) => value.get().ok_or(LazyCacheError::UninitializedCache),
             LazyCache::Lazy {
                 computed,
                 compute_fn,
@@ -65,7 +65,7 @@ impl<T> LazyCache<T> {
                 let mut locked = compute_fn
                     .lock()
                     .map_err(|_| LazyCacheError::LockPoisoned)?;
-                let fun = locked.take().ok_or(LazyCacheError::MissingComputation)?;
+                let fun = locked.take().ok_or(LazyCacheError::MissingFunction)?;
                 Ok(fun())
             }),
         }
