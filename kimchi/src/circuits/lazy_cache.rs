@@ -1,9 +1,17 @@
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize, Serializer};
 use std::{fmt, sync::Mutex};
+// TODO: use parking_lot::Mutex instead of std::Mutex?
 
 type LazyFn<T> = Box<dyn FnOnce() -> T + Send + Sync + 'static>;
 type LockedLazyFn<T> = Mutex<Option<LazyFn<T>>>;
+
+#[derive(Debug)]
+pub enum LazyCacheError {
+    LockPoisoned,
+    MissingComputation,
+    UninitializedCachedValue,
+}
 
 /// A memory-efficient container that either stores a cached value or computes it on demand.
 ///
@@ -42,25 +50,29 @@ impl<T> LazyCache<T> {
         }
     }
 
-    /// Returns a reference, computing and caching if necessary.
-    pub fn get(&self) -> &T {
+    /// If the LazyCache is well formed, it returns a reference, computing and caching if necessary.
+    pub fn try_get(&self) -> Result<&T, LazyCacheError> {
         match self {
-            LazyCache::Cached(value) => value.get().unwrap(),
+            LazyCache::Cached(value) => value.get().ok_or(LazyCacheError::UninitializedCachedValue),
             LazyCache::Lazy {
                 computed,
                 compute_fn,
-            } => computed.get_or_init(|| {
+            } => computed.get_or_try_init(|| {
                 // When `computed` is empty, that means the function was not used.
                 // First we lock the access to the function, move out the function
                 // from memory and then call and consume it. The result is stored
                 // in `computed` and the function is dropped.
-                compute_fn
+                let mut locked = compute_fn
                     .lock()
-                    .expect("Could not lock LazyCache::Lazy")
-                    .take()
-                    .expect("No function inside LazyCache::Lazy")()
+                    .map_err(|_| LazyCacheError::LockPoisoned)?;
+                let fun = locked.take().ok_or(LazyCacheError::MissingComputation)?;
+                Ok(fun())
             }),
         }
+    }
+
+    pub fn get(&self) -> &T {
+        self.try_get().unwrap()
     }
 
     /// Given a `LazyCache`, return whether it is a lazy variant
