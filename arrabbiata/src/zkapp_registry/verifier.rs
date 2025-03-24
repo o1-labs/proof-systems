@@ -14,7 +14,7 @@
 use crate::{
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{InterpreterEnv, Side},
-    zkapp_registry::ZkApp,
+    zkapp_registry::{VerifierApp, ZkApp},
     MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
 };
 use ark_ff::PrimeField;
@@ -498,4 +498,11 @@ where
             Instruction::NoOp => {}
         }
     }
+}
+
+impl<C> VerifierApp<C> for Verifier<C>
+where
+    C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
+{
 }

@@ -71,6 +71,18 @@ where
     fn run<E: InterpreterEnv>(&self, env: &mut E, instr: Self::Instruction);
 }
 
+/// A VerifierApp is a ZkApp that is designed to implement the verifier part of
+/// the accumulation scheme.
+///
+/// The verifier is responsible to check the validity of a previously generated
+/// proof.
+pub trait VerifierApp<C>: ZkApp<C>
+where
+    C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
+{
+}
+
 /// Execute the ZkApp `zkapp` over the interpreter environment `env`.
 /// This is a generic function that can be used to execute any ZkApp.
 pub fn execute<E, C, Z>(zkapp: &Z, env: &mut E)
