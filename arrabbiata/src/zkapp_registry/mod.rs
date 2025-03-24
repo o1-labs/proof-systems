@@ -2,6 +2,7 @@ use crate::{column::E, curve::ArrabbiataCurve, interpreter::InterpreterEnv};
 use ark_ff::PrimeField;
 use std::{collections::HashMap, hash::Hash};
 
+pub mod minroot;
 pub mod verifier;
 
 /// A ZkApp is a program that can be executed and proven using a
