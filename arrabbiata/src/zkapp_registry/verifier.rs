@@ -95,11 +95,16 @@ impl From<Instruction> for Gadget {
     }
 }
 
-pub struct Verifier<C: ArrabbiataCurve>
-where
-    C::BaseField: PrimeField,
-{
-    pub _field: std::marker::PhantomData<C>,
+pub struct Verifier<C> {
+    _field: std::marker::PhantomData<C>,
+}
+
+impl<C> Default for Verifier<C> {
+    fn default() -> Self {
+        Self {
+            _field: std::marker::PhantomData,
+        }
+    }
 }
 
 impl<C: ArrabbiataCurve> ZkApp<C, Instruction, Gadget> for Verifier<C>

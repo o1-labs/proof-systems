@@ -1,12 +1,9 @@
 use arrabbiata::zkapp_registry::verifier::{Gadget, Verifier};
-use core::marker::PhantomData;
 use mina_curves::pasta::Vesta;
 
 #[test]
 fn test_zkapp_verifier_setup_size() {
-    let zkapp: Verifier<Vesta> = Verifier::<Vesta> {
-        _field: PhantomData,
-    };
+    let zkapp: Verifier<Vesta> = Verifier::<Vesta>::default();
     let setup_size = arrabbiata::zkapp_registry::setup(&zkapp);
 
     // This is the current value of VERIFIER_CIRCUIT_SIZE in lib.rs
@@ -15,9 +12,7 @@ fn test_zkapp_verifier_setup_size() {
 
 #[test]
 fn test_zkapp_verifier_get_constraints_per_gadget() {
-    let zkapp: Verifier<Vesta> = Verifier::<Vesta> {
-        _field: PhantomData,
-    };
+    let zkapp: Verifier<Vesta> = Verifier::<Vesta>::default();
     let constraints = arrabbiata::zkapp_registry::get_constraints_per_gadget(&zkapp);
 
     // Checking the number of gadgets
