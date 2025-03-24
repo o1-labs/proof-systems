@@ -2,6 +2,8 @@ use crate::{column::E, curve::ArrabbiataCurve, interpreter::InterpreterEnv};
 use ark_ff::PrimeField;
 use std::{collections::HashMap, hash::Hash};
 
+pub mod verifier;
+
 /// A ZkApp is a program that can be executed and proven using a
 /// (zero-knowledge) succinct non-interactive argument of knowledge or in short
 /// a zkSNARK. In particular, the interface is designed to be used with the
@@ -138,5 +140,3 @@ where
     }
     constraints
 }
-
-pub mod verifier;
