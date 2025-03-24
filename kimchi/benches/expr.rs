@@ -1,16 +1,16 @@
+use criterion::{criterion_group, criterion_main, Criterion};
 use std::collections::HashMap;
 use std::{hint::black_box, ops::Index};
-use criterion::{criterion_group, criterion_main, Criterion};
 
-use ark_ff::{FftField, Zero, UniformRand};
+use ark_ff::{FftField, UniformRand, Zero};
+use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+use kimchi::circuits::berkeley_columns::{witness_curr, BerkeleyChallenges, Environment, E};
 use kimchi::circuits::domains::EvaluationDomains;
+use kimchi::circuits::expr::{l0_1, ColumnEnvironment, ConstantExpr, Constants, Expr};
 use kimchi::curve::KimchiCurve;
+use mina_curves::pasta::{Fp, Pallas, Vesta};
 use rand::rngs::StdRng;
 use rand::{random, Rng};
-use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
-use kimchi::circuits::expr::{l0_1, ColumnEnvironment, ConstantExpr, Constants, Expr};
-use kimchi::circuits::berkeley_columns::{witness_curr, BerkeleyChallenges, Environment, E};
-use mina_curves::pasta::{Fp, Pallas, Vesta};
 
 fn evaluate_simple<
     'a,
@@ -18,16 +18,19 @@ fn evaluate_simple<
     Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
     F: FftField,
     Column: PartialEq + Copy,
-    ChallengeTerm: Copy
+    ChallengeTerm: Copy,
 >(
     e: Expr<ConstantExpr<F, ChallengeTerm>, Column>,
-    env: &Environment
+    env: &Environment,
 ) -> Evaluations<F, D<F>> {
     e.evaluations(env)
 }
 
-fn create_random_evaluation(domain: D<Fp>, rng: &mut impl Rng) -> Evaluations<Fp, D<Fp>>{
-    let evals = (0..domain.size).map(|_| Fp::rand(rng)).collect::<Vec<_>>().into();
+fn create_random_evaluation(domain: D<Fp>, rng: &mut impl Rng) -> Evaluations<Fp, D<Fp>> {
+    let evals = (0..domain.size)
+        .map(|_| Fp::rand(rng))
+        .collect::<Vec<_>>()
+        .into();
     Evaluations::from_vec_and_domain(evals, domain)
 }
 
@@ -39,9 +42,18 @@ fn benchmark_expr_evaluations(c: &mut Criterion) {
     let mut rng = rand::thread_rng();
     // FIXME: Use const
     // FIXME: Dedup
-    let randomized_witness = (0..15).map(|_| create_random_evaluation(domain, &mut rng)).collect::<Vec<_>>().try_into().unwrap();
-    let randomized_coefficients = (0..15).map(|_| create_random_evaluation(domain, &mut rng)).collect::<Vec<_>>().try_into().unwrap();
-    let randomized_vanishes_on_zero_knowledge_and_previous_rows =  create_random_evaluation(domain, &mut rng);
+    let randomized_witness = (0..15)
+        .map(|_| create_random_evaluation(domain, &mut rng))
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
+    let randomized_coefficients = (0..15)
+        .map(|_| create_random_evaluation(domain, &mut rng))
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
+    let randomized_vanishes_on_zero_knowledge_and_previous_rows =
+        create_random_evaluation(domain, &mut rng);
     let randomized_z = create_random_evaluation(domain, &mut rng);
     let randomized_l0_1 = Fp::rand(&mut rng);
     let constants = Constants {
@@ -59,7 +71,8 @@ fn benchmark_expr_evaluations(c: &mut Criterion) {
     let env = Environment {
         witness: &randomized_witness,
         coefficient: &randomized_coefficients,
-        vanishes_on_zero_knowledge_and_previous_rows: &randomized_vanishes_on_zero_knowledge_and_previous_rows,
+        vanishes_on_zero_knowledge_and_previous_rows:
+            &randomized_vanishes_on_zero_knowledge_and_previous_rows,
         z: &randomized_z,
         // empty!??!
         index: HashMap::new(),
@@ -69,8 +82,8 @@ fn benchmark_expr_evaluations(c: &mut Criterion) {
         domain: domains,
         lookup: None,
     };
-    
-    let mut expr : E<Fp> = E::zero();
+
+    let mut expr: E<Fp> = E::zero();
     // (X0 + 100 * X1) * X3 ^ 3
     expr += witness_curr(0);
     expr += E::literal(Fp::from(100u64)) * witness_curr(1);
@@ -78,7 +91,9 @@ fn benchmark_expr_evaluations(c: &mut Criterion) {
 
     // Get real expressions from George / the blockchain / tests or something?
 
-    c.bench_function("expr_random", |b| b.iter(|| evaluate_simple(black_box(expr.clone()), black_box(&env))));
+    c.bench_function("expr_random", |b| {
+        b.iter(|| evaluate_simple(black_box(expr.clone()), black_box(&env)))
+    });
 }
 
 criterion_group!(evaluation_bench, benchmark_expr_evaluations);

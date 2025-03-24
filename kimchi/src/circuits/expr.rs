@@ -1739,6 +1739,61 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> Expr<ConstantExpr<F, Challe
             }
         }
     }
+
+    /// Return the value at the given row of the evaluation of this expression.
+    pub fn value_<Environment: ColumnEnvironment<F, ChallengeTerm, Challenges, Column>>(
+        &self,
+        env: Environment,
+        cache: &mut HashMap<CacheId, F>,
+        row: usize,
+    ) -> Option<F> {
+        match self {
+            Expr::Atom(ExprInner::Constant(c)) => {
+                Some(c.value_(env.get_constants(), env.get_challenges()))
+            }
+            Expr::Atom(ExprInner::Cell(var)) => {
+                env.get_column(var.col).map(|evals| evals.evals[row])
+            }
+            Expr::Atom(ExprInner::UnnormalizedLagrangeBasis(i)) => todo!(),
+            Expr::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) => todo!(),
+            Expr::Double(x) => x.value_(env, cache, row).map(|x| x.double()),
+            Expr::Square(x) => x.value_(env, cache, row).map(|x| x.square()),
+            Expr::Pow(x, n) => x.value_(env, cache, row).map(|x| x.pow(n)),
+            Expr::Add(x, y) => match (x.value_(env, cache, row), y.value_(env, cache, row)) {
+                (Some(x), Some(y)) => Some(x + y),
+                _ => None,
+            },
+            Expr::Mul(x, y) => match (x.value_(env, cache, row), y.value_(env, cache, row)) {
+                (Some(x), Some(y)) => Some(x * y),
+                _ => None,
+            },
+            Expr::Sub(x, y) => match (x.value_(env, cache, row), y.value_(env, cache, row)) {
+                (Some(x), Some(y)) => Some(x - y),
+                _ => None,
+            },
+            Expr::Add(x, y) => match (x.value_(env, cache, row), y.value_(env, cache, row)) {
+                (Some(x), Some(y)) => Some(x + y),
+                _ => None,
+            },
+            Expr::Cache(row, e) => match cache.get(id) {
+                // Already computed
+                Some(v) => Some(v),
+                _ => {
+                    // Not computed yet; store it.
+                    let v = e.value_(env, cache, row);
+                    cache.insert(*id, v);
+                    Some(v)
+                }
+            },
+            Expr::IfFeature(feature, e1, e2) => {
+                if feature.is_enabled() {
+                    Some(e1.value_(env, cache, row))
+                } else {
+                    Some(e2.value_(env, cache, row))
+                }
+            }
+        }
+    }
 }
 
 impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
@@ -1872,7 +1927,64 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
     ) -> Evaluations<F, D<F>> {
         self.evaluate_constants(env).evaluations(env)
     }
+
+    pub fn evaluations_iter<
+        'a,
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+    >(
+        &self,
+        env: &Environment,
+    ) -> EvaluationsIter<F> {
+        self.evaluate_constants(env).evaluations_iter(env)
+    }
 }
+
+pub struct EvaluationsIter<
+    'a,
+    'b,
+    Challenge: Index<ChallengeTerm, Output = F>,
+    Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+> {
+    idx: usize,
+    expr: Expr<F, Column>,
+    env: Environment,
+    cache: HashMap<CacheId, F>,
+}
+
+impl<
+        'a,
+        'b,
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+    > std::iter::Iterator for EvaluationsIter<'a, Challenge, Environment>
+{
+    type Item = F;
+
+    fn next(&mut self) -> Option<Item> {
+        let ret = expr.value_(self.env, &mut self.cache, self.idx);
+        self.idx += 1;
+        ret
+    }
+}
+
+impl<
+        'a,
+        'b,
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+    > EvaluationsIter<'a, Challenge, Environment>
+{
+    pub fn new(expr: Expr<F, Column>, env: Environment) -> Self {
+        Self {
+            idx: 0,
+            expr,
+            env,
+            cache: HashMap::new(),
+        }
+    }
+}
+
 
 /// Use as a result of the expression evaluations routine.
 /// For now, the left branch is the result of an evaluation and the right branch
