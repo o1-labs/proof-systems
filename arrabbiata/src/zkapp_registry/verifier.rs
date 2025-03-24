@@ -107,22 +107,29 @@ impl<C> Default for Verifier<C> {
     }
 }
 
-impl<C> ZkApp<C, Instruction, Gadget> for Verifier<C>
+impl<C> ZkApp<C> for Verifier<C>
 where
     C: ArrabbiataCurve,
     C::BaseField: PrimeField,
 {
+    type Instruction = Instruction;
+
+    type Gadget = Gadget;
+
     fn dummy_witness(&self, _srs_size: usize) -> Vec<Vec<C::ScalarField>> {
         unimplemented!("Dummy witness for the verifier is not implemented yet")
     }
 
     /// Fetch the first instruction to execute.
-    fn fetch_instruction(&self) -> Instruction {
+    fn fetch_instruction(&self) -> Self::Instruction {
         Instruction::PoseidonSpongeAbsorb(0)
     }
 
     /// Describe the control-flow for the verifier circuit.
-    fn fetch_next_instruction(&self, current_instruction: Instruction) -> Option<Instruction> {
+    fn fetch_next_instruction(
+        &self,
+        current_instruction: Self::Instruction,
+    ) -> Option<Self::Instruction> {
         match current_instruction {
             Instruction::PoseidonFullRound(idx, starting_round) => {
                 assert_eq!(starting_round % 5, 0);
@@ -177,7 +184,7 @@ where
         }
     }
 
-    fn run<E: InterpreterEnv>(&self, env: &mut E, instr: Instruction) {
+    fn run<E: InterpreterEnv>(&self, env: &mut E, instr: Self::Instruction) {
         match instr {
             Instruction::EllipticCurveScaling(i_comm, processing_bit) => {
                 assert!(processing_bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Invalid bit index. The fields are maximum on {MAXIMUM_FIELD_SIZE_IN_BITS} bits, therefore we cannot process the bit {processing_bit}");
