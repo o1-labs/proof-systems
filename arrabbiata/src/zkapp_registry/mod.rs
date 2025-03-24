@@ -29,9 +29,12 @@ use std::{collections::HashMap, hash::Hash};
 /// A ZkApp structure is responsible to provide a dummy witness, used to
 /// generate a first non-folded instance. The dummy witness is a satisfying
 /// execution trace for dummy inputs.
-pub trait ZkApp<C: ArrabbiataCurve, Instruction: Copy, Gadget: From<Instruction> + Eq + Hash>
+pub trait ZkApp<C, Instruction, Gadget>
 where
+    C: ArrabbiataCurve,
     C::BaseField: PrimeField,
+    Instruction: Copy,
+    Gadget: From<Instruction> + Eq + Hash,
 {
     /// Provide a dummy witness, used to generate a first non-folded instance.
     fn dummy_witness(&self, srs_size: usize) -> Vec<Vec<C::ScalarField>>;
@@ -63,17 +66,14 @@ where
 
 /// Execute the ZkApp `zkapp` over the interpreter environment `env`.
 /// This is a generic function that can be used to execute any ZkApp.
-pub fn execute<
+pub fn execute<E, C, Instruction, Gadget, Z>(zkapp: &Z, env: &mut E)
+where
     E: InterpreterEnv,
     C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
     Instruction: Copy,
     Gadget: From<Instruction> + Eq + Hash,
     Z: ZkApp<C, Instruction, Gadget>,
->(
-    zkapp: &Z,
-    env: &mut E,
-) where
-    C::BaseField: PrimeField,
 {
     let mut instr: Option<Instruction> = Some(zkapp.fetch_instruction());
     while let Some(i) = instr {
@@ -91,16 +91,13 @@ pub fn execute<
 ///
 /// For now, the concept of gadget and selectors are mixed together. We
 /// should separate them in the future to allow more flexibility.
-pub fn setup<
+pub fn setup<C, Instruction, Gadget, Z>(zkapp: &Z) -> Vec<Gadget>
+where
     C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
     Instruction: Copy,
     Gadget: From<Instruction> + Eq + Hash,
     Z: ZkApp<C, Instruction, Gadget>,
->(
-    zkapp: &Z,
-) -> Vec<Gadget>
-where
-    C::BaseField: PrimeField,
 {
     let mut circuit: Vec<Gadget> = vec![];
     let mut instr: Option<Instruction> = Some(zkapp.fetch_instruction());
@@ -120,16 +117,15 @@ where
 ///
 /// The output will contain all the constraints that would be used in a single
 /// execution.
-pub fn get_constraints_per_gadget<
-    C: ArrabbiataCurve,
-    Instruction: Copy,
-    Gadget: From<Instruction> + Eq + Hash,
-    Z: ZkApp<C, Instruction, Gadget>,
->(
+pub fn get_constraints_per_gadget<C, Instruction, Gadget, Z>(
     zkapp: &Z,
 ) -> HashMap<Gadget, Vec<E<C::ScalarField>>>
 where
+    C: ArrabbiataCurve,
     C::BaseField: PrimeField,
+    Instruction: Copy,
+    Gadget: From<Instruction> + Eq + Hash,
+    Z: ZkApp<C, Instruction, Gadget>,
 {
     let mut env = crate::constraint::Env::<C>::new();
     let mut constraints = HashMap::new();
