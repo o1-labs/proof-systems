@@ -17,6 +17,7 @@ pub mod poseidon_3_60_0_5_5_fp;
 pub mod poseidon_3_60_0_5_5_fq;
 pub mod setup;
 pub mod witness;
+pub mod zkapp_registry;
 
 /// The maximum degree of the polynomial that can be represented by the
 /// polynomial-time function the library supports.
@@ -70,5 +71,3 @@ pub const NUMBER_OF_GADGETS: usize =
 ///
 /// It is going to be used to convert into the representation used in [mvpoly].
 pub const MV_POLYNOMIAL_ARITY: usize = NUMBER_OF_COLUMNS * 2;
-
-pub mod zkapp_registry;
