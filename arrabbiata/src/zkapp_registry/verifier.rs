@@ -107,8 +107,9 @@ impl<C> Default for Verifier<C> {
     }
 }
 
-impl<C: ArrabbiataCurve> ZkApp<C, Instruction, Gadget> for Verifier<C>
+impl<C> ZkApp<C, Instruction, Gadget> for Verifier<C>
 where
+    C: ArrabbiataCurve,
     C::BaseField: PrimeField,
 {
     fn dummy_witness(&self, _srs_size: usize) -> Vec<Vec<C::ScalarField>> {
