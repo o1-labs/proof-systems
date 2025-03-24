@@ -5,22 +5,23 @@ use std::{collections::HashMap, hash::Hash};
 pub mod minroot;
 pub mod verifier;
 
-/// A ZkApp is a program that can be executed and proven using a
+/// A ZkApp is a (stateless) program that can be executed and proven using a
 /// (zero-knowledge) succinct non-interactive argument of knowledge or in short
 /// a zkSNARK. In particular, the interface is designed to be used with the
 /// Arrabbiata accumulation scheme and its corresponding decider.
 ///
-/// A ZkApp is defined over a list of instructions (of type `Instruction`),
-/// where each instruction is a step of the computation. The computation is
-/// defined by the control-flow of the ZkApp, which is defined by the methods
-/// [Self::fetch_next_instruction] and [Self::fetch_instruction].
+/// A ZkApp is defined over a list of instructions (of type
+/// [Self::Instruction]), where each instruction is a step of the computation.
+/// The computation is defined by the control-flow of the ZkApp, which is
+/// defined by the methods [Self::fetch_next_instruction] and
+/// [Self::fetch_instruction].
 /// An instruction is considered to be filling only one row of the execution
 /// trace.
 ///
 /// A list of instructions sharing the same constraints is called a gadget (of
-/// type `Gadget`). Each instruction must be convertible to a gadget, therefore
-/// the type restriction to `From<Instruction>`. It will be used in particular
-/// by the method [setup] to build the list of selectors.
+/// type [Self::Gadget]). Each instruction must be convertible to a gadget,
+/// therefore the type restriction to [From<Self::Instruction>]. It will be used
+/// in particular by the method [setup] to build the list of selectors.
 ///
 /// An instruction can also transport some data, which can be used to guide the
 /// control-flow and to provide additional information to the interpreter while
@@ -32,18 +33,20 @@ pub mod verifier;
 /// A ZkApp structure is responsible to provide a dummy witness, used to
 /// generate a first non-folded instance. The dummy witness is a satisfying
 /// execution trace for dummy inputs.
-pub trait ZkApp<C, Instruction, Gadget>
+pub trait ZkApp<C>
 where
     C: ArrabbiataCurve,
     C::BaseField: PrimeField,
-    Instruction: Copy,
-    Gadget: From<Instruction> + Eq + Hash,
 {
+    type Instruction: Copy;
+
+    type Gadget: From<Self::Instruction> + Eq + Hash;
+
     /// Provide a dummy witness, used to generate a first non-folded instance.
     fn dummy_witness(&self, srs_size: usize) -> Vec<Vec<C::ScalarField>>;
 
     /// Fetch the first instruction to execute.
-    fn fetch_instruction(&self) -> Instruction;
+    fn fetch_instruction(&self) -> Self::Instruction;
 
     /// Describe the control-flow of the ZkApp.
     /// This function should return the next instruction to execute after
@@ -53,7 +56,8 @@ where
     ///
     /// The method is going to be called by the [execute] function and [setup]
     /// function.
-    fn fetch_next_instruction(&self, current_instr: Instruction) -> Option<Instruction>;
+    fn fetch_next_instruction(&self, current_instr: Self::Instruction)
+        -> Option<Self::Instruction>;
 
     /// Execute the instruction `instr` over the interpreter environment `E`.
     ///
@@ -64,21 +68,19 @@ where
     /// responsible to build the whole execution trace, instruction by
     /// instruction. The stoppingcondition is when the
     /// [Self::fetch_next_instruction] returns `None`.
-    fn run<E: InterpreterEnv>(&self, env: &mut E, instr: Instruction);
+    fn run<E: InterpreterEnv>(&self, env: &mut E, instr: Self::Instruction);
 }
 
 /// Execute the ZkApp `zkapp` over the interpreter environment `env`.
 /// This is a generic function that can be used to execute any ZkApp.
-pub fn execute<E, C, Instruction, Gadget, Z>(zkapp: &Z, env: &mut E)
+pub fn execute<E, C, Z>(zkapp: &Z, env: &mut E)
 where
     E: InterpreterEnv,
     C: ArrabbiataCurve,
     C::BaseField: PrimeField,
-    Instruction: Copy,
-    Gadget: From<Instruction> + Eq + Hash,
-    Z: ZkApp<C, Instruction, Gadget>,
+    Z: ZkApp<C>,
 {
-    let mut instr: Option<Instruction> = Some(zkapp.fetch_instruction());
+    let mut instr: Option<Z::Instruction> = Some(zkapp.fetch_instruction());
     while let Some(i) = instr {
         zkapp.run(env, i);
         env.reset();
@@ -94,18 +96,16 @@ where
 ///
 /// For now, the concept of gadget and selectors are mixed together. We
 /// should separate them in the future to allow more flexibility.
-pub fn setup<C, Instruction, Gadget, Z>(zkapp: &Z) -> Vec<Gadget>
+pub fn setup<C, Z>(zkapp: &Z) -> Vec<Z::Gadget>
 where
     C: ArrabbiataCurve,
     C::BaseField: PrimeField,
-    Instruction: Copy,
-    Gadget: From<Instruction> + Eq + Hash,
-    Z: ZkApp<C, Instruction, Gadget>,
+    Z: ZkApp<C>,
 {
-    let mut circuit: Vec<Gadget> = vec![];
-    let mut instr: Option<Instruction> = Some(zkapp.fetch_instruction());
+    let mut circuit: Vec<Z::Gadget> = vec![];
+    let mut instr: Option<Z::Instruction> = Some(zkapp.fetch_instruction());
     while let Some(i) = instr {
-        circuit.push(Gadget::from(i));
+        circuit.push(Z::Gadget::from(i));
         instr = zkapp.fetch_next_instruction(i);
     }
     circuit
@@ -120,22 +120,18 @@ where
 ///
 /// The output will contain all the constraints that would be used in a single
 /// execution.
-pub fn get_constraints_per_gadget<C, Instruction, Gadget, Z>(
-    zkapp: &Z,
-) -> HashMap<Gadget, Vec<E<C::ScalarField>>>
+pub fn get_constraints_per_gadget<C, Z>(zkapp: &Z) -> HashMap<Z::Gadget, Vec<E<C::ScalarField>>>
 where
     C: ArrabbiataCurve,
     C::BaseField: PrimeField,
-    Instruction: Copy,
-    Gadget: From<Instruction> + Eq + Hash,
-    Z: ZkApp<C, Instruction, Gadget>,
+    Z: ZkApp<C>,
 {
     let mut env = crate::constraint::Env::<C>::new();
     let mut constraints = HashMap::new();
-    let mut instr: Option<Instruction> = Some(zkapp.fetch_instruction());
+    let mut instr: Option<Z::Instruction> = Some(zkapp.fetch_instruction());
     while let Some(i) = instr {
         zkapp.run(&mut env, i);
-        constraints.insert(Gadget::from(i), env.constraints.clone());
+        constraints.insert(Z::Gadget::from(i), env.constraints.clone());
         env.reset();
         instr = zkapp.fetch_next_instruction(i);
     }

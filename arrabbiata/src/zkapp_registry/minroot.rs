@@ -38,11 +38,15 @@ where
     pub n: usize,
 }
 
-impl<C> ZkApp<C, Instruction, Gadget> for MinRoot<C>
+impl<C> ZkApp<C> for MinRoot<C>
 where
     C: ArrabbiataCurve,
     C::BaseField: PrimeField,
 {
+    type Instruction = Instruction;
+
+    type Gadget = Gadget;
+
     fn dummy_witness(&self, _srs_size: usize) -> Vec<Vec<C::ScalarField>> {
         unimplemented!()
     }
@@ -51,7 +55,10 @@ where
         Instruction::ComputeFifthRoot(0)
     }
 
-    fn fetch_next_instruction(&self, current_instr: Instruction) -> Option<Instruction> {
+    fn fetch_next_instruction(
+        &self,
+        current_instr: Self::Instruction,
+    ) -> Option<Self::Instruction> {
         match current_instr {
             Instruction::ComputeFifthRoot(i) => {
                 if i < self.n {
@@ -63,7 +70,7 @@ where
         }
     }
 
-    fn run<E: InterpreterEnv>(&self, env: &mut E, instr: Instruction) {
+    fn run<E: InterpreterEnv>(&self, env: &mut E, instr: Self::Instruction) {
         match instr {
             Instruction::ComputeFifthRoot(_i) => {
                 let x = {
