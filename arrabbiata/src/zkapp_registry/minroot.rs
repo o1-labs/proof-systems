@@ -28,8 +28,9 @@ impl From<Instruction> for Gadget {
     }
 }
 
-pub struct MinRoot<C: ArrabbiataCurve>
+pub struct MinRoot<C>
 where
+    C: ArrabbiataCurve,
     C::BaseField: PrimeField,
 {
     pub x: C::ScalarField,
@@ -37,8 +38,9 @@ where
     pub n: usize,
 }
 
-impl<C: ArrabbiataCurve> ZkApp<C, Instruction, Gadget> for MinRoot<C>
+impl<C> ZkApp<C, Instruction, Gadget> for MinRoot<C>
 where
+    C: ArrabbiataCurve,
     C::BaseField: PrimeField,
 {
     fn dummy_witness(&self, _srs_size: usize) -> Vec<Vec<C::ScalarField>> {
