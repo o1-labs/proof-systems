@@ -4,6 +4,10 @@ on:
   pull_request:
     types:
       - labeled
+  push:
+    branches:
+      - master
+
 
 env:
   OCAML_VERSION: "4.14.0"
