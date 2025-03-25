@@ -1,4 +1,5 @@
-//! This module contains a generic verifier for Arrabbiata.
+//! This module contains a verifier for Arrabbiata, coined the "vanilla"
+//! Arrabbiata verifier.
 //!
 //! The verifier is implemented as a ZkApp, and is responsible to build the
 //! verification of a previous execution trace.
@@ -14,7 +15,7 @@
 use crate::{
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{InterpreterEnv, Side},
-    zkapp_registry::ZkApp,
+    zkapp_registry::{VerifierApp, ZkApp},
     MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
 };
 use ark_ff::PrimeField;
@@ -23,6 +24,10 @@ use log::debug;
 use mina_poseidon::constants::SpongeConstants;
 use num_bigint::BigInt;
 
+#[cfg(doc)]
+use crate::zkapp_registry::VerifiableZkApp;
+
+/// The instructions that the vanilla Arrabbiata verifier can execute.
 #[derive(Copy, Clone)]
 pub enum Instruction {
     /// This gadget implements the Poseidon hash instance described in the
@@ -52,6 +57,7 @@ pub enum Instruction {
     NoOp,
 }
 
+/// The gadgets that the vanilla Arrabbiata verifier contains.
 #[derive(Eq, Hash, PartialEq)]
 pub enum Gadget {
     /// The following gadgets implement the Poseidon hash instance described in
@@ -95,6 +101,11 @@ impl From<Instruction> for Gadget {
     }
 }
 
+/// Structure of the vanilla verifier for Arrabbiata.
+///
+/// It does not contain any specific data, as the verifier is stateless.
+/// Only a phantom data is used to define the curve.
+#[derive(Copy, Clone, Eq, Hash, PartialEq)]
 pub struct Verifier<C> {
     _field: std::marker::PhantomData<C>,
 }
@@ -120,12 +131,10 @@ where
         unimplemented!("Dummy witness for the verifier is not implemented yet")
     }
 
-    /// Fetch the first instruction to execute.
     fn fetch_instruction(&self) -> Self::Instruction {
         Instruction::PoseidonSpongeAbsorb(0)
     }
 
-    /// Describe the control-flow for the verifier circuit.
     fn fetch_next_instruction(
         &self,
         current_instruction: Self::Instruction,
@@ -498,4 +507,15 @@ where
             Instruction::NoOp => {}
         }
     }
+}
+
+/// The vanilla Arrabbiata verifier is a [VerifierApp].
+///
+/// It can be used by [VerifiableZkApp] to verify the execution trace of any
+/// ZkApp.
+impl<C> VerifierApp<C> for Verifier<C>
+where
+    C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
+{
 }

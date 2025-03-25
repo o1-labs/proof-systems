@@ -1,8 +1,16 @@
-use crate::{column::E, curve::ArrabbiataCurve, interpreter::InterpreterEnv};
+use crate::{
+    challenge::Challenges, column::E, curve::ArrabbiataCurve, interpreter::InterpreterEnv,
+    setup2::IndexedRelation, witness2::Env, MAX_DEGREE, MV_POLYNOMIAL_ARITY, NUMBER_OF_COLUMNS,
+};
+use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
+use mvpoly::{monomials::Sparse, MVPoly};
+use num_bigint::BigInt;
+use poly_commitment::{commitment::CommitmentCurve, PolyComm};
 use std::{collections::HashMap, hash::Hash};
 
 pub mod minroot;
+pub mod verifiable_minroot;
 pub mod verifier;
 
 /// A ZkApp is a (stateless) program that can be executed and proven using a
@@ -33,6 +41,15 @@ pub mod verifier;
 /// A ZkApp structure is responsible to provide a dummy witness, used to
 /// generate a first non-folded instance. The dummy witness is a satisfying
 /// execution trace for dummy inputs.
+///
+/// More specialised ZkApp's can be implemented with this interface.
+/// For instance, a [VerifierApp] is a ZkApp that is designed to implement the
+/// verifier part of the accumulation scheme.
+/// Naturally, it has to implement the ZkApp trait.
+///
+/// Another kind of ZkApp is a [VerifiableZkApp], which is a ZkApp that is
+/// designed to be verifiable with a [VerifierApp], i.e., it is designed to be
+/// accompanied by a verifier.
 pub trait ZkApp<C>
 where
     C: ArrabbiataCurve,
@@ -69,6 +86,77 @@ where
     /// instruction. The stoppingcondition is when the
     /// [Self::fetch_next_instruction] returns `None`.
     fn run<E: InterpreterEnv>(&self, env: &mut E, instr: Self::Instruction);
+}
+
+/// A VerifierApp is a ZkApp that is designed to implement the verifier part of
+/// the accumulation scheme.
+///
+/// The verifier is responsible to check the validity of a previously generated
+/// proof.
+///
+/// Naturally, it has to implement the ZkApp trait, as it is a program that can
+/// be accumulated.
+pub trait VerifierApp<C>: ZkApp<C> + Copy + Clone + Hash + Eq + PartialEq
+where
+    C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
+{
+}
+
+/// A VerifiableZkApp is a ZkApp that is designed to be verifiable with a
+/// [VerifierApp], i.e., it is designed to be accompanied by a verifier.
+///
+/// An example of a [VerifiableZkApp] is the [verifiable_minroot::MinRoot] ZkApp
+/// that uses the vanilla Arrabbiata verifier [verifier::Verifier].
+pub trait VerifiableZkApp<C>: ZkApp<C>
+where
+    C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
+{
+    type Verifier: VerifierApp<C>;
+}
+
+pub struct ZkAppState<C>
+where
+    C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
+{
+    pub accumulated_committed_state: Vec<PolyComm<C>>,
+
+    pub previous_committed_state: Vec<PolyComm<C>>,
+
+    pub accumulated_program_state: Vec<Vec<C::ScalarField>>,
+
+    pub accumulated_challenges: Challenges<BigInt>,
+
+    pub previous_challenges: Challenges<BigInt>,
+}
+
+// FIXME: take a ZkApp and initialize with the dummy witness
+impl<C> ZkAppState<C>
+where
+    C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
+{
+    pub fn new() -> Self {
+        Self {
+            accumulated_committed_state: vec![],
+            previous_committed_state: vec![],
+            accumulated_program_state: vec![],
+            accumulated_challenges: Challenges::default(),
+            previous_challenges: Challenges::default(),
+        }
+    }
+}
+
+impl<C> Default for ZkAppState<C>
+where
+    C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
+{
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// Execute the ZkApp `zkapp` over the interpreter environment `env`.
@@ -136,4 +224,90 @@ where
         instr = zkapp.fetch_next_instruction(i);
     }
     constraints
+}
+
+pub fn get_mvpoly_per_gadget<C, Z>(
+    zkapp: &Z,
+) -> HashMap<Z::Gadget, Vec<Sparse<C::ScalarField, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>>
+where
+    C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
+    Z: ZkApp<C>,
+{
+    let mut env = crate::constraint::Env::<C>::new();
+    let mut constraints = HashMap::new();
+    let mut instr: Option<Z::Instruction> = Some(zkapp.fetch_instruction());
+    while let Some(i) = instr {
+        zkapp.run(&mut env, i);
+        let polys: Vec<_> = env
+            .constraints
+            .iter()
+            .map(|c| Sparse::from_expr(c.clone(), Some(NUMBER_OF_COLUMNS)))
+            .collect::<Vec<_>>();
+        constraints.insert(Z::Gadget::from(i), polys);
+        env.reset();
+        instr = zkapp.fetch_next_instruction(i);
+    }
+    constraints
+}
+
+pub fn fold<Fp, Fq, C1, C2, Z1, Z2>(
+    zkapp1: &Z1,
+    zkapp2: &Z2,
+    n: usize,
+) -> Env<C1::ScalarField, C2::ScalarField, C1, C2, Z1, Z2>
+where
+    Fp: PrimeField,
+    Fq: PrimeField,
+    C1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
+    C2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
+    C1::BaseField: PrimeField,
+    C2::BaseField: PrimeField,
+    <<C1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    <<C2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    Z1: VerifiableZkApp<C1, Verifier = verifier::Verifier<C1>>,
+    Z2: VerifiableZkApp<C2, Verifier = verifier::Verifier<C2>>,
+{
+    let srs_log2_size = 16;
+    let indexed_relation = IndexedRelation::new(zkapp1, zkapp2, srs_log2_size);
+    let mut env = Env::<C1::ScalarField, C2::ScalarField, C1, C2, Z1, Z2>::new(indexed_relation);
+    let mut i = 0;
+    while i < n {
+        execute(zkapp1, &mut env);
+        execute(zkapp2, &mut env);
+        i += 1;
+    }
+    env
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use crate::decider;
+    use ark_ff::UniformRand;
+    use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
+
+    #[test]
+    fn test_minroot_fold() {
+        let mut rng = o1_utils::tests::make_test_rng(None);
+
+        let zkapp1: verifiable_minroot::MinRoot<Vesta> = {
+            let x = Fp::rand(&mut rng);
+            let y = Fp::rand(&mut rng);
+            let n = 1000;
+            verifiable_minroot::MinRoot::<Vesta>::new(x, y, n)
+        };
+        let zkapp2: verifiable_minroot::MinRoot<Pallas> = {
+            let x = Fq::rand(&mut rng);
+            let y = Fq::rand(&mut rng);
+            let n = 1000;
+            verifiable_minroot::MinRoot::<Pallas>::new(x, y, n)
+        };
+
+        // Fold 1000 times both zkapps
+        let res = fold(&zkapp1, &zkapp2, 1000);
+        let proof = decider::prover::prove(&res);
+        let verify = decider::verifier::verify(&res.indexed_relation, &proof.unwrap());
+        assert!(verify.is_ok());
+    }
 }

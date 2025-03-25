@@ -17,6 +17,10 @@ pub mod poseidon_3_60_0_5_5_fp;
 pub mod poseidon_3_60_0_5_5_fq;
 pub mod setup;
 pub mod witness;
+
+pub mod setup2;
+pub mod witness2;
+
 pub mod zkapp_registry;
 
 /// The maximum degree of the polynomial that can be represented by the
