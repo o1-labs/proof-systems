@@ -132,6 +132,7 @@ where
     pub previous_challenges: Challenges<BigInt>,
 }
 
+// FIXME: take a ZkApp and initialize with the dummy witness
 impl<C> ZkAppState<C>
 where
     C: ArrabbiataCurve,
