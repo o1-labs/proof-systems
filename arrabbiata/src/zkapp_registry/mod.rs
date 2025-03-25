@@ -3,6 +3,7 @@ use ark_ff::PrimeField;
 use std::{collections::HashMap, hash::Hash};
 
 pub mod minroot;
+pub mod verifiable_minroot;
 pub mod verifier;
 
 /// A ZkApp is a (stateless) program that can be executed and proven using a
@@ -76,11 +77,19 @@ where
 ///
 /// The verifier is responsible to check the validity of a previously generated
 /// proof.
-pub trait VerifierApp<C>: ZkApp<C>
+pub trait VerifierApp<C>: ZkApp<C> + Copy + Clone + Hash + Eq + PartialEq
 where
     C: ArrabbiataCurve,
     C::BaseField: PrimeField,
 {
+}
+
+pub trait VerifiableZkApp<C>: ZkApp<C>
+where
+    C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
+{
+    type Verifier: VerifierApp<C>;
 }
 
 /// Execute the ZkApp `zkapp` over the interpreter environment `env`.
