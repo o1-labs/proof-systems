@@ -283,6 +283,7 @@ where
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use crate::decider;
     use ark_ff::UniformRand;
     use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 
@@ -304,6 +305,9 @@ pub mod tests {
         };
 
         // Fold 1000 times both zkapps
-        let _res = fold(&zkapp1, &zkapp2, 1000);
+        let res = fold(&zkapp1, &zkapp2, 1000);
+        let proof = decider::prover::prove(&res);
+        let verify = decider::verifier::verify(&res.indexed_relation, &proof.unwrap());
+        assert!(verify.is_ok());
     }
 }
