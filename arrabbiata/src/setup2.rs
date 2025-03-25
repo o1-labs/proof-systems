@@ -122,6 +122,7 @@ where
         assert_eq!(circuit_zkapp1.len(), srs_size);
         assert_eq!(circuit_zkapp2.len(), srs_size);
 
+        // FIXME
         let selectors_comm: (Vec<PolyComm<E1>>, Vec<PolyComm<E2>>) = (vec![], vec![]);
 
         // FIXME: setup correctly the initial sponge state
