@@ -95,6 +95,7 @@ impl From<Instruction> for Gadget {
     }
 }
 
+#[derive(Copy, Clone, Eq, Hash, PartialEq)]
 pub struct Verifier<C> {
     _field: std::marker::PhantomData<C>,
 }
