@@ -1,5 +1,9 @@
-use crate::{column::E, curve::ArrabbiataCurve, interpreter::InterpreterEnv};
+use crate::{
+    column::E, curve::ArrabbiataCurve, interpreter::InterpreterEnv, MAX_DEGREE,
+    MV_POLYNOMIAL_ARITY, NUMBER_OF_COLUMNS,
+};
 use ark_ff::PrimeField;
+use mvpoly::{monomials::Sparse, MVPoly};
 use std::{collections::HashMap, hash::Hash};
 
 pub mod minroot;
@@ -170,6 +174,31 @@ where
     while let Some(i) = instr {
         zkapp.run(&mut env, i);
         constraints.insert(Z::Gadget::from(i), env.constraints.clone());
+        env.reset();
+        instr = zkapp.fetch_next_instruction(i);
+    }
+    constraints
+}
+
+pub fn get_mvpoly_per_gadget<C, Z>(
+    zkapp: &Z,
+) -> HashMap<Z::Gadget, Vec<Sparse<C::ScalarField, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>>
+where
+    C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
+    Z: ZkApp<C>,
+{
+    let mut env = crate::constraint::Env::<C>::new();
+    let mut constraints = HashMap::new();
+    let mut instr: Option<Z::Instruction> = Some(zkapp.fetch_instruction());
+    while let Some(i) = instr {
+        zkapp.run(&mut env, i);
+        let polys: Vec<_> = env
+            .constraints
+            .iter()
+            .map(|c| Sparse::from_expr(c.clone(), Some(NUMBER_OF_COLUMNS)))
+            .collect::<Vec<_>>();
+        constraints.insert(Z::Gadget::from(i), polys);
         env.reset();
         instr = zkapp.fetch_next_instruction(i);
     }
