@@ -229,7 +229,9 @@ impl VerifyContext {
 }
 
 pub struct CommitmentView {
+    // Merkle tree over the chunks
     pub merkle_tree: merkle_tree::MerkleTree,
+    // chunks of a commitment to data
     pub affine_committed_chunks: Vec<Vesta>,
 }
 
@@ -354,6 +356,7 @@ pub fn verify(context: &VerifyContext, commitments: &[Vesta], proof: &Proof) -> 
         })
         .collect::<Vec<_>>();
 
+    // randomised data commitment is ∏ C_i^{chal^i} for all chunks
     let randomized_data_commitment_expected =
         ProjectiveVesta::msm_bigint(commitments, powers.as_slice()).into_affine();
 
@@ -361,6 +364,9 @@ pub fn verify(context: &VerifyContext, commitments: &[Vesta], proof: &Proof) -> 
         && fast_verify(context, proof)
 }
 
+// This is what storage provider stores -- a big flat array of data,
+// and a commitment view which consists of chunks and Merkle tree
+// built on top of them.
 pub struct ProverInputs<'a> {
     pub data: &'a mut [Fp],
     pub commitment_view: CommitmentView,
@@ -409,6 +415,7 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
         data,
     } = inputs;
 
+    // ∑ chal^i
     let mut blinder_sum = Fp::zero();
 
     let challenge = merkle_tree.root_hash();
@@ -423,6 +430,7 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
         })
         .collect::<Vec<_>>();
 
+    // ∏ C_i^{chal^i}
     let randomized_data_commitment =
         ProjectiveVesta::msm_bigint(affine_committed_chunks.as_slice(), powers.as_slice())
             .into_affine();
@@ -442,6 +450,7 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
         initial
     };
 
+    // query commitment for storage proofs is zero (?) G^0 H^1
     let query_commitment = srs.h;
 
     let mut fq_sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
@@ -465,6 +474,7 @@ fn prove(context: &VerifyContext, inputs: &ProverInputs) -> Proof {
 
     let query_poly = ark_poly::univariate::DensePolynomial::zero();
 
+    // Query commitment functionality seems to be unimplemented (yet) in this prover.
     let query_eval = Fp::zero();
 
     opening_proof_sponge.absorb_fr(&[randomized_data_eval]);
@@ -571,8 +581,7 @@ pub mod network {
     use mina_curves::pasta::{Fp, Vesta};
     use serde::{Deserialize, Serialize};
     use serde_with::serde_as;
-    use std::net::TcpListener;
-    use std::process::ExitCode;
+    use std::{net::TcpListener, process::ExitCode};
 
     #[serde_as]
     #[derive(Serialize, Deserialize)]
@@ -866,11 +875,13 @@ pub mod state_provider {
     use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
     use serde::{Deserialize, Serialize};
     use serde_with::serde_as;
-    use std::fs::{File, OpenOptions};
-    use std::net::{TcpListener, TcpStream};
-    use std::process::ExitCode;
-    use std::sync::mpsc;
-    use std::thread;
+    use std::{
+        fs::{File, OpenOptions},
+        net::{TcpListener, TcpStream},
+        process::ExitCode,
+        sync::mpsc,
+        thread,
+    };
 
     #[serde_as]
     #[derive(Serialize, Deserialize)]
@@ -1085,6 +1096,7 @@ pub mod state_provider {
                         addresses,
                         query_commitment,
                     }) => {
+                        // Read query processing by the state provider
                         let is_sorted = (0..addresses.len() - 1)
                             .map(|idx| addresses[idx] < addresses[idx + 1])
                             .reduce(|x, y| x && y)
@@ -1097,6 +1109,7 @@ pub mod state_provider {
                             .par_iter()
                             .map(|idx| basis[*idx as usize])
                             .collect();
+                        // \sum_{i \in addr} L_i * H
                         let computed_commitment = {
                             address_basis
                                 .par_iter()
@@ -1105,6 +1118,7 @@ pub mod state_provider {
                                 + srs.h
                         }
                         .into_affine();
+                        // computed_commitment is a commitment to a selector polynomial with blinder 1
                         let (response, broadcast) = if query_commitment != computed_commitment {
                             (Err(()), None)
                         } else {
@@ -1145,6 +1159,7 @@ pub mod state_provider {
                         precondition_commitment,
                         data_commitment,
                     }) => {
+                        // Write query processing by the state provider
                         if addresses.len() != values.len() {
                             super::stream_write(stream, Err::<ReadResponse, ()>(()));
                             continue;
@@ -1300,8 +1315,7 @@ pub mod client {
     use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
     use serde::{Deserialize, Serialize};
     use serde_with::serde_as;
-    use std::net::TcpListener;
-    use std::process::ExitCode;
+    use std::{net::TcpListener, process::ExitCode};
 
     #[derive(Serialize, Deserialize)]
     pub struct ReadQuery {
@@ -1539,8 +1553,7 @@ pub mod request {
 
     use super::client::{Message as ClientMessage, ReadQuery, ReadResponse, WriteQuery};
     use serde::{Deserialize, Serialize};
-    use std::io::Read;
-    use std::process::ExitCode;
+    use std::{io::Read, process::ExitCode};
 
     pub fn main(sub_command: cli::Command) -> ExitCode {
         match sub_command {
