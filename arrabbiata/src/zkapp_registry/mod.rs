@@ -34,6 +34,15 @@ pub mod verifier;
 /// A ZkApp structure is responsible to provide a dummy witness, used to
 /// generate a first non-folded instance. The dummy witness is a satisfying
 /// execution trace for dummy inputs.
+///
+/// More specialised ZkApp's can be implemented with this interface.
+/// For instance, a [VerifierApp] is a ZkApp that is designed to implement the
+/// verifier part of the accumulation scheme.
+/// Naturally, it has to implement the ZkApp trait.
+///
+/// Another kind of ZkApp is a [VerifiableZkApp], which is a ZkApp that is
+/// designed to be verifiable with a [VerifierApp], i.e., it is designed to be
+/// accompanied by a verifier.
 pub trait ZkApp<C>
 where
     C: ArrabbiataCurve,
@@ -77,6 +86,9 @@ where
 ///
 /// The verifier is responsible to check the validity of a previously generated
 /// proof.
+///
+/// Naturally, it has to implement the ZkApp trait, as it is a program that can
+/// be accumulated.
 pub trait VerifierApp<C>: ZkApp<C> + Copy + Clone + Hash + Eq + PartialEq
 where
     C: ArrabbiataCurve,
@@ -84,6 +96,11 @@ where
 {
 }
 
+/// A VerifiableZkApp is a ZkApp that is designed to be verifiable with a
+/// [VerifierApp], i.e., it is designed to be accompanied by a verifier.
+///
+/// An example of a [VerifiableZkApp] is the [verifiable_minroot::MinRoot] ZkApp
+/// that uses the vanilla Arrabbiata verifier [verifier::Verifier].
 pub trait VerifiableZkApp<C>: ZkApp<C>
 where
     C: ArrabbiataCurve,
