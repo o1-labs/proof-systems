@@ -5,9 +5,11 @@ use kimchi::bench::BenchmarkCtx;
 pub fn bench_proof_creation(c: &mut Criterion) {
     let mut group = c.benchmark_group("proof_creation");
     group.sampling_mode(SamplingMode::Flat); // for slow benchmarks
-    group.measurement_time(std::time::Duration::from_secs(90));
 
-    for size in [10, 15, 16] {
+    group.measurement_time(std::time::Duration::from_secs(15));
+
+    for size in [10] {
+        //    for size in [10, 15, 16] {
         let ctx = BenchmarkCtx::new(size);
 
         group.bench_function(
@@ -61,5 +63,9 @@ pub fn bench_proof_verification(c: &mut Criterion) {
     group.finish()
 }
 
-criterion_group!(benches, bench_proof_creation, bench_proof_verification);
+criterion_group!(
+    benches,
+    bench_proof_creation,
+    //                 bench_proof_verification
+);
 criterion_main!(benches);
