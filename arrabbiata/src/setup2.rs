@@ -89,7 +89,7 @@ where
     ZkApp1: VerifiableZkApp<E1, Verifier = Verifier<E1>>,
     ZkApp2: VerifiableZkApp<E2, Verifier = Verifier<E2>>,
 {
-    pub fn new(zkapp1: ZkApp1, zkapp2: ZkApp2, srs_log2_size: usize) -> Self {
+    pub fn new(zkapp1: &ZkApp1, zkapp2: &ZkApp2, srs_log2_size: usize) -> Self {
         let srs_size = 1 << srs_log2_size;
 
         let domain_fp = EvaluationDomains::<E1::ScalarField>::create(srs_size).unwrap();
@@ -116,8 +116,8 @@ where
             srs
         };
 
-        let circuit_zkapp1 = setup(&zkapp1);
-        let circuit_zkapp2 = setup(&zkapp2);
+        let circuit_zkapp1 = setup(zkapp1);
+        let circuit_zkapp2 = setup(zkapp2);
 
         assert_eq!(circuit_zkapp1.len(), srs_size);
         assert_eq!(circuit_zkapp2.len(), srs_size);

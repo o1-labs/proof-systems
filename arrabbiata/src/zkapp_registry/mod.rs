@@ -1,9 +1,12 @@
 use crate::{
-    column::E, curve::ArrabbiataCurve, interpreter::InterpreterEnv, MAX_DEGREE,
-    MV_POLYNOMIAL_ARITY, NUMBER_OF_COLUMNS,
+    challenge::Challenges, column::E, curve::ArrabbiataCurve, interpreter::InterpreterEnv,
+    setup2::IndexedRelation, witness2::Env, MAX_DEGREE, MV_POLYNOMIAL_ARITY, NUMBER_OF_COLUMNS,
 };
+use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
 use mvpoly::{monomials::Sparse, MVPoly};
+use num_bigint::BigInt;
+use poly_commitment::{commitment::CommitmentCurve, PolyComm};
 use std::{collections::HashMap, hash::Hash};
 
 pub mod minroot;
@@ -113,6 +116,48 @@ where
     type Verifier: VerifierApp<C>;
 }
 
+pub struct ZkAppState<C>
+where
+    C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
+{
+    pub accumulated_committed_state: Vec<PolyComm<C>>,
+
+    pub previous_committed_state: Vec<PolyComm<C>>,
+
+    pub accumulated_program_state: Vec<Vec<C::ScalarField>>,
+
+    pub accumulated_challenges: Challenges<BigInt>,
+
+    pub previous_challenges: Challenges<BigInt>,
+}
+
+impl<C> ZkAppState<C>
+where
+    C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
+{
+    pub fn new() -> Self {
+        Self {
+            accumulated_committed_state: vec![],
+            previous_committed_state: vec![],
+            accumulated_program_state: vec![],
+            accumulated_challenges: Challenges::default(),
+            previous_challenges: Challenges::default(),
+        }
+    }
+}
+
+impl<C> Default for ZkAppState<C>
+where
+    C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Execute the ZkApp `zkapp` over the interpreter environment `env`.
 /// This is a generic function that can be used to execute any ZkApp.
 pub fn execute<E, C, Z>(zkapp: &Z, env: &mut E)
@@ -203,4 +248,61 @@ where
         instr = zkapp.fetch_next_instruction(i);
     }
     constraints
+}
+
+pub fn fold<Fp, Fq, C1, C2, Z1, Z2>(
+    zkapp1: &Z1,
+    zkapp2: &Z2,
+    n: usize,
+) -> Env<C1::ScalarField, C2::ScalarField, C1, C2, Z1, Z2>
+where
+    Fp: PrimeField,
+    Fq: PrimeField,
+    C1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
+    C2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
+    C1::BaseField: PrimeField,
+    C2::BaseField: PrimeField,
+    <<C1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    <<C2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    Z1: VerifiableZkApp<C1, Verifier = verifier::Verifier<C1>>,
+    Z2: VerifiableZkApp<C2, Verifier = verifier::Verifier<C2>>,
+{
+    let srs_log2_size = 16;
+    let indexed_relation = IndexedRelation::new(zkapp1, zkapp2, srs_log2_size);
+    let mut env = Env::<C1::ScalarField, C2::ScalarField, C1, C2, Z1, Z2>::new(indexed_relation);
+    let mut i = 0;
+    while i < n {
+        execute(zkapp1, &mut env);
+        execute(zkapp2, &mut env);
+        i += 1;
+    }
+    env
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use ark_ff::UniformRand;
+    use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
+
+    #[test]
+    fn test_minroot_fold() {
+        let mut rng = o1_utils::tests::make_test_rng(None);
+
+        let zkapp1: verifiable_minroot::MinRoot<Vesta> = {
+            let x = Fp::rand(&mut rng);
+            let y = Fp::rand(&mut rng);
+            let n = 1000;
+            verifiable_minroot::MinRoot::<Vesta>::new(x, y, n)
+        };
+        let zkapp2: verifiable_minroot::MinRoot<Pallas> = {
+            let x = Fq::rand(&mut rng);
+            let y = Fq::rand(&mut rng);
+            let n = 1000;
+            verifiable_minroot::MinRoot::<Pallas>::new(x, y, n)
+        };
+
+        // Fold 1000 times both zkapps
+        let _res = fold(&zkapp1, &zkapp2, 1000);
+    }
 }
