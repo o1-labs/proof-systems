@@ -1741,7 +1741,8 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> Expr<ConstantExpr<F, Challe
     }
 }
 
-/// Return the value at the given row of the evaluation of this expression.
+/// Return the value at the given row of the evaluations of the expression.  Used to implement
+/// `EvaluationsIter`.
 pub fn value_<
     'a,
     ChallengeTerm: Copy,
