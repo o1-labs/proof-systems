@@ -24,7 +24,7 @@ use ark_poly::{
 use mina_poseidon::FqSponge;
 use rand_core::{CryptoRng, RngCore};
 
-pub trait SRS<G: CommitmentCurve>: Clone + Sized {
+pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     /// The maximum polynomial degree that can be committed to
     fn max_poly_size(&self) -> usize;
 
