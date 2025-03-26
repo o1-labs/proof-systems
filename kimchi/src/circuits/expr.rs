@@ -1741,9 +1741,64 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> Expr<ConstantExpr<F, Challe
     }
 }
 
+/// Compute the `x`th unnormalized lagrange evaluation
+fn xth_unnormalized_lagrange_eval<
+    'a,
+    F: FftField,
+    ChallengeTerm,
+    Challenge: Index<ChallengeTerm, Output = F>,
+    Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge>,
+>(
+    l0_1: F,
+    i: i32,
+    res_domain: Domain,
+    env: &Environment,
+    x: u64,
+) -> F {
+    // Stolen from unnormalized_lagrange_evals in this file.
+    let k = match res_domain {
+        Domain::D1 => 1,
+        Domain::D2 => 2,
+        Domain::D4 => 4,
+        Domain::D8 => 8,
+    };
+    let d1 = env.get_domain(Domain::D1);
+    let n = d1.size;
+    // Renormalize negative values to wrap around at domain size
+    let orig_i = i;
+    let i = if i < 0 {
+        ((i as isize) + (n as isize)) as usize
+    } else {
+        i as usize
+    };
+    let ii = i as u64;
+    assert!(ii < n);
+    let omega = d1.group_gen;
+    let omega_i = omega.pow([ii]);
+    let omega_minus_i = omega.pow([n - ii]);
+    let omega_x = omega.pow([x]);
+
+    let eval: F = {
+        let v = omega_x - omega_i;
+        v.inverse().unwrap()
+    };
+
+    let ret = if (k as usize) * i == x as usize {
+        omega_minus_i * l0_1
+    } else if x % k == 0 {
+        F::zero()
+    } else {
+        eval * (omega_x - F::one())
+    };
+
+    assert!(ret == unnormalized_lagrange_evals(l0_1, orig_i, res_domain, env)[x as usize], "Remove me!  This is a check to make sure this function is right with respect to the original.");
+
+    ret
+}
+
 /// Return the value at the given row of the evaluations of the expression.  Used to implement
 /// `EvaluationsIter`.
-pub fn value_<
+fn value_<
     'a,
     ChallengeTerm: Copy,
     Column: Copy,
@@ -1758,9 +1813,32 @@ pub fn value_<
 ) -> Option<F> {
     match expr {
         Expr::Atom(ExprInner::Constant(c)) => Some(*c),
-        Expr::Atom(ExprInner::Cell(var)) => env.get_column(&var.col).map(|evals| evals.evals[row]),
-        Expr::Atom(ExprInner::UnnormalizedLagrangeBasis(i)) => todo!(),
-        Expr::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) => todo!(),
+        Expr::Atom(ExprInner::Cell(var)) => env.get_column(&var.col).and_then(|evals| {
+            if row < evals.evals.len() {
+                Some(evals.evals[row])
+            } else {
+                None
+            }
+        }),
+        Expr::Atom(ExprInner::UnnormalizedLagrangeBasis(i)) => {
+            // TODO: Is this correct?  Always?
+            let res_domain = Domain::D8;
+            let offset = if i.zk_rows {
+                -(env.get_constants().zk_rows as i32) + i.offset
+            } else {
+                i.offset
+            };
+            Some(xth_unnormalized_lagrange_eval(
+                env.l0_1(),
+                offset,
+                res_domain,
+                env,
+                row.try_into().unwrap(),
+            ))
+        }
+        Expr::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) => {
+            Some(env.vanishes_on_zero_knowledge_and_previous_rows()[row])
+        }
         Expr::Double(x) => value_(x, env, cache, row).map(|x| x.double()),
         Expr::Square(x) => value_(x, env, cache, row).map(|x| x.square()),
         Expr::Pow(x, n) => value_(x, env, cache, row).map(|x| x.pow([*n])),
