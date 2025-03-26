@@ -79,7 +79,11 @@ strum_macros = "0.26.1"
 syn = { version = "1.0.109", features = ["full"] }
 thiserror = "1.0.30"
 tinytemplate = "1.1"
-wasm-bindgen = "=0.2.87"
+# Strictly enforcing to 0.2.100
+# The version must be the same as in the subdirectory
+# src/lib/crypto/kimchi_bindings/wasm/Cargo.toml in the repository
+# MinaProtocol/Mina
+wasm-bindgen = "=0.2.100"
 
 arrabbiata = { path = "./arrabbiata", version = "0.1.0" }
 folding = { path = "./folding", version = "0.1.0" }
