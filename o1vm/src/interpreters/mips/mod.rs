@@ -27,3 +27,12 @@ pub mod tests_helpers;
 pub mod witness;
 
 pub use interpreter::{ITypeInstruction, Instruction, JTypeInstruction, RTypeInstruction};
+
+/// Maximum degree of the constraints.
+/// It does include the additional degree induced by the multiplication of the
+/// selectors.
+pub const MAXIMUM_DEGREE_CONSTRAINTS: u64 = 6;
+
+/// Total number of constraints for all instructions, including the constraints
+/// added for the selectors.
+pub const TOTAL_NUMBER_OF_CONSTRAINTS: usize = 466;
