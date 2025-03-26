@@ -11,7 +11,7 @@ use saffron::{
     cli::{self, HexString},
     commitment::commit_to_field_elems,
     env,
-    proof::{self, StorageProof},
+    storage_proof::{self, StorageProof},
     utils,
 };
 use std::{
@@ -127,7 +127,7 @@ pub fn storage_proof(args: cli::StorageProofArgs) -> Result<HexString> {
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
         let mut rng = OsRng;
         let evaluation_point = utils::encode(&args.challenge.0);
-        proof::storage_proof::<Vesta, VestaFqSponge>(
+        storage_proof::prove::<Vesta, VestaFqSponge>(
             &srs,
             &group_map,
             blob,
@@ -146,7 +146,7 @@ pub fn verify_storage_proof(args: cli::VerifyStorageProofArgs) -> Result<()> {
     let evaluation_point = utils::encode(&args.challenge.0);
     let proof: StorageProof<Vesta> = rmp_serde::from_slice(&args.proof.0)?;
     let mut rng = OsRng;
-    let res = proof::verify_storage_proof::<Vesta, VestaFqSponge>(
+    let res = storage_proof::verify_fast::<Vesta, VestaFqSponge>(
         &srs,
         &group_map,
         commitment,

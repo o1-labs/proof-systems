@@ -27,7 +27,7 @@ pub struct StorageProof<G: CommitmentCurve> {
 }
 
 #[instrument(skip_all, level = "debug")]
-pub fn storage_proof<G: KimchiCurve, EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
+pub fn prove<G: KimchiCurve, EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
     srs: &SRS<G>,
     group_map: &G::Map,
     blob: FieldBlob<G>,
@@ -80,10 +80,7 @@ where
 }
 
 #[instrument(skip_all, level = "debug")]
-pub fn verify_storage_proof<
-    G: KimchiCurve,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
->(
+pub fn verify_fast<G: KimchiCurve, EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
     srs: &SRS<G>,
     group_map: &G::Map,
     commitment: PolyComm<G>,
@@ -159,11 +156,11 @@ mod tests {
         };
         let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &data);
         let evaluation_point = Fp::rand(&mut rng);
-        let proof = storage_proof::<
+        let proof = prove::<
             Vesta, VestaFqSponge
 
         >(&*SRS, &*GROUP_MAP, blob, evaluation_point, &mut rng);
-        let res = verify_storage_proof::<Vesta, VestaFqSponge>(
+        let res = verify_fast::<Vesta, VestaFqSponge>(
             &*SRS,
             &*GROUP_MAP,
             commitment.folded,
