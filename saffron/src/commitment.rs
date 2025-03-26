@@ -18,24 +18,16 @@ use tracing::instrument;
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(bound = "G::ScalarField: CanonicalDeserialize + CanonicalSerialize")]
-pub struct Commitment<G: CommitmentCurve> {
+pub struct CommittedData<G: CommitmentCurve> {
     pub chunks: Vec<PolyComm<G>>,
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub alpha: G::ScalarField,
-    pub folded: PolyComm<G>,
 }
 
-impl<G: KimchiCurve> Commitment<G> {
+impl<G: KimchiCurve> CommittedData<G> {
     pub fn from_chunks<EFqSponge>(chunks: Vec<PolyComm<G>>, sponge: &mut EFqSponge) -> Self
     where
         EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
     {
-        let (folded, alpha) = fold_commitments(sponge, &chunks);
-        Self {
-            chunks,
-            alpha,
-            folded,
-        }
+        Self { chunks }
     }
 
     pub fn update<EFqSponge>(&self, diff: Vec<PolyComm<G>>, sponge: &mut EFqSponge) -> Self
@@ -52,7 +44,7 @@ pub fn commit_to_field_elems<G: KimchiCurve, EFqSponge>(
     srs: &SRS<G>,
     domain: D<G::ScalarField>,
     field_elems: Vec<Vec<G::ScalarField>>,
-) -> Commitment<G>
+) -> CommittedData<G>
 where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
 {
@@ -64,11 +56,11 @@ where
         })
         .collect();
     let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
-    Commitment::from_chunks(commitments, &mut sponge)
+    CommittedData::from_chunks(commitments, &mut sponge)
 }
 
 #[instrument(skip_all, level = "debug")]
-fn fold_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
+pub fn fold_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
     sponge: &mut EFqSponge,
     commitments: &[PolyComm<G>],
 ) -> (PolyComm<G>, G::ScalarField) {

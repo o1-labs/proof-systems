@@ -5,11 +5,12 @@ use rayon::prelude::*;
 use thiserror::Error;
 use tracing::instrument;
 
-// sparse representation, keeping only the non-zero differences
+/// Diff request pointing to a single commitment.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Diff<F: PrimeField> {
-    pub chunks: Vec<Vec<(usize, F)>>,
-    pub new_byte_len: usize,
+    pub region: u64,
+    pub addresses: Vec<u64>,
+    pub new_values: Vec<F>,
 }
 
 #[derive(Debug, Error, Clone, PartialEq)]
@@ -22,57 +23,57 @@ pub enum DiffError {
 }
 
 impl<F: PrimeField> Diff<F> {
-    #[instrument(skip_all, level = "debug")]
-    pub fn create<D: EvaluationDomain<F>>(
-        domain: &D,
-        old: &[u8],
-        new: &[u8],
-    ) -> Result<Diff<F>, DiffError> {
-        let old_elems: Vec<Vec<F>> = encode_for_domain(domain, old);
-        let mut new_elems: Vec<Vec<F>> = encode_for_domain(domain, new);
-        if old_elems.len() < new_elems.len() {
-            return Err(DiffError::CapacityMismatch {
-                max_number_chunks: old_elems.len(),
-                attempted: new_elems.len(),
-            });
-        }
-        if old_elems.len() > new_elems.len() {
-            let padding = vec![F::zero(); domain.size()];
-            new_elems.resize(old_elems.len(), padding);
-        }
-        Ok(Diff {
-            new_byte_len: new.len(),
-            chunks: new_elems
-                .par_iter()
-                .zip(old_elems)
-                .map(|(n, o)| {
-                    n.iter()
-                        .zip(o)
-                        .enumerate()
-                        .map(|(index, (a, b))| (index, *a - b))
-                        .filter(|(_, x)| !x.is_zero())
-                        .collect()
-                })
-                .collect(),
-        })
-    }
-
-    #[instrument(skip_all, level = "debug")]
-    pub fn as_evaluations(
-        &self,
-        domain: &Radix2EvaluationDomain<F>,
-    ) -> Vec<Evaluations<F, Radix2EvaluationDomain<F>>> {
-        self.chunks
-            .par_iter()
-            .map(|diff| {
-                let mut evals = vec![F::zero(); domain.size()];
-                diff.iter().for_each(|(j, val)| {
-                    evals[*j] = *val;
-                });
-                Evaluations::from_vec_and_domain(evals, *domain)
-            })
-            .collect()
-    }
+    //    #[instrument(skip_all, level = "debug")]
+    //    pub fn create_from_bytes<D: EvaluationDomain<F>>(
+    //        domain: &D,
+    //        old: &[u8],
+    //        new: &[u8],
+    //    ) -> Result<Diff<F>, DiffError> {
+    //        let old_elems: Vec<Vec<F>> = encode_for_domain(domain, old);
+    //        let mut new_elems: Vec<Vec<F>> = encode_for_domain(domain, new);
+    //        if old_elems.len() < new_elems.len() {
+    //            return Err(DiffError::CapacityMismatch {
+    //                max_number_chunks: old_elems.len(),
+    //                attempted: new_elems.len(),
+    //            });
+    //        }
+    //        if old_elems.len() > new_elems.len() {
+    //            let padding = vec![F::zero(); domain.size()];
+    //            new_elems.resize(old_elems.len(), padding);
+    //        }
+    //        Ok(Diff {
+    //            new_byte_len: new.len(),
+    //            chunks: new_elems
+    //                .par_iter()
+    //                .zip(old_elems)
+    //                .map(|(n, o)| {
+    //                    n.iter()
+    //                        .zip(o)
+    //                        .enumerate()
+    //                        .map(|(index, (a, b))| (index, *a - b))
+    //                        .filter(|(_, x)| !x.is_zero())
+    //                        .collect()
+    //                })
+    //                .collect(),
+    //        })
+    //    }
+    //
+    //    #[instrument(skip_all, level = "debug")]
+    //    pub fn as_evaluations(
+    //        &self,
+    //        domain: &Radix2EvaluationDomain<F>,
+    //    ) -> Vec<Evaluations<F, Radix2EvaluationDomain<F>>> {
+    //        self.chunks
+    //            .par_iter()
+    //            .map(|diff| {
+    //                let mut evals = vec![F::zero(); domain.size()];
+    //                diff.iter().for_each(|(j, val)| {
+    //                    evals[*j] = *val;
+    //                });
+    //                Evaluations::from_vec_and_domain(evals, *domain)
+    //            })
+    //            .collect()
+    //    }
 }
 
 #[cfg(test)]

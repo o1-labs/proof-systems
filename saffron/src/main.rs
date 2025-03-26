@@ -60,7 +60,7 @@ fn decode_file(args: cli::DecodeFileArgs) -> Result<()> {
     );
     let file = File::open(args.input)?;
     let blob: FieldBlob<Vesta> = rmp_serde::decode::from_read(file)?;
-    let data = FieldBlob::<Vesta>::decode(domain, blob);
+    let data = FieldBlob::<Vesta>::into_bytes(domain, blob);
     debug!(output_file = args.output, "Writing decoded blob to file");
     let mut writer = File::create(args.output)?;
     writer.write_all(&data)?;
@@ -77,18 +77,18 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
     let mut file = File::open(args.input)?;
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
-    let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&srs, domain, &buf);
+    let blob = FieldBlob::<Vesta>::from_bytes::<_, VestaFqSponge>(&srs, domain, &buf);
     if let Some(asserted) = args.assert_commitment {
         let asserted_commitment =
             rmp_serde::from_slice(&asserted.0).expect("failed to decode asserted commitment");
 
         assert_eq!(
-            blob.commitment.folded,
+            blob.commitments.folded,
             asserted_commitment,
             "commitment mismatch: asserted {}, computed {}",
             asserted,
             HexString(
-                rmp_serde::encode::to_vec(&blob.commitment.folded)
+                rmp_serde::encode::to_vec(&blob.commitments.folded)
                     .expect("failed to encode commitment")
             )
         );
