@@ -1,11 +1,11 @@
-use crate::blob::FieldBlob;
-use ark_ec::AffineRepr;
+use crate::{blob::FieldBlob, Curve, CurveFqSponge, ProjectiveCurve, ScalarField, SRS_SIZE};
+use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::{One, PrimeField, Zero};
-use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as D};
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_poly::{
+    EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D, Radix2EvaluationDomain,
+};
 use kimchi::curve::KimchiCurve;
 use mina_poseidon::FqSponge;
-use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
     commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
@@ -13,123 +13,185 @@ use poly_commitment::{
     PolyComm,
 };
 use rand::rngs::OsRng;
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use tracing::instrument;
 
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(bound = "G::ScalarField : CanonicalDeserialize + CanonicalSerialize")]
-pub struct StorageProof<G: CommitmentCurve> {
+pub struct StorageProof {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub evaluation: G::ScalarField,
-    pub opening_proof: OpeningProof<G>,
+    pub combined_data_eval: ScalarField,
+    pub opening_proof: OpeningProof<Curve>,
 }
 
 #[instrument(skip_all, level = "debug")]
-pub fn prove<G: KimchiCurve, EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
-    srs: &SRS<G>,
-    group_map: &G::Map,
-    blob: FieldBlob<G>,
-    evaluation_point: G::ScalarField,
+pub fn prove(
+    srs: &SRS<Curve>,
+    group_map: &<Curve as CommitmentCurve>::Map,
+    blob: FieldBlob,
+    challenge: ScalarField,
     rng: &mut OsRng,
-) -> StorageProof<G>
-where
-    G::BaseField: PrimeField,
-{
-    let p = {
-        let init = (DensePolynomial::zero(), G::ScalarField::one());
-        blob.chunks
-            .into_iter()
-            .fold(init, |(acc_poly, curr_power), curr_poly| {
-                (
-                    acc_poly + curr_poly.scale(curr_power),
-                    curr_power * blob.commitment.alpha,
-                )
-            })
-            .0
+) -> StorageProof {
+    // TODO: Cache this somewhere
+    let domain = Radix2EvaluationDomain::new(SRS_SIZE).unwrap();
+
+    let final_chunk = (blob.data.len() / SRS_SIZE) - 1;
+    assert!(blob.data.len() % SRS_SIZE == 0);
+
+    // powers of challenge
+    let powers: Vec<_> = blob
+        .commitments
+        .iter()
+        .scan(ScalarField::one(), |acc, _| {
+            let res = *acc;
+            *acc *= challenge;
+            Some(res.into_bigint())
+        })
+        .collect();
+
+    // ∑_{i=1} com_i^{challenge^i}
+    let combined_data_commitment =
+        ProjectiveCurve::msm_bigint(blob.commitments.as_slice(), powers.as_slice()).into_affine();
+
+    // Computes ∑_j chal^{j} data[j*SRS_SIZE + i]
+    // where j ∈ [0..final_chunk], so the power corresponding to
+    // the first chunk is 0 (chal^0 = 1).
+    let combined_data: Vec<ScalarField> = {
+        let mut initial: Vec<ScalarField> = blob.data
+            [final_chunk * SRS_SIZE..(final_chunk + 1) * SRS_SIZE]
+            .iter()
+            .cloned()
+            .collect();
+
+        (0..final_chunk).into_iter().rev().for_each(|chunk_ix| {
+            initial.par_iter_mut().enumerate().for_each(|(idx, acc)| {
+                *acc *= challenge;
+                *acc += blob.data[chunk_ix * SRS_SIZE + idx];
+            });
+        });
+
+        initial
     };
-    let evaluation = p.evaluate(&evaluation_point);
-    let opening_proof_sponge = {
-        let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
-        // TODO: check and see if we need to also absorb the absorb the poly cm
-        // see https://github.com/o1-labs/proof-systems/blob/feature/test-data-storage-commitments/data-storage/src/main.rs#L265-L269
-        sponge.absorb_fr(&[evaluation]);
-        sponge
-    };
-    let opening_proof = srs.open(
+
+    let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+    fq_sponge.absorb_g(&[combined_data_commitment]);
+    let evaluation_point = fq_sponge.squeeze(2);
+
+    let combined_data_poly = Evaluations::from_vec_and_domain(combined_data, domain).interpolate();
+    let combined_data_eval = combined_data_poly.evaluate(&evaluation_point);
+
+    let mut opening_proof_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+    // TODO: check and see if we need to also absorb the absorb the poly cm
+    // see https://github.com/o1-labs/proof-systems/blob/feature/test-data-storage-commitments/data-storage/src/main.rs#L265-L269
+    opening_proof_sponge.absorb_fr(&[combined_data_eval]);
+
+    let opening_proof =
+        srs.open(
             group_map,
-            &[(
-                DensePolynomialOrEvaluations::<<G as AffineRepr>::ScalarField, D<G::ScalarField>> ::DensePolynomial(
-                    &p,
+            &[
+                (
+                    DensePolynomialOrEvaluations::<
+                        <Curve as AffineRepr>::ScalarField,
+                        D<ScalarField>,
+                    >::DensePolynomial(&combined_data_poly),
+                    PolyComm {
+                        chunks: vec![ScalarField::zero()],
+                    },
                 ),
-                PolyComm {
-                    chunks: vec![G::ScalarField::zero()],
-                },
-            )],
+            ],
             &[evaluation_point],
-            G::ScalarField::one(), // Single evaluation, so we don't care
-            G::ScalarField::one(), // Single evaluation, so we don't care
+            ScalarField::one(), // Single evaluation, so we don't care
+            ScalarField::one(), // Single evaluation, so we don't care
             opening_proof_sponge,
             rng,
         );
+
     StorageProof {
-        evaluation,
+        combined_data_eval,
         opening_proof,
     }
 }
 
 #[instrument(skip_all, level = "debug")]
-pub fn verify_fast<G: KimchiCurve, EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
-    srs: &SRS<G>,
-    group_map: &G::Map,
-    commitment: PolyComm<G>,
-    evaluation_point: G::ScalarField,
-    proof: &StorageProof<G>,
+pub fn verify_fast(
+    srs: &SRS<Curve>,
+    group_map: &<Curve as CommitmentCurve>::Map,
+    combined_data_commitment: Curve,
+    proof: &StorageProof,
     rng: &mut OsRng,
-) -> bool
-where
-    G::BaseField: PrimeField,
-{
-    let mut opening_proof_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    opening_proof_sponge.absorb_fr(&[proof.evaluation]);
+) -> bool {
+    let evaluation_point = {
+        let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+        fq_sponge.absorb_g(&[combined_data_commitment]);
+        fq_sponge.squeeze(2)
+    };
+
+    let mut opening_proof_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+    opening_proof_sponge.absorb_fr(&[proof.combined_data_eval]);
 
     srs.verify(
         group_map,
         &mut [BatchEvaluationProof {
             sponge: opening_proof_sponge.clone(),
             evaluation_points: vec![evaluation_point],
-            polyscale: G::ScalarField::one(),
-            evalscale: G::ScalarField::one(),
+            polyscale: ScalarField::one(),
+            evalscale: ScalarField::one(),
             evaluations: vec![Evaluation {
-                commitment,
-                evaluations: vec![vec![proof.evaluation]],
+                commitment: PolyComm {
+                    chunks: vec![combined_data_commitment],
+                },
+                evaluations: vec![vec![proof.combined_data_eval]],
             }],
             opening: &proof.opening_proof,
-            combined_inner_product: proof.evaluation,
+            combined_inner_product: proof.combined_data_eval,
         }],
         rng,
     )
+}
+
+#[instrument(skip_all, level = "debug")]
+pub fn verify_full(
+    srs: &SRS<Curve>,
+    group_map: &<Curve as CommitmentCurve>::Map,
+    commitments: &[Curve],
+    challenge: ScalarField, // this could be merkle tree root
+    proof: &StorageProof,
+    rng: &mut OsRng,
+) -> bool {
+    let powers = commitments
+        .iter()
+        .scan(ScalarField::one(), |acc, _| {
+            let res = *acc;
+            *acc *= challenge;
+            Some(res.into_bigint())
+        })
+        .collect::<Vec<_>>();
+
+    // randomised data commitment is ∏ C_i^{chal^i} for all chunks
+    let combined_data_commitment =
+        ProjectiveCurve::msm_bigint(commitments, powers.as_slice()).into_affine();
+
+    verify_fast(srs, group_map, combined_data_commitment, proof, rng)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{
-        commitment::commit_to_field_elems,
+        commitment::{combine_commitments, commit_to_field_elems},
         env,
         utils::{encode_for_domain, test_utils::UserData},
     };
+
+    use ark_ff::UniformRand;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
-    use ark_std::UniformRand;
     use kimchi::groupmap::GroupMap;
-    use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-    use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
+    use mina_curves::pasta::{Fp, Vesta};
     use once_cell::sync::Lazy;
     use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
     use proptest::prelude::*;
-
-    type VestaFqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 
     static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
         if let Ok(srs) = std::env::var("SRS_FILEPATH") {
@@ -150,21 +212,26 @@ mod tests {
     #[test]
     fn test_storage_prove_verify(UserData(data) in UserData::arbitrary()) {
         let mut rng = OsRng;
-        let commitment = {
-            let field_elems = encode_for_domain(&*DOMAIN, &data);
-            commit_to_field_elems::<_, VestaFqSponge>(&*SRS, *DOMAIN, field_elems)
+        let commitments = {
+              let field_elems: Vec<_> = encode_for_domain(&*DOMAIN, &data).into_iter().flatten().collect();
+              commit_to_field_elems(&*SRS, &field_elems)
         };
-        let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&*SRS, *DOMAIN, &data);
-        let evaluation_point = Fp::rand(&mut rng);
-        let proof = prove::<
-            Vesta, VestaFqSponge
 
-        >(&*SRS, &*GROUP_MAP, blob, evaluation_point, &mut rng);
-        let res = verify_fast::<Vesta, VestaFqSponge>(
+        // extra seed
+        let challenge_seed: ScalarField = ScalarField::rand(&mut rng);
+
+        let mut sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+        sponge.absorb_fr(&[challenge_seed]);
+        let (combined_data_commitment, challenge) =
+            combine_commitments(&mut sponge, commitments.as_slice());
+
+        let blob = FieldBlob::from_bytes::<_>(&*SRS, *DOMAIN, &data);
+
+        let proof = prove(&*SRS, &*GROUP_MAP, blob, challenge, &mut rng);
+        let res = verify_fast(
             &*SRS,
             &*GROUP_MAP,
-            commitment.folded,
-            evaluation_point,
+            combined_data_commitment,
             &proof,
             &mut rng,
         );
