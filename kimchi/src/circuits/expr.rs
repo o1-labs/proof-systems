@@ -1746,8 +1746,8 @@ fn xth_unnormalized_lagrange_eval<
     'a,
     F: FftField,
     ChallengeTerm,
-    Challenge: Index<ChallengeTerm, Output = F>,
-    Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge>,
+    Challenges: Index<ChallengeTerm, Output = F>,
+    Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenges>,
 >(
     l0_1: F,
     i: i32,
@@ -1755,13 +1755,8 @@ fn xth_unnormalized_lagrange_eval<
     env: &Environment,
     x: u64,
 ) -> F {
-    // Stolen from unnormalized_lagrange_evals in this file.
-    let k = match res_domain {
-        Domain::D1 => 1,
-        Domain::D2 => 2,
-        Domain::D4 => 4,
-        Domain::D8 => 8,
-    };
+    // This function is stolen from unnormalized_lagrange_evals in this file.
+    let k = res_domain as u64;
     let d1 = env.get_domain(Domain::D1);
     let n = d1.size;
     // Renormalize negative values to wrap around at domain size
@@ -1813,15 +1808,22 @@ fn value_<
 ) -> Option<F> {
     match expr {
         Expr::Atom(ExprInner::Constant(c)) => Some(*c),
-        Expr::Atom(ExprInner::Cell(var)) => env.get_column(&var.col).and_then(|evals| {
-            if row < evals.evals.len() {
-                Some(evals.evals[row])
+        Expr::Atom(ExprInner::Cell(var)) => 
+        // MARC
+        match env.get_column(&var.col) {
+            None => if row < env.get_domain(env.column_domain(&var.col)).size() {
+                Some(F::zero())
             } else {
                 None
-            }
-        }),
+            },
+            Some(e) => if row < env.get_domain(env.column_domain(&var.col)).size() {
+                Some(e.evals[row])
+            } else {
+                None
+            },
+        },
         Expr::Atom(ExprInner::UnnormalizedLagrangeBasis(i)) => {
-            // TODO: Is this correct?  Always?
+            // MARC: Is this correct?  Always?
             let res_domain = Domain::D8;
             let offset = if i.zk_rows {
                 -(env.get_constants().zk_rows as i32) + i.offset
@@ -2190,8 +2192,8 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
         'a,
         'b,
         ChallengeTerm,
-        Challenge: Index<ChallengeTerm, Output = F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+        Challenges: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenges, Column = Column>,
     >(
         &self,
         cache: &'b mut HashMap<CacheId, EvalResult<'a, F>>,

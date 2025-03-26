@@ -1,6 +1,6 @@
 use ark_ff::{Field, One, UniformRand, Zero};
 use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D, DenseUVPolynomial
 };
 use kimchi::{
     circuits::{
@@ -202,11 +202,66 @@ fn create_random_evaluation(domain: D<Fp>, rng: &mut impl rand::Rng) -> Evaluati
 
 #[test]
 fn test_evaluations_iter_agrees_with_evaluations() {
+
+    let mut rng = rand::thread_rng();
+
+    let gates = vec![
+        CircuitGate::create_generic_gadget(
+            Wire::for_row(0),
+            GenericGateSpec::Const(1u32.into()),
+            None,
+        ),
+        CircuitGate::create_generic_gadget(
+            Wire::for_row(1),
+            GenericGateSpec::Const(1u32.into()),
+            None,
+        ),
+    ];
+
+    let one = Fp::one();
+    let index = {
+        let constraint_system = ConstraintSystem::fp_for_testing(gates);
+        let srs = SRS::<Vesta>::create(constraint_system.domain.d1.size());
+        srs.get_lagrange_basis(constraint_system.domain.d1);
+        let srs = Arc::new(srs);
+
+        let (endo_q, _endo_r) = endos::<Pallas>();
+        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(constraint_system, endo_q, srs)
+    };
+
+    let witness_cols: [_; COLUMNS] = array::from_fn(|_| DensePolynomial::rand(4, &mut rng));
+    let permutation = DensePolynomial::zero();
+    let domain_evals = index.cs.evaluate(&witness_cols, &permutation);
+
+    let env = Environment {
+        constants: Constants {
+            endo_coefficient: one,
+            mds: &Vesta::sponge_params().mds,
+            zk_rows: 3,
+        },
+        challenges: BerkeleyChallenges {
+            alpha: one,
+            beta: one,
+            gamma: one,
+            joint_combiner: one,
+        },
+        witness: &domain_evals.d8.this.w,
+        coefficient: &index.column_evaluations.coefficients8,
+        vanishes_on_zero_knowledge_and_previous_rows: &index
+            .cs
+            .precomputations()
+            .vanishes_on_zero_knowledge_and_previous_rows,
+        z: &domain_evals.d8.this.z,
+        l0_1: l0_1(index.cs.domain.d1),
+        domain: index.cs.domain,
+        index: HashMap::new(),
+        lookup: None,
+    };
+/* 
     // FIXME: Fix log_domain_size = 16
     let domains = EvaluationDomains::<Fp>::create(1 << 16).unwrap();
-    let domain = domains.d1;
-    let mut rng = rand::thread_rng();
-    // FIXME: Use const
+    // MARC
+    let domain = domains.d8;
     // FIXME: Dedup
     let randomized_witness = (0..15)
         .map(|_| create_random_evaluation(domain, &mut rng))
@@ -248,7 +303,7 @@ fn test_evaluations_iter_agrees_with_evaluations() {
         domain: domains,
         lookup: None,
     };
-
+ */
     let mut expr: E<Fp> = E::zero();
     // (X0 + X1) * X2
     expr += witness_curr(0);
@@ -260,5 +315,11 @@ fn test_evaluations_iter_agrees_with_evaluations() {
     let evals1 = expr_prime.evaluations(&env).evals;
     let evals2 = expr.evaluations_iter(env).collect::<Vec<_>>();
 
-    assert_eq!(evals1.len(), evals2.len())
+    print!("e10: {:?}; e20: {:?}\n", evals1[0], evals2[0]);
+    assert_eq!(evals1[0], evals2[0]);
+    print!("e1s: {};  e2s: {}\n", evals1.len(), evals2.len());
+    for i in 0..evals1.len() {
+        assert_eq!(evals1[i], evals2[2 * i]);
+    }
+    assert_eq!(0, 1);
 }
