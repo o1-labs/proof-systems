@@ -17,6 +17,10 @@ pub fn decode_into<Fp: PrimeField>(buffer: &mut [u8], x: Fp) {
     buffer.copy_from_slice(&bytes);
 }
 
+pub fn decode_into_vec<Fp: PrimeField>(x: Fp) -> Vec<u8> {
+    x.into_bigint().to_bytes_be()
+}
+
 pub fn encode_as_field_elements<F: PrimeField>(bytes: &[u8]) -> Vec<F> {
     let n = (F::MODULUS_BIT_SIZE / 8) as usize;
     bytes

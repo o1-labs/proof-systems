@@ -1,23 +1,18 @@
 use crate::{
-    commitment::CommittedData,
     diff::Diff,
     utils::{decode_into, encode_for_domain},
-    BaseField, Curve, CurveFqSponge, ProjectiveCurve, ScalarField, SRS_SIZE,
+    Curve, ProjectiveCurve, ScalarField, SRS_SIZE,
 };
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
-use ark_ff::{One, PrimeField, Zero};
-use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain,
-};
+use ark_ff::{PrimeField, Zero};
+use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Radix2EvaluationDomain};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use kimchi::curve::KimchiCurve;
-use mina_poseidon::FqSponge;
 use o1_utils::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use tracing::{debug, debug_span, instrument};
+use tracing::{debug, instrument};
 
 /// A FieldBlob<F> is what Storage Provider stores per user's
 /// contract: a list of SRS_SIZE * chunk_size field elements, where
@@ -215,12 +210,12 @@ mod tests {
     #![proptest_config(ProptestConfig::with_cases(20))]
     #[test]
     fn test_round_trip_blob_encoding(UserData(xs) in UserData::arbitrary())
-      { let blob = FieldBlob::<Curve>::from_bytes::<_, CurveFqSponge>(&*SRS, *DOMAIN, &xs);
+      { let blob = FieldBlob::from_bytes::<_>(&*SRS, *DOMAIN, &xs);
         let bytes = rmp_serde::to_vec(&blob).unwrap();
         let a = rmp_serde::from_slice(&bytes).unwrap();
         // check that ark-serialize is behaving as expected
         prop_assert_eq!(blob.clone(), a);
-        let ys = FieldBlob::<Curve>::into_bytes(*DOMAIN, blob);
+        let ys = FieldBlob::into_bytes(*DOMAIN, blob);
         // check that we get the byte blob back again
         prop_assert_eq!(xs,ys);
       }
@@ -232,13 +227,13 @@ mod tests {
     fn test_user_and_storage_provider_commitments_equal(UserData(xs) in UserData::arbitrary())
       { let elems = encode_for_domain(&*DOMAIN, &xs);
         let user_commitments = commit_to_field_elems::<_, CurveFqSponge>(&*SRS, *DOMAIN, elems);
-        let blob = FieldBlob::<Curve>::from_bytes::<_, CurveFqSponge>(&*SRS, *DOMAIN, &xs);
+        let blob = FieldBlob::from_bytes::<_>(&*SRS, *DOMAIN, &xs);
         prop_assert_eq!(user_commitments, blob.commitments);
       }
     }
 
     fn encode_to_chunk_size(xs: &[u8], chunk_size: usize) -> FieldBlob {
-        let mut blob = FieldBlob::<Curve>::from_bytes::<_, CurveFqSponge>(&*SRS, *DOMAIN, xs);
+        let mut blob = FieldBlob::from_bytes::<_>(&*SRS, *DOMAIN, xs);
         assert!(blob.data.len() <= chunk_size);
         {
             let pad = DensePolynomial::zero();
@@ -262,7 +257,7 @@ mod tests {
             (UserData::arbitrary_with(DataSize::Medium).prop_flat_map(random_diff))
         ) {
             // start with some random user data
-            let mut xs_blob = FieldBlob::<Curve>::from_bytes::<_, CurveFqSponge>(&*SRS, *DOMAIN, &xs);
+            let mut xs_blob = FieldBlob::from_bytes::<_>(&*SRS, *DOMAIN, &xs);
             let diff = Diff::<ScalarField>::create(&*DOMAIN, &xs, &ys).unwrap();
 
             // check that the user and SP agree on the data
