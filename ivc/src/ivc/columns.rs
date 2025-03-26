@@ -203,7 +203,7 @@
 //!
 //! Total (CELL):         ~9233*N
 //!
-//!     ...which is less than 32k*N
+//! ...which is less than 32k*N
 //!
 //! In our particular case, CELL = 9233, so
 //!    N_IVC = 0.39 N_APP
