@@ -5,8 +5,8 @@ on:
   pull_request:
 
 jobs:
-  run_rust_formatting:
-    name: Formatting Rust related code
+  run_formatting_and_linting:
+    name: Formatting and linting
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -28,3 +28,8 @@ jobs:
       - name: Check formatting related to Rust code
         run: |
           make check-format
+
+      - name: Lint README.md
+        run: |
+          npm install -g markdownlint-cli
+          markdownlint README.md
