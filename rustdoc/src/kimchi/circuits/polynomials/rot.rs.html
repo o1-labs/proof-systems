@@ -369,6 +369,15 @@
 <a href="#369" id="369">369</a>
 <a href="#370" id="370">370</a>
 <a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
 </pre></div><pre class="rust"><code><span class="comment">//~ Rotation of a 64-bit word by a known offset
 
 </span><span class="kw">use </span><span class="kw">super</span>::range_check::witness::range_check_0_row;
@@ -403,12 +412,16 @@
 <span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// Creates a Rot64 gadget to rotate a word
     /// It will need:
-    /// - 1 Generic gate to constrain to zero the top 2 limbs of the shifted and excess witness of the rotation
+    /// - 1 Generic gate to constrain to zero the top 2 limbs of the shifted and
+    ///   excess witness of the rotation
     ///
     /// It has:
     /// - 1 Rot64 gate to rotate the word
-    /// - 1 RangeCheck0 to constrain the size of the shifted witness of the rotation
-    /// - 1 RangeCheck0 to constrain the size of the excess witness of the rotation
+    /// - 1 RangeCheck0 to constrain the size of the shifted witness of the
+    ///   rotation
+    /// - 1 RangeCheck0 to constrain the size of the excess witness of the
+    ///   rotation
+    ///
     /// Assumes:
     /// - the witness word is 64-bits, otherwise, will need to append a new RangeCheck0 for the word
     </span><span class="kw">pub fn </span>create_rot64(new_row: usize, rot: u32) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
@@ -434,11 +447,13 @@
     <span class="doccomment">/// Extend one rotation
     /// Right now it only creates a Generic gate followed by the Rot64 gates
     /// It allows to configure left or right rotation.
+    ///
     /// Input:
     /// - gates : the full circuit
     /// - rot : the rotation offset
     /// - side : the rotation side
     /// - zero_row : the row of the Generic gate to constrain the 64-bit check of shifted word
+    ///
     /// Warning:
     /// - witness word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
     /// - same with rotated word
@@ -457,9 +472,11 @@
     <span class="doccomment">/// Create one rotation
     /// Right now it only creates a Generic gate followed by the Rot64 gates
     /// It allows to configure left or right rotation.
+    ///
     /// Input:
     /// - rot : the rotation offset
     /// - side : the rotation side
+    ///
     /// Warning:
     /// - Word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
     /// - same with rotated word
@@ -695,6 +712,7 @@
 /// - word: 64-bit word to be rotated
 /// - rot:  rotation offset
 /// - side: side of the rotation, either left or right
+///
 /// Warning:
 /// - don&#39;t forget to include a public input row with zero value
 </span><span class="kw">pub fn </span>extend_rot&lt;F: PrimeField&gt;(

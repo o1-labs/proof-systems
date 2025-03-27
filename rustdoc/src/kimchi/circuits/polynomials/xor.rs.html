@@ -281,6 +281,13 @@
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module includes the definition of the XOR gadget for 64, 32, and 16 bits,
 //! the definition of the constraints of the `Xor16` circuit gate,
 //! and the code for witness generation for the XOR gadget.
@@ -309,12 +316,15 @@
 
 <span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// Extends a XOR gadget for `bits` length to a circuit
+    ///
     /// Includes:
     /// - num_xors Xor16 gates
     /// - 1 Generic gate to constrain the final row to be zero with itself
+    ///
     /// Input:
     /// - gates     : vector of circuit gates
     /// - bits      : length of the XOR gadget
+    ///
     /// Output:
     /// - new row index
     </span><span class="kw">pub fn </span>extend_xor_gadget(gates: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="self">Self</span>&gt;, bits: usize) -&gt; usize {
@@ -332,17 +342,21 @@
     }
 
     <span class="doccomment">/// Creates a XOR gadget for `bits` length
+    ///
     /// Includes:
     /// - num_xors Xor16 gates
     /// - 1 Generic gate to constrain the final row to be zero with itself
+    ///
     /// Input:
     /// - new_row   : row to start the XOR gadget
     /// - bits      : number of bits in the XOR
-    /// Outputs tuple (next_row, circuit_gates) where
+    ///   Outputs tuple (next_row, circuit_gates) where
     /// - next_row  : next row after this gate
     /// - gates     : vector of circuit gates comprising this gate
+    ///
     /// Warning:
-    /// - don&#39;t forget to check that the final row is all zeros as in `extend_xor_gadget`
+    /// - don&#39;t forget to check that the final row is all zeros as in
+    ///   `extend_xor_gadget`
     </span><span class="kw">pub fn </span>create_xor_gadget(new_row: usize, bits: usize) -&gt; (usize, Vec&lt;<span class="self">Self</span>&gt;) {
         <span class="kw">let </span>num_xors = num_xors(bits);
         <span class="kw">let </span><span class="kw-2">mut </span>xor_gates = (<span class="number">0</span>..num_xors)

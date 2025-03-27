@@ -1101,7 +1101,62 @@
 <a href="#1101" id="1101">1101</a>
 <a href="#1102" id="1102">1102</a>
 <a href="#1103" id="1103">1103</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the Keccak interpreter in charge of triggering the Keccak workflow
+<a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
+<a href="#1107" id="1107">1107</a>
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a>
+<a href="#1111" id="1111">1111</a>
+<a href="#1112" id="1112">1112</a>
+<a href="#1113" id="1113">1113</a>
+<a href="#1114" id="1114">1114</a>
+<a href="#1115" id="1115">1115</a>
+<a href="#1116" id="1116">1116</a>
+<a href="#1117" id="1117">1117</a>
+<a href="#1118" id="1118">1118</a>
+<a href="#1119" id="1119">1119</a>
+<a href="#1120" id="1120">1120</a>
+<a href="#1121" id="1121">1121</a>
+<a href="#1122" id="1122">1122</a>
+<a href="#1123" id="1123">1123</a>
+<a href="#1124" id="1124">1124</a>
+<a href="#1125" id="1125">1125</a>
+<a href="#1126" id="1126">1126</a>
+<a href="#1127" id="1127">1127</a>
+<a href="#1128" id="1128">1128</a>
+<a href="#1129" id="1129">1129</a>
+<a href="#1130" id="1130">1130</a>
+<a href="#1131" id="1131">1131</a>
+<a href="#1132" id="1132">1132</a>
+<a href="#1133" id="1133">1133</a>
+<a href="#1134" id="1134">1134</a>
+<a href="#1135" id="1135">1135</a>
+<a href="#1136" id="1136">1136</a>
+<a href="#1137" id="1137">1137</a>
+<a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
+<a href="#1141" id="1141">1141</a>
+<a href="#1142" id="1142">1142</a>
+<a href="#1143" id="1143">1143</a>
+<a href="#1144" id="1144">1144</a>
+<a href="#1145" id="1145">1145</a>
+<a href="#1146" id="1146">1146</a>
+<a href="#1147" id="1147">1147</a>
+<a href="#1148" id="1148">1148</a>
+<a href="#1149" id="1149">1149</a>
+<a href="#1150" id="1150">1150</a>
+<a href="#1151" id="1151">1151</a>
+<a href="#1152" id="1152">1152</a>
+<a href="#1153" id="1153">1153</a>
+<a href="#1154" id="1154">1154</a>
+<a href="#1155" id="1155">1155</a>
+<a href="#1156" id="1156">1156</a>
+<a href="#1157" id="1157">1157</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the Keccak interpreter in charge of triggering the
+//! Keccak workflow
 
 </span><span class="kw">use crate</span>::{
     interpreters::keccak::{
@@ -1135,7 +1190,8 @@
 };
 <span class="kw">use </span>std::{array, fmt::Debug};
 
-<span class="doccomment">/// This trait includes functionalities needed to obtain the variables of the Keccak circuit needed for constraints and witness
+<span class="doccomment">/// This trait includes functionalities needed to obtain the variables of the
+/// Keccak circuit needed for constraints and witness
 </span><span class="kw">pub trait </span>Interpreter&lt;F: One + Debug + Zero&gt; {
     <span class="kw">type </span>Variable: std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
@@ -1168,6 +1224,7 @@
     <span class="doccomment">/// Creates all 879 constraints/checks to the environment:
     /// - 733 constraints of degree 1
     /// - 146 constraints of degree 2
+    ///
     /// Where:
     /// - if Steps::Round(_)                -&gt; only 389 constraints added
     /// - if Steps::Sponge::Absorb::First   -&gt; only 332 constraints added (232 + 100)
@@ -1175,8 +1232,10 @@
     /// - if Steps::Sponge::Absorb::Last    -&gt; only 374 constraints added (232 + 136 + 6)
     /// - if Steps::Sponge::Absorb::Only    -&gt; only 474 constraints added (232 + 136 + 100 + 6)
     /// - if Steps::Sponge::Squeeze         -&gt; only 16  constraints added
+    ///
     /// So:
     /// - At most, 474 constraints are added per row
+    ///
     /// In particular, after folding:
     /// - 136 columns should be added for the degree-2 constraints of the flags
     /// - 5   columns should be added for the degree-2 constraints of the round
@@ -1209,6 +1268,7 @@
 
     <span class="doccomment">/// Constrains 136 checks of correctness of mode flags
     /// - 136 constraints of degree 2
+    ///
     /// Of which:
     /// - 136 constraints are added only if is_pad() holds
     </span><span class="kw">fn </span>constrain_flags(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps)
@@ -1222,6 +1282,7 @@
 
     <span class="doccomment">/// Constrains 136 checks of booleanity for some mode flags.
     /// - 136 constraints of degree 2
+    ///
     /// Of which,
     /// - 136 constraints are added only if is_pad() holds
     </span><span class="kw">fn </span>constrain_booleanity(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps)
@@ -1241,6 +1302,7 @@
     <span class="doccomment">/// Constrains 354 checks of sponge steps
     /// - 349 of degree 1
     /// - 5 of degree 2
+    ///
     /// Of which:
     /// - 232 constraints are added only if is_absorb() holds
     /// - 100 constraints are added only if is_root() holds
@@ -1254,6 +1316,7 @@
 
     <span class="doccomment">/// Constrains 332 checks of absorb sponges
     /// - 332 of degree 1
+    ///
     /// Of which:
     /// - 232 constraints are added only if is_absorb() holds
     /// - 100 constraints are added only if is_root() holds
@@ -1288,6 +1351,7 @@
     <span class="doccomment">/// Constrains 6 checks of padding absorb sponges
     /// - 1 of degree 1
     /// - 5 of degree 2
+    ///
     /// Of which:
     /// - 6 constraints are added only if is_pad() holds
     </span><span class="kw">fn </span>constrain_padding(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps) {
@@ -1312,6 +1376,7 @@
 
     <span class="doccomment">/// Constrains 16 checks of squeeze sponges
     /// - 16 of degree 1
+    ///
     /// Of which:
     /// - 16 constraints are added only if is_squeeze() holds
     </span><span class="kw">fn </span>constrain_squeeze(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps) {
@@ -1330,6 +1395,7 @@
     <span class="doccomment">/// Constrains 389 checks of round steps
     /// - 384 constraints of degree 1
     /// - 5 constraints of degree 2
+    ///
     /// Of which:
     /// - 389 constraints are added only if is_round() holds
     </span><span class="kw">fn </span>constrain_round(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps) {
@@ -1352,8 +1418,8 @@
     }
 
     <span class="doccomment">/// Constrains 35 checks of the theta algorithm in round steps
-    ///  - 30 constraints of degree 1
-    ///  - 5 constraints of degree 2
+    /// - 30 constraints of degree 1
+    /// - 5 constraints of degree 2
     </span><span class="kw">fn </span>constrain_theta(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps) -&gt; Vec&lt;Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt;&gt; {
         <span class="comment">// Define vectors storing expressions which are not in the witness layout for efficiency
         </span><span class="kw">let </span><span class="kw-2">mut </span>state_c = <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM];
@@ -1524,6 +1590,7 @@
     /// - 2 lookups for the inter-step channel
     /// - 136 lookups for the syscall channel (preimage bytes)
     /// - 1 lookups for the syscall channel (hash)
+    ///
     /// Of which:
     /// - 1623 lookups if Step::Round          (1621 + 2)
     /// - 537  lookups if Step::Absorb::First  (400 + 1 + 136)
@@ -1589,6 +1656,7 @@
     /// the hash (excludes the MSB)
     /// - if is_squeeze, adds 1 lookup
     /// - otherwise, adds 0 lookups
+    ///
     /// NOTE: this is excluding the MSB (which is then substituted with the
     ///       file descriptor).
     </span><span class="kw">fn </span>lookup_syscall_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps) {
@@ -1744,35 +1812,47 @@
     </span><span class="doccomment">/// SELECTOR OPERATIONS ///
     </span><span class="comment">///////////////////////////
 
-    </span><span class="doccomment">/// Returns a degree-2 variable that encodes whether the current step is a sponge (1 = yes)
+    </span><span class="doccomment">/// Returns a degree-2 variable that encodes whether the current step is a
+    /// sponge (1 = yes)
     </span><span class="kw">fn </span>is_sponge(<span class="kw-2">&amp;</span><span class="self">self</span>, step: Steps) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">Self</span>::xor(<span class="self">self</span>.is_absorb(step), <span class="self">self</span>.is_squeeze(step))
     }
-    <span class="doccomment">/// Returns a variable that encodes whether the current step is an absorb sponge (1 = yes)
+
+    <span class="doccomment">/// Returns a variable that encodes whether the current step is an absorb
+    /// sponge (1 = yes)
     </span><span class="kw">fn </span>is_absorb(<span class="kw-2">&amp;</span><span class="self">self</span>, step: Steps) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">Self</span>::or(
             <span class="self">Self</span>::or(<span class="self">self</span>.mode_root(step), <span class="self">self</span>.mode_rootpad(step)),
             <span class="self">Self</span>::or(<span class="self">self</span>.mode_pad(step), <span class="self">self</span>.mode_absorb(step)),
         )
     }
-    <span class="doccomment">/// Returns a variable that encodes whether the current step is a squeeze sponge (1 = yes)
+
+    <span class="doccomment">/// Returns a variable that encodes whether the current step is a squeeze
+    /// sponge (1 = yes)
     </span><span class="kw">fn </span>is_squeeze(<span class="kw-2">&amp;</span><span class="self">self</span>, step: Steps) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.mode_squeeze(step)
     }
-    <span class="doccomment">/// Returns a variable that encodes whether the current step is the first absorb sponge (1 = yes)
+
+    <span class="doccomment">/// Returns a variable that encodes whether the current step is the first
+    /// absorb sponge (1 = yes)
     </span><span class="kw">fn </span>is_root(<span class="kw-2">&amp;</span><span class="self">self</span>, step: Steps) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">Self</span>::or(<span class="self">self</span>.mode_root(step), <span class="self">self</span>.mode_rootpad(step))
     }
-    <span class="doccomment">/// Returns a degree-1 variable that encodes whether the current step is the last absorb sponge (1 = yes)
+
+    <span class="doccomment">/// Returns a degree-1 variable that encodes whether the current step is the
+    /// last absorb sponge (1 = yes)
     </span><span class="kw">fn </span>is_pad(<span class="kw-2">&amp;</span><span class="self">self</span>, step: Steps) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">Self</span>::or(<span class="self">self</span>.mode_pad(step), <span class="self">self</span>.mode_rootpad(step))
     }
-    <span class="doccomment">/// Returns a variable that encodes whether the current step is a permutation round (1 = yes)
+
+    <span class="doccomment">/// Returns a variable that encodes whether the current step is a
+    /// permutation round (1 = yes)
     </span><span class="kw">fn </span>is_round(<span class="kw-2">&amp;</span><span class="self">self</span>, step: Steps) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.mode_round(step)
     }
 
-    <span class="doccomment">/// Returns a variable that encodes whether the current step is an absorb sponge (1 = yes)
+    <span class="doccomment">/// Returns a variable that encodes whether the current step is an absorb
+    /// sponge (1 = yes)
     </span><span class="kw">fn </span>mode_absorb(<span class="kw-2">&amp;</span><span class="self">self</span>, step: Steps) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">match </span>step {
             Sponge(Absorb(Middle)) =&gt; <span class="self">Self</span>::one(),
@@ -1780,7 +1860,8 @@
         }
     }
 
-    <span class="doccomment">/// Returns a variable that encodes whether the current step is a squeeze sponge (1 = yes)
+    <span class="doccomment">/// Returns a variable that encodes whether the current step is a squeeze
+    /// sponge (1 = yes)
     </span><span class="kw">fn </span>mode_squeeze(<span class="kw-2">&amp;</span><span class="self">self</span>, step: Steps) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">match </span>step {
             Sponge(Squeeze) =&gt; <span class="self">Self</span>::one(),
@@ -1788,7 +1869,8 @@
         }
     }
 
-    <span class="doccomment">/// Returns a variable that encodes whether the current step is the first absorb sponge (1 = yes)
+    <span class="doccomment">/// Returns a variable that encodes whether the current step is the first
+    /// absorb sponge (1 = yes)
     </span><span class="kw">fn </span>mode_root(<span class="kw-2">&amp;</span><span class="self">self</span>, step: Steps) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">match </span>step {
             Sponge(Absorb(First)) =&gt; <span class="self">Self</span>::one(),
@@ -1796,7 +1878,8 @@
         }
     }
 
-    <span class="doccomment">/// Returns a degree-1 variable that encodes whether the current step is the last absorb sponge (1 = yes)
+    <span class="doccomment">/// Returns a degree-1 variable that encodes whether the current step is the
+    /// last absorb sponge (1 = yes)
     </span><span class="kw">fn </span>mode_pad(<span class="kw-2">&amp;</span><span class="self">self</span>, step: Steps) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">match </span>step {
             Sponge(Absorb(Last)) =&gt; <span class="self">Self</span>::one(),
@@ -1804,7 +1887,8 @@
         }
     }
 
-    <span class="doccomment">/// Returns a degree-1 variable that encodes whether the current step is the first and last absorb sponge (1 = yes)
+    <span class="doccomment">/// Returns a degree-1 variable that encodes whether the current step is the
+    /// first and last absorb sponge (1 = yes)
     </span><span class="kw">fn </span>mode_rootpad(<span class="kw-2">&amp;</span><span class="self">self</span>, step: Steps) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">match </span>step {
             Sponge(Absorb(Only)) =&gt; <span class="self">Self</span>::one(),
@@ -1812,7 +1896,8 @@
         }
     }
 
-    <span class="doccomment">/// Returns a variable that encodes whether the current step is a permutation round (1 = yes)
+    <span class="doccomment">/// Returns a variable that encodes whether the current step is a
+    /// permutation round (1 = yes)
     </span><span class="kw">fn </span>mode_round(<span class="kw-2">&amp;</span><span class="self">self</span>, step: Steps) -&gt; <span class="self">Self</span>::Variable {
         <span class="comment">// The actual round number in the selector carries no information for witness nor constraints
         // because in the witness, any usize is mapped to the same index inside the mode flags
@@ -1826,16 +1911,18 @@
     </span><span class="doccomment">/// COLUMN OPERATIONS ///
     </span><span class="comment">/////////////////////////
 
-    </span><span class="doccomment">/// This function returns the composed sparse variable from shifts of any correct length:
+    </span><span class="doccomment">/// This function returns the composed sparse variable from shifts of any
+    /// correct length:
     /// - When the length is 400, two index configurations are possible:
-    ///     - If `i` is `Some`, then this sole index could range between [0..400)
-    ///     - If `i` is `None`, then `y`, `x` and `q` must be `Some` and
-    ///         - `y` must range between [0..5)
-    ///         - `x` must range between [0..5)
-    ///         - `q` must range between [0..4)
-    /// - When the length is 80, both `i` and `y` should be `None`, and `x` and `q` must be `Some` with:
-    ///     - `x` must range between [0..5)
-    ///     - `q` must range between [0..4)
+    ///  - If `i` is `Some`, then this sole index could range between [0..400)
+    ///  - If `i` is `None`, then `y`, `x` and `q` must be `Some` and
+    ///    - `y` must range between [0..5)
+    ///    - `x` must range between [0..5)
+    ///    - `q` must range between [0..4)
+    /// - When the length is 80, both `i` and `y` should be `None`, and `x` and
+    ///   `q` must be `Some` with:
+    ///   - `x` must range between [0..5)
+    ///   - `q` must range between [0..4)
     </span><span class="kw">fn </span>from_shifts(
         shifts: <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable],
         i: <span class="prelude-ty">Option</span>&lt;usize&gt;,
@@ -1870,12 +1957,13 @@
         }
     }
 
-    <span class="doccomment">/// This function returns the composed variable from dense quarters of any correct length:
+    <span class="doccomment">/// This function returns the composed variable from dense quarters of any
+    /// correct length:
     /// - When `y` is `Some`, then the length must be 100 and:
-    ///     - `y` must range between [0..5)
-    ///     - `x` must range between [0..5)
+    ///   - `y` must range between [0..5)
+    ///   - `x` must range between [0..5)
     /// - When `y` is `None`, then the length must be 20 and:
-    ///     - `x` must range between [0..5)
+    ///   - `x` must range between [0..5)
     </span><span class="kw">fn </span>from_quarters(quarters: <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable], y: <span class="prelude-ty">Option</span>&lt;usize&gt;, x: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(y) = y {
             <span class="macro">assert!</span>(quarters.len() == <span class="number">100</span>, <span class="string">&quot;Invalid length of quarters&quot;</span>);
@@ -1899,16 +1987,19 @@
         <span class="self">self</span>.variable(KeccakColumn::RoundNumber)
     }
 
-    <span class="doccomment">/// Returns a variable that encodes the bytelength of the padding if any [0..136)
+    <span class="doccomment">/// Returns a variable that encodes the bytelength of the padding if any
+    /// [0..136)
     </span><span class="kw">fn </span>pad_length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.variable(KeccakColumn::PadLength)
     }
+
     <span class="doccomment">/// Returns a variable that encodes the value 2^pad_length
     </span><span class="kw">fn </span>two_to_pad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.variable(KeccakColumn::TwoToPad)
     }
 
-    <span class="doccomment">/// Returns a variable that encodes whether the `idx`-th byte of the new block is involved in the padding (1 = yes)
+    <span class="doccomment">/// Returns a variable that encodes whether the `idx`-th byte of the new
+    /// block is involved in the padding (1 = yes)
     </span><span class="kw">fn </span>in_padding(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.variable(KeccakColumn::PadBytesFlags(idx))
     }
@@ -1931,7 +2022,8 @@
         }
     }
 
-    <span class="doccomment">/// Returns the 136 flags indicating which bytes of the new block are involved in the padding, as variables
+    <span class="doccomment">/// Returns the 136 flags indicating which bytes of the new block are
+    /// involved in the padding, as variables
     </span><span class="kw">fn </span>pad_bytes_flags(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PAD_BYTES_LEN] {
         array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::PadBytesFlags(idx)))
     }
@@ -1948,10 +2040,11 @@
         }
     }
 
-    <span class="doccomment">/// This function returns a degree-2 variable that is computed as the accumulated value of the
-    /// operation `byte * flag * 2^8` for each byte block and flag block of the new block.
-    /// This function will be used in constraints to determine whether the padding is located
-    /// at the end of the preimage data, as consecutive bits that are involved in the padding.
+    <span class="doccomment">/// This function returns a degree-2 variable that is computed as the
+    /// accumulated value of the operation `byte * flag * 2^8` for each byte
+    /// block and flag block of the new block. This function will be used in
+    /// constraints to determine whether the padding is located at the end of
+    /// the preimage data, as consecutive bits that are involved in the padding.
     </span><span class="kw">fn </span>block_in_padding(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>bytes = <span class="self">self</span>.bytes_block(idx);
         <span class="kw">let </span>flags = <span class="self">self</span>.flags_block(idx);
@@ -1966,7 +2059,8 @@
         pad
     }
 
-    <span class="doccomment">/// Returns the 4 expanded quarters that encode the round constant, as variables
+    <span class="doccomment">/// Returns the 4 expanded quarters that encode the round constant, as
+    /// variables
     </span><span class="kw">fn </span>round_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; ROUND_CONST_LEN] {
         array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::RoundConstants(idx)))
     }
@@ -1981,12 +2075,14 @@
         <span class="self">self</span>.variable(KeccakColumn::SpongeNewState(idx))
     }
 
-    <span class="doccomment">/// Returns the output of an absorb sponge, which is the XOR of the old state and the new state
+    <span class="doccomment">/// Returns the output of an absorb sponge, which is the XOR of the old
+    /// state and the new state
     </span><span class="kw">fn </span>xor_state(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.variable(KeccakColumn::Output(idx))
     }
 
-    <span class="doccomment">/// Returns the last 32 terms that are added to the new block in an absorb sponge, as variables which should be zeros
+    <span class="doccomment">/// Returns the last 32 terms that are added to the new block in an absorb
+    /// sponge, as variables which should be zeros
     </span><span class="kw">fn </span>sponge_zeros(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; SPONGE_ZEROS_LEN] {
         array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::SpongeZeros(idx)))
     }
@@ -2004,6 +2100,7 @@
     </span><span class="kw">fn </span>sponge_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; SPONGE_BYTES_LEN] {
         array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::SpongeBytes(idx)))
     }
+
     <span class="doccomment">/// Returns the `idx`-th byte of the sponge, as a variable
     </span><span class="kw">fn </span>sponge_byte(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.variable(KeccakColumn::SpongeBytes(idx))
@@ -2019,6 +2116,7 @@
     </span><span class="kw">fn </span>vec_shifts_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; THETA_SHIFTS_C_LEN] {
         array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::ThetaShiftsC(idx)))
     }
+
     <span class="doccomment">/// Returns the (i,x,q)-th variable of ThetaShiftsC
     </span><span class="kw">fn </span>shifts_c(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(THETA_SHIFTS_C_LEN, i, <span class="number">0</span>, x, q);
@@ -2039,6 +2137,7 @@
     </span><span class="kw">fn </span>vec_quotient_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; THETA_QUOTIENT_C_LEN] {
         array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::ThetaQuotientC(idx)))
     }
+
     <span class="doccomment">/// Returns the (x)-th term of ThetaQuotientC, as a variable
     </span><span class="kw">fn </span>quotient_c(<span class="kw-2">&amp;</span><span class="self">self</span>, x: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.variable(KeccakColumn::ThetaQuotientC(x))
@@ -2058,6 +2157,7 @@
     </span><span class="kw">fn </span>vec_dense_rot_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; THETA_DENSE_ROT_C_LEN] {
         array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::ThetaDenseRotC(idx)))
     }
+
     <span class="doccomment">/// Returns the (x,q)-th variable of ThetaDenseRotC
     </span><span class="kw">fn </span>dense_rot_c(<span class="kw-2">&amp;</span><span class="self">self</span>, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(THETA_DENSE_ROT_C_LEN, <span class="number">0</span>, <span class="number">0</span>, x, q);
@@ -2078,6 +2178,7 @@
     </span><span class="kw">fn </span>vec_shifts_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_SHIFTS_E_LEN] {
         array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::PiRhoShiftsE(idx)))
     }
+
     <span class="doccomment">/// Returns the (i,y,x,q)-th variable of PiRhoShiftsE
     </span><span class="kw">fn </span>shifts_e(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(PIRHO_SHIFTS_E_LEN, i, y, x, q);
@@ -2088,6 +2189,7 @@
     </span><span class="kw">fn </span>vec_dense_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_DENSE_E_LEN] {
         array::from_fn(|idx: usize| <span class="self">self</span>.variable(KeccakColumn::PiRhoDenseE(idx)))
     }
+
     <span class="doccomment">/// Returns the (y,x,q)-th variable of PiRhoDenseE
     </span><span class="kw">fn </span>dense_e(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(PIRHO_DENSE_E_LEN, <span class="number">0</span>, y, x, q);
@@ -2098,6 +2200,7 @@
     </span><span class="kw">fn </span>vec_quotient_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_QUOTIENT_E_LEN] {
         array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::PiRhoQuotientE(idx)))
     }
+
     <span class="doccomment">/// Returns the (y,x,q)-th variable of PiRhoQuotientE
     </span><span class="kw">fn </span>quotient_e(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(PIRHO_QUOTIENT_E_LEN, <span class="number">0</span>, y, x, q);
@@ -2118,6 +2221,7 @@
     </span><span class="kw">fn </span>vec_dense_rot_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_DENSE_ROT_E_LEN] {
         array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::PiRhoDenseRotE(idx)))
     }
+
     <span class="doccomment">/// Returns the (y,x,q)-th variable of PiRhoDenseRotE
     </span><span class="kw">fn </span>dense_rot_e(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(PIRHO_DENSE_ROT_E_LEN, <span class="number">0</span>, y, x, q);
@@ -2138,6 +2242,7 @@
     </span><span class="kw">fn </span>vec_shifts_b(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; CHI_SHIFTS_B_LEN] {
         array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::ChiShiftsB(idx)))
     }
+
     <span class="doccomment">/// Returns the (i,y,x,q)-th variable of ChiShiftsB
     </span><span class="kw">fn </span>shifts_b(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(CHI_SHIFTS_B_LEN, i, y, x, q);
@@ -2163,10 +2268,12 @@
     </span><span class="kw">fn </span>hash_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.variable(KeccakColumn::HashIndex)
     }
+
     <span class="doccomment">/// Returns the block index as a variable
     </span><span class="kw">fn </span>block_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.variable(KeccakColumn::BlockIndex)
     }
+
     <span class="doccomment">/// Returns the step index as a variable
     </span><span class="kw">fn </span>step_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.variable(KeccakColumn::StepIndex)
@@ -2194,8 +2301,9 @@
     </span><span class="kw">fn </span>output(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; STATE_LEN] {
         array::from_fn::&lt;<span class="kw">_</span>, STATE_LEN, <span class="kw">_</span>&gt;(|idx| <span class="self">self</span>.variable(KeccakColumn::Output(idx)))
     }
-    <span class="doccomment">/// Returns a slice of the output variables of the current step (= input of next step)
-    /// including the current hash index and step index
+
+    <span class="doccomment">/// Returns a slice of the output variables of the current step (= input of
+    /// next step) including the current hash index and step index
     </span><span class="kw">fn </span>output_of_step(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>output_of_step = Vec::with_capacity(STATE_LEN + <span class="number">2</span>);
         output_of_step.push(<span class="self">self</span>.hash_index());

@@ -87,7 +87,12 @@
 <a href="#87" id="87">87</a>
 <a href="#88" id="88">88</a>
 <a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// The column layout will be as follow, supposing a state size of 3 elements:
+/// ```text
 /// | C1 | C2 | C3 | C4  | C5  | C6  | ... | C_(k) | C_(k + 1) | C_(k + 2) |
 /// |--- |----|----|-----|-----|-----|-----|-------|-----------|-----------|
 /// |  x |  y | z  | x&#39;  |  y&#39; |  z&#39; | ... |  x&#39;&#39;  |     y&#39;&#39;   |    z&#39;&#39;    |
@@ -96,7 +101,10 @@
 ///                   Divided in 4
 ///                 blocks of degree 2
 ///                   constraints
-/// where (x&#39;, y&#39;, z&#39;) = MDS(x^5, y^5, z^5), i.e. the result of the linear layer
+/// ```
+///
+/// where (x&#39;, y&#39;, z&#39;) = MDS(x^5, y^5, z^5), i.e. the result of the linear
+/// layer.
 </span><span class="kw">use </span>kimchi_msm::columns::{Column, ColumnIndexer};
 
 <span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

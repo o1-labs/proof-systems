@@ -205,6 +205,7 @@
 <a href="#205" id="205">205</a>
 <a href="#206" id="206">206</a>
 <a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This variant of folding is designed to efficiently handle cases where
 //! certain assumptions about the witness can be made.
 //! Specifically, an alternative is provided such that the scheme is created
@@ -232,10 +233,11 @@
     /// It takes as input:
     /// - a set of constraints, each associated with a particular selector;
     /// - a list of common constraints, that are applied to every instance
-    /// regardless of the selector (can be empty);
+    ///   regardless of the selector (can be empty);
     /// - a structured reference string;
     /// - a domain;
     /// - a structure of the associated folding configuration.
+    ///
     /// The function uses the normal `FoldingScheme::new()` function to create
     /// the decomposable scheme, using for that the concatenation of the
     /// constraints associated with each selector multiplied by the selector,

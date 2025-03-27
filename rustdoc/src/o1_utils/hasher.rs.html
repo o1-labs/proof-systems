@@ -113,7 +113,7 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>hasher = Sha256::new();
         hasher.update(<span class="self">Self</span>::PREFIX);
         hasher.update(
-            <span class="kw-2">&amp;</span>bcs::to_bytes(<span class="self">self</span>).unwrap_or_else(|e| <span class="macro">panic!</span>(<span class="string">&quot;couldn&#39;t serialize the gate: {e}&quot;</span>)),
+            bcs::to_bytes(<span class="self">self</span>).unwrap_or_else(|e| <span class="macro">panic!</span>(<span class="string">&quot;couldn&#39;t serialize the gate: {e}&quot;</span>)),
         );
         hasher.finalize().into()
     }

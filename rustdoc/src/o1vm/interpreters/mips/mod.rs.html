@@ -27,6 +27,15 @@
 <a href="#27" id="27">27</a>
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements a zero-knowledge virtual machine (zkVM) for the MIPS
 //! architecture.
 //! A zkVM is used by a prover to convince a verifier that the execution trace
@@ -56,4 +65,13 @@
 <span class="kw">pub mod </span>witness;
 
 <span class="kw">pub use </span>interpreter::{ITypeInstruction, Instruction, JTypeInstruction, RTypeInstruction};
+
+<span class="doccomment">/// Maximum degree of the constraints.
+/// It does include the additional degree induced by the multiplication of the
+/// selectors.
+</span><span class="kw">pub const </span>MAXIMUM_DEGREE_CONSTRAINTS: u64 = <span class="number">6</span>;
+
+<span class="doccomment">/// Total number of constraints for all instructions, including the constraints
+/// added for the selectors.
+</span><span class="kw">pub const </span>TOTAL_NUMBER_OF_CONSTRAINTS: usize = <span class="number">466</span>;
 </code></pre></div></section></main></body></html>

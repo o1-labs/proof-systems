@@ -189,16 +189,25 @@
 <a href="#189" id="189">189</a>
 <a href="#190" id="190">190</a>
 <a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement an interpreter for a specific instance of the Poseidon inner permutation.
 //! The Poseidon construction is defined in the paper [&quot;Poseidon: A New Hash
 //! Function&quot;](https://eprint.iacr.org/2019/458.pdf).
+//!
 //! The Poseidon instance works on a state of size `STATE_SIZE` and is designed
 //! to work only with full rounds. As a reminder, the Poseidon permutation is a
 //! mapping from `F^STATE_SIZE` to `F^STATE_SIZE`.
+//!
 //! The user is responsible to provide the correct number of full rounds for the
 //! given field and the state.
+//!
 //! Also, it is hard-coded that the substitution is `7`. The user must verify
 //! that `7` is coprime with `p - 1` where `p` is the order the field.
+//!
 //! The constants and matrix can be generated the file
 //! `poseidon/src/pasta/params.sage`
 
@@ -211,6 +220,7 @@
 <span class="doccomment">/// Represents the parameters of the instance of the Poseidon permutation.
 /// Constants are the round constants for each round, and MDS is the matrix used
 /// by the linear layer.
+///
 /// The type is parametrized by the field, the state size, and the number of full rounds.
 /// Note that the parameters are only for instances using full rounds.
 </span><span class="comment">// IMPROVEME merge constants and mds in a flat array, to use the CPU cache

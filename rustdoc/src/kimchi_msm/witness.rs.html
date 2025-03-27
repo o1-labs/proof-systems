@@ -176,6 +176,8 @@
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FftField, Zero};
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>folding::{instance_witness::Foldable, Witness <span class="kw">as </span>FoldingWitnessT};
@@ -184,10 +186,12 @@
 <span class="kw">use </span>std::ops::Index;
 
 <span class="doccomment">/// The witness columns used by a gate of the MSM circuits.
-/// It is generic over the number of columns, `N_WIT`, and the type of the witness, `T`.
+/// It is generic over the number of columns, `N_WIT`, and the type of the
+/// witness, `T`.
 /// It is parametrized by a type `T` which can be either:
 /// - `Vec&lt;G::ScalarField&gt;` for the evaluations
 /// - `PolyComm&lt;G&gt;` for the commitments
+///
 /// It can be used to represent the different subcircuits used by the project.
 </span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 </span><span class="kw">pub struct </span>Witness&lt;<span class="kw">const </span>N_WIT: usize, T&gt; {

@@ -428,6 +428,10 @@
 <a href="#428" id="428">428</a>
 <a href="#429" id="429">429</a>
 <a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the Poseidon constraint polynomials.
 
 </span><span class="comment">//~ The poseidon gate encodes 5 rounds of the poseidon permutation.
@@ -518,12 +522,16 @@
         CircuitGate::new(GateType::Poseidon, wires, coeffs)
     }
 
-    <span class="doccomment">/// `create_poseidon_gadget(row, first_and_last_row, round_constants)`  creates an entire set of constraint for a Poseidon hash.
+    <span class="doccomment">/// `create_poseidon_gadget(row, first_and_last_row, round_constants)`
+    /// creates an entire set of constraint for a Poseidon hash.
+    ///
     /// For that, you need to pass:
     /// - the index of the first `row`
     /// - the first and last rows&#39; wires (because they are used in the permutation)
     /// - the round constants
-    /// The function returns a set of gates, as well as the next pointer to the circuit (next empty absolute row)
+    ///
+    /// The function returns a set of gates, as well as the next pointer to the
+    /// circuit (next empty absolute row)
     </span><span class="kw">pub fn </span>create_poseidon_gadget(
         <span class="comment">// the absolute row in the circuit
         </span>row: usize,

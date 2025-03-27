@@ -607,6 +607,7 @@
 <a href="#607" id="607">607</a>
 <a href="#608" id="608">608</a>
 <a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -983,8 +984,9 @@
     /// - `left_rc`: the first row of the range check for the left input
     /// - `right_rc`: the first row of the range check for the right input
     /// - `out_rc`: the first row of the range check for the output of the addition
+    ///
     /// Note:
-    /// If run with `left_rc = None` and `right_rc = None` then it can be used for the bound check range check
+    ///   If run with `left_rc = None` and `right_rc = None` then it can be used for the bound check range check
     </span><span class="kw">fn </span>connect_ffadd_range_checks(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         ffadd_row: usize,

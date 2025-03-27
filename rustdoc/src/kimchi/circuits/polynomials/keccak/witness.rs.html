@@ -655,6 +655,7 @@
 <a href="#655" id="655">655</a>
 <a href="#656" id="656">656</a>
 <a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Keccak witness computation
 
 </span><span class="kw">use crate</span>::{
@@ -1188,9 +1189,10 @@
 <span class="doccomment">/// Creates a witness for the Keccak hash function
 /// Input:
 /// - message: the message to be hashed
+///
 /// Note:
-/// Requires at least one more row after the keccak gadget so that
-/// constraints can access the next row in the squeeze
+///   Requires at least one more row after the keccak gadget so that
+///   constraints can access the next row in the squeeze
 </span><span class="kw">pub fn </span>extend_keccak_witness&lt;F: PrimeField&gt;(witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; KECCAK_COLS], message: BigUint) {
     <span class="kw">let </span>padded = Keccak::pad(<span class="kw-2">&amp;</span>message.to_bytes_be());
     <span class="kw">let </span>chunks = padded.chunks(RATE_IN_BYTES);

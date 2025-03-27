@@ -258,6 +258,16 @@
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module includes the definition of the NOT gadget and the witness code generation,
 //! for both the implementation running with `Xor16` gates and the one with `Generic` gates.
 //! Note that this module does not include a `Not` gate type.
@@ -317,20 +327,30 @@
 //~ | i   | `Generic`     | Negate one or two words of the length given by the length of the all-one word |
 //~
 </span><span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
-    <span class="doccomment">/// Extends a bitwise negation gadget with `n` NOT components of some length previously constrained using a generic gate
-    /// (checking that a cell stores `2^bits-1` value). Assumes that the inputs are known to have at most `bits` length.
+    <span class="doccomment">/// Extends a bitwise negation gadget with `n` NOT components of some length
+    /// previously constrained using a generic gate (checking that a cell stores
+    /// `2^bits-1` value).
+    /// Assumes that the inputs are known to have at most `bits` length.
     /// Starts the gates in the `new_row` position.
+    ///
     /// Includes:
-    /// - ceil(n/2) Double Generic gates to perform the `( 2^(bits) - 1 ) - input` operation for every two inputs in each row
+    /// - ceil(n/2) Double Generic gates to perform the `( 2^(bits) - 1 ) -
+    ///   input` operation for every two inputs in each row
+    ///
     /// Input:
     /// - gates     : full circuit
     /// - n         : number of negations to perform
     /// - pub_row   : row containing the public input with the all-one word of the given length
+    ///
     /// Important:
-    /// - If the bit length of the input is not fixed, then it must be constrained somewhere else.
-    /// - Otherwise, use the `extend_neg_checked_length` instead (but this one requires about 8 times more rows).
+    /// - If the bit length of the input is not fixed, then it must be
+    ///   constrained somewhere else.
+    /// - Otherwise, use the `extend_neg_checked_length` instead (but this one
+    ///   requires about 8 times more rows).
+    ///
     /// Warning:
-    /// - don&#39;t forget to include a public input in `pub_row` to constrain the left of each generic gate for negation to be `2^bits - 1`
+    /// - don&#39;t forget to include a public input in `pub_row` to constrain the
+    ///   left of each generic gate for negation to be `2^bits - 1`
     </span><span class="kw">pub fn </span>extend_not_gadget_unchecked_length(
         gates: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="self">Self</span>&gt;,
         n: usize,
@@ -397,13 +417,13 @@
     /// Includes:
     /// - num_xors Xor16 gates
     /// - 1 Generic gate to constrain the final row to be zero with itself
-    /// Input:
+    ///   Input:
     /// - gates : full circuit
     /// - pub_row : row containing the public input with the all-one word of the given length
     /// - bits    : number of bits of the input
-    /// Precndition:
+    ///   Precndition:
     /// - 1 initial public input generic gate in `all_ones_row` to constrain the input to be `2^bits-1`.
-    /// Warning:
+    ///   Warning:
     /// - don&#39;t forget to connect the left input to a public input row containing the `2^bits - 1` value
     </span><span class="kw">pub fn </span>extend_not_gadget_checked_length(
         gates: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="self">Self</span>&gt;,

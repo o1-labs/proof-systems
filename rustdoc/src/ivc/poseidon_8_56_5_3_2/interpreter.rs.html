@@ -319,16 +319,30 @@
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
 <a href="#321" id="321">321</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! Implement an interpreter for a specific instance of the Poseidon inner permutation.
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! Implement an interpreter for a specific instance of the Poseidon inner
+//! permutation.
+//!
 //! The Poseidon construction is defined in the paper [&quot;Poseidon: A New Hash
 //! Function&quot;](https://eprint.iacr.org/2019/458.pdf).
+//!
 //! The Poseidon instance works on a state of size `STATE_SIZE` and is designed
 //! to work with full and partial rounds. As a reminder, the Poseidon
 //! permutation is a mapping from `F^STATE_SIZE` to `F^STATE_SIZE`.
+//!
 //! The user is responsible to provide the correct number of full and partial
 //! rounds for the given field and the state.
+//!
 //! Also, it is hard-coded that the substitution is `5`. The user must verify
 //! that `5` is coprime with `p - 1` where `p` is the order the field.
+//!
 //! The constants and matrix can be generated the file
 //! `poseidon/src/pasta/params.sage`
 
@@ -339,8 +353,10 @@
 <span class="kw">use </span>num_integer::Integer;
 
 <span class="doccomment">/// Represents the parameters of the instance of the Poseidon permutation.
+///
 /// Constants are the round constants for each round, and MDS is the matrix used
 /// by the linear layer.
+///
 /// The type is parametrized by the field, the state size, and the total number
 /// of rounds.
 </span><span class="comment">// IMPROVEME merge constants and mds in a flat array, to use the CPU cache
@@ -392,8 +408,8 @@
 /// Each partial round consists of the following steps:
 /// - adding the round constants on the whole state
 /// - applying the sbox on the first element of the state (FIXME: the
-/// specification mentions the last element - map the implementation provided in
-/// [mina_poseidon])
+///   specification mentions the last element - map the implementation provided in
+///   [mina_poseidon])
 /// - applying the linear layer on the whole state
 </span><span class="kw">pub fn </span>apply_permutation&lt;
     F: PrimeField,
