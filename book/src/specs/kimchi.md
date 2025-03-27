@@ -1712,7 +1712,7 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub cs: ConstraintSystem<G::ScalarField>,
+    pub cs: Arc<ConstraintSystem<G::ScalarField>>,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
@@ -1732,7 +1732,7 @@ pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub max_poly_size: usize,
 
     #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub column_evaluations: ColumnEvaluations<G::ScalarField>,
+    pub column_evaluations: Arc<LazyCache<ColumnEvaluations<G::ScalarField>>>,
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
@@ -1798,7 +1798,7 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// coefficient commitment array
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub coefficients_comm: [PolyComm<G>; COLUMNS],
-    /// coefficient commitment array
+    /// generic gate commitment array
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub generic_comm: PolyComm<G>,
 
