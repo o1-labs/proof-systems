@@ -3,7 +3,9 @@
 //! A user is expected to use the gadget methods.
 //! The API of the utilities is more subject to changes.
 
-use arrabbiata::{interpreter::InterpreterEnv, setup::IndexedRelation, witness::Env};
+use arrabbiata::{
+    interpreter::InterpreterEnv, setup::IndexedRelation, witness::Env, MIN_SRS_LOG2_SIZE,
+};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 use num_bigint::BigInt;
 use o1_utils::FieldHelpers;
@@ -11,8 +13,7 @@ use o1_utils::FieldHelpers;
 #[test]
 #[should_panic]
 fn test_constrain_boolean_witness_negative_value() {
-    let srs_log2_size = 2;
-    let indexed_relation = IndexedRelation::new(srs_log2_size);
+    let indexed_relation = IndexedRelation::new(MIN_SRS_LOG2_SIZE);
     let mut env = {
         let z0 = BigInt::from(1u64);
         Env::<Fp, Fq, Vesta, Pallas>::new(z0, indexed_relation)
@@ -23,8 +24,7 @@ fn test_constrain_boolean_witness_negative_value() {
 
 #[test]
 fn test_constrain_boolean_witness_positive_and_negative_modulus() {
-    let srs_log2_size = 2;
-    let indexed_relation = IndexedRelation::new(srs_log2_size);
+    let indexed_relation = IndexedRelation::new(MIN_SRS_LOG2_SIZE);
     let mut env = {
         let z0 = BigInt::from(1u64);
         Env::<Fp, Fq, Vesta, Pallas>::new(z0, indexed_relation)
@@ -39,8 +39,7 @@ fn test_constrain_boolean_witness_positive_and_negative_modulus() {
 
 #[test]
 fn test_write_column_return_the_result_reduced_in_field() {
-    let srs_log2_size = 6;
-    let indexed_relation = IndexedRelation::new(srs_log2_size);
+    let indexed_relation = IndexedRelation::new(MIN_SRS_LOG2_SIZE);
     let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
     let modulus: BigInt = Fp::modulus_biguint().into();
     let pos_x = env.allocate();

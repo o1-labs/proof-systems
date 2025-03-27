@@ -5,17 +5,17 @@ use strum::EnumCount as _;
 pub mod challenge;
 pub mod cli;
 pub mod column;
-pub mod column_env;
 pub mod constraint;
 pub mod curve;
+
+/// The final decider, i.e. the SNARK used on the accumulation scheme.
+pub mod decider;
+
 pub mod interpreter;
 pub mod logup;
 pub mod poseidon_3_60_0_5_5_fp;
 pub mod poseidon_3_60_0_5_5_fq;
-pub mod proof;
-pub mod prover;
 pub mod setup;
-pub mod verifier;
 pub mod witness;
 
 /// The maximum degree of the polynomial that can be represented by the
@@ -23,8 +23,7 @@ pub mod witness;
 pub const MAX_DEGREE: usize = 5;
 
 /// The minimum SRS size required to use Nova, in base 2.
-/// Requiring at least 2^16 to perform 16bits range checks.
-pub const MIN_SRS_LOG2_SIZE: usize = 16;
+pub const MIN_SRS_LOG2_SIZE: usize = 8;
 
 /// The maximum number of columns that can be used in the circuit.
 pub const NUMBER_OF_COLUMNS: usize = 15;
@@ -58,8 +57,8 @@ pub const MAXIMUM_FIELD_SIZE_IN_BITS: u64 = 255;
 /// verifier circuit.
 pub const NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO: usize = NUMBER_OF_COLUMNS * 2;
 
-/// The number of selectors used in the circuit.
-pub const NUMBER_OF_SELECTORS: usize =
+/// The number of gadgets supported by the program
+pub const NUMBER_OF_GADGETS: usize =
     column::Gadget::COUNT + (PlonkSpongeConstants::PERM_ROUNDS_FULL / 5);
 
 /// The arity of the multivariate polynomials describing the constraints.
