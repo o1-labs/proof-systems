@@ -3,12 +3,15 @@ use crate::{
     interpreters::mips::{
         column::{N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
         constraints,
-        interpreter::debugging::InstructionParts,
+        interpreter::{self, debugging::InstructionParts, InterpreterEnv},
         tests_helpers::*,
-        ITypeInstruction, JTypeInstruction, RTypeInstruction,
+        ITypeInstruction, JTypeInstruction, RTypeInstruction, MAXIMUM_DEGREE_CONSTRAINTS,
+        TOTAL_NUMBER_OF_CONSTRAINTS,
     },
     preimage_oracle::PreImageOracleT,
+    E,
 };
+
 use kimchi::o1_utils;
 use mina_curves::pasta::Fp;
 use rand::Rng;
@@ -349,4 +352,32 @@ fn test_regression_selectors_for_instructions() {
     constraints
         .iter()
         .for_each(|c| assert!(c.degree(1, 0) == 2 || c.degree(1, 0) == 1));
+}
+
+#[test]
+fn test_regression_constraints_with_selectors() {
+    let constraints = {
+        let mut mips_con_env = constraints::Env::<Fp>::default();
+        let mut constraints = Instruction::iter()
+            .flat_map(|instr_typ| instr_typ.into_iter())
+            .fold(vec![], |mut acc, instr| {
+                interpreter::interpret_instruction(&mut mips_con_env, instr);
+                let selector = mips_con_env.get_selector();
+                let constraints_with_selector: Vec<E<Fp>> = mips_con_env
+                    .get_constraints()
+                    .into_iter()
+                    .map(|c| selector.clone() * c)
+                    .collect();
+                acc.extend(constraints_with_selector);
+                mips_con_env.reset();
+                acc
+            });
+        constraints.extend(mips_con_env.get_selector_constraints());
+        constraints
+    };
+
+    assert_eq!(constraints.len(), TOTAL_NUMBER_OF_CONSTRAINTS);
+
+    let max_degree = constraints.iter().map(|c| c.degree(1, 0)).max().unwrap();
+    assert_eq!(max_degree, MAXIMUM_DEGREE_CONSTRAINTS);
 }

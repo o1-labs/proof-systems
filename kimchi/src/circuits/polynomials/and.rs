@@ -66,11 +66,14 @@ impl<F: PrimeField> CircuitGate<F> {
     /// - num_xors Xor16 gates to perform `xor = a XOR b`
     /// - 1 Generic gate to constrain the final row to be zero with itself
     /// - 1 double Generic gate to perform the AND operation as `a + b = sum` and `2 * and = sum - xor`
+    ///
     /// Input:
     /// - gates    : vector of circuit gates comprising the full circuit
     /// - bytes    : number of bytes of the AND operation
+    ///
     /// Output:
     /// - next_row  : next row after this gate
+    ///
     /// Warning:
     /// - if there's any public input for the and, don't forget to wire it
     pub fn extend_and(gates: &mut Vec<Self>, bytes: usize) -> usize {

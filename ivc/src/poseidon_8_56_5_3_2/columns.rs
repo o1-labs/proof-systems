@@ -1,4 +1,5 @@
 /// The column layout will be as follow, supposing a state size of 3 elements:
+/// ```text
 /// | C1 | C2 | C3 | C4  | C5  | C6  | ... | C_(k) | C_(k + 1) | C_(k + 2) |
 /// |--- |----|----|-----|-----|-----|-----|-------|-----------|-----------|
 /// |  x |  y | z  | x'  |  y' |  z' | ... |  x''  |     y''   |    z''    |
@@ -7,7 +8,10 @@
 ///                   Divided in 4
 ///                 blocks of degree 2
 ///                   constraints
-/// where (x', y', z') = MDS(x^5, y^5, z^5), i.e. the result of the linear layer
+/// ```
+///
+/// where (x', y', z') = MDS(x^5, y^5, z^5), i.e. the result of the linear
+/// layer.
 use kimchi_msm::columns::{Column, ColumnIndexer};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

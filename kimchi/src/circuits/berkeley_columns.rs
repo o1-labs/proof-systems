@@ -99,7 +99,7 @@ impl<F: ark_ff::Field> std::ops::Index<BerkeleyChallengeTerm> for BerkeleyChalle
 /// - The [COLUMNS] witness columns.
 /// - The permutation polynomial, Z.
 /// - The public coefficients, `Coefficients`, which can be used for public
-/// values. For instance, it is used for the Poseidon round constants.
+///   values. For instance, it is used for the Poseidon round constants.
 /// - ...
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Column {

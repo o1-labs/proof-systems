@@ -49,3 +49,5 @@ o1vm/resources/programs/riscv32im/bin/*.o
 o1vm/resources/programs/mips/src
 # mips binary files for open mips tests
 o1vm/resources/programs/mips/bin
+
+CLAUDE.md
