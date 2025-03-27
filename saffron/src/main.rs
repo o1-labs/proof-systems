@@ -1,18 +1,18 @@
 use anyhow::Result;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use clap::Parser;
-use kimchi::groupmap::GroupMap;
+use kimchi::{curve::KimchiCurve, groupmap::GroupMap};
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
-use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
+use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
+use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rand::rngs::OsRng;
 use saffron::{
     blob::FieldBlob,
     cli::{self, HexString},
-    commitment::commit_to_field_elems,
+    commitment::{self, commit_to_field_elems},
     env,
-    proof::{self, StorageProof},
-    utils,
+    storage_proof::{self, StorageProof},
+    utils, Curve, CurveFqSponge, ScalarField,
 };
 use std::{
     fs::File,
@@ -21,8 +21,6 @@ use std::{
 use tracing::{debug, debug_span};
 
 pub const DEFAULT_SRS_SIZE: usize = 1 << 16;
-
-type VestaFqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 
 fn get_srs(cache: Option<String>) -> (SRS<Vesta>, Radix2EvaluationDomain<Fp>) {
     let res = match cache {
@@ -59,8 +57,8 @@ fn decode_file(args: cli::DecodeFileArgs) -> Result<()> {
         "Decoding file"
     );
     let file = File::open(args.input)?;
-    let blob: FieldBlob<Vesta> = rmp_serde::decode::from_read(file)?;
-    let data = FieldBlob::<Vesta>::decode(domain, blob);
+    let blob: FieldBlob = rmp_serde::decode::from_read(file)?;
+    let data = FieldBlob::into_bytes(domain, blob);
     debug!(output_file = args.output, "Writing decoded blob to file");
     let mut writer = File::create(args.output)?;
     writer.write_all(&data)?;
@@ -77,18 +75,30 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
     let mut file = File::open(args.input)?;
     let mut buf = Vec::new();
     file.read_to_end(&mut buf)?;
-    let blob = FieldBlob::<Vesta>::encode::<_, VestaFqSponge>(&srs, domain, &buf);
+    let blob = FieldBlob::from_bytes::<_>(&srs, domain, &buf);
+
+    let commitments_polycomm: Vec<PolyComm<_>> = blob
+        .commitments
+        .iter()
+        .map(|com| PolyComm {
+            chunks: vec![com.clone()],
+        })
+        .collect();
+    let mut sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+    let (randomized_data_commitment, challenge) =
+        commitment::combine_commitments(&mut sponge, commitments_polycomm.as_slice());
+
     if let Some(asserted) = args.assert_commitment {
         let asserted_commitment =
             rmp_serde::from_slice(&asserted.0).expect("failed to decode asserted commitment");
 
         assert_eq!(
-            blob.commitment.folded,
+            randomized_data_commitment,
             asserted_commitment,
             "commitment mismatch: asserted {}, computed {}",
             asserted,
             HexString(
-                rmp_serde::encode::to_vec(&blob.commitment.folded)
+                rmp_serde::encode::to_vec(&randomized_data_commitment)
                     .expect("failed to encode commitment")
             )
         );
@@ -99,41 +109,51 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
     Ok(())
 }
 
-pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<HexString> {
+pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<(HexString, HexString)> {
     let (srs, domain_fp) = get_srs(args.srs_cache);
-    let buf = {
+    let buf: Vec<u8> = {
         let mut file = File::open(args.input)?;
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
         buf
     };
-    let commitment = {
-        let field_elems = utils::encode_for_domain(&domain_fp, &buf);
-        commit_to_field_elems::<_, VestaFqSponge>(&srs, domain_fp, field_elems)
-    };
+    let blob = FieldBlob::from_bytes(&srs, domain_fp, buf.as_slice());
+    let commitments_polycomm: Vec<PolyComm<_>> = blob
+        .commitments
+        .iter()
+        .map(|com| PolyComm {
+            chunks: vec![com.clone()],
+        })
+        .collect();
+    let mut sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+    let (randomized_data_commitment, challenge) =
+        commitment::combine_commitments(&mut sponge, commitments_polycomm.as_slice());
+
     {
         let mut writer = File::create(args.output)?;
-        rmp_serde::encode::write(&mut writer, &commitment)?;
+        rmp_serde::encode::write(
+            &mut writer,
+            &(commitments_polycomm, randomized_data_commitment.clone()),
+        )?;
     }
-    let c = rmp_serde::encode::to_vec(&commitment.folded)?;
-    Ok(HexString(c))
+
+    let randomized_data_commitment_hex = rmp_serde::encode::to_vec(&randomized_data_commitment)?;
+    let challenge_hex: Vec<u8> = utils::decode_into_vec(challenge);
+    Ok((
+        HexString(randomized_data_commitment_hex),
+        HexString(challenge_hex),
+    ))
 }
 
 pub fn storage_proof(args: cli::StorageProofArgs) -> Result<HexString> {
     let file = File::open(args.input)?;
-    let blob: FieldBlob<Vesta> = rmp_serde::decode::from_read(file)?;
+    let blob: FieldBlob = rmp_serde::decode::from_read(file)?;
     let proof = {
         let (srs, _) = get_srs(args.srs_cache);
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
         let mut rng = OsRng;
-        let evaluation_point = utils::encode(&args.challenge.0);
-        proof::storage_proof::<Vesta, VestaFqSponge>(
-            &srs,
-            &group_map,
-            blob,
-            evaluation_point,
-            &mut rng,
-        )
+        let challenge = utils::encode(&args.challenge.0);
+        storage_proof::prove(&srs, &group_map, blob, challenge, &mut rng)
     };
     let res = rmp_serde::to_vec(&proof)?;
     Ok(HexString(res))
@@ -141,20 +161,20 @@ pub fn storage_proof(args: cli::StorageProofArgs) -> Result<HexString> {
 
 pub fn verify_storage_proof(args: cli::VerifyStorageProofArgs) -> Result<()> {
     let (srs, _) = get_srs(args.srs_cache);
-    let group_map = <Vesta as CommitmentCurve>::Map::setup();
-    let commitment = rmp_serde::from_slice(&args.commitment.0)?;
-    let evaluation_point = utils::encode(&args.challenge.0);
-    let proof: StorageProof<Vesta> = rmp_serde::from_slice(&args.proof.0)?;
+    let group_map = <Curve as CommitmentCurve>::Map::setup();
+    let randomized_data_commitment: PolyComm<Curve> = rmp_serde::from_slice(&args.commitment.0)?;
+    let randomized_data_commitment = randomized_data_commitment.chunks[0];
+
+    let proof: StorageProof = rmp_serde::from_slice(&args.proof.0)?;
     let mut rng = OsRng;
-    let res = proof::verify_storage_proof::<Vesta, VestaFqSponge>(
+    let res = storage_proof::verify_fast(
         &srs,
         &group_map,
-        commitment,
-        evaluation_point,
+        randomized_data_commitment,
         &proof,
         &mut rng,
     );
-    assert!(res);
+    assert!(res, "Proof must verify");
     Ok(())
 }
 
@@ -165,13 +185,14 @@ pub fn main() -> Result<()> {
         cli::Commands::Encode(args) => encode_file(args),
         cli::Commands::Decode(args) => decode_file(args),
         cli::Commands::ComputeCommitment(args) => {
-            let commitment = compute_commitment(args)?;
-            println!("{}", commitment);
+            let (commitment, challenge) = compute_commitment(args)?;
+            println!("randomized_data_commitment: {}", commitment);
+            println!("challenge: {}", challenge);
             Ok(())
         }
         cli::Commands::StorageProof(args) => {
             let proof = storage_proof(args)?;
-            println!("{}", proof);
+            println!("proof: {}", proof);
             Ok(())
         }
         cli::Commands::VerifyStorageProof(args) => verify_storage_proof(args),
