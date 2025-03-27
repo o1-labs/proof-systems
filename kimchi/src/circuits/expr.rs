@@ -1806,22 +1806,49 @@ fn value_<
     cache: &mut HashMap<CacheId, F>,
     row: usize,
 ) -> Option<F> {
+    let d1_size = env.get_domain(Domain::D1).size;
+    let deg = expr.degree(d1_size, env.get_constants().zk_rows);
+    // We always evaluate over at least D4.
+    // We skip D8 if possible as an optimization, but it's not always possible.
+    let d = if deg <= 4 * d1_size {
+        Domain::D4
+    } else if deg <= 8 * d1_size {
+        Domain::D8
+    } else {
+        panic!("constraint had degree {deg} > d8 ({})", 8 * d1_size);
+    };
+
     match expr {
         Expr::Atom(ExprInner::Constant(c)) => Some(*c),
-        Expr::Atom(ExprInner::Cell(var)) => 
-        // MARC
-        match env.get_column(&var.col) {
-            None => if row < env.get_domain(env.column_domain(&var.col)).size() {
-                Some(F::zero())
-            } else {
-                None
-            },
-            Some(e) => if row < env.get_domain(env.column_domain(&var.col)).size() {
-                Some(e.evals[row])
-            } else {
-                None
-            },
-        },
+        Expr::Atom(ExprInner::Cell(var)) =>
+        // MARC: I think I fixed it.
+        {
+            let final_domain = env.get_domain(d);
+            match env.get_column(&var.col) {
+                None => {
+                    if row < final_domain.size() {
+                        Some(F::zero())
+                    } else {
+                        None
+                    }
+                }
+                Some(e) => {
+                    let scale =
+                        env.get_domain(env.column_domain(&var.col)).size() / final_domain.size();
+                    assert!(
+                        scale != 0,
+                        "Check that the implementation of
+                    column_domain and the evaluation domain of the
+                    witnesses are the same"
+                    );
+                    if row < final_domain.size() {
+                        Some(e.evals[row * scale])
+                    } else {
+                        None
+                    }
+                }
+            }
+        }
         Expr::Atom(ExprInner::UnnormalizedLagrangeBasis(i)) => {
             // MARC: Is this correct?  Always?
             let res_domain = Domain::D8;
@@ -2145,6 +2172,14 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
     ) -> Evaluations<F, D<F>> {
         let d1_size = env.get_domain(Domain::D1).size;
         let deg = self.degree(d1_size, env.get_constants().zk_rows);
+        // MARC: Okay, when I stole this for `value_`, I got rid of the D1 case.
+        // I notice there is a missing D2 case, so I feel like this isn't a bad thing.
+        // However, I lack any formal justification.  I would like to remove the D1 case
+        // from here, to ensure the implementations always match,
+        // but that should be a separate PR so it's easily revertable.
+        //
+        // The issue is that `add` and friends has some really weird behaviour for
+        // choosing the "best" domain.  You can see it under `EvalResult::add`.
         let d = if deg <= d1_size {
             Domain::D1
         } else if deg <= 4 * d1_size {
