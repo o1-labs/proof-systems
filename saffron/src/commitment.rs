@@ -59,8 +59,10 @@ where
     CommittedData::from_chunks(commitments, &mut sponge)
 }
 
+/// Takes commitments C_i, computes α = hash(C_0 || C_1 || ... || C_n),
+/// returns ∑ α^i C_i.
 #[instrument(skip_all, level = "debug")]
-pub fn fold_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
+pub fn combine_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
     sponge: &mut EFqSponge,
     commitments: &[PolyComm<G>],
 ) -> (PolyComm<G>, G::ScalarField) {

@@ -86,7 +86,7 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
         .collect();
     let mut sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
     let (randomized_data_commitment, challenge) =
-        commitment::fold_commitments(&mut sponge, commitments_polycomm.as_slice());
+        commitment::combine_commitments(&mut sponge, commitments_polycomm.as_slice());
 
     if let Some(asserted) = args.assert_commitment {
         let asserted_commitment =
@@ -127,7 +127,7 @@ pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<(HexString
         .collect();
     let mut sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
     let (randomized_data_commitment, challenge) =
-        commitment::fold_commitments(&mut sponge, commitments_polycomm.as_slice());
+        commitment::combine_commitments(&mut sponge, commitments_polycomm.as_slice());
 
     {
         let mut writer = File::create(args.output)?;

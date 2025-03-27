@@ -31,7 +31,7 @@ pub fn prove(
     srs: &SRS<Curve>,
     group_map: &<Curve as CommitmentCurve>::Map,
     blob: FieldBlob,
-    challenge: ScalarField, // this could be merkle tree root
+    challenge: ScalarField, // this could be merkle tree root, right now is hash of all commitments
     rng: &mut OsRng,
 ) -> StorageProof {
     // TODO: Cache this somewhere
@@ -50,13 +50,14 @@ pub fn prove(
         })
         .collect::<Vec<_>>();
 
+    // combined! we could rename.
     let randomized_data_commitment =
         ProjectiveCurve::msm_bigint(blob.commitments.as_slice(), powers.as_slice()).into_affine();
 
     // Computes ∑_j chal^{j} data[j*SRS_SIZE + i]
     // where j ∈ [0..final_chunk], so the power corresponding to
     // the first chunk is 0 (chal^0 = 1).
-    let randomized_data = {
+    let randomized_data: Vec<ScalarField> = {
         let mut initial: Vec<ScalarField> = blob.data
             [final_chunk * SRS_SIZE..(final_chunk + 1) * SRS_SIZE]
             .iter()
@@ -80,6 +81,7 @@ pub fn prove(
     let randomized_data_poly =
         Evaluations::from_vec_and_domain(randomized_data, domain).interpolate();
     let randomized_data_eval = randomized_data_poly.evaluate(&evaluation_point);
+
     let mut opening_proof_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
     // TODO: check and see if we need to also absorb the absorb the poly cm
     // see https://github.com/o1-labs/proof-systems/blob/feature/test-data-storage-commitments/data-storage/src/main.rs#L265-L269
@@ -178,7 +180,7 @@ pub fn verify_full(
 mod tests {
     use super::*;
     use crate::{
-        commitment::{commit_to_field_elems, fold_commitments},
+        commitment::{combine_commitments, commit_to_field_elems},
         env,
         utils::{encode_for_domain, test_utils::UserData},
     };
@@ -218,7 +220,7 @@ mod tests {
         };
         let mut sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
         let (randomized_data_commitment, challenge) =
-            fold_commitments(&mut sponge, commitment.chunks.as_slice());
+            combine_commitments(&mut sponge, commitment.chunks.as_slice());
 
         let blob = FieldBlob::from_bytes::<_>(&*SRS, *DOMAIN, &data);
 
