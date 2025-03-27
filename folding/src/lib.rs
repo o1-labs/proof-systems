@@ -3,9 +3,9 @@
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
 //! It implements different components to achieve it:
 //! - [quadraticization]: a submodule to reduce multivariate polynomials
-//! to degree `2`.
+//!   to degree `2`.
 //! - [decomposable_folding]: a submodule to "parallelize" folded
-//! computations.
+//!   computations.
 //!
 //! Examples can be found in the directory `examples`.
 //!
@@ -175,10 +175,10 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
     /// The process is as follows:
     /// - Both pairs are relaxed.
     /// - Both witnesses and instances are extended, i.e. all polynomials are
-    /// reduced to degree 2 and additional constraints are added to the
-    /// expression.
+    ///   reduced to degree 2 and additional constraints are added to the
+    ///   expression.
     /// - While computing the commitments to the additional columns, the
-    /// commitments are added into a list to absorb them into the sponge later.
+    ///   commitments are added into a list to absorb them into the sponge later.
     /// - The error terms are computed and committed.
     /// - The sponge absorbs the commitments and challenges.
     #[allow(clippy::type_complexity)]

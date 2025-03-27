@@ -53,7 +53,7 @@ pub trait CryptoDigest: Serialize {
         let mut hasher = Sha256::new();
         hasher.update(Self::PREFIX);
         hasher.update(
-            &bcs::to_bytes(self).unwrap_or_else(|e| panic!("couldn't serialize the gate: {e}")),
+            bcs::to_bytes(self).unwrap_or_else(|e| panic!("couldn't serialize the gate: {e}")),
         );
         hasher.finalize().into()
     }

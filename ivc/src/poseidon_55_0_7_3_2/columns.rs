@@ -1,4 +1,6 @@
 /// The column layout will be as follow, supposing a state size of 3 elements:
+///
+/// ```text
 /// | C1 | C2 | C3 | C4  | C5  | C6  | ... | C_(k) | C_(k + 1) | C_(k + 2) |
 /// |--- |----|----|-----|-----|-----|-----|-------|-----------|-----------|
 /// |  x |  y | z  | x'  |  y' |  z' | ... |  x''  |     y''   |    z''    |
@@ -7,11 +9,15 @@
 ///                   Divided in 5
 ///                 blocks of degree 2
 ///                   constraints
-/// where (x', y', z') = MDS(x^7, y^7, z^7), i.e. the result of the linear layer
+/// ```
+///
+/// where (x', y', z') = MDS(x^7, y^7, z^7), i.e. the result of the linear
+/// layer.
+///
 /// We will have, for N full rounds:
 /// - `3` input columns
-/// - `5 N * 3` round columns, indexed by the round number and the index in the state,
-/// the number of rounds.
+/// - `5 N * 3` round columns, indexed by the round number and the index in the
+///   state, the number of rounds.
 use kimchi_msm::columns::{Column, ColumnIndexer};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
