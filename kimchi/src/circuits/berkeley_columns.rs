@@ -67,6 +67,7 @@ impl<'a> super::expr::AlphaChallengeTerm<'a> for BerkeleyChallengeTerm {
     const ALPHA: Self = Self::Alpha;
 }
 
+#[derive(Clone)]
 pub struct BerkeleyChallenges<F> {
     /// The challenge α from the PLONK IOP.
     pub alpha: F,
@@ -290,6 +291,7 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyCh
 /// The polynomials specific to the lookup argument.
 ///
 /// All are evaluations over the D8 domain
+#[derive(Clone)]
 pub struct LookupEnvironment<'a, F: FftField> {
     /// The sorted lookup table polynomials.
     pub sorted: &'a Vec<Evaluations<F, D<F>>>,
@@ -309,6 +311,7 @@ pub struct LookupEnvironment<'a, F: FftField> {
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
+#[derive(Clone)]
 pub struct Environment<'a, F: FftField> {
     /// The witness column polynomials
     pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],

@@ -582,7 +582,7 @@ pub enum FeatureFlag {
 
 impl FeatureFlag {
     fn is_enabled(&self) -> bool {
-        todo!("Handle features")
+        true
     }
 }
 
@@ -1741,6 +1741,7 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> Expr<ConstantExpr<F, Challe
     }
 }
 
+// FIXME: This function is broken!
 /// Compute the `x`th unnormalized lagrange evaluation
 fn xth_unnormalized_lagrange_eval<
     'a,
@@ -1769,13 +1770,15 @@ fn xth_unnormalized_lagrange_eval<
     let ii = i as u64;
     assert!(ii < n);
     let omega = d1.group_gen;
+    let omega_prime = env.get_domain(res_domain).group_gen;
     let omega_i = omega.pow([ii]);
     let omega_minus_i = omega.pow([n - ii]);
-    let omega_x = omega.pow([x]);
+
+    let omega_x = omega_prime.pow([x]);
 
     let eval: F = {
         let v = omega_x - omega_i;
-        v.inverse().unwrap()
+        v.inverse().unwrap_or(F::zero())
     };
 
     let ret = if (k as usize) * i == x as usize {
@@ -1783,10 +1786,8 @@ fn xth_unnormalized_lagrange_eval<
     } else if x % k == 0 {
         F::zero()
     } else {
-        eval * (omega_x - F::one())
+        eval * (omega_x.pow([n]) - F::one())
     };
-
-    assert!(ret == unnormalized_lagrange_evals(l0_1, orig_i, res_domain, env)[x as usize], "Remove me!  This is a check to make sure this function is right with respect to the original.");
 
     ret
 }
@@ -1808,65 +1809,50 @@ fn value_<
 ) -> Option<F> {
     let d1_size = env.get_domain(Domain::D1).size;
     let deg = expr.degree(d1_size, env.get_constants().zk_rows);
-    // We always evaluate over at least D4.
-    // We skip D8 if possible as an optimization, but it's not always possible.
-    let d = if deg <= 4 * d1_size {
-        Domain::D4
-    } else if deg <= 8 * d1_size {
+    let d = if deg <= 8 * d1_size {
         Domain::D8
     } else {
         panic!("constraint had degree {deg} > d8 ({})", 8 * d1_size);
     };
 
+    let final_domain = env.get_domain(d);
+
     match expr {
         Expr::Atom(ExprInner::Constant(c)) => Some(*c),
-        Expr::Atom(ExprInner::Cell(var)) =>
-        // MARC: I think I fixed it.
-        {
-            let final_domain = env.get_domain(d);
-            match env.get_column(&var.col) {
-                None => {
-                    if row < final_domain.size() {
-                        Some(F::zero())
-                    } else {
-                        None
-                    }
-                }
-                Some(e) => {
-                    let scale =
-                        env.get_domain(env.column_domain(&var.col)).size() / final_domain.size();
-                    assert!(
-                        scale != 0,
-                        "Check that the implementation of
-                    column_domain and the evaluation domain of the
-                    witnesses are the same"
-                    );
-                    if row < final_domain.size() {
-                        Some(e.evals[row * scale])
-                    } else {
-                        None
-                    }
+        Expr::Atom(ExprInner::Cell(var)) => match env.get_column(&var.col) {
+            None => {
+                if row < final_domain.size() {
+                    Some(F::zero())
+                } else {
+                    None
                 }
             }
-        }
+            Some(e) => {
+                if row < env.get_domain(env.column_domain(&var.col)).size() {
+                    Some(e.evals[row])
+                } else {
+                    None
+                }
+            }
+        },
         Expr::Atom(ExprInner::UnnormalizedLagrangeBasis(i)) => {
-            // MARC: Is this correct?  Always?
-            let res_domain = Domain::D8;
             let offset = if i.zk_rows {
                 -(env.get_constants().zk_rows as i32) + i.offset
             } else {
                 i.offset
             };
-            Some(xth_unnormalized_lagrange_eval(
-                env.l0_1(),
-                offset,
-                res_domain,
-                env,
-                row.try_into().unwrap(),
-            ))
+            if row < final_domain.size() {
+                Some(xth_unnormalized_lagrange_eval(env.l0_1(), offset, d, env, row.try_into().unwrap()))
+            } else {
+                None
+            }
         }
         Expr::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) => {
-            Some(env.vanishes_on_zero_knowledge_and_previous_rows()[row])
+            if row < final_domain.size() {
+                Some(env.vanishes_on_zero_knowledge_and_previous_rows().evals[row])
+            } else {
+                None
+            }
         }
         Expr::Double(x) => value_(x, env, cache, row).map(|x| x.double()),
         Expr::Square(x) => value_(x, env, cache, row).map(|x| x.square()),

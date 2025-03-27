@@ -1,8 +1,9 @@
-use ark_ff::{Field, One, UniformRand, Zero};
+use ark_ff::{batch_inversion, Field, One, UniformRand, Zero};
 use ark_poly::{
     univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations,
     Radix2EvaluationDomain as D,
 };
+use kimchi::linearization::constraints_expr;
 use kimchi::{
     circuits::{
         berkeley_columns::{
@@ -229,8 +230,6 @@ fn test_evaluations_iter_agrees_with_evaluations() {
         ProverIndex::<Vesta, OpeningProof<Vesta>>::create(constraint_system.clone(), endo_q, srs)
     };
 
-    println!("d1: {}", constraint_system.domain.d1.size());
-
     let witness_cols: [_; COLUMNS] =
         array::from_fn(|_| DensePolynomial::rand(constraint_system.domain.d1.size() - 1, &mut rng));
     let permutation = DensePolynomial::zero();
@@ -260,69 +259,15 @@ fn test_evaluations_iter_agrees_with_evaluations() {
         index: HashMap::new(),
         lookup: None,
     };
-    /*
-       // FIXME: Fix log_domain_size = 16
-       let domains = EvaluationDomains::<Fp>::create(1 << 16).unwrap();
-       // MARC
-       let domain = domains.d8;
-       // FIXME: Dedup
-       let randomized_witness = (0..15)
-           .map(|_| create_random_evaluation(domain, &mut rng))
-           .collect::<Vec<_>>()
-           .try_into()
-           .unwrap();
-       let randomized_coefficients = (0..15)
-           .map(|_| create_random_evaluation(domain, &mut rng))
-           .collect::<Vec<_>>()
-           .try_into()
-           .unwrap();
-       let randomized_vanishes_on_zero_knowledge_and_previous_rows =
-           create_random_evaluation(domain, &mut rng);
-       let randomized_z = create_random_evaluation(domain, &mut rng);
-       let randomized_l0_1 = Fp::rand(&mut rng);
-       let constants = Constants {
-           endo_coefficient: Fp::rand(&mut rng),
-           mds: &Vesta::sponge_params().mds,
-           zk_rows: 0,
-       };
-       let challenges = BerkeleyChallenges {
-           alpha: Fp::rand(&mut rng),
-           beta: Fp::rand(&mut rng),
-           gamma: Fp::rand(&mut rng),
-           joint_combiner: Fp::rand(&mut rng),
-       };
 
-       let env = Environment {
-           witness: &randomized_witness,
-           coefficient: &randomized_coefficients,
-           vanishes_on_zero_knowledge_and_previous_rows:
-               &randomized_vanishes_on_zero_knowledge_and_previous_rows,
-           z: &randomized_z,
-           // empty!??!
-           index: HashMap::new(),
-           l0_1: randomized_l0_1,
-           constants,
-           challenges,
-           domain: domains,
-           lookup: None,
-       };
-    */
-    let mut expr: E<Fp> = E::zero();
-    // (X0 + X1) * X2
-    expr += witness_curr(0);
-    expr += witness_curr(1);
-    expr *= witness_curr(2);
-
-    print!("{:?}\n", expr);
+    let mut expr: E<Fp> = constraints_expr(None, true).0;
 
     let expr_prime = expr.clone();
 
     let evals1 = expr_prime.evaluations(&env).evals;
-    println!("********************************");
     let evals2 = expr.evaluations_iter(env).collect::<Vec<_>>();
 
-    print!("e10: {:?}; e20: {:?}\n", evals1[0], evals2[0]);
+    assert_eq!(evals1.len(), evals2.len());
     assert_eq!(evals1[0], evals2[0]);
-    print!("e1s: {};  e2s: {}\n", evals1.len(), evals2.len());
     assert_eq!(evals1, evals2);
 }
