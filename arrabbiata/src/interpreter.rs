@@ -648,10 +648,10 @@ pub trait InterpreterEnv {
     /// When instantiating as expressions - "constraints" - it defines
     /// multivariate polynomials.
     type Variable: Clone
-        + std::ops::Add<Self::Variable, Output = Self::Variable>
-        + std::ops::Sub<Self::Variable, Output = Self::Variable>
-        + std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::fmt::Debug
+        + core::ops::Add<Self::Variable, Output = Self::Variable>
+        + core::ops::Sub<Self::Variable, Output = Self::Variable>
+        + core::ops::Mul<Self::Variable, Output = Self::Variable>
+        + core::fmt::Debug
         + Zero
         + One;
 

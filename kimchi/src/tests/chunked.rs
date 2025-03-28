@@ -5,13 +5,13 @@ use crate::circuits::{
     wires::{Wire, COLUMNS},
 };
 use ark_ff::{UniformRand, Zero};
+use core::array;
 use itertools::iterate;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;

@@ -6,8 +6,8 @@ use o1_utils::{
 };
 
 use ark_ff::{Field, One, PrimeField, Zero};
+use core::array;
 use num_bigint::BigUint;
-use std::array;
 
 /// Index of low limb (in 3-limb foreign elements)
 pub const LO: usize = 0;

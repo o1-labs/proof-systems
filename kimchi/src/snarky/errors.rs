@@ -3,13 +3,13 @@ use std::{backtrace::Backtrace, borrow::Cow};
 use thiserror::Error;
 
 /// A result type for Snarky errors.
-pub type SnarkyResult<T> = std::result::Result<T, Box<RealSnarkyError>>;
+pub type SnarkyResult<T> = core::result::Result<T, Box<RealSnarkyError>>;
 
 /// A result type for Snarky runtime errors.
-pub type SnarkyRuntimeResult<T> = std::result::Result<T, Box<SnarkyRuntimeError>>;
+pub type SnarkyRuntimeResult<T> = core::result::Result<T, Box<SnarkyRuntimeError>>;
 
 /// A result type for Snarky compilation errors.
-pub type SnarkyCompileResult<T> = std::result::Result<T, SnarkyCompilationError>;
+pub type SnarkyCompileResult<T> = core::result::Result<T, SnarkyCompilationError>;
 
 #[derive(Debug, Error)]
 #[error("an error occurred in snarky")]
