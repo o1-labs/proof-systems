@@ -2,7 +2,7 @@
 //!
 //! An implementation of Mina's hasher based on the poseidon arithmetic sponge
 //!
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 use crate::DomainParameter;
 use mina_curves::pasta::Fp;
