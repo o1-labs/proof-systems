@@ -1,9 +1,8 @@
-use std::ops::Index;
-
 use crate::plonkish_lang::{CombinableEvals, PlonkishChallenge, PlonkishWitnessGeneric};
 use ark_ec::AffineRepr;
 use ark_ff::Field;
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
+use core::ops::Index;
 use folding::{
     columns::ExtendedFoldingColumn,
     eval_leaf::EvalLeaf,

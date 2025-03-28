@@ -5,6 +5,7 @@
 use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
+use core::ops::Index;
 use folding::{
     eval_leaf::EvalLeaf, expressions::FoldingColumnTrait, instance_witness::ExtendedWitness,
     standard_config::StandardConfig, Alphas, FoldingCompatibleExpr, FoldingOutput, FoldingScheme,
@@ -45,7 +46,7 @@ use mina_poseidon::{
 };
 use poly_commitment::{kzg::PairingSRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
-use std::{collections::BTreeMap, ops::Index};
+use std::collections::BTreeMap;
 use strum::EnumCount;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 

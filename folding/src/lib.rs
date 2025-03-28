@@ -20,6 +20,7 @@
 use ark_ec::AffineRepr;
 use ark_ff::{Field, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
+use core::{fmt::Debug, hash::Hash, iter::successors};
 use error_term::{compute_error, ExtendedEnv};
 use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
 use instance_witness::{Foldable, RelaxableInstance, RelaxablePair};
@@ -28,9 +29,6 @@ use mina_poseidon::FqSponge;
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 use quadraticization::ExtendedWitnessGenerator;
 use std::{
-    fmt::Debug,
-    hash::Hash,
-    iter::successors,
     rc::Rc,
     sync::atomic::{AtomicUsize, Ordering},
 };
@@ -151,7 +149,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         let (expression, extended_witness_generator, quadraticization_columns) =
             folding_expression(constraints);
         let zero = <ScalarField<CF>>::zero();
-        let evals = std::iter::repeat(zero).take(domain.size()).collect();
+        let evals = core::iter::repeat(zero).take(domain.size()).collect();
         let zero_vec = Evaluations::from_vec_and_domain(evals, domain);
         let final_expression = expression.clone().final_expression();
         let scheme = Self {

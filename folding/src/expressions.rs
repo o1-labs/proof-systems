@@ -300,7 +300,7 @@ pub enum Degree {
     Two,
 }
 
-impl std::ops::Add for Degree {
+impl core::ops::Add for Degree {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -313,7 +313,7 @@ impl std::ops::Add for Degree {
     }
 }
 
-impl std::ops::Mul for &Degree {
+impl core::ops::Mul for &Degree {
     type Output = Degree;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -398,7 +398,7 @@ pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Square(Box<Self>),
 }
 
-impl<C: FoldingConfig> std::ops::Add for FoldingCompatibleExpr<C> {
+impl<C: FoldingConfig> core::ops::Add for FoldingCompatibleExpr<C> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -406,7 +406,7 @@ impl<C: FoldingConfig> std::ops::Add for FoldingCompatibleExpr<C> {
     }
 }
 
-impl<C: FoldingConfig> std::ops::Sub for FoldingCompatibleExpr<C> {
+impl<C: FoldingConfig> core::ops::Sub for FoldingCompatibleExpr<C> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
@@ -414,7 +414,7 @@ impl<C: FoldingConfig> std::ops::Sub for FoldingCompatibleExpr<C> {
     }
 }
 
-impl<C: FoldingConfig> std::ops::Mul for FoldingCompatibleExpr<C> {
+impl<C: FoldingConfig> core::ops::Mul for FoldingCompatibleExpr<C> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self {
@@ -502,7 +502,7 @@ pub enum FoldingExp<C: FoldingConfig> {
     Square(Box<Self>),
 }
 
-impl<C: FoldingConfig> std::ops::Add for FoldingExp<C> {
+impl<C: FoldingConfig> core::ops::Add for FoldingExp<C> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -510,7 +510,7 @@ impl<C: FoldingConfig> std::ops::Add for FoldingExp<C> {
     }
 }
 
-impl<C: FoldingConfig> std::ops::Sub for FoldingExp<C> {
+impl<C: FoldingConfig> core::ops::Sub for FoldingExp<C> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
@@ -518,7 +518,7 @@ impl<C: FoldingConfig> std::ops::Sub for FoldingExp<C> {
     }
 }
 
-impl<C: FoldingConfig> std::ops::Mul for FoldingExp<C> {
+impl<C: FoldingConfig> core::ops::Mul for FoldingExp<C> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self {
@@ -773,7 +773,7 @@ pub enum Sign {
     Neg,
 }
 
-impl std::ops::Neg for Sign {
+impl core::ops::Neg for Sign {
     type Output = Self;
 
     fn neg(self) -> Self {
@@ -805,7 +805,7 @@ impl<C: FoldingConfig> Term<C> {
     }
 }
 
-impl<C: FoldingConfig> std::ops::Mul for &Term<C> {
+impl<C: FoldingConfig> core::ops::Mul for &Term<C> {
     type Output = Term<C>;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -819,7 +819,7 @@ impl<C: FoldingConfig> std::ops::Mul for &Term<C> {
     }
 }
 
-impl<C: FoldingConfig> std::ops::Neg for Term<C> {
+impl<C: FoldingConfig> core::ops::Neg for Term<C> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {

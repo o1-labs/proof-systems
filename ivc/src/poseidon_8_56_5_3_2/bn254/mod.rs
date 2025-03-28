@@ -43,7 +43,7 @@ with the commit 85cbccd4266cdb567fd47ffc54c3fa52543c2c51
 where the curves have been changed in the script params.sage to use bn254
  */
 
-use std::str::FromStr;
+use core::str::FromStr;
 
 use super::interpreter::PoseidonParams;
 
@@ -1023,18 +1023,18 @@ pub struct PoseidonBN254Parameters;
 impl PoseidonParams<Fr, STATE_SIZE, NB_TOTAL_ROUND> for PoseidonBN254Parameters {
     fn constants(&self) -> [[Fr; STATE_SIZE]; NB_TOTAL_ROUND] {
         let rc = &static_params().round_constants;
-        std::array::from_fn(|i| std::array::from_fn(|j| Fr::from(rc[i][j])))
+        core::array::from_fn(|i| core::array::from_fn(|j| Fr::from(rc[i][j])))
     }
 
     fn mds(&self) -> [[Fr; STATE_SIZE]; STATE_SIZE] {
         let mds = &static_params().mds;
-        std::array::from_fn(|i| std::array::from_fn(|j| Fr::from(mds[i][j])))
+        core::array::from_fn(|i| core::array::from_fn(|j| Fr::from(mds[i][j])))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use core::str::FromStr;
 
     use super::{static_params, PlonkSpongeConstantsIVC};
     use ark_bn254::Fr;

@@ -109,7 +109,7 @@ where
     }
 
     let mut state: [Env::Variable; STATE_SIZE] =
-        std::array::from_fn(|i| env.read_column(PoseidonColumn::Input(i)));
+        core::array::from_fn(|i| env.read_column(PoseidonColumn::Input(i)));
 
     // Full rounds
     for i in 0..(NB_FULL_ROUND / 2) {
