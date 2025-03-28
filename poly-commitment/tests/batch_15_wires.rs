@@ -3,7 +3,6 @@
 
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Radix2EvaluationDomain};
-use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -48,7 +47,7 @@ where
                     (len % polysize) + 1
                 })
                 .collect::<Vec<_>>();
-            println!("{}{:?}", "sizes: ".bright_cyan(), length);
+            println!("sized: {:?}", length);
 
             let a = length
                 .iter()
@@ -164,10 +163,10 @@ where
         })
         .collect::<Vec<_>>();
 
-    println!("{}{:?}", "commitment time: ".yellow(), commit);
-    println!("{}{:?}", "open time: ".magenta(), open);
+    println!("commitment time: {:?}", commit);
+    println!("open time: {:?}", open);
 
     let start = Instant::now();
     assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut proofs, rng));
-    println!("{}{:?}", "verification time: ".green(), start.elapsed());
+    println!("verification time: {:?}", start.elapsed());
 }
