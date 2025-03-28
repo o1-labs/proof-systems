@@ -51,7 +51,6 @@ libc = "0.2.62"
 libflate = "2"
 log = "0.4.20"
 num-bigint = { version = "0.4.4", features = ["rand", "serde"] }
-num-derive = "0.4"
 num-integer = "0.1.45"
 ocaml = { version = "0.22.2" }
 ocaml-gen = { version = "0.1.5" }
