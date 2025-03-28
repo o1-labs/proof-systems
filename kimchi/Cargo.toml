@@ -21,7 +21,6 @@ ark-serialize.workspace = true
 ark-bn254 = { workspace = true, optional = true }
 blake2.workspace = true
 num-bigint.workspace = true
-num-derive.workspace = true
 num-integer.workspace = true
 itertools.workspace = true
 log.workspace = true
