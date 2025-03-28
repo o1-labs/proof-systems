@@ -1,6 +1,5 @@
-use std::str::FromStr;
-
 use ark_algebra_test_templates::*;
+use core::str::FromStr;
 use mina_curves::pasta::{Fp, Pallas, ProjectivePallas, ProjectiveVesta};
 use num_bigint::BigUint;
 
