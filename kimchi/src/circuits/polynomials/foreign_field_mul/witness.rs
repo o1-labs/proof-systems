@@ -16,11 +16,9 @@ use crate::{
     },
     variable_map,
 };
-use ark_ff::PrimeField;
+use ark_ff::{One, PrimeField};
 use num_bigint::BigUint;
 use num_integer::Integer;
-
-use num_traits::One;
 use o1_utils::foreign_field::ForeignFieldHelpers;
 use std::{array, ops::Div};
 

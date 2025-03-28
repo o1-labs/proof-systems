@@ -57,19 +57,7 @@ impl CurrOrNext {
 /// not to re-use powers of alpha across constraints.
 #[repr(C)]
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    FromPrimitive,
-    ToPrimitive,
-    Serialize,
-    Deserialize,
-    Eq,
-    Hash,
-    PartialOrd,
-    Ord,
+    Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, Eq, Hash, PartialOrd, Ord,
 )]
 #[cfg_attr(
     feature = "ocaml_types",
