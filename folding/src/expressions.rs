@@ -277,7 +277,7 @@ use crate::{
     FoldingConfig, ScalarField,
 };
 use ark_ec::AffineRepr;
-use ark_ff::One;
+use ark_ff::{One, Zero};
 use core::{
     fmt,
     fmt::{Display, Formatter},
@@ -289,7 +289,6 @@ use kimchi::circuits::{
     expr::{ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
-use num_traits::Zero;
 
 /// Describe the degree of a constraint.
 /// As described in the [top level documentation](super::expressions), we only

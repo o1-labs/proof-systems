@@ -26,8 +26,7 @@
 // bigint where we only apply the modulus when needed.
 
 use crate::{Alphas, Evals};
-use ark_ff::Field;
-use num_traits::One;
+use ark_ff::{Field, One};
 use poly_commitment::commitment::{CommitmentCurve, PolyComm};
 use std::collections::BTreeMap;
 
