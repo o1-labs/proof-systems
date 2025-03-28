@@ -1,5 +1,6 @@
 use ark_ff::{Field, One, UniformRand, Zero};
 use ark_poly::{domain::EvaluationDomain, univariate::DensePolynomial};
+use core::array;
 use kimchi::{
     circuits::{
         berkeley_columns::{
@@ -22,7 +23,6 @@ use poly_commitment::{
 };
 use rand::{prelude::StdRng, SeedableRng};
 use std::{
-    array,
     collections::{HashMap, HashSet},
     sync::Arc,
 };

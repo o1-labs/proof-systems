@@ -2,7 +2,7 @@
 //!
 //! To use Snarky, simply implements the [SnarkyCircuit] trait.
 
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 use crate::{
     circuits::{constraints::ConstraintSystem, gate::CircuitGate, polynomial::COLUMNS},

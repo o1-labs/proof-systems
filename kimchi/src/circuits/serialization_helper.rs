@@ -41,7 +41,7 @@ impl<'de, F, G: DeserializeAs<'de, F>> DeserializeAs<'de, JointLookupValue<F>>
         struct FieldVisitor;
         impl<'de> serde::de::Visitor<'de> for FieldVisitor {
             type Value = Field;
-            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut Formatter) -> core::fmt::Result {
                 Formatter::write_str(formatter, "field identifier")
             }
             fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
@@ -97,7 +97,7 @@ impl<'de, F, G: DeserializeAs<'de, F>> DeserializeAs<'de, JointLookupValue<F>>
             G: DeserializeAs<'de, F>,
         {
             type Value = JointLookupValue<F>;
-            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut Formatter) -> core::fmt::Result {
                 Formatter::write_str(formatter, "struct JointLookup")
             }
             #[inline]

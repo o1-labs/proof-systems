@@ -9,11 +9,11 @@ use crate::circuits::{
 use ark_ec::AffineRepr;
 use ark_ff::{FftField, One, Zero};
 use ark_poly::univariate::DensePolynomial;
+use core::array;
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::commitment::{b_poly, b_poly_coefficients, PolyComm};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::array;
 
 //~ spec:startcode
 /// Evaluations of a polynomial at 2 points

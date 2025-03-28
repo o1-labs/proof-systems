@@ -1,17 +1,16 @@
+use super::framework::TestFramework;
 use crate::circuits::{
     gate::{CircuitGate, GateType},
     wires::*,
 };
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{Field, One, UniformRand, Zero};
+use core::{array, ops::Mul};
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use std::{array, ops::Mul};
-
-use super::framework::TestFramework;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;

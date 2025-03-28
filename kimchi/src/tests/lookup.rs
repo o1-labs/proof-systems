@@ -9,13 +9,13 @@ use crate::circuits::{
     wires::Wire,
 };
 use ark_ff::{UniformRand, Zero};
+use core::array;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{prelude::*, Rng};
-use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;

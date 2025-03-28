@@ -18,7 +18,7 @@ use crate::circuits::{
     wires::{GateWires, COLUMNS},
 };
 use ark_ff::{FftField, PrimeField};
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 use CurrOrNext::{Curr, Next};
 
 type Variable = VariableGen<Column>;
@@ -365,7 +365,7 @@ pub struct VarbaseMulResult<F> {
 /// # Panics
 ///
 /// Will panic if `bits chunk` length validation fails.
-pub fn witness<F: FftField + std::fmt::Display>(
+pub fn witness<F: FftField + core::fmt::Display>(
     w: &mut [Vec<F>; COLUMNS],
     row0: usize,
     base: (F, F),

@@ -663,7 +663,7 @@ pub fn constraints<F: FftField>(
             for term in rt_constraints.iter_mut() {
                 // Dummy value, to appease the borrow checker.
                 let mut boxed_term = Box::new(constant(F::zero()));
-                std::mem::swap(term, &mut *boxed_term);
+                core::mem::swap(term, &mut *boxed_term);
                 *term = E::IfFeature(
                     FeatureFlag::RuntimeLookupTables,
                     boxed_term,

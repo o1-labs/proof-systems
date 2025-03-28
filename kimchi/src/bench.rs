@@ -1,4 +1,4 @@
-use std::array;
+use core::array;
 
 use groupmap::{BWParameters, GroupMap};
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};

@@ -5,7 +5,7 @@
 //! which apply only in some points (rows) of the domain.
 //! For more info, read book/src/kimchi/arguments.md
 
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 use crate::{alphas::Alphas, circuits::expr::prologue::*};
 use ark_ff::{Field, PrimeField};
@@ -163,7 +163,7 @@ pub struct ArgumentWitness<T> {
     pub next: [T; COLUMNS],
 }
 
-impl<T> std::ops::Index<(CurrOrNext, usize)> for ArgumentWitness<T> {
+impl<T> core::ops::Index<(CurrOrNext, usize)> for ArgumentWitness<T> {
     type Output = T;
 
     fn index(&self, idx: (CurrOrNext, usize)) -> &T {

@@ -16,18 +16,18 @@ use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
-use itertools::Itertools;
-use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
-use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
-use std::{
+use core::{
     cmp::Ordering,
-    collections::{HashMap, HashSet},
     fmt,
     fmt::{Debug, Display},
     iter::FromIterator,
     ops::{Add, AddAssign, Index, Mul, MulAssign, Neg, Sub},
 };
+use itertools::Itertools;
+use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
 
@@ -972,12 +972,12 @@ impl<C, Column> Expr<C, Column> {
             Square(x) => 2 * x.degree(d1_size, zk_rows),
             Mul(x, y) => (*x).degree(d1_size, zk_rows) + (*y).degree(d1_size, zk_rows),
             Add(x, y) | Sub(x, y) => {
-                std::cmp::max((*x).degree(d1_size, zk_rows), (*y).degree(d1_size, zk_rows))
+                core::cmp::max((*x).degree(d1_size, zk_rows), (*y).degree(d1_size, zk_rows))
             }
             Pow(e, d) => d * e.degree(d1_size, zk_rows),
             Cache(_, e) => e.degree(d1_size, zk_rows),
             IfFeature(_, e1, e2) => {
-                std::cmp::max(e1.degree(d1_size, zk_rows), e2.degree(d1_size, zk_rows))
+                core::cmp::max(e1.degree(d1_size, zk_rows), e2.degree(d1_size, zk_rows))
             }
         }
     }
@@ -2292,7 +2292,7 @@ type Monomials<F, Column> = HashMap<Vec<Variable<Column>>, Expr<F, Column>>;
 
 fn mul_monomials<
     F: Neg<Output = F> + Clone + One + Zero + PartialEq,
-    Column: Ord + Copy + std::hash::Hash,
+    Column: Ord + Copy + core::hash::Hash,
 >(
     e1: &Monomials<F, Column>,
     e2: &Monomials<F, Column>,
@@ -2315,8 +2315,10 @@ where
     res
 }
 
-impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq, Column: Ord + Copy + std::hash::Hash>
-    Expr<F, Column>
+impl<
+        F: Neg<Output = F> + Clone + One + Zero + PartialEq,
+        Column: Ord + Copy + core::hash::Hash,
+    > Expr<F, Column>
 where
     ExprInner<F, Column>: Literal,
     <ExprInner<F, Column> as Literal>::F: Field,
@@ -3182,7 +3184,7 @@ pub mod constraints {
     use o1_utils::Two;
 
     use crate::circuits::argument::ArgumentData;
-    use std::fmt;
+    use core::fmt;
 
     use super::*;
     use crate::circuits::berkeley_columns::{coeff, witness};
@@ -3205,7 +3207,7 @@ pub mod constraints {
         + fmt::Display
     // Add more as necessary
     where
-        Self: std::marker::Sized,
+        Self: core::marker::Sized,
     {
         /// 2^pow
         fn two_pow(pow: u64) -> Self;
@@ -3256,7 +3258,7 @@ pub mod constraints {
     where
         F: PrimeField,
         // TODO remove
-        Expr<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>: std::fmt::Display,
+        Expr<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>: core::fmt::Display,
     {
         fn two_pow(pow: u64) -> Self {
             Expr::<ConstantExpr<F, BerkeleyChallengeTerm>, berkeley_columns::Column>::literal(

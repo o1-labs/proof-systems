@@ -22,7 +22,7 @@ use crate::circuits::{
     wires::COLUMNS,
 };
 use ark_ff::{Field, PrimeField};
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 /// This enforces that
 ///

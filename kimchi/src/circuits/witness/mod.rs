@@ -88,7 +88,7 @@ pub fn init<F: PrimeField, T, const W: usize>(
 
 #[cfg(test)]
 mod tests {
-    use std::array;
+    use core::array;
 
     use super::*;
 

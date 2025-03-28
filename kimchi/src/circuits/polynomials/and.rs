@@ -1,6 +1,6 @@
 //! This module includes the AND gadget implementation and the witness creation code.
 //! Note that this module does not need any new gate type for the AND operation.
-use std::array;
+use core::array;
 
 use super::{
     generic::GenericGateSpec,

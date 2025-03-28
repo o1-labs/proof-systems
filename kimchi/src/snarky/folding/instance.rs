@@ -8,7 +8,7 @@ use crate::{
     FieldVar, RunState, SnarkyResult,
 };
 use ark_ff::PrimeField;
-use std::iter::successors;
+use core::iter::successors;
 
 use super::{
     challenge_linear_combination, commitment_linear_combination, ec_add, ec_scale, trim,
@@ -156,7 +156,7 @@ impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
         for set in new_sets.iter_mut() {
             for challenge in set.iter_mut() {
                 let mut trimed = trim(sys, challenge, base)?;
-                std::mem::swap(challenge, &mut trimed);
+                core::mem::swap(challenge, &mut trimed);
             }
         }
         let challenges = self

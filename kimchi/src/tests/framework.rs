@@ -23,6 +23,7 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use ark_poly::Radix2EvaluationDomain as D;
+use core::fmt::Write;
 use groupmap::GroupMap;
 use mina_poseidon::sponge::FqSponge;
 use num_bigint::BigUint;
@@ -30,7 +31,7 @@ use poly_commitment::{
     commitment::CommitmentCurve, ipa::OpeningProof as DlogOpeningProof, OpenProof,
 };
 use rand_core::{CryptoRng, RngCore};
-use std::{fmt::Write, time::Instant};
+use std::time::Instant;
 
 // aliases
 
@@ -132,7 +133,7 @@ where
     ) -> TestRunner<G, OpeningProof> {
         let start = Instant::now();
 
-        let lookup_tables = std::mem::take(&mut self.lookup_tables);
+        let lookup_tables = core::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = self.runtime_tables_setup.take();
 
         let index = new_index_for_test_with_lookups_and_custom_srs(
@@ -166,7 +167,7 @@ where
     pub(crate) fn setup(mut self) -> TestRunner<G> {
         let start = Instant::now();
 
-        let lookup_tables = std::mem::take(&mut self.lookup_tables);
+        let lookup_tables = core::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = self.runtime_tables_setup.take();
 
         let index = new_index_for_test_with_lookups::<G>(
@@ -311,7 +312,7 @@ where
     OpeningProof: OpenProof<G>
         + Clone
         + PartialEq
-        + std::fmt::Debug
+        + core::fmt::Debug
         + serde::Serialize
         + for<'a> serde::Deserialize<'a>,
     OpeningProof::SRS: Clone,

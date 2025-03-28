@@ -424,7 +424,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         let mut internal_values = HashMap::new();
         let public_input_size = self.public_input_size.unwrap();
         let num_rows = public_input_size + self.next_row;
-        let mut res: [_; COLUMNS] = std::array::from_fn(|_| vec![Field::zero(); num_rows]);
+        let mut res: [_; COLUMNS] = core::array::from_fn(|_| vec![Field::zero(); num_rows]);
 
         // obtain public input from closure
         for i in 0..public_input_size {
@@ -557,7 +557,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
            If these cells (the first 7) contain variables,
            make sure that they are wired
         */
-        let num_vars = std::cmp::min(PERMUTS, vars.len());
+        let num_vars = core::cmp::min(PERMUTS, vars.len());
         for (col, x) in vars.iter().take(num_vars).enumerate() {
             match x {
                 None => (),
@@ -616,7 +616,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         }
 
         // get gates without holding on an immutable reference
-        let gates = match std::mem::replace(&mut self.gates, Circuit::Unfinalized(vec![])) {
+        let gates = match core::mem::replace(&mut self.gates, Circuit::Unfinalized(vec![])) {
             Circuit::Unfinalized(gates) => gates,
             Circuit::Compiled(_, _) => panic!("we expect the gates to be unfinalized"),
         };
@@ -818,7 +818,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     loc: loc2,
                     vars: (l2, r2, o2),
                     coeffs: coeffs2,
-                }) = std::mem::replace(&mut self.pending_generic_gate, None)
+                }) = core::mem::replace(&mut self.pending_generic_gate, None)
                 {
                     let labels1 = labels.join(",");
                     let labels2 = labels2.join(",");

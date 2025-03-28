@@ -30,7 +30,7 @@ pub struct GateLookupTables {
     pub range_check: bool,
 }
 
-impl std::ops::Index<GateLookupTable> for GateLookupTables {
+impl core::ops::Index<GateLookupTable> for GateLookupTables {
     type Output = bool;
 
     fn index(&self, index: GateLookupTable) -> &Self::Output {
@@ -41,7 +41,7 @@ impl std::ops::Index<GateLookupTable> for GateLookupTables {
     }
 }
 
-impl std::ops::IndexMut<GateLookupTable> for GateLookupTables {
+impl core::ops::IndexMut<GateLookupTable> for GateLookupTables {
     fn index_mut(&mut self, index: GateLookupTable) -> &mut Self::Output {
         match index {
             GateLookupTable::Xor => &mut self.xor,
