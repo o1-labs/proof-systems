@@ -2,6 +2,7 @@
 //!
 //! Definition of public key structure and helpers
 
+use crate::{BaseField, CurvePoint, ScalarField, SecKey};
 use ark_ec::{short_weierstrass::Affine, AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, PrimeField, Zero};
 use bs58;
@@ -9,11 +10,9 @@ use core::{
     fmt,
     ops::{Mul, Neg},
 };
+use o1_utils::FieldHelpers;
 use sha2::{Digest, Sha256};
 use thiserror::Error;
-
-use crate::{BaseField, CurvePoint, ScalarField, SecKey};
-use o1_utils::FieldHelpers;
 
 /// Public key errors
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
