@@ -3,6 +3,7 @@
 //! Definition of random oracle input structure and
 //! methods for serializing into bytes and field elements
 
+use alloc::{vec, vec::Vec};
 use bitvec::{prelude::*, view::AsBits};
 
 use ark_ff::PrimeField;
