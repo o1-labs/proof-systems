@@ -499,7 +499,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
                 output_vec
             })
             .reduce_with(|mut l, r| {
-                for i in 0..n - 1 {
+                for i in 0..n {
                     l[i] *= &r[i];
                 }
                 l
@@ -519,7 +519,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
                 output_vec
             })
             .reduce_with(|mut l, r| {
-                for i in 0..n - 1 {
+                for i in 0..n {
                     l[i] *= &r[i];
                 }
                 l
