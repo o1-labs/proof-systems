@@ -1,3 +1,5 @@
+# Introduction
+
 This repository contains several projects.
 The main one is Kimchi, the base layer of the proof system used in Mina.
 The readme also goes over two other unfinnnished projects : Arrabiata and the o1vm.
