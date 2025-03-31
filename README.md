@@ -1,14 +1,7 @@
-# Kimchi
+This repository contains several projects.
+The main one is Kimchi, the base layer of the proof system used in Mina.
+The readme also goes over two other unfinnnished projects : Arrabiata and the o1vm.
 
-[![codecov](https://codecov.io/gh/o1-labs/proof-systems/graph/badge.svg?token=pl6W1FDfV0)](https://codecov.io/gh/o1-labs/proof-systems)
-[![CI](https://github.com/o1-labs/proof-systems/actions/workflows/rust.yml/badge.svg)](https://github.com/o1-labs/proof-systems/actions/workflows/rust.yml)
-[![dependency status](https://deps.rs/repo/github/o1-labs/proof-systems/status.svg?style=flat-square)](https://deps.rs/repo/github/o1-labs/proof-systems)
-
-This repository contains **kimchi**, a general-purpose zero-knowledge proof system for proving the correct execution of programs.
-
-You can read more about this project on the [Kimchi book](https://o1-labs.github.io/proof-systems), or for a lighter introduction in this [blogpost](https://minaprotocol.com/blog/kimchi-the-latest-update-to-minas-proof-system).
-
-[See here for the rust documentation](https://o1-labs.github.io/proof-systems/rustdoc).
 
 ## User Warning
 
@@ -16,31 +9,7 @@ This project comes as is. We provide no guarantee of stability or support, as th
 
 If you use this project in a production environment, it is your responsibility to perform a security audit to ensure that the software meets your requirements.
 
-## Performance
 
-At the time of this writing:
-
-### Proving time
-
-| number of gates | seconds |
-| :-------------: | :-----: |
-|      2^11       |  0.6s   |
-|      2^15       |  3.3s   |
-|      2^16       |  6.3s   |
-
-### Verification time
-
-| number of gates | seconds |
-| :-------------: | :-----: |
-|      2^15       |  0.1s   |
-|      2^16       |  0.1s   |
-
-### Proof size
-
-| number of gates | bytes |
-| :-------------: | :---: |
-|      2^15       | 4947  |
-|      2^16       | 5018  |
 
 ## Organization
 
@@ -94,3 +63,45 @@ You can visualize the documentation by opening the file `target/doc/index.html`.
 ## Nix for Dependencies (WIP)
 
 If you have `nix` installed and in particular, `flakes` enabled, you can install the dependencies for these projects using nix. Simply `nix develop .` inside this directory to bring into scope `rustup`, `opam`, and `go` (along with a few other tools). You will have to manage the toolchains yourself using `rustup` and `opam`, in the current iteration.
+
+# Kimchi
+
+[![codecov](https://codecov.io/gh/o1-labs/proof-systems/graph/badge.svg?token=pl6W1FDfV0)](https://codecov.io/gh/o1-labs/proof-systems)
+[![CI](https://github.com/o1-labs/proof-systems/actions/workflows/rust.yml/badge.svg)](https://github.com/o1-labs/proof-systems/actions/workflows/rust.yml)
+[![dependency status](https://deps.rs/repo/github/o1-labs/proof-systems/status.svg?style=flat-square)](https://deps.rs/repo/github/o1-labs/proof-systems)
+
+This repository contains **kimchi**, a general-purpose zero-knowledge proof system for proving the correct execution of programs.
+
+You can read more about this project on the [Kimchi book](https://o1-labs.github.io/proof-systems), or for a lighter introduction in this [blogpost](https://minaprotocol.com/blog/kimchi-the-latest-update-to-minas-proof-system).
+
+[See here for the rust documentation](https://o1-labs.github.io/proof-systems/rustdoc).
+
+## Performance
+
+At the time of this writing:
+
+### Proving time
+
+| number of gates | seconds |
+| :-------------: | :-----: |
+|      2^11       |  0.6s   |
+|      2^15       |  3.3s   |
+|      2^16       |  6.3s   |
+
+### Verification time
+
+| number of gates | seconds |
+| :-------------: | :-----: |
+|      2^15       |  0.1s   |
+|      2^16       |  0.1s   |
+
+### Proof size
+
+| number of gates | bytes |
+| :-------------: | :---: |
+|      2^15       | 4947  |
+|      2^16       | 5018  |
+
+# Arrabiata (WIP)
+
+Arrabiata is a folding scheme which generalises Nova to a arbitrary plonkish gates.
