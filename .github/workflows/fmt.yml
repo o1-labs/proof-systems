@@ -28,3 +28,8 @@ jobs:
       - name: Check formatting related to Rust code
         run: |
           make check-format
+
+      - name: Check unused dependencies
+        run: |
+          cargo install --git https://github.com/est31/cargo-udeps --locked
+          cargo +nightly udeps
