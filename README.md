@@ -117,3 +117,11 @@ Arrabiata is a folding scheme which generalises Nova to a arbitrary plonkish gat
 The following extensions are planned for a later version:
 - [] support of non-uniform IVC.
 - [] ProtoStar style optimisation to avoid a linear cost in the gate's degree.
+
+# O1VM (WIP)
+
+The o1vm is a zkvm for both the MIPS and RISC-V instruction set. It also contains a special Keccak circuit.
+It is based on the Pasta curves.
+At the time of writting the following is missing:
+- [] a memory checking argument.
+- [] branching the vm into arrabiata to achieve succint proofs.
