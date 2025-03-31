@@ -9,6 +9,7 @@ members = [
     "internal-tracing",
     "ivc",
     "kimchi",
+    "kimchi-stubs",
     "msm",
     "mvpoly",
     "o1vm",
@@ -95,6 +96,7 @@ saffron = { path = "./poly-commitment", version = "0.1.0" }
 signer = { path = "./signer", version = "0.1.0" }
 turshi = { path = "./turshi", version = "0.1.0" }
 utils = { path = "./utils", version = "0.1.0" }
+wires_15_stubs = { path = "./kimchi-stubs", version = "0.1.0" }
 
 [profile.release]
 lto = true
