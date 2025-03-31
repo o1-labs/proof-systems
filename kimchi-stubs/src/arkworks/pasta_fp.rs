@@ -203,10 +203,7 @@ pub fn caml_pasta_fp_of_string(s: CamlBytesString) -> Result<CamlFp, ocaml::Erro
 #[ocaml_gen::func]
 #[ocaml::func]
 pub fn caml_pasta_fp_print(x: ocaml::Pointer<CamlFp>) {
-    println!(
-        "{}",
-        CamlBigInteger256(x.as_ref().0.into_bigint()).to_string()
-    );
+    println!("{}", CamlBigInteger256(x.as_ref().0.into_bigint()));
 }
 
 #[ocaml_gen::func]

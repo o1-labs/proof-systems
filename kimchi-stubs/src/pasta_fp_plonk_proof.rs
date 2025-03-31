@@ -689,7 +689,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_ffadd(
         let left = modulus.clone() - BigUint::from_bytes_be(&[1]);
         let right = modulus.clone() - BigUint::from_bytes_be(&[1]);
         // create a chain of 1 addition
-        let add_witness = create_chain::<Fp>(&vec![left, right], operation, modulus);
+        let add_witness = create_chain::<Fp>(&[left, right], operation, modulus);
         for col in 0..COLUMNS {
             witness[col].extend(add_witness[col].iter());
         }

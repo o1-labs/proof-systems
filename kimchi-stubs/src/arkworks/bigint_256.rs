@@ -4,6 +4,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::{
     cmp::Ordering::{Equal, Greater, Less},
     convert::{TryFrom, TryInto},
+    fmt::{Display, Formatter},
     ops::Deref,
 };
 use num_bigint::BigUint;
@@ -104,9 +105,9 @@ impl TryFrom<&BigUint> for CamlBigInteger256 {
     }
 }
 
-impl ToString for CamlBigInteger256 {
-    fn to_string(&self) -> String {
-        Into::<BigUint>::into(self).to_string()
+impl Display for CamlBigInteger256 {
+    fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
+        write!(f, "{}", Into::<BigUint>::into(self))
     }
 }
 
@@ -182,7 +183,7 @@ pub fn caml_bigint_256_compare(
 #[ocaml_gen::func]
 #[ocaml::func]
 pub fn caml_bigint_256_print(x: CamlBigInteger256) {
-    println!("{}", x.to_string());
+    println!("{}", x)
 }
 
 #[ocaml_gen::func]
@@ -247,7 +248,7 @@ mod tests {
         let x = 10000.to_biguint().unwrap();
         println!("biguint.to_string: {}", x);
         let y = CamlBigInteger256::try_from(x.clone()).unwrap();
-        println!("camlbigint.to_string: {}", y.to_string());
+        println!("camlbigint.to_string: {}", y);
         //assert!(&y.to_string() == "10000");
         let x2: BigUint = y.into();
         assert!(x2 == x);
