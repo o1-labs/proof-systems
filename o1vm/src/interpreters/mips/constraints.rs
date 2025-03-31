@@ -35,6 +35,10 @@ pub struct Env<Fp> {
     lookups: Vec<Lookup<E<Fp>>>,
     /// Selector (as expression) for the constraints of the environment.
     selector: Option<E<Fp>>,
+    /// The number of time the instruction counter has been incremented
+    /// during an instruction.
+    /// This happens whenever a memory access is done.
+    instruction_counter_increment: usize,
 }
 
 impl<Fp: Field> Default for Env<Fp> {
@@ -46,6 +50,7 @@ impl<Fp: Field> Default for Env<Fp> {
             constraints: Vec::new(),
             lookups: Vec::new(),
             selector: None,
+            instruction_counter_increment: 0,
         }
     }
 }
@@ -144,10 +149,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     fn instruction_counter(&self) -> Self::Variable {
         self.variable(MIPSColumn::InstructionCounter)
+            + Self::constant(self.instruction_counter_increment as u32)
     }
 
     fn increase_instruction_counter(&mut self) {
-        // No-op, witness only
+        self.instruction_counter_increment += 1;
     }
 
     unsafe fn fetch_register(
@@ -672,6 +678,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.constraints.clear();
         self.lookups.clear();
         self.selector = None;
+        self.instruction_counter_increment = 0;
     }
 }
 

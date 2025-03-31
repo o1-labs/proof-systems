@@ -1254,12 +1254,13 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
 
     /// Execute a single step of the MIPS program.
     /// Returns the instruction that was executed.
+    /// Also return the instruction counter before executing the step.
     pub fn step(
         &mut self,
         config: &VmConfiguration,
         metadata: &Option<Meta>,
         start: &Start,
-    ) -> Instruction {
+    ) -> (Instruction, usize) {
         self.reset_scratch_state();
         self.reset_scratch_state_inverse();
         self.reset_lookup_state();
@@ -1269,8 +1270,9 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         self.pp_info(&config.info_at, metadata, start);
         self.snapshot_state_at(&config.snapshot_state_at);
 
-        interpreter::interpret_instruction(self, opcode);
+        let res = self.instruction_counter;
 
+        interpreter::interpret_instruction(self, opcode);
         self.instruction_counter = self.next_instruction_counter();
 
         config.halt_address.iter().for_each(|halt_address: &u32| {
@@ -1298,7 +1300,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
                 opcode
             );
         }
-        opcode
+        (opcode, res as usize)
     }
 
     fn should_trigger_at(&self, at: &StepFrequency) -> bool {

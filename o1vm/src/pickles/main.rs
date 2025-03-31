@@ -120,7 +120,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(domain_size);
     // First loop, do the proof without lookup
     while !mips_wit_env.halt {
-        let instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
+        let (instr, counter) = mips_wit_env.step(&configuration, meta, &start);
         instruction_set.insert(instr);
         for (scratch, scratch_chunk) in mips_wit_env
             .scratch_state
@@ -158,10 +158,11 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                 }
             }
         }
+
         curr_proof_inputs
             .evaluations
             .instruction_counter
-            .push(Fp::from(mips_wit_env.instruction_counter));
+            .push(Fp::from(counter as u64));
         // FIXME: Might be another value
         curr_proof_inputs.evaluations.error.push(Fp::rand(&mut rng));
 
@@ -238,7 +239,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     };
 
     while !mips_wit_env.halt {
-        let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
+        let _instr = mips_wit_env.step(&configuration, meta, &start);
         // TODO factorise the addtion of the wit env to the proof input in a seprate function
         // Lookup state
         // TODO factorise padding of lookup in a separate function
