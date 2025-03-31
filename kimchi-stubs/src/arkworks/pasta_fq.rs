@@ -19,7 +19,6 @@ use rand::rngs::StdRng;
 //
 
 #[derive(Clone, Copy, ocaml_gen::CustomType)]
-/// A wrapper type for [Pasta Fq](mina_curves::pasta::fq::Fq)
 pub struct CamlFq(pub Fq);
 
 unsafe impl<'a> ocaml::FromValue<'a> for CamlFq {

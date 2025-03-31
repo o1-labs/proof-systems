@@ -5,7 +5,7 @@
 //! For example:
 //!
 //! ```
-//! use marlin_plonk_bindings::arkworks::CamlBiginteger256;
+//! use kimchi_stubs::arkworks::CamlBiginteger256;
 //! use ark_ff::BigInteger256;
 //!
 //! #[ocaml::func]

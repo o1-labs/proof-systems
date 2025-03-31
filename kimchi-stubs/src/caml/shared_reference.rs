@@ -1,5 +1,5 @@
-//! [impl_shared_reference] implements an OCaml custom type that wraps
-//! around a shared reference to a Rust object.
+//! `impl_shared_reference1 implements an OCaml
+//! custom type that wraps around a shared reference to a Rust object.
 
 macro_rules! impl_shared_reference {
     ($name: ident => $typ: ty) => {
