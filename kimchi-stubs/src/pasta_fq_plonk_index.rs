@@ -1,13 +1,20 @@
-use crate::arkworks::CamlFq;
-use crate::WithLagrangeBasis;
-use crate::{gate_vector::fq::CamlPastaFqPlonkGateVectorPtr, srs::fq::CamlFqSrs};
+use crate::{
+    arkworks::CamlFq, gate_vector::fq::CamlPastaFqPlonkGateVectorPtr, srs::fq::CamlFqSrs,
+    WithLagrangeBasis,
+};
 use ark_poly::EvaluationDomain;
-use kimchi::circuits::lookup::runtime_tables::caml::CamlRuntimeTableCfg;
-use kimchi::circuits::lookup::runtime_tables::RuntimeTableCfg;
-use kimchi::circuits::lookup::tables::caml::CamlLookupTable;
-use kimchi::circuits::lookup::tables::LookupTable;
-use kimchi::circuits::{constraints::ConstraintSystem, gate::CircuitGate};
-use kimchi::{linearization::expr_linearization, prover_index::ProverIndex};
+use kimchi::{
+    circuits::{
+        constraints::ConstraintSystem,
+        gate::CircuitGate,
+        lookup::{
+            runtime_tables::{caml::CamlRuntimeTableCfg, RuntimeTableCfg},
+            tables::{caml::CamlLookupTable, LookupTable},
+        },
+    },
+    linearization::expr_linearization,
+    prover_index::ProverIndex,
+};
 use mina_curves::pasta::{Fq, Pallas, PallasParameters, Vesta};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use poly_commitment::{ipa::OpeningProof, SRS as _};

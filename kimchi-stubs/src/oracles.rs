@@ -1,8 +1,8 @@
 use crate::pasta_fp_plonk_verifier_index::CamlPastaFpPlonkVerifierIndex;
 use ark_ff::One;
-use kimchi::circuits::scalars::{caml::CamlRandomOracles, RandomOracles};
-use kimchi::proof::ProverProof;
 use kimchi::{
+    circuits::scalars::{caml::CamlRandomOracles, RandomOracles},
+    proof::ProverProof,
     prover::caml::{CamlProofWithPublic, CamlProverProof},
     verifier_index::VerifierIndex,
 };
@@ -13,8 +13,11 @@ use mina_poseidon::{
     FqSponge,
 };
 use paste::paste;
-use poly_commitment::commitment::{caml::CamlPolyComm, shift_scalar, PolyComm};
-use poly_commitment::{ipa::OpeningProof, SRS};
+use poly_commitment::{
+    commitment::{caml::CamlPolyComm, shift_scalar, PolyComm},
+    ipa::OpeningProof,
+    SRS,
+};
 
 #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
 pub struct CamlOracles<F> {

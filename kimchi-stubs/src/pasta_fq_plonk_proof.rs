@@ -8,28 +8,30 @@ use crate::{
 use ark_ec::AffineRepr;
 use ark_ff::One;
 use array_init::array_init;
-use core::array;
-use core::convert::TryInto;
+use core::{array, convert::TryInto};
 use groupmap::GroupMap;
 use kimchi::{
-    circuits::lookup::runtime_tables::{caml::CamlRuntimeTable, RuntimeTable},
-    prover_index::ProverIndex,
-};
-use kimchi::{circuits::polynomial::COLUMNS, verifier::batch_verify};
-use kimchi::{
+    circuits::{
+        lookup::runtime_tables::{caml::CamlRuntimeTable, RuntimeTable},
+        polynomial::COLUMNS,
+    },
     proof::{
         PointEvaluations, ProofEvaluations, ProverCommitments, ProverProof, RecursionChallenge,
     },
-    verifier::Context,
+    prover::caml::CamlProofWithPublic,
+    prover_index::ProverIndex,
+    verifier::{batch_verify, Context},
+    verifier_index::VerifierIndex,
 };
-use kimchi::{prover::caml::CamlProofWithPublic, verifier_index::VerifierIndex};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use poly_commitment::commitment::{CommitmentCurve, PolyComm};
-use poly_commitment::ipa::OpeningProof;
+use poly_commitment::{
+    commitment::{CommitmentCurve, PolyComm},
+    ipa::OpeningProof,
+};
 
 #[ocaml_gen::func]
 #[ocaml::func]

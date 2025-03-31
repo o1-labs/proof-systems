@@ -1,9 +1,11 @@
 use crate::caml::caml_bytes_string::CamlBytesString;
 use ark_ff::{BigInteger as ark_BigInteger, BigInteger256};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use core::cmp::Ordering::{Equal, Greater, Less};
-use core::convert::{TryFrom, TryInto};
-use core::ops::Deref;
+use core::{
+    cmp::Ordering::{Equal, Greater, Less},
+    convert::{TryFrom, TryInto},
+    ops::Deref,
+};
 use num_bigint::BigUint;
 
 //

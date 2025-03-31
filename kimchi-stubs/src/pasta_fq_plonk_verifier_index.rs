@@ -9,20 +9,23 @@ use ark_ec::AffineRepr;
 use ark_ff::One;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 use core::convert::TryInto;
-use kimchi::circuits::constraints::FeatureFlags;
-use kimchi::circuits::lookup::lookups::{LookupFeatures, LookupPatterns};
-use kimchi::circuits::polynomials::permutation::Shifts;
-use kimchi::circuits::polynomials::permutation::{permutation_vanishing_polynomial, zk_w};
-use kimchi::circuits::wires::{COLUMNS, PERMUTS};
-use kimchi::{linearization::expr_linearization, verifier_index::VerifierIndex};
+use kimchi::{
+    circuits::{
+        constraints::FeatureFlags,
+        lookup::lookups::{LookupFeatures, LookupPatterns},
+        polynomials::permutation::{permutation_vanishing_polynomial, zk_w, Shifts},
+        wires::{COLUMNS, PERMUTS},
+    },
+    linearization::expr_linearization,
+    verifier_index::VerifierIndex,
+};
 use mina_curves::pasta::{Fq, Pallas, Vesta};
 use poly_commitment::{
     commitment::{caml::CamlPolyComm, PolyComm},
     ipa::{OpeningProof, SRS},
     SRS as _,
 };
-use std::path::Path;
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
 pub type CamlPastaFqPlonkVerifierIndex =
     CamlPlonkVerifierIndex<CamlFq, CamlFqSrs, CamlPolyComm<CamlGPallas>>;

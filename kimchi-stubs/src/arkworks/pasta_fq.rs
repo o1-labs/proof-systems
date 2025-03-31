@@ -1,5 +1,4 @@
-use crate::arkworks::CamlBigInteger256;
-use crate::caml::caml_bytes_string::CamlBytesString;
+use crate::{arkworks::CamlBigInteger256, caml::caml_bytes_string::CamlBytesString};
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};

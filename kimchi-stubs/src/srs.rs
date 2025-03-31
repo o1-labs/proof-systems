@@ -1,11 +1,10 @@
 use crate::lagrange_basis::WithLagrangeBasis;
-use ark_poly::DenseUVPolynomial;
-use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Evaluations};
+use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
 use paste::paste;
-use poly_commitment::SRS as _;
 use poly_commitment::{
     commitment::{b_poly_coefficients, caml::CamlPolyComm},
     ipa::SRS,
+    SRS as _,
 };
 use serde::{Deserialize, Serialize};
 use std::{

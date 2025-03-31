@@ -1,28 +1,31 @@
-use crate::arkworks::{CamlFp, CamlGVesta};
-use crate::pasta_fp_plonk_index::CamlPastaFpPlonkIndexPtr;
-use crate::plonk_verifier_index::{
-    CamlPlonkDomain, CamlPlonkVerificationEvals, CamlPlonkVerifierIndex,
+use crate::{
+    arkworks::{CamlFp, CamlGVesta},
+    pasta_fp_plonk_index::CamlPastaFpPlonkIndexPtr,
+    plonk_verifier_index::{CamlPlonkDomain, CamlPlonkVerificationEvals, CamlPlonkVerifierIndex},
+    srs::fp::CamlFpSrs,
+    WithLagrangeBasis,
 };
-use crate::srs::fp::CamlFpSrs;
-use crate::WithLagrangeBasis;
 use ark_ec::AffineRepr;
 use ark_ff::One;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 use core::convert::TryInto;
-use kimchi::circuits::constraints::FeatureFlags;
-use kimchi::circuits::lookup::lookups::{LookupFeatures, LookupPatterns};
-use kimchi::circuits::polynomials::permutation::Shifts;
-use kimchi::circuits::polynomials::permutation::{permutation_vanishing_polynomial, zk_w};
-use kimchi::circuits::wires::{COLUMNS, PERMUTS};
-use kimchi::{linearization::expr_linearization, verifier_index::VerifierIndex};
+use kimchi::{
+    circuits::{
+        constraints::FeatureFlags,
+        lookup::lookups::{LookupFeatures, LookupPatterns},
+        polynomials::permutation::{permutation_vanishing_polynomial, zk_w, Shifts},
+        wires::{COLUMNS, PERMUTS},
+    },
+    linearization::expr_linearization,
+    verifier_index::VerifierIndex,
+};
 use mina_curves::pasta::{Fp, Pallas, Vesta};
 use poly_commitment::{
     commitment::{caml::CamlPolyComm, PolyComm},
     ipa::{OpeningProof, SRS},
     SRS as _,
 };
-use std::path::Path;
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
 pub type CamlPastaFpPlonkVerifierIndex =
     CamlPlonkVerifierIndex<CamlFp, CamlFpSrs, CamlPolyComm<CamlGVesta>>;

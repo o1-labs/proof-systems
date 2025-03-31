@@ -1,7 +1,11 @@
 use ark_ec::AffineRepr;
-use kimchi::circuits::lookup::index::LookupSelectors;
-use kimchi::circuits::lookup::lookups::{LookupFeatures, LookupInfo};
-use kimchi::verifier_index::LookupVerifierIndex;
+use kimchi::{
+    circuits::lookup::{
+        index::LookupSelectors,
+        lookups::{LookupFeatures, LookupInfo},
+    },
+    verifier_index::LookupVerifierIndex,
+};
 use poly_commitment::{commitment::CommitmentCurve, PolyComm};
 
 #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]

@@ -11,26 +11,28 @@ use ark_ff::One;
 use array_init::array_init;
 use core::array;
 use groupmap::GroupMap;
-use kimchi::verifier::verify;
 use kimchi::{
-    circuits::lookup::runtime_tables::{caml::CamlRuntimeTable, RuntimeTable},
-    prover_index::ProverIndex,
-};
-use kimchi::{circuits::polynomial::COLUMNS, verifier::batch_verify};
-use kimchi::{
+    circuits::{
+        lookup::runtime_tables::{caml::CamlRuntimeTable, RuntimeTable},
+        polynomial::COLUMNS,
+    },
     proof::{
         PointEvaluations, ProofEvaluations, ProverCommitments, ProverProof, RecursionChallenge,
     },
-    verifier::Context,
+    prover::caml::CamlProofWithPublic,
+    prover_index::ProverIndex,
+    verifier::{batch_verify, verify, Context},
+    verifier_index::VerifierIndex,
 };
-use kimchi::{prover::caml::CamlProofWithPublic, verifier_index::VerifierIndex};
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use poly_commitment::commitment::{CommitmentCurve, PolyComm};
-use poly_commitment::ipa::OpeningProof;
+use poly_commitment::{
+    commitment::{CommitmentCurve, PolyComm},
+    ipa::OpeningProof,
+};
 use std::convert::TryInto;
 
 type EFqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
@@ -322,8 +324,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_foreign_field_mul(
         polynomials::{foreign_field_common::BigUintForeignFieldHelpers, foreign_field_mul},
         wires::Wire,
     };
-    use num_bigint::BigUint;
-    use num_bigint::RandBigInt;
+    use num_bigint::{BigUint, RandBigInt};
     use o1_utils::FieldHelpers;
     use poly_commitment::ipa::endos;
     use rand::{rngs::StdRng, SeedableRng};
@@ -481,8 +482,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_range_check(
         polynomials::{foreign_field_common::BigUintForeignFieldHelpers, range_check},
         wires::Wire,
     };
-    use num_bigint::BigUint;
-    use num_bigint::RandBigInt;
+    use num_bigint::{BigUint, RandBigInt};
     use o1_utils::BigUintFieldHelpers;
     use poly_commitment::ipa::endos;
     use rand::{rngs::StdRng, SeedableRng};
