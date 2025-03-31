@@ -12,7 +12,6 @@ name = "wires_15_stubs"
 crate-type = ["lib", "staticlib"]
 
 [dependencies]
-array-init = "2.0.0"
 libc = "0.2.62"
 num-bigint = { version = "0.4.4", features = [ "rand", "serde" ] }
 # ocaml-specific

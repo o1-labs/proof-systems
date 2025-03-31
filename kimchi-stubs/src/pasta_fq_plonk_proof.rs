@@ -7,7 +7,6 @@ use crate::{
 };
 use ark_ec::AffineRepr;
 use ark_ff::One;
-use array_init::array_init;
 use core::{array, convert::TryInto};
 use groupmap::GroupMap;
 use kimchi::{
@@ -201,10 +200,10 @@ pub fn caml_pasta_fq_plonk_proof_dummy() -> CamlProofWithPublic<CamlGPallas, Cam
     };
     let evals = ProofEvaluations {
         public: Some(eval()),
-        w: array_init(|_| eval()),
-        coefficients: array_init(|_| eval()),
+        w: core::array::from_fn(|_| eval()),
+        coefficients: core::array::from_fn(|_| eval()),
         z: eval(),
-        s: array_init(|_| eval()),
+        s: core::array::from_fn(|_| eval()),
         generic_selector: eval(),
         poseidon_selector: eval(),
         complete_add_selector: eval(),
@@ -231,7 +230,7 @@ pub fn caml_pasta_fq_plonk_proof_dummy() -> CamlProofWithPublic<CamlGPallas, Cam
     let public = vec![Fq::one(), Fq::one()];
     let dlogproof = ProverProof {
         commitments: ProverCommitments {
-            w_comm: array_init(|_| comm()),
+            w_comm: core::array::from_fn(|_| comm()),
             z_comm: comm(),
             t_comm: comm(),
             lookup: None,

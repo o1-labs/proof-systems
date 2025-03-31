@@ -8,7 +8,6 @@ use crate::{
 };
 use ark_ec::AffineRepr;
 use ark_ff::One;
-use array_init::array_init;
 use core::array;
 use groupmap::GroupMap;
 use kimchi::{
@@ -248,7 +247,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_lookup(
 
     // witness
     let witness = {
-        let mut cols: [_; COLUMNS] = array_init(|_col| vec![Fp::zero(); gates.len()]);
+        let mut cols: [_; COLUMNS] = core::array::from_fn(|_col| vec![Fp::zero(); gates.len()]);
 
         // only the first 7 registers are used in the lookup gate
         let (lookup_cols, _rest) = cols.split_at_mut(7);
@@ -577,7 +576,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_range_check0(
     // witness
     let witness = {
         // create row for the zero value
-        let mut witness: [_; COLUMNS] = array_init(|_col| vec![Fp::zero(); 1]);
+        let mut witness: [_; COLUMNS] = core::array::from_fn(|_col| vec![Fp::zero(); 1]);
         // create row for the 64-bit value
         range_check::witness::extend_single(&mut witness, Fp::from(2u128.pow(64) - 1));
         witness
@@ -683,7 +682,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_ffadd(
     // witness
     let witness = {
         // create row for the public value 1
-        let mut witness: [_; COLUMNS] = array_init(|_col| vec![Fp::zero(); 1]);
+        let mut witness: [_; COLUMNS] = core::array::from_fn(|_col| vec![Fp::zero(); 1]);
         witness[0][0] = Fp::one();
         // create inputs to the addition
         let left = modulus.clone() - BigUint::from_bytes_be(&[1]);
@@ -783,7 +782,8 @@ pub fn caml_pasta_fp_plonk_proof_example_with_xor(
 
     // witness
     let witness = {
-        let mut cols: [_; COLUMNS] = array_init(|_col| vec![Fp::zero(); num_public_inputs]);
+        let mut cols: [_; COLUMNS] =
+            core::array::from_fn(|_col| vec![Fp::zero(); num_public_inputs]);
 
         // initialize the 2 inputs
         let input1 = 0xDC811727DAF22EC15927D6AA275F406Bu128;
@@ -879,7 +879,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_rot(
     // witness
     let witness = {
         // create one row for the public word
-        let mut cols: [_; COLUMNS] = array_init(|_col| vec![Fp::zero(); 2]);
+        let mut cols: [_; COLUMNS] = core::array::from_fn(|_col| vec![Fp::zero(); 2]);
 
         // initialize the public input containing the word to be rotated
         let input = 0xDC811727DAF22EC1u64;
@@ -1009,10 +1009,10 @@ pub fn caml_pasta_fp_plonk_proof_dummy() -> CamlProofWithPublic<CamlGVesta, Caml
     };
     let evals = ProofEvaluations {
         public: Some(eval()),
-        w: array_init(|_| eval()),
-        coefficients: array_init(|_| eval()),
+        w: core::array::from_fn(|_| eval()),
+        coefficients: core::array::from_fn(|_| eval()),
         z: eval(),
-        s: array_init(|_| eval()),
+        s: core::array::from_fn(|_| eval()),
         generic_selector: eval(),
         poseidon_selector: eval(),
         complete_add_selector: eval(),
@@ -1039,7 +1039,7 @@ pub fn caml_pasta_fp_plonk_proof_dummy() -> CamlProofWithPublic<CamlGVesta, Caml
     let public = vec![Fp::one(), Fp::one()];
     let dlogproof = ProverProof {
         commitments: ProverCommitments {
-            w_comm: array_init(|_| comm()),
+            w_comm: core::array::from_fn(|_| comm()),
             z_comm: comm(),
             t_comm: comm(),
             lookup: None,
