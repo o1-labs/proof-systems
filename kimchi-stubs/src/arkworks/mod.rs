@@ -5,14 +5,17 @@
 //! For example:
 //!
 //! ```
-//! use kimchi_stubs::arkworks::CamlBiginteger256;
 //! use ark_ff::BigInteger256;
+//! use core::ops::Add;
+//! use kimchi_stubs::arkworks::CamlBigInteger256;
+//! use num_bigint::BigUint;
 //!
 //! #[ocaml::func]
 //! pub fn caml_add(x: CamlBigInteger256, y: CamlBigInteger256) -> CamlBigInteger256 {
-//!    let x: BigInteger256 = x.into();
-//!    let y: BigInteger256 = y.into();
-//!    (x + y).into()
+//!    let x: BigUint = x.into();
+//!    let y: BigUint = y.into();
+//!    let z: BigInteger256 = (x + y).try_into().expect("Something happened while adding");
+//!    z.into()
 //! }
 //! ```
 //!
