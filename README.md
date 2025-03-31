@@ -109,4 +109,11 @@ At the time of this writing:
 
 # Arrabiata (WIP)
 
-Arrabiata is a folding scheme which generalises Nova to a arbitrary plonkish gates.
+Arrabiata is a folding scheme which generalises Nova to a arbitrary plonkish gates. It is based on the Pasta curves. The external user can define it's own custom gates. At the time of this writing the following is missing:
+- [] a final snark for the decider.
+- [] a permutation argument.
+- [] a lookup argument.
+
+The following extensions are planned for a later version:
+- [] support of non-uniform IVC.
+- [] ProtoStar style optimisation to avoid a linear cost in the gate's degree.
