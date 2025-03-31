@@ -28,6 +28,9 @@ The project is organized in the following way:
 - [tools/](tools/). Various tooling to help us work on kimchi.
 - [turshi/](turshi/). A Cairo runner written in rust.
 - [utils/](utils/). Collection of useful functions and traits.
+- [o1vm/](o1vm/). A zk virtual machine currently under development.
+- [arrabiata/](arrabiata/). A folding scheme currently under development. Note that this work is independant from Kimchi.
+- [mvpoly/](mvpoly/). A multivariate polynomial library. It is used to compute the cross-terms in Arrabiata.
 
 ## Contributing
 
