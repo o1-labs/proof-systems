@@ -15,8 +15,7 @@ members = [
     "poly-commitment",
     "poseidon",
     "poseidon/export_test_vectors",
-    "saffron"
-,
+    "saffron",
     "signer",
     "tools/kimchi-visu",
     "turshi",
