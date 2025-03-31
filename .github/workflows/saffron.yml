@@ -45,7 +45,7 @@ jobs:
 
       - name: Build the saffron cli binary
         run: |
-          cargo build --release --bin saffron
+          cargo build --release --bin saffron -p saffron
 
       - name: Run the saffron unit tests
         run: |
