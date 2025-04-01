@@ -237,9 +237,10 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             )
         }
     };
-
+    instruction_set = HashSet::new();
     while !mips_wit_env.halt {
-        let _instr = mips_wit_env.step(&configuration, meta, &start);
+        let (instr, _) = mips_wit_env.step(&configuration, meta, &start);
+        instruction_set.insert(instr);
         // TODO factorise the addtion of the wit env to the proof input in a seprate function
         // Lookup state
         // TODO factorise padding of lookup in a separate function
@@ -285,10 +286,11 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             curr_proof_inputs.evaluations.lookup_state[0].len()
         };
         if len == domain_size {
+            let constraint = mips_constraints::get_lookup_constraint(instruction_set);
             acc = lookup_prove_and_verify(
                 domain_fp,
                 &srs,
-                ELookup::zero(),
+                constraint,
                 curr_proof_inputs,
                 arity,
                 rng,
@@ -298,6 +300,8 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                 lookup_env.cms.remove(0),
             );
 
+            // Reset the env
+            instruction_set = HashSet::new();
             curr_proof_inputs = ProofInputs::new(domain_size);
             arity = vec![];
         }
