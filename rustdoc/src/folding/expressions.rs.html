@@ -1155,7 +1155,6 @@
 <a href="#1155" id="1155">1155</a>
 <a href="#1156" id="1156">1156</a>
 <a href="#1157" id="1157">1157</a>
-<a href="#1158" id="1158">1158</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement a library to represent expressions/multivariate polynomials that
 //! can be used with folding schemes like
 //! [Nova](https://eprint.iacr.org/2021/370).
@@ -1435,7 +1434,7 @@
     FoldingConfig, ScalarField,
 };
 <span class="kw">use </span>ark_ec::AffineRepr;
-<span class="kw">use </span>ark_ff::One;
+<span class="kw">use </span>ark_ff::{One, Zero};
 <span class="kw">use </span>core::{
     fmt,
     fmt::{Display, Formatter},
@@ -1447,7 +1446,6 @@
     expr::{ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
-<span class="kw">use </span>num_traits::Zero;
 
 <span class="doccomment">/// Describe the degree of a constraint.
 /// As described in the [top level documentation](super::expressions), we only

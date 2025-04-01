@@ -350,8 +350,6 @@
 <a href="#350" id="350">350</a>
 <a href="#351" id="351">351</a>
 <a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Foreign field multiplication witness computation
 
 </span><span class="kw">use crate</span>::{
@@ -370,11 +368,9 @@
     },
     variable_map,
 };
-<span class="kw">use </span>ark_ff::PrimeField;
+<span class="kw">use </span>ark_ff::{One, PrimeField};
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>num_integer::Integer;
-
-<span class="kw">use </span>num_traits::One;
 <span class="kw">use </span>o1_utils::foreign_field::ForeignFieldHelpers;
 <span class="kw">use </span>std::{array, ops::Div};
 

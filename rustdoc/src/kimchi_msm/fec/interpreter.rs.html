@@ -696,7 +696,6 @@
 <a href="#696" id="696">696</a>
 <a href="#697" id="697">697</a>
 <a href="#698" id="698">698</a>
-<a href="#699" id="699">699</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::{
         capabilities::{read_column_array, write_column_array_const, write_column_const},
@@ -716,7 +715,6 @@
 <span class="kw">use </span>core::marker::PhantomData;
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, ToBigInt};
 <span class="kw">use </span>num_integer::Integer;
-<span class="kw">use </span>num_traits::sign::Signed;
 <span class="kw">use </span>o1_utils::field_helpers::FieldHelpers;
 
 <span class="doccomment">/// Convenience function for printing.
@@ -1200,7 +1198,7 @@
     </span><span class="kw">let </span>(q1_bi, r1_bi) = (<span class="kw-2">&amp;</span>slope_bi * (<span class="kw-2">&amp;</span>xp_bi - <span class="kw-2">&amp;</span>xq_bi) - (<span class="kw-2">&amp;</span>yp_bi - <span class="kw-2">&amp;</span>yq_bi)).div_rem(<span class="kw-2">&amp;</span>f_bi);
     <span class="macro">assert!</span>(r1_bi.is_zero());
     <span class="comment">// Storing negative numbers is a mess.
-    </span><span class="kw">let </span>(q1_bi, q1_sign): (BigInt, F) = <span class="kw">if </span>q1_bi.is_negative() {
+    </span><span class="kw">let </span>(q1_bi, q1_sign): (BigInt, F) = <span class="kw">if </span>q1_bi &lt; BigInt::zero() {
         (-q1_bi, -F::one())
     } <span class="kw">else </span>{
         (q1_bi, F::one())
@@ -1209,7 +1207,7 @@
     <span class="comment">// Equation 2: xR - s^2 + xP + xQ - q_2 f = 0
     </span><span class="kw">let </span>(q2_bi, r2_bi) = (<span class="kw-2">&amp;</span>xr_bi - <span class="kw-2">&amp;</span>slope_bi * <span class="kw-2">&amp;</span>slope_bi + <span class="kw-2">&amp;</span>xp_bi + <span class="kw-2">&amp;</span>xq_bi).div_rem(<span class="kw-2">&amp;</span>f_bi);
     <span class="macro">assert!</span>(r2_bi.is_zero());
-    <span class="kw">let </span>(q2_bi, q2_sign): (BigInt, F) = <span class="kw">if </span>q2_bi.is_negative() {
+    <span class="kw">let </span>(q2_bi, q2_sign): (BigInt, F) = <span class="kw">if </span>q2_bi &lt; BigInt::zero() {
         (-q2_bi, -F::one())
     } <span class="kw">else </span>{
         (q2_bi, F::one())
@@ -1218,7 +1216,7 @@
     <span class="comment">// Equation 3: yR + yP - s (xP - xR) - q_3 f = 0
     </span><span class="kw">let </span>(q3_bi, r3_bi) = (<span class="kw-2">&amp;</span>yr_bi + <span class="kw-2">&amp;</span>yp_bi - <span class="kw-2">&amp;</span>slope_bi * (<span class="kw-2">&amp;</span>xp_bi - <span class="kw-2">&amp;</span>xr_bi)).div_rem(<span class="kw-2">&amp;</span>f_bi);
     <span class="macro">assert!</span>(r3_bi.is_zero());
-    <span class="kw">let </span>(q3_bi, q3_sign): (BigInt, F) = <span class="kw">if </span>q3_bi.is_negative() {
+    <span class="kw">let </span>(q3_bi, q3_sign): (BigInt, F) = <span class="kw">if </span>q3_bi &lt; BigInt::zero() {
         (-q3_bi, -F::one())
     } <span class="kw">else </span>{
         (q3_bi, F::one())

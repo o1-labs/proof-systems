@@ -517,7 +517,6 @@
 <a href="#517" id="517">517</a>
 <a href="#518" id="518">518</a>
 <a href="#519" id="519">519</a>
-<a href="#520" id="520">520</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines a list of traits and structures that are used by the
 //! folding scheme.
 //! The folding library is built over generic traits like [Instance] and
@@ -546,8 +545,7 @@
 // bigint where we only apply the modulus when needed.
 
 </span><span class="kw">use crate</span>::{Alphas, Evals};
-<span class="kw">use </span>ark_ff::Field;
-<span class="kw">use </span>num_traits::One;
+<span class="kw">use </span>ark_ff::{Field, One};
 <span class="kw">use </span>poly_commitment::commitment::{CommitmentCurve, PolyComm};
 <span class="kw">use </span>std::collections::BTreeMap;
 
