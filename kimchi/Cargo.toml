@@ -78,6 +78,10 @@ harness = false
 name = "amortization"
 harness = false
 
+[[bench]]
+name = "vanishing_division"
+harness = false
+
 [features]
 default = []
 internal_tracing = ["internal-tracing/enabled"]
