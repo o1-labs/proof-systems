@@ -1,6 +1,7 @@
-use kimchi::circuits::scalars::RandomOracles;
-use kimchi::proof::ProverProof;
-use kimchi::verifier_index::VerifierIndex as DlogVerifierIndex;
+use kimchi::{
+    circuits::scalars::RandomOracles, proof::ProverProof,
+    verifier_index::VerifierIndex as DlogVerifierIndex,
+};
 use mina_poseidon::{
     self,
     constants::PlonkSpongeConstantsKimchi,
@@ -8,9 +9,11 @@ use mina_poseidon::{
     FqSponge,
 };
 use paste::paste;
-use poly_commitment::commitment::{shift_scalar, PolyComm};
-use poly_commitment::ipa::OpeningProof;
-use poly_commitment::SRS;
+use poly_commitment::{
+    commitment::{shift_scalar, PolyComm},
+    ipa::OpeningProof,
+    SRS,
+};
 use wasm_bindgen::prelude::*;
 // use wasm_bindgen::convert::{IntoWasmAbi, FromWasmAbi};
 use crate::wasm_vector::WasmVector;

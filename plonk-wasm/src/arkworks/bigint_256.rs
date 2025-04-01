@@ -1,10 +1,14 @@
 use ark_ff::{BigInt, BigInteger as ark_BigInteger, BigInteger256};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Write};
-use core::cmp::Ordering::{Equal, Greater, Less};
-use core::convert::TryInto;
+use core::{
+    cmp::Ordering::{Equal, Greater, Less},
+    convert::TryInto,
+};
 use num_bigint::BigUint;
-use wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi};
-use wasm_bindgen::prelude::*;
+use wasm_bindgen::{
+    convert::{FromWasmAbi, IntoWasmAbi},
+    prelude::*,
+};
 
 //
 // Handy constants

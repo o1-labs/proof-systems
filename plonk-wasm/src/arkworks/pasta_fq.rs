@@ -6,12 +6,16 @@ use ark_ff::{
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::cmp::Ordering::{Equal, Greater, Less};
-use mina_curves::pasta::fields::fft::FpParameters;
-use mina_curves::pasta::{fields::fq::FqParameters as Fq_params, Fq};
+use mina_curves::pasta::{
+    fields::{fft::FpParameters, fq::FqParameters as Fq_params},
+    Fq,
+};
 use num_bigint::BigUint;
 use rand::rngs::StdRng;
-use wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi, OptionFromWasmAbi, OptionIntoWasmAbi};
-use wasm_bindgen::prelude::*;
+use wasm_bindgen::{
+    convert::{FromWasmAbi, IntoWasmAbi, OptionFromWasmAbi, OptionIntoWasmAbi},
+    prelude::*,
+};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]

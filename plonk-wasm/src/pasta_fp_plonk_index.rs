@@ -1,16 +1,19 @@
 use ark_poly::EvaluationDomain;
 use kimchi::circuits::lookup::runtime_tables::RuntimeTableCfg;
 
-use crate::arkworks::WasmPastaFp;
-use crate::gate_vector::fp::WasmGateVector;
-use crate::srs::fp::WasmFpSrs as WasmSrs;
-use crate::wasm_flat_vector::WasmFlatVector;
-use crate::wasm_vector::{fp::*, WasmVector};
-use kimchi::circuits::lookup::tables::LookupTable;
-use kimchi::circuits::{constraints::ConstraintSystem, gate::CircuitGate};
-use kimchi::linearization::expr_linearization;
-use kimchi::poly_commitment::{ipa::OpeningProof, SRS as _};
-use kimchi::prover_index::ProverIndex;
+use crate::{
+    arkworks::WasmPastaFp,
+    gate_vector::fp::WasmGateVector,
+    srs::fp::WasmFpSrs as WasmSrs,
+    wasm_flat_vector::WasmFlatVector,
+    wasm_vector::{fp::*, WasmVector},
+};
+use kimchi::{
+    circuits::{constraints::ConstraintSystem, gate::CircuitGate, lookup::tables::LookupTable},
+    linearization::expr_linearization,
+    poly_commitment::{ipa::OpeningProof, SRS as _},
+    prover_index::ProverIndex,
+};
 use mina_curves::pasta::{Fp, Pallas as GAffineOther, Vesta as GAffine, VestaParameters};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use serde::{Deserialize, Serialize};

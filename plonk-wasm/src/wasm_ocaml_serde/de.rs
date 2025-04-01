@@ -1,7 +1,6 @@
 use super::{Error, Result};
 use js_sys::{Array, ArrayBuffer, Number, Uint8Array};
-use serde::de::value::SeqDeserializer;
-use serde::de::{self, Error as _, IntoDeserializer};
+use serde::de::{self, value::SeqDeserializer, Error as _, IntoDeserializer};
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 
 struct ObjectAccess {

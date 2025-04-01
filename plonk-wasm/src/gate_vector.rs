@@ -2,8 +2,7 @@
 
 use crate::wasm_flat_vector::WasmFlatVector;
 use kimchi::circuits::{
-    gate::GateType,
-    gate::{Circuit, CircuitGate},
+    gate::{Circuit, CircuitGate, GateType},
     wires::Wire,
 };
 use o1_utils::hasher::CryptoDigest;

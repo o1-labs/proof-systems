@@ -1,21 +1,20 @@
-use crate::wasm_flat_vector::WasmFlatVector;
-use crate::wasm_vector::fp::WasmVecVecFp;
-use crate::wasm_vector::fq::WasmVecVecFq;
-use crate::wasm_vector::WasmVector;
+use crate::{
+    wasm_flat_vector::WasmFlatVector,
+    wasm_vector::{fp::WasmVecVecFp, fq::WasmVecVecFq, WasmVector},
+};
 use ark_ec::AffineRepr;
 use ark_ff::One;
-use core::array;
-use core::convert::TryInto;
+use core::{array, convert::TryInto};
 use groupmap::GroupMap;
-use kimchi::circuits::lookup::runtime_tables::RuntimeTable;
-use kimchi::circuits::wires::COLUMNS;
-use kimchi::proof::{
-    LookupCommitments, PointEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
-    RecursionChallenge,
+use kimchi::{
+    circuits::{lookup::runtime_tables::RuntimeTable, wires::COLUMNS},
+    proof::{
+        LookupCommitments, PointEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
+        RecursionChallenge,
+    },
+    prover_index::ProverIndex,
+    verifier::{batch_verify, Context},
 };
-use kimchi::prover_index::ProverIndex;
-use kimchi::verifier::batch_verify;
-use kimchi::verifier::Context;
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -855,10 +854,12 @@ macro_rules! impl_proof {
 
 pub mod fp {
     use super::*;
-    use crate::arkworks::{WasmGVesta, WasmPastaFp};
-    use crate::pasta_fp_plonk_index::WasmPastaFpPlonkIndex;
-    use crate::plonk_verifier_index::fp::WasmFpPlonkVerifierIndex as WasmPlonkVerifierIndex;
-    use crate::poly_comm::vesta::WasmFpPolyComm as WasmPolyComm;
+    use crate::{
+        arkworks::{WasmGVesta, WasmPastaFp},
+        pasta_fp_plonk_index::WasmPastaFpPlonkIndex,
+        plonk_verifier_index::fp::WasmFpPlonkVerifierIndex as WasmPlonkVerifierIndex,
+        poly_comm::vesta::WasmFpPolyComm as WasmPolyComm,
+    };
     use mina_curves::pasta::{Fp, Vesta as GAffine};
 
     impl_proof!(
@@ -880,10 +881,12 @@ pub mod fp {
 
 pub mod fq {
     use super::*;
-    use crate::arkworks::{WasmGPallas, WasmPastaFq};
-    use crate::pasta_fq_plonk_index::WasmPastaFqPlonkIndex;
-    use crate::plonk_verifier_index::fq::WasmFqPlonkVerifierIndex as WasmPlonkVerifierIndex;
-    use crate::poly_comm::pallas::WasmFqPolyComm as WasmPolyComm;
+    use crate::{
+        arkworks::{WasmGPallas, WasmPastaFq},
+        pasta_fq_plonk_index::WasmPastaFqPlonkIndex,
+        plonk_verifier_index::fq::WasmFqPlonkVerifierIndex as WasmPlonkVerifierIndex,
+        poly_comm::pallas::WasmFqPolyComm as WasmPolyComm,
+    };
     use mina_curves::pasta::{Fq, Pallas as GAffine};
 
     impl_proof!(

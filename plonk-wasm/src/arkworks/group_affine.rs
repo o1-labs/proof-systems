@@ -1,9 +1,8 @@
-use crate::arkworks::pasta_fp::WasmPastaFp;
-use crate::arkworks::pasta_fq::WasmPastaFq;
+use crate::arkworks::{pasta_fp::WasmPastaFp, pasta_fq::WasmPastaFq};
 use mina_curves::pasta::{
     curves::{
-        pallas::G_GENERATOR_X as GeneratorPallasX, pallas::G_GENERATOR_Y as GeneratorPallasY,
-        vesta::G_GENERATOR_X as GeneratorVestaX, vesta::G_GENERATOR_Y as GeneratorVestaY,
+        pallas::{G_GENERATOR_X as GeneratorPallasX, G_GENERATOR_Y as GeneratorPallasY},
+        vesta::{G_GENERATOR_X as GeneratorVestaX, G_GENERATOR_Y as GeneratorVestaY},
     },
     Pallas as AffinePallas, Vesta as AffineVesta,
 };

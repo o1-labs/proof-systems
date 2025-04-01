@@ -2,23 +2,26 @@ use crate::wasm_vector::WasmVector;
 use ark_ec::AffineRepr;
 use ark_ff::One;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
-use kimchi::circuits::{
-    constraints::FeatureFlags,
-    lookup::index::LookupSelectors,
-    lookup::lookups::{LookupFeatures, LookupInfo, LookupPatterns},
-    polynomials::permutation::{permutation_vanishing_polynomial, zk_w, Shifts},
-    wires::{COLUMNS, PERMUTS},
+use kimchi::{
+    circuits::{
+        constraints::FeatureFlags,
+        lookup::{
+            index::LookupSelectors,
+            lookups::{LookupFeatures, LookupInfo, LookupPatterns},
+        },
+        polynomials::permutation::{permutation_vanishing_polynomial, zk_w, Shifts},
+        wires::{COLUMNS, PERMUTS},
+    },
+    linearization::expr_linearization,
+    verifier_index::{LookupVerifierIndex, VerifierIndex as DlogVerifierIndex},
 };
-use kimchi::linearization::expr_linearization;
-use kimchi::verifier_index::{LookupVerifierIndex, VerifierIndex as DlogVerifierIndex};
 use paste::paste;
-use poly_commitment::commitment::PolyComm;
 use poly_commitment::{
+    commitment::PolyComm,
     ipa::{OpeningProof, SRS},
     SRS as _,
 };
-use std::path::Path;
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 use wasm_bindgen::prelude::*;
 
 macro_rules! impl_verification_key {
@@ -1018,10 +1021,12 @@ macro_rules! impl_verification_key {
 
 pub mod fp {
     use super::*;
-    use crate::arkworks::{WasmGVesta, WasmPastaFp};
-    use crate::pasta_fp_plonk_index::WasmPastaFpPlonkIndex;
-    use crate::poly_comm::vesta::WasmFpPolyComm as WasmPolyComm;
-    use crate::srs::fp::WasmFpSrs;
+    use crate::{
+        arkworks::{WasmGVesta, WasmPastaFp},
+        pasta_fp_plonk_index::WasmPastaFpPlonkIndex,
+        poly_comm::vesta::WasmFpPolyComm as WasmPolyComm,
+        srs::fp::WasmFpSrs,
+    };
     use mina_curves::pasta::{Fp, Pallas as GAffineOther, Vesta as GAffine};
 
     impl_verification_key!(
@@ -1042,10 +1047,12 @@ pub mod fp {
 
 pub mod fq {
     use super::*;
-    use crate::arkworks::{WasmGPallas, WasmPastaFq};
-    use crate::pasta_fq_plonk_index::WasmPastaFqPlonkIndex;
-    use crate::poly_comm::pallas::WasmFqPolyComm as WasmPolyComm;
-    use crate::srs::fq::WasmFqSrs;
+    use crate::{
+        arkworks::{WasmGPallas, WasmPastaFq},
+        pasta_fq_plonk_index::WasmPastaFqPlonkIndex,
+        poly_comm::pallas::WasmFqPolyComm as WasmPolyComm,
+        srs::fq::WasmFqSrs,
+    };
     use mina_curves::pasta::{Fq, Pallas as GAffine, Vesta as GAffineOther};
 
     impl_verification_key!(
