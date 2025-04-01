@@ -47,9 +47,9 @@ pub const SCRATCH_SIZE_INVERSE: usize = 12;
 pub const N_MIPS_REL_COLS: usize = SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 2;
 
 /// The number of witness columns used to store the instruction selectors.
-/// NOTE: The +1 is coming from the NoOp instruction.
+/// NOTE: The +2 is coming from the NoOp and pad sinstruction.
 pub const N_MIPS_SEL_COLS: usize =
-    RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT + 1;
+    RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT + 2;
 
 /// All the witness columns used in MIPS
 pub const N_MIPS_COLS: usize = N_MIPS_REL_COLS + N_MIPS_SEL_COLS;
@@ -65,6 +65,8 @@ pub enum ColumnAlias {
     ScratchStateInverse(usize),
     InstructionCounter,
     Selector(usize),
+    // Specialised columns we'll run the lookup argument on
+    LookupColumn(usize),
 }
 
 /// The columns used by the MIPS circuit. The MIPS circuit is split into three
@@ -85,6 +87,9 @@ impl From<ColumnAlias> for usize {
             }
             ColumnAlias::InstructionCounter => SCRATCH_SIZE + SCRATCH_SIZE_INVERSE,
             ColumnAlias::Selector(s) => SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 1 + s,
+            ColumnAlias::LookupColumn(i) => {
+                SCRATCH_SIZE + SCRATCH_SIZE_INVERSE + 1 + N_MIPS_SEL_COLS + i
+            }
         }
     }
 }
@@ -103,6 +108,13 @@ impl From<Instruction> for usize {
                     + RTypeInstruction::COUNT
                     + JTypeInstruction::COUNT
                     + ITypeInstruction::COUNT
+            }
+            Instruction::Pad => {
+                N_MIPS_REL_COLS
+                    + RTypeInstruction::COUNT
+                    + JTypeInstruction::COUNT
+                    + ITypeInstruction::COUNT
+                    + 1
             }
         }
     }
@@ -187,6 +199,7 @@ impl ColumnIndexer<RelationColumnType> for ColumnAlias {
                 );
                 Column::DynamicSelector(s)
             }
+            Self::LookupColumn(i) => Column::Relation(RelationColumnType::LookupState(i)),
         }
     }
 }

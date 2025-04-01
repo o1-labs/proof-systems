@@ -37,7 +37,7 @@ pub const DEGREE_QUOTIENT_POLYNOMIAL: u64 = 7;
 
 /// Total number of constraints for all instructions, including the constraints
 /// added for the selectors.
-pub const TOTAL_NUMBER_OF_CONSTRAINTS: usize = 466;
+pub const TOTAL_NUMBER_OF_CONSTRAINTS: usize = 9317;
 
 #[cfg(test)]
 mod tests;

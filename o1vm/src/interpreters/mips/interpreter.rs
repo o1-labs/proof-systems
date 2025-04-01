@@ -34,6 +34,11 @@ pub enum Instruction {
     // A no-op operation that should only be used for testing. The semantic is
     // not clearly defined.
     NoOp,
+    // An instruction without any constraints,
+    // Allowing a prover to pad a program.
+    // It is secure as the Read/Write added by the prover will not
+    // be added in the accumulator of the lookup argument.
+    Pad,
 }
 
 #[derive(
@@ -157,6 +162,7 @@ impl IntoIterator for Instruction {
                 iter_contents.into_iter()
             }
             Instruction::NoOp => vec![Instruction::NoOp].into_iter(),
+            Instruction::Pad => vec![Instruction::Pad].into_iter(),
         }
     }
 }
@@ -975,6 +981,7 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
         Instruction::JType(instr) => interpret_jtype(env, instr),
         Instruction::IType(instr) => interpret_itype(env, instr),
         Instruction::NoOp => interpret_noop(env),
+        Instruction::Pad => interpret_pad(),
     }
 }
 
@@ -1003,6 +1010,8 @@ pub fn interpret_noop<Env: InterpreterEnv>(env: &mut Env) {
     env.set_instruction_pointer(next_instruction_pointer.clone());
     env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
 }
+
+pub fn interpret_pad() {}
 
 pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstruction) {
     let instruction_pointer = env.get_instruction_pointer();

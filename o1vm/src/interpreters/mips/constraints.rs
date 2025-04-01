@@ -10,14 +10,15 @@ use crate::{
         Instruction,
     },
     lookups::{Lookup, LookupTableIDs},
+    ramlookup::LookupMode,
     E,
 };
-use ark_ff::{Field, One};
+use ark_ff::{Field, One, Zero};
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
-use kimchi_msm::columns::ColumnIndexer as _;
+use kimchi_msm::{columns::ColumnIndexer as _, LogupTableID};
 use std::{array, collections::HashSet};
 use strum::IntoEnumIterator;
 
@@ -27,12 +28,17 @@ use super::column::N_MIPS_SEL_COLS;
 pub struct Env<Fp> {
     scratch_state_idx: usize,
     scratch_state_idx_inverse: usize,
+    lookup_idx: usize,
     /// A list of constraints, which are multi-variate polynomials over a field,
     /// represented using the expression framework of `kimchi`.
     constraints: Vec<E<Fp>>,
     lookups: Vec<Lookup<E<Fp>>>,
     /// Selector (as expression) for the constraints of the environment.
     selector: Option<E<Fp>>,
+    /// The number of time the instruction counter has been incremented
+    /// during an instruction.
+    /// This happens whenever a memory access is done.
+    instruction_counter_increment: usize,
 }
 
 impl<Fp: Field> Default for Env<Fp> {
@@ -40,9 +46,11 @@ impl<Fp: Field> Default for Env<Fp> {
         Self {
             scratch_state_idx: 0,
             scratch_state_idx_inverse: 0,
+            lookup_idx: 0,
             constraints: Vec::new(),
             lookups: Vec::new(),
             selector: None,
+            instruction_counter_increment: 0,
         }
     }
 }
@@ -104,15 +112,48 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
+        // Constraint the columns to lookup to be correctly copied in the lookup state
+        // This function mirrors the add_lookup function in witness.rs
+
+        let mut add_value = |x: Self::Variable| {
+            self.add_constraint(x - self.variable(MIPSColumn::LookupColumn(self.lookup_idx)));
+            self.lookup_idx += 1;
+        };
+        let Lookup {
+            table_id,
+            magnitude: numerator,
+            mode,
+            value: values,
+        } = lookup.clone();
+        // Add lookup numerator
+        match mode {
+            LookupMode::Write => add_value(numerator),
+            LookupMode::Read => {
+                add_value(Self::Variable::zero() - numerator);
+                /*  //This is add_value(-numerator), but we do not have an opposite
+                self.add_constraint(
+                    self.variable(MIPSColumn::LookupColumn(self.lookup_idx)) - numerator,
+                );
+                self.lookup_idx += 1; */
+            }
+        };
+        // Add lookup table ID
+        add_value(Self::constant(table_id.to_u32()));
+        // Add values
+        for value in values.into_iter() {
+            add_value(value);
+        }
+        // Rembember that we did this lookup to constraint the lookup prover later
         self.lookups.push(lookup);
     }
 
     fn instruction_counter(&self) -> Self::Variable {
         self.variable(MIPSColumn::InstructionCounter)
+            + Self::constant(self.instruction_counter_increment as u32)
     }
 
     fn increase_instruction_counter(&mut self) {
-        // No-op, witness only
+        self.instruction_counter_increment += 1;
     }
 
     unsafe fn fetch_register(
@@ -633,9 +674,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     fn reset(&mut self) {
         self.scratch_state_idx = 0;
         self.scratch_state_idx_inverse = 0;
+        self.lookup_idx = 0;
         self.constraints.clear();
         self.lookups.clear();
         self.selector = None;
+        self.instruction_counter_increment = 0;
     }
 }
 

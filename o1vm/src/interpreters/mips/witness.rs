@@ -1016,6 +1016,13 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             Column::ScratchStateInverse(idx) => self.scratch_state_inverse[idx] = value,
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
             Column::Selector(s) => self.selector = s,
+            Column::LookupColumn(idx) => {
+                // We should write only at the idx the environment gives us.
+                // This case is handled differently than that scratch state,
+                // as the lookup state is a vector, not an array.
+                assert!(idx == self.lookup_state_idx);
+                self.lookup_state.push(value)
+            }
         }
     }
 
@@ -1247,12 +1254,13 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
 
     /// Execute a single step of the MIPS program.
     /// Returns the instruction that was executed.
+    /// Also return the instruction counter before executing the step.
     pub fn step(
         &mut self,
         config: &VmConfiguration,
         metadata: &Option<Meta>,
         start: &Start,
-    ) -> Instruction {
+    ) -> (Instruction, usize) {
         self.reset_scratch_state();
         self.reset_scratch_state_inverse();
         self.reset_lookup_state();
@@ -1262,8 +1270,9 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
         self.pp_info(&config.info_at, metadata, start);
         self.snapshot_state_at(&config.snapshot_state_at);
 
-        interpreter::interpret_instruction(self, opcode);
+        let res = self.instruction_counter;
 
+        interpreter::interpret_instruction(self, opcode);
         self.instruction_counter = self.next_instruction_counter();
 
         config.halt_address.iter().for_each(|halt_address: &u32| {
@@ -1291,7 +1300,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
                 opcode
             );
         }
-        opcode
+        (opcode, res as usize)
     }
 
     fn should_trigger_at(&self, at: &StepFrequency) -> bool {

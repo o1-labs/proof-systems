@@ -120,7 +120,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     let mut curr_proof_inputs: ProofInputs<Vesta> = ProofInputs::new(domain_size);
     // First loop, do the proof without lookup
     while !mips_wit_env.halt {
-        let instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
+        let (instr, counter) = mips_wit_env.step(&configuration, meta, &start);
         instruction_set.insert(instr);
         for (scratch, scratch_chunk) in mips_wit_env
             .scratch_state
@@ -158,10 +158,11 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                 }
             }
         }
+
         curr_proof_inputs
             .evaluations
             .instruction_counter
-            .push(Fp::from(mips_wit_env.instruction_counter));
+            .push(Fp::from(counter as u64));
         // FIXME: Might be another value
         curr_proof_inputs.evaluations.error.push(Fp::rand(&mut rng));
 
@@ -238,7 +239,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     };
 
     while !mips_wit_env.halt {
-        let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
+        let _instr = mips_wit_env.step(&configuration, meta, &start);
         // TODO factorise the addtion of the wit env to the proof input in a seprate function
         // Lookup state
         // TODO factorise padding of lookup in a separate function
@@ -275,7 +276,15 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
 
         // TODO get rid of this rng creation
         let rng = &mut rand::thread_rng();
-        if curr_proof_inputs.evaluations.lookup_state[0].len() == domain_size {
+        // The padding does not add a lookup column.
+        // We do the following to avoid an exception when
+        // accessing lookup_state[0]
+        let len = if curr_proof_inputs.evaluations.lookup_state.is_empty() {
+            0
+        } else {
+            curr_proof_inputs.evaluations.lookup_state[0].len()
+        };
+        if len == domain_size {
             acc = lookup_prove_and_verify(
                 domain_fp,
                 &srs,
@@ -400,12 +409,13 @@ fn pad(
     curr_proof_inputs: &mut ProofInputs<Vesta>,
     rng: &mut ThreadRng,
 ) {
+    // FIXME, move that code in the witness interpreter of pad
     let zero = Fp::zero();
     // FIXME: Find a better way to get instruction selectors that doesn't
     // reveal internals.
-    let noop_selector: Fp = {
-        let noop: usize = Instruction::NoOp.into();
-        Fp::from((noop - N_MIPS_REL_COLS) as u64)
+    let pad_selector: Fp = {
+        let pad: usize = Instruction::Pad.into();
+        Fp::from((pad - N_MIPS_REL_COLS) as u64)
     };
     curr_proof_inputs
         .evaluations
@@ -429,7 +439,7 @@ fn pad(
         });
     curr_proof_inputs.evaluations.selector.resize(
         curr_proof_inputs.evaluations.selector.capacity(),
-        noop_selector,
+        pad_selector,
     );
 }
 
