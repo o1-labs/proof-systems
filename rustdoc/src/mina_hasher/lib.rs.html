@@ -334,7 +334,7 @@
 </span><span class="kw">fn </span>domain_prefix_to_field&lt;F: PrimeField&gt;(prefix: String) -&gt; F {
     <span class="kw">const </span>MAX_DOMAIN_STRING_LEN: usize = <span class="number">20</span>;
     <span class="macro">assert!</span>(prefix.len() &lt;= MAX_DOMAIN_STRING_LEN);
-    <span class="kw">let </span>prefix = <span class="kw-2">&amp;</span>prefix[..std::cmp::min(prefix.len(), MAX_DOMAIN_STRING_LEN)];
+    <span class="kw">let </span>prefix = <span class="kw-2">&amp;</span>prefix[..core::cmp::min(prefix.len(), MAX_DOMAIN_STRING_LEN)];
     <span class="kw">let </span><span class="kw-2">mut </span>bytes = <span class="macro">format!</span>(<span class="string">&quot;{prefix:*&lt;MAX_DOMAIN_STRING_LEN$}&quot;</span>)
         .as_bytes()
         .to_vec();
