@@ -34,8 +34,8 @@
 </pre></div><pre class="rust"><code><span class="doccomment">//! Mina signature structure and associated helpers
 
 </span><span class="kw">use crate</span>::{BaseField, ScalarField};
+<span class="kw">use </span>core::fmt;
 <span class="kw">use </span>o1_utils::FieldHelpers;
-<span class="kw">use </span>std::fmt;
 
 <span class="doccomment">/// Signature structure
 </span><span class="attr">#[derive(Clone, Eq, fmt::Debug, PartialEq)]

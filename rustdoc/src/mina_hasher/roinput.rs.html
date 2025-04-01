@@ -909,18 +909,18 @@
 <a href="#909" id="909">909</a>
 <a href="#910" id="910">910</a>
 <a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Random oracle input structures and algorithms
 //!
 //! Definition of random oracle input structure and
 //! methods for serializing into bytes and field elements
 
-</span><span class="kw">use </span>bitvec::{prelude::<span class="kw-2">*</span>, view::AsBits};
-
+</span><span class="kw">use </span><span class="kw">super</span>::Hashable;
+<span class="kw">use </span>alloc::{vec, vec::Vec};
 <span class="kw">use </span>ark_ff::PrimeField;
+<span class="kw">use </span>bitvec::{prelude::<span class="kw-2">*</span>, view::AsBits};
 <span class="kw">use </span>mina_curves::pasta::{Fp, Fq};
 <span class="kw">use </span>o1_utils::FieldHelpers;
-
-<span class="kw">use </span><span class="kw">super</span>::Hashable;
 
 <span class="doccomment">/// Random oracle input structure
 ///
@@ -1088,9 +1088,11 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
-    <span class="kw">use </span><span class="kw">crate</span>::Hashable;
-
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use crate</span>::{
+        alloc::string::{String, ToString},
+        Hashable,
+    };
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>append_bool() {

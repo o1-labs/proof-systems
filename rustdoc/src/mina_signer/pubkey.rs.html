@@ -338,20 +338,22 @@
 <a href="#338" id="338">338</a>
 <a href="#339" id="339">339</a>
 <a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Public key structures and algorithms
 //!
 //! Definition of public key structure and helpers
 
-</span><span class="kw">use </span>ark_ec::{short_weierstrass::Affine, AffineRepr, CurveGroup};
+</span><span class="kw">use crate</span>::{BaseField, CurvePoint, ScalarField, SecKey};
+<span class="kw">use </span>ark_ec::{short_weierstrass::Affine, AffineRepr, CurveGroup};
 <span class="kw">use </span>ark_ff::{BigInteger, PrimeField, Zero};
 <span class="kw">use </span>bs58;
-<span class="kw">use </span>core::fmt;
-<span class="kw">use </span>sha2::{Digest, Sha256};
-<span class="kw">use </span>std::ops::{Mul, Neg};
-<span class="kw">use </span>thiserror::Error;
-
-<span class="kw">use crate</span>::{BaseField, CurvePoint, ScalarField, SecKey};
+<span class="kw">use </span>core::{
+    fmt,
+    ops::{Mul, Neg},
+};
 <span class="kw">use </span>o1_utils::FieldHelpers;
+<span class="kw">use </span>sha2::{Digest, Sha256};
+<span class="kw">use </span>thiserror::Error;
 
 <span class="doccomment">/// Public key errors
 </span><span class="attr">#[derive(Error, Debug, Clone, PartialEq, Eq)]
@@ -397,7 +399,7 @@
     </span>SecKey,
 }
 <span class="doccomment">/// Public key Result
-</span><span class="kw">pub type </span><span class="prelude-ty">Result</span>&lt;T&gt; = std::result::Result&lt;T, PubKeyError&gt;;
+</span><span class="kw">pub type </span><span class="prelude-ty">Result</span>&lt;T&gt; = core::result::Result&lt;T, PubKeyError&gt;;
 
 <span class="doccomment">/// Length of Mina addresses
 </span><span class="kw">pub const </span>MINA_ADDRESS_LEN: usize = <span class="number">55</span>;
