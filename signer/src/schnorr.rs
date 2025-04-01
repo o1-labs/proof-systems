@@ -4,6 +4,7 @@
 //!
 //! Details: <https://github.com/MinaProtocol/mina/blob/develop/docs/specs/signatures/description.md>
 
+use crate::{BaseField, CurvePoint, Hashable, Keypair, PubKey, ScalarField, Signature, Signer};
 use ark_ec::{
     AffineRepr, // for generator()
     CurveGroup,
@@ -18,10 +19,8 @@ use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,
 };
+use core::ops::{Add, Neg};
 use mina_hasher::{self, DomainParameter, Hasher, ROInput};
-use std::ops::{Add, Neg};
-
-use crate::{BaseField, CurvePoint, Hashable, Keypair, PubKey, ScalarField, Signature, Signer};
 
 /// Schnorr signer context for the Mina signature algorithm
 ///
