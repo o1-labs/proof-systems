@@ -1,5 +1,9 @@
 #![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
+#![no_std]
+
+extern crate alloc;
+use alloc::{format, string::String, vec, vec::Vec};
 
 pub mod poseidon;
 pub mod roinput;
