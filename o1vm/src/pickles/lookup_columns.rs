@@ -134,7 +134,7 @@ pub struct Proof<G: KimchiCurve> {
 pub enum LookupChallengeTerm {
     //The challenge to compute 1/(beta + lookupvalue)
     Beta,
-    // The challenge to combine tuple sum beta^i lookupvalue_i
+    // The challenge to combine tuple sum gamma^i lookupvalue_i
     Gamma,
     // The challenge to combine constraints
     Alpha,
