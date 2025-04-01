@@ -24,11 +24,7 @@ pub struct WasmGPallas {
 impl WasmGPallas {
     #[wasm_bindgen(constructor)]
     pub fn new(x: WasmPastaFp, y: WasmPastaFp, infinity: bool) -> Self {
-        Self {
-            x: x.into(),
-            y: y.into(),
-            infinity,
-        }
+        Self { x, y, infinity }
     }
 }
 
@@ -44,11 +40,7 @@ pub struct WasmGVesta {
 impl WasmGVesta {
     #[wasm_bindgen(constructor)]
     pub fn new(x: WasmPastaFq, y: WasmPastaFq, infinity: bool) -> Self {
-        Self {
-            x: x.into(),
-            y: y.into(),
-            infinity,
-        }
+        Self { x, y, infinity }
     }
 }
 
