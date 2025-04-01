@@ -2352,7 +2352,7 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
    contained in the verifier index or in the proof,
    unless a polynomial has its evaluation provided by the proof
    in which case the evaluation should be used in place of the commitment.
-1. Compute the (chuncked) commitment of $ft$
+1. Compute the (chunked) commitment of $ft$
    (see [Maller's optimization](../kimchi/maller_15.md)).
 1. List the polynomial commitments, and their associated evaluations,
    that are associated to the aggregated evaluation proof in the proof:
