@@ -48,6 +48,7 @@ where
     let LookupProofInput {
         wires,
         arity,
+        dynamicselectors,
         beta_challenge,
         gamma_challenge,
     } = input;
@@ -101,6 +102,7 @@ where
         wires,
         inverses,
         acc,
+        dynamicselectors,
     };
     //interpolating
     let interpolate_col = |evals: Vec<G::ScalarField>| {
@@ -121,6 +123,12 @@ where
             .map(|poly| srs.commit_non_hiding(&poly, 1).chunks[0])
             .collect(),
         acc: srs.commit_non_hiding(&columns_poly.acc.clone(), 1).chunks[0],
+        dynamicselectors: columns_poly
+            .dynamicselectors
+            .clone()
+            .into_iter()
+            .map(|poly| srs.commit_non_hiding(&poly, 1).chunks[0])
+            .collect(),
     };
 
     // eval on d8

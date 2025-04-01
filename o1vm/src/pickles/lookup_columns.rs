@@ -25,25 +25,31 @@ pub enum LookupColumns {
     Wires(usize),
     Inverses(usize),
     Acc,
+    DynamicSelectors(usize),
 }
 #[derive(Clone)]
 pub struct ColumnEnv<X> {
     pub wires: Vec<X>,
     pub inverses: Vec<X>,
     pub acc: X,
+    pub dynamicselectors: Vec<X>,
 }
 
 impl<X> IntoIterator for ColumnEnv<X> {
     type Item = X;
     type IntoIter = Chain<
-        Chain<<Vec<X> as IntoIterator>::IntoIter, <Vec<X> as IntoIterator>::IntoIter>,
-        <Once<X> as IntoIterator>::IntoIter,
+        Chain<
+            Chain<<Vec<X> as IntoIterator>::IntoIter, <Vec<X> as IntoIterator>::IntoIter>,
+            <Once<X> as IntoIterator>::IntoIter,
+        >,
+        <Vec<X> as IntoIterator>::IntoIter,
     >;
     fn into_iter(self) -> Self::IntoIter {
         self.wires
             .into_iter()
             .chain(self.inverses)
             .chain(std::iter::once(self.acc))
+            .chain(self.dynamicselectors)
     }
 }
 // TODO: I could not find a more elegant solution to map over this struct
@@ -55,9 +61,12 @@ impl<X> ColumnEnv<X> {
     {
         let nb_wires = self.wires.len();
         let nb_inverses = self.inverses.len();
+        let nb_sel = self.dynamicselectors.len();
         let mut iterator = self.into_iter().map(f);
         let mut new_wires = vec![];
         let mut new_inverses = vec![];
+        let mut new_sel = vec![];
+
         for _ in 0..nb_wires {
             new_wires.push(iterator.next().unwrap());
         }
@@ -65,17 +74,22 @@ impl<X> ColumnEnv<X> {
             new_inverses.push(iterator.next().unwrap());
         }
         let new_acc = iterator.next().unwrap();
+        for _ in 0..nb_sel {
+            new_sel.push(iterator.next().unwrap());
+        }
         assert!(iterator.next().is_none());
         ColumnEnv {
             wires: new_wires,
             inverses: new_inverses,
             acc: new_acc,
+            dynamicselectors: new_sel,
         }
     }
 }
 
 pub struct LookupProofInput<F: PrimeField> {
     pub wires: Vec<Vec<F>>,
+    pub dynamicselectors: Vec<Vec<F>>,
     pub arity: Vec<Vec<usize>>,
     pub beta_challenge: F,
     pub gamma_challenge: F,
@@ -183,6 +197,7 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F, LookupChallengeTerm, LookupChalle
             Wires(i) => Some(&self.columns.wires[*i]),
             Inverses(i) => Some(&self.columns.inverses[*i]),
             Acc => Some(&self.columns.acc),
+            DynamicSelectors(i) => Some(&self.columns.dynamicselectors[*i]),
         }
     }
 
@@ -223,6 +238,7 @@ impl<F> ColumnEnv<F> {
             LookupColumns::Wires(i) => self.wires.get(i),
             LookupColumns::Inverses(i) => self.inverses.get(i),
             LookupColumns::Acc => Some(&self.acc),
+            LookupColumns::DynamicSelectors(i) => self.dynamicselectors.get(i),
         }
     }
 }

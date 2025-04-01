@@ -1,4 +1,4 @@
-use ark_ff::{UniformRand, Zero};
+use ark_ff::{One, UniformRand, Zero};
 use clap::Parser;
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, precomputed_srs::TestSRS};
 use log::debug;
@@ -12,7 +12,7 @@ use o1vm::{
     cannon::{self, Start, State},
     cli, elf_loader,
     interpreters::mips::{
-        column::N_MIPS_REL_COLS,
+        column::{N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
         constraints as mips_constraints,
         witness::{self as mips_witness},
         Instruction,
@@ -354,12 +354,24 @@ fn lookup_prove_and_verify(
     cm_wires: Vec<PolyComm<Vesta>>,
 ) -> Fp {
     let start_iteration = Instant::now();
+    // Build the selectors
+    let mut dynamicselectors = vec![Vec::with_capacity(1 << 16); N_MIPS_SEL_COLS];
+    for i in &curr_proof_inputs.evaluations.selector {
+        for (j, s) in dynamicselectors.iter_mut().enumerate() {
+            s.push(if &Fp::from(j as u64) == i {
+                Fp::one()
+            } else {
+                Fp::zero()
+            })
+        }
+    }
     let sponge_verifier = sponge.clone();
     let beta_challenge = sponge.challenge();
     let gamma_challenge = sponge.challenge();
     let lookup_proof_input = LookupProofInput {
         beta_challenge,
         gamma_challenge,
+        dynamicselectors,
         wires: curr_proof_inputs.evaluations.lookup_state,
         arity,
     };
