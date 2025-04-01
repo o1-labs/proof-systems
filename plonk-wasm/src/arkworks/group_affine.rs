@@ -21,11 +21,35 @@ pub struct WasmGPallas {
 }
 
 #[wasm_bindgen]
+impl WasmGPallas {
+    #[wasm_bindgen(constructor)]
+    pub fn new(x: WasmPastaFp, y: WasmPastaFp, infinity: bool) -> Self {
+        Self {
+            x: x.into(),
+            y: y.into(),
+            infinity,
+        }
+    }
+}
+
+#[wasm_bindgen]
 #[derive(Clone, Copy, Debug)]
 pub struct WasmGVesta {
     pub x: WasmPastaFq,
     pub y: WasmPastaFq,
     pub infinity: bool,
+}
+
+#[wasm_bindgen]
+impl WasmGVesta {
+    #[wasm_bindgen(constructor)]
+    pub fn new(x: WasmPastaFq, y: WasmPastaFq, infinity: bool) -> Self {
+        Self {
+            x: x.into(),
+            y: y.into(),
+            infinity,
+        }
+    }
 }
 
 // Conversions from/to AffineVesta
