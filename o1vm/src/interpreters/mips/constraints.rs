@@ -10,6 +10,7 @@ use crate::{
         Instruction,
     },
     lookups::{Lookup, LookupTableIDs},
+    pickles::lookup_columns::{ELookup, LookupChallengeTerm, LookupColumns},
     ramlookup::LookupMode,
     E,
 };
@@ -759,4 +760,81 @@ pub fn get_constraints<Fp: Field>(instrunction_set: HashSet<Instruction>) -> Vec
         });
     constraints.extend(mips_con_env.get_selector_constraints());
     constraints
+}
+//--------- functions related to lookup constraints
+fn lookup_variable<F: Field>(col: LookupColumns) -> ELookup<F> {
+    ELookup::<F>::Atom(ExprInner::Cell(Variable {
+        col,
+        row: CurrOrNext::Curr,
+    }))
+}
+
+fn get_cst_from_lookup<Fp: Field>(
+    lookup: Lookup<E<Fp>>,
+    wire_idx: &mut usize,
+    inverse_idx: &mut usize,
+) -> ELookup<Fp> {
+    let beta: ELookup<Fp> = LookupChallengeTerm::Beta.into();
+    let gamma: ELookup<Fp> = LookupChallengeTerm::Gamma.into();
+    let id: ELookup<Fp> = Literal((lookup.table_id.clone().to_u32() as u64).into()).into();
+    // using horner the get the sum of gamma^i * value_i,
+    // as the expression framework would otherwise do a lot of multiplication.
+    // note that we do not use the lookup to iterate, we just need its length.
+    // This is because the variables of the lookup have been copied in the
+    // lookupstate in order.
+    // So we constrain the lookup columns wires, not the scratch state.
+    let sum: ELookup<Fp> =
+        lookup
+            .clone()
+            .value
+            .into_iter()
+            .rev()
+            .fold(ELookup::<Fp>::zero(), |acc, _| {
+                let res = gamma.clone() * (acc + lookup_variable(LookupColumns::Wires(*wire_idx)));
+                *wire_idx += 1;
+                res
+            });
+    // Note that the sum is multiplied by gamma
+    let res = (beta + gamma * (id + sum)) * lookup_variable(LookupColumns::Inverses(*inverse_idx))
+        - ELookup::one();
+    *inverse_idx += 1;
+    res
+}
+
+pub fn get_cst_from_instr<Fp: Field>(
+    instr: Instruction,
+    wire_idx: &mut usize,
+    inverse_idx: &mut usize,
+) -> Vec<ELookup<Fp>> {
+    let mut res = Vec::new();
+    let mut mips_con_env = Env::<Fp>::default();
+    interpret_instruction(&mut mips_con_env, instr);
+    for lookup in mips_con_env.lookups.into_iter() {
+        res.push(get_cst_from_lookup(lookup, wire_idx, inverse_idx))
+    }
+    // This code is shamelessly copied from activate_selector
+    // This should be re-written at some point, it does not makes sense
+    let selector = {
+        let n = usize::from(instr) - N_MIPS_REL_COLS;
+        lookup_variable(LookupColumns::DynamicSelectors(n))
+    };
+    res.into_iter().map(|cst| selector.clone() * cst).collect()
+}
+
+pub fn get_lookup_constraint<Fp: Field>(instruction_set: HashSet<Instruction>) -> ELookup<Fp> {
+    let wire_idx: &mut usize = &mut 0;
+    let inverse_idx: &mut usize = &mut 0;
+    let mut constraints = Vec::new();
+    for instr in instruction_set.into_iter() {
+        constraints.extend(get_cst_from_instr::<Fp>(instr, wire_idx, inverse_idx));
+        *wire_idx = 0;
+        *inverse_idx = 0
+    }
+    // Combine with alpha using Horner
+    let alpha: ELookup<Fp> = LookupChallengeTerm::Alpha.into();
+    constraints
+        .into_iter()
+        .fold(ELookup::<Fp>::zero(), |acc, cst| {
+            alpha.clone() * (acc + cst)
+        })
 }
