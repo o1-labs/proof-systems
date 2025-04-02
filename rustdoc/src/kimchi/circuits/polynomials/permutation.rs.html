@@ -517,6 +517,38 @@
 <a href="#517" id="517">517</a>
 <a href="#518" id="518">518</a>
 <a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements permutation constraint polynomials.
 
 </span><span class="comment">//~ The permutation constraints are the following 4 constraints:
@@ -856,7 +888,6 @@
 
             <span class="kw-2">&amp;</span>bnd1.scale(alpha1) + <span class="kw-2">&amp;</span>bnd2.scale(alpha2)
         };
-
         <span class="prelude-val">Ok</span>((perm, bnd))
     }
 
@@ -965,9 +996,7 @@
         //~ The first evaluation represents the initial value of the accumulator:
         //~ $$z(g^0) = 1$$
 
-        </span><span class="kw">let </span><span class="kw-2">mut </span>z = <span class="macro">vec!</span>[F::one(); n];
-
-        <span class="comment">//~ For $i = 0, \cdot, n - 4$, where $n$ is the size of the domain,
+        //~ For $i = 0, \cdot, n - 4$, where $n$ is the size of the domain,
         //~ evaluations are computed as:
         //~
         //~ $$z(g^{i+1}) = z_1 / z_2$$
@@ -1000,15 +1029,53 @@
         //~ \end{align}
         //~ $$
         //~
-        </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..n - <span class="number">1 </span>{
-            z[j + <span class="number">1</span>] = witness
-                .iter()
-                .zip(<span class="self">self</span>.column_evaluations.permutation_coefficients8.iter())
-                .map(|(w, s)| w[j] + (s[<span class="number">8 </span>* j] * beta) + gamma)
-                .fold(F::one(), |x, y| x * y);
-        }
+
+        // We compute z such that:
+        // z[0] = 1
+        // z[j+1] = \Prod_{i=0}^{PERMUTS}(wit[i][j] + (s[i][8*j] * beta) + gamma)     for j ∈ 0..n-1
+        //
+        // We compute every product batch separately first (one batch
+        // per i∈[COLUMNS]), and then multiply all batches together.
+        //
+        // Note that we zip array of COLUMNS with array of PERMUTS;
+        // Since PERMUTS &lt; COLUMNS, that&#39;s what&#39;s actually used.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>z: Vec&lt;F&gt; = witness
+            .par_iter()
+            .zip(<span class="self">self</span>.column_evaluations.permutation_coefficients8.par_iter())
+            .map(|(w_i, perm_coeffs8_i)| {
+                <span class="kw">let </span><span class="kw-2">mut </span>output_vec: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro">vec!</span>[F::one(); <span class="number">1</span>];
+                <span class="kw">for </span>(j, w_i_j) <span class="kw">in </span>w_i.iter().enumerate().take(n - <span class="number">1</span>) {
+                    output_vec.push(<span class="kw-2">*</span>w_i_j + (perm_coeffs8_i[<span class="number">8 </span>* j] * beta) + gamma);
+                }
+                output_vec
+            })
+            .reduce_with(|<span class="kw-2">mut </span>l, r| {
+                <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..n {
+                    l[i] <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>r[i];
+                }
+                l
+            })
+            .unwrap();
 
         ark_ff::fields::batch_inversion::&lt;F&gt;(<span class="kw-2">&amp;mut </span>z[<span class="number">1</span>..n]);
+
+        <span class="kw">let </span>z_prefolded: Vec&lt;F&gt; = witness
+            .par_iter()
+            .zip(<span class="self">self</span>.cs.shift.par_iter())
+            .map(|(w_i, shift_i)| {
+                <span class="kw">let </span><span class="kw-2">mut </span>output_vec: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro">vec!</span>[F::one(); <span class="number">1</span>];
+                <span class="kw">for </span>(j, w_i_j) <span class="kw">in </span>w_i.iter().enumerate().take(n - <span class="number">1</span>) {
+                    output_vec.push(<span class="kw-2">*</span>w_i_j + (<span class="self">self</span>.cs.sid[j] * beta * shift_i) + gamma);
+                }
+                output_vec
+            })
+            .reduce_with(|<span class="kw-2">mut </span>l, r| {
+                <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..n {
+                    l[i] <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>r[i];
+                }
+                l
+            })
+            .unwrap();
 
         <span class="comment">//~ We randomize the evaluations at `n - zk_rows + 1` and `n - zk_rows + 2` in order to add
         //~ zero-knowledge to the protocol.
@@ -1016,11 +1083,7 @@
         </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..n - <span class="number">1 </span>{
             <span class="kw">if </span>j != n - zk_rows &amp;&amp; j != n - zk_rows + <span class="number">1 </span>{
                 <span class="kw">let </span>x = z[j];
-                z[j + <span class="number">1</span>] <span class="kw-2">*</span>= witness
-                    .iter()
-                    .zip(<span class="self">self</span>.cs.shift.iter())
-                    .map(|(w, s)| w[j] + (<span class="self">self</span>.cs.sid[j] * beta * s) + gamma)
-                    .fold(x, |z, y| z * y);
+                z[j + <span class="number">1</span>] <span class="kw-2">*</span>= z_prefolded[j + <span class="number">1</span>] * x;
             } <span class="kw">else </span>{
                 z[j + <span class="number">1</span>] = F::rand(rng);
             }
@@ -1033,6 +1096,7 @@
         };
 
         <span class="kw">let </span>res = Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(z, <span class="self">self</span>.cs.domain.d1).interpolate();
+
         <span class="prelude-val">Ok</span>(res)
     }
 }
