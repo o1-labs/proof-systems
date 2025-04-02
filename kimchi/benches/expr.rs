@@ -18,8 +18,7 @@ use rand::Rng;
 fn create_random_evaluation(domain: D<Fp>, rng: &mut impl Rng) -> Evaluations<Fp, D<Fp>> {
     let evals = (0..domain.size)
         .map(|_| Fp::rand(rng))
-        .collect::<Vec<_>>()
-        .into();
+        .collect::<Vec<_>>();
     Evaluations::from_vec_and_domain(evals, domain)
 }
 
