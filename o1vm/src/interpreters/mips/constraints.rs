@@ -131,11 +131,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             LookupMode::Write => add_value(numerator),
             LookupMode::Read => {
                 add_value(Self::Variable::zero() - numerator);
-                /*  //This is add_value(-numerator), but we do not have an opposite
-                self.add_constraint(
-                    self.variable(MIPSColumn::LookupColumn(self.lookup_idx)) - numerator,
-                );
-                self.lookup_idx += 1; */
             }
         };
         // Add lookup table ID
