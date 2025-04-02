@@ -1,14 +1,17 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use kimchi::linearization::constraints_expr;
-use std::collections::HashMap;
-use std::hint::black_box;
+use std::{collections::HashMap, hint::black_box};
 
 use ark_ff::UniformRand;
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
-use kimchi::circuits::berkeley_columns::{BerkeleyChallenges, Environment, E};
-use kimchi::circuits::domains::EvaluationDomains;
-use kimchi::circuits::expr::Constants;
-use kimchi::curve::KimchiCurve;
+use kimchi::{
+    circuits::{
+        berkeley_columns::{BerkeleyChallenges, Environment, E},
+        domains::EvaluationDomains,
+        expr::Constants,
+    },
+    curve::KimchiCurve,
+};
 use mina_curves::pasta::{Fp, Vesta};
 use rand::Rng;
 

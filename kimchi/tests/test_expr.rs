@@ -3,7 +3,6 @@ use ark_poly::{
     univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations,
     Radix2EvaluationDomain as D,
 };
-use kimchi::linearization::constraints_expr;
 use kimchi::{
     circuits::{
         berkeley_columns::{
@@ -17,6 +16,7 @@ use kimchi::{
         wires::{Wire, COLUMNS},
     },
     curve::KimchiCurve,
+    linearization::constraints_expr,
     prover_index::ProverIndex,
 };
 use mina_curves::pasta::{Fp, Pallas, Vesta};
