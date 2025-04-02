@@ -1,5 +1,9 @@
-use ark_ff::{Field, One, UniformRand, Zero};
-use ark_poly::{domain::EvaluationDomain, univariate::DensePolynomial};
+use ark_ff::{batch_inversion, Field, One, UniformRand, Zero};
+use ark_poly::{
+    univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations,
+    Radix2EvaluationDomain as D,
+};
+use kimchi::linearization::constraints_expr;
 use kimchi::{
     circuits::{
         berkeley_columns::{
@@ -188,4 +192,84 @@ fn test_combining_constraints_does_not_increase_degree() {
 
     let combined_expr = Expr::combine_constraints(0..2, vec![expr1.clone(), expr2.clone()]);
     assert_eq!(combined_expr.degree(1, 0), 3);
+}
+
+fn create_random_evaluation(domain: D<Fp>, rng: &mut impl rand::Rng) -> Evaluations<Fp, D<Fp>> {
+    let evals = (0..domain.size)
+        .map(|_| Fp::rand(rng))
+        .collect::<Vec<_>>()
+        .into();
+    Evaluations::from_vec_and_domain(evals, domain)
+}
+
+#[test]
+fn test_evaluations_iter_agrees_with_evaluations() {
+    let mut rng = rand::thread_rng();
+
+    let gates = vec![
+        CircuitGate::create_generic_gadget(
+            Wire::for_row(0),
+            GenericGateSpec::Const(1u32.into()),
+            None,
+        ),
+        CircuitGate::create_generic_gadget(
+            Wire::for_row(1),
+            GenericGateSpec::Const(1u32.into()),
+            None,
+        ),
+    ];
+
+    let one = Fp::one();
+    let constraint_system = ConstraintSystem::fp_for_testing(gates);
+    let index = {
+        let srs = SRS::<Vesta>::create(constraint_system.domain.d1.size());
+        srs.get_lagrange_basis(constraint_system.domain.d1);
+        let srs = Arc::new(srs);
+
+        let (endo_q, _endo_r) = endos::<Pallas>();
+        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(constraint_system.clone(), endo_q, srs)
+    };
+
+    let witness_cols: [_; COLUMNS] =
+        array::from_fn(|_| DensePolynomial::rand(constraint_system.domain.d1.size() - 1, &mut rng));
+    let permutation = DensePolynomial::zero();
+    let domain_evals = index.cs.evaluate(&witness_cols, &permutation);
+
+    let env = Environment {
+        constants: Constants {
+            endo_coefficient: one,
+            mds: &Vesta::sponge_params().mds,
+            zk_rows: 3,
+        },
+        challenges: BerkeleyChallenges {
+            alpha: one,
+            beta: one,
+            gamma: one,
+            joint_combiner: one,
+        },
+        witness: &domain_evals.d8.this.w,
+        coefficient: &index.column_evaluations.coefficients8,
+        vanishes_on_zero_knowledge_and_previous_rows: &index
+            .cs
+            .precomputations()
+            .vanishes_on_zero_knowledge_and_previous_rows,
+        z: &domain_evals.d8.this.z,
+        l0_1: l0_1(index.cs.domain.d1),
+        domain: index.cs.domain,
+        index: HashMap::new(),
+        lookup: None,
+    };
+
+    let expr: E<Fp> = constraints_expr(None, true).0;
+
+    let evals1 = expr.evaluations(&env).evals;
+    let evals2 = {
+        let mut iter = expr.evaluations_iter(&env);
+        iter.populate_cache();
+        iter.collect::<Vec<_>>()
+    };
+
+    assert_eq!(evals1.len(), evals2.len());
+    assert_eq!(evals1[0], evals2[0]);
+    assert_eq!(evals1, evals2);
 }

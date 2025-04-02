@@ -11,7 +11,7 @@ use kimchi::circuits::expr::Constants;
 use kimchi::curve::KimchiCurve;
 use mina_curves::pasta::{Fp, Vesta};
 use rand::Rng;
-/* use rayon::prelude::*; */
+use rayon::prelude::*;
 
 fn create_random_evaluation(domain: D<Fp>, rng: &mut impl Rng) -> Evaluations<Fp, D<Fp>> {
     let evals = (0..domain.size)
@@ -76,7 +76,7 @@ fn benchmark_expr_evaluations(c: &mut Criterion) {
     });
 }
 
-/* fn benchmark_expr_evaluations_iter(c: &mut Criterion) {
+fn benchmark_expr_evaluations_iter(c: &mut Criterion) {
     // We use d1!
     // FIXME: Fix log_domain_size = 16
     let domains = EvaluationDomains::<Fp>::create(1 << 16).unwrap();
@@ -136,7 +136,7 @@ fn benchmark_expr_evaluations(c: &mut Criterion) {
                 .collect::<Vec<_>>()
         })
     });
-} */
+}
 
 criterion_group!(
     name = evaluation_bench_seq;
@@ -144,10 +144,10 @@ criterion_group!(
     targets = benchmark_expr_evaluations
 );
 
-/* criterion_group!(
+criterion_group!(
     name = evaluation_bench_par;
     config = Criterion::default().sample_size(10);
     targets = benchmark_expr_evaluations_iter
 );
- */
-criterion_main!(evaluation_bench_seq, /* evaluation_bench_par */);
+
+criterion_main!(evaluation_bench_seq, evaluation_bench_par);
