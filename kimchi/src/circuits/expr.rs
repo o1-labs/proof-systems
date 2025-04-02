@@ -1741,7 +1741,6 @@ fn xth_unnormalized_lagrange_eval<
     'a,
     F: FftField,
     ChallengeTerm,
-    Column: Copy,
     Challenge: Index<ChallengeTerm, Output = F>,
     Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge>,
 >(
@@ -1782,6 +1781,8 @@ fn xth_unnormalized_lagrange_eval<
     }
 }
 
+/// Return the value at the given row of the evaluations of the expression.  Used to implement
+/// `EvaluationsIter`.
 fn value<
     'a,
     ChallengeTerm: Copy,
@@ -1823,7 +1824,6 @@ fn value<
                 Some(xth_unnormalized_lagrange_eval::<
                     F,
                     ChallengeTerm,
-                    Column,
                     Challenge,
                     Environment,
                 >(
@@ -1912,7 +1912,6 @@ fn value_<
                 Some(xth_unnormalized_lagrange_eval::<
                     F,
                     ChallengeTerm,
-                    Column,
                     Challenge,
                     Environment,
                 >(
@@ -1939,13 +1938,12 @@ fn value_<
             },
             Expr::Cache(id, e) => match cache.get(id) {
                 Some(es) => Some(es[row]),
-                None => match e.evaluations(env) {
-                    es => {
-                        assert_eq!(es.evals.len(), final_domain.size());
-                        let ret = es.evals[row];
-                        cache.insert(*id, es);
-                        Some(ret)
-                    }
+                None => {
+                    let es = e.evaluations(env);
+                    assert_eq!(es.evals.len(), final_domain.size());
+                    let ret = es.evals[row];
+                    cache.insert(*id, es);
+                    Some(ret)
                 },
             },
             Expr::IfFeature(feature, e1, e2) => {
@@ -2108,7 +2106,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
 #[derive(Debug)]
 /// An `Iterator` structure for Evaluations.  See also the `impl EvaluationsIter` block below
 /// for additional handy methods.  Note that we do not provide the `Index` trait, since we
-/// don't return by reference.
+/// don't return by reference.  Note also that `Challnenges` and `ChallengeTerm` are phantom.
 pub struct EvaluationsIter<'a, F: FftField, ChallengeTerm, Challenges, Column, Environment> {
     idx: usize,
     expr: Expr<F, Column>,
@@ -2153,11 +2151,14 @@ impl<
 where
     'b: 'a,
 {
+    /// Return a new `EvaluationsIter`.  If `ChallengeTerm`, `Challenges`, `Column`,
+    /// and `Evironment` are `Sync`, then you can use `par_collect` to obtain all the
+    /// evaluations into a vector.
     pub fn new(expr: Expr<F, Column>, env: &'b Environment) -> Self {
         Self {
             idx: 0,
             expr,
-            env: &env,
+            env,
             cache: HashMap::new(),
             _phantom: (std::marker::PhantomData, std::marker::PhantomData),
         }
@@ -2168,7 +2169,7 @@ where
         value_(&self.expr, self.env, &mut self.cache, self.idx);
     }
 
-    ///
+    /// Return the evaluation at index `index`.
     pub fn index(&self, index: usize) -> F {
         value(&self.expr, self.env, &self.cache, index).unwrap()
     }
@@ -2185,14 +2186,16 @@ impl<
 where
     'b: 'a,
 {
-    pub fn par_collect(&self) -> Vec<F> {
-        let domain_size = self.env.get_domain(Domain::D8).size.try_into().unwrap();
+    /// Collect all the evaluations in parallel into an `Evaluations` struct.
+    pub fn par_collect(&self) -> Evaluations<F, D<F>> {
+        let domain = self.env.get_domain(Domain::D8);
+        let domain_size = domain.size.try_into().unwrap();
         let mut ret = Vec::<F>::with_capacity(domain_size);
         (0..domain_size)
             .into_par_iter()
             .map(|i| self.index(i))
             .collect_into_vec(&mut ret);
-        ret
+        Evaluations::from_vec_and_domain(ret, domain)
     }
 }
 
