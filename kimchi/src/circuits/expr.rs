@@ -1571,7 +1571,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 assert!(
                     scale != 0,
                     "Check that the implementation of
-                column_domainand the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
 
