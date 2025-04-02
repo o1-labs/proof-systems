@@ -2172,7 +2172,6 @@ where
     pub fn index(&self, index: usize) -> F {
         value(&self.expr, self.env, &self.cache, index).unwrap()
     }
-
 }
 impl<
         'a,
@@ -2186,17 +2185,16 @@ impl<
 where
     'b: 'a,
 {
-pub fn par_collect(&self) -> Vec<F> {
-    let domain_size = self.env.get_domain(Domain::D8).size.try_into().unwrap();
-    let mut ret = Vec::<F>::with_capacity(domain_size);
-    (0..domain_size)
+    pub fn par_collect(&self) -> Vec<F> {
+        let domain_size = self.env.get_domain(Domain::D8).size.try_into().unwrap();
+        let mut ret = Vec::<F>::with_capacity(domain_size);
+        (0..domain_size)
             .into_par_iter()
             .map(|i| self.index(i))
             .collect_into_vec(&mut ret);
-    ret
+        ret
+    }
 }
-}
-
 
 /// Use as a result of the expression evaluations routine.
 /// For now, the left branch is the result of an evaluation and the right branch
