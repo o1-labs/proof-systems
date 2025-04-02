@@ -1742,7 +1742,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
     fn evaluate_constants_(
         &self,
         c: &Constants<F>,
-        chals: &dyn Index<ChallengeTerm, Output = F>,
+        chals: &impl Index<ChallengeTerm, Output = F>,
     ) -> Expr<F, Column> {
         use ExprInner::*;
         use Operations::*;
