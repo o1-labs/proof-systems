@@ -18,9 +18,7 @@ use std::{
 };
 use tracing::{debug, debug_span};
 
-pub const DEFAULT_SRS_SIZE: usize = 1 << 16;
-
-fn get_srs(cache: Option<String>) -> (SRS<Vesta>, Radix2EvaluationDomain<Fp>) {
+fn get_srs_and_domain(cache: Option<String>) -> (SRS<Vesta>, Radix2EvaluationDomain<Fp>) {
     let res = match cache {
         Some(cache) => {
             let srs = env::get_srs_from_cache(cache);
@@ -30,9 +28,9 @@ fn get_srs(cache: Option<String>) -> (SRS<Vesta>, Radix2EvaluationDomain<Fp>) {
         None => {
             debug!(
                 "No SRS cache provided. Creating SRS from scratch with domain size {}",
-                DEFAULT_SRS_SIZE
+                saffron::SRS_SIZE
             );
-            let domain_size = DEFAULT_SRS_SIZE;
+            let domain_size = saffron::SRS_SIZE;
             let srs = SRS::create(domain_size);
             let domain_fp = Radix2EvaluationDomain::new(srs.size()).unwrap();
             debug!("SRS created successfully");
@@ -48,7 +46,7 @@ fn get_srs(cache: Option<String>) -> (SRS<Vesta>, Radix2EvaluationDomain<Fp>) {
 }
 
 fn decode_file(args: cli::DecodeFileArgs) -> Result<()> {
-    let (_, domain) = get_srs(args.srs_cache);
+    let (_, domain) = get_srs_and_domain(args.srs_cache);
     debug!(
         domain_size = domain.size(),
         input_file = args.input,
@@ -56,7 +54,7 @@ fn decode_file(args: cli::DecodeFileArgs) -> Result<()> {
     );
     let file = File::open(args.input)?;
     let blob: FieldBlob = rmp_serde::decode::from_read(file)?;
-    let mut data = FieldBlob::into_bytes(domain, blob);
+    let mut data = FieldBlob::into_bytes(blob);
     if let Some(truncate_to_bytes) = args.truncate_to_bytes {
         println!("Truncated to {:?} bytes", truncate_to_bytes);
         data.truncate(truncate_to_bytes as usize);
@@ -68,7 +66,7 @@ fn decode_file(args: cli::DecodeFileArgs) -> Result<()> {
 }
 
 fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
-    let (srs, domain) = get_srs(args.srs_cache);
+    let (srs, domain) = get_srs_and_domain(args.srs_cache);
     debug!(
         domain_size = domain.size(),
         input_file = args.input,
@@ -115,7 +113,7 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
 }
 
 pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<HexString> {
-    let (srs, domain_fp) = get_srs(args.srs_cache);
+    let (srs, domain_fp) = get_srs_and_domain(args.srs_cache);
 
     let buf: Vec<u8> = {
         let mut file = File::open(args.input)?;
@@ -166,7 +164,7 @@ pub fn storage_proof(args: cli::StorageProofArgs) -> Result<HexString> {
     let blob: FieldBlob = rmp_serde::decode::from_read(file)?;
     let challenge_seed: ScalarField = utils::encode(&args.challenge_seed.0);
     let proof = {
-        let (srs, _) = get_srs(args.srs_cache);
+        let (srs, _) = get_srs_and_domain(args.srs_cache);
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
         let mut rng = OsRng;
 
@@ -182,7 +180,7 @@ pub fn storage_proof(args: cli::StorageProofArgs) -> Result<HexString> {
 }
 
 pub fn verify_storage_proof(args: cli::VerifyStorageProofArgs) -> Result<()> {
-    let (srs, _) = get_srs(args.srs_cache);
+    let (srs, _) = get_srs_and_domain(args.srs_cache);
     let group_map = <Curve as CommitmentCurve>::Map::setup();
 
     let combined_data_commitment: PolyComm<Curve> = rmp_serde::from_slice(&args.commitment.0)?;

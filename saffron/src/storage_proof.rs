@@ -213,7 +213,7 @@ mod tests {
     fn test_storage_prove_verify(UserData(data) in UserData::arbitrary()) {
         let mut rng = OsRng;
         let commitments = {
-              let field_elems: Vec<_> = encode_for_domain(&*DOMAIN, &data).into_iter().flatten().collect();
+              let field_elems: Vec<_> = encode_for_domain(DOMAIN.size(), &data).into_iter().flatten().collect();
               commit_to_field_elems(&*SRS, &field_elems)
         };
 

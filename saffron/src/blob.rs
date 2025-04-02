@@ -16,8 +16,8 @@ use serde_with::serde_as;
 use tracing::{debug, instrument};
 
 /// A FieldBlob<F> is what Storage Provider stores per user's
-/// contract: a list of SRS_SIZE * chunk_size field elements, where
-/// chunk_size is how much the client allocated.
+/// contract: a list of SRS_SIZE * num_chunks field elements, where
+/// num_chunks is how much the client allocated.
 ///
 /// It can be seen as the encoding of a Vec<u8>, where each field
 /// element contains 31 bytes.
@@ -62,7 +62,7 @@ impl FieldBlob {
             .collect();
 
         // Old values at `addresses`
-        let old_values: Vec<_> = diff
+        let old_values_at_addr: Vec<_> = diff
             .addresses
             .iter()
             .map(|idx| self.data[diff.region as usize * SRS_SIZE + *idx as usize])
@@ -72,17 +72,20 @@ impl FieldBlob {
             self.data[SRS_SIZE * diff.region as usize + *idx as usize] = *value;
         }
 
-        // Lagrange commitment to them.
-        let old_data_commitment =
-            ProjectiveCurve::msm(address_basis.as_slice(), old_values.as_slice()).unwrap();
+        // Lagrange commitment to the (new values-old values) at `addresses`
+        let delta_data_commitment_at_addr = ProjectiveCurve::msm(
+            address_basis.as_slice(),
+            old_values_at_addr
+                .iter()
+                .zip(diff.new_values.iter())
+                .map(|(old, new)| new - old)
+                .collect::<Vec<_>>()
+                .as_slice(),
+        )
+        .unwrap();
 
-        // Lagrange commitment to the new values at `addresses`
-        let new_data_commitment =
-            ProjectiveCurve::msm(address_basis.as_slice(), diff.new_values.as_slice()).unwrap();
-
-        let new_commitment = (self.commitments[diff.region as usize] + new_data_commitment
-            - old_data_commitment)
-            .into();
+        let new_commitment =
+            (self.commitments[diff.region as usize] + delta_data_commitment_at_addr).into();
 
         self.commitments[diff.region as usize] = new_commitment;
     }
@@ -101,7 +104,7 @@ impl FieldBlob {
         domain: D,
         bytes: &[u8],
     ) -> FieldBlob {
-        let field_elements: Vec<ScalarField> = encode_for_domain(&domain, bytes)
+        let field_elements: Vec<ScalarField> = encode_for_domain(domain.size(), bytes)
             .into_iter()
             .flatten()
             .collect();
@@ -117,16 +120,13 @@ impl FieldBlob {
         res
     }
 
+    /// Returns the byte representation of the `FieldBlob`. Note that
+    /// `bytes ≠ into_bytes(from_bytes(bytes))` if `bytes.len()` is not
+    /// divisible by 31*SRS_SIZE. In most cases `into_bytes` will return
+    /// more bytes than `from_bytes` created, so one has to truncate it
+    /// externally to achieve the expected result.
     #[instrument(skip_all, level = "debug")]
-    pub fn into_bytes<D: EvaluationDomain<ScalarField>>(domain: D, blob: FieldBlob) -> Vec<u8> {
-        // TODO: find an Error type and use Result
-        if domain.size() != SRS_SIZE {
-            panic!(
-                "Domain size mismatch, got {}, expected {}",
-                SRS_SIZE,
-                domain.size()
-            );
-        }
+    pub fn into_bytes(blob: FieldBlob) -> Vec<u8> {
         // n < m
         // How many bytes fit into the field
         let n = (ScalarField::MODULUS_BIT_SIZE / 8) as usize;
@@ -187,7 +187,7 @@ mod tests {
             let a = rmp_serde::from_slice(&bytes).unwrap();
             // check that ark-serialize is behaving as expected
             prop_assert_eq!(blob.clone(), a);
-            let ys = FieldBlob::into_bytes(*DOMAIN, blob);
+            let ys = FieldBlob::into_bytes(blob);
             // check that we get the byte blob back again
             prop_assert_eq!(xs,ys);
         }
@@ -197,7 +197,7 @@ mod tests {
     #![proptest_config(ProptestConfig::with_cases(10))]
     #[test]
     fn test_user_and_storage_provider_commitments_equal(UserData(xs) in UserData::arbitrary())
-      { let elems: Vec<_> = encode_for_domain(&*DOMAIN, &xs).into_iter().flatten().collect();
+      { let elems: Vec<_> = encode_for_domain(DOMAIN.size(), &xs).into_iter().flatten().collect();
         let user_commitments: Vec<_> = commit_to_field_elems(&*SRS, &elems);
         let blob = FieldBlob::from_bytes::<_>(&*SRS, *DOMAIN, &xs);
         prop_assert_eq!(user_commitments, blob.commitments);
@@ -228,7 +228,7 @@ mod tests {
 
             // check that the user and SP agree on the data
             let user_commitment: Vec<_> = {
-                let elems: Vec<_> = encode_for_domain(&*DOMAIN, &xs).into_iter().flatten().collect();
+                let elems: Vec<_> = encode_for_domain(DOMAIN.size(), &xs).into_iter().flatten().collect();
                 commit_to_field_elems(&*SRS, &elems)
 
             };

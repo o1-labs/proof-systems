@@ -73,8 +73,8 @@ impl<F: PrimeField> Diff<F> {
         old: &[u8],
         new: &[u8],
     ) -> Result<Vec<Diff<F>>, DiffError> {
-        let old_elems: Vec<Vec<F>> = encode_for_domain(domain, old);
-        let mut new_elems: Vec<Vec<F>> = encode_for_domain(domain, new);
+        let old_elems: Vec<Vec<F>> = encode_for_domain(domain.size(), old);
+        let mut new_elems: Vec<Vec<F>> = encode_for_domain(domain.size(), new);
         if old_elems.len() < new_elems.len() {
             return Err(DiffError::CapacityMismatch {
                 max_number_chunks: old_elems.len(),
@@ -149,10 +149,10 @@ pub mod tests {
             prop_assert!(diffs.is_ok());
             let diffs = diffs.unwrap();
 
-            let xs_elems = encode_for_domain(&*DOMAIN, &xs);
+            let xs_elems = encode_for_domain(DOMAIN.size(), &xs);
             let ys_elems = {
                 let pad = vec![Fp::zero(); DOMAIN.size()];
-                let mut elems = encode_for_domain(&*DOMAIN, &ys);
+                let mut elems = encode_for_domain(DOMAIN.size(), &ys);
                 elems.resize(xs_elems.len(), pad);
                 elems
             };

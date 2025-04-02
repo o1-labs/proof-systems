@@ -1,8 +1,8 @@
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
-use ark_ff::One;
+use ark_ff::{One, PrimeField};
 use kimchi::curve::KimchiCurve;
 use mina_poseidon::FqSponge;
-use poly_commitment::{commitment::absorb_commitment, ipa::SRS, PolyComm, SRS as _};
+use poly_commitment::{ipa::SRS, SRS as _};
 use rayon::prelude::*;
 use tracing::instrument;
 
@@ -40,28 +40,22 @@ pub fn combine_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G
     sponge: &mut EFqSponge,
     commitments: &[G],
 ) -> (G, G::ScalarField) {
-    let commitments_polycomm: Vec<PolyComm<G>> = commitments
-        .iter()
-        .map(|c| PolyComm {
-            chunks: vec![c.clone()],
-        })
-        .collect();
-
-    for commitment in commitments_polycomm.iter() {
-        absorb_commitment(sponge, commitment)
+    for commitment in commitments.iter() {
+        sponge.absorb_g(std::slice::from_ref(commitment))
+        //absorb_commitment(sponge, commitment)
     }
     let alpha = sponge.challenge();
-    let powers: Vec<G::ScalarField> = commitments_polycomm
+    let powers: Vec<_> = commitments
         .iter()
         .scan(G::ScalarField::one(), |acc, _| {
             let res = *acc;
             *acc *= alpha;
-            Some(res)
+            Some(res.into_bigint())
         })
-        .collect::<Vec<_>>();
-    (
-        PolyComm::multi_scalar_mul(&commitments_polycomm.iter().collect::<Vec<_>>(), &powers)
-            .chunks[0],
-        alpha,
-    )
+        .collect();
+
+    let combined_data_commitment =
+        G::Group::msm_bigint(commitments, powers.as_slice()).into_affine();
+
+    (combined_data_commitment, alpha)
 }
