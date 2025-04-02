@@ -1073,12 +1073,7 @@ fn unnormalized_lagrange_evals<
     res_domain: Domain,
     env: &Environment,
 ) -> Evaluations<F, D<F>> {
-    let k = match res_domain {
-        Domain::D1 => 1,
-        Domain::D2 => 2,
-        Domain::D4 => 4,
-        Domain::D8 => 8,
-    };
+    let k = res_domain as usize;
     let res_domain = env.get_domain(res_domain);
 
     let d1 = env.get_domain(Domain::D1);
