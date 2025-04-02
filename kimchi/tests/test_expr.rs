@@ -1,8 +1,5 @@
-use ark_ff::{batch_inversion, Field, One, UniformRand, Zero};
-use ark_poly::{
-    univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations,
-    Radix2EvaluationDomain as D,
-};
+use ark_ff::{Field, One, UniformRand, Zero};
+use ark_poly::{univariate::DensePolynomial, EvaluationDomain};
 use kimchi::{
     circuits::{
         berkeley_columns::{
@@ -16,7 +13,6 @@ use kimchi::{
         wires::{Wire, COLUMNS},
     },
     curve::KimchiCurve,
-    linearization::constraints_expr,
     prover_index::ProverIndex,
 };
 use mina_curves::pasta::{Fp, Pallas, Vesta};
@@ -192,12 +188,4 @@ fn test_combining_constraints_does_not_increase_degree() {
 
     let combined_expr = Expr::combine_constraints(0..2, vec![expr1.clone(), expr2.clone()]);
     assert_eq!(combined_expr.degree(1, 0), 3);
-}
-
-fn create_random_evaluation(domain: D<Fp>, rng: &mut impl rand::Rng) -> Evaluations<Fp, D<Fp>> {
-    let evals = (0..domain.size)
-        .map(|_| Fp::rand(rng))
-        .collect::<Vec<_>>()
-        .into();
-    Evaluations::from_vec_and_domain(evals, domain)
 }
