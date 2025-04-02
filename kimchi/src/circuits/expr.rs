@@ -1347,7 +1347,7 @@ fn value_<
                     let ret = es.evals[row];
                     cache.insert(*id, es);
                     Some(ret)
-                },
+                }
             },
             Expr::IfFeature(feature, e1, e2) => {
                 if feature.is_enabled() {
@@ -1667,7 +1667,6 @@ impl<F: FftField, Column: Copy + PartialEq + Copy + Sync> Expr<F, Column> {
         env: &'a Environment,
     ) -> Evaluations<F, D<F>> {
         EvaluationsIter::new(self.clone(), env).par_collect()
-
     }
 }
 
