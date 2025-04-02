@@ -337,7 +337,6 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
 
             &bnd1.scale(alpha1) + &bnd2.scale(alpha2)
         };
-
         Ok((perm, bnd))
     }
 
@@ -446,8 +445,6 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         //~ The first evaluation represents the initial value of the accumulator:
         //~ $$z(g^0) = 1$$
 
-        let mut z = vec![F::one(); n];
-
         //~ For $i = 0, \cdot, n - 4$, where $n$ is the size of the domain,
         //~ evaluations are computed as:
         //~
@@ -481,15 +478,53 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         //~ \end{align}
         //~ $$
         //~
-        for j in 0..n - 1 {
-            z[j + 1] = witness
-                .iter()
-                .zip(self.column_evaluations.permutation_coefficients8.iter())
-                .map(|(w, s)| w[j] + (s[8 * j] * beta) + gamma)
-                .fold(F::one(), |x, y| x * y);
-        }
+
+        // We compute z such that:
+        // z[0] = 1
+        // z[j+1] = \Prod_{i=0}^{PERMUTS}(wit[i][j] + (s[i][8*j] * beta) + gamma)     for j ∈ 0..n-1
+        //
+        // We compute every product batch separately first (one batch
+        // per i∈[COLUMNS]), and then multiply all batches together.
+        //
+        // Note that we zip array of COLUMNS with array of PERMUTS;
+        // Since PERMUTS < COLUMNS, that's what's actually used.
+        let mut z: Vec<F> = witness
+            .par_iter()
+            .zip(self.column_evaluations.permutation_coefficients8.par_iter())
+            .map(|(w_i, perm_coeffs8_i)| {
+                let mut output_vec: Vec<_> = vec![F::one(); 1];
+                for (j, w_i_j) in w_i.iter().enumerate().take(n - 1) {
+                    output_vec.push(*w_i_j + (perm_coeffs8_i[8 * j] * beta) + gamma);
+                }
+                output_vec
+            })
+            .reduce_with(|mut l, r| {
+                for i in 0..n {
+                    l[i] *= &r[i];
+                }
+                l
+            })
+            .unwrap();
 
         ark_ff::fields::batch_inversion::<F>(&mut z[1..n]);
+
+        let z_prefolded: Vec<F> = witness
+            .par_iter()
+            .zip(self.cs.shift.par_iter())
+            .map(|(w_i, shift_i)| {
+                let mut output_vec: Vec<_> = vec![F::one(); 1];
+                for (j, w_i_j) in w_i.iter().enumerate().take(n - 1) {
+                    output_vec.push(*w_i_j + (self.cs.sid[j] * beta * shift_i) + gamma);
+                }
+                output_vec
+            })
+            .reduce_with(|mut l, r| {
+                for i in 0..n {
+                    l[i] *= &r[i];
+                }
+                l
+            })
+            .unwrap();
 
         //~ We randomize the evaluations at `n - zk_rows + 1` and `n - zk_rows + 2` in order to add
         //~ zero-knowledge to the protocol.
@@ -497,11 +532,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         for j in 0..n - 1 {
             if j != n - zk_rows && j != n - zk_rows + 1 {
                 let x = z[j];
-                z[j + 1] *= witness
-                    .iter()
-                    .zip(self.cs.shift.iter())
-                    .map(|(w, s)| w[j] + (self.cs.sid[j] * beta * s) + gamma)
-                    .fold(x, |z, y| z * y);
+                z[j + 1] *= z_prefolded[j + 1] * x;
             } else {
                 z[j + 1] = F::rand(rng);
             }
@@ -514,6 +545,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         };
 
         let res = Evaluations::<F, D<F>>::from_vec_and_domain(z, self.cs.domain.d1).interpolate();
+
         Ok(res)
     }
 }
