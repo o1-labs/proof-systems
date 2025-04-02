@@ -1773,8 +1773,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
     pub fn evaluate<
         'a,
         Evaluations: ColumnEvaluations<F, Column = Column>,
-        Challenge: Index<ChallengeTerm, Output = F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+        Challenges: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenges, Column = Column>,
     >(
         &self,
         d: D<F>,
@@ -1842,8 +1842,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
     /// Evaluate the constant expressions in this expression down into field elements.
     pub fn evaluate_constants<
         'a,
-        Challenge: Index<ChallengeTerm, Output = F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+        Challenges: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenges, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -1859,8 +1859,8 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
     /// `evaluations`.
     pub fn evaluations<
         'a,
-        Challenge: Index<ChallengeTerm, Output = F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+        Challenges: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenges, Column = Column>,
     >(
         &self,
         env: &Environment,
@@ -1988,8 +1988,8 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
         'a,
         'b,
         ChallengeTerm,
-        Challenge: Index<ChallengeTerm, Output = F>,
-        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+        Challenges: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenges, Column = Column>,
     >(
         &self,
         cache: &'b mut HashMap<CacheId, EvalResult<'a, F>>,
