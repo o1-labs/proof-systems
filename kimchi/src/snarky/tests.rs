@@ -67,7 +67,7 @@ fn test_simple_circuit() {
     // compile
     let test_circuit = TestCircuit {};
 
-    let (mut prover_index, verifier_index) = test_circuit.compile_to_indexes().unwrap();
+    let (mut prover_index, verifier_index) = test_circuit.compile_to_indexes(false).unwrap();
 
     // print ASM
     println!("{}", prover_index.asm());

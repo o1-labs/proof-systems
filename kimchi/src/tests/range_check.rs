@@ -52,7 +52,7 @@ fn create_test_prover_index(
         CircuitGate::<Fp>::create_multi_range_check(0)
     };
 
-    new_index_for_test_with_lookups(gates, public_size, 0, vec![], None, false, None)
+    new_index_for_test_with_lookups(gates, public_size, 0, vec![], None, false, None, false)
 }
 
 #[test]
@@ -546,21 +546,19 @@ fn verify_range_check0_v0_test_lookups() {
         PallasField::zero(),
     );
 
+    let cs = match Arc::try_unwrap(index.cs) {
+        Ok(cs) => cs,
+        Err(_) => panic!("Multiple references of Arc"),
+    };
+
     // Positive test
     // gates[0] is RangeCheck0 and constrains some of v0
     assert_eq!(
-        index.cs.gates[0].verify_witness::<Vesta>(
-            0,
-            &witness,
-            &index.cs,
-            &witness[0][0..index.cs.public]
-        ),
+        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
-    let test_runner = TestFramework::<Vesta>::default()
-        .gates(index.cs.gates)
-        .setup();
+    let test_runner = TestFramework::<Vesta>::default().gates(cs.gates).setup();
 
     for i in 3..=6 {
         // Test ith lookup
@@ -599,21 +597,19 @@ fn verify_range_check0_v1_test_lookups() {
         PallasField::zero(),
     );
 
+    let cs = match Arc::try_unwrap(index.cs) {
+        Ok(cs) => cs,
+        Err(_) => panic!("Multiple references of Arc"),
+    };
+
     // Positive test
     // gates[1] is RangeCheck0 and constrains some of v1
     assert_eq!(
-        index.cs.gates[1].verify_witness::<Vesta>(
-            1,
-            &witness,
-            &index.cs,
-            &witness[0][0..index.cs.public]
-        ),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
-    let test_runner = TestFramework::<Vesta>::default()
-        .gates(index.cs.gates)
-        .setup();
+    let test_runner = TestFramework::<Vesta>::default().gates(cs.gates).setup();
 
     for i in 3..=6 {
         // Test ith lookup
@@ -966,7 +962,11 @@ fn verify_range_check1_test_curr_row_lookups() {
     );
 
     let test_runner = TestFramework::<Vesta>::default()
-        .gates(index.cs.gates)
+        .gates(
+            Arc::try_unwrap(index.cs)
+                .expect("Multiple references of Arc")
+                .gates,
+        )
         .setup();
 
     for i in 3..=6 {
@@ -1002,21 +1002,19 @@ fn verify_range_check1_test_next_row_lookups() {
         PallasField::zero(),
     );
 
+    let cs = match Arc::try_unwrap(index.cs) {
+        Ok(cs) => cs,
+        Err(_) => panic!("Multiple references of Arc"),
+    };
+
     // Positive test case (gates[2] is RangeCheck1 and constrains
     // both v0's and v1's lookups that are deferred to 4th row)
     assert_eq!(
-        index.cs.gates[2].verify_witness::<Vesta>(
-            2,
-            &witness,
-            &index.cs,
-            &witness[0][0..index.cs.public]
-        ),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
-    let test_runner = TestFramework::<Vesta>::default()
-        .gates(index.cs.gates)
-        .setup();
+    let test_runner = TestFramework::<Vesta>::default().gates(cs.gates).setup();
 
     for row in 0..=1 {
         for col in 1..=2 {
@@ -1076,7 +1074,7 @@ fn verify_64_bit_range_check() {
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)
+        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs, false)
     };
 
     // Witness layout (positive test case)
