@@ -11,7 +11,6 @@ use kimchi::circuits::expr::Constants;
 use kimchi::curve::KimchiCurve;
 use mina_curves::pasta::{Fp, Vesta};
 use rand::Rng;
-use rayon::prelude::*;
 
 fn create_random_evaluation(domain: D<Fp>, rng: &mut impl Rng) -> Evaluations<Fp, D<Fp>> {
     let evals = (0..domain.size)
@@ -22,13 +21,9 @@ fn create_random_evaluation(domain: D<Fp>, rng: &mut impl Rng) -> Evaluations<Fp
 }
 
 fn benchmark_expr_evaluations(c: &mut Criterion) {
-    // We use d1!
-    // FIXME: Fix log_domain_size = 16
     let domains = EvaluationDomains::<Fp>::create(1 << 16).unwrap();
     let domain = domains.d8;
     let mut rng = rand::thread_rng();
-    // FIXME: Use const
-    // FIXME: Dedup
     let randomized_witness = (0..15)
         .map(|_| create_random_evaluation(domain, &mut rng))
         .collect::<Vec<_>>()
@@ -77,13 +72,9 @@ fn benchmark_expr_evaluations(c: &mut Criterion) {
 }
 
 fn benchmark_expr_evaluations_iter(c: &mut Criterion) {
-    // We use d1!
-    // FIXME: Fix log_domain_size = 16
     let domains = EvaluationDomains::<Fp>::create(1 << 16).unwrap();
     let domain = domains.d8;
     let mut rng = rand::thread_rng();
-    // FIXME: Use const
-    // FIXME: Dedup
     let randomized_witness = (0..15)
         .map(|_| create_random_evaluation(domain, &mut rng))
         .collect::<Vec<_>>()
@@ -130,10 +121,7 @@ fn benchmark_expr_evaluations_iter(c: &mut Criterion) {
 
     c.bench_function("expr_evals_par", |b| {
         b.iter(|| {
-            (0..domain.size.try_into().unwrap())
-                .into_par_iter()
-                .map(|i| iter.index(i))
-                .collect::<Vec<_>>()
+            black_box(&iter).par_collect();
         })
     });
 }
