@@ -1736,6 +1736,229 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> Expr<ConstantExpr<F, Challe
     }
 }
 
+/// Compute the `x`th unnormalized lagrange evaluation
+fn xth_unnormalized_lagrange_eval<
+    'a,
+    F: FftField,
+    ChallengeTerm,
+    Column: Copy,
+    Challenge: Index<ChallengeTerm, Output = F>,
+    Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge>,
+>(
+    l0_1: F,
+    i: i32,
+    res_domain: Domain,
+    env: &Environment,
+    x: u64,
+) -> F {
+    let k = res_domain as u64;
+    let d1 = env.get_domain(Domain::D1);
+    let n = d1.size;
+    // Renormalize negative values to wrap around at domain size
+    let i = if i < 0 {
+        ((i as isize) + (n as isize)) as usize
+    } else {
+        i as usize
+    };
+    let ii = i as u64;
+    assert!(ii < n);
+    let omega = d1.group_gen;
+    let omega_prime = env.get_domain(res_domain).group_gen;
+    let omega_i = omega.pow([ii]);
+    let omega_minus_i = omega.pow([n - ii]);
+    let omega_x = omega_prime.pow([x]);
+
+    let eval: F = {
+        let v = omega_x - omega_i;
+        v.inverse().unwrap_or(F::zero())
+    };
+
+    if (k as usize) * i == x as usize {
+        omega_minus_i * l0_1
+    } else if x % k == 0 {
+        F::zero()
+    } else {
+        eval * (omega_x.pow([n]) - F::one())
+    }
+}
+
+fn value<
+    'a,
+    ChallengeTerm: Copy,
+    Column: Copy,
+    F: FftField,
+    Challenge: Index<ChallengeTerm, Output = F>,
+    Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+>(
+    expr: &Expr<F, Column>,
+    env: &Environment,
+    cache: &HashMap<CacheId, Evaluations<F, D<F>>>,
+    row: usize,
+) -> Option<F> {
+    let d1_size = env.get_domain(Domain::D1).size;
+    let deg = expr.degree(d1_size, env.get_constants().zk_rows);
+    let d = if deg <= 8 * d1_size {
+        Domain::D8
+    } else {
+        panic!("constraint had degree {deg} > d8 ({})", 8 * d1_size);
+    };
+
+    let final_domain = env.get_domain(d);
+
+    if row >= final_domain.size() {
+        None
+    } else {
+        match expr {
+            Expr::Atom(ExprInner::Constant(c)) => Some(*c),
+            Expr::Atom(ExprInner::Cell(var)) => match env.get_column(&var.col) {
+                None => Some(F::zero()),
+                Some(e) => Some(e.evals[row]),
+            },
+            Expr::Atom(ExprInner::UnnormalizedLagrangeBasis(i)) => {
+                let offset = if i.zk_rows {
+                    -(env.get_constants().zk_rows as i32) + i.offset
+                } else {
+                    i.offset
+                };
+                Some(xth_unnormalized_lagrange_eval::<
+                    F,
+                    ChallengeTerm,
+                    Column,
+                    Challenge,
+                    Environment,
+                >(
+                    env.l0_1(), offset, d, env, row.try_into().unwrap()
+                ))
+            }
+            Expr::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) => {
+                Some(env.vanishes_on_zero_knowledge_and_previous_rows().evals[row])
+            }
+            Expr::Double(x) => value(x, env, cache, row).map(|x| x.double()),
+            Expr::Square(x) => value(x, env, cache, row).map(|x| x.square()),
+            Expr::Pow(x, n) => value(x, env, cache, row).map(|x| x.pow([*n])),
+            Expr::Add(x, y) => match (value(x, env, cache, row), value(y, env, cache, row)) {
+                (Some(x), Some(y)) => Some(x + y),
+                _ => None,
+            },
+            Expr::Mul(x, y) => match (value(x, env, cache, row), value(y, env, cache, row)) {
+                (Some(x), Some(y)) => Some(x * y),
+                _ => None,
+            },
+            Expr::Sub(x, y) => match (value(x, env, cache, row), value(y, env, cache, row)) {
+                (Some(x), Some(y)) => Some(x - y),
+                _ => None,
+            },
+            Expr::Cache(cache_id, e) => match cache.get(cache_id) {
+                // Already computed
+                Some(v) => Some(v[row]),
+                _ =>
+                // We don't modify the cache here since it isn't `&mut`, but we just compute it.
+                {
+                    value(e, env, cache, row)
+                }
+            },
+            Expr::IfFeature(feature, e1, e2) => {
+                if feature.is_enabled() {
+                    value(e1, env, cache, row)
+                } else {
+                    value(e2, env, cache, row)
+                }
+            }
+        }
+    }
+}
+
+/// Return the value at the given row of the evaluations of the expression.  Used to implement
+/// `EvaluationsIter`.
+fn value_<
+    'a,
+    ChallengeTerm: Copy,
+    Column: Copy,
+    F: FftField,
+    Challenge: Index<ChallengeTerm, Output = F>,
+    Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+>(
+    expr: &Expr<F, Column>,
+    env: &Environment,
+    cache: &mut HashMap<CacheId, Evaluations<F, D<F>>>,
+    row: usize,
+) -> Option<F> {
+    let d1_size = env.get_domain(Domain::D1).size;
+    let deg = expr.degree(d1_size, env.get_constants().zk_rows);
+    let d = if deg <= 8 * d1_size {
+        Domain::D8
+    } else {
+        panic!("constraint had degree {deg} > d8 ({})", 8 * d1_size);
+    };
+
+    let final_domain = env.get_domain(d);
+
+    if row >= final_domain.size() {
+        None
+    } else {
+        match expr {
+            Expr::Atom(ExprInner::Constant(c)) => Some(*c),
+            Expr::Atom(ExprInner::Cell(var)) => match env.get_column(&var.col) {
+                None => Some(F::zero()),
+                Some(e) => Some(e.evals[row]),
+            },
+            Expr::Atom(ExprInner::UnnormalizedLagrangeBasis(i)) => {
+                let offset = if i.zk_rows {
+                    -(env.get_constants().zk_rows as i32) + i.offset
+                } else {
+                    i.offset
+                };
+
+                Some(xth_unnormalized_lagrange_eval::<
+                    F,
+                    ChallengeTerm,
+                    Column,
+                    Challenge,
+                    Environment,
+                >(
+                    env.l0_1(), offset, d, env, row.try_into().unwrap()
+                ))
+            }
+            Expr::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) => {
+                Some(env.vanishes_on_zero_knowledge_and_previous_rows().evals[row])
+            }
+            Expr::Double(x) => value_(x, env, cache, row).map(|x| x.double()),
+            Expr::Square(x) => value_(x, env, cache, row).map(|x| x.square()),
+            Expr::Pow(x, n) => value_(x, env, cache, row).map(|x| x.pow([*n])),
+            Expr::Add(x, y) => match (value_(x, env, cache, row), value_(y, env, cache, row)) {
+                (Some(x), Some(y)) => Some(x + y),
+                _ => None,
+            },
+            Expr::Mul(x, y) => match (value_(x, env, cache, row), value_(y, env, cache, row)) {
+                (Some(x), Some(y)) => Some(x * y),
+                _ => None,
+            },
+            Expr::Sub(x, y) => match (value_(x, env, cache, row), value_(y, env, cache, row)) {
+                (Some(x), Some(y)) => Some(x - y),
+                _ => None,
+            },
+            Expr::Cache(id, e) => match cache.get(id) {
+                Some(es) => Some(es[row]),
+                None => match e.evaluations(env) {
+                    es => {
+                        assert_eq!(es.evals.len(), final_domain.size());
+                        let ret = es.evals[row];
+                        cache.insert(*id, es);
+                        Some(ret)
+                    }
+                },
+            },
+            Expr::IfFeature(feature, e1, e2) => {
+                if feature.is_enabled() {
+                    value_(e1, env, cache, row)
+                } else {
+                    value_(e2, env, cache, row)
+                }
+            }
+        }
+    }
+}
+
 impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
     Expr<ConstantExpr<F, ChallengeTerm>, Column>
 {
@@ -1866,6 +2089,88 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
         env: &Environment,
     ) -> Evaluations<F, D<F>> {
         self.evaluate_constants(env).evaluations(env)
+    }
+
+    /// Return an iterator over the evaluations provided by `evaluate_constants`
+    pub fn evaluations_iter<
+        'a,
+        'b: 'a,
+        Challenges: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenges, Column = Column>,
+    >(
+        &self,
+        env: &'b Environment,
+    ) -> EvaluationsIter<'b, F, ChallengeTerm, Challenges, Column, Environment> {
+        EvaluationsIter::new(self.evaluate_constants(env), env)
+    }
+}
+
+#[derive(Debug)]
+/// An `Iterator` structure for Evaluations.  See also the `impl EvaluationsIter` block below
+/// for additional handy methods.  Note that we do not provide the `Index` trait, since we
+/// don't return by reference.
+pub struct EvaluationsIter<'a, F: FftField, ChallengeTerm, Challenges, Column, Environment> {
+    idx: usize,
+    expr: Expr<F, Column>,
+    env: &'a Environment,
+    cache: HashMap<CacheId, Evaluations<F, D<F>>>,
+    _phantom: (
+        std::marker::PhantomData<Challenges>,
+        std::marker::PhantomData<ChallengeTerm>,
+    ),
+}
+
+impl<
+        'a,
+        'b,
+        F: FftField,
+        ChallengeTerm: Copy,
+        Challenges: Index<ChallengeTerm, Output = F>,
+        Column: PartialEq + Copy,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenges, Column = Column>,
+    > std::iter::Iterator for EvaluationsIter<'b, F, ChallengeTerm, Challenges, Column, Environment>
+where
+    'b: 'a,
+{
+    type Item = F;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let ret = value_(&self.expr, self.env, &mut self.cache, self.idx);
+        self.idx += 1;
+        ret
+    }
+}
+
+impl<
+        'a,
+        'b,
+        F: FftField,
+        ChallengeTerm: Copy,
+        Challenges: Index<ChallengeTerm, Output = F>,
+        Column: PartialEq + Copy,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenges, Column = Column>,
+    > EvaluationsIter<'b, F, ChallengeTerm, Challenges, Column, Environment>
+where
+    'b: 'a,
+{
+    pub fn new(expr: Expr<F, Column>, env: &'b Environment) -> Self {
+        Self {
+            idx: 0,
+            expr,
+            env: &env,
+            cache: HashMap::new(),
+            _phantom: (std::marker::PhantomData, std::marker::PhantomData),
+        }
+    }
+
+    /// Populate the internal cache (by evaluating at the current row).
+    pub fn populate_cache(&mut self) {
+        value_(&self.expr, self.env, &mut self.cache, self.idx);
+    }
+
+    ///
+    pub fn index(&self, index: usize) -> F {
+        value(&self.expr, self.env, &self.cache, index).unwrap()
     }
 }
 
