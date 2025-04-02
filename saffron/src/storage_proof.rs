@@ -1,3 +1,15 @@
+//! This module defines the storage proof prover and verifier. Given a
+//! set of commitments C_i and a challenge α the storage proof is just
+//! an opening to the combined commitment ∑α^i C_i. Given that α is
+//! computed by hashing some external challenge secret (e.g. derived
+//! from a hash of a block), and from a hash of the commitments
+//! itself, this in essense proves knowledge of the opening to all the
+//! commitments C_i simultaneously. Given that α is computed by
+//! hashing some external challenge secret (e.g. derived from a hash
+//! of a block), and from a hash of the commitments itself, this in
+//! essense proves knowledge of the opening to all the commitments C_i
+//! simultaneously.
+
 use crate::{blob::FieldBlob, Curve, CurveFqSponge, ProjectiveCurve, ScalarField, SRS_SIZE};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::{One, PrimeField, Zero};
