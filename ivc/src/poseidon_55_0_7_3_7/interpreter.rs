@@ -82,14 +82,14 @@ where
     }
 
     let mut final_state: [Env::Variable; STATE_SIZE] =
-        std::array::from_fn(|_| Env::constant(F::zero()));
+        core::array::from_fn(|_| Env::constant(F::zero()));
 
     for i in 0..NB_FULL_ROUND {
         let state: [PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>; STATE_SIZE] = {
             if i == 0 {
-                std::array::from_fn(PoseidonColumn::Input)
+                core::array::from_fn(PoseidonColumn::Input)
             } else {
-                std::array::from_fn(|j| PoseidonColumn::Round(i - 1, j))
+                core::array::from_fn(|j| PoseidonColumn::Round(i - 1, j))
             }
         };
         let round_res = compute_one_round::<F, STATE_SIZE, NB_FULL_ROUND, PARAMETERS, Env>(

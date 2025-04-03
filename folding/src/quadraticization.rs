@@ -85,7 +85,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
             FoldingExp::Double(exp) => exp.degree(),
             FoldingExp::Square(exp) => exp.degree() * 2,
             FoldingExp::Add(e1, e2) | FoldingExp::Sub(e1, e2) => {
-                std::cmp::max(e1.degree(), e2.degree())
+                core::cmp::max(e1.degree(), e2.degree())
             }
             FoldingExp::Mul(e1, e2) => e1.degree() + e2.degree(),
             FoldingExp::Pow(e, i) => e.degree() * (*i as usize),

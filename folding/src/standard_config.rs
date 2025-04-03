@@ -4,11 +4,11 @@ use crate::{
     expressions::FoldingColumnTrait, instance_witness::Witness, FoldingConfig, FoldingEnv,
     Instance, Side,
 };
+use core::{fmt::Debug, hash::Hash, marker::PhantomData, ops::Index};
 use derivative::Derivative;
 use kimchi::{circuits::gate::CurrOrNext, curve::KimchiCurve};
 use memoization::ColumnMemoizer;
 use poly_commitment::{self, commitment::CommitmentCurve};
-use std::{fmt::Debug, hash::Hash, marker::PhantomData, ops::Index};
 
 #[derive(Clone, Default)]
 /// Default type for when you don't need structure
@@ -199,10 +199,10 @@ where
 /// in [FoldingEnv::col]
 mod memoization {
     use ark_ff::Field;
+    use core::hash::Hash;
     use std::{
         cell::{OnceCell, RefCell},
         collections::HashMap,
-        hash::Hash,
         sync::atomic::{AtomicUsize, Ordering},
     };
 
