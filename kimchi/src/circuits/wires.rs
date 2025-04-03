@@ -1,7 +1,7 @@
 //! This module implements Plonk circuit gate wires primitive.
 
+use core::array;
 use serde::{Deserialize, Serialize};
-use std::array;
 
 /// Number of registers
 pub const COLUMNS: usize = 15;
@@ -66,7 +66,7 @@ impl Wirable for GateWires {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use std::convert::TryInto;
+    use core::convert::TryInto;
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlWire {

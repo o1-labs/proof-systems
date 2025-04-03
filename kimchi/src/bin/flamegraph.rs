@@ -1,3 +1,4 @@
+use core::{mem, ptr};
 use std::env;
 
 use kimchi::bench::BenchmarkCtx;
@@ -6,8 +7,8 @@ use kimchi::bench::BenchmarkCtx;
 /// taken from <https://docs.rs/criterion/latest/src/criterion/lib.rs.html#171>
 pub fn black_box<T>(dummy: T) -> T {
     unsafe {
-        let ret = std::ptr::read_volatile(&dummy);
-        std::mem::forget(dummy);
+        let ret = ptr::read_volatile(&dummy);
+        mem::forget(dummy);
         ret
     }
 }

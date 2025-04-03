@@ -57,19 +57,7 @@ impl CurrOrNext {
 /// not to re-use powers of alpha across constraints.
 #[repr(C)]
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    FromPrimitive,
-    ToPrimitive,
-    Serialize,
-    Deserialize,
-    Eq,
-    Hash,
-    PartialOrd,
-    Ord,
+    Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, Eq, Hash, PartialOrd, Ord,
 )]
 #[cfg_attr(
     feature = "ocaml_types",
@@ -134,7 +122,7 @@ pub enum CircuitGateError {
 }
 
 /// Gate result
-pub type CircuitGateResult<T> = std::result::Result<T, CircuitGateError>;
+pub type CircuitGateResult<T> = core::result::Result<T, CircuitGateError>;
 
 #[serde_as]
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -374,8 +362,9 @@ pub trait Connect {
     /// - `left_rc`: the first row of the range check for the left input
     /// - `right_rc`: the first row of the range check for the right input
     /// - `out_rc`: the first row of the range check for the output of the addition
+    ///
     /// Note:
-    /// If run with `left_rc = None` and `right_rc = None` then it can be used for the bound check range check
+    ///   If run with `left_rc = None` and `right_rc = None` then it can be used for the bound check range check
     fn connect_ffadd_range_checks(
         &mut self,
         ffadd_row: usize,

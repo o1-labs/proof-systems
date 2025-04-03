@@ -1,3 +1,8 @@
+use super::{
+    constraint_system::BasicSnarkyConstraint,
+    errors::{SnarkyCompilationError, SnarkyResult},
+    runner::Constraint,
+};
 use crate::snarky::{
     boolean::Boolean,
     constraint_system::SnarkyCvar,
@@ -5,16 +10,8 @@ use crate::snarky::{
     snarky_type::SnarkyType,
 };
 use ark_ff::PrimeField;
-use std::{
-    borrow::Cow,
-    ops::{Add, Neg, Sub},
-};
-
-use super::{
-    constraint_system::BasicSnarkyConstraint,
-    errors::{SnarkyCompilationError, SnarkyResult},
-    runner::Constraint,
-};
+use core::ops::{Add, Neg, Sub};
+use std::borrow::Cow;
 
 /// A circuit variable represents a field element in the circuit.
 /// Note that a [`FieldVar`] currently represents a small AST that can hide nested additions and multiplications of [`FieldVar`]s.

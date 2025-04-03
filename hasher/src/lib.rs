@@ -1,5 +1,9 @@
 #![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
+#![no_std]
+
+extern crate alloc;
+use alloc::{format, string::String, vec, vec::Vec};
 
 pub mod poseidon;
 pub mod roinput;
@@ -156,7 +160,7 @@ pub trait Hasher<H: Hashable> {
 fn domain_prefix_to_field<F: PrimeField>(prefix: String) -> F {
     const MAX_DOMAIN_STRING_LEN: usize = 20;
     assert!(prefix.len() <= MAX_DOMAIN_STRING_LEN);
-    let prefix = &prefix[..std::cmp::min(prefix.len(), MAX_DOMAIN_STRING_LEN)];
+    let prefix = &prefix[..core::cmp::min(prefix.len(), MAX_DOMAIN_STRING_LEN)];
     let mut bytes = format!("{prefix:*<MAX_DOMAIN_STRING_LEN$}")
         .as_bytes()
         .to_vec();

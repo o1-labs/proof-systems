@@ -36,7 +36,6 @@ ocaml-gen = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion.workspace = true
-colored.workspace = true
 rand_chacha.workspace = true
 ark-bn254.workspace = true
 
@@ -49,4 +48,8 @@ harness = false
 
 [[bench]]
 name = "ipa"
+harness = false
+
+[[bench]]
+name = "msm"
 harness = false

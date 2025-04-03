@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust_toolchain_version: ["1.72"]
+        rust_toolchain_version: ["1.79"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -43,33 +43,12 @@ jobs:
           make deps
           make build
 
-  run_formatting:
-    name: Formatting
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust_toolchain_version: ["nightly"]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Use shared Rust toolchain setting up steps
-        uses: ./.github/actions/toolchain-shared
-        with:
-          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
-
-      - name: Run cargo fmt
-        run: |
-          make format
-
   run_checks:
     name: Run checks and tests
     runs-on: 'ubuntu-latest'
     strategy:
       matrix:
-        rust_toolchain_version: ["1.72", "1.73", "1.74", "1.75", "1.76", "1.77", "1.78", "1.79"]
+        rust_toolchain_version: ["1.79", "1.80", "1.81", "1.82"]
         # FIXME: currently not available for 5.0.0.
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency

@@ -1,4 +1,4 @@
-use std::array;
+use core::array;
 
 use groupmap::{BWParameters, GroupMap};
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
@@ -7,7 +7,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1_utils::math;
-use poly_commitment::{commitment::CommitmentCurve, ipa::OpeningProof, SRS as _};
+use poly_commitment::{commitment::CommitmentCurve, ipa::OpeningProof, SRS};
 
 use crate::{
     circuits::{
@@ -18,7 +18,6 @@ use crate::{
     proof::ProverProof,
     prover_index::{testing::new_index_for_test, ProverIndex},
     verifier::{batch_verify, Context},
-    verifier_index::VerifierIndex,
 };
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
@@ -29,7 +28,6 @@ pub struct BenchmarkCtx {
     pub num_gates: usize,
     group_map: BWParameters<VestaParameters>,
     index: ProverIndex<Vesta, OpeningProof<Vesta>>,
-    verifier_index: VerifierIndex<Vesta, OpeningProof<Vesta>>,
 }
 
 impl BenchmarkCtx {
@@ -61,19 +59,20 @@ impl BenchmarkCtx {
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
         // create the index
-        let index = new_index_for_test(gates, 0);
+        let mut index = new_index_for_test(gates, 0);
 
         assert_eq!(index.cs.domain.d1.log_size_of_group, srs_size_log2, "the test wanted to use an SRS of size {srs_size_log2} but the domain size ended up being {}", index.cs.domain.d1.log_size_of_group);
 
         // create the verifier index
-        let verifier_index = index.verifier_index();
+        index.compute_verifier_index_digest::<BaseSponge>();
 
-        //
+        // just in case check that lagrange bases are generated
+        index.srs.get_lagrange_basis(index.cs.domain.d1);
+
         BenchmarkCtx {
             num_gates,
             group_map,
             index,
-            verifier_index,
         }
     }
 
@@ -104,7 +103,7 @@ impl BenchmarkCtx {
         let batch: Vec<_> = batch
             .iter()
             .map(|(proof, public)| Context {
-                verifier_index: &self.verifier_index,
+                verifier_index: self.index.verifier_index.as_ref().unwrap(),
                 proof,
                 public_input: public,
             })

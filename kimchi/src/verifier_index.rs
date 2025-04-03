@@ -15,6 +15,7 @@ use crate::{
 };
 use ark_ff::{One, PrimeField};
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
+use core::array;
 use mina_poseidon::FqSponge;
 use once_cell::sync::OnceCell;
 use poly_commitment::{
@@ -24,7 +25,6 @@ use poly_commitment::{
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::{
-    array,
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter, Seek, SeekFrom::Start},
     path::Path,

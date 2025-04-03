@@ -20,20 +20,20 @@ use crate::{
 use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::EvaluationDomain;
+use core::array;
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use num_bigint::{BigUint, RandBigInt};
-use num_traits::FromPrimitive;
 use o1_utils::{foreign_field::ForeignElement, tests::make_test_rng, FieldHelpers, Two};
 use poly_commitment::{
     ipa::{endos, OpeningProof, SRS},
     SRS as _,
 };
 use rand::{rngs::StdRng, Rng};
-use std::{array, sync::Arc};
+use std::sync::Arc;
 
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type VestaField = <Vesta as AffineRepr>::BaseField;
@@ -406,12 +406,13 @@ fn compute_dif(modulus: BigUint, left: &[u8], right: &[u8]) -> BigUint {
 // obtains a random input of 32 bytes that fits in the foreign modulus
 fn random_input(rng: &mut StdRng, modulus: BigUint, large: bool) -> Vec<u8> {
     let mut random_str = vec![];
-    let mut random_big = BigUint::from_u128(2u128.pow(88)).unwrap().pow(3);
+    let two = BigUint::from(2u32);
+    let mut random_big = two.clone().pow(88).pow(3);
     while random_big > modulus {
         random_big = if large {
-            rng.gen_biguint_below(&BigUint::from(2u32).pow(32))
+            rng.gen_biguint_below(&two.clone().pow(32))
         } else {
-            rng.gen_biguint_below(&BigUint::from(2u32).pow(20))
+            rng.gen_biguint_below(&two.clone().pow(20))
         };
         random_str = random_big.to_bytes_be();
     }
@@ -564,9 +565,9 @@ fn test_minus_minus() {
     let neg_one_for = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(One::one())
         .neg(&secp256k1_modulus());
     let neg_one = neg_one_for.to_biguint();
+    let two = BigUint::from(2u32);
     let neg_two =
-        ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(BigUint::from_u32(2).unwrap())
-            .neg(&secp256k1_modulus());
+        ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(two).neg(&secp256k1_modulus());
     let (witness_neg, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![neg_one.clone(), neg_one],
@@ -1003,7 +1004,8 @@ fn test_foreign_is_native_sub() {
 fn test_random_small_add() {
     let rng = &mut make_test_rng(None);
     // 2^200 - 75 is prime with 200 bits (3 limbs but smaller than Pallas)
-    let prime = BigUint::from_u128(2u128.pow(100)).unwrap().pow(2) - BigUint::from_u32(75).unwrap();
+    let two = BigUint::from(2u32);
+    let prime = two.pow(100).pow(2) - BigUint::from(75u32);
     let foreign_mod = prime.clone();
     let left_input = random_input(rng, foreign_mod.clone(), false);
     let right_input = random_input(rng, foreign_mod.clone(), false);
@@ -1031,7 +1033,8 @@ fn test_random_small_sub() {
     let rng = &mut make_test_rng(None);
 
     // 2^200 - 75 is prime with 200 bits (3 limbs but smaller than Pallas)
-    let prime = BigUint::from_u128(2u128.pow(100)).unwrap().pow(2) - BigUint::from_u32(75).unwrap();
+    let two = BigUint::from(2u32);
+    let prime = two.clone().pow(100).pow(2) - BigUint::from(75u32);
     let foreign_mod = prime.clone();
     let left_input = random_input(rng, foreign_mod.clone(), false);
     let right_input = random_input(rng, foreign_mod.clone(), false);

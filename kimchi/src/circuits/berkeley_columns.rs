@@ -50,8 +50,8 @@ pub enum BerkeleyChallengeTerm {
     JointCombiner,
 }
 
-impl std::fmt::Display for BerkeleyChallengeTerm {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for BerkeleyChallengeTerm {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         use BerkeleyChallengeTerm::*;
         let str = match self {
             Alpha => "alpha".to_string(),
@@ -79,7 +79,7 @@ pub struct BerkeleyChallenges<F> {
     pub joint_combiner: F,
 }
 
-impl<F: ark_ff::Field> std::ops::Index<BerkeleyChallengeTerm> for BerkeleyChallenges<F> {
+impl<F: ark_ff::Field> core::ops::Index<BerkeleyChallengeTerm> for BerkeleyChallenges<F> {
     type Output = F;
 
     fn index(&self, challenge_term: BerkeleyChallengeTerm) -> &Self::Output {
@@ -99,7 +99,7 @@ impl<F: ark_ff::Field> std::ops::Index<BerkeleyChallengeTerm> for BerkeleyChalle
 /// - The [COLUMNS] witness columns.
 /// - The permutation polynomial, Z.
 /// - The public coefficients, `Coefficients`, which can be used for public
-/// values. For instance, it is used for the Poseidon round constants.
+///   values. For instance, it is used for the Poseidon round constants.
 /// - ...
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Column {

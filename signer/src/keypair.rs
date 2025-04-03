@@ -21,7 +21,7 @@ pub enum KeypairError {
     NonCurvePoint,
 }
 /// Keypair result
-pub type Result<T> = std::result::Result<T, KeypairError>;
+pub type Result<T> = core::result::Result<T, KeypairError>;
 
 /// Keypair structure
 #[derive(Clone, PartialEq, Eq)]

@@ -99,7 +99,7 @@ use crate::{
     },
 };
 use ark_ff::PrimeField;
-use std::{array, marker::PhantomData};
+use core::{array, marker::PhantomData};
 
 /// Compute non-zero intermediate products
 ///

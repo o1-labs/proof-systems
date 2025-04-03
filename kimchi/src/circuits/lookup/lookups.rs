@@ -37,7 +37,7 @@ type Evaluations<Field> = E<Field, D<Field>>;
 fn max_lookups_per_row(kinds: LookupPatterns) -> usize {
     kinds
         .into_iter()
-        .fold(0, |acc, x| std::cmp::max(x.max_lookups_per_row(), acc))
+        .fold(0, |acc, x| core::cmp::max(x.max_lookups_per_row(), acc))
 }
 
 /// Flags for each of the hard-coded lookup patterns.
@@ -85,7 +85,7 @@ impl IntoIterator for LookupPatterns {
     }
 }
 
-impl std::ops::Index<LookupPattern> for LookupPatterns {
+impl core::ops::Index<LookupPattern> for LookupPatterns {
     type Output = bool;
 
     fn index(&self, index: LookupPattern) -> &Self::Output {
@@ -98,7 +98,7 @@ impl std::ops::Index<LookupPattern> for LookupPatterns {
     }
 }
 
-impl std::ops::IndexMut<LookupPattern> for LookupPatterns {
+impl core::ops::IndexMut<LookupPattern> for LookupPatterns {
     fn index_mut(&mut self, index: LookupPattern) -> &mut Self::Output {
         match index {
             LookupPattern::Xor => &mut self.xor,
@@ -183,7 +183,7 @@ impl LookupInfo {
             max_joint_size: features
                 .patterns
                 .into_iter()
-                .fold(0, |acc, v| std::cmp::max(acc, v.max_joint_size())),
+                .fold(0, |acc, v| core::cmp::max(acc, v.max_joint_size())),
             max_per_row,
             features,
         }

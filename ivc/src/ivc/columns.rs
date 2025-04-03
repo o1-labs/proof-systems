@@ -200,9 +200,10 @@
 //! - Hashes:              2 * 165 * 3N = 990N (max 4 * 165 * 3N if we add 165 constants to every call)
 //! - scalars:             4 N + 17 * 3 * N = 55 N
 //! - ECADDs:              230 * 35 * N = 8050N
+//!
 //! Total (CELL):         ~9233*N
 //!
-//!     ...which is less than 32k*N
+//! ...which is less than 32k*N
 //!
 //! In our particular case, CELL = 9233, so
 //!    N_IVC = 0.39 N_APP

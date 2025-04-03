@@ -3,6 +3,7 @@
 /// exactly the plonkish language.
 use ark_ff::{FftField, Field, One};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
+use core::ops::Index;
 use folding::{instance_witness::Foldable, Alphas, Instance, Witness};
 use itertools::Itertools;
 use kimchi::{self, circuits::berkeley_columns::BerkeleyChallengeTerm};
@@ -13,7 +14,6 @@ use poly_commitment::{
     PolyComm, SRS,
 };
 use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
-use std::ops::Index;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
 /// Vector field over F. Something like a vector.
@@ -46,7 +46,7 @@ pub struct PlonkishWitnessGeneric<const N_COL: usize, const N_FSEL: usize, F: Fi
     // This does not have to be part of the witness... can be a static
     // precompiled object.
     pub fixed_selectors: GenericWitness<N_FSEL, Evals>,
-    pub phantom: std::marker::PhantomData<F>,
+    pub phantom: core::marker::PhantomData<F>,
 }
 
 pub type PlonkishWitness<const N_COL: usize, const N_FSEL: usize, F> =
@@ -119,10 +119,10 @@ impl<G: CommitmentCurve, const N_COL: usize, const N_CHALS: usize, const N_ALPHA
 {
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self {
         Self {
-            commitments: std::array::from_fn(|i| {
+            commitments: core::array::from_fn(|i| {
                 (a.commitments[i] + b.commitments[i].mul(challenge)).into()
             }),
-            challenges: std::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
+            challenges: core::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
             blinder: a.blinder + challenge * b.blinder,
         }
@@ -157,7 +157,7 @@ impl<G: CommitmentCurve, const N_COL: usize, const N_ALPHAS: usize>
 {
     pub fn from_witness<
         EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
-        Srs: SRS<G> + std::marker::Sync,
+        Srs: SRS<G> + core::marker::Sync,
     >(
         w: &GenericWitness<N_COL, Evaluations<G::ScalarField, R2D<G::ScalarField>>>,
         fq_sponge: &mut EFqSponge,

@@ -5,11 +5,11 @@
 //!
 //! This module describes 3 different types of instance/witness pairs:
 //! - [Instance] and [Witness]: the original instance and witness. These are the
-//! ones that the user must provide.
+//!   ones that the user must provide.
 //! - [ExtendedInstance] and [ExtendedWitness]: the instance and witness
-//! extended by quadraticization.
+//!   extended by quadraticization.
 //! - [RelaxedInstance] and [RelaxedWitness]: the instance and witness related
-//! to the relaxed/homogeneous polynomials.
+//!   to the relaxed/homogeneous polynomials.
 //!
 //! Note that [Instance], [ExtendedInstance] and [RelaxedInstance] are
 //! supposed to be used to encapsulate the public inputs and challenges. It is
@@ -26,8 +26,7 @@
 // bigint where we only apply the modulus when needed.
 
 use crate::{Alphas, Evals};
-use ark_ff::Field;
-use num_traits::One;
+use ark_ff::{Field, One};
 use poly_commitment::commitment::{CommitmentCurve, PolyComm};
 use std::collections::BTreeMap;
 
@@ -44,6 +43,7 @@ pub trait Instance<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
     /// returned by this method.
     /// When called on a RelaxedInstance, elements will be returned in the
     /// following order, for given instances L and R
+    ///
     /// ```text
     /// scalar = L.to_absorb().0 | L.u | R.to_absorb().0 | R.u
     /// points_l = L.to_absorb().1 | L.extended | L.error // where extended is the commitments to the extra columns
@@ -51,15 +51,19 @@ pub trait Instance<G: CommitmentCurve>: Sized + Foldable<G::ScalarField> {
     /// t_0 and t_1 first and second error terms
     /// points = points_l | points_r | t_0 | t_1
     /// ```
+    ///
     /// A user implementing the IVC circuit should absorb the elements in the
     /// following order:
+    ///
     /// ```text
     /// sponge.absorb_fr(scalar); // absorb the scalar elements
     /// sponge.absorb_g(points); // absorb the commitments
     /// ```
+    ///
     /// This is the order used by the folding library in the method
     /// `fold_instance_witness_pair`.
     /// From there, a challenge can be coined using:
+    ///
     /// ```text
     /// let challenge_r = sponge.challenge();
     /// ```

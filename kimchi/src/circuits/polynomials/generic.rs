@@ -47,8 +47,8 @@ use crate::{
 };
 use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::univariate::DensePolynomial;
+use core::{array, marker::PhantomData};
 use poly_commitment::OpenProof;
-use std::{array, marker::PhantomData};
 
 /// Number of constraints produced by the gate.
 pub const CONSTRAINTS: u32 = 2;

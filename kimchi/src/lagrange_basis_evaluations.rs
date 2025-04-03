@@ -27,6 +27,7 @@ pub struct LagrangeBasisEvaluations<F> {
     ///   corresponding to the evaluations of the Lagrange polynomials, which
     ///   are the polynomials that equal `1` at `ω_i` and `0` elsewhere in the
     ///   domain.
+    ///
     /// If chunking (a vector of size `c · n`)
     /// - the first index refers to the chunks
     /// - the second index refers j-th coefficient of the i-th chunk of the

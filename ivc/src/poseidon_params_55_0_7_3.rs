@@ -14,7 +14,7 @@ with the commit 85cbccd4266cdb567fd47ffc54c3fa52543c2c51
 where the curves have been changed in the script params.sage to use bn254
 */
 
-use std::str::FromStr;
+use core::str::FromStr;
 
 fn params() -> ArithmeticSpongeParams<Fp> {
     ArithmeticSpongeParams {
@@ -863,7 +863,7 @@ impl SpongeConstants for PlonkSpongeConstantsIVC {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use core::str::FromStr;
 
     use super::{static_params, PlonkSpongeConstantsIVC};
     use ark_bn254::Fr as Fp;

@@ -5,10 +5,9 @@ use o1_utils::{
     foreign_field::{ForeignElement, ForeignFieldHelpers},
 };
 
-use ark_ff::{Field, PrimeField};
+use ark_ff::{Field, One, PrimeField, Zero};
+use core::array;
 use num_bigint::BigUint;
-use num_traits::{One, Zero};
-use std::array;
 
 /// Index of low limb (in 3-limb foreign elements)
 pub const LO: usize = 0;

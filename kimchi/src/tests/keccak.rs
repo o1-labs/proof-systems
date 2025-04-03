@@ -1,4 +1,4 @@
-use std::array;
+use core::array;
 
 use crate::{
     circuits::polynomials::keccak::{

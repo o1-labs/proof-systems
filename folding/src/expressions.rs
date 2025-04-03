@@ -10,17 +10,17 @@
 //!
 //! The library introduces different types of expressions:
 //! - [FoldingCompatibleExpr]: an expression that can be used with folding. It
-//! aims to be an intermediate representation from
-//! [kimchi::circuits::expr::Expr]. It can be printed in a human-readable way
-//! using the trait [ToString].
+//!   aims to be an intermediate representation from
+//!   [kimchi::circuits::expr::Expr]. It can be printed in a human-readable way
+//!   using the trait [ToString].
 //! - [FoldingExp]: an internal representation of a folded expression.
 //! - [IntegratedFoldingExpr]: a simplified expression with all terms separated
 //!
 //! When using the library, the user should:
 //! - Convert an expression from [kimchi::circuits::expr::Expr] into a
-//! [FoldingCompatibleExpr] using the trait [From].
+//!   [FoldingCompatibleExpr] using the trait [From].
 //! - Convert a list of [FoldingCompatibleExpr] into a [IntegratedFoldingExpr]
-//! using the function [folding_expression].
+//!   using the function [folding_expression].
 //!
 //! The user can also choose to build a structure [crate::FoldingScheme] from a
 //! list of [FoldingCompatibleExpr].
@@ -45,8 +45,8 @@
 //! ```
 //! Then, we can relax the polynomial `P` in `P_relaxed` by adding a new
 //! variable `u` in the following way:
-//! - For the monomials `f_{i, 0}`, i.e. the monomials of degree `0`, we add `u^2`
-//! to the expression.
+//! - For the monomials `f_{i, 0}`, i.e. the monomials of degree `0`, we add
+//!   `u^2` to the expression.
 //! - For the monomials `f_{i, 1}`, we add `u` to the expression.
 //! - For the monomials `f_{i, 2}`, we keep the expression as is.
 //!
@@ -277,7 +277,7 @@ use crate::{
     FoldingConfig, ScalarField,
 };
 use ark_ec::AffineRepr;
-use ark_ff::One;
+use ark_ff::{One, Zero};
 use core::{
     fmt,
     fmt::{Display, Formatter},
@@ -289,7 +289,6 @@ use kimchi::circuits::{
     expr::{ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
-use num_traits::Zero;
 
 /// Describe the degree of a constraint.
 /// As described in the [top level documentation](super::expressions), we only
@@ -301,7 +300,7 @@ pub enum Degree {
     Two,
 }
 
-impl std::ops::Add for Degree {
+impl core::ops::Add for Degree {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -314,7 +313,7 @@ impl std::ops::Add for Degree {
     }
 }
 
-impl std::ops::Mul for &Degree {
+impl core::ops::Mul for &Degree {
     type Output = Degree;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -333,7 +332,7 @@ pub trait FoldingColumnTrait: Copy + Clone {
     /// Return the degree of the column
     /// - `0` if the column is a constant
     /// - `1` if the column will take part of the randomisation (see [top level
-    /// documentation](super::expressions)
+    ///   documentation](super::expressions)
     fn degree(&self) -> Degree {
         match self.is_witness() {
             true => Degree::One,
@@ -399,7 +398,7 @@ pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Square(Box<Self>),
 }
 
-impl<C: FoldingConfig> std::ops::Add for FoldingCompatibleExpr<C> {
+impl<C: FoldingConfig> core::ops::Add for FoldingCompatibleExpr<C> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -407,7 +406,7 @@ impl<C: FoldingConfig> std::ops::Add for FoldingCompatibleExpr<C> {
     }
 }
 
-impl<C: FoldingConfig> std::ops::Sub for FoldingCompatibleExpr<C> {
+impl<C: FoldingConfig> core::ops::Sub for FoldingCompatibleExpr<C> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
@@ -415,7 +414,7 @@ impl<C: FoldingConfig> std::ops::Sub for FoldingCompatibleExpr<C> {
     }
 }
 
-impl<C: FoldingConfig> std::ops::Mul for FoldingCompatibleExpr<C> {
+impl<C: FoldingConfig> core::ops::Mul for FoldingCompatibleExpr<C> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self {
@@ -480,10 +479,10 @@ impl<C: FoldingConfig> Display for FoldingCompatibleExpr<C> {
 /// A "folding" expression is a multivariate polynomial like defined in
 /// [kimchi::circuits::expr] with the following differences.
 /// - No constructors related to zero-knowledge or lagrange basis (i.e. no
-/// constructors related to the PIOP)
+///   constructors related to the PIOP)
 /// - The variables includes a set of columns that describes the initial circuit
-/// shape, with additional columns strictly related to the folding scheme (error
-/// term, etc).
+///   shape, with additional columns strictly related to the folding scheme (error
+///   term, etc).
 // TODO: renamed in "RelaxedExpression"?
 #[derive(Derivative)]
 #[derivative(
@@ -503,7 +502,7 @@ pub enum FoldingExp<C: FoldingConfig> {
     Square(Box<Self>),
 }
 
-impl<C: FoldingConfig> std::ops::Add for FoldingExp<C> {
+impl<C: FoldingConfig> core::ops::Add for FoldingExp<C> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -511,7 +510,7 @@ impl<C: FoldingConfig> std::ops::Add for FoldingExp<C> {
     }
 }
 
-impl<C: FoldingConfig> std::ops::Sub for FoldingExp<C> {
+impl<C: FoldingConfig> core::ops::Sub for FoldingExp<C> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
@@ -519,7 +518,7 @@ impl<C: FoldingConfig> std::ops::Sub for FoldingExp<C> {
     }
 }
 
-impl<C: FoldingConfig> std::ops::Mul for FoldingExp<C> {
+impl<C: FoldingConfig> core::ops::Mul for FoldingExp<C> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self {
@@ -774,7 +773,7 @@ pub enum Sign {
     Neg,
 }
 
-impl std::ops::Neg for Sign {
+impl core::ops::Neg for Sign {
     type Output = Self;
 
     fn neg(self) -> Self {
@@ -806,7 +805,7 @@ impl<C: FoldingConfig> Term<C> {
     }
 }
 
-impl<C: FoldingConfig> std::ops::Mul for &Term<C> {
+impl<C: FoldingConfig> core::ops::Mul for &Term<C> {
     type Output = Term<C>;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -820,7 +819,7 @@ impl<C: FoldingConfig> std::ops::Mul for &Term<C> {
     }
 }
 
-impl<C: FoldingConfig> std::ops::Neg for Term<C> {
+impl<C: FoldingConfig> core::ops::Neg for Term<C> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
