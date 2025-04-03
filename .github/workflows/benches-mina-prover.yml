@@ -1,0 +1,54 @@
+name: Benchmarks Mina Code
+
+on:
+  pull_request:
+    types:
+      - labeled
+  push:
+    branches:
+      - master
+
+
+env:
+  OCAML_VERSION: "4.14.0"
+  RUST_TOOLCHAIN_VERSION: "1.71"
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    name: Run benchmarks (new!)
+    if: github.event.label.name == 'benchmark'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ env.RUST_TOOLCHAIN_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          set -x
+          cargo install cargo-criterion
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ env.OCAML_VERSION }}
+
+      # Download previous baseline
+      - uses: actions/download-artifact@v3
+        with:
+          name: criterion-mina-master-baseline
+          path: criterion-mina-master-baseline/
+
+      - name: Run criterion bench
+        run: |
+          set -x
+          eval $(opam env)
+          cargo criterion -p kimchi --bench proof_criterion --color never > criterion_bench 2>&1
+          cargo bench -p kimchi --bench proof_criterion -- --save-baseline .
+          cat criterion_bench
