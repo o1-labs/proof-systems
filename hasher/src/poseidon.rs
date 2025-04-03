@@ -1,7 +1,9 @@
 //! Mina Poseidon hasher
 //!
 //! An implementation of Mina's hasher based on the poseidon arithmetic sponge
-//!
+
+use alloc::{vec, vec::Vec};
+
 use core::marker::PhantomData;
 
 use crate::DomainParameter;

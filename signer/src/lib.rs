@@ -1,24 +1,20 @@
 #![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
 
-pub mod keypair;
-pub mod pubkey;
-pub mod schnorr;
-pub mod seckey;
-pub mod signature;
-
-use mina_hasher::{DomainParameter, Hashable};
-
+use ark_ec::AffineRepr;
 pub use keypair::Keypair;
+pub use mina_curves::pasta::Pallas as CurvePoint;
+use mina_hasher::{DomainParameter, Hashable};
 pub use pubkey::{CompressedPubKey, PubKey};
 pub use schnorr::Schnorr;
 pub use seckey::SecKey;
 pub use signature::Signature;
 
-use ark_ec::AffineRepr;
-
-/// Affine curve point type
-pub use mina_curves::pasta::Pallas as CurvePoint;
+pub mod keypair;
+pub mod pubkey;
+pub mod schnorr;
+pub mod seckey;
+pub mod signature;
 
 /// Base field element type
 pub type BaseField = <CurvePoint as AffineRepr>::BaseField;
