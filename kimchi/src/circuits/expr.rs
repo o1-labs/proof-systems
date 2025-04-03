@@ -1416,7 +1416,7 @@ impl<F: FftField, Column: PartialEq + Copy + Sync, ChallengeTerm: Copy + Sync>
 #[derive(Debug)]
 /// An `Iterator` structure for Evaluations.  See also the `impl EvaluationsIter` block below
 /// for additional handy methods.  Note that we do not provide the `Index` trait, since we
-/// don't return by reference.  Note also that `Challnenges` and `ChallengeTerm` are phantom.
+/// don't return by reference.  Note also that `Challenges` and `ChallengeTerm` are phantom.
 pub struct EvaluationsIter<'a, F: FftField, ChallengeTerm, Challenges, Column, Environment> {
     idx: usize,
     expr: Expr<F, Column>,
