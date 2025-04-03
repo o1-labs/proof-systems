@@ -1198,25 +1198,37 @@ fn value<
     env: &Environment,
     cache: &HashMap<CacheId, Evaluations<F, D<F>>>,
     row: usize,
+    inferred_domain: Option<Domain>,
 ) -> Option<F> {
     let d1_size = env.get_domain(Domain::D1).size;
     let deg = expr.degree(d1_size, env.get_constants().zk_rows);
-    let d = if deg <= 8 * d1_size {
+
+    let d = if deg <= d1_size {
+        Domain::D1
+    } else if deg <= 2 * d1_size {
+        Domain::D2
+    } else if deg <= 4 * d1_size {
+        Domain::D4
+    } else if deg <= 8 * d1_size {
         Domain::D8
     } else {
         panic!("constraint had degree {deg} > d8 ({})", 8 * d1_size);
     };
 
-    let final_domain = env.get_domain(d);
+    let final_domain = inferred_domain.unwrap_or(d);
 
-    if row >= final_domain.size() {
+    if row >= env.get_domain(final_domain).size.try_into().unwrap() {
         None
     } else {
         match expr {
             Expr::Atom(ExprInner::Constant(c)) => Some(*c),
             Expr::Atom(ExprInner::Cell(var)) => match env.get_column(&var.col) {
                 None => Some(F::zero()),
-                Some(e) => Some(e.evals[row]),
+                Some(e) => {
+                    assert!(env.column_domain(&var.col) as usize >= final_domain as usize);
+                    let scale = env.column_domain(&var.col) as usize / final_domain as usize;
+                    Some(e.evals[row * scale])
+                }
             },
             Expr::Atom(ExprInner::UnnormalizedLagrangeBasis(i)) => {
                 let offset = if i.zk_rows {
@@ -1236,18 +1248,18 @@ fn value<
             Expr::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) => {
                 Some(env.vanishes_on_zero_knowledge_and_previous_rows().evals[row])
             }
-            Expr::Double(x) => value(x, env, cache, row).map(|x| x.double()),
-            Expr::Square(x) => value(x, env, cache, row).map(|x| x.square()),
-            Expr::Pow(x, n) => value(x, env, cache, row).map(|x| x.pow([*n])),
-            Expr::Add(x, y) => match (value(x, env, cache, row), value(y, env, cache, row)) {
+            Expr::Double(x) => value(x, env, cache, row, Some(final_domain)).map(|x| x.double()),
+            Expr::Square(x) => value(x, env, cache, row, Some(final_domain)).map(|x| x.square()),
+            Expr::Pow(x, n) => value(x, env, cache, row, Some(final_domain)).map(|x| x.pow([*n])),
+            Expr::Add(x, y) => match (value(x, env, cache, row, Some(final_domain)), value(y, env, cache, row, Some(final_domain))) {
                 (Some(x), Some(y)) => Some(x + y),
                 _ => None,
             },
-            Expr::Mul(x, y) => match (value(x, env, cache, row), value(y, env, cache, row)) {
+            Expr::Mul(x, y) => match (value(x, env, cache, row, Some(final_domain)), value(y, env, cache, row, Some(final_domain))) {
                 (Some(x), Some(y)) => Some(x * y),
                 _ => None,
             },
-            Expr::Sub(x, y) => match (value(x, env, cache, row), value(y, env, cache, row)) {
+            Expr::Sub(x, y) => match (value(x, env, cache, row, Some(final_domain)), value(y, env, cache, row, Some(final_domain))) {
                 (Some(x), Some(y)) => Some(x - y),
                 _ => None,
             },
@@ -1257,14 +1269,14 @@ fn value<
                 _ =>
                 // We don't modify the cache here since it isn't `&mut`, but we just compute it.
                 {
-                    value(e, env, cache, row)
+                    value(e, env, cache, row, Some(final_domain))
                 }
             },
             Expr::IfFeature(feature, e1, e2) => {
                 if feature.is_enabled() {
-                    value(e1, env, cache, row)
+                    value(e1, env, cache, row, Some(final_domain))
                 } else {
-                    value(e2, env, cache, row)
+                    value(e2, env, cache, row, Some(final_domain))
                 }
             }
         }
@@ -1574,7 +1586,7 @@ where
 
     /// Return the evaluation at index `index`.
     pub fn index(&self, index: usize) -> F {
-        value(&self.expr, self.env, &self.cache, index).unwrap()
+        value(&self.expr, self.env, &self.cache, index, None).unwrap()
     }
 }
 impl<
