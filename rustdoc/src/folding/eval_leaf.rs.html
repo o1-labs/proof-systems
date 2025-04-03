@@ -146,8 +146,8 @@
     </span><span class="prelude-ty">Result</span>(Vec&lt;F&gt;),
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: std::fmt::Display&gt; std::fmt::Display <span class="kw">for </span>EvalLeaf&lt;<span class="lifetime">&#39;a</span>, F&gt; {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: core::fmt::Display&gt; core::fmt::Display <span class="kw">for </span>EvalLeaf&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>core::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; core::fmt::Result {
         <span class="kw">let </span>slice = <span class="kw">match </span><span class="self">self </span>{
             EvalLeaf::Const(c) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;Const: {}&quot;</span>, c)<span class="question-mark">?</span>;
@@ -165,7 +165,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: std::ops::Add&lt;Output = F&gt; + Clone&gt; std::ops::Add <span class="kw">for </span>EvalLeaf&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: core::ops::Add&lt;Output = F&gt; + Clone&gt; core::ops::Add <span class="kw">for </span>EvalLeaf&lt;<span class="lifetime">&#39;a</span>, F&gt; {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>add(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
@@ -173,7 +173,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: std::ops::Sub&lt;Output = F&gt; + Clone&gt; std::ops::Sub <span class="kw">for </span>EvalLeaf&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: core::ops::Sub&lt;Output = F&gt; + Clone&gt; core::ops::Sub <span class="kw">for </span>EvalLeaf&lt;<span class="lifetime">&#39;a</span>, F&gt; {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>sub(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
@@ -181,7 +181,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: std::ops::Mul&lt;Output = F&gt; + Clone&gt; std::ops::Mul <span class="kw">for </span>EvalLeaf&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: core::ops::Mul&lt;Output = F&gt; + Clone&gt; core::ops::Mul <span class="kw">for </span>EvalLeaf&lt;<span class="lifetime">&#39;a</span>, F&gt; {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>mul(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
@@ -189,7 +189,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: std::ops::Mul&lt;Output = F&gt; + Clone&gt; std::ops::Mul&lt;F&gt; <span class="kw">for </span>EvalLeaf&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: core::ops::Mul&lt;Output = F&gt; + Clone&gt; core::ops::Mul&lt;F&gt; <span class="kw">for </span>EvalLeaf&lt;<span class="lifetime">&#39;a</span>, F&gt; {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>mul(<span class="self">self</span>, rhs: F) -&gt; <span class="self">Self </span>{

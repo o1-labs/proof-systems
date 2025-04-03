@@ -300,7 +300,7 @@
             FoldingExp::Double(exp) =&gt; exp.degree(),
             FoldingExp::Square(exp) =&gt; exp.degree() * <span class="number">2</span>,
             FoldingExp::Add(e1, e2) | FoldingExp::Sub(e1, e2) =&gt; {
-                std::cmp::max(e1.degree(), e2.degree())
+                core::cmp::max(e1.degree(), e2.degree())
             }
             FoldingExp::Mul(e1, e2) =&gt; e1.degree() + e2.degree(),
             FoldingExp::Pow(e, i) =&gt; e.degree() * (<span class="kw-2">*</span>i <span class="kw">as </span>usize),

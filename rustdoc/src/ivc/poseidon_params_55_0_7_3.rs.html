@@ -907,7 +907,7 @@ with the commit 85cbccd4266cdb567fd47ffc54c3fa52543c2c51
 where the curves have been changed in the script params.sage to use bn254
 */
 
-</span><span class="kw">use </span>std::str::FromStr;
+</span><span class="kw">use </span>core::str::FromStr;
 
 <span class="kw">fn </span>params() -&gt; ArithmeticSpongeParams&lt;Fp&gt; {
     ArithmeticSpongeParams {
@@ -1756,7 +1756,7 @@ where the curves have been changed in the script params.sage to use bn254
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
-    <span class="kw">use </span>std::str::FromStr;
+    <span class="kw">use </span>core::str::FromStr;
 
     <span class="kw">use super</span>::{static_params, PlonkSpongeConstantsIVC};
     <span class="kw">use </span>ark_bn254::Fr <span class="kw">as </span>Fp;

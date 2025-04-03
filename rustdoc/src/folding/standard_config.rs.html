@@ -280,11 +280,11 @@
     expressions::FoldingColumnTrait, instance_witness::Witness, FoldingConfig, FoldingEnv,
     Instance, Side,
 };
+<span class="kw">use </span>core::{fmt::Debug, hash::Hash, marker::PhantomData, ops::Index};
 <span class="kw">use </span>derivative::Derivative;
 <span class="kw">use </span>kimchi::{circuits::gate::CurrOrNext, curve::KimchiCurve};
 <span class="kw">use </span>memoization::ColumnMemoizer;
 <span class="kw">use </span>poly_commitment::{<span class="self">self</span>, commitment::CommitmentCurve};
-<span class="kw">use </span>std::{fmt::Debug, hash::Hash, marker::PhantomData, ops::Index};
 
 <span class="attr">#[derive(Clone, Default)]
 </span><span class="doccomment">/// Default type for when you don&#39;t need structure
@@ -475,10 +475,10 @@
 /// in [FoldingEnv::col]
 </span><span class="kw">mod </span>memoization {
     <span class="kw">use </span>ark_ff::Field;
+    <span class="kw">use </span>core::hash::Hash;
     <span class="kw">use </span>std::{
         cell::{OnceCell, RefCell},
         collections::HashMap,
-        hash::Hash,
         sync::atomic::{AtomicUsize, Ordering},
     };
 

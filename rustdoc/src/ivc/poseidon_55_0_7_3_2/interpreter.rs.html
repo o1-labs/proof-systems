@@ -283,16 +283,16 @@
     }
 
     <span class="kw">let </span><span class="kw-2">mut </span>final_state: [Env::Variable; STATE_SIZE] =
-        std::array::from_fn(|<span class="kw">_</span>| Env::constant(F::zero()));
+        core::array::from_fn(|<span class="kw">_</span>| Env::constant(F::zero()));
 
     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..NB_FULL_ROUND {
         <span class="kw">let </span>state: [PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;; STATE_SIZE] = {
             <span class="kw">if </span>i == <span class="number">0 </span>{
-                std::array::from_fn(PoseidonColumn::Input)
+                core::array::from_fn(PoseidonColumn::Input)
             } <span class="kw">else </span>{
                 <span class="kw">let </span>prev_round = i - <span class="number">1</span>;
                 <span class="comment">// Previous outputs are in index 4, 9, and 14 if we have 3 elements
-                </span>std::array::from_fn(|j| PoseidonColumn::Round(prev_round, j * <span class="number">5 </span>+ <span class="number">4</span>))
+                </span>core::array::from_fn(|j| PoseidonColumn::Round(prev_round, j * <span class="number">5 </span>+ <span class="number">4</span>))
             }
         };
         <span class="kw">let </span>round_res = compute_one_round::&lt;F, STATE_SIZE, NB_FULL_ROUND, PARAMETERS, Env&gt;(

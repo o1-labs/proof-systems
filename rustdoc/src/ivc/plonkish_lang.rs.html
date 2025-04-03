@@ -271,6 +271,7 @@
 /// exactly the plonkish language.
 </span><span class="kw">use </span>ark_ff::{FftField, Field, One};
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain <span class="kw">as </span>R2D};
+<span class="kw">use </span>core::ops::Index;
 <span class="kw">use </span>folding::{instance_witness::Foldable, Alphas, Instance, Witness};
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>kimchi::{<span class="self">self</span>, circuits::berkeley_columns::BerkeleyChallengeTerm};
@@ -281,7 +282,6 @@
     PolyComm, SRS,
 };
 <span class="kw">use </span>rayon::iter::{IntoParallelIterator <span class="kw">as _</span>, ParallelIterator <span class="kw">as _</span>};
-<span class="kw">use </span>std::ops::Index;
 <span class="kw">use </span>strum_macros::{EnumCount <span class="kw">as </span>EnumCountMacro, EnumIter};
 
 <span class="doccomment">/// Vector field over F. Something like a vector.
@@ -314,7 +314,7 @@
     <span class="comment">// This does not have to be part of the witness... can be a static
     // precompiled object.
     </span><span class="kw">pub </span>fixed_selectors: GenericWitness&lt;N_FSEL, Evals&gt;,
-    <span class="kw">pub </span>phantom: std::marker::PhantomData&lt;F&gt;,
+    <span class="kw">pub </span>phantom: core::marker::PhantomData&lt;F&gt;,
 }
 
 <span class="kw">pub type </span>PlonkishWitness&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F&gt; =
@@ -387,10 +387,10 @@
 {
     <span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: G::ScalarField) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            commitments: std::array::from_fn(|i| {
+            commitments: core::array::from_fn(|i| {
                 (a.commitments[i] + b.commitments[i].mul(challenge)).into()
             }),
-            challenges: std::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
+            challenges: core::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
             blinder: a.blinder + challenge * b.blinder,
         }
@@ -425,7 +425,7 @@
 {
     <span class="kw">pub fn </span>from_witness&lt;
         EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
-        Srs: SRS&lt;G&gt; + std::marker::Sync,
+        Srs: SRS&lt;G&gt; + core::marker::Sync,
     &gt;(
         w: <span class="kw-2">&amp;</span>GenericWitness&lt;N_COL, Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt;,
         fq_sponge: <span class="kw-2">&amp;mut </span>EFqSponge,

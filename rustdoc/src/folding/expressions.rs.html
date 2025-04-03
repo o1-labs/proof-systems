@@ -1457,7 +1457,7 @@
     Two,
 }
 
-<span class="kw">impl </span>std::ops::Add <span class="kw">for </span>Degree {
+<span class="kw">impl </span>core::ops::Add <span class="kw">for </span>Degree {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>add(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self</span>::Output {
@@ -1470,7 +1470,7 @@
     }
 }
 
-<span class="kw">impl </span>std::ops::Mul <span class="kw">for </span><span class="kw-2">&amp;</span>Degree {
+<span class="kw">impl </span>core::ops::Mul <span class="kw">for </span><span class="kw-2">&amp;</span>Degree {
     <span class="kw">type </span>Output = Degree;
 
     <span class="kw">fn </span>mul(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self</span>::Output {
@@ -1555,7 +1555,7 @@
     Square(Box&lt;<span class="self">Self</span>&gt;),
 }
 
-<span class="kw">impl</span>&lt;C: FoldingConfig&gt; std::ops::Add <span class="kw">for </span>FoldingCompatibleExpr&lt;C&gt; {
+<span class="kw">impl</span>&lt;C: FoldingConfig&gt; core::ops::Add <span class="kw">for </span>FoldingCompatibleExpr&lt;C&gt; {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>add(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
@@ -1563,7 +1563,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;C: FoldingConfig&gt; std::ops::Sub <span class="kw">for </span>FoldingCompatibleExpr&lt;C&gt; {
+<span class="kw">impl</span>&lt;C: FoldingConfig&gt; core::ops::Sub <span class="kw">for </span>FoldingCompatibleExpr&lt;C&gt; {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>sub(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
@@ -1571,7 +1571,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;C: FoldingConfig&gt; std::ops::Mul <span class="kw">for </span>FoldingCompatibleExpr&lt;C&gt; {
+<span class="kw">impl</span>&lt;C: FoldingConfig&gt; core::ops::Mul <span class="kw">for </span>FoldingCompatibleExpr&lt;C&gt; {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>mul(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
@@ -1659,7 +1659,7 @@
     Square(Box&lt;<span class="self">Self</span>&gt;),
 }
 
-<span class="kw">impl</span>&lt;C: FoldingConfig&gt; std::ops::Add <span class="kw">for </span>FoldingExp&lt;C&gt; {
+<span class="kw">impl</span>&lt;C: FoldingConfig&gt; core::ops::Add <span class="kw">for </span>FoldingExp&lt;C&gt; {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>add(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
@@ -1667,7 +1667,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;C: FoldingConfig&gt; std::ops::Sub <span class="kw">for </span>FoldingExp&lt;C&gt; {
+<span class="kw">impl</span>&lt;C: FoldingConfig&gt; core::ops::Sub <span class="kw">for </span>FoldingExp&lt;C&gt; {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>sub(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
@@ -1675,7 +1675,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;C: FoldingConfig&gt; std::ops::Mul <span class="kw">for </span>FoldingExp&lt;C&gt; {
+<span class="kw">impl</span>&lt;C: FoldingConfig&gt; core::ops::Mul <span class="kw">for </span>FoldingExp&lt;C&gt; {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>mul(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
@@ -1930,7 +1930,7 @@
     Neg,
 }
 
-<span class="kw">impl </span>std::ops::Neg <span class="kw">for </span>Sign {
+<span class="kw">impl </span>core::ops::Neg <span class="kw">for </span>Sign {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>neg(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
@@ -1962,7 +1962,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;C: FoldingConfig&gt; std::ops::Mul <span class="kw">for </span><span class="kw-2">&amp;</span>Term&lt;C&gt; {
+<span class="kw">impl</span>&lt;C: FoldingConfig&gt; core::ops::Mul <span class="kw">for </span><span class="kw-2">&amp;</span>Term&lt;C&gt; {
     <span class="kw">type </span>Output = Term&lt;C&gt;;
 
     <span class="kw">fn </span>mul(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self</span>::Output {
@@ -1976,7 +1976,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;C: FoldingConfig&gt; std::ops::Neg <span class="kw">for </span>Term&lt;C&gt; {
+<span class="kw">impl</span>&lt;C: FoldingConfig&gt; core::ops::Neg <span class="kw">for </span>Term&lt;C&gt; {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
 
     <span class="kw">fn </span>neg(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Output {

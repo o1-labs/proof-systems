@@ -438,7 +438,7 @@
     }
 
     <span class="kw">let </span><span class="kw-2">mut </span>state: [Env::Variable; STATE_SIZE] =
-        std::array::from_fn(|i| env.read_column(PoseidonColumn::Input(i)));
+        core::array::from_fn(|i| env.read_column(PoseidonColumn::Input(i)));
 
     <span class="comment">// Full rounds
     </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..(NB_FULL_ROUND / <span class="number">2</span>) {

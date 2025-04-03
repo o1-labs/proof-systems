@@ -190,13 +190,11 @@
 <a href="#190" id="190">190</a>
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::Index;
-
-<span class="kw">use </span><span class="kw">crate</span>::plonkish_lang::{CombinableEvals, PlonkishChallenge, PlonkishWitnessGeneric};
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::plonkish_lang::{CombinableEvals, PlonkishChallenge, PlonkishWitnessGeneric};
 <span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain <span class="kw">as </span>R2D};
+<span class="kw">use </span>core::ops::Index;
 <span class="kw">use </span>folding::{
     columns::ExtendedFoldingColumn,
     eval_leaf::EvalLeaf,
