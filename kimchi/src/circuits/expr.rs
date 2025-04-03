@@ -1200,7 +1200,6 @@ fn value<
     row: usize,
     final_domain: Domain,
 ) -> Option<F> {
-
     if row >= env.get_domain(final_domain).size.try_into().unwrap() {
         None
     } else {
@@ -1209,7 +1208,10 @@ fn value<
             Expr::Atom(ExprInner::Cell(var)) => match env.get_column(&var.col) {
                 None => Some(F::zero()),
                 Some(e) => {
-                    assert!(env.column_domain(&var.col) as usize >= final_domain as usize, "Column domain was too small!");
+                    assert!(
+                        env.column_domain(&var.col) as usize >= final_domain as usize,
+                        "Column domain was too small!"
+                    );
                     let scale = env.column_domain(&var.col) as usize / final_domain as usize;
                     Some(e.evals[row * scale])
                 }
@@ -1226,7 +1228,11 @@ fn value<
                     Challenge,
                     Environment,
                 >(
-                    env.l0_1(), offset, final_domain, env, row.try_into().unwrap()
+                    env.l0_1(),
+                    offset,
+                    final_domain,
+                    env,
+                    row.try_into().unwrap(),
                 ))
             }
             Expr::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) => {
@@ -1235,15 +1241,24 @@ fn value<
             Expr::Double(x) => value(x, env, cache, row, final_domain).map(|x| x.double()),
             Expr::Square(x) => value(x, env, cache, row, final_domain).map(|x| x.square()),
             Expr::Pow(x, n) => value(x, env, cache, row, final_domain).map(|x| x.pow([*n])),
-            Expr::Add(x, y) => match (value(x, env, cache, row, final_domain), value(y, env, cache, row, final_domain)) {
+            Expr::Add(x, y) => match (
+                value(x, env, cache, row, final_domain),
+                value(y, env, cache, row, final_domain),
+            ) {
                 (Some(x), Some(y)) => Some(x + y),
                 _ => None,
             },
-            Expr::Mul(x, y) => match (value(x, env, cache, row, final_domain), value(y, env, cache, row, final_domain)) {
+            Expr::Mul(x, y) => match (
+                value(x, env, cache, row, final_domain),
+                value(y, env, cache, row, final_domain),
+            ) {
                 (Some(x), Some(y)) => Some(x * y),
                 _ => None,
             },
-            Expr::Sub(x, y) => match (value(x, env, cache, row, final_domain), value(y, env, cache, row, final_domain)) {
+            Expr::Sub(x, y) => match (
+                value(x, env, cache, row, final_domain),
+                value(y, env, cache, row, final_domain),
+            ) {
                 (Some(x), Some(y)) => Some(x - y),
                 _ => None,
             },
@@ -1444,7 +1459,13 @@ where
     type Item = F;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let ret = value(&self.expr, self.env, &self.cache, self.idx, self.final_domain);
+        let ret = value(
+            &self.expr,
+            self.env,
+            &self.cache,
+            self.idx,
+            self.final_domain,
+        );
         self.idx += 1;
         ret
     }
