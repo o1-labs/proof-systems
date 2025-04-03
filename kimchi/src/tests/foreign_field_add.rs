@@ -20,6 +20,7 @@ use crate::{
 use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::EvaluationDomain;
+use core::array;
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -32,7 +33,7 @@ use poly_commitment::{
     SRS as _,
 };
 use rand::{rngs::StdRng, Rng};
-use std::{array, sync::Arc};
+use std::sync::Arc;
 
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type VestaField = <Vesta as AffineRepr>::BaseField;

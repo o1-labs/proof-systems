@@ -1,10 +1,10 @@
 //! Range check witness computation
 
 use ark_ff::PrimeField;
+use core::array;
 use num_bigint::BigUint;
 use num_integer::Integer;
 use o1_utils::{field_helpers::BigUintFieldHelpers, FieldHelpers, ForeignElement};
-use std::array;
 
 use crate::{
     circuits::{

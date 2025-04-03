@@ -14,8 +14,8 @@ use crate::{
     grid, variable_map,
 };
 use ark_ff::PrimeField;
+use core::array;
 use num_bigint::BigUint;
-use std::array;
 
 pub(crate) const SPARSE_RC: [[u64; QUARTERS]; ROUNDS] = [
     [

@@ -37,11 +37,11 @@ use crate::{
     curve::KimchiCurve,
 };
 use ark_ff::{Field, PrimeField};
+use core::{marker::PhantomData, ops::Range};
 use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
-use std::{marker::PhantomData, ops::Range};
 use CurrOrNext::{Curr, Next};
 
 //
@@ -117,13 +117,13 @@ impl<F: PrimeField> CircuitGate<F> {
             let wires = if rel_row == 0 {
                 first_and_last_row[0]
             } else {
-                std::array::from_fn(|col| Wire { col, row: abs_row })
+                core::array::from_fn(|col| Wire { col, row: abs_row })
             };
 
             // round constant for this row
-            let coeffs = std::array::from_fn(|offset| {
+            let coeffs = core::array::from_fn(|offset| {
                 let round = rel_row * ROUNDS_PER_ROW + offset;
-                std::array::from_fn(|field_el| round_constants[round][field_el])
+                core::array::from_fn(|field_el| round_constants[round][field_el])
             });
 
             // create poseidon gate for this row
@@ -208,8 +208,8 @@ impl<F: PrimeField> CircuitGate<F> {
 
     /// round constant that are relevant for this specific gate
     pub fn rc(&self) -> [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] {
-        std::array::from_fn(|round| {
-            std::array::from_fn(|col| {
+        core::array::from_fn(|round| {
+            core::array::from_fn(|col| {
                 if self.typ == GateType::Poseidon {
                     self.coeffs[SPONGE_WIDTH * round + col]
                 } else {
