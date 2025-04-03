@@ -1,5 +1,5 @@
 use ark_ff::{Field, One, UniformRand, Zero};
-use ark_poly::{domain::EvaluationDomain, univariate::DensePolynomial};
+use ark_poly::{univariate::DensePolynomial, EvaluationDomain};
 use kimchi::{
     circuits::{
         berkeley_columns::{
