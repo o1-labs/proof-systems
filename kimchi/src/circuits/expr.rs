@@ -1444,7 +1444,7 @@ where
     type Item = F;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let ret = value(&self.expr, self.env, &mut self.cache, self.idx, self.final_domain);
+        let ret = value(&self.expr, self.env, &self.cache, self.idx, self.final_domain);
         self.idx += 1;
         ret
     }
