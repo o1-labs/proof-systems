@@ -52,6 +52,7 @@ jobs:
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency
         ocaml_version: ["4.14"]
+        node: ["20"]
         os: ["ubuntu-latest", "ubuntu-24.04-arm"]
     runs-on: ${{ matrix.os }}
     steps:
