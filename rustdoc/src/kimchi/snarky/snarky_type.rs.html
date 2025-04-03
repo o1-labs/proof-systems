@@ -458,7 +458,7 @@
     <span class="kw">fn </span>from_cvars_unsafe(cvars: Vec&lt;FieldVar&lt;F&gt;&gt;, aux: <span class="self">Self</span>::Auxiliary) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>cvars_and_aux = cvars.chunks(T::SIZE_IN_FIELD_ELEMENTS).zip(aux);
 
-        std::array::from_fn(|<span class="kw">_</span>| {
+        core::array::from_fn(|<span class="kw">_</span>| {
             <span class="kw">let </span>(cvars, aux) = cvars_and_aux.next().unwrap();
             <span class="macro">assert_eq!</span>(cvars.len(), T::SIZE_IN_FIELD_ELEMENTS);
             T::from_cvars_unsafe(cvars.to_vec(), aux)
@@ -489,7 +489,7 @@
     <span class="kw">fn </span>value_of_field_elements(fields: Vec&lt;F&gt;, aux: <span class="self">Self</span>::Auxiliary) -&gt; <span class="self">Self</span>::OutOfCircuit {
         <span class="kw">let </span><span class="kw-2">mut </span>values_and_aux = fields.chunks(T::SIZE_IN_FIELD_ELEMENTS).zip(aux);
 
-        std::array::from_fn(|<span class="kw">_</span>| {
+        core::array::from_fn(|<span class="kw">_</span>| {
             <span class="kw">let </span>(fields, aux) = values_and_aux.next().unwrap();
             <span class="macro">assert_eq!</span>(fields.len(), T::SIZE_IN_FIELD_ELEMENTS);
             T::value_of_field_elements(fields.to_vec(), aux)

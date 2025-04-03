@@ -389,7 +389,7 @@
     proof::{PointEvaluations, ProofEvaluations},
 };
 <span class="kw">use </span>ark_ff::{Field, PrimeField};
-<span class="kw">use </span>std::marker::PhantomData;
+<span class="kw">use </span>core::marker::PhantomData;
 
 <span class="comment">//~ We implement custom gate constraints for short Weierstrass curve
 //~ endomorphism optimised variable base scalar multiplication.
@@ -504,8 +504,8 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
         <span class="macro">ensure_eq!</span>(<span class="self">self</span>.typ, GateType::EndoMul, <span class="string">&quot;incorrect gate type&quot;</span>);
 
-        <span class="kw">let </span>this: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row]);
-        <span class="kw">let </span>next: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row + <span class="number">1</span>]);
+        <span class="kw">let </span>this: [F; COLUMNS] = core::array::from_fn(|i| witness[i][row]);
+        <span class="kw">let </span>next: [F; COLUMNS] = core::array::from_fn(|i| witness[i][row + <span class="number">1</span>]);
 
         <span class="kw">let </span>pt = F::from(<span class="number">123456u64</span>);
 
@@ -646,7 +646,7 @@
 /// # Panics
 ///
 /// Will panic if `bits` length does not match the requirement.
-</span><span class="kw">pub fn </span>gen_witness&lt;F: Field + std::fmt::Display&gt;(
+</span><span class="kw">pub fn </span>gen_witness&lt;F: Field + core::fmt::Display&gt;(
     w: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
     row0: usize,
     endo: F,

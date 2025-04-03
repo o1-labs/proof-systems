@@ -468,7 +468,7 @@
     wires::{GateWires, COLUMNS},
 };
 <span class="kw">use </span>ark_ff::{FftField, PrimeField};
-<span class="kw">use </span>std::marker::PhantomData;
+<span class="kw">use </span>core::marker::PhantomData;
 <span class="kw">use </span>CurrOrNext::{Curr, Next};
 
 <span class="kw">type </span>Variable = VariableGen&lt;Column&gt;;
@@ -815,7 +815,7 @@
 /// # Panics
 ///
 /// Will panic if `bits chunk` length validation fails.
-</span><span class="kw">pub fn </span>witness&lt;F: FftField + std::fmt::Display&gt;(
+</span><span class="kw">pub fn </span>witness&lt;F: FftField + core::fmt::Display&gt;(
     w: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
     row0: usize,
     base: (F, F),

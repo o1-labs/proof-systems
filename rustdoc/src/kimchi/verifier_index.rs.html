@@ -540,6 +540,7 @@
 };
 <span class="kw">use </span>ark_ff::{One, PrimeField};
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
+<span class="kw">use </span>core::array;
 <span class="kw">use </span>mina_poseidon::FqSponge;
 <span class="kw">use </span>once_cell::sync::OnceCell;
 <span class="kw">use </span>poly_commitment::{
@@ -549,7 +550,6 @@
 <span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
 <span class="kw">use </span>std::{
-    array,
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter, Seek, SeekFrom::Start},
     path::Path,

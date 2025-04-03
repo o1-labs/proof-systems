@@ -1142,8 +1142,8 @@
     proof::ProofEvaluations,
 };
 <span class="kw">use </span>ark_ff::{FftField, Field, PrimeField};
+<span class="kw">use </span>core::{array, marker::PhantomData};
 <span class="kw">use </span>log::error;
-<span class="kw">use </span>std::{array, marker::PhantomData};
 <span class="kw">use </span>turshi::{
     runner::{CairoInstruction, CairoProgram, Pointers},
     word::{FlagBits, Offsets},

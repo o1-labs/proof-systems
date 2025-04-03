@@ -3453,6 +3453,8 @@
 <a href="#3453" id="3453">3453</a>
 <a href="#3454" id="3454">3454</a>
 <a href="#3455" id="3455">3455</a>
+<a href="#3456" id="3456">3456</a>
+<a href="#3457" id="3457">3457</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3471,18 +3473,18 @@
 <span class="kw">use </span>ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D,
 };
-<span class="kw">use </span>itertools::Itertools;
-<span class="kw">use </span>o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
-<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
-<span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::{
+<span class="kw">use </span>core::{
     cmp::Ordering,
-    collections::{HashMap, HashSet},
     fmt,
     fmt::{Debug, Display},
     iter::FromIterator,
     ops::{Add, AddAssign, Index, Mul, MulAssign, Neg, Sub},
 };
+<span class="kw">use </span>itertools::Itertools;
+<span class="kw">use </span>o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
+<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::collections::{HashMap, HashSet};
 <span class="kw">use </span>thiserror::Error;
 <span class="kw">use </span>CurrOrNext::{Curr, Next};
 
@@ -4427,12 +4429,12 @@
             Square(x) =&gt; <span class="number">2 </span>* x.degree(d1_size, zk_rows),
             Mul(x, y) =&gt; (<span class="kw-2">*</span>x).degree(d1_size, zk_rows) + (<span class="kw-2">*</span>y).degree(d1_size, zk_rows),
             Add(x, y) | Sub(x, y) =&gt; {
-                std::cmp::max((<span class="kw-2">*</span>x).degree(d1_size, zk_rows), (<span class="kw-2">*</span>y).degree(d1_size, zk_rows))
+                core::cmp::max((<span class="kw-2">*</span>x).degree(d1_size, zk_rows), (<span class="kw-2">*</span>y).degree(d1_size, zk_rows))
             }
             Pow(e, d) =&gt; d * e.degree(d1_size, zk_rows),
             Cache(<span class="kw">_</span>, e) =&gt; e.degree(d1_size, zk_rows),
             IfFeature(<span class="kw">_</span>, e1, e2) =&gt; {
-                std::cmp::max(e1.degree(d1_size, zk_rows), e2.degree(d1_size, zk_rows))
+                core::cmp::max(e1.degree(d1_size, zk_rows), e2.degree(d1_size, zk_rows))
             }
         }
     }
@@ -5747,7 +5749,7 @@
 
 <span class="kw">fn </span>mul_monomials&lt;
     F: Neg&lt;Output = F&gt; + Clone + One + Zero + PartialEq,
-    Column: Ord + Copy + std::hash::Hash,
+    Column: Ord + Copy + core::hash::Hash,
 &gt;(
     e1: <span class="kw-2">&amp;</span>Monomials&lt;F, Column&gt;,
     e2: <span class="kw-2">&amp;</span>Monomials&lt;F, Column&gt;,
@@ -5770,8 +5772,10 @@
     res
 }
 
-<span class="kw">impl</span>&lt;F: Neg&lt;Output = F&gt; + Clone + One + Zero + PartialEq, Column: Ord + Copy + std::hash::Hash&gt;
-    Expr&lt;F, Column&gt;
+<span class="kw">impl</span>&lt;
+        F: Neg&lt;Output = F&gt; + Clone + One + Zero + PartialEq,
+        Column: Ord + Copy + core::hash::Hash,
+    &gt; Expr&lt;F, Column&gt;
 <span class="kw">where
     </span>ExprInner&lt;F, Column&gt;: Literal,
     &lt;ExprInner&lt;F, Column&gt; <span class="kw">as </span>Literal&gt;::F: Field,
@@ -6637,7 +6641,7 @@
     <span class="kw">use </span>o1_utils::Two;
 
     <span class="kw">use </span><span class="kw">crate</span>::circuits::argument::ArgumentData;
-    <span class="kw">use </span>std::fmt;
+    <span class="kw">use </span>core::fmt;
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span><span class="kw">crate</span>::circuits::berkeley_columns::{coeff, witness};
@@ -6660,7 +6664,7 @@
         + fmt::Display
     <span class="comment">// Add more as necessary
     </span><span class="kw">where
-        </span><span class="self">Self</span>: std::marker::Sized,
+        </span><span class="self">Self</span>: core::marker::Sized,
     {
         <span class="doccomment">/// 2^pow
         </span><span class="kw">fn </span>two_pow(pow: u64) -&gt; <span class="self">Self</span>;
@@ -6711,7 +6715,7 @@
     <span class="kw">where
         </span>F: PrimeField,
         <span class="comment">// TODO remove
-        </span>Expr&lt;ConstantExpr&lt;F, BerkeleyChallengeTerm&gt;, berkeley_columns::Column&gt;: std::fmt::Display,
+        </span>Expr&lt;ConstantExpr&lt;F, BerkeleyChallengeTerm&gt;, berkeley_columns::Column&gt;: core::fmt::Display,
     {
         <span class="kw">fn </span>two_pow(pow: u64) -&gt; <span class="self">Self </span>{
             Expr::&lt;ConstantExpr&lt;F, BerkeleyChallengeTerm&gt;, berkeley_columns::Column&gt;::literal(

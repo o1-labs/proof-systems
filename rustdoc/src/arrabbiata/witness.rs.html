@@ -1791,7 +1791,7 @@
         <span class="comment">// We keep track of the values we already set.
         </span><span class="self">self</span>.state.clone_from(<span class="kw-2">&amp;</span><span class="self">self</span>.next_state);
         <span class="comment">// And we reset the next state
-        </span><span class="self">self</span>.next_state = std::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_usize</span>));
+        </span><span class="self">self</span>.next_state = core::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_usize</span>));
     }
 
     <span class="doccomment">/// FIXME: check if we need to pick the left or right sponge
@@ -2199,9 +2199,9 @@
 
         <span class="comment">// FIXME: use setup
         </span><span class="kw">let </span>prover_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-            std::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_u64</span>));
+            core::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_u64</span>));
         <span class="kw">let </span>verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-            std::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_u64</span>));
+            core::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_u64</span>));
 
         <span class="comment">// FIXME: set this up correctly. Temporary as we&#39;re moving the initial
         // transcript state into the setup
@@ -2222,8 +2222,8 @@
             idx_var_next_row: <span class="number">0</span>,
             idx_var_pi: <span class="number">0</span>,
             current_row: <span class="number">0</span>,
-            state: std::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_usize</span>)),
-            next_state: std::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_usize</span>)),
+            state: core::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_usize</span>)),
+            next_state: core::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_usize</span>)),
 
             challenges,
 
@@ -2261,7 +2261,7 @@
     </span><span class="kw">pub fn </span>reset_for_next_iteration(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// Rest the state for the next row
         </span><span class="self">self</span>.current_row = <span class="number">0</span>;
-        <span class="self">self</span>.state = std::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_usize</span>));
+        <span class="self">self</span>.state = core::array::from_fn(|<span class="kw">_</span>| BigInt::from(<span class="number">0_usize</span>));
         <span class="self">self</span>.idx_var = <span class="number">0</span>;
         <span class="self">self</span>.current_instruction = VERIFIER_STARTING_INSTRUCTION;
         <span class="self">self</span>.idx_values_to_absorb = <span class="number">0</span>;

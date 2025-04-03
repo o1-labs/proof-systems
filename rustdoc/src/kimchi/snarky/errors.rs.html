@@ -123,13 +123,13 @@
 <span class="kw">use </span>thiserror::Error;
 
 <span class="doccomment">/// A result type for Snarky errors.
-</span><span class="kw">pub type </span>SnarkyResult&lt;T&gt; = std::result::Result&lt;T, Box&lt;RealSnarkyError&gt;&gt;;
+</span><span class="kw">pub type </span>SnarkyResult&lt;T&gt; = core::result::Result&lt;T, Box&lt;RealSnarkyError&gt;&gt;;
 
 <span class="doccomment">/// A result type for Snarky runtime errors.
-</span><span class="kw">pub type </span>SnarkyRuntimeResult&lt;T&gt; = std::result::Result&lt;T, Box&lt;SnarkyRuntimeError&gt;&gt;;
+</span><span class="kw">pub type </span>SnarkyRuntimeResult&lt;T&gt; = core::result::Result&lt;T, Box&lt;SnarkyRuntimeError&gt;&gt;;
 
 <span class="doccomment">/// A result type for Snarky compilation errors.
-</span><span class="kw">pub type </span>SnarkyCompileResult&lt;T&gt; = std::result::Result&lt;T, SnarkyCompilationError&gt;;
+</span><span class="kw">pub type </span>SnarkyCompileResult&lt;T&gt; = core::result::Result&lt;T, SnarkyCompilationError&gt;;
 
 <span class="attr">#[derive(Debug, Error)]
 #[error(<span class="string">&quot;an error occurred in snarky&quot;</span>)]

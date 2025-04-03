@@ -2318,7 +2318,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
         </span><span class="kw">let </span><span class="kw-2">mut </span>internal_values = HashMap::new();
         <span class="kw">let </span>public_input_size = <span class="self">self</span>.public_input_size.unwrap();
         <span class="kw">let </span>num_rows = public_input_size + <span class="self">self</span>.next_row;
-        <span class="kw">let </span><span class="kw-2">mut </span>res: [<span class="kw">_</span>; COLUMNS] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[Field::zero(); num_rows]);
+        <span class="kw">let </span><span class="kw-2">mut </span>res: [<span class="kw">_</span>; COLUMNS] = core::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[Field::zero(); num_rows]);
 
         <span class="comment">// obtain public input from closure
         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..public_input_size {
@@ -2451,7 +2451,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
            If these cells (the first 7) contain variables,
            make sure that they are wired
         */
-        </span><span class="kw">let </span>num_vars = std::cmp::min(PERMUTS, vars.len());
+        </span><span class="kw">let </span>num_vars = core::cmp::min(PERMUTS, vars.len());
         <span class="kw">for </span>(col, x) <span class="kw">in </span>vars.iter().take(num_vars).enumerate() {
             <span class="kw">match </span>x {
                 <span class="prelude-val">None </span>=&gt; (),
@@ -2510,7 +2510,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
         }
 
         <span class="comment">// get gates without holding on an immutable reference
-        </span><span class="kw">let </span>gates = <span class="kw">match </span>std::mem::replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>.gates, Circuit::Unfinalized(<span class="macro">vec!</span>[])) {
+        </span><span class="kw">let </span>gates = <span class="kw">match </span>core::mem::replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>.gates, Circuit::Unfinalized(<span class="macro">vec!</span>[])) {
             Circuit::Unfinalized(gates) =&gt; gates,
             Circuit::Compiled(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;we expect the gates to be unfinalized&quot;</span>),
         };
@@ -2712,7 +2712,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
                     loc: loc2,
                     vars: (l2, r2, o2),
                     coeffs: coeffs2,
-                }) = std::mem::replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>.pending_generic_gate, <span class="prelude-val">None</span>)
+                }) = core::mem::replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>.pending_generic_gate, <span class="prelude-val">None</span>)
                 {
                     <span class="kw">let </span>labels1 = labels.join(<span class="string">&quot;,&quot;</span>);
                     <span class="kw">let </span>labels2 = labels2.join(<span class="string">&quot;,&quot;</span>);

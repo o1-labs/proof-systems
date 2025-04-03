@@ -1281,7 +1281,7 @@
 <span class="kw">use </span>rand::thread_rng;
 
 <span class="doccomment">/// The result of a proof verification.
-</span><span class="kw">pub type </span><span class="prelude-ty">Result</span>&lt;T&gt; = std::result::Result&lt;T, VerifyError&gt;;
+</span><span class="kw">pub type </span><span class="prelude-ty">Result</span>&lt;T&gt; = core::result::Result&lt;T, VerifyError&gt;;
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>Context&lt;<span class="lifetime">&#39;a</span>, G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; {

@@ -233,7 +233,7 @@
         <span class="kw">struct </span>FieldVisitor;
         <span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::de::Visitor&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>FieldVisitor {
             <span class="kw">type </span>Value = Field;
-            <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>Formatter) -&gt; std::fmt::Result {
+            <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>Formatter) -&gt; core::fmt::Result {
                 Formatter::write_str(formatter, <span class="string">&quot;field identifier&quot;</span>)
             }
             <span class="kw">fn </span>visit_u64&lt;E&gt;(<span class="self">self</span>, value: u64) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::Value, E&gt;
@@ -289,7 +289,7 @@
             </span>G: DeserializeAs&lt;<span class="lifetime">&#39;de</span>, F&gt;,
         {
             <span class="kw">type </span>Value = JointLookupValue&lt;F&gt;;
-            <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>Formatter) -&gt; std::fmt::Result {
+            <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>Formatter) -&gt; core::fmt::Result {
                 Formatter::write_str(formatter, <span class="string">&quot;struct JointLookup&quot;</span>)
             }
             <span class="attr">#[inline]

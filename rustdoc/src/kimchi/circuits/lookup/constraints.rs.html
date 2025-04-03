@@ -1455,7 +1455,7 @@
             <span class="kw">for </span>term <span class="kw">in </span>rt_constraints.iter_mut() {
                 <span class="comment">// Dummy value, to appease the borrow checker.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>boxed_term = Box::new(constant(F::zero()));
-                std::mem::swap(term, <span class="kw-2">&amp;mut *</span>boxed_term);
+                core::mem::swap(term, <span class="kw-2">&amp;mut *</span>boxed_term);
                 <span class="kw-2">*</span>term = E::IfFeature(
                     FeatureFlag::RuntimeLookupTables,
                     boxed_term,

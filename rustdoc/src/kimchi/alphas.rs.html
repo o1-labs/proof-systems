@@ -511,7 +511,7 @@
 }
 
 <span class="kw">impl</span>&lt;T&gt; Display <span class="kw">for </span>Alphas&lt;T&gt; {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>core::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; core::fmt::Result {
         <span class="kw">for </span>arg <span class="kw">in </span>[
             ArgumentType::Gate(GateType::Zero),
             ArgumentType::Permutation,
@@ -544,7 +544,7 @@
 </span><span class="kw">pub struct </span>MustConsumeIterator&lt;I, T&gt;
 <span class="kw">where
     </span>I: Iterator&lt;Item = T&gt;,
-    T: std::fmt::Display,
+    T: core::fmt::Display,
 {
     inner: I,
     debug_info: ArgumentType,
@@ -553,7 +553,7 @@
 <span class="kw">impl</span>&lt;I, T&gt; Iterator <span class="kw">for </span>MustConsumeIterator&lt;I, T&gt;
 <span class="kw">where
     </span>I: Iterator&lt;Item = T&gt;,
-    T: std::fmt::Display,
+    T: core::fmt::Display,
 {
     <span class="kw">type </span>Item = I::Item;
     <span class="kw">fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
@@ -564,7 +564,7 @@
 <span class="kw">impl</span>&lt;I, T&gt; Drop <span class="kw">for </span>MustConsumeIterator&lt;I, T&gt;
 <span class="kw">where
     </span>I: Iterator&lt;Item = T&gt;,
-    T: std::fmt::Display,
+    T: core::fmt::Display,
 {
     <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = <span class="self">self</span>.inner.next() {

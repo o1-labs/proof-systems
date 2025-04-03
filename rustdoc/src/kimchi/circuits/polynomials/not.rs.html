@@ -267,24 +267,22 @@
 <a href="#267" id="267">267</a>
 <a href="#268" id="268">268</a>
 <a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module includes the definition of the NOT gadget and the witness code generation,
 //! for both the implementation running with `Xor16` gates and the one with `Generic` gates.
 //! Note that this module does not include a `Not` gate type.
-</span><span class="kw">use </span><span class="kw">crate</span>::circuits::{
+</span><span class="kw">use super</span>::{
+    generic::GenericGateSpec,
+    xor::{init_xor, num_xors},
+};
+<span class="kw">use </span><span class="kw">crate</span>::circuits::{
     gate::{CircuitGate, Connect, GateType},
     polynomial::COLUMNS,
     wires::Wire,
 };
 <span class="kw">use </span>ark_ff::PrimeField;
+<span class="kw">use </span>core::{array, cmp::max};
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers};
-<span class="kw">use </span>std::{array, cmp::max};
-
-<span class="kw">use super</span>::{
-    generic::GenericGateSpec,
-    xor::{init_xor, num_xors},
-};
 
 <span class="comment">//~ We implement NOT, i.e. bitwise negation, as a gadget in two different ways, needing no new gate type for it. Instead, it reuses the XOR gadget and the Generic gate.
 //~

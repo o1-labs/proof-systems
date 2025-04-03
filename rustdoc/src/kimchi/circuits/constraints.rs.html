@@ -990,6 +990,7 @@
 <a href="#990" id="990">990</a>
 <a href="#991" id="991">991</a>
 <a href="#992" id="992">992</a>
+<a href="#993" id="993">993</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
 </span><span class="kw">use </span><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg;
 <span class="kw">use crate</span>::{
@@ -1015,13 +1016,14 @@
     univariate::DensePolynomial <span class="kw">as </span>DP, EvaluationDomain, Evaluations <span class="kw">as </span>E,
     Radix2EvaluationDomain <span class="kw">as </span>D,
 };
+<span class="kw">use </span>core::{array, default::Default};
 <span class="kw">use </span>o1_utils::ExtendedEvaluations;
 <span class="kw">use </span>once_cell::sync::OnceCell;
 <span class="kw">use </span>poly_commitment::OpenProof;
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
-<span class="kw">use </span>std::{array, default::Default, sync::Arc};
+<span class="kw">use </span>std::sync::Arc;
 
 <span class="comment">//
 // ConstraintSystem
@@ -1884,7 +1886,7 @@
             <span class="comment">// We add 1 to the lookup domain size because there is one element
             // used to close the permutation argument (the polynomial Z is of
             // degree n + 1 where n is the order of the subgroup H).
-            </span><span class="kw">let </span>circuit_lower_bound = std::cmp::max(gates.len(), lookup_domain_size + <span class="number">1</span>);
+            </span><span class="kw">let </span>circuit_lower_bound = core::cmp::max(gates.len(), lookup_domain_size + <span class="number">1</span>);
             <span class="kw">let </span>get_domain_size_lower_bound = |zk_rows: u64| circuit_lower_bound + zk_rows <span class="kw">as </span>usize;
 
             <span class="kw">let </span><span class="kw-2">mut </span>zk_rows = <span class="number">3</span>;

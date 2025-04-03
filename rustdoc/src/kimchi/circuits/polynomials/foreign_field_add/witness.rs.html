@@ -323,9 +323,9 @@
     variable_map,
 };
 <span class="kw">use </span>ark_ff::PrimeField;
+<span class="kw">use </span>core::array;
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>o1_utils::foreign_field::{ForeignElement, ForeignFieldHelpers};
-<span class="kw">use </span>std::array;
 
 <span class="doccomment">/// All foreign field operations allowed
 </span><span class="attr">#[derive(PartialEq, Eq, Debug, Copy, Clone)]
@@ -467,7 +467,7 @@
     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num {
         <span class="comment">// Create foreign field addition row
         </span><span class="kw">for </span>w <span class="kw">in </span><span class="kw-2">&amp;mut </span>witness {
-            w.extend(std::iter::repeat(F::zero()).take(<span class="number">1</span>));
+            w.extend(core::iter::repeat(F::zero()).take(<span class="number">1</span>));
         }
         <span class="kw">let </span>right = ForeignElement::from_biguint(inputs[i + <span class="number">1</span>].clone());
         <span class="kw">let </span>(output, _sign, ovf, carry) =
@@ -609,7 +609,7 @@
     <span class="comment">// Extend the witness for the add gate
     </span><span class="kw">let </span>offset = witness[<span class="number">0</span>].len();
     <span class="kw">for </span>col <span class="kw">in </span>witness.iter_mut().take(COLUMNS) {
-        col.extend(std::iter::repeat(F::zero()).take(<span class="number">2</span>))
+        col.extend(core::iter::repeat(F::zero()).take(<span class="number">2</span>))
     }
 
     init_bound_rows(

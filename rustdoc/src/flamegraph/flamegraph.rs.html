@@ -32,7 +32,9 @@
 <a href="#32" id="32">32</a>
 <a href="#33" id="33">33</a>
 <a href="#34" id="34">34</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::env;
+<a href="#35" id="35">35</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>core::{mem, ptr};
+<span class="kw">use </span>std::env;
 
 <span class="kw">use </span>kimchi::bench::BenchmarkCtx;
 
@@ -40,8 +42,8 @@
 /// taken from &lt;https://docs.rs/criterion/latest/src/criterion/lib.rs.html#171&gt;
 </span><span class="kw">pub fn </span>black_box&lt;T&gt;(dummy: T) -&gt; T {
     <span class="kw">unsafe </span>{
-        <span class="kw">let </span>ret = std::ptr::read_volatile(<span class="kw-2">&amp;</span>dummy);
-        std::mem::forget(dummy);
+        <span class="kw">let </span>ret = ptr::read_volatile(<span class="kw-2">&amp;</span>dummy);
+        mem::forget(dummy);
         ret
     }
 }

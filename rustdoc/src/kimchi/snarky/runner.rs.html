@@ -1277,7 +1277,7 @@
         }
 
         <span class="comment">// pad with zeros for the public output part
-        </span>public_input.extend(std::iter::repeat(F::zero()).take(<span class="self">self</span>.public_output.len()));
+        </span>public_input.extend(core::iter::repeat(F::zero()).take(<span class="self">self</span>.public_output.len()));
 
         <span class="comment">// re-initialize `next_var` (which will grow every time we compile or generate a witness)
         </span><span class="self">self</span>.next_var = <span class="self">self</span>.num_public_inputs;

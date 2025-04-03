@@ -234,10 +234,10 @@
 </pre></div><pre class="rust"><code><span class="doccomment">//! Range check witness computation
 
 </span><span class="kw">use </span>ark_ff::PrimeField;
+<span class="kw">use </span>core::array;
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>num_integer::Integer;
 <span class="kw">use </span>o1_utils::{field_helpers::BigUintFieldHelpers, FieldHelpers, ForeignElement};
-<span class="kw">use </span>std::array;
 
 <span class="kw">use crate</span>::{
     circuits::{

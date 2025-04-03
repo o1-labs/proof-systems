@@ -310,7 +310,7 @@
     FieldVar, RunState, SnarkyResult,
 };
 <span class="kw">use </span>ark_ff::PrimeField;
-<span class="kw">use </span>std::iter::successors;
+<span class="kw">use </span>core::iter::successors;
 
 <span class="kw">use super</span>::{
     challenge_linear_combination, commitment_linear_combination, ec_add, ec_scale, trim,
@@ -458,7 +458,7 @@
         <span class="kw">for </span>set <span class="kw">in </span>new_sets.iter_mut() {
             <span class="kw">for </span>challenge <span class="kw">in </span>set.iter_mut() {
                 <span class="kw">let </span><span class="kw-2">mut </span>trimed = trim(sys, challenge, base)<span class="question-mark">?</span>;
-                std::mem::swap(challenge, <span class="kw-2">&amp;mut </span>trimed);
+                core::mem::swap(challenge, <span class="kw-2">&amp;mut </span>trimed);
             }
         }
         <span class="kw">let </span>challenges = <span class="self">self

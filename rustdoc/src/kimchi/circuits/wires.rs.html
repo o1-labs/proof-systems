@@ -110,8 +110,8 @@
 <a href="#110" id="110">110</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit gate wires primitive.
 
-</span><span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::array;
+</span><span class="kw">use </span>core::array;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="doccomment">/// Number of registers
 </span><span class="kw">pub const </span>COLUMNS: usize = <span class="number">15</span>;
@@ -176,7 +176,7 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
 </span><span class="kw">pub mod </span>caml {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>std::convert::TryInto;
+    <span class="kw">use </span>core::convert::TryInto;
 
     <span class="attr">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     </span><span class="kw">pub struct </span>CamlWire {

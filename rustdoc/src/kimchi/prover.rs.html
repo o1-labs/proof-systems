@@ -1804,6 +1804,7 @@
 <a href="#1804" id="1804">1804</a>
 <a href="#1805" id="1805">1805</a>
 <a href="#1806" id="1806">1806</a>
+<a href="#1807" id="1807">1807</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -1845,6 +1846,7 @@
     univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain <span class="kw">as </span>D,
 };
+<span class="kw">use </span>core::array;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>o1_utils::ExtendedDensePolynomial <span class="kw">as _</span>;
@@ -1857,10 +1859,10 @@
 };
 <span class="kw">use </span>rand_core::{CryptoRng, RngCore};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
-<span class="kw">use </span>std::{array, collections::HashMap};
+<span class="kw">use </span>std::collections::HashMap;
 
 <span class="doccomment">/// The result of a proof creation or verification.
-</span><span class="kw">type </span><span class="prelude-ty">Result</span>&lt;T&gt; = std::result::Result&lt;T, ProverError&gt;;
+</span><span class="kw">type </span><span class="prelude-ty">Result</span>&lt;T&gt; = core::result::Result&lt;T, ProverError&gt;;
 
 <span class="doccomment">/// Helper to quickly test if a witness satisfies a constraint
 </span><span class="macro">macro_rules! </span>check_constraint {
@@ -2047,7 +2049,7 @@
             }
 
             <span class="comment">// padding
-            </span>w.extend(std::iter::repeat(G::ScalarField::zero()).take(length_padding));
+            </span>w.extend(core::iter::repeat(G::ScalarField::zero()).take(length_padding));
 
             <span class="comment">// zk-rows
             </span><span class="kw">for </span>row <span class="kw">in </span>w.iter_mut().rev().take(index.cs.zk_rows <span class="kw">as </span>usize) {

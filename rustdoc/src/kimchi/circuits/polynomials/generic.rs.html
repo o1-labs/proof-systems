@@ -515,8 +515,8 @@
 };
 <span class="kw">use </span>ark_ff::{FftField, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::univariate::DensePolynomial;
+<span class="kw">use </span>core::{array, marker::PhantomData};
 <span class="kw">use </span>poly_commitment::OpenProof;
-<span class="kw">use </span>std::{array, marker::PhantomData};
 
 <span class="doccomment">/// Number of constraints produced by the gate.
 </span><span class="kw">pub const </span>CONSTRAINTS: u32 = <span class="number">2</span>;

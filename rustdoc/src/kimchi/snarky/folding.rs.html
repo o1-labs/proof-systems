@@ -224,9 +224,9 @@
 };
 <span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::{BigInteger, One, PrimeField};
+<span class="kw">use </span>core::{marker::PhantomData, ops::Add};
 <span class="kw">use </span>mina_curves::pasta::Fp;
 <span class="kw">use </span>poly_commitment::{ipa::OpeningProof, OpenProof};
-<span class="kw">use </span>std::{marker::PhantomData, ops::Add};
 
 <span class="kw">mod </span>instance;
 
