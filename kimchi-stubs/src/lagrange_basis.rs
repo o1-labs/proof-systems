@@ -146,7 +146,7 @@ mod cache {
             let cache_key = self.lagrange_basis_cache_key(srs_length, domain);
             if !Path::exists(&cache_key) {
                 let mut f = File::create(cache_key.clone()).unwrap_or_else(|_| {
-                    panic!("Error creating lagrabnge basis cache file {:?}", cache_key)
+                    panic!("Error creating lagrange basis cache file {:?}", cache_key)
                 });
                 rmp_serde::encode::write(&mut f, basis).unwrap_or_else(|_| {
                     panic!("Error encoding lagrange basis to file {:?}", cache_key)
