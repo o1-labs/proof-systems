@@ -11,7 +11,7 @@ use std::{fmt::Debug, str::FromStr};
 pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticSpongeParams<Fp> {
     ArithmeticSpongeParams {
         mds: vec![
-            vec![
+            [
                 Fp::from_str(
                     "12035446894107573964500871153637039653510326950134440362813193268448863222019",
                 )
@@ -25,7 +25,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "4491931056866994439025447213644536587424785196363427220456343191847333476930",
                 )
@@ -39,7 +39,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "10525578725509990281643336361904863911009900817790387635342941550657754064843",
                 )
