@@ -1198,24 +1198,8 @@ fn value<
     env: &Environment,
     cache: &HashMap<CacheId, Evaluations<F, D<F>>>,
     row: usize,
-    inferred_domain: Option<Domain>,
+    final_domain: Domain,
 ) -> Option<F> {
-    let d1_size = env.get_domain(Domain::D1).size;
-    let deg = expr.degree(d1_size, env.get_constants().zk_rows);
-
-    let d = if deg <= d1_size {
-        Domain::D1
-    } else if deg <= 2 * d1_size {
-        Domain::D2
-    } else if deg <= 4 * d1_size {
-        Domain::D4
-    } else if deg <= 8 * d1_size {
-        Domain::D8
-    } else {
-        panic!("constraint had degree {deg} > d8 ({})", 8 * d1_size);
-    };
-
-    let final_domain = inferred_domain.unwrap_or(d);
 
     if row >= env.get_domain(final_domain).size.try_into().unwrap() {
         None
@@ -1225,7 +1209,7 @@ fn value<
             Expr::Atom(ExprInner::Cell(var)) => match env.get_column(&var.col) {
                 None => Some(F::zero()),
                 Some(e) => {
-                    assert!(env.column_domain(&var.col) as usize >= final_domain as usize);
+                    assert!(env.column_domain(&var.col) as usize >= final_domain as usize, "Column domain was too small!");
                     let scale = env.column_domain(&var.col) as usize / final_domain as usize;
                     Some(e.evals[row * scale])
                 }
@@ -1242,24 +1226,24 @@ fn value<
                     Challenge,
                     Environment,
                 >(
-                    env.l0_1(), offset, d, env, row.try_into().unwrap()
+                    env.l0_1(), offset, final_domain, env, row.try_into().unwrap()
                 ))
             }
             Expr::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) => {
                 Some(env.vanishes_on_zero_knowledge_and_previous_rows().evals[row])
             }
-            Expr::Double(x) => value(x, env, cache, row, Some(final_domain)).map(|x| x.double()),
-            Expr::Square(x) => value(x, env, cache, row, Some(final_domain)).map(|x| x.square()),
-            Expr::Pow(x, n) => value(x, env, cache, row, Some(final_domain)).map(|x| x.pow([*n])),
-            Expr::Add(x, y) => match (value(x, env, cache, row, Some(final_domain)), value(y, env, cache, row, Some(final_domain))) {
+            Expr::Double(x) => value(x, env, cache, row, final_domain).map(|x| x.double()),
+            Expr::Square(x) => value(x, env, cache, row, final_domain).map(|x| x.square()),
+            Expr::Pow(x, n) => value(x, env, cache, row, final_domain).map(|x| x.pow([*n])),
+            Expr::Add(x, y) => match (value(x, env, cache, row, final_domain), value(y, env, cache, row, final_domain)) {
                 (Some(x), Some(y)) => Some(x + y),
                 _ => None,
             },
-            Expr::Mul(x, y) => match (value(x, env, cache, row, Some(final_domain)), value(y, env, cache, row, Some(final_domain))) {
+            Expr::Mul(x, y) => match (value(x, env, cache, row, final_domain), value(y, env, cache, row, final_domain)) {
                 (Some(x), Some(y)) => Some(x * y),
                 _ => None,
             },
-            Expr::Sub(x, y) => match (value(x, env, cache, row, Some(final_domain)), value(y, env, cache, row, Some(final_domain))) {
+            Expr::Sub(x, y) => match (value(x, env, cache, row, final_domain), value(y, env, cache, row, final_domain)) {
                 (Some(x), Some(y)) => Some(x - y),
                 _ => None,
             },
@@ -1269,103 +1253,14 @@ fn value<
                 _ =>
                 // We don't modify the cache here since it isn't `&mut`, but we just compute it.
                 {
-                    value(e, env, cache, row, Some(final_domain))
+                    value(e, env, cache, row, final_domain)
                 }
             },
             Expr::IfFeature(feature, e1, e2) => {
                 if feature.is_enabled() {
-                    value(e1, env, cache, row, Some(final_domain))
+                    value(e1, env, cache, row, final_domain)
                 } else {
-                    value(e2, env, cache, row, Some(final_domain))
-                }
-            }
-        }
-    }
-}
-
-/// Return the value at the given row of the evaluations of the expression.  Used to implement
-/// `EvaluationsIter`.
-fn value_<
-    'a,
-    ChallengeTerm: Copy + Sync,
-    Column: Copy + PartialEq + Sync,
-    F: FftField,
-    Challenge: Index<ChallengeTerm, Output = F> + Sync,
-    Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column> + Sync,
->(
-    expr: &Expr<F, Column>,
-    env: &'a Environment,
-    cache: &mut HashMap<CacheId, Evaluations<F, D<F>>>,
-    row: usize,
-) -> Option<F> {
-    let d1_size = env.get_domain(Domain::D1).size;
-    let deg = expr.degree(d1_size, env.get_constants().zk_rows);
-    let d = if deg <= 8 * d1_size {
-        Domain::D8
-    } else {
-        panic!("constraint had degree {deg} > d8 ({})", 8 * d1_size);
-    };
-
-    let final_domain = env.get_domain(d);
-
-    if row >= final_domain.size() {
-        None
-    } else {
-        match expr {
-            Expr::Atom(ExprInner::Constant(c)) => Some(*c),
-            Expr::Atom(ExprInner::Cell(var)) => match env.get_column(&var.col) {
-                None => Some(F::zero()),
-                Some(e) => Some(e.evals[row]),
-            },
-            Expr::Atom(ExprInner::UnnormalizedLagrangeBasis(i)) => {
-                let offset = if i.zk_rows {
-                    -(env.get_constants().zk_rows as i32) + i.offset
-                } else {
-                    i.offset
-                };
-
-                Some(xth_unnormalized_lagrange_eval::<
-                    F,
-                    ChallengeTerm,
-                    Challenge,
-                    Environment,
-                >(
-                    env.l0_1(), offset, d, env, row.try_into().unwrap()
-                ))
-            }
-            Expr::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) => {
-                Some(env.vanishes_on_zero_knowledge_and_previous_rows().evals[row])
-            }
-            Expr::Double(x) => value_(x, env, cache, row).map(|x| x.double()),
-            Expr::Square(x) => value_(x, env, cache, row).map(|x| x.square()),
-            Expr::Pow(x, n) => value_(x, env, cache, row).map(|x| x.pow([*n])),
-            Expr::Add(x, y) => match (value_(x, env, cache, row), value_(y, env, cache, row)) {
-                (Some(x), Some(y)) => Some(x + y),
-                _ => None,
-            },
-            Expr::Mul(x, y) => match (value_(x, env, cache, row), value_(y, env, cache, row)) {
-                (Some(x), Some(y)) => Some(x * y),
-                _ => None,
-            },
-            Expr::Sub(x, y) => match (value_(x, env, cache, row), value_(y, env, cache, row)) {
-                (Some(x), Some(y)) => Some(x - y),
-                _ => None,
-            },
-            Expr::Cache(id, e) => match cache.get(id) {
-                Some(es) => Some(es[row]),
-                None => {
-                    let es = e.evaluations(env);
-                    assert_eq!(es.evals.len(), final_domain.size());
-                    let ret = es.evals[row];
-                    cache.insert(*id, es);
-                    Some(ret)
-                }
-            },
-            Expr::IfFeature(feature, e1, e2) => {
-                if feature.is_enabled() {
-                    value_(e1, env, cache, row)
-                } else {
-                    value_(e2, env, cache, row)
+                    value(e2, env, cache, row, final_domain)
                 }
             }
         }
@@ -1527,6 +1422,7 @@ pub struct EvaluationsIter<'a, F: FftField, ChallengeTerm, Challenges, Column, E
     expr: Expr<F, Column>,
     env: &'a Environment,
     cache: HashMap<CacheId, Evaluations<F, D<F>>>,
+    final_domain: Domain,
     _phantom: (
         std::marker::PhantomData<Challenges>,
         std::marker::PhantomData<ChallengeTerm>,
@@ -1548,7 +1444,7 @@ where
     type Item = F;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let ret = value_(&self.expr, self.env, &mut self.cache, self.idx);
+        let ret = value(&self.expr, self.env, &mut self.cache, self.idx, self.final_domain);
         self.idx += 1;
         ret
     }
@@ -1570,25 +1466,37 @@ where
     /// and `Evironment` are `Sync`, then you can use `par_collect` to obtain all the
     /// evaluations into a vector.
     pub fn new(expr: Expr<F, Column>, env: &'b Environment) -> Self {
+        let d1_size = env.get_domain(Domain::D1).size;
+        let deg = expr.degree(d1_size, env.get_constants().zk_rows);
+
+        let domain = if deg <= d1_size {
+            Domain::D1
+        } else if deg <= 2 * d1_size {
+            Domain::D2
+        } else if deg <= 4 * d1_size {
+            Domain::D4
+        } else if deg <= 8 * d1_size {
+            Domain::D8
+        } else {
+            panic!("constraint had degree {deg} > d8 ({})", 8 * d1_size);
+        };
+
         Self {
             idx: 0,
             expr,
             env,
             cache: HashMap::new(),
+            final_domain: domain,
             _phantom: (std::marker::PhantomData, std::marker::PhantomData),
         }
     }
 
-    /// Populate the internal cache (by evaluating at the current row).
-    pub fn populate_cache(&mut self) {
-        value_(&self.expr, self.env, &mut self.cache, self.idx);
-    }
-
     /// Return the evaluation at index `index`.
-    pub fn index(&self, index: usize) -> F {
-        value(&self.expr, self.env, &self.cache, index, None).unwrap()
+    pub fn index(&self, index: usize, domain: Domain) -> F {
+        value(&self.expr, self.env, &self.cache, index, domain).unwrap()
     }
 }
+
 impl<
         'a,
         'b,
@@ -1603,14 +1511,14 @@ where
 {
     /// Collect all the evaluations in parallel into an `Evaluations` struct.
     pub fn par_collect(&self) -> Evaluations<F, D<F>> {
-        let domain = self.env.get_domain(Domain::D8);
-        let domain_size = domain.size.try_into().unwrap();
+        let eval_domain = self.env.get_domain(self.final_domain);
+        let domain_size = eval_domain.size.try_into().unwrap();
         let mut ret = Vec::<F>::with_capacity(domain_size);
         (0..domain_size)
             .into_par_iter()
-            .map(|i| self.index(i))
+            .map(|i| self.index(i, self.final_domain))
             .collect_into_vec(&mut ret);
-        Evaluations::from_vec_and_domain(ret, domain)
+        Evaluations::from_vec_and_domain(ret, eval_domain)
     }
 }
 
