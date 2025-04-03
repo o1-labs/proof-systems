@@ -52,9 +52,3 @@ jobs:
           cargo criterion -p kimchi --bench proof_criterion --color never > criterion_bench 2>&1
           cargo bench -p kimchi --bench proof_criterion -- --save-baseline .
           cat criterion_bench
-
-
-on:
-  pull_request:
-    types:
-      - labeled
