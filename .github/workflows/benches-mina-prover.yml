@@ -16,7 +16,7 @@ env:
 jobs:
   bench:
     runs-on: ubuntu-latest
-    name: Run benchmarks
+    name: Run benchmarks (new!)
     if: github.event.label.name == 'benchmark'
     steps:
       - name: Checkout repository
