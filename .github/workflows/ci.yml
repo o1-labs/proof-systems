@@ -54,6 +54,7 @@ jobs:
         ocaml_version: ["4.14"]
         node: ["20"]
         os: ["ubuntu-latest", "macos-latest"]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
