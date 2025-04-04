@@ -60,12 +60,20 @@ setup-wasm-pack:
 
 setup-wasm-toolchain:
 		@ARCH=$$(uname -m); \
+		OS=$$(uname -s | tr A-Z a-z); \
+		case $$OS in \
+			linux) OS_PART="unknown-linux-gnu" ;; \
+			darwin) OS_PART="apple-darwin" ;; \
+			*) echo "Unsupported OS: $$OS" && exit 1 ;; \
+		esac; \
 		case $$ARCH in \
-			x86_64) TARGET_ARCH="x86_64-unknown-linux-gnu" ;; \
-			aarch64) TARGET_ARCH="aarch64-unknown-linux-gnu" ;; \
+			x86_64) ARCH_PART="x86_64" ;; \
+			aarch64) ARCH_PART="aarch64" ;; \
 			*) echo "Unsupported architecture: $$ARCH" && exit 1 ;; \
 		esac; \
-		rustup component add rust-src --toolchain ${NIGHTLY_RUST_VERSION}-$$TARGET_ARCH
+		TARGET="$$ARCH_PART-$$OS_PART"; \
+		echo "Installing rust-src for ${NIGHTLY_RUST_VERSION}-$$TARGET"; \
+		rustup component add rust-src --toolchain ${NIGHTLY_RUST_VERSION}-$$TARGET
 
 # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
 # FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
