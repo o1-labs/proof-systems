@@ -69,6 +69,7 @@ setup-wasm-toolchain:
 		case $$ARCH in \
 			x86_64) ARCH_PART="x86_64" ;; \
 			aarch64) ARCH_PART="aarch64" ;; \
+			arm64) ARCH_PART="aarch64" ;; \
 			*) echo "Unsupported architecture: $$ARCH" && exit 1 ;; \
 		esac; \
 		TARGET="$$ARCH_PART-$$OS_PART"; \
