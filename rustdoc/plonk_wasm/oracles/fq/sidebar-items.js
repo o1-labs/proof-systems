@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["fq_oracles_create","fq_oracles_deep_copy","fq_oracles_dummy"],"struct":["WasmFqOracles","WasmFqRandomOracles"]};
