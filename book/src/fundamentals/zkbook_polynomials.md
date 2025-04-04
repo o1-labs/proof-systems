@@ -183,7 +183,7 @@ $$
 >
 > defined as above, these two functions define an isomorphism of rings.
 >
-> That is is, they are mutually inverse and each one respects addition, subtraction and multiplication.
+> That is, they are mutually inverse and each one respects addition, subtraction and multiplication.
 
 The fundamental theorem of polynomials is very important when it comes to computing operations on polynomials.
 As we will see in the [next section](./zkbook_fft.md), the theorem will help us to compute the product of degree $n$ polynomials in time $O(n \log n)$, whereas the naive algorithm takes time $O(n^2)$. To put this in perspective, if $n = 2^{16}$, $n^2$ is $4096$ times larger than $n \log n$ and the gap only gets bigger as $n$ grows.

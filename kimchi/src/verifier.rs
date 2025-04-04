@@ -923,7 +923,7 @@ where
         PolyComm::multi_scalar_mul(&commitments, &scalars)
     };
 
-    //~ 1. Compute the (chuncked) commitment of $ft$
+    //~ 1. Compute the (chunked) commitment of $ft$
     //~    (see [Maller's optimization](../kimchi/maller_15.md)).
     let ft_comm = {
         let zeta_to_srs_len = oracles.zeta.pow([verifier_index.max_poly_size as u64]);

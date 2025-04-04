@@ -84,7 +84,7 @@ fn get_srs_path<G: KimchiCurve>(srs_type: StoredSRSType) -> PathBuf {
         .join(test_prefix + &format!("{}.srs", G::NAME))
 }
 
-/// Generic SRS getter fuction.
+/// Generic SRS getter function.
 pub fn get_srs_generic<G>(srs_type: StoredSRSType) -> SRS<G>
 where
     G: KimchiCurve,
