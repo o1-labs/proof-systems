@@ -1,91 +1,60 @@
-use ark_ec::AffineRepr;
-use ark_ff::One;
-use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
+use ark_ff::{One, PrimeField};
 use kimchi::curve::KimchiCurve;
 use mina_poseidon::FqSponge;
-use poly_commitment::{
-    commitment::{absorb_commitment, CommitmentCurve},
-    ipa::SRS,
-    PolyComm, SRS as _,
-};
+use poly_commitment::{ipa::SRS, SRS as _};
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
-use std::ops::Add;
 use tracing::instrument;
 
-#[serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(bound = "G::ScalarField: CanonicalDeserialize + CanonicalSerialize")]
-pub struct Commitment<G: CommitmentCurve> {
-    pub chunks: Vec<PolyComm<G>>,
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub alpha: G::ScalarField,
-    pub folded: PolyComm<G>,
-}
-
-impl<G: KimchiCurve> Commitment<G> {
-    pub fn from_chunks<EFqSponge>(chunks: Vec<PolyComm<G>>, sponge: &mut EFqSponge) -> Self
-    where
-        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
-    {
-        let (folded, alpha) = fold_commitments(sponge, &chunks);
-        Self {
-            chunks,
-            alpha,
-            folded,
-        }
-    }
-
-    pub fn update<EFqSponge>(&self, diff: Vec<PolyComm<G>>, sponge: &mut EFqSponge) -> Self
-    where
-        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
-    {
-        let new_chunks = self.chunks.iter().zip(diff).map(|(g, d)| g.add(&d));
-        Self::from_chunks(new_chunks.collect(), sponge)
-    }
-}
-
 #[instrument(skip_all, level = "debug")]
-pub fn commit_to_field_elems<G: KimchiCurve, EFqSponge>(
-    srs: &SRS<G>,
-    domain: D<G::ScalarField>,
-    field_elems: Vec<Vec<G::ScalarField>>,
-) -> Commitment<G>
+pub fn commit_to_field_elems<G: KimchiCurve>(srs: &SRS<G>, data: &[G::ScalarField]) -> Vec<G>
 where
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    <G as AffineRepr>::Group: VariableBaseMSM,
 {
-    let commitments = field_elems
-        .par_iter()
-        .map(|chunk| {
-            let evals = Evaluations::from_vec_and_domain(chunk.to_vec(), domain);
-            srs.commit_evaluations_non_hiding(domain, &evals)
-        })
+    let basis: Vec<G> = srs
+        .get_lagrange_basis_from_domain_size(crate::SRS_SIZE)
+        .iter()
+        .map(|x| x.chunks[0])
         .collect();
-    let mut sponge = EFqSponge::new(G::other_curve_sponge_params());
-    Commitment::from_chunks(commitments, &mut sponge)
+
+    let commitments_projective = (0..data.len() / crate::SRS_SIZE)
+        .into_par_iter()
+        .map(|idx| {
+            G::Group::msm(
+                &basis,
+                &data[crate::SRS_SIZE * idx..crate::SRS_SIZE * (idx + 1)],
+            )
+            .unwrap()
+        })
+        .collect::<Vec<_>>();
+
+    let commitments = G::Group::normalize_batch(commitments_projective.as_slice());
+
+    commitments
 }
 
+/// Takes commitments C_i, computes α = hash(C_0 || C_1 || ... || C_n),
+/// returns ∑ α^i C_i.
 #[instrument(skip_all, level = "debug")]
-fn fold_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
+pub fn combine_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
     sponge: &mut EFqSponge,
-    commitments: &[PolyComm<G>],
-) -> (PolyComm<G>, G::ScalarField) {
-    for commitment in commitments {
-        absorb_commitment(sponge, commitment)
+    commitments: &[G],
+) -> (G, G::ScalarField) {
+    for commitment in commitments.iter() {
+        sponge.absorb_g(std::slice::from_ref(commitment))
     }
     let alpha = sponge.challenge();
-    let powers: Vec<G::ScalarField> = commitments
+    let powers: Vec<_> = commitments
         .iter()
         .scan(G::ScalarField::one(), |acc, _| {
             let res = *acc;
             *acc *= alpha;
-            Some(res)
+            Some(res.into_bigint())
         })
-        .collect::<Vec<_>>();
-    (
-        PolyComm::multi_scalar_mul(&commitments.iter().collect::<Vec<_>>(), &powers),
-        alpha,
-    )
+        .collect();
+
+    let combined_data_commitment =
+        G::Group::msm_bigint(commitments, powers.as_slice()).into_affine();
+
+    (combined_data_commitment, alpha)
 }
