@@ -35,6 +35,11 @@ WASM_RUSTFLAGS = "-C target-feature=+atomics,+bulk-memory,+mutable-globals -C li
 PLONK_WASM_NODEJS_OUTDIR ?= target/nodejs
 PLONK_WASM_WEB_OUTDIR ?= target/web
 
+# This should stay in line with the version used by the argument
+# WASM_PACK_VERSION in
+# MinaProtocol/mina/dockerfiles/stages/1-build-deps
+WASM_PACK_VERSION=0.12.1
+
 # Default target
 all: release
 
