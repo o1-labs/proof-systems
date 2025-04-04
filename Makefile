@@ -25,6 +25,16 @@ O1VM_MIPS_SOURCE_FILES = $(patsubst ${OPTIMISM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIP
 O1VM_MIPS_BIN_DIR = ${O1VM_RESOURCES_PATH}/mips/bin
 O1VM_MIPS_BIN_FILES = $(patsubst ${O1VM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIPS_BIN_DIR}/%.o,${O1VM_MIPS_SOURCE_FILES})
 
+# This should be updated if rust-toolchain.toml is updated, and the nightly
+# version should be close to the date of the release of the stable version used
+# in rust-toolchain.toml.
+# In addition to that, the version in the CI (see file
+# .github/workflows/wasm.yml) should be changed accordingly.
+NIGHTLY_RUST_VERSION = "nightly-2024-06-13"
+WASM_RUSTFLAGS = "-C target-feature=+atomics,+bulk-memory,+mutable-globals -C link-arg=--no-check-features -C link-arg=--max-memory=4294967296"
+PLONK_WASM_NODEJS_OUTDIR ?= target/nodejs
+PLONK_WASM_WEB_OUTDIR ?= target/web
+
 # Default target
 all: release
 
@@ -37,6 +47,12 @@ setup:
 		@echo ""
 		@echo "Git submodules synced."
 		@echo ""
+		@echo "Install wasm-pack"
+		@cargo install wasm-pack
+		@rustup component add rust-src --toolchain ${NIGHTLY_RUST_VERSION}-x86_64-unknown-linux-gnu
+		@echo ""
+
+
 
 # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
 # FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
@@ -60,11 +76,11 @@ clean: ## Clean the project
 
 
 build: ## Build the project
-		cargo build --all-targets --all-features
+		cargo build --all-targets --all-features --workspace --exclude plonk_wasm
 
 
 release: ## Build the project in release mode
-		cargo build --release --all-targets --all-features
+		cargo build --release --all-targets --all-features --workspace --exclude plonk_wasm
 
 
 test-doc: ## Test the project's docs comments
@@ -206,4 +222,19 @@ ${O1VM_MIPS_BIN_DIR}/%.o: ${O1VM_MIPS_SOURCE_DIR}/%.asm
 fclean: clean ## Clean the tooling artefacts in addition to running clean
 		rm -rf ${RISCV32_TOOLCHAIN_PATH}
 
-.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs check-format
+build-nodejs:
+		RUSTFLAGS=${WASM_RUSTFLAGS} rustup run ${NIGHTLY_RUST_VERSION} wasm-pack build \
+		--target nodejs \
+		--out-dir ${PLONK_WASM_NODEJS_OUTDIR} \
+		plonk-wasm -- \
+		-Z build-std=panic_abort,std \
+		--features nodejs
+
+build-web:
+		RUSTFLAGS=${WASM_RUSTFLAGS} rustup run ${NIGHTLY_RUST_VERSION} wasm-pack build \
+		--target web \
+		--out-dir ${PLONK_WASM_WEB_OUTDIR} \
+		plonk-wasm -- \
+		-Z build-std=panic_abort,std
+
+.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs check-format build-web build-nodejs
