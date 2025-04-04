@@ -10,13 +10,15 @@
 //! essense proves knowledge of the opening to all the commitments C_i
 //! simultaneously.
 
-use crate::{blob::FieldBlob, Curve, CurveFqSponge, ProjectiveCurve, ScalarField, SRS_SIZE};
+use crate::{
+    blob::FieldBlob, Curve, CurveFqSponge, CurveFrSponge, ProjectiveCurve, ScalarField, SRS_SIZE,
+};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{
     EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D, Radix2EvaluationDomain,
 };
-use kimchi::curve::KimchiCurve;
+use kimchi::{curve::KimchiCurve, plonk_sponge::FrSponge};
 use mina_poseidon::FqSponge;
 use poly_commitment::{
     commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
@@ -94,10 +96,14 @@ pub fn prove(
     let combined_data_poly = Evaluations::from_vec_and_domain(combined_data, domain).interpolate();
     let combined_data_eval = combined_data_poly.evaluate(&evaluation_point);
 
-    let mut opening_proof_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+    // TODO: Do we need to use fr_sponge? Can't we just use fq_sponge for everything?
+    let fq_sponge_before_evaluations = fq_sponge.clone();
+    let mut fr_sponge = CurveFrSponge::new(Curve::sponge_params());
+    fr_sponge.absorb(&fq_sponge.digest());
+
     // TODO: check and see if we need to also absorb the absorb the poly cm
     // see https://github.com/o1-labs/proof-systems/blob/feature/test-data-storage-commitments/data-storage/src/main.rs#L265-L269
-    opening_proof_sponge.absorb_fr(&[combined_data_eval]);
+    fr_sponge.absorb(&combined_data_eval);
 
     let opening_proof =
         srs.open(
@@ -116,7 +122,7 @@ pub fn prove(
             &[evaluation_point],
             ScalarField::one(), // Single evaluation, so we don't care
             ScalarField::one(), // Single evaluation, so we don't care
-            opening_proof_sponge,
+            fq_sponge_before_evaluations,
             rng,
         );
 
@@ -127,26 +133,31 @@ pub fn prove(
 }
 
 #[instrument(skip_all, level = "debug")]
-pub fn verify_fast(
+pub fn verify_wrt_combined_data_commitment(
     srs: &SRS<Curve>,
     group_map: &<Curve as CommitmentCurve>::Map,
     combined_data_commitment: Curve,
     proof: &StorageProof,
     rng: &mut OsRng,
 ) -> bool {
+    let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
     let evaluation_point = {
-        let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
         fq_sponge.absorb_g(&[combined_data_commitment]);
         fq_sponge.squeeze(2)
     };
 
-    let mut opening_proof_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
-    opening_proof_sponge.absorb_fr(&[proof.combined_data_eval]);
+    let fq_sponge_before_evaluations = fq_sponge.clone();
+    let mut fr_sponge = CurveFrSponge::new(Curve::sponge_params());
+    fr_sponge.absorb(&fq_sponge.digest());
+
+    // TODO: check and see if we need to also absorb the absorb the poly cm
+    // see https://github.com/o1-labs/proof-systems/blob/feature/test-data-storage-commitments/data-storage/src/main.rs#L265-L269
+    fr_sponge.absorb(&proof.combined_data_eval);
 
     srs.verify(
         group_map,
         &mut [BatchEvaluationProof {
-            sponge: opening_proof_sponge.clone(),
+            sponge: fq_sponge_before_evaluations,
             evaluation_points: vec![evaluation_point],
             polyscale: ScalarField::one(),
             evalscale: ScalarField::one(),
@@ -164,7 +175,7 @@ pub fn verify_fast(
 }
 
 #[instrument(skip_all, level = "debug")]
-pub fn verify_full(
+pub fn verify(
     srs: &SRS<Curve>,
     group_map: &<Curve as CommitmentCurve>::Map,
     commitments: &[Curve],
@@ -185,7 +196,7 @@ pub fn verify_full(
     let combined_data_commitment =
         ProjectiveCurve::msm_bigint(commitments, powers.as_slice()).into_affine();
 
-    verify_fast(srs, group_map, combined_data_commitment, proof, rng)
+    verify_wrt_combined_data_commitment(srs, group_map, combined_data_commitment, proof, rng)
 }
 
 #[cfg(test)]
@@ -240,7 +251,7 @@ mod tests {
         let blob = FieldBlob::from_bytes::<_>(&*SRS, *DOMAIN, &data);
 
         let proof = prove(&*SRS, &*GROUP_MAP, blob, challenge, &mut rng);
-        let res = verify_fast(
+        let res = verify_wrt_combined_data_commitment(
             &*SRS,
             &*GROUP_MAP,
             combined_data_commitment,

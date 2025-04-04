@@ -188,8 +188,13 @@ pub fn verify_storage_proof(args: cli::VerifyStorageProofArgs) -> Result<()> {
 
     let proof: StorageProof = rmp_serde::from_slice(&args.proof.0)?;
     let mut rng = OsRng;
-    let res =
-        storage_proof::verify_fast(&srs, &group_map, combined_data_commitment, &proof, &mut rng);
+    let res = storage_proof::verify_wrt_combined_data_commitment(
+        &srs,
+        &group_map,
+        combined_data_commitment,
+        &proof,
+        &mut rng,
+    );
     assert!(res, "Proof must verify");
     Ok(())
 }

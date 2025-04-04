@@ -42,7 +42,6 @@ pub fn combine_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G
 ) -> (G, G::ScalarField) {
     for commitment in commitments.iter() {
         sponge.absorb_g(std::slice::from_ref(commitment))
-        //absorb_commitment(sponge, commitment)
     }
     let alpha = sponge.challenge();
     let powers: Vec<_> = commitments
