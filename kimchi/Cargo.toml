@@ -14,9 +14,9 @@ path = "src/lib.rs"
 bench = false       # needed for criterion (https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options)
 
 [dependencies]
-ark-ff.workspace = true
-ark-ec.workspace = true
-ark-poly.workspace = true
+ark-ff = {workspace = true, features = ["asm", "parallel"] }
+ark-ec = { workspace = true, features = ["parallel"] }
+ark-poly = { workspace = true, features = ["parallel" ] }
 ark-serialize.workspace = true
 ark-bn254 = { workspace = true, optional = true }
 blake2.workspace = true
