@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["caml_pasta_fq_poseidon_block_cipher","caml_pasta_fq_poseidon_params_create"],"struct":["CamlPastaFqPoseidonParams"],"type":["CamlPastaFqPoseidonParamsPtr"]};

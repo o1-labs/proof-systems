@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["caml_bytes_string","caml_pointer","shared_reference","shared_rwlock"]};

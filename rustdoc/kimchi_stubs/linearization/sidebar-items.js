@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["fp_linearization_strings","fq_linearization_strings","linearization_strings"]};
