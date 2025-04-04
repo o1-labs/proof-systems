@@ -48,8 +48,8 @@ getrandom = { version = "=0.2.15", features = ["js"] }
 hex = { version = "0.4", features = ["serde"] }
 iai = "0.1"
 itertools = "0.12.1"
-libc = "0.2.62"
 js-sys = "=0.3.64"
+libc = "=0.2.169"
 libflate = "2"
 log = "0.4.20"
 num-bigint = { version = "0.4.4", features = ["rand", "serde"] }
