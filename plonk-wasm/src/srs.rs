@@ -141,11 +141,18 @@ macro_rules! impl_srs {
                 Box::into_raw(boxed_comm)
             }
 
+            /// Reads the lagrange commitments from a raw pointer.
+            ///
+            /// # Safety
+            ///
+            /// This function is unsafe because it might dereference a
+            /// raw pointer.
             #[wasm_bindgen]
-            pub fn [<$name:snake _lagrange_commitments_whole_domain_read_from_ptr>](
+            pub unsafe fn [<$name:snake _lagrange_commitments_whole_domain_read_from_ptr>](
                 ptr: *mut WasmVector<$WasmPolyComm>,
             ) -> WasmVector<$WasmPolyComm> {
-                // read the commitment at the pointers address, hack for the web worker implementation (see o1js web worker impl for details)
+                // read the commitment at the pointers address, hack for the web
+                // worker implementation (see o1js web worker impl for details)
                 let b = unsafe { Box::from_raw(ptr) };
                 b.as_ref().clone()
             }

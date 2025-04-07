@@ -17,7 +17,6 @@ env:
   CARGO_TERM_COLOR: always
   # 30 MB of stack for Keccak tests
   RUST_MIN_STACK: 31457280
-  CARGO_EXTRA_ARGS: "--workspace --exclude plonk_wasm --exclude saffron"
 
 jobs:
   run_mdbook:

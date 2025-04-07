@@ -115,28 +115,23 @@ macro_rules! impl_oracles {
                 }
             }
 
-            impl Into<RandomOracles<$F>> for WasmRandomOracles
+            impl From<WasmRandomOracles> for RandomOracles<$F>
             {
-                fn into(self) -> RandomOracles<$F> {
-                    let joint_combiner =
-                        match (self.joint_combiner_chal, self.joint_combiner) {
-                            (Some(joint_combiner_chal), Some(joint_combiner)) => {
-                                Some((ScalarChallenge(joint_combiner_chal.into()), joint_combiner.into()))
-                            },
-                            _ => None
-                        };
-                    RandomOracles {
-                        joint_combiner,
-                        beta: self.beta.into(),
-                        gamma: self.gamma.into(),
-                        alpha_chal: ScalarChallenge(self.alpha_chal.into()),
-                        alpha: self.alpha.into(),
-                        zeta: self.zeta.into(),
-                        v: self.v.into(),
-                        u: self.u.into(),
-                        zeta_chal: ScalarChallenge(self.zeta_chal.into()),
-                        v_chal: ScalarChallenge(self.v_chal.into()),
-                        u_chal: ScalarChallenge(self.u_chal.into()),
+                fn from(ro: WasmRandomOracles) -> Self {
+                    Self {
+                        joint_combiner: ro.joint_combiner_chal.and_then(|x| {
+                            ro.joint_combiner.map(|y| (ScalarChallenge(x.into()), y.into()))
+                        }),
+                        beta: ro.beta.into(),
+                        gamma: ro.gamma.into(),
+                        alpha_chal: ScalarChallenge(ro.alpha_chal.into()),
+                        alpha: ro.alpha.into(),
+                        zeta: ro.zeta.into(),
+                        v: ro.v.into(),
+                        u: ro.u.into(),
+                        zeta_chal: ScalarChallenge(ro.zeta_chal.into()),
+                        v_chal: ScalarChallenge(ro.v_chal.into()),
+                        u_chal: ScalarChallenge(ro.u_chal.into()),
                     }
                 }
             }
