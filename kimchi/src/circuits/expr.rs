@@ -1208,12 +1208,13 @@ fn value<
             Expr::Atom(ExprInner::Cell(var)) => match env.get_column(&var.col) {
                 None => Some(F::zero()),
                 Some(e) => {
-                    let col_domain = env.column_domain(&var.col); 
+                    let col_domain = env.column_domain(&var.col);
                     let scale = col_domain as usize / final_domain as usize;
-                    assert!(scale > 0,
-                        "Column domain was too small!"
-                    );
-                    Some(e.evals[(row * scale + var.row.shift() * col_domain as usize) % e.evals.len()])
+                    assert!(scale > 0, "Column domain was too small!");
+                    Some(
+                        e.evals
+                            [(row * scale + var.row.shift() * col_domain as usize) % e.evals.len()],
+                    )
                 }
             },
             Expr::Atom(ExprInner::UnnormalizedLagrangeBasis(i)) => {
@@ -1266,11 +1267,9 @@ fn value<
                 // Already computed
                 Some(v) => {
                     let scale = (v.domain().size / env.get_domain(final_domain).size) as usize;
-                    assert!(scale > 0,
-                        "Column domain was too small!"
-                    );
+                    assert!(scale > 0, "Column domain was too small!");
                     Some(v[row * scale])
-                },
+                }
                 _ =>
                 // We don't modify the cache here since it isn't `&mut`, but we just compute it.
                 {
