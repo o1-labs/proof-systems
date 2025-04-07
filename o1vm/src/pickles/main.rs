@@ -286,7 +286,8 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             curr_proof_inputs.evaluations.lookup_state[0].len()
         };
         if len == domain_size {
-            let constraint = mips_constraints::get_lookup_constraint(instruction_set);
+            let constraint =
+                mips_constraints::get_lookup_constraint(&domain_fp.d1, instruction_set);
             acc = lookup_prove_and_verify(
                 domain_fp,
                 &srs,

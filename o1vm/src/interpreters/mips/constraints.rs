@@ -14,9 +14,13 @@ use crate::{
     ramlookup::LookupMode,
     E,
 };
-use ark_ff::{Field, One, Zero};
+use ark_ff::{FftField, Field, One, Zero};
+use ark_poly::Radix2EvaluationDomain;
 use kimchi::circuits::{
-    expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
+    expr::{
+        unnormalized_lagrange_basis, ConstantTerm::Literal, Expr, ExprInner, Operations, RowOffset,
+        Variable,
+    },
     gate::CurrOrNext,
 };
 use kimchi_msm::{columns::ColumnIndexer as _, LogupTableID};
@@ -796,15 +800,17 @@ fn get_cst_from_lookup<Fp: Field>(
     res
 }
 
+/// Constraint the inverses for an instruction.
+/// Also returns the nb of inverses columns used for this instruction.
 pub fn get_cst_from_instr<Fp: Field>(
     instr: Instruction,
     wire_idx: &mut usize,
     inverse_idx: &mut usize,
-) -> Vec<ELookup<Fp>> {
+) -> (usize, Vec<ELookup<Fp>>) {
     let mut res = Vec::new();
     let mut mips_con_env = Env::<Fp>::default();
     interpret_instruction(&mut mips_con_env, instr);
-    for lookup in mips_con_env.lookups.into_iter() {
+    for lookup in mips_con_env.lookups.clone().into_iter() {
         res.push(get_cst_from_lookup(lookup, wire_idx, inverse_idx))
     }
     // This code is shamelessly copied from activate_selector
@@ -813,23 +819,63 @@ pub fn get_cst_from_instr<Fp: Field>(
         let n = usize::from(instr) - N_MIPS_REL_COLS;
         lookup_variable(LookupColumns::DynamicSelectors(n))
     };
-    res.into_iter().map(|cst| selector.clone() * cst).collect()
+    (
+        mips_con_env.lookups.len(),
+        res.into_iter().map(|cst| selector.clone() * cst).collect(),
+    )
 }
 
-pub fn get_lookup_constraint<Fp: Field>(instruction_set: HashSet<Instruction>) -> ELookup<Fp> {
+pub fn get_lookup_constraint<Fp: FftField>(
+    domain: &Radix2EvaluationDomain<Fp>,
+    instruction_set: HashSet<Instruction>,
+) -> ELookup<Fp> {
+    // Gater the inverses constraint, and compute the max nb of inverses cols.
     let wire_idx: &mut usize = &mut 0;
     let inverse_idx: &mut usize = &mut 0;
+    let mut max_nb_inv = 0;
     let mut constraints = Vec::new();
-    for instr in instruction_set.into_iter() {
-        constraints.extend(get_cst_from_instr::<Fp>(instr, wire_idx, inverse_idx));
+    for instr in instruction_set.clone().into_iter() {
+        let (nb_inv, cst_instr) = get_cst_from_instr::<Fp>(instr, wire_idx, inverse_idx);
+        if nb_inv > max_nb_inv {
+            max_nb_inv = nb_inv
+        };
+        constraints.extend(cst_instr);
         *wire_idx = 0;
         *inverse_idx = 0
     }
+
+    // Recursive constraint of the accumulator
+    let partial_acc_recursion = {
+        let mut sum_inverses = ELookup::<Fp>::zero();
+        for i in 0..max_nb_inv {
+            sum_inverses += lookup_variable(LookupColumns::Inverses(i));
+        }
+        ELookup::<Fp>::Atom(ExprInner::Cell(Variable {
+            col: LookupColumns::Acc,
+            row: CurrOrNext::Next,
+        })) - lookup_variable(LookupColumns::Acc)
+            - sum_inverses
+    };
+    // used to not constrain on the n-1 point of the domain
+    let unnormalized_l_n_n: ELookup<Fp> = {
+        let field_elt = unnormalized_lagrange_basis::<Fp>(
+            domain,
+            (domain.size - 1).try_into().unwrap(),
+            &Fp::pow(&domain.group_gen, [(domain.size - 1)]),
+        );
+        Literal(field_elt).into()
+    };
+    let acc_recursion = (unnormalized_l_n_n.clone()
+        - ELookup::Atom(ExprInner::UnnormalizedLagrangeBasis(RowOffset {
+            zk_rows: false,
+            offset: (domain.size - 1).try_into().unwrap(),
+        })))
+        * partial_acc_recursion;
+
     // Combine with alpha using Horner
     let alpha: ELookup<Fp> = LookupChallengeTerm::Alpha.into();
     constraints
+        .clone()
         .into_iter()
-        .fold(ELookup::<Fp>::zero(), |acc, cst| {
-            alpha.clone() * (acc + cst)
-        })
+        .fold(acc_recursion, |acc, cst| alpha.clone() * acc + cst)
 }
