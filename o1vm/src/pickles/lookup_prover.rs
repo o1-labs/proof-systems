@@ -44,7 +44,7 @@ where
     RNG: RngCore + CryptoRng,
 {
     // TODO check that
-    let num_chunk = 1;
+    let num_chunk = 8;
     let LookupProofInput {
         wires,
         arity,
@@ -168,7 +168,7 @@ where
     let t_numerator_evaluation: Evaluations<
         G::ScalarField,
         Radix2EvaluationDomain<G::ScalarField>,
-    > = constraint.evaluations(&eval_env);
+    > = constraint.evaluations_d8(&eval_env);
     let t_numerator_poly = t_numerator_evaluation.interpolate();
     let (t, rem) = t_numerator_poly
         .divide_by_vanishing_poly(domain.d1)
@@ -177,7 +177,7 @@ where
     let t_commitment = srs.commit_non_hiding(
         // TODO: change the nb of chunks later
         // For now we use this because the constraints null
-        &t, 1,
+        &t, num_chunk,
     );
     // TODO avoid cloning
     let commitments = AllColumns {
