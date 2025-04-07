@@ -333,7 +333,7 @@
             <span class="kw">let </span>cache_key = <span class="self">self</span>.lagrange_basis_cache_key(srs_length, domain);
             <span class="kw">if </span>!Path::exists(<span class="kw-2">&amp;</span>cache_key) {
                 <span class="kw">let </span><span class="kw-2">mut </span>f = File::create(cache_key.clone()).unwrap_or_else(|<span class="kw">_</span>| {
-                    <span class="macro">panic!</span>(<span class="string">&quot;Error creating lagrabnge basis cache file {:?}&quot;</span>, cache_key)
+                    <span class="macro">panic!</span>(<span class="string">&quot;Error creating lagrange basis cache file {:?}&quot;</span>, cache_key)
                 });
                 rmp_serde::encode::write(<span class="kw-2">&amp;mut </span>f, basis).unwrap_or_else(|<span class="kw">_</span>| {
                     <span class="macro">panic!</span>(<span class="string">&quot;Error encoding lagrange basis to file {:?}&quot;</span>, cache_key)

@@ -347,7 +347,7 @@
 
     <span class="kw">fn </span>try_from(x: BigUint) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
         <span class="prelude-val">Ok</span>(<span class="self">Self</span>(
-            BigInteger256::try_from(x).map_err(|()| <span class="string">&quot;Biginteger was too big&quot;</span>)<span class="question-mark">?</span>,
+            BigInteger256::try_from(x).map_err(|()| <span class="string">&quot;Biginteger256 was too big&quot;</span>)<span class="question-mark">?</span>,
         ))
     }
 }
@@ -357,7 +357,7 @@
 
     <span class="kw">fn </span>try_from(x: <span class="kw-2">&amp;</span>BigUint) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
         <span class="prelude-val">Ok</span>(<span class="self">Self</span>(
-            BigInteger256::try_from(x.clone()).map_err(|()| <span class="string">&quot;Biginteger was too big&quot;</span>)<span class="question-mark">?</span>,
+            BigInteger256::try_from(x.clone()).map_err(|()| <span class="string">&quot;Biginteger256 was too big&quot;</span>)<span class="question-mark">?</span>,
         ))
     }
 }
