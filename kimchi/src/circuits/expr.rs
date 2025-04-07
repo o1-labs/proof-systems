@@ -135,7 +135,17 @@ pub fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -
     } else {
         domain.group_gen.pow([i as u64])
     };
-    domain.evaluate_vanishing_polynomial(*pt) / (*pt - omega_i)
+    // Special case to avoid a division by zero
+    if *pt == omega_i {
+        let mut res = F::one();
+        let omega_n_1 = F::pow(&domain.group_gen, [(domain.size - 1)]);
+        for i in 0..(domain.size - 1) {
+            res *= omega_n_1 - F::pow(&domain.group_gen, [i]);
+        }
+        res
+    } else {
+        domain.evaluate_vanishing_polynomial(*pt) / (*pt - omega_i)
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
