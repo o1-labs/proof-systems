@@ -12,4 +12,3 @@ runs:
       with:
         ocaml-compiler: ${{ inputs.ocaml_version }}
         # https://github.com/ocaml/setup-ocaml/issues/211#issuecomment-1058882386
-        disable-cache: true
