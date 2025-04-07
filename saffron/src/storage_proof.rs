@@ -10,17 +10,14 @@
 //! essense proves knowledge of the opening to all the commitments C_i
 //! simultaneously.
 
-use crate::{
-    blob::FieldBlob, Curve, CurveFqSponge, CurveFrSponge, ProjectiveCurve, ScalarField, SRS_SIZE,
-};
-use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
+use crate::{blob::FieldBlob, utils, Curve, CurveFqSponge, CurveFrSponge, ScalarField, SRS_SIZE};
+use ark_ec::AffineRepr;
 use ark_ff::{One, Zero};
 use ark_poly::{
     EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D, Radix2EvaluationDomain,
 };
 use kimchi::{curve::KimchiCurve, plonk_sponge::FrSponge};
 use mina_poseidon::FqSponge;
-use o1_utils::field_helpers::pows;
 use poly_commitment::{
     commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
@@ -55,13 +52,9 @@ pub fn prove(
     let final_chunk = (blob.data.len() / SRS_SIZE) - 1;
     assert!(blob.data.len() % SRS_SIZE == 0);
 
-    let challenge_powers = pows(blob.commitments.len(), challenge);
-
     // ∑_{i=1} com_i^{challenge^i}
     let combined_data_commitment =
-        // Using unwrap() is safe here, as err is returned when commitments and powers have different lengths,
-        // and powers are built with commitment.len().
-        ProjectiveCurve::msm(blob.commitments.as_slice(), challenge_powers.as_slice()).unwrap().into_affine();
+        utils::aggregate_commitments(challenge, blob.commitments.as_slice());
 
     // Computes ∑_j chal^{j} data[j*SRS_SIZE + i]
     // where j ∈ [0..final_chunk], so the power corresponding to
@@ -174,14 +167,8 @@ pub fn verify(
     proof: &StorageProof,
     rng: &mut OsRng,
 ) -> bool {
-    let challenge_powers = pows(commitments.len(), challenge);
-
-    // randomised data commitment is ∑_{i=1} com_i^{challenge^i} for all chunks
-    let combined_data_commitment =
-            // Using unwrap() is safe here, as err is returned when commitments and powers have different lengths,
-            // and powers are built with commitment.len().
-            ProjectiveCurve::msm(commitments, challenge_powers.as_slice()).unwrap().into_affine();
-
+    // combined data commitment is ∑_{i=1} com_i^{challenge^i} for all chunks
+    let combined_data_commitment = utils::aggregate_commitments(challenge, commitments);
     verify_wrt_combined_data_commitment(srs, group_map, combined_data_commitment, proof, rng)
 }
 
