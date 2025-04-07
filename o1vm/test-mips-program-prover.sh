@@ -33,7 +33,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Run the program with the generated state
-echo "Running program with generated state..."
+echo "Running program with generated state $STATE_JSON..."
 cargo run --release --bin pickles_o1vm -- cannon run \
     --input "$STATE_JSON" \
     --srs-filepath "$SRS_FILEPATH" \
