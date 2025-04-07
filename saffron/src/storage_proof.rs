@@ -14,12 +14,13 @@ use crate::{
     blob::FieldBlob, Curve, CurveFqSponge, CurveFrSponge, ProjectiveCurve, ScalarField, SRS_SIZE,
 };
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
-use ark_ff::{One, PrimeField, Zero};
+use ark_ff::{One, Zero};
 use ark_poly::{
     EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D, Radix2EvaluationDomain,
 };
 use kimchi::{curve::KimchiCurve, plonk_sponge::FrSponge};
 use mina_poseidon::FqSponge;
+use o1_utils::field_helpers::pows;
 use poly_commitment::{
     commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
@@ -54,20 +55,13 @@ pub fn prove(
     let final_chunk = (blob.data.len() / SRS_SIZE) - 1;
     assert!(blob.data.len() % SRS_SIZE == 0);
 
-    // powers of challenge
-    let powers: Vec<_> = blob
-        .commitments
-        .iter()
-        .scan(ScalarField::one(), |acc, _| {
-            let res = *acc;
-            *acc *= challenge;
-            Some(res.into_bigint())
-        })
-        .collect();
+    let challenge_powers = pows(blob.commitments.len(), challenge);
 
     // ∑_{i=1} com_i^{challenge^i}
     let combined_data_commitment =
-        ProjectiveCurve::msm_bigint(blob.commitments.as_slice(), powers.as_slice()).into_affine();
+        // Using unwrap() is safe here, as err is returned when commitments and powers have different lengths,
+        // and powers are built with commitment.len().
+        ProjectiveCurve::msm(blob.commitments.as_slice(), challenge_powers.as_slice()).unwrap().into_affine();
 
     // Computes ∑_j chal^{j} data[j*SRS_SIZE + i]
     // where j ∈ [0..final_chunk], so the power corresponding to
@@ -180,18 +174,13 @@ pub fn verify(
     proof: &StorageProof,
     rng: &mut OsRng,
 ) -> bool {
-    let powers = commitments
-        .iter()
-        .scan(ScalarField::one(), |acc, _| {
-            let res = *acc;
-            *acc *= challenge;
-            Some(res.into_bigint())
-        })
-        .collect::<Vec<_>>();
+    let challenge_powers = pows(commitments.len(), challenge);
 
-    // randomised data commitment is ∏ C_i^{chal^i} for all chunks
+    // randomised data commitment is ∑_{i=1} com_i^{challenge^i} for all chunks
     let combined_data_commitment =
-        ProjectiveCurve::msm_bigint(commitments, powers.as_slice()).into_affine();
+            // Using unwrap() is safe here, as err is returned when commitments and powers have different lengths,
+            // and powers are built with commitment.len().
+            ProjectiveCurve::msm(commitments, challenge_powers.as_slice()).unwrap().into_affine();
 
     verify_wrt_combined_data_commitment(srs, group_map, combined_data_commitment, proof, rng)
 }

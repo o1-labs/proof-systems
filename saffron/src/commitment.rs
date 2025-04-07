@@ -1,7 +1,7 @@
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
-use ark_ff::{One, PrimeField};
 use kimchi::curve::KimchiCurve;
 use mina_poseidon::FqSponge;
+use o1_utils::field_helpers::pows;
 use poly_commitment::{ipa::SRS, SRS as _};
 use rayon::prelude::*;
 use tracing::instrument;
@@ -44,17 +44,11 @@ pub fn combine_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G
         sponge.absorb_g(std::slice::from_ref(commitment))
     }
     let alpha = sponge.challenge();
-    let powers: Vec<_> = commitments
-        .iter()
-        .scan(G::ScalarField::one(), |acc, _| {
-            let res = *acc;
-            *acc *= alpha;
-            Some(res.into_bigint())
-        })
-        .collect();
-
+    let powers_of_alpha = pows(commitments.len(), alpha);
     let combined_data_commitment =
-        G::Group::msm_bigint(commitments, powers.as_slice()).into_affine();
+    // Using unwrap() is safe here, as err is returned when commitments and powers have different lengths,
+    // and powers are built with commitment.len().
+        G::Group::msm(commitments, powers_of_alpha.as_slice()).unwrap().into_affine();
 
     (combined_data_commitment, alpha)
 }
