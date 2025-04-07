@@ -52,37 +52,40 @@ where
         beta_challenge,
         gamma_challenge,
     } = input;
-    //Compute how many inverse wires we need to define pad function accordingly
+    //Compute how many inverse wires we need
     let nb_inv_wires = arity
         .iter()
         .max_by(|a, b| a.len().cmp(&b.len()))
         .unwrap()
         .len();
-    let pad = |mut vec: Vec<G::ScalarField>| {
-        vec.append(&mut vec![G::ScalarField::zero(); nb_inv_wires]);
-        vec
-    };
 
-    // compute the 1/beta+sum_i gamma^i value_i for each lookup term
-    // The inversions is commputed in batch in the end
-    let mut inverses: Vec<Vec<G::ScalarField>> = wires
-        .iter()
-        .zip(arity)
-        .map(|(inner_vec, arity)| {
-            arity
-                .into_iter()
-                .map(|arity| {
-                    // TODO don't recompute gamma powers everytime
-                    let (res, _) = inner_vec.iter().take(arity).fold(
-                        (beta_challenge, G::ScalarField::one()),
-                        |(acc, gamma_i), x| (acc + gamma_i * x, gamma_i * gamma_challenge),
-                    );
-                    res
-                })
-                .collect()
-        })
-        .map(pad)
-        .collect();
+    // Init inverses
+    let mut inverses = Vec::with_capacity(nb_inv_wires);
+    for _ in 0..nb_inv_wires {
+        inverses.push(vec![G::ScalarField::zero(); domain.d1.size as usize])
+    }
+
+    // Compute powers of gamma once
+    // FIXME: Arbitrary constant of 30 should be enough
+    let mut gamma_vec = [G::ScalarField::one(); 30];
+    let mut gamma_pow = G::ScalarField::one();
+    for gamma_i in &mut gamma_vec {
+        *gamma_i = gamma_pow;
+        gamma_pow *= gamma_challenge
+    }
+
+    // Fill inverses without doing the inversion
+    for (j, arity_j) in arity.iter().enumerate() {
+        let mut wire_idx = 0;
+        for (k, arit) in arity_j.iter().enumerate() {
+            let mut res = beta_challenge;
+            for i in 0..*arit {
+                res += gamma_vec[i] * wires[wire_idx + i][j]
+            }
+            inverses[k][j] = res;
+            wire_idx += arit;
+        }
+    }
     //perform the inversion
     inverses
         .iter_mut()
@@ -91,12 +94,15 @@ where
     // init at acc_init
     let mut partial_sum = acc_init;
     let mut acc = vec![];
-    for inner in inverses.iter_mut() {
-        for x in inner.iter_mut() {
-            partial_sum += *x;
-            acc.push(partial_sum)
+    acc.push(partial_sum);
+
+    for j in 0..((domain.d1.size - 1) as usize) {
+        for inverse_i in inverses.iter() {
+            partial_sum += inverse_i[j]
         }
+        acc.push(partial_sum)
     }
+
     let acc_final = acc[acc.len() - 1];
     let columns = ColumnEnv {
         wires,
