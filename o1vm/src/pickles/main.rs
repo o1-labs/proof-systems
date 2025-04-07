@@ -287,7 +287,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
         };
         if len == domain_size {
             let constraint =
-                mips_constraints::get_lookup_constraint(&domain_fp.d1, instruction_set);
+                mips_constraints::get_lookup_constraint(&domain_fp.d1, instruction_set, acc);
             acc = lookup_prove_and_verify(
                 domain_fp,
                 &srs,
