@@ -20,7 +20,8 @@ use o1vm::{
     pickles::{
         lookup_columns::{ELookup, LookupProofInput},
         lookup_env::LookupEnvironment,
-        lookup_prover::lookup_prove,
+        lookup_prover::lookup_prove_fst_part,
+        lookup_prover::lookup_prove_snd_part,
         lookup_verifier::lookup_verify,
         proof::ProofInputs,
         prover, verifier,
@@ -380,20 +381,21 @@ fn lookup_prove_and_verify(
         wires: curr_proof_inputs.evaluations.lookup_state,
         arity,
     };
-    let (proof, acc) = lookup_prove::<
+    let (acc, state) = lookup_prove_fst_part::<Vesta>(&lookup_proof_input, acc, domain_fp);
+    let proof = lookup_prove_snd_part::<
         Vesta,
         DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
         DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
         ThreadRng,
     >(
         lookup_proof_input,
-        acc,
         srs,
         domain_fp,
         sponge,
         &constraint,
         rng,
         cm_wires,
+        state,
     );
     debug!(
         "Lookup proof generated in {elapsed} μs",

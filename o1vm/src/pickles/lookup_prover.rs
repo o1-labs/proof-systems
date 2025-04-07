@@ -16,38 +16,33 @@ use kimchi::{circuits::expr::l0_1, groupmap::GroupMap};
 use poly_commitment::{ipa::OpeningProof, utils::DensePolynomialOrEvaluations, PolyComm};
 use rand::{CryptoRng, RngCore};
 
+///The prover is split in two parts.
+/// We define the following structure to pass state
+/// from the first prover to the second
+pub struct LookupProverState<F: PrimeField> {
+    acc: Vec<F>,
+    inverses: Vec<Vec<F>>,
+}
+
 /// This prover takes one Public Input and one Public Output
 /// It then proves that the sum 1/(beta + table) = PI - PO
 /// where the table term are term from fixed lookup or RAMLookup
-
-// TODO: add multiplicities
-pub fn lookup_prove<
-    G: KimchiCurve,
-    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone,
-    EFrSponge: FrSponge<G::ScalarField>,
-    RNG,
->(
-    input: LookupProofInput<G::ScalarField>,
+/// It is split in two part, one computes the inverses and accumulator.
+/// It outputs the final accumulator and a state for the second part.
+/// It is needed as we use the final accumulator for the constraint.
+pub fn lookup_prove_fst_part<G: KimchiCurve>(
+    input: &LookupProofInput<G::ScalarField>,
     acc_init: G::ScalarField,
-    srs: &SRS<G>,
     domain: EvaluationDomains<G::ScalarField>,
-    mut fq_sponge: EFqSponge,
-    constraint: &ELookup<G::ScalarField>,
-    rng: &mut RNG,
-    // some commitments are already computed
-    // we give them as auxiliary input
-    cm_wires: Vec<PolyComm<G>>,
-) -> (Proof<G>, G::ScalarField)
+) -> (G::ScalarField, LookupProverState<G::ScalarField>)
 where
     G::BaseField: PrimeField,
-    RNG: RngCore + CryptoRng,
 {
     // TODO check that
-    let num_chunk = 8;
     let LookupProofInput {
         wires,
         arity,
-        dynamicselectors,
+        dynamicselectors: _,
         beta_challenge,
         gamma_challenge,
     } = input;
@@ -77,7 +72,7 @@ where
     for (j, arity_j) in arity.iter().enumerate() {
         let mut wire_idx = 0;
         for (k, arit) in arity_j.iter().enumerate() {
-            let mut res = beta_challenge;
+            let mut res = *beta_challenge;
             for i in 0..*arit {
                 res += gamma_vec[i] * wires[wire_idx + i][j]
             }
@@ -85,6 +80,7 @@ where
             wire_idx += arit;
         }
     }
+
     //perform the inversion
     inverses
         .iter_mut()
@@ -103,6 +99,43 @@ where
     }
 
     let acc_final = acc[acc.len() - 1];
+    let state = LookupProverState { acc, inverses };
+    (acc_final, state)
+}
+
+/// Second part of the lookup prover.
+pub fn lookup_prove_snd_part<
+    G: KimchiCurve,
+    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone,
+    EFrSponge: FrSponge<G::ScalarField>,
+    RNG,
+>(
+    input: LookupProofInput<G::ScalarField>,
+    srs: &SRS<G>,
+    domain: EvaluationDomains<G::ScalarField>,
+    mut fq_sponge: EFqSponge,
+    constraint: &ELookup<G::ScalarField>,
+    rng: &mut RNG,
+    // some commitments are already computed
+    // we give them as auxiliary input
+    cm_wires: Vec<PolyComm<G>>,
+    state: LookupProverState<G::ScalarField>,
+) -> Proof<G>
+where
+    G::BaseField: PrimeField,
+    RNG: RngCore + CryptoRng,
+{
+    let LookupProverState { inverses, acc } = state;
+    // TODO check that
+    let num_chunk = 8;
+    let LookupProofInput {
+        wires,
+        arity: _,
+        dynamicselectors,
+        beta_challenge,
+        gamma_challenge,
+    } = input;
+
     let columns = ColumnEnv {
         wires,
         inverses,
@@ -256,12 +289,10 @@ where
         fq_sponge_before_evaluations,
         rng,
     );
-    (
-        Proof {
-            commitments,
-            evaluations,
-            ipa_proof,
-        },
-        acc_final,
-    )
+
+    Proof {
+        commitments,
+        evaluations,
+        ipa_proof,
+    }
 }
