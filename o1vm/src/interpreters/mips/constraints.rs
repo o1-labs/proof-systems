@@ -829,6 +829,7 @@ pub fn get_lookup_constraint<Fp: FftField>(
     domain: &Radix2EvaluationDomain<Fp>,
     instruction_set: HashSet<Instruction>,
     acc_init: Fp,
+    acc_final: Fp,
 ) -> ELookup<Fp> {
     // Gater the inverses constraint, and compute the max nb of inverses cols.
     let wire_idx: &mut usize = &mut 0;
@@ -878,12 +879,17 @@ pub fn get_lookup_constraint<Fp: FftField>(
         zk_rows: false,
         offset: 0,
     }))) * (lookup_variable(LookupColumns::Acc) - (Literal(acc_init).into()));
+
+    // Constrain the final value of the accumulator
+    let acc_final = (ELookup::Atom(ExprInner::UnnormalizedLagrangeBasis(RowOffset {
+        zk_rows: false,
+        offset: (domain.size - 1).try_into().unwrap(),
+    }))) * (lookup_variable(LookupColumns::Acc) - (Literal(acc_final).into()));
+
     // Combine with alpha using Horner
     let alpha: ELookup<Fp> = LookupChallengeTerm::Alpha.into();
-    constraints
-        .clone()
-        .into_iter()
-        .fold(acc_recursion + alpha.clone() * acc_init, |acc, cst| {
-            alpha.clone() * acc + cst
-        })
+    constraints.clone().into_iter().fold(
+        acc_recursion + alpha.clone() * (acc_init + alpha.clone() * acc_final),
+        |acc, cst| alpha.clone() * acc + cst,
+    )
 }

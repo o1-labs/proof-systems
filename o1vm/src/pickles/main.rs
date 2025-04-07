@@ -18,13 +18,9 @@ use o1vm::{
         Instruction,
     },
     pickles::{
-        lookup_columns::{ELookup, LookupProofInput},
-        lookup_env::LookupEnvironment,
-        lookup_prover::lookup_prove_fst_part,
-        lookup_prover::lookup_prove_snd_part,
-        lookup_verifier::lookup_verify,
-        proof::ProofInputs,
-        prover, verifier,
+        lookup_columns::LookupProofInput, lookup_env::LookupEnvironment,
+        lookup_prover::lookup_prove_fst_part, lookup_prover::lookup_prove_snd_part,
+        lookup_verifier::lookup_verify, proof::ProofInputs, prover, verifier,
     },
     preimage_oracle::{NullPreImageOracle, PreImageOracle, PreImageOracleT},
     test_preimage_read, E,
@@ -287,12 +283,9 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             curr_proof_inputs.evaluations.lookup_state[0].len()
         };
         if len == domain_size {
-            let constraint =
-                mips_constraints::get_lookup_constraint(&domain_fp.d1, instruction_set, acc);
             acc = lookup_prove_and_verify(
                 domain_fp,
                 &srs,
-                constraint,
                 curr_proof_inputs,
                 arity,
                 rng,
@@ -300,6 +293,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                 acc,
                 // TODO O(n) complexity, use a better data structure
                 lookup_env.cms.remove(0),
+                instruction_set,
             );
 
             // Reset the env
@@ -351,13 +345,13 @@ fn prove_and_verify(
 fn lookup_prove_and_verify(
     domain_fp: EvaluationDomains<Fp>,
     srs: &SRS<Vesta>,
-    constraint: ELookup<Fp>,
     curr_proof_inputs: ProofInputs<Vesta>,
     arity: Vec<Vec<usize>>,
     rng: &mut ThreadRng,
     mut sponge: DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-    acc: Fp,
+    acc_init: Fp,
     cm_wires: Vec<PolyComm<Vesta>>,
+    instruction_set: HashSet<Instruction>,
 ) -> Fp {
     let start_iteration = Instant::now();
     // Build the selectors
@@ -381,7 +375,14 @@ fn lookup_prove_and_verify(
         wires: curr_proof_inputs.evaluations.lookup_state,
         arity,
     };
-    let (acc, state) = lookup_prove_fst_part::<Vesta>(&lookup_proof_input, acc, domain_fp);
+    let (acc_final, state) =
+        lookup_prove_fst_part::<Vesta>(&lookup_proof_input, acc_init, domain_fp);
+    let constraint = mips_constraints::get_lookup_constraint(
+        &domain_fp.d1,
+        instruction_set,
+        acc_init,
+        acc_final,
+    );
     let proof = lookup_prove_snd_part::<
         Vesta,
         DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
@@ -420,7 +421,7 @@ fn lookup_prove_and_verify(
         "Lookup verification done in {elapsed} μs",
         elapsed = start_iteration.elapsed().as_micros()
     );
-    acc
+    acc_final
 }
 
 fn pad(
