@@ -90,7 +90,7 @@ impl TryFrom<BigUint> for CamlBigInteger256 {
 
     fn try_from(x: BigUint) -> Result<Self, Self::Error> {
         Ok(Self(
-            BigInteger256::try_from(x).map_err(|()| "Biginteger was too big")?,
+            BigInteger256::try_from(x).map_err(|()| "Biginteger256 was too big")?,
         ))
     }
 }
@@ -100,7 +100,7 @@ impl TryFrom<&BigUint> for CamlBigInteger256 {
 
     fn try_from(x: &BigUint) -> Result<Self, Self::Error> {
         Ok(Self(
-            BigInteger256::try_from(x.clone()).map_err(|()| "Biginteger was too big")?,
+            BigInteger256::try_from(x.clone()).map_err(|()| "Biginteger256 was too big")?,
         ))
     }
 }
