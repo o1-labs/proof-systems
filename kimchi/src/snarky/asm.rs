@@ -1,11 +1,8 @@
 //! An ASM-like language to print a human-friendly version of a circuit.
 
+use core::{fmt::Write, hash::Hash};
 use itertools::Itertools;
-use std::{
-    collections::{HashMap, HashSet},
-    fmt::Write,
-    hash::Hash,
-};
+use std::collections::{HashMap, HashSet};
 
 use crate::circuits::{
     gate::{Circuit, CircuitGate, GateType},

@@ -1,7 +1,13 @@
 # Kimchi
 
 [![codecov](https://codecov.io/gh/o1-labs/proof-systems/graph/badge.svg?token=pl6W1FDfV0)](https://codecov.io/gh/o1-labs/proof-systems)
-[![CI](https://github.com/o1-labs/proof-systems/actions/workflows/rust.yml/badge.svg)](https://github.com/o1-labs/proof-systems/actions/workflows/rust.yml)
+
+[![CI](https://github.com/o1-labs/proof-systems/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/o1-labs/proof-systems/actions/workflows/ci.yml)
+[![CI nightly](https://github.com/o1-labs/proof-systems/actions/workflows/ci-nightly.yml/badge.svg?branch=master)](https://github.com/o1-labs/proof-systems/actions/workflows/ci-nightly.yml)
+[![GitHub page](https://github.com/o1-labs/proof-systems/actions/workflows/gh-page.yml/badge.svg?branch=master)](https://github.com/o1-labs/proof-systems/actions/workflows/gh-page.yml)
+[![o1vm CI](https://github.com/o1-labs/proof-systems/actions/workflows/o1vm-ci.yml/badge.svg?branch=master)](https://github.com/o1-labs/proof-systems/actions/workflows/o1vm-ci.yml)
+[![Saffron](https://github.com/o1-labs/proof-systems/actions/workflows/saffron.yml/badge.svg?branch=master)](https://github.com/o1-labs/proof-systems/actions/workflows/saffron.yml)
+
 [![dependency status](https://deps.rs/repo/github/o1-labs/proof-systems/status.svg?style=flat-square)](https://deps.rs/repo/github/o1-labs/proof-systems)
 
 This repository contains **kimchi**, a general-purpose zero-knowledge proof system for proving the correct execution of programs.

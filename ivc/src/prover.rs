@@ -286,7 +286,7 @@ where
                         .into_par_iter()
                         .map(enlarge_to_domain)
                         .collect(),
-                    phantom: std::marker::PhantomData,
+                    phantom: core::marker::PhantomData,
                 },
                 extended: (&witness_ext)
                     .into_par_iter()

@@ -60,7 +60,6 @@ jobs:
       - name: Run all tests with the code coverage
         run: |
           eval $(opam env)
-          make clean
           make nextest-all-with-coverage
           make test-doc-with-coverage
           make generate-test-coverage-report

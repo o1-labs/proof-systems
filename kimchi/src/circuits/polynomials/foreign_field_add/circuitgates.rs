@@ -11,7 +11,7 @@ use crate::circuits::{
     polynomials::foreign_field_common::LIMB_COUNT,
 };
 use ark_ff::PrimeField;
-use std::{array, marker::PhantomData};
+use core::{array, marker::PhantomData};
 
 //~ These circuit gates are used to constrain that
 //~

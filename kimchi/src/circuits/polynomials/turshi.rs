@@ -93,8 +93,8 @@ use crate::{
     proof::ProofEvaluations,
 };
 use ark_ff::{FftField, Field, PrimeField};
+use core::{array, marker::PhantomData};
 use log::error;
-use std::{array, marker::PhantomData};
 use turshi::{
     runner::{CairoInstruction, CairoProgram, Pointers},
     word::{FlagBits, Offsets},

@@ -21,7 +21,7 @@ use crate::{
     variable_map,
 };
 use ark_ff::PrimeField;
-use std::{array, marker::PhantomData};
+use core::{array, marker::PhantomData};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum RotMode {

@@ -8,6 +8,7 @@ use crate::{
 };
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial};
+use core::array;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -15,7 +16,6 @@ use mina_poseidon::{
 };
 use o1_utils::math;
 use poly_commitment::{commitment::b_poly_coefficients, SRS as _};
-use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;

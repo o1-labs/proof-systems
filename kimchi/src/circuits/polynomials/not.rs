@@ -1,20 +1,19 @@
 //! This module includes the definition of the NOT gadget and the witness code generation,
 //! for both the implementation running with `Xor16` gates and the one with `Generic` gates.
 //! Note that this module does not include a `Not` gate type.
+use super::{
+    generic::GenericGateSpec,
+    xor::{init_xor, num_xors},
+};
 use crate::circuits::{
     gate::{CircuitGate, Connect, GateType},
     polynomial::COLUMNS,
     wires::Wire,
 };
 use ark_ff::PrimeField;
+use core::{array, cmp::max};
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers};
-use std::{array, cmp::max};
-
-use super::{
-    generic::GenericGateSpec,
-    xor::{init_xor, num_xors},
-};
 
 //~ We implement NOT, i.e. bitwise negation, as a gadget in two different ways, needing no new gate type for it. Instead, it reuses the XOR gadget and the Generic gate.
 //~

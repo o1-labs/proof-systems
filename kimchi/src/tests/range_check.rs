@@ -20,6 +20,7 @@ use crate::{
 use ark_ec::AffineRepr;
 use ark_ff::{Field, One, Zero};
 use ark_poly::EvaluationDomain;
+use core::array;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -33,7 +34,7 @@ use poly_commitment::{
     ipa::{endos, OpeningProof, SRS},
     SRS as _,
 };
-use std::{array, sync::Arc};
+use std::sync::Arc;
 
 use super::framework::TestFramework;
 

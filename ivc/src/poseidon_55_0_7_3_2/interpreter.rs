@@ -87,16 +87,16 @@ where
     }
 
     let mut final_state: [Env::Variable; STATE_SIZE] =
-        std::array::from_fn(|_| Env::constant(F::zero()));
+        core::array::from_fn(|_| Env::constant(F::zero()));
 
     for i in 0..NB_FULL_ROUND {
         let state: [PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>; STATE_SIZE] = {
             if i == 0 {
-                std::array::from_fn(PoseidonColumn::Input)
+                core::array::from_fn(PoseidonColumn::Input)
             } else {
                 let prev_round = i - 1;
                 // Previous outputs are in index 4, 9, and 14 if we have 3 elements
-                std::array::from_fn(|j| PoseidonColumn::Round(prev_round, j * 5 + 4))
+                core::array::from_fn(|j| PoseidonColumn::Round(prev_round, j * 5 + 4))
             }
         };
         let round_res = compute_one_round::<F, STATE_SIZE, NB_FULL_ROUND, PARAMETERS, Env>(

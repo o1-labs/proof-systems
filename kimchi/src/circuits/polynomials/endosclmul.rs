@@ -19,7 +19,7 @@ use crate::{
     proof::{PointEvaluations, ProofEvaluations},
 };
 use ark_ff::{Field, PrimeField};
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 //~ We implement custom gate constraints for short Weierstrass curve
 //~ endomorphism optimised variable base scalar multiplication.
@@ -134,8 +134,8 @@ impl<F: PrimeField> CircuitGate<F> {
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMul, "incorrect gate type");
 
-        let this: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row]);
-        let next: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row + 1]);
+        let this: [F; COLUMNS] = core::array::from_fn(|i| witness[i][row]);
+        let next: [F; COLUMNS] = core::array::from_fn(|i| witness[i][row + 1]);
 
         let pt = F::from(123456u64);
 
@@ -276,7 +276,7 @@ pub struct EndoMulResult<F> {
 /// # Panics
 ///
 /// Will panic if `bits` length does not match the requirement.
-pub fn gen_witness<F: Field + std::fmt::Display>(
+pub fn gen_witness<F: Field + core::fmt::Display>(
     w: &mut [Vec<F>; COLUMNS],
     row0: usize,
     endo: F,

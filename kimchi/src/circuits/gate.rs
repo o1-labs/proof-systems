@@ -122,7 +122,7 @@ pub enum CircuitGateError {
 }
 
 /// Gate result
-pub type CircuitGateResult<T> = std::result::Result<T, CircuitGateError>;
+pub type CircuitGateResult<T> = core::result::Result<T, CircuitGateError>;
 
 #[serde_as]
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]

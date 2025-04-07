@@ -13,7 +13,7 @@ use crate::{
     curve::KimchiCurve,
 };
 use ark_ff::{BitIteratorLE, Field, PrimeField};
-use std::{array, marker::PhantomData};
+use core::{array, marker::PhantomData};
 
 impl<F: PrimeField> CircuitGate<F> {
     /// Verify the `EndoMulscalar` gate.
@@ -221,7 +221,7 @@ where
 /// # Panics
 ///
 /// Will panic if `num_bits` length is not multiple of `bits_per_row` length.
-pub fn gen_witness<F: PrimeField + std::fmt::Display>(
+pub fn gen_witness<F: PrimeField + core::fmt::Display>(
     witness_cols: &mut [Vec<F>; COLUMNS],
     scalar: F,
     endo_scalar: F,
