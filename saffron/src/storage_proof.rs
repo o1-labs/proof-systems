@@ -33,7 +33,7 @@ use serde_with::serde_as;
 use tracing::instrument;
 
 #[serde_as]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StorageProof {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub combined_data_eval: ScalarField,
@@ -259,6 +259,66 @@ mod tests {
             &mut rng,
         );
         prop_assert!(res);
+      }
+    }
+
+    proptest! {
+    #![proptest_config(ProptestConfig::with_cases(5))]
+    #[test]
+    fn test_storage_soundness(UserData(data) in UserData::arbitrary()) {
+        let mut rng = OsRng;
+        let commitments = {
+              let field_elems: Vec<_> = encode_for_domain(DOMAIN.size(), &data).into_iter().flatten().collect();
+              commit_to_field_elems(&*SRS, &field_elems)
+        };
+
+        // extra seed
+        let challenge_seed: ScalarField = ScalarField::rand(&mut rng);
+
+        let mut sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+        sponge.absorb_fr(&[challenge_seed]);
+        let (combined_data_commitment, challenge) =
+            combine_commitments(&mut sponge, commitments.as_slice());
+
+        let blob = FieldBlob::from_bytes::<_>(&*SRS, *DOMAIN, &data);
+
+        let proof = prove(&*SRS, &*GROUP_MAP, blob, challenge, &mut rng);
+
+        let proof_malformed_1 = {
+            StorageProof {
+                combined_data_eval: proof.combined_data_eval.clone() + ScalarField::one(),
+                opening_proof: proof.opening_proof.clone(),
+            }
+        };
+
+        let res_1 = verify_wrt_combined_data_commitment(
+            &*SRS,
+            &*GROUP_MAP,
+            combined_data_commitment,
+            &proof_malformed_1,
+            &mut rng,
+        );
+
+        prop_assert!(!res_1);
+
+        let proof_malformed_2 = {
+            let mut opening_proof = proof.opening_proof.clone();
+            opening_proof.z1 = ScalarField::one();
+            StorageProof {
+                combined_data_eval: proof.combined_data_eval.clone(),
+                opening_proof,
+            }
+        };
+
+        let res_2 = verify_wrt_combined_data_commitment(
+            &*SRS,
+            &*GROUP_MAP,
+            combined_data_commitment,
+            &proof_malformed_2,
+            &mut rng,
+        );
+
+        prop_assert!(!res_2);
       }
     }
 }
