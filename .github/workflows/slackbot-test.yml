@@ -7,13 +7,21 @@ on:
       - main
 jobs:
   run:
-    name: Leave a kind message after updates
     runs-on: ubuntu-latest
     steps:
-      - name: Greet the reader
+      - name: Intentionally fail
+        run: exit 1
+
+      - name: Post a message in a channel if failing
+        if: ${{ failure() }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "Hello World!"
+            text: "Nightly tests failed: ${{ job.status }}\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            blocks:
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: "This is only a drill! Nightly tests failed: ${{ job.status }}\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
