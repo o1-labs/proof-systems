@@ -358,7 +358,9 @@ fn lookup_prove_and_verify(
 ) -> Fp {
     let start_iteration = Instant::now();
     // Build the selectors
-    let mut dynamicselectors = vec![Vec::with_capacity(1 << 16); N_MIPS_SEL_COLS];
+    let mut dynamicselectors = (0..N_MIPS_SEL_COLS)
+        .map(|_| Vec::with_capacity(1 << 16))
+        .collect::<Vec<_>>();
     for i in &curr_proof_inputs.evaluations.selector {
         for (j, s) in dynamicselectors.iter_mut().enumerate() {
             s.push(if &Fp::from(j as u64) == i {
