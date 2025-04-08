@@ -8,7 +8,7 @@ use std::str::FromStr;
 
 fn params() -> ArithmeticSpongeParams<Fp> {
     ArithmeticSpongeParams {
-        mds: vec![
+        mds: [
             [
                 Fp::from_str(
                     "5328350144166205084223774245058198666309664348635459768305312917086056785354",
