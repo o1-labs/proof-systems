@@ -8,6 +8,7 @@ use kimchi::{
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{commitment::absorb_commitment, ipa::SRS, OpenProof, SRS as _};
+use std::ops::{AddAssign, Mul};
 //TODO Parralelize
 //use rayon::prelude::*;
 use super::lookup_columns::{ELookup, LookupChallenges, LookupEvalEnvironment};
@@ -16,72 +17,71 @@ use kimchi::{circuits::expr::l0_1, groupmap::GroupMap};
 use poly_commitment::{ipa::OpeningProof, utils::DensePolynomialOrEvaluations, PolyComm};
 use rand::{CryptoRng, RngCore};
 
+///The prover is split in two parts.
+/// We define the following structure to pass state
+/// from the first prover to the second
+pub struct LookupProverState<F: PrimeField> {
+    acc: Vec<F>,
+    inverses: Vec<Vec<F>>,
+}
+
 /// This prover takes one Public Input and one Public Output
 /// It then proves that the sum 1/(beta + table) = PI - PO
 /// where the table term are term from fixed lookup or RAMLookup
-
-// TODO: add selectors
-// TODO: add multiplicities
-pub fn lookup_prove<
-    G: KimchiCurve,
-    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone,
-    EFrSponge: FrSponge<G::ScalarField>,
-    RNG,
->(
-    input: LookupProofInput<G::ScalarField>,
+/// It is split in two part, one computes the inverses and accumulator.
+/// It outputs the final accumulator and a state for the second part.
+/// It is needed as we use the final accumulator for the constraint.
+pub fn lookup_prove_fst_part<G: KimchiCurve>(
+    input: &LookupProofInput<G::ScalarField>,
     acc_init: G::ScalarField,
-    srs: &SRS<G>,
     domain: EvaluationDomains<G::ScalarField>,
-    mut fq_sponge: EFqSponge,
-    constraint: &ELookup<G::ScalarField>,
-    rng: &mut RNG,
-    // some commitments are already computed
-    // we give them as auxiliary input
-    cm_wires: Vec<PolyComm<G>>,
-) -> (Proof<G>, G::ScalarField)
+) -> (G::ScalarField, LookupProverState<G::ScalarField>)
 where
     G::BaseField: PrimeField,
-    RNG: RngCore + CryptoRng,
 {
     // TODO check that
-    let num_chunk = 1;
     let LookupProofInput {
         wires,
         arity,
+        dynamicselectors: _,
         beta_challenge,
         gamma_challenge,
     } = input;
-    //Compute how many inverse wires we need to define pad function accordingly
+    //Compute how many inverse wires we need
     let nb_inv_wires = arity
         .iter()
         .max_by(|a, b| a.len().cmp(&b.len()))
         .unwrap()
         .len();
-    let pad = |mut vec: Vec<G::ScalarField>| {
-        vec.append(&mut vec![G::ScalarField::zero(); nb_inv_wires]);
-        vec
-    };
 
-    // compute the 1/beta+sum_i gamma^i value_i for each lookup term
-    // The inversions is commputed in batch in the end
-    let mut inverses: Vec<Vec<G::ScalarField>> = wires
-        .iter()
-        .zip(arity)
-        .map(|(inner_vec, arity)| {
-            arity
-                .into_iter()
-                .map(|arity| {
-                    // TODO don't recompute gamma powers everytime
-                    let (res, _) = inner_vec.iter().take(arity).fold(
-                        (beta_challenge, G::ScalarField::one()),
-                        |(acc, gamma_i), x| (acc + gamma_i * x, gamma_i * gamma_challenge),
-                    );
-                    res
-                })
-                .collect()
-        })
-        .map(pad)
-        .collect();
+    // Init inverses
+    let mut inverses = Vec::with_capacity(nb_inv_wires);
+    for _ in 0..nb_inv_wires {
+        inverses.push(vec![G::ScalarField::zero(); domain.d1.size as usize])
+    }
+
+    // Compute powers of gamma once
+    // FIXME: Arbitrary constant of 30 should be enough
+    let mut gamma_vec = [G::ScalarField::one(); 30];
+    let mut gamma_pow = G::ScalarField::one();
+    for gamma_i in &mut gamma_vec {
+        *gamma_i = gamma_pow;
+        gamma_pow *= gamma_challenge
+    }
+
+    // Fill inverses without doing the inversion
+    for (j, arity_j) in arity.iter().enumerate() {
+        let mut wire_idx = 0;
+        for (k, arit) in arity_j.iter().enumerate() {
+            let mut res = *beta_challenge;
+            for i in 0..*arit {
+                res += gamma_vec[i] * wires[wire_idx + i][j]
+            }
+            inverses[k][j] = res;
+            wire_idx += arit;
+        }
+    }
+
     //perform the inversion
     inverses
         .iter_mut()
@@ -90,17 +90,58 @@ where
     // init at acc_init
     let mut partial_sum = acc_init;
     let mut acc = vec![];
-    for inner in inverses.iter_mut() {
-        for x in inner.iter_mut() {
-            partial_sum += *x;
-            acc.push(partial_sum)
+    acc.push(partial_sum);
+
+    for j in 0..((domain.d1.size - 1) as usize) {
+        for inverse_i in inverses.iter() {
+            partial_sum += inverse_i[j]
         }
+        acc.push(partial_sum)
     }
+
     let acc_final = acc[acc.len() - 1];
+    let state = LookupProverState { acc, inverses };
+    (acc_final, state)
+}
+
+/// Second part of the lookup prover.
+pub fn lookup_prove_snd_part<
+    G: KimchiCurve,
+    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone,
+    EFrSponge: FrSponge<G::ScalarField>,
+    RNG,
+>(
+    input: LookupProofInput<G::ScalarField>,
+    srs: &SRS<G>,
+    domain: EvaluationDomains<G::ScalarField>,
+    mut fq_sponge: EFqSponge,
+    constraints: &[ELookup<G::ScalarField>],
+    rng: &mut RNG,
+    // some commitments are already computed
+    // we give them as auxiliary input
+    cm_wires: Vec<PolyComm<G>>,
+    state: LookupProverState<G::ScalarField>,
+) -> Proof<G>
+where
+    G::BaseField: PrimeField,
+    RNG: RngCore + CryptoRng,
+{
+    let LookupProverState { inverses, acc } = state;
+    // TODO check that
+    let num_chunk = 8;
+    let LookupProofInput {
+        wires,
+        arity: _,
+        dynamicselectors,
+        beta_challenge,
+        gamma_challenge,
+    } = input;
+
     let columns = ColumnEnv {
         wires,
         inverses,
         acc,
+        dynamicselectors,
     };
     //interpolating
     let interpolate_col = |evals: Vec<G::ScalarField>| {
@@ -121,6 +162,12 @@ where
             .map(|poly| srs.commit_non_hiding(&poly, 1).chunks[0])
             .collect(),
         acc: srs.commit_non_hiding(&columns_poly.acc.clone(), 1).chunks[0],
+        dynamicselectors: columns_poly
+            .dynamicselectors
+            .clone()
+            .into_iter()
+            .map(|poly| srs.commit_non_hiding(&poly, 1).chunks[0])
+            .collect(),
     };
 
     // eval on d8
@@ -157,10 +204,19 @@ where
 
         l0_1: l0_1(domain.d1),
     };
-    let t_numerator_evaluation: Evaluations<
-        G::ScalarField,
-        Radix2EvaluationDomain<G::ScalarField>,
-    > = constraint.evaluations(&eval_env);
+    let (t_numerator_evaluation, _) = constraints.iter().fold(
+        (
+            Evaluations::from_vec_and_domain(
+                vec![G::ScalarField::zero(); domain.d8.size as usize],
+                domain.d8,
+            ),
+            G::ScalarField::one(),
+        ),
+        |(mut acc, alpha_pow), cst| {
+            acc.add_assign(&cst.evaluations_d8(&eval_env).mul(alpha_pow));
+            (acc, alpha_pow * alpha)
+        },
+    );
     let t_numerator_poly = t_numerator_evaluation.interpolate();
     let (t, rem) = t_numerator_poly
         .divide_by_vanishing_poly(domain.d1)
@@ -169,7 +225,7 @@ where
     let t_commitment = srs.commit_non_hiding(
         // TODO: change the nb of chunks later
         // For now we use this because the constraints null
-        &t, 1,
+        &t, num_chunk,
     );
     // TODO avoid cloning
     let commitments = AllColumns {
@@ -243,12 +299,10 @@ where
         fq_sponge_before_evaluations,
         rng,
     );
-    (
-        Proof {
-            commitments,
-            evaluations,
-            ipa_proof,
-        },
-        acc_final,
-    )
+
+    Proof {
+        commitments,
+        evaluations,
+        ipa_proof,
+    }
 }

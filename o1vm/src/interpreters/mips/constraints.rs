@@ -10,12 +10,17 @@ use crate::{
         Instruction,
     },
     lookups::{Lookup, LookupTableIDs},
+    pickles::lookup_columns::{ELookup, LookupChallengeTerm, LookupColumns},
     ramlookup::LookupMode,
     E,
 };
-use ark_ff::{Field, One, Zero};
+use ark_ff::{FftField, Field, One, Zero};
+use ark_poly::Radix2EvaluationDomain;
 use kimchi::circuits::{
-    expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
+    expr::{
+        unnormalized_lagrange_basis, ConstantTerm::Literal, Expr, ExprInner, Operations, RowOffset,
+        Variable,
+    },
     gate::CurrOrNext,
 };
 use kimchi_msm::{columns::ColumnIndexer as _, LogupTableID};
@@ -130,11 +135,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             LookupMode::Write => add_value(numerator),
             LookupMode::Read => {
                 add_value(Self::Variable::zero() - numerator);
-                /*  //This is add_value(-numerator), but we do not have an opposite
-                self.add_constraint(
-                    self.variable(MIPSColumn::LookupColumn(self.lookup_idx)) - numerator,
-                );
-                self.lookup_idx += 1; */
             }
         };
         // Add lookup table ID
@@ -758,5 +758,136 @@ pub fn get_constraints<Fp: Field>(instrunction_set: HashSet<Instruction>) -> Vec
             acc
         });
     constraints.extend(mips_con_env.get_selector_constraints());
+    constraints
+}
+//--------- functions related to lookup constraints
+fn lookup_variable<F: Field>(col: LookupColumns) -> ELookup<F> {
+    ELookup::<F>::Atom(ExprInner::Cell(Variable {
+        col,
+        row: CurrOrNext::Curr,
+    }))
+}
+
+fn get_cst_from_lookup<Fp: Field>(
+    lookup: Lookup<E<Fp>>,
+    wire_idx: &mut usize,
+    inverse_idx: &mut usize,
+) -> ELookup<Fp> {
+    let beta: ELookup<Fp> = LookupChallengeTerm::Beta.into();
+    let gamma: ELookup<Fp> = LookupChallengeTerm::Gamma.into();
+    let id: ELookup<Fp> = Literal((lookup.table_id.clone().to_u32() as u64).into()).into();
+    // using horner the get the sum of gamma^i * value_i,
+    // as the expression framework would otherwise do a lot of multiplication.
+    // note that we do not use the lookup to iterate, we just need its length.
+    // This is because the variables of the lookup have been copied in the
+    // lookupstate in order.
+    // So we constrain the lookup columns wires, not the scratch state.
+    let sum: ELookup<Fp> =
+        lookup
+            .clone()
+            .value
+            .into_iter()
+            .rev()
+            .fold(ELookup::<Fp>::zero(), |acc, _| {
+                let res = gamma.clone() * (acc + lookup_variable(LookupColumns::Wires(*wire_idx)));
+                *wire_idx += 1;
+                res
+            });
+    // Note that the sum is multiplied by gamma
+    let res = (beta + gamma * (id + sum)) * lookup_variable(LookupColumns::Inverses(*inverse_idx))
+        - ELookup::one();
+    *inverse_idx += 1;
+    res
+}
+
+/// Constraint the inverses for an instruction.
+/// Also returns the nb of inverses columns used for this instruction.
+pub fn get_cst_from_instr<Fp: Field>(
+    instr: Instruction,
+    wire_idx: &mut usize,
+    inverse_idx: &mut usize,
+) -> (usize, Vec<ELookup<Fp>>) {
+    let mut res = Vec::new();
+    let mut mips_con_env = Env::<Fp>::default();
+    interpret_instruction(&mut mips_con_env, instr);
+    for lookup in mips_con_env.lookups.clone().into_iter() {
+        res.push(get_cst_from_lookup(lookup, wire_idx, inverse_idx))
+    }
+    // This code is shamelessly copied from activate_selector
+    // This should be re-written at some point, it does not makes sense
+    let selector = {
+        let n = usize::from(instr) - N_MIPS_REL_COLS;
+        lookup_variable(LookupColumns::DynamicSelectors(n))
+    };
+    (
+        mips_con_env.lookups.len(),
+        res.into_iter().map(|cst| selector.clone() * cst).collect(),
+    )
+}
+
+pub fn get_lookup_constraint<Fp: FftField>(
+    domain: &Radix2EvaluationDomain<Fp>,
+    instruction_set: HashSet<Instruction>,
+    acc_init: Fp,
+    acc_final: Fp,
+) -> Vec<ELookup<Fp>> {
+    // Gater the inverses constraint, and compute the max nb of inverses cols.
+    let wire_idx: &mut usize = &mut 0;
+    let inverse_idx: &mut usize = &mut 0;
+    let mut max_nb_inv = 0;
+    let mut constraints = Vec::new();
+    for instr in instruction_set.clone().into_iter() {
+        let (nb_inv, cst_instr) = get_cst_from_instr::<Fp>(instr, wire_idx, inverse_idx);
+        if nb_inv > max_nb_inv {
+            max_nb_inv = nb_inv
+        };
+        constraints.extend(cst_instr);
+        *wire_idx = 0;
+        *inverse_idx = 0
+    }
+
+    // Recursive constraint of the accumulator
+    let partial_acc_recursion = {
+        let mut sum_inverses = ELookup::<Fp>::zero();
+        for i in 0..max_nb_inv {
+            sum_inverses += lookup_variable(LookupColumns::Inverses(i));
+        }
+        ELookup::<Fp>::Atom(ExprInner::Cell(Variable {
+            col: LookupColumns::Acc,
+            row: CurrOrNext::Next,
+        })) - lookup_variable(LookupColumns::Acc)
+            - sum_inverses
+    };
+    // used to not constrain on the n-1 point of the domain
+    let unnormalized_l_n_n: ELookup<Fp> = {
+        let field_elt = unnormalized_lagrange_basis::<Fp>(
+            domain,
+            (domain.size - 1).try_into().unwrap(),
+            &Fp::pow(&domain.group_gen, [(domain.size - 1)]),
+        );
+        Literal(field_elt).into()
+    };
+    let acc_recursion = (unnormalized_l_n_n.clone()
+        - ELookup::Atom(ExprInner::UnnormalizedLagrangeBasis(RowOffset {
+            zk_rows: false,
+            offset: (domain.size - 1).try_into().unwrap(),
+        })))
+        * partial_acc_recursion;
+
+    // Constrain the initial value of the accumulator
+    let acc_init = (ELookup::Atom(ExprInner::UnnormalizedLagrangeBasis(RowOffset {
+        zk_rows: false,
+        offset: 0,
+    }))) * (lookup_variable(LookupColumns::Acc) - (Literal(acc_init).into()));
+
+    // Constrain the final value of the accumulator
+    let acc_final = (ELookup::Atom(ExprInner::UnnormalizedLagrangeBasis(RowOffset {
+        zk_rows: false,
+        offset: (domain.size - 1).try_into().unwrap(),
+    }))) * (lookup_variable(LookupColumns::Acc) - (Literal(acc_final).into()));
+
+    constraints.push(acc_recursion);
+    constraints.push(acc_init);
+    constraints.push(acc_final);
     constraints
 }

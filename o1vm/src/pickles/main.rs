@@ -1,4 +1,4 @@
-use ark_ff::{UniformRand, Zero};
+use ark_ff::{One, UniformRand, Zero};
 use clap::Parser;
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, precomputed_srs::TestSRS};
 use log::debug;
@@ -12,15 +12,15 @@ use o1vm::{
     cannon::{self, Start, State},
     cli, elf_loader,
     interpreters::mips::{
-        column::N_MIPS_REL_COLS,
+        column::{N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
         constraints as mips_constraints,
         witness::{self as mips_witness},
         Instruction,
     },
     pickles::{
-        lookup_columns::{ELookup, LookupProofInput},
+        lookup_columns::LookupProofInput,
         lookup_env::LookupEnvironment,
-        lookup_prover::lookup_prove,
+        lookup_prover::{lookup_prove_fst_part, lookup_prove_snd_part},
         lookup_verifier::lookup_verify,
         proof::ProofInputs,
         prover, verifier,
@@ -237,9 +237,10 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             )
         }
     };
-
+    instruction_set = HashSet::new();
     while !mips_wit_env.halt {
-        let _instr = mips_wit_env.step(&configuration, meta, &start);
+        let (instr, _) = mips_wit_env.step(&configuration, meta, &start);
+        instruction_set.insert(instr);
         // TODO factorise the addtion of the wit env to the proof input in a seprate function
         // Lookup state
         // TODO factorise padding of lookup in a separate function
@@ -288,7 +289,6 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             acc = lookup_prove_and_verify(
                 domain_fp,
                 &srs,
-                ELookup::zero(),
                 curr_proof_inputs,
                 arity,
                 rng,
@@ -296,8 +296,11 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                 acc,
                 // TODO O(n) complexity, use a better data structure
                 lookup_env.cms.remove(0),
+                instruction_set,
             );
 
+            // Reset the env
+            instruction_set = HashSet::new();
             curr_proof_inputs = ProofInputs::new(domain_size);
             arity = vec![];
         }
@@ -345,38 +348,60 @@ fn prove_and_verify(
 fn lookup_prove_and_verify(
     domain_fp: EvaluationDomains<Fp>,
     srs: &SRS<Vesta>,
-    constraint: ELookup<Fp>,
     curr_proof_inputs: ProofInputs<Vesta>,
     arity: Vec<Vec<usize>>,
     rng: &mut ThreadRng,
     mut sponge: DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
-    acc: Fp,
+    acc_init: Fp,
     cm_wires: Vec<PolyComm<Vesta>>,
+    instruction_set: HashSet<Instruction>,
 ) -> Fp {
     let start_iteration = Instant::now();
+    // Build the selectors
+    let mut dynamicselectors = (0..N_MIPS_SEL_COLS)
+        .map(|_| Vec::with_capacity(1 << 16))
+        .collect::<Vec<_>>();
+    for i in &curr_proof_inputs.evaluations.selector {
+        for (j, s) in dynamicselectors.iter_mut().enumerate() {
+            s.push(if &Fp::from(j as u64) == i {
+                Fp::one()
+            } else {
+                Fp::zero()
+            })
+        }
+    }
     let sponge_verifier = sponge.clone();
     let beta_challenge = sponge.challenge();
     let gamma_challenge = sponge.challenge();
     let lookup_proof_input = LookupProofInput {
         beta_challenge,
         gamma_challenge,
+        dynamicselectors,
         wires: curr_proof_inputs.evaluations.lookup_state,
         arity,
     };
-    let (proof, acc) = lookup_prove::<
+    let (acc_final, state) =
+        lookup_prove_fst_part::<Vesta>(&lookup_proof_input, acc_init, domain_fp);
+    let constraints = mips_constraints::get_lookup_constraint(
+        &domain_fp.d1,
+        instruction_set,
+        acc_init,
+        acc_final,
+    );
+    let proof = lookup_prove_snd_part::<
         Vesta,
         DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
         DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
         ThreadRng,
     >(
         lookup_proof_input,
-        acc,
         srs,
         domain_fp,
         sponge,
-        &constraint,
+        &constraints,
         rng,
         cm_wires,
+        state,
     );
     debug!(
         "Lookup proof generated in {elapsed} μs",
@@ -390,7 +415,7 @@ fn lookup_prove_and_verify(
     >(
         beta_challenge,
         gamma_challenge,
-        constraint,
+        constraints,
         sponge_verifier,
         domain_fp,
         srs,
@@ -401,7 +426,7 @@ fn lookup_prove_and_verify(
         "Lookup verification done in {elapsed} μs",
         elapsed = start_iteration.elapsed().as_micros()
     );
-    acc
+    acc_final
 }
 
 fn pad(

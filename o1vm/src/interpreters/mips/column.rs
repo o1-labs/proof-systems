@@ -95,6 +95,7 @@ impl From<ColumnAlias> for usize {
 }
 
 /// Returns the corresponding index of the corresponding DynamicSelector column.
+/// FIXME: this implementation does not makes sense
 impl From<Instruction> for usize {
     fn from(instr: Instruction) -> usize {
         match instr {
