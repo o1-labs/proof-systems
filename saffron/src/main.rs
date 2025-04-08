@@ -137,7 +137,7 @@ pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<HexString>
         .collect();
 
     let combined_data_commitment_as_polycomm: PolyComm<Curve> = PolyComm {
-        chunks: vec![combined_data_commitment.clone()],
+        chunks: vec![combined_data_commitment],
     };
 
     // this seems completely unnecessary

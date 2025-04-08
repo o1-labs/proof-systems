@@ -73,13 +73,10 @@ pub fn prove(
     // where j ∈ [0..final_chunk], so the power corresponding to
     // the first chunk is 0 (chal^0 = 1).
     let combined_data: Vec<ScalarField> = {
-        let mut initial: Vec<ScalarField> = blob.data
-            [final_chunk * SRS_SIZE..(final_chunk + 1) * SRS_SIZE]
-            .iter()
-            .cloned()
-            .collect();
+        let mut initial: Vec<ScalarField> =
+            blob.data[final_chunk * SRS_SIZE..(final_chunk + 1) * SRS_SIZE].to_vec();
 
-        (0..final_chunk).into_iter().rev().for_each(|chunk_ix| {
+        (0..final_chunk).rev().for_each(|chunk_ix| {
             initial.par_iter_mut().enumerate().for_each(|(idx, acc)| {
                 *acc *= challenge;
                 *acc += blob.data[chunk_ix * SRS_SIZE + idx];
@@ -237,7 +234,7 @@ mod tests {
         let mut rng = OsRng;
         let commitments = {
               let field_elems: Vec<_> = encode_for_domain(DOMAIN.size(), &data).into_iter().flatten().collect();
-              commit_to_field_elems(&*SRS, &field_elems)
+              commit_to_field_elems(&SRS, &field_elems)
         };
 
         // extra seed
@@ -248,12 +245,12 @@ mod tests {
         let (combined_data_commitment, challenge) =
             combine_commitments(&mut sponge, commitments.as_slice());
 
-        let blob = FieldBlob::from_bytes::<_>(&*SRS, *DOMAIN, &data);
+        let blob = FieldBlob::from_bytes::<_>(&SRS, *DOMAIN, &data);
 
-        let proof = prove(&*SRS, &*GROUP_MAP, blob, challenge, &mut rng);
+        let proof = prove(&SRS, &GROUP_MAP, blob, challenge, &mut rng);
         let res = verify_wrt_combined_data_commitment(
-            &*SRS,
-            &*GROUP_MAP,
+            &SRS,
+            &GROUP_MAP,
             combined_data_commitment,
             &proof,
             &mut rng,
@@ -269,7 +266,7 @@ mod tests {
         let mut rng = OsRng;
         let commitments = {
               let field_elems: Vec<_> = encode_for_domain(DOMAIN.size(), &data).into_iter().flatten().collect();
-              commit_to_field_elems(&*SRS, &field_elems)
+              commit_to_field_elems(&SRS, &field_elems)
         };
 
         // extra seed
@@ -280,20 +277,20 @@ mod tests {
         let (combined_data_commitment, challenge) =
             combine_commitments(&mut sponge, commitments.as_slice());
 
-        let blob = FieldBlob::from_bytes::<_>(&*SRS, *DOMAIN, &data);
+        let blob = FieldBlob::from_bytes::<_>(&SRS, *DOMAIN, &data);
 
-        let proof = prove(&*SRS, &*GROUP_MAP, blob, challenge, &mut rng);
+        let proof = prove(&SRS, &GROUP_MAP, blob, challenge, &mut rng);
 
         let proof_malformed_1 = {
             StorageProof {
-                combined_data_eval: proof.combined_data_eval.clone() + ScalarField::one(),
+                combined_data_eval: proof.combined_data_eval + ScalarField::one(),
                 opening_proof: proof.opening_proof.clone(),
             }
         };
 
         let res_1 = verify_wrt_combined_data_commitment(
-            &*SRS,
-            &*GROUP_MAP,
+            &SRS,
+            &GROUP_MAP,
             combined_data_commitment,
             &proof_malformed_1,
             &mut rng,
@@ -305,14 +302,14 @@ mod tests {
             let mut opening_proof = proof.opening_proof.clone();
             opening_proof.z1 = ScalarField::one();
             StorageProof {
-                combined_data_eval: proof.combined_data_eval.clone(),
+                combined_data_eval: proof.combined_data_eval,
                 opening_proof,
             }
         };
 
         let res_2 = verify_wrt_combined_data_commitment(
-            &*SRS,
-            &*GROUP_MAP,
+            &SRS,
+            &GROUP_MAP,
             combined_data_commitment,
             &proof_malformed_2,
             &mut rng,

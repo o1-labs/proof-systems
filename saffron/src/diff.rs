@@ -132,7 +132,7 @@ pub mod tests {
     }
 
     // Adds diff to data
-    fn add_diff_to_data(data: &mut Vec<Vec<Fp>>, diff: &Diff<Fp>) {
+    fn add_diff_to_data(data: &mut [Vec<Fp>], diff: &Diff<Fp>) {
         for (addr, new_value) in diff.addresses.iter().zip(diff.new_values.iter()) {
             data[diff.region as usize][*addr as usize] = *new_value;
         }

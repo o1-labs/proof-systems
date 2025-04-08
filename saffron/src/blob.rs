@@ -182,7 +182,7 @@ mod tests {
             let xs_len_chunks = xs.len() / (31 * SRS_SIZE);
             xs.truncate(xs_len_chunks * 31 * SRS_SIZE);
 
-            let blob = FieldBlob::from_bytes::<_>(&*SRS, *DOMAIN, &xs);
+            let blob = FieldBlob::from_bytes::<_>(&SRS, *DOMAIN, &xs);
             let bytes = rmp_serde::to_vec(&blob).unwrap();
             let a = rmp_serde::from_slice(&bytes).unwrap();
             // check that ark-serialize is behaving as expected
@@ -198,14 +198,14 @@ mod tests {
     #[test]
     fn test_user_and_storage_provider_commitments_equal(UserData(xs) in UserData::arbitrary())
       { let elems: Vec<_> = encode_for_domain(DOMAIN.size(), &xs).into_iter().flatten().collect();
-        let user_commitments: Vec<_> = commit_to_field_elems(&*SRS, &elems);
-        let blob = FieldBlob::from_bytes::<_>(&*SRS, *DOMAIN, &xs);
+        let user_commitments: Vec<_> = commit_to_field_elems(&SRS, &elems);
+        let blob = FieldBlob::from_bytes::<_>(&SRS, *DOMAIN, &xs);
         prop_assert_eq!(user_commitments, blob.commitments);
       }
     }
 
     fn encode_to_chunk_size(xs: &[u8], chunk_size: usize) -> FieldBlob {
-        let mut blob = FieldBlob::from_bytes::<_>(&*SRS, *DOMAIN, xs);
+        let mut blob = FieldBlob::from_bytes::<_>(&SRS, *DOMAIN, xs);
 
         assert!(blob.data.len() <= chunk_size * crate::SRS_SIZE);
 
@@ -223,20 +223,20 @@ mod tests {
             (UserData::arbitrary_with(DataSize::Medium).prop_flat_map(random_diff))
         ) {
             // start with some random user data
-            let mut xs_blob = FieldBlob::from_bytes::<_>(&*SRS, *DOMAIN, &xs);
+            let mut xs_blob = FieldBlob::from_bytes::<_>(&SRS, *DOMAIN, &xs);
             let diffs = Diff::<ScalarField>::create_from_bytes(&*DOMAIN, &xs, &ys).unwrap();
 
             // check that the user and SP agree on the data
             let user_commitment: Vec<_> = {
                 let elems: Vec<_> = encode_for_domain(DOMAIN.size(), &xs).into_iter().flatten().collect();
-                commit_to_field_elems(&*SRS, &elems)
+                commit_to_field_elems(&SRS, &elems)
 
             };
             prop_assert_eq!(user_commitment.clone(), xs_blob.commitments.clone());
 
             // Update the blob with the diff and check the user can match the commitment
             for diff in diffs.iter() {
-                xs_blob.apply_diff(&*SRS, &*DOMAIN, diff);
+                xs_blob.apply_diff(&SRS, &DOMAIN, diff);
             }
 
             // the updated blob should be the same as if we just start with the new data (with appropriate padding)
