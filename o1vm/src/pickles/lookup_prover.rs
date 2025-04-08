@@ -1,19 +1,21 @@
+use super::lookup_columns::{ELookup, LookupChallenges, LookupEvalEnvironment};
+use crate::pickles::lookup_columns::*;
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain};
 use kimchi::{
-    circuits::{domains::EvaluationDomains, expr::Constants},
+    circuits::{
+        domains::EvaluationDomains,
+        expr::{l0_1, Constants},
+    },
     curve::KimchiCurve,
+    groupmap::GroupMap,
     plonk_sponge::FrSponge,
 };
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{commitment::absorb_commitment, ipa::SRS, OpenProof, SRS as _};
 use std::ops::{AddAssign, Mul};
-//TODO Parralelize
-//use rayon::prelude::*;
-use super::lookup_columns::{ELookup, LookupChallenges, LookupEvalEnvironment};
-use crate::pickles::lookup_columns::*;
-use kimchi::{circuits::expr::l0_1, groupmap::GroupMap};
+
 use poly_commitment::{ipa::OpeningProof, utils::DensePolynomialOrEvaluations, PolyComm};
 use rand::{CryptoRng, RngCore};
 
@@ -31,6 +33,7 @@ pub struct LookupProverState<F: PrimeField> {
 /// It is split in two part, one computes the inverses and accumulator.
 /// It outputs the final accumulator and a state for the second part.
 /// It is needed as we use the final accumulator for the constraint.
+/// TODO : parralelize
 pub fn lookup_prove_fst_part<G: KimchiCurve>(
     input: &LookupProofInput<G::ScalarField>,
     acc_init: G::ScalarField,
@@ -150,7 +153,7 @@ where
         )
         .interpolate()
     };
-    let columns_poly = columns.my_map(interpolate_col);
+    let columns_poly = columns.map(interpolate_col);
     // commiting. Note that we do not commit to the wires, it is already done.
     // TODO avoid cloning
     let columns_com = ColumnEnv {
@@ -175,7 +178,7 @@ where
     // TODO: avoid cloning
     let columns_eval_d8 = columns_poly
         .clone()
-        .my_map(|poly| poly.evaluate_over_domain_by_ref(domain.d8));
+        .map(|poly| poly.evaluate_over_domain_by_ref(domain.d8));
     // abosrbing commit
     // TODO don't absorb the wires which already have been
     // TODO avoid cloning
@@ -230,7 +233,7 @@ where
     // TODO avoid cloning
     let commitments = AllColumns {
         cols: columns_com,
-        t_shares: t_commitment.chunks.clone(),
+        quotient_chunks: t_commitment.chunks.clone(),
     };
     // Absorb t
     absorb_commitment(&mut fq_sponge, &t_commitment);
@@ -248,8 +251,8 @@ where
         |x,
          cols_poly: ColumnEnv<DensePolynomial<_>>,
          t_chunks: o1_utils::chunked_polynomial::ChunkedPolynomial<_>| AllColumns {
-            cols: cols_poly.my_map(|poly| poly.evaluate(&x)),
-            t_shares: t_chunks
+            cols: cols_poly.map(|poly| poly.evaluate(&x)),
+            quotient_chunks: t_chunks
                 .polys
                 .into_iter()
                 .map(|poly| poly.evaluate(&x))
@@ -279,7 +282,7 @@ where
     // prepare polynomials for IPA proof
     let all_columns_poly = AllColumns {
         cols: columns_poly,
-        t_shares: t_chunks.polys,
+        quotient_chunks: t_chunks.polys,
     };
     let polynomials: Vec<_> = all_columns_poly.into_iter().collect();
     let polynomials : Vec<_> = polynomials.iter().map(|poly| {

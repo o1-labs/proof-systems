@@ -68,7 +68,7 @@ where
     absorb_commitment(
         &mut fq_sponge,
         &PolyComm {
-            chunks: commitments.clone().t_shares,
+            chunks: commitments.clone().quotient_chunks,
         },
     );
 
@@ -123,11 +123,11 @@ where
     // TODO avoid cloning
     eval_for_ipa.push(Evaluation {
         commitment: PolyComm {
-            chunks: commitments.clone().t_shares,
+            chunks: commitments.clone().quotient_chunks,
         },
         evaluations: vec![
-            evaluations.clone().zeta.t_shares,
-            evaluations.clone().zeta_omega.t_shares,
+            evaluations.clone().zeta.quotient_chunks,
+            evaluations.clone().zeta_omega.quotient_chunks,
         ],
     });
 
@@ -181,7 +181,7 @@ where
     // Check quotient correctness
     ///////
 
-    let (quotient_zeta, _) = evaluations.zeta.t_shares.iter().fold(
+    let (quotient_zeta, _) = evaluations.zeta.quotient_chunks.iter().fold(
         (G::ScalarField::zero(), G::ScalarField::one()),
         |(res, zeta_i_n), chunk| {
             let res = res + zeta_i_n * chunk;
