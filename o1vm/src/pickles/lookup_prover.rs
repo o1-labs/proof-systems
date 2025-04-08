@@ -153,7 +153,7 @@ where
         )
         .interpolate()
     };
-    let columns_poly = columns.my_map(interpolate_col);
+    let columns_poly = columns.map(interpolate_col);
     // commiting. Note that we do not commit to the wires, it is already done.
     // TODO avoid cloning
     let columns_com = ColumnEnv {
@@ -178,7 +178,7 @@ where
     // TODO: avoid cloning
     let columns_eval_d8 = columns_poly
         .clone()
-        .my_map(|poly| poly.evaluate_over_domain_by_ref(domain.d8));
+        .map(|poly| poly.evaluate_over_domain_by_ref(domain.d8));
     // abosrbing commit
     // TODO don't absorb the wires which already have been
     // TODO avoid cloning
@@ -251,7 +251,7 @@ where
         |x,
          cols_poly: ColumnEnv<DensePolynomial<_>>,
          t_chunks: o1_utils::chunked_polynomial::ChunkedPolynomial<_>| AllColumns {
-            cols: cols_poly.my_map(|poly| poly.evaluate(&x)),
+            cols: cols_poly.map(|poly| poly.evaluate(&x)),
             t_shares: t_chunks
                 .polys
                 .into_iter()

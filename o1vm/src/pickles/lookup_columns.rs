@@ -52,37 +52,18 @@ impl<X> IntoIterator for ColumnEnv<X> {
             .chain(self.dynamicselectors)
     }
 }
-// TODO: I could not find a more elegant solution to map over this struct
+
 impl<X> ColumnEnv<X> {
-    pub fn my_map<Y, F>(self, f: F) -> ColumnEnv<Y>
+    pub fn map<Y, F>(self, mut f: F) -> ColumnEnv<Y>
     where
         F: FnMut(X) -> Y,
         Self: Sized,
     {
-        let nb_wires = self.wires.len();
-        let nb_inverses = self.inverses.len();
-        let nb_sel = self.dynamicselectors.len();
-        let mut iterator = self.into_iter().map(f);
-        let mut new_wires = vec![];
-        let mut new_inverses = vec![];
-        let mut new_sel = vec![];
-
-        for _ in 0..nb_wires {
-            new_wires.push(iterator.next().unwrap());
-        }
-        for _ in 0..nb_inverses {
-            new_inverses.push(iterator.next().unwrap());
-        }
-        let new_acc = iterator.next().unwrap();
-        for _ in 0..nb_sel {
-            new_sel.push(iterator.next().unwrap());
-        }
-        assert!(iterator.next().is_none());
         ColumnEnv {
-            wires: new_wires,
-            inverses: new_inverses,
-            acc: new_acc,
-            dynamicselectors: new_sel,
+            wires: self.wires.into_iter().map(&mut f).collect(),
+            inverses: self.inverses.into_iter().map(&mut f).collect(),
+            acc: std::iter::once(self.acc).map(&mut f).next().unwrap(),
+            dynamicselectors: self.dynamicselectors.into_iter().map(&mut f).collect(),
         }
     }
 }
