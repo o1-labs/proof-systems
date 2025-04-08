@@ -3,7 +3,7 @@ use ark_ff::{Field, One, PrimeField, Zero};
 use kimchi::{
     circuits::{
         domains::EvaluationDomains,
-        expr::{Constants, PolishToken},
+        expr::{Constants, Expr, PolishToken},
     },
     curve::KimchiCurve,
     groupmap::GroupMap,
@@ -25,7 +25,7 @@ pub fn lookup_verify<
     // input dependant of main proto
     beta_challenge: G::ScalarField,
     gamma_challenge: G::ScalarField,
-    constraint: ELookup<G::ScalarField>,
+    constraints: Vec<ELookup<G::ScalarField>>,
     mut fq_sponge: EFqSponge,
     // fixed input
     // TODO: we don't need the whole domain
@@ -37,6 +37,8 @@ pub fn lookup_verify<
 where
     G::BaseField: PrimeField,
 {
+    let constraint = Expr::combine_constraints(0..(constraints.len() as u32), constraints.to_vec());
+
     let Proof {
         commitments,
         evaluations,

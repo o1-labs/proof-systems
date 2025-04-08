@@ -382,7 +382,7 @@ fn lookup_prove_and_verify(
     };
     let (acc_final, state) =
         lookup_prove_fst_part::<Vesta>(&lookup_proof_input, acc_init, domain_fp);
-    let constraint = mips_constraints::get_lookup_constraint(
+    let constraints = mips_constraints::get_lookup_constraint(
         &domain_fp.d1,
         instruction_set,
         acc_init,
@@ -398,7 +398,7 @@ fn lookup_prove_and_verify(
         srs,
         domain_fp,
         sponge,
-        &constraint,
+        &constraints,
         rng,
         cm_wires,
         state,
@@ -415,7 +415,7 @@ fn lookup_prove_and_verify(
     >(
         beta_challenge,
         gamma_challenge,
-        constraint,
+        constraints,
         sponge_verifier,
         domain_fp,
         srs,

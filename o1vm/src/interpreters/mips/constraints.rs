@@ -830,7 +830,7 @@ pub fn get_lookup_constraint<Fp: FftField>(
     instruction_set: HashSet<Instruction>,
     acc_init: Fp,
     acc_final: Fp,
-) -> ELookup<Fp> {
+) -> Vec<ELookup<Fp>> {
     // Gater the inverses constraint, and compute the max nb of inverses cols.
     let wire_idx: &mut usize = &mut 0;
     let inverse_idx: &mut usize = &mut 0;
@@ -886,10 +886,8 @@ pub fn get_lookup_constraint<Fp: FftField>(
         offset: (domain.size - 1).try_into().unwrap(),
     }))) * (lookup_variable(LookupColumns::Acc) - (Literal(acc_final).into()));
 
-    // Combine with alpha using Horner
-    let alpha: ELookup<Fp> = LookupChallengeTerm::Alpha.into();
-    constraints.clone().into_iter().fold(
-        acc_recursion + alpha.clone() * (acc_init + alpha.clone() * acc_final),
-        |acc, cst| alpha.clone() * acc + cst,
-    )
+    constraints.push(acc_recursion);
+    constraints.push(acc_init);
+    constraints.push(acc_final);
+    constraints
 }
