@@ -111,6 +111,27 @@
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! The Marlin_plonk_stubs crate exports some functionalities
 //! and structures from the following the Rust crates to OCaml:
 //!
@@ -156,13 +177,27 @@
     Box::into_raw(std::boxed::Box::new(<span class="number">0</span>))
 }
 
-<span class="attr">#[wasm_bindgen]
-</span><span class="kw">pub fn </span>free_u32_ptr(ptr: <span class="kw-2">*mut </span>u32) {
+<span class="doccomment">/// Free a pointer. This method is exported in the WebAssembly module to be used
+/// on the JavaScript side, see `web-backend.js`.
+///
+/// # Safety
+///
+/// See
+/// `&lt;https://rust-lang.github.io/rust-clippy/master/index.html#not_unsafe_ptr_arg_deref&gt;`
+</span><span class="attr">#[wasm_bindgen]
+</span><span class="kw">pub unsafe fn </span>free_u32_ptr(ptr: <span class="kw-2">*mut </span>u32) {
     <span class="kw">let </span>_drop_me = <span class="kw">unsafe </span>{ std::boxed::Box::from_raw(ptr) };
 }
 
-<span class="attr">#[wasm_bindgen]
-</span><span class="kw">pub fn </span>set_u32_ptr(ptr: <span class="kw-2">*mut </span>u32, arg: u32) {
+<span class="doccomment">/// Set the value of a pointer. This method is exported in the WebAssembly
+/// module to be used on the JavaScript side, see `web-backend.js`.
+///
+/// # Safety
+///
+/// See
+/// `&lt;https://rust-lang.github.io/rust-clippy/master/index.html#not_unsafe_ptr_arg_deref&gt;`
+</span><span class="attr">#[wasm_bindgen]
+</span><span class="kw">pub unsafe fn </span>set_u32_ptr(ptr: <span class="kw-2">*mut </span>u32, arg: u32) {
     <span class="comment">// The rust docs explicitly forbid using this for cross-thread syncronization. Oh well, we
     // don&#39;t have anything better. As long as it works in practice, we haven&#39;t upset the undefined
     // behavior dragons.
@@ -171,9 +206,16 @@
     }
 }
 
-<span class="attr">#[allow(unreachable_code)]
+<span class="doccomment">/// This method is exported in the WebAssembly to be used on the JavaScript
+/// side, see `web-backend.js`.
+///
+/// # Safety
+///
+/// See
+/// `&lt;https://rust-lang.github.io/rust-clippy/master/index.html#not_unsafe_ptr_arg_deref&gt;`
+</span><span class="attr">#[allow(unreachable_code)]
 #[wasm_bindgen]
-</span><span class="kw">pub fn </span>wait_until_non_zero(ptr: <span class="kw-2">*const </span>u32) -&gt; u32 {
+</span><span class="kw">pub unsafe fn </span>wait_until_non_zero(ptr: <span class="kw-2">*const </span>u32) -&gt; u32 {
     <span class="comment">// The rust docs explicitly forbid using this for cross-thread syncronization. Oh well, we
     // don&#39;t have anything better. As long as it works in practice, we haven&#39;t upset the undefined
     // behavior dragons.

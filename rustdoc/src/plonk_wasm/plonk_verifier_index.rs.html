@@ -1070,6 +1070,7 @@
 <a href="#1070" id="1070">1070</a>
 <a href="#1071" id="1071">1071</a>
 <a href="#1072" id="1072">1072</a>
+<a href="#1073" id="1073">1073</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::wasm_vector::WasmVector;
 <span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::One;
@@ -1659,6 +1660,7 @@
             <span class="attr">#[wasm_bindgen]
             </span><span class="kw">impl </span>[&lt;Wasm <span class="macro-nonterminal">$field_name</span>:camel PlonkVerifierIndex&gt;] {
                 <span class="attr">#[wasm_bindgen(constructor)]
+                #[allow(clippy::too_many_arguments)]
                 </span><span class="kw">pub fn </span>new(
                     domain: <span class="kw-2">&amp;</span>WasmDomain,
                     max_poly_size: i32,
@@ -1714,7 +1716,7 @@
                 }
             }
 
-            <span class="kw">pub fn </span>to_wasm&lt;<span class="lifetime">&#39;a</span>&gt;(
+            <span class="kw">pub fn </span>to_wasm(
                 srs: <span class="kw-2">&amp;</span>Arc&lt;SRS&lt;<span class="macro-nonterminal">$G</span>&gt;&gt;,
                 vi: DlogVerifierIndex&lt;<span class="macro-nonterminal">$G</span>, OpeningProof&lt;<span class="macro-nonterminal">$G</span>&gt;&gt;,
             ) -&gt; WasmPlonkVerifierIndex {

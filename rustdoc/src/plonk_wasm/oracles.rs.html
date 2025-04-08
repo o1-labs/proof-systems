@@ -321,11 +321,6 @@
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::{
     circuits::scalars::RandomOracles, proof::ProverProof,
     verifier_index::VerifierIndex <span class="kw">as </span>DlogVerifierIndex,
@@ -443,28 +438,23 @@
                 }
             }
 
-            <span class="kw">impl </span>Into&lt;RandomOracles&lt;<span class="macro-nonterminal">$F</span>&gt;&gt; <span class="kw">for </span>WasmRandomOracles
+            <span class="kw">impl </span>From&lt;WasmRandomOracles&gt; <span class="kw">for </span>RandomOracles&lt;<span class="macro-nonterminal">$F</span>&gt;
             {
-                <span class="kw">fn </span>into(<span class="self">self</span>) -&gt; RandomOracles&lt;<span class="macro-nonterminal">$F</span>&gt; {
-                    <span class="kw">let </span>joint_combiner =
-                        <span class="kw">match </span>(<span class="self">self</span>.joint_combiner_chal, <span class="self">self</span>.joint_combiner) {
-                            (<span class="prelude-val">Some</span>(joint_combiner_chal), <span class="prelude-val">Some</span>(joint_combiner)) =&gt; {
-                                <span class="prelude-val">Some</span>((ScalarChallenge(joint_combiner_chal.into()), joint_combiner.into()))
-                            },
-                            <span class="kw">_ </span>=&gt; <span class="prelude-val">None
-                        </span>};
-                    RandomOracles {
-                        joint_combiner,
-                        beta: <span class="self">self</span>.beta.into(),
-                        gamma: <span class="self">self</span>.gamma.into(),
-                        alpha_chal: ScalarChallenge(<span class="self">self</span>.alpha_chal.into()),
-                        alpha: <span class="self">self</span>.alpha.into(),
-                        zeta: <span class="self">self</span>.zeta.into(),
-                        v: <span class="self">self</span>.v.into(),
-                        u: <span class="self">self</span>.u.into(),
-                        zeta_chal: ScalarChallenge(<span class="self">self</span>.zeta_chal.into()),
-                        v_chal: ScalarChallenge(<span class="self">self</span>.v_chal.into()),
-                        u_chal: ScalarChallenge(<span class="self">self</span>.u_chal.into()),
+                <span class="kw">fn </span>from(ro: WasmRandomOracles) -&gt; <span class="self">Self </span>{
+                    <span class="self">Self </span>{
+                        joint_combiner: ro.joint_combiner_chal.and_then(|x| {
+                            ro.joint_combiner.map(|y| (ScalarChallenge(x.into()), y.into()))
+                        }),
+                        beta: ro.beta.into(),
+                        gamma: ro.gamma.into(),
+                        alpha_chal: ScalarChallenge(ro.alpha_chal.into()),
+                        alpha: ro.alpha.into(),
+                        zeta: ro.zeta.into(),
+                        v: ro.v.into(),
+                        u: ro.u.into(),
+                        zeta_chal: ScalarChallenge(ro.zeta_chal.into()),
+                        v_chal: ScalarChallenge(ro.v_chal.into()),
+                        u_chal: ScalarChallenge(ro.u_chal.into()),
                     }
                 }
             }
