@@ -7,7 +7,6 @@
 //!   a math library that Marlin builds on top of.
 //!
 
-use base64::Engine as _;
 use wasm_bindgen::prelude::*;
 
 mod wasm_flat_vector;
@@ -136,5 +135,6 @@ pub mod wasm_ocaml_serde;
 
 #[inline(never)]
 fn encode_base64<T: AsRef<[u8]>>(input: T) -> String {
+    use base64::Engine as _;
     base64::engine::general_purpose::STANDARD.encode(input)
 }
