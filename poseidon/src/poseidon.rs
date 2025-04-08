@@ -51,8 +51,8 @@ pub enum SpongeState {
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
 pub struct ArithmeticSpongeParams<F: Field + CanonicalSerialize + CanonicalDeserialize> {
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub round_constants: Vec<Vec<F>>,
+    #[serde_as(as = "Vec<[o1_utils::serialization::SerdeAs; 3]>")]
+    pub round_constants: Vec<[F; 3]>,
     #[serde_as(as = "[[o1_utils::serialization::SerdeAs; 3]; 3]")]
     pub mds: [[F; 3]; 3],
 }
