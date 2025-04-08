@@ -587,7 +587,6 @@ macro_rules! impl_verification_key {
             #[wasm_bindgen]
             impl [<Wasm $field_name:camel PlonkVerifierIndex>] {
                 #[wasm_bindgen(constructor)]
-                #[allow(clippy::too_many_arguments)]
                 pub fn new(
                     domain: &WasmDomain,
                     max_poly_size: i32,
@@ -643,7 +642,7 @@ macro_rules! impl_verification_key {
                 }
             }
 
-            pub fn to_wasm(
+            pub fn to_wasm<'a>(
                 srs: &Arc<SRS<$G>>,
                 vi: DlogVerifierIndex<$G, OpeningProof<$G>>,
             ) -> WasmPlonkVerifierIndex {
