@@ -78,7 +78,7 @@ pub struct LookupProofInput<F: PrimeField> {
 #[derive(Clone)]
 pub struct AllColumns<X> {
     pub cols: ColumnEnv<X>,
-    pub t_shares: Vec<X>,
+    pub quotient_chunks: Vec<X>,
 }
 
 impl<X> IntoIterator for AllColumns<X> {
@@ -86,7 +86,7 @@ impl<X> IntoIterator for AllColumns<X> {
     type IntoIter =
         Chain<<ColumnEnv<X> as IntoIterator>::IntoIter, <Vec<X> as IntoIterator>::IntoIter>;
     fn into_iter(self) -> Self::IntoIter {
-        self.cols.into_iter().chain(self.t_shares)
+        self.cols.into_iter().chain(self.quotient_chunks)
     }
 }
 
