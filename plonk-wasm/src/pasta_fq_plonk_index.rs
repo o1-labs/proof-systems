@@ -1,9 +1,9 @@
 use ark_poly::EvaluationDomain;
-use base64::{engine::general_purpose, Engine};
 use kimchi::circuits::lookup::runtime_tables::RuntimeTableCfg;
 
 use crate::{
     arkworks::WasmPastaFq,
+    encode_base64,
     gate_vector::fq::WasmGateVector,
     srs::fq::WasmFqSrs as WasmSrs,
     wasm_flat_vector::WasmFlatVector,
@@ -270,5 +270,5 @@ pub fn caml_pasta_fq_plonk_index_write(
 #[wasm_bindgen]
 pub fn caml_pasta_fq_plonk_index_serialize(index: &WasmPastaFqPlonkIndex) -> String {
     let serialized = rmp_serde::to_vec(&index.0).unwrap();
-    general_purpose::STANDARD.encode(serialized)
+    encode_base64(&serialized)
 }
