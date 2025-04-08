@@ -270,8 +270,8 @@ pub fn caml_pasta_fp_plonk_index_write(
 
 #[wasm_bindgen]
 pub fn caml_pasta_fp_plonk_index_serialize(index: &WasmPastaFpPlonkIndex) -> String {
-    let serialized = rmp_serde::to_vec(&index.0).unwrap();
-    encode_base64(&serialized)
+    let serialized: Vec<u8> = rmp_serde::to_vec(&index.0).unwrap();
+    encode_base64(serialized)
 }
 
 // helpers
