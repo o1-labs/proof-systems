@@ -134,6 +134,7 @@ pub mod circuit;
 
 pub mod wasm_ocaml_serde;
 
+#[inline(never)]
 fn encode_base64(input: &[u8]) -> String {
     base64::engine::general_purpose::STANDARD.encode(input)
 }
