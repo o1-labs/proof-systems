@@ -1,19 +1,21 @@
+use super::lookup_columns::{ELookup, LookupChallenges, LookupEvalEnvironment};
+use crate::pickles::lookup_columns::*;
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain};
 use kimchi::{
-    circuits::{domains::EvaluationDomains, expr::Constants},
+    circuits::{
+        domains::EvaluationDomains,
+        expr::{l0_1, Constants},
+    },
     curve::KimchiCurve,
+    groupmap::GroupMap,
     plonk_sponge::FrSponge,
 };
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{commitment::absorb_commitment, ipa::SRS, OpenProof, SRS as _};
 use std::ops::{AddAssign, Mul};
-//TODO Parralelize
-//use rayon::prelude::*;
-use super::lookup_columns::{ELookup, LookupChallenges, LookupEvalEnvironment};
-use crate::pickles::lookup_columns::*;
-use kimchi::{circuits::expr::l0_1, groupmap::GroupMap};
+
 use poly_commitment::{ipa::OpeningProof, utils::DensePolynomialOrEvaluations, PolyComm};
 use rand::{CryptoRng, RngCore};
 
@@ -31,6 +33,7 @@ pub struct LookupProverState<F: PrimeField> {
 /// It is split in two part, one computes the inverses and accumulator.
 /// It outputs the final accumulator and a state for the second part.
 /// It is needed as we use the final accumulator for the constraint.
+/// TODO : parralelize
 pub fn lookup_prove_fst_part<G: KimchiCurve>(
     input: &LookupProofInput<G::ScalarField>,
     acc_init: G::ScalarField,
