@@ -8,6 +8,7 @@ use kimchi::{
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{commitment::absorb_commitment, ipa::SRS, OpenProof, SRS as _};
+use std::ops::{AddAssign, Mul};
 //TODO Parralelize
 //use rayon::prelude::*;
 use super::lookup_columns::{ELookup, LookupChallenges, LookupEvalEnvironment};
@@ -114,7 +115,7 @@ pub fn lookup_prove_snd_part<
     srs: &SRS<G>,
     domain: EvaluationDomains<G::ScalarField>,
     mut fq_sponge: EFqSponge,
-    constraint: &ELookup<G::ScalarField>,
+    constraints: &[ELookup<G::ScalarField>],
     rng: &mut RNG,
     // some commitments are already computed
     // we give them as auxiliary input
@@ -203,10 +204,19 @@ where
 
         l0_1: l0_1(domain.d1),
     };
-    let t_numerator_evaluation: Evaluations<
-        G::ScalarField,
-        Radix2EvaluationDomain<G::ScalarField>,
-    > = constraint.evaluations_d8(&eval_env);
+    let (t_numerator_evaluation, _) = constraints.iter().fold(
+        (
+            Evaluations::from_vec_and_domain(
+                vec![G::ScalarField::zero(); domain.d8.size as usize],
+                domain.d8,
+            ),
+            G::ScalarField::one(),
+        ),
+        |(mut acc, alpha_pow), cst| {
+            acc.add_assign(&cst.evaluations_d8(&eval_env).mul(alpha_pow));
+            (acc, alpha_pow * alpha)
+        },
+    );
     let t_numerator_poly = t_numerator_evaluation.interpolate();
     let (t, rem) = t_numerator_poly
         .divide_by_vanishing_poly(domain.d1)
