@@ -49,7 +49,7 @@ use super::interpreter::PoseidonParams;
 
 fn params() -> ArithmeticSpongeParams<Fr> {
     ArithmeticSpongeParams {
-        mds: vec![
+        mds: [
             [
                 Fr::from_str(
                     "1891083243990574305685895570197511851713934835398236923905694056149924753068",

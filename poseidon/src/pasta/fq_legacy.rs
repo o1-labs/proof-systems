@@ -9,7 +9,7 @@ use once_cell::sync::Lazy;
 
 fn params() -> ArithmeticSpongeParams<Fq> {
     ArithmeticSpongeParams {
-        mds: vec![
+        mds: [
             [
                 Fq::from_str(
                     "25059545165736646824438510995018528850798284624488112529736697979897721366717",

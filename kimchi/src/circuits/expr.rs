@@ -68,7 +68,7 @@ pub struct Constants<F: 'static> {
     /// The endomorphism coefficient
     pub endo_coefficient: F,
     /// The MDS matrix
-    pub mds: &'static Vec<[F; 3]>,
+    pub mds: &'static [[F; 3]; 3],
     /// The number of zero-knowledge rows
     pub zk_rows: u64,
 }

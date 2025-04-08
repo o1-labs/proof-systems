@@ -12,7 +12,7 @@ use core::{fmt::Debug, str::FromStr};
 /// ```
 pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticSpongeParams<Fp> {
     ArithmeticSpongeParams {
-        mds: vec![
+        mds: [
             [
                 Fp::from_str(
                     "12035446894107573964500871153637039653510326950134440362813193268448863222019",
