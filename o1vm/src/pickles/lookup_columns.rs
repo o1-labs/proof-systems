@@ -45,11 +45,17 @@ impl<X> IntoIterator for ColumnEnv<X> {
         <Vec<X> as IntoIterator>::IntoIter,
     >;
     fn into_iter(self) -> Self::IntoIter {
-        self.wires
+        let ColumnEnv {
+            wires,
+            inverses,
+            acc,
+            dynamicselectors,
+        } = self;
+        wires
             .into_iter()
-            .chain(self.inverses)
-            .chain(std::iter::once(self.acc))
-            .chain(self.dynamicselectors)
+            .chain(inverses)
+            .chain(std::iter::once(acc))
+            .chain(dynamicselectors)
     }
 }
 
@@ -59,11 +65,18 @@ impl<X> ColumnEnv<X> {
         F: FnMut(X) -> Y,
         Self: Sized,
     {
+        let ColumnEnv {
+            wires,
+            inverses,
+            acc,
+            dynamicselectors,
+        } = self;
+
         ColumnEnv {
-            wires: self.wires.into_iter().map(&mut f).collect(),
-            inverses: self.inverses.into_iter().map(&mut f).collect(),
-            acc: std::iter::once(self.acc).map(&mut f).next().unwrap(),
-            dynamicselectors: self.dynamicselectors.into_iter().map(&mut f).collect(),
+            wires: wires.into_iter().map(&mut f).collect(),
+            inverses: inverses.into_iter().map(&mut f).collect(),
+            acc: std::iter::once(acc).map(&mut f).next().unwrap(),
+            dynamicselectors: dynamicselectors.into_iter().map(&mut f).collect(),
         }
     }
 }
@@ -86,7 +99,11 @@ impl<X> IntoIterator for AllColumns<X> {
     type IntoIter =
         Chain<<ColumnEnv<X> as IntoIterator>::IntoIter, <Vec<X> as IntoIterator>::IntoIter>;
     fn into_iter(self) -> Self::IntoIter {
-        self.cols.into_iter().chain(self.quotient_chunks)
+        let AllColumns {
+            cols,
+            quotient_chunks,
+        } = self;
+        cols.into_iter().chain(quotient_chunks)
     }
 }
 
@@ -101,7 +118,8 @@ impl<F: PrimeField> IntoIterator for Eval<F> {
     type IntoIter =
         Chain<<AllColumns<F> as IntoIterator>::IntoIter, <AllColumns<F> as IntoIterator>::IntoIter>;
     fn into_iter(self) -> Self::IntoIter {
-        self.zeta.into_iter().chain(self.zeta_omega)
+        let Eval { zeta, zeta_omega } = self;
+        zeta.into_iter().chain(zeta_omega)
     }
 }
 
@@ -131,10 +149,11 @@ impl<F: Field> Index<LookupChallengeTerm> for LookupChallenges<F> {
     type Output = F;
 
     fn index(&self, term: LookupChallengeTerm) -> &Self::Output {
+        let LookupChallenges { alpha, beta, gamma } = self;
         match term {
-            LookupChallengeTerm::Alpha => &self.alpha,
-            LookupChallengeTerm::Beta => &self.beta,
-            LookupChallengeTerm::Gamma => &self.gamma,
+            LookupChallengeTerm::Alpha => alpha,
+            LookupChallengeTerm::Beta => beta,
+            LookupChallengeTerm::Gamma => gamma,
         }
     }
 }
@@ -174,11 +193,24 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F, LookupChallengeTerm, LookupChalle
 
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>> {
         use LookupColumns::*;
+        let LookupEvalEnvironment {
+            columns:
+                ColumnEnv {
+                    wires,
+                    inverses,
+                    acc,
+                    dynamicselectors,
+                },
+            challenges: _,
+            constants: _,
+            domain: _,
+            l0_1: _,
+        } = self;
         match col {
-            Wires(i) => Some(&self.columns.wires[*i]),
-            Inverses(i) => Some(&self.columns.inverses[*i]),
-            Acc => Some(&self.columns.acc),
-            DynamicSelectors(i) => Some(&self.columns.dynamicselectors[*i]),
+            Wires(i) => Some(&wires[*i]),
+            Inverses(i) => Some(&inverses[*i]),
+            Acc => Some(acc),
+            DynamicSelectors(i) => Some(&dynamicselectors[*i]),
         }
     }
 
