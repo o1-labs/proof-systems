@@ -1200,6 +1200,7 @@ fn value<
     row: usize,
     final_domain: Domain,
 ) -> Option<F> {
+    panic!("oops!");
     if row >= env.get_domain(final_domain).size.try_into().unwrap() {
         None
     } else {
