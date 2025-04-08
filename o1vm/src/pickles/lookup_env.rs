@@ -31,7 +31,8 @@ impl<G: KimchiCurve> LookupEnvironment<G> {
     /// Fills the multiplicities with zeroes
     pub fn new(srs: &SRS<G>, domain: EvaluationDomains<G::ScalarField>) -> Self {
         let tables: Vec<LookupTable<G::ScalarField>> =
-            LookupTable::<G::ScalarField>::get_all_tables_transposed();
+            LookupTable::<G::ScalarField>::get_all_tables_transposed(domain.d1.size);
+
         let eval_col = |evals: Vec<G::ScalarField>| {
             Evaluations::<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
                 .interpolate()
