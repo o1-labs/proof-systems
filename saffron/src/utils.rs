@@ -17,6 +17,10 @@ pub fn decode_into<Fp: PrimeField>(buffer: &mut [u8], x: Fp) {
     buffer.copy_from_slice(&bytes);
 }
 
+pub fn decode_into_vec<Fp: PrimeField>(x: Fp) -> Vec<u8> {
+    x.into_bigint().to_bytes_be()
+}
+
 pub fn encode_as_field_elements<F: PrimeField>(bytes: &[u8]) -> Vec<F> {
     let n = (F::MODULUS_BIT_SIZE / 8) as usize;
     bytes
@@ -29,18 +33,14 @@ pub fn encode_as_field_elements<F: PrimeField>(bytes: &[u8]) -> Vec<F> {
         .collect::<Vec<_>>()
 }
 
-pub fn encode_for_domain<F: PrimeField, D: EvaluationDomain<F>>(
-    domain: &D,
-    bytes: &[u8],
-) -> Vec<Vec<F>> {
-    let domain_size = domain.size();
+pub fn encode_for_domain<F: PrimeField>(domain_size: usize, bytes: &[u8]) -> Vec<Vec<F>> {
     let xs = encode_as_field_elements(bytes);
     xs.chunks(domain_size)
         .map(|chunk| {
-            if chunk.len() < domain.size() {
-                let mut padded_chunk = Vec::with_capacity(domain.size());
+            if chunk.len() < domain_size {
+                let mut padded_chunk = Vec::with_capacity(domain_size);
                 padded_chunk.extend_from_slice(chunk);
-                padded_chunk.resize(domain.size(), F::zero());
+                padded_chunk.resize(domain_size, F::zero());
                 padded_chunk
             } else {
                 chunk.to_vec()
@@ -337,7 +337,7 @@ mod tests {
         #[test]
         fn test_round_trip_encoding_to_field_elems(UserData(xs) in UserData::arbitrary()
     )
-          { let chunked = encode_for_domain(&*DOMAIN, &xs);
+          { let chunked = encode_for_domain::<Fp>(DOMAIN.size(), &xs);
             let elems = chunked
               .into_iter()
               .flatten()
@@ -361,7 +361,7 @@ mod tests {
         #[test]
         fn test_padded_byte_length(UserData(xs) in UserData::arbitrary()
     )
-          { let chunked = encode_for_domain(&*DOMAIN, &xs);
+          { let chunked = encode_for_domain::<Fp>(DOMAIN.size(), &xs);
             let n = chunked.into_iter().flatten().count();
             prop_assert_eq!(n, padded_field_length(&xs));
           }
@@ -381,7 +381,7 @@ mod tests {
                     (Just(xs), queries_strategy)
                 })
         ) {
-            let chunked = encode_for_domain(&*DOMAIN, &xs);
+            let chunked = encode_for_domain(DOMAIN.size(), &xs);
             for query in queries {
                 let expected = &xs[query.start..(query.start+query.len)];
                 let field_query: QueryField<Fp> = query.into_query_field(DOMAIN.size(), chunked.len()).unwrap();
@@ -410,7 +410,7 @@ mod tests {
                 })
         ) {
             debug!("check that first query is valid");
-            let chunked = encode_for_domain(&*DOMAIN, &xs);
+            let chunked = encode_for_domain::<Fp>(DOMAIN.size(), &xs);
             let n_polys = chunked.len();
             let query_field = query.into_query_field::<Fp>(DOMAIN.size(), n_polys);
             prop_assert!(query_field.is_ok());
@@ -438,7 +438,7 @@ mod tests {
                     (Just(xs), query_strategy)
                 })
         ) {
-            let chunked = encode_for_domain(&*DOMAIN, &xs);
+            let chunked = encode_for_domain(DOMAIN.size(), &xs);
             let n_polys = chunked.len();
             let field_query: QueryField<Fp> = query.into_query_field(DOMAIN.size(), n_polys).unwrap();
             let got_answer = field_query.apply(&chunked);

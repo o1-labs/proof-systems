@@ -1,15 +1,20 @@
 use crate::utils::encode_for_domain;
 use ark_ff::PrimeField;
-use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
+use ark_poly::EvaluationDomain;
 use rayon::prelude::*;
 use thiserror::Error;
 use tracing::instrument;
 
-// sparse representation, keeping only the non-zero differences
+/// Diff request pointing to a single commitment.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Diff<F: PrimeField> {
-    pub chunks: Vec<Vec<(usize, F)>>,
-    pub new_byte_len: usize,
+    /// Which commitment within a group of commitments representing
+    /// the data is the diff for.
+    pub region: u64,
+    /// A list of unique addresses, each ∈ [0, SRS_SIZE]
+    pub addresses: Vec<u64>,
+    /// A list of new values, each corresponding to address in `addresses`
+    pub new_values: Vec<F>,
 }
 
 #[derive(Debug, Error, Clone, PartialEq)]
@@ -23,13 +28,53 @@ pub enum DiffError {
 
 impl<F: PrimeField> Diff<F> {
     #[instrument(skip_all, level = "debug")]
-    pub fn create<D: EvaluationDomain<F>>(
+    pub fn create_from_field_elements(
+        old: &Vec<Vec<F>>,
+        new: &Vec<Vec<F>>,
+    ) -> Result<Vec<Diff<F>>, DiffError> {
+        assert!(
+            old.len() == new.len(),
+            "Input 'old' and 'new' must have the same number of chunks"
+        );
+
+        let diffs: Vec<Diff<_>> = old
+            .par_iter()
+            .zip(new)
+            .enumerate()
+            .filter_map(|(region, (o, n))| {
+                let mut addresses: Vec<u64> = vec![];
+                let mut new_values: Vec<F> = vec![];
+                for (index, (o_elem, n_elem)) in o.iter().zip(n.iter()).enumerate() {
+                    if o_elem != n_elem {
+                        addresses.push(index as u64);
+                        new_values.push(*n_elem);
+                    }
+                }
+
+                if !addresses.is_empty() {
+                    Some(Diff {
+                        region: region as u64,
+                        addresses,
+                        new_values,
+                    })
+                } else {
+                    // do not record a diff with empty changes
+                    None
+                }
+            })
+            .collect();
+
+        Ok(diffs)
+    }
+
+    #[instrument(skip_all, level = "debug")]
+    pub fn create_from_bytes<D: EvaluationDomain<F>>(
         domain: &D,
         old: &[u8],
         new: &[u8],
-    ) -> Result<Diff<F>, DiffError> {
-        let old_elems: Vec<Vec<F>> = encode_for_domain(domain, old);
-        let mut new_elems: Vec<Vec<F>> = encode_for_domain(domain, new);
+    ) -> Result<Vec<Diff<F>>, DiffError> {
+        let old_elems: Vec<Vec<F>> = encode_for_domain(domain.size(), old);
+        let mut new_elems: Vec<Vec<F>> = encode_for_domain(domain.size(), new);
         if old_elems.len() < new_elems.len() {
             return Err(DiffError::CapacityMismatch {
                 max_number_chunks: old_elems.len(),
@@ -40,38 +85,8 @@ impl<F: PrimeField> Diff<F> {
             let padding = vec![F::zero(); domain.size()];
             new_elems.resize(old_elems.len(), padding);
         }
-        Ok(Diff {
-            new_byte_len: new.len(),
-            chunks: new_elems
-                .par_iter()
-                .zip(old_elems)
-                .map(|(n, o)| {
-                    n.iter()
-                        .zip(o)
-                        .enumerate()
-                        .map(|(index, (a, b))| (index, *a - b))
-                        .filter(|(_, x)| !x.is_zero())
-                        .collect()
-                })
-                .collect(),
-        })
-    }
 
-    #[instrument(skip_all, level = "debug")]
-    pub fn as_evaluations(
-        &self,
-        domain: &Radix2EvaluationDomain<F>,
-    ) -> Vec<Evaluations<F, Radix2EvaluationDomain<F>>> {
-        self.chunks
-            .par_iter()
-            .map(|diff| {
-                let mut evals = vec![F::zero(); domain.size()];
-                diff.iter().for_each(|(j, val)| {
-                    evals[*j] = *val;
-                });
-                Evaluations::from_vec_and_domain(evals, *domain)
-            })
-            .collect()
+        Self::create_from_field_elements(&old_elems, &new_elems)
     }
 }
 
@@ -116,16 +131,11 @@ pub mod tests {
             .boxed()
     }
 
-    fn add(mut evals: Vec<Vec<Fp>>, diff: &Diff<Fp>) -> Vec<Vec<Fp>> {
-        evals
-            .par_iter_mut()
-            .zip(diff.chunks.par_iter())
-            .for_each(|(eval_chunk, diff_chunk)| {
-                diff_chunk.iter().for_each(|(j, val)| {
-                    eval_chunk[*j] += val;
-                });
-            });
-        evals.to_vec()
+    // Adds diff to data
+    fn add_diff_to_data(data: &mut [Vec<Fp>], diff: &Diff<Fp>) {
+        for (addr, new_value) in diff.addresses.iter().zip(diff.new_values.iter()) {
+            data[diff.region as usize][*addr as usize] = *new_value;
+        }
     }
 
     proptest! {
@@ -135,16 +145,23 @@ pub mod tests {
         fn test_allow_legal_diff((UserData(xs), UserData(ys)) in
             (UserData::arbitrary().prop_flat_map(random_diff))
         ) {
-            let diff = Diff::<Fp>::create(&*DOMAIN, &xs, &ys);
-            prop_assert!(diff.is_ok());
-            let xs_elems = encode_for_domain(&*DOMAIN, &xs);
+            let diffs = Diff::<Fp>::create_from_bytes(&*DOMAIN, &xs, &ys);
+            prop_assert!(diffs.is_ok());
+            let diffs = diffs.unwrap();
+
+            let xs_elems = encode_for_domain(DOMAIN.size(), &xs);
             let ys_elems = {
                 let pad = vec![Fp::zero(); DOMAIN.size()];
-                let mut elems = encode_for_domain(&*DOMAIN, &ys);
+                let mut elems = encode_for_domain(DOMAIN.size(), &ys);
                 elems.resize(xs_elems.len(), pad);
                 elems
             };
-            let result = add(xs_elems.clone(), &diff.unwrap());
+            assert!(xs_elems.len() == ys_elems.len());
+
+            let mut result = xs_elems.clone();
+            for diff in diffs.into_iter() {
+                add_diff_to_data(&mut result, &diff);
+            }
             prop_assert_eq!(result, ys_elems);
         }
     }
@@ -176,7 +193,7 @@ pub mod tests {
         ) {
             let mut ys = randomize_data(threshold, &data);
             ys.append(&mut extra);
-            let diff = Diff::<Fp>::create(&*DOMAIN, &data, &ys);
+            let diff = Diff::<Fp>::create_from_bytes(&*DOMAIN, &data, &ys);
             prop_assert!(diff.is_err());
         }
     }
