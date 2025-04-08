@@ -233,7 +233,7 @@ where
     // TODO avoid cloning
     let commitments = AllColumns {
         cols: columns_com,
-        t_shares: t_commitment.chunks.clone(),
+        quotient_chunks: t_commitment.chunks.clone(),
     };
     // Absorb t
     absorb_commitment(&mut fq_sponge, &t_commitment);
@@ -252,7 +252,7 @@ where
          cols_poly: ColumnEnv<DensePolynomial<_>>,
          t_chunks: o1_utils::chunked_polynomial::ChunkedPolynomial<_>| AllColumns {
             cols: cols_poly.map(|poly| poly.evaluate(&x)),
-            t_shares: t_chunks
+            quotient_chunks: t_chunks
                 .polys
                 .into_iter()
                 .map(|poly| poly.evaluate(&x))
@@ -282,7 +282,7 @@ where
     // prepare polynomials for IPA proof
     let all_columns_poly = AllColumns {
         cols: columns_poly,
-        t_shares: t_chunks.polys,
+        quotient_chunks: t_chunks.polys,
     };
     let polynomials: Vec<_> = all_columns_poly.into_iter().collect();
     let polynomials : Vec<_> = polynomials.iter().map(|poly| {
