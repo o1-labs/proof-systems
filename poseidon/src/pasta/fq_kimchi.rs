@@ -53,7 +53,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
             ],
         ],
         round_constants: vec![
-            vec![
+            [
                 Fq::from_str(
                     "2517640872121921965298496967863234221143680281046699148760560696057284005606",
                 )
@@ -67,7 +67,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "25261619184426186938919514618416881383323154981235406731208902193655587998749",
                 )
@@ -81,7 +81,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "5035532530235542599906399941203951970682478985022204457211063504597080640029",
                 )
@@ -95,7 +95,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "10075465805557971120845970058070916255338843492716768289922460436606689369477",
                 )
@@ -109,7 +109,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "6085447467925843146276340167082679235758707259098174769103982431882228334038",
                 )
@@ -123,7 +123,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "18602266896623204184748247002001496873223612100325866696399863661914256384486",
                 )
@@ -137,7 +137,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "200996541962081036547810490655955282117589336000744078845964972887355639644",
                 )
@@ -151,7 +151,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "14159331841037307097148990917607709903712709092721125605507719995418592745663",
                 )
@@ -165,7 +165,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "28009241574980093348462093077828465154604666812509186537490618830383877236685",
                 )
@@ -179,7 +179,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "1125667389564136291825905670957082668987611691949011617627091942772124917554",
                 )
@@ -193,7 +193,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "6006604346195593001833550983798183088851044846011297061071167569148810544010",
                 )
@@ -207,7 +207,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "24121961545310887440574053281799796355427122479626872394472157625455666323022",
                 )
@@ -221,7 +221,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "8080307140515367021419180108267113624095868360927897204642243727009503935719",
                 )
@@ -235,7 +235,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "22374115023493407761095751712373350824513305398485824175669182288521610150311",
                 )
@@ -249,7 +249,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "20688285497159372157224857370703211924056803904697620218749985029000049442943",
                 )
@@ -263,7 +263,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "4621792784192688819920303666439776744566536330750316034321950771579978771021",
                 )
@@ -277,7 +277,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "17453637937712580666297652202332273322112052411250919589546137386514183913993",
                 )
@@ -291,7 +291,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "14566849926060034944494603512439278530775668595134329897253012222562109882008",
                 )
@@ -305,7 +305,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "28098375311516838082882166381119795701982164671360574802728073046992978741339",
                 )
@@ -319,7 +319,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "24807061345703288899043018750567607387907450632666147403804744880717736838940",
                 )
@@ -333,7 +333,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "21631810094765090996871180483650934431972930909326270651252393395613356531282",
                 )
@@ -347,7 +347,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "23947619952183462858644581465494050309407721428302029371055887418452994318961",
                 )
@@ -361,7 +361,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "15262198027618900223004625662874755104828479630165814039838611768431063172994",
                 )
@@ -375,7 +375,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "9171946491887082474979985164918822959719377078284664312866368737511724712644",
                 )
@@ -389,7 +389,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "10653725154501691589476837895400001173933804810435931645261606197625601363132",
                 )
@@ -403,7 +403,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "18192562665205900830717234913238180302424621739145466326708104656354353538015",
                 )
@@ -417,7 +417,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "16525092684784199198745517563091041705366544303388462641935777835264970071331",
                 )
@@ -431,7 +431,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "11012136308159330675912474383855146192700147583104742924419195363346115019405",
                 )
@@ -445,7 +445,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "1610594053831245596683250788274018471388810111366046583216577135605955718023",
                 )
@@ -459,7 +459,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "28212510899948152845929142163236606049756849316851154583029383581129293825706",
                 )
@@ -473,7 +473,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "10150108696154604591036176090028652090941375062280095655463112192524823306544",
                 )
@@ -487,7 +487,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "14278046449956534912766622635951826857049583276976844525135170835571509013020",
                 )
@@ -501,7 +501,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "4405193089432137585625363585733613667088817369599257533888439029942466720878",
                 )
@@ -515,7 +515,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "27427423077748345654234924309581695092179468167973406115643356520054395647078",
                 )
@@ -529,7 +529,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "20126865597655889981803452476686954944892814234259869552204215672627920656068",
                 )
@@ -543,7 +543,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "2735677349719528139570614238939713941030373684882307164259316901880218894412",
                 )
@@ -557,7 +557,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "13833972862865550568348750465964022581895521701070662509936215512761615491351",
                 )
@@ -571,7 +571,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "3172037826021850467928085880043492158321918352296515787555947245998877188849",
                 )
@@ -585,7 +585,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "1509044982655321910215442389040863370827049078919961070795919190828975736187",
                 )
@@ -599,7 +599,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "11350333545134487336540967650634077894516131586708748380417042089147896079201",
                 )
@@ -613,7 +613,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "8217015496508457685301448884203977810298711070026260090660268003968421268717",
                 )
@@ -627,7 +627,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "10412735174026641936105532807659667596947675372330827493649954160029449767122",
                 )
@@ -641,7 +641,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "3244354881334856885788568976540712586633556478250043997221528214026130052269",
                 )
@@ -655,7 +655,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "4854521709622003124815206874897232905514824969466266873443062691298769768277",
                 )
@@ -669,7 +669,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "1853791709949511636795588377016980571084333441972847324139062389997895453872",
                 )
@@ -683,7 +683,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "1516294190187225192808636261678393666537186816904214776860202535671714230097",
                 )
@@ -697,7 +697,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "9749298878960864917089442034293906589697892682402070689770627645324414273893",
                 )
@@ -711,7 +711,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "7256822974971238434100017358319972368738353570339258522235883585691301791128",
                 )
@@ -725,7 +725,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "11487321478704551489982188818171823402443882145686911658585221913500937481156",
                 )
@@ -739,7 +739,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "8256258316375000496541664568891934707113720493937218096466691600593595285909",
                 )
@@ -753,7 +753,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "17567146349912867622479843655652582453162587996421871126612027345809646551661",
                 )
@@ -767,7 +767,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "6906455011502599710165862205505812668908382042647994457156780865092846286493",
                 )
@@ -781,7 +781,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "18933201791079410639949505893100361911334261775545573219434897335758052335005",
                 )
@@ -795,7 +795,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "23932570601084008621895097434501731960424360312878373523779451810455362953625",
                 )
@@ -809,7 +809,7 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fq::from_str(
                     "10821551500865029673311799086099720530496516676117927814621168667836737594374",
                 )
