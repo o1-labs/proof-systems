@@ -20,12 +20,38 @@
 //! [a0, a1, ..., a7, b0, b1, ..., b7, ...]
 //! ```
 
+extern crate alloc;
+
 use wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi, OptionFromWasmAbi, OptionIntoWasmAbi};
 
+use alloc::vec::Vec;
 use core::{convert::From, ops::Deref};
 
 #[derive(Clone, Debug)]
-pub struct WasmFlatVector<T>(Vec<T>);
+pub struct FlatVector<T>(Vec<T>);
+
+impl<T: FlatVectorElem> FlatVector<T> {
+    pub fn from_bytes(data: Vec<u8>) -> Self {
+        let mut res: Vec<T> = Vec::with_capacity(data.len() / T::FLATTENED_SIZE);
+
+        let mut buf = Vec::with_capacity(T::FLATTENED_SIZE);
+
+        for x in data.into_iter() {
+            assert!(buf.len() < T::FLATTENED_SIZE);
+
+            buf.push(x);
+
+            if buf.len() >= T::FLATTENED_SIZE {
+                res.push(T::unflatten(buf));
+                buf = Vec::with_capacity(T::FLATTENED_SIZE);
+            }
+        }
+
+        assert_eq!(buf.len(), 0);
+
+        FlatVector(res)
+    }
+}
 
 pub trait FlatVectorElem {
     const FLATTENED_SIZE: usize;
@@ -33,7 +59,7 @@ pub trait FlatVectorElem {
     fn unflatten(flat: Vec<u8>) -> Self;
 }
 
-impl<T> Deref for WasmFlatVector<T> {
+impl<T> Deref for FlatVector<T> {
     type Target = Vec<T>;
 
     fn deref(&self) -> &Self::Target {
@@ -41,25 +67,25 @@ impl<T> Deref for WasmFlatVector<T> {
     }
 }
 
-impl<T> From<Vec<T>> for WasmFlatVector<T> {
+impl<T> From<Vec<T>> for FlatVector<T> {
     fn from(x: Vec<T>) -> Self {
-        WasmFlatVector(x)
+        FlatVector(x)
     }
 }
 
-impl<T> From<WasmFlatVector<T>> for Vec<T> {
-    fn from(x: WasmFlatVector<T>) -> Self {
+impl<T> From<FlatVector<T>> for Vec<T> {
+    fn from(x: FlatVector<T>) -> Self {
         x.0
     }
 }
 
-impl<'a, T> From<&'a WasmFlatVector<T>> for &'a Vec<T> {
-    fn from(x: &'a WasmFlatVector<T>) -> Self {
+impl<'a, T> From<&'a FlatVector<T>> for &'a Vec<T> {
+    fn from(x: &'a FlatVector<T>) -> Self {
         &x.0
     }
 }
 
-impl<T> core::iter::IntoIterator for WasmFlatVector<T> {
+impl<T> core::iter::IntoIterator for FlatVector<T> {
     type Item = <Vec<T> as core::iter::IntoIterator>::Item;
     type IntoIter = <Vec<T> as core::iter::IntoIterator>::IntoIter;
     fn into_iter(self) -> Self::IntoIter {
@@ -67,7 +93,7 @@ impl<T> core::iter::IntoIterator for WasmFlatVector<T> {
     }
 }
 
-impl<'a, T> core::iter::IntoIterator for &'a WasmFlatVector<T> {
+impl<'a, T> core::iter::IntoIterator for &'a FlatVector<T> {
     type Item = <&'a Vec<T> as core::iter::IntoIterator>::Item;
     type IntoIter = <&'a Vec<T> as core::iter::IntoIterator>::IntoIter;
     fn into_iter(self) -> Self::IntoIter {
@@ -75,22 +101,22 @@ impl<'a, T> core::iter::IntoIterator for &'a WasmFlatVector<T> {
     }
 }
 
-impl<T> core::iter::FromIterator<T> for WasmFlatVector<T> {
-    fn from_iter<I>(iter: I) -> WasmFlatVector<T>
+impl<T> core::iter::FromIterator<T> for FlatVector<T> {
+    fn from_iter<I>(iter: I) -> FlatVector<T>
     where
         I: IntoIterator<Item = T>,
     {
-        WasmFlatVector(core::iter::FromIterator::from_iter(iter))
+        FlatVector(core::iter::FromIterator::from_iter(iter))
     }
 }
 
-impl<T> core::default::Default for WasmFlatVector<T> {
+impl<T> core::default::Default for FlatVector<T> {
     fn default() -> Self {
-        WasmFlatVector(core::default::Default::default())
+        FlatVector(core::default::Default::default())
     }
 }
 
-impl<T> core::iter::Extend<T> for WasmFlatVector<T> {
+impl<T> core::iter::Extend<T> for FlatVector<T> {
     fn extend<I>(&mut self, iter: I)
     where
         I: IntoIterator<Item = T>,
@@ -99,13 +125,13 @@ impl<T> core::iter::Extend<T> for WasmFlatVector<T> {
     }
 }
 
-impl<T> wasm_bindgen::describe::WasmDescribe for WasmFlatVector<T> {
+impl<T> wasm_bindgen::describe::WasmDescribe for FlatVector<T> {
     fn describe() {
         <Vec<u8> as wasm_bindgen::describe::WasmDescribe>::describe()
     }
 }
 
-impl<T: FlatVectorElem> FromWasmAbi for WasmFlatVector<T> {
+impl<T: FlatVectorElem> FromWasmAbi for FlatVector<T> {
     type Abi = <Vec<u8> as FromWasmAbi>::Abi;
     unsafe fn from_abi(js: Self::Abi) -> Self {
         let data: Vec<u8> = FromWasmAbi::from_abi(js);
@@ -121,17 +147,17 @@ impl<T: FlatVectorElem> FromWasmAbi for WasmFlatVector<T> {
             }
         }
         assert_eq!(buf.len(), 0);
-        WasmFlatVector(res)
+        FlatVector(res)
     }
 }
 
-impl<T: FlatVectorElem> OptionFromWasmAbi for WasmFlatVector<T> {
+impl<T: FlatVectorElem> OptionFromWasmAbi for FlatVector<T> {
     fn is_none(x: &Self::Abi) -> bool {
         <Vec<u8> as OptionFromWasmAbi>::is_none(x)
     }
 }
 
-impl<T: FlatVectorElem> IntoWasmAbi for WasmFlatVector<T> {
+impl<T: FlatVectorElem> IntoWasmAbi for FlatVector<T> {
     type Abi = <Vec<u8> as FromWasmAbi>::Abi;
     fn into_abi(self) -> Self::Abi {
         let mut data: Vec<u8> = Vec::with_capacity(self.0.len() * T::FLATTENED_SIZE);
@@ -142,7 +168,7 @@ impl<T: FlatVectorElem> IntoWasmAbi for WasmFlatVector<T> {
     }
 }
 
-impl<T: FlatVectorElem> OptionIntoWasmAbi for WasmFlatVector<T> {
+impl<T: FlatVectorElem> OptionIntoWasmAbi for FlatVector<T> {
     fn none() -> Self::Abi {
         <Vec<u8> as OptionIntoWasmAbi>::none()
     }

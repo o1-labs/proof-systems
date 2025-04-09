@@ -1,4 +1,4 @@
-use crate::arkworks::{pasta_fp::WasmPastaFp, pasta_fq::WasmPastaFq};
+use crate::{pasta_fp::WasmPastaFp, pasta_fq::WasmPastaFq};
 use mina_curves::pasta::{
     curves::{
         pallas::{G_GENERATOR_X as GeneratorPallasX, G_GENERATOR_Y as GeneratorPallasY},

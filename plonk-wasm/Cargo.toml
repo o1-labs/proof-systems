@@ -39,12 +39,14 @@ ark-poly = { workspace = true, features = ["parallel"] }
 ark-serialize.workspace = true
 
 # proof-systems
+arkworks.workspace = true
 groupmap.workspace = true
 kimchi = { workspace = true, features = ["wasm_types"] }
 mina-curves = { workspace = true }
 mina-poseidon = { workspace = true }
 o1-utils = { workspace = true }
 poly-commitment = { workspace = true }
+wasm-types.workspace = true
 
 [dev-dependencies]
 wasm-bindgen-test.workspace = true
