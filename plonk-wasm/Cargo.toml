@@ -58,9 +58,6 @@ poly-commitment = { workspace = true }
 [dev-dependencies]
 wasm-bindgen-test.workspace = true
 
-[profile.release]
-debug = true
-
 [features]
 nodejs = []
 

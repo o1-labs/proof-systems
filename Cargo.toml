@@ -116,3 +116,6 @@ utils = { path = "./utils", version = "0.1.0" }
 lto = true
 panic = 'abort'
 # codegen-units = 1
+
+[profile.release.package.plonk_wasm]
+debug = true
