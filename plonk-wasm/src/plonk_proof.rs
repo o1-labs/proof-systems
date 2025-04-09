@@ -4,7 +4,6 @@ use crate::{
 };
 use ark_ec::AffineRepr;
 use ark_ff::One;
-use base64::{engine::general_purpose, Engine};
 use core::{array, convert::TryInto};
 use groupmap::GroupMap;
 use kimchi::{
@@ -619,7 +618,7 @@ macro_rules! impl_proof {
                 pub fn serialize(&self) -> String {
                     let (proof, _public_input) = self.into();
                     let serialized = rmp_serde::to_vec(&proof).unwrap();
-                    general_purpose::STANDARD.encode(serialized)
+                    base64::encode(serialized)
                 }
             }
 

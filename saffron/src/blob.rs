@@ -15,11 +15,11 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use tracing::{debug, instrument};
 
-/// A FieldBlob<F> is what Storage Provider stores per user's
-/// contract: a list of SRS_SIZE * num_chunks field elements, where
+/// A `FieldBlob<F>` is what Storage Provider stores per user's
+/// contract: a list of `SRS_SIZE * num_chunks` field elements, where
 /// num_chunks is how much the client allocated.
 ///
-/// It can be seen as the encoding of a Vec<u8>, where each field
+/// It can be seen as the encoding of a `Vec<u8>`, where each field
 /// element contains 31 bytes.
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

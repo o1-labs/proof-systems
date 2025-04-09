@@ -1,5 +1,4 @@
 use ark_poly::EvaluationDomain;
-use base64::{engine::general_purpose, Engine};
 use kimchi::circuits::lookup::runtime_tables::RuntimeTableCfg;
 
 use crate::{
@@ -271,7 +270,7 @@ pub fn caml_pasta_fp_plonk_index_write(
 #[wasm_bindgen]
 pub fn caml_pasta_fp_plonk_index_serialize(index: &WasmPastaFpPlonkIndex) -> String {
     let serialized = rmp_serde::to_vec(&index.0).unwrap();
-    general_purpose::STANDARD.encode(serialized)
+    base64::encode(serialized)
 }
 
 // helpers

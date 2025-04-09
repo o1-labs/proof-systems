@@ -17,6 +17,7 @@ env:
   CARGO_TERM_COLOR: always
   # 30 MB of stack for Keccak tests
   RUST_MIN_STACK: 31457280
+  CARGO_EXTRA_ARGS: "--workspace --exclude plonk_wasm --exclude saffron"
 
 jobs:
   run_mdbook:
@@ -44,7 +45,6 @@ jobs:
 
   run_checks:
     name: Run checks and tests
-    runs-on: 'ubuntu-latest'
     strategy:
       matrix:
         rust_toolchain_version: ["1.79", "1.80", "1.81", "1.82"]
@@ -52,7 +52,9 @@ jobs:
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency
         ocaml_version: ["4.14"]
-        node: [20]
+        node: ["20"]
+        os: ["ubuntu-latest", "ubuntu-24.04-arm"]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

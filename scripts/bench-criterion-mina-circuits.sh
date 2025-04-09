@@ -26,7 +26,7 @@ for test_file in $(list_objects); do
         REPORT_FILE=/tmp/criterion-result-$(date +%Y-%m-%d_%H-%M-%S).txt
         BENCH_PROOF_CREATION_MINA_INPUTS=$LOCAL_PATH cargo bench --bench proof_criterion_mina -- --noise-threshold 0.05 --baseline $BASELINE_NAME 2>&1 | tee $REPORT_FILE
         # Fail if there is 'regressed' in the logs
-        ! grep 'regressed' $REPORT_FILE
+        grep 'regressed' $REPORT_FILE && exit 1 || echo "No regressions detected, continuing..."
     else
         echo "In default mode"
         BENCH_PROOF_CREATION_MINA_INPUTS=$LOCAL_PATH cargo bench --bench proof_criterion_mina
