@@ -79,6 +79,10 @@ harness = false
 name = "amortization"
 harness = false
 
+[[bench]]
+name = "expr"
+harness = false
+
 [features]
 default = []
 internal_tracing = ["internal-tracing/enabled"]

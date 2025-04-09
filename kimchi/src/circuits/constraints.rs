@@ -274,7 +274,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// - `disable_gates_checks: false`,
     ///
     /// How to use it:
-    /// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`
+    /// 1. Create your instance of your builder for the constraint system using `create(gates, sponge params)`
     /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations()``
     /// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`
     pub fn create(gates: Vec<CircuitGate<F>>) -> Builder<F> {
