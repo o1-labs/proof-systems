@@ -108,11 +108,6 @@
 <a href="#108" id="108">108</a>
 <a href="#109" id="109">109</a>
 <a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::wasm_vector::WasmVector;
 <span class="kw">use </span>paste::paste;
 <span class="macro">macro_rules! </span>impl_poly_comm {
@@ -120,12 +115,7 @@
      <span class="macro-nonterminal">$WasmG</span>: ty,
      <span class="macro-nonterminal">$G</span>: ty,
      <span class="macro-nonterminal">$field_name</span>: ident
-     <span class="comment">/*
-     $CamlScalarField: ty,
-     $BaseField: ty,
-     $CamlBaseField: ty,
-     $Projective: ty */
-     </span>) =&gt; {
+     ) =&gt; {
         <span class="macro">paste! </span>{
             <span class="kw">use </span>wasm_bindgen::prelude::<span class="kw-2">*</span>;
             <span class="kw">use </span>poly_commitment::commitment::PolyComm;
