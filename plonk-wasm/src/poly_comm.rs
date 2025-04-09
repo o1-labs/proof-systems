@@ -5,11 +5,6 @@ macro_rules! impl_poly_comm {
      $WasmG: ty,
      $G: ty,
      $field_name: ident
-     /*
-     $CamlScalarField: ty,
-     $BaseField: ty,
-     $CamlBaseField: ty,
-     $Projective: ty */
      ) => {
         paste! {
             use wasm_bindgen::prelude::*;
