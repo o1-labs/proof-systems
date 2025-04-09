@@ -3,9 +3,9 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion, SamplingM
 use kimchi::bench::BenchmarkCtx;
 
 pub fn bench_proof_creation(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Proof creation");
+    let mut group = c.benchmark_group("proof_creation");
     group.sampling_mode(SamplingMode::Flat); // for slow benchmarks
-    group.measurement_time(core::time::Duration::from_secs(90));
+    group.measurement_time(std::time::Duration::from_secs(90));
 
     for size in [10, 15, 16] {
         let ctx = BenchmarkCtx::new(size);
@@ -19,10 +19,12 @@ pub fn bench_proof_creation(c: &mut Criterion) {
             |b| b.iter(|| black_box(ctx.create_proof())),
         );
     }
+
+    group.finish()
 }
 
 pub fn bench_proof_verification(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Proof verification");
+    let mut group = c.benchmark_group("proof_verification");
 
     // Unfortunately, we have to use relatively big sample sizes. With this
     // the noise should be <0.5%
@@ -55,6 +57,8 @@ pub fn bench_proof_verification(c: &mut Criterion) {
             },
         );
     }
+
+    group.finish()
 }
 
 criterion_group!(benches, bench_proof_creation, bench_proof_verification);

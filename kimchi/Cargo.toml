@@ -68,6 +68,10 @@ name = "proof_criterion"
 harness = false
 
 [[bench]]
+name = "proof_criterion_mina"
+harness = false
+
+[[bench]]
 name = "proof_iai"
 harness = false
 
