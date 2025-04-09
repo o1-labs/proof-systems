@@ -8,14 +8,11 @@
 //! found in `src/lib/crypto/kimchi_bindings/pasta_fp_poseidon` and
 //! `src/lib/crypto/kimchi_bindings/pasta_fq_poseidon` in the Mina codebase.
 
+use arkworks::{WasmPastaFp, WasmPastaFq};
 use mina_curves::pasta::{Fp, Fq};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, permutation::poseidon_block_cipher};
 use wasm_bindgen::prelude::*;
-
-use crate::{
-    arkworks::{WasmPastaFp, WasmPastaFq},
-    wasm_flat_vector::WasmFlatVector,
-};
+use wasm_types::FlatVector as WasmFlatVector;
 
 // fp
 

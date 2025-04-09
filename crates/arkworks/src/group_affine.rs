@@ -1,4 +1,4 @@
-use crate::arkworks::{pasta_fp::WasmPastaFp, pasta_fq::WasmPastaFq};
+use crate::{pasta_fp::WasmPastaFp, pasta_fq::WasmPastaFq};
 use mina_curves::pasta::{
     curves::{
         pallas::{G_GENERATOR_X as GeneratorPallasX, G_GENERATOR_Y as GeneratorPallasY},
@@ -15,17 +15,17 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 #[derive(Clone, Copy, Debug)]
 pub struct WasmGPallas {
-    pub x: WasmPastaFp,
-    pub y: WasmPastaFp,
-    pub infinity: bool,
+    pub(crate) x: WasmPastaFp,
+    pub(crate) y: WasmPastaFp,
+    pub(crate) infinity: bool,
 }
 
 #[wasm_bindgen]
 #[derive(Clone, Copy, Debug)]
 pub struct WasmGVesta {
-    pub x: WasmPastaFq,
-    pub y: WasmPastaFq,
-    pub infinity: bool,
+    pub(crate) x: WasmPastaFq,
+    pub(crate) y: WasmPastaFq,
+    pub(crate) infinity: bool,
 }
 
 // Conversions from/to AffineVesta

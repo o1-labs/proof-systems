@@ -1,5 +1,9 @@
+extern crate alloc;
+
+use alloc::{string::String, vec::Vec};
 use ark_ff::{BigInt, BigInteger as ark_BigInteger, BigInteger256};
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Write};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+
 use core::{
     cmp::Ordering::{Equal, Greater, Less},
     convert::TryInto,
@@ -40,15 +44,14 @@ impl FromWasmAbi for WasmBigInteger256 {
 
 impl IntoWasmAbi for WasmBigInteger256 {
     type Abi = <Vec<u8> as FromWasmAbi>::Abi;
+
     fn into_abi(self) -> Self::Abi {
-        let mut bytes: Vec<u8> = vec![];
-        bytes.write_all(self.0.to_bytes_le().as_slice()).unwrap();
-        bytes.into_abi()
+        self.0.to_bytes_le().into_abi()
     }
 }
 
 pub fn to_biguint(x: &BigInteger256) -> BigUint {
-    let x_ = x.0.as_ptr() as *const u8;
+    let x_ = x.0.as_ptr().cast::<u8>();
     let x_ = unsafe { core::slice::from_raw_parts(x_, BIGINT256_NUM_BYTES) };
     num_bigint::BigUint::from_bytes_le(x_)
 }
@@ -103,12 +106,16 @@ pub fn caml_bigint_256_compare(x: WasmBigInteger256, y: WasmBigInteger256) -> i8
     }
 }
 
-#[wasm_bindgen]
+// I don't think this is used anywhere
+#[cfg_attr(feature = "std", wasm_bindgen)]
+#[cfg(feature = "std")]
 pub fn caml_bigint_256_print(x: WasmBigInteger256) {
     println!("{}", to_biguint(&x.0));
 }
 
-#[wasm_bindgen]
+// I don't think this is used anywhere
+#[cfg_attr(feature = "std", wasm_bindgen)]
+#[cfg(feature = "std")]
 pub fn caml_bigint_256_to_string(x: WasmBigInteger256) -> String {
     to_biguint(&x.0).to_string()
 }
@@ -123,7 +130,9 @@ pub fn caml_bigint_256_test_bit(x: WasmBigInteger256, i: i32) -> bool {
 
 #[wasm_bindgen]
 pub fn caml_bigint_256_to_bytes(x: WasmBigInteger256) -> Vec<u8> {
-    let mut serialized_bytes = vec![];
+    // This is the size of the implementation of BigInteger256 at the time of writing
+    // but even if it changes, we will be no worse off than the original code `vec![]`
+    let mut serialized_bytes = Vec::with_capacity(core::mem::size_of::<WasmBigInteger256>());
     x.0.serialize_compressed(&mut serialized_bytes)
         .expect("serialize failed");
     serialized_bytes
@@ -132,9 +141,7 @@ pub fn caml_bigint_256_to_bytes(x: WasmBigInteger256) -> Vec<u8> {
 #[wasm_bindgen]
 pub fn caml_bigint_256_of_bytes(x: &[u8]) -> WasmBigInteger256 {
     let len = core::mem::size_of::<WasmBigInteger256>();
-    if x.len() != len {
-        panic!("caml_bigint_256_of_bytes");
-    };
+    assert!(x.len() == len, "caml_bigint_256_of_bytes");
     // TODO this used FromBytes before arkworks 0.4.2, check serialization is consistent after update
     WasmBigInteger256(
         BigInteger256::deserialize_compressed(&mut &x[..]).expect("deserialization error"),

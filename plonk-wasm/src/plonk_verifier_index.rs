@@ -960,11 +960,10 @@ macro_rules! impl_verification_key {
 pub mod fp {
     use super::*;
     use crate::{
-        arkworks::{WasmGVesta, WasmPastaFp},
         pasta_fp_plonk_index::WasmPastaFpPlonkIndex,
-        poly_comm::vesta::WasmFpPolyComm as WasmPolyComm,
-        srs::fp::WasmFpSrs,
+        poly_comm::vesta::WasmFpPolyComm as WasmPolyComm, srs::fp::WasmFpSrs,
     };
+    use arkworks::{WasmGVesta, WasmPastaFp};
     use mina_curves::pasta::{Fp, Pallas as GAffineOther, Vesta as GAffine};
 
     impl_verification_key!(
@@ -986,11 +985,10 @@ pub mod fp {
 pub mod fq {
     use super::*;
     use crate::{
-        arkworks::{WasmGPallas, WasmPastaFq},
         pasta_fq_plonk_index::WasmPastaFqPlonkIndex,
-        poly_comm::pallas::WasmFqPolyComm as WasmPolyComm,
-        srs::fq::WasmFqSrs,
+        poly_comm::pallas::WasmFqPolyComm as WasmPolyComm, srs::fq::WasmFqSrs,
     };
+    use arkworks::{WasmGPallas, WasmPastaFq};
     use mina_curves::pasta::{Fq, Pallas as GAffine, Vesta as GAffineOther};
 
     impl_verification_key!(

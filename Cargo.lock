@@ -292,6 +292,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "arkworks"
+version = "0.1.0"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-poly",
+ "ark-serialize",
+ "mina-curves",
+ "num-bigint",
+ "rand",
+ "wasm-bindgen",
+ "wasm-types",
+]
+
+[[package]]
 name = "arrabbiata"
 version = "0.1.0"
 dependencies = [
@@ -2747,6 +2762,7 @@ dependencies = [
  "ark-ff",
  "ark-poly",
  "ark-serialize",
+ "arkworks",
  "base64 0.21.7",
  "console_error_panic_hook",
  "getrandom 0.2.15",
@@ -2771,6 +2787,7 @@ dependencies = [
  "spmc",
  "wasm-bindgen",
  "wasm-bindgen-test",
+ "wasm-types",
 ]
 
 [[package]]
@@ -4286,6 +4303,13 @@ dependencies = [
  "ureq",
  "walkdir",
  "which",
+]
+
+[[package]]
+name = "wasm-types"
+version = "0.1.0"
+dependencies = [
+ "wasm-bindgen",
 ]
 
 [[package]]
