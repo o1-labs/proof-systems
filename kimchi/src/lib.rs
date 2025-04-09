@@ -29,3 +29,25 @@ pub mod verifier_index;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(feature = "wasm_log")]
+use wasm_bindgen::prelude::wasm_bindgen;
+
+#[cfg(feature = "wasm_log")]
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
+
+#[cfg(feature = "wasm_log")]
+#[macro_export]
+macro_rules! wasm_log {
+    ($($t:tt)*) => (crate::log(&format_args!($($t)*).to_string()))
+}
+
+#[cfg(not(feature = "wasm_log"))]
+#[macro_export]
+macro_rules! wasm_log {
+    ($($t:tt)*) => ()
+}

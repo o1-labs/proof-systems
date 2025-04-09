@@ -92,4 +92,5 @@ ocaml_types = [
 ]
 bn254 = ["ark-bn254"]
 wasm_types = ["wasm-bindgen"]
+wasm_log = ["wasm-bindgen"]
 check_feature_flags = []

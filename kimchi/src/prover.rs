@@ -1,6 +1,7 @@
 //! This module implements prover's zk-proof primitive.
 
 use crate::{
+    wasm_log,
     circuits::{
         argument::{Argument, ArgumentType},
         constraints::zk_rows_strict_lower_bound,
@@ -181,6 +182,7 @@ where
     where
         VerifierIndex<G, OpeningProof>: Clone,
     {
+        wasm_log!("Look ma! I'm proving :)");
         internal_tracing::checkpoint!(internal_traces; create_recursive);
         let d1_size = index.cs.domain.d1.size();
 
