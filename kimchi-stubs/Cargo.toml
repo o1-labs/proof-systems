@@ -9,7 +9,10 @@ edition = "2021"
 
 [lib]
 name = "kimchi_stubs"
-crate-type = ["cdylib", "lib", "staticlib"]
+# Important: do not ask to build a dynamic library.
+# On MacOS arm64, ocaml-rs.v0.2.2 causes build issues.
+# On the Mina side, a fake and empty dllkimchi_stubs.so file is used.
+crate-type = ["lib", "staticlib"]
 
 [dependencies]
 libc.workspace = true
