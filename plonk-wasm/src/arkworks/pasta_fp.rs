@@ -6,16 +6,12 @@ use ark_ff::{
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::cmp::Ordering::{Equal, Greater, Less};
-use mina_curves::pasta::{
-    fields::{fft::FpParameters, fp::FpParameters as Fp_params},
-    Fp,
-};
+use mina_curves::pasta::fields::fft::FpParameters;
+use mina_curves::pasta::{fields::fp::FpParameters as Fp_params, Fp};
 use num_bigint::BigUint;
 use rand::rngs::StdRng;
-use wasm_bindgen::{
-    convert::{FromWasmAbi, IntoWasmAbi, OptionFromWasmAbi, OptionIntoWasmAbi},
-    prelude::*,
-};
+use wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi, OptionFromWasmAbi, OptionIntoWasmAbi};
+use wasm_bindgen::prelude::*;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -23,13 +19,15 @@ pub struct WasmPastaFp(pub Fp);
 
 impl crate::wasm_flat_vector::FlatVectorElem for WasmPastaFp {
     const FLATTENED_SIZE: usize = core::mem::size_of::<Fp>();
+
     fn flatten(self) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::with_capacity(Self::FLATTENED_SIZE);
         self.0.serialize_compressed(&mut bytes).unwrap();
         bytes
     }
-    fn unflatten(flat: Vec<u8>) -> Self {
-        WasmPastaFp(Fp::deserialize_compressed(flat.as_slice()).unwrap())
+
+    fn unflatten(flat: &[u8]) -> Self {
+        WasmPastaFp(Fp::deserialize_compressed(flat).unwrap())
     }
 }
 
