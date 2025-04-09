@@ -208,7 +208,7 @@ fn example<const N: usize>(private: Private<Fp, N>) {
         commitments: vec![15],
         challenges: vec![1, 5],
     };
-    let (mut prover_index, verifier_index) = circuit.compile_to_indexes().unwrap();
+    let (mut prover_index, verifier_index) = circuit.compile_to_indexes(false).unwrap();
     let (proof, public_output) = prover_index
         .prove::<BaseSponge, ScalarSponge>((), private, true)
         .unwrap();

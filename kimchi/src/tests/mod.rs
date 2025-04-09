@@ -9,6 +9,7 @@ mod foreign_field_mul;
 mod framework;
 mod generic;
 mod keccak;
+mod lazy_cache;
 mod lookup;
 mod not;
 mod poseidon;
