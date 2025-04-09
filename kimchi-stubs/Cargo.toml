@@ -9,7 +9,7 @@ edition = "2021"
 
 [lib]
 name = "kimchi_stubs"
-crate-type = ["cdylib", "lib", "staticlib"]
+crate-type = ["lib", "staticlib"]
 
 [dependencies]
 libc.workspace = true
