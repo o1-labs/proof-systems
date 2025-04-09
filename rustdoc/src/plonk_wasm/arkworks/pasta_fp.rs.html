@@ -473,7 +473,7 @@
 <span class="attr">#[wasm_bindgen]
 </span><span class="kw">pub fn </span>caml_pasta_fp_to_bytes(x: WasmPastaFp) -&gt; Vec&lt;u8&gt; {
     <span class="kw">let </span>len = core::mem::size_of::&lt;Fp&gt;();
-    <span class="kw">let </span><span class="kw-2">mut </span>str: Vec&lt;u8&gt; = <span class="macro">vec!</span>[<span class="number">0</span>; len];
+    <span class="kw">let </span><span class="kw-2">mut </span>str: Vec&lt;u8&gt; = Vec::with_capacity(len);
     str.resize(len, <span class="number">0</span>);
     <span class="kw">let </span>str_as_fp: <span class="kw-2">*mut </span>Fp = str.as_mut_ptr().cast::&lt;Fp&gt;();
     <span class="kw">unsafe </span>{

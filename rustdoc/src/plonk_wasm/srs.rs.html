@@ -398,12 +398,6 @@
 <a href="#398" id="398">398</a>
 <a href="#399" id="399">399</a>
 <a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{wasm_flat_vector::WasmFlatVector, wasm_vector::WasmVector};
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
 <span class="kw">use </span>core::ops::Deref;
@@ -547,14 +541,8 @@
                 Box::into_raw(boxed_comm)
             }
 
-            <span class="doccomment">/// Reads the lagrange commitments from a raw pointer.
-            ///
-            /// # Safety
-            ///
-            /// This function is unsafe because it might dereference a
-            /// raw pointer.
-            </span><span class="attr">#[wasm_bindgen]
-            </span><span class="kw">pub unsafe fn </span>[&lt;<span class="macro-nonterminal">$name</span>:snake _lagrange_commitments_whole_domain_read_from_ptr&gt;](
+            <span class="attr">#[wasm_bindgen]
+            </span><span class="kw">pub fn </span>[&lt;<span class="macro-nonterminal">$name</span>:snake _lagrange_commitments_whole_domain_read_from_ptr&gt;](
                 ptr: <span class="kw-2">*mut </span>WasmVector&lt;<span class="macro-nonterminal">$WasmPolyComm</span>&gt;,
             ) -&gt; WasmVector&lt;<span class="macro-nonterminal">$WasmPolyComm</span>&gt; {
                 <span class="comment">// read the commitment at the pointers address, hack for the web

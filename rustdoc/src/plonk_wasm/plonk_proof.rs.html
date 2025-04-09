@@ -905,14 +905,12 @@
 <a href="#905" id="905">905</a>
 <a href="#906" id="906">906</a>
 <a href="#907" id="907">907</a>
-<a href="#908" id="908">908</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     wasm_flat_vector::WasmFlatVector,
     wasm_vector::{fp::WasmVecVecFp, fq::WasmVecVecFq, WasmVector},
 };
 <span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">use </span>ark_ff::One;
-<span class="kw">use </span>base64::{engine::general_purpose, Engine};
 <span class="kw">use </span>core::{array, convert::TryInto};
 <span class="kw">use </span>groupmap::GroupMap;
 <span class="kw">use </span>kimchi::{
@@ -1527,7 +1525,7 @@
                 </span><span class="kw">pub fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
                     <span class="kw">let </span>(proof, _public_input) = <span class="self">self</span>.into();
                     <span class="kw">let </span>serialized = rmp_serde::to_vec(<span class="kw-2">&amp;</span>proof).unwrap();
-                    general_purpose::STANDARD.encode(serialized)
+                    base64::encode(serialized)
                 }
             }
 

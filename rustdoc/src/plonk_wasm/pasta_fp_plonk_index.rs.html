@@ -300,9 +300,7 @@
 <a href="#300" id="300">300</a>
 <a href="#301" id="301">301</a>
 <a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_poly::EvaluationDomain;
-<span class="kw">use </span>base64::{engine::general_purpose, Engine};
 <span class="kw">use </span>kimchi::circuits::lookup::runtime_tables::RuntimeTableCfg;
 
 <span class="kw">use crate</span>::{
@@ -574,7 +572,7 @@
 <span class="attr">#[wasm_bindgen]
 </span><span class="kw">pub fn </span>caml_pasta_fp_plonk_index_serialize(index: <span class="kw-2">&amp;</span>WasmPastaFpPlonkIndex) -&gt; String {
     <span class="kw">let </span>serialized = rmp_serde::to_vec(<span class="kw-2">&amp;</span>index.<span class="number">0</span>).unwrap();
-    general_purpose::STANDARD.encode(serialized)
+    base64::encode(serialized)
 }
 
 <span class="comment">// helpers
