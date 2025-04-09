@@ -319,8 +319,6 @@
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
 <a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{One, Zero};
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain};
 <span class="kw">use </span>kimchi::groupmap::GroupMap;
@@ -349,14 +347,12 @@
         .ok_or(<span class="string">&quot;Missing data filepath argument&quot;</span>)
         .unwrap();
 
-    <span class="kw">const </span>SRS_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">16</span>;
-
     <span class="macro">println!</span>(<span class="string">&quot;Startup time (cacheable, 1-time cost)&quot;</span>);
 
     <span class="macro">println!</span>(<span class="string">&quot;- Generate SRS&quot;</span>);
     <span class="kw">let </span>now = std::time::Instant::now();
-    <span class="kw">let </span>domain = Radix2EvaluationDomain::new(SRS_SIZE).unwrap();
-    <span class="kw">let </span>srs = SRS::&lt;Vesta&gt;::create(SRS_SIZE);
+    <span class="kw">let </span>domain = Radix2EvaluationDomain::new(saffron::SRS_SIZE).unwrap();
+    <span class="kw">let </span>srs = SRS::&lt;Vesta&gt;::create(saffron::SRS_SIZE);
     <span class="kw">let </span>duration = now.elapsed();
     <span class="macro">println!</span>(
         <span class="string">&quot;  - Took {:?}s / {:?}ms / {:?}us / {:?}ns&quot;</span>,
@@ -396,7 +392,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>file = File::open(input_file).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
         file.read_to_end(<span class="kw-2">&amp;mut </span>buf).unwrap();
-        encode_for_domain(<span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>buf)
+        encode_for_domain(domain.size(), <span class="kw-2">&amp;</span>buf)
             .into_iter()
             .flatten()
             .collect()
@@ -416,12 +412,12 @@
     <span class="macro">println!</span>(<span class="string">&quot;- One-time setup for newly-stored data&quot;</span>);
     <span class="macro">println!</span>(<span class="string">&quot;  - Generate cryptographic commitments&quot;</span>);
     <span class="kw">let </span>now = std::time::Instant::now();
-    <span class="kw">let </span>committed_chunks = (<span class="number">0</span>..data.len() / SRS_SIZE)
+    <span class="kw">let </span>committed_chunks = (<span class="number">0</span>..data.len() / saffron::SRS_SIZE)
         .into_par_iter()
         .map(|idx| {
             PolyComm::multi_scalar_mul(
                 <span class="kw-2">&amp;</span>basis.iter().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-                <span class="kw-2">&amp;</span>data[SRS_SIZE * idx..SRS_SIZE * (idx + <span class="number">1</span>)],
+                <span class="kw-2">&amp;</span>data[saffron::SRS_SIZE * idx..saffron::SRS_SIZE * (idx + <span class="number">1</span>)],
             )
         })
         .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
@@ -515,14 +511,14 @@
 
         <span class="macro">println!</span>(<span class="string">&quot;  - Combine randomized data chunks&quot;</span>);
         <span class="kw">let </span>now = std::time::Instant::now();
-        <span class="kw">let </span>final_chunk = (mongomeryized_data.len() / SRS_SIZE) - <span class="number">1</span>;
-        <span class="kw">let </span>randomized_data = (<span class="number">0</span>..SRS_SIZE)
+        <span class="kw">let </span>final_chunk = (mongomeryized_data.len() / saffron::SRS_SIZE) - <span class="number">1</span>;
+        <span class="kw">let </span>randomized_data = (<span class="number">0</span>..saffron::SRS_SIZE)
             .into_par_iter()
             .map(|idx| {
-                <span class="kw">let </span><span class="kw-2">mut </span>acc = mongomeryized_data[final_chunk * SRS_SIZE + idx];
+                <span class="kw">let </span><span class="kw-2">mut </span>acc = mongomeryized_data[final_chunk * saffron::SRS_SIZE + idx];
                 (<span class="number">0</span>..final_chunk).rev().for_each(|chunk| {
                     acc <span class="kw-2">*</span>= challenge;
-                    acc += mongomeryized_data[chunk * SRS_SIZE + idx];
+                    acc += mongomeryized_data[chunk * saffron::SRS_SIZE + idx];
                 });
                 acc
             })

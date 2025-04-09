@@ -181,18 +181,40 @@
 <a href="#181" id="181">181</a>
 <a href="#182" id="182">182</a>
 <a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::utils::encode_for_domain;
 <span class="kw">use </span>ark_ff::PrimeField;
-<span class="kw">use </span>ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
+<span class="kw">use </span>ark_poly::EvaluationDomain;
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>thiserror::Error;
 <span class="kw">use </span>tracing::instrument;
 
-<span class="comment">// sparse representation, keeping only the non-zero differences
+<span class="doccomment">/// Diff request pointing to a single commitment.
 </span><span class="attr">#[derive(Clone, Debug, PartialEq)]
 </span><span class="kw">pub struct </span>Diff&lt;F: PrimeField&gt; {
-    <span class="kw">pub </span>chunks: Vec&lt;Vec&lt;(usize, F)&gt;&gt;,
-    <span class="kw">pub </span>new_byte_len: usize,
+    <span class="doccomment">/// Which commitment within a group of commitments representing
+    /// the data is the diff for.
+    </span><span class="kw">pub </span>region: u64,
+    <span class="doccomment">/// A list of unique addresses, each ∈ [0, SRS_SIZE]
+    </span><span class="kw">pub </span>addresses: Vec&lt;u64&gt;,
+    <span class="doccomment">/// A list of new values, each corresponding to address in `addresses`
+    </span><span class="kw">pub </span>new_values: Vec&lt;F&gt;,
 }
 
 <span class="attr">#[derive(Debug, Error, Clone, PartialEq)]
@@ -206,13 +228,53 @@
 
 <span class="kw">impl</span>&lt;F: PrimeField&gt; Diff&lt;F&gt; {
     <span class="attr">#[instrument(skip_all, level = <span class="string">&quot;debug&quot;</span>)]
-    </span><span class="kw">pub fn </span>create&lt;D: EvaluationDomain&lt;F&gt;&gt;(
+    </span><span class="kw">pub fn </span>create_from_field_elements(
+        old: <span class="kw-2">&amp;</span>Vec&lt;Vec&lt;F&gt;&gt;,
+        new: <span class="kw-2">&amp;</span>Vec&lt;Vec&lt;F&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Diff&lt;F&gt;&gt;, DiffError&gt; {
+        <span class="macro">assert!</span>(
+            old.len() == new.len(),
+            <span class="string">&quot;Input &#39;old&#39; and &#39;new&#39; must have the same number of chunks&quot;
+        </span>);
+
+        <span class="kw">let </span>diffs: Vec&lt;Diff&lt;<span class="kw">_</span>&gt;&gt; = old
+            .par_iter()
+            .zip(new)
+            .enumerate()
+            .filter_map(|(region, (o, n))| {
+                <span class="kw">let </span><span class="kw-2">mut </span>addresses: Vec&lt;u64&gt; = <span class="macro">vec!</span>[];
+                <span class="kw">let </span><span class="kw-2">mut </span>new_values: Vec&lt;F&gt; = <span class="macro">vec!</span>[];
+                <span class="kw">for </span>(index, (o_elem, n_elem)) <span class="kw">in </span>o.iter().zip(n.iter()).enumerate() {
+                    <span class="kw">if </span>o_elem != n_elem {
+                        addresses.push(index <span class="kw">as </span>u64);
+                        new_values.push(<span class="kw-2">*</span>n_elem);
+                    }
+                }
+
+                <span class="kw">if </span>!addresses.is_empty() {
+                    <span class="prelude-val">Some</span>(Diff {
+                        region: region <span class="kw">as </span>u64,
+                        addresses,
+                        new_values,
+                    })
+                } <span class="kw">else </span>{
+                    <span class="comment">// do not record a diff with empty changes
+                    </span><span class="prelude-val">None
+                </span>}
+            })
+            .collect();
+
+        <span class="prelude-val">Ok</span>(diffs)
+    }
+
+    <span class="attr">#[instrument(skip_all, level = <span class="string">&quot;debug&quot;</span>)]
+    </span><span class="kw">pub fn </span>create_from_bytes&lt;D: EvaluationDomain&lt;F&gt;&gt;(
         domain: <span class="kw-2">&amp;</span>D,
         old: <span class="kw-2">&amp;</span>[u8],
         new: <span class="kw-2">&amp;</span>[u8],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Diff&lt;F&gt;, DiffError&gt; {
-        <span class="kw">let </span>old_elems: Vec&lt;Vec&lt;F&gt;&gt; = encode_for_domain(domain, old);
-        <span class="kw">let </span><span class="kw-2">mut </span>new_elems: Vec&lt;Vec&lt;F&gt;&gt; = encode_for_domain(domain, new);
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Diff&lt;F&gt;&gt;, DiffError&gt; {
+        <span class="kw">let </span>old_elems: Vec&lt;Vec&lt;F&gt;&gt; = encode_for_domain(domain.size(), old);
+        <span class="kw">let </span><span class="kw-2">mut </span>new_elems: Vec&lt;Vec&lt;F&gt;&gt; = encode_for_domain(domain.size(), new);
         <span class="kw">if </span>old_elems.len() &lt; new_elems.len() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(DiffError::CapacityMismatch {
                 max_number_chunks: old_elems.len(),
@@ -223,38 +285,8 @@
             <span class="kw">let </span>padding = <span class="macro">vec!</span>[F::zero(); domain.size()];
             new_elems.resize(old_elems.len(), padding);
         }
-        <span class="prelude-val">Ok</span>(Diff {
-            new_byte_len: new.len(),
-            chunks: new_elems
-                .par_iter()
-                .zip(old_elems)
-                .map(|(n, o)| {
-                    n.iter()
-                        .zip(o)
-                        .enumerate()
-                        .map(|(index, (a, b))| (index, <span class="kw-2">*</span>a - b))
-                        .filter(|(<span class="kw">_</span>, x)| !x.is_zero())
-                        .collect()
-                })
-                .collect(),
-        })
-    }
 
-    <span class="attr">#[instrument(skip_all, level = <span class="string">&quot;debug&quot;</span>)]
-    </span><span class="kw">pub fn </span>as_evaluations(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        domain: <span class="kw-2">&amp;</span>Radix2EvaluationDomain&lt;F&gt;,
-    ) -&gt; Vec&lt;Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;&gt; {
-        <span class="self">self</span>.chunks
-            .par_iter()
-            .map(|diff| {
-                <span class="kw">let </span><span class="kw-2">mut </span>evals = <span class="macro">vec!</span>[F::zero(); domain.size()];
-                diff.iter().for_each(|(j, val)| {
-                    evals[<span class="kw-2">*</span>j] = <span class="kw-2">*</span>val;
-                });
-                Evaluations::from_vec_and_domain(evals, <span class="kw-2">*</span>domain)
-            })
-            .collect()
+        <span class="self">Self</span>::create_from_field_elements(<span class="kw-2">&amp;</span>old_elems, <span class="kw-2">&amp;</span>new_elems)
     }
 }
 
@@ -299,16 +331,11 @@
             .boxed()
     }
 
-    <span class="kw">fn </span>add(<span class="kw-2">mut </span>evals: Vec&lt;Vec&lt;Fp&gt;&gt;, diff: <span class="kw-2">&amp;</span>Diff&lt;Fp&gt;) -&gt; Vec&lt;Vec&lt;Fp&gt;&gt; {
-        evals
-            .par_iter_mut()
-            .zip(diff.chunks.par_iter())
-            .for_each(|(eval_chunk, diff_chunk)| {
-                diff_chunk.iter().for_each(|(j, val)| {
-                    eval_chunk[<span class="kw-2">*</span>j] += val;
-                });
-            });
-        evals.to_vec()
+    <span class="comment">// Adds diff to data
+    </span><span class="kw">fn </span>add_diff_to_data(data: <span class="kw-2">&amp;mut </span>[Vec&lt;Fp&gt;], diff: <span class="kw-2">&amp;</span>Diff&lt;Fp&gt;) {
+        <span class="kw">for </span>(addr, new_value) <span class="kw">in </span>diff.addresses.iter().zip(diff.new_values.iter()) {
+            data[diff.region <span class="kw">as </span>usize][<span class="kw-2">*</span>addr <span class="kw">as </span>usize] = <span class="kw-2">*</span>new_value;
+        }
     }
 
     <span class="macro">proptest! </span>{
@@ -318,16 +345,23 @@
         </span><span class="kw">fn </span>test_allow_legal_diff((UserData(xs), UserData(ys)) <span class="kw">in
             </span>(UserData::arbitrary().prop_flat_map(random_diff))
         ) {
-            <span class="kw">let </span>diff = Diff::&lt;Fp&gt;::create(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>xs, <span class="kw-2">&amp;</span>ys);
-            <span class="macro">prop_assert!</span>(diff.is_ok());
-            <span class="kw">let </span>xs_elems = encode_for_domain(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
+            <span class="kw">let </span>diffs = Diff::&lt;Fp&gt;::create_from_bytes(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>xs, <span class="kw-2">&amp;</span>ys);
+            <span class="macro">prop_assert!</span>(diffs.is_ok());
+            <span class="kw">let </span>diffs = diffs.unwrap();
+
+            <span class="kw">let </span>xs_elems = encode_for_domain(DOMAIN.size(), <span class="kw-2">&amp;</span>xs);
             <span class="kw">let </span>ys_elems = {
                 <span class="kw">let </span>pad = <span class="macro">vec!</span>[Fp::zero(); DOMAIN.size()];
-                <span class="kw">let </span><span class="kw-2">mut </span>elems = encode_for_domain(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>ys);
+                <span class="kw">let </span><span class="kw-2">mut </span>elems = encode_for_domain(DOMAIN.size(), <span class="kw-2">&amp;</span>ys);
                 elems.resize(xs_elems.len(), pad);
                 elems
             };
-            <span class="kw">let </span>result = add(xs_elems.clone(), <span class="kw-2">&amp;</span>diff.unwrap());
+            <span class="macro">assert!</span>(xs_elems.len() == ys_elems.len());
+
+            <span class="kw">let </span><span class="kw-2">mut </span>result = xs_elems.clone();
+            <span class="kw">for </span>diff <span class="kw">in </span>diffs.into_iter() {
+                add_diff_to_data(<span class="kw-2">&amp;mut </span>result, <span class="kw-2">&amp;</span>diff);
+            }
             <span class="macro">prop_assert_eq!</span>(result, ys_elems);
         }
     }
@@ -359,7 +393,7 @@
         ) {
             <span class="kw">let </span><span class="kw-2">mut </span>ys = randomize_data(threshold, <span class="kw-2">&amp;</span>data);
             ys.append(<span class="kw-2">&amp;mut </span>extra);
-            <span class="kw">let </span>diff = Diff::&lt;Fp&gt;::create(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>data, <span class="kw-2">&amp;</span>ys);
+            <span class="kw">let </span>diff = Diff::&lt;Fp&gt;::create_from_bytes(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>data, <span class="kw-2">&amp;</span>ys);
             <span class="macro">prop_assert!</span>(diff.is_err());
         }
     }

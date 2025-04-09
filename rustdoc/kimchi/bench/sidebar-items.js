@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BenchmarkCtx"]};
+window.SIDEBAR_ITEMS = {"fn":["bench_arguments_dump_into_file","bench_arguments_from_file"],"struct":["BenchmarkCtx"],"type":["BaseSpongePallas","BaseSpongeVesta","ScalarSpongePallas","ScalarSpongeVesta"]};

@@ -466,6 +466,10 @@
     buffer.copy_from_slice(<span class="kw-2">&amp;</span>bytes);
 }
 
+<span class="kw">pub fn </span>decode_into_vec&lt;Fp: PrimeField&gt;(x: Fp) -&gt; Vec&lt;u8&gt; {
+    x.into_bigint().to_bytes_be()
+}
+
 <span class="kw">pub fn </span>encode_as_field_elements&lt;F: PrimeField&gt;(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; Vec&lt;F&gt; {
     <span class="kw">let </span>n = (F::MODULUS_BIT_SIZE / <span class="number">8</span>) <span class="kw">as </span>usize;
     bytes
@@ -478,18 +482,14 @@
         .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
 }
 
-<span class="kw">pub fn </span>encode_for_domain&lt;F: PrimeField, D: EvaluationDomain&lt;F&gt;&gt;(
-    domain: <span class="kw-2">&amp;</span>D,
-    bytes: <span class="kw-2">&amp;</span>[u8],
-) -&gt; Vec&lt;Vec&lt;F&gt;&gt; {
-    <span class="kw">let </span>domain_size = domain.size();
+<span class="kw">pub fn </span>encode_for_domain&lt;F: PrimeField&gt;(domain_size: usize, bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; Vec&lt;Vec&lt;F&gt;&gt; {
     <span class="kw">let </span>xs = encode_as_field_elements(bytes);
     xs.chunks(domain_size)
         .map(|chunk| {
-            <span class="kw">if </span>chunk.len() &lt; domain.size() {
-                <span class="kw">let </span><span class="kw-2">mut </span>padded_chunk = Vec::with_capacity(domain.size());
+            <span class="kw">if </span>chunk.len() &lt; domain_size {
+                <span class="kw">let </span><span class="kw-2">mut </span>padded_chunk = Vec::with_capacity(domain_size);
                 padded_chunk.extend_from_slice(chunk);
-                padded_chunk.resize(domain.size(), F::zero());
+                padded_chunk.resize(domain_size, F::zero());
                 padded_chunk
             } <span class="kw">else </span>{
                 chunk.to_vec()
@@ -786,7 +786,7 @@
         #[test]
         </span><span class="kw">fn </span>test_round_trip_encoding_to_field_elems(UserData(xs) <span class="kw">in </span>UserData::arbitrary()
     )
-          { <span class="kw">let </span>chunked = encode_for_domain(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
+          { <span class="kw">let </span>chunked = encode_for_domain::&lt;Fp&gt;(DOMAIN.size(), <span class="kw-2">&amp;</span>xs);
             <span class="kw">let </span>elems = chunked
               .into_iter()
               .flatten()
@@ -810,7 +810,7 @@
         #[test]
         </span><span class="kw">fn </span>test_padded_byte_length(UserData(xs) <span class="kw">in </span>UserData::arbitrary()
     )
-          { <span class="kw">let </span>chunked = encode_for_domain(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
+          { <span class="kw">let </span>chunked = encode_for_domain::&lt;Fp&gt;(DOMAIN.size(), <span class="kw-2">&amp;</span>xs);
             <span class="kw">let </span>n = chunked.into_iter().flatten().count();
             <span class="macro">prop_assert_eq!</span>(n, padded_field_length(<span class="kw-2">&amp;</span>xs));
           }
@@ -830,7 +830,7 @@
                     (Just(xs), queries_strategy)
                 })
         ) {
-            <span class="kw">let </span>chunked = encode_for_domain(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
+            <span class="kw">let </span>chunked = encode_for_domain(DOMAIN.size(), <span class="kw-2">&amp;</span>xs);
             <span class="kw">for </span>query <span class="kw">in </span>queries {
                 <span class="kw">let </span>expected = <span class="kw-2">&amp;</span>xs[query.start..(query.start+query.len)];
                 <span class="kw">let </span>field_query: QueryField&lt;Fp&gt; = query.into_query_field(DOMAIN.size(), chunked.len()).unwrap();
@@ -859,7 +859,7 @@
                 })
         ) {
             <span class="macro">debug!</span>(<span class="string">&quot;check that first query is valid&quot;</span>);
-            <span class="kw">let </span>chunked = encode_for_domain(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
+            <span class="kw">let </span>chunked = encode_for_domain::&lt;Fp&gt;(DOMAIN.size(), <span class="kw-2">&amp;</span>xs);
             <span class="kw">let </span>n_polys = chunked.len();
             <span class="kw">let </span>query_field = query.into_query_field::&lt;Fp&gt;(DOMAIN.size(), n_polys);
             <span class="macro">prop_assert!</span>(query_field.is_ok());
@@ -887,7 +887,7 @@
                     (Just(xs), query_strategy)
                 })
         ) {
-            <span class="kw">let </span>chunked = encode_for_domain(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
+            <span class="kw">let </span>chunked = encode_for_domain(DOMAIN.size(), <span class="kw-2">&amp;</span>xs);
             <span class="kw">let </span>n_polys = chunked.len();
             <span class="kw">let </span>field_query: QueryField&lt;Fp&gt; = query.into_query_field(DOMAIN.size(), n_polys).unwrap();
             <span class="kw">let </span>got_answer = field_query.apply(<span class="kw-2">&amp;</span>chunked);

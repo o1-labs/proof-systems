@@ -115,31 +115,164 @@
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>core::array;
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+</pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::type_complexity)]
 
+</span><span class="kw">use </span>ark_ff::PrimeField;
+<span class="kw">use </span>ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Write};
 <span class="kw">use </span>groupmap::{BWParameters, GroupMap};
-<span class="kw">use </span>mina_curves::pasta::{Fp, Vesta, VestaParameters};
+<span class="kw">use </span>mina_curves::pasta::{Fp, Fq, PallasParameters, Vesta, VestaParameters};
 <span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
+    sponge::{DefaultFqSponge, DefaultFrSponge, FqSponge},
 };
 <span class="kw">use </span>o1_utils::math;
-<span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, ipa::OpeningProof, SRS};
+<span class="kw">use </span>poly_commitment::{
+    commitment::{CommitmentCurve, PolyComm},
+    ipa::OpeningProof,
+    SRS,
+};
+<span class="kw">use </span>rand::Rng;
+<span class="kw">use </span>std::{array, path::PathBuf};
 
 <span class="kw">use crate</span>::{
     circuits::{
+        constraints::ConstraintSystem,
         gate::CircuitGate,
+        lookup::runtime_tables::RuntimeTable,
         polynomials::generic::GenericGateSpec,
         wires::{Wire, COLUMNS},
     },
-    proof::ProverProof,
+    curve::KimchiCurve,
+    proof::{ProverProof, RecursionChallenge},
     prover_index::{testing::new_index_for_test, ProverIndex},
     verifier::{batch_verify, Context},
 };
 
-<span class="kw">type </span>SpongeParams = PlonkSpongeConstantsKimchi;
-<span class="kw">type </span>BaseSponge = DefaultFqSponge&lt;VestaParameters, SpongeParams&gt;;
-<span class="kw">type </span>ScalarSponge = DefaultFrSponge&lt;Fp, SpongeParams&gt;;
+<span class="kw">pub type </span>BaseSpongeVesta = DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;;
+<span class="kw">pub type </span>ScalarSpongeVesta = DefaultFrSponge&lt;Fp, PlonkSpongeConstantsKimchi&gt;;
+<span class="kw">pub type </span>BaseSpongePallas = DefaultFqSponge&lt;PallasParameters, PlonkSpongeConstantsKimchi&gt;;
+<span class="kw">pub type </span>ScalarSpongePallas = DefaultFrSponge&lt;Fq, PlonkSpongeConstantsKimchi&gt;;
 
 <span class="kw">pub struct </span>BenchmarkCtx {
     <span class="kw">pub </span>num_gates: usize,
@@ -181,7 +314,7 @@
         <span class="macro">assert_eq!</span>(index.cs.domain.d1.log_size_of_group, srs_size_log2, <span class="string">&quot;the test wanted to use an SRS of size {srs_size_log2} but the domain size ended up being {}&quot;</span>, index.cs.domain.d1.log_size_of_group);
 
         <span class="comment">// create the verifier index
-        </span>index.compute_verifier_index_digest::&lt;BaseSponge&gt;();
+        </span>index.compute_verifier_index_digest::&lt;BaseSpongeVesta&gt;();
 
         <span class="comment">// just in case check that lagrange bases are generated
         </span>index.srs.get_lagrange_basis(index.cs.domain.d1);
@@ -202,7 +335,7 @@
 
         <span class="comment">// add the proof to the batch
         </span>(
-            ProverProof::create::&lt;BaseSponge, ScalarSponge, <span class="kw">_</span>&gt;(
+            ProverProof::create::&lt;BaseSpongeVesta, ScalarSpongeVesta, <span class="kw">_</span>&gt;(
                 <span class="kw-2">&amp;</span><span class="self">self</span>.group_map,
                 witness,
                 <span class="kw-2">&amp;</span>[],
@@ -225,11 +358,120 @@
                 public_input: public,
             })
             .collect();
-        batch_verify::&lt;Vesta, BaseSponge, ScalarSponge, OpeningProof&lt;Vesta&gt;&gt;(
+        batch_verify::&lt;Vesta, BaseSpongeVesta, ScalarSpongeVesta, OpeningProof&lt;Vesta&gt;&gt;(
             <span class="kw-2">&amp;</span><span class="self">self</span>.group_map,
             <span class="kw-2">&amp;</span>batch,
         )
         .unwrap();
     }
+}
+
+<span class="doccomment">/// This function can be called before any call to a kimchi verfier,
+/// in which case it will serialise kimchi inputs so that they can be
+/// reused later for re-testing this particular prover. Used for
+/// serialising real mina circuits from ocaml and bindings side.
+</span><span class="kw">pub fn </span>bench_arguments_dump_into_file&lt;G: KimchiCurve&gt;(
+    cs: <span class="kw-2">&amp;</span>ConstraintSystem&lt;G::ScalarField&gt;,
+    witness: <span class="kw-2">&amp;</span>[Vec&lt;G::ScalarField&gt;; COLUMNS],
+    runtime_tables: <span class="kw-2">&amp;</span>[RuntimeTable&lt;G::ScalarField&gt;],
+    prev: <span class="kw-2">&amp;</span>[RecursionChallenge&lt;G&gt;],
+) {
+    <span class="kw">let </span>seed: u64 = rand::thread_rng().gen();
+
+    <span class="kw">let </span>filename = <span class="macro">format!</span>(<span class="string">&quot;./kimchi_inputs_{}_{:08x}.ser&quot;</span>, G::NAME, seed);
+
+    <span class="kw">let </span><span class="kw-2">mut </span>file = std::fs::OpenOptions::new()
+        .create(<span class="bool-val">true</span>)
+        .truncate(<span class="bool-val">true</span>)
+        .write(<span class="bool-val">true</span>)
+        .open(PathBuf::from(filename))
+        .expect(<span class="string">&quot;failed to open file to write pasta_fp inputs&quot;</span>);
+
+    <span class="kw">let </span>runtime_tables_as_vec: Vec&lt;(u32, Vec&lt;G::ScalarField&gt;)&gt; = runtime_tables
+        .iter()
+        .map(|rt| {
+            (
+                rt.id.try_into().expect(<span class="string">&quot;rt must be non-negative&quot;</span>),
+                rt.data.clone(),
+            )
+        })
+        .collect();
+
+    <span class="kw">let </span>prev_as_pairs: Vec&lt;(<span class="kw">_</span>, <span class="kw">_</span>)&gt; = prev
+        .iter()
+        .map(|rec_chal| {
+            <span class="macro">assert!</span>(!rec_chal.comm.chunks.is_empty());
+            (rec_chal.chals.clone(), rec_chal.comm.chunks.clone())
+        })
+        .collect();
+
+    <span class="kw">let </span>bytes_cs: Vec&lt;u8&gt; = rmp_serde::to_vec(<span class="kw-2">&amp;</span>cs).unwrap();
+
+    <span class="kw">let </span><span class="kw-2">mut </span>bytes: Vec&lt;u8&gt; = <span class="macro">vec!</span>[];
+    CanonicalSerialize::serialize_uncompressed(
+        <span class="kw-2">&amp;</span>(
+            witness.clone(),
+            runtime_tables_as_vec.clone(),
+            prev_as_pairs.clone(),
+            bytes_cs,
+        ),
+        <span class="kw-2">&amp;mut </span>bytes,
+    )
+    .unwrap();
+
+    file.write_all(<span class="kw-2">&amp;</span>bytes).expect(<span class="string">&quot;failed to write file&quot;</span>);
+    file.flush().expect(<span class="string">&quot;failed to flush file&quot;</span>);
+}
+
+<span class="doccomment">/// Given a filename with encoded (witness, runtime table, prev rec
+/// challenges, constrain system), returns arguments necessary to run a prover.
+</span><span class="kw">pub fn </span>bench_arguments_from_file&lt;
+    G: KimchiCurve,
+    BaseSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
+&gt;(
+    srs: poly_commitment::ipa::SRS&lt;G&gt;,
+    filename: String,
+) -&gt; (
+    ProverIndex&lt;G, OpeningProof&lt;G&gt;&gt;,
+    [Vec&lt;G::ScalarField&gt;; COLUMNS],
+    Vec&lt;RuntimeTable&lt;G::ScalarField&gt;&gt;,
+    Vec&lt;RecursionChallenge&lt;G&gt;&gt;,
+)
+<span class="kw">where
+    </span>G::BaseField: PrimeField,
+{
+    <span class="kw">let </span>bytes: Vec&lt;u8&gt; = std::fs::read(filename.clone())
+        .unwrap_or_else(|e| <span class="macro">panic!</span>(<span class="string">&quot;{}. Couldn&#39;t read file: {}&quot;</span>, e, filename));
+    <span class="kw">let </span>(witness, runtime_tables_as_vec, prev_as_pairs, bytes_cs): (
+        [Vec&lt;<span class="kw">_</span>&gt;; COLUMNS],
+        Vec&lt;(u32, Vec&lt;G::ScalarField&gt;)&gt;,
+        Vec&lt;<span class="kw">_</span>&gt;,
+        Vec&lt;u8&gt;,
+    ) = CanonicalDeserialize::deserialize_uncompressed(bytes.as_slice()).unwrap();
+
+    <span class="kw">let </span>runtime_tables: Vec&lt;RuntimeTable&lt;<span class="kw">_</span>&gt;&gt; = runtime_tables_as_vec
+        .into_iter()
+        .map(|(id_u32, data)| RuntimeTable {
+            id: id_u32 <span class="kw">as </span>i32,
+            data,
+        })
+        .collect();
+
+    <span class="kw">let </span>prev: Vec&lt;RecursionChallenge&lt;<span class="kw">_</span>&gt;&gt; = prev_as_pairs
+        .into_iter()
+        .map(|(chals, chunks)| RecursionChallenge {
+            chals,
+            comm: PolyComm { chunks },
+        })
+        .collect();
+
+    <span class="comment">// serialized index does not have many fields including SRS
+    </span><span class="kw">let </span>cs: ConstraintSystem&lt;G::ScalarField&gt; = rmp_serde::from_read(bytes_cs.as_slice()).unwrap();
+
+    <span class="kw">let </span>endo = cs.endo;
+    <span class="kw">let </span><span class="kw-2">mut </span>index: ProverIndex&lt;G, OpeningProof&lt;G&gt;&gt; = ProverIndex::create(cs, endo, srs.into());
+    index.compute_verifier_index_digest::&lt;BaseSponge&gt;();
+
+    (index, witness, runtime_tables, prev)
 }
 </code></pre></div></section></main></body></html>

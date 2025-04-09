@@ -135,6 +135,23 @@
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>clap::{arg, Parser};
 <span class="kw">use </span>std::{fmt::Display, str::FromStr};
 
@@ -165,7 +182,7 @@
         long,
         short = <span class="string">&#39;o&#39;</span>,
         value_name = <span class="string">&quot;FILE&quot;</span>,
-        help = <span class="string">&quot;output file (encoded as field elements)&quot;
+        help = <span class="string">&quot;output file (blob, encoded as field elements)&quot;
     </span>)]
     </span><span class="kw">pub </span>output: String,
 
@@ -178,6 +195,13 @@
         help = <span class="string">&quot;hash of commitments (hex encoded)&quot;
     </span>)]
     </span><span class="kw">pub </span>assert_commitment: <span class="prelude-ty">Option</span>&lt;HexString&gt;,
+
+    <span class="attr">#[arg(
+        long = <span class="string">&quot;challenge-seed&quot;</span>,
+        value_name = <span class="string">&quot;CHALLENGE_SEED&quot;</span>,
+        help = <span class="string">&quot;challenge seed (hex encoded, used only if assert-commitment is provided)&quot;
+    </span>)]
+    </span><span class="kw">pub </span>challenge_seed: <span class="prelude-ty">Option</span>&lt;HexString&gt;,
 }
 
 <span class="attr">#[derive(Parser)]
@@ -195,6 +219,9 @@
 
     <span class="attr">#[arg(long = <span class="string">&quot;srs-filepath&quot;</span>, value_name = <span class="string">&quot;SRS_FILEPATH&quot;</span>)]
     </span><span class="kw">pub </span>srs_cache: <span class="prelude-ty">Option</span>&lt;String&gt;,
+
+    <span class="attr">#[arg(long = <span class="string">&quot;truncate-to-bytes&quot;</span>, value_name = <span class="string">&quot;TRUNCATE_TO_BYTES&quot;</span>)]
+    </span><span class="kw">pub </span>truncate_to_bytes: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 }
 
 <span class="attr">#[derive(Parser)]
@@ -207,6 +234,13 @@
 
     <span class="attr">#[arg(long = <span class="string">&quot;srs-filepath&quot;</span>, value_name = <span class="string">&quot;SRS_FILEPATH&quot;</span>)]
     </span><span class="kw">pub </span>srs_cache: <span class="prelude-ty">Option</span>&lt;String&gt;,
+
+    <span class="attr">#[arg(
+        long = <span class="string">&quot;challenge-seed&quot;</span>,
+        value_name = <span class="string">&quot;CHALLENGE_SEED&quot;</span>,
+        help = <span class="string">&quot;challenge seed (hex encoded)&quot;
+    </span>)]
+    </span><span class="kw">pub </span>challenge_seed: HexString,
 }
 
 <span class="attr">#[derive(Parser)]
@@ -215,7 +249,7 @@
         long,
         short = <span class="string">&#39;i&#39;</span>,
         value_name = <span class="string">&quot;FILE&quot;</span>,
-        help = <span class="string">&quot;input file (encoded as field elements)&quot;
+        help = <span class="string">&quot;input file (blob, encoded as field elements)&quot;
     </span>)]
     </span><span class="kw">pub </span>input: String,
 
@@ -223,11 +257,11 @@
     </span><span class="kw">pub </span>srs_cache: <span class="prelude-ty">Option</span>&lt;String&gt;,
 
     <span class="attr">#[arg(
-        long = <span class="string">&quot;challenge&quot;</span>,
-        value_name = <span class="string">&quot;CHALLENGE&quot;</span>,
-        help = <span class="string">&quot;challenge (hex encoded&quot;
+        long = <span class="string">&quot;challenge-seed&quot;</span>,
+        value_name = <span class="string">&quot;CHALLENGE_SEED&quot;</span>,
+        help = <span class="string">&quot;challenge seed (hex encoded)&quot;
     </span>)]
-    </span><span class="kw">pub </span>challenge: HexString,
+    </span><span class="kw">pub </span>challenge_seed: HexString,
 }
 
 <span class="attr">#[derive(Parser)]
@@ -244,11 +278,11 @@
     </span><span class="kw">pub </span>commitment: HexString,
 
     <span class="attr">#[arg(
-        long = <span class="string">&quot;challenge&quot;</span>,
-        value_name = <span class="string">&quot;CHALLENGE&quot;</span>,
-        help = <span class="string">&quot;challenge (hex encoded&quot;
+        long = <span class="string">&quot;challenge-seed&quot;</span>,
+        value_name = <span class="string">&quot;CHALLENGE_SEED&quot;</span>,
+        help = <span class="string">&quot;challenge seed (hex encoded)&quot;
     </span>)]
-    </span><span class="kw">pub </span>challenge: HexString,
+    </span><span class="kw">pub </span>challenge_seed: HexString,
 
     <span class="attr">#[arg(long, short = <span class="string">&#39;p&#39;</span>, value_name = <span class="string">&quot;PROOF&quot;</span>, help = <span class="string">&quot;proof (hex encoded)&quot;</span>)]
     </span><span class="kw">pub </span>proof: HexString,

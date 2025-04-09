@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["blob","cli","commitment","diff","env","proof","utils"]};
+window.SIDEBAR_ITEMS = {"constant":["SRS_SIZE"],"mod":["blob","cli","commitment","diff","env","storage_proof","utils"],"type":["BaseField","Curve","CurveFqSponge","CurveFrSponge","CurveParameters","ProjectiveCurve","ScalarField"]};
