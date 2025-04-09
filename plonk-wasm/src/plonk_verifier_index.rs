@@ -687,41 +687,6 @@ macro_rules! impl_verification_key {
                 }
             }
 
-            /* pub fn to_wasm_copy<'a>(
-                srs: &Arc<SRS<GAffine>>,
-                vi: &DlogVerifierIndex<GAffine>,
-            ) -> WasmPlonkVerifierIndex {
-                WasmPlonkVerifierIndex {
-                    domain: WasmDomain {
-                        log_size_of_group: vi.domain.log_size_of_group as i32,
-                        group_gen: vi.domain.group_gen.clone().into(),
-                    },
-                    max_poly_size: vi.max_poly_size as i32,
-                    srs: srs.clone().into(),
-                    evals: WasmPlonkVerificationEvals {
-                        sigma_comm: vi.sigma_comm.iter().map(From::from).collect(),
-                        coefficients_comm: vi.coefficients_comm.iter().map(From::from).collect(),
-                        generic_comm: vi.generic_comm.clone().into(),
-                        psm_comm: vi.psm_comm.clone().into(),
-                        complete_add_comm: vi.complete_add_comm.clone().into(),
-                        mul_comm: vi.mul_comm.clone().into(),
-                        emul_comm: vi.emul_comm.clone().into(),
-                        endomul_scalar_comm: vi.endomul_scalar_comm.clone().into(),
-                    },
-                    shifts:
-                        WasmShifts {
-                            s0: vi.shift[0].clone().into(),
-                            s1: vi.shift[1].clone().into(),
-                            s2: vi.shift[2].clone().into(),
-                            s3: vi.shift[3].clone().into(),
-                            s4: vi.shift[4].clone().into(),
-                            s5: vi.shift[5].clone().into(),
-                            s6: vi.shift[6].clone().into(),
-                        },
-                    linearization: [<Wasm $field_name:camel Linearization>](Box::new(vi.linearization.clone())),
-                }
-            } */
-
             fn compute_feature_flags(index: &WasmPlonkVerifierIndex) -> FeatureFlags {
                 let xor = index.evals.xor_comm.is_some();
                 let range_check0 = index.evals.range_check0_comm.is_some();
@@ -771,14 +736,6 @@ macro_rules! impl_verification_key {
                 let evals = &index.evals;
                 let shifts = &index.shifts;
 
-                /*
-                let urs_copy = Rc::clone(&*urs);
-                let urs_copy_outer = Rc::clone(&*urs);
-                let srs = {
-                    // We know that the underlying value is still alive, because we never convert any of our
-                    // Rc<_>s into weak pointers.
-                    SRSValue::Ref(unsafe { &*Rc::into_raw(urs_copy) })
-                }; */
                 let (endo_q, _endo_r) = poly_commitment::ipa::endos::<$GOther>();
                 let domain = Domain::<$F>::new(1 << log_size_of_group).unwrap();
 
@@ -890,26 +847,6 @@ macro_rules! impl_verification_key {
                     JsValue::from_str("caml_pasta_fp_plonk_verifier_index_raw_read")
                 })
             }
-
-            // TODO understand what serialization format we need
-
-            // #[wasm_bindgen]
-            // pub fn [<$name:snake _serialize>](
-            //     index: WasmPlonkVerifierIndex,
-            // ) -> Box<[u8]> {
-            //     let index: DlogVerifierIndex<$G> = index.into();
-            //     rmp_serde::to_vec(&index).unwrap().into_boxed_slice()
-            // }
-
-            // #[wasm_bindgen]
-            // pub fn [<$name:snake _deserialize>](
-            //     srs: &$WasmSrs,
-            //     index: Box<[u8]>,
-            // ) -> WasmPlonkVerifierIndex {
-            //     let mut vi: DlogVerifierIndex<$G> = rmp_serde::from_slice(&index).unwrap();
-            //     vi.linearization = expr_linearization(vi.domain, false, false, None);
-            //     return to_wasm(srs, vi.into())
-            // }
 
             #[wasm_bindgen]
             pub fn [<$name:snake _serialize>](
