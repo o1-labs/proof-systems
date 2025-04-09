@@ -58,9 +58,6 @@ poly-commitment = { workspace = true }
 [dev-dependencies]
 wasm-bindgen-test.workspace = true
 
-[profile.release]
-debug = true
-
 [features]
 nodejs = []
 
@@ -68,15 +65,3 @@ nodejs = []
 wasm-opt = false
 #wasm-opt = ["-O4", "--detect-features", "--enable-mutable-globals" ]
 #wasm-opt = ["-O4", "--enable-mutable-globals"]
-
-[build]
-rustflags = [
-  "-C",
-  "target-feature=+atomics,+bulk-memory",
-]
-
-[target.wasm32-unknown-unknown]
-rustflags = [
-  "-C",
-  "target-feature=+atomics,+bulk-memory",
-]
