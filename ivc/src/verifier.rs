@@ -189,7 +189,7 @@ pub fn verify<
                 witness: PlonkishWitnessGeneric {
                     witness: witness_evals_vecs,
                     fixed_selectors: fixed_selectors_evals_vecs,
-                    phantom: std::marker::PhantomData,
+                    phantom: core::marker::PhantomData,
                 },
                 extended: Default::default(),
             };

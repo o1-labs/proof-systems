@@ -16,47 +16,47 @@
 //!
 //! The IVC scheme uses different notations for different concepts:
 //! - `F` is the function to be computed. In our codebase, we call it the
-//! "application circuit".
+//!   "application circuit".
 //! - `F'` is the augmented function with the verifier computation. In our
-//! codebase, we call it the "IVC circuit + APP circuit", or also the "joint
-//! circuit".
+//!   codebase, we call it the "IVC circuit + APP circuit", or also the "joint
+//!   circuit".
 //! - `U_i` is the accumulator of the function `F'` up to step `i`. For clarity,
-//! we will sometimes use the notation `acc_i` to denote the accumulator. The
-//! accumulator in the [folding] library is called the "left instance". It is a
-//! "running relaxed instance".
+//!   we will sometimes use the notation `acc_i` to denote the accumulator. The
+//!   accumulator in the [folding] library is called the "left instance". It is a
+//!   "running relaxed instance".
 //! - `u_i` is the current instance of the function `F'` to be folded into the
-//! accumulator. In the [folding] library, it is called the "right instance".
+//!   accumulator. In the [folding] library, it is called the "right instance".
 //! - `U_(i + 1)` is the accumulator of the function `F'` up to step `i + 1`,
-//! i.e. the accumulation of `U_i` and `u_i`. In the [folding] library, it is
-//! called the "output instance" or the "folded output". The "folded output" and
-//! the "left instance" should be seen as both accumulators, and the right
-//! instance should be seen as the difference between both.
+//!   i.e. the accumulation of `U_i` and `u_i`. In the [folding] library, it is
+//!   called the "output instance" or the "folded output". The "folded output" and
+//!   the "left instance" should be seen as both accumulators, and the right
+//!   instance should be seen as the difference between both.
 //!
 //! The IVC scheme described in Fig 4 works as follow, for a given step `i`:
 //! - In the circuit (or also called "the augmented function `F'`"), the prover
-//! will compute a hash of the left instance `acc_i`. It is a way to "compress"
-//! the information of the previous computation. It is described by the notation
-//! `u_i.x ?= Hash(i, z0, zi, U_i)` in the Fig 4 on the left.
-//! The value `u_i.x` is provided as a public input to the circuit. In the code,
-//! we could summarize with the following pseudo code:
-//! ```text
-//! left_commitments.into_iter().for_each(|comm| {
-//! env.process_hash(comm, LeftCommitment)
-//! })
-//! env.assert_eq(env.output_left, env.hash_state[LeftCommitment])
-//! ```
+//!   will compute a hash of the left instance `acc_i`. It is a way to "compress"
+//!   the information of the previous computation. It is described by the notation
+//!   `u_i.x ?= Hash(i, z0, zi, U_i)` in the Fig 4 on the left.
+//!   The value `u_i.x` is provided as a public input to the circuit. In the code,
+//!   we could summarize with the following pseudo code:
+//!   ```text
+//!   left_commitments.into_iter().for_each(|comm| {
+//!   env.process_hash(comm, LeftCommitment)
+//!   })
+//!   env.assert_eq(env.output_left, env.hash_state[LeftCommitment])
+//!   ```
 //! - The prover will also compute the expected hash for the next iteration, by
-//! computing the hash of the output instance `U_(i + 1)`. It is described by
-//! the notation `u_(i + 1).x ?= Hash(i + 1, z0, zi, U_(i + 1))` in the Fig 4 on
-//! the right. Note that `U_(i + 1)` will be, at step `i + 1`, the new left
-//! input. The value of the hash computed at step `i` will be compared at step
-//! `i + 1`. In the code, we could summarize with the following pseudo-code:
-//! ```text
-//! output_commitments.into_iter().for_each(|comm| {
-//! env.process_hash(comm, OutputCommitment)
-//! })
-//! env.assert_eq(env.output_left, env.hash_state[OutputCommitment])
-//! ```
+//!   computing the hash of the output instance `U_(i + 1)`. It is described by
+//!   the notation `u_(i + 1).x ?= Hash(i + 1, z0, zi, U_(i + 1))` in the Fig 4 on
+//!   the right. Note that `U_(i + 1)` will be, at step `i + 1`, the new left
+//!   input. The value of the hash computed at step `i` will be compared at step
+//!   `i + 1`. In the code, we could summarize with the following pseudo-code:
+//!   ```text
+//!   output_commitments.into_iter().for_each(|comm| {
+//!   env.process_hash(comm, OutputCommitment)
+//!   })
+//!   env.assert_eq(env.output_left, env.hash_state[OutputCommitment])
+//!   ```
 //!
 //! The order of the execution is encoded in the fact the hash contains the
 //! step `i` when we check the left input and `i + 1` when we compress the
@@ -98,6 +98,7 @@
 //! In the [Nova paper](https://eprint.iacr.org/2021/370.pdf), to provide
 //! incremental verifiable computation, the authors propose a folding scheme
 //! where the verifier has to compute the followings:
+//!
 //! ```text
 //! // Accumulation of the homogeneous value `u`:
 //! u'' = u + r u'
@@ -202,17 +203,22 @@
 pub mod expr_eval;
 pub mod ivc;
 pub mod plonkish_lang;
+
 /// Poseidon hash function with 55 full rounds, 0 partial rounds, sbox 7, a
 /// state of 3 elements and constraints of degree 2
 pub mod poseidon_55_0_7_3_2;
+
 /// Poseidon hash function with 55 full rounds, 0 partial rounds, sbox 7,
 /// a state of 3 elements and constraints of degree 7
 pub mod poseidon_55_0_7_3_7;
+
 /// Poseidon hash function with 8 full rounds, 56 partial rounds, sbox 5, a
 /// state of 3 elements and constraints of degree 2
 pub mod poseidon_8_56_5_3_2;
+
 /// Poseidon parameters for 55 full rounds, 0 partial rounds, sbox 7, a state of
 /// 3 elements
 pub mod poseidon_params_55_0_7_3;
+
 pub mod prover;
 pub mod verifier;

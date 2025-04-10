@@ -30,7 +30,7 @@ pub enum SecKeyError {
     SecretKeyVersion,
 }
 /// Keypair result
-pub type Result<T> = std::result::Result<T, SecKeyError>;
+pub type Result<T> = core::result::Result<T, SecKeyError>;
 
 /// Secret key length
 pub const MINA_SEC_KEY_LEN: usize = 52;

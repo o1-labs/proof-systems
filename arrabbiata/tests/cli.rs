@@ -5,7 +5,7 @@ fn test_arrabbiata_binary() {
     // Build the binary path
     let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
-    let build_mode = if cfg!(debug) { "debug" } else { "release" };
+    let build_mode = "release";
 
     // Build the path to the binary. It is assumed that no package is selected
     // when running the test, i.e. no `-p arrabbiata` in the `cargo test`

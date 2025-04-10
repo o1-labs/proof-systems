@@ -1,13 +1,17 @@
 //! Implement an interpreter for a specific instance of the Poseidon inner permutation.
 //! The Poseidon construction is defined in the paper ["Poseidon: A New Hash
 //! Function"](https://eprint.iacr.org/2019/458.pdf).
+//!
 //! The Poseidon instance works on a state of size `STATE_SIZE` and is designed
 //! to work only with full rounds. As a reminder, the Poseidon permutation is a
 //! mapping from `F^STATE_SIZE` to `F^STATE_SIZE`.
+//!
 //! The user is responsible to provide the correct number of full rounds for the
 //! given field and the state.
+//!
 //! Also, it is hard-coded that the substitution is `7`. The user must verify
 //! that `7` is coprime with `p - 1` where `p` is the order the field.
+//!
 //! The constants and matrix can be generated the file
 //! `poseidon/src/pasta/params.sage`
 
@@ -20,6 +24,7 @@ use num_integer::Integer;
 /// Represents the parameters of the instance of the Poseidon permutation.
 /// Constants are the round constants for each round, and MDS is the matrix used
 /// by the linear layer.
+///
 /// The type is parametrized by the field, the state size, and the number of full rounds.
 /// Note that the parameters are only for instances using full rounds.
 // IMPROVEME merge constants and mds in a flat array, to use the CPU cache
@@ -82,16 +87,16 @@ where
     }
 
     let mut final_state: [Env::Variable; STATE_SIZE] =
-        std::array::from_fn(|_| Env::constant(F::zero()));
+        core::array::from_fn(|_| Env::constant(F::zero()));
 
     for i in 0..NB_FULL_ROUND {
         let state: [PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>; STATE_SIZE] = {
             if i == 0 {
-                std::array::from_fn(PoseidonColumn::Input)
+                core::array::from_fn(PoseidonColumn::Input)
             } else {
                 let prev_round = i - 1;
                 // Previous outputs are in index 4, 9, and 14 if we have 3 elements
-                std::array::from_fn(|j| PoseidonColumn::Round(prev_round, j * 5 + 4))
+                core::array::from_fn(|j| PoseidonColumn::Round(prev_round, j * 5 + 4))
             }
         };
         let round_res = compute_one_round::<F, STATE_SIZE, NB_FULL_ROUND, PARAMETERS, Env>(

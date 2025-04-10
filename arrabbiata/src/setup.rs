@@ -242,8 +242,8 @@ where
                 [PolyComm<E1>; NUMBER_OF_GADGETS],
                 [PolyComm<E2>; NUMBER_OF_GADGETS],
             ) = (
-                std::array::from_fn(|_| PolyComm::new(vec![srs_e1.h])),
-                std::array::from_fn(|_| PolyComm::new(vec![srs_e2.h])),
+                core::array::from_fn(|_| PolyComm::new(vec![srs_e1.h])),
+                core::array::from_fn(|_| PolyComm::new(vec![srs_e2.h])),
             );
             // We commit to the selectors using evaluations.
             // As they are supposed to be one or zero, each row adds a small
@@ -263,7 +263,7 @@ where
 
         // FIXME: setup correctly the initial sponge state
         let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-            std::array::from_fn(|_i| BigInt::from(42u64));
+            core::array::from_fn(|_i| BigInt::from(42u64));
 
         Self {
             domain_fp,

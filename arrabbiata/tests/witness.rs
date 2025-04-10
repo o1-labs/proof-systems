@@ -220,7 +220,7 @@ where
     // FIXME: For test purposes, to get a deterministic result, changing the
     // initial sponge state. The challenge in the circuit will be the first
     // element of the state.
-    indexed_relation.initial_sponge = std::array::from_fn(|_i| r.clone());
+    indexed_relation.initial_sponge = core::array::from_fn(|_i| r.clone());
 
     let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
 

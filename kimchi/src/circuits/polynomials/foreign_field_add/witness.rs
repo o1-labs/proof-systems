@@ -12,9 +12,9 @@ use crate::{
     variable_map,
 };
 use ark_ff::PrimeField;
+use core::array;
 use num_bigint::BigUint;
 use o1_utils::foreign_field::{ForeignElement, ForeignFieldHelpers};
-use std::array;
 
 /// All foreign field operations allowed
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
@@ -156,7 +156,7 @@ pub fn create_chain<F: PrimeField>(
     for i in 0..num {
         // Create foreign field addition row
         for w in &mut witness {
-            w.extend(std::iter::repeat(F::zero()).take(1));
+            w.extend(core::iter::repeat(F::zero()).take(1));
         }
         let right = ForeignElement::from_biguint(inputs[i + 1].clone());
         let (output, _sign, ovf, carry) =
@@ -298,7 +298,7 @@ pub fn extend_witness_bound_addition<F: PrimeField>(
     // Extend the witness for the add gate
     let offset = witness[0].len();
     for col in witness.iter_mut().take(COLUMNS) {
-        col.extend(std::iter::repeat(F::zero()).take(2))
+        col.extend(core::iter::repeat(F::zero()).take(2))
     }
 
     init_bound_rows(

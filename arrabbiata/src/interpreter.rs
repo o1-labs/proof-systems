@@ -167,7 +167,9 @@
 //!
 //! #### Gadget layout
 //!
-//! For a (x, y) point and a scalar, we apply the double-and-add algorithm, one step per row.
+//! For a (x, y) point and a scalar, we apply the double-and-add algorithm, one
+//! step per row.
+//!
 //! Therefore, we have 255 rows to compute the scalar multiplication.
 //! For a given step `i`, we have the following values:
 //! - `tmp_x`, `tmp_y`: the temporary values used to keep the double.
@@ -176,7 +178,7 @@
 //! - `r_i` and `r_(i+1)`: scalars such that r_(i+1) = b + 2 * r_i.
 //! - `λ'` and `λ`: the coefficients
 //! - o'_x and o'_y equal to `res_plus_tmp_x` and `res_plus_tmp_y` if `b == 1`,
-//! otherwise equal to `o_x` and `o_y`.
+//!   otherwise equal to `o_x` and `o_y`.
 //!
 //! We have the following layout:
 //!
@@ -313,7 +315,7 @@
 //! The implementation works as follow:
 //! - Split the constraint in monomials
 //! - For the monomials of degree `d`, compute the contribution when
-//! homogenizing to degree `d'`.
+//!   homogenizing to degree `d'`.
 //! - Sum all the contributions.
 //!
 //! The library [mvpoly] can be used to compute the cross-terms and to
@@ -351,14 +353,14 @@
 //! - `W_(p, n)` for the aggregated witness.
 //! - `C_(p, n)` for the commitment to the witness `w_(p, n)`.
 //! - `acc_(p, n)` for the accumulated commitments to the aggregated witness
-//! `W_(p, n)`.
+//!    `W_(p, n)`.
 //! - `α_(p, n)` for the challenge used to combine constraints.
 //! - `β_(p, n)` and `γ_(p, n)` for the challenge used to for the
-//! permutation argument.
+//!   permutation argument.
 //! - `r_(p, n)` for the challenge used for the accumulation of the
 //! - `t_(p, n, i)` for the evaluations of the cross-terms of degree `i`.
 //! - `Ct_(p, n, i)` for the commitments to the cross-terms of degree `i`.
-//! witness/commitments.
+//!    witness/commitments.
 //! - `u_(p, n)` for the challenge used to homogenize the constraints.
 //! - `o_(p, n)` for the final digest of the sponge state.
 //!
@@ -646,10 +648,10 @@ pub trait InterpreterEnv {
     /// When instantiating as expressions - "constraints" - it defines
     /// multivariate polynomials.
     type Variable: Clone
-        + std::ops::Add<Self::Variable, Output = Self::Variable>
-        + std::ops::Sub<Self::Variable, Output = Self::Variable>
-        + std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::fmt::Debug
+        + core::ops::Add<Self::Variable, Output = Self::Variable>
+        + core::ops::Sub<Self::Variable, Output = Self::Variable>
+        + core::ops::Mul<Self::Variable, Output = Self::Variable>
+        + core::fmt::Debug
         + Zero
         + One;
 
@@ -779,6 +781,7 @@ pub trait InterpreterEnv {
     /// Compute the coefficient λ used in the elliptic curve addition.
     /// If the two points are the same, the λ is computed as follows:
     /// - λ = (3 X1^2 + a) / (2Y1)
+    ///
     /// Otherwise, the λ is computed as follows:
     /// - λ = (Y1 - Y2) / (X1 - X2)
     fn compute_lambda(
@@ -857,12 +860,14 @@ pub fn run_app<E: InterpreterEnv>(env: &mut E) {
 /// 2. Compute the elliptic curve addition.
 /// 3. Run the polynomial-time function.
 /// 4. Compute the hash of the output.
+///
 /// The environment is updated over time.
 /// When the environment is the one described in the [Witness
 /// environment](crate::witness::Env), the structure will be updated
 /// with the new accumulator, the new public input, etc. The public output will
 /// be in the structure also. The user can simply rerun the function for the
 /// next iteration.
+///
 /// A row must be created to generate a challenge to combine the constraints
 /// later. The challenge will be also accumulated over time.
 ///

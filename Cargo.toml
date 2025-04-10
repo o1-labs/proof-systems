@@ -9,14 +9,15 @@ members = [
     "internal-tracing",
     "ivc",
     "kimchi",
+    "kimchi-stubs",
     "msm",
     "mvpoly",
     "o1vm",
+    "plonk-wasm",
     "poly-commitment",
     "poseidon",
     "poseidon/export_test_vectors",
-    "saffron"
-,
+    "saffron",
     "signer",
     "tools/kimchi-visu",
     "turshi",
@@ -38,54 +39,63 @@ bitvec = "1.0.0"
 blake2 = "0.10.0"
 bs58 = "0.5.0"
 clap = "4.4.6"
-colored = "2.0.0"
 command-fds = "0.3"
-convert_case = "0.6.0"
+console_error_panic_hook = { version = "0.1.6" }
 criterion = "0.5"
 elf = "0.7.2"
 env_logger = "0.11.1"
+getrandom = { version = "=0.2.15", features = ["js"] }
 hex = { version = "0.4", features = ["serde"] }
 iai = "0.1"
 itertools = "0.12.1"
-libc = "0.2.62"
+js-sys = "=0.3.64"
+libc = "=0.2.169"
 libflate = "2"
 log = "0.4.20"
 num-bigint = { version = "0.4.4", features = ["rand", "serde"] }
-num-derive = "0.4"
 num-integer = "0.1.45"
-num-traits = "0.2"
 ocaml = { version = "0.22.2" }
 ocaml-gen = { version = "0.1.5" }
-once_cell = "1.10.0"
+once_cell = "=1.20.3"
 os_pipe = { version = "1.1.4", features = ["io_safety"] }
-proc-macro2 = "1.0.43"
+paste = "=1.0.15"
 proptest = "1.0.0"
 proptest-derive = "0.4.0"
-quote = "1.0.21"
-rand = { version = "0.8.5", features = ["std_rng"] }
+rand = { version = "=0.8.5", features = ["std_rng"] }
 rand_chacha = { version = "0.3.0" }
 rand_core = { version = "0.6.3" }
-rayon = "1.5.0"
+rayon = "=1.10.0"
 regex = "1.10.2"
-rmp-serde = "1.1.2"
+rmp-serde = "=1.2.0"
 secp256k1 = "0.28.2"
-serde = { version = "1.0.130", features = ["derive", "rc"] }
-serde_json = "1.0.113"
-serde_with = "3.6.0"
+serde = { version = "=1.0.219", features = ["derive", "rc"] }
+serde_json = "=1.0.109"
+serde-wasm-bindgen = "=0.6.5"
+serde_with = "3.12"
 sha2 = "0.10.0"
 sha3 = "0.10.8"
+spmc = "=0.3.0"
 strum = "0.26.1"
 strum_macros = "0.26.1"
-syn = { version = "1.0.109", features = ["full"] }
 thiserror = "1.0.30"
 tinytemplate = "1.1"
 wasm-bindgen = "=0.2.87"
+wasm-bindgen-test = ">=0.3.0"
+web-sys = { version = "=0.3.64", features = [
+  "Window",
+  "Document",
+  "HtmlElement",
+  "Text",
+  "Node",
+  "Element",
+] }
 
 arrabbiata = { path = "./arrabbiata", version = "0.1.0" }
 folding = { path = "./folding", version = "0.1.0" }
 groupmap = { path = "./groupmap", version = "0.1.0" }
 internal-tracing = { path = "./internal-tracing", version = "0.1.0" }
 kimchi = { path = "./kimchi", version = "0.1.0", features = ["bn254"] }
+kimchi-stubs = { path = "./kimchi-stubs", version = "0.1.0" }
 kimchi-visu = { path = "./tools/kimchi-visu", version = "0.1.0" }
 kimchi-msm = { path = "./msm", version = "0.1.0" }
 mina-curves = { path = "./curves", version = "0.1.0" }
@@ -95,6 +105,7 @@ mvpoly = { path = "./mvpoly", version = "0.1.0" }
 o1-utils = { path = "./utils", version = "0.1.0" }
 o1vm = { path = "./o1vm", version = "0.1.0" }
 optimism = { path = "./optimism", version = "0.1.0" }
+plonk_wasm = { path = "./plonk-wasm", version = "0.1.0" }
 poly-commitment = { path = "./poly-commitment", version = "0.1.0" }
 saffron = { path = "./poly-commitment", version = "0.1.0" }
 signer = { path = "./signer", version = "0.1.0" }

@@ -109,23 +109,23 @@ impl From<Instruction> for usize {
 }
 
 /// Represents one line of the execution trace of the virtual machine
-/// It contain
+/// It contains
 /// + [SCRATCH_SIZE] columns
 /// + 1 column to keep track of the instruction index
 /// + 1 column for the system error code
 /// + [N_MIPS_SEL_COLS]  columns for the instruction selectors.
-/// The columns are, in order,
+///   The columns are, in order,
 /// - the 32 general purpose registers
 /// - the low and hi registers used by some arithmetic instructions
 /// - the current instruction pointer
 /// - the next instruction pointer
 /// - the heap pointer
 /// - the preimage key, split in 8 consecutive columns representing 4 bytes
-/// of the 32 bytes long preimage key
+///   of the 32 bytes long preimage key
 /// - the preimage offset, i.e. the number of bytes that have been read for the
-/// currently processing preimage
+///   currently processing preimage
 /// - `[SCRATCH_SIZE] - 46` intermediate columns that can be used by the
-/// instruction set
+///   instruction set
 /// - the hash counter
 /// - the flag to indicate if the current instruction is a preimage syscall
 /// - the flag to indicate if the current instruction is reading a preimage

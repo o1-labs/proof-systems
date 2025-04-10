@@ -9,8 +9,8 @@ use crate::{
 use ark_ec::AffineRepr;
 use ark_ff::{Field, Zero};
 use ark_poly::Evaluations;
+use core::ops::Index;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
-use std::ops::Index;
 
 #[cfg(not(test))]
 use log::debug;

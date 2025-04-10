@@ -55,11 +55,11 @@ use ark_poly::{
     DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D,
 };
 use blake2::{Blake2b512, Digest};
+use core::array;
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 use poly_commitment::OpenProof;
 use rand::{CryptoRng, RngCore};
 use rayon::prelude::*;
-use std::array;
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 3;
@@ -499,7 +499,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
                 output_vec
             })
             .reduce_with(|mut l, r| {
-                for i in 0..n - 1 {
+                for i in 0..n {
                     l[i] *= &r[i];
                 }
                 l
@@ -519,7 +519,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
                 output_vec
             })
             .reduce_with(|mut l, r| {
-                for i in 0..n - 1 {
+                for i in 0..n {
                     l[i] *= &r[i];
                 }
                 l

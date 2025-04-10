@@ -570,7 +570,7 @@ where
         // We keep track of the values we already set.
         self.state.clone_from(&self.next_state);
         // And we reset the next state
-        self.next_state = std::array::from_fn(|_| BigInt::from(0_usize));
+        self.next_state = core::array::from_fn(|_| BigInt::from(0_usize));
     }
 
     /// FIXME: check if we need to pick the left or right sponge
@@ -978,9 +978,9 @@ where
 
         // FIXME: use setup
         let prover_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-            std::array::from_fn(|_| BigInt::from(0_u64));
+            core::array::from_fn(|_| BigInt::from(0_u64));
         let verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-            std::array::from_fn(|_| BigInt::from(0_u64));
+            core::array::from_fn(|_| BigInt::from(0_u64));
 
         // FIXME: set this up correctly. Temporary as we're moving the initial
         // transcript state into the setup
@@ -1001,8 +1001,8 @@ where
             idx_var_next_row: 0,
             idx_var_pi: 0,
             current_row: 0,
-            state: std::array::from_fn(|_| BigInt::from(0_usize)),
-            next_state: std::array::from_fn(|_| BigInt::from(0_usize)),
+            state: core::array::from_fn(|_| BigInt::from(0_usize)),
+            next_state: core::array::from_fn(|_| BigInt::from(0_usize)),
 
             challenges,
 
@@ -1040,7 +1040,7 @@ where
     pub fn reset_for_next_iteration(&mut self) {
         // Rest the state for the next row
         self.current_row = 0;
-        self.state = std::array::from_fn(|_| BigInt::from(0_usize));
+        self.state = core::array::from_fn(|_| BigInt::from(0_usize));
         self.idx_var = 0;
         self.current_instruction = VERIFIER_STARTING_INSTRUCTION;
         self.idx_values_to_absorb = 0;

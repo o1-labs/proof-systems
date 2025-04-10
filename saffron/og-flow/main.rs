@@ -26,14 +26,12 @@ pub fn main() -> ExitCode {
         .ok_or("Missing data filepath argument")
         .unwrap();
 
-    const SRS_SIZE: usize = 1 << 16;
-
     println!("Startup time (cacheable, 1-time cost)");
 
     println!("- Generate SRS");
     let now = std::time::Instant::now();
-    let domain = Radix2EvaluationDomain::new(SRS_SIZE).unwrap();
-    let srs = SRS::<Vesta>::create(SRS_SIZE);
+    let domain = Radix2EvaluationDomain::new(saffron::SRS_SIZE).unwrap();
+    let srs = SRS::<Vesta>::create(saffron::SRS_SIZE);
     let duration = now.elapsed();
     println!(
         "  - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
@@ -73,7 +71,7 @@ pub fn main() -> ExitCode {
         let mut file = File::open(input_file).unwrap();
         let mut buf = Vec::new();
         file.read_to_end(&mut buf).unwrap();
-        encode_for_domain(&domain, &buf)
+        encode_for_domain(domain.size(), &buf)
             .into_iter()
             .flatten()
             .collect()
@@ -93,12 +91,12 @@ pub fn main() -> ExitCode {
     println!("- One-time setup for newly-stored data");
     println!("  - Generate cryptographic commitments");
     let now = std::time::Instant::now();
-    let committed_chunks = (0..data.len() / SRS_SIZE)
+    let committed_chunks = (0..data.len() / saffron::SRS_SIZE)
         .into_par_iter()
         .map(|idx| {
             PolyComm::multi_scalar_mul(
                 &basis.iter().collect::<Vec<_>>(),
-                &data[SRS_SIZE * idx..SRS_SIZE * (idx + 1)],
+                &data[saffron::SRS_SIZE * idx..saffron::SRS_SIZE * (idx + 1)],
             )
         })
         .collect::<Vec<_>>();
@@ -192,14 +190,14 @@ pub fn main() -> ExitCode {
 
         println!("  - Combine randomized data chunks");
         let now = std::time::Instant::now();
-        let final_chunk = (mongomeryized_data.len() / SRS_SIZE) - 1;
-        let randomized_data = (0..SRS_SIZE)
+        let final_chunk = (mongomeryized_data.len() / saffron::SRS_SIZE) - 1;
+        let randomized_data = (0..saffron::SRS_SIZE)
             .into_par_iter()
             .map(|idx| {
-                let mut acc = mongomeryized_data[final_chunk * SRS_SIZE + idx];
+                let mut acc = mongomeryized_data[final_chunk * saffron::SRS_SIZE + idx];
                 (0..final_chunk).rev().for_each(|chunk| {
                     acc *= challenge;
-                    acc += mongomeryized_data[chunk * SRS_SIZE + idx];
+                    acc += mongomeryized_data[chunk * saffron::SRS_SIZE + idx];
                 });
                 acc
             })

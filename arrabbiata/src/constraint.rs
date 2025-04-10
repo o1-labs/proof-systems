@@ -293,10 +293,10 @@ where
     ///
     /// The following gadgets are used in the verifier circuit:
     /// - [Instruction::PoseidonFullRound] and
-    /// [Instruction::PoseidonSpongeAbsorb] to verify the challenges and the
-    /// public IO.
+    ///   [Instruction::PoseidonSpongeAbsorb] to verify the challenges and the
+    ///   public IO.
     /// - [Instruction::EllipticCurveScaling] and
-    /// [Instruction::EllipticCurveAddition] to accumulate the commitments
+    ///   [Instruction::EllipticCurveAddition] to accumulate the commitments
     // FIXME: the verifier circuit might not be complete, yet. For instance, we might
     // need to accumulate the challenges and add a row to verify the output of
     // the computation of the challenges.
