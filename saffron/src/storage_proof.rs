@@ -10,11 +10,9 @@
 //! essense proves knowledge of the opening to all the commitments C_i
 //! simultaneously.
 
-use crate::{
-    blob::FieldBlob, Curve, CurveFqSponge, CurveFrSponge, ProjectiveCurve, ScalarField, SRS_SIZE,
-};
-use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
-use ark_ff::{One, PrimeField, Zero};
+use crate::{blob::FieldBlob, utils, Curve, CurveFqSponge, CurveFrSponge, ScalarField, SRS_SIZE};
+use ark_ec::AffineRepr;
+use ark_ff::{One, Zero};
 use ark_poly::{
     EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D, Radix2EvaluationDomain,
 };
@@ -54,20 +52,9 @@ pub fn prove(
     let final_chunk = (blob.data.len() / SRS_SIZE) - 1;
     assert!(blob.data.len() % SRS_SIZE == 0);
 
-    // powers of challenge
-    let powers: Vec<_> = blob
-        .commitments
-        .iter()
-        .scan(ScalarField::one(), |acc, _| {
-            let res = *acc;
-            *acc *= challenge;
-            Some(res.into_bigint())
-        })
-        .collect();
-
     // ∑_{i=1} com_i^{challenge^i}
     let combined_data_commitment =
-        ProjectiveCurve::msm_bigint(blob.commitments.as_slice(), powers.as_slice()).into_affine();
+        utils::aggregate_commitments(challenge, blob.commitments.as_slice());
 
     // Computes ∑_j chal^{j} data[j*SRS_SIZE + i]
     // where j ∈ [0..final_chunk], so the power corresponding to
@@ -180,19 +167,8 @@ pub fn verify(
     proof: &StorageProof,
     rng: &mut OsRng,
 ) -> bool {
-    let powers = commitments
-        .iter()
-        .scan(ScalarField::one(), |acc, _| {
-            let res = *acc;
-            *acc *= challenge;
-            Some(res.into_bigint())
-        })
-        .collect::<Vec<_>>();
-
-    // randomised data commitment is ∏ C_i^{chal^i} for all chunks
-    let combined_data_commitment =
-        ProjectiveCurve::msm_bigint(commitments, powers.as_slice()).into_affine();
-
+    // combined data commitment is ∑_{i=1} com_i^{challenge^i} for all chunks
+    let combined_data_commitment = utils::aggregate_commitments(challenge, commitments);
     verify_wrt_combined_data_commitment(srs, group_map, combined_data_commitment, proof, rng)
 }
 

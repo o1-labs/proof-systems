@@ -24,7 +24,7 @@ use core::{
     ops::{Add, AddAssign, Index, Mul, MulAssign, Neg, Sub},
 };
 use itertools::Itertools;
-use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
+use o1_utils::{field_helpers::pows, foreign_field::ForeignFieldHelpers, FieldHelpers};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -1013,20 +1013,6 @@ enum EvalResult<'a, F: FftField> {
     },
 }
 
-/// Compute the powers of `x`, `x^0, ..., x^{n - 1}`
-pub fn pows<F: Field>(x: F, n: usize) -> Vec<F> {
-    if n == 0 {
-        return vec![F::one()];
-    } else if n == 1 {
-        return vec![F::one(), x];
-    }
-    let mut v = vec![F::one(), x];
-    for i in 2..n {
-        v.push(v[i - 1] * x);
-    }
-    v
-}
-
 /// Compute the evaluations of the unnormalized lagrange polynomial on
 /// H_8 or H_4. Taking H_8 as an example, we show how to compute this
 /// polynomial on the expanded domain.
@@ -1099,8 +1085,8 @@ fn unnormalized_lagrange_evals<
     // |res_domain| = k * |H|
 
     // omega_k^0, ..., omega_k^k
-    let omega_k_n_pows = pows(res_domain.group_gen.pow([n]), k);
-    let omega_k_pows = pows(res_domain.group_gen, k);
+    let omega_k_n_pows = pows(k, res_domain.group_gen.pow([n]));
+    let omega_k_pows = pows(k, res_domain.group_gen);
 
     let mut evals: Vec<F> = {
         let mut v = vec![F::one(); k * (n as usize)];
