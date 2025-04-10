@@ -1,0 +1,36 @@
+name: Check for typos
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  # Allow manual triggering of the workflow
+  workflow_dispatch:
+  # Run on a schedule (weekly on Monday at 2:00 AM)
+  schedule:
+    - cron: '0 2 * * 1'
+
+jobs:
+  typo-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install codespell
+        run: pip install codespell
+
+      - name: Check for typos in source code (Rust files)
+        run: |
+          # Then check Rust source files with more relaxed settings
+          codespell --skip='*.json,*.lock,target/**,*.bin,*.srs,**/*.js,**/*.ts,**/ethereum-optimism/**,**/pnpm-lock.yaml' \
+                   --quiet-level=2 \
+                   --summary \
+                   --skip='**/target/**' \
+                   .
