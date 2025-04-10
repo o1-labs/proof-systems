@@ -12,6 +12,7 @@ use std::{collections::HashMap, hash::Hash};
 pub mod minroot;
 pub mod verifiable_minroot;
 pub mod verifier;
+pub mod verifier_stateful;
 
 /// A ZkApp is a (stateless) program that can be executed and proven using a
 /// (zero-knowledge) succinct non-interactive argument of knowledge or in short

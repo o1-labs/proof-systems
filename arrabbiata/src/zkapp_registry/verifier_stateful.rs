@@ -13,10 +13,11 @@
 //!   after each absorbtion.
 //! - [...] TBD
 use crate::{
+    challenge::ChallengeTerm,
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{InterpreterEnv, Side},
     zkapp_registry::{VerifierApp, ZkApp},
-    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
+    MAXIMUM_FIELD_SIZE_IN_BITS, MAX_DEGREE, NUMBER_OF_COLUMNS,
 };
 use ark_ff::PrimeField;
 use core::hash::Hash;
@@ -169,7 +170,35 @@ impl<C> Verifier<C> {
                 );
                 self.cross_term_commitments[i].clone()
             }
-            CommitmentType::ErrorTerm(i) => self.error_term_commitment.clone(),
+            CommitmentType::ErrorTerm => self.error_term_commitment.clone(),
+        }
+    }
+
+    pub fn read_challenge(&self, input: ChallengeTerm) -> C::ScalarField {
+        match input {
+            ChallengeTerm::ConstraintCombiner => self.last_challenges.constraint_combiner,
+            ChallengeTerm::Beta => self.last_challenges.beta,
+            ChallengeTerm::Gamma => self.last_challenges.gamma,
+            ChallengeTerm::ConstraintHomogeniser => self.last_challenges.constraint_homogeniser,
+            ChallengeTerm::RelationCombiner => self.last_challenges.relation_combiner,
+        }
+    }
+
+    pub fn get_value_to_absorb(&self, input: usize) -> BigInt {
+        // FIXME: for now, we only absorb the commitments to the columns
+        if idx < 2 * NUMBER_OF_COLUMNS {
+            let idx_col = idx / 2;
+            let (pt_x, pt_y) = self.accumulated_column_commitments[idx_col]
+                .get_first_chunk()
+                .to_coordinates()
+                .unwrap();
+            if idx % 2 == 0 {
+                pt_x.to_biguint().into()
+            } else {
+                pt_y.to_biguint().into()
+            }
+        } else {
+            unimplemented!("We only absorb the accumulators for now. Of course, this is not sound.")
         }
     }
 }
@@ -235,10 +264,9 @@ where
                                 ))
                             } else {
                                 // We have computed all the bits for all the columns
-                                Some(Instruction::EllipticCurveScaling(
-                                    CommitmentType::CrossTerm(0),
-                                    0,
-                                ))
+                                // and we can continue with the cross-terms.
+                                // FIXME: No-op for now.
+                                Some(Instruction::NoOp)
                             }
                         }
                         CommitmentType::CrossTerm(i_comm) => {
@@ -297,7 +325,7 @@ where
                 // If it is not the first bit, we suppose the previous value has
                 // been written in the previous step in the current row.
                 let scalar = if processing_bit == 0 {
-                    let v = self.last_challenges[ChallengeTerm::RelationCombiner];
+                    let v = self.read_challenge(ChallengeTerm::RelationCombiner);
                     env.write_column(scalar_col, v)
                 } else {
                     env.read_position(scalar_col)
@@ -549,6 +577,7 @@ where
                 });
             }
             Instruction::PoseidonSpongeAbsorb(_idx) => {
+                let sponge_rate = PlonkSpongeConstants::SPONGE_RATE;
                 let round_input_positions: Vec<E::Position> = (0
                     ..PlonkSpongeConstants::SPONGE_WIDTH - 1)
                     .map(|_i| env.allocate())
@@ -560,11 +589,12 @@ where
                     .map(|(i, pos)| env.load_poseidon_state(*pos, i + 1))
                     .collect();
 
-                let values_to_absorb: Vec<E::Variable> = (0..PlonkSpongeConstants::SPONGE_WIDTH
-                    - 1)
-                    .map(|_i| unsafe {
+                // There is an assumption the sponge rate is 2 here.
+                let values_to_absorb: Vec<E::Variable> = (0..sponge_rate)
+                    .map(|i| {
                         let pos = env.allocate();
-                        env.fetch_value_to_absorb(pos)
+                        let value = self.get_value_to_absorb(2 * idx + i);
+                        env.write_column(pos, value)
                     })
                     .collect();
 
