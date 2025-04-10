@@ -38,10 +38,6 @@ pub mod verifier;
 /// formed by a set of instructions `EllipticCurveScaling(bit)` where `bit`
 /// defines the bit of the scalar that is being processed.
 ///
-/// A ZkApp structure is responsible to provide a dummy witness, used to
-/// generate a first non-folded instance. The dummy witness is a satisfying
-/// execution trace for dummy inputs.
-///
 /// More specialised ZkApp's can be implemented with this interface.
 /// For instance, a [VerifierApp] is a ZkApp that is designed to implement the
 /// verifier part of the accumulation scheme.
@@ -58,9 +54,6 @@ where
     type Instruction: Copy;
 
     type Gadget: From<Self::Instruction> + Eq + Hash;
-
-    /// Provide a dummy witness, used to generate a first non-folded instance.
-    fn dummy_witness(&self, srs_size: usize) -> Vec<Vec<C::ScalarField>>;
 
     /// Fetch the first instruction to execute.
     fn fetch_instruction(&self) -> Self::Instruction;

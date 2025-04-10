@@ -47,10 +47,6 @@ where
 
     type Gadget = Gadget;
 
-    fn dummy_witness(&self, _srs_size: usize) -> Vec<Vec<C::ScalarField>> {
-        unimplemented!()
-    }
-
     fn fetch_instruction(&self) -> Instruction {
         Instruction::ComputeFifthRoot(0)
     }
