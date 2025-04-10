@@ -34,7 +34,7 @@ Pictorially:
 <b>
 Fig 1.
 </b>
-An overview the particular reductions/languages (described below) we require.
+An overview of the particular reductions/languages (described below) we require.
 </figcaption>
 </figure>
 
@@ -62,7 +62,7 @@ used in Pickles:
 <b>
 Fig 2.
 </b>
-An overview the particular reductions/languages (described below) we require.
+An overview of the particular reductions/languages (described below) we require.
 </figcaption>
 </figure>
 
@@ -551,7 +551,7 @@ This concludes the proof.
 #### The "Halo Trick"
 
 The "Halo trick" resides in observing that this is also the case for $\vec{G}^{(k)}$:
-since it is folded the same way as $\vec{\openx}^{(k)}$. It is not hard to convince one-self (using the same type of argument as above) that:
+since it is folded the same way as $\vec{\openx}^{(k)}$. It is not hard to convince oneself (using the same type of argument as above) that:
 
 $$
 G^{(k)} = \langle \vec{h}, \vec{G} \rangle
@@ -559,7 +559,7 @@ $$
 
 Where $\vec{h}$ is the coefficients of $h(X)$ (like $\vec{f}$ is the coefficients of $f(X)$), i.e. $h(X) = \sum_{i = 1}^{\ell} h_i X^{i-1}$
 
-For notational convince (and to emphasise that they are 1 dimensional vectors), define/replace:
+For notational convenience (and to emphasise that they are 1 dimensional vectors), define/replace:
 
 $$
 U = \vec{G}^{(k)} \in \GG, \ \ \ c = \vec{f}^{(k)} \in \FF, \ \ \ h(\openx) = \vec{\openx}^{(k)} \in \FF
