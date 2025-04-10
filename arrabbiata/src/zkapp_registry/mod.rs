@@ -110,51 +110,15 @@ where
     type Verifier: VerifierApp<C>;
 }
 
-pub struct ZkAppState<C>
-where
-    C: ArrabbiataCurve,
-    C::BaseField: PrimeField,
-{
-    pub accumulated_committed_state: Vec<PolyComm<C>>,
-
-    pub previous_committed_state: Vec<PolyComm<C>>,
-
-    pub accumulated_program_state: Vec<Vec<C::ScalarField>>,
-
-    pub accumulated_challenges: Challenges<BigInt>,
-
-    pub previous_challenges: Challenges<BigInt>,
-}
-
-// FIXME: take a ZkApp and initialize with the dummy witness
-impl<C> ZkAppState<C>
-where
-    C: ArrabbiataCurve,
-    C::BaseField: PrimeField,
-{
-    pub fn new() -> Self {
-        Self {
-            accumulated_committed_state: vec![],
-            previous_committed_state: vec![],
-            accumulated_program_state: vec![],
-            accumulated_challenges: Challenges::default(),
-            previous_challenges: Challenges::default(),
-        }
-    }
-}
-
-impl<C> Default for ZkAppState<C>
-where
-    C: ArrabbiataCurve,
-    C::BaseField: PrimeField,
-{
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// Execute the ZkApp `zkapp` over the interpreter environment `env`.
 /// This is a generic function that can be used to execute any ZkApp.
+///
+/// This method will build the execution trace of the ZkApp, instruction by
+/// instruction. The stopping condition is when the
+/// [Self::fetch_next_instruction] returns `None`.
+///
+/// This method must be used in conjunction with the [prove_step] method to
+/// build the accumulation proof.
 pub fn execute<E, C, Z>(zkapp: &Z, env: &mut E)
 where
     E: InterpreterEnv,
