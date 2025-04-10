@@ -383,50 +383,6 @@ where
         }
     }
 
-    unsafe fn fetch_value_to_absorb(&mut self, pos: Self::Position) -> Self::Variable {
-        let (col, curr_or_next) = pos;
-        // Purely arbitrary for now
-        let Column::X(_idx) = col else {
-            panic!("Only private inputs can be accepted to load the values to be absorbed")
-        };
-        assert_eq!(
-            curr_or_next,
-            CurrOrNext::Curr,
-            "Only the current row can be used to load the values to be absorbed"
-        );
-        // FIXME: for now, we only absorb the commitments to the columns
-        let idx = self.idx_values_to_absorb;
-        let res = if idx < 2 * NUMBER_OF_COLUMNS {
-            let idx_col = idx / 2;
-            debug!("Absorbing the accumulator for the column index {idx_col}. After this, there will still be {} elements to absorb", NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO - idx - 1);
-            if self.current_iteration % 2 == 0 {
-                let (pt_x, pt_y) = self.zkapp2_state.accumulated_committed_state[idx_col]
-                    .get_first_chunk()
-                    .to_coordinates()
-                    .unwrap();
-                if idx % 2 == 0 {
-                    self.write_column(pos, pt_x.to_biguint().into())
-                } else {
-                    self.write_column(pos, pt_y.to_biguint().into())
-                }
-            } else {
-                let (pt_x, pt_y) = self.zkapp1_state.accumulated_committed_state[idx_col]
-                    .get_first_chunk()
-                    .to_coordinates()
-                    .unwrap();
-                if idx % 2 == 0 {
-                    self.write_column(pos, pt_x.to_biguint().into())
-                } else {
-                    self.write_column(pos, pt_y.to_biguint().into())
-                }
-            }
-        } else {
-            unimplemented!("We only absorb the accumulators for now. Of course, this is not sound.")
-        };
-        self.idx_values_to_absorb += 1;
-        res
-    }
-
     unsafe fn load_temporary_accumulators(
         &mut self,
         pos_x: Self::Position,
