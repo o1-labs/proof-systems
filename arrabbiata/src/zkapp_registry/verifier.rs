@@ -127,10 +127,6 @@ where
 
     type Gadget = Gadget;
 
-    fn dummy_witness(&self, _srs_size: usize) -> Vec<Vec<C::ScalarField>> {
-        unimplemented!("Dummy witness for the verifier is not implemented yet")
-    }
-
     fn fetch_instruction(&self) -> Self::Instruction {
         Instruction::PoseidonSpongeAbsorb(0)
     }
