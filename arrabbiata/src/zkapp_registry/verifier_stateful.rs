@@ -91,22 +91,6 @@ pub enum Gadget {
     NoOp,
 }
 
-// /// The input type of the verifier.
-// ///
-// /// The inputs are the following:
-// /// - The commitments to the columns..
-// /// - The commitments to the cross-terms.
-// /// - The challenges that have been coined at the previous iteration.
-// /// - The challenges that have been accumulated so far.
-// pub enum InputType<C> {
-//     ColumnCommitment(usize, C),
-//     CrossTermCommitment(usize, C),
-//     LastChallenge(usize, C::ScalarField),
-//     AccumulatedChallenge(usize, C::ScalarField),
-// }
-
-// pub type Input<C> = Vec<InputType<C>>;
-
 /// Convert an instruction into the corresponding gadget.
 impl From<Instruction> for Gadget {
     fn from(val: Instruction) -> Gadget {
