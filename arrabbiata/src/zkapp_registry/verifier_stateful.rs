@@ -13,7 +13,7 @@
 //!   after each absorbtion.
 //! - [...] TBD
 use crate::{
-    challenge::ChallengeTerm,
+    challenge::{ChallengeTerm, Challenges},
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{InterpreterEnv, Side},
     zkapp_registry::{VerifierApp, ZkApp},
@@ -127,31 +127,43 @@ where
     C: ArrabbiataCurve,
     C::BaseField: PrimeField,
 {
-    last_challenges: Challenge<C::ScalarField>,
+    last_challenges: Challenges<C::ScalarField>,
     column_commitments: Vec<C>,
     cross_term_commitments: Vec<C>,
     error_term_commitment: C,
 
-    accumulated_challenges: Challenge<C::ScalarField>,
+    accumulated_challenges: Challenges<C::ScalarField>,
     accumulated_column_commitments: Vec<C>,
+
+    sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
 }
 
-impl<C> Default for Verifier<C> {
+impl<C> Default for Verifier<C>
+where
+    C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
+{
     // FIXME
     fn default() -> Self {
         Self {
-            last_challenges: Challenge::default(),
+            last_challenges: Challenges::default(),
             column_commitments: vec![],
             cross_term_commitments: vec![],
             error_term_commitment: C::one(),
 
-            accumulated_challenges: Challenge::default(),
+            accumulated_challenges: Challenges::default(),
             accumulated_column_commitments: vec![],
+
+            sponge_state: [BigInt::from(0); PlonkSpongeConstants::SPONGE_WIDTH],
         }
     }
 }
 
-impl<C> Verifier<C> {
+impl<C> Verifier<C>
+where
+    C: ArrabbiataCurve,
+    C::BaseField: PrimeField,
+{
     pub fn read_commitment(&self, input: CommitmentType) -> C {
         match input {
             CommitmentType::Column(i) => {
@@ -184,7 +196,7 @@ impl<C> Verifier<C> {
         }
     }
 
-    pub fn get_value_to_absorb(&self, input: usize) -> BigInt {
+    pub fn get_value_to_absorb(&self, idx: usize) -> BigInt {
         // FIXME: for now, we only absorb the commitments to the columns
         if idx < 2 * NUMBER_OF_COLUMNS {
             let idx_col = idx / 2;
@@ -200,6 +212,20 @@ impl<C> Verifier<C> {
         } else {
             unimplemented!("We only absorb the accumulators for now. Of course, this is not sound.")
         }
+    }
+
+    pub fn get_poseidon_mds_matrix(&self, row: usize, column: usize) -> BigInt {
+        C::sponge_params().mds[row][column].to_biguint().into()
+    }
+
+    pub fn get_poseidon_round_constant(&self, round: usize, column: usize) -> BigInt {
+        C::sponge_params().round_constants[round][column]
+            .to_biguint()
+            .into()
+    }
+
+    pub fn read_sponge_state(&self, input: usize) -> BigInt {
+        self.sponge_state[input]
     }
 }
 
@@ -520,7 +546,11 @@ where
                     round_input_positions
                         .iter()
                         .enumerate()
-                        .map(|(i, pos)| env.load_poseidon_state(*pos, i))
+                        .map(|(i, pos)| {
+                            let pos = env.allocate();
+                            // FIXME: require permutation arg
+                            env.write_column(pos, self.read_sponge_state(i))
+                        })
                         .collect()
                 } else {
                     round_input_positions
@@ -537,7 +567,7 @@ where
                     let round = starting_round + idx_round;
 
                     let rcs: Vec<E::Variable> = (0..PlonkSpongeConstants::SPONGE_WIDTH)
-                        .map(|i| env.get_poseidon_round_constant(round, i))
+                        .map(|i| self.get_poseidon_round_constant(round, i))
                         .collect();
 
                     let state: Vec<E::Variable> = rcs
@@ -546,7 +576,7 @@ where
                         .map(|(i, rc)| {
                             let acc: E::Variable =
                                 state.iter().enumerate().fold(env.zero(), |acc, (j, x)| {
-                                    acc + env.get_poseidon_mds_matrix(i, j) * x.clone()
+                                    acc + self.get_poseidon_mds_matrix(i, j) * x.clone()
                                 });
                             // The last iteration is written on the next row.
                             if idx_round == 4 {
@@ -576,7 +606,7 @@ where
                     state
                 });
             }
-            Instruction::PoseidonSpongeAbsorb(_idx) => {
+            Instruction::PoseidonSpongeAbsorb(idx) => {
                 let sponge_rate = PlonkSpongeConstants::SPONGE_RATE;
                 let round_input_positions: Vec<E::Position> = (0
                     ..PlonkSpongeConstants::SPONGE_WIDTH - 1)
@@ -586,7 +616,10 @@ where
                 let state: Vec<E::Variable> = round_input_positions
                     .iter()
                     .enumerate()
-                    .map(|(i, pos)| env.load_poseidon_state(*pos, i + 1))
+                    .map(|(i, pos)| {
+                        let pos = env.allocate();
+                        env.write_column(pos, self.read_sopnge_state(i))
+                    })
                     .collect();
 
                 // There is an assumption the sponge rate is 2 here.

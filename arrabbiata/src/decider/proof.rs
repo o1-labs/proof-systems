@@ -1,6 +1,6 @@
 use crate::{
     curve::ArrabbiataCurve,
-    zkapp_registry::{verifier::Verifier, VerifiableZkApp},
+    zkapp_registry::{verifier_stateful::Verifier, VerifiableZkApp},
 };
 use ark_ff::PrimeField;
 use std::marker::PhantomData;

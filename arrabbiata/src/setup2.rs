@@ -33,7 +33,7 @@ use std::time::Instant;
 
 use crate::{
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
-    zkapp_registry::{setup, verifier::Verifier, VerifiableZkApp},
+    zkapp_registry::{setup, verifier_stateful::Verifier, VerifiableZkApp},
 };
 
 /// An indexed relation is a structure that contains all the information needed

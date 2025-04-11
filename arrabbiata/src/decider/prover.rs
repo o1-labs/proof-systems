@@ -4,7 +4,7 @@ use crate::{
     curve::ArrabbiataCurve,
     decider::proof::Proof,
     witness2::Env,
-    zkapp_registry::{verifier::Verifier, VerifiableZkApp},
+    zkapp_registry::{verifier_stateful::Verifier, VerifiableZkApp},
 };
 use ark_ec::CurveConfig;
 use ark_ff::PrimeField;

@@ -134,10 +134,6 @@ where
     /// The value is a 128bits value.
     pub last_program_digest_after_execution: BigInt,
 
-    /// The coin folding combiner will be used to generate the combinaison of
-    /// folding instances
-    pub r: BigInt,
-
     /// Temporary registers for elliptic curve points in affine coordinates than
     /// can be used to save values between instructions.
     ///
@@ -304,9 +300,7 @@ where
     // This is only for testing purposes, and having something to build the
     // witness.
     fn fetch_input(&mut self, pos: Self::Position) -> Self::Variable {
-        let x = BigInt::from(self.current_row as u64);
-        self.write_column(pos, x.clone());
-        x
+        panic!("REMOVEME")
     }
 
     /// Reset the environment to build the next row
@@ -328,49 +322,20 @@ where
         self.next_state = std::array::from_fn(|_| BigInt::from(0_usize));
     }
 
-    /// FIXME: check if we need to pick the left or right sponge
     fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable {
-        let r = if self.current_iteration % 2 == 0 {
-            self.sponge_e1[0].clone()
-        } else {
-            self.sponge_e2[0].clone()
-        };
-        let (col, _) = pos;
-        let Column::X(idx) = col else {
-            unimplemented!("Only works for private columns")
-        };
-        self.state[idx].clone_from(&r);
-        self.r.clone_from(&r);
-        r
+        panic!("REMOVEME")
     }
 
     fn load_poseidon_state(&mut self, pos: Self::Position, i: usize) -> Self::Variable {
-        let state = if self.current_iteration % 2 == 0 {
-            self.sponge_e1[i].clone()
-        } else {
-            self.sponge_e2[i].clone()
-        };
-        self.write_column(pos, state)
+        panic!("REMOVEME")
     }
 
     fn get_poseidon_round_constant(&self, round: usize, i: usize) -> Self::Variable {
-        if self.current_iteration % 2 == 0 {
-            E1::sponge_params().round_constants[round][i]
-                .to_biguint()
-                .into()
-        } else {
-            E2::sponge_params().round_constants[round][i]
-                .to_biguint()
-                .into()
-        }
+        panic!("REMOVEME")
     }
 
     fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable {
-        if self.current_iteration % 2 == 0 {
-            E1::sponge_params().mds[i][j].to_biguint().into()
-        } else {
-            E2::sponge_params().mds[i][j].to_biguint().into()
-        }
+        panic!("REMOVEME")
     }
 
     unsafe fn save_poseidon_state(&mut self, x: Self::Variable, i: usize) {
@@ -504,50 +469,6 @@ where
         }
     }
 
-    unsafe fn fetch_value_to_absorb(&mut self, pos: Self::Position) -> Self::Variable {
-        let (col, curr_or_next) = pos;
-        // Purely arbitrary for now
-        let Column::X(_idx) = col else {
-            panic!("Only private inputs can be accepted to load the values to be absorbed")
-        };
-        assert_eq!(
-            curr_or_next,
-            CurrOrNext::Curr,
-            "Only the current row can be used to load the values to be absorbed"
-        );
-        // FIXME: for now, we only absorb the commitments to the columns
-        let idx = self.idx_values_to_absorb;
-        let res = if idx < 2 * NUMBER_OF_COLUMNS {
-            let idx_col = idx / 2;
-            debug!("Absorbing the accumulator for the column index {idx_col}. After this, there will still be {} elements to absorb", NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO - idx - 1);
-            if self.current_iteration % 2 == 0 {
-                let (pt_x, pt_y) = self.program_e2.accumulated_committed_state[idx_col]
-                    .get_first_chunk()
-                    .to_coordinates()
-                    .unwrap();
-                if idx % 2 == 0 {
-                    self.write_column(pos, pt_x.to_biguint().into())
-                } else {
-                    self.write_column(pos, pt_y.to_biguint().into())
-                }
-            } else {
-                let (pt_x, pt_y) = self.program_e1.accumulated_committed_state[idx_col]
-                    .get_first_chunk()
-                    .to_coordinates()
-                    .unwrap();
-                if idx % 2 == 0 {
-                    self.write_column(pos, pt_x.to_biguint().into())
-                } else {
-                    self.write_column(pos, pt_y.to_biguint().into())
-                }
-            }
-        } else {
-            unimplemented!("We only absorb the accumulators for now. Of course, this is not sound.")
-        };
-        self.idx_values_to_absorb += 1;
-        res
-    }
-
     // It is unsafe as no constraint is added
     unsafe fn is_same_ec_point(
         &mut self,
@@ -578,6 +499,8 @@ where
     /// # Safety
     ///
     /// Zero is not allowed as an input.
+    ///
+    /// FIXME: this is simply computing an inverse, this does not make sense...
     unsafe fn inverse(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable {
         let res = if self.current_iteration % 2 == 0 {
             E1::ScalarField::from_biguint(&x.to_biguint().unwrap())
@@ -597,6 +520,7 @@ where
         self.write_column(pos, res)
     }
 
+    // FIXME: move in circuit/verifier. This is an helper.
     fn compute_lambda(
         &mut self,
         pos: Self::Position,
@@ -649,6 +573,8 @@ where
 
     /// Double the elliptic curve point given by the affine coordinates
     /// `(x1, y1)` and save the result in the registers `pos_x` and `pos_y`.
+    //
+    // FIXME: move in circuit/verifier. This is an helper.
     fn double_ec_point(
         &mut self,
         pos_x: Self::Position,
