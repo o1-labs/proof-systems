@@ -184,6 +184,9 @@ where
     constraints
 }
 
+/// Get the constraints as [Sparse] polynomials per gadget for the ZkApp `zkapp`.
+///
+/// This method will be used to compute the cross-terms.
 pub fn get_mvpoly_per_gadget<C, Z>(
     zkapp: &Z,
 ) -> HashMap<Z::Gadget, Vec<Sparse<C::ScalarField, { MV_POLYNOMIAL_ARITY }, { MAX_DEGREE }>>>
@@ -209,6 +212,30 @@ where
     constraints
 }
 
+/// Prove a step of the ZkApp `zkapp` over the interpreter environment `env`.
+///
+/// This method must be called after the [execute] method to build the
+/// accumulation proof.
+pub fn prove_step<F, C, Z, E>(env: &mut E)
+where
+    F: PrimeField,
+    C: ArrabbiataCurve<ScalarField = F>,
+    C::BaseField: PrimeField,
+    Z: ZkApp<C>,
+    E: Env<F, F, C, C, Z, Z>,
+{
+    // env.commit_state();
+    // env.absorb_state();
+
+    // coin_challenge(env, zkapp_state);
+
+    // compute_cross_terms(env, zkapp_state);
+    // absorb_cross_terms(env, zkapp_state);
+    // commit_cross_terms(env.indexed_relation, zkapp_state);
+
+    // compute_accumulated_error(env, zkapp_state);
+}
+
 pub fn fold<Fp, Fq, C1, C2, Z1, Z2>(
     zkapp1: &Z1,
     zkapp2: &Z2,
@@ -223,16 +250,27 @@ where
     C2::BaseField: PrimeField,
     <<C1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
     <<C2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
-    Z1: VerifiableZkApp<C1, Verifier = verifier::Verifier<C1>>,
-    Z2: VerifiableZkApp<C2, Verifier = verifier::Verifier<C2>>,
+    Z1: VerifiableZkApp<C1, Verifier = verifier_stateful::Verifier<C1>>,
+    Z2: VerifiableZkApp<C2, Verifier = verifier_stateful::Verifier<C2>>,
 {
+    // FIXME:
+    // "Augment" the function here, i.e. make them verifiable.
+    // The type must still be `VerifiableZkApp`, with the same verifier because
+    // the environment could be different.
     let srs_log2_size = 16;
+    // FIXME: remove ZkApp types in the IndexedRelation to have something
+    // FIXME: use only one type of ZkApp. It will ease this first version.
     let indexed_relation = IndexedRelation::new(zkapp1, zkapp2, srs_log2_size);
-    let mut env = Env::<C1::ScalarField, C2::ScalarField, C1, C2, Z1, Z2>::new(indexed_relation);
+    let mut env = Env::<C1::ScalarField, C2::ScalarField, C1, C2, Z1>::new(indexed_relation);
+    let mut env2 = Env::<C2::ScalarField, C1::ScalarField, C2, C1, Z2>::new(indexed_relation);
     let mut i = 0;
     while i < n {
-        execute(zkapp1, &mut env);
+        execute(zkapp1, &mut env1);
+        prove_step(&mut env1);
+        env.reset_for_next_iteration();
         execute(zkapp2, &mut env);
+        prove_step(&mut env);
+        env.reset_for_next_iteration();
         i += 1;
     }
     env
