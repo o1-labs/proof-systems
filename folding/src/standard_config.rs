@@ -242,7 +242,7 @@ mod memoization {
         }
     }
     /// a hashmap like data structure supporting get-or-insert with
-    /// an immutable reference and returning an inmutable reference
+    /// an immutable reference and returning an immutable reference
     /// without guard
     pub struct ColumnMemoizer<C: Hash + Eq, F: Field, const N: usize> {
         first_segment: ColumnMemoizerSegment<F, N>,

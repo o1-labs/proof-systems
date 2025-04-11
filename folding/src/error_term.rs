@@ -433,13 +433,13 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
 
         // FIXME: use parallelisation
         let blinder = PolyComm::new(vec![relaxed_instance.blinder]);
-        for (expected_i, (i, wit)) in relaxed_witness.extended_witness.extended.iter().enumerate() {
+        for (expected_i, (i, with)) in relaxed_witness.extended_witness.extended.iter().enumerate() {
             // in case any where to be missing for some reason
             assert_eq!(*i, expected_i);
             // Blinding the commitments to support the case the witness is zero.
             // The IVC circuit expects to have non-zero commitments.
             let commit = srs
-                .commit_evaluations_custom(self.domain, wit, &blinder)
+                .commit_evaluations_custom(self.domain, with, &blinder)
                 .unwrap()
                 .commitment;
             relaxed_instance.extended_instance.extended.push(commit)

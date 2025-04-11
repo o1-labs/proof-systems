@@ -136,14 +136,14 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Column, TestChallenge, ()> for Te
     }
 
     fn col(&self, col: Column, curr_or_next: CurrOrNext, side: Side) -> &[Fp] {
-        let wit = match curr_or_next {
+        let with = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
             CurrOrNext::Next => &self.next_witnesses[side as usize],
         };
         match col {
-            Column::X(0) => &wit.0[0].evals,
-            Column::X(1) => &wit.0[1].evals,
-            Column::X(2) => &wit.0[2].evals,
+            Column::X(0) => &with.0[0].evals,
+            Column::X(1) => &with.0[1].evals,
+            Column::X(2) => &with.0[2].evals,
             Column::Selector(0) => &self.structure.s_add,
             Column::Selector(1) => &self.structure.s_mul,
             // Only 3 columns and 2 selectors
