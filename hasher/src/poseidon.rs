@@ -19,7 +19,7 @@ use super::{domain_prefix_to_field, Hashable, Hasher};
 /// Poseidon hasher context
 //
 //  The arithmetic sponge parameters are large and costly to initialize,
-//  so we only want to do this once and then re-use the Poseidon context
+//  so we only want to do this once and then reuse the Poseidon context
 //  for many hashes. Also, following approach of the mina code we store
 //  a backup of the initialized sponge state for efficient reuse.
 pub struct Poseidon<SC: SpongeConstants, H: Hashable> {

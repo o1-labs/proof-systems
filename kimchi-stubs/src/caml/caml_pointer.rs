@@ -47,7 +47,7 @@ macro_rules! impl_caml_pointer {
         impl ::core::ops::DerefMut for $name {
             fn deref_mut(&mut self) -> &mut Self::Target {
                 unsafe {
-                    // Wholely unsafe, Batman!
+                    // Wholly unsafe, Batman!
                     // We would use [`get_mut_unchecked`] here, but it is nightly-only.
                     // Instead, we get coerce our constant pointer to a mutable
                     // pointer, in the knowledge that

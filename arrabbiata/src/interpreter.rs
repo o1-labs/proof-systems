@@ -25,7 +25,7 @@
 //!     - [Gadget layout](#gadget-layout-1)
 //!   - [Elliptic curve scalar multiplication](#elliptic-curve-scalar-multiplication)
 //!     - [Gadget layout](#gadget-layout-2)
-//! - [Handle the combinaison of constraints](#handle-the-combinaison-of-constraints)
+//! - [Handle the combination of constraints](#handle-the-combination-of-constraints)
 //! - [Permutation argument](#permutation-argument)
 //! - [Fiat-Shamir challenges](#fiat-shamir-challenges)
 //! - [Folding](#folding)
@@ -102,7 +102,7 @@
 //!
 //! For a first version, we consider an instance of the Poseidon hash function
 //! that is suitable for curves whose field size is around 256 bits.
-//! A security analysis for these curves give us a recommandation of 60 full
+//! A security analysis for these curves give us a recommendation of 60 full
 //! rounds if we consider a 128-bit security level and a low-degree
 //! exponentiation of `5`, with only full rounds.
 //! In the near future, we will consider the partial rounds strategy to reduce
@@ -194,7 +194,7 @@
 //! Circuits](https://github.com/o1-labs/rfcs/blob/main/0013-efficient-msms-for-non-native-pickles-verification.md).
 //! We leave this for future work.
 //!
-//! ## Handle the combinaison of constraints
+//! ## Handle the combination of constraints
 //!
 //! The prover will have to combine the constraints to generate the
 //! full circuit at the end. The constraints will be combined using a
@@ -580,7 +580,7 @@ use num_bigint::BigInt;
 
 /// A list of instruction/gadget implemented in the interpreter.
 /// The control flow can be managed by implementing a function
-/// `fetch_next_instruction` and `fetch_instruction` on a witness environnement.
+/// `fetch_next_instruction` and `fetch_instruction` on a witness environment.
 /// See the [Witness environment](crate::witness::Env) for more details.
 ///
 /// Mostly, the instructions will be used to build the verifier circuit, but it
@@ -601,7 +601,7 @@ pub enum Instruction {
     /// columns, we can compute 5 full rounds per row.
     ///
     /// We split the Poseidon gadget in 13 sub-gadgets, one for each set of 5
-    /// full rounds and one for the absorbtion. The parameter is the starting
+    /// full rounds and one for the absorption. The parameter is the starting
     /// round of the permutation. It is expected to be a multiple of five.
     ///
     /// Note that, for now, the gadget can only be used by the verifier circuit.
@@ -906,7 +906,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             } else {
                 env.read_position(scalar_col)
             };
-            // FIXME: we do add the blinder. We must substract it at the end.
+            // FIXME: we do add the blinder. We must subtract it at the end.
             // Perform the following algorithm (double-and-add):
             // res = O <-- blinder
             // tmp = P
@@ -1206,7 +1206,7 @@ pub fn fetch_next_instruction(current_instruction: Instruction) -> Instruction {
             Instruction::PoseidonFullRound(0)
         }
         Instruction::EllipticCurveScaling(i_comm, bit) => {
-            // TODO: we still need to substract (or not?) the blinder.
+            // TODO: we still need to subtract (or not?) the blinder.
             // Maybe we can avoid this by aggregating them.
             // TODO: we also need to aggregate the cross-terms.
             // Therefore i_comm must also take into the account the number

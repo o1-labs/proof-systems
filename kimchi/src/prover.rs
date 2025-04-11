@@ -293,7 +293,7 @@ where
         //~    This is why we need to absorb the commitment to the public polynomial at this point.
         absorb_commitment(&mut fq_sponge, &public_comm);
 
-        //~ 1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
+        //~ 1. Commit to the witness columns by creating `COLUMNS` hiding commitments.
         //~
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
@@ -351,7 +351,7 @@ where
         //~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
         //~    As mentioned above, we commit using the evaluations form rather than the coefficients
         //~    form so we can take advantage of the sparsity of the evaluations (i.e., there are many
-        //~    0 entries and entries that have less-than-full-size field elemnts.)
+        //~    0 entries and entries that have less-than-full-size field elements.)
         let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = (0..COLUMNS)
             .into_par_iter()
             .map(|i| {
@@ -636,7 +636,7 @@ where
         internal_tracing::checkpoint!(internal_traces; z_permutation_aggregation_polynomial);
         let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
 
-        //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
+        //~ 1. Commit (hiding) to the permutation aggregation polynomial $z$.
         let z_comm = index.srs.commit(&z_poly, num_chunks, rng);
 
         //~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.

@@ -212,7 +212,7 @@ where
         sys
     }
 
-    /// Used internaly to evaluate variables.
+    /// Used internally to evaluate variables.
     /// Can panic if used with a wrong index.
     pub fn read_var_idx(&self, idx: usize) -> F {
         if idx < self.num_public_inputs {

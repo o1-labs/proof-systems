@@ -37,7 +37,7 @@ use std::{
 };
 
 // TODO: do we want to be more restrictive and refer to the number of accesses
-//       to the SAME register/memory addrss?
+//       to the SAME register/memory address?
 
 /// Maximum number of register accesses per instruction (based on demo)
 pub const MAX_NB_REG_ACC: u64 = 7;

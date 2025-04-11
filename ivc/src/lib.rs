@@ -97,7 +97,7 @@
 //!
 //! In the [Nova paper](https://eprint.iacr.org/2021/370.pdf), to provide
 //! incremental verifiable computation, the authors propose a folding scheme
-//! where the verifier has to compute the followings:
+//! where the verifier has to compute the following:
 //!
 //! ```text
 //! // Accumulation of the homogeneous value `u`:
@@ -170,7 +170,7 @@
 // If we compute on one row the hash and on the next row the ECADD, the sign of
 // y can be computed on the ECADD row, and accessed by the poseidon constraints.
 //! For a given set of coordinates `(x, y)`, and by supposing an initial state of
-//! our permutation `(s0, s1, s2)`, we will compute on a single row the absorbtion
+//! our permutation `(s0, s1, s2)`, we will compute on a single row the absorption
 //! of `(x, y)`, which consists of updating the state `(s0, s1, s2)` to
 //! `(s0 + x, s1 + y, s2)`.
 //! For each side, we will initialize a new Poseidon state, and we will keep

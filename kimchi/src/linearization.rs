@@ -35,7 +35,7 @@ use crate::circuits::{
 };
 use ark_ff::{FftField, PrimeField, Zero};
 
-/// Get the expresion of constraints.
+/// Get the expression of constraints.
 ///
 /// # Panics
 ///

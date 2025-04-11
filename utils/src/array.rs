@@ -136,7 +136,7 @@ mod tests {
     }
 
     #[test]
-    /// Tests whether boxed array tranformations preserve the elements.
+    /// Tests whether boxed array transformations preserve the elements.
     fn test_boxed_stack_completeness() {
         let mut rng = crate::tests::make_test_rng(None);
 
