@@ -9,10 +9,10 @@ use std::io::BufReader;
 // Serialization with serde
 //
 
-pub mod ser {
+pub mod set {
     //! You can use this module for serialization and deserializing arkworks types with [serde].
     //! Simply use the following attribute on your field:
-    //! `#[serde(with = "o1_utils::serialization::ser") attribute"]`
+    //! `#[serde(with = "o1_utils::serialization::set") attribute"]`
 
     use super::*;
     use serde_with::{DeserializeAs, SerializeAs};
@@ -25,7 +25,7 @@ pub mod ser {
     {
         let mut bytes = vec![];
         val.serialize_compressed(&mut bytes)
-            .map_err(serde::ser::Error::custom)?;
+            .map_err(serde::set::Error::custom)?;
 
         Bytes::serialize_as(&bytes, serializer)
     }
@@ -62,7 +62,7 @@ where
     {
         let mut bytes = vec![];
         val.serialize_compressed(&mut bytes)
-            .map_err(serde::ser::Error::custom)?;
+            .map_err(serde::set::Error::custom)?;
 
         if serializer.is_human_readable() {
             hex::serde::serialize(bytes, serializer)
@@ -102,7 +102,7 @@ where
     {
         let mut bytes = vec![];
         val.serialize_uncompressed(&mut bytes)
-            .map_err(serde::ser::Error::custom)?;
+            .map_err(serde::set::Error::custom)?;
 
         if serializer.is_human_readable() {
             hex::serde::serialize(bytes, serializer)
@@ -155,7 +155,7 @@ pub fn test_generic_serialization_regression_canonical<
 
     let reader = BufReader::new(buf_expected.as_slice());
     let data_read: T =
-        T::deserialize_compressed(reader).expect("Could not deseralize given bytevector");
+        T::deserialize_compressed(reader).expect("Could not deserialize given bytevector");
 
     assert!(
             data_read == data_expected,
@@ -205,7 +205,7 @@ pub fn test_generic_serialization_regression_serde<
     // Step 2: deserialize `buf_expected` and check if it's equal to `data_expected`
 
     let reader = BufReader::new(buf_expected.as_slice());
-    let data_read: T = rmp_serde::from_read(reader).expect("Could not deseralize given bytevector");
+    let data_read: T = rmp_serde::from_read(reader).expect("Could not deserialize given bytevector");
 
     assert!(
             data_read == data_expected,

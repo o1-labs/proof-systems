@@ -66,7 +66,7 @@ where
 
 /// Apply the HADES-based Poseidon to the state.
 /// The environment has to be initialized with the input values.
-/// It mimicks the version described in the paper ["Poseidon: A New Hash
+/// It mimics the version described in the paper ["Poseidon: A New Hash
 /// Function"](https://eprint.iacr.org/2019/458.pdf), figure 2. The construction
 /// first starts with `NB_FULL_ROUND/2` full rounds, then `NB_PARTIAL_ROUND`
 /// partial rounds, and finally `NB_FULL_ROUND/2` full rounds.
@@ -174,7 +174,7 @@ where
         + HybridCopyCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND, NB_PARTIAL_ROUND>>,
 {
     // We start at round 0
-    // This implementation mimicks the version described in
+    // This implementation mimics the version described in
     // poseidon_block_cipher in the mina_poseidon crate.
     assert!(
         round < NB_FULL_ROUND,

@@ -151,8 +151,8 @@ where
     /// The side-effect of this method will be to run a permutation on the
     /// sponge state _after_ coining the challenge.
     /// There is an hypothesis on the sponge state that the inner permutation
-    /// has been correctly executed if the absorbtion rate had been reached at
-    /// the last absorbtion.
+    /// has been correctly executed if the absorption rate had been reached at
+    /// the last absorption.
     ///
     /// The challenge will be added to the [self.challenges] attribute at the
     /// position given by the challenge `chal`.
@@ -260,7 +260,7 @@ where
 /// verifier application. The verifier application is used to encode the
 /// correctness of previous program states computations.
 ///
-/// The term "app(lication) state" will be used to refer to the state of the
+/// The term "app(location) state" will be used to refer to the state of the
 /// user application, and the term "IVC state" will be used to refer to the
 /// state of the verifier application. The term program state will be used to refer to
 /// the state of the whole program.
@@ -371,7 +371,7 @@ pub struct Env<
     /// The value is a 128bits value.
     pub last_program_digest_after_execution: BigInt,
 
-    /// The coin folding combiner will be used to generate the combinaison of
+    /// The coin folding combiner will be used to generate the combination of
     /// folding instances
     pub r: BigInt,
 
@@ -698,7 +698,7 @@ where
                             }
                             // As it is the first iteration, we must use the point at infinity.
                             // However, to avoid handling the case equal to zero, we will
-                            // use a blinder, that we will substract at the end.
+                            // use a blinder, that we will subtract at the end.
                             // As we suppose the probability to get a folding combiner
                             // equals to zero is negligible, we know we have a negligible
                             // probability to request to compute `0 * P`.
@@ -724,7 +724,7 @@ where
                             }
                             // As it is the first iteration, we must use the point at infinity.
                             // However, to avoid handling the case equal to zero, we will
-                            // use a blinder, that we will substract at the end.
+                            // use a blinder, that we will subtract at the end.
                             // As we suppose the probability to get a folding combiner
                             // equals to zero is negligible, we know we have a negligible
                             // probability to request to compute `0 * P`.
@@ -1133,8 +1133,8 @@ where
     /// The side-effect of this method will be to run a permutation on the
     /// sponge state _after_ coining the challenge.
     /// There is an hypothesis on the sponge state that the inner permutation
-    /// has been correctly executed if the absorbtion rate had been reached at
-    /// the last absorbtion.
+    /// has been correctly executed if the absorption rate had been reached at
+    /// the last absorption.
     ///
     /// The challenge will be added to the [self.challenges] attribute at the
     /// position given by the challenge `chal`.

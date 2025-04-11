@@ -435,7 +435,7 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
                     });
                 }
 
-                //~ 6. Pad the end of the concatened table with the dummy value.
+                //~ 6. Pad the end of the concatenated table with the dummy value.
                 //     By padding with 0, we constraint the table with ID 0 to
                 //     have a zero entry.
                 //     This is for the rows which do not have a lookup selector,

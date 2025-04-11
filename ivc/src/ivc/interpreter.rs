@@ -599,7 +599,7 @@ pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize, const N_CHALS: usize
             )
         } else if block_row_i < 35 * N_COL_TOTAL {
             // FIXME add a minus!
-            // no bucketing, no coeffient, no RAM. Only -R hat
+            // no bucketing, no coefficient, no RAM. Only -R hat
             (
                 r_hat_large[com_i][..N_LIMBS_LARGE].try_into().unwrap(),
                 r_hat_large[com_i][N_LIMBS_LARGE..].try_into().unwrap(),

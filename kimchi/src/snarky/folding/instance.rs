@@ -155,8 +155,8 @@ impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
             .collect();
         for set in new_sets.iter_mut() {
             for challenge in set.iter_mut() {
-                let mut trimed = trim(sys, challenge, base)?;
-                core::mem::swap(challenge, &mut trimed);
+                let mut trimmed = trim(sys, challenge, base)?;
+                core::mem::swap(challenge, &mut trimmed);
             }
         }
         let challenges = self

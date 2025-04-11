@@ -20,14 +20,14 @@ pub fn bench_proof_creation_mina(c: &mut Criterion) {
 
     let filename = std::env::var("BENCH_PROOF_CREATION_MINA_INPUTS").unwrap();
 
-    // Parse filename "kimchi_inputs_CURVENAME_SEED.ser" into two parameters
+    // Parse filename "kimchi_inputs_CURVENAME_SEED.set" into two parameters
     let (curve_name, seed): (&str, &str) = filename
         .split('/')
         .last()
         .unwrap()
         .strip_prefix("kimchi_inputs_")
         .unwrap()
-        .strip_suffix(".ser")
+        .strip_suffix(".set")
         .unwrap()
         .split_once('_')
         .unwrap();

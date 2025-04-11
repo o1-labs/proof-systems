@@ -1036,7 +1036,7 @@ pub fn heavy_test_simple_add() {
     // `RelaxedInstance`. We only have to check that its `alphas` are
     // powers (and not arbitrary elements):
 
-    // Check that `folding_instance_three` vas relaxed.
+    // Check that `folding_instance_three` was relaxed.
     assert_eq!(
         Ok(()),
         folding_instance_three.verify_from_witness(&mut fq_sponge_before_instance_three)

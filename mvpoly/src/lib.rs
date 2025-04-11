@@ -264,7 +264,7 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
     /// scaling factor as a variable.
     ///
     /// This method is particularly useful when you need to compute a
-    /// (possibly random) combinaison of polynomials `P1(X1, ..., Xn), ...,
+    /// (possibly random) combination of polynomials `P1(X1, ..., Xn), ...,
     /// Pm(X1, ..., Xn)`, like when computing a quotient polynomial in the PlonK
     /// PIOP, as the result is the sum of individual "scaled" polynomials:
     /// ```text

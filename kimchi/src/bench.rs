@@ -128,7 +128,7 @@ impl BenchmarkCtx {
     }
 }
 
-/// This function can be called before any call to a kimchi verfier,
+/// This function can be called before any call to a kimchi verifier,
 /// in which case it will serialise kimchi inputs so that they can be
 /// reused later for re-testing this particular prover. Used for
 /// serialising real mina circuits from ocaml and bindings side.
@@ -140,7 +140,7 @@ pub fn bench_arguments_dump_into_file<G: KimchiCurve>(
 ) {
     let seed: u64 = rand::thread_rng().gen();
 
-    let filename = format!("./kimchi_inputs_{}_{:08x}.ser", G::NAME, seed);
+    let filename = format!("./kimchi_inputs_{}_{:08x}.set", G::NAME, seed);
 
     let mut file = std::fs::OpenOptions::new()
         .create(true)

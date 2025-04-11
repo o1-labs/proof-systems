@@ -60,7 +60,7 @@ pub struct Private<F, const N: usize> {
 }
 
 /// This should run the inner circuit and provide its output, in our case it may be simpler
-/// to just run the circuit separatly and provide the variables pointing to the output
+/// to just run the circuit separately and provide the variables pointing to the output
 fn apply<F: PrimeField, const N: usize>(
     _z_i: Argument<FieldVar<F>, N>,
 ) -> Argument<FieldVar<F>, N> {
@@ -105,8 +105,8 @@ fn trim<F: PrimeField>(
     v: &FieldVar<F>,
     base: &FieldVar<F>,
 ) -> SnarkyResult<FieldVar<F>> {
-    let (high, low): (FieldVar<F>, FieldVar<F>) = sys.compute(loc!(), |wit| {
-        let val = wit.read_var(v);
+    let (high, low): (FieldVar<F>, FieldVar<F>) = sys.compute(loc!(), |with| {
+        let val = with.read_var(v);
         let mut high = val.into_bigint();
         high.divn(CHALLENGE_BITS as u32);
         let mut low = val.into_bigint();

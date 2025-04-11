@@ -64,7 +64,7 @@ pub unsafe fn free_u32_ptr(ptr: *mut u32) {
 /// `<https://rust-lang.github.io/rust-clippy/master/index.html#not_unsafe_ptr_arg_deref>`
 #[wasm_bindgen]
 pub unsafe fn set_u32_ptr(ptr: *mut u32, arg: u32) {
-    // The rust docs explicitly forbid using this for cross-thread syncronization. Oh well, we
+    // The rust docs explicitly forbid using this for cross-thread synchronization. Oh well, we
     // don't have anything better. As long as it works in practice, we haven't upset the undefined
     // behavior dragons.
     unsafe {
@@ -82,7 +82,7 @@ pub unsafe fn set_u32_ptr(ptr: *mut u32, arg: u32) {
 #[allow(unreachable_code)]
 #[wasm_bindgen]
 pub unsafe fn wait_until_non_zero(ptr: *const u32) -> u32 {
-    // The rust docs explicitly forbid using this for cross-thread syncronization. Oh well, we
+    // The rust docs explicitly forbid using this for cross-thread synchronization. Oh well, we
     // don't have anything better. As long as it works in practice, we haven't upset the undefined
     // behavior dragons.
     loop {

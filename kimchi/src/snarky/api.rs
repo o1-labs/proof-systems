@@ -287,7 +287,7 @@ pub trait SnarkyCircuit: Sized {
     /// The circuit. It takes:
     ///
     /// - `self`: to parameterize it at compile time.
-    /// - `sys`: to construct the circuit or generate the witness (dpeending on mode)
+    /// - `sys`: to construct the circuit or generate the witness (depending on mode)
     /// - `public_input`: the public input (as defined above)
     /// - `private_input`: the private input as an option, set to `None` for compilation.
     ///

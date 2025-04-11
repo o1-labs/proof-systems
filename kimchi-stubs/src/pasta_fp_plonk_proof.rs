@@ -274,7 +274,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_lookup(
 
     let num_public_inputs = 1;
 
-    // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
+    // not sure if there's a smarter way instead of the double unwrap, but should be fine in the test
     let cs = ConstraintSystem::<Fp>::create(gates)
         .runtime(Some(runtime_tables_setup))
         .lookup(fixed_tables)
@@ -582,7 +582,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_range_check0(
         witness
     };
 
-    // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
+    // not sure if there's a smarter way instead of the double unwrap, but should be fine in the test
     let cs = ConstraintSystem::<Fp>::create(gates).build().unwrap();
 
     srs.0.with_lagrange_basis(cs.domain.d1);
@@ -704,7 +704,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_ffadd(
         witness
     };
 
-    // not sure if theres a smarter way instead of the double unwrap, but should
+    // not sure if there's a smarter way instead of the double unwrap, but should
     // be fine in the test
     let cs = ConstraintSystem::<Fp>::create(gates)
         .public(num_public_inputs)
@@ -795,7 +795,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_xor(
         cols
     };
 
-    // not sure if theres a smarter way instead of the double unwrap, but should
+    // not sure if there's a smarter way instead of the double unwrap, but should
     // be fine in the test
     let cs = ConstraintSystem::<Fp>::create(gates)
         .public(num_public_inputs)
@@ -889,7 +889,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_rot(
         cols
     };
 
-    // not sure if theres a smarter way instead of the double unwrap, but should
+    // not sure if there's a smarter way instead of the double unwrap, but should
     // be fine in the test
     let cs = ConstraintSystem::<Fp>::create(gates)
         .public(num_public_inputs)

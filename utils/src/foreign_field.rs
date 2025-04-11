@@ -1,4 +1,4 @@
-//! Describes helpers for foreign field arithmetics
+//! Describes helpers for foreign field arithmetic
 //! Generic parameters are as follows:
 //! - `B` is a bit length of one limb
 //! - `N` is a number of limbs that is used to represent one foreign field element

@@ -481,7 +481,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
 
         // We compute z such that:
         // z[0] = 1
-        // z[j+1] = \Prod_{i=0}^{PERMUTS}(wit[i][j] + (s[i][8*j] * beta) + gamma)     for j ∈ 0..n-1
+        // z[j+1] = \Prod_{i=0}^{PERMUTS}(with[i][j] + (s[i][8*j] * beta) + gamma)     for j ∈ 0..n-1
         //
         // We compute every product batch separately first (one batch
         // per i∈[COLUMNS]), and then multiply all batches together.

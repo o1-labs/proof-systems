@@ -22,7 +22,7 @@ pub trait ExtendedDensePolynomial<F: Field> {
     fn eval_polynomial(coeffs: &[F], x: F) -> F;
 
     /// Convert a polynomial into chunks.
-    /// Implementors must ensure that the result contains exactly num_chunks.
+    /// Implementers must ensure that the result contains exactly num_chunks.
     fn to_chunked_polynomial(&self, num_chunks: usize, size: usize) -> ChunkedPolynomial<F>;
 }
 

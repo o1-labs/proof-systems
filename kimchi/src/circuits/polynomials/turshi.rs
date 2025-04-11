@@ -293,8 +293,8 @@ pub mod witness {
         for col in 0..COLUMNS {
             // initialize column with zeroes
             witness[col].resize(table.len(), F::zero());
-            for (row, wit) in table.iter().enumerate() {
-                witness[col][row] = wit[col];
+            for (row, with) in table.iter().enumerate() {
+                witness[col][row] = with[col];
             }
         }
         witness

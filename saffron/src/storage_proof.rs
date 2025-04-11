@@ -3,11 +3,11 @@
 //! an opening to the combined commitment ∑α^i C_i. Given that α is
 //! computed by hashing some external challenge secret (e.g. derived
 //! from a hash of a block), and from a hash of the commitments
-//! itself, this in essense proves knowledge of the opening to all the
+//! itself, this in essence proves knowledge of the opening to all the
 //! commitments C_i simultaneously. Given that α is computed by
 //! hashing some external challenge secret (e.g. derived from a hash
 //! of a block), and from a hash of the commitments itself, this in
-//! essense proves knowledge of the opening to all the commitments C_i
+//! essence proves knowledge of the opening to all the commitments C_i
 //! simultaneously.
 
 use crate::{

@@ -81,13 +81,13 @@ impl<
         use ExtendedFoldingColumn::*;
         match col {
                 Inner(Variable { col, row }) => {
-                    let wit = match row {
+                    let with = match row {
                         CurrOrNext::Curr => &self.ext_witness.witness,
                         CurrOrNext::Next => panic!("not implemented"),
                     };
                     // The following is possible because Index is implemented for our
                     // circuit witnesses
-                    Col(&wit[*col])
+                    Col(&with[*col])
                 },
                 WitnessExtended(i) => Col(&self.ext_witness.extended.get(i).unwrap().evals),
                 Error => panic!("shouldn't happen"),
@@ -147,13 +147,13 @@ impl<
                 use FoldingCompatibleExprInner::*;
                 match column {
                     Cell(Variable { col, row }) => {
-                        let wit = match row {
+                        let with = match row {
                             CurrOrNext::Curr => &self.ext_witness.witness,
                             CurrOrNext::Next => panic!("not implemented"),
                         };
                         // The following is possible because Index is implemented for our
                         // circuit witnesses
-                        EvalLeaf::Col(&wit[*col])
+                        EvalLeaf::Col(&with[*col])
                     }
                     Challenge(chal) => EvalLeaf::Const(self.challenge(*chal)),
                     Constant(c) => EvalLeaf::Const(*c),

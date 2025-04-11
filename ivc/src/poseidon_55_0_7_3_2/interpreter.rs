@@ -130,7 +130,7 @@ where
         + HybridCopyCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>,
 {
     // We start at round 0
-    // This implementation mimicks the version described in
+    // This implementation mimics the version described in
     // poseidon_block_cipher in the mina_poseidon crate.
     assert!(
         round < NB_FULL_ROUND,

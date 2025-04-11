@@ -19,7 +19,7 @@ use o1_utils::{field_helpers::product, ExtendedDensePolynomial as _};
 use rayon::prelude::*;
 use serde::{de::Visitor, Deserialize, Serialize};
 use serde_with::{
-    de::DeserializeAsWrap, ser::SerializeAsWrap, serde_as, DeserializeAs, SerializeAs,
+    de::DeserializeAsWrap, set::SerializeAsWrap, serde_as, DeserializeAs, SerializeAs,
 };
 use std::{
     iter::Iterator,

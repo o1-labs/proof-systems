@@ -168,7 +168,7 @@ pub mod testing {
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField,
     {
-        // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
+        // not sure if there's a smarter way instead of the double unwrap, but should be fine in the test
         let cs = ConstraintSystem::<G::ScalarField>::create(gates)
             .lookup(lookup_tables)
             .runtime(runtime_tables)

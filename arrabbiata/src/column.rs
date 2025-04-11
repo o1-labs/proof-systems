@@ -34,7 +34,7 @@ pub enum Gadget {
     /// rounds per row.
     ///
     /// We split the Poseidon gadget in 13 sub-gadgets, one for each set of 5
-    /// full rounds and one for the absorbtion. The parameter is the starting
+    /// full rounds and one for the absorption. The parameter is the starting
     /// round of Poseidon. It is expected to be a multiple of five.
     ///
     /// Note that, for now, the gadget can only be used by the verifier circuit.

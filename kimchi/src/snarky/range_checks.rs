@@ -39,7 +39,7 @@ impl<F: PrimeField> RangeCheckLimbs1<F> {
         let limbs = parse_limbs::<F, 12, 6>(bits);
         Self { crumbs, limbs }
     }
-    ///produces limbs and crumbs with the expected endianess
+    ///produces limbs and crumbs with the expected endianness
     fn into_repr(mut self) -> ([F; 6], [F; 8]) {
         self.crumbs.reverse();
         self.limbs.reverse();
@@ -68,7 +68,7 @@ impl<F: PrimeField> RangeCheckLimbs2<F> {
             crumbs_high,
         }
     }
-    ///produces limbs and crumbs with the expected endianess
+    ///produces limbs and crumbs with the expected endianness
     fn into_repr(mut self) -> ([F; 1], [F; 4], [F; 19]) {
         self.crumbs_high.reverse();
         self.limbs.reverse();
