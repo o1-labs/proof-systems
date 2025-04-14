@@ -42,7 +42,7 @@ Generate legacy width 3 Poseidon parameters in Rust format:
 ./params.sage rust 3 ''
 ```
 
-Generate named 3-wire Poseidon parameters with 54 rounds:
+Generate width 3 Poseidon parameters with 54 rounds:
 ```bash
 ./params.sage rust 3 3 --rounds 54
 ```
