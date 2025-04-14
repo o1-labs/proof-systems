@@ -28,10 +28,12 @@ To run the benchmark natively, do:
 cargo bench --bench=poseidon_bench
 ```
 
-The benchmark can also be run in WebAssembly (executed by Node.js), launched from the repository root:
+The benchmark can also be run in WebAssembly (executed by Node.js), launched
+from the repository root:
 
 ```sh
 ./scripts/bench-wasm.sh --bench=poseidon_bench
 ```
 
-For this to work, the filename of your benchmark has to be the same as the benchmark name!
+For this to work, the filename of your benchmark has to be the same as the
+benchmark name!
