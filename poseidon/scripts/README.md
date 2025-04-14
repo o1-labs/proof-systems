@@ -3,7 +3,8 @@
 ## params.sage
 
 A script for generating cryptographic parameters (round constants and MDS
-matrices) for the Poseidon hash function over Pasta fields.
+matrices) for the Poseidon hash function over Pasta fields. The Poseidon
+instance it generates parameters for are only based on full rounds.
 
 ### Overview
 
