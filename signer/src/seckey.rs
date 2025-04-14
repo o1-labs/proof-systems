@@ -1,6 +1,8 @@
 //! Secret key structures and helpers
 
+extern crate alloc;
 use crate::ScalarField;
+use alloc::{string::String, vec, vec::Vec};
 use ark_ff::UniformRand;
 use o1_utils::FieldHelpers;
 use rand::{self, CryptoRng, RngCore};

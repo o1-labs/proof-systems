@@ -4,6 +4,9 @@
 //!
 //! Details: <https://github.com/MinaProtocol/mina/blob/develop/docs/specs/signatures/description.md>
 
+extern crate alloc;
+use alloc::{boxed::Box, string::String};
+
 use crate::{BaseField, CurvePoint, Hashable, Keypair, PubKey, ScalarField, Signature, Signer};
 use ark_ec::{
     AffineRepr, // for generator()

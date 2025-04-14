@@ -1,6 +1,9 @@
 #![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
+#![no_std]
 
+extern crate alloc;
+use alloc::{vec, vec::Vec};
 use ark_ec::AffineRepr;
 pub use keypair::Keypair;
 pub use mina_curves::pasta::Pallas as CurvePoint;
