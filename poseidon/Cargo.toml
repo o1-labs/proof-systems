@@ -28,10 +28,7 @@ serde.workspace = true
 serde_with.workspace = true
 
 [dev-dependencies]
-criterion = { version = "0.3", default-features = false, features = [
-  "cargo_bench_support",
-  "html_reports",
-] }
+criterion.workspace = true
 hex.workspace = true
 serde_json.workspace = true
 
