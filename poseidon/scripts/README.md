@@ -8,8 +8,8 @@ instance it generates parameters for are only based on full rounds.
 
 ### Overview
 
-This SageMath script generates secure parameters for the Poseidon hash function,
-which is used in zero-knowledge proof systems. It creates:
+This SageMath script generates secure parameters for the Poseidon hash function.
+It creates:
 
 - Round constants
 - MDS (Maximum Distance Separable) matrices
