@@ -37,7 +37,7 @@ cryptographic implementations.
 
 #### Examples
 
-Generate legacy 3-wire Poseidon parameters in Rust format:
+Generate legacy width 3 Poseidon parameters in Rust format:
 ```bash
 ./params.sage rust 3 ''
 ```
