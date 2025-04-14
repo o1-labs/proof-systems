@@ -265,6 +265,12 @@ where
 pub mod caml {
     use super::*;
 
+    extern crate alloc;
+    use alloc::{
+        format,
+        string::{String, ToString},
+    };
+
     //
     // ScalarChallenge<F> <-> CamlScalarChallenge<CamlF>
     //
