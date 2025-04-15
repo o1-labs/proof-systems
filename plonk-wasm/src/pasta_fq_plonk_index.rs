@@ -104,6 +104,7 @@ pub fn caml_pasta_fq_plonk_index_create(
     runtime_table_cfgs: WasmVector<WasmPastaFqRuntimeTableCfg>,
     prev_challenges: i32,
     srs: &WasmSrs,
+    lazy_mode: bool,
 ) -> Result<WasmPastaFqPlonkIndex, JsError> {
     console_error_panic_hook::set_once();
     let index = crate::rayon::run_in_pool(|| {
@@ -134,6 +135,7 @@ pub fn caml_pasta_fq_plonk_index_create(
             } else {
                 Some(rust_runtime_table_cfgs)
             })
+            .lazy_mode(lazy_mode)
             .build()
         {
             Err(_) => {
@@ -147,8 +149,12 @@ pub fn caml_pasta_fq_plonk_index_create(
 
         srs.0.get_lagrange_basis(cs.domain.d1);
 
-        let mut index =
-            ProverIndex::<GAffine, OpeningProof<GAffine>>::create(cs, endo_q, srs.0.clone());
+        let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::create(
+            cs,
+            endo_q,
+            srs.0.clone(),
+            lazy_mode,
+        );
         // Compute and cache the verifier index digest
         index.compute_verifier_index_digest::<DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>>();
 
