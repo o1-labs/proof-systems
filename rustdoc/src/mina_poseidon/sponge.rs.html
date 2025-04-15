@@ -288,10 +288,20 @@
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+</pre></div><pre class="rust"><code><span class="kw">extern crate </span>alloc;
+<span class="kw">use crate</span>::{
     constants::SpongeConstants,
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
+<span class="kw">use </span>alloc::{vec, vec::Vec};
 <span class="kw">use </span>ark_ec::models::short_weierstrass::{Affine, SWCurveConfig};
 <span class="kw">use </span>ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 
@@ -552,6 +562,12 @@
 </span><span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
 </span><span class="kw">pub mod </span>caml {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+
+    <span class="kw">extern crate </span>alloc;
+    <span class="kw">use </span>alloc::{
+        format,
+        string::{String, ToString},
+    };
 
     <span class="comment">//
     // ScalarChallenge&lt;F&gt; &lt;-&gt; CamlScalarChallenge&lt;CamlF&gt;

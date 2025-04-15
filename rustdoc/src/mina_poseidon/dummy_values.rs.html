@@ -829,9 +829,13 @@
 <a href="#829" id="829">829</a>
 <a href="#830" id="830">830</a>
 <a href="#831" id="831">831</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::poseidon::ArithmeticSpongeParams;
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+</pre></div><pre class="rust"><code><span class="kw">extern crate </span>alloc;
+<span class="kw">use </span><span class="kw">crate</span>::poseidon::ArithmeticSpongeParams;
+<span class="kw">use </span>alloc::vec;
 <span class="kw">use </span>ark_ff::Field;
-<span class="kw">use </span>std::{fmt::Debug, str::FromStr};
+<span class="kw">use </span>core::{fmt::Debug, str::FromStr};
 
 <span class="doccomment">/// Placeholder dummy value for the kimchi configuration, suitable for fields of bitlength 254 and
 /// above.

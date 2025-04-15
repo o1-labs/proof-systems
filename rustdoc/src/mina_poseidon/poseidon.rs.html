@@ -141,12 +141,16 @@
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Poseidon Hash Function primitive
 
-</span><span class="kw">use crate</span>::{
+</span><span class="kw">extern crate </span>alloc;
+<span class="kw">use crate</span>::{
     constants::SpongeConstants,
     permutation::{full_round, poseidon_block_cipher},
 };
+<span class="kw">use </span>alloc::{vec, vec::Vec};
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -205,7 +209,7 @@
     <span class="comment">// TODO(mimoo: an array enforcing the width is better no? or at least an assert somewhere)
     </span><span class="kw">pub </span>state: Vec&lt;F&gt;,
     params: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;F&gt;,
-    <span class="kw">pub </span>constants: std::marker::PhantomData&lt;SC&gt;,
+    <span class="kw">pub </span>constants: core::marker::PhantomData&lt;SC&gt;,
 }
 
 <span class="kw">impl</span>&lt;F: Field, SC: SpongeConstants&gt; ArithmeticSponge&lt;F, SC&gt; {
@@ -234,7 +238,7 @@
             rate,
             sponge_state: SpongeState::Absorbed(<span class="number">0</span>),
             params,
-            constants: std::marker::PhantomData,
+            constants: core::marker::PhantomData,
         }
     }
 
