@@ -31,14 +31,16 @@ use mvpoly::{monomials::Sparse, MVPoly};
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::FieldHelpers;
-use poly_commitment::{ipa::SRS, SRS as _};
+use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
 use std::{collections::HashMap, time::Instant};
 
 use crate::{
     column::Gadget,
     constraint,
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
+    interpreter::{self, VERIFIER_STARTING_INSTRUCTION},
     MAXIMUM_FIELD_SIZE_IN_BITS, MAX_DEGREE, MV_POLYNOMIAL_ARITY, NUMBER_OF_COLUMNS,
+    NUMBER_OF_GADGETS, VERIFIER_CIRCUIT_SIZE,
 };
 
 /// An indexed relation is a structure that contains all the information needed
@@ -68,6 +70,25 @@ pub struct IndexedRelation<
 
     /// SRS for the second curve
     pub srs_e2: SRS<E2>,
+
+    /// The application size, i.e. the number of rows per accumulation an
+    /// application can use.
+    ///
+    /// Note that the value is the same for both circuits. We do suppose both
+    /// SRS are of the same sizes and the verifier circuits are the same.
+    pub app_size: usize,
+
+    /// The description of the program, in terms of gadgets.
+    /// For now, the program is the same for both curves.
+    ///
+    /// The number of elements is exactly the size of the SRS.
+    pub circuit_gates: Vec<Gadget>,
+
+    /// Commitments to the selectors used by both circuits
+    pub selectors_comm: (
+        [PolyComm<E1>; NUMBER_OF_GADGETS],
+        [PolyComm<E2>; NUMBER_OF_GADGETS],
+    ),
 
     /// The constraints given as multivariate polynomials using the [mvpoly]
     /// library, indexed by the gadget to ease the selection of the constraints
@@ -187,15 +208,71 @@ where
                 .collect()
         };
 
+        // FIXME: note that the app size can be different for both curves. We
+        // suppose we have the same circuit on both curves for now.
+        let app_size = srs_size - VERIFIER_CIRCUIT_SIZE;
+
+        // Build the selectors for both circuits.
+        // FIXME: we suppose we have the same circuit on both curve for now.
+        let circuit_gates: Vec<Gadget> = {
+            let mut v: Vec<Gadget> = Vec::with_capacity(srs_size);
+            // The first [app_size] rows are for the application
+            v.extend([Gadget::App].repeat(app_size));
+
+            // Verifier circuit structure
+            {
+                let mut curr_instruction = VERIFIER_STARTING_INSTRUCTION;
+                for _i in 0..VERIFIER_CIRCUIT_SIZE - 1 {
+                    v.push(Gadget::from(curr_instruction));
+                    curr_instruction = interpreter::fetch_next_instruction(curr_instruction);
+                }
+                // Additional row for the Poseidon hash
+                v.push(Gadget::NoOp);
+            }
+            assert_eq!(v.len(), srs_size);
+            v
+        };
+
+        let selectors_comm: (
+            [PolyComm<E1>; NUMBER_OF_GADGETS],
+            [PolyComm<E2>; NUMBER_OF_GADGETS],
+        ) = {
+            // We initialize to the blinder to avoid the identity element.
+            let init: (
+                [PolyComm<E1>; NUMBER_OF_GADGETS],
+                [PolyComm<E2>; NUMBER_OF_GADGETS],
+            ) = (
+                core::array::from_fn(|_| PolyComm::new(vec![srs_e1.h])),
+                core::array::from_fn(|_| PolyComm::new(vec![srs_e2.h])),
+            );
+            // We commit to the selectors using evaluations.
+            // As they are supposed to be one or zero, each row adds a small
+            // contribution to the commitment.
+            // We explicity commit to all gadgets, even if they are not used in
+            // this indexed relation.
+            circuit_gates
+                .iter()
+                .enumerate()
+                .fold(init, |mut acc, (row, g)| {
+                    let i = usize::from(*g);
+                    acc.0[i] = &acc.0[i] + &srs_e1.get_lagrange_basis(domain_fp.d1)[row];
+                    acc.1[i] = &acc.1[i] + &srs_e2.get_lagrange_basis(domain_fq.d1)[row];
+                    acc
+                })
+        };
+
         // FIXME: setup correctly the initial sponge state
         let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-            std::array::from_fn(|_i| BigInt::from(42u64));
+            core::array::from_fn(|_i| BigInt::from(42u64));
 
         Self {
             domain_fp,
             domain_fq,
             srs_e1,
             srs_e2,
+            app_size,
+            circuit_gates,
+            selectors_comm,
             constraints_fp,
             constraints_fq,
             initial_sponge: sponge_e1,

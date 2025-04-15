@@ -9,13 +9,13 @@ use crate::{
     tests::framework::TestFramework,
 };
 use ark_ff::Zero;
+use core::array;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1_utils::math;
-use std::array;
 
 // aliases
 

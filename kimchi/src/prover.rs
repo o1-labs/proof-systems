@@ -39,6 +39,7 @@ use ark_poly::{
     univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as D,
 };
+use core::array;
 use itertools::Itertools;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial as _;
@@ -51,10 +52,10 @@ use poly_commitment::{
 };
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
-use std::{array, collections::HashMap};
+use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
-type Result<T> = std::result::Result<T, ProverError>;
+type Result<T> = core::result::Result<T, ProverError>;
 
 /// Helper to quickly test if a witness satisfies a constraint
 macro_rules! check_constraint {
@@ -241,7 +242,7 @@ where
             }
 
             // padding
-            w.extend(std::iter::repeat(G::ScalarField::zero()).take(length_padding));
+            w.extend(core::iter::repeat(G::ScalarField::zero()).take(length_padding));
 
             // zk-rows
             for row in w.iter_mut().rev().take(index.cs.zk_rows as usize) {

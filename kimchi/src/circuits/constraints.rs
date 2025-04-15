@@ -24,12 +24,13 @@ use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
 };
+use core::{array, default::Default};
 use o1_utils::ExtendedEvaluations;
 use poly_commitment::OpenProof;
 use rayon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{array, default::Default, sync::Arc};
+use std::sync::Arc;
 
 //
 // ConstraintSystem
@@ -952,7 +953,7 @@ impl<F: PrimeField> Builder<F> {
             // We add 1 to the lookup domain size because there is one element
             // used to close the permutation argument (the polynomial Z is of
             // degree n + 1 where n is the order of the subgroup H).
-            let circuit_lower_bound = std::cmp::max(gates.len(), lookup_domain_size + 1);
+            let circuit_lower_bound = core::cmp::max(gates.len(), lookup_domain_size + 1);
             let get_domain_size_lower_bound = |zk_rows: u64| circuit_lower_bound + zk_rows as usize;
 
             let mut zk_rows = 3;

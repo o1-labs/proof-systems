@@ -1,6 +1,8 @@
 //! Secret key structures and helpers
 
+extern crate alloc;
 use crate::ScalarField;
+use alloc::{string::String, vec, vec::Vec};
 use ark_ff::UniformRand;
 use o1_utils::FieldHelpers;
 use rand::{self, CryptoRng, RngCore};
@@ -30,7 +32,7 @@ pub enum SecKeyError {
     SecretKeyVersion,
 }
 /// Keypair result
-pub type Result<T> = std::result::Result<T, SecKeyError>;
+pub type Result<T> = core::result::Result<T, SecKeyError>;
 
 /// Secret key length
 pub const MINA_SEC_KEY_LEN: usize = 52;

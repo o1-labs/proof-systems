@@ -7,9 +7,9 @@ use crate::{
 };
 use ark_ec::AffineRepr;
 use ark_ff::{BigInteger, One, PrimeField};
+use core::{marker::PhantomData, ops::Add};
 use mina_curves::pasta::Fp;
 use poly_commitment::{ipa::OpeningProof, OpenProof};
-use std::{marker::PhantomData, ops::Add};
 
 mod instance;
 

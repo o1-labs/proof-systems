@@ -167,7 +167,9 @@
 //!
 //! #### Gadget layout
 //!
-//! For a (x, y) point and a scalar, we apply the double-and-add algorithm, one step per row.
+//! For a (x, y) point and a scalar, we apply the double-and-add algorithm, one
+//! step per row.
+//!
 //! Therefore, we have 255 rows to compute the scalar multiplication.
 //! For a given step `i`, we have the following values:
 //! - `tmp_x`, `tmp_y`: the temporary values used to keep the double.
@@ -176,7 +178,7 @@
 //! - `r_i` and `r_(i+1)`: scalars such that r_(i+1) = b + 2 * r_i.
 //! - `λ'` and `λ`: the coefficients
 //! - o'_x and o'_y equal to `res_plus_tmp_x` and `res_plus_tmp_y` if `b == 1`,
-//! otherwise equal to `o_x` and `o_y`.
+//!   otherwise equal to `o_x` and `o_y`.
 //!
 //! We have the following layout:
 //!
@@ -313,7 +315,7 @@
 //! The implementation works as follow:
 //! - Split the constraint in monomials
 //! - For the monomials of degree `d`, compute the contribution when
-//! homogenizing to degree `d'`.
+//!   homogenizing to degree `d'`.
 //! - Sum all the contributions.
 //!
 //! The library [mvpoly] can be used to compute the cross-terms and to
@@ -351,14 +353,14 @@
 //! - `W_(p, n)` for the aggregated witness.
 //! - `C_(p, n)` for the commitment to the witness `w_(p, n)`.
 //! - `acc_(p, n)` for the accumulated commitments to the aggregated witness
-//! `W_(p, n)`.
+//!    `W_(p, n)`.
 //! - `α_(p, n)` for the challenge used to combine constraints.
 //! - `β_(p, n)` and `γ_(p, n)` for the challenge used to for the
-//! permutation argument.
+//!   permutation argument.
 //! - `r_(p, n)` for the challenge used for the accumulation of the
 //! - `t_(p, n, i)` for the evaluations of the cross-terms of degree `i`.
 //! - `Ct_(p, n, i)` for the commitments to the cross-terms of degree `i`.
-//! witness/commitments.
+//!    witness/commitments.
 //! - `u_(p, n)` for the challenge used to homogenize the constraints.
 //! - `o_(p, n)` for the final digest of the sponge state.
 //!
@@ -570,9 +572,7 @@
 //!                       +-----------------------------+
 //! ```
 
-use crate::{
-    column::Gadget, curve::PlonkSpongeConstants, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
-};
+use crate::{curve::PlonkSpongeConstants, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS};
 use ark_ff::{One, Zero};
 use log::debug;
 use mina_poseidon::constants::SpongeConstants;
@@ -621,6 +621,11 @@ pub enum Instruction {
     NoOp,
 }
 
+/// The first instruction in the verifier circuit (often shortened in "IVC" in
+/// the crate) is the Poseidon permutation. It is used to start hashing the
+/// public input.
+pub const VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::PoseidonSpongeAbsorb;
+
 /// Define the side of the temporary accumulator.
 /// When computing G1 + G2, the interpreter will load G1 and after that G2.
 /// This enum is used to decide which side fetching into the cells.
@@ -643,10 +648,10 @@ pub trait InterpreterEnv {
     /// When instantiating as expressions - "constraints" - it defines
     /// multivariate polynomials.
     type Variable: Clone
-        + std::ops::Add<Self::Variable, Output = Self::Variable>
-        + std::ops::Sub<Self::Variable, Output = Self::Variable>
-        + std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::fmt::Debug
+        + core::ops::Add<Self::Variable, Output = Self::Variable>
+        + core::ops::Sub<Self::Variable, Output = Self::Variable>
+        + core::ops::Mul<Self::Variable, Output = Self::Variable>
+        + core::fmt::Debug
         + Zero
         + One;
 
@@ -661,9 +666,6 @@ pub trait InterpreterEnv {
 
     /// Set the value of the variable at the given position for the current row
     fn write_column(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable;
-
-    /// Activate the gadget for the row.
-    fn activate_gadget(&mut self, gadget: Gadget);
 
     /// Build the constant zero
     fn zero(&self) -> Self::Variable;
@@ -779,6 +781,7 @@ pub trait InterpreterEnv {
     /// Compute the coefficient λ used in the elliptic curve addition.
     /// If the two points are the same, the λ is computed as follows:
     /// - λ = (3 X1^2 + a) / (2Y1)
+    ///
     /// Otherwise, the λ is computed as follows:
     /// - λ = (Y1 - Y2) / (X1 - X2)
     fn compute_lambda(
@@ -857,12 +860,14 @@ pub fn run_app<E: InterpreterEnv>(env: &mut E) {
 /// 2. Compute the elliptic curve addition.
 /// 3. Run the polynomial-time function.
 /// 4. Compute the hash of the output.
+///
 /// The environment is updated over time.
 /// When the environment is the one described in the [Witness
 /// environment](crate::witness::Env), the structure will be updated
 /// with the new accumulator, the new public input, etc. The public output will
 /// be in the structure also. The user can simply rerun the function for the
 /// next iteration.
+///
 /// A row must be created to generate a challenge to combine the constraints
 /// later. The challenge will be also accumulated over time.
 ///
@@ -874,7 +879,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             assert!(processing_bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Invalid bit index. The fields are maximum on {MAXIMUM_FIELD_SIZE_IN_BITS} bits, therefore we cannot process the bit {processing_bit}");
             assert!(i_comm < NUMBER_OF_COLUMNS, "Invalid index. We do only support the scaling of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms");
             debug!("Processing scaling of commitment {i_comm}, bit {processing_bit}");
-            env.activate_gadget(Gadget::EllipticCurveScaling);
             // When processing the first bit, we must load the scalar, and it
             // comes from previous computation.
             // The two first columns are supposed to be used for the output.
@@ -1018,7 +1022,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             };
         }
         Instruction::EllipticCurveAddition(i_comm) => {
-            env.activate_gadget(Gadget::EllipticCurveAddition);
             assert!(i_comm < NUMBER_OF_COLUMNS, "Invalid index. We do only support the addition of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms");
             let (x1, y1) = {
                 let x1 = env.allocate();
@@ -1074,8 +1077,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 "Executing instruction Poseidon starting from round {starting_round} to {}",
                 starting_round + 5
             );
-
-            env.activate_gadget(Gadget::PoseidonFullRound(starting_round));
 
             let round_input_positions: Vec<E::Position> = (0..PlonkSpongeConstants::SPONGE_WIDTH)
                 .map(|_i| env.allocate())
@@ -1146,8 +1147,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             });
         }
         Instruction::PoseidonSpongeAbsorb => {
-            env.activate_gadget(Gadget::PoseidonSpongeAbsorb);
-
             let round_input_positions: Vec<E::Position> = (0..PlonkSpongeConstants::SPONGE_WIDTH
                 - 1)
                 .map(|_i| env.allocate())
@@ -1185,4 +1184,51 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
 
     // Compute the hash of the public input
     // FIXME: add the verification key. We should have a hash of it.
+}
+
+/// Describe the control-flow for the verifier circuit.
+pub fn fetch_next_instruction(current_instruction: Instruction) -> Instruction {
+    match current_instruction {
+        Instruction::PoseidonFullRound(i) => {
+            if i < PlonkSpongeConstants::PERM_ROUNDS_FULL - 5 {
+                Instruction::PoseidonFullRound(i + 5)
+            } else {
+                // FIXME: for now, we continue absorbing because the current
+                // code, while fetching the values to absorb, raises an
+                // exception when we absorbed everythimg, and the main file
+                // handles the halt by filling as many rows as expected (see
+                // [VERIFIER_CIRCUIT_SIZE]).
+                Instruction::PoseidonSpongeAbsorb
+            }
+        }
+        Instruction::PoseidonSpongeAbsorb => {
+            // Whenever we absorbed a value, we run the permutation.
+            Instruction::PoseidonFullRound(0)
+        }
+        Instruction::EllipticCurveScaling(i_comm, bit) => {
+            // TODO: we still need to substract (or not?) the blinder.
+            // Maybe we can avoid this by aggregating them.
+            // TODO: we also need to aggregate the cross-terms.
+            // Therefore i_comm must also take into the account the number
+            // of cross-terms.
+            assert!(i_comm < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
+            assert!(bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Maximum number of bits reached ({MAXIMUM_FIELD_SIZE_IN_BITS}), increase the number of bits");
+            if bit < MAXIMUM_FIELD_SIZE_IN_BITS - 1 {
+                Instruction::EllipticCurveScaling(i_comm, bit + 1)
+            } else if i_comm < NUMBER_OF_COLUMNS - 1 {
+                Instruction::EllipticCurveScaling(i_comm + 1, 0)
+            } else {
+                // We have computed all the bits for all the columns
+                Instruction::NoOp
+            }
+        }
+        Instruction::EllipticCurveAddition(i_comm) => {
+            if i_comm < NUMBER_OF_COLUMNS - 1 {
+                Instruction::EllipticCurveAddition(i_comm + 1)
+            } else {
+                Instruction::NoOp
+            }
+        }
+        Instruction::NoOp => Instruction::NoOp,
+    }
 }

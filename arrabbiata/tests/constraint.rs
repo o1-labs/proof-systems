@@ -1,5 +1,5 @@
 use arrabbiata::{
-    column::{Gadget, E},
+    column::E,
     constraint,
     interpreter::{self, Instruction},
     MAX_DEGREE, NUMBER_OF_COLUMNS,
@@ -52,13 +52,6 @@ fn helper_gadget_number_of_columns_used(instr: Instruction, exp_nb_columns: usiz
     assert_eq!(nb_columns, exp_nb_columns);
 }
 
-fn helper_check_gadget_activated(instr: Instruction, gadget: Gadget) {
-    let mut constraints_fp = constraint::Env::<Vesta>::new();
-    interpreter::run_ivc(&mut constraints_fp, instr);
-
-    assert_eq!(constraints_fp.activated_gadget, Some(gadget));
-}
-
 #[test]
 fn test_gadget_elliptic_curve_addition() {
     let instr = Instruction::EllipticCurveAddition(0);
@@ -70,8 +63,6 @@ fn test_gadget_elliptic_curve_addition() {
     helper_check_expected_degree_constraints(instr, exp_degrees);
 
     helper_gadget_number_of_columns_used(instr, 8);
-
-    helper_check_gadget_activated(instr, Gadget::EllipticCurveAddition);
 }
 
 #[test]
@@ -113,8 +104,6 @@ fn test_gadget_elliptic_curve_scaling() {
     helper_check_expected_degree_constraints(instr, exp_degrees);
 
     helper_gadget_number_of_columns_used(instr, 10);
-
-    helper_check_gadget_activated(instr, Gadget::EllipticCurveScaling);
 }
 
 #[test]
@@ -127,8 +116,6 @@ fn test_gadget_poseidon_permutation() {
     helper_check_expected_degree_constraints(instr, exp_degrees);
 
     helper_gadget_number_of_columns_used(instr, 15);
-
-    helper_check_gadget_activated(instr, Gadget::PoseidonFullRound(0));
 }
 
 #[test]
@@ -142,8 +129,6 @@ fn test_gadget_poseidon_sponge_absorb() {
     helper_check_expected_degree_constraints(instr, exp_degrees);
 
     helper_gadget_number_of_columns_used(instr, 6);
-
-    helper_check_gadget_activated(instr, Gadget::PoseidonSpongeAbsorb);
 }
 
 #[test]

@@ -1,5 +1,3 @@
-use std::{array, cmp::max};
-
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
@@ -12,6 +10,7 @@ use crate::{
     prover_index::testing::new_index_for_test_with_lookups,
     tests::xor::{all_ones, check_xor},
 };
+use core::{array, cmp::max};
 
 use super::framework::TestFramework;
 use ark_ec::AffineRepr;

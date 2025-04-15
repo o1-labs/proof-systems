@@ -28,7 +28,6 @@ where
     pub idx_var: usize,
     pub idx_var_next_row: usize,
     pub constraints: Vec<E<C::ScalarField>>,
-    pub activated_gadget: Option<Gadget>,
 }
 
 impl<C: ArrabbiataCurve> Env<C>
@@ -48,7 +47,6 @@ where
             idx_var: 0,
             idx_var_next_row: 0,
             constraints: Vec::new(),
-            activated_gadget: None,
         }
     }
 }
@@ -100,10 +98,6 @@ where
         res
     }
 
-    fn activate_gadget(&mut self, gadget: Gadget) {
-        self.activated_gadget = Some(gadget);
-    }
-
     fn add_constraint(&mut self, constraint: Self::Variable) {
         let degree = constraint.degree(1, 0);
         debug!("Adding constraint of degree {degree}: {:}", constraint);
@@ -151,7 +145,6 @@ where
         self.idx_var = 0;
         self.idx_var_next_row = 0;
         self.constraints.clear();
-        self.activated_gadget = None;
     }
 
     fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable {
@@ -300,10 +293,10 @@ where
     ///
     /// The following gadgets are used in the verifier circuit:
     /// - [Instruction::PoseidonFullRound] and
-    /// [Instruction::PoseidonSpongeAbsorb] to verify the challenges and the
-    /// public IO.
+    ///   [Instruction::PoseidonSpongeAbsorb] to verify the challenges and the
+    ///   public IO.
     /// - [Instruction::EllipticCurveScaling] and
-    /// [Instruction::EllipticCurveAddition] to accumulate the commitments
+    ///   [Instruction::EllipticCurveAddition] to accumulate the commitments
     // FIXME: the verifier circuit might not be complete, yet. For instance, we might
     // need to accumulate the challenges and add a row to verify the output of
     // the computation of the challenges.

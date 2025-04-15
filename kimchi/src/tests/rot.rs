@@ -1,5 +1,3 @@
-use std::{array, sync::Arc};
-
 use super::framework::TestFramework;
 use crate::{
     circuits::{
@@ -20,6 +18,7 @@ use crate::{
 use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::EvaluationDomain;
+use core::array;
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -32,6 +31,7 @@ use poly_commitment::{
     SRS as _,
 };
 use rand::Rng;
+use std::sync::Arc;
 
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type SpongeParams = PlonkSpongeConstantsKimchi;

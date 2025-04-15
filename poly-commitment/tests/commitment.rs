@@ -1,6 +1,5 @@
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Radix2EvaluationDomain};
-use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -233,12 +232,8 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
     let (proofs, time_commit, time_open) =
         generate_random_opening_proof(&mut rng, &group_map, &srs);
 
-    println!("{} {:?}", "total commitment time:".yellow(), time_commit);
-    println!(
-        "{} {:?}",
-        "total evaluation proof creation time:".magenta(),
-        time_open
-    );
+    println!("total commitment time: {:?}", time_commit);
+    println!("total evaluation proof creation time: {:?}", time_open);
 
     let timer = Instant::now();
 
@@ -247,11 +242,7 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
     assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut batch, &mut rng));
 
     // TODO: move to bench
-    println!(
-        "{} {:?}",
-        "batch verification time:".green(),
-        timer.elapsed()
-    );
+    println!("batch verification time: {:?}", timer.elapsed());
 }
 
 #[test]

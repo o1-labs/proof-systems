@@ -6,7 +6,7 @@ use arrabbiata::{
     poseidon_3_60_0_5_5_fp,
     setup::IndexedRelation,
     witness::Env,
-    MAXIMUM_FIELD_SIZE_IN_BITS,
+    MAXIMUM_FIELD_SIZE_IN_BITS, MIN_SRS_LOG2_SIZE,
 };
 use mina_curves::pasta::{Fp, Fq, Pallas, ProjectivePallas, Vesta};
 use mina_poseidon::{constants::SpongeConstants, permutation::poseidon_block_cipher};
@@ -21,9 +21,7 @@ fn test_unit_witness_poseidon_permutation_gadget_one_full_hash() {
     // 13562506435502224548799089445428941958058503946524561166818119397766682137724
     // 27423099486669760867028539664936216880884888701599404075691059826529320129892
     // 736058628407775696076653472820678709906041621699240400715815852096937303940
-    let srs_log2_size = 6;
-    let indexed_relation: IndexedRelation<Fp, Fq, Vesta, Pallas> =
-        IndexedRelation::new(srs_log2_size);
+    let indexed_relation = IndexedRelation::new(MIN_SRS_LOG2_SIZE);
 
     let sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
         indexed_relation.initial_sponge.clone();
@@ -63,9 +61,8 @@ fn test_unit_witness_poseidon_permutation_gadget_one_full_hash() {
 
 #[test]
 fn test_unit_witness_poseidon_with_absorb_one_full_hash() {
-    let srs_log2_size = 6;
     let indexed_relation: IndexedRelation<Fp, Fq, Vesta, Pallas> =
-        IndexedRelation::new(srs_log2_size);
+        IndexedRelation::new(MIN_SRS_LOG2_SIZE);
 
     let sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
         indexed_relation.initial_sponge.clone();
@@ -89,7 +86,7 @@ fn test_unit_witness_poseidon_with_absorb_one_full_hash() {
             .map(|x| Fp::from_biguint(&x.to_biguint().unwrap()).unwrap())
             .collect::<Vec<_>>();
         // Absorbing the first commitment
-        let (pt_x, pt_y) = env.accumulated_committed_state_e2[0]
+        let (pt_x, pt_y) = env.program_e2.accumulated_committed_state[0]
             .get_first_chunk()
             .to_coordinates()
             .unwrap();
@@ -117,8 +114,8 @@ fn test_unit_witness_poseidon_with_absorb_one_full_hash() {
 
 #[test]
 fn test_unit_witness_elliptic_curve_addition() {
-    let srs_log2_size = 6;
-    let indexed_relation = IndexedRelation::new(srs_log2_size);
+    let indexed_relation: IndexedRelation<Fp, Fq, Vesta, Pallas> =
+        IndexedRelation::new(MIN_SRS_LOG2_SIZE);
 
     let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
 
@@ -129,8 +126,8 @@ fn test_unit_witness_elliptic_curve_addition() {
     // Pallas, whose scalar field is Fp.
     assert_eq!(env.current_iteration, 0);
     let (exp_x3, exp_y3) = {
-        let res: Pallas = (env.accumulated_committed_state_e2[0].get_first_chunk()
-            + env.previous_committed_state_e2[0].get_first_chunk())
+        let res: Pallas = (env.program_e2.accumulated_committed_state[0].get_first_chunk()
+            + env.program_e2.previous_committed_state[0].get_first_chunk())
         .into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
@@ -149,8 +146,8 @@ fn test_unit_witness_elliptic_curve_addition() {
 
     assert_eq!(env.current_iteration, 1);
     let (exp_x3, exp_y3) = {
-        let res: Vesta = (env.accumulated_committed_state_e1[0].get_first_chunk()
-            + env.previous_committed_state_e1[0].get_first_chunk())
+        let res: Vesta = (env.program_e1.accumulated_committed_state[0].get_first_chunk()
+            + env.program_e1.previous_committed_state[0].get_first_chunk())
         .into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
@@ -169,8 +166,8 @@ fn test_unit_witness_elliptic_curve_addition() {
 
     assert_eq!(env.current_iteration, 2);
     let (exp_x3, exp_y3) = {
-        let res: Pallas = (env.accumulated_committed_state_e2[0].get_first_chunk()
-            + env.previous_committed_state_e2[0].get_first_chunk())
+        let res: Pallas = (env.program_e2.accumulated_committed_state[0].get_first_chunk()
+            + env.program_e2.previous_committed_state[0].get_first_chunk())
         .into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
@@ -187,8 +184,8 @@ fn test_unit_witness_elliptic_curve_addition() {
 #[test]
 fn test_witness_double_elliptic_curve_point() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let srs_log2_size = 6;
-    let indexed_relation = IndexedRelation::new(srs_log2_size);
+    let indexed_relation: IndexedRelation<Fp, Fq, Vesta, Pallas> =
+        IndexedRelation::new(MIN_SRS_LOG2_SIZE);
 
     let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
 
@@ -219,13 +216,11 @@ fn helper_elliptic_curve_scalar_multiplication<RNG>(r: BigInt, rng: &mut RNG)
 where
     RNG: RngCore + CryptoRng,
 {
-    let srs_log2_size = 10;
-
+    let mut indexed_relation = IndexedRelation::new(MIN_SRS_LOG2_SIZE);
     // FIXME: For test purposes, to get a deterministic result, changing the
     // initial sponge state. The challenge in the circuit will be the first
     // element of the state.
-    let mut indexed_relation = IndexedRelation::new(srs_log2_size);
-    indexed_relation.initial_sponge = std::array::from_fn(|_i| r.clone());
+    indexed_relation.initial_sponge = core::array::from_fn(|_i| r.clone());
 
     let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
 
@@ -234,7 +229,7 @@ where
         let x = Fq::rand(rng);
         Pallas::generator().mul_bigint(x.into_bigint()).into()
     };
-    env.previous_committed_state_e2[0] = PolyComm::new(vec![p1]);
+    env.program_e2.previous_committed_state[0] = PolyComm::new(vec![p1]);
 
     // We only go up to the maximum bit field size.
     (0..MAXIMUM_FIELD_SIZE_IN_BITS).for_each(|bit_idx| {
@@ -284,10 +279,8 @@ fn test_regression_witness_structure_sizeof() {
     // structure. It is for optimisation later.
     // It will probably be annoying to update this test every time we update the
     // structure of the environment, but it will be useful to remind us to keep
-    // thining about the memory efficiency of the codebase.
-    assert_eq!(
-        std::mem::size_of::<Env<Fp, Fq, Vesta, Pallas>>(),
-        5016,
-        "The witness environment structure probably changed"
-    );
+    // thinking about the memory efficiency of the codebase.
+    let size = std::mem::size_of::<Env<Fp, Fq, Vesta, Pallas>>();
+    println!("Current size of Env structure: {}", size);
+    assert_eq!(size, 5888, "The witness environment structure changed")
 }

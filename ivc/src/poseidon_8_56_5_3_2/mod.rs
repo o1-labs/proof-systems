@@ -108,7 +108,7 @@ mod tests {
             let mut witness_env: PoseidonWitnessBuilderEnv = WitnessBuilderEnv::create();
 
             let mut fixed_selectors: [Vec<Fp>; N_FSEL] =
-                std::array::from_fn(|_| vec![Fp::zero(); 1]);
+                core::array::from_fn(|_| vec![Fp::zero(); 1]);
             // Write constants
             {
                 let rc = PoseidonBN254Parameters.constants();

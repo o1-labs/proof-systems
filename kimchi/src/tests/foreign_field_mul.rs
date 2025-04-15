@@ -15,7 +15,7 @@ use crate::{
     tests::framework::TestFramework,
 };
 use ark_ec::AffineRepr;
-use ark_ff::{Field, PrimeField, Zero};
+use ark_ff::{Field, One, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -23,7 +23,6 @@ use mina_poseidon::{
     FqSponge,
 };
 use num_bigint::{BigUint, RandBigInt};
-use num_traits::One;
 use o1_utils::{FieldHelpers, Two};
 use std::sync::Arc;
 

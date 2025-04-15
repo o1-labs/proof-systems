@@ -36,11 +36,7 @@ pub fn execute(args: cli::ExecuteArgs) {
     // FIXME: correctly setup
     let indexed_relation = IndexedRelation::new(srs_log2_size);
 
-    let domain_size = 1 << srs_log2_size;
-
     let mut env = witness::Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
-
-    let n_iteration_per_fold = domain_size - VERIFIER_CIRCUIT_SIZE;
 
     while env.current_iteration < n_iteration {
         let start_iteration = Instant::now();
@@ -48,8 +44,11 @@ pub fn execute(args: cli::ExecuteArgs) {
         info!("Run iteration: {}/{}", env.current_iteration, n_iteration);
 
         // Build the application circuit
-        info!("Running {n_iteration_per_fold} iterations of the application circuit");
-        for _i in 0..n_iteration_per_fold {
+        info!(
+            "Running {} iterations of the application circuit",
+            env.indexed_relation.app_size
+        );
+        for _i in 0..env.indexed_relation.app_size {
             interpreter::run_app(&mut env);
             env.reset();
         }
@@ -63,13 +62,15 @@ pub fn execute(args: cli::ExecuteArgs) {
         // Poseidon hash, and we write on the next row. We don't want to execute
         // a new instruction for the verifier circuit here.
         for i in 0..VERIFIER_CIRCUIT_SIZE - 1 {
-            let instr = env.fetch_instruction();
+            let current_instr = env.fetch_instruction();
             debug!(
                 "Running verifier row {} (instruction = {:?}, witness row = {})",
-                i, instr, env.current_row
+                i,
+                current_instr.clone(),
+                env.current_row
             );
-            interpreter::run_ivc(&mut env, instr);
-            env.current_instruction = env.fetch_next_instruction();
+            interpreter::run_ivc(&mut env, current_instr);
+            env.current_instruction = interpreter::fetch_next_instruction(current_instr);
             env.reset();
         }
         // FIXME: additional row for the Poseidon hash

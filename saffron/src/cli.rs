@@ -28,7 +28,7 @@ pub struct EncodeFileArgs {
         long,
         short = 'o',
         value_name = "FILE",
-        help = "output file (encoded as field elements)"
+        help = "output file (blob, encoded as field elements)"
     )]
     pub output: String,
 
@@ -41,6 +41,13 @@ pub struct EncodeFileArgs {
         help = "hash of commitments (hex encoded)"
     )]
     pub assert_commitment: Option<HexString>,
+
+    #[arg(
+        long = "challenge-seed",
+        value_name = "CHALLENGE_SEED",
+        help = "challenge seed (hex encoded, used only if assert-commitment is provided)"
+    )]
+    pub challenge_seed: Option<HexString>,
 }
 
 #[derive(Parser)]
@@ -58,6 +65,9 @@ pub struct DecodeFileArgs {
 
     #[arg(long = "srs-filepath", value_name = "SRS_FILEPATH")]
     pub srs_cache: Option<String>,
+
+    #[arg(long = "truncate-to-bytes", value_name = "TRUNCATE_TO_BYTES")]
+    pub truncate_to_bytes: Option<u64>,
 }
 
 #[derive(Parser)]
@@ -70,6 +80,13 @@ pub struct ComputeCommitmentArgs {
 
     #[arg(long = "srs-filepath", value_name = "SRS_FILEPATH")]
     pub srs_cache: Option<String>,
+
+    #[arg(
+        long = "challenge-seed",
+        value_name = "CHALLENGE_SEED",
+        help = "challenge seed (hex encoded)"
+    )]
+    pub challenge_seed: HexString,
 }
 
 #[derive(Parser)]
@@ -78,7 +95,7 @@ pub struct StorageProofArgs {
         long,
         short = 'i',
         value_name = "FILE",
-        help = "input file (encoded as field elements)"
+        help = "input file (blob, encoded as field elements)"
     )]
     pub input: String,
 
@@ -86,11 +103,11 @@ pub struct StorageProofArgs {
     pub srs_cache: Option<String>,
 
     #[arg(
-        long = "challenge",
-        value_name = "CHALLENGE",
-        help = "challenge (hex encoded"
+        long = "challenge-seed",
+        value_name = "CHALLENGE_SEED",
+        help = "challenge seed (hex encoded)"
     )]
-    pub challenge: HexString,
+    pub challenge_seed: HexString,
 }
 
 #[derive(Parser)]
@@ -107,11 +124,11 @@ pub struct VerifyStorageProofArgs {
     pub commitment: HexString,
 
     #[arg(
-        long = "challenge",
-        value_name = "CHALLENGE",
-        help = "challenge (hex encoded"
+        long = "challenge-seed",
+        value_name = "CHALLENGE_SEED",
+        help = "challenge seed (hex encoded)"
     )]
-    pub challenge: HexString,
+    pub challenge_seed: HexString,
 
     #[arg(long, short = 'p', value_name = "PROOF", help = "proof (hex encoded)")]
     pub proof: HexString,

@@ -21,7 +21,7 @@ use crate::{
     variable_map,
 };
 use ark_ff::PrimeField;
-use std::{array, marker::PhantomData};
+use core::{array, marker::PhantomData};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum RotMode {
@@ -32,12 +32,16 @@ pub enum RotMode {
 impl<F: PrimeField> CircuitGate<F> {
     /// Creates a Rot64 gadget to rotate a word
     /// It will need:
-    /// - 1 Generic gate to constrain to zero the top 2 limbs of the shifted and excess witness of the rotation
+    /// - 1 Generic gate to constrain to zero the top 2 limbs of the shifted and
+    ///   excess witness of the rotation
     ///
     /// It has:
     /// - 1 Rot64 gate to rotate the word
-    /// - 1 RangeCheck0 to constrain the size of the shifted witness of the rotation
-    /// - 1 RangeCheck0 to constrain the size of the excess witness of the rotation
+    /// - 1 RangeCheck0 to constrain the size of the shifted witness of the
+    ///   rotation
+    /// - 1 RangeCheck0 to constrain the size of the excess witness of the
+    ///   rotation
+    ///
     /// Assumes:
     /// - the witness word is 64-bits, otherwise, will need to append a new RangeCheck0 for the word
     pub fn create_rot64(new_row: usize, rot: u32) -> Vec<Self> {
@@ -63,11 +67,13 @@ impl<F: PrimeField> CircuitGate<F> {
     /// Extend one rotation
     /// Right now it only creates a Generic gate followed by the Rot64 gates
     /// It allows to configure left or right rotation.
+    ///
     /// Input:
     /// - gates : the full circuit
     /// - rot : the rotation offset
     /// - side : the rotation side
     /// - zero_row : the row of the Generic gate to constrain the 64-bit check of shifted word
+    ///
     /// Warning:
     /// - witness word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
     /// - same with rotated word
@@ -86,9 +92,11 @@ impl<F: PrimeField> CircuitGate<F> {
     /// Create one rotation
     /// Right now it only creates a Generic gate followed by the Rot64 gates
     /// It allows to configure left or right rotation.
+    ///
     /// Input:
     /// - rot : the rotation offset
     /// - side : the rotation side
+    ///
     /// Warning:
     /// - Word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
     /// - same with rotated word
@@ -324,6 +332,7 @@ fn init_rot64<F: PrimeField>(
 /// - word: 64-bit word to be rotated
 /// - rot:  rotation offset
 /// - side: side of the rotation, either left or right
+///
 /// Warning:
 /// - don't forget to include a public input row with zero value
 pub fn extend_rot<F: PrimeField>(

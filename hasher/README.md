@@ -1,10 +1,14 @@
 # Mina hasher
 
-This crate provides an API and framework for Mina hashing.  It is a safe wrapper around Mina's instances of the [Poseidon arithmetic sponge](https://o1-labs.github.io/proof-systems/specs/poseidon.html) that converts it from a sponge into a hash interface.
+This crate provides an API and framework for Mina hashing. It is a safe wrapper
+around Mina's instances of the [Poseidon arithmetic
+sponge](https://o1-labs.github.io/proof-systems/specs/poseidon.html) that
+converts it from a sponge into a hash interface.
 
 ## Hasher interface
 
-The `mina_hasher` crate currently supports creating both the legacy hasher and an experimental kimchi hasher.
+The `mina_hasher` crate currently supports creating both the legacy hasher and
+an experimental kimchi hasher.
 
 * [`create_legacy`] create a legacy hasher
 * [`create_kimchi`] create an experimental kimchi hasher
@@ -61,9 +65,11 @@ let out = hasher.init_and_hash(1, &Example { x: 82, y: 834 });
 
 ## The `Hashable` trait
 
-In order to sign something it must be hashed.  This framework allows you to define how types are hashed by implementing the [`Hashable`] trait.
+In order to sign something it must be hashed. This framework allows you to
+define how types are hashed by implementing the [`Hashable`] trait.
 
-For example, if you wanted to hash the `Foo` structure you would do the following.
+For example, if you wanted to hash the `Foo` structure you would do the
+following.
 
 ```rust
 use mina_hasher::{Hashable, ROInput};
@@ -91,7 +97,8 @@ impl Hashable for Foo {
 
 **Example: `domain_string` parameterized by `domain_param`**
 
-If the domain string depends on a parameter, for example a height, then it can be implemented like this.
+If the domain string depends on a parameter, for example a height, then it can
+be implemented like this.
 
 ```rust
 use ark_ff::Zero;
@@ -196,7 +203,11 @@ For more details please see the rustdoc mina-hasher documentation.
 
 # Tests
 
-There is a standard set of [hasher tests](https://github.com/o1-labs/proof-systems/tree/master/hasher/tests/hasher.rs) in the [`./tests`](https://github.com/o1-labs/proof-systems/tree/master/hasher/tests) directory.
+There is a standard set of [hasher
+tests](https://github.com/o1-labs/proof-systems/tree/master/hasher/tests/hasher.rs)
+in the
+[`./tests`](https://github.com/o1-labs/proof-systems/tree/master/hasher/tests)
+directory.
 
 These can be run with
 
