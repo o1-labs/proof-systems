@@ -6,7 +6,7 @@ use mina_poseidon::constants::SpongeConstants;
 use num_bigint::BigInt;
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
-use poly_commitment::commitment::CommitmentCurve;
+use poly_commitment::{commitment::CommitmentCurve, ipa::SRS};
 
 use crate::{
     challenge::Challenges,
@@ -54,8 +54,8 @@ where
     /// The relation this witness environment is related to.
     pub indexed_relation: IndexedRelation<Fp, Fq, E1, E2, ZkApp1, ZkApp2>,
 
-    pub verifier1: Verifier<E1>,
-    pub verifier2: Verifier<E2>,
+    /// Verifier over the first curve
+    pub verifier: Verifier<E1>,
 
     // ----------------
     // Data only used by the interpreter while building the witness over time
@@ -64,57 +64,33 @@ where
     /// position.
     pub idx_var: usize,
 
-    pub idx_var_next_row: usize,
-
-    /// The index of the latest allocated public inputs in the circuit.
-    /// It is used to allocate new public inputs without having to keep track of
+    /// The index of the latest allocated variable in the circuit for the next
+    /// row. It is used to allocate new variables without having to keep track of
     /// the position.
-    pub idx_var_pi: usize,
+    pub idx_var_next_row: usize,
 
     /// Current processing row. Used to build the witness.
     pub current_row: usize,
 
     /// State of the current row in the execution trace
-    pub state: [BigInt; NUMBER_OF_COLUMNS],
+    pub state: [Fp; NUMBER_OF_COLUMNS],
 
     /// Next row in the execution trace. It is useful when we deal with
     /// polynomials accessing "the next row", i.e. witness columns where we do
     /// evaluate at ζ and ζω.
-    pub next_state: [BigInt; NUMBER_OF_COLUMNS],
-
-    /// While folding, we must keep track of the challenges the verifier would
-    /// have sent in the SNARK, and we must aggregate them.
-    // FIXME: nothing is done yet, and the challenges haven't been decided yet.
-    // See top-level documentation of the interpreter for more information.
-    pub challenges: Challenges<BigInt>,
+    pub next_state: [Fp; NUMBER_OF_COLUMNS],
 
     /// Keep the current executed instruction.
     /// This can be used to identify which gadget the interpreter is currently
     /// building.
     pub current_instruction: Instruction,
 
-    /// The sponges will be used to simulate the verifier messages, and will
-    /// also be used to verify the consistency of the computation by hashing the
-    /// public IO.
-    // IMPROVEME: use a list of BigInt? It might be faster as the CPU will
-    // already have in its cache the values, and we can use a flat array
-    pub sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
-    pub sponge_e2: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
-
-    /// Sponge state used by the prover for the current iteration.
-    ///
-    /// This sponge is used at the current iteration to absorb commitments of
-    /// the program state and generate the challenges for the current iteration.
-    /// The outputs of the sponge will be verified by the verifier of the next
-    /// iteration.
-    pub prover_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
-
     /// Sponge state used by the verifier for the current iteration.
     ///
     /// This sponge is used at the current iteration to build the verifier
     /// circuit. The state will need to match with the previous prover sopnge
     /// state.
-    pub verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
+    pub verifier_sponge_state: [Fp; PlonkSpongeConstants::SPONGE_WIDTH],
 
     /// The current iteration of the IVC.
     pub current_iteration: u64,
@@ -125,14 +101,14 @@ where
     /// been generated correctly.
     ///
     /// The value is a 128bits value.
-    pub last_program_digest_before_execution: BigInt,
+    pub last_program_digest_before_execution: Fp,
 
     /// The digest of the program state after executing the last iteration.
     /// The value will be used to initialize the sponge before committing to the
     /// next iteration.
     ///
     /// The value is a 128bits value.
-    pub last_program_digest_after_execution: BigInt,
+    pub last_program_digest_after_execution: Fp,
 
     /// Temporary registers for elliptic curve points in affine coordinates than
     /// can be used to save values between instructions.
@@ -149,9 +125,6 @@ where
     /// Two registers are provided, represented by a tuple for the coordinates
     /// (x, y).
     pub temporary_accumulators: ((BigInt, BigInt), (BigInt, BigInt)),
-
-    /// Index of the values to absorb in the sponge
-    pub idx_values_to_absorb: usize,
     // ----------------
     /// The witness of the current instance of the circuit.
     /// The size of the outer vector must be equal to the number of columns in
@@ -161,7 +134,11 @@ where
     ///
     /// The layout columns/rows is used to avoid rebuilding the witness per
     /// column when committing to the witness.
-    pub witness: Vec<Vec<BigInt>>,
+    pub witness: Vec<Vec<Fp>>,
+
+    pub accumulated_program_state: Vec<Vec<Fp>>,
+
+    pub accumulated_error: Vec<Fp>,
 }
 
 impl<Fp, Fq, E1, E2, ZkApp1, ZkApp2> InterpreterEnv for Env<Fp, Fq, E1, E2, ZkApp1, ZkApp2>
@@ -179,13 +156,15 @@ where
 {
     type Position = (Column, CurrOrNext);
 
-    /// For efficiency, and for having a single interpreter, we do not use one
-    /// of the fields. We use a generic BigInt to represent the values.
-    /// When building the witness, we will reduce into the corresponding field.
-    // FIXME: it might not be efficient as I initially thought. We do need to
-    // make some transformations between biguint and bigint, with an extra cost
-    // for allocations.
-    type Variable = BigInt;
+    type Variable = Fp;
+
+    fn zero(&self) -> Self::Variable {
+        Fp::zero()
+    }
+
+    fn one(&self) -> Self::Variable {
+        Fp::one()
+    }
 
     fn allocate(&mut self) -> Self::Position {
         assert!(self.idx_var < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
@@ -338,6 +317,10 @@ where
         panic!("REMOVEME")
     }
 
+    unsafe fn fetch_value_to_absorb(&mut self, pos: Self::Position) -> Self::Variable {
+        panic!("REMOVEME")
+    }
+
     unsafe fn save_poseidon_state(&mut self, x: Self::Variable, i: usize) {
         if self.current_iteration % 2 == 0 {
             let modulus: BigInt = E1::ScalarField::modulus_biguint().into();
@@ -364,7 +347,7 @@ where
                     if self.current_iteration % 2 == 0 {
                         match side {
                             Side::Left => {
-                                let pt = self.zkapp2_state.previous_committed_state[i_comm].get_first_chunk();
+                                let pt = self.verifier2.previous_committed_state[i_comm].get_first_chunk();
                                 // We suppose we never have a commitment equals to the
                                 // point at infinity
                                 let (pt_x, pt_y) = pt.to_coordinates().unwrap();
@@ -390,7 +373,7 @@ where
                     } else {
                         match side {
                             Side::Left => {
-                                let pt = self.zkapp1_state.previous_committed_state[i_comm].get_first_chunk();
+                                let pt = self.verifier1.previous_committed_state[i_comm].get_first_chunk();
                                 // We suppose we never have a commitment equals to the
                                 // point at infinity
                                 let (pt_x, pt_y) = pt.to_coordinates().unwrap();
@@ -424,22 +407,22 @@ where
                 let (pt_x, pt_y): (BigInt, BigInt) = match side {
                     Side::Left => {
                         if self.current_iteration % 2 == 0 {
-                            let pt = self.zkapp2_state.accumulated_committed_state[i_comm].get_first_chunk();
+                            let pt = self.verifier2.accumulated_committed_state[i_comm].get_first_chunk();
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         } else {
-                            let pt = self.zkapp1_state.accumulated_committed_state[i_comm].get_first_chunk();
+                            let pt = self.verifier1.accumulated_committed_state[i_comm].get_first_chunk();
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         }
                     }
                     Side::Right => {
                         if self.current_iteration % 2 == 0 {
-                            let pt = self.zkapp2_state.previous_committed_state[i_comm].get_first_chunk();
+                            let pt = self.verifier2.previous_committed_state[i_comm].get_first_chunk();
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         } else {
-                            let pt = self.zkapp1_state.previous_committed_state[i_comm].get_first_chunk();
+                            let pt = self.verifier1.previous_committed_state[i_comm].get_first_chunk();
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         }
@@ -484,14 +467,6 @@ where
             BigInt::from(0_usize)
         };
         self.write_column(pos, res)
-    }
-
-    fn zero(&self) -> Self::Variable {
-        BigInt::from(0_usize)
-    }
-
-    fn one(&self) -> Self::Variable {
-        BigInt::from(1_usize)
     }
 
     /// Inverse of a variable
@@ -627,7 +602,7 @@ where
     }
 }
 
-impl<Fp, Fq, E1, E2, ZkApp1, ZkApp2> Env<Fp, Fq, E1, E2, ZkApp1, ZkApp2>
+impl<Fp, Fq, E1, E2, ZkApp> Env<Fp, Fq, E1, E2, ZkApp>
 where
     Fp: PrimeField,
     Fq: PrimeField,
@@ -637,23 +612,18 @@ where
     E2::BaseField: PrimeField,
     <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
     <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
-    ZkApp1: VerifiableZkApp<E1, Verifier = Verifier<E1>>,
-    ZkApp2: VerifiableZkApp<E2, Verifier = Verifier<E2>>,
+    ZkApp: VerifiableZkApp<E1, Verifier = Verifier<E1>>,
 {
-    pub fn new(indexed_relation: IndexedRelation<Fp, Fq, E1, E2, ZkApp1, ZkApp2>) -> Self {
-        let srs_size = indexed_relation.get_srs_size();
-        let (_blinder_e1, _blinder_e2) = indexed_relation.get_srs_blinders();
-
+    pub fn new(
+        initial_sponge_state: [Fp; PlonkSpongeConstants::SPONGE_WIDTH],
+        srs_size: usize,
+    ) -> Self {
         let mut witness: Vec<Vec<BigInt>> = Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
             let mut vec: Vec<BigInt> = Vec::with_capacity(srs_size);
             (0..srs_size).for_each(|_| vec.push(BigInt::from(0_usize)));
             (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
         };
-
-        // Initialize Program instances for both curves
-        let zkapp1_state: ZkAppState<E1> = ZkAppState::new();
-        let zkapp2_state: ZkAppState<E2> = ZkAppState::new();
 
         // FIXME: challenges
         let challenges: Challenges<BigInt> = Challenges::default();
@@ -664,19 +634,10 @@ where
         let verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
             std::array::from_fn(|_| BigInt::from(0_u64));
 
-        // FIXME: set this up correctly. Temporary as we're moving the initial
-        // transcript state into the setup
-        let sponge_e1 = indexed_relation.initial_sponge.clone();
-        let sponge_e2 = indexed_relation.initial_sponge.clone();
-
         Self {
             // -------
-            // Setup
-            indexed_relation,
-            // -------
             // Program state for each curve
-            zkapp1_state,
-            zkapp2_state,
+            verifier: Verifier::default(),
             // ------
             // ------
             idx_var: 0,
@@ -688,9 +649,9 @@ where
 
             challenges,
 
+            // FIXME: remove me, at the moment, used by the temporary allocator
             current_instruction: VERIFIER_STARTING_INSTRUCTION,
-            sponge_e1,
-            sponge_e2,
+            sponge_e1: initial_sponge_state,
             prover_sponge_state,
             verifier_sponge_state,
             current_iteration: 0,
@@ -698,13 +659,11 @@ where
             last_program_digest_before_execution: BigInt::from(0_u64),
             // FIXME: set a correct value
             last_program_digest_after_execution: BigInt::from(0_u64),
-            r: BigInt::from(0_usize),
             // Initialize the temporary accumulators with 0
             temporary_accumulators: (
                 (BigInt::from(0_u64), BigInt::from(0_u64)),
                 (BigInt::from(0_u64), BigInt::from(0_u64)),
             ),
-            idx_values_to_absorb: 0,
             witness,
         }
     }
@@ -717,9 +676,5 @@ where
         self.idx_var = 0;
         self.current_instruction = VERIFIER_STARTING_INSTRUCTION;
         self.idx_values_to_absorb = 0;
-    }
-
-    pub fn fetch_instruction(&self) -> Instruction {
-        self.current_instruction
     }
 }

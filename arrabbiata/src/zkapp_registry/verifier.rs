@@ -27,6 +27,8 @@ use num_bigint::BigInt;
 #[cfg(doc)]
 use crate::zkapp_registry::VerifiableZkApp;
 
+use super::VerifiableZkApp;
+
 /// The instructions that the vanilla Arrabbiata verifier can execute.
 #[derive(Copy, Clone)]
 pub enum Instruction {

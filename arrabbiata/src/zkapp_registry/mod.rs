@@ -1,9 +1,15 @@
 use crate::{
-    challenge::Challenges, column::E, curve::ArrabbiataCurve, interpreter::InterpreterEnv,
-    setup2::IndexedRelation, witness2::Env, MAX_DEGREE, MV_POLYNOMIAL_ARITY, NUMBER_OF_COLUMNS,
+    challenge::{ChallengeTerm, Challenges},
+    column::E,
+    curve::ArrabbiataCurve,
+    interpreter::InterpreterEnv,
+    setup2::IndexedRelation,
+    witness2::Env,
+    MAX_DEGREE, MV_POLYNOMIAL_ARITY, NUMBER_OF_COLUMNS,
 };
 use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
+use ark_poly::Evaluations;
 use mvpoly::{monomials::Sparse, MVPoly};
 use num_bigint::BigInt;
 use poly_commitment::{commitment::CommitmentCurve, PolyComm};
@@ -216,31 +222,122 @@ where
 ///
 /// This method must be called after the [execute] method to build the
 /// accumulation proof.
-pub fn prove_step<F, C, Z, E>(env: &mut E)
+pub fn prove_step<Fp, Fq, C1, C2, Z1, Z2, E1, E2>(env1: &mut E1, env2: &mut E2)
 where
-    F: PrimeField,
-    C: ArrabbiataCurve<ScalarField = F>,
-    C::BaseField: PrimeField,
-    Z: ZkApp<C>,
-    E: Env<F, F, C, C, Z, Z>,
+    Fp: PrimeField,
+    Fq: PrimeField,
+    C1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
+    C2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
+    C1::BaseField: PrimeField,
+    C2::BaseField: PrimeField,
+    Z1: ZkApp<C1>,
+    Z2: ZkApp<C2>,
+    E1: Env<Fp, Fq, C1, C2, Z1>,
+    E2: Env<Fq, Fp, C2, C1, Z2>,
 {
-    // env.commit_state();
-    // env.absorb_state();
+    // We initialize the sponge with the last program digest.
+    let domain_size = env1.domain.d1.size();
+    let mut sponge = E1::create_new_sponge();
+    E1::absorb_fq(&mut sponge, env1.last_program_digest_after_execution);
+    // FIXME: update env2 with sponge state
 
-    // coin_challenge(env, zkapp_state);
+    let cols_commitments = env1.witness.iter().map(|w| {
+        let evals = Evaluations::from_vec_and_domain(w.clone(), env1.domain.d1);
+        env1.srs
+            .commit_evaluations_non_hiding(&evals, env1.domain.d1)
+    });
+    // FIXME: update env2
+    E1::absorb_curve_points(&mut sponge, cols_commitments);
+
+    let constraints_combiner = E1::squeeze_challenge(&mut sponge);
+    // FIXME: update env2
 
     // compute_cross_terms(env, zkapp_state);
-    // absorb_cross_terms(env, zkapp_state);
-    // commit_cross_terms(env.indexed_relation, zkapp_state);
+    let cts = {
+        let cts: [Vec<Fp>; MAX_DEGREE] = core::array::from_fn(|_| {
+            Vec::with_capacity(domain_size);
+        });
+        (0..domain_size).for_each(|row| {
+            let next_row = (row + 1) % domain_size;
 
-    // compute_accumulated_error(env, zkapp_state);
+            let state_left: [E1::ScalarField; 2 * NUMBER_OF_COLUMNS] = core::array::from_fn(|i| {
+                if i < NUMBER_OF_COLUMNS {
+                    env1.accumulated_program_state[row][i]
+                } else {
+                    env1.accumulated_program_state[next_row][i - NUMBER_OF_COLUMNS]
+                }
+            });
+            let state_right: [E1::ScalarField; 2 * NUMBER_OF_COLUMNS] = core::array::from_fn(|i| {
+                if i < NUMBER_OF_COLUMNS {
+                    env1.witness[row][i]
+                } else {
+                    env1.witness[next_row][i - NUMBER_OF_COLUMNS]
+                }
+            });
+
+            let alpha_left =
+                env1.verifier.accumulated_challenges[ChallengeTerm::ConstraintCombiner];
+            let alpha_right = constraints_combiner.clone();
+
+            let u_left = env1.verifier.accumulated_challenges[ChallengeTerm::ConstraintHomogenizer];
+            let u_right = E1::ScalarField::one();
+            // FIXME: add gadget
+            let gadget = [Sparse::zero()];
+            let cross_terms = mvpoly::compute_combined_cross_terms(
+                gadget,
+                &state_left,
+                &state_right,
+                &alpha_left,
+                &alpha_right,
+                &u_left,
+                &u_right,
+            );
+            cross_terms.iter().for_each(|(power, term)| {
+                cts[power].push(term.clone());
+            });
+        });
+        cts
+    };
+
+    // Commit the cross-terms
+    cts.iter().for_each(|ct| {
+        let evals = Evaluations::from_vec_and_domain(ct.clone(), env1.domain.d1);
+        env1.srs
+            .commit_evaluations_non_hiding(&evals, env1.domain.d1)
+    });
+    // Absorb the cross-terms
+    E1::absorb_curve_points(&mut sponge, cts);
+
+    // Squeeze a challenge to accumulate the witnesses
+    let constraint_homogenizer = E1::squeeze_challenge(&mut sponge);
+
+    // Accumulate witnesses
+    env1.accumulated_program_state = env1
+        .accumulated_program_state
+        .iter()
+        .zip(env1.witness.iter())
+        .map(|(acc, w)| acc + constraint_homogenizer * w)
+        .collect();
+
+    // domain_size values
+    // computing ((r * 0) + ct[n]) * r + ct[n + 1] ...
+    env1.accumulated_error = env1.accumulated_error.iter().enumerate().map(|(i, e_i)| {
+        cts.rev().iter().fold(Fp::zero(), |acc, ct| {
+            let ct_i = ct.get(i).unwrap_or(&Fp::zero());
+            let res = acc * constraint_homogenizer + ct_i;
+            res
+        }) + e_i
+    })
 }
 
 pub fn fold<Fp, Fq, C1, C2, Z1, Z2>(
     zkapp1: &Z1,
     zkapp2: &Z2,
     n: usize,
-) -> Env<C1::ScalarField, C2::ScalarField, C1, C2, Z1, Z2>
+) -> (
+    Env<C1::ScalarField, C2::ScalarField, C1, C2, Z1>,
+    Env<C2::ScalarField, C1::ScalarField, C2, C1, Z2>,
+)
 where
     Fp: PrimeField,
     Fq: PrimeField,
@@ -261,19 +358,21 @@ where
     // FIXME: remove ZkApp types in the IndexedRelation to have something
     // FIXME: use only one type of ZkApp. It will ease this first version.
     let indexed_relation = IndexedRelation::new(zkapp1, zkapp2, srs_log2_size);
-    let mut env = Env::<C1::ScalarField, C2::ScalarField, C1, C2, Z1>::new(indexed_relation);
+    let mut env1 = Env::<C1::ScalarField, C2::ScalarField, C1, C2, Z1>::new(indexed_relation);
     let mut env2 = Env::<C2::ScalarField, C1::ScalarField, C2, C1, Z2>::new(indexed_relation);
     let mut i = 0;
     while i < n {
         execute(zkapp1, &mut env1);
-        prove_step(&mut env1);
-        env.reset_for_next_iteration();
-        execute(zkapp2, &mut env);
-        prove_step(&mut env);
-        env.reset_for_next_iteration();
+        // Proving a step will take elements of the env1, and update the second
+        // environment that will use the output of the first one.
+        prove_step(env1, &mut env2);
+        env1.reset_for_next_iteration();
+        execute(zkapp2, &mut env2);
+        prove_step(&mut env2);
+        env2.reset_for_next_iteration();
         i += 1;
     }
-    env
+    (env1, env2)
 }
 
 #[cfg(test)]

@@ -3,7 +3,7 @@
 use crate::{
     curve::ArrabbiataCurve,
     decider::proof::Proof,
-    witness2::Env,
+    witness3::Env,
     zkapp_registry::{verifier_stateful::Verifier, VerifiableZkApp},
 };
 use ark_ec::CurveConfig;

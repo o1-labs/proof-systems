@@ -28,6 +28,7 @@ use num_bigint::BigInt;
 #[cfg(doc)]
 use crate::zkapp_registry::VerifiableZkApp;
 
+#[derive(Copy, Clone)]
 pub enum CommitmentType {
     Column(usize),
     CrossTerm(usize),
@@ -121,7 +122,6 @@ impl From<Instruction> for Gadget {
 /// These fields represent the state of the verifier, and the individual element
 /// of the state can be fetchedd using the appropriate [InputType] while running
 /// the interpreter.
-#[derive(Copy, Clone, Eq, Hash, PartialEq)]
 pub struct Verifier<C>
 where
     C: ArrabbiataCurve,
