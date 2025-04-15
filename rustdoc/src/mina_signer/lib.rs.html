@@ -87,10 +87,16 @@
 <a href="#87" id="87">87</a>
 <a href="#88" id="88">88</a>
 <a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
 </pre></div><pre class="rust"><code><span class="attr">#![deny(missing_docs)]
 #![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]
+#![no_std]
 
-</span><span class="kw">use </span>ark_ec::AffineRepr;
+</span><span class="kw">extern crate </span>alloc;
+<span class="kw">use </span>alloc::{vec, vec::Vec};
+<span class="kw">use </span>ark_ec::AffineRepr;
 <span class="kw">pub use </span>keypair::Keypair;
 <span class="kw">pub use </span>mina_curves::pasta::Pallas <span class="kw">as </span>CurvePoint;
 <span class="kw">use </span>mina_hasher::{DomainParameter, Hashable};

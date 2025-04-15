@@ -151,9 +151,13 @@
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
 <a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Secret key structures and helpers
 
-</span><span class="kw">use </span><span class="kw">crate</span>::ScalarField;
+</span><span class="kw">extern crate </span>alloc;
+<span class="kw">use </span><span class="kw">crate</span>::ScalarField;
+<span class="kw">use </span>alloc::{string::String, vec, vec::Vec};
 <span class="kw">use </span>ark_ff::UniformRand;
 <span class="kw">use </span>o1_utils::FieldHelpers;
 <span class="kw">use </span>rand::{<span class="self">self</span>, CryptoRng, RngCore};

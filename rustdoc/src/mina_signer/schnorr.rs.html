@@ -153,13 +153,19 @@
 <a href="#153" id="153">153</a>
 <a href="#154" id="154">154</a>
 <a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Mina Schnorr signature scheme
 //!
 //! An implementation of the singer interface for the Mina signature algorithm
 //!
 //! Details: &lt;https://github.com/MinaProtocol/mina/blob/develop/docs/specs/signatures/description.md&gt;
 
-</span><span class="kw">use crate</span>::{BaseField, CurvePoint, Hashable, Keypair, PubKey, ScalarField, Signature, Signer};
+</span><span class="kw">extern crate </span>alloc;
+<span class="kw">use </span>alloc::{boxed::Box, string::String};
+
+<span class="kw">use crate</span>::{BaseField, CurvePoint, Hashable, Keypair, PubKey, ScalarField, Signature, Signer};
 <span class="kw">use </span>ark_ec::{
     AffineRepr, <span class="comment">// for generator()
     </span>CurveGroup,
