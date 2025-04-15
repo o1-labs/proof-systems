@@ -1,7 +1,6 @@
 use super::framework::TestFramework;
 use crate::circuits::{
     gate::CircuitGate,
-    lazy_cache::{LazyCache, LazyCacheError},
     polynomial::COLUMNS,
     polynomials::{generic::GenericGateSpec, xor},
     wires::Wire,
@@ -13,82 +12,14 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use once_cell::sync::OnceCell;
 use rand::Rng;
-use std::{
-    array,
-    sync::{Arc, Mutex},
-};
+use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 // Unit tests for LazyCache
-
-/// Test creating and getting `LazyCache` values
-#[test]
-fn test_lazycache() {
-    // get
-    {
-        // Cached variant
-        let cache = LazyCache::cache(100);
-        assert_eq!(*cache.get(), 100);
-        assert!(!cache.lazy_mode());
-
-        // Lazy variant
-        let lazy = LazyCache::lazy(|| {
-            let a = 10;
-            let b = 20;
-            a + b
-        });
-        assert_eq!(*lazy.get(), 30);
-        // Ensure the value is cached and can be accessed multiple times
-        assert_eq!(*lazy.get(), 30);
-        assert!(lazy.lazy_mode());
-    }
-
-    // function called only once
-    {
-        let counter = Arc::new(Mutex::new(0));
-        let counter_clone = Arc::clone(&counter);
-
-        let cache = LazyCache::lazy(move || {
-            let mut count = counter_clone.lock().unwrap();
-            *count += 1;
-            // counter_clone will be dropped here
-            99
-        });
-
-        assert_eq!(*cache.get(), 99);
-        assert_eq!(*cache.get(), 99); // Ensure cached
-        assert_eq!(*counter.lock().unwrap(), 1); // Function was called exactly once
-    }
-    // serde
-    {
-        let cache = LazyCache::cache(10);
-        let serialized = serde_json::to_string(&cache).unwrap();
-        let deserialized: LazyCache<i32> = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(*deserialized.get(), 10);
-    }
-    // debug
-    {
-        let cache = LazyCache::cache(10);
-        assert_eq!(format!("{:?}", cache), "Cached(OnceCell(10))");
-
-        let lazy = LazyCache::lazy(|| 20);
-        assert_eq!(format!("{:?}", lazy), "Lazy { <function> }");
-    }
-    // errors
-    {
-        let cache: LazyCache<i32> = LazyCache::Lazy {
-            computed: OnceCell::new(),
-            compute_fn: Mutex::new(None), // No function set
-        };
-        let err = cache.try_get();
-        assert_eq!(err.unwrap_err(), LazyCacheError::MissingFunction);
-    }
-}
 
 #[test]
 fn test_lazy_mode_benchmark() {
@@ -125,7 +56,7 @@ fn test_lazy_mode_benchmark() {
 
     {
         // LAZY CACHE FALSE
-        eprintln!("LAZY CACHE: false (default)");
+        eprintln!("LAZY MODE: false (default)");
         let gates_ = gates.clone();
         let witness_ = witness.clone();
         let public_ = public.clone();
@@ -141,7 +72,7 @@ fn test_lazy_mode_benchmark() {
 
     {
         // LAZY CACHE TRUE
-        eprintln!("LAZY CACHE: true");
+        eprintln!("LAZY MODE: true");
         TestFramework::<Vesta>::default()
             .gates(gates)
             .witness(witness)

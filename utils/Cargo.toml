@@ -24,6 +24,7 @@ rand_core.workspace = true
 rayon.workspace = true
 rmp-serde.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 serde_with.workspace = true
 sha2.workspace = true
 thiserror.workspace = true

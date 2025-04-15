@@ -558,7 +558,9 @@ fn verify_range_check0_v0_test_lookups() {
         Ok(())
     );
 
-    let test_runner = TestFramework::<Vesta>::default().gates(cs.gates).setup();
+    let test_runner = TestFramework::<Vesta>::default()
+        .gates(Arc::try_unwrap(cs.gates).unwrap())
+        .setup();
 
     for i in 3..=6 {
         // Test ith lookup
@@ -609,7 +611,9 @@ fn verify_range_check0_v1_test_lookups() {
         Ok(())
     );
 
-    let test_runner = TestFramework::<Vesta>::default().gates(cs.gates).setup();
+    let test_runner = TestFramework::<Vesta>::default()
+        .gates(Arc::try_unwrap(cs.gates).unwrap())
+        .setup();
 
     for i in 3..=6 {
         // Test ith lookup
@@ -963,9 +967,12 @@ fn verify_range_check1_test_curr_row_lookups() {
 
     let test_runner = TestFramework::<Vesta>::default()
         .gates(
-            Arc::try_unwrap(index.cs)
-                .expect("Multiple references of Arc")
-                .gates,
+            Arc::try_unwrap(
+                Arc::try_unwrap(index.cs)
+                    .expect("Multiple references of Arc")
+                    .gates,
+            )
+            .unwrap(),
         )
         .setup();
 
@@ -1014,7 +1021,9 @@ fn verify_range_check1_test_next_row_lookups() {
         Ok(())
     );
 
-    let test_runner = TestFramework::<Vesta>::default().gates(cs.gates).setup();
+    let test_runner = TestFramework::<Vesta>::default()
+        .gates(Arc::try_unwrap(cs.gates).unwrap())
+        .setup();
 
     for row in 0..=1 {
         for col in 1..=2 {

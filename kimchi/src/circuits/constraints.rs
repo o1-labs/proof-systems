@@ -5,7 +5,6 @@ use crate::{
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
-        lazy_cache::LazyCache,
         lookup::{
             index::LookupConstraintSystem,
             lookups::{LookupFeatures, LookupPatterns},
@@ -17,6 +16,7 @@ use crate::{
     },
     curve::KimchiCurve,
     error::{DomainCreationError, SetupError},
+    o1_utils::lazy_cache::LazyCache,
     prover_index::ProverIndex,
 };
 use ark_ff::{PrimeField, Zero};
@@ -180,12 +180,15 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub domain: EvaluationDomains<F>,
     /// circuit gates
     #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
-    pub gates: Vec<CircuitGate<F>>,
+    pub gates: Arc<Vec<CircuitGate<F>>>,
 
     pub zk_rows: u64,
 
     /// flags for optional features
     pub feature_flags: FeatureFlags,
+
+    /// lazy compute mode
+    lazy_mode: bool,
 
     /// SID polynomial
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
@@ -227,9 +230,10 @@ where
             #[serde(bound = "EvaluationDomains<F>: Serialize + DeserializeOwned")]
             domain: EvaluationDomains<F>,
             #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
-            gates: Vec<CircuitGate<F>>,
+            gates: Arc<Vec<CircuitGate<F>>>,
             zk_rows: u64,
             feature_flags: FeatureFlags,
+            lazy_mode: bool,
             #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
             sid: Vec<F>,
             #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -245,15 +249,9 @@ where
         let cs = ConstraintSystemSerde::<F>::deserialize(deserializer)?;
 
         let precomputations = Arc::new({
-            if cs.lookup_constraint_system.lazy_mode() {
-                LazyCache::lazy(move || {
-                    Arc::new(DomainConstantEvaluations::create(cs.domain, cs.zk_rows).unwrap())
-                })
-            } else {
-                LazyCache::cache(Arc::new(
-                    DomainConstantEvaluations::create(cs.domain, cs.zk_rows).unwrap(),
-                ))
-            }
+            LazyCache::new(move || {
+                Arc::new(DomainConstantEvaluations::create(cs.domain, cs.zk_rows).unwrap())
+            })
         });
 
         Ok(ConstraintSystem {
@@ -263,6 +261,7 @@ where
             gates: cs.gates,
             zk_rows: cs.zk_rows,
             feature_flags: cs.feature_flags,
+            lazy_mode: cs.lazy_mode,
             sid: cs.sid,
             shift: cs.shift,
             endo: cs.endo,
@@ -1012,33 +1011,21 @@ impl<F: PrimeField> Builder<F> {
         //
         // Lookup
         // ------
-        let lookup_constraint_system = LookupConstraintSystem::create(
-            &gates,
-            self.lookup_tables,
-            self.runtime_tables,
-            &domain,
-            zk_rows as usize,
-        )
-        .map_err(SetupError::LookupCreation)?;
-
-        let lookup_constraint_system = if !self.lazy_mode {
-            LazyCache::cache(lookup_constraint_system)
-        } else {
-            // Lookup constraint creation does not fail, we discard the struct
-            // to prevent cacheing in memory and store in the lazy cache the
-            // function needed to recompute it afterwards when needed.
-            let gates = gates.clone();
-            LazyCache::lazy(move || {
-                LookupConstraintSystem::create(
-                    &gates,
-                    lookup_tables,
-                    runtime_tables,
-                    &domain,
-                    zk_rows as usize,
-                )
-                .unwrap()
-            })
-        };
+        let gates = Arc::new(gates);
+        let gates_clone = Arc::clone(&gates);
+        let lookup_constraint_system = LazyCache::new(move || {
+            LookupConstraintSystem::create(
+                &gates_clone,
+                self.lookup_tables,
+                self.runtime_tables,
+                &domain,
+                zk_rows as usize,
+            )
+            .unwrap()
+        });
+        if !self.lazy_mode {
+            let _ = lookup_constraint_system.get(); // Precompute
+        }
 
         let sid = shifts.map[0].clone();
 
@@ -1047,13 +1034,13 @@ impl<F: PrimeField> Builder<F> {
 
         let precomputations = if !self.lazy_mode {
             match self.precomputations {
-                Some(t) => LazyCache::cache(t),
-                None => LazyCache::cache(Arc::new(
+                Some(t) => LazyCache::preinit(t),
+                None => LazyCache::preinit(Arc::new(
                     DomainConstantEvaluations::create(domain, zk_rows).unwrap(),
                 )),
             }
         } else {
-            LazyCache::lazy(move || {
+            LazyCache::new(move || {
                 Arc::new(DomainConstantEvaluations::create(domain, zk_rows).unwrap())
             })
         };
@@ -1070,6 +1057,7 @@ impl<F: PrimeField> Builder<F> {
             //fr_sponge_params: self.sponge_params,
             lookup_constraint_system: Arc::new(lookup_constraint_system),
             feature_flags,
+            lazy_mode: self.lazy_mode,
             precomputations: Arc::new(precomputations),
             disable_gates_checks: self.disable_gates_checks,
         };

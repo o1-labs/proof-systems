@@ -6,10 +6,10 @@ use crate::{
         berkeley_columns::{BerkeleyChallengeTerm, Column},
         constraints::{ColumnEvaluations, ConstraintSystem},
         expr::{Linearization, PolishToken},
-        lazy_cache::LazyCache,
     },
     curve::KimchiCurve,
     linearization::expr_linearization,
+    o1_utils::lazy_cache::LazyCache,
     verifier_index::VerifierIndex,
 };
 use ark_ff::PrimeField;
@@ -78,13 +78,12 @@ where
         let evaluated_column_coefficients = cs.evaluated_column_coefficients();
 
         let cs = Arc::new(cs);
-        let column_evaluations = if !lazy_mode {
-            LazyCache::cache(cs.column_evaluations(&evaluated_column_coefficients))
-        } else {
-            LazyCache::lazy({
-                let cs = Arc::clone(&cs);
-                move || cs.column_evaluations(&evaluated_column_coefficients)
-            })
+        let cs_clone = Arc::clone(&cs);
+        let column_evaluations =
+            LazyCache::new(move || cs_clone.column_evaluations(&evaluated_column_coefficients));
+        if !lazy_mode {
+            // precompute the values
+            column_evaluations.get();
         };
 
         ProverIndex {
