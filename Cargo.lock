@@ -2053,9 +2053,9 @@ dependencies = [
 
 [[package]]
 name = "ocaml-gen"
-version = "0.1.5"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a82934c07e0c1f76862e09fd654b6f1241a112797f9d9979bacfa084210f8a7"
+checksum = "4914382f332b97208183ef194eaca0bac9f155640719c74d5c7f7bc77511061b"
 dependencies = [
  "const-random",
  "ocaml",
@@ -2065,9 +2065,9 @@ dependencies = [
 
 [[package]]
 name = "ocaml-gen-derive"
-version = "0.1.5"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1894efdef5c9d83d17932c5f5db16d16eb5c8ae1a625ce44d9d1715e85d9d8dc"
+checksum = "7543703a85e10e5fd49258c8c820bda6e909d0feaf02f6db25197fe4b5f36bac"
 dependencies = [
  "convert_case",
  "proc-macro2",

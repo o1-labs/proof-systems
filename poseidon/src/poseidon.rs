@@ -1,9 +1,11 @@
 //! This module implements Poseidon Hash Function primitive
 
+extern crate alloc;
 use crate::{
     constants::SpongeConstants,
     permutation::{full_round, poseidon_block_cipher},
 };
+use alloc::{vec, vec::Vec};
 use ark_ff::Field;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use serde::{Deserialize, Serialize};
@@ -62,7 +64,7 @@ pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
     // TODO(mimoo: an array enforcing the width is better no? or at least an assert somewhere)
     pub state: Vec<F>,
     params: &'static ArithmeticSpongeParams<F>,
-    pub constants: std::marker::PhantomData<SC>,
+    pub constants: core::marker::PhantomData<SC>,
 }
 
 impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
@@ -91,7 +93,7 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
             rate,
             sponge_state: SpongeState::Absorbed(0),
             params,
-            constants: std::marker::PhantomData,
+            constants: core::marker::PhantomData,
         }
     }
 

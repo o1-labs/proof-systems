@@ -1,7 +1,9 @@
+extern crate alloc;
 use crate::{
     constants::SpongeConstants,
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
+use alloc::{vec, vec::Vec};
 use ark_ec::models::short_weierstrass::{Affine, SWCurveConfig};
 use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 
@@ -262,6 +264,12 @@ where
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
+
+    extern crate alloc;
+    use alloc::{
+        format,
+        string::{String, ToString},
+    };
 
     //
     // ScalarChallenge<F> <-> CamlScalarChallenge<CamlF>
