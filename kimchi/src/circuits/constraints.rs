@@ -187,9 +187,6 @@ pub struct ConstraintSystem<F: PrimeField> {
     /// flags for optional features
     pub feature_flags: FeatureFlags,
 
-    /// lazy compute mode
-    lazy_mode: bool,
-
     /// SID polynomial
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub sid: Vec<F>,
@@ -261,7 +258,6 @@ where
             gates: cs.gates,
             zk_rows: cs.zk_rows,
             feature_flags: cs.feature_flags,
-            lazy_mode: cs.lazy_mode,
             sid: cs.sid,
             shift: cs.shift,
             endo: cs.endo,
@@ -1024,7 +1020,7 @@ impl<F: PrimeField> Builder<F> {
             .unwrap()
         });
         if !self.lazy_mode {
-            let _ = lookup_constraint_system.get(); // Precompute
+            lookup_constraint_system.get(); // Precompute
         }
 
         let sid = shifts.map[0].clone();
@@ -1057,7 +1053,6 @@ impl<F: PrimeField> Builder<F> {
             //fr_sponge_params: self.sponge_params,
             lookup_constraint_system: Arc::new(lookup_constraint_system),
             feature_flags,
-            lazy_mode: self.lazy_mode,
             precomputations: Arc::new(precomputations),
             disable_gates_checks: self.disable_gates_checks,
         };
