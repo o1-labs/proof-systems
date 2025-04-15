@@ -13,17 +13,15 @@ license = "Apache-2.0"
 path = "src/lib.rs"
 
 [dependencies]
+ark-ec.workspace = true
+ark-ff.workspace = true
+bitvec.workspace = true
+blake2.workspace = true
+bs58.workspace = true
+hex.workspace = true
 mina-curves.workspace = true
 mina-hasher.workspace = true
 o1-utils.workspace = true
-
-ark-ec.workspace = true
-ark-ff.workspace = true
-
 rand.workspace = true
-blake2.workspace = true
-hex.workspace = true
-bitvec.workspace = true
 sha2.workspace = true
-bs58.workspace = true
 thiserror.workspace = true
