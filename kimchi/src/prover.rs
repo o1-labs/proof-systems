@@ -368,7 +368,11 @@ where
         let mut lookup_context = LookupContext::default();
 
         //~ 1. If using lookup:
-        let lookup_constraint_system = index.cs.lookup_constraint_system.get();
+        let lookup_constraint_system = index
+            .cs
+            .lookup_constraint_system
+            .try_get_or_err()
+            .map_err(ProverError::from)?;
         if let Some(lcs) = lookup_constraint_system {
             internal_tracing::checkpoint!(internal_traces; use_lookup, {
                 "uses_lookup": true,

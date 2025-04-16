@@ -15,11 +15,17 @@ pub struct LazyCache<T> {
     pub(crate) init: UnsafeCell<Option<LazyFn<T>>>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum LazyCacheError {
     LockPoisoned,
-    MissingFunctionOrInitializedTwice,
     UninitializedCache,
+    MissingFunctionOrInitializedTwice,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum LazyCacheErrorOr<E> {
+    Inner(E),
+    Outer(LazyCacheError),
 }
 
 // We never create a `&F` from a `&LazyCache<T, F>` so it is fine
@@ -98,6 +104,18 @@ impl<T> LazyCache<T> {
 
     pub fn get(&self) -> &T {
         self.try_get().unwrap()
+    }
+}
+
+// Wrapper to support cases where the init function might return an error that
+// needs to be handled separately (for example, LookupConstraintSystem::crate())
+impl<T, E: Clone> LazyCache<Result<T, E>> {
+    pub fn try_get_or_err(&self) -> Result<&T, LazyCacheErrorOr<E>> {
+        match self.try_get() {
+            Ok(Ok(v)) => Ok(v),
+            Ok(Err(e)) => Err(LazyCacheErrorOr::Inner(e.clone())),
+            Err(_) => Err(LazyCacheErrorOr::Outer(LazyCacheError::LockPoisoned)),
+        }
     }
 }
 

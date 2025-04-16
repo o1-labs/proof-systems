@@ -185,6 +185,8 @@ where
                 .lookup_constraint_system
                 .get()
                 .as_ref()
+                .unwrap()
+                .as_ref()
                 .map(|cs| LookupVerifierIndex {
                     joint_lookup_used: cs.configuration.lookup_info.features.joint_lookup_used,
                     lookup_info: cs.configuration.lookup_info,

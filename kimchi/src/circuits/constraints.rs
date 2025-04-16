@@ -6,7 +6,7 @@ use crate::{
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
         lookup::{
-            index::LookupConstraintSystem,
+            index::{LookupConstraintSystem, LookupError},
             lookups::{LookupFeatures, LookupPatterns},
             tables::{GateLookupTables, LookupTable},
         },
@@ -200,7 +200,7 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub endo: F,
     /// lookup constraint system
     #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
-    pub lookup_constraint_system: Arc<LazyCache<Option<LookupConstraintSystem<F>>>>,
+    pub lookup_constraint_system: Arc<LookupConstraintSystemCache<F>>,
     /// precomputes
     #[serde(skip)]
     precomputations: Arc<LazyCache<Arc<DomainConstantEvaluations<F>>>>,
@@ -208,6 +208,9 @@ pub struct ConstraintSystem<F: PrimeField> {
     /// Disable gates checks (for testing; only enables with development builds)
     pub disable_gates_checks: bool,
 }
+
+pub(crate) type LookupConstraintSystemCache<F> =
+    LazyCache<Result<Option<LookupConstraintSystem<F>>, LookupError>>;
 
 impl<'de, F> Deserialize<'de> for ConstraintSystem<F>
 where
@@ -239,7 +242,7 @@ where
             #[serde_as(as = "o1_utils::serialization::SerdeAs")]
             endo: F,
             #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
-            lookup_constraint_system: Arc<LazyCache<Option<LookupConstraintSystem<F>>>>,
+            lookup_constraint_system: Arc<LookupConstraintSystemCache<F>>,
             disable_gates_checks: bool,
         }
 
@@ -1018,10 +1021,12 @@ impl<F: PrimeField> Builder<F> {
                 &domain,
                 zk_rows as usize,
             )
-            .unwrap()
         });
         if !self.lazy_mode {
-            lookup_constraint_system.get(); // Precompute
+            // Precompute and map setup error
+            lookup_constraint_system
+                .try_get_or_err()
+                .map_err(SetupError::from)?;
         }
 
         let sid = shifts.map[0].clone();
