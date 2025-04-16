@@ -1,10 +1,11 @@
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
-use ark_ff::{One, PrimeField};
 use kimchi::curve::KimchiCurve;
 use mina_poseidon::FqSponge;
 use poly_commitment::{ipa::SRS, SRS as _};
 use rayon::prelude::*;
 use tracing::instrument;
+
+use crate::utils;
 
 #[instrument(skip_all, level = "debug")]
 pub fn commit_to_field_elems<G: KimchiCurve>(srs: &SRS<G>, data: &[G::ScalarField]) -> Vec<G>
@@ -44,17 +45,6 @@ pub fn combine_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G
         sponge.absorb_g(std::slice::from_ref(commitment))
     }
     let alpha = sponge.challenge();
-    let powers: Vec<_> = commitments
-        .iter()
-        .scan(G::ScalarField::one(), |acc, _| {
-            let res = *acc;
-            *acc *= alpha;
-            Some(res.into_bigint())
-        })
-        .collect();
-
-    let combined_data_commitment =
-        G::Group::msm_bigint(commitments, powers.as_slice()).into_affine();
-
+    let combined_data_commitment = utils::aggregate_commitments(alpha, commitments);
     (combined_data_commitment, alpha)
 }
