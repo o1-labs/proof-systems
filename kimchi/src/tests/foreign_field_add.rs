@@ -1168,9 +1168,9 @@ fn test_random_bad_parameters() {
 
     let mut cs = match Arc::try_unwrap(index.cs) {
         Ok(cs) => cs,
-        Err(_) => panic!("Multiple references of Arc"),
+        Err(_) => panic!("Multiple references of Arc cs"),
     };
-    let mut gates = Arc::try_unwrap(cs.gates.clone()).unwrap(); // to allow mutability during tests
+    let mut gates = (*cs.gates).clone();
 
     // Modify bot carry
     witness[7][1] += PallasField::one();
@@ -1190,9 +1190,10 @@ fn test_random_bad_parameters() {
     gates[1].coeffs[3] = PallasField::zero() - gates[1].coeffs[3];
     cs.gates = Arc::new(gates.clone());
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
+        gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 3)),
     );
+
     gates[1].coeffs[3] = PallasField::zero() - gates[1].coeffs[3];
     cs.gates = Arc::new(gates.clone());
     // Check back to normal
