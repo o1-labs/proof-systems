@@ -222,6 +222,10 @@ where
 ///
 /// This method must be called after the [execute] method to build the
 /// accumulation proof.
+///
+/// The first environment is the one being proven.
+/// The second environment is the one that will be used to verify the proof in
+/// the next step.
 pub fn prove_step<Fp, Fq, C1, C2, Z1, Z2, E1, E2>(env1: &mut E1, env2: &mut E2)
 where
     Fp: PrimeField,
