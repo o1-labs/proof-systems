@@ -295,30 +295,6 @@
 <a href="#295" id="295">295</a>
 <a href="#296" id="296">296</a>
 <a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the storage proof prover and verifier. Given a
 //! set of commitments C_i and a challenge α the storage proof is just
 //! an opening to the combined commitment ∑α^i C_i. Given that α is
@@ -331,11 +307,9 @@
 //! essense proves knowledge of the opening to all the commitments C_i
 //! simultaneously.
 
-</span><span class="kw">use crate</span>::{
-    blob::FieldBlob, Curve, CurveFqSponge, CurveFrSponge, ProjectiveCurve, ScalarField, SRS_SIZE,
-};
-<span class="kw">use </span>ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
-<span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
+</span><span class="kw">use crate</span>::{blob::FieldBlob, utils, Curve, CurveFqSponge, CurveFrSponge, ScalarField, SRS_SIZE};
+<span class="kw">use </span>ark_ec::AffineRepr;
+<span class="kw">use </span>ark_ff::{One, Zero};
 <span class="kw">use </span>ark_poly::{
     EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D, Radix2EvaluationDomain,
 };
@@ -375,20 +349,9 @@
     <span class="kw">let </span>final_chunk = (blob.data.len() / SRS_SIZE) - <span class="number">1</span>;
     <span class="macro">assert!</span>(blob.data.len() % SRS_SIZE == <span class="number">0</span>);
 
-    <span class="comment">// powers of challenge
-    </span><span class="kw">let </span>powers: Vec&lt;<span class="kw">_</span>&gt; = blob
-        .commitments
-        .iter()
-        .scan(ScalarField::one(), |acc, <span class="kw">_</span>| {
-            <span class="kw">let </span>res = <span class="kw-2">*</span>acc;
-            <span class="kw-2">*</span>acc <span class="kw-2">*</span>= challenge;
-            <span class="prelude-val">Some</span>(res.into_bigint())
-        })
-        .collect();
-
     <span class="comment">// ∑_{i=1} com_i^{challenge^i}
     </span><span class="kw">let </span>combined_data_commitment =
-        ProjectiveCurve::msm_bigint(blob.commitments.as_slice(), powers.as_slice()).into_affine();
+        utils::aggregate_commitments(challenge, blob.commitments.as_slice());
 
     <span class="comment">// Computes ∑_j chal^{j} data[j*SRS_SIZE + i]
     // where j ∈ [0..final_chunk], so the power corresponding to
@@ -501,19 +464,8 @@
     </span>proof: <span class="kw-2">&amp;</span>StorageProof,
     rng: <span class="kw-2">&amp;mut </span>OsRng,
 ) -&gt; bool {
-    <span class="kw">let </span>powers = commitments
-        .iter()
-        .scan(ScalarField::one(), |acc, <span class="kw">_</span>| {
-            <span class="kw">let </span>res = <span class="kw-2">*</span>acc;
-            <span class="kw-2">*</span>acc <span class="kw-2">*</span>= challenge;
-            <span class="prelude-val">Some</span>(res.into_bigint())
-        })
-        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-
-    <span class="comment">// randomised data commitment is ∏ C_i^{chal^i} for all chunks
-    </span><span class="kw">let </span>combined_data_commitment =
-        ProjectiveCurve::msm_bigint(commitments, powers.as_slice()).into_affine();
-
+    <span class="comment">// combined data commitment is ∑_{i=1} com_i^{challenge^i} for all chunks
+    </span><span class="kw">let </span>combined_data_commitment = utils::aggregate_commitments(challenge, commitments);
     verify_wrt_combined_data_commitment(srs, group_map, combined_data_commitment, proof, rng)
 }
 

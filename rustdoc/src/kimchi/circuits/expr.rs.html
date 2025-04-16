@@ -3441,20 +3441,6 @@
 <a href="#3441" id="3441">3441</a>
 <a href="#3442" id="3442">3442</a>
 <a href="#3443" id="3443">3443</a>
-<a href="#3444" id="3444">3444</a>
-<a href="#3445" id="3445">3445</a>
-<a href="#3446" id="3446">3446</a>
-<a href="#3447" id="3447">3447</a>
-<a href="#3448" id="3448">3448</a>
-<a href="#3449" id="3449">3449</a>
-<a href="#3450" id="3450">3450</a>
-<a href="#3451" id="3451">3451</a>
-<a href="#3452" id="3452">3452</a>
-<a href="#3453" id="3453">3453</a>
-<a href="#3454" id="3454">3454</a>
-<a href="#3455" id="3455">3455</a>
-<a href="#3456" id="3456">3456</a>
-<a href="#3457" id="3457">3457</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3481,7 +3467,7 @@
     ops::{Add, AddAssign, Index, Mul, MulAssign, Neg, Sub},
 };
 <span class="kw">use </span>itertools::Itertools;
-<span class="kw">use </span>o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
+<span class="kw">use </span>o1_utils::{field_helpers::pows, foreign_field::ForeignFieldHelpers, FieldHelpers};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::collections::{HashMap, HashSet};
@@ -4470,20 +4456,6 @@
     },
 }
 
-<span class="doccomment">/// Compute the powers of `x`, `x^0, ..., x^{n - 1}`
-</span><span class="kw">pub fn </span>pows&lt;F: Field&gt;(x: F, n: usize) -&gt; Vec&lt;F&gt; {
-    <span class="kw">if </span>n == <span class="number">0 </span>{
-        <span class="kw">return </span><span class="macro">vec!</span>[F::one()];
-    } <span class="kw">else if </span>n == <span class="number">1 </span>{
-        <span class="kw">return </span><span class="macro">vec!</span>[F::one(), x];
-    }
-    <span class="kw">let </span><span class="kw-2">mut </span>v = <span class="macro">vec!</span>[F::one(), x];
-    <span class="kw">for </span>i <span class="kw">in </span><span class="number">2</span>..n {
-        v.push(v[i - <span class="number">1</span>] * x);
-    }
-    v
-}
-
 <span class="doccomment">/// Compute the evaluations of the unnormalized lagrange polynomial on
 /// H_8 or H_4. Taking H_8 as an example, we show how to compute this
 /// polynomial on the expanded domain.
@@ -4556,8 +4528,8 @@
     // |res_domain| = k * |H|
 
     // omega_k^0, ..., omega_k^k
-    </span><span class="kw">let </span>omega_k_n_pows = pows(res_domain.group_gen.pow([n]), k);
-    <span class="kw">let </span>omega_k_pows = pows(res_domain.group_gen, k);
+    </span><span class="kw">let </span>omega_k_n_pows = pows(k, res_domain.group_gen.pow([n]));
+    <span class="kw">let </span>omega_k_pows = pows(k, res_domain.group_gen);
 
     <span class="kw">let </span><span class="kw-2">mut </span>evals: Vec&lt;F&gt; = {
         <span class="kw">let </span><span class="kw-2">mut </span>v = <span class="macro">vec!</span>[F::one(); k * (n <span class="kw">as </span>usize)];

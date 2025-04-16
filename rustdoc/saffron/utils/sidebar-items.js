@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["QueryError"],"fn":["chunk_size_in_bytes","decode_into","decode_into_vec","encode","encode_as_field_elements","encode_for_domain","min_encoding_chunks"],"struct":["QueryBytes","QueryField"]};
+window.SIDEBAR_ITEMS = {"enum":["QueryError"],"fn":["aggregate_commitments","chunk_size_in_bytes","decode_into","decode_into_vec","encode","encode_as_field_elements","encode_for_domain","min_encoding_chunks"],"struct":["QueryBytes","QueryField"]};
