@@ -365,11 +365,13 @@ where
         execute(zkapp1, &mut env1);
         // Proving a step will take elements of the env1, and update the second
         // environment that will use the output of the first one.
-        prove_step(env1, &mut env2);
+        prove_step(&mut env1, &mut env2);
         env1.reset_for_next_iteration();
+
         execute(zkapp2, &mut env2);
-        prove_step(&mut env2);
+        prove_step(&mut env2, &mut env1);
         env2.reset_for_next_iteration();
+
         i += 1;
     }
     (env1, env2)
