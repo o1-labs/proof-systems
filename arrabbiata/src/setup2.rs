@@ -33,7 +33,7 @@ use std::time::Instant;
 
 use crate::{
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
-    zkapp_registry::{setup, verifier_stateful::Verifier, VerifiableZkApp},
+    zkapp_registry::{setup, verifier_stateful::Verifier, VerifiableZkApp, ZkApp},
 };
 
 /// An indexed relation is a structure that contains all the information needed
@@ -43,7 +43,7 @@ use crate::{
 ///
 /// The prover will be instantiated for a particular indexed relation, and the
 /// verifier will be instantiated with (relatively) the same indexed relation.
-pub struct IndexedRelation<Fp, Fq, E1, E2, ZkApp1, ZkApp2>
+pub struct IndexedRelation<Fp, Fq, E1, E2>
 where
     Fp: PrimeField,
     Fq: PrimeField,
@@ -51,8 +51,6 @@ where
     E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
-    ZkApp1: VerifiableZkApp<E1, Verifier = Verifier<E1>>,
-    ZkApp2: VerifiableZkApp<E2, Verifier = Verifier<E2>>,
 {
     /// Domain for Fp
     pub domain_fp: EvaluationDomains<E1::ScalarField>,
@@ -69,16 +67,10 @@ where
 
     /// Initial state of the sponge, containing circuit specific
     /// information.
-    // FIXME: setup correctly with the initial transcript.
-    // The sponge must be initialized correctly with all the information
-    // related to the actual relation being accumulated/proved.
-    // Note that it must include the information of both circuits!
-    pub initial_sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
-
-    _field: std::marker::PhantomData<(Fp, Fq, E1, E2, ZkApp1, ZkApp2)>,
+    pub initial_sponge: Fp,
 }
 
-impl<Fp, Fq, E1, E2, ZkApp1, ZkApp2> IndexedRelation<Fp, Fq, E1, E2, ZkApp1, ZkApp2>
+impl<Fp, Fq, E1, E2> IndexedRelation<Fp, Fq, E1, E2>
 where
     Fp: PrimeField,
     Fq: PrimeField,
@@ -86,10 +78,12 @@ where
     E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
-    ZkApp1: VerifiableZkApp<E1, Verifier = Verifier<E1>>,
-    ZkApp2: VerifiableZkApp<E2, Verifier = Verifier<E2>>,
 {
-    pub fn new(zkapp1: &ZkApp1, zkapp2: &ZkApp2, srs_log2_size: usize) -> Self {
+    pub fn new<Z1: ZkApp<E1>, Z2: ZkApp<E2>>(
+        zkapp1: &Z1,
+        zkapp2: &Z2,
+        srs_log2_size: usize,
+    ) -> Self {
         let srs_size = 1 << srs_log2_size;
 
         let domain_fp = EvaluationDomains::<E1::ScalarField>::create(srs_size).unwrap();
@@ -127,7 +121,7 @@ where
 
         // FIXME: setup correctly the initial sponge state
         let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-            std::array::from_fn(|_i| BigInt::from(42u64));
+            core::array::from_fn(|_i| BigInt::from(42u64));
 
         Self {
             domain_fp,
@@ -136,7 +130,6 @@ where
             srs_e2,
             selectors_comm,
             initial_sponge: sponge_e1,
-            _field: std::marker::PhantomData,
         }
     }
 

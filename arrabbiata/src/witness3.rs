@@ -38,7 +38,7 @@ use crate::{
 ///
 /// The environment is generic over two curves (called E1 and E2) that are
 /// supposed to form a cycle.
-pub struct Env<Fp, Fq, E1, E2, ZkApp1, ZkApp2>
+pub struct Env<Fp, Fq, E1, E2>
 where
     Fp: PrimeField,
     Fq: PrimeField,
@@ -48,11 +48,10 @@ where
     E2::BaseField: PrimeField,
     <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
     <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
-    ZkApp1: VerifiableZkApp<E1, Verifier = Verifier<E1>>,
-    ZkApp2: VerifiableZkApp<E2, Verifier = Verifier<E2>>,
 {
     /// The relation this witness environment is related to.
-    pub indexed_relation: IndexedRelation<Fp, Fq, E1, E2, ZkApp1, ZkApp2>,
+    /// It contains the public parameters.
+    pub indexed_relation: IndexedRelation<Fp, Fq, E1, E2>,
 
     /// Verifier over the first curve
     pub verifier: Verifier<E1>,
@@ -141,7 +140,7 @@ where
     pub accumulated_error: Vec<Fp>,
 }
 
-impl<Fp, Fq, E1, E2, ZkApp1, ZkApp2> InterpreterEnv for Env<Fp, Fq, E1, E2, ZkApp1, ZkApp2>
+impl<Fp, Fq, E1, E2> InterpreterEnv for Env<Fp, Fq, E1, E2>
 where
     Fp: PrimeField,
     Fq: PrimeField,
@@ -151,8 +150,6 @@ where
     E2::BaseField: PrimeField,
     <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
     <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
-    ZkApp1: VerifiableZkApp<E1, Verifier = Verifier<E1>>,
-    ZkApp2: VerifiableZkApp<E2, Verifier = Verifier<E2>>,
 {
     type Position = (Column, CurrOrNext);
 
@@ -602,7 +599,7 @@ where
     }
 }
 
-impl<Fp, Fq, E1, E2, ZkApp> Env<Fp, Fq, E1, E2, ZkApp>
+impl<Fp, Fq, E1, E2> Env<Fp, Fq, E1, E2>
 where
     Fp: PrimeField,
     Fq: PrimeField,
@@ -612,7 +609,6 @@ where
     E2::BaseField: PrimeField,
     <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
     <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
-    ZkApp: VerifiableZkApp<E1, Verifier = Verifier<E1>>,
 {
     pub fn new(
         initial_sponge_state: [Fp; PlonkSpongeConstants::SPONGE_WIDTH],
@@ -630,9 +626,9 @@ where
 
         // FIXME: use setup
         let prover_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-            std::array::from_fn(|_| BigInt::from(0_u64));
+            core::array::from_fn(|_| BigInt::from(0_u64));
         let verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-            std::array::from_fn(|_| BigInt::from(0_u64));
+            core::array::from_fn(|_| BigInt::from(0_u64));
 
         Self {
             // -------
@@ -644,8 +640,8 @@ where
             idx_var_next_row: 0,
             idx_var_pi: 0,
             current_row: 0,
-            state: std::array::from_fn(|_| BigInt::from(0_usize)),
-            next_state: std::array::from_fn(|_| BigInt::from(0_usize)),
+            state: core::array::from_fn(|_| BigInt::from(0_usize)),
+            next_state: core::array::from_fn(|_| BigInt::from(0_usize)),
 
             challenges,
 
@@ -672,7 +668,7 @@ where
     pub fn reset_for_next_iteration(&mut self) {
         // Rest the state for the next row
         self.current_row = 0;
-        self.state = std::array::from_fn(|_| BigInt::from(0_usize));
+        self.state = core::array::from_fn(|_| BigInt::from(0_usize));
         self.idx_var = 0;
         self.current_instruction = VERIFIER_STARTING_INSTRUCTION;
         self.idx_values_to_absorb = 0;
