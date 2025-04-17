@@ -8,34 +8,31 @@
 //! We call data is the data vector that is stored and queried
 //! We call answer the vector such that answer[i] = data[i] * query[i]
 
-use crate::{
-    blob::FieldBlob, utils, BaseField, Curve, CurveFqSponge, CurveFrSponge, ScalarField, SRS_SIZE,
-};
+use crate::{Curve, CurveFqSponge, CurveFrSponge, ScalarField};
 use ark_ec::AffineRepr;
 use ark_ff::{One, Zero};
 use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
-    Radix2EvaluationDomain as R2D, Radix2EvaluationDomain,
+    univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as R2D,
 };
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_sponge::FrSponge};
 use mina_poseidon::FqSponge;
 use poly_commitment::{
-    commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
+    commitment::CommitmentCurve,
     ipa::{OpeningProof, SRS},
     utils::DensePolynomialOrEvaluations,
     PolyComm, SRS as _,
 };
 use rand::rngs::OsRng;
-use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use tracing::instrument;
 
 // #[serde_as]
 #[derive(Debug, Clone)]
 // TODO? serialize, deserialize
 struct ReadProof {
-    // #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    // Commitment to the query vector
+    pub query_comm: Curve,
+    // Commitment to the answer
+    pub answer_comm: Curve,
     // Commitment of quotient polynomial T (aka t_comm)
     pub quotient_comm: Curve,
 
@@ -88,13 +85,38 @@ pub fn prove(
     // coefficient form, over d4? d2?
     // quotient_Poly has degree d1
     let quotient_poly: DensePolynomial<ScalarField> = {
-        let numerator_d2 = (); // a - q×d
+        // TODO: do not re-interpolate, we already did d1
+        let data_d2 = Evaluations::from_vec_and_domain(data.to_vec(), domain.d2);
+        let query_d2 = Evaluations::from_vec_and_domain(query.to_vec(), domain.d2);
+        let answer_d2 = Evaluations::from_vec_and_domain(answer.to_vec(), domain.d2);
 
-        let numerator_poly: DensePolynomial<ScalarField> = todo!(); // interpolation
-        todo!()
+        // q×d - a
+        let numerator_eval: Evaluations<ScalarField, R2D<ScalarField>> =
+            &(&data_d2 * &query_d2) - &answer_d2;
+
+        let numerator_eval_interpolated = numerator_eval.interpolate();
+
+        let fail_final_q_division = || {
+            panic!("Division by vanishing poly must not fail at this point, we checked it before")
+        };
+        // We compute the polynomial t(X) by dividing the constraints polynomial
+        // by the vanishing polynomial, i.e. Z_H(X).
+        let (quotient, res) = numerator_eval_interpolated
+            .divide_by_vanishing_poly(domain.d1)
+            .unwrap_or_else(fail_final_q_division);
+        // As the constraints must be verified on H, the rest of the division
+        // must be equal to 0 as the constraints polynomial and Z_H(X) are both
+        // equal on H.
+        if !res.is_zero() {
+            fail_final_q_division();
+        }
+
+        quotient
     };
 
-    let quotient_comm = Curve::zero(); // commit quotient
+    // commit to the quotient polynomial $t$.
+    // num_chunks = 1 because our constraint is degree 2
+    let quotient_comm = srs.commit_non_hiding(&quotient_poly, 1).chunks[0];
     fq_sponge.absorb_g(&[quotient_comm]);
 
     // aka zeta
@@ -105,13 +127,13 @@ pub fn prove(
     let mut fr_sponge = CurveFrSponge::new(Curve::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
-    let eval_data = data_poly.evaluate(&evaluation_point);
-    let eval_query = query_poly.evaluate(&evaluation_point);
-    let eval_answer = answer_poly.evaluate(&evaluation_point);
+    let data_eval = data_poly.evaluate(&evaluation_point);
+    let query_eval = query_poly.evaluate(&evaluation_point);
+    let answer_eval = answer_poly.evaluate(&evaluation_point);
 
-    let eval_quotient = quotient_poly.evaluate(&evaluation_point);
+    let quotient_eval = quotient_poly.evaluate(&evaluation_point);
 
-    for eval in [eval_data, eval_query, eval_answer, eval_quotient].into_iter() {
+    for eval in [data_eval, query_eval, answer_eval, quotient_eval].into_iter() {
         fr_sponge.absorb(&eval);
     }
 
@@ -145,16 +167,18 @@ pub fn prove(
         &[evaluation_point],
         u,
         v,
-        fq_sponge,
+        fq_sponge_before_evaluations,
         rng,
     );
 
     ReadProof {
+        query_comm: query_comm.chunks[0],
+        answer_comm: answer_comm.chunks[0],
         quotient_comm,
-        data_eval: eval_data,
-        query_eval: eval_query,
-        answer_eval: eval_answer,
-        quotient_eval: eval_quotient,
+        data_eval,
+        query_eval,
+        answer_eval,
+        quotient_eval,
         opening_proof,
     }
 }
