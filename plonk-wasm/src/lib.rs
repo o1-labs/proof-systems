@@ -1,4 +1,3 @@
-#![feature(get_mut_unchecked)]
 //! The Marlin_plonk_stubs crate exports some functionalities
 //! and structures from the following the Rust crates to OCaml:
 //!
@@ -44,13 +43,27 @@ pub fn create_zero_u32_ptr() -> *mut u32 {
     Box::into_raw(std::boxed::Box::new(0))
 }
 
+/// Free a pointer. This method is exported in the WebAssembly module to be used
+/// on the JavaScript side, see `web-backend.js`.
+///
+/// # Safety
+///
+/// See
+/// `<https://rust-lang.github.io/rust-clippy/master/index.html#not_unsafe_ptr_arg_deref>`
 #[wasm_bindgen]
-pub fn free_u32_ptr(ptr: *mut u32) {
+pub unsafe fn free_u32_ptr(ptr: *mut u32) {
     let _drop_me = unsafe { std::boxed::Box::from_raw(ptr) };
 }
 
+/// Set the value of a pointer. This method is exported in the WebAssembly
+/// module to be used on the JavaScript side, see `web-backend.js`.
+///
+/// # Safety
+///
+/// See
+/// `<https://rust-lang.github.io/rust-clippy/master/index.html#not_unsafe_ptr_arg_deref>`
 #[wasm_bindgen]
-pub fn set_u32_ptr(ptr: *mut u32, arg: u32) {
+pub unsafe fn set_u32_ptr(ptr: *mut u32, arg: u32) {
     // The rust docs explicitly forbid using this for cross-thread syncronization. Oh well, we
     // don't have anything better. As long as it works in practice, we haven't upset the undefined
     // behavior dragons.
@@ -59,9 +72,16 @@ pub fn set_u32_ptr(ptr: *mut u32, arg: u32) {
     }
 }
 
+/// This method is exported in the WebAssembly to be used on the JavaScript
+/// side, see `web-backend.js`.
+///
+/// # Safety
+///
+/// See
+/// `<https://rust-lang.github.io/rust-clippy/master/index.html#not_unsafe_ptr_arg_deref>`
 #[allow(unreachable_code)]
 #[wasm_bindgen]
-pub fn wait_until_non_zero(ptr: *const u32) -> u32 {
+pub unsafe fn wait_until_non_zero(ptr: *const u32) -> u32 {
     // The rust docs explicitly forbid using this for cross-thread syncronization. Oh well, we
     // don't have anything better. As long as it works in practice, we haven't upset the undefined
     // behavior dragons.

@@ -31,14 +31,21 @@ O1VM_MIPS_BIN_FILES = $(patsubst ${O1VM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIPS_BIN_D
 # In addition to that, the version in the CI (see file
 # .github/workflows/wasm.yml) should be changed accordingly.
 NIGHTLY_RUST_VERSION = "nightly-2024-06-13"
-WASM_RUSTFLAGS = "-C target-feature=+atomics,+bulk-memory,+mutable-globals -C link-arg=--no-check-features -C link-arg=--max-memory=4294967296"
+WASM_RUSTFLAGS = "-C target-feature=+atomics,+bulk-memory,+mutable-globals -C link-arg=--max-memory=4294967296"
 PLONK_WASM_NODEJS_OUTDIR ?= target/nodejs
 PLONK_WASM_WEB_OUTDIR ?= target/web
+
+# This should stay in line with the version used by the argument
+# WASM_PACK_VERSION in
+# MinaProtocol/mina/dockerfiles/stages/1-build-deps
+WASM_PACK_VERSION=0.12.1
 
 # Default target
 all: release
 
-setup:
+setup: setup-git setup-wasm-pack setup-wasm-toolchain
+
+setup-git:
 		@echo ""
 		@echo "Syncing the Git submodules."
 		@echo ""
@@ -46,13 +53,28 @@ setup:
 		git submodule update --init --recursive
 		@echo ""
 		@echo "Git submodules synced."
-		@echo ""
+
+setup-wasm-pack:
 		@echo "Install wasm-pack"
-		@cargo install wasm-pack
-		@rustup component add rust-src --toolchain ${NIGHTLY_RUST_VERSION}-x86_64-unknown-linux-gnu
-		@echo ""
+		@cargo install wasm-pack@${WASM_PACK_VERSION} --force
 
-
+setup-wasm-toolchain:
+		@ARCH=$$(uname -m); \
+		OS=$$(uname -s | tr A-Z a-z); \
+		case $$OS in \
+			linux) OS_PART="unknown-linux-gnu" ;; \
+			darwin) OS_PART="apple-darwin" ;; \
+			*) echo "Unsupported OS: $$OS" && exit 1 ;; \
+		esac; \
+		case $$ARCH in \
+			x86_64) ARCH_PART="x86_64" ;; \
+			aarch64) ARCH_PART="aarch64" ;; \
+			arm64) ARCH_PART="aarch64" ;; \
+			*) echo "Unsupported architecture: $$ARCH" && exit 1 ;; \
+		esac; \
+		TARGET="$$ARCH_PART-$$OS_PART"; \
+		echo "Installing rust-src for ${NIGHTLY_RUST_VERSION}-$$TARGET"; \
+		rustup component add rust-src --toolchain ${NIGHTLY_RUST_VERSION}-$$TARGET
 
 # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
 # FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.

@@ -224,7 +224,7 @@ pub fn caml_pasta_fq_domain_generator(log2_size: i32) -> WasmPastaFq {
 #[wasm_bindgen]
 pub fn caml_pasta_fq_to_bytes(x: WasmPastaFq) -> Vec<u8> {
     let len = core::mem::size_of::<Fq>();
-    let mut str: Vec<u8> = Vec::with_capacity(len);
+    let mut str: Vec<u8> = vec![0; len];
     str.resize(len, 0);
     let str_as_fq: *mut Fq = str.as_mut_ptr().cast::<Fq>();
     unsafe {
