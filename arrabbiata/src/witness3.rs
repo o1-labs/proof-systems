@@ -38,7 +38,7 @@ use crate::{
 ///
 /// The environment is generic over two curves (called E1 and E2) that are
 /// supposed to form a cycle.
-pub struct Env<Fp, Fq, E1, E2>
+pub struct Env<Fp, Fq, E1, E2, Z1>
 where
     Fp: PrimeField,
     Fq: PrimeField,
@@ -48,10 +48,15 @@ where
     E2::BaseField: PrimeField,
     <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
     <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    Z1: ZkApp<E1>,
 {
+    // FIXME dude
+    pub input: Z1::Input,
+    pub output: Z1::Output,
+
     /// The relation this witness environment is related to.
     /// It contains the public parameters.
-    pub indexed_relation: IndexedRelation<Fp, Fq, E1, E2>,
+    pub indexed_relation: IndexedRelation<Fp, Fq, E1, E2, Z1, Z2>,
 
     /// Verifier over the first curve
     pub verifier: Verifier<E1>,
@@ -133,6 +138,7 @@ where
     ///
     /// The layout columns/rows is used to avoid rebuilding the witness per
     /// column when committing to the witness.
+    // FIXME(marc): it should go into a different structure.
     pub witness: Vec<Vec<Fp>>,
 
     pub accumulated_program_state: Vec<Vec<Fp>>,
@@ -599,7 +605,7 @@ where
     }
 }
 
-impl<Fp, Fq, E1, E2> Env<Fp, Fq, E1, E2>
+impl<Fp, Fq, E1, E2, Z1> Env<Fp, Fq, E1, E2, Z1>
 where
     Fp: PrimeField,
     Fq: PrimeField,
@@ -609,11 +615,18 @@ where
     E2::BaseField: PrimeField,
     <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
     <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    Z1: ZkApp<E1>,
 {
     pub fn new(
         initial_sponge_state: [Fp; PlonkSpongeConstants::SPONGE_WIDTH],
         srs_size: usize,
+        public_input: Z1::Instance,
     ) -> Self {
+        // FIXME: Instantiate the witness with the hash of the input.
+        // FIXME: we can see the "run" method as a function taking 2 rows
+        // (maximum) and returning/completing the two next rows.
+        // It makes sense to start with a certain value, i.e. the public input.
+        // Otherwise, it is like starting with unit.
         let mut witness: Vec<Vec<BigInt>> = Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
             let mut vec: Vec<BigInt> = Vec::with_capacity(srs_size);
@@ -665,12 +678,20 @@ where
     }
 
     /// Reset the environment to build the next iteration
-    pub fn reset_for_next_iteration(&mut self) {
+    /// The parameter is the actual CPU implementation that will give, from a
+    /// given input, the next expected output.
+    pub fn reset_for_next_iteration(&mut self, zkapp: &Z1) {
         // Rest the state for the next row
         self.current_row = 0;
         self.state = core::array::from_fn(|_| BigInt::from(0_usize));
         self.idx_var = 0;
         self.current_instruction = VERIFIER_STARTING_INSTRUCTION;
         self.idx_values_to_absorb = 0;
+        // Updating instance
+        let next_output = zkapp.cpu_f(self.input);
+        self.input = self.output;
+        self.output = next_output;
+
+        // FIXME FFS DUDE: reset witness.
     }
 }

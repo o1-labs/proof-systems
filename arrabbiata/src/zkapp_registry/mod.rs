@@ -53,14 +53,41 @@ pub mod verifier_stateful;
 /// Another kind of ZkApp is a [VerifiableZkApp], which is a ZkApp that is
 /// designed to be verifiable with a [VerifierApp], i.e., it is designed to be
 /// accompanied by a verifier.
+
+/// input: [x_0, y_0, x_5, y_5]
+/// Verifier: Commitment<C>, Challenge<F>
+/// pub enum InputType<C> {
+///   Commitment(C),
+///   Challenge(C::ScalarField)
+/// }
+/// type Input: Vec<InputType<C>>
+/// let v: Input = vec![InputType::Commitment(C::zero()), InputType::Challenge(F::zero())];
+/// fetch_public_input(v, index)
+/// z0 <- H(v)
+
 pub trait ZkApp<C>
 where
     C: ArrabbiataCurve,
     C::BaseField: PrimeField,
 {
+    type Instance;
+
+    type Input;
+
+    type Output;
+
     type Instruction: Copy;
 
     type Gadget: From<Self::Instruction> + Eq + Hash;
+
+    /// The CPU implementation of the ZkApp.
+    /// It is going to be used to compute the output for each fold from a given
+    /// an input. It is left to the user to provide it, and is specialised for
+    /// each ZkApp.
+    /// For instance, a ZkApp implementing MinRoot could be computing 5 steps
+    /// per iteration, and in this case, the native implementation would give
+    /// the output after five steps of the internal function.
+    fn native_implementation(&self, input: Self::Input) -> Self::Output;
 
     /// Fetch the first instruction to execute.
     fn fetch_instruction(&self) -> Self::Instruction;
@@ -132,6 +159,8 @@ where
     C::BaseField: PrimeField,
     Z: ZkApp<C>,
 {
+    // FIXME: we have to compute the hash of the public input/place the public
+    // input/output in the circuit, before.
     let mut instr: Option<Z::Instruction> = Some(zkapp.fetch_instruction());
     while let Some(i) = instr {
         zkapp.run(env, i);
@@ -338,6 +367,8 @@ pub fn fold<Fp, Fq, C1, C2, Z1, Z2>(
     zkapp1: &Z1,
     zkapp2: &Z2,
     n: usize,
+    public_input_1: Z1::Input,
+    public_input_2: Z2::Input,
 ) -> (
     Env<C1::ScalarField, C2::ScalarField, C1, C2, Z1>,
     Env<C2::ScalarField, C1::ScalarField, C2, C1, Z2>,
@@ -362,9 +393,22 @@ where
     // FIXME: remove ZkApp types in the IndexedRelation to have something
     // FIXME: use only one type of ZkApp. It will ease this first version.
     let indexed_relation = IndexedRelation::new(zkapp1, zkapp2, srs_log2_size);
-    let mut env1 = Env::<C1::ScalarField, C2::ScalarField, C1, C2, Z1>::new(indexed_relation);
-    let mut env2 = Env::<C2::ScalarField, C1::ScalarField, C2, C1, Z2>::new(indexed_relation);
+
+    let public_output_1 = zkapp1.native_implementation(public_input_1);
+    let public_output_2 = zkapp2.native_implementation(public_input_2);
+
+    let mut env1 = Env::<C1::ScalarField, C2::ScalarField, C1, C2, Z1>::new(
+        indexed_relation,
+        public_input_1,
+        public_output_1,
+    );
+    let mut env2 = Env::<C2::ScalarField, C1::ScalarField, C2, C1, Z2>::new(
+        indexed_relation,
+        public_input_2,
+        public_output_2,
+    );
     let mut i = 0;
+
     while i < n {
         execute(zkapp1, &mut env1);
         // Proving a step will take elements of the env1, and update the second
@@ -412,3 +456,12 @@ pub mod tests {
         assert!(verify.is_ok());
     }
 }
+
+// FIXME later. We want to have a simple method to take a App, and we want to
+// derive an equivalent app that is:
+// - handle the verifier of the folding (i.e. "augmenting")
+// - handle the public input/output by hashing on the first lines
+// The first step _must_ be the verifier of the folding because the verifier
+// has also public inputs/outputs.
+// In terms of implementation, we want to handle this differently, as it is two
+// different concepts.
