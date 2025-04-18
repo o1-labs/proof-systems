@@ -240,11 +240,11 @@ pub(crate) trait FixedLookupTables<F> {
     /// eg. the addition for integer smaller than 2 is:
     /// [[0,1,1][0,0,1][0,1,1]] when non formated, and becomes
     /// [[table_id,table_id,table_id,..., table_id][0,1,1, 0...0][0,0,1, 0...0][0,1,1, 0...0]]
-    fn get_all_tables_transposed(domain_size: u64) -> FixedLookup<Vec<Vec<F>>>;
+    fn get_formated_tables(domain_size: u64) -> FixedLookup<Vec<Vec<F>>>;
 }
 
 impl<F: Field + Clone> FixedLookupTables<F> for LookupTable<F> {
-    fn get_all_tables_transposed(domain_size: u64) -> FixedLookup<Vec<Vec<F>>> {
+    fn get_formated_tables(domain_size: u64) -> FixedLookup<Vec<Vec<F>>> {
         fn format<F: Clone + Field>(lookup_table: LookupTable<F>, domain_size: u64) -> Vec<Vec<F>> {
             let id = vec![lookup_table.table_id.to_field(); domain_size as usize];
             let padded_entries: Vec<Vec<F>> = lookup_table
