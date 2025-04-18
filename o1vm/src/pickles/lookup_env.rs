@@ -1,6 +1,6 @@
 use crate::{
     interpreters::mips::witness::LookupMultiplicities,
-    lookups::{FixedLookupTables, LookupTable},
+    lookups::{FixedLookup, FixedLookupTables, LookupTable},
 };
 
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain};
@@ -12,12 +12,16 @@ use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
 /// to prove the lookup protocol we do in the end
 pub struct LookupEnvironment<G: KimchiCurve> {
     /// fixed tables pre-existing the protocol
-    pub tables_poly: Vec<Vec<DensePolynomial<G::ScalarField>>>,
-    pub tables_comm: Vec<Vec<PolyComm<G>>>,
+    pub tables_poly: FixedLookup<Vec<DensePolynomial<G::ScalarField>>>,
+    pub tables_comm: FixedLookup<Vec<PolyComm<G>>>,
     ///multiplicities
     pub multiplicities: LookupMultiplicities,
     ///commitments to the lookup state
-    ///separated by the proof they come from
+    ///separated by the proof they come from.
+    /// It is empty at creation and filled as we perform
+    /// the first iteration of proving.
+    /// It is then consumed at the second iteration,
+    /// when proving the lookup argument.
     pub cms: Vec<Vec<PolyComm<G>>>,
 }
 
@@ -30,28 +34,21 @@ impl<G: KimchiCurve> LookupEnvironment<G> {
     /// and commit to them.
     /// Fills the multiplicities with zeroes
     pub fn new(srs: &SRS<G>, domain: EvaluationDomains<G::ScalarField>) -> Self {
-        let tables: Vec<LookupTable<G::ScalarField>> =
-            LookupTable::<G::ScalarField>::get_all_tables_transposed(domain.d1.size);
+        let tables = LookupTable::<G::ScalarField>::get_all_tables_transposed(domain.d1.size);
 
-        let eval_col = |evals: Vec<G::ScalarField>| {
+        let eval_one = |evals: Vec<G::ScalarField>| {
             Evaluations::<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
                 .interpolate()
         };
-        let eval_columns =
-            |evals: Vec<Vec<G::ScalarField>>| evals.into_iter().map(eval_col).collect();
-        let tables_poly: Vec<Vec<DensePolynomial<G::ScalarField>>> = tables
-            .into_iter()
-            .map(|lookup| eval_columns(lookup.entries))
-            .collect();
-        let tables_comm: Vec<Vec<_>> = tables_poly
-            .iter()
-            .map(|poly_vec| {
-                poly_vec
-                    .iter()
-                    .map(|poly| srs.commit_non_hiding(poly, 1))
-                    .collect()
-            })
-            .collect();
+        let eval_multiple =
+            |evals: Vec<Vec<G::ScalarField>>| evals.into_iter().map(eval_one).collect::<Vec<_>>();
+        let tables_poly = tables.map(eval_multiple);
+        let tables_comm = tables_poly.clone().map(|poly_vec: Vec<_>| {
+            poly_vec
+                .into_iter()
+                .map(|poly| srs.commit_non_hiding(&poly, 1))
+                .collect()
+        });
         LookupEnvironment {
             tables_poly,
             tables_comm,
