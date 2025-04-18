@@ -1,7 +1,4 @@
-use crate::{
-    interpreters::mips::witness::LookupMultiplicities,
-    lookups::{FixedLookup, FixedLookupTables, LookupTable},
-};
+use crate::lookups::{FixedLookup, FixedLookupTables, LookupTable};
 
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain};
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
@@ -15,7 +12,7 @@ pub struct LookupEnvironment<G: KimchiCurve> {
     pub tables_poly: FixedLookup<Vec<DensePolynomial<G::ScalarField>>>,
     pub tables_comm: FixedLookup<Vec<PolyComm<G>>>,
     ///multiplicities
-    pub multiplicities: LookupMultiplicities,
+    pub multiplicities: FixedLookup<Vec<u64>>,
     ///commitments to the lookup state
     ///separated by the proof they come from.
     /// It is empty at creation and filled as we perform
@@ -52,14 +49,14 @@ impl<G: KimchiCurve> LookupEnvironment<G> {
         LookupEnvironment {
             tables_poly,
             tables_comm,
-            multiplicities: LookupMultiplicities::new(),
+            multiplicities: FixedLookup::<Vec<u64>>::new(),
             cms: vec![],
         }
     }
 
     /// Take a prover environment, a multiplicities, and returns
     /// a prover environment with the multiplicities being the addition of both
-    pub fn add_multiplicities(&mut self, multiplicities: LookupMultiplicities) {
+    pub fn add_multiplicities(&mut self, multiplicities: FixedLookup<Vec<u64>>) {
         for (x, y) in self
             .multiplicities
             .pad_lookup

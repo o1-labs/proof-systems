@@ -20,7 +20,7 @@ use crate::{
             registers::Registers,
         },
     },
-    lookups::{Lookup, LookupTableIDs},
+    lookups::{FixedLookup, Lookup, LookupTableIDs},
     preimage_oracle::PreImageOracleT,
     ramlookup::LookupMode,
     utils::memory_size,
@@ -66,20 +66,9 @@ impl SyscallEnv {
     }
 }
 
-#[derive(Clone)]
-pub struct LookupMultiplicities {
-    pub pad_lookup: Vec<u64>,
-    pub round_constants_lookup: Vec<u64>,
-    pub at_most_4_lookup: Vec<u64>,
-    pub byte_lookup: Vec<u64>,
-    pub range_check_16_lookup: Vec<u64>,
-    pub sparse_lookup: Vec<u64>,
-    pub reset_lookup: Vec<u64>,
-}
-
-impl LookupMultiplicities {
+impl FixedLookup<Vec<u64>> {
     pub fn new() -> Self {
-        LookupMultiplicities {
+        FixedLookup {
             pad_lookup: vec![0; LookupTableIDs::PadLookup.length()],
             round_constants_lookup: vec![0; LookupTableIDs::RoundConstantsLookup.length()],
             at_most_4_lookup: vec![0; LookupTableIDs::AtMost4Lookup.length()],
@@ -91,7 +80,7 @@ impl LookupMultiplicities {
     }
 }
 
-impl Default for LookupMultiplicities {
+impl Default for FixedLookup<Vec<u64>> {
     fn default() -> Self {
         Self::new()
     }
@@ -129,7 +118,7 @@ pub struct Env<Fp, PreImageOracle: PreImageOracleT> {
     pub preimage_key: Option<[u8; 32]>,
     pub keccak_env: Option<KeccakEnv<Fp>>,
     pub hash_counter: u64,
-    pub lookup_multiplicities: LookupMultiplicities,
+    pub lookup_multiplicities: FixedLookup<Vec<u64>>,
 }
 
 fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
@@ -982,7 +971,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             preimage_key: None,
             keccak_env: None,
             hash_counter: 0,
-            lookup_multiplicities: LookupMultiplicities::new(),
+            lookup_multiplicities: FixedLookup::<Vec<u64>>::new(),
         }
     }
 
