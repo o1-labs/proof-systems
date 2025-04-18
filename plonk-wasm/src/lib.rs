@@ -7,7 +7,7 @@
 //!   a math library that Marlin builds on top of.
 //!
 
-use wasm_bindgen::prelude::*;
+use wasm_bindgen::{prelude::*, JsValue};
 
 mod wasm_flat_vector;
 mod wasm_vector;
@@ -87,6 +87,13 @@ pub unsafe fn wait_until_non_zero(ptr: *const u32) -> u32 {
         }
     }
     unreachable!();
+}
+
+/// This method is exported in the WebAssembly to check the memory used on the
+/// JavaScript
+#[wasm_bindgen]
+pub fn get_memory() -> JsValue {
+    wasm_bindgen::memory()
 }
 
 pub mod rayon;
