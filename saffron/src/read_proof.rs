@@ -22,7 +22,7 @@ use poly_commitment::{
     utils::DensePolynomialOrEvaluations,
     PolyComm, SRS as _,
 };
-use rand::rngs::OsRng;
+use rand::{CryptoRng, RngCore};
 use tracing::instrument;
 
 // #[serde_as]
@@ -48,11 +48,11 @@ pub struct ReadProof {
 }
 
 #[instrument(skip_all, level = "debug")]
-pub fn prove(
+pub fn prove<RNG>(
     domain: EvaluationDomains<ScalarField>,
     srs: &SRS<Curve>,
     group_map: &<Curve as CommitmentCurve>::Map,
-    rng: &mut OsRng,
+    rng: &mut RNG,
     // data is the data that is stored and queried
     data: &[ScalarField],
     // data[i] is queried if query[i] ≠ 0
@@ -61,7 +61,10 @@ pub fn prove(
     answer: &[ScalarField],
     // Commitment to data
     data_comm: &Curve,
-) -> ReadProof {
+) -> ReadProof
+where
+    RNG: RngCore + CryptoRng,
+{
     let (_, endo_r) = Curve::endos();
 
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
@@ -183,15 +186,18 @@ pub fn prove(
     }
 }
 
-pub fn verify(
+pub fn verify<RNG>(
     domain: EvaluationDomains<ScalarField>,
     srs: &SRS<Curve>,
     group_map: &<Curve as CommitmentCurve>::Map,
-    rng: &mut OsRng,
+    rng: &mut RNG,
     // Commitment to data
     data_comm: &Curve,
     proof: &ReadProof,
-) -> bool {
+) -> bool
+where
+    RNG: RngCore + CryptoRng,
+{
     let (_, endo_r) = Curve::endos();
 
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
@@ -289,7 +295,6 @@ mod tests {
     use once_cell::sync::Lazy;
     use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
     use proptest::prelude::*;
-    use rand::rngs::OsRng;
 
     static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
         if let Ok(srs) = std::env::var("SRS_FILEPATH") {
@@ -307,13 +312,13 @@ mod tests {
 
     #[test]
     fn test_read_proof_completeness() {
-        let mut rng = OsRng;
+        let mut rng = o1_utils::tests::make_test_rng(None);
 
         let data: Vec<ScalarField> = {
             let mut data = vec![];
             (0..SRS_SIZE)
                 .into_iter()
-                .for_each(|_| data.push(Fp::rand(&mut ark_std::rand::thread_rng())));
+                .for_each(|_| data.push(Fp::rand(&mut rng)));
             data
         };
 
@@ -353,13 +358,13 @@ mod tests {
 
     #[test]
     fn test_read_proof_soundness() {
-        let mut rng = OsRng;
+        let mut rng = o1_utils::tests::make_test_rng(None);
 
         let data: Vec<ScalarField> = {
             let mut data = vec![];
             (0..SRS_SIZE)
                 .into_iter()
-                .for_each(|_| data.push(Fp::rand(&mut ark_std::rand::thread_rng())));
+                .for_each(|_| data.push(Fp::rand(&mut rng)));
             data
         };
 
