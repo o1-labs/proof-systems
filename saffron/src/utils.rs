@@ -1,8 +1,8 @@
-use std::marker::PhantomData;
-
+use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::{BigInteger, PrimeField};
 use ark_poly::EvaluationDomain;
-use o1_utils::FieldHelpers;
+use o1_utils::{field_helpers::pows, FieldHelpers};
+use std::marker::PhantomData;
 use thiserror::Error;
 use tracing::instrument;
 
@@ -273,6 +273,17 @@ pub fn min_encoding_chunks<F: PrimeField, D: EvaluationDomain<F>>(domain: &D, xs
 pub fn chunk_size_in_bytes<F: PrimeField, D: EvaluationDomain<F>>(domain: &D) -> usize {
     let m = F::MODULUS_BIT_SIZE as usize / 8;
     domain.size() * m
+}
+
+/// For commitments C_i and randomness r, returns ∑ r^i C_i.
+pub fn aggregate_commitments<G: AffineRepr>(randomness: G::ScalarField, commitments: &[G]) -> G {
+    // powers_of_randomness = [1, r, r², r³, …]
+    let powers_of_randomness = pows(commitments.len(), randomness);
+    let aggregated_commitment =
+    // Using unwrap() is safe here, as err is returned when commitments and powers have different lengths,
+    // and powers are built with commitment.len().
+        G::Group::msm(commitments, powers_of_randomness.as_slice()).unwrap().into_affine();
+    aggregated_commitment
 }
 
 #[cfg(test)]

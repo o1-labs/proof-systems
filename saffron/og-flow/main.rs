@@ -5,6 +5,7 @@ use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge as _,
 };
+use o1_utils::field_helpers::pows;
 use poly_commitment::{
     commitment::{absorb_commitment, BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::SRS,
@@ -143,14 +144,7 @@ pub fn main() -> ExitCode {
         println!("- Storage protocol iteration {i}");
         println!("  - Computing randomizers for data chunks");
         let now = std::time::Instant::now();
-        let powers = committed_chunks
-            .iter()
-            .scan(Fp::one(), |acc, _| {
-                let res = *acc;
-                *acc *= challenge;
-                Some(res)
-            })
-            .collect::<Vec<_>>();
+        let powers = pows(committed_chunks.len(), challenge);
         let duration = now.elapsed();
         println!(
             "    - Took {:?}s / {:?}ms / {:?}us / {:?}ns",
