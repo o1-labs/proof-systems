@@ -11,7 +11,10 @@ use kimchi::{
     o1_utils::{FieldHelpers, Two},
 };
 use kimchi_msm::{LogupTable, LogupWitness, LookupTableID};
-use std::ops::Index;
+use std::{
+    iter::{once, Chain, Once},
+    ops::Index,
+};
 
 /// The lookups struct based on RAMLookups for the VM table IDs
 pub(crate) type Lookup<F> = RAMLookup<F, LookupTableIDs>;
@@ -99,24 +102,34 @@ impl<A> FixedLookup<A> {
     }
 }
 
-impl<A> Index<FixedLookup<A>> for LookupTableIDs {
+impl<A> Index<LookupTableIDs> for FixedLookup<A> {
     type Output = A;
-    fn index(&self, index: FixedLookup<A>) -> &Self::Output {
-        match self {
-            PadLookup => &index.pad_lookup,
-            RoundConstantsLookup => &index.round_constants_lookup,
-            AtMost4Lookup => &index.at_most_4_lookup,
-            ByteLookup => &index.byte_lookup,
-            RangeCheck16Lookup => &index.range_check_16_lookup,
-            SparseLookup => &index.sparse_lookup,
-            ResetLookup => &index.reset_lookup,
+    fn index(&self, index: LookupTableIDs) -> &Self::Output {
+        let FixedLookup {
+            pad_lookup,
+            range_check_16_lookup,
+            round_constants_lookup,
+            reset_lookup,
+            at_most_4_lookup,
+            byte_lookup,
+            sparse_lookup,
+        } = self;
+
+        match index {
+            PadLookup => pad_lookup,
+            RoundConstantsLookup => round_constants_lookup,
+            AtMost4Lookup => at_most_4_lookup,
+            ByteLookup => byte_lookup,
+            RangeCheck16Lookup => range_check_16_lookup,
+            SparseLookup => sparse_lookup,
+            ResetLookup => reset_lookup,
             // We only index fixed tables
             _ => panic!("not supposed to happen"),
         }
     }
 }
 
-pub struct IterFixedLookup<A> {
+/* pub struct IterFixedLookup<A> {
     lookup: FixedLookup<A>,
     iter: LookupTableIDs,
 }
@@ -169,8 +182,24 @@ impl<A> IntoIterator for FixedLookup<A> {
             lookup: self,
         }
     }
-}
+} */
 
+impl<A> IntoIterator for FixedLookup<A> {
+    type Item = A;
+    type IntoIter = Chain<
+        Chain<Chain<Chain<Chain<Chain<Once<A>, Once<A>>, Once<A>>, Once<A>>, Once<A>>, Once<A>>,
+        Once<A>,
+    >;
+    fn into_iter(self) -> Self::IntoIter {
+        once(self.pad_lookup)
+            .chain(once(self.round_constants_lookup))
+            .chain(once(self.at_most_4_lookup))
+            .chain(once(self.byte_lookup))
+            .chain(once(self.range_check_16_lookup))
+            .chain(once(self.sparse_lookup))
+            .chain(once(self.reset_lookup))
+    }
+}
 impl LookupTableID for LookupTableIDs {
     fn to_u32(&self) -> u32 {
         *self as u32
