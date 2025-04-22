@@ -275,7 +275,7 @@ pub fn chunk_size_in_bytes<F: PrimeField, D: EvaluationDomain<F>>(domain: &D) ->
     domain.size() * m
 }
 
-/// For commitments [C_i] and randomness r, returns ∑ r^i C_i.
+/// For commitments C_i and randomness r, returns ∑ r^i C_i.
 pub fn aggregate_commitments<G: AffineRepr>(randomness: G::ScalarField, commitments: &[G]) -> G {
     // powers_of_randomness = [1, r, r², r³, …]
     let powers_of_randomness = pows(commitments.len(), randomness);
