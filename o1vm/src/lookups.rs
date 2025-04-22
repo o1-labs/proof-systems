@@ -11,6 +11,7 @@ use kimchi::{
     o1_utils::{FieldHelpers, Two},
 };
 use kimchi_msm::{LogupTable, LogupWitness, LookupTableID};
+use std::ops::Index;
 
 /// The lookups struct based on RAMLookups for the VM table IDs
 pub(crate) type Lookup<F> = RAMLookup<F, LookupTableIDs>;
@@ -94,6 +95,78 @@ impl<A> FixedLookup<A> {
             range_check_16_lookup: f(range_check_16_lookup),
             sparse_lookup: f(sparse_lookup),
             reset_lookup: f(reset_lookup),
+        }
+    }
+}
+
+impl<A> Index<FixedLookup<A>> for LookupTableIDs {
+    type Output = A;
+    fn index(&self, index: FixedLookup<A>) -> &Self::Output {
+        match self {
+            PadLookup => &index.pad_lookup,
+            RoundConstantsLookup => &index.round_constants_lookup,
+            AtMost4Lookup => &index.at_most_4_lookup,
+            ByteLookup => &index.byte_lookup,
+            RangeCheck16Lookup => &index.range_check_16_lookup,
+            SparseLookup => &index.sparse_lookup,
+            ResetLookup => &index.reset_lookup,
+            // We only index fixed tables
+            _ => panic!("not supposed to happen"),
+        }
+    }
+}
+
+pub struct IterFixedLookup<A> {
+    lookup: FixedLookup<A>,
+    iter: LookupTableIDs,
+}
+
+impl<A> Iterator for IterFixedLookup<A> {
+    type Item = A;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.iter {
+            PadLookup => {
+                self.iter = RoundConstantsLookup;
+                Some(self.lookup.pad_lookup)
+            }
+            RoundConstantsLookup => {
+                self.iter = AtMost4Lookup;
+                Some(self.lookup.round_constants_lookup)
+            }
+            AtMost4Lookup => {
+                self.iter = ByteLookup;
+                Some(self.lookup.at_most_4_lookup)
+            }
+            ByteLookup => {
+                self.iter = RangeCheck16Lookup;
+                Some(self.lookup.byte_lookup)
+            }
+            RangeCheck16Lookup => {
+                self.iter = SparseLookup;
+                Some(self.lookup.range_check_16_lookup)
+            }
+            SparseLookup => {
+                self.iter = ResetLookup;
+                Some(self.lookup.sparse_lookup)
+            }
+            ResetLookup => {
+                self.iter = MemoryLookup;
+                Some(self.lookup.reset_lookup)
+            }
+            // We only iterate on fixed tables
+            MemoryLookup => None,
+            _ => None,
+        }
+    }
+}
+
+impl<A> IntoIterator for FixedLookup<A> {
+    type Item = A;
+    type IntoIter = IterFixedLookup<A>;
+    fn into_iter(self) -> Self::IntoIter {
+        IterFixedLookup {
+            iter: PadLookup,
+            lookup: self,
         }
     }
 }
