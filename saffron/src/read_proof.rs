@@ -9,7 +9,8 @@
 //! We call answer the vector such that answer[i] = data[i] * query[i]
 
 use crate::{Curve, CurveFqSponge, CurveFrSponge, ScalarField};
-use ark_ff::{Field, Zero};
+use ark_ec::AffineRepr;
+use ark_ff::{Field, One, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as R2D,
@@ -47,18 +48,64 @@ pub struct ReadProof {
     pub opening_proof: OpeningProof<Curve>,
 }
 
+pub fn precompute_quotient_helpers(
+    srs: &SRS<Curve>,
+    domain: EvaluationDomains<ScalarField>,
+    indices: Vec<usize>,
+) -> Vec<(DensePolynomial<ScalarField>, Curve)> {
+    println!("Generating helpers");
+    let n = domain.d1.size();
+    //let bases: Vec<DensePolynomial<ScalarField>> = srs.lagrange_basis_raw(domain.d1, indices);
+
+    let mut result: Vec<_> = vec![];
+
+    let fail_final_q_division = || panic!("Division by vanishing poly must not fail");
+
+    for i in indices.iter() {
+        println!("Generating helpers {:?}", i);
+        let mut base_eval_vec = vec![ScalarField::zero(); n];
+        base_eval_vec[*i] = ScalarField::one();
+
+        let base_eval = Evaluations::from_vec_and_domain(base_eval_vec, domain.d1);
+        let base_poly: DensePolynomial<ScalarField> = base_eval.interpolate();
+
+        let base_d2 = base_poly.evaluate_over_domain_by_ref(domain.d2);
+        let numerator_eval = &(&base_d2 * &base_d2) - &base_d2;
+
+        let numerator_eval_interpolated = numerator_eval.interpolate();
+
+        let (quotient, res) = numerator_eval_interpolated
+            .divide_by_vanishing_poly(domain.d1)
+            .unwrap_or_else(fail_final_q_division);
+
+        if !res.is_zero() {
+            fail_final_q_division();
+        }
+
+        let comm = srs.commit_non_hiding(&quotient, 1).chunks[0];
+
+        println!("Comm: {:?}", comm);
+
+        result.push((quotient, comm))
+    }
+    println!("Helpers geneated");
+
+    result
+}
+
 #[instrument(skip_all, level = "debug")]
 pub fn prove<RNG>(
     domain: EvaluationDomains<ScalarField>,
     srs: &SRS<Curve>,
     group_map: &<Curve as CommitmentCurve>::Map,
     rng: &mut RNG,
-    // data is the data that is stored and queried
+    quotient_helpers: Vec<(DensePolynomial<ScalarField>, Curve)>,
+    // data[i] is queried if query[i] ≠ 0
     data: &[ScalarField],
     // data[i] is queried if query[i] ≠ 0
-    query: &[ScalarField],
+    query_sparse: Vec<usize>,
     // answer[i] = data[i] * query[i]
-    answer: &[ScalarField],
+    answer_sparse: Vec<ScalarField>,
     // Commitment to data
     data_comm: &Curve,
 ) -> ReadProof
@@ -75,6 +122,16 @@ where
         chunks: vec![data_comm.clone()],
     };
 
+    let (query, answer) = {
+        let mut query = vec![Zero::zero(); domain.d1.size()];
+        let mut answer = vec![Zero::zero(); domain.d1.size()];
+        for (query_ix, answer_val) in query_sparse.iter().zip(answer_sparse.iter()) {
+            query[*query_ix] = One::one();
+            answer[*query_ix] = answer_val.clone();
+        }
+        (query, answer)
+    };
+
     let query_d1 = Evaluations::from_vec_and_domain(query.to_vec(), domain.d1);
     let query_poly: DensePolynomial<ScalarField> = query_d1.clone().interpolate();
     let query_comm: PolyComm<Curve> = srs.commit_non_hiding(&query_poly, 1);
@@ -83,17 +140,32 @@ where
     let answer_poly: DensePolynomial<ScalarField> = answer_d1.clone().interpolate();
     let answer_comm: PolyComm<Curve> = srs.commit_non_hiding(&answer_poly, 1);
 
+    assert!(answer_d1.evals[1000] == ScalarField::from(123));
+
     fq_sponge.absorb_g(&[
         data_comm.chunks[0],
         query_comm.chunks[0],
         answer_comm.chunks[0],
     ]);
 
+    let quotient_comm_alt: Curve = query_sparse
+        .iter()
+        .zip(answer_sparse.iter())
+        .enumerate()
+        .map(|(i, (query_ix, answer))| quotient_helpers[i].1 * answer)
+        .fold(<Curve as AffineRepr>::Group::zero(), |acc, new| acc + &new)
+        .into();
+
     // coefficient form, over d4? d2?
     // quotient_Poly has degree d1
     let quotient_poly: DensePolynomial<ScalarField> = {
         // TODO: do not re-interpolate, we already did d1
+
+        // this is in the evaluation form
+        // d(w_d2^i)
         let data_d2 = data_poly.evaluate_over_domain_by_ref(domain.d2);
+        //let data_d2 = data_poly_d1.extrapolate_over(d1...d2);
+
         let query_d2 = query_poly.evaluate_over_domain_by_ref(domain.d2);
         let answer_d2 = answer_poly.evaluate_over_domain_by_ref(domain.d2);
 
@@ -101,7 +173,36 @@ where
         let numerator_eval: Evaluations<ScalarField, R2D<ScalarField>> =
             &(&data_d2 * &query_d2) - &answer_d2;
 
-        let numerator_eval_interpolated = numerator_eval.interpolate();
+        // in the coefficent form? length d2?
+        let numerator_eval_interpolated = numerator_eval.clone().interpolate();
+
+        //for i in 0..numerator_eval.evals.len() {
+        //    if !numerator_eval.evals[i].is_zero() {
+        //        println!(
+        //            "numerator_eval evals #{:?} is non zero: {:?}",
+        //            i, numerator_eval.evals[i]
+        //        )
+        //    }
+        //}
+        println!("Prover, answer d2 at line 1000: {}", answer_d2.evals[1000]);
+        println!("Prover, answer d2 at line 2000: {}", answer_d2.evals[2000]);
+
+        println!(
+            "Prover, numerator d2 at line 500: {}",
+            numerator_eval.evals[500]
+        );
+        println!(
+            "Prover, numerator d2 at line 2000: {}",
+            numerator_eval.evals[2000]
+        );
+        println!(
+            "Prover, numerator_interpolated at line 500: {}",
+            numerator_eval_interpolated.coeffs[500]
+        );
+        println!(
+            "Prover, numerator_interpolated at line 1000: {}",
+            numerator_eval_interpolated.coeffs[1000]
+        );
 
         let fail_final_q_division = || {
             panic!("Division by vanishing poly must not fail at this point, we checked it before")
@@ -121,9 +222,42 @@ where
         quotient
     };
 
+    let quotient_poly_eval = &quotient_poly.evaluate_over_domain_by_ref(domain.d1);
+
+    println!(
+        "Prover, quotient poly at line 500: {}",
+        quotient_poly_eval.evals[500]
+    );
+    println!(
+        "Prover, quotient poly at line 1000: {}",
+        quotient_poly_eval.evals[1000]
+    );
+
+    let quotient_evals_alt: Evaluations<ScalarField, R2D<ScalarField>> =
+        &quotient_helpers[0].0.evaluate_over_domain_by_ref(domain.d1) * answer_sparse[0];
+
+    println!(
+        "Prover, quotient alt poly at line 500: {}",
+        quotient_evals_alt.evals[500]
+    );
+    println!(
+        "Prover, quotient alt poly at line 1000: {}",
+        quotient_evals_alt.evals[1000]
+    );
+
     // commit to the quotient polynomial $t$.
     // num_chunks = 1 because our constraint is degree 2
-    let quotient_comm = srs.commit_non_hiding(&quotient_poly, 1).chunks[0];
+    let quotient_comm = srs.commit_non_hiding(&quotient_poly, 1);
+    assert!(quotient_comm.chunks.len() == 1);
+    let quotient_comm = quotient_comm.chunks[0];
+
+    //assert!(
+    //    quotient_comm == quotient_comm_alt,
+    //    "Commitments must be equal: {:?} vs {:?}",
+    //    quotient_comm,
+    //    quotient_comm_alt
+    //);
+
     fq_sponge.absorb_g(&[quotient_comm]);
 
     // aka zeta
@@ -290,6 +424,7 @@ mod tests {
     use ark_ec::AffineRepr;
     use ark_ff::{One, UniformRand};
     use ark_poly::{univariate::DensePolynomial, Evaluations};
+    use ark_std::Zero;
     use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
     use mina_curves::pasta::{Fp, Vesta};
     use once_cell::sync::Lazy;
@@ -319,6 +454,7 @@ mod tests {
             (0..SRS_SIZE)
                 .into_iter()
                 .for_each(|_| data.push(Fp::rand(&mut rng)));
+            data[1000] = ScalarField::from(123 as u64);
             data
         };
 
@@ -327,10 +463,12 @@ mod tests {
         let data_comm: Curve = SRS.commit_non_hiding(&data_poly, 1).chunks[0];
 
         let query: Vec<ScalarField> = {
-            let mut query = vec![];
-            (0..SRS_SIZE)
-                .into_iter()
-                .for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.1)));
+            let mut query = vec![ScalarField::zero(); SRS_SIZE];
+            query[1000] = ScalarField::one();
+            //let mut query = vec![];
+            //(0..SRS_SIZE)
+            //    .into_iter()
+            //    .for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.001)));
             query
         };
 
@@ -341,14 +479,32 @@ mod tests {
             .map(|(d, q)| *d * q)
             .collect();
 
+        println!("Answer vector first element: {}", answer[1000]);
+
+        let (query_sparse, answer_sparse) = {
+            let mut res1 = vec![];
+            let mut res2 = vec![];
+            for i in 0..SRS_SIZE {
+                if !query[i].is_zero() {
+                    res1.push(i);
+                    res2.push(answer[i]);
+                }
+            }
+            (res1, res2)
+        };
+
+        let quotient_helpers =
+            crate::read_proof::precompute_quotient_helpers(&SRS, *DOMAIN, query_sparse.clone());
+
         let proof = prove(
             *DOMAIN,
             &SRS,
             &GROUP_MAP,
             &mut rng,
+            quotient_helpers,
             data.as_slice(),
-            query.as_slice(),
-            answer.as_slice(),
+            query_sparse,
+            answer_sparse,
             &data_comm,
         );
         let res = verify(*DOMAIN, &SRS, &GROUP_MAP, &mut rng, &data_comm, &proof);
@@ -376,7 +532,7 @@ mod tests {
             let mut query = vec![];
             (0..SRS_SIZE)
                 .into_iter()
-                .for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.1)));
+                .for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.001)));
             query
         };
 
@@ -387,14 +543,30 @@ mod tests {
             .map(|(d, q)| *d * q)
             .collect();
 
+        let (query_sparse, answer_sparse) = {
+            let mut res1 = vec![];
+            let mut res2 = vec![];
+            for i in 0..SRS_SIZE {
+                if !query[i].is_zero() {
+                    res1.push(i);
+                    res2.push(answer[i]);
+                }
+            }
+            (res1, res2)
+        };
+
+        let quotient_helpers =
+            crate::read_proof::precompute_quotient_helpers(&SRS, *DOMAIN, query_sparse.clone());
+
         let proof = prove(
             *DOMAIN,
             &SRS,
             &GROUP_MAP,
             &mut rng,
+            quotient_helpers,
             data.as_slice(),
-            query.as_slice(),
-            answer.as_slice(),
+            query_sparse,
+            answer_sparse,
             &data_comm,
         );
 
