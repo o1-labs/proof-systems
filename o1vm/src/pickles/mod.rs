@@ -20,9 +20,7 @@ pub mod proof;
 pub mod prover;
 pub mod verifier;
 
-/// Degree of the quotient polynomial. We do evaluate all polynomials on d8
-/// (because of the value of [MAXIMUM_DEGREE_CONSTRAINTS]), and therefore, we do
-/// have a degree 7 for the quotient polynomial.
+/// Degree of the quotient polynomial.
 /// Used to keep track of the number of chunks we do have when we commit to the
 /// quotient polynomial.
 pub const DEGREE_QUOTIENT_POLYNOMIAL: u64 = 7;
