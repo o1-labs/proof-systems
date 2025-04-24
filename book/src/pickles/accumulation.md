@@ -240,7 +240,7 @@ $$
     \begin{align}
     \langle \vec{f}_L + \chalfold \cdot \vec{f}_R, \ \chalfold \cdot \vec{\openx}_L + \vec{\openx}_R \rangle
     &= \langle \vec{f}_L, \vec{\openx}_R \rangle \\
-    &+ \chalfold  \cdot \underline{\left(\langle \vec{f}_R, \vec{\openx}_R \rangle + \langle \vec{f}_L, \vec{\openx}_L \rangle\right)} \\
+    &+ \chalfold  \cdot \underline{\color{magenta} \left(\langle \vec{f}_R, \vec{\openx}_R \rangle + \langle \vec{f}_L, \vec{\openx}_L \rangle\right)} \\
     &+ \chalfold^2 \cdot  \langle \vec{f}_R, \vec{\openx}_L \rangle
     \end{align}
 $$
