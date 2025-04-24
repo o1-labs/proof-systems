@@ -28,6 +28,9 @@
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This is the pickles flavor of the o1vm.
 //! The goal of this flavor is to run a version of the o1vm with selectors for
 //! each instruction using the Pasta curves and the IPA PCS.
@@ -43,18 +46,21 @@
 //! ```
 
 </span><span class="kw">pub mod </span>column_env;
+<span class="kw">pub mod </span>lookup_columns;
 <span class="kw">pub mod </span>lookup_env;
+<span class="kw">pub mod </span>lookup_prover;
 <span class="kw">pub mod </span>proof;
 <span class="kw">pub mod </span>prover;
 <span class="kw">pub mod </span>verifier;
 
-<span class="doccomment">/// Degree of the quotient polynomial. We do evaluate all polynomials on d8
-/// (because of the value of
-/// [crate::interpreters::mips::MAXIMUM_DEGREE_CONSTRAINTS]), and therefore, we
-/// do have a degree 7 for the quotient polynomial.
+<span class="doccomment">/// Degree of the quotient polynomial.
 /// Used to keep track of the number of chunks we do have when we commit to the
 /// quotient polynomial.
 </span><span class="kw">pub const </span>DEGREE_QUOTIENT_POLYNOMIAL: u64 = <span class="number">7</span>;
+
+<span class="doccomment">/// Total number of constraints for all instructions, including the constraints
+/// added for the selectors.
+</span><span class="kw">pub const </span>TOTAL_NUMBER_OF_CONSTRAINTS: usize = <span class="number">466</span>;
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests;
