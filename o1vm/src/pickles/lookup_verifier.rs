@@ -179,16 +179,17 @@ where
     // Check quotient correctness
     ///////
 
+    let zeta_pow_n = zeta.pow([domain.d1.size]);
     let (quotient_zeta, _) = evaluations.zeta.t_shares.iter().fold(
         (G::ScalarField::zero(), G::ScalarField::one()),
         |(res, zeta_i_n), chunk| {
             let res = res + zeta_i_n * chunk;
-            let zeta_i_n = zeta_i_n * zeta.pow([domain.d1.size]);
+            let zeta_i_n = zeta_i_n * zeta_pow_n;
             (res, zeta_i_n)
         },
     );
 
     let quotient_is_correct =
-        quotient_zeta == numerator_zeta / (zeta.pow([domain.d1.size]) - G::ScalarField::one());
+        quotient_zeta == numerator_zeta / (zeta_pow_n - G::ScalarField::one());
     quotient_is_correct && ipa_is_correct
 }
