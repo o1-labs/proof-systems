@@ -17,7 +17,7 @@ pub struct LookupEnvironment<G: KimchiCurve> {
     /// Multiplicities
     pub multiplicities: LookupMultiplicities,
     /// Commitments to the lookup state
-    ///separated by the proof they come from
+    /// Separated by the proof they come from
     pub cms: Vec<Vec<PolyComm<G>>>,
 }
 
