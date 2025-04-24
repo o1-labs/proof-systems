@@ -1,18 +1,21 @@
-use super::{columns::Column, interpreter::InterpreterEnv};
+use super::{column::Column, interpreter::InterpreterEnv};
 use crate::{
-    columns::{Gadget, E},
-    curve::ArrabbiataCurve,
+    column::{Gadget, E},
+    curve::{ArrabbiataCurve, PlonkSpongeConstants},
     interpreter::{self, Instruction, Side},
-    MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS,
+    MAX_DEGREE, NUMBER_OF_COLUMNS,
 };
+
 use ark_ff::PrimeField;
 use kimchi::circuits::{
     expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
 use log::debug;
+use mina_poseidon::constants::SpongeConstants;
 use num_bigint::BigInt;
 use o1_utils::FieldHelpers;
+use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct Env<C: ArrabbiataCurve>
@@ -24,9 +27,7 @@ where
     pub a: BigInt,
     pub idx_var: usize,
     pub idx_var_next_row: usize,
-    pub idx_var_pi: usize,
     pub constraints: Vec<E<C::ScalarField>>,
-    pub activated_gadget: Option<Gadget>,
 }
 
 impl<C: ArrabbiataCurve> Env<C>
@@ -45,9 +46,7 @@ where
             a,
             idx_var: 0,
             idx_var_next_row: 0,
-            idx_var_pi: 0,
             constraints: Vec::new(),
-            activated_gadget: None,
         }
     }
 }
@@ -84,23 +83,11 @@ where
         Expr::Atom(ExprInner::Cell(Variable { col, row }))
     }
 
-    fn allocate_public_input(&mut self) -> Self::Position {
-        assert!(self.idx_var_pi < NUMBER_OF_PUBLIC_INPUTS, "Maximum number of public inputs reached ({NUMBER_OF_PUBLIC_INPUTS}), increase the number of public inputs");
-        let pos = Column::PublicInput(self.idx_var_pi);
-        self.idx_var_pi += 1;
-        (pos, CurrOrNext::Curr)
-    }
-
     fn constant(&self, value: BigInt) -> Self::Variable {
         let v = value.to_biguint().unwrap();
         let v = C::ScalarField::from_biguint(&v).unwrap();
         let v_inner = Operations::from(Literal(v));
         Self::Variable::constant(v_inner)
-    }
-
-    /// Return the corresponding expression regarding the selected public input
-    fn write_public_input(&mut self, pos: Self::Position, _v: BigInt) -> Self::Variable {
-        self.read_position(pos)
     }
 
     /// Return the corresponding expression regarding the selected column
@@ -109,10 +96,6 @@ where
         let res = Expr::Atom(ExprInner::Cell(Variable { col, row }));
         self.assert_equal(res.clone(), v);
         res
-    }
-
-    fn activate_gadget(&mut self, gadget: Gadget) {
-        self.activated_gadget = Some(gadget);
     }
 
     fn add_constraint(&mut self, constraint: Self::Variable) {
@@ -161,9 +144,7 @@ where
     fn reset(&mut self) {
         self.idx_var = 0;
         self.idx_var_next_row = 0;
-        self.idx_var_pi = 0;
         self.constraints.clear();
-        self.activated_gadget = None;
     }
 
     fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable {
@@ -177,18 +158,10 @@ where
     // Witness-only
     unsafe fn save_poseidon_state(&mut self, _x: Self::Variable, _i: usize) {}
 
-    fn get_poseidon_round_constant(
-        &mut self,
-        pos: Self::Position,
-        _round: usize,
-        _i: usize,
-    ) -> Self::Variable {
-        let (col, row) = pos;
-        match col {
-            Column::PublicInput(_) => (),
-            _ => panic!("Only public inputs can be used as round constants"),
-        };
-        Expr::Atom(ExprInner::Cell(Variable { col, row }))
+    fn get_poseidon_round_constant(&self, round: usize, i: usize) -> Self::Variable {
+        let cst = C::sponge_params().round_constants[round][i];
+        let cst_inner = Operations::from(Literal(cst));
+        Self::Variable::constant(cst_inner)
     }
 
     fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable {
@@ -197,11 +170,7 @@ where
         Self::Variable::constant(v_inner)
     }
 
-    unsafe fn fetch_value_to_absorb(
-        &mut self,
-        pos: Self::Position,
-        _curr_round: usize,
-    ) -> Self::Variable {
+    unsafe fn fetch_value_to_absorb(&mut self, pos: Self::Position) -> Self::Variable {
         self.read_position(pos)
     }
 
@@ -320,19 +289,20 @@ impl<C: ArrabbiataCurve> Env<C>
 where
     C::BaseField: PrimeField,
 {
-    /// Get all the constraints for the IVC circuit, only.
+    /// Get all the constraints for the verifier circuit, only.
     ///
-    /// The following gadgets are used in the IVC circuit:
-    /// - [Instruction::Poseidon] to verify the challenges and the public
-    /// IO
+    /// The following gadgets are used in the verifier circuit:
+    /// - [Instruction::PoseidonFullRound] and
+    ///   [Instruction::PoseidonSpongeAbsorb] to verify the challenges and the
+    ///   public IO.
     /// - [Instruction::EllipticCurveScaling] and
-    /// [Instruction::EllipticCurveAddition] to accumulate the commitments
-    // FIXME: the IVC circuit might not be complete, yet. For instance, we might
+    ///   [Instruction::EllipticCurveAddition] to accumulate the commitments
+    // FIXME: the verifier circuit might not be complete, yet. For instance, we might
     // need to accumulate the challenges and add a row to verify the output of
     // the computation of the challenges.
     // FIXME: add a test checking that whatever the value given in parameter of
     // the gadget, the constraints are the same
-    pub fn get_all_constraints_for_ivc(&self) -> Vec<E<C::ScalarField>> {
+    pub fn get_all_constraints_for_verifier(&self) -> Vec<E<C::ScalarField>> {
         // Copying the instance we got in parameter, and making it mutable to
         // avoid modifying the original instance.
         let mut env = self.clone();
@@ -342,9 +312,13 @@ where
         let mut constraints = vec![];
 
         // Poseidon constraints
-        // The constraints are the same for all the value given in parameter,
-        // therefore picking 0
-        interpreter::run_ivc(&mut env, Instruction::Poseidon(0));
+        (0..PlonkSpongeConstants::PERM_ROUNDS_FULL / 12).for_each(|i| {
+            interpreter::run_ivc(&mut env, Instruction::PoseidonFullRound(5 * i));
+            constraints.extend(env.constraints.clone());
+            env.reset();
+        });
+
+        interpreter::run_ivc(&mut env, Instruction::PoseidonSpongeAbsorb);
         constraints.extend(env.constraints.clone());
         env.reset();
 
@@ -365,12 +339,12 @@ where
         constraints
     }
 
-    /// Get all the constraints for the IVC circuit and the application.
+    /// Get all the constraints for the verifier circuit and the application.
     // FIXME: the application should be given as an argument to handle Rust
     // zkApp. It is only for the PoC.
     // FIXME: the selectors are not added for now.
     pub fn get_all_constraints(&self) -> Vec<E<C::ScalarField>> {
-        let mut constraints = self.get_all_constraints_for_ivc();
+        let mut constraints = self.get_all_constraints_for_verifier();
 
         // Copying the instance we got in parameter, and making it mutable to
         // avoid modifying the original instance.
@@ -383,6 +357,42 @@ where
         constraints.extend(env.constraints.clone());
 
         constraints
+    }
+
+    pub fn get_all_constraints_indexed_by_gadget(&self) -> HashMap<Gadget, Vec<E<C::ScalarField>>> {
+        let mut hashmap = HashMap::new();
+        let mut env = self.clone();
+
+        // Poseidon constraints
+        (0..PlonkSpongeConstants::PERM_ROUNDS_FULL / 12).for_each(|i| {
+            interpreter::run_ivc(&mut env, Instruction::PoseidonFullRound(5 * i));
+            hashmap.insert(Gadget::PoseidonFullRound(5 * i), env.constraints.clone());
+            env.reset();
+        });
+
+        interpreter::run_ivc(&mut env, Instruction::PoseidonSpongeAbsorb);
+        hashmap.insert(Gadget::PoseidonSpongeAbsorb, env.constraints.clone());
+        env.reset();
+
+        // EC scaling
+        // The constraints are the same whatever the value given in parameter,
+        // therefore picking 0, 0
+        interpreter::run_ivc(&mut env, Instruction::EllipticCurveScaling(0, 0));
+        hashmap.insert(Gadget::EllipticCurveScaling, env.constraints.clone());
+        env.reset();
+
+        // EC addition
+        // The constraints are the same whatever the value given in parameter,
+        // therefore picking 0
+        interpreter::run_ivc(&mut env, Instruction::EllipticCurveAddition(0));
+        hashmap.insert(Gadget::EllipticCurveAddition, env.constraints.clone());
+        env.reset();
+
+        interpreter::run_app(&mut env);
+        hashmap.insert(Gadget::App, env.constraints.clone());
+        env.reset();
+
+        hashmap
     }
 }
 

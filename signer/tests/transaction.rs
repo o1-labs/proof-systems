@@ -69,7 +69,7 @@ impl Transaction {
             fee_payer_pk: from.into_compressed(),
             nonce,
             valid_until: u32::MAX,
-            memo: std::array::from_fn(|i| (i == 0) as u8),
+            memo: core::array::from_fn(|i| (i == 0) as u8),
             tag: PAYMENT_TX_TAG,
             source_pk: from.into_compressed(),
             receiver_pk: to.into_compressed(),
@@ -86,7 +86,7 @@ impl Transaction {
             fee_payer_pk: from.into_compressed(),
             nonce,
             valid_until: u32::MAX,
-            memo: std::array::from_fn(|i| (i == 0) as u8),
+            memo: core::array::from_fn(|i| (i == 0) as u8),
             tag: DELEGATION_TX_TAG,
             source_pk: from.into_compressed(),
             receiver_pk: to.into_compressed(),
@@ -112,10 +112,10 @@ impl Transaction {
 
     pub fn set_memo_str(mut self, memo: &str) -> Self {
         self.memo[0] = 0x01;
-        self.memo[1] = std::cmp::min(memo.len(), MEMO_BYTES - 2) as u8;
+        self.memo[1] = core::cmp::min(memo.len(), MEMO_BYTES - 2) as u8;
         let memo = format!("{memo:\0<32}"); // Pad user-supplied memo with zeros
         self.memo[2..]
-            .copy_from_slice(&memo.as_bytes()[..std::cmp::min(memo.len(), MEMO_BYTES - 2)]);
+            .copy_from_slice(&memo.as_bytes()[..core::cmp::min(memo.len(), MEMO_BYTES - 2)]);
         // Anything beyond MEMO_BYTES is truncated
 
         self

@@ -6,8 +6,8 @@ pub enum EvalLeaf<'a, F> {
     Result(Vec<F>),
 }
 
-impl<'a, F: std::fmt::Display> std::fmt::Display for EvalLeaf<'a, F> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<'a, F: core::fmt::Display> core::fmt::Display for EvalLeaf<'a, F> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let slice = match self {
             EvalLeaf::Const(c) => {
                 write!(f, "Const: {}", c)?;
@@ -25,7 +25,7 @@ impl<'a, F: std::fmt::Display> std::fmt::Display for EvalLeaf<'a, F> {
     }
 }
 
-impl<'a, F: std::ops::Add<Output = F> + Clone> std::ops::Add for EvalLeaf<'a, F> {
+impl<'a, F: core::ops::Add<Output = F> + Clone> core::ops::Add for EvalLeaf<'a, F> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -33,7 +33,7 @@ impl<'a, F: std::ops::Add<Output = F> + Clone> std::ops::Add for EvalLeaf<'a, F>
     }
 }
 
-impl<'a, F: std::ops::Sub<Output = F> + Clone> std::ops::Sub for EvalLeaf<'a, F> {
+impl<'a, F: core::ops::Sub<Output = F> + Clone> core::ops::Sub for EvalLeaf<'a, F> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
@@ -41,7 +41,7 @@ impl<'a, F: std::ops::Sub<Output = F> + Clone> std::ops::Sub for EvalLeaf<'a, F>
     }
 }
 
-impl<'a, F: std::ops::Mul<Output = F> + Clone> std::ops::Mul for EvalLeaf<'a, F> {
+impl<'a, F: core::ops::Mul<Output = F> + Clone> core::ops::Mul for EvalLeaf<'a, F> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self {
@@ -49,7 +49,7 @@ impl<'a, F: std::ops::Mul<Output = F> + Clone> std::ops::Mul for EvalLeaf<'a, F>
     }
 }
 
-impl<'a, F: std::ops::Mul<Output = F> + Clone> std::ops::Mul<F> for EvalLeaf<'a, F> {
+impl<'a, F: core::ops::Mul<Output = F> + Clone> core::ops::Mul<F> for EvalLeaf<'a, F> {
     type Output = Self;
 
     fn mul(self, rhs: F) -> Self {

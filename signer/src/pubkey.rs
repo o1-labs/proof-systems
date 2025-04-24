@@ -2,16 +2,19 @@
 //!
 //! Definition of public key structure and helpers
 
+extern crate alloc;
+use crate::{BaseField, CurvePoint, ScalarField, SecKey};
+use alloc::{string::String, vec, vec::Vec};
 use ark_ec::{short_weierstrass::Affine, AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, PrimeField, Zero};
 use bs58;
-use core::fmt;
-use sha2::{Digest, Sha256};
-use std::ops::{Mul, Neg};
-use thiserror::Error;
-
-use crate::{BaseField, CurvePoint, ScalarField, SecKey};
+use core::{
+    fmt,
+    ops::{Mul, Neg},
+};
 use o1_utils::FieldHelpers;
+use sha2::{Digest, Sha256};
+use thiserror::Error;
 
 /// Public key errors
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
@@ -57,7 +60,7 @@ pub enum PubKeyError {
     SecKey,
 }
 /// Public key Result
-pub type Result<T> = std::result::Result<T, PubKeyError>;
+pub type Result<T> = core::result::Result<T, PubKeyError>;
 
 /// Length of Mina addresses
 pub const MINA_ADDRESS_LEN: usize = 55;

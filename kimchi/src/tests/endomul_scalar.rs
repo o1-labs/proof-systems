@@ -7,13 +7,13 @@ use crate::{
     tests::framework::TestFramework,
 };
 use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
+use core::array;
 use mina_curves::pasta::{Fp as F, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
 use poly_commitment::ipa::endos;
-use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;

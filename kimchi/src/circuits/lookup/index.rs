@@ -13,11 +13,11 @@ use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
 };
+use core::iter;
 use itertools::repeat_n;
 use o1_utils::field_helpers::i32_to_field;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::iter;
 use thiserror::Error;
 
 /// Represents an error found when computing the lookup constraint system
@@ -101,7 +101,7 @@ impl<'de, F: FftField> serde_with::DeserializeAs<'de, LookupSelectors<E<F, D<F>>
     }
 }
 
-impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
+impl<T> core::ops::Index<LookupPattern> for LookupSelectors<T> {
     type Output = Option<T>;
 
     fn index(&self, index: LookupPattern) -> &Self::Output {
@@ -114,7 +114,7 @@ impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
     }
 }
 
-impl<T> std::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
+impl<T> core::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
     fn index_mut(&mut self, index: LookupPattern) -> &mut Self::Output {
         match index {
             LookupPattern::Xor => &mut self.xor,
@@ -337,7 +337,7 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
                     .max()
                     .unwrap_or(0);
 
-                let max_table_width = std::cmp::max(
+                let max_table_width = core::cmp::max(
                     max_table_width,
                     lookup_info.max_joint_size.try_into().unwrap(),
                 );

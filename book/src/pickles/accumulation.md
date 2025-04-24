@@ -123,7 +123,7 @@ For Kimchi we are interested in "accumulation for the language ($\relation_{\mat
 
 $$
 \left(
-\statement = (\comm, \openx, \openy),
+\statement = (\comm, \vec{G}, \openx, \openy),
 \witness= (\vec{f})
 \right)
 \in
@@ -132,12 +132,12 @@ $$
 \left\{
 \begin{align}
 \comm &= \langle \vec{f}, \vec{G} \rangle \\
-\openy &= \sum_{i = 0} f_i \cdot \openx^i
+\openy &= \sum_{i = 0}^{d-1} f_i \cdot \openx^i
 \end{align}
 \right\}
 $$
 
-Where $\vec{f}$ is a list of coefficients for a polynomial $f(X) \coloneqq \sum_{i} f_i \cdot X^i$.
+Where $\vec{f}$ is a list of $d$ coefficients for a polynomial $f(X) \coloneqq \sum_{i=0}^{d-1} f_i \cdot X^i$.
 
 This is the language we are interested in reducing: providing a trivial proof, i.e. sending $\vec{f}$ requires linear communication and time of the verifier,
 we want a poly-log verifier.
@@ -151,7 +151,7 @@ Formally the relation of the inner product argument is:
 
 $$
 \left(
-\statement = (\comm, \vec{G}, H, \vec{\openx}),
+\statement = (\comm, \vec{G}, H, \vec{\openx}, y),
 \witness = (\vec{f})
 \right)
 \in
@@ -168,16 +168,16 @@ $$
 \comm &= \langle \vec{f}, \vec{G} \rangle + [\openy] \cdot \genOpen \in \GG
 \end{align}
 \right\}
-$$
+$$ where $\vec{f},\vec{\openx}, \vec{G}$ are of length $\ell$.
 
-We can reduce $\left(\statement = (\comm, \openx, \openy),
+We can reduce $\left(\statement = (\comm, \vec{G}, \openx, \openy),
 \witness = (\vec{f})\right) \in
 \relation_{\mathsf{PCS}, d}$ to $\relation_{\mathsf{IPA}, \ell}$ with $d = \ell$ as follows:
 
-- Define $\vec{\openx} = (1, \openx, \openx^2, \openx^3, \ldots, \openx^{\ell-1})$, so that $\openy = f(\openx) = \langle \vec{f}, \vec{\openx} \rangle$,
+- Define $\vec{\openx} = (1, \openx, \openx^2, \openx^3, \ldots, \openx^{\ell-1})$. Because $\vec{f}$ was a satisfying witness to $\relation_{\mathsf{PCS}, d}$,  we have $\openy = f(\openx) = \langle \vec{f}, \vec{\openx} \rangle$. The prover sends $y$.
 - The verifier adds the evaluation $\openy$ to the commitment "in a new coordinate" as follows:
     1. Verifier picks $\genOpen \sample \GG$ and sends $H$ to the prover.
-    2. Verifier updates $\comm \gets \comm + [\openy] \cdot \genOpen$
+    2. Prover/Verifier updates $\comm \gets \comm + [\openy] \cdot \genOpen$
 
 Intuitively we sample a fresh $\genOpen$ to avoid a malicious prover "putting something in the $H$-position", because he must send $\openy$ before seeing $\genOpen$, hence he would need to guess $\genOpen$ before-hand.
 If the prover is honest, we should have a commitment of the form:
@@ -240,7 +240,7 @@ $$
     \begin{align}
     \langle \vec{f}_L + \chalfold \cdot \vec{f}_R, \ \chalfold \cdot \vec{\openx}_L + \vec{\openx}_R \rangle
     &= \langle \vec{f}_L, \vec{\openx}_R \rangle \\
-    &+ \chalfold  \cdot \underline{\left(\langle \vec{f}_R, \vec{\openx}_R \rangle + \langle \vec{f}_L, \vec{\openx}_L \rangle\right)} \\
+    &+ \chalfold  \cdot \underline{\color{magenta} \left(\langle \vec{f}_R, \vec{\openx}_R \rangle + \langle \vec{f}_L, \vec{\openx}_L \rangle\right)} \\
     &+ \chalfold^2 \cdot  \langle \vec{f}_R, \vec{\openx}_L \rangle
     \end{align}
 $$
@@ -253,7 +253,7 @@ The term we care about (underlined in magenta) is $\langle \vec{f}_R, \vec{\open
 The solution is to let the prover provide commitments to the cross terms to "correct" this randomized splitting of the inner product <u>before</u> seeing $\chalfold$:
 the prover commits to the three terms (one of which is already provided) and the verifier computes a commitment to the new randomized inner product. i.e.
 
-The prover sends commitment to $\langle \vec{f}_R, \vec{\openx}_L \rangle$ and $\langle \vec{f}_L, \vec{\openx}_R \rangle$ cross terms:
+The prover sends commitment to the cross terms $\langle \vec{f}_R, \vec{\openx}_L \rangle$ and $\langle \vec{f}_L, \vec{\openx}_R \rangle$:
 
 $$
 L = \langle \vec{f}_R \Vert \vec{0}, \vec{G} \rangle + [\langle \vec{f}_R, \vec{\openx}_L \rangle] \cdot H
@@ -269,7 +269,7 @@ $$
 R = \langle \vec{0} \Vert \vec{f}_L, \vec{G} \rangle + [\langle \vec{f}_L, \vec{\openx}_R \rangle] \cdot H
 $$
 
-The verifier samples $\chalfold \sample \FF$ and defines:
+The verifier samples $\chalfold \sample \FF$ and updates the commitment as:
 
 $$
 \begin{align}
@@ -279,7 +279,7 @@ C' &= [\chalfold^{-1}] \cdot L + C + [\chalfold] \cdot R \\
    &+
     \left[
         {
-          \chalfold^{-1} \cdot \langle \vec{f}_R, \vec{f}_L \rangle
+          \chalfold^{-1} \cdot \langle \vec{f}_R, \vec{\openx}_L \rangle
           +
           {
           \color{magenta}
@@ -341,6 +341,10 @@ $$
 \vec{f}'
 }
 $$
+where ${
+\color{purple}
+\vec{f}'
+}$ is the new witness.
 
 Hence we can replace occurrences of $\chalfold \vec{f}_L + \vec{f}_R$ by $\chalfold \vec{f}'$,
 with this look at the green term:
@@ -470,8 +474,8 @@ We obtain a new instance of the inner product relation (of half the size):
 
 $$
 (
-\statement = (C', \vec{G}', H, \vec{\openx}'),
-\witness = (\vec{f}', \openy')
+\statement = (C', \vec{G}', H, \vec{\openx}', \openy'),
+\witness = (\vec{f}')
 ) \in
 \relation_{\mathsf{IPA}, \ell/2}
 $$
@@ -479,7 +483,7 @@ $$
 At this point the prover could send $\vec{\openx}'$, $\vec{f}'$ to the verifier who could verify the claim:
 
 1. Computing $\vec{G}'$ from $\chalfold$ and $\vec{G}$
-2. Computing $C'$ from $\vec{f}'$, $v$ and $H$
+2. Computing $C'$ from $\vec{f}'$, $H$ and $L,R$ (obtained from the preceeding round)
 3. Checking $\openy' \overset?= \langle \vec{f}', \vec{\openx}' \rangle$
 
 This would require half as much communication as the naive proof. A modest improvement...
@@ -488,9 +492,9 @@ However, we can iteratively apply this transformation until we reach an instance
 
 ## Reduction 2 (Full): $\relIPA{\ell} \to \ldots \to \relIPA{1}$
 
-That the process above can simply be applied again to the new $(C', \vec{G}', H, \vec{\openx}', v) \in \relation_{\mathsf{IPA}, \ell/2}$ instance as well.
+That the process above can simply be applied again to the new $(C', \vec{G}', H, \vec{\openx}', \openy) \in \relation_{\mathsf{IPA}, \ell/2}$ instance as well.
 By doing so $k = \log_2(\ell)$ times the total communication is brought down to $2 k$ $\GG$-elements
-until the instance consists of $(\comm, \vec{G}, \genOpen, \vec{\openx}) \in \relIPA{1}$
+until the instance consists of $(\comm, \vec{G}, \genOpen, \vec{\openx}, \openy) \in \relIPA{1}$
 at which point the prover simply provides the witness $\vec{f}' \in \FF$.
 
 Because we need to refer to the terms in the intermediate reductions

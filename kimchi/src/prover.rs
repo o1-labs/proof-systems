@@ -39,6 +39,7 @@ use ark_poly::{
     univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as D,
 };
+use core::array;
 use itertools::Itertools;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial as _;
@@ -51,10 +52,10 @@ use poly_commitment::{
 };
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
-use std::{array, collections::HashMap};
+use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
-type Result<T> = std::result::Result<T, ProverError>;
+type Result<T> = core::result::Result<T, ProverError>;
 
 /// Helper to quickly test if a witness satisfies a constraint
 macro_rules! check_constraint {
@@ -241,7 +242,7 @@ where
             }
 
             // padding
-            w.extend(std::iter::repeat(G::ScalarField::zero()).take(length_padding));
+            w.extend(core::iter::repeat(G::ScalarField::zero()).take(length_padding));
 
             // zk-rows
             for row in w.iter_mut().rev().take(index.cs.zk_rows as usize) {
@@ -297,35 +298,46 @@ where
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
         internal_tracing::checkpoint!(internal_traces; commit_to_witness_columns);
-        let mut w_comm = vec![];
-        for col in 0..COLUMNS {
-            // witness coeff -> witness eval
-            let witness_eval =
-                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                    witness[col].clone(),
-                    index.cs.domain.d1,
-                );
+        // generate blinders if not given externally
+        let blinders_final: Vec<PolyComm<G::ScalarField>> = match blinders {
+            None => (0..COLUMNS)
+                .map(|_| PolyComm::new(vec![UniformRand::rand(rng); num_chunks]))
+                .collect(),
+            Some(blinders_arr) => blinders_arr
+                .into_iter()
+                .map(|blinder_el| match blinder_el {
+                    None => PolyComm::new(vec![UniformRand::rand(rng); num_chunks]),
+                    Some(blinder_el_some) => blinder_el_some,
+                })
+                .collect(),
+        };
+        let w_comm_opt_res: Vec<Result<_>> = witness
+            .clone()
+            .into_par_iter()
+            .zip(blinders_final.into_par_iter())
+            .map(|(witness, blinder)| {
+                let witness_eval =
+                    Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                        witness,
+                        index.cs.domain.d1,
+                    );
 
-            let com = match blinders.as_ref().and_then(|b| b[col].as_ref()) {
-                // no blinders: blind the witness
-                None => index
+                // TODO: make this a function rather no? mask_with_custom()
+                let witness_com = index
                     .srs
-                    .commit_evaluations(index.cs.domain.d1, &witness_eval, rng),
-                // blinders: blind the witness with them
-                Some(blinder) => {
-                    // TODO: make this a function rather no? mask_with_custom()
-                    let witness_com = index
-                        .srs
-                        .commit_evaluations_non_hiding(index.cs.domain.d1, &witness_eval);
-                    index
-                        .srs
-                        .mask_custom(witness_com, blinder)
-                        .map_err(ProverError::WrongBlinders)?
-                }
-            };
+                    .commit_evaluations_non_hiding(index.cs.domain.d1, &witness_eval);
+                let com = index
+                    .srs
+                    .mask_custom(witness_com, &blinder)
+                    .map_err(ProverError::WrongBlinders)?;
 
-            w_comm.push(com);
-        }
+                Ok(com)
+            })
+            .collect();
+
+        let w_comm_res: Result<Vec<BlindedCommitment<G>>> = w_comm_opt_res.into_iter().collect();
+
+        let w_comm = w_comm_res?;
 
         let w_comm: [BlindedCommitment<G>; COLUMNS] = w_comm
             .try_into()
@@ -340,13 +352,18 @@ where
         //~    As mentioned above, we commit using the evaluations form rather than the coefficients
         //~    form so we can take advantage of the sparsity of the evaluations (i.e., there are many
         //~    0 entries and entries that have less-than-full-size field elemnts.)
-        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array::from_fn(|i| {
-            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                witness[i].clone(),
-                index.cs.domain.d1,
-            )
-            .interpolate()
-        });
+        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = (0..COLUMNS)
+            .into_par_iter()
+            .map(|i| {
+                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                    witness[i].clone(),
+                    index.cs.domain.d1,
+                )
+                .interpolate()
+            })
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
 
         let mut lookup_context = LookupContext::default();
 
@@ -762,6 +779,7 @@ where
 
                 generic4
             };
+
             // permutation
             let (mut t8, bnd) = {
                 let alphas =
@@ -1486,6 +1504,7 @@ where
         };
 
         internal_tracing::checkpoint!(internal_traces; create_recursive_done);
+
         Ok(proof)
     }
 }

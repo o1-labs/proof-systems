@@ -1,0 +1,30 @@
+name: Global configuration for formatting related jobs
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  run_rust_formatting:
+    name: Formatting Rust related code
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust_toolchain_version: ["nightly"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+
+      - name: Install cargo-sort
+        run: cargo install cargo-sort
+
+      - name: Check formatting related to Rust code
+        run: |
+          make check-format

@@ -24,7 +24,7 @@ use ark_poly::{
 use mina_poseidon::FqSponge;
 use rand_core::{CryptoRng, RngCore};
 
-pub trait SRS<G: CommitmentCurve>: Clone + Sized {
+pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     /// The maximum polynomial degree that can be committed to
     fn max_poly_size(&self) -> usize;
 
@@ -60,9 +60,9 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized {
 
     /// This function commits a polynomial using the SRS' basis of size `n`.
     /// - `plnm`: polynomial to commit to. The polynomial can be of any degree,
-    /// including higher than `n`.
+    ///   including higher than `n`.
     /// - `num_chunks`: the minimal number of commitments to be included in the
-    /// output polynomial commitment.
+    ///   output polynomial commitment.
     ///
     /// The function returns the commitments to the chunks (of size at most `n`) of
     /// the polynomials.
@@ -184,16 +184,16 @@ pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
     /// Create an opening proof for a batch of polynomials. The parameters are
     /// the following:
     /// - `srs`: the structured reference string used to commit
-    /// to the polynomials
+    ///   to the polynomials
     /// - `group_map`: the group map
     /// - `plnms`: the list of polynomials to open, with possible blinders.
-    /// The type is simply an alias to handle the polynomials in evaluations or
-    /// coefficients forms.
+    ///   The type is simply an alias to handle the polynomials in evaluations or
+    ///   coefficients forms.
     /// - `elm`: the evaluation points
     /// - `polyscale`: a challenge to bacth the polynomials.
     /// - `evalscale`: a challenge to bacth the evaluation points
     /// - `sponge`: Sponge used to coin and absorb values and simulate
-    /// non-interactivity using the Fiat-Shamir transformation.
+    ///   non-interactivity using the Fiat-Shamir transformation.
     /// - `rng`: a pseudo random number generator used for zero-knowledge
     #[allow(clippy::too_many_arguments)]
     fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineRepr>::ScalarField>>(

@@ -1,3 +1,5 @@
+//! Run this bench using `cargo criterion -p poly-commitment --bench poly_comm`
+
 use ark_ec::{
     short_weierstrass::{Affine, SWCurveConfig},
     AffineRepr,

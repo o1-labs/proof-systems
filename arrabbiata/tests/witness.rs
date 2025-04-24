@@ -4,8 +4,9 @@ use arrabbiata::{
     curve::PlonkSpongeConstants,
     interpreter::{self, Instruction, InterpreterEnv},
     poseidon_3_60_0_5_5_fp,
+    setup::IndexedRelation,
     witness::Env,
-    MAXIMUM_FIELD_SIZE_IN_BITS,
+    MAXIMUM_FIELD_SIZE_IN_BITS, MIN_SRS_LOG2_SIZE,
 };
 use mina_curves::pasta::{Fp, Fq, Pallas, ProjectivePallas, Vesta};
 use mina_poseidon::{constants::SpongeConstants, permutation::poseidon_block_cipher};
@@ -15,21 +16,22 @@ use poly_commitment::{commitment::CommitmentCurve, PolyComm};
 use rand::{CryptoRng, RngCore};
 
 #[test]
-fn test_unit_witness_poseidon_next_row_gadget_one_full_hash() {
-    let srs_log2_size = 6;
-    let sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-        std::array::from_fn(|_i| BigInt::from(42u64));
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
-        srs_log2_size,
-        BigInt::from(1u64),
-        sponge.clone(),
-        sponge.clone(),
-    );
+fn test_unit_witness_poseidon_permutation_gadget_one_full_hash() {
+    // Expected output:
+    // 13562506435502224548799089445428941958058503946524561166818119397766682137724
+    // 27423099486669760867028539664936216880884888701599404075691059826529320129892
+    // 736058628407775696076653472820678709906041621699240400715815852096937303940
+    let indexed_relation = IndexedRelation::new(MIN_SRS_LOG2_SIZE);
 
-    env.current_instruction = Instruction::Poseidon(0);
+    let sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
+        indexed_relation.initial_sponge.clone();
+
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
+
+    env.current_instruction = Instruction::PoseidonFullRound(0);
 
     (0..(PlonkSpongeConstants::PERM_ROUNDS_FULL / 5)).for_each(|i| {
-        interpreter::run_ivc(&mut env, Instruction::Poseidon(5 * i));
+        interpreter::run_ivc(&mut env, Instruction::PoseidonFullRound(5 * i));
         env.reset();
     });
     let exp_output = {
@@ -39,8 +41,6 @@ fn test_unit_witness_poseidon_next_row_gadget_one_full_hash() {
             .iter()
             .map(|x| Fp::from_biguint(&x.to_biguint().unwrap()).unwrap())
             .collect::<Vec<_>>();
-        state[0] += env.srs_e2.h.x;
-        state[1] += env.srs_e2.h.y;
         poseidon_block_cipher::<Fp, PlonkSpongeConstants>(
             poseidon_3_60_0_5_5_fp::static_params(),
             &mut state,
@@ -60,16 +60,64 @@ fn test_unit_witness_poseidon_next_row_gadget_one_full_hash() {
 }
 
 #[test]
+fn test_unit_witness_poseidon_with_absorb_one_full_hash() {
+    let indexed_relation: IndexedRelation<Fp, Fq, Vesta, Pallas> =
+        IndexedRelation::new(MIN_SRS_LOG2_SIZE);
+
+    let sponge: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
+        indexed_relation.initial_sponge.clone();
+
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
+
+    env.current_instruction = Instruction::PoseidonSpongeAbsorb;
+    interpreter::run_ivc(&mut env, Instruction::PoseidonSpongeAbsorb);
+    env.reset();
+
+    (0..(PlonkSpongeConstants::PERM_ROUNDS_FULL / 5)).for_each(|i| {
+        interpreter::run_ivc(&mut env, Instruction::PoseidonFullRound(5 * i));
+        env.reset();
+    });
+
+    let exp_output = {
+        let mut state = sponge
+            .clone()
+            .to_vec()
+            .iter()
+            .map(|x| Fp::from_biguint(&x.to_biguint().unwrap()).unwrap())
+            .collect::<Vec<_>>();
+        // Absorbing the first commitment
+        let (pt_x, pt_y) = env.program_e2.accumulated_committed_state[0]
+            .get_first_chunk()
+            .to_coordinates()
+            .unwrap();
+        state[1] += pt_x;
+        state[2] += pt_y;
+
+        poseidon_block_cipher::<Fp, PlonkSpongeConstants>(
+            poseidon_3_60_0_5_5_fp::static_params(),
+            &mut state,
+        );
+        state
+            .iter()
+            .map(|x| x.to_biguint().into())
+            .collect::<Vec<_>>()
+    };
+
+    // Check correctness for current iteration
+    assert_eq!(env.sponge_e1.to_vec(), exp_output);
+    // Check the other sponge hasn't been modified
+    assert_eq!(env.sponge_e2, sponge.clone());
+
+    // Number of rows used by one full hash
+    assert_eq!(env.current_row, 13);
+}
+
+#[test]
 fn test_unit_witness_elliptic_curve_addition() {
-    let srs_log2_size = 6;
-    let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-        std::array::from_fn(|_i| BigInt::from(42u64));
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
-        srs_log2_size,
-        BigInt::from(1u64),
-        sponge_e1.clone(),
-        sponge_e1.clone(),
-    );
+    let indexed_relation: IndexedRelation<Fp, Fq, Vesta, Pallas> =
+        IndexedRelation::new(MIN_SRS_LOG2_SIZE);
+
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
 
     let instr = Instruction::EllipticCurveAddition(0);
     env.current_instruction = instr;
@@ -78,8 +126,8 @@ fn test_unit_witness_elliptic_curve_addition() {
     // Pallas, whose scalar field is Fp.
     assert_eq!(env.current_iteration, 0);
     let (exp_x3, exp_y3) = {
-        let res: Pallas = (env.ivc_accumulator_e2[0].get_first_chunk()
-            + env.previous_committed_state_e2[0].get_first_chunk())
+        let res: Pallas = (env.program_e2.accumulated_committed_state[0].get_first_chunk()
+            + env.program_e2.previous_committed_state[0].get_first_chunk())
         .into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
@@ -98,8 +146,8 @@ fn test_unit_witness_elliptic_curve_addition() {
 
     assert_eq!(env.current_iteration, 1);
     let (exp_x3, exp_y3) = {
-        let res: Vesta = (env.ivc_accumulator_e1[0].get_first_chunk()
-            + env.previous_committed_state_e1[0].get_first_chunk())
+        let res: Vesta = (env.program_e1.accumulated_committed_state[0].get_first_chunk()
+            + env.program_e1.previous_committed_state[0].get_first_chunk())
         .into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
@@ -118,8 +166,8 @@ fn test_unit_witness_elliptic_curve_addition() {
 
     assert_eq!(env.current_iteration, 2);
     let (exp_x3, exp_y3) = {
-        let res: Pallas = (env.ivc_accumulator_e2[0].get_first_chunk()
-            + env.previous_committed_state_e2[0].get_first_chunk())
+        let res: Pallas = (env.program_e2.accumulated_committed_state[0].get_first_chunk()
+            + env.program_e2.previous_committed_state[0].get_first_chunk())
         .into();
         let (x3, y3) = res.to_coordinates().unwrap();
         (
@@ -136,15 +184,10 @@ fn test_unit_witness_elliptic_curve_addition() {
 #[test]
 fn test_witness_double_elliptic_curve_point() {
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let srs_log2_size = 6;
-    let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-        std::array::from_fn(|_i| BigInt::from(42u64));
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
-        srs_log2_size,
-        BigInt::from(1u64),
-        sponge_e1.clone(),
-        sponge_e1.clone(),
-    );
+    let indexed_relation: IndexedRelation<Fp, Fq, Vesta, Pallas> =
+        IndexedRelation::new(MIN_SRS_LOG2_SIZE);
+
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
 
     env.current_instruction = Instruction::EllipticCurveAddition(0);
 
@@ -173,22 +216,20 @@ fn helper_elliptic_curve_scalar_multiplication<RNG>(r: BigInt, rng: &mut RNG)
 where
     RNG: RngCore + CryptoRng,
 {
-    let srs_log2_size = 10;
-    let sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-        std::array::from_fn(|_i| r.clone());
-    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(
-        srs_log2_size,
-        BigInt::from(1u64),
-        sponge_e1.clone(),
-        sponge_e1.clone(),
-    );
+    let mut indexed_relation = IndexedRelation::new(MIN_SRS_LOG2_SIZE);
+    // FIXME: For test purposes, to get a deterministic result, changing the
+    // initial sponge state. The challenge in the circuit will be the first
+    // element of the state.
+    indexed_relation.initial_sponge = core::array::from_fn(|_i| r.clone());
+
+    let mut env = Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
 
     let i_comm = 0;
     let p1: Pallas = {
         let x = Fq::rand(rng);
         Pallas::generator().mul_bigint(x.into_bigint()).into()
     };
-    env.previous_committed_state_e2[0] = PolyComm::new(vec![p1]);
+    env.program_e2.previous_committed_state[0] = PolyComm::new(vec![p1]);
 
     // We only go up to the maximum bit field size.
     (0..MAXIMUM_FIELD_SIZE_IN_BITS).for_each(|bit_idx| {
@@ -204,7 +245,7 @@ where
     let p1_proj: ProjectivePallas = p1.into();
     // @volhovm TODO check if mul_bigint is what was intended
     let p1_r: Pallas = p1_proj.mul_bigint(r.clone().to_u64_digits().1).into();
-    let exp_res: Pallas = (p1_r + env.srs_e2.h).into();
+    let exp_res: Pallas = (p1_r + env.indexed_relation.srs_e2.h).into();
 
     let exp_x: BigInt = exp_res.x.to_biguint().into();
     let exp_y: BigInt = exp_res.y.to_biguint().into();
@@ -230,4 +271,16 @@ fn test_witness_elliptic_curve_scalar_multiplication() {
     // A random scalar
     let r: BigInt = Fp::rand(&mut rng).to_biguint().to_bigint().unwrap();
     helper_elliptic_curve_scalar_multiplication(r, &mut rng);
+}
+
+#[test]
+fn test_regression_witness_structure_sizeof() {
+    // Keeping track of the size (in bytes) of the witness environment
+    // structure. It is for optimisation later.
+    // It will probably be annoying to update this test every time we update the
+    // structure of the environment, but it will be useful to remind us to keep
+    // thinking about the memory efficiency of the codebase.
+    let size = std::mem::size_of::<Env<Fp, Fq, Vesta, Pallas>>();
+    println!("Current size of Env structure: {}", size);
+    assert_eq!(size, 5888, "The witness environment structure changed")
 }

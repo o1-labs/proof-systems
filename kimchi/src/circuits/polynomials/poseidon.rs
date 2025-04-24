@@ -37,11 +37,11 @@ use crate::{
     curve::KimchiCurve,
 };
 use ark_ff::{Field, PrimeField};
+use core::{marker::PhantomData, ops::Range};
 use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
-use std::{marker::PhantomData, ops::Range};
 use CurrOrNext::{Curr, Next};
 
 //
@@ -88,12 +88,16 @@ impl<F: PrimeField> CircuitGate<F> {
         CircuitGate::new(GateType::Poseidon, wires, coeffs)
     }
 
-    /// `create_poseidon_gadget(row, first_and_last_row, round_constants)`  creates an entire set of constraint for a Poseidon hash.
+    /// `create_poseidon_gadget(row, first_and_last_row, round_constants)`
+    /// creates an entire set of constraint for a Poseidon hash.
+    ///
     /// For that, you need to pass:
     /// - the index of the first `row`
     /// - the first and last rows' wires (because they are used in the permutation)
     /// - the round constants
-    /// The function returns a set of gates, as well as the next pointer to the circuit (next empty absolute row)
+    ///
+    /// The function returns a set of gates, as well as the next pointer to the
+    /// circuit (next empty absolute row)
     pub fn create_poseidon_gadget(
         // the absolute row in the circuit
         row: usize,
@@ -113,13 +117,13 @@ impl<F: PrimeField> CircuitGate<F> {
             let wires = if rel_row == 0 {
                 first_and_last_row[0]
             } else {
-                std::array::from_fn(|col| Wire { col, row: abs_row })
+                core::array::from_fn(|col| Wire { col, row: abs_row })
             };
 
             // round constant for this row
-            let coeffs = std::array::from_fn(|offset| {
+            let coeffs = core::array::from_fn(|offset| {
                 let round = rel_row * ROUNDS_PER_ROW + offset;
-                std::array::from_fn(|field_el| round_constants[round][field_el])
+                core::array::from_fn(|field_el| round_constants[round][field_el])
             });
 
             // create poseidon gate for this row
@@ -204,8 +208,8 @@ impl<F: PrimeField> CircuitGate<F> {
 
     /// round constant that are relevant for this specific gate
     pub fn rc(&self) -> [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] {
-        std::array::from_fn(|round| {
-            std::array::from_fn(|col| {
+        core::array::from_fn(|round| {
+            core::array::from_fn(|col| {
                 if self.typ == GateType::Poseidon {
                     self.coeffs[SPONGE_WIDTH * round + col]
                 } else {
