@@ -14,7 +14,7 @@ pub struct LookupEnvironment<G: KimchiCurve> {
     /// fixed tables pre-existing the protocol
     pub tables_poly: Vec<Vec<DensePolynomial<G::ScalarField>>>,
     pub tables_comm: Vec<Vec<PolyComm<G>>>,
-    ///multiplicities
+    /// Multiplicities
     pub multiplicities: LookupMultiplicities,
     ///commitments to the lookup state
     ///separated by the proof they come from
