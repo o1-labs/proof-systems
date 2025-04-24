@@ -269,7 +269,7 @@ $$
 R = \langle \vec{0} \Vert \vec{f}_L, \vec{G} \rangle + [\langle \vec{f}_L, \vec{\openx}_R \rangle] \cdot H
 $$
 
-The verifier samples $\chalfold \sample \FF$ and defines:
+The verifier samples $\chalfold \sample \FF$ and updates the commitment as:
 
 $$
 \begin{align}
