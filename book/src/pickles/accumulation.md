@@ -123,7 +123,7 @@ For Kimchi we are interested in "accumulation for the language ($\relation_{\mat
 
 $$
 \left(
-\statement = (\comm, \openx, \openy),
+\statement = (\comm, \vec{G}, \openx, \openy),
 \witness= (\vec{f})
 \right)
 \in
@@ -170,7 +170,7 @@ $$
 \right\}
 $$
 
-We can reduce $\left(\statement = (\comm, \openx, \openy),
+We can reduce $\left(\statement = (\comm, \vec{G}, \openx, \openy),
 \witness = (\vec{f})\right) \in
 \relation_{\mathsf{PCS}, d}$ to $\relation_{\mathsf{IPA}, \ell}$ with $d = \ell$ as follows:
 
