@@ -474,8 +474,8 @@ We obtain a new instance of the inner product relation (of half the size):
 
 $$
 (
-\statement = (C', \vec{G}', H, \vec{\openx}'),
-\witness = (\vec{f}', \openy')
+\statement = (C', \vec{G}', H, \vec{\openx}', \openy'),
+\witness = (\vec{f}')
 ) \in
 \relation_{\mathsf{IPA}, \ell/2}
 $$
