@@ -2,7 +2,9 @@
 //!
 //! Definition of secret key, keypairs and related helpers
 
+extern crate alloc;
 use crate::{pubkey::PubKeyError, seckey::SecKeyError, CurvePoint, PubKey, ScalarField, SecKey};
+use alloc::{string::String, vec::Vec};
 use core::fmt;
 use rand::{self, CryptoRng, RngCore};
 use thiserror::Error;
@@ -21,7 +23,7 @@ pub enum KeypairError {
     NonCurvePoint,
 }
 /// Keypair result
-pub type Result<T> = std::result::Result<T, KeypairError>;
+pub type Result<T> = core::result::Result<T, KeypairError>;
 
 /// Keypair structure
 #[derive(Clone, PartialEq, Eq)]

@@ -3,9 +3,9 @@
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
 //! It implements different components to achieve it:
 //! - [quadraticization]: a submodule to reduce multivariate polynomials
-//! to degree `2`.
+//!   to degree `2`.
 //! - [decomposable_folding]: a submodule to "parallelize" folded
-//! computations.
+//!   computations.
 //!
 //! Examples can be found in the directory `examples`.
 //!
@@ -20,6 +20,7 @@
 use ark_ec::AffineRepr;
 use ark_ff::{Field, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
+use core::{fmt::Debug, hash::Hash, iter::successors};
 use error_term::{compute_error, ExtendedEnv};
 use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
 use instance_witness::{Foldable, RelaxableInstance, RelaxablePair};
@@ -28,9 +29,6 @@ use mina_poseidon::FqSponge;
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 use quadraticization::ExtendedWitnessGenerator;
 use std::{
-    fmt::Debug,
-    hash::Hash,
-    iter::successors,
     rc::Rc,
     sync::atomic::{AtomicUsize, Ordering},
 };
@@ -151,7 +149,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         let (expression, extended_witness_generator, quadraticization_columns) =
             folding_expression(constraints);
         let zero = <ScalarField<CF>>::zero();
-        let evals = std::iter::repeat(zero).take(domain.size()).collect();
+        let evals = core::iter::repeat(zero).take(domain.size()).collect();
         let zero_vec = Evaluations::from_vec_and_domain(evals, domain);
         let final_expression = expression.clone().final_expression();
         let scheme = Self {
@@ -175,10 +173,10 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
     /// The process is as follows:
     /// - Both pairs are relaxed.
     /// - Both witnesses and instances are extended, i.e. all polynomials are
-    /// reduced to degree 2 and additional constraints are added to the
-    /// expression.
+    ///   reduced to degree 2 and additional constraints are added to the
+    ///   expression.
     /// - While computing the commitments to the additional columns, the
-    /// commitments are added into a list to absorb them into the sponge later.
+    ///   commitments are added into a list to absorb them into the sponge later.
     /// - The error terms are computed and committed.
     /// - The sponge absorbs the commitments and challenges.
     #[allow(clippy::type_complexity)]

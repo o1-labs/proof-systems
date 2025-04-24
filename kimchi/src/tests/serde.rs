@@ -11,6 +11,7 @@ use crate::{
 };
 use ark_ec::short_weierstrass::Affine;
 use ark_ff::Zero;
+use core::array;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -22,7 +23,7 @@ use poly_commitment::{
     ipa::{OpeningProof, SRS},
     SRS as _,
 };
-use std::{array, time::Instant};
+use std::time::Instant;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;

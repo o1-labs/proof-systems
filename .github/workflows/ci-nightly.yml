@@ -1,6 +1,8 @@
 #
-# This workflow is triggered by scheduler or on-demand to run all the tests with the code coverage enabled and using the self-hosted GitHub runner.
-# Test coverage report is attached to the current job execution results in a form of Zip archive.
+# This workflow is triggered by scheduler or on-demand to run all the tests with
+# the code coverage enabled and using the self-hosted GitHub runner.
+# Test coverage report is attached to the current job execution results in a
+# form of Zip archive.
 #
 
 name: Nightly tests with the code coverage
@@ -26,7 +28,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        rust_toolchain_version: ["1.74"]
+        rust_toolchain_version: ["1.79"]
         # FIXME: currently not available for 5.0.0.
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency
@@ -58,7 +60,6 @@ jobs:
       - name: Run all tests with the code coverage
         run: |
           eval $(opam env)
-          make clean
           make nextest-all-with-coverage
           make test-doc-with-coverage
           make generate-test-coverage-report
@@ -75,3 +76,17 @@ jobs:
           name: test-coverage-html-report-${{ matrix.rust_toolchain_version }}-${{ matrix.os }}
           path: target/coverage/
           retention-days: 30
+
+      - name: Post a message in slack channel if failing
+        if: ${{ failure() }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "Nightly tests failed:\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            blocks:
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: "Nightly tests failed:\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -4,11 +4,11 @@ use crate::{
     expressions::FoldingColumnTrait, instance_witness::Witness, FoldingConfig, FoldingEnv,
     Instance, Side,
 };
+use core::{fmt::Debug, hash::Hash, marker::PhantomData, ops::Index};
 use derivative::Derivative;
 use kimchi::{circuits::gate::CurrOrNext, curve::KimchiCurve};
 use memoization::ColumnMemoizer;
 use poly_commitment::{self, commitment::CommitmentCurve};
-use std::{fmt::Debug, hash::Hash, marker::PhantomData, ops::Index};
 
 #[derive(Clone, Default)]
 /// Default type for when you don't need structure
@@ -199,10 +199,10 @@ where
 /// in [FoldingEnv::col]
 mod memoization {
     use ark_ff::Field;
+    use core::hash::Hash;
     use std::{
         cell::{OnceCell, RefCell},
         collections::HashMap,
-        hash::Hash,
         sync::atomic::{AtomicUsize, Ordering},
     };
 
@@ -272,179 +272,5 @@ mod memoization {
             let id = ids.entry(col).or_insert_with(new_id);
             self.first_segment.get_or_insert(*id, f)
         }
-    }
-}
-
-#[cfg(feature = "bn254")]
-mod example {
-    use crate::{
-        examples::{BaseSponge, Curve, Fp},
-        expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
-        instance_witness::Foldable,
-        standard_config::{EmptyStructure, StandardConfig},
-        FoldingCompatibleExpr, Instance, Witness,
-    };
-    use ark_ec::ProjectiveCurve;
-    use kimchi::{
-        circuits::{expr::Variable, gate::CurrOrNext},
-        curve::KimchiCurve,
-    };
-    use std::ops::Index;
-
-    // we create some example types
-
-    // an instance
-    #[derive(Clone, Debug)]
-    struct MyInstance<G: KimchiCurve> {
-        commitments: [G; 3],
-        beta: G::ScalarField,
-        gamma: G::ScalarField,
-    }
-
-    // implementing foldable
-    impl<G: KimchiCurve> Foldable<G::ScalarField> for MyInstance<G> {
-        fn combine(mut a: Self, b: Self, challenge: G::ScalarField) -> Self {
-            for (a, b) in a.commitments.iter_mut().zip(b.commitments) {
-                *a = *a + b.mul(challenge).into_affine();
-            }
-            a
-        }
-    }
-    // and instance
-    impl<G: KimchiCurve> Instance<G> for MyInstance<G> {
-        fn to_absorb(&self) -> (Vec<<G>::ScalarField>, Vec<G>) {
-            (vec![], self.commitments.to_vec())
-        }
-
-        fn get_alphas(&self) -> &crate::Alphas<<G>::ScalarField> {
-            todo!()
-        }
-    }
-    // a witness
-    #[derive(Clone, Debug)]
-    struct MyWitness<G: KimchiCurve> {
-        columns: [Vec<G::ScalarField>; 3],
-    }
-
-    // implementing foldable
-    impl<G: KimchiCurve> Foldable<G::ScalarField> for MyWitness<G> {
-        fn combine(mut a: Self, b: Self, challenge: G::ScalarField) -> Self {
-            for (a, b) in a.columns.iter_mut().zip(b.columns) {
-                for (a, b) in a.iter_mut().zip(b) {
-                    *a += b * challenge;
-                }
-            }
-            a
-        }
-    }
-    // and Witness
-    impl<G: KimchiCurve> Witness<G> for MyWitness<G> {}
-
-    // a type for the columns
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-    enum MyCol {
-        A,
-        B,
-        C,
-    }
-
-    // implementing FoldingColumnTrait, trivial in this witness-only case
-    impl FoldingColumnTrait for MyCol {
-        fn is_witness(&self) -> bool {
-            true
-        }
-    }
-    // a challenge
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    enum MyChallenge {
-        Beta,
-        Gamma,
-    }
-
-    // now, to use this config with our types, we need to implement Index
-    // if not already implemented, to resolve access to values in instance,
-    // witness, and structure if present
-
-    // for witness columns
-    impl<G: KimchiCurve> Index<MyCol> for MyWitness<G> {
-        type Output = Vec<G::ScalarField>;
-
-        fn index(&self, index: MyCol) -> &Self::Output {
-            let index = match index {
-                MyCol::A => 0,
-                MyCol::B => 1,
-                MyCol::C => 2,
-            };
-            &self.columns[index]
-        }
-    }
-    // for selectors, () in this case as we have none
-    impl<G: KimchiCurve> Index<()> for MyWitness<G> {
-        type Output = [G::ScalarField];
-
-        fn index(&self, _index: ()) -> &Self::Output {
-            unreachable!()
-        }
-    }
-    // for challenges, which should live in the instance
-    impl<G: KimchiCurve> Index<MyChallenge> for MyInstance<G> {
-        type Output = G::ScalarField;
-
-        fn index(&self, index: MyChallenge) -> &Self::Output {
-            match index {
-                MyChallenge::Beta => &self.beta,
-                MyChallenge::Gamma => &self.gamma,
-            }
-        }
-    }
-
-    // now we can get an instance of StandardConfig, where selectors and structures have
-    // default for cases like this where we don't need them
-    type MyConfig<G> = StandardConfig<G, MyCol, MyChallenge, MyInstance<G>, MyWitness<G>>;
-
-    // creating some example constraint
-    fn constraint<G: KimchiCurve>() -> FoldingCompatibleExpr<MyConfig<G>> {
-        let column = |col| {
-            FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(Variable {
-                col,
-                row: CurrOrNext::Curr,
-            }))
-        };
-        let chall =
-            |chall| FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Challenge(chall));
-        let a = column(MyCol::A);
-        let b = column(MyCol::B);
-        let c = column(MyCol::C);
-        let beta = chall(MyChallenge::Beta);
-        let gamma = chall(MyChallenge::Gamma);
-        (a + b - c) * (beta + gamma)
-    }
-
-    // here an example of how the config would be used, which is similar to any
-    // other custom config.
-    #[allow(dead_code)]
-    fn fold(pairs: [(MyInstance<Curve>, MyWitness<Curve>); 2]) {
-        use crate::FoldingScheme;
-        use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
-        use mina_poseidon::FqSponge;
-
-        let constraints = vec![constraint()];
-        let domain = Radix2EvaluationDomain::<Fp>::new(2).unwrap();
-        let srs = poly_commitment::ipa::SRS::<Curve>::create(2);
-        srs.get_lagrange_basis(domain);
-        // this is the default structure, which does nothing or panics if
-        // indexed (as it shouldn't be indexed)
-        let structure = EmptyStructure::default();
-
-        // here we can use the config
-        let (scheme, _) =
-            FoldingScheme::<MyConfig<Curve>>::new(constraints, &srs, domain, &structure);
-
-        let [left, right] = pairs;
-        let left = (left.0, left.1);
-        let right = (right.0, right.1);
-
-        let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
-        let _output = scheme.fold_instance_witness_pair(left, right, &mut fq_sponge);
     }
 }

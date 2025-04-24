@@ -211,13 +211,14 @@ where
 /// ```
 /// For this:
 /// 1. we get the previous state of the sponge `(s0, s1, s2)`. We copy it
-/// in the three first columns of the row.
-/// 2. we constrain the two next columns to be equal to
-/// (`s0 + i1, s1 + i2`). We have then the columns 3, 4 and 5 equal to
-/// `(s2, s0 + i1, s1 + i2)`. These will be considered as the input of the
-/// Poseidon gadget.
+///    in the three first columns of the row.
+/// 2. we constrain the two next columns to be equal to (`s0 + i1, s1 + i2`). We
+///    have then the columns 3, 4 and 5 equal to `(s2, s0 + i1, s1 + i2)`. These
+///    will be considered as the input of the Poseidon gadget.
+///
 /// This function therefore requires 2 + [IVC_POSEIDON_NB_COLUMNS] columns,
 /// without counting the block selector.
+///
 /// It also introduces [IVC_POSEIDON_NB_CONSTRAINTS] + 2 constraints, and
 /// therefore requires [IVC_POSEIDON_NB_CONSTRAINTS] + 2 alphas.
 pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize, const N_CHALS: usize>(

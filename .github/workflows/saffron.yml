@@ -15,7 +15,7 @@ jobs:
 
     strategy:
       matrix:
-        rust_toolchain_version: ["1.74"]
+        rust_toolchain_version: ["1.79"]
 
     steps:
       - name: Checkout repository
@@ -33,7 +33,7 @@ jobs:
 
       - name: Cache SRS data
         id: cache-srs
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ./srs
           # The SRS generation never changes, so we don't need a content-based key
@@ -45,7 +45,11 @@ jobs:
 
       - name: Build the saffron cli binary
         run: |
-          cargo build --release --bin saffron
+          cargo build --release --bin saffron -p saffron
+
+      - name: Run the saffron unit tests
+        run: |
+          SRS_FILEPATH=../srs/test_vesta.srs RUST_LOG=debug cargo test -p saffron  --release -- --nocapture
 
       - name: Run the saffron e2e encoding tests on small lorem file
         run: |

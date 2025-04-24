@@ -25,10 +25,27 @@ O1VM_MIPS_SOURCE_FILES = $(patsubst ${OPTIMISM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIP
 O1VM_MIPS_BIN_DIR = ${O1VM_RESOURCES_PATH}/mips/bin
 O1VM_MIPS_BIN_FILES = $(patsubst ${O1VM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIPS_BIN_DIR}/%.o,${O1VM_MIPS_SOURCE_FILES})
 
+# This should be updated if rust-toolchain.toml is updated, and the nightly
+# version should be close to the date of the release of the stable version used
+# in rust-toolchain.toml.
+# In addition to that, the version in the CI (see file
+# .github/workflows/wasm.yml) should be changed accordingly.
+NIGHTLY_RUST_VERSION = "nightly-2024-06-13"
+WASM_RUSTFLAGS = "-C target-feature=+atomics,+bulk-memory,+mutable-globals -C link-arg=--max-memory=4294967296"
+PLONK_WASM_NODEJS_OUTDIR ?= target/nodejs
+PLONK_WASM_WEB_OUTDIR ?= target/web
+
+# This should stay in line with the version used by the argument
+# WASM_PACK_VERSION in
+# MinaProtocol/mina/dockerfiles/stages/1-build-deps
+WASM_PACK_VERSION=0.12.1
+
 # Default target
 all: release
 
-setup:
+setup: setup-git setup-wasm-pack setup-wasm-toolchain
+
+setup-git:
 		@echo ""
 		@echo "Syncing the Git submodules."
 		@echo ""
@@ -36,7 +53,28 @@ setup:
 		git submodule update --init --recursive
 		@echo ""
 		@echo "Git submodules synced."
-		@echo ""
+
+setup-wasm-pack:
+		@echo "Install wasm-pack"
+		@cargo install wasm-pack@${WASM_PACK_VERSION} --force
+
+setup-wasm-toolchain:
+		@ARCH=$$(uname -m); \
+		OS=$$(uname -s | tr A-Z a-z); \
+		case $$OS in \
+			linux) OS_PART="unknown-linux-gnu" ;; \
+			darwin) OS_PART="apple-darwin" ;; \
+			*) echo "Unsupported OS: $$OS" && exit 1 ;; \
+		esac; \
+		case $$ARCH in \
+			x86_64) ARCH_PART="x86_64" ;; \
+			aarch64) ARCH_PART="aarch64" ;; \
+			arm64) ARCH_PART="aarch64" ;; \
+			*) echo "Unsupported architecture: $$ARCH" && exit 1 ;; \
+		esac; \
+		TARGET="$$ARCH_PART-$$OS_PART"; \
+		echo "Installing rust-src for ${NIGHTLY_RUST_VERSION}-$$TARGET"; \
+		rustup component add rust-src --toolchain ${NIGHTLY_RUST_VERSION}-$$TARGET
 
 # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
 # FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
@@ -60,11 +98,11 @@ clean: ## Clean the project
 
 
 build: ## Build the project
-		cargo build --all-targets --all-features
+		cargo build --all-targets --all-features --workspace --exclude plonk_wasm
 
 
 release: ## Build the project in release mode
-		cargo build --release --all-targets --all-features
+		cargo build --release --all-targets --all-features --workspace --exclude plonk_wasm
 
 
 test-doc: ## Test the project's docs comments
@@ -96,28 +134,33 @@ test-all-with-coverage:
 
 
 nextest: ## Test the project with non-heavy tests and using nextest test runner
-		cargo nextest run --all-features --release --profile ci -E "not test(heavy)" $(BIN_EXTRA_ARGS)
+		cargo nextest run --all-features --release $(CARGO_EXTRA_ARGS) --profile ci -E "not test(heavy)" $(BIN_EXTRA_ARGS)
 
 nextest-with-coverage:
-		$(COVERAGE_ENV) BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest
+		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest
 
 
 nextest-heavy: ## Test the project with heavy tests and using nextest test runner
-		cargo nextest run --all-features --release --profile ci -E "test(heavy)" $(BIN_EXTRA_ARGS)
+		cargo nextest run --all-features --release $(CARGO_EXTRA_ARGS) --profile ci -E "test(heavy)" $(BIN_EXTRA_ARGS)
 
 nextest-heavy-with-coverage:
-		$(COVERAGE_ENV) BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-heavy
+		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-heavy
 
 
 nextest-all: ## Test the project with all tests and using nextest test runner
-		cargo nextest run --all-features --release --profile ci $(BIN_EXTRA_ARGS)
+		cargo nextest run --all-features --release $(CARGO_EXTRA_ARGS) --profile ci $(BIN_EXTRA_ARGS)
 
 nextest-all-with-coverage:
-		$(COVERAGE_ENV) BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-all
+		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-all
 
+
+check-format: ## Check the code formatting
+		cargo +nightly fmt -- --check
+		cargo sort --check
 
 format: ## Format the code
-		cargo +nightly fmt -- --check
+		cargo +nightly fmt
+		cargo sort
 
 
 lint: ## Lint the code
@@ -201,4 +244,19 @@ ${O1VM_MIPS_BIN_DIR}/%.o: ${O1VM_MIPS_SOURCE_DIR}/%.asm
 fclean: clean ## Clean the tooling artefacts in addition to running clean
 		rm -rf ${RISCV32_TOOLCHAIN_PATH}
 
-.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs
+build-nodejs:
+		RUSTFLAGS=${WASM_RUSTFLAGS} rustup run ${NIGHTLY_RUST_VERSION} wasm-pack build \
+		--target nodejs \
+		--out-dir ${PLONK_WASM_NODEJS_OUTDIR} \
+		plonk-wasm -- \
+		-Z build-std=panic_abort,std \
+		--features nodejs
+
+build-web:
+		RUSTFLAGS=${WASM_RUSTFLAGS} rustup run ${NIGHTLY_RUST_VERSION} wasm-pack build \
+		--target web \
+		--out-dir ${PLONK_WASM_WEB_OUTDIR} \
+		plonk-wasm -- \
+		-Z build-std=panic_abort,std
+
+.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs check-format build-web build-nodejs

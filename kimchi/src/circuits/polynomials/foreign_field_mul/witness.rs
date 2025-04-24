@@ -16,13 +16,11 @@ use crate::{
     },
     variable_map,
 };
-use ark_ff::PrimeField;
+use ark_ff::{One, PrimeField};
+use core::{array, ops::Div};
 use num_bigint::BigUint;
 use num_integer::Integer;
-
-use num_traits::One;
 use o1_utils::foreign_field::ForeignFieldHelpers;
-use std::{array, ops::Div};
 
 use super::circuitgates;
 
@@ -200,7 +198,7 @@ pub fn create<F: PrimeField>(
 
     // Extend the witness by two rows for foreign field multiplication
     for w in &mut witness {
-        w.extend(std::iter::repeat(F::zero()).take(2));
+        w.extend(core::iter::repeat(F::zero()).take(2));
     }
 
     // Create the foreign field multiplication witness rows
@@ -331,7 +329,7 @@ impl<F: PrimeField> ExternalChecks<F> {
         for chunk in self.high_bounds.clone().chunks(2) {
             // Extend the witness for the generic gate
             for col in witness.iter_mut().take(COLUMNS) {
-                col.extend(std::iter::repeat(F::zero()).take(1))
+                col.extend(core::iter::repeat(F::zero()).take(1))
             }
             let last_row = witness[0].len() - 1;
             // Fill in with dummy if it is an odd number of bounds

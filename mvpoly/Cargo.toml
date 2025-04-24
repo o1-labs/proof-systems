@@ -9,6 +9,10 @@ readme = "README.md"
 edition = "2021"
 license = "Apache-2.0"
 
+[[bin]]
+path = "src/bin/bench_cross_terms.rs"
+name = "bench-cross-terms"
+
 [lib]
 path = "src/lib.rs"
 
@@ -16,6 +20,7 @@ path = "src/lib.rs"
 ark-ff.workspace = true
 kimchi.workspace = true
 log.workspace = true
+mina-curves.workspace = true
 num-integer.workspace = true
 o1-utils.workspace = true
 rand.workspace = true

@@ -1,0 +1,49 @@
+name: Bench mina circuits (set baseline master)
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  OCAML_VERSION: "4.14"
+  RUST_TOOLCHAIN_VERSION: "1.79"
+
+
+jobs:
+  bench-set-baseline:
+    runs-on: ubuntu-latest
+    name: Run benches
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ env.RUST_TOOLCHAIN_VERSION }}
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ env.OCAML_VERSION }}
+
+      - name: Run criterion bench
+        run: |
+          set -x
+          eval $(opam env)
+          SAVE_BASELINE_NAME=master-baseline-data bash scripts/bench-criterion-mina-circuits.sh cargo bench -p kimchi --bench proof_criterion
+
+      - name: Copy previous baseline to target folder
+        run: |
+          set -x
+          mkdir criterion-ps-mina-master-baseline/
+          find . -type d -iname "master-baseline-data" -exec rsync -avR {} ./criterion-ps-mina-master-baseline/ \;
+
+      # Upload current baseline
+      - uses: actions/upload-artifact@v4
+        with:
+          name: criterion-ps-mina-master-baseline
+          path: criterion-ps-mina-master-baseline/

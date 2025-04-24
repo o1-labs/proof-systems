@@ -209,7 +209,7 @@ where
     fn from_cvars_unsafe(cvars: Vec<FieldVar<F>>, aux: Self::Auxiliary) -> Self {
         let mut cvars_and_aux = cvars.chunks(T::SIZE_IN_FIELD_ELEMENTS).zip(aux);
 
-        std::array::from_fn(|_| {
+        core::array::from_fn(|_| {
             let (cvars, aux) = cvars_and_aux.next().unwrap();
             assert_eq!(cvars.len(), T::SIZE_IN_FIELD_ELEMENTS);
             T::from_cvars_unsafe(cvars.to_vec(), aux)
@@ -240,7 +240,7 @@ where
     fn value_of_field_elements(fields: Vec<F>, aux: Self::Auxiliary) -> Self::OutOfCircuit {
         let mut values_and_aux = fields.chunks(T::SIZE_IN_FIELD_ELEMENTS).zip(aux);
 
-        std::array::from_fn(|_| {
+        core::array::from_fn(|_| {
             let (fields, aux) = values_and_aux.next().unwrap();
             assert_eq!(fields.len(), T::SIZE_IN_FIELD_ELEMENTS);
             T::value_of_field_elements(fields.to_vec(), aux)
