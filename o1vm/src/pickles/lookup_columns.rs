@@ -225,7 +225,7 @@ impl<F> ColumnEnv<F> {
         }
     }
 }
-// Necessarry trait to evaluate the numerator of T at zeta in the verifier
+// Necessary trait to evaluate the numerator of T at zeta in the verifier
 impl<F: PrimeField> ColumnEvaluations<F> for Eval<F> {
     type Column = LookupColumns;
     fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
