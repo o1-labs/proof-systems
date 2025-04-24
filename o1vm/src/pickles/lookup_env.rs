@@ -23,7 +23,7 @@ pub struct LookupEnvironment<G: KimchiCurve> {
 
 /// The persistent environment across all proofs.
 /// It stores the some fixed values (fixed lookup),
-/// and some proof dependant values: an accumulation
+/// and some proof dependent values: an accumulation
 /// of the multiplicities and the commitments to the lookup state
 impl<G: KimchiCurve> LookupEnvironment<G> {
     /// Create a new prover environment, which interpolates the fixed tables
