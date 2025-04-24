@@ -151,7 +151,7 @@ Formally the relation of the inner product argument is:
 
 $$
 \left(
-\statement = (\comm, \vec{G}, H, \vec{\openx}),
+\statement = (\comm, \vec{G}, H, \vec{\openx}, y),
 \witness = (\vec{f})
 \right)
 \in
