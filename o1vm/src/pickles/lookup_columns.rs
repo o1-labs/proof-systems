@@ -170,7 +170,7 @@ pub struct LookupEvalEnvironment<'a, F: FftField> {
     pub l0_1: F,
 }
 
-// Necessarry trait to evaluate the numerator of T in the prover
+// Necessary trait to evaluate the numerator of T in the prover
 impl<'a, F: FftField> ColumnEnvironment<'a, F, LookupChallengeTerm, LookupChallenges<F>>
     for LookupEvalEnvironment<'a, F>
 {
