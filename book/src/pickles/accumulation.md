@@ -174,10 +174,10 @@ We can reduce $\left(\statement = (\comm, \vec{G}, \openx, \openy),
 \witness = (\vec{f})\right) \in
 \relation_{\mathsf{PCS}, d}$ to $\relation_{\mathsf{IPA}, \ell}$ with $d = \ell$ as follows:
 
-- Define $\vec{\openx} = (1, \openx, \openx^2, \openx^3, \ldots, \openx^{\ell-1})$, so that $\openy = f(\openx) = \langle \vec{f}, \vec{\openx} \rangle$,
+- Define $\vec{\openx} = (1, \openx, \openx^2, \openx^3, \ldots, \openx^{\ell-1})$. Because $\vec{f}$ was a satisfying witness to $\relation_{\mathsf{PCS}, d}$,  we have $\openy = f(\openx) = \langle \vec{f}, \vec{\openx} \rangle$. The prover sends $y$.
 - The verifier adds the evaluation $\openy$ to the commitment "in a new coordinate" as follows:
     1. Verifier picks $\genOpen \sample \GG$ and sends $H$ to the prover.
-    2. Verifier updates $\comm \gets \comm + [\openy] \cdot \genOpen$
+    2. Prover/Verifier updates $\comm \gets \comm + [\openy] \cdot \genOpen$
 
 Intuitively we sample a fresh $\genOpen$ to avoid a malicious prover "putting something in the $H$-position", because he must send $\openy$ before seeing $\genOpen$, hence he would need to guess $\genOpen$ before-hand.
 If the prover is honest, we should have a commitment of the form:
