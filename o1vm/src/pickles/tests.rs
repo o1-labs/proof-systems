@@ -6,58 +6,20 @@ use super::{
     prover::prove,
 };
 use crate::{
-    interpreters::mips::{
-        column::SCRATCH_SIZE_INVERSE,
-        constraints as mips_constraints,
-        interpreter::{self, InterpreterEnv},
-        Instruction,
-    },
-    pickles::{
-        column_env::RelationColumnType, verifier::verify, MAXIMUM_DEGREE_CONSTRAINTS,
-        TOTAL_NUMBER_OF_CONSTRAINTS,
-    },
-    E,
+    interpreters::riscv32im::SCRATCH_SIZE_INVERSE,
+    pickles::{column_env::RelationColumnType, verifier::verify},
 };
 use ark_ff::{Field, One, UniformRand, Zero};
 use kimchi::circuits::{domains::EvaluationDomains, expr::Expr, gate::CurrOrNext};
 use kimchi_msm::columns::Column;
 use log::debug;
-use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters};
+use mina_curves::pasta::{Fq, Pallas, PallasParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1_utils::tests::make_test_rng;
 use poly_commitment::SRS;
-use strum::IntoEnumIterator;
-
-#[test]
-fn test_regression_constraints_with_selectors() {
-    let constraints = {
-        let mut mips_con_env = mips_constraints::Env::<Fp>::default();
-        let mut constraints = Instruction::iter()
-            .flat_map(|instr_typ| instr_typ.into_iter())
-            .fold(vec![], |mut acc, instr| {
-                interpreter::interpret_instruction(&mut mips_con_env, instr);
-                let selector = mips_con_env.get_selector();
-                let constraints_with_selector: Vec<E<Fp>> = mips_con_env
-                    .get_constraints()
-                    .into_iter()
-                    .map(|c| selector.clone() * c)
-                    .collect();
-                acc.extend(constraints_with_selector);
-                mips_con_env.reset();
-                acc
-            });
-        constraints.extend(mips_con_env.get_selector_constraints());
-        constraints
-    };
-
-    assert_eq!(constraints.len(), TOTAL_NUMBER_OF_CONSTRAINTS);
-
-    let max_degree = constraints.iter().map(|c| c.degree(1, 0)).max().unwrap();
-    assert_eq!(max_degree, MAXIMUM_DEGREE_CONSTRAINTS);
-}
 
 fn zero_to_n_minus_one(n: usize) -> Vec<Fq> {
     (0..n).map(|i| Fq::from((i) as u64)).collect()

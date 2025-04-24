@@ -26,6 +26,7 @@ pub enum LookupColumns {
     Inverses(usize),
     Acc,
 }
+
 #[derive(Clone)]
 pub struct ColumnEnv<X> {
     pub wires: Vec<X>,
@@ -46,6 +47,7 @@ impl<X> IntoIterator for ColumnEnv<X> {
             .chain(std::iter::once(self.acc))
     }
 }
+
 // TODO: I could not find a more elegant solution to map over this struct
 impl<X> ColumnEnv<X> {
     pub fn my_map<Y, F>(self, f: F) -> ColumnEnv<Y>
@@ -118,11 +120,11 @@ pub struct Proof<G: KimchiCurve> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LookupChallengeTerm {
-    //The challenge to compute 1/(beta + lookupvalue)
+    /// The challenge to compute 1/(beta + lookupvalue)
     Beta,
-    // The challenge to combine tuple sum beta^i lookupvalue_i
+    /// The challenge to combine tuple sum gamma^i lookupvalue_i
     Gamma,
-    // The challenge to combine constraints
+    /// The challenge to combine constraints
     Alpha,
 }
 

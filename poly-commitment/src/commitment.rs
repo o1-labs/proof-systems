@@ -3,7 +3,7 @@
 //!
 //! 1. Commit to polynomial with its max degree
 //! 2. Open polynomial commitment batch at the given evaluation point and
-//! scaling factor scalar producing the batched opening proof
+//!    scaling factor scalar producing the batched opening proof
 //! 3. Verify batch of batched opening proofs
 
 use ark_ec::{
@@ -16,6 +16,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use groupmap::{BWParameters, GroupMap};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::{field_helpers::product, ExtendedDensePolynomial as _};
+use rayon::prelude::*;
 use serde::{de::Visitor, Deserialize, Serialize};
 use serde_with::{
     de::DeserializeAsWrap, ser::SerializeAsWrap, serde_as, DeserializeAs, SerializeAs,
@@ -332,19 +333,31 @@ impl<C: AffineRepr> PolyComm<C> {
         let all_scalars: Vec<_> = elm.iter().map(|s| s.into_bigint()).collect();
 
         let elems_size = Iterator::max(com.iter().map(|c| c.chunks.len())).unwrap();
-        let mut chunks = Vec::with_capacity(elems_size);
 
-        for chunk in 0..elems_size {
-            let (points, scalars): (Vec<_>, Vec<_>) = com
-                .iter()
-                .zip(&all_scalars)
-                // get rid of scalars that don't have an associated chunk
-                .filter_map(|(com, scalar)| com.chunks.get(chunk).map(|c| (c, scalar)))
-                .unzip();
+        let chunks = (0..elems_size)
+            .map(|chunk| {
+                let (points, scalars): (Vec<_>, Vec<_>) = com
+                    .iter()
+                    .zip(&all_scalars)
+                    // get rid of scalars that don't have an associated chunk
+                    .filter_map(|(com, scalar)| com.chunks.get(chunk).map(|c| (c, scalar)))
+                    .unzip();
 
-            let chunk_msm = C::Group::msm_bigint(&points, &scalars);
-            chunks.push(chunk_msm.into_affine());
-        }
+                // Splitting into 2 chunks seems optimal; but in
+                // practice elems_size is almost always 1
+                //
+                // (see the comment to the `benchmark_msm_parallel_vesta` MSM benchmark)
+                let subchunk_size = std::cmp::max(points.len() / 2, 1);
+
+                points
+                    .into_par_iter()
+                    .chunks(subchunk_size)
+                    .zip(scalars.into_par_iter().chunks(subchunk_size))
+                    .map(|(psc, ssc)| C::Group::msm_bigint(&psc, &ssc).into_affine())
+                    .reduce(C::zero, |x, y| (x + y).into())
+            })
+            .collect();
+
         Self::new(chunks)
     }
 }

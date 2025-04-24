@@ -13,23 +13,15 @@
 //! ```
 
 pub mod column_env;
+pub mod lookup_columns;
+pub mod lookup_env;
+pub mod lookup_prover;
+pub mod lookup_verifier;
 pub mod proof;
 pub mod prover;
 pub mod verifier;
 
-///Lookup related modules
-pub mod lookup_columns;
-pub mod lookup_prover;
-pub mod lookup_verifier;
-
-/// Maximum degree of the constraints.
-/// It does include the additional degree induced by the multiplication of the
-/// selectors.
-pub const MAXIMUM_DEGREE_CONSTRAINTS: u64 = 6;
-
-/// Degree of the quotient polynomial. We do evaluate all polynomials on d8
-/// (because of the value of [MAXIMUM_DEGREE_CONSTRAINTS]), and therefore, we do
-/// have a degree 7 for the quotient polynomial.
+/// Degree of the quotient polynomial.
 /// Used to keep track of the number of chunks we do have when we commit to the
 /// quotient polynomial.
 pub const DEGREE_QUOTIENT_POLYNOMIAL: u64 = 7;

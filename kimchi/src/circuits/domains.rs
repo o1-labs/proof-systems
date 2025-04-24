@@ -10,7 +10,7 @@ use crate::error::DomainCreationError;
 
 /// The different multiplicaive domain sizes that can be used by the polynomials.
 /// We do support up to 8 times the size of the original domain for now.
-#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Domain {
     D1 = 1,
     D2 = 2,

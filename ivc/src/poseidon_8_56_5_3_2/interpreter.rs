@@ -1,13 +1,19 @@
-//! Implement an interpreter for a specific instance of the Poseidon inner permutation.
+//! Implement an interpreter for a specific instance of the Poseidon inner
+//! permutation.
+//!
 //! The Poseidon construction is defined in the paper ["Poseidon: A New Hash
 //! Function"](https://eprint.iacr.org/2019/458.pdf).
+//!
 //! The Poseidon instance works on a state of size `STATE_SIZE` and is designed
 //! to work with full and partial rounds. As a reminder, the Poseidon
 //! permutation is a mapping from `F^STATE_SIZE` to `F^STATE_SIZE`.
+//!
 //! The user is responsible to provide the correct number of full and partial
 //! rounds for the given field and the state.
+//!
 //! Also, it is hard-coded that the substitution is `5`. The user must verify
 //! that `5` is coprime with `p - 1` where `p` is the order the field.
+//!
 //! The constants and matrix can be generated the file
 //! `poseidon/src/pasta/params.sage`
 
@@ -18,8 +24,10 @@ use num_bigint::BigUint;
 use num_integer::Integer;
 
 /// Represents the parameters of the instance of the Poseidon permutation.
+///
 /// Constants are the round constants for each round, and MDS is the matrix used
 /// by the linear layer.
+///
 /// The type is parametrized by the field, the state size, and the total number
 /// of rounds.
 // IMPROVEME merge constants and mds in a flat array, to use the CPU cache
@@ -71,8 +79,8 @@ where
 /// Each partial round consists of the following steps:
 /// - adding the round constants on the whole state
 /// - applying the sbox on the first element of the state (FIXME: the
-/// specification mentions the last element - map the implementation provided in
-/// [mina_poseidon])
+///   specification mentions the last element - map the implementation provided in
+///   [mina_poseidon])
 /// - applying the linear layer on the whole state
 pub fn apply_permutation<
     F: PrimeField,
@@ -101,7 +109,7 @@ where
     }
 
     let mut state: [Env::Variable; STATE_SIZE] =
-        std::array::from_fn(|i| env.read_column(PoseidonColumn::Input(i)));
+        core::array::from_fn(|i| env.read_column(PoseidonColumn::Input(i)));
 
     // Full rounds
     for i in 0..(NB_FULL_ROUND / 2) {

@@ -8,13 +8,12 @@
 //!
 //! We would like to thank the authors of the following documentations:
 //! - <https://msyksphinz-self.github.io/riscv-isadoc/html/rvm.html> ([CC BY
-//! 4.0](https://creativecommons.org/licenses/by/4.0/)) from
-//! [msyksphinz-self](https://github.com/msyksphinz-self/riscv-isadoc)
-//! -
-//! <https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf>
-//! from the course [CS 3410: Computer System Organization and
-//! Programming](https://www.cs.cornell.edu/courses/cs3410/2024fa/home.html) at
-//! Cornell University.
+//!   4.0](https://creativecommons.org/licenses/by/4.0/)) from
+//!   [msyksphinz-self](https://github.com/msyksphinz-self/riscv-isadoc)
+//! - <https://www.cs.cornell.edu/courses/cs3410/2024fa/assignments/cpusim/riscv-instructions.pdf>
+//!   from the course [CS 3410: Computer System Organization and
+//!   Programming](https://www.cs.cornell.edu/courses/cs3410/2024fa/home.html) at
+//!   Cornell University.
 //!
 //! The format and description of each instruction is taken from these sources,
 //! and copied in this file for offline reference.

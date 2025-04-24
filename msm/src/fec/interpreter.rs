@@ -17,7 +17,6 @@ use ark_ff::{PrimeField, Zero};
 use core::marker::PhantomData;
 use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_integer::Integer;
-use num_traits::sign::Signed;
 use o1_utils::field_helpers::FieldHelpers;
 
 /// Convenience function for printing.
@@ -501,7 +500,7 @@ pub fn ec_add_circuit<
     let (q1_bi, r1_bi) = (&slope_bi * (&xp_bi - &xq_bi) - (&yp_bi - &yq_bi)).div_rem(&f_bi);
     assert!(r1_bi.is_zero());
     // Storing negative numbers is a mess.
-    let (q1_bi, q1_sign): (BigInt, F) = if q1_bi.is_negative() {
+    let (q1_bi, q1_sign): (BigInt, F) = if q1_bi < BigInt::zero() {
         (-q1_bi, -F::one())
     } else {
         (q1_bi, F::one())
@@ -510,7 +509,7 @@ pub fn ec_add_circuit<
     // Equation 2: xR - s^2 + xP + xQ - q_2 f = 0
     let (q2_bi, r2_bi) = (&xr_bi - &slope_bi * &slope_bi + &xp_bi + &xq_bi).div_rem(&f_bi);
     assert!(r2_bi.is_zero());
-    let (q2_bi, q2_sign): (BigInt, F) = if q2_bi.is_negative() {
+    let (q2_bi, q2_sign): (BigInt, F) = if q2_bi < BigInt::zero() {
         (-q2_bi, -F::one())
     } else {
         (q2_bi, F::one())
@@ -519,7 +518,7 @@ pub fn ec_add_circuit<
     // Equation 3: yR + yP - s (xP - xR) - q_3 f = 0
     let (q3_bi, r3_bi) = (&yr_bi + &yp_bi - &slope_bi * (&xp_bi - &xr_bi)).div_rem(&f_bi);
     assert!(r3_bi.is_zero());
-    let (q3_bi, q3_sign): (BigInt, F) = if q3_bi.is_negative() {
+    let (q3_bi, q3_sign): (BigInt, F) = if q3_bi < BigInt::zero() {
         (-q3_bi, -F::one())
     } else {
         (q3_bi, F::one())

@@ -122,7 +122,8 @@
 //! [crate::MAX_DEGREE].
 //! Therefore, we can compute 5 full rounds per row by using the "next row"
 //! (i.e. adding an evaluation point at ζω). An implementation is provided in
-//! the gadget [crate::columns::Gadget::Poseidon].
+//! the gadget [crate::column::Gadget::PoseidonFullRound] and
+//! [crate::column::Gadget::PoseidonSpongeAbsorb].
 //!
 //! The layout for the one using the "next row" is as follow (5 full rounds):
 //! ```text
@@ -166,7 +167,9 @@
 //!
 //! #### Gadget layout
 //!
-//! For a (x, y) point and a scalar, we apply the double-and-add algorithm, one step per row.
+//! For a (x, y) point and a scalar, we apply the double-and-add algorithm, one
+//! step per row.
+//!
 //! Therefore, we have 255 rows to compute the scalar multiplication.
 //! For a given step `i`, we have the following values:
 //! - `tmp_x`, `tmp_y`: the temporary values used to keep the double.
@@ -175,7 +178,7 @@
 //! - `r_i` and `r_(i+1)`: scalars such that r_(i+1) = b + 2 * r_i.
 //! - `λ'` and `λ`: the coefficients
 //! - o'_x and o'_y equal to `res_plus_tmp_x` and `res_plus_tmp_y` if `b == 1`,
-//! otherwise equal to `o_x` and `o_y`.
+//!   otherwise equal to `o_x` and `o_y`.
 //!
 //! We have the following layout:
 //!
@@ -277,7 +280,7 @@
 //!
 //! ## Fiat-Shamir challenges
 //!
-//! The challenges sent by the verifier must also be simulated by the IVC
+//! The challenges sent by the verifier must also be simulated by the verifier
 //! circuit. It is done by passing "messages" as public inputs to the next
 //! instances. Diagrams recapitulating the messages that must be passed are
 //! available in the section [Message passing](#message-passing).
@@ -312,7 +315,7 @@
 //! The implementation works as follow:
 //! - Split the constraint in monomials
 //! - For the monomials of degree `d`, compute the contribution when
-//! homogenizing to degree `d'`.
+//!   homogenizing to degree `d'`.
 //! - Sum all the contributions.
 //!
 //! The library [mvpoly] can be used to compute the cross-terms and to
@@ -350,14 +353,14 @@
 //! - `W_(p, n)` for the aggregated witness.
 //! - `C_(p, n)` for the commitment to the witness `w_(p, n)`.
 //! - `acc_(p, n)` for the accumulated commitments to the aggregated witness
-//! `W_(p, n)`.
+//!    `W_(p, n)`.
 //! - `α_(p, n)` for the challenge used to combine constraints.
 //! - `β_(p, n)` and `γ_(p, n)` for the challenge used to for the
-//! permutation argument.
+//!   permutation argument.
 //! - `r_(p, n)` for the challenge used for the accumulation of the
 //! - `t_(p, n, i)` for the evaluations of the cross-terms of degree `i`.
 //! - `Ct_(p, n, i)` for the commitments to the cross-terms of degree `i`.
-//! witness/commitments.
+//!    witness/commitments.
 //! - `u_(p, n)` for the challenge used to homogenize the constraints.
 //! - `o_(p, n)` for the final digest of the sponge state.
 //!
@@ -429,10 +432,147 @@
 //!                                    |                            |
 //!                                    +----------------------------+
 //! ```
+//!
+//! ### Workflow example for handling a challenge
+//!
+//! Handling challenges is performed in two steps. Let's take the example of the
+//! verifier coin `u` used to homogenize the constraints/polynomials in the
+//! accumulation protocol. For the sake of simplicity, we only focus on the work
+//! related to the challenges. In addition to that, a verifier coin `r` is used
+//! to accumulate the challenges. Therefore, we start with the following
+//! diagram:
+//!
+//! ```text
+//! +------------------------------------------+
+//! |            Instance n                    |
+//! |        (witness w_(p, n))                |
+//! |            ----------                    |
+//! |               Vesta                      |
+//! |         (scalar field = Fp)              |
+//! |         (base field   = Fq)              |
+//! |          (Sponge over Fq)                |
+//! |                                          |
+//! | Generate as output:                      |
+//! | - u_(p, n)                               |
+//! | - r                                      |
+//! | - "accumulated u": u_p + r * u_(p, n)    |
+//! |     (note the operations are over Fp)    |
+//! +------------------------------------------+
+//! ```
+//!
+//! The coins `u_(p, n)` and `r` are generated after absorbing a few committed
+//! values (i.e. points over Fq). The verifier will have to check the following:
+//! - `u_(p, n)` has been coined correctly (i.e. check a sponge state).
+//! - `r` has been coined correctly (i.e. check a sponge staet).
+//! - "accumulated u" has been computed correctly
+//!
+//! At the next iteration, the verifier is working over the field `Fq`, i.e. the
+//! field that is used to generate the challenges. Therefore, it can perform the
+//! first two checks. We have then the following diagram.
+//!
+//! ```text
+//! +------------------------------------------+
+//! |            Instance n                    |
+//! |        (witness w_(p, n))                |
+//! |            ----------                    |
+//! |               Vesta                      |
+//! |         (scalar field = Fp)              |
+//! |         (base field   = Fq)              |
+//! |          (Sponge over Fq)                |
+//! |                                          |
+//! | Generate as output:                      |
+//! | - u_(p, n)                               |
+//! | - r                                      |
+//! | - "accumulated u": u_p + r * u_(p, n)    |
+//! |     (note the operations are over Fp)    |
+//! +------------------------------------------+
+//!       |
+//!       |
+//!       |
+//!       |               +-----------------------------+
+//!       |               |       Instance (n + 1)      |
+//!       |               |      (witness w_(q, n))     |
+//!       |-------------> |          ----------         |
+//!                       |          Pallas             |
+//!                       |    (scalar field = Fq)      |
+//!                       |    (base field   = Fp)      |
+//!                       |     (Sponge over Fp)        |
+//!                       |                             |
+//!                       |     Receive as (public)     |
+//!                       |           inputs            |
+//!                       |       ---------------       |
+//!                       | - commitments generated     |
+//!                       | by instance n (Fq elements) |
+//!                       | - u_(p, n)                  |
+//!                       | - r                         |
+//!                       | - (more but unused by       |
+//!                       | the verifier)               |
+//!                       |                             |
+//!                       |      Verifier circuit       |
+//!                       |      ----------------       |
+//!                       | - run the sponge to         |
+//!                       | check the value u_(p, n)    |
+//!                       | and r                       |
+//!                       +-----------------------------+
+//! ```
+//!
+//! The last check, i.e. checking the accumulation of `u`, is "delayed" for the
+//! instance (n + 2), to be able to perform the accumulation over Fp.
+//!
+//! Therefore, we end up with the following diagram:
+//!
+//! ```text
+//! +------------------------------------------+            +-------------------------------------+
+//! |            Instance n                    |            |            Instance (n + 2)         |
+//! |        (witness w_(p, n))                |            |         (witness w_(p, n + 1))      |
+//! |            ----------                    |            |            ----------               |
+//! |               Vesta                      |            |               Vesta                 |
+//! |         (scalar field = Fp)              |            |         (scalar field = Fp)         |
+//! |         (base field   = Fq)              |            |         (base field   = Fq)         |
+//! |          (Sponge over Fq)                |            |          (Sponge over Fq)           |
+//! |                                          |            |                                     |
+//!            Generate as output:             |            |        Receive as (public inputs)   |
+//!              ---------------               |            |           -------------------       |
+//! | - u_(p, n)                               |            | - `u_(p, n)`                        |
+//! | - r                                      |            | - accumulated u, `acc_u`            |
+//! | - "accumulated u": u_p + r * u_(p, n)    |            | - random coin `r`                   |
+//! |     (note the operations are over Fp)    |            | - "old accumulated value" u_p       |
+//! +------------------------------------------+            |           Verifier circuit          |
+//!       |                                                 |           ----------------          |
+//!       |                                                 | - check that                        |
+//!       |                                                 | `acc_u = u_p + r * u_(p, n)`        |
+//!       |                                                 +-------------------------------------+
+//!       |                                                                 ^
+//!       |                                                                 |
+//!       |                                                                 |
+//!       |               +-----------------------------+                   |
+//!       |               |       Instance (n + 1)      |                   |
+//!       |               |      (witness w_(q, n))     |                   |
+//!       |-------------> |          ----------         |  ------------------
+//!                       |          Pallas             |
+//!                       |    (scalar field = Fq)      |
+//!                       |    (base field   = Fp)      |
+//!                       |     (Sponge over Fp)        |
+//!                       |                             |
+//!                       |     Receive as (public)     |
+//!                       |           inputs            |
+//!                       |       ---------------       |
+//!                       | - commitments generated     |
+//!                       | by instance n (Fq elements) |
+//!                       | - u_(p, n)                  |
+//!                       | - r                         |
+//!                       | - (more but unused by       |
+//!                       | the verifier)               |
+//!                       |                             |
+//!                       |      Verifier circuit       |
+//!                       |      ----------------       |
+//!                       | - run the sponge to         |
+//!                       | check the value u_(p, n)    |
+//!                       | and r                       |
+//!                       +-----------------------------+
+//! ```
 
-use crate::{
-    columns::Gadget, curve::PlonkSpongeConstants, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS,
-};
+use crate::{curve::PlonkSpongeConstants, MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS};
 use ark_ff::{One, Zero};
 use log::debug;
 use mina_poseidon::constants::SpongeConstants;
@@ -443,8 +583,8 @@ use num_bigint::BigInt;
 /// `fetch_next_instruction` and `fetch_instruction` on a witness environnement.
 /// See the [Witness environment](crate::witness::Env) for more details.
 ///
-/// Mostly, the instructions will be used to build the IVC circuit, but it can be
-/// generalized.
+/// Mostly, the instructions will be used to build the verifier circuit, but it
+/// can be generalized.
 ///
 /// When the circuit is predefined, the instructions can be accompanied by a
 /// public selector. When implementing a virtual machine, where instructions are
@@ -457,17 +597,34 @@ use num_bigint::BigInt;
 #[derive(Copy, Clone, Debug)]
 pub enum Instruction {
     /// This gadget implement the Poseidon hash instance described in the
-    /// top-level documentation. Compared to the previous one (that might be
-    /// deprecated in the future), this implementation does use the "next row"
-    /// to allow the computation of one additional round per row. In the current
-    /// setup, with [NUMBER_OF_COLUMNS] columns, we can compute 5 full rounds
-    /// per row.
-    Poseidon(usize),
+    /// top-level documentation. In the current setup, with [NUMBER_OF_COLUMNS]
+    /// columns, we can compute 5 full rounds per row.
+    ///
+    /// We split the Poseidon gadget in 13 sub-gadgets, one for each set of 5
+    /// full rounds and one for the absorbtion. The parameter is the starting
+    /// round of the permutation. It is expected to be a multiple of five.
+    ///
+    /// Note that, for now, the gadget can only be used by the verifier circuit.
+    PoseidonFullRound(usize),
+    /// Absorb [PlonkSpongeConstants::SPONGE_WIDTH - 1] elements into the
+    /// sponge. The elements are absorbed into the last
+    /// [PlonkSpongeConstants::SPONGE_WIDTH - 1] elements of the sponge state.
+    ///
+    /// The values to be absorbed depend on the state of the environment while
+    /// executing this instruction.
+    ///
+    /// Note that, for now, the gadget can only be used by the verifier circuit.
+    PoseidonSpongeAbsorb,
     EllipticCurveScaling(usize, u64),
     EllipticCurveAddition(usize),
     // The NoOp will simply do nothing
     NoOp,
 }
+
+/// The first instruction in the verifier circuit (often shortened in "IVC" in
+/// the crate) is the Poseidon permutation. It is used to start hashing the
+/// public input.
+pub const VERIFIER_STARTING_INSTRUCTION: Instruction = Instruction::PoseidonSpongeAbsorb;
 
 /// Define the side of the temporary accumulator.
 /// When computing G1 + G2, the interpreter will load G1 and after that G2.
@@ -491,10 +648,10 @@ pub trait InterpreterEnv {
     /// When instantiating as expressions - "constraints" - it defines
     /// multivariate polynomials.
     type Variable: Clone
-        + std::ops::Add<Self::Variable, Output = Self::Variable>
-        + std::ops::Sub<Self::Variable, Output = Self::Variable>
-        + std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::fmt::Debug
+        + core::ops::Add<Self::Variable, Output = Self::Variable>
+        + core::ops::Sub<Self::Variable, Output = Self::Variable>
+        + core::ops::Mul<Self::Variable, Output = Self::Variable>
+        + core::fmt::Debug
         + Zero
         + One;
 
@@ -507,18 +664,8 @@ pub trait InterpreterEnv {
     /// Return the corresponding variable at the given position
     fn read_position(&self, pos: Self::Position) -> Self::Variable;
 
-    fn allocate_public_input(&mut self) -> Self::Position;
-
     /// Set the value of the variable at the given position for the current row
     fn write_column(&mut self, col: Self::Position, v: Self::Variable) -> Self::Variable;
-
-    /// Write the corresponding public inputs.
-    // FIXME: This design might not be the best. Feel free to come up with a
-    // better solution. The PI should be static for all witnesses
-    fn write_public_input(&mut self, x: Self::Position, v: BigInt) -> Self::Variable;
-
-    /// Activate the gadget for the row.
-    fn activate_gadget(&mut self, gadget: Gadget);
 
     /// Build the constant zero
     fn zero(&self) -> Self::Variable;
@@ -545,9 +692,9 @@ pub trait InterpreterEnv {
     ///
     /// # Safety
     ///
-    /// There are no constraints on the returned value; callers must assert the relationship with
-    /// the source variable `x` and that the returned value fits in `highest_bit - lowest_bit`
-    /// bits.
+    /// There are no constraints on the returned value; callers must assert the
+    /// relationship with the source variable `x` and that the returned value
+    /// fits in `highest_bit - lowest_bit` bits.
     unsafe fn bitmask_be(
         &mut self,
         x: &Self::Variable,
@@ -584,18 +731,17 @@ pub trait InterpreterEnv {
     /// It does not have any effect on the constraints
     unsafe fn save_poseidon_state(&mut self, v: Self::Variable, i: usize);
 
-    fn get_poseidon_round_constant(
-        &mut self,
-        pos: Self::Position,
-        round: usize,
-        i: usize,
-    ) -> Self::Variable;
+    /// Return the Poseidon round constants as a constant.
+    fn get_poseidon_round_constant(&self, round: usize, i: usize) -> Self::Variable;
 
     /// Return the requested MDS matrix coefficient
     fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable;
 
-    /// Load the public value to absorb at the current step.
-    /// The position should be a public column.
+    /// Load the value to absorb at the current step at the position given by
+    /// `pos`.
+    ///
+    /// The values and the absorption order is defined by the
+    /// state of the environment itself.
     ///
     /// IMPROVEME: we could have in the environment an heterogeneous typed list,
     /// and we pop values call after call. However, we try to keep the
@@ -604,11 +750,7 @@ pub trait InterpreterEnv {
     /// # Safety
     ///
     /// No constraint is added. It should be used with caution.
-    unsafe fn fetch_value_to_absorb(
-        &mut self,
-        pos: Self::Position,
-        curr_round: usize,
-    ) -> Self::Variable;
+    unsafe fn fetch_value_to_absorb(&mut self, pos: Self::Position) -> Self::Variable;
     // -------------------------
 
     /// Check if the points given by (x1, y1) and (x2, y2) are equals.
@@ -639,6 +781,7 @@ pub trait InterpreterEnv {
     /// Compute the coefficient λ used in the elliptic curve addition.
     /// If the two points are the same, the λ is computed as follows:
     /// - λ = (3 X1^2 + a) / (2Y1)
+    ///
     /// Otherwise, the λ is computed as follows:
     /// - λ = (Y1 - Y2) / (X1 - X2)
     fn compute_lambda(
@@ -717,12 +860,14 @@ pub fn run_app<E: InterpreterEnv>(env: &mut E) {
 /// 2. Compute the elliptic curve addition.
 /// 3. Run the polynomial-time function.
 /// 4. Compute the hash of the output.
+///
 /// The environment is updated over time.
 /// When the environment is the one described in the [Witness
 /// environment](crate::witness::Env), the structure will be updated
 /// with the new accumulator, the new public input, etc. The public output will
 /// be in the structure also. The user can simply rerun the function for the
 /// next iteration.
+///
 /// A row must be created to generate a challenge to combine the constraints
 /// later. The challenge will be also accumulated over time.
 ///
@@ -734,7 +879,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             assert!(processing_bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Invalid bit index. The fields are maximum on {MAXIMUM_FIELD_SIZE_IN_BITS} bits, therefore we cannot process the bit {processing_bit}");
             assert!(i_comm < NUMBER_OF_COLUMNS, "Invalid index. We do only support the scaling of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms");
             debug!("Processing scaling of commitment {i_comm}, bit {processing_bit}");
-            env.activate_gadget(Gadget::EllipticCurveScaling);
             // When processing the first bit, we must load the scalar, and it
             // comes from previous computation.
             // The two first columns are supposed to be used for the output.
@@ -878,7 +1022,6 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             };
         }
         Instruction::EllipticCurveAddition(i_comm) => {
-            env.activate_gadget(Gadget::EllipticCurveAddition);
             assert!(i_comm < NUMBER_OF_COLUMNS, "Invalid index. We do only support the addition of the commitments to the columns, for now. We must additionally support the scaling of cross-terms and error terms");
             let (x1, y1) = {
                 let x1 = env.allocate();
@@ -920,116 +1063,172 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 env.write_column(pos, res)
             };
         }
-        Instruction::Poseidon(curr_round) => {
-            env.activate_gadget(Gadget::Poseidon);
-            debug!("Executing instruction Poseidon({curr_round})");
-            if curr_round < PlonkSpongeConstants::PERM_ROUNDS_FULL {
-                // Values to be absorbed are 0 when when the round is not zero,
-                // i.e. when we are processing the rounds.
-                let values_to_absorb: Vec<E::Variable> = (0..PlonkSpongeConstants::SPONGE_WIDTH
-                    - 1)
-                    .map(|_i| {
-                        let pos = env.allocate_public_input();
-                        // fetch_value_to_absorb is supposed to return 0 if curr_round != 0.
-                        unsafe { env.fetch_value_to_absorb(pos, curr_round) }
+        Instruction::PoseidonFullRound(starting_round) => {
+            assert!(
+                starting_round < PlonkSpongeConstants::PERM_ROUNDS_FULL,
+                "Invalid round index. Only values below {} are allowed.",
+                PlonkSpongeConstants::PERM_ROUNDS_FULL
+            );
+            assert!(
+                starting_round % 5 == 0,
+                "Invalid round index. Only values that are multiple of 5 are allowed."
+            );
+            debug!(
+                "Executing instruction Poseidon starting from round {starting_round} to {}",
+                starting_round + 5
+            );
+
+            let round_input_positions: Vec<E::Position> = (0..PlonkSpongeConstants::SPONGE_WIDTH)
+                .map(|_i| env.allocate())
+                .collect();
+
+            let round_output_positions: Vec<E::Position> = (0..PlonkSpongeConstants::SPONGE_WIDTH)
+                .map(|_i| env.allocate_next_row())
+                .collect();
+
+            let state: Vec<E::Variable> = if starting_round == 0 {
+                round_input_positions
+                    .iter()
+                    .enumerate()
+                    .map(|(i, pos)| env.load_poseidon_state(*pos, i))
+                    .collect()
+            } else {
+                round_input_positions
+                    .iter()
+                    .map(|pos| env.read_position(*pos))
+                    .collect()
+            };
+
+            // 5 is the number of rounds we treat per row
+            (0..5).fold(state, |state, idx_round| {
+                let state: Vec<E::Variable> =
+                    state.iter().map(|x| env.compute_x5(x.clone())).collect();
+
+                let round = starting_round + idx_round;
+
+                let rcs: Vec<E::Variable> = (0..PlonkSpongeConstants::SPONGE_WIDTH)
+                    .map(|i| env.get_poseidon_round_constant(round, i))
+                    .collect();
+
+                let state: Vec<E::Variable> = rcs
+                    .iter()
+                    .enumerate()
+                    .map(|(i, rc)| {
+                        let acc: E::Variable =
+                            state.iter().enumerate().fold(env.zero(), |acc, (j, x)| {
+                                acc + env.get_poseidon_mds_matrix(i, j) * x.clone()
+                            });
+                        // The last iteration is written on the next row.
+                        if idx_round == 4 {
+                            env.write_column(round_output_positions[i], acc + rc.clone())
+                        } else {
+                            // Otherwise, we simply allocate a new position
+                            // in the circuit.
+                            let pos = env.allocate();
+                            env.write_column(pos, acc + rc.clone())
+                        }
                     })
                     .collect();
-                let round_input_positions: Vec<E::Position> = (0
-                    ..PlonkSpongeConstants::SPONGE_WIDTH)
-                    .map(|_i| env.allocate())
-                    .collect();
-                let round_output_positions: Vec<E::Position> = (0
-                    ..PlonkSpongeConstants::SPONGE_WIDTH)
-                    .map(|_i| env.allocate_next_row())
-                    .collect();
-                // If we are at the first round, we load the state from the environment.
-                // The permutation argument is used to load the state the
-                // current call to Poseidon might be a succession of Poseidon
-                // calls, like when we need to hash the public inputs, and the
-                // state might be from a previous place in the execution trace.
-                let state: Vec<E::Variable> = if curr_round == 0 {
-                    round_input_positions
-                        .iter()
-                        .enumerate()
-                        .map(|(i, pos)| {
-                            let res = env.load_poseidon_state(*pos, i);
-                            // Absorb value. The capacity is
-                            // PlonkSpongeConstants::SPONGE_WIDTH - 1
-                            if i < PlonkSpongeConstants::SPONGE_WIDTH - 1 {
-                                res + values_to_absorb[i].clone()
-                            } else {
-                                res
-                            }
-                        })
-                        .collect()
-                } else {
-                    // Otherwise, as we do use the "next row" trick, the current
-                    // state has been loaded in the "next_row" state during the
-                    // previous call, and we can simply load it. No permutation
-                    // argument needed.
-                    round_input_positions
-                        .iter()
-                        .map(|pos| env.read_position(*pos))
-                        .collect()
+
+                // If we are at the last round, we save the state in the
+                // environment.
+                // FIXME/IMPROVEME: we might want to execute more Poseidon
+                // full hash in sequentially, and then save one row. For
+                // now, we will save the state at the end of the last round
+                // and reload it at the beginning of the next Poseidon full
+                // hash.
+                if round == PlonkSpongeConstants::PERM_ROUNDS_FULL - 1 {
+                    state.iter().enumerate().for_each(|(i, x)| {
+                        unsafe { env.save_poseidon_state(x.clone(), i) };
+                    });
                 };
 
-                // 5 is the number of rounds we treat per row
-                (0..5).fold(state, |state, idx_round| {
-                    let state: Vec<E::Variable> =
-                        state.iter().map(|x| env.compute_x5(x.clone())).collect();
+                state
+            });
+        }
+        Instruction::PoseidonSpongeAbsorb => {
+            let round_input_positions: Vec<E::Position> = (0..PlonkSpongeConstants::SPONGE_WIDTH
+                - 1)
+                .map(|_i| env.allocate())
+                .collect();
 
-                    let round = curr_round + idx_round;
+            let state: Vec<E::Variable> = round_input_positions
+                .iter()
+                .enumerate()
+                .map(|(i, pos)| env.load_poseidon_state(*pos, i + 1))
+                .collect();
 
-                    let rcs: Vec<E::Variable> = (0..PlonkSpongeConstants::SPONGE_WIDTH)
-                        .map(|i| {
-                            let pos = env.allocate_public_input();
-                            env.get_poseidon_round_constant(pos, round, i)
-                        })
-                        .collect();
+            let values_to_absorb: Vec<E::Variable> = (0..PlonkSpongeConstants::SPONGE_WIDTH - 1)
+                .map(|_i| unsafe {
+                    let pos = env.allocate();
+                    env.fetch_value_to_absorb(pos)
+                })
+                .collect();
 
-                    let state: Vec<E::Variable> = rcs
-                        .iter()
-                        .enumerate()
-                        .map(|(i, rc)| {
-                            let acc: E::Variable =
-                                state.iter().enumerate().fold(env.zero(), |acc, (j, x)| {
-                                    acc + env.get_poseidon_mds_matrix(i, j) * x.clone()
-                                });
-                            // The last iteration is written on the next row.
-                            if idx_round == 4 {
-                                env.write_column(round_output_positions[i], acc + rc.clone())
-                            } else {
-                                // Otherwise, we simply allocate a new position
-                                // in the circuit.
-                                let pos = env.allocate();
-                                env.write_column(pos, acc + rc.clone())
-                            }
-                        })
-                        .collect();
-                    // If we are at the last round, we save the state in the
-                    // environment.
-                    // FIXME/IMPROVEME: we might want to execute more Poseidon
-                    // full hash in sequentially, and then save one row. For
-                    // now, we will save the state at the end of the last round
-                    // and reload it at the beginning of the next Poseidon full
-                    // hash.
-                    if round == PlonkSpongeConstants::PERM_ROUNDS_FULL - 1 {
-                        state.iter().enumerate().for_each(|(i, x)| {
-                            unsafe { env.save_poseidon_state(x.clone(), i) };
-                        });
-                    };
-                    state
-                });
-            } else {
-                panic!(
-                    "Invalid index: it is supposed to be less than {}",
-                    PlonkSpongeConstants::PERM_ROUNDS_FULL
-                );
-            }
+            let output: Vec<E::Variable> = state
+                .iter()
+                .zip(values_to_absorb.iter())
+                .map(|(s, v)| {
+                    let pos = env.allocate();
+                    env.write_column(pos, s.clone() + v.clone())
+                })
+                .collect();
+
+            output
+                .iter()
+                .enumerate()
+                .for_each(|(i, o)| unsafe { env.save_poseidon_state(o.clone(), i + 1) })
         }
         Instruction::NoOp => {}
     }
 
     // Compute the hash of the public input
     // FIXME: add the verification key. We should have a hash of it.
+}
+
+/// Describe the control-flow for the verifier circuit.
+pub fn fetch_next_instruction(current_instruction: Instruction) -> Instruction {
+    match current_instruction {
+        Instruction::PoseidonFullRound(i) => {
+            if i < PlonkSpongeConstants::PERM_ROUNDS_FULL - 5 {
+                Instruction::PoseidonFullRound(i + 5)
+            } else {
+                // FIXME: for now, we continue absorbing because the current
+                // code, while fetching the values to absorb, raises an
+                // exception when we absorbed everythimg, and the main file
+                // handles the halt by filling as many rows as expected (see
+                // [VERIFIER_CIRCUIT_SIZE]).
+                Instruction::PoseidonSpongeAbsorb
+            }
+        }
+        Instruction::PoseidonSpongeAbsorb => {
+            // Whenever we absorbed a value, we run the permutation.
+            Instruction::PoseidonFullRound(0)
+        }
+        Instruction::EllipticCurveScaling(i_comm, bit) => {
+            // TODO: we still need to substract (or not?) the blinder.
+            // Maybe we can avoid this by aggregating them.
+            // TODO: we also need to aggregate the cross-terms.
+            // Therefore i_comm must also take into the account the number
+            // of cross-terms.
+            assert!(i_comm < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
+            assert!(bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Maximum number of bits reached ({MAXIMUM_FIELD_SIZE_IN_BITS}), increase the number of bits");
+            if bit < MAXIMUM_FIELD_SIZE_IN_BITS - 1 {
+                Instruction::EllipticCurveScaling(i_comm, bit + 1)
+            } else if i_comm < NUMBER_OF_COLUMNS - 1 {
+                Instruction::EllipticCurveScaling(i_comm + 1, 0)
+            } else {
+                // We have computed all the bits for all the columns
+                Instruction::NoOp
+            }
+        }
+        Instruction::EllipticCurveAddition(i_comm) => {
+            if i_comm < NUMBER_OF_COLUMNS - 1 {
+                Instruction::EllipticCurveAddition(i_comm + 1)
+            } else {
+                Instruction::NoOp
+            }
+        }
+        Instruction::NoOp => Instruction::NoOp,
+    }
 }

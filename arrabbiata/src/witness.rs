@@ -2,27 +2,257 @@ use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
 use ark_poly::Evaluations;
 use kimchi::circuits::{domains::EvaluationDomains, gate::CurrOrNext};
-use log::{debug, info};
+use log::debug;
 use mina_poseidon::constants::SpongeConstants;
 use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::time::Instant;
 
 use crate::{
-    columns::{Column, Gadget},
+    challenge::{ChallengeTerm, Challenges},
+    column::Column,
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
-    interpreter::{Instruction, InterpreterEnv, Side},
-    MAXIMUM_FIELD_SIZE_IN_BITS, NUMBER_OF_COLUMNS, NUMBER_OF_PUBLIC_INPUTS, NUMBER_OF_SELECTORS,
-    NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    interpreter::{Instruction, InterpreterEnv, Side, VERIFIER_STARTING_INSTRUCTION},
+    setup, NUMBER_OF_COLUMNS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
-/// The first instruction in the verifier circuit (often shortened in "IVC" in
-/// the crate) is the Poseidon permutation. It is used to start hashing the
-/// public input.
-pub const IVC_STARTING_INSTRUCTION: Instruction = Instruction::Poseidon(0);
+/// A running program that the (folding) interpreter has access to.
+pub struct Program<
+    Fp: PrimeField,
+    Fq: PrimeField,
+    E: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
+> where
+    E::BaseField: PrimeField,
+    <<E as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+{
+    /// Commitments to the accumulated program state.
+    ///
+    /// In Nova language, this is the commitment to the witness accumulator.
+    pub accumulated_committed_state: Vec<PolyComm<E>>,
+
+    /// Commitments to the previous program states.
+    ///
+    /// In Nova language, this is the commitment to the previous witness.
+    pub previous_committed_state: Vec<PolyComm<E>>,
+
+    /// Accumulated witness for the program state.
+    ///
+    /// In Nova language, this is the accumulated witness W.
+    ///
+    /// The size of the outer vector must be equal to the number of columns in
+    /// the circuit.
+    /// The size of the inner vector must be equal to the number of rows in
+    /// the circuit.
+    pub accumulated_program_state: Vec<Vec<E::ScalarField>>,
+
+    /// List of the accumulated challenges over time.
+    pub accumulated_challenges: Challenges<BigInt>,
+
+    /// Challenges during the last computation.
+    /// This field is useful to keep track of the challenges that must be
+    /// verified in circuit.
+    pub previous_challenges: Challenges<BigInt>,
+}
+
+impl<Fp: PrimeField, Fq: PrimeField, E: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>>
+    Program<Fp, Fq, E>
+where
+    E::BaseField: PrimeField,
+    <<E as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+{
+    pub fn new(srs_size: usize, blinder: E) -> Self {
+        // Default set to the blinders. Using double to make the EC scaling happy.
+        let previous_committed_state: Vec<PolyComm<E>> = (0..NUMBER_OF_COLUMNS)
+            .map(|_| PolyComm::new(vec![(blinder + blinder).into()]))
+            .collect();
+
+        // FIXME: zero will not work.
+        let accumulated_committed_state: Vec<PolyComm<E>> = (0..NUMBER_OF_COLUMNS)
+            .map(|_| PolyComm::new(vec![blinder]))
+            .collect();
+
+        let mut accumulated_program_state: Vec<Vec<E::ScalarField>> =
+            Vec::with_capacity(NUMBER_OF_COLUMNS);
+        {
+            let mut vec: Vec<E::ScalarField> = Vec::with_capacity(srs_size);
+            (0..srs_size).for_each(|_| vec.push(E::ScalarField::zero()));
+            (0..NUMBER_OF_COLUMNS).for_each(|_| accumulated_program_state.push(vec.clone()));
+        };
+
+        let accumulated_challenges: Challenges<BigInt> = Challenges::default();
+
+        let previous_challenges: Challenges<BigInt> = Challenges::default();
+
+        Self {
+            accumulated_committed_state,
+            previous_committed_state,
+            accumulated_program_state,
+            accumulated_challenges,
+            previous_challenges,
+        }
+    }
+
+    /// Commit to the program state and updating the environment with the
+    /// result.
+    ///
+    /// This method is supposed to be called after a new iteration of the
+    /// program has been executed.
+    pub fn commit_state(
+        &mut self,
+        srs: &SRS<E>,
+        domain: EvaluationDomains<E::ScalarField>,
+        witness: &[Vec<BigInt>],
+    ) {
+        let comms: Vec<PolyComm<E>> = witness
+            .par_iter()
+            .map(|evals| {
+                let evals: Vec<E::ScalarField> = evals
+                    .par_iter()
+                    .map(|x| E::ScalarField::from_biguint(&x.to_biguint().unwrap()).unwrap())
+                    .collect();
+                let evals = Evaluations::from_vec_and_domain(evals, domain.d1);
+                srs.commit_evaluations_non_hiding(domain.d1, &evals)
+            })
+            .collect();
+        self.previous_committed_state = comms
+    }
+
+    /// Absorb the last committed program state in the correct sponge.
+    ///
+    /// For a description of the messages to be given to the sponge, including
+    /// the expected instantiation, refer to the section "Message Passing" in
+    /// [crate::interpreter].
+    pub fn absorb_state(&mut self, digest: BigInt) -> Vec<BigInt> {
+        let mut sponge = E::create_new_sponge();
+        let previous_state: E::BaseField =
+            E::BaseField::from_biguint(&digest.to_biguint().unwrap()).unwrap();
+        E::absorb_fq(&mut sponge, previous_state);
+        self.previous_committed_state
+            .iter()
+            .for_each(|comm| E::absorb_curve_points(&mut sponge, &comm.chunks));
+        let state: Vec<BigInt> = sponge
+            .sponge
+            .state
+            .iter()
+            .map(|x| x.to_biguint().into())
+            .collect();
+        state
+    }
+
+    /// Simulate an interaction with the verifier by requesting to coin a
+    /// challenge from the current prover sponge state.
+    ///
+    /// This method supposes that all the messages have been sent to the
+    /// verifier previously, and the attribute [self.prover_sponge_state] has
+    /// been updated accordingly by absorbing all the messages correctly.
+    ///
+    /// The side-effect of this method will be to run a permutation on the
+    /// sponge state _after_ coining the challenge.
+    /// There is an hypothesis on the sponge state that the inner permutation
+    /// has been correctly executed if the absorbtion rate had been reached at
+    /// the last absorbtion.
+    ///
+    /// The challenge will be added to the [self.challenges] attribute at the
+    /// position given by the challenge `chal`.
+    ///
+    /// Internally, the method is implemented by simply loading the prover
+    /// sponge state, and squeezing a challenge from it, relying on the
+    /// implementation of the sponge. Usually, the challenge would be the first
+    /// N bits of the first element, but it is left as an implementation detail
+    /// of the sponge given by the curve.
+    pub fn coin_challenge(&self, sponge_state: Vec<BigInt>) -> (BigInt, Vec<BigInt>) {
+        let mut sponge = E::create_new_sponge();
+        sponge_state.iter().for_each(|x| {
+            E::absorb_fq(
+                &mut sponge,
+                E::BaseField::from_biguint(&x.to_biguint().unwrap()).unwrap(),
+            )
+        });
+        let verifier_answer = E::squeeze_challenge(&mut sponge).to_biguint().into();
+        sponge.sponge.poseidon_block_cipher();
+        let state: Vec<BigInt> = sponge
+            .sponge
+            .state
+            .iter()
+            .map(|x| x.to_biguint().into())
+            .collect();
+        (verifier_answer, state)
+    }
+
+    /// Accumulate the program state (or in other words,
+    /// the witness), by adding the last computed program state into the
+    /// program state accumulator.
+    ///
+    /// This method is supposed to be called after the program state has been
+    /// committed (by calling [self.commit_state]) and absorbed (by calling
+    /// [self.absorb_state]). The "relation randomiser" must also have been
+    /// coined and saved in the environment before, by calling
+    /// [self.coin_challenge].
+    ///
+    /// The program state is accumulated into a different accumulator, depending
+    /// on the curve currently being used.
+    ///
+    /// This is part of the work the prover of the accumulation/folding scheme.
+    ///
+    /// This must translate the following equation:
+    /// ```text
+    /// acc_(p, n + 1) = acc_(p, n) * chal w
+    ///               OR
+    /// acc_(q, n + 1) = acc_(q, n) * chal w
+    /// ```
+    /// where acc and w are vectors of the same size.
+    pub fn accumulate_program_state(&mut self, chal: BigInt, witness: &[Vec<BigInt>]) {
+        let modulus: BigInt = E::ScalarField::modulus_biguint().into();
+        self.accumulated_program_state = self
+            .accumulated_program_state
+            .iter()
+            .zip(witness.iter()) // This iterate over the columns
+            .map(|(evals_accumulator, evals_witness)| {
+                evals_accumulator
+                    .iter()
+                    .zip(evals_witness.iter()) // This iterate over the rows
+                    .map(|(acc, w)| {
+                        let rhs: BigInt = (chal.clone() * w).mod_floor(&modulus);
+                        let rhs: BigUint = rhs.to_biguint().unwrap();
+                        let res = E::ScalarField::from_biguint(&rhs).unwrap();
+                        *acc + res
+                    })
+                    .collect()
+            })
+            .collect();
+    }
+
+    /// Accumulate the committed state by adding the last committed state into
+    /// the committed state accumulator.
+    ///
+    /// The commitments are accumulated into a different accumulator, depending
+    /// on the curve currently being used.
+    ///
+    /// This is part of the work the prover of the accumulation/folding scheme.
+    ///
+    /// This must translate the following equation:
+    /// ```text
+    /// C_(p, n + 1) = C_(p, n) + chal * comm
+    ///               OR
+    /// C_(q, n + 1) = C_(q, n) + chal * comm
+    /// ```
+    ///
+    /// Note that the committed program state is encoded in
+    /// [crate::NUMBER_OF_COLUMNS] values, therefore we must iterate over all
+    /// the columns to accumulate the committed state.
+    pub fn accumulate_committed_state(&mut self, chal: BigInt) {
+        let chal: BigUint = chal.to_biguint().unwrap();
+        let chal: E::ScalarField = E::ScalarField::from_biguint(&chal).unwrap();
+        self.accumulated_committed_state = self
+            .accumulated_committed_state
+            .iter()
+            .zip(self.previous_committed_state.iter())
+            .map(|(l, r)| l + &r.scale(chal))
+            .collect();
+    }
+}
 
 /// An environment is used to contain the state of a long "running program".
 ///
@@ -52,35 +282,17 @@ pub struct Env<
 > where
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
+    <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
-    // ----------------
-    // Setup related (domains + SRS)
-    /// Domain for Fp
-    pub domain_fp: EvaluationDomains<E1::ScalarField>,
+    /// The relation this witness environment is related to.
+    pub indexed_relation: setup::IndexedRelation<Fp, Fq, E1, E2>,
 
-    /// Domain for Fq
-    pub domain_fq: EvaluationDomains<E2::ScalarField>,
+    /// Program state for curve E1
+    pub program_e1: Program<Fp, Fq, E1>,
 
-    /// SRS for the first curve
-    pub srs_e1: SRS<E1>,
-
-    /// SRS for the second curve
-    pub srs_e2: SRS<E2>,
-    // ----------------
-
-    // ----------------
-    // Information related to the IVC, which will be used by the prover/verifier
-    // at the end of the whole execution
-    // FIXME: use a blinded comm and also fold the blinder
-    pub ivc_accumulator_e1: Vec<PolyComm<E1>>,
-
-    // FIXME: use a blinded comm and also fold the blinder
-    pub ivc_accumulator_e2: Vec<PolyComm<E2>>,
-
-    /// Commitments to the previous program states.
-    pub previous_committed_state_e1: Vec<PolyComm<E1>>,
-    pub previous_committed_state_e2: Vec<PolyComm<E2>>,
-    // ----------------
+    /// Program state for curve E2
+    pub program_e2: Program<Fq, Fp, E2>,
 
     // ----------------
     // Data only used by the interpreter while building the witness over time
@@ -107,27 +319,13 @@ pub struct Env<
     /// evaluate at ζ and ζω.
     pub next_state: [BigInt; NUMBER_OF_COLUMNS],
 
-    /// Contain the public state
-    // FIXME: I don't like this design. Feel free to suggest a better solution
-    pub public_state: [BigInt; NUMBER_OF_PUBLIC_INPUTS],
-
-    /// Selectors to activate the gadgets.
-    /// The size of the outer vector must be equal to the number of gadgets in
-    /// the circuit.
-    /// The size of the inner vector must be equal to the number of rows in
-    /// the circuit.
-    ///
-    /// The layout columns/rows is used to avoid rebuilding the arrays per
-    /// column when committing to the witness.
-    pub selectors: Vec<Vec<bool>>,
-
     /// While folding, we must keep track of the challenges the verifier would
     /// have sent in the SNARK, and we must aggregate them.
     // FIXME: nothing is done yet, and the challenges haven't been decided yet.
     // See top-level documentation of the interpreter for more information.
-    pub challenges: Vec<BigInt>,
+    pub challenges: Challenges<BigInt>,
 
-    /// Keep the current executed instruction
+    /// Keep the current executed instruction.
     /// This can be used to identify which gadget the interpreter is currently
     /// building.
     pub current_instruction: Instruction,
@@ -155,7 +353,7 @@ pub struct Env<
     /// state.
     pub verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
 
-    /// The current iteration of the IVC
+    /// The current iteration of the IVC.
     pub current_iteration: u64,
 
     /// The digest of the program state before executing the last iteration.
@@ -197,8 +395,8 @@ pub struct Env<
     pub idx_values_to_absorb: usize,
     // ----------------
     /// The witness of the current instance of the circuit.
-    /// The size of the outer vector must be equal to the number of columns in the
-    /// circuit.
+    /// The size of the outer vector must be equal to the number of columns in
+    /// the circuit.
     /// The size of the inner vector must be equal to the number of rows in
     /// the circuit.
     ///
@@ -214,19 +412,8 @@ pub struct Env<
     /// Current input
     pub zi: BigInt,
     // ---------------
-
-    // ---------------
-    // Only used to have type safety and think about the design at the
-    // type-level
-    pub _marker: std::marker::PhantomData<(Fp, Fq, E1, E2)>,
-    // ---------------
 }
 
-// The condition on the parameters for E1 and E2 is to get the coefficients and
-// convert them into biguint.
-// The condition SWModelParameters is to get the parameters of the curve as
-// biguint to use them to compute the slope in the elliptic curve addition
-// algorithm.
 impl<
         Fp: PrimeField,
         Fq: PrimeField,
@@ -236,6 +423,8 @@ impl<
 where
     E1::BaseField: PrimeField,
     E2::BaseField: PrimeField,
+    <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
+    <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
     type Position = (Column, CurrOrNext);
 
@@ -272,22 +461,21 @@ where
         }
     }
 
-    fn allocate_public_input(&mut self) -> Self::Position {
-        assert!(self.idx_var_pi < NUMBER_OF_PUBLIC_INPUTS, "Maximum number of public inputs reached ({NUMBER_OF_PUBLIC_INPUTS}), increase the number of public inputs");
-        let pos = Column::PublicInput(self.idx_var_pi);
-        self.idx_var_pi += 1;
-        (pos, CurrOrNext::Curr)
-    }
-
     fn write_column(&mut self, pos: Self::Position, v: Self::Variable) -> Self::Variable {
         let (col, row) = pos;
         let Column::X(idx) = col else {
             unimplemented!("Only works for private inputs")
         };
-        let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            E1::ScalarField::modulus_biguint().into()
+        let (modulus, srs_size): (BigInt, usize) = if self.current_iteration % 2 == 0 {
+            (
+                E1::ScalarField::modulus_biguint().into(),
+                self.indexed_relation.get_srs_size(),
+            )
         } else {
-            E2::ScalarField::modulus_biguint().into()
+            (
+                E2::ScalarField::modulus_biguint().into(),
+                self.indexed_relation.get_srs_size(),
+            )
         };
         let v = v.mod_floor(&modulus);
         match row {
@@ -295,31 +483,11 @@ where
                 self.state[idx].clone_from(&v);
             }
             CurrOrNext::Next => {
+                assert!(self.current_row < srs_size - 1, "The witness builder is writing on the last row. It does not make sense to write on the next row after the last row");
                 self.next_state[idx].clone_from(&v);
             }
         }
         v
-    }
-
-    fn write_public_input(&mut self, pos: Self::Position, v: BigInt) -> Self::Variable {
-        let (col, _row) = pos;
-        let Column::PublicInput(idx) = col else {
-            unimplemented!("Only works for public input columns")
-        };
-        let modulus: BigInt = if self.current_iteration % 2 == 0 {
-            E1::ScalarField::modulus_biguint().into()
-        } else {
-            E2::ScalarField::modulus_biguint().into()
-        };
-        let v = v.mod_floor(&modulus);
-        self.public_state[idx].clone_from(&v);
-        v
-    }
-
-    /// Activate the gadget for the current row
-    fn activate_gadget(&mut self, gadget: Gadget) {
-        // IMPROVEME: it should be called only once per row
-        self.selectors[gadget as usize][self.current_row] = true;
     }
 
     fn constrain_boolean(&mut self, x: Self::Variable) {
@@ -402,7 +570,7 @@ where
         // We keep track of the values we already set.
         self.state.clone_from(&self.next_state);
         // And we reset the next state
-        self.next_state = std::array::from_fn(|_| BigInt::from(0_usize));
+        self.next_state = core::array::from_fn(|_| BigInt::from(0_usize));
     }
 
     /// FIXME: check if we need to pick the left or right sponge
@@ -430,13 +598,8 @@ where
         self.write_column(pos, state)
     }
 
-    fn get_poseidon_round_constant(
-        &mut self,
-        pos: Self::Position,
-        round: usize,
-        i: usize,
-    ) -> Self::Variable {
-        let rc = if self.current_iteration % 2 == 0 {
+    fn get_poseidon_round_constant(&self, round: usize, i: usize) -> Self::Variable {
+        if self.current_iteration % 2 == 0 {
             E1::sponge_params().round_constants[round][i]
                 .to_biguint()
                 .into()
@@ -444,8 +607,7 @@ where
             E2::sponge_params().round_constants[round][i]
                 .to_biguint()
                 .into()
-        };
-        self.write_public_input(pos, rc)
+        }
     }
 
     fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable {
@@ -466,63 +628,48 @@ where
         }
     }
 
-    // The following values are expected to be absorbed in order:
-    // - z0
-    // - z1
-    // - acc[0]
-    // - acc[1]
-    // - ...
-    // - acc[N_COL - 1]
-    // FIXME: for now, we will only absorb the accumulators as z0 and z1 are not
-    // updated yet.
-    unsafe fn fetch_value_to_absorb(
-        &mut self,
-        pos: Self::Position,
-        curr_round: usize,
-    ) -> Self::Variable {
-        let (col, _) = pos;
-        let Column::PublicInput(_idx) = col else {
-            panic!("Only works for public inputs")
+    unsafe fn fetch_value_to_absorb(&mut self, pos: Self::Position) -> Self::Variable {
+        let (col, curr_or_next) = pos;
+        // Purely arbitrary for now
+        let Column::X(_idx) = col else {
+            panic!("Only private inputs can be accepted to load the values to be absorbed")
         };
-        // If we are not the round 0, we must absorb nothing.
-        if curr_round != 0 {
-            self.write_public_input(pos, self.zero())
-        } else {
-            // FIXME: we must absorb z0, z1 and i!
-            // We multiply by 2 as we have two coordinates
-            let idx = self.idx_values_to_absorb;
-            let res = if idx < 2 * NUMBER_OF_COLUMNS {
-                let idx_col = idx / 2;
-                debug!("Absorbing the accumulator for the column index {idx_col}. After this, there will still be {} elements to absorb", NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO - idx - 1);
-                if self.current_iteration % 2 == 0 {
-                    let (pt_x, pt_y) = self.ivc_accumulator_e2[idx_col]
-                        .get_first_chunk()
-                        .to_coordinates()
-                        .unwrap();
-                    if idx % 2 == 0 {
-                        self.write_public_input(pos, pt_x.to_biguint().into())
-                    } else {
-                        self.write_public_input(pos, pt_y.to_biguint().into())
-                    }
+        assert_eq!(
+            curr_or_next,
+            CurrOrNext::Curr,
+            "Only the current row can be used to load the values to be absorbed"
+        );
+        // FIXME: for now, we only absorb the commitments to the columns
+        let idx = self.idx_values_to_absorb;
+        let res = if idx < 2 * NUMBER_OF_COLUMNS {
+            let idx_col = idx / 2;
+            debug!("Absorbing the accumulator for the column index {idx_col}. After this, there will still be {} elements to absorb", NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO - idx - 1);
+            if self.current_iteration % 2 == 0 {
+                let (pt_x, pt_y) = self.program_e2.accumulated_committed_state[idx_col]
+                    .get_first_chunk()
+                    .to_coordinates()
+                    .unwrap();
+                if idx % 2 == 0 {
+                    self.write_column(pos, pt_x.to_biguint().into())
                 } else {
-                    let (pt_x, pt_y) = self.ivc_accumulator_e1[idx_col]
-                        .get_first_chunk()
-                        .to_coordinates()
-                        .unwrap();
-                    if idx % 2 == 0 {
-                        self.write_public_input(pos, pt_x.to_biguint().into())
-                    } else {
-                        self.write_public_input(pos, pt_y.to_biguint().into())
-                    }
+                    self.write_column(pos, pt_y.to_biguint().into())
                 }
             } else {
-                unimplemented!(
-                    "We only absorb the accumulators for now. Of course, this is not sound."
-                )
-            };
-            self.idx_values_to_absorb += 1;
-            res
-        }
+                let (pt_x, pt_y) = self.program_e1.accumulated_committed_state[idx_col]
+                    .get_first_chunk()
+                    .to_coordinates()
+                    .unwrap();
+                if idx % 2 == 0 {
+                    self.write_column(pos, pt_x.to_biguint().into())
+                } else {
+                    self.write_column(pos, pt_y.to_biguint().into())
+                }
+            }
+        } else {
+            unimplemented!("We only absorb the accumulators for now. Of course, this is not sound.")
+        };
+        self.idx_values_to_absorb += 1;
+        res
     }
 
     unsafe fn load_temporary_accumulators(
@@ -541,7 +688,7 @@ where
                     if self.current_iteration % 2 == 0 {
                         match side {
                             Side::Left => {
-                                let pt = self.previous_committed_state_e2[i_comm].get_first_chunk();
+                                let pt = self.program_e2.previous_committed_state[i_comm].get_first_chunk();
                                 // We suppose we never have a commitment equals to the
                                 // point at infinity
                                 let (pt_x, pt_y) = pt.to_coordinates().unwrap();
@@ -557,7 +704,7 @@ where
                             // probability to request to compute `0 * P`.
                             // FIXME: ! check this statement !
                             Side::Right => {
-                                let pt = self.srs_e2.h;
+                                let pt = self.indexed_relation.srs_e2.h;
                                 let (pt_x, pt_y) = pt.to_coordinates().unwrap();
                                 let pt_x = self.write_column(pos_x, pt_x.to_biguint().into());
                                 let pt_y = self.write_column(pos_y, pt_y.to_biguint().into());
@@ -567,7 +714,7 @@ where
                     } else {
                         match side {
                             Side::Left => {
-                                let pt = self.previous_committed_state_e1[i_comm].get_first_chunk();
+                                let pt = self.program_e1.previous_committed_state[i_comm].get_first_chunk();
                                 // We suppose we never have a commitment equals to the
                                 // point at infinity
                                 let (pt_x, pt_y) = pt.to_coordinates().unwrap();
@@ -583,7 +730,8 @@ where
                             // probability to request to compute `0 * P`.
                             // FIXME: ! check this statement !
                             Side::Right => {
-                                let pt = self.srs_e1.h;
+                                let blinder = self.indexed_relation.srs_e1.h;
+                                let pt = blinder;
                                 let (pt_x, pt_y) = pt.to_coordinates().unwrap();
                                 let pt_x = self.write_column(pos_x, pt_x.to_biguint().into());
                                 let pt_y = self.write_column(pos_x, pt_y.to_biguint().into());
@@ -600,22 +748,22 @@ where
                 let (pt_x, pt_y): (BigInt, BigInt) = match side {
                     Side::Left => {
                         if self.current_iteration % 2 == 0 {
-                            let pt = self.ivc_accumulator_e2[i_comm].get_first_chunk();
+                            let pt = self.program_e2.accumulated_committed_state[i_comm].get_first_chunk();
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         } else {
-                            let pt = self.ivc_accumulator_e1[i_comm].get_first_chunk();
+                            let pt = self.program_e1.accumulated_committed_state[i_comm].get_first_chunk();
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         }
                     }
                     Side::Right => {
                         if self.current_iteration % 2 == 0 {
-                            let pt = self.previous_committed_state_e2[i_comm].get_first_chunk();
+                            let pt = self.program_e2.previous_committed_state[i_comm].get_first_chunk();
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         } else {
-                            let pt = self.previous_committed_state_e1[i_comm].get_first_chunk();
+                            let pt = self.program_e1.previous_committed_state[i_comm].get_first_chunk();
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
                         }
@@ -810,54 +958,9 @@ where
     <<E1 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
     <<E2 as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
 {
-    pub fn new(
-        srs_log2_size: usize,
-        z0: BigInt,
-        sponge_e1: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
-        sponge_e2: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH],
-    ) -> Self {
-        {
-            assert!(E1::ScalarField::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fp is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
-            assert!(Fq::MODULUS_BIT_SIZE <= MAXIMUM_FIELD_SIZE_IN_BITS.try_into().unwrap(), "The size of the field Fq is too large, it should be less than {MAXIMUM_FIELD_SIZE_IN_BITS}");
-            let modulus_fp = E1::ScalarField::modulus_biguint();
-            let alpha = PlonkSpongeConstants::PERM_SBOX;
-            assert!(
-                (modulus_fp - BigUint::from(1_u64)).gcd(&BigUint::from(alpha))
-                    == BigUint::from(1_u64),
-                "The modulus of Fp should be coprime with {alpha}"
-            );
-            let modulus_fq = E2::ScalarField::modulus_biguint();
-            let alpha = PlonkSpongeConstants::PERM_SBOX;
-            assert!(
-                (modulus_fq - BigUint::from(1_u64)).gcd(&BigUint::from(alpha))
-                    == BigUint::from(1_u64),
-                "The modulus of Fq should be coprime with {alpha}"
-            );
-        }
-        let srs_size = 1 << srs_log2_size;
-        let domain_fp = EvaluationDomains::<E1::ScalarField>::create(srs_size).unwrap();
-        let domain_fq = EvaluationDomains::<E2::ScalarField>::create(srs_size).unwrap();
-
-        info!("Create an SRS of size {srs_log2_size} for the first curve");
-        let srs_e1: SRS<E1> = {
-            let start = Instant::now();
-            let srs = SRS::create(srs_size);
-            debug!("SRS for E1 created in {:?}", start.elapsed());
-            let start = Instant::now();
-            srs.get_lagrange_basis(domain_fp.d1);
-            debug!("Lagrange basis for E1 added in {:?}", start.elapsed());
-            srs
-        };
-        info!("Create an SRS of size {srs_log2_size} for the second curve");
-        let srs_e2: SRS<E2> = {
-            let start = Instant::now();
-            let srs = SRS::create(srs_size);
-            debug!("SRS for E2 created in {:?}", start.elapsed());
-            let start = Instant::now();
-            srs.get_lagrange_basis(domain_fq.d1);
-            debug!("Lagrange basis for E2 added in {:?}", start.elapsed());
-            srs
-        };
+    pub fn new(z0: BigInt, indexed_relation: setup::IndexedRelation<Fp, Fq, E1, E2>) -> Self {
+        let srs_size = indexed_relation.get_srs_size();
+        let (blinder_e1, blinder_e2) = indexed_relation.get_srs_blinders();
 
         let mut witness: Vec<Vec<BigInt>> = Vec::with_capacity(NUMBER_OF_COLUMNS);
         {
@@ -866,61 +969,44 @@ where
             (0..NUMBER_OF_COLUMNS).for_each(|_| witness.push(vec.clone()));
         };
 
-        let mut selectors: Vec<Vec<bool>> = Vec::with_capacity(NUMBER_OF_SELECTORS);
-        {
-            let mut vec: Vec<bool> = Vec::with_capacity(srs_size);
-            (0..srs_size).for_each(|_| vec.push(false));
-            (0..NUMBER_OF_SELECTORS).for_each(|_| selectors.push(vec.clone()));
-        };
-
-        // Default set to the blinders. Using double to make the EC scaling happy.
-        let previous_committed_state_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
-            .map(|_| PolyComm::new(vec![(srs_e1.h + srs_e1.h).into()]))
-            .collect();
-        let previous_committed_state_e2: Vec<PolyComm<E2>> = (0..NUMBER_OF_COLUMNS)
-            .map(|_| PolyComm::new(vec![(srs_e2.h + srs_e2.h).into()]))
-            .collect();
-        // FIXME: zero will not work.
-        let ivc_accumulator_e1: Vec<PolyComm<E1>> = (0..NUMBER_OF_COLUMNS)
-            .map(|_| PolyComm::new(vec![srs_e1.h]))
-            .collect();
-        let ivc_accumulator_e2: Vec<PolyComm<E2>> = (0..NUMBER_OF_COLUMNS)
-            .map(|_| PolyComm::new(vec![srs_e2.h]))
-            .collect();
+        // Initialize Program instances for both curves
+        let program_e1 = Program::new(srs_size, blinder_e1);
+        let program_e2 = Program::new(srs_size, blinder_e2);
 
         // FIXME: challenges
-        let challenges: Vec<BigInt> = vec![];
+        let challenges: Challenges<BigInt> = Challenges::default();
 
+        // FIXME: use setup
         let prover_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-            std::array::from_fn(|_| BigInt::from(0_u64));
+            core::array::from_fn(|_| BigInt::from(0_u64));
         let verifier_sponge_state: [BigInt; PlonkSpongeConstants::SPONGE_WIDTH] =
-            std::array::from_fn(|_| BigInt::from(0_u64));
+            core::array::from_fn(|_| BigInt::from(0_u64));
+
+        // FIXME: set this up correctly. Temporary as we're moving the initial
+        // transcript state into the setup
+        let sponge_e1 = indexed_relation.initial_sponge.clone();
+        let sponge_e2 = indexed_relation.initial_sponge.clone();
+
         Self {
             // -------
             // Setup
-            domain_fp,
-            domain_fq,
-            srs_e1,
-            srs_e2,
+            indexed_relation,
             // -------
-            // -------
-            // IVC only
-            ivc_accumulator_e1,
-            ivc_accumulator_e2,
-            previous_committed_state_e1,
-            previous_committed_state_e2,
+            // Program state for each curve
+            program_e1,
+            program_e2,
             // ------
             // ------
             idx_var: 0,
             idx_var_next_row: 0,
             idx_var_pi: 0,
             current_row: 0,
-            state: std::array::from_fn(|_| BigInt::from(0_usize)),
-            next_state: std::array::from_fn(|_| BigInt::from(0_usize)),
-            public_state: std::array::from_fn(|_| BigInt::from(0_usize)),
-            selectors,
+            state: core::array::from_fn(|_| BigInt::from(0_usize)),
+            next_state: core::array::from_fn(|_| BigInt::from(0_usize)),
+
             challenges,
-            current_instruction: IVC_STARTING_INSTRUCTION,
+
+            current_instruction: VERIFIER_STARTING_INSTRUCTION,
             sponge_e1,
             sponge_e2,
             prover_sponge_state,
@@ -947,8 +1033,6 @@ where
             // Inputs
             z0: z0.clone(),
             zi: z0,
-            // ------
-            _marker: std::marker::PhantomData,
         }
     }
 
@@ -956,14 +1040,14 @@ where
     pub fn reset_for_next_iteration(&mut self) {
         // Rest the state for the next row
         self.current_row = 0;
-        self.state = std::array::from_fn(|_| BigInt::from(0_usize));
+        self.state = core::array::from_fn(|_| BigInt::from(0_usize));
         self.idx_var = 0;
-        self.current_instruction = IVC_STARTING_INSTRUCTION;
+        self.current_instruction = VERIFIER_STARTING_INSTRUCTION;
         self.idx_values_to_absorb = 0;
     }
 
     /// The blinder used to commit, to avoid committing to the zero polynomial
-    /// and accumulate it in the IVC.
+    /// and accumulated in the IVC.
     ///
     /// It is part of the instance, and it is accumulated in the IVC.
     pub fn accumulate_commitment_blinder(&mut self) {
@@ -979,45 +1063,29 @@ where
         if self.current_iteration % 2 == 0 {
             assert_eq!(
                 self.current_row as u64,
-                self.domain_fp.d1.size,
+                self.indexed_relation.domain_fp.d1.size,
                 "The program has not been fully executed. Missing {} rows",
-                self.domain_fp.d1.size - self.current_row as u64,
+                self.indexed_relation.domain_fp.d1.size - self.current_row as u64,
             );
-            let comms: Vec<PolyComm<E1>> = self
-                .witness
-                .par_iter()
-                .map(|evals| {
-                    let evals: Vec<E1::ScalarField> = evals
-                        .par_iter()
-                        .map(|x| E1::ScalarField::from_biguint(&x.to_biguint().unwrap()).unwrap())
-                        .collect();
-                    let evals = Evaluations::from_vec_and_domain(evals.to_vec(), self.domain_fp.d1);
-                    self.srs_e1
-                        .commit_evaluations_non_hiding(self.domain_fp.d1, &evals)
-                })
-                .collect();
-            self.previous_committed_state_e1 = comms
+            // Use program_e1's commit_state method
+            self.program_e1.commit_state(
+                &self.indexed_relation.srs_e1,
+                self.indexed_relation.domain_fp,
+                &self.witness,
+            )
         } else {
             assert_eq!(
                 self.current_row as u64,
-                self.domain_fq.d1.size,
+                self.indexed_relation.domain_fq.d1.size,
                 "The program has not been fully executed. Missing {} rows",
-                self.domain_fq.d1.size - self.current_row as u64,
+                self.indexed_relation.domain_fq.d1.size - self.current_row as u64,
             );
-            let comms: Vec<PolyComm<E2>> = self
-                .witness
-                .iter()
-                .map(|evals| {
-                    let evals: Vec<E2::ScalarField> = evals
-                        .par_iter()
-                        .map(|x| E2::ScalarField::from_biguint(&x.to_biguint().unwrap()).unwrap())
-                        .collect();
-                    let evals = Evaluations::from_vec_and_domain(evals.to_vec(), self.domain_fq.d1);
-                    self.srs_e2
-                        .commit_evaluations_non_hiding(self.domain_fq.d1, &evals)
-                })
-                .collect();
-            self.previous_committed_state_e2 = comms
+            // Use program_e2's commit_state method
+            self.program_e2.commit_state(
+                &self.indexed_relation.srs_e2,
+                self.indexed_relation.domain_fq,
+                &self.witness,
+            )
         }
     }
 
@@ -1027,48 +1095,21 @@ where
     /// the expected instantiation, refer to the section "Message Passing" in
     /// [crate::interpreter].
     pub fn absorb_state(&mut self) {
-        if self.current_iteration % 2 == 0 {
-            let mut sponge = E1::create_new_sponge();
-            let previous_state: E1::BaseField = E1::BaseField::from_biguint(
-                &self
-                    .last_program_digest_after_execution
-                    .to_biguint()
-                    .unwrap(),
-            )
-            .unwrap();
-            E1::absorb_fq(&mut sponge, previous_state);
-            self.previous_committed_state_e1
-                .iter()
-                .for_each(|comm| E1::absorb_curve_points(&mut sponge, &comm.chunks));
-            let state: Vec<BigInt> = sponge
-                .sponge
-                .state
-                .iter()
-                .map(|x| x.to_biguint().into())
-                .collect();
-            self.prover_sponge_state = state.try_into().unwrap()
+        let state = if self.current_iteration % 2 == 0 {
+            // Use program_e1's absorb_state method
+            let state = self
+                .program_e1
+                .absorb_state(self.last_program_digest_after_execution.clone());
+            state.try_into().unwrap()
         } else {
-            let mut sponge = E2::create_new_sponge();
-            let previous_state: E2::BaseField = E2::BaseField::from_biguint(
-                &self
-                    .last_program_digest_after_execution
-                    .to_biguint()
-                    .unwrap(),
-            )
-            .unwrap();
-            E2::absorb_fq(&mut sponge, previous_state);
-            self.previous_committed_state_e2
-                .iter()
-                .for_each(|comm| E2::absorb_curve_points(&mut sponge, &comm.chunks));
+            // Use program_e2's absorb_state method
+            let state = self
+                .program_e2
+                .absorb_state(self.last_program_digest_after_execution.clone());
+            state.try_into().unwrap()
+        };
 
-            let state: Vec<BigInt> = sponge
-                .sponge
-                .state
-                .iter()
-                .map(|x| x.to_biguint().into())
-                .collect();
-            self.prover_sponge_state = state.try_into().unwrap()
-        }
+        self.prover_sponge_state = state;
     }
 
     /// Compute the output of the application on the previous output
@@ -1082,94 +1123,99 @@ where
         self.current_instruction
     }
 
-    /// Describe the control-flow for the IVC circuit.
+    /// Simulate an interaction with the verifier by requesting to coin a
+    /// challenge from the current prover sponge state.
     ///
-    /// For a step i + 1, the IVC circuit receives as public input the following
-    /// values:
+    /// This method supposes that all the messages have been sent to the
+    /// verifier previously, and the attribute [self.prover_sponge_state] has
+    /// been updated accordingly by absorbing all the messages correctly.
     ///
-    /// - The commitments to the previous witnesses.
-    /// - The previous challenges (α_{i}, β_{i}, γ_{i}) - the challenges β and γ
-    /// are used by the permutation argument where α is used by the quotient
-    /// polynomial, generated after also absorbing the accumulator of the
-    /// permutation argument.
-    /// - The previous accumulators (acc_1, ..., acc_17).
-    /// - The previous output z_i.
-    /// - The initial input z_0.
-    /// - The natural i describing the previous step.
+    /// The side-effect of this method will be to run a permutation on the
+    /// sponge state _after_ coining the challenge.
+    /// There is an hypothesis on the sponge state that the inner permutation
+    /// has been correctly executed if the absorbtion rate had been reached at
+    /// the last absorbtion.
     ///
-    /// The control flow is as follow:
-    /// - We compute the hash of the previous commitments and verify the hash
-    /// corresponds to the public input:
+    /// The challenge will be added to the [self.challenges] attribute at the
+    /// position given by the challenge `chal`.
     ///
+    /// Internally, the method is implemented by simply loading the prover
+    /// sponge state, and squeezing a challenge from it, relying on the
+    /// implementation of the sponge. Usually, the challenge would be the first
+    /// N bits of the first element, but it is left as an implementation detail
+    /// of the sponge given by the curve.
+    pub fn coin_challenge(&mut self, chal: ChallengeTerm) {
+        let sponge_state_vec: Vec<BigInt> = self.prover_sponge_state.to_vec();
+
+        let (verifier_answer, new_state) = if self.current_iteration % 2 == 0 {
+            self.program_e1.coin_challenge(sponge_state_vec)
+        } else {
+            self.program_e2.coin_challenge(sponge_state_vec)
+        };
+
+        self.challenges[chal] = verifier_answer;
+        self.prover_sponge_state = new_state.try_into().unwrap();
+    }
+
+    /// Accumulate the program state (or in other words,
+    /// the witness), by adding the last computed program state into the
+    /// program state accumulator.
+    ///
+    /// This method is supposed to be called after the program state has been
+    /// committed (by calling [self.commit_state]) and absorbed (by calling
+    /// [self.absorb_state]). The "relation randomiser" must also have been
+    /// coined and saved in the environment before, by calling
+    /// [self.coin_challenge].
+    ///
+    /// The program state is accumulated into a different accumulator, depending
+    /// on the curve currently being used.
+    ///
+    /// This is part of the work the prover of the accumulation/folding scheme.
+    ///
+    /// This must translate the following equation:
     /// ```text
-    /// hash = H(i, acc_1, ..., acc_17, z_0, z_i)
+    /// acc_(p, n + 1) = acc_(p, n) * chal w
+    ///               OR
+    /// acc_(q, n + 1) = acc_(q, n) * chal w
+    /// ```
+    /// where acc and w are vectors of the same size.
+    pub fn accumulate_program_state(&mut self) {
+        let chal = self.challenges[ChallengeTerm::RelationCombiner].clone();
+
+        if self.current_iteration % 2 == 0 {
+            self.program_e1
+                .accumulate_program_state(chal, &self.witness);
+        } else {
+            self.program_e2
+                .accumulate_program_state(chal, &self.witness);
+        }
+    }
+
+    /// Accumulate the committed state by adding the last committed state into
+    /// the committed state accumulator.
+    ///
+    /// The commitments are accumulated into a different accumulator, depending
+    /// on the curve currently being used.
+    ///
+    /// This is part of the work the prover of the accumulation/folding scheme.
+    ///
+    /// This must translate the following equation:
+    /// ```text
+    /// C_(p, n + 1) = C_(p, n) + chal * comm
+    ///               OR
+    /// C_(q, n + 1) = C_(q, n) + chal * comm
     /// ```
     ///
-    /// - We also have to check that the previous challenges (α, β, γ) have been
-    /// correctly generated. Therefore, we must compute the hashes of the
-    /// witnesses and verify they correspond to the public input.
-    ///
-    /// TODO
-    ///
-    /// - We compute the output of the application (TODO)
-    ///
-    /// ```text
-    /// z_(i + 1) = F(w_i, z_i)
-    /// ```
-    ///
-    /// - We compute the MSM (verifier)
-    ///
-    /// ```text
-    /// acc_(i + 1)_j = acc_i + r C_j
-    /// ```
-    /// And also the cross-terms:
-    ///
-    /// ```text
-    /// E = E1 - r T1 - r^2 T2 - ... - r^d T^d + r^(d+1) E2
-    ///   = E1 - r (T1 + r (T2 + ... + r T^(d - 1)) - r E2)
-    /// ```
-    /// where (d + 1) is the degree of the highest gate.
-    ///
-    /// - We compute the next hash we give to the next instance
-    ///
-    /// ```text
-    /// hash' = H(i + 1, acc'_1, ..., acc'_17, z_0, z_(i + 1))
-    /// ```
-    pub fn fetch_next_instruction(&mut self) -> Instruction {
-        match self.current_instruction {
-            Instruction::Poseidon(i) => {
-                if i < PlonkSpongeConstants::PERM_ROUNDS_FULL - 5 {
-                    Instruction::Poseidon(i + 5)
-                } else {
-                    // FIXME: we continue absorbing
-                    Instruction::Poseidon(0)
-                }
-            }
-            Instruction::EllipticCurveScaling(i_comm, bit) => {
-                // TODO: we still need to substract (or not?) the blinder.
-                // Maybe we can avoid this by aggregating them.
-                // TODO: we also need to aggregate the cross-terms.
-                // Therefore i_comm must also take into the account the number
-                // of cross-terms.
-                assert!(i_comm < NUMBER_OF_COLUMNS, "Maximum number of columns reached ({NUMBER_OF_COLUMNS}), increase the number of columns");
-                assert!(bit < MAXIMUM_FIELD_SIZE_IN_BITS, "Maximum number of bits reached ({MAXIMUM_FIELD_SIZE_IN_BITS}), increase the number of bits");
-                if bit < MAXIMUM_FIELD_SIZE_IN_BITS - 1 {
-                    Instruction::EllipticCurveScaling(i_comm, bit + 1)
-                } else if i_comm < NUMBER_OF_COLUMNS - 1 {
-                    Instruction::EllipticCurveScaling(i_comm + 1, 0)
-                } else {
-                    // We have computed all the bits for all the columns
-                    Instruction::NoOp
-                }
-            }
-            Instruction::EllipticCurveAddition(i_comm) => {
-                if i_comm < NUMBER_OF_COLUMNS - 1 {
-                    Instruction::EllipticCurveAddition(i_comm + 1)
-                } else {
-                    Instruction::NoOp
-                }
-            }
-            Instruction::NoOp => Instruction::NoOp,
+    /// Note that the committed program state is encoded in
+    /// [crate::NUMBER_OF_COLUMNS] values, therefore we must iterate over all
+    /// the columns to accumulate the committed state.
+    pub fn accumulate_committed_state(&mut self) {
+        let chal = self.challenges[ChallengeTerm::RelationCombiner].clone();
+
+        if self.current_iteration % 2 == 0 {
+            self.program_e2.accumulate_committed_state(chal);
+        } else {
+            self.program_e1.accumulate_committed_state(chal);
         }
     }
 }

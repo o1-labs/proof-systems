@@ -1,0 +1,71 @@
+name: Bench mina circuits (check regressions against master)
+
+on:
+  pull_request:
+
+env:
+  OCAML_VERSION: "4.14"
+  RUST_TOOLCHAIN_VERSION: "1.79"
+
+jobs:
+
+  bench-compare:
+    runs-on: ubuntu-latest
+    name: Run benches
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download artifact
+        id: download-artifact
+        uses: dawidd6/action-download-artifact@v9
+        with:
+          workflow: benches-mina-prover-set-baseline.yml
+          name: criterion-ps-mina-master-baseline
+          path: criterion-ps-mina-master-baseline/
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ env.RUST_TOOLCHAIN_VERSION }}
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ env.OCAML_VERSION }}
+
+      - name: Ensure that everything builds
+        run: |
+          eval $(opam env)
+          cargo build --benches --release
+
+      # 'sleep 1' are necessary because otherwise the outputs are intermixed.
+      - name: Copy previous baseline to target folder
+        run: |
+          set -x
+          pwd
+          sleep 1
+          ls target/
+          sleep 1
+          ls .
+          sleep 1
+          ls criterion-ps-mina-master-baseline/
+          sleep 1
+          tree criterion-ps-mina-master-baseline/
+          sleep 1
+          # This copies paths as follows... into ./target/
+          #   target/criterion/proof_creation/proof creation (SRS size 2_{16}, 1014 gates)/ci-master-latest/benchmark.json
+          #   target/criterion/proof_creation/proof creation (SRS size 2_{16}, 1014 gates)/ci-master-latest/estimates.json
+          #   target/criterion/proof_creation/proof creation (SRS size 2_{16}, 1014 gates)/ci-master-latest/sample.json
+          #   target/criterion/proof_creation/proof creation (SRS size 2_{16}, 1014 gates)/ci-master-latest/tukey.json
+          rsync -av $(realpath ./criterion-ps-mina-master-baseline/target) .
+          sleep 1
+          ls target/
+
+      - name: Run criterion bench
+        run: |
+          set -x
+          eval $(opam env)
+          BASELINE_NAME=master-baseline-data bash scripts/bench-criterion-mina-circuits.sh cargo bench -p kimchi --bench proof_criterion

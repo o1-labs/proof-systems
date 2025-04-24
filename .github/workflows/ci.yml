@@ -17,6 +17,7 @@ env:
   CARGO_TERM_COLOR: always
   # 30 MB of stack for Keccak tests
   RUST_MIN_STACK: 31457280
+  CARGO_EXTRA_ARGS: "--workspace --exclude plonk_wasm --exclude saffron"
 
 jobs:
   run_mdbook:
@@ -24,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust_toolchain_version: ["1.72"]
+        rust_toolchain_version: ["1.79"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -42,43 +43,18 @@ jobs:
           make deps
           make build
 
-  run_formatting:
-    name: Formatting
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust_toolchain_version: ["nightly"]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Use shared Rust toolchain setting up steps
-        uses: ./.github/actions/toolchain-shared
-        with:
-          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
-
-      - name: Run cargo fmt
-        run: |
-          make format
-
   run_checks:
     name: Run checks and tests
-    # We run only one of the matrix options on the toffee `hetzner-1` self-hosted GitHub runner.
-    # Only in this configuration we enable tests with the code coverage data gathering.
-    # runs-on: [hetzner-proof-systems-runners-group-1]
-    runs-on: ${{ matrix.rust_toolchain_version == '1.74' && 'hetzner-1' || 'ubuntu-latest' }}
-    env:
-      RUST_TOOLCHAIN_COVERAGE_VERSION: "1.74"
     strategy:
       matrix:
-        rust_toolchain_version: ["1.72", "1.73", "1.74", "1.75", "1.76", "1.77", "1.78", "1.79"]
+        rust_toolchain_version: ["1.79", "1.80", "1.81", "1.82"]
         # FIXME: currently not available for 5.0.0.
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency
         ocaml_version: ["4.14"]
-        node: [20]
+        node: ["20"]
+        os: ["ubuntu-latest", "ubuntu-24.04-arm"]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -161,31 +137,11 @@ jobs:
         uses: ./.github/actions/build-mips
 
       - name: Doc tests
-        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
           make test-doc
 
       - name: Run non-heavy tests without the code coverage
-        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
           make nextest
-
-      - name: Run non-heavy tests with the code coverage
-        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
-        run: |
-          eval $(opam env)
-          make nextest-with-coverage
-          make test-doc-with-coverage
-          make generate-test-coverage-report
-
-      - name: Use shared code coverage summary
-        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
-        uses: ./.github/actions/coverage-summary-shared
-
-      - name: Use shared Codecov reporting steps
-        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
-        uses: ./.github/actions/codecov-shared
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}

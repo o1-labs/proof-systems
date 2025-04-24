@@ -18,20 +18,23 @@ use crate::{
     variable_map,
 };
 use ark_ff::PrimeField;
+use core::{array, marker::PhantomData};
 use num_bigint::BigUint;
 use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitwiseOps, FieldHelpers};
-use std::{array, marker::PhantomData};
 
 use super::generic::GenericGateSpec;
 
 impl<F: PrimeField> CircuitGate<F> {
     /// Extends a XOR gadget for `bits` length to a circuit
+    ///
     /// Includes:
     /// - num_xors Xor16 gates
     /// - 1 Generic gate to constrain the final row to be zero with itself
+    ///
     /// Input:
     /// - gates     : vector of circuit gates
     /// - bits      : length of the XOR gadget
+    ///
     /// Output:
     /// - new row index
     pub fn extend_xor_gadget(gates: &mut Vec<Self>, bits: usize) -> usize {
@@ -49,17 +52,21 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 
     /// Creates a XOR gadget for `bits` length
+    ///
     /// Includes:
     /// - num_xors Xor16 gates
     /// - 1 Generic gate to constrain the final row to be zero with itself
+    ///
     /// Input:
     /// - new_row   : row to start the XOR gadget
     /// - bits      : number of bits in the XOR
-    /// Outputs tuple (next_row, circuit_gates) where
+    ///   Outputs tuple (next_row, circuit_gates) where
     /// - next_row  : next row after this gate
     /// - gates     : vector of circuit gates comprising this gate
+    ///
     /// Warning:
-    /// - don't forget to check that the final row is all zeros as in `extend_xor_gadget`
+    /// - don't forget to check that the final row is all zeros as in
+    ///   `extend_xor_gadget`
     pub fn create_xor_gadget(new_row: usize, bits: usize) -> (usize, Vec<Self>) {
         let num_xors = num_xors(bits);
         let mut xor_gates = (0..num_xors)

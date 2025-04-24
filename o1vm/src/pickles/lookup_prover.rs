@@ -42,7 +42,7 @@ where
         beta_challenge,
         gamma_challenge,
     } = input;
-    //Compute how many inverse wires we need to define pad function accordingly
+    // Compute how many inverse wires we need to define pad function accordingly
     let nb_inv_wires = arity
         .iter()
         .max_by(|a, b| a.len().cmp(&b.len()))
@@ -53,7 +53,7 @@ where
         vec
     };
 
-    // compute the 1/beta+sum_i gamma^i value_i for each lookup term
+    // Compute the 1/beta+sum_i gamma^i value_i for each lookup term
     // The inversions is commputed in batch in the end
     let mut inverses: Vec<Vec<G::ScalarField>> = wires
         .iter()
@@ -73,12 +73,12 @@ where
         })
         .map(pad)
         .collect();
-    //perform the inversion
+    // Perform the inversion
     inverses
         .iter_mut()
         .for_each(|inner_vec| ark_ff::batch_inversion(inner_vec));
-    // compute the accumulator
-    // init at acc_init
+    // Compute the accumulator
+    // Init at acc_init
     let mut partial_sum = acc_init;
     let mut acc = vec![];
     for inner in inverses.iter_mut() {
@@ -93,7 +93,7 @@ where
         inverses,
         acc,
     };
-    //interpolating
+    // Interpolating
     let interpolate_col = |evals: Vec<G::ScalarField>| {
         Evaluations::<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>::from_vec_and_domain(
             evals, domain.d1,
@@ -101,7 +101,7 @@ where
         .interpolate()
     };
     let columns_poly = columns.my_map(interpolate_col);
-    // commiting
+    // Commiting
     // TODO avoid cloning
     let columns_com = columns_poly
         .clone()

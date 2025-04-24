@@ -23,6 +23,8 @@
 //! let challenge = sponge.challenge();
 //! ```
 
+#![no_std]
+
 pub mod constants;
 pub mod dummy_values;
 pub mod pasta;

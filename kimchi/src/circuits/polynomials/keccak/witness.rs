@@ -14,8 +14,8 @@ use crate::{
     grid, variable_map,
 };
 use ark_ff::PrimeField;
+use core::array;
 use num_bigint::BigUint;
-use std::array;
 
 pub(crate) const SPARSE_RC: [[u64; QUARTERS]; ROUNDS] = [
     [
@@ -531,9 +531,10 @@ impl Iota {
 /// Creates a witness for the Keccak hash function
 /// Input:
 /// - message: the message to be hashed
+///
 /// Note:
-/// Requires at least one more row after the keccak gadget so that
-/// constraints can access the next row in the squeeze
+///   Requires at least one more row after the keccak gadget so that
+///   constraints can access the next row in the squeeze
 pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS], message: BigUint) {
     let padded = Keccak::pad(&message.to_bytes_be());
     let chunks = padded.chunks(RATE_IN_BYTES);

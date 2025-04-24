@@ -3,13 +3,12 @@
 //! Definition of random oracle input structure and
 //! methods for serializing into bytes and field elements
 
-use bitvec::{prelude::*, view::AsBits};
-
+use super::Hashable;
+use alloc::{vec, vec::Vec};
 use ark_ff::PrimeField;
+use bitvec::{prelude::*, view::AsBits};
 use mina_curves::pasta::{Fp, Fq};
 use o1_utils::FieldHelpers;
-
-use super::Hashable;
 
 /// Random oracle input structure
 ///
@@ -177,9 +176,11 @@ impl ROInput {
 
 #[cfg(test)]
 mod tests {
-    use crate::Hashable;
-
     use super::*;
+    use crate::{
+        alloc::string::{String, ToString},
+        Hashable,
+    };
 
     #[test]
     fn append_bool() {

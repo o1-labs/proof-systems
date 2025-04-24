@@ -1,10 +1,12 @@
 //! The permutation module contains the function implementing the permutation
 //! used in Poseidon.
 
+extern crate alloc;
 use crate::{
     constants::SpongeConstants,
     poseidon::{sbox, ArithmeticSpongeParams},
 };
+use alloc::{vec, vec::Vec};
 use ark_ff::Field;
 
 fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
@@ -36,6 +38,7 @@ fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
 /// - Apply the S-box to each element of the state.
 /// - Apply the MDS matrix to the state.
 /// - Add the round constants to the state.
+///
 /// The function has side-effect and the parameter state is modified.
 pub fn full_round<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
