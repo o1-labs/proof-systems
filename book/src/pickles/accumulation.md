@@ -253,7 +253,7 @@ The term we care about (underlined in magenta) is $\langle \vec{f}_R, \vec{\open
 The solution is to let the prover provide commitments to the cross terms to "correct" this randomized splitting of the inner product <u>before</u> seeing $\chalfold$:
 the prover commits to the three terms (one of which is already provided) and the verifier computes a commitment to the new randomized inner product. i.e.
 
-The prover sends commitment to $\langle \vec{f}_R, \vec{\openx}_L \rangle$ and $\langle \vec{f}_L, \vec{\openx}_R \rangle$ cross terms:
+The prover sends commitment to the cross terms $\langle \vec{f}_R, \vec{\openx}_L \rangle$ and $\langle \vec{f}_L, \vec{\openx}_R \rangle$:
 
 $$
 L = \langle \vec{f}_R \Vert \vec{0}, \vec{G} \rangle + [\langle \vec{f}_R, \vec{\openx}_L \rangle] \cdot H
