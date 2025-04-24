@@ -16,6 +16,7 @@ pub mod column_env;
 pub mod lookup_columns;
 pub mod lookup_env;
 pub mod lookup_prover;
+pub mod lookup_verifier;
 pub mod proof;
 pub mod prover;
 pub mod verifier;

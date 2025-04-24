@@ -176,7 +176,7 @@ where
         zeta_omega: eval(zeta_omega, columns_poly.clone(), t_chunks.clone()),
     };
     let fq_sponge_before_evaluations = fq_sponge.clone();
-    // Creating fr_sponge, abosrning eval to crate challenges for IPA
+    // Creating fr_sponge, absorbing eval to create challenges for IPA
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
     // TODO avoid cloning

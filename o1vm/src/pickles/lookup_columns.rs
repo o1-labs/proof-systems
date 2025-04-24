@@ -4,9 +4,14 @@ use core::{iter::Once, ops::Index};
 use kimchi::{
     circuits::{
         domains::{Domain, EvaluationDomains},
-        expr::{AlphaChallengeTerm, ColumnEnvironment, ConstantExpr, Constants, Expr},
+        expr::{
+            AlphaChallengeTerm, ColumnEnvironment, ColumnEvaluations, ConstantExpr, Constants,
+            Expr, ExprError,
+        },
+        gate::CurrOrNext,
     },
     curve::KimchiCurve,
+    proof::PointEvaluations,
 };
 use poly_commitment::ipa::OpeningProof;
 use serde::{Deserialize, Serialize};
@@ -167,6 +172,7 @@ pub struct LookupEvalEnvironment<'a, F: FftField> {
     pub l0_1: F,
 }
 
+// Necessary trait to evaluate the numerator of T in the prover
 impl<'a, F: FftField> ColumnEnvironment<'a, F, LookupChallengeTerm, LookupChallenges<F>>
     for LookupEvalEnvironment<'a, F>
 {
@@ -210,4 +216,31 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F, LookupChallengeTerm, LookupChalle
         self.l0_1
     }
 }
+
+// helper to implement the next trait
+impl<F> ColumnEnv<F> {
+    pub fn get_column(&self, col: &LookupColumns) -> Option<&F> {
+        match *col {
+            LookupColumns::Wires(i) => self.wires.get(i),
+            LookupColumns::Inverses(i) => self.inverses.get(i),
+            LookupColumns::Acc => Some(&self.acc),
+        }
+    }
+}
+// Necessary trait to evaluate the numerator of T at zeta in the verifier
+impl<F: PrimeField> ColumnEvaluations<F> for Eval<F> {
+    type Column = LookupColumns;
+    fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
+        if let Some(&zeta) = self.zeta.cols.get_column(&col) {
+            if let Some(&zeta_omega) = self.zeta_omega.cols.get_column(&col) {
+                Ok(PointEvaluations { zeta, zeta_omega })
+            } else {
+                Err(ExprError::MissingEvaluation(col, CurrOrNext::Next))
+            }
+        } else {
+            Err(ExprError::MissingEvaluation(col, CurrOrNext::Curr))
+        }
+    }
+}
+
 pub type ELookup<F> = Expr<ConstantExpr<F, LookupChallengeTerm>, LookupColumns>;
