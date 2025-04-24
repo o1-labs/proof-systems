@@ -21,7 +21,7 @@ pub struct LookupEnvironment<G: KimchiCurve> {
     pub cms: Vec<Vec<PolyComm<G>>>,
 }
 
-/// The persistent envirionement accross all proofs.
+/// The persistent environment across all proofs.
 /// It stores the some fixed values (fixed lookup),
 /// and some proof dependant values: an accumulation
 /// of the multiplicities and the commitments to the lookup state
