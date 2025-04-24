@@ -483,7 +483,7 @@ $$
 At this point the prover could send $\vec{\openx}'$, $\vec{f}'$ to the verifier who could verify the claim:
 
 1. Computing $\vec{G}'$ from $\chalfold$ and $\vec{G}$
-2. Computing $C'$ from $\vec{f}'$, $v$ and $H$
+2. Computing $C'$ from $\vec{f}'$, $H$ and $L,R$ (obtained from the preceeding round)
 3. Checking $\openy' \overset?= \langle \vec{f}', \vec{\openx}' \rangle$
 
 This would require half as much communication as the naive proof. A modest improvement...
