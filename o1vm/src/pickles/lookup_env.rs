@@ -11,7 +11,7 @@ use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
 /// while doing individual proofs, in order
 /// to prove the lookup protocol we do in the end
 pub struct LookupEnvironment<G: KimchiCurve> {
-    /// fixed tables pre-existing the protocol
+    /// Fixed tables pre-existing the protocol
     pub tables_poly: Vec<Vec<DensePolynomial<G::ScalarField>>>,
     pub tables_comm: Vec<Vec<PolyComm<G>>>,
     /// Multiplicities
