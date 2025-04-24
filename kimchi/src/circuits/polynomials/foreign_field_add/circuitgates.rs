@@ -122,7 +122,7 @@ use core::{array, marker::PhantomData};
 //~ We reuse the foreign field addition gate for the final bound check since this is an addition with a
 //~ specific parameter structure. Checking that the correct right input, overflow, and overflow are used shall
 //~ be done by copy constraining these values with a public input value. One could have a specific gate
-//~ for just this check requiring less constrains, but the cost of adding one more selector gate outweights
+//~ for just this check requiring less constrains, but the cost of adding one more selector gate outweighs
 //~ the savings of one row and a few constraints of difference.
 //~
 //~ ##### Integration
@@ -149,7 +149,7 @@ where
     ) -> Vec<T> {
         let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.coeff(i));
 
-        // stored as coefficient for better correspondance with the relation being proved
+        // stored as coefficient for better correspondence with the relation being proved
         // this reduces the number of copy constraints needed to check the operation
         // it also allows the final bound check to copy the overflow bit to be 1
         // because otherwise it did not fit in the first 7 columns of the row

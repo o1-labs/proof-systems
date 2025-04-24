@@ -83,7 +83,7 @@ macro_rules! impl_proof {
                 fn into_abi(self) -> Self::Abi {
                     let js = self
                         .0
-                        .serialize(&crate::wasm_ocaml_serde::ser::Serializer::new())
+                        .serialize(&crate::wasm_ocaml_serde::set::Serializer::new())
                         .unwrap();
                     wasm_bindgen::convert::IntoWasmAbi::into_abi(js)
                 }

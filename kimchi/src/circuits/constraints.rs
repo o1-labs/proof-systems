@@ -305,7 +305,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// test helpers
     pub fn for_testing(gates: Vec<CircuitGate<F>>) -> Self {
         let public = 0;
-        // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
+        // not sure if there's a smarter way instead of the double unwrap, but should be fine in the test
         ConstraintSystem::<F>::create(gates)
             .public(public)
             .build()
@@ -776,7 +776,7 @@ impl<F: PrimeField> Builder<F> {
     /// If not invoked, it is `None` by default.
     ///
     /// **Warning:** you have to make sure that the IDs of the runtime
-    /// lookup tables, are unique, i.e. not colliding internaly (with other runtime tables),
+    /// lookup tables, are unique, i.e. not colliding internally (with other runtime tables),
     /// otherwise error will be raised.
     /// (see [crate::circuits::lookup::tables]).
     pub fn runtime(mut self, runtime_tables: Option<Vec<RuntimeTableCfg<F>>>) -> Self {

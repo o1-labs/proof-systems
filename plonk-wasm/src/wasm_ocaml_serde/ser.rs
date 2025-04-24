@@ -1,11 +1,11 @@
 use super::{Error, Result};
 use js_sys::{Array, Uint8Array};
-use serde::ser::{self, Error as _, Serialize};
+use serde::set::{self, Error as _, Serialize};
 use wasm_bindgen::prelude::*;
 
 pub struct ErrorSerializer;
 
-impl ser::SerializeTupleVariant for ErrorSerializer {
+impl set::SerializeTupleVariant for ErrorSerializer {
     type Ok = JsValue;
     type Error = Error;
 
@@ -18,7 +18,7 @@ impl ser::SerializeTupleVariant for ErrorSerializer {
     }
 }
 
-impl ser::SerializeStructVariant for ErrorSerializer {
+impl set::SerializeStructVariant for ErrorSerializer {
     type Ok = JsValue;
     type Error = Error;
 
@@ -49,7 +49,7 @@ impl<'s> ArraySerializer<'s> {
     }
 }
 
-impl ser::SerializeSeq for ArraySerializer<'_> {
+impl set::SerializeSeq for ArraySerializer<'_> {
     type Ok = JsValue;
     type Error = Error;
 
@@ -64,12 +64,12 @@ impl ser::SerializeSeq for ArraySerializer<'_> {
     }
 }
 
-impl ser::SerializeTuple for ArraySerializer<'_> {
+impl set::SerializeTuple for ArraySerializer<'_> {
     type Ok = JsValue;
     type Error = Error;
 
     fn serialize_element<T: ?Sized + Serialize>(&mut self, value: &T) -> Result<()> {
-        ser::SerializeSeq::serialize_element(self, value)
+        set::SerializeSeq::serialize_element(self, value)
     }
 
     fn end(self) -> Result {
@@ -77,12 +77,12 @@ impl ser::SerializeTuple for ArraySerializer<'_> {
     }
 }
 
-impl ser::SerializeTupleStruct for ArraySerializer<'_> {
+impl set::SerializeTupleStruct for ArraySerializer<'_> {
     type Ok = JsValue;
     type Error = Error;
 
     fn serialize_field<T: ?Sized + Serialize>(&mut self, value: &T) -> Result<()> {
-        ser::SerializeTuple::serialize_element(self, value)
+        set::SerializeTuple::serialize_element(self, value)
     }
 
     fn end(self) -> Result {
@@ -90,7 +90,7 @@ impl ser::SerializeTupleStruct for ArraySerializer<'_> {
     }
 }
 
-impl ser::SerializeMap for ErrorSerializer {
+impl set::SerializeMap for ErrorSerializer {
     type Ok = JsValue;
     type Error = Error;
 
@@ -107,12 +107,12 @@ impl ser::SerializeMap for ErrorSerializer {
     }
 }
 
-impl ser::SerializeStruct for ArraySerializer<'_> {
+impl set::SerializeStruct for ArraySerializer<'_> {
     type Ok = JsValue;
     type Error = Error;
 
     fn serialize_field<T: ?Sized + Serialize>(&mut self, _: &'static str, value: &T) -> Result<()> {
-        ser::SerializeSeq::serialize_element(self, value)
+        set::SerializeSeq::serialize_element(self, value)
     }
 
     fn end(self) -> Result {
@@ -129,7 +129,7 @@ impl Serializer {
     }
 }
 
-impl<'s> ser::Serializer for &'s Serializer {
+impl<'s> set::Serializer for &'s Serializer {
     type Ok = JsValue;
     type Error = Error;
 

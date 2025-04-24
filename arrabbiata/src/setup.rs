@@ -248,7 +248,7 @@ where
             // We commit to the selectors using evaluations.
             // As they are supposed to be one or zero, each row adds a small
             // contribution to the commitment.
-            // We explicity commit to all gadgets, even if they are not used in
+            // We explicitly commit to all gadgets, even if they are not used in
             // this indexed relation.
             circuit_gates
                 .iter()

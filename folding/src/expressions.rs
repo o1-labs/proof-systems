@@ -96,8 +96,8 @@
 //! = r^2 P_relaxed(X_{1}',   X_{2}',   X_{3}',   u')
 //! ```
 //! and `P_relaxed` is of degree `2`. More
-//! precisely, `P_relaxed` is homogenous. And that is the main idea of folding:
-//! the "relaxation" of a polynomial means we make it homogenous for a certain
+//! precisely, `P_relaxed` is homogeneous. And that is the main idea of folding:
+//! the "relaxation" of a polynomial means we make it homogeneous for a certain
 //! degree `d` by introducing the new variable `u`, and introduce the concept of
 //! "error terms" that will englobe the "cross-terms". The prover takes care of
 //! computing the cross-terms and commit to them.
@@ -349,7 +349,7 @@ pub trait FoldingColumnTrait: Copy + Clone {
     PartialEq(bound = "C: FoldingConfig")
 )]
 pub enum ExpExtension<C: FoldingConfig> {
-    /// The variable `u` used to make the polynomial homogenous
+    /// The variable `u` used to make the polynomial homogeneous
     U,
     /// The error term
     Error,

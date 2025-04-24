@@ -65,7 +65,7 @@ pub trait FlagBits<F> {
     /// Returns bit-flag for frame pointer for second register as `F`
     fn f_op1_fp(&self) -> F;
 
-    /// Returns bit-flag for allocation pointer for second regsiter as `F`
+    /// Returns bit-flag for allocation pointer for second register as `F`
     fn f_op1_ap(&self) -> F;
 
     /// Returns bit-flag for addition operation in right side as `F`

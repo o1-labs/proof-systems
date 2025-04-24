@@ -35,7 +35,7 @@ pub enum TestColumn {
     C,
 }
 
-// the type for the dynamic selectors, which are esentially witness columns, but
+// the type for the dynamic selectors, which are essentially witness columns, but
 // get special treatment to enable optimizations
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub enum DynamicSelector {
@@ -57,7 +57,7 @@ impl FoldingColumnTrait for TestColumn {
 pub struct TestInstance {
     // 3 from the normal witness + 2 from the dynamic selectors
     commitments: [Curve; 5],
-    // for ilustration only, no constraint in this example uses challenges
+    // for illustration only, no constraint in this example uses challenges
     challenges: [Fp; 3],
     // also challenges, but segregated as folding gives them special treatment
     alphas: Alphas<Fp>,
@@ -109,7 +109,7 @@ pub struct TestFoldingEnv {
 /// Our witness is going to be the polynomials that we will commit too.
 /// Vec<Fp> will be the evaluations of each x_1, x_2 and x_3 over the domain.
 /// This witness includes not only the 3 normal witness columns, but also the
-/// 2 dynamic selector columns that are esentially witness
+/// 2 dynamic selector columns that are essentially witness
 #[derive(Clone)]
 pub struct TestWitness([Evaluations<Fp, Radix2EvaluationDomain<Fp>>; 5]);
 
@@ -140,7 +140,7 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
         // here it is mostly storing the pairs into self, and also computing
         // other things we may need later like the shifted versions, note there
         // are more efficient ways of handling the rotated witnesses, which are
-        // just for example as no contraint uses them anyway
+        // just for example as no constraint uses them anyway
         let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
         let mut next_witnesses = curr_witnesses.clone();
         for side in next_witnesses.iter_mut() {
@@ -160,14 +160,14 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
     // provide access to columns, here side refers to one of the two pairs you
     // got in new()
     fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &[Fp] {
-        let wit = match curr_or_next {
+        let with = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
             CurrOrNext::Next => &self.next_witnesses[side as usize],
         };
         match col {
-            TestColumn::A => &wit.0[0].evals,
-            TestColumn::B => &wit.0[1].evals,
-            TestColumn::C => &wit.0[2].evals,
+            TestColumn::A => &with.0[0].evals,
+            TestColumn::B => &with.0[1].evals,
+            TestColumn::C => &with.0[2].evals,
         }
     }
 
@@ -185,10 +185,10 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
     // the implementation of this if the same as col(), it is just separated as they
     // have different types to resolve
     fn selector(&self, s: &DynamicSelector, side: Side) -> &[Fp] {
-        let wit = &self.curr_witnesses[side as usize];
+        let with = &self.curr_witnesses[side as usize];
         match s {
-            DynamicSelector::SelecAdd => &wit.0[3].evals,
-            DynamicSelector::SelecMul => &wit.0[4].evals,
+            DynamicSelector::SelecAdd => &with.0[3].evals,
+            DynamicSelector::SelecMul => &with.0[4].evals,
         }
     }
 }
@@ -262,7 +262,7 @@ fn instance_from_witness(
         .collect_vec();
     let commitments: [_; 5] = commitments.try_into().unwrap();
 
-    // here we should absorve the commitments and similar things to later compute challenges
+    // here we should absorb the commitments and similar things to later compute challenges
     // but for this example I just use random values
     let mut rng = thread_rng();
     let mut challenge = || Fp::rand(&mut rng);
@@ -347,7 +347,7 @@ fn test_quadriticization() {
 
     let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
 
-    // initiallize the scheme, also getting the final single expression for
+    // initialize the scheme, also getting the final single expression for
     // the entire constraint system
     let (scheme, final_constraint) = DecomposableFoldingScheme::<TestFoldingConfig>::new(
         constraints.clone(),
@@ -362,9 +362,9 @@ fn test_quadriticization() {
     let inputs2 = [[5u32, 6u32], [4u32, 3u32]];
 
     // creates an instance witness pair
-    let make_pair = |wit: TestWitness| {
-        let ins = instance_from_witness(&wit, &srs, domain);
-        (wit, ins)
+    let make_pair = |with: TestWitness| {
+        let ins = instance_from_witness(&with, &srs, domain);
+        (with, ins)
     };
 
     debug!("exp: \n {:#?}", final_constraint.to_string());
@@ -473,7 +473,7 @@ fn test_quadriticization() {
     {
         let mut fq_sponge_before_fold = fq_sponge.clone();
 
-        // here we use already relaxed pairs, which have a trival x -> x implementation
+        // here we use already relaxed pairs, which have a trivial x -> x implementation
         let folded = scheme.fold_instance_witness_pair(left, right, None, &mut fq_sponge);
         let FoldingOutput {
             folded_instance,

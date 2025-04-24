@@ -42,7 +42,7 @@ where
 
     // execute test vectors
     for test_vector in test_vectors.test_vectors {
-        // deserialize input & ouptut
+        // deserialize input & output
         let input: Vec<Fp> = test_vector
             .input
             .into_iter()
@@ -194,7 +194,7 @@ fn test_poseidon_challenge_multiple_times_without_absorbtion() {
         }
         assert!(
             !challenges.contains(&chal),
-            "Challenges must always be different, even without any absorbtion"
+            "Challenges must always be different, even without any absorption"
         );
         challenges.push(chal);
     }

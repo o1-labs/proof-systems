@@ -54,7 +54,7 @@ impl CurrOrNext {
 /// Note that all the gates are mutually exclusive:
 /// they cannot be used at the same time on single row.
 /// If we were ever to support this feature, we would have to make sure
-/// not to re-use powers of alpha across constraints.
+/// not to reuse powers of alpha across constraints.
 #[repr(C)]
 #[derive(
     Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, Eq, Hash, PartialOrd, Ord,
