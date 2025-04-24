@@ -1,6 +1,8 @@
+extern crate alloc;
 use crate::poseidon::ArithmeticSpongeParams;
+use alloc::vec;
 use ark_ff::Field;
-use std::{fmt::Debug, str::FromStr};
+use core::{fmt::Debug, str::FromStr};
 
 /// Placeholder dummy value for the kimchi configuration, suitable for fields of bitlength 254 and
 /// above.

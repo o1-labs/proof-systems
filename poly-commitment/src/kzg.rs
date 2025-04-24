@@ -178,11 +178,11 @@ impl<
     /// Parameters:
     /// - `srs`: the structured reference string
     /// - `plnms`: vector of polynomials with optional degree bound and
-    /// commitment randomness
+    ///   commitment randomness
     /// - `elm`: vector of evaluation points
     /// - `polyscale`: scaling factor for polynoms
-    /// group_maps, sponge, rng and evalscale are not used. The parameters are
-    /// kept to fit the trait and to be used generically.
+    ///   group_maps, sponge, rng and evalscale are not used. The parameters are
+    ///   kept to fit the trait and to be used generically.
     fn open<EFqSponge, RNG, D: EvaluationDomain<F>>(
         srs: &Self::SRS,
         _group_map: &<G as CommitmentCurve>::Map,
@@ -384,12 +384,12 @@ impl<
     /// Create a KZG proof.
     /// Parameters:
     /// - `srs`: the structured reference string used to commit
-    /// to the polynomials
+    ///   to the polynomials
     /// - `plnms`: the list of polynomials to open.
-    /// The type is simply an alias to handle the polynomials in evaluations or
-    /// coefficients forms.
+    ///   The type is simply an alias to handle the polynomials in evaluations or
+    ///   coefficients forms.
     /// - `elm`: vector of evaluation points. Note that it only works for two
-    /// elements for now.
+    ///   elements for now.
     /// - `polyscale`: a challenge to batch the polynomials.
     pub fn create<D: EvaluationDomain<F>>(
         srs: &PairingSRS<Pair>,

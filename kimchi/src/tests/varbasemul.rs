@@ -8,7 +8,6 @@ use crate::{
 };
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
-use colored::Colorize;
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -83,11 +82,7 @@ fn varbase_mul_test() {
         assert_eq!(x_.into_bigint(), res.n.into_bigint());
         assert_eq!((expected.x, expected.y), res.acc);
     }
-    println!(
-        "{}{:?}",
-        "Witness generation time: ".yellow(),
-        start.elapsed()
-    );
+    println!("Witness generation time: {:?}", start.elapsed());
 
     TestFramework::<Vesta>::default()
         .gates(gates)

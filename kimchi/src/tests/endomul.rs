@@ -8,13 +8,13 @@ use crate::{
 };
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
+use core::{array, ops::Mul};
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
 use poly_commitment::ipa::endos;
-use std::{array, ops::Mul};
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;

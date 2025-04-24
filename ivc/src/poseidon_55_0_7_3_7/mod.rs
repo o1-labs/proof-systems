@@ -29,12 +29,12 @@ mod tests {
     impl PoseidonParams<Fp, STATE_SIZE, NB_FULL_ROUND> for PoseidonBN254Parameters {
         fn constants(&self) -> [[Fp; STATE_SIZE]; NB_FULL_ROUND] {
             let rc = &poseidon_params_55_0_7_3::static_params().round_constants;
-            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
+            core::array::from_fn(|i| core::array::from_fn(|j| Fp::from(rc[i][j])))
         }
 
         fn mds(&self) -> [[Fp; STATE_SIZE]; STATE_SIZE] {
             let mds = &poseidon_params_55_0_7_3::static_params().mds;
-            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(mds[i][j])))
+            core::array::from_fn(|i| core::array::from_fn(|j| Fp::from(mds[i][j])))
         }
     }
 
@@ -118,7 +118,7 @@ mod tests {
             let mut witness_env: PoseidonWitnessBuilderEnv = WitnessBuilderEnv::create();
 
             let mut fixed_selectors: [Vec<Fp>; N_FSEL] =
-                std::array::from_fn(|_| vec![Fp::zero(); 1]);
+                core::array::from_fn(|_| vec![Fp::zero(); 1]);
             // Write constants
             {
                 let rc = PoseidonBN254Parameters.constants();

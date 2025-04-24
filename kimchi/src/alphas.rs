@@ -167,7 +167,7 @@ impl<F: Field> Alphas<F> {
 }
 
 impl<T> Display for Alphas<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for arg in [
             ArgumentType::Gate(GateType::Zero),
             ArgumentType::Permutation,
@@ -200,7 +200,7 @@ impl<T> Display for Alphas<T> {
 pub struct MustConsumeIterator<I, T>
 where
     I: Iterator<Item = T>,
-    T: std::fmt::Display,
+    T: core::fmt::Display,
 {
     inner: I,
     debug_info: ArgumentType,
@@ -209,7 +209,7 @@ where
 impl<I, T> Iterator for MustConsumeIterator<I, T>
 where
     I: Iterator<Item = T>,
-    T: std::fmt::Display,
+    T: core::fmt::Display,
 {
     type Item = I::Item;
     fn next(&mut self) -> Option<Self::Item> {
@@ -220,7 +220,7 @@ where
 impl<I, T> Drop for MustConsumeIterator<I, T>
 where
     I: Iterator<Item = T>,
-    T: std::fmt::Display,
+    T: core::fmt::Display,
 {
     fn drop(&mut self) {
         if let Some(v) = self.inner.next() {

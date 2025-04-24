@@ -33,7 +33,7 @@ use poly_commitment::{
 use rand::thread_rng;
 
 /// The result of a proof verification.
-pub type Result<T> = std::result::Result<T, VerifyError>;
+pub type Result<T> = core::result::Result<T, VerifyError>;
 
 #[derive(Debug)]
 pub struct Context<'a, G: KimchiCurve, OpeningProof: OpenProof<G>> {

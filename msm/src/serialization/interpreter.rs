@@ -1,7 +1,6 @@
 use ark_ff::{PrimeField, Zero};
 use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_integer::Integer;
-use num_traits::{sign::Signed, Euclid};
 use std::marker::PhantomData;
 
 use crate::{
@@ -253,10 +252,11 @@ pub fn deserialize_field_element<
 /// converts it to `[0,f_bi)` range, and outptus a corresponding
 /// biguint representation.
 pub fn bigint_to_biguint_f(input: BigInt, f_bi: &BigInt) -> BigUint {
-    let corrected_import: BigInt = if input.is_negative() && input > -f_bi {
+    let corrected_import: BigInt = if input < BigInt::zero() && input > -f_bi {
         &input + f_bi
-    } else if input.is_negative() {
-        Euclid::rem_euclid(&input, f_bi)
+    } else if input < BigInt::zero() {
+        let (_, rem) = BigInt::div_rem(&input, f_bi);
+        rem
     } else {
         input
     };
@@ -615,7 +615,7 @@ pub fn multiplication_circuit<
 
     let (quotient_bi, r_bi) = (&chal_bi * coeff_input_bi - coeff_result_bi).div_rem(&f_bi);
     assert!(r_bi.is_zero());
-    let (quotient_bi, quotient_sign): (BigInt, F) = if quotient_bi.is_negative() {
+    let (quotient_bi, quotient_sign): (BigInt, F) = if quotient_bi < BigInt::zero() {
         (-quotient_bi, -F::one())
     } else {
         (quotient_bi, F::one())

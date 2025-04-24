@@ -1,15 +1,14 @@
 name: o1vm CI
 
 on:
-  workflow_dispatch:
-  pull_request:
-  push:
-    branches:
-      - master
+  schedule:
+    - cron: "0 0 * * *" # every day at midnight
+  workflow_dispatch: {}
 
 env:
   # https://doc.rust-lang.org/cargo/reference/profiles.html#release
-  # Disable for the time being since it fails with the "attempt to multiply with overflow" error.
+  # Disable for the time being since it fails with the "attempt to multiply with
+  # overflow" error.
   # Known issue yeat to be fixed.
   # RUSTFLAGS: -Coverflow-checks=y -Cdebug-assertions=y
   # https://doc.rust-lang.org/cargo/reference/profiles.html#incremental
@@ -22,12 +21,14 @@ env:
 jobs:
   run_o1vm_with_cached_data:
     name: Run o1vm with cached data
-    # We run only one of the matrix options on the toffee `hetzner-1` self-hosted GitHub runner.
-    # Only in this configuration we enable tests with the code coverage data gathering.
+    # We run only one of the matrix options on the toffee `hetzner-1`
+    # self-hosted GitHub runner.
+    # Only in this configuration we enable tests with the code coverage data
+    # gathering.
     runs-on: ["ubuntu-latest"]
     strategy:
       matrix:
-        rust_toolchain_version: ["1.74"]
+        rust_toolchain_version: ["1.79"]
         # FIXME: currently not available for 5.0.0.
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency

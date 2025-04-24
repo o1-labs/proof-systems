@@ -1,8 +1,8 @@
 //! Mina signature structure and associated helpers
 
 use crate::{BaseField, ScalarField};
+use core::fmt;
 use o1_utils::FieldHelpers;
-use std::fmt;
 
 /// Signature structure
 #[derive(Clone, Eq, fmt::Debug, PartialEq)]
