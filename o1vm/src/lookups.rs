@@ -199,18 +199,6 @@ pub(crate) trait FixedLookupTables<F> {
 }
 
 impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
-    fn get_all_tables_transposed() -> Vec<LookupTable<F>> {
-        vec![
-            Self::table_pad_transposed(),
-            Self::table_round_constants_transposed(),
-            Self::table_at_most_4_transposed(),
-            Self::table_byte_transposed(),
-            Self::table_range_check_16_transposed(),
-            Self::table_sparse_transposed(),
-            Self::table_reset_transposed(),
-        ]
-    }
-
     fn is_in_table(table: &LookupTable<F>, value: Vec<F>) -> Option<usize> {
         let id = table.table_id;
         // In these tables, the first value of the vector is related to the
@@ -435,7 +423,20 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
             entries,
         }
     }
+
+    fn get_all_tables_transposed() -> Vec<LookupTable<F>> {
+        vec![
+            Self::table_pad_transposed(),
+            Self::table_round_constants_transposed(),
+            Self::table_at_most_4_transposed(),
+            Self::table_byte_transposed(),
+            Self::table_range_check_16_transposed(),
+            Self::table_sparse_transposed(),
+            Self::table_reset_transposed(),
+        ]
+    }
 }
+
 #[test]
 fn test_transpose() {
     use ark_ec::AffineRepr;
