@@ -494,7 +494,7 @@ However, we can iteratively apply this transformation until we reach an instance
 
 That the process above can simply be applied again to the new $(C', \vec{G}', H, \vec{\openx}', \openy) \in \relation_{\mathsf{IPA}, \ell/2}$ instance as well.
 By doing so $k = \log_2(\ell)$ times the total communication is brought down to $2 k$ $\GG$-elements
-until the instance consists of $(\comm, \vec{G}, \genOpen, \vec{\openx}) \in \relIPA{1}$
+until the instance consists of $(\comm, \vec{G}, \genOpen, \vec{\openx}, \openy) \in \relIPA{1}$
 at which point the prover simply provides the witness $\vec{f}' \in \FF$.
 
 Because we need to refer to the terms in the intermediate reductions
