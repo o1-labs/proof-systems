@@ -168,7 +168,7 @@ $$
 \comm &= \langle \vec{f}, \vec{G} \rangle + [\openy] \cdot \genOpen \in \GG
 \end{align}
 \right\}
-$$
+$$ where $\vec{f},\vec{\openx}, \vec{G}$ are of length $\ell$.
 
 We can reduce $\left(\statement = (\comm, \vec{G}, \openx, \openy),
 \witness = (\vec{f})\right) \in
