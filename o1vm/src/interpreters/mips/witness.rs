@@ -231,7 +231,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 LookupTableIDs::KeccakStepLookup => (),
             }
         }
-        //Update arity
+        // Update arity
         self.lookup_arity.push(arity_counter);
     }
 
