@@ -341,6 +341,10 @@ $$
 \vec{f}'
 }
 $$
+where ${
+\color{purple}
+\vec{f}'
+}$ is the new witness.
 
 Hence we can replace occurrences of $\chalfold \vec{f}_L + \vec{f}_R$ by $\chalfold \vec{f}'$,
 with this look at the green term:
