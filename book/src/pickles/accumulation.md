@@ -279,7 +279,7 @@ C' &= [\chalfold^{-1}] \cdot L + C + [\chalfold] \cdot R \\
    &+
     \left[
         {
-          \chalfold^{-1} \cdot \langle \vec{f}_R, \vec{f}_L \rangle
+          \chalfold^{-1} \cdot \langle \vec{f}_R, \vec{\openx}_L \rangle
           +
           {
           \color{magenta}
