@@ -132,12 +132,12 @@ $$
 \left\{
 \begin{align}
 \comm &= \langle \vec{f}, \vec{G} \rangle \\
-\openy &= \sum_{i = 0} f_i \cdot \openx^i
+\openy &= \sum_{i = 0}^{d-1} f_i \cdot \openx^i
 \end{align}
 \right\}
 $$
 
-Where $\vec{f}$ is a list of coefficients for a polynomial $f(X) \coloneqq \sum_{i} f_i \cdot X^i$.
+Where $\vec{f}$ is a list of $d$ coefficients for a polynomial $f(X) \coloneqq \sum_{i=0}^{d-1} f_i \cdot X^i$.
 
 This is the language we are interested in reducing: providing a trivial proof, i.e. sending $\vec{f}$ requires linear communication and time of the verifier,
 we want a poly-log verifier.
