@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["DEGREE_QUOTIENT_POLYNOMIAL"],"mod":["column_env","proof","prover","verifier"]};
+window.SIDEBAR_ITEMS = {"constant":["DEGREE_QUOTIENT_POLYNOMIAL"],"mod":["column_env","lookup_env","proof","prover","verifier"]};
