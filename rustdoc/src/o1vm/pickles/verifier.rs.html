@@ -398,7 +398,7 @@
     <span class="comment">// -- Preparing for opening proof verification
     </span><span class="kw">let </span>zeta_chal = ScalarChallenge(fq_sponge.challenge());
     <span class="kw">let </span>(<span class="kw">_</span>, endo_r) = G::endos();
-    <span class="kw">let </span>zeta: G::ScalarField = zeta_chal.to_field(endo_r);
+    <span class="kw">let </span>zeta = zeta_chal.to_field(endo_r);
     <span class="kw">let </span>omega = domain.d1.group_gen;
     <span class="kw">let </span>zeta_omega = zeta * omega;
 

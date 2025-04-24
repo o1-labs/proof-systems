@@ -402,7 +402,7 @@
         zeta_omega: eval(zeta_omega, columns_poly.clone(), t_chunks.clone()),
     };
     <span class="kw">let </span>fq_sponge_before_evaluations = fq_sponge.clone();
-    <span class="comment">// Creating fr_sponge, abosrning eval to crate challenges for IPA
+    <span class="comment">// Creating fr_sponge, absorbing eval to create challenges for IPA
     </span><span class="kw">let </span><span class="kw-2">mut </span>fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(<span class="kw-2">&amp;</span>fq_sponge.digest());
     <span class="comment">// TODO avoid cloning

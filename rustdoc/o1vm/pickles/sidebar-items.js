@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["DEGREE_QUOTIENT_POLYNOMIAL","TOTAL_NUMBER_OF_CONSTRAINTS"],"mod":["column_env","lookup_columns","lookup_env","lookup_prover","proof","prover","verifier"]};
+window.SIDEBAR_ITEMS = {"constant":["DEGREE_QUOTIENT_POLYNOMIAL","TOTAL_NUMBER_OF_CONSTRAINTS"],"mod":["column_env","lookup_columns","lookup_env","lookup_prover","lookup_verifier","proof","prover","verifier"]};
