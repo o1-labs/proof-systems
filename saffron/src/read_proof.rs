@@ -53,6 +53,8 @@ pub fn precompute_quotient_helpers(
     domain: EvaluationDomains<ScalarField>,
     indices: Vec<usize>,
 ) -> Vec<(DensePolynomial<ScalarField>, Curve)> {
+    use ark_ff::{One, UniformRand};
+    let mut rng = o1_utils::tests::make_test_rng(None);
     println!("Generating helpers");
     let n = domain.d1.size();
 
@@ -73,7 +75,7 @@ pub fn precompute_quotient_helpers(
 
     let fail_final_q_division = || panic!("Division by vanishing poly must not fail");
 
-    let indices = vec![1000];
+    let indices = vec![500, 1000];
 
     for i in indices.iter() {
         println!("Generating helpers {:?}", i);
@@ -106,11 +108,12 @@ pub fn precompute_quotient_helpers(
     {
         let data: Vec<ScalarField> = {
             //let mut data = vec![];
-            //(0..SRS_SIZE)
+            //(0..srs.size())
             //    .into_iter()
-            //    .for_each(|_| data.push(Fp::rand(&mut rng)));
+            //    .for_each(|_| data.push(ScalarField::rand(&mut rng)));
             let mut data = vec![ScalarField::zero(); srs.size()];
-            data[1000] = ScalarField::from(123 as u64);
+            data[500] = ScalarField::from(123 as u64);
+            //data[1000] = ScalarField::from(456 as u64);
             data
         };
 
@@ -120,7 +123,8 @@ pub fn precompute_quotient_helpers(
 
         let query: Vec<ScalarField> = {
             let mut query = vec![ScalarField::zero(); srs.size()];
-            query[1000] = ScalarField::one();
+            query[500] = ScalarField::one();
+            //query[1000] = ScalarField::one();
             //let mut query = vec![];
             //(0..SRS_SIZE)
             //    .into_iter()
@@ -198,6 +202,7 @@ pub fn precompute_quotient_helpers(
 
         let quotient_evals_alt: Evaluations<ScalarField, R2D<ScalarField>> =
             &helpers[0].0.evaluate_over_domain_by_ref(domain.d1) * answer_sparse[0];
+        //                + &(&helpers[1].0.evaluate_over_domain_by_ref(domain.d1) * answer_sparse[1]);
         let quotient_poly_alt: DensePolynomial<ScalarField> =
             quotient_evals_alt.clone().interpolate();
 
