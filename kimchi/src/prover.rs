@@ -293,6 +293,9 @@ where
         //~    This is why we need to absorb the commitment to the public polynomial at this point.
         absorb_commitment(&mut fq_sponge, &public_comm);
 
+        // TODO fake regression
+        std::thread::sleep(std::time::Duration::from_secs(1));
+
         //~ 1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
         //~
         //~    Note: since the witness is in evaluation form,
