@@ -294,7 +294,7 @@ where
         absorb_commitment(&mut fq_sponge, &public_comm);
 
         // TODO fake regression
-        std::thread::sleep(std::time::Duration::from_secs(1));
+        std::thread::sleep(std::time::Duration::from_millis(500));
 
         //~ 1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
         //~
