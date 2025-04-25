@@ -192,6 +192,7 @@
 <a href="#192" id="192">192</a>
 <a href="#193" id="193">193</a>
 <a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::pickles::lookup_columns::<span class="kw-2">*</span>;
 <span class="kw">use </span>ark_ff::{Field, One, PrimeField, Zero};
 <span class="kw">use </span>kimchi::{
@@ -373,17 +374,18 @@
     // Check quotient correctness
     ///////
 
-    </span><span class="kw">let </span>(quotient_zeta, <span class="kw">_</span>) = evaluations.zeta.t_shares.iter().fold(
+    </span><span class="kw">let </span>zeta_pow_n = zeta.pow([domain.d1.size]);
+    <span class="kw">let </span>(quotient_zeta, <span class="kw">_</span>) = evaluations.zeta.t_shares.iter().fold(
         (G::ScalarField::zero(), G::ScalarField::one()),
         |(res, zeta_i_n), chunk| {
             <span class="kw">let </span>res = res + zeta_i_n * chunk;
-            <span class="kw">let </span>zeta_i_n = zeta_i_n * zeta.pow([domain.d1.size]);
+            <span class="kw">let </span>zeta_i_n = zeta_i_n * zeta_pow_n;
             (res, zeta_i_n)
         },
     );
 
     <span class="kw">let </span>quotient_is_correct =
-        quotient_zeta == numerator_zeta / (zeta.pow([domain.d1.size]) - G::ScalarField::one());
+        quotient_zeta == numerator_zeta / (zeta_pow_n - G::ScalarField::one());
     quotient_is_correct &amp;&amp; ipa_is_correct
 }
 </code></pre></div></section></main></body></html>
