@@ -123,9 +123,8 @@ where
     let evaluation_point = fq_sponge.squeeze(2);
 
     // Fiat Shamir - absorbing evaluations
-    let fq_sponge_before_evaluations = fq_sponge.clone();
     let mut fr_sponge = CurveFrSponge::new(Curve::sponge_params());
-    fr_sponge.absorb(&fq_sponge.digest());
+    fr_sponge.absorb(&fq_sponge.clone().digest());
 
     let data_eval = data_poly.evaluate(&evaluation_point);
     let query_eval = query_poly.evaluate(&evaluation_point);
@@ -164,7 +163,7 @@ where
         &[evaluation_point],
         polyscale,
         evalscale,
-        fq_sponge_before_evaluations,
+        fq_sponge,
         rng,
     );
 
@@ -191,17 +190,14 @@ pub fn verify<RNG>(
 where
     RNG: RngCore + CryptoRng,
 {
-    let (_, endo_r) = Curve::endos();
-
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
     fq_sponge.absorb_g(&[*data_comm, proof.query_comm, proof.answer_comm]);
     fq_sponge.absorb_g(&[proof.quotient_comm]);
 
     let evaluation_point = fq_sponge.squeeze(2);
 
-    let fq_sponge_before_evaluations = fq_sponge.clone();
     let mut fr_sponge = CurveFrSponge::new(Curve::sponge_params());
-    fr_sponge.absorb(&fq_sponge.digest());
+    fr_sponge.absorb(&fq_sponge.clone().digest());
 
     let vanishing_poly_at_zeta = domain.d1.vanishing_polynomial().evaluate(&evaluation_point);
     let quotient_eval = {
@@ -266,7 +262,7 @@ where
     srs.verify(
         group_map,
         &mut [BatchEvaluationProof {
-            sponge: fq_sponge_before_evaluations,
+            sponge: fq_sponge,
             evaluation_points: vec![evaluation_point],
             polyscale,
             evalscale,
