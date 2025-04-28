@@ -411,7 +411,6 @@ impl<F: Field + Clone> FixedLookupTables<F> for LookupTable<F> {
         FixedLookup {
             pad_lookup: Self::table_pad_transposed(),
             round_constants_lookup: Self::table_round_constants_transposed(),
-
             at_most_4_lookup: Self::table_at_most_4_transposed(),
             byte_lookup: Self::table_byte_transposed(),
             range_check_16_lookup: Self::table_range_check_16_transposed(),
