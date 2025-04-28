@@ -65,8 +65,6 @@ pub fn prove<RNG>(
 where
     RNG: RngCore + CryptoRng,
 {
-    let (_, endo_r) = Curve::endos();
-
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
 
     let data_d1 = Evaluations::from_vec_and_domain(data.to_vec(), domain.d1);
@@ -77,22 +75,17 @@ where
 
     let query_d1 = Evaluations::from_vec_and_domain(query.to_vec(), domain.d1);
     let query_poly: DensePolynomial<ScalarField> = query_d1.clone().interpolate();
-    let query_comm: PolyComm<Curve> = srs.commit_non_hiding(&query_poly, 1);
+    let query_comm: Curve = srs.commit_non_hiding(&query_poly, 1).chunks[0];
 
     let answer_d1 = Evaluations::from_vec_and_domain(answer.to_vec(), domain.d1);
     let answer_poly: DensePolynomial<ScalarField> = answer_d1.clone().interpolate();
-    let answer_comm: PolyComm<Curve> = srs.commit_non_hiding(&answer_poly, 1);
+    let answer_comm: Curve = srs.commit_non_hiding(&answer_poly, 1).chunks[0];
 
-    fq_sponge.absorb_g(&[
-        data_comm.chunks[0],
-        query_comm.chunks[0],
-        answer_comm.chunks[0],
-    ]);
+    fq_sponge.absorb_g(&[data_comm.chunks[0], query_comm, answer_comm]);
 
     // coefficient form, over d4? d2?
     // quotient_Poly has degree d1
     let quotient_poly: DensePolynomial<ScalarField> = {
-        // TODO: do not re-interpolate, we already did d1
         let data_d2 = data_poly.evaluate_over_domain_by_ref(domain.d2);
         let query_d2 = query_poly.evaluate_over_domain_by_ref(domain.d2);
         let answer_d2 = answer_poly.evaluate_over_domain_by_ref(domain.d2);
@@ -122,7 +115,7 @@ where
     };
 
     // commit to the quotient polynomial $t$.
-    // num_chunks = 1 because our constraint is degree 2
+    // num_chunks = 1 because our constraint is degree 2, which makes the quotient polynomial of degree d1
     let quotient_comm = srs.commit_non_hiding(&quotient_poly, 1).chunks[0];
     fq_sponge.absorb_g(&[quotient_comm]);
 
@@ -137,33 +130,33 @@ where
     let data_eval = data_poly.evaluate(&evaluation_point);
     let query_eval = query_poly.evaluate(&evaluation_point);
     let answer_eval = answer_poly.evaluate(&evaluation_point);
-
     let quotient_eval = quotient_poly.evaluate(&evaluation_point);
 
     for eval in [data_eval, query_eval, answer_eval, quotient_eval].into_iter() {
         fr_sponge.absorb(&eval);
     }
 
-    let polyscale_chal = fr_sponge.challenge();
-    let polyscale = polyscale_chal.to_field(endo_r);
-    let evalscale_chal = fr_sponge.challenge();
-    let evalscale = evalscale_chal.to_field(endo_r);
+    let (_, endo_r) = Curve::endos();
+    // Generate scalars used as combiners for sub-statements within our IPA opening proof.
+    let polyscale = fr_sponge.challenge().to_field(endo_r);
+    let evalscale = fr_sponge.challenge().to_field(endo_r);
 
     // Creating the polynomials for the batch proof
-    let coefficients_form = DensePolynomialOrEvaluations::<_, R2D<ScalarField>>::DensePolynomial;
-    let non_hiding = |n_chunks| PolyComm {
-        chunks: vec![ScalarField::zero(); n_chunks],
-    };
-
     // Gathering all polynomials to use in the opening proof
-    let opening_proof_inputs: Vec<_> = vec![
-        (coefficients_form(&data_poly), non_hiding(1)),
-        (coefficients_form(&query_poly), non_hiding(1)),
-        (coefficients_form(&answer_poly), non_hiding(1)),
-        (coefficients_form(&quotient_poly), non_hiding(1)),
-    ];
+    let opening_proof_inputs: Vec<_> = {
+        let coefficients_form =
+            DensePolynomialOrEvaluations::<_, R2D<ScalarField>>::DensePolynomial;
+        let non_hiding = |n_chunks| PolyComm {
+            chunks: vec![ScalarField::zero(); n_chunks],
+        };
 
-    // TODO: these evaluations should probably be added to the sponge for the opening proof
+        vec![
+            (coefficients_form(&data_poly), non_hiding(1)),
+            (coefficients_form(&query_poly), non_hiding(1)),
+            (coefficients_form(&answer_poly), non_hiding(1)),
+            (coefficients_form(&quotient_poly), non_hiding(1)),
+        ]
+    };
 
     let opening_proof = srs.open(
         group_map,
@@ -176,8 +169,8 @@ where
     );
 
     ReadProof {
-        query_comm: query_comm.chunks[0],
-        answer_comm: answer_comm.chunks[0],
+        query_comm,
+        answer_comm,
         quotient_comm,
         data_eval,
         query_eval,
@@ -213,7 +206,9 @@ where
     let vanishing_poly_at_zeta = domain.d1.vanishing_polynomial().evaluate(&evaluation_point);
     let quotient_eval = {
         &(proof.data_eval * proof.query_eval - proof.answer_eval)
-            * &vanishing_poly_at_zeta.inverse().unwrap()
+            * &vanishing_poly_at_zeta
+                .inverse()
+                .unwrap_or_else(|| panic!("Inverse fails only with negligible probability"))
     };
 
     for eval in [
@@ -260,12 +255,12 @@ where
     ];
 
     let combined_inner_product = {
-        let es: Vec<_> = coms_and_evaluations
+        let evaluations: Vec<_> = coms_and_evaluations
             .iter()
             .map(|Evaluation { evaluations, .. }| evaluations.clone())
             .collect();
 
-        combined_inner_product(&polyscale, &evalscale, es.as_slice())
+        combined_inner_product(&polyscale, &evalscale, evaluations.as_slice())
     };
 
     srs.verify(
