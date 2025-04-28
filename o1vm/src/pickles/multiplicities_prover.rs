@@ -54,7 +54,7 @@ where
     // Init result
     let mut inverses_vec = Vec::new();
 
-    (fixedlookup)
+    (fixedlookup_transposed)
         .into_iter()
         .zip(multiplicities)
         .for_each(|(table, mul)| {
