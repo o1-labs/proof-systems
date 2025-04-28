@@ -82,6 +82,7 @@ impl<X> ColumnEnv<X> {
 
 pub struct MultiplicitiesProofInput<G: KimchiCurve> {
     pub fixedlookup: FixedLookup<Vec<Vec<G::ScalarField>>>,
+    pub fixedlookup_transposed: FixedLookup<Vec<Vec<G::ScalarField>>>,
     pub multiplicities: FixedLookup<Vec<G::ScalarField>>,
     pub fixedlookupcommitment: FixedLookup<Vec<PolyComm<G>>>,
     pub beta_challenge: G::ScalarField,

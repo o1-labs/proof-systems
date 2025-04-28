@@ -460,6 +460,7 @@ fn multiplicities_prove_and_verify(
                 vec
             }),
         fixedlookup: lookup_env.tables,
+        fixedlookup_transposed: lookup_env.tables_transposed,
         fixedlookupcommitment: lookup_env.tables_comm,
     };
     let (acc_final, state) =

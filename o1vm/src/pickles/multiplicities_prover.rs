@@ -41,11 +41,12 @@ where
     G::BaseField: PrimeField,
 {
     let MultiplicitiesProofInput {
-        fixedlookup,
+        fixedlookup: _,
         multiplicities,
         beta_challenge,
         gamma_challenge,
         fixedlookupcommitment: _,
+        fixedlookup_transposed,
     } = input;
 
     // Compute the inverses
@@ -126,6 +127,7 @@ where
     let num_chunk = 8;
     let MultiplicitiesProofInput {
         fixedlookup,
+        fixedlookup_transposed: _,
         multiplicities,
         beta_challenge,
         gamma_challenge,
