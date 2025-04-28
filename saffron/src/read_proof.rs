@@ -70,7 +70,7 @@ where
     let data_d1 = Evaluations::from_vec_and_domain(data.to_vec(), domain.d1);
     let data_poly: DensePolynomial<ScalarField> = data_d1.clone().interpolate();
     let data_comm: PolyComm<Curve> = PolyComm {
-        chunks: vec![data_comm.clone()],
+        chunks: vec![*data_comm],
     };
 
     let query_d1 = Evaluations::from_vec_and_domain(query.to_vec(), domain.d1);
@@ -205,8 +205,8 @@ where
 
     let vanishing_poly_at_zeta = domain.d1.vanishing_polynomial().evaluate(&evaluation_point);
     let quotient_eval = {
-        &(proof.data_eval * proof.query_eval - proof.answer_eval)
-            * &vanishing_poly_at_zeta
+        (proof.data_eval * proof.query_eval - proof.answer_eval)
+            * vanishing_poly_at_zeta
                 .inverse()
                 .unwrap_or_else(|| panic!("Inverse fails only with negligible probability"))
     };
