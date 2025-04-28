@@ -22,6 +22,9 @@ use o1vm::{
         lookup_env::LookupEnvironment,
         lookup_prover::{lookup_prove_fst_part, lookup_prove_snd_part},
         lookup_verifier::lookup_verify,
+        multiplicities_columns::{EMultiplicities, MultiplicitiesProofInput},
+        multiplicities_prover::{multiplicitie_prove_fst_part, multiplicities_prove_snd_part},
+        multiplicities_verifier::multiplicities_verify,
         proof::ProofInputs,
         prover, verifier,
     },
@@ -424,6 +427,76 @@ fn lookup_prove_and_verify(
     assert!(verif);
     debug!(
         "Lookup verification done in {elapsed} μs",
+        elapsed = start_iteration.elapsed().as_micros()
+    );
+    acc_final
+}
+
+fn multiplicities_prove_and_verify(
+    domain_fp: EvaluationDomains<Fp>,
+    srs: &SRS<Vesta>,
+    lookup_env: LookupEnvironment<Vesta>,
+    rng: &mut ThreadRng,
+    mut sponge: DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+    acc_init: Fp,
+) -> Fp {
+    let start_iteration = Instant::now();
+
+    let beta_challenge = sponge.challenge();
+    let gamma_challenge = sponge.challenge();
+    let sponge_verifier = sponge.clone();
+    let proof_input = MultiplicitiesProofInput {
+        beta_challenge,
+        gamma_challenge,
+        multiplicities: lookup_env
+            .multiplicities
+            .map(|vec| vec.into_iter().map(Fp::from).collect())
+            .map(|mut vec: Vec<_>| {
+                vec.extend(vec![Fp::zero(); domain_fp.d1.size as usize - vec.len()]);
+                vec
+            }),
+        fixedlookup: lookup_env.tables,
+        fixedlookupcommitment: lookup_env.tables_comm,
+    };
+    let (acc_final, state) =
+        multiplicitie_prove_fst_part::<Vesta>(&proof_input, acc_init, domain_fp);
+    let constraints = [EMultiplicities::zero()];
+
+    let proof = multiplicities_prove_snd_part::<
+        Vesta,
+        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+        ThreadRng,
+    >(
+        proof_input,
+        srs,
+        domain_fp,
+        sponge,
+        &constraints,
+        rng,
+        state,
+    );
+    debug!(
+        "Multiplicities proof generated in {elapsed} μs",
+        elapsed = start_iteration.elapsed().as_micros()
+    );
+    let start_iteration = Instant::now();
+    let verif = multiplicities_verify::<
+        Vesta,
+        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>,
+    >(
+        beta_challenge,
+        gamma_challenge,
+        constraints.to_vec(),
+        sponge_verifier,
+        domain_fp,
+        srs,
+        &proof,
+    );
+    assert!(verif);
+    debug!(
+        "Multiplicities verification done in {elapsed} μs",
         elapsed = start_iteration.elapsed().as_micros()
     );
     acc_final
