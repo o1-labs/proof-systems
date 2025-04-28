@@ -384,6 +384,8 @@ pub(crate) trait FixedLookupTables<F> {
     /// eg. the addition for integer smaller than 2 is:
     /// [[0,1,1][0,0,1][0,1,1]] when non formated, and becomes
     /// [[table_id,table_id,table_id,..., table_id][0,1,1, 0...0][0,0,1, 0...0][0,1,1, 0...0]]
+    fn get_formated_tables_transposed(domain_size: u64) -> FixedLookup<Vec<Vec<F>>>;
+
     fn get_formated_tables(domain_size: u64) -> FixedLookup<Vec<Vec<F>>>;
 }
 
@@ -413,6 +415,36 @@ impl<F: Field + Clone> FixedLookupTables<F> for LookupTable<F> {
             range_check_16_lookup: Self::table_range_check_16_transposed(),
             sparse_lookup: Self::table_sparse_transposed(),
             reset_lookup: Self::table_reset_transposed(),
+        }
+        .map(|table| format(table, domain_size))
+    }
+
+    fn get_formated_tables_transposed(domain_size: u64) -> FixedLookup<Vec<Vec<F>>> {
+        fn format<F: Clone + Field>(lookup_table: LookupTable<F>, domain_size: u64) -> Vec<Vec<F>> {
+            let mut id_entries: Vec<Vec<_>> = lookup_table
+                .entries
+                .into_iter()
+                .map(|entry| {
+                    let mut res = vec![lookup_table.table_id.to_field()];
+                    res.extend(entry);
+                    res
+                })
+                .collect();
+            id_entries.extend(vec![
+                id_entries[0].clone();
+                domain_size as usize - id_entries.len()
+            ]);
+            id_entries
+        }
+
+        FixedLookup {
+            pad_lookup: Self::table_pad(),
+            round_constants_lookup: Self::table_round_constants(),
+            at_most_4_lookup: Self::table_at_most_4(),
+            byte_lookup: Self::table_byte(),
+            range_check_16_lookup: Self::table_range_check_16(),
+            sparse_lookup: Self::table_sparse(),
+            reset_lookup: Self::table_reset(),
         }
         .map(|table| format(table, domain_size))
     }
