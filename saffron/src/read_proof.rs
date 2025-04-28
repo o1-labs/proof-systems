@@ -5,7 +5,7 @@
 //! the query.
 //!
 //! The folding version is TBD
-//! We call data is the data vector that is stored and queried
+//! We call data the data vector that is stored and queried
 //! We call answer the vector such that answer[i] = data[i] * query[i]
 
 use crate::{Curve, CurveFqSponge, CurveFrSponge, ScalarField};
