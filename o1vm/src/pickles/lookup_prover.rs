@@ -118,7 +118,7 @@ pub fn lookup_prove_snd_part<
     srs: &SRS<G>,
     domain: EvaluationDomains<G::ScalarField>,
     mut fq_sponge: EFqSponge,
-    constraints: &Vec<ELookup<G::ScalarField>>,
+    constraints: &[ELookup<G::ScalarField>],
     rng: &mut RNG,
     // some commitments are already computed
     // we give them as auxiliary input
