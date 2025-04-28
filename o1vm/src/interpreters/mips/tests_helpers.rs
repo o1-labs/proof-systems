@@ -3,8 +3,9 @@ use crate::{
     interpreters::mips::{
         interpreter::{debugging::InstructionParts, InterpreterEnv},
         registers::Registers,
-        witness::{Env as WEnv, LookupMultiplicities, SyscallEnv},
+        witness::{Env as WEnv, SyscallEnv},
     },
+    lookups::FixedLookup,
     preimage_oracle::PreImageOracleT,
 };
 use rand::{CryptoRng, Rng, RngCore};
@@ -92,7 +93,7 @@ where
         scratch_state_idx_inverse: 0,
         scratch_state: [Fp::from(0); SCRATCH_SIZE],
         scratch_state_inverse: [Fp::from(0); SCRATCH_SIZE_INVERSE],
-        lookup_multiplicities: LookupMultiplicities::new(),
+        lookup_multiplicities: FixedLookup::<Vec<u64>>::new(),
         lookup_state_idx: 0,
         lookup_state: vec![],
         lookup_arity: vec![],

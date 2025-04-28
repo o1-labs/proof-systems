@@ -11,6 +11,7 @@ use kimchi::{
     o1_utils::{FieldHelpers, Two},
 };
 use kimchi_msm::{LogupTable, LogupWitness, LookupTableID};
+use std::ops::Index;
 
 /// The lookups struct based on RAMLookups for the VM table IDs
 pub(crate) type Lookup<F> = RAMLookup<F, LookupTableIDs>;
@@ -57,6 +58,188 @@ pub enum LookupTableIDs {
     SyscallLookup = 9,
     /// Input/Output of Keccak steps
     KeccakStepLookup = 10,
+}
+
+// IMPROVEME: A could in some cases be [A;arity of the table]
+#[derive(Clone)]
+pub struct FixedLookup<A> {
+    pub pad_lookup: A,
+    pub round_constants_lookup: A,
+    pub at_most_4_lookup: A,
+    pub byte_lookup: A,
+    pub range_check_16_lookup: A,
+    pub sparse_lookup: A,
+    pub reset_lookup: A,
+}
+
+// TODO map on ref
+impl<A> FixedLookup<A> {
+    pub fn map<B, F>(self, mut f: F) -> FixedLookup<B>
+    where
+        F: FnMut(A) -> B,
+        Self: Sized,
+    {
+        let FixedLookup {
+            pad_lookup,
+            round_constants_lookup,
+            at_most_4_lookup,
+            byte_lookup,
+            range_check_16_lookup,
+            sparse_lookup,
+            reset_lookup,
+        } = self;
+
+        FixedLookup {
+            pad_lookup: f(pad_lookup),
+            round_constants_lookup: f(round_constants_lookup),
+            at_most_4_lookup: f(at_most_4_lookup),
+            byte_lookup: f(byte_lookup),
+            range_check_16_lookup: f(range_check_16_lookup),
+            sparse_lookup: f(sparse_lookup),
+            reset_lookup: f(reset_lookup),
+        }
+    }
+}
+
+impl<A> Index<LookupTableIDs> for FixedLookup<A> {
+    type Output = A;
+    fn index(&self, index: LookupTableIDs) -> &Self::Output {
+        let FixedLookup {
+            pad_lookup,
+            range_check_16_lookup,
+            round_constants_lookup,
+            reset_lookup,
+            at_most_4_lookup,
+            byte_lookup,
+            sparse_lookup,
+        } = self;
+
+        match index {
+            PadLookup => pad_lookup,
+            RoundConstantsLookup => round_constants_lookup,
+            AtMost4Lookup => at_most_4_lookup,
+            ByteLookup => byte_lookup,
+            RangeCheck16Lookup => range_check_16_lookup,
+            SparseLookup => sparse_lookup,
+            ResetLookup => reset_lookup,
+            // We only index fixed tables
+            _ => panic!("not supposed to happen"),
+        }
+    }
+}
+
+pub struct IterFixedLookup<'a, A> {
+    lookup: &'a FixedLookup<A>,
+    iter: LookupTableIDs,
+}
+
+impl<'a, A> Iterator for IterFixedLookup<'a, A> {
+    type Item = &'a A;
+    fn next(&mut self) -> Option<Self::Item> {
+        let FixedLookup {
+            pad_lookup,
+            round_constants_lookup,
+            at_most_4_lookup,
+            byte_lookup,
+            range_check_16_lookup,
+            sparse_lookup,
+            reset_lookup,
+        } = &self.lookup;
+
+        match self.iter {
+            PadLookup => {
+                self.iter = RoundConstantsLookup;
+                Some(pad_lookup)
+            }
+            RoundConstantsLookup => {
+                self.iter = AtMost4Lookup;
+                Some(round_constants_lookup)
+            }
+            AtMost4Lookup => {
+                self.iter = ByteLookup;
+                Some(at_most_4_lookup)
+            }
+            ByteLookup => {
+                self.iter = RangeCheck16Lookup;
+                Some(byte_lookup)
+            }
+            RangeCheck16Lookup => {
+                self.iter = SparseLookup;
+                Some(range_check_16_lookup)
+            }
+            SparseLookup => {
+                self.iter = ResetLookup;
+                Some(sparse_lookup)
+            }
+            ResetLookup => {
+                self.iter = MemoryLookup;
+                Some(reset_lookup)
+            }
+            // We only iterate on fixed tables
+            MemoryLookup => None,
+            _ => None,
+        }
+    }
+}
+
+impl<'a, A> IntoIterator for &'a FixedLookup<A> {
+    type Item = &'a A;
+    type IntoIter = IterFixedLookup<'a, A>;
+    fn into_iter(self) -> Self::IntoIter {
+        IterFixedLookup {
+            iter: PadLookup,
+            lookup: self,
+        }
+    }
+}
+
+impl<A> IntoIterator for FixedLookup<A> {
+    type Item = A;
+    type IntoIter = std::vec::IntoIter<A>;
+    fn into_iter(self) -> Self::IntoIter {
+        let FixedLookup {
+            pad_lookup,
+            round_constants_lookup,
+            at_most_4_lookup,
+            byte_lookup,
+            range_check_16_lookup,
+            sparse_lookup,
+            reset_lookup,
+        } = self;
+        let vec = vec![
+            pad_lookup,
+            round_constants_lookup,
+            at_most_4_lookup,
+            byte_lookup,
+            range_check_16_lookup,
+            sparse_lookup,
+            reset_lookup,
+        ];
+        vec.into_iter()
+    }
+}
+
+impl<A> FromIterator<A> for FixedLookup<A> {
+    fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self {
+        let mut iter = iter.into_iter();
+        let pad_lookup = iter.next().unwrap();
+        let round_constants_lookup = iter.next().unwrap();
+        let at_most_4_lookup = iter.next().unwrap();
+        let byte_lookup = iter.next().unwrap();
+        let range_check_16_lookup = iter.next().unwrap();
+        let sparse_lookup = iter.next().unwrap();
+        let reset_lookup = iter.next().unwrap();
+
+        FixedLookup {
+            pad_lookup,
+            round_constants_lookup,
+            at_most_4_lookup,
+            byte_lookup,
+            range_check_16_lookup,
+            sparse_lookup,
+            reset_lookup,
+        }
+    }
 }
 
 impl LookupTableID for LookupTableIDs {
@@ -194,21 +377,77 @@ pub(crate) trait FixedLookupTables<F> {
     fn table_reset() -> LookupTable<F>;
     fn table_reset_transposed() -> LookupTable<F>;
 
-    /// Returns a vector containing all fixed tables
-    fn get_all_tables_transposed() -> Vec<LookupTable<F>>;
+    /// The lookup as given to the multiplicities prover.
+    /// We implement two modifications to the tables:
+    /// - We pad with the first element.
+    /// - We augment the arity by one, adding the table_id.
+    /// eg. the addition for integer smaller than 2 is:
+    /// [[0,1,1][0,0,1][0,1,1]] when non formated, and becomes
+    /// [[table_id,table_id,table_id,..., table_id][0,1,1, 0...0][0,0,1, 0...0][0,1,1, 0...0]]
+    fn get_formated_tables_transposed(domain_size: u64) -> FixedLookup<Vec<Vec<F>>>;
+
+    /// The transposed version of the preceeding version.
+    /// Used at setup time to compute commitments, polynomials and evaluations.
+    fn get_formated_tables(domain_size: u64) -> FixedLookup<Vec<Vec<F>>>;
 }
 
-impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
-    fn get_all_tables_transposed() -> Vec<LookupTable<F>> {
-        vec![
-            Self::table_pad_transposed(),
-            Self::table_round_constants_transposed(),
-            Self::table_at_most_4_transposed(),
-            Self::table_byte_transposed(),
-            Self::table_range_check_16_transposed(),
-            Self::table_sparse_transposed(),
-            Self::table_reset_transposed(),
-        ]
+impl<F: Field + Clone> FixedLookupTables<F> for LookupTable<F> {
+    fn get_formated_tables(domain_size: u64) -> FixedLookup<Vec<Vec<F>>> {
+        fn format<F: Clone + Field>(lookup_table: LookupTable<F>, domain_size: u64) -> Vec<Vec<F>> {
+            let id = vec![lookup_table.table_id.to_field(); domain_size as usize];
+            let padded_entries: Vec<Vec<F>> = lookup_table
+                .entries
+                .into_iter()
+                .map(|mut row| {
+                    row.extend(vec![row[0]; (domain_size as usize) - row.len()]);
+                    row
+                })
+                .collect();
+            let mut id_vec = vec![id];
+            id_vec.extend(padded_entries);
+            id_vec
+        }
+
+        FixedLookup {
+            pad_lookup: Self::table_pad_transposed(),
+            round_constants_lookup: Self::table_round_constants_transposed(),
+            at_most_4_lookup: Self::table_at_most_4_transposed(),
+            byte_lookup: Self::table_byte_transposed(),
+            range_check_16_lookup: Self::table_range_check_16_transposed(),
+            sparse_lookup: Self::table_sparse_transposed(),
+            reset_lookup: Self::table_reset_transposed(),
+        }
+        .map(|table| format(table, domain_size))
+    }
+
+    fn get_formated_tables_transposed(domain_size: u64) -> FixedLookup<Vec<Vec<F>>> {
+        fn format<F: Clone + Field>(lookup_table: LookupTable<F>, domain_size: u64) -> Vec<Vec<F>> {
+            let mut id_entries: Vec<Vec<_>> = lookup_table
+                .entries
+                .into_iter()
+                .map(|entry| {
+                    let mut res = vec![lookup_table.table_id.to_field()];
+                    res.extend(entry);
+                    res
+                })
+                .collect();
+            id_entries.extend(vec![
+                id_entries[0].clone();
+                domain_size as usize - id_entries.len()
+            ]);
+            id_entries
+        }
+
+        FixedLookup {
+            pad_lookup: Self::table_pad(),
+            round_constants_lookup: Self::table_round_constants(),
+            at_most_4_lookup: Self::table_at_most_4(),
+            byte_lookup: Self::table_byte(),
+            range_check_16_lookup: Self::table_range_check_16(),
+            sparse_lookup: Self::table_sparse(),
+            reset_lookup: Self::table_reset(),
+        }
+        .map(|table| format(table, domain_size))
     }
 
     fn is_in_table(table: &LookupTable<F>, value: Vec<F>) -> Option<usize> {
