@@ -11,6 +11,7 @@ use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
 pub struct LookupEnvironment<G: KimchiCurve> {
     /// fixed tables pre-existing the protocol
     pub tables: FixedLookup<Vec<Vec<G::ScalarField>>>,
+    pub tables_transposed: FixedLookup<Vec<Vec<G::ScalarField>>>,
     pub tables_poly: FixedLookup<Vec<DensePolynomial<G::ScalarField>>>,
     pub tables_comm: FixedLookup<Vec<PolyComm<G>>>,
     ///multiplicities
@@ -50,6 +51,9 @@ impl<G: KimchiCurve> LookupEnvironment<G> {
         });
         LookupEnvironment {
             tables,
+            tables_transposed: LookupTable::<G::ScalarField>::get_formated_tables_transposed(
+                domain.d1.size,
+            ),
             tables_poly,
             tables_comm,
             multiplicities: FixedLookup::<Vec<u64>>::new(),
