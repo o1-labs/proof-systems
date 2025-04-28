@@ -22,7 +22,9 @@ use o1vm::{
         lookup_env::LookupEnvironment,
         lookup_prover::{lookup_prove_fst_part, lookup_prove_snd_part},
         lookup_verifier::lookup_verify,
-        multiplicities_columns::{EMultiplicities, MultiplicitiesProofInput},
+        multiplicities_columns::{
+            self, inverses_constraint, EMultiplicities, MultiplicitiesProofInput,
+        },
         multiplicities_prover::{multiplicitie_prove_fst_part, multiplicities_prove_snd_part},
         multiplicities_verifier::multiplicities_verify,
         proof::ProofInputs,
@@ -465,8 +467,6 @@ fn multiplicities_prove_and_verify(
     };
     let (acc_final, state) =
         multiplicitie_prove_fst_part::<Vesta>(&proof_input, acc_init, domain_fp);
-    let constraints = [EMultiplicities::zero()];
-
     let proof = multiplicities_prove_snd_part::<
         Vesta,
         DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
@@ -477,7 +477,7 @@ fn multiplicities_prove_and_verify(
         srs,
         domain_fp,
         sponge,
-        &constraints,
+        &inverses_constraint(),
         rng,
         state,
     );
@@ -493,7 +493,7 @@ fn multiplicities_prove_and_verify(
     >(
         beta_challenge,
         gamma_challenge,
-        constraints.to_vec(),
+        inverses_constraint(),
         sponge_verifier,
         domain_fp,
         srs,

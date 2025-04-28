@@ -1,6 +1,8 @@
 //TODO rename
 use crate::lookups::LookupTableIDs;
-use ark_ff::{FftField, Field, PrimeField};
+use crate::lookups::LookupTableIDs::*;
+use crate::lookups::*;
+use ark_ff::{FftField, Field, PrimeField, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use core::ops::Index;
 use kimchi::{
@@ -8,18 +10,17 @@ use kimchi::{
         domains::{Domain, EvaluationDomains},
         expr::{
             AlphaChallengeTerm, ColumnEnvironment, ColumnEvaluations, ConstantExpr, Constants,
-            Expr, ExprError,
+            Expr, ExprError, ExprInner, Variable,
         },
         gate::CurrOrNext,
     },
     curve::KimchiCurve,
     proof::PointEvaluations,
 };
+use kimchi_msm::LogupTableID;
 use poly_commitment::{ipa::OpeningProof, PolyComm};
 use serde::{Deserialize, Serialize};
 use std::iter::Chain;
-
-use crate::lookups::*;
 
 // This file contains the associated types and methods for the multiplicities prover.
 // It defines the columns, the proof, proof input, and constraint expressions.
@@ -282,3 +283,48 @@ impl<F: PrimeField> ColumnEvaluations<F> for Eval<F> {
 
 pub type EMultiplicities<F> =
     Expr<ConstantExpr<F, MultiplicitiesChallengeTerm>, MultiplicitiesColumns>;
+
+fn variable<F: Field>(col: MultiplicitiesColumns) -> EMultiplicities<F> {
+    EMultiplicities::<F>::Atom(ExprInner::Cell(Variable {
+        col,
+        row: CurrOrNext::Curr,
+    }))
+}
+
+pub fn inverses_constraint<F: PrimeField>() -> Vec<EMultiplicities<F>> {
+    let beta: EMultiplicities<F> = MultiplicitiesChallengeTerm::Beta.into();
+    let gamma: EMultiplicities<F> = MultiplicitiesChallengeTerm::Gamma.into();
+
+    let mut res = vec![];
+    for id in vec![
+        PadLookup,
+        RoundConstantsLookup,
+        AtMost4Lookup,
+        ByteLookup,
+        RangeCheck16Lookup,
+        SparseLookup,
+        ResetLookup,
+    ]
+    .into_iter()
+    {
+        let n = id.arity();
+        let mut cst: kimchi::circuits::expr::Operations<
+            ExprInner<
+                kimchi::circuits::expr::Operations<
+                    kimchi::circuits::expr::ConstantExprInner<F, MultiplicitiesChallengeTerm>,
+                >,
+                MultiplicitiesColumns,
+            >,
+        > = EMultiplicities::<F>::zero();
+        for i in 0..n {
+            cst *= gamma.clone();
+            cst += variable(MultiplicitiesColumns::FixedLookup(id, n - 1 - i));
+        }
+        cst += beta.clone();
+        cst *= variable(MultiplicitiesColumns::Inverses(id));
+        cst = cst - variable(MultiplicitiesColumns::Multiplicities(id));
+        res.push(cst)
+    }
+
+    res
+}

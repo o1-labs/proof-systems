@@ -60,6 +60,23 @@ pub enum LookupTableIDs {
     KeccakStepLookup = 10,
 }
 
+impl LookupTableIDs {
+    /// Gives the arity of the corresponding tables, including the table id.
+    /// This correspond to the number of columns used in the protocol.
+    /// Only implemented for fixed tables.
+    pub fn arity(self) -> usize {
+        match self {
+            PadLookup => 8,
+            RoundConstantsLookup => 6,
+            AtMost4Lookup | ByteLookup | RangeCheck16Lookup | SparseLookup => 2,
+            ResetLookup => 3,
+            MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup => {
+                panic!("not implemented")
+            }
+        }
+    }
+}
+
 // IMPROVEME: A could in some cases be [A;arity of the table]
 #[derive(Clone)]
 pub struct FixedLookup<A> {
