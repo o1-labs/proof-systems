@@ -9,6 +9,7 @@ use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
 /// to prove the lookup protocol we do in the end
 pub struct LookupEnvironment<G: KimchiCurve> {
     /// fixed tables pre-existing the protocol
+    pub tables: FixedLookup<Vec<Vec<G::ScalarField>>>,
     pub tables_poly: FixedLookup<Vec<DensePolynomial<G::ScalarField>>>,
     pub tables_comm: FixedLookup<Vec<PolyComm<G>>>,
     ///multiplicities
@@ -39,7 +40,7 @@ impl<G: KimchiCurve> LookupEnvironment<G> {
         };
         let eval_multiple =
             |evals: Vec<Vec<G::ScalarField>>| evals.into_iter().map(eval_one).collect::<Vec<_>>();
-        let tables_poly = tables.map(eval_multiple);
+        let tables_poly = tables.clone().map(eval_multiple);
         let tables_comm = tables_poly.clone().map(|poly_vec: Vec<_>| {
             poly_vec
                 .into_iter()
@@ -47,6 +48,7 @@ impl<G: KimchiCurve> LookupEnvironment<G> {
                 .collect()
         });
         LookupEnvironment {
+            tables,
             tables_poly,
             tables_comm,
             multiplicities: FixedLookup::<Vec<u64>>::new(),
