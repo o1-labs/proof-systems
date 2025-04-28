@@ -37,11 +37,7 @@ jobs:
         run: rustup component add rust-src
 
       - name: Build the WebAssembly for the web
-        env:
-          WASM_RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory,+mutable-globals -C link-arg=--max-memory=4294967296"
-        run: wasm-pack build --target web --out-dir target/web plonk-wasm -- -Z build-std=panic_abort,std 
+        run: make build-web
 
       - name: Build the WebAssembly for NodeJS
-        env:
-          WASM_RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory,+mutable-globals -C link-arg=--max-memory=4294967296"
-        run: wasm-pack build --target nodejs --out-dir target/nodejs plonk-wasm -- -Z build-std=panic_abort,std --features nodejs
+        run: make build-nodejs
