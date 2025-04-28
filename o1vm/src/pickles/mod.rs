@@ -24,6 +24,7 @@ pub mod lookup_prover;
 pub mod lookup_verifier;
 pub mod multiplicities_columns;
 pub mod multiplicities_prover;
+pub mod multiplicities_verifier;
 
 /// Maximum degree of the constraints.
 /// It does include the additional degree induced by the multiplication of the
