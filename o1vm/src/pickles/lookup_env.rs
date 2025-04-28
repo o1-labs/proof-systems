@@ -13,8 +13,12 @@ pub struct LookupEnvironment<G: KimchiCurve> {
     pub tables_comm: FixedLookup<Vec<PolyComm<G>>>,
     ///multiplicities
     pub multiplicities: FixedLookup<Vec<u64>>,
-    ///commitments to the lookup state
-    ///separated by the proof they come from
+    /// Commitments to the lookup state
+    /// Separated by the proof they come from.
+    /// It is empty at creation and filled as we perform
+    /// the first iteration of proving.
+    /// It is then consumed at the second iteration,
+    /// when proving the lookup argument.
     pub cms: Vec<Vec<PolyComm<G>>>,
 }
 
