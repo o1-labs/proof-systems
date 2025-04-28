@@ -377,8 +377,8 @@ pub(crate) trait FixedLookupTables<F> {
     fn table_reset() -> LookupTable<F>;
     fn table_reset_transposed() -> LookupTable<F>;
 
-    /// The lookup as given to the lookup prover.
-    /// We implement two modifications to the transposed tables:
+    /// The lookup as given to the multiplicities prover.
+    /// We implement two modifications to the tables:
     /// - We pad with the first element.
     /// - We augment the arity by one, adding the table_id.
     /// eg. the addition for integer smaller than 2 is:
@@ -386,6 +386,8 @@ pub(crate) trait FixedLookupTables<F> {
     /// [[table_id,table_id,table_id,..., table_id][0,1,1, 0...0][0,0,1, 0...0][0,1,1, 0...0]]
     fn get_formated_tables_transposed(domain_size: u64) -> FixedLookup<Vec<Vec<F>>>;
 
+    /// The transposed version of the preceeding version.
+    /// Used at setup time to compute commitments, polynomials and evaluations.
     fn get_formated_tables(domain_size: u64) -> FixedLookup<Vec<Vec<F>>>;
 }
 
