@@ -377,21 +377,44 @@ pub(crate) trait FixedLookupTables<F> {
     fn table_reset() -> LookupTable<F>;
     fn table_reset_transposed() -> LookupTable<F>;
 
-    /// Returns a vector containing all fixed tables
-    fn get_all_tables_transposed() -> Vec<LookupTable<F>>;
+    /// The lookup as given to the lookup prover.
+    /// We implement two modifications to the transposed tables:
+    /// - We pad with the first element.
+    /// - We augment the arity by one, adding the table_id.
+    /// eg. the addition for integer smaller than 2 is:
+    /// [[0,1,1][0,0,1][0,1,1]] when non formated, and becomes
+    /// [[table_id,table_id,table_id,..., table_id][0,1,1, 0...0][0,0,1, 0...0][0,1,1, 0...0]]
+    fn get_formated_tables(domain_size: u64) -> FixedLookup<Vec<Vec<F>>>;
 }
 
-impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
-    fn get_all_tables_transposed() -> Vec<LookupTable<F>> {
-        vec![
-            Self::table_pad_transposed(),
-            Self::table_round_constants_transposed(),
-            Self::table_at_most_4_transposed(),
-            Self::table_byte_transposed(),
-            Self::table_range_check_16_transposed(),
-            Self::table_sparse_transposed(),
-            Self::table_reset_transposed(),
-        ]
+impl<F: Field + Clone> FixedLookupTables<F> for LookupTable<F> {
+    fn get_formated_tables(domain_size: u64) -> FixedLookup<Vec<Vec<F>>> {
+        fn format<F: Clone + Field>(lookup_table: LookupTable<F>, domain_size: u64) -> Vec<Vec<F>> {
+            let id = vec![lookup_table.table_id.to_field(); domain_size as usize];
+            let padded_entries: Vec<Vec<F>> = lookup_table
+                .entries
+                .into_iter()
+                .map(|mut row| {
+                    row.extend(vec![row[0]; (domain_size as usize) - row.len()]);
+                    row
+                })
+                .collect();
+            let mut id_vec = vec![id];
+            id_vec.extend(padded_entries);
+            id_vec
+        }
+
+        FixedLookup {
+            pad_lookup: Self::table_pad_transposed(),
+            round_constants_lookup: Self::table_round_constants_transposed(),
+
+            at_most_4_lookup: Self::table_at_most_4_transposed(),
+            byte_lookup: Self::table_byte_transposed(),
+            range_check_16_lookup: Self::table_range_check_16_transposed(),
+            sparse_lookup: Self::table_sparse_transposed(),
+            reset_lookup: Self::table_reset_transposed(),
+        }
+        .map(|table| format(table, domain_size))
     }
 
     fn is_in_table(table: &LookupTable<F>, value: Vec<F>) -> Option<usize> {
