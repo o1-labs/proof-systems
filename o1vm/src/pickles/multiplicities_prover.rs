@@ -64,7 +64,7 @@ where
                 let mut res_i = G::ScalarField::zero();
                 // Compute sum_i gamma^i val^i using Horner
                 for j in 0..table_i.len() {
-                    res_i = (res_i + table_i[table_i.len() - 1 - j]) * *gamma_challenge
+                    res_i = (res_i * *gamma_challenge) + table_i[table_i.len() - 1 - j]
                 }
                 //  sum_i gamma^i val^i + beta
                 res_i += *beta_challenge;
