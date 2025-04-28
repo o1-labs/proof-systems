@@ -209,7 +209,7 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F, LookupChallengeTerm, LookupChalle
         match col {
             Wires(i) => Some(&wires[*i]),
             Inverses(i) => Some(&inverses[*i]),
-            Acc => Some(&acc),
+            Acc => Some(acc),
             DynamicSelectors(i) => Some(&dynamicselectors[*i]),
         }
     }
