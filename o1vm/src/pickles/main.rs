@@ -309,7 +309,11 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
         }
     }
     //TODO pad and do last iteration
-    //TODO: substract multiplicities
+    // Substract multiplicities
+    // TODO pass a ref to the env to the prover
+    let lookup_env = lookup_env.clone();
+    let _final_acc =
+        multiplicities_prove_and_verify(domain_fp, &srs, lookup_env, &mut rng, sponge.clone(), acc);
 }
 
 fn prove_and_verify(

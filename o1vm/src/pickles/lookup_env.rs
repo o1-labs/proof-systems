@@ -7,6 +7,7 @@ use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
 /// This is what the prover needs to rembember
 /// while doing individual proofs, in order
 /// to prove the lookup protocol we do in the end
+#[derive(Clone)]
 pub struct LookupEnvironment<G: KimchiCurve> {
     /// fixed tables pre-existing the protocol
     pub tables: FixedLookup<Vec<Vec<G::ScalarField>>>,
