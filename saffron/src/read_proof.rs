@@ -222,10 +222,10 @@ where
         fr_sponge.absorb(&eval);
     }
 
-    let polyscale_chal = fr_sponge.challenge();
-    let polyscale = polyscale_chal.to_field(endo_r);
-    let evalscale_chal = fr_sponge.challenge();
-    let evalscale = evalscale_chal.to_field(endo_r);
+    let (_, endo_r) = Curve::endos();
+    // Generate scalars used as combiners for sub-statements within our IPA opening proof.
+    let polyscale = fr_sponge.challenge().to_field(endo_r);
+    let evalscale = fr_sponge.challenge().to_field(endo_r);
 
     let coms_and_evaluations = vec![
         Evaluation {
