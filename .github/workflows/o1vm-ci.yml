@@ -49,9 +49,6 @@ jobs:
         with:
           rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
 
-      - name: Apply the Rust smart cacheing
-        uses: Swatinem/rust-cache@v2
-
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:

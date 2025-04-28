@@ -1,24 +1,27 @@
 name: "Shared Rust toolchain setting up steps"
 description: "Shared Rust toolchain setting up steps"
 inputs:
+  cache:
+    description: "to cache or not to cache, that is the question"
+    required: false
+    default: "true"
   rust_toolchain_version:
     description: "Rust toolchain version"
     required: true
-  shell:
-    description: "Shell to use"
+  targets:
+    description: "pass targets to the rust-toolchain installer"
     required: false
-    default: "bash"
 runs:
   using: "composite"
   steps:
-    # As action-rs does not seem to be maintained anymore, building from
-    # scratch the environment using rustup
-    - name: Setup Rust toolchain ${{ inputs.rust_toolchain_version }}
+    - shell: bash
       run: |
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-        $HOME/.cargo/bin/rustup toolchain install ${{ matrix.rust_toolchain_version }} --profile default
-        $HOME/.cargo/bin/rustup default ${{ matrix.rust_toolchain_version }}
         # overwriting default rust-toolchain
         echo ${{ inputs.rust_toolchain_version }} > rust-toolchain
-      shell: ${{ inputs.shell }}
+    - uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ inputs.rust_toolchain_version }}
+        components: clippy, rustfmt
+        targets: ${{ inputs.targets }}
+    - if: ${{ inputs.cache == 'true' }}
+      uses: Swatinem/rust-cache@v2

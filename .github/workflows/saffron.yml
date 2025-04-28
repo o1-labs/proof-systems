@@ -28,9 +28,6 @@ jobs:
         with:
           rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
 
-      - name: Apply the Rust smart cacheing
-        uses: Swatinem/rust-cache@v2
-
       - name: Cache SRS data
         id: cache-srs
         uses: actions/cache@v4
