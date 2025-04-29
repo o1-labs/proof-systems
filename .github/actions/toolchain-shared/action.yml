@@ -19,9 +19,12 @@ runs:
         # overwriting default rust-toolchain
         echo ${{ inputs.rust_toolchain_version }} > rust-toolchain
     - uses: dtolnay/rust-toolchain@master
+      id: toolchain
       with:
         toolchain: ${{ inputs.rust_toolchain_version }}
         components: clippy, rustfmt
         targets: ${{ inputs.targets }}
     - if: ${{ inputs.cache == 'true' }}
       uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: ${{ steps.toolchain.outputs.cachekey }}
