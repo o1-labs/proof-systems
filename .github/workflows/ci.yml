@@ -62,7 +62,7 @@ jobs:
       - id: os
         run: echo 'version=["ubuntu-latest", "ubuntu-24.04-arm"]' >> "$GITHUB_OUTPUT"
 
-  run_checks:
+  doc-and-spec:
     name: Run checks and tests
     needs: ["define-matrix"]
     strategy:
@@ -121,6 +121,41 @@ jobs:
         run: |
           git diff --exit-code ":(exclude)rust-toolchain"
 
+  lint:
+    name: Run checks and tests
+    needs: ["define-matrix"]
+    strategy:
+      matrix:
+        rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
+        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
+        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
+        os: ${{ fromJSON(needs.define-matrix.outputs.os) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ matrix.ocaml_version }}
+
+      - name: Install markdownlint
+        run: |
+          # FIXME: 0.39.0 makes the CI fail
+          npm install -g markdownlint-cli@0.38.0
       #
       # Coding guidelines
       #
@@ -130,6 +165,41 @@ jobs:
           eval $(opam env)
           make lint
 
+  build:
+    name: Run checks and tests
+    needs: ["define-matrix"]
+    strategy:
+      matrix:
+        rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
+        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
+        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
+        os: ${{ fromJSON(needs.define-matrix.outputs.os) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ matrix.ocaml_version }}
+
+      - name: Install markdownlint
+        run: |
+          # FIXME: 0.39.0 makes the CI fail
+          npm install -g markdownlint-cli@0.38.0
       #
       # Build
       #
@@ -139,6 +209,41 @@ jobs:
           eval $(opam env)
           make
 
+  tests:
+    name: Run checks and tests
+    needs: ["define-matrix"]
+    strategy:
+      matrix:
+        rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
+        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
+        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
+        os: ${{ fromJSON(needs.define-matrix.outputs.os) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ matrix.ocaml_version }}
+
+      - name: Install markdownlint
+        run: |
+          # FIXME: 0.39.0 makes the CI fail
+          npm install -g markdownlint-cli@0.38.0
       #
       # Tests
       #
