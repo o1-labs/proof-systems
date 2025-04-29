@@ -9,6 +9,8 @@
 
 use wasm_bindgen::prelude::*;
 
+( // prevent compilation to make it easy to see if this commit is being used
+
 mod wasm_flat_vector;
 mod wasm_vector;
 
