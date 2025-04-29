@@ -727,8 +727,8 @@ fn test_transpose() {
         LookupTable::table_range_check_16_transposed(),
     );
     test_one_table(
-        LookupTable::table_reset(),
-        LookupTable::table_reset_transposed(),
+        LookupTable::table_sparse(),
+        LookupTable::table_sparse_transposed(),
     );
     test_one_table(
         LookupTable::table_reset(),
