@@ -43,6 +43,14 @@ jobs:
           make deps
           make build
 
+  trigger_o1js_checks:
+    name: Test o1js with this commit of proof_systems
+    runs-on: ubuntu-latest
+    steps:
+      - uses: o1-labs/o1js/.github/workflows/checks.yml@brian/proof-systems-test #TODO change to main after merging o1js changes
+        with:
+          proof_systems_commit: ${{ github.event.pull_request.base.ref }}
+
   run_checks:
     name: Run checks and tests
     strategy:
