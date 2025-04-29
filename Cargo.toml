@@ -1,27 +1,28 @@
 [workspace]
 members = [
-    "arrabbiata",
-    "book",
-    "curves",
-    "folding",
-    "groupmap",
-    "hasher",
-    "internal-tracing",
-    "ivc",
-    "kimchi",
-    "kimchi-stubs",
-    "msm",
-    "mvpoly",
-    "o1vm",
-    "plonk-wasm",
-    "poly-commitment",
-    "poseidon",
-    "poseidon/export_test_vectors",
-    "saffron",
-    "signer",
-    "tools/kimchi-visu",
-    "turshi",
-    "utils"]
+  "arrabbiata",
+  "book",
+  "curves",
+  "folding",
+  "groupmap",
+  "hasher",
+  "internal-tracing",
+  "ivc",
+  "kimchi",
+  "kimchi-stubs",
+  "msm",
+  "mvpoly",
+  "o1vm",
+  "plonk-wasm",
+  "poly-commitment",
+  "poseidon",
+  "poseidon/export_test_vectors",
+  "saffron",
+  "signer",
+  "tools/kimchi-visu",
+  "turshi",
+  "utils",
+]
 resolver = "2"
 
 [workspace.dependencies]
@@ -41,10 +42,13 @@ bs58 = "0.5.0"
 clap = "4.4.6"
 command-fds = "0.3"
 console_error_panic_hook = { version = "0.1.6" }
-criterion = { version = "0.5", features = ["cargo_bench_support", "html_reports"] }
+criterion = { version = "0.5", features = [
+  "cargo_bench_support",
+  "html_reports",
+] }
 elf = "0.7.2"
-env_logger = "0.11.1"
 getrandom = { version = "=0.2.15", features = ["js"] }
+env_logger = "0.11.1"
 hex = { version = "0.4", features = ["serde"] }
 iai = "0.1"
 itertools = "0.12.1"

@@ -21,7 +21,7 @@ anyhow = "1.0"
 ark-ec.workspace = true
 ark-ff.workspace = true
 ark-poly.workspace = true
-ark-serialize = { workspace = true, features = ["derive"]}
+ark-serialize = { workspace = true, features = ["derive"] }
 clap = { workspace = true, features = ["derive"] }
 hex.workspace = true
 kimchi.workspace = true
@@ -37,7 +37,12 @@ serde_with.workspace = true
 thiserror.workspace = true
 time = { version = "0.3", features = ["macros"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = [ "ansi", "env-filter", "fmt", "time" ] }
+tracing-subscriber = { version = "0.3", features = [
+  "ansi",
+  "env-filter",
+  "fmt",
+  "time",
+] }
 
 [dev-dependencies]
 ark-std.workspace = true
