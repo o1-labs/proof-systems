@@ -125,6 +125,11 @@ jobs:
         with:
           rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
 
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ matrix.ocaml_version }}
+
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-spec
@@ -151,6 +156,15 @@ jobs:
       - name: Check that up-to-date specification is checked in
         run: |
           git diff --exit-code ":(exclude)rust-toolchain"
+
+      - name: Doc tests
+        run: |
+          eval $(opam env)
+          make test-doc
+      - name: generate docs
+        run: |
+          eval $(opam env)
+          make generate-doc
 
   lint:
     needs: ["define-matrix", "refresh-cache"]
@@ -253,11 +267,6 @@ jobs:
 
       - name: Build the MIPS binaries
         uses: ./.github/actions/build-mips
-
-      - name: Doc tests
-        run: |
-          eval $(opam env)
-          make test-doc
 
       - name: Run non-heavy tests without the code coverage
         run: |
