@@ -101,7 +101,6 @@ jobs:
         run: echo 'no need to refresh'
 
   doc-and-spec:
-    name: Run checks and tests
     needs: ["define-matrix", "refresh-cache"]
     strategy:
       matrix:
@@ -154,7 +153,6 @@ jobs:
           git diff --exit-code ":(exclude)rust-toolchain"
 
   lint:
-    name: Run checks and tests
     needs: ["define-matrix", "refresh-cache"]
     strategy:
       matrix:
@@ -188,7 +186,6 @@ jobs:
           make lint
 
   build:
-    name: Run checks and tests
     needs: ["define-matrix", "refresh-cache"]
     strategy:
       matrix:
@@ -232,7 +229,6 @@ jobs:
           make
 
   tests:
-    name: Run checks and tests
     needs: ["define-matrix", "refresh-cache"]
     strategy:
       matrix:
