@@ -60,6 +60,37 @@ pub enum LookupTableIDs {
     KeccakStepLookup = 10,
 }
 
+impl LookupTableIDs {
+    /// Gives the arity of the corresponding tables, including the table id.
+    /// This correspond to the number of columns used in the protocol.
+    /// Only implemented for fixed tables.
+    pub fn arity(self) -> usize {
+        match self {
+            PadLookup => 8,
+            RoundConstantsLookup => 6,
+            AtMost4Lookup | ByteLookup | RangeCheck16Lookup | SparseLookup => 2,
+            ResetLookup => 3,
+            MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup => {
+                panic!("not implemented")
+            }
+        }
+    }
+
+    /// Returns all the lookup table ids of the fixed tables.
+    /// Used for constraining the multiplicities
+    pub fn get_fixed_ids() -> Vec<Self> {
+        vec![
+            PadLookup,
+            RoundConstantsLookup,
+            AtMost4Lookup,
+            ByteLookup,
+            RangeCheck16Lookup,
+            SparseLookup,
+            ResetLookup,
+        ]
+    }
+}
+
 // IMPROVEME: A could in some cases be [A;arity of the table]
 #[derive(Clone)]
 pub struct FixedLookup<A> {
@@ -710,11 +741,32 @@ fn test_transpose() {
         LookupTable::table_range_check_16_transposed(),
     );
     test_one_table(
-        LookupTable::table_reset(),
-        LookupTable::table_reset_transposed(),
+        LookupTable::table_sparse(),
+        LookupTable::table_sparse_transposed(),
     );
     test_one_table(
         LookupTable::table_reset(),
         LookupTable::table_reset_transposed(),
     )
+}
+
+#[test]
+fn test_formated_transpose() {
+    use ark_ec::AffineRepr;
+    use mina_curves::pasta::Vesta;
+    let formated_tables: FixedLookup<Vec<Vec<<Vesta as AffineRepr>::ScalarField>>> =
+        LookupTable::get_formated_tables(1 << 16);
+    let formated_tables_transposed = LookupTable::get_formated_tables_transposed(1 << 16);
+    formated_tables
+        .into_iter()
+        .zip(formated_tables_transposed)
+        .for_each(|(table, table_transposed)| {
+            for i in 0..table.len() {
+                // The code is clearer as is.
+                #[allow(clippy::needless_range_loop)]
+                for j in 0..table[0].len() {
+                    assert_eq!(table[i][j], table_transposed[j][i])
+                }
+            }
+        });
 }
