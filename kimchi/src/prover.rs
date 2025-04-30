@@ -773,6 +773,11 @@ where
                 (perm, bnd)
             };
 
+            let mut t2 = Evaluations::from_vec_and_domain(
+                vec![G::ScalarField::zero(); index.cs.domain.d2.size.try_into().unwrap()],
+                index.cs.domain.d2,
+            );
+
             {
                 use crate::circuits::argument::DynArgument;
 
@@ -820,7 +825,9 @@ where
                 {
                     let constraint = gate.combined_constraints(&all_alphas, &mut cache);
                     let eval = constraint.evaluations(&env);
-                    if eval.domain().size == t4.domain().size {
+                    if eval.domain().size == t2.domain().size {
+                        t2 += &eval;
+                    } else if eval.domain().size == t4.domain().size {
                         t4 += &eval;
                     } else if eval.domain().size == t8.domain().size {
                         t8 += &eval;
@@ -848,7 +855,9 @@ where
                         let mut eval = constraint.evaluations(&env);
                         eval.evals.par_iter_mut().for_each(|x| *x *= alpha_pow);
 
-                        if eval.domain().size == t4.domain().size {
+                        if eval.domain().size == t2.domain().size {
+                            t2 += &eval;
+                        } else if eval.domain().size == t4.domain().size {
                             t4 += &eval;
                         } else if eval.domain().size == t8.domain().size {
                             t8 += &eval;
@@ -864,7 +873,7 @@ where
             }
 
             // public polynomial
-            let mut f = t4.interpolate() + t8.interpolate();
+            let mut f = t2.interpolate() + t4.interpolate() + t8.interpolate();
             f += &public_poly;
 
             // divide contributions with vanishing polynomial

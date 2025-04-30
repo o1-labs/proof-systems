@@ -2028,6 +2028,8 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
         let deg = self.degree(d1_size, env.get_constants().zk_rows);
         if deg <= d1_size {
             Domain::D1
+        } else if deg <= 2 * d1_size {
+            Domain::D2
         } else if deg <= 4 * d1_size {
             Domain::D4
         } else if deg <= 8 * d1_size {
