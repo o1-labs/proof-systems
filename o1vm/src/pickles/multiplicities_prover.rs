@@ -139,6 +139,7 @@ where
         multiplicities,
     };
 
+    ///// Commit to columns and squeeze the constraint combiner alpha
     // Interpolating
     let interpolate_col = |evals: Vec<G::ScalarField>| {
         Evaluations::<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>::from_vec_and_domain(
@@ -147,20 +148,12 @@ where
         .interpolate()
     };
     let columns_poly = columns.map(interpolate_col);
-
     // TODO avoid cloning
     // TODO don't commit to fixedlookup
     let columns_com = columns_poly.clone().map(|poly| {
         let PolyComm { chunks } = srs.commit_non_hiding(&poly, 1);
         chunks[0]
     });
-
-    // eval on d2
-    // TODO: avoid cloning
-    // TODO don't eval fixedlookup
-    let columns_eval_d2 = columns_poly
-        .clone()
-        .map(|poly| poly.evaluate_over_domain_by_ref(domain.d2));
     // absorbing commit
     // TODO don't absorb the wires which already have been
     // TODO avoid cloning
@@ -168,10 +161,16 @@ where
         .clone()
         .into_iter()
         .for_each(|com| absorb_commitment(&mut fq_sponge, &PolyComm { chunks: vec![com] }));
-
     // Constraints combiner
     let alpha: G::ScalarField = fq_sponge.challenge();
 
+    ////// Compute the quotient polynomial T
+    // eval on d2
+    // TODO: avoid cloning
+    // TODO don't eval fixedlookup
+    let columns_eval_d2 = columns_poly
+        .clone()
+        .map(|poly| poly.evaluate_over_domain_by_ref(domain.d2));
     let challenges = MultiplicitiesChallenges {
         alpha,
         beta: beta_challenge,
@@ -186,7 +185,6 @@ where
             mds: &G::sponge_params().mds,
             zk_rows: 0,
         },
-
         l0_1: l0_1(domain.d1),
     };
     let (t_numerator_evaluation, _) = constraints.iter().fold(
@@ -211,6 +209,7 @@ where
         .unwrap();
     assert!(rem.is_zero());
 
+    ///// Commit to T and squeeze the evaluation challenge zeta
     let num_chunk = 1;
     let t_commitment = srs.commit_non_hiding(&t, num_chunk);
     // TODO avoid cloning
@@ -229,6 +228,8 @@ where
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
     let zeta: G::ScalarField = zeta_chal.to_field(endo_r);
     let zeta_omega = zeta * domain.d1.group_gen;
+
+    ///// Evaluate and create the IPA proof
     let eval =
         |x,
          cols_poly: ColumnEnv<DensePolynomial<_>>,
