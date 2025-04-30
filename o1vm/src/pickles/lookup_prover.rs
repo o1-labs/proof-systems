@@ -130,8 +130,6 @@ where
     RNG: RngCore + CryptoRng,
 {
     let LookupProverState { inverses, acc } = state;
-    // TODO check that
-    let num_chunk = 8;
     let LookupProofInput {
         wires,
         arity: _,
@@ -173,12 +171,11 @@ where
             .collect(),
     };
 
-    // eval on d8
-    // TODO: check the degree
+    // eval on d4
     // TODO: avoid cloning
-    let columns_eval_d8 = columns_poly
+    let columns_eval_d4 = columns_poly
         .clone()
-        .map(|poly| poly.evaluate_over_domain_by_ref(domain.d8));
+        .map(|poly| poly.evaluate_over_domain_by_ref(domain.d4));
     // abosrbing commit
     // TODO don't absorb the wires which already have been
     // TODO avoid cloning
@@ -197,7 +194,7 @@ where
     };
     let eval_env = LookupEvalEnvironment {
         challenges,
-        columns: &columns_eval_d8,
+        columns: &columns_eval_d4,
         domain: &domain,
         constants: Constants {
             endo_coefficient: G::ScalarField::zero(),
@@ -207,17 +204,18 @@ where
 
         l0_1: l0_1(domain.d1),
     };
+
     let (t_numerator_evaluation, _) = constraints.iter().fold(
         (
             Evaluations::from_vec_and_domain(
-                vec![G::ScalarField::zero(); domain.d8.size as usize],
-                domain.d8,
+                vec![G::ScalarField::zero(); domain.d4.size as usize],
+                domain.d4,
             ),
             G::ScalarField::one(),
         ),
         |(mut acc, alpha_pow), cst| {
             acc.add_assign(
-                &cst.evaluations_with_domain(&eval_env, Domain::D8)
+                &cst.evaluations_with_domain(&eval_env, Domain::D4)
                     .mul(alpha_pow),
             );
             (acc, alpha_pow * alpha)
@@ -228,11 +226,10 @@ where
         .divide_by_vanishing_poly(domain.d1)
         .unwrap();
     assert!(rem.is_zero());
-    let t_commitment = srs.commit_non_hiding(
-        // TODO: change the nb of chunks later
-        // For now we use this because the constraints null
-        &t, num_chunk,
-    );
+
+    // The constraint is of degree 3
+    let num_chunk = 2;
+    let t_commitment = srs.commit_non_hiding(&t, num_chunk);
     // TODO avoid cloning
     let commitments = AllColumns {
         cols: columns_com,

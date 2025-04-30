@@ -139,6 +139,7 @@ pub enum LookupChallengeTerm {
     Alpha,
 }
 
+#[derive(Clone)]
 pub struct LookupChallenges<F> {
     pub beta: F,
     pub gamma: F,
@@ -222,9 +223,9 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F, LookupChallengeTerm, LookupChalle
             Domain::D8 => self.domain.d8,
         }
     }
-    // TODO verify this
+
     fn column_domain(&self, _col: &Self::Column) -> Domain {
-        Domain::D8
+        Domain::D4
     }
     // We do not have constants here
     fn get_constants(&self) -> &Constants<F> {

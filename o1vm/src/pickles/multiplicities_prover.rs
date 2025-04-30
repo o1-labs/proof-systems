@@ -3,7 +3,7 @@ use ark_ff::{batch_inversion, One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain};
 use kimchi::{
     circuits::{
-        domains::{EvaluationDomains, Domain},
+        domains::{Domain, EvaluationDomains},
         expr::{l0_1, Constants},
     },
     curve::KimchiCurve,
@@ -123,8 +123,6 @@ where
 {
     let MultiplicitiesProverState { inverses, acc } = state;
 
-    // TODO change that
-    let num_chunk = 8;
     let MultiplicitiesProofInput {
         fixedlookup,
         fixedlookup_transposed: _,
@@ -157,12 +155,12 @@ where
         chunks[0]
     });
 
-    // eval on d8
+    // eval on d2
     // TODO: avoid cloning
     // TODO don't eval fixedlookup
-    let columns_eval_d8 = columns_poly
+    let columns_eval_d2 = columns_poly
         .clone()
-        .map(|poly| poly.evaluate_over_domain_by_ref(domain.d8));
+        .map(|poly| poly.evaluate_over_domain_by_ref(domain.d2));
     // absorbing commit
     // TODO don't absorb the wires which already have been
     // TODO avoid cloning
@@ -181,7 +179,7 @@ where
     };
     let eval_env = MultiplicitiesEvalEnvironment {
         challenges,
-        columns: &columns_eval_d8,
+        columns: &columns_eval_d2,
         domain: &domain,
         constants: Constants {
             endo_coefficient: G::ScalarField::zero(),
@@ -194,14 +192,14 @@ where
     let (t_numerator_evaluation, _) = constraints.iter().fold(
         (
             Evaluations::from_vec_and_domain(
-                vec![G::ScalarField::zero(); domain.d8.size as usize],
-                domain.d8,
+                vec![G::ScalarField::zero(); domain.d2.size as usize],
+                domain.d2,
             ),
             G::ScalarField::one(),
         ),
         |(mut acc, alpha_pow), cst| {
             acc.add_assign(
-                &cst.evaluations_with_domain(&eval_env, Domain::D8)
+                &cst.evaluations_with_domain(&eval_env, Domain::D2)
                     .mul(alpha_pow),
             );
             (acc, alpha_pow * alpha)
@@ -212,10 +210,9 @@ where
         .divide_by_vanishing_poly(domain.d1)
         .unwrap();
     assert!(rem.is_zero());
-    let t_commitment = srs.commit_non_hiding(
-        // TODO: change the nb of chunks later
-        &t, num_chunk,
-    );
+
+    let num_chunk = 1;
+    let t_commitment = srs.commit_non_hiding(&t, num_chunk);
     // TODO avoid cloning
     let commitments = AllColumns {
         cols: columns_com,
@@ -224,7 +221,6 @@ where
     // Absorb t
     absorb_commitment(&mut fq_sponge, &t_commitment);
     // evaluate and prepare for IPA proof
-    // TODO check num_chunks and srs length
     let t_chunks = t.to_chunked_polynomial(num_chunk, srs.size());
     // squeeze zeta
     // TODO: understand why we use the endo here and for IPA ,
