@@ -211,10 +211,10 @@ where
         state.assert_r1cs(Some("equals_2".into()), loc, r, z, zero)
     }
 
-    /** [equal_vars z] computes [(r, z_inv)] that satisfy the constraints in
-    [equal_constraints z z_inv r].
+    /** `z` computes `(r, z_inv)` that satisfy the constraints in
+    [Self::equal_constraints] `z` `z_inv` `r`.
 
-    In particular, [r] is [1] if [z = 0] and [0] otherwise.
+    In particular, `r` is `1` if `z = 0` and `0` otherwise.
     */
     fn equal_vars(env: &dyn WitnessGeneration<F>, z: &FieldVar<F>) -> (F, F) {
         let z: F = env.read_var(z);

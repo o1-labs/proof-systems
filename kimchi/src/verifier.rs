@@ -615,7 +615,7 @@ where
     }
 }
 
-/// Enforce the length of evaluations inside [`Proof`].
+/// Enforce the length of evaluations inside [`ProverProof`].
 /// Atm, the length of evaluations(both `zeta` and `zeta_omega`) SHOULD be 1.
 /// The length value is prone to future change.
 fn check_proof_evals_len<G, OpeningProof>(
