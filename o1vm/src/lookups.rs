@@ -735,3 +735,22 @@ fn test_transpose() {
         LookupTable::table_reset_transposed(),
     )
 }
+
+#[test]
+fn test_formated_transpose() {
+    use ark_ec::AffineRepr;
+    use mina_curves::pasta::Vesta;
+    let formated_tables: FixedLookup<Vec<Vec<<Vesta as AffineRepr>::ScalarField>>> =
+        LookupTable::get_formated_tables(1 << 16);
+    let formated_tables_transposed = LookupTable::get_formated_tables_transposed(1 << 16);
+    formated_tables
+        .into_iter()
+        .zip(formated_tables_transposed)
+        .for_each(|(table, table_transposed)| {
+            for i in 0..table.len() {
+                for j in 0..table[0].len() {
+                    assert_eq!(table[i][j], table_transposed[j][i])
+                }
+            }
+        });
+}
