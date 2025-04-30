@@ -1,7 +1,7 @@
 //TODO rename
 use crate::lookups::{LookupTableIDs, LookupTableIDs::*, *};
 use ark_ff::{FftField, Field, PrimeField, Zero};
-use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
+use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use core::ops::Index;
 use kimchi::{
     circuits::{
@@ -177,7 +177,7 @@ impl<'a> AlphaChallengeTerm<'a> for MultiplicitiesChallengeTerm {
 /// required to evaluate an expression as a polynomial.
 /// All are evaluations.
 pub struct MultiplicitiesEvalEnvironment<'a, F: FftField> {
-    pub columns: &'a ColumnEnv<Evaluations<F, D<F>>>,
+    pub columns: &'a ColumnEnv<Evaluations<F, Radix2EvaluationDomain<F>>>,
     pub challenges: MultiplicitiesChallenges<F>,
     pub constants: Constants<F>,
     pub domain: &'a EvaluationDomains<F>,
@@ -191,7 +191,10 @@ impl<'a, F: FftField>
 {
     type Column = MultiplicitiesColumns;
 
-    fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>> {
+    fn get_column(
+        &self,
+        col: &Self::Column,
+    ) -> Option<&'a Evaluations<F, Radix2EvaluationDomain<F>>> {
         use MultiplicitiesColumns::*;
         let MultiplicitiesEvalEnvironment {
             columns:
@@ -215,7 +218,7 @@ impl<'a, F: FftField>
         }
     }
 
-    fn get_domain(&self, d: Domain) -> D<F> {
+    fn get_domain(&self, d: Domain) -> Radix2EvaluationDomain<F> {
         match d {
             Domain::D1 => self.domain.d1,
             Domain::D2 => self.domain.d2,
@@ -236,7 +239,9 @@ impl<'a, F: FftField>
         &self.challenges
     }
 
-    fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>> {
+    fn vanishes_on_zero_knowledge_and_previous_rows(
+        &self,
+    ) -> &'a Evaluations<F, Radix2EvaluationDomain<F>> {
         panic!("no zk is supposed to be used in this protocol")
     }
 
