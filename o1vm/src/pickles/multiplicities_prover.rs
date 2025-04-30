@@ -1,9 +1,9 @@
 use crate::{lookups::FixedLookup, pickles::multiplicities_columns::*};
-use ark_ff::{batch_inversion, One, PrimeField, Zero};
+use ark_ff::{batch_inversion, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain};
 use kimchi::{
     circuits::{
-        domains::{Domain, EvaluationDomains},
+        domains::EvaluationDomains,
         expr::{l0_1, Constants},
     },
     curve::KimchiCurve,
@@ -13,7 +13,6 @@ use kimchi::{
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{commitment::absorb_commitment, ipa::SRS, OpenProof, SRS as _};
-use std::ops::{AddAssign, Mul};
 
 use poly_commitment::{ipa::OpeningProof, utils::DensePolynomialOrEvaluations, PolyComm};
 use rand::{CryptoRng, RngCore};
@@ -113,7 +112,7 @@ pub fn multiplicities_prove_snd_part<
     srs: &SRS<G>,
     domain: EvaluationDomains<G::ScalarField>,
     mut fq_sponge: EFqSponge,
-    constraints: &[EMultiplicities<G::ScalarField>],
+    constraint: &EMultiplicities<G::ScalarField>,
     rng: &mut RNG,
     state: MultiplicitiesProverState<G::ScalarField>,
 ) -> Proof<G>
@@ -187,23 +186,7 @@ where
         },
         l0_1: l0_1(domain.d1),
     };
-    // TODO: don't split up the computation
-    let (t_numerator_evaluation, _) = constraints.iter().fold(
-        (
-            Evaluations::from_vec_and_domain(
-                vec![G::ScalarField::zero(); domain.d2.size as usize],
-                domain.d2,
-            ),
-            G::ScalarField::one(),
-        ),
-        |(mut acc, alpha_pow), cst| {
-            acc.add_assign(
-                &cst.evaluations_with_domain(&eval_env, Domain::D2)
-                    .mul(alpha_pow),
-            );
-            (acc, alpha_pow * alpha)
-        },
-    );
+    let t_numerator_evaluation = constraint.evaluations(&eval_env);
     let t_numerator_poly = t_numerator_evaluation.interpolate();
     let (t, rem) = t_numerator_poly
         .divide_by_vanishing_poly(domain.d1)

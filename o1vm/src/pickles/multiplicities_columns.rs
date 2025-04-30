@@ -331,7 +331,7 @@ pub fn get_multiplicities_constraints<F: PrimeField>(
     domain: &Radix2EvaluationDomain<F>,
     acc_init: F,
     acc_final: F,
-) -> Vec<EMultiplicities<F>> {
+) -> EMultiplicities<F> {
     // Constraint the inverse wires
     let mut res = inverses_constraint();
 
@@ -378,5 +378,7 @@ pub fn get_multiplicities_constraints<F: PrimeField>(
     res.push(acc_recursion);
     res.push(acc_init);
     res.push(acc_final);
-    res
+
+    let alphas = 0..(res.len() as u32);
+    Expr::combine_constraints(alphas, res)
 }
