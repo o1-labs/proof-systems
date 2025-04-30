@@ -283,6 +283,11 @@ impl<F: PrimeField> ColumnEvaluations<F> for Eval<F> {
     }
 }
 
+///////
+// Constraint of the multiplicities protocol.
+// They are not in the interpreter as they do not depend on the execution trace.
+///////
+
 pub type EMultiplicities<F> =
     Expr<ConstantExpr<F, MultiplicitiesChallengeTerm>, MultiplicitiesColumns>;
 
