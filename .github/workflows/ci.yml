@@ -126,10 +126,9 @@ jobs:
         with:
           rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
 
-      - name: Use shared OCaml setting up steps
-        uses: ./.github/actions/ocaml-shared
+      - uses: taiki-e/install-action@v2
         with:
-          ocaml_version: ${{ matrix.ocaml_version }}
+          tool: cargo-spec
 
       - name: Install markdownlint
         run: |
@@ -139,11 +138,6 @@ jobs:
       #
       # Doc & Spec
       #
-
-      - name: Install cargo-spec for specifications
-        run: |
-          eval $(opam env)
-          cargo install --locked cargo-spec
 
       - name: Build the kimchi specification
         run: |
