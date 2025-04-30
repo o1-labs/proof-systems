@@ -25,7 +25,7 @@ use std::iter::Chain;
 // This file contains the associated types and methods for the multiplicities prover.
 // It defines the columns, the proof, proof input, and constraint expressions.
 
-#[derive(Clone, PartialEq, Copy)]
+#[derive(Clone, PartialEq, Copy, Debug)]
 pub enum MultiplicitiesColumns {
     FixedLookup(LookupTableIDs, usize),
     Multiplicities(LookupTableIDs),
