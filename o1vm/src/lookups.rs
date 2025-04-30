@@ -748,6 +748,8 @@ fn test_formated_transpose() {
         .zip(formated_tables_transposed)
         .for_each(|(table, table_transposed)| {
             for i in 0..table.len() {
+                // The code is clearer as is.
+                #[allow(clippy::needless_range_loop)]
                 for j in 0..table[0].len() {
                     assert_eq!(table[i][j], table_transposed[j][i])
                 }

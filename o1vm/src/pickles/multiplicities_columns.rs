@@ -1,7 +1,5 @@
 //TODO rename
-use crate::lookups::LookupTableIDs;
-use crate::lookups::LookupTableIDs::*;
-use crate::lookups::*;
+use crate::lookups::{LookupTableIDs, LookupTableIDs::*, *};
 use ark_ff::{FftField, Field, PrimeField, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use core::ops::Index;
@@ -17,7 +15,6 @@ use kimchi::{
     curve::KimchiCurve,
     proof::PointEvaluations,
 };
-use kimchi_msm::LogupTableID;
 use poly_commitment::{ipa::OpeningProof, PolyComm};
 use serde::{Deserialize, Serialize};
 use std::iter::Chain;

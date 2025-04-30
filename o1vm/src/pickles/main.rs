@@ -22,9 +22,7 @@ use o1vm::{
         lookup_env::LookupEnvironment,
         lookup_prover::{lookup_prove_fst_part, lookup_prove_snd_part},
         lookup_verifier::lookup_verify,
-        multiplicities_columns::{
-            self, inverses_constraint, EMultiplicities, MultiplicitiesProofInput,
-        },
+        multiplicities_columns::{inverses_constraint, MultiplicitiesProofInput},
         multiplicities_prover::{multiplicitie_prove_fst_part, multiplicities_prove_snd_part},
         multiplicities_verifier::multiplicities_verify,
         proof::ProofInputs,
