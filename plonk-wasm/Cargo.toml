@@ -25,11 +25,11 @@ paste.workspace = true
 rand.workspace = true
 rayon.workspace = true
 rmp-serde.workspace = true
-spmc.workspace = true
 serde.workspace = true
+serde-wasm-bindgen.workspace = true
 serde_json.workspace = true
 serde_with.workspace = true
-serde-wasm-bindgen.workspace = true
+spmc.workspace = true
 # Strictly enforcing 0.2.87
 wasm-bindgen.workspace = true
 web-sys = { workspace = true, features = [

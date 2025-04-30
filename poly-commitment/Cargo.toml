@@ -10,8 +10,8 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-ark-ff.workspace = true
 ark-ec.workspace = true
+ark-ff.workspace = true
 ark-poly.workspace = true
 ark-serialize.workspace = true
 
@@ -28,8 +28,8 @@ thiserror.workspace = true
 
 groupmap.workspace = true
 mina-curves.workspace = true
-o1-utils.workspace = true
 mina-poseidon.workspace = true
+o1-utils.workspace = true
 
 ocaml = { workspace = true, optional = true }
 ocaml-gen = { workspace = true, optional = true }

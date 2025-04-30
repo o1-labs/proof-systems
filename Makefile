@@ -156,12 +156,11 @@ nextest-all-with-coverage:
 
 check-format: ## Check the code formatting
 		cargo +nightly fmt -- --check
-		cargo sort --check
+		taplo fmt --check
 
 format: ## Format the code
 		cargo +nightly fmt
-		cargo sort
-
+		taplo fmt
 
 lint: ## Lint the code
 		cargo clippy --all-features --all-targets --tests $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings

@@ -20,8 +20,8 @@ serde_json.workspace = true
 serde_with.workspace = true
 tinytemplate.workspace = true
 
-mina-curves.workspace = true
 kimchi.workspace = true
-o1-utils.workspace = true
+mina-curves.workspace = true
 mina-poseidon.workspace = true
+o1-utils.workspace = true
 poly-commitment.workspace = true
