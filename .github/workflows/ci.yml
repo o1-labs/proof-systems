@@ -169,11 +169,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Set up NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
@@ -183,11 +178,6 @@ jobs:
         uses: ./.github/actions/ocaml-shared
         with:
           ocaml_version: ${{ matrix.ocaml_version }}
-
-      - name: Install markdownlint
-        run: |
-          # FIXME: 0.39.0 makes the CI fail
-          npm install -g markdownlint-cli@0.38.0
       #
       # Coding guidelines
       #
