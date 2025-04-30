@@ -3,7 +3,7 @@ use ark_ff::{batch_inversion, One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain};
 use kimchi::{
     circuits::{
-        domains::EvaluationDomains,
+        domains::{EvaluationDomains, Domain},
         expr::{l0_1, Constants},
     },
     curve::KimchiCurve,
@@ -200,7 +200,10 @@ where
             G::ScalarField::one(),
         ),
         |(mut acc, alpha_pow), cst| {
-            acc.add_assign(&cst.evaluations_d8(&eval_env).mul(alpha_pow));
+            acc.add_assign(
+                &cst.evaluations_with_domain(&eval_env, Domain::D8)
+                    .mul(alpha_pow),
+            );
             (acc, alpha_pow * alpha)
         },
     );
