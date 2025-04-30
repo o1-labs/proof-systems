@@ -283,7 +283,12 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
                 .this
                 .w
                 .par_iter()
-                .zip(self.column_evaluations.permutation_coefficients8.par_iter())
+                .zip(
+                    self.column_evaluations
+                        .get()
+                        .permutation_coefficients8
+                        .par_iter(),
+                )
                 .map(|(witness, sigma)| witness + &(gamma + &sigma.scale(beta)))
                 .reduce_with(|mut l, r| {
                     l *= &r;
@@ -292,10 +297,8 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
                 .unwrap()
                 * &lagrange.d8.next.z.clone();
 
-            let res = &(&shifts - &sigmas).scale(alpha0)
-                * &self.cs.precomputations().permutation_vanishing_polynomial_l;
-
-            res
+            &(&shifts - &sigmas).scale(alpha0)
+                * &self.cs.precomputations().permutation_vanishing_polynomial_l
         };
 
         //~ and `bnd`:
@@ -360,7 +363,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
             .permutation_vanishing_polynomial_m
             .evaluate(&zeta);
         let scalar = ConstraintSystem::<F>::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
-        let evals8 = &self.column_evaluations.permutation_coefficients8[PERMUTS - 1].evals;
+        let evals8 = &self.column_evaluations.get().permutation_coefficients8[PERMUTS - 1].evals;
         const STRIDE: usize = 8;
         let n = evals8.len() / STRIDE;
         let evals = (0..n)
@@ -490,7 +493,12 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         // Since PERMUTS < COLUMNS, that's what's actually used.
         let mut z: Vec<F> = witness
             .par_iter()
-            .zip(self.column_evaluations.permutation_coefficients8.par_iter())
+            .zip(
+                self.column_evaluations
+                    .get()
+                    .permutation_coefficients8
+                    .par_iter(),
+            )
             .map(|(w_i, perm_coeffs8_i)| {
                 let mut output_vec: Vec<_> = vec![F::one(); 1];
                 for (j, w_i_j) in w_i.iter().enumerate().take(n - 1) {
