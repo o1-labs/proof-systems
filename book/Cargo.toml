@@ -11,5 +11,5 @@ license = "Apache-2.0"
 
 [build-dependencies]
 cargo-spec = { version = "0.5.0" }
-time = { version = "~0.3.31" } # This crate is a known bad-actor for breaking rust version support.
-plist = { version = "~1.5.0" } # This crate improperly constrains its bad-actor dependency (`time`).
+time = { version = "~0.3.31" }     # This crate is a known bad-actor for breaking rust version support.
+plist = { version = "~1.5.0" }     # This crate improperly constrains its bad-actor dependency (`time`).

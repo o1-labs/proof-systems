@@ -14,27 +14,27 @@ path = "src/lib.rs"
 bench = false       # needed for criterion (https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options)
 
 [dependencies]
-ark-ff.workspace = true
+ark-bn254 = { workspace = true, optional = true }
 ark-ec.workspace = true
+ark-ff.workspace = true
 ark-poly.workspace = true
 ark-serialize.workspace = true
-ark-bn254 = { workspace = true, optional = true }
 blake2.workspace = true
-num-bigint.workspace = true
-num-integer.workspace = true
+hex.workspace = true
 itertools.workspace = true
 log.workspace = true
+num-bigint.workspace = true
+num-integer.workspace = true
+once_cell.workspace = true
 rand = { workspace = true, features = ["std_rng"] }
 rand_core.workspace = true
 rayon.workspace = true
 rmp-serde.workspace = true
 serde.workspace = true
 serde_with.workspace = true
-thiserror.workspace = true
-once_cell.workspace = true
-hex.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
+thiserror.workspace = true
 
 ocaml = { workspace = true, optional = true }
 ocaml-gen = { workspace = true, optional = true }
@@ -44,12 +44,12 @@ wasm-bindgen = { workspace = true, optional = true }
 internal-tracing.workspace = true
 
 # Internal dependencies
-turshi.workspace = true
-poly-commitment.workspace = true
 groupmap.workspace = true
 mina-curves.workspace = true
-o1-utils.workspace = true
 mina-poseidon.workspace = true
+o1-utils.workspace = true
+poly-commitment.workspace = true
+turshi.workspace = true
 
 
 [dev-dependencies]
@@ -83,11 +83,11 @@ harness = false
 default = []
 internal_tracing = ["internal-tracing/enabled"]
 ocaml_types = [
-    "ocaml",
-    "ocaml-gen",
-    "poly-commitment/ocaml_types",
-    "mina-poseidon/ocaml_types",
-    "internal-tracing/ocaml_types",
+  "ocaml",
+  "ocaml-gen",
+  "poly-commitment/ocaml_types",
+  "mina-poseidon/ocaml_types",
+  "internal-tracing/ocaml_types",
 ]
 bn254 = ["ark-bn254"]
 wasm_types = ["wasm-bindgen"]

@@ -8,30 +8,30 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
+ark-ec.workspace = true
+ark-ff.workspace = true
+ark-poly.workspace = true
 ark-serialize.workspace = true
-o1-utils.workspace = true
-itertools.workspace = true
-log.workspace = true
-kimchi.workspace = true
-poly-commitment.workspace = true
+derivative = "2"
 groupmap.workspace = true
+itertools.workspace = true
+kimchi.workspace = true
+log.workspace = true
 mina-curves.workspace = true
 mina-poseidon.workspace = true
 num-bigint.workspace = true
 num-integer.workspace = true
+o1-utils.workspace = true
+poly-commitment.workspace = true
+rand.workspace = true
+rayon.workspace = true
 rmp-serde.workspace = true
-serde_json.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 serde_with.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
-ark-poly.workspace = true
-ark-ff.workspace = true
-ark-ec.workspace = true
-rand.workspace = true
-rayon.workspace = true
 thiserror.workspace = true
-derivative = "2"
 
 [dev-dependencies]
 ark-bn254.workspace = true

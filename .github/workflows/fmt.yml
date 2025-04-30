@@ -24,7 +24,7 @@ jobs:
 
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-sort
+          tool: taplo
 
       - name: Check formatting related to Rust code
         run: make check-format

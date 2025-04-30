@@ -25,7 +25,6 @@ ark-bn254.workspace = true
 # FIXME: Only activate this when legacy_o1vm is built
 folding.workspace = true
 # FIXME: Only activate this when legacy_o1vm is built
-kimchi = { workspace = true, features = [ "bn254" ] }
 ark-ec.workspace = true
 ark-ff.workspace = true
 ark-poly.workspace = true
@@ -37,6 +36,7 @@ env_logger.workspace = true
 groupmap.workspace = true
 hex.workspace = true
 itertools.workspace = true
+kimchi = { workspace = true, features = ["bn254"] }
 kimchi-msm.workspace = true
 libc.workspace = true
 libflate.workspace = true
@@ -53,8 +53,8 @@ rmp-serde.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_with.workspace = true
+sha3.workspace = true
 stacker = "0.1"
 strum.workspace = true
 strum_macros.workspace = true
-sha3.workspace = true
 thiserror.workspace = true
