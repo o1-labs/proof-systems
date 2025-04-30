@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request: # TODO only needed for this pr then remove
+  push:
+    branches:
+      - master
+
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trigger_o1js_checks:
+    uses: o1-labs/o1js/.github/workflows/checks.yml@brian/proof-systems-test #TODO change to main after merging o1js changes
+    with:
+      proof_systems_commit: ${{ github.event.pull_request.base.ref }}
+      target_repo: "o1-labs/o1js"
+      target_ref: "brian/proof-systems-test" # TODO main here too
