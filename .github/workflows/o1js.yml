@@ -1,4 +1,4 @@
-name: CI
+name: Test o1js
 
 on:
   workflow_dispatch:
@@ -16,6 +16,6 @@ jobs:
   trigger_o1js_checks:
     uses: o1-labs/o1js/.github/workflows/checks.yml@brian/proof-systems-test #TODO change to main after merging o1js changes
     with:
-      proof_systems_commit: ${{ github.event.pull_request.base.ref }}
+      proof_systems_commit: ${{ github.ref }}
       target_repo: "o1-labs/o1js"
       target_ref: "brian/proof-systems-test" # TODO main here too
