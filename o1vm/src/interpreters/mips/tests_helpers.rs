@@ -95,6 +95,7 @@ where
         lookup_multiplicities: LookupMultiplicities::new(),
         lookup_state_idx: 0,
         lookup_state: vec![],
+        lookup_arity: vec![],
         selector: crate::interpreters::mips::column::N_MIPS_SEL_COLS,
         halt: false,
         // Keccak related

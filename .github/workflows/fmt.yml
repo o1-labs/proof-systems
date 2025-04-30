@@ -22,9 +22,9 @@ jobs:
         with:
           rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
 
-      - name: Install cargo-sort
-        run: cargo install cargo-sort
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: taplo
 
       - name: Check formatting related to Rust code
-        run: |
-          make check-format
+        run: make check-format

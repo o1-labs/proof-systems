@@ -18,8 +18,8 @@ ark-poly.workspace = true
 clap = { workspace = true, features = ["derive"] }
 env_logger.workspace = true
 groupmap.workspace = true
-kimchi.workspace = true
 itertools.workspace = true
+kimchi.workspace = true
 log.workspace = true
 mina-curves.workspace = true
 mina-poseidon.workspace = true

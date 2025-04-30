@@ -5,11 +5,11 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-serde = { workspace = true, features = ["derive"], optional = true }
-serde_json = { workspace = true, optional = true }
 ocaml = { workspace = true, optional = true }
 ocaml-gen = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"], optional = true }
+serde_json = { workspace = true, optional = true }
 
 [features]
-enabled = [ "serde", "serde_json" ]
-ocaml_types = [ "ocaml", "ocaml-gen" ]
+enabled = ["serde", "serde_json"]
+ocaml_types = ["ocaml", "ocaml-gen"]

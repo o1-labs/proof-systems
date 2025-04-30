@@ -15,8 +15,8 @@ path = "src/lib.rs"
 [dependencies]
 ark-ff.workspace = true
 bitvec.workspace = true
-mina-poseidon.workspace = true
 mina-curves.workspace = true
+mina-poseidon.workspace = true
 o1-utils.workspace = true
 serde.workspace = true
 

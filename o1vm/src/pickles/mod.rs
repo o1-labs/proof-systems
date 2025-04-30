@@ -13,17 +13,22 @@
 //! ```
 
 pub mod column_env;
+pub mod lookup_columns;
+pub mod lookup_env;
+pub mod lookup_prover;
+pub mod lookup_verifier;
 pub mod proof;
 pub mod prover;
 pub mod verifier;
 
-/// Degree of the quotient polynomial. We do evaluate all polynomials on d8
-/// (because of the value of
-/// [crate::interpreters::mips::MAXIMUM_DEGREE_CONSTRAINTS]), and therefore, we
-/// do have a degree 7 for the quotient polynomial.
+/// Degree of the quotient polynomial.
 /// Used to keep track of the number of chunks we do have when we commit to the
 /// quotient polynomial.
 pub const DEGREE_QUOTIENT_POLYNOMIAL: u64 = 7;
+
+/// Total number of constraints for all instructions, including the constraints
+/// added for the selectors.
+pub const TOTAL_NUMBER_OF_CONSTRAINTS: usize = 466;
 
 #[cfg(test)]
 mod tests;

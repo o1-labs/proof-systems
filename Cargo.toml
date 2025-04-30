@@ -1,27 +1,28 @@
 [workspace]
 members = [
-    "arrabbiata",
-    "book",
-    "curves",
-    "folding",
-    "groupmap",
-    "hasher",
-    "internal-tracing",
-    "ivc",
-    "kimchi",
-    "kimchi-stubs",
-    "msm",
-    "mvpoly",
-    "o1vm",
-    "plonk-wasm",
-    "poly-commitment",
-    "poseidon",
-    "poseidon/export_test_vectors",
-    "saffron",
-    "signer",
-    "tools/kimchi-visu",
-    "turshi",
-    "utils"]
+  "arrabbiata",
+  "book",
+  "curves",
+  "folding",
+  "groupmap",
+  "hasher",
+  "internal-tracing",
+  "ivc",
+  "kimchi",
+  "kimchi-stubs",
+  "msm",
+  "mvpoly",
+  "o1vm",
+  "plonk-wasm",
+  "poly-commitment",
+  "poseidon",
+  "poseidon/export_test_vectors",
+  "saffron",
+  "signer",
+  "tools/kimchi-visu",
+  "turshi",
+  "utils",
+]
 resolver = "2"
 
 [workspace.dependencies]
@@ -41,7 +42,10 @@ bs58 = "0.5.0"
 clap = "4.4.6"
 command-fds = "0.3"
 console_error_panic_hook = { version = "0.1.6" }
-criterion = { version = "0.5", features = ["cargo_bench_support", "html_reports"] }
+criterion = { version = "0.5", features = [
+  "cargo_bench_support",
+  "html_reports",
+] }
 elf = "0.7.2"
 env_logger = "0.11.1"
 getrandom = { version = "=0.2.15", features = ["js"] }
@@ -69,8 +73,8 @@ regex = "1.10.2"
 rmp-serde = "=1.2.0"
 secp256k1 = "0.28.2"
 serde = { version = "=1.0.219", features = ["derive", "rc"] }
-serde_json = "=1.0.109"
 serde-wasm-bindgen = "=0.6.5"
+serde_json = "=1.0.109"
 serde_with = "3.12"
 sha2 = "0.10.0"
 sha3 = "0.10.8"
@@ -95,9 +99,9 @@ folding = { path = "./folding", version = "0.1.0" }
 groupmap = { path = "./groupmap", version = "0.1.0" }
 internal-tracing = { path = "./internal-tracing", version = "0.1.0" }
 kimchi = { path = "./kimchi", version = "0.1.0", features = ["bn254"] }
+kimchi-msm = { path = "./msm", version = "0.1.0" }
 kimchi-stubs = { path = "./kimchi-stubs", version = "0.1.0" }
 kimchi-visu = { path = "./tools/kimchi-visu", version = "0.1.0" }
-kimchi-msm = { path = "./msm", version = "0.1.0" }
 mina-curves = { path = "./curves", version = "0.1.0" }
 mina-hasher = { path = "./hasher", version = "0.1.0" }
 mina-poseidon = { path = "./poseidon", version = "0.1.0" }

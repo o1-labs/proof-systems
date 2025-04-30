@@ -27,18 +27,17 @@ jobs:
         uses: ./.github/actions/toolchain-shared
         with:
           rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+          targets: wasm32-unknown-unknown
 
-      - name: Apply the Rust smart cacheing
-        uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack@0.12.1
 
-      - name: Setup git submodules and install wasm-pack
-        run: |
-          make setup
+      - shell: bash
+        run: rustup component add rust-src
 
       - name: Build the WebAssembly for the web
-        run: |
-          make build-web
+        run: make build-web
 
       - name: Build the WebAssembly for NodeJS
-        run: |
-          make build-nodejs
+        run: make build-nodejs

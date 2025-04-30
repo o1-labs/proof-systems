@@ -6,15 +6,18 @@ repository = "https://github.com/o1-labs/proof-systems"
 homepage = "https://o1-labs.github.io/proof-systems/"
 documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
 readme = "../README.md"
-authors = ["Rebekah Mercer <github@rbkhmrcr.com>", "Izaak Meckler <izaak@o1labs.org>"]
+authors = [
+  "Rebekah Mercer <github@rbkhmrcr.com>",
+  "Izaak Meckler <izaak@o1labs.org>",
+]
 edition = "2021"
 license = "Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ark-ff.workspace = true
 ark-ec.workspace = true
+ark-ff.workspace = true
 rand.workspace = true
 
 [dev-dependencies]
