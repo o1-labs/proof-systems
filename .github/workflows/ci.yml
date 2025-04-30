@@ -2,7 +2,14 @@ name: CI
 
 on:
   workflow_dispatch:
+  # Trigger after nightly runs to rebuild the cache
+  workflow_run:
+    workflows: [Nightly tests with the code coverage]
+    types: [completed]
   pull_request:
+  push:
+    branches:
+       - master
 
 concurrency:
   group: ${{ github.ref }}
@@ -22,6 +29,7 @@ env:
 jobs:
   run_mdbook:
     name: Building MDBook
+    if: ${{ github.event_name != 'workflow_run' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -42,6 +50,7 @@ jobs:
           cd book
           make deps
           make build
+
   define-matrix:
     runs-on: ubuntu-latest
     outputs:
@@ -62,9 +71,38 @@ jobs:
       - id: os
         run: echo 'version=["ubuntu-latest", "ubuntu-24.04-arm"]' >> "$GITHUB_OUTPUT"
 
+  refresh-cache:
+    needs: ["define-matrix"]
+    strategy:
+      matrix:
+        rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
+        os: ${{ fromJSON(needs.define-matrix.outputs.os) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+
+      # if 'workflow_run'
+
+      - uses: actions/checkout@v4
+        if: ${{ github.event_name == 'workflow_run' }}
+      - uses: ./.github/actions/toolchain-shared
+        if: ${{ github.event_name == 'workflow_run' }}
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+      - name: start-fresh
+        if: ${{ github.event_name == 'workflow_run' }}
+        shell: bash
+        run: cargo clean
+
+      # else
+
+      - name: skip-refresh
+        if: ${{ github.event_name != 'workflow_run' }}
+        shell: bash
+        run: echo 'no need to refresh'
+
   doc-and-spec:
     name: Run checks and tests
-    needs: ["define-matrix"]
+    needs: ["define-matrix", "refresh-cache"]
     strategy:
       matrix:
         rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
@@ -123,7 +161,7 @@ jobs:
 
   lint:
     name: Run checks and tests
-    needs: ["define-matrix"]
+    needs: ["define-matrix", "refresh-cache"]
     strategy:
       matrix:
         rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
@@ -167,7 +205,7 @@ jobs:
 
   build:
     name: Run checks and tests
-    needs: ["define-matrix"]
+    needs: ["define-matrix", "refresh-cache"]
     strategy:
       matrix:
         rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
@@ -211,7 +249,7 @@ jobs:
 
   tests:
     name: Run checks and tests
-    needs: ["define-matrix"]
+    needs: ["define-matrix", "refresh-cache"]
     strategy:
       matrix:
         rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
