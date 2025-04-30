@@ -75,6 +75,20 @@ impl LookupTableIDs {
             }
         }
     }
+
+    /// Returns all the lookup table ids of the fixed tables.
+    /// Used for constraining the multiplicities
+    pub fn get_fixed_ids() -> Vec<Self> {
+        vec![
+            PadLookup,
+            RoundConstantsLookup,
+            AtMost4Lookup,
+            ByteLookup,
+            RangeCheck16Lookup,
+            SparseLookup,
+            ResetLookup,
+        ]
+    }
 }
 
 // IMPROVEME: A could in some cases be [A;arity of the table]

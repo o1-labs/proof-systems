@@ -298,17 +298,7 @@ pub fn inverses_constraint<F: PrimeField>() -> Vec<EMultiplicities<F>> {
     let gamma: EMultiplicities<F> = MultiplicitiesChallengeTerm::Gamma.into();
 
     let mut res = vec![];
-    for id in vec![
-        PadLookup,
-        RoundConstantsLookup,
-        AtMost4Lookup,
-        ByteLookup,
-        RangeCheck16Lookup,
-        SparseLookup,
-        ResetLookup,
-    ]
-    .into_iter()
-    {
+    for id in LookupTableIDs::get_fixed_ids().into_iter() {
         let n = id.arity();
         let mut cst: kimchi::circuits::expr::Operations<
             ExprInner<
