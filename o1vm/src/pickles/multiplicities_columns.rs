@@ -1,5 +1,5 @@
 //TODO rename
-use crate::lookups::{LookupTableIDs, LookupTableIDs::*, *};
+use crate::lookups::{LookupTableIDs, *};
 use ark_ff::{FftField, Field, PrimeField, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use core::ops::Index;
@@ -7,8 +7,9 @@ use kimchi::{
     circuits::{
         domains::{Domain, EvaluationDomains},
         expr::{
-            AlphaChallengeTerm, ColumnEnvironment, ColumnEvaluations, ConstantExpr, Constants,
-            Expr, ExprError, ExprInner, Variable,
+            unnormalized_lagrange_basis, AlphaChallengeTerm, ColumnEnvironment, ColumnEvaluations,
+            ConstantExpr, ConstantTerm::Literal, Constants, Expr, ExprError, ExprInner, RowOffset,
+            Variable,
         },
         gate::CurrOrNext,
     },
@@ -298,7 +299,7 @@ fn variable<F: Field>(col: MultiplicitiesColumns) -> EMultiplicities<F> {
     }))
 }
 
-pub fn inverses_constraint<F: PrimeField>() -> Vec<EMultiplicities<F>> {
+fn inverses_constraint<F: PrimeField>() -> Vec<EMultiplicities<F>> {
     let beta: EMultiplicities<F> = MultiplicitiesChallengeTerm::Beta.into();
     let gamma: EMultiplicities<F> = MultiplicitiesChallengeTerm::Gamma.into();
 
@@ -323,5 +324,59 @@ pub fn inverses_constraint<F: PrimeField>() -> Vec<EMultiplicities<F>> {
         res.push(cst)
     }
 
+    res
+}
+
+pub fn get_multiplicities_constraints<F: PrimeField>(
+    domain: &Radix2EvaluationDomain<F>,
+    acc_init: F,
+    acc_final: F,
+) -> Vec<EMultiplicities<F>> {
+    // Constraint the inverse wires
+    let mut res = inverses_constraint();
+
+    // Recursive constraint of the accumulator
+    let partial_acc_recursion = {
+        let mut sum_inverses = EMultiplicities::<F>::zero();
+        for id in LookupTableIDs::get_fixed_ids() {
+            sum_inverses += variable(MultiplicitiesColumns::Inverses(id));
+        }
+        EMultiplicities::<F>::Atom(ExprInner::Cell(Variable {
+            col: MultiplicitiesColumns::Acc,
+            row: CurrOrNext::Next,
+        })) - variable(MultiplicitiesColumns::Acc)
+            - sum_inverses
+    };
+    // used to not constrain on the n-1 point of the domain
+    let unnormalized_l_n_n: EMultiplicities<F> = {
+        let field_elt = unnormalized_lagrange_basis::<F>(
+            domain,
+            (domain.size - 1).try_into().unwrap(),
+            &F::pow(&domain.group_gen, [(domain.size - 1)]),
+        );
+        Literal(field_elt).into()
+    };
+    let acc_recursion = (unnormalized_l_n_n.clone()
+        - EMultiplicities::Atom(ExprInner::UnnormalizedLagrangeBasis(RowOffset {
+            zk_rows: false,
+            offset: (domain.size - 1).try_into().unwrap(),
+        })))
+        * partial_acc_recursion;
+
+    // Constrain the initial value of the accumulator
+    let acc_init = (EMultiplicities::Atom(ExprInner::UnnormalizedLagrangeBasis(RowOffset {
+        zk_rows: false,
+        offset: 0,
+    }))) * (variable(MultiplicitiesColumns::Acc) - (Literal(acc_init).into()));
+
+    // Constrain the final value of the accumulator
+    let acc_final = (EMultiplicities::Atom(ExprInner::UnnormalizedLagrangeBasis(RowOffset {
+        zk_rows: false,
+        offset: (domain.size - 1).try_into().unwrap(),
+    }))) * (variable(MultiplicitiesColumns::Acc) - (Literal(acc_final).into()));
+
+    res.push(acc_recursion);
+    res.push(acc_init);
+    res.push(acc_final);
     res
 }
