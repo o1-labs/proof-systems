@@ -218,6 +218,7 @@ where
             ),
             G::ScalarField::one(),
         ),
+        // TODO use horner
         |(mut acc, alpha_pow), cst| {
             acc.add_assign(
                 &cst.evaluations_with_domain(&eval_env, Domain::D4)

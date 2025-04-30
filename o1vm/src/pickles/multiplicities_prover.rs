@@ -187,6 +187,7 @@ where
         },
         l0_1: l0_1(domain.d1),
     };
+    // TODO: don't split up the computation
     let (t_numerator_evaluation, _) = constraints.iter().fold(
         (
             Evaluations::from_vec_and_domain(
