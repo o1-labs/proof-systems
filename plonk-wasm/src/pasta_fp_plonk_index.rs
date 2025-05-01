@@ -267,9 +267,11 @@ pub fn caml_pasta_fp_plonk_index_write(
         .map_err(|e| JsValue::from_str(&format!("caml_pasta_fp_plonk_index_read: {e}")))
 }
 
+#[allow(deprecated)]
 #[wasm_bindgen]
 pub fn caml_pasta_fp_plonk_index_serialize(index: &WasmPastaFpPlonkIndex) -> String {
     let serialized = rmp_serde::to_vec(&index.0).unwrap();
+    // Deprecated used on purpose: updating this leads to a bug in o1js
     base64::encode(serialized)
 }
 
