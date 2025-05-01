@@ -2,10 +2,10 @@ name: Test o1js
 
 on:
   workflow_dispatch:
-  pull_request: # TODO only needed for this pr then remove
   push:
     branches:
       - master
+      - brian/o1js-test # TODO only needed for this pr then remove
 
 
 concurrency:
