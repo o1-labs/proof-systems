@@ -337,7 +337,7 @@
 }
 
 <span class="doccomment">/// Compute H(i, z_0, z_1, u) and keep the log2(base) bits of the result.
-/// [base] is supposed to be a power of 2
+/// `base` is supposed to be a power of 2
 </span><span class="kw">fn </span>hash&lt;F: PrimeField, <span class="kw">const </span>N: usize&gt;(
     sys: <span class="kw-2">&amp;mut </span>RunState&lt;F&gt;,
     i: FieldVar&lt;F&gt;,
@@ -365,7 +365,7 @@
     <span class="kw">type </span>PublicInput = ();
     <span class="kw">type </span>PublicOutput = [Hash&lt;F&lt;C&gt;&gt;; <span class="number">2</span>];
 
-    <span class="doccomment">/// Implement the IVC circuit, see https://eprint.iacr.org/2021/370.pdf, Fig
+    <span class="doccomment">/// Implement the IVC circuit, see &lt;https://eprint.iacr.org/2021/370.pdf&gt;, Fig
     /// 4, page 18
     </span><span class="kw">fn </span>circuit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,

@@ -693,10 +693,10 @@
         state.assert_r1cs(<span class="prelude-val">Some</span>(<span class="string">&quot;equals_2&quot;</span>.into()), loc, r, z, zero)
     }
 
-    <span class="doccomment">/** [equal_vars z] computes [(r, z_inv)] that satisfy the constraints in
-    [equal_constraints z z_inv r].
+    <span class="doccomment">/** `z` computes `(r, z_inv)` that satisfy the constraints in
+    [Self::equal_constraints] `z` `z_inv` `r`.
 
-    In particular, [r] is [1] if [z = 0] and [0] otherwise.
+    In particular, `r` is `1` if `z = 0` and `0` otherwise.
     */
     </span><span class="kw">fn </span>equal_vars(env: <span class="kw-2">&amp;</span><span class="kw">dyn </span>WitnessGeneration&lt;F&gt;, z: <span class="kw-2">&amp;</span>FieldVar&lt;F&gt;) -&gt; (F, F) {
         <span class="kw">let </span>z: F = env.read_var(z);
