@@ -20,7 +20,6 @@ pub mod precomputed_srs;
 pub mod proof;
 pub mod prover;
 pub mod prover_index;
-pub mod snarky;
 pub mod verifier;
 pub mod verifier_index;
 
@@ -34,6 +33,3 @@ macro_rules! loc {
         ::std::borrow::Cow::Owned(format!("{}:{}", file!(), line!()))
     }};
 }
-
-/// Export what is commonly used.
-pub use snarky::prelude::*;
