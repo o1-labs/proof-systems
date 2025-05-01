@@ -183,7 +183,7 @@ generate-doc: ## Generate the Rust documentation
 		@echo ""
 		@echo "Generating the documentation."
 		@echo ""
-		RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps
+		RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps --document-private-items
 		@echo ""
 		@echo "The documentation is available at: ./target/doc"
 		@echo ""

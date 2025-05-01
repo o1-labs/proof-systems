@@ -120,7 +120,7 @@ fn trim<F: PrimeField>(
 }
 
 /// Compute H(i, z_0, z_1, u) and keep the log2(base) bits of the result.
-/// [base] is supposed to be a power of 2
+/// `base` is supposed to be a power of 2
 fn hash<F: PrimeField, const N: usize>(
     sys: &mut RunState<F>,
     i: FieldVar<F>,
@@ -148,7 +148,7 @@ impl<C: KimchiCurve, P: OpenProof<C>, const N: usize> SnarkyCircuit for FoldingC
     type PublicInput = ();
     type PublicOutput = [Hash<F<C>>; 2];
 
-    /// Implement the IVC circuit, see https://eprint.iacr.org/2021/370.pdf, Fig
+    /// Implement the IVC circuit, see <https://eprint.iacr.org/2021/370.pdf>, Fig
     /// 4, page 18
     fn circuit(
         &self,

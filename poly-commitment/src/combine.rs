@@ -286,7 +286,7 @@ fn batch_negate_in_place<P: SWCurveConfig>(ps: &mut [SWJAffine<P>]) {
     });
 }
 
-/// Uses a batch version of Algorithm 1 of https://eprint.iacr.org/2019/1021.pdf (on page 19) to
+/// Uses a batch version of Algorithm 1 of <https://eprint.iacr.org/2019/1021.pdf> (on page 19) to
 /// compute `g1 + g2.scale(chal.to_field(endo_coeff))`
 fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
     endo_coeff: P::BaseField,

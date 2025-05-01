@@ -99,7 +99,7 @@ impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
         }
     }
 
-    /// See https://eprint.iacr.org/2021/370.pdf, page 15
+    /// See <https://eprint.iacr.org/2021/370.pdf>, page 15
     /// Fold the circuit described by `sys` with the other circuit `other`.
     pub fn fold(
         self,
