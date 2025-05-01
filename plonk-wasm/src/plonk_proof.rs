@@ -615,9 +615,11 @@ macro_rules! impl_proof {
                 }
 
                 #[wasm_bindgen]
+                #[allow(deprecated)]
                 pub fn serialize(&self) -> String {
                     let (proof, _public_input) = self.into();
                     let serialized = rmp_serde::to_vec(&proof).unwrap();
+                    // Deprecated used on purpose: updating this leads to a bug in o1js
                     base64::encode(serialized)
                 }
             }

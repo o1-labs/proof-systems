@@ -307,21 +307,17 @@ mod tests {
 
         let data: Vec<ScalarField> = {
             let mut data = vec![];
-            (0..SRS_SIZE)
-                .into_iter()
-                .for_each(|_| data.push(Fp::rand(&mut rng)));
+            (0..SRS_SIZE).for_each(|_| data.push(Fp::rand(&mut rng)));
             data
         };
 
         let data_poly: DensePolynomial<ScalarField> =
-            Evaluations::from_vec_and_domain(data.clone(), (*DOMAIN).d1).interpolate();
+            Evaluations::from_vec_and_domain(data.clone(), DOMAIN.d1).interpolate();
         let data_comm: Curve = SRS.commit_non_hiding(&data_poly, 1).chunks[0];
 
         let query: Vec<ScalarField> = {
             let mut query = vec![];
-            (0..SRS_SIZE)
-                .into_iter()
-                .for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.1)));
+            (0..SRS_SIZE).for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.1)));
             query
         };
 
