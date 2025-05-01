@@ -3,6 +3,7 @@ pub mod cli;
 pub mod commitment;
 pub mod diff;
 pub mod env;
+pub mod folding;
 pub mod read_proof;
 pub mod storage_proof;
 pub mod utils;
