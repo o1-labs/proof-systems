@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["CompiledCircuit","ProverIndexWrapper","VerifierIndexWrapper","Witness"],"trait":["SnarkyCircuit"]};

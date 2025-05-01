@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["poseidon"],"struct":["DuplexState"],"trait":["CircuitAbsorb"]};

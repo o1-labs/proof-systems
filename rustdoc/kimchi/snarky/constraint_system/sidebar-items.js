@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["BasicSnarkyConstraint","KimchiConstraint"],"fn":["canonicalize"],"struct":["BasicInput","EcAddCompleteInput","EcEndoscaleInput","EndoscaleRound","EndoscaleScalarRound","PoseidonInput","ScaleRound","SnarkyConstraintSystem"],"trait":["SnarkyCvar"]};
