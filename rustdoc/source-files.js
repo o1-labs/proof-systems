@@ -22,7 +22,7 @@ var sourcesIndex = JSON.parse('{\
 "pickles_o1vm":["",[],["main.rs"]],\
 "plonk_wasm":["",[["arkworks",[],["bigint_256.rs","group_affine.rs","group_projective.rs","mod.rs","pasta_fp.rs","pasta_fq.rs"]],["wasm_ocaml_serde",[],["de.rs","mod.rs","ser.rs"]]],["circuit.rs","gate_vector.rs","lib.rs","oracles.rs","pasta_fp_plonk_index.rs","pasta_fq_plonk_index.rs","plonk_proof.rs","plonk_verifier_index.rs","poly_comm.rs","poseidon.rs","projective.rs","rayon.rs","srs.rs","urs_utils.rs","wasm_flat_vector.rs","wasm_vector.rs"]],\
 "poly_commitment":["",[],["combine.rs","commitment.rs","error.rs","hash_map_cache.rs","ipa.rs","kzg.rs","lib.rs","pbt_srs.rs","utils.rs"]],\
-"saffron":["",[],["blob.rs","cli.rs","commitment.rs","diff.rs","env.rs","lib.rs","storage_proof.rs","utils.rs"]],\
+"saffron":["",[],["blob.rs","cli.rs","commitment.rs","diff.rs","env.rs","lib.rs","read_proof.rs","storage_proof.rs","utils.rs"]],\
 "saffron_og_flow":["",[],["main.rs"]],\
 "turshi":["",[],["flags.rs","helper.rs","lib.rs","memory.rs","runner.rs","word.rs"]]\
 }');

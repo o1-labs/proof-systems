@@ -65,7 +65,7 @@ scalars are done in the middle square, i.e. <code>acc_(i + 1) = NIFS.V(acc_i, u_
 additions.</p>
 <h3 id="our-design"><a href="#our-design">Our design</a></h3>
 <p>The circuit is implemented using the generic interpreter provided by the
-crate [kimchi_msm].
+crate <a href="../kimchi_msm/index.html" title="mod kimchi_msm">kimchi_msm</a>.
 The particularity of the implementation is that it doesn’t use a cycle of
 curves, aims to be as generic as possible, defer the scalar
 multiplications to compute them in bulk and rely on the Poseidon hash.
@@ -113,7 +113,7 @@ the same for the others. The commitments <code>(C_i)_L</code>, <code>(C_i)_R</co
 called the “instance commitments”.</p>
 <p>To perform foreign field elliptic curve addition, we split the commitments
 into 17 chunks of 15 bits and use additive lookups as described in
-[kimchi_msm::logup]. These 17 chunks will be used later to compute the
+<a href="../kimchi_msm/logup/index.html" title="mod kimchi_msm::logup">kimchi_msm::logup</a>. These 17 chunks will be used later to compute the
 scalar multiplications using a variant of the scheme described in <a href="https://github.com/o1-labs/rfcs/blob/main/0013-efficient-msms-for-non-native-pickles-verification.md">the MSM
 RFC</a></p>
 <p>The first component of our circuit is a hash function.
