@@ -23,7 +23,6 @@ build
 *.swp
 *.swo
 .vscode
-flake.lock
 .envrc
 .direnv
 
