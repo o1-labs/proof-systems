@@ -19,10 +19,15 @@ use rand::{CryptoRng, RngCore};
 
 #[derive(PartialEq, Eq)]
 pub struct RelaxedInstance {
+    // Homogeneization term for folding
     u: ScalarField,
+    // Commitment to the data
     comm_d: Curve,
+    // Commitment to the query polynomial
     comm_q: Curve,
+    // Commitment to the answers
     comm_a: Curve,
+    // Commitment to the error term for folding
     comm_e: Curve,
 }
 
