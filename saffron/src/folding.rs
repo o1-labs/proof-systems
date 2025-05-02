@@ -613,25 +613,41 @@ mod tests {
 
         assert!(relaxed_instance_3.check_in_language(&SRS, &relaxed_witness_3));
 
-        let relaxed_instance_3_v =
-            folding_verifier(&core_instance_1, &relaxed_instance_2, error_term_1);
+        assert!(
+            folding_verifier(&core_instance_1, &relaxed_instance_2, error_term_1)
+                == relaxed_instance_3
+        );
 
-        assert!(relaxed_instance_3_v == relaxed_instance_3);
+        let (core_instance_4, core_witness_4) = generate_random_inst_wit(&mut rng);
+        let (relaxed_instance_5, relaxed_witness_5, error_term_2) = folding_prover(
+            &SRS,
+            &core_instance_4,
+            &relaxed_instance_3,
+            &core_witness_4,
+            &relaxed_witness_3,
+        );
+
+        assert!(relaxed_instance_5.check_in_language(&SRS, &relaxed_witness_5));
+
+        assert!(
+            folding_verifier(&core_instance_4, &relaxed_instance_3, error_term_2)
+                == relaxed_instance_5
+        );
 
         let proof = prove_relaxed(
             &SRS,
             *DOMAIN,
             &GROUP_MAP,
             &mut rng,
-            &relaxed_instance_3,
-            &relaxed_witness_3,
+            &relaxed_instance_5,
+            &relaxed_witness_5,
         );
         let res = verify_relaxed(
             &SRS,
             *DOMAIN,
             &GROUP_MAP,
             &mut rng,
-            &relaxed_instance_3,
+            &relaxed_instance_5,
             &proof,
         );
 
@@ -647,7 +663,7 @@ mod tests {
             *DOMAIN,
             &GROUP_MAP,
             &mut rng,
-            &relaxed_instance_3,
+            &relaxed_instance_5,
             &proof_malformed_1,
         );
 
@@ -663,7 +679,7 @@ mod tests {
             *DOMAIN,
             &GROUP_MAP,
             &mut rng,
-            &relaxed_instance_3,
+            &relaxed_instance_5,
             &proof_malformed_2,
         );
 
