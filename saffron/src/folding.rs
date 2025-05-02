@@ -289,8 +289,6 @@ where
 {
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
 
-    // TODO we assume that (inst,wit) ∈ L, that is inst.comm_d = Com(wit.d), etc.
-
     let data_poly: DensePolynomial<ScalarField> = wit.core.d.interpolate_by_ref();
     let query_poly: DensePolynomial<ScalarField> = wit.core.q.interpolate_by_ref();
     let answer_poly: DensePolynomial<ScalarField> = wit.core.a.interpolate_by_ref();
