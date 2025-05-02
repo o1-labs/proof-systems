@@ -6,6 +6,7 @@ use crate::circuits::{
     wires::Wire,
 };
 use ark_ff::Zero;
+use core::array;
 use itertools::iterate;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -13,7 +14,6 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::Rng;
-use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
@@ -57,13 +57,10 @@ fn test_lazy_mode_benchmark() {
     {
         // LAZY CACHE FALSE
         eprintln!("LAZY MODE: false (default)");
-        let gates_ = gates.clone();
-        let witness_ = witness.clone();
-        let public_ = public.clone();
         TestFramework::<Vesta>::default()
-            .gates(gates_)
-            .witness(witness_)
-            .public_inputs(public_)
+            .gates(gates.clone())
+            .witness(witnes.clone())
+            .public_inputs(public.clone())  
             .lazy_mode(false) // optional, default is false
             .setup()
             .prove_and_verify::<BaseSponge, ScalarSponge>()

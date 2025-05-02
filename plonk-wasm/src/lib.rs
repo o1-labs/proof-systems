@@ -89,17 +89,16 @@ pub unsafe fn wait_until_non_zero(ptr: *const u32) -> u32 {
     unreachable!();
 }
 
-/*
 /// This method is exported in the WebAssembly to check the memory used on the
 /// JavaScript
 #[wasm_bindgen]
 pub fn get_memory() -> JsValue {
     wasm_bindgen::memory()
-}*/
+}
 
 /// Returns the number of bytes used by the WebAssembly memory.
 #[wasm_bindgen]
-pub fn wasm_memory_byte_length() -> usize {
+pub fn get_memory_byte_length() -> usize {
     let buffer = wasm_bindgen::memory()
         .dyn_into::<js_sys::WebAssembly::Memory>()
         .unwrap()
