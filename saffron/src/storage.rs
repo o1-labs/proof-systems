@@ -65,6 +65,7 @@ pub fn update(path: &str, diff: &Diff<ScalarField>) -> std::io::Result<()> {
 pub mod caml {
     use super::*;
 
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlData<CamlF> {
         pub data: Vec<CamlF>,
     }
