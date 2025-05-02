@@ -11,6 +11,10 @@ inputs:
   targets:
     description: "pass targets to the rust-toolchain installer"
     required: false
+  components:
+    description: "additional components"
+    default: clippy, rustfmt
+    required: false
 runs:
   using: "composite"
   steps:
@@ -19,9 +23,16 @@ runs:
         # overwriting default rust-toolchain
         echo ${{ inputs.rust_toolchain_version }} > rust-toolchain
     - uses: dtolnay/rust-toolchain@master
+      id: toolchain
       with:
         toolchain: ${{ inputs.rust_toolchain_version }}
-        components: clippy, rustfmt
+        components: ${{ inputs.components }}
         targets: ${{ inputs.targets }}
-    - if: ${{ inputs.cache == 'true' }}
+    - if: ${{ inputs.cache == 'true' && inputs.targets != '' }}
       uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: ${{ steps.toolchain.outputs.cachekey }}-${{ inputs.targets }}
+    - if: ${{ inputs.cache == 'true' && inputs.targets == '' }}
+      uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: ${{ steps.toolchain.outputs.cachekey }}-native

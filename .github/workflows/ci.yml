@@ -2,7 +2,14 @@ name: CI
 
 on:
   workflow_dispatch:
+  # Trigger after nightly runs to rebuild the cache
+  workflow_run:
+    workflows: [Nightly tests with the code coverage]
+    types: [completed]
   pull_request:
+  push:
+    branches:
+       - master
 
 concurrency:
   group: ${{ github.ref }}
@@ -17,11 +24,12 @@ env:
   CARGO_TERM_COLOR: always
   # 30 MB of stack for Keccak tests
   RUST_MIN_STACK: 31457280
-  CARGO_EXTRA_ARGS: "--workspace --exclude plonk_wasm --exclude saffron"
+  CARGO_EXTRA_ARGS: "--workspace"
 
 jobs:
   run_mdbook:
     name: Building MDBook
+    if: ${{ github.event_name != 'workflow_run' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -43,17 +51,63 @@ jobs:
           make deps
           make build
 
-  run_checks:
-    name: Run checks and tests
+  define-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      rust_toolchain_version: ${{ steps.rust.outputs.version }}
+      ocaml_version: ${{ steps.ocaml.outputs.version }}
+      node: ${{ steps.node.outputs.version }}
+      os: ${{ steps.os.outputs.version }}
+    steps:
+      - id: rust
+        run: echo 'version=["1.79", "1.80", "1.81", "1.82"]' >> "$GITHUB_OUTPUT"
+      # FIXME: currently not available for 5.0.0.
+      # It might be related to boxroot dependency, and we would need to bump
+      # up the ocaml-rs dependency
+      - id: ocaml
+        run: echo 'version=["4.14"]' >> "$GITHUB_OUTPUT"
+      - id: node
+        run: echo 'version=["20"]' >> "$GITHUB_OUTPUT"
+      - id: os
+        run: echo 'version=["ubuntu-latest", "ubuntu-24.04-arm"]' >> "$GITHUB_OUTPUT"
+
+  refresh-cache:
+    needs: ["define-matrix"]
     strategy:
       matrix:
-        rust_toolchain_version: ["1.79", "1.80", "1.81", "1.82"]
-        # FIXME: currently not available for 5.0.0.
-        # It might be related to boxroot dependency, and we would need to bump
-        # up the ocaml-rs dependency
-        ocaml_version: ["4.14"]
-        node: ["20"]
-        os: ["ubuntu-latest", "ubuntu-24.04-arm"]
+        rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
+        os: ${{ fromJSON(needs.define-matrix.outputs.os) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+
+      # if 'workflow_run'
+
+      - uses: actions/checkout@v4
+        if: ${{ github.event_name == 'workflow_run' }}
+      - uses: ./.github/actions/toolchain-shared
+        if: ${{ github.event_name == 'workflow_run' }}
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+      - name: start-fresh
+        if: ${{ github.event_name == 'workflow_run' }}
+        shell: bash
+        run: cargo clean
+
+      # else
+
+      - name: skip-refresh
+        if: ${{ github.event_name != 'workflow_run' }}
+        shell: bash
+        run: echo 'no need to refresh'
+
+  doc-and-spec:
+    needs: ["define-matrix", "refresh-cache"]
+    strategy:
+      matrix:
+        rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
+        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
+        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
+        os: ${{ fromJSON(needs.define-matrix.outputs.os) }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
@@ -76,6 +130,10 @@ jobs:
         with:
           ocaml_version: ${{ matrix.ocaml_version }}
 
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-spec
+
       - name: Install markdownlint
         run: |
           # FIXME: 0.39.0 makes the CI fail
@@ -84,11 +142,6 @@ jobs:
       #
       # Doc & Spec
       #
-
-      - name: Install cargo-spec for specifications
-        run: |
-          eval $(opam env)
-          cargo install --locked cargo-spec
 
       - name: Build the kimchi specification
         run: |
@@ -104,6 +157,39 @@ jobs:
         run: |
           git diff --exit-code ":(exclude)rust-toolchain"
 
+      - name: Doc tests
+        run: |
+          eval $(opam env)
+          make test-doc
+      - name: generate docs
+        run: |
+          eval $(opam env)
+          make generate-doc
+
+  lint:
+    needs: ["define-matrix", "refresh-cache"]
+    strategy:
+      matrix:
+        rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
+        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
+        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
+        os: ${{ fromJSON(needs.define-matrix.outputs.os) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ matrix.ocaml_version }}
       #
       # Coding guidelines
       #
@@ -113,6 +199,30 @@ jobs:
           eval $(opam env)
           make lint
 
+  build:
+    needs: ["define-matrix", "refresh-cache"]
+    strategy:
+      matrix:
+        rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
+        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
+        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
+        os: ${{ fromJSON(needs.define-matrix.outputs.os) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ matrix.ocaml_version }}
       #
       # Build
       #
@@ -122,21 +232,41 @@ jobs:
           eval $(opam env)
           make
 
+  tests:
+    needs: ["define-matrix", "refresh-cache"]
+    strategy:
+      matrix:
+        rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
+        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
+        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
+        os: ${{ fromJSON(needs.define-matrix.outputs.os) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+          components: llvm-tools-preview
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ matrix.ocaml_version }}
       #
       # Tests
       #
 
-      - name: Install test dependencies
-        run: |
-          make install-test-deps
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest@0.9.67, grcov@0.8.13
 
       - name: Build the MIPS binaries
         uses: ./.github/actions/build-mips
-
-      - name: Doc tests
-        run: |
-          eval $(opam env)
-          make test-doc
 
       - name: Run non-heavy tests without the code coverage
         run: |
