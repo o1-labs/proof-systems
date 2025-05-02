@@ -154,8 +154,8 @@ impl RelaxedInstance {
 pub fn folding_prover(
     srs: &SRS<Curve>,
     inst1: &CoreInstance,
-    inst2: &RelaxedInstance,
     wit1: &CoreWitness,
+    inst2: &RelaxedInstance,
     wit2: &RelaxedWitness,
 ) -> (RelaxedInstance, RelaxedWitness, Curve) {
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
@@ -606,8 +606,8 @@ mod tests {
         let (relaxed_instance_3, relaxed_witness_3, error_term_1) = folding_prover(
             &SRS,
             &core_instance_1,
-            &relaxed_instance_2,
             &core_witness_1,
+            &relaxed_instance_2,
             &relaxed_witness_2,
         );
 
@@ -622,8 +622,8 @@ mod tests {
         let (relaxed_instance_5, relaxed_witness_5, error_term_2) = folding_prover(
             &SRS,
             &core_instance_4,
-            &relaxed_instance_3,
             &core_witness_4,
+            &relaxed_instance_3,
             &relaxed_witness_3,
         );
 
