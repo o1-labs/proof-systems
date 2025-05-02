@@ -1,4 +1,34 @@
 //! Folding version of the read prover.
+//!
+//! The main gist of the protocol is to run a trivial sangria-like
+//! folding without recursive circuit (non-IVC variant),
+//! interactively, between the prover and the verifier.
+//!
+//! The original equation we want to prove is `d(X) * q(X) - a(X) = 0`.
+//!
+//! After homogenization it becomes `d(X) * q(X) - a(X) * u - e(X) =
+//! 0` where u is a homogenization factor (field element), and `e(X)`
+//! is an error polynomial.
+//!
+//! During the folding procedure we fold one non-relaxed instance with
+//! a relaxed instance (number 1 and 2 correspondingly), and the
+//! result of this is a relaxed instance. The recombination
+//! coefficient `r` is sampled as usually, using Fiat-Shamir, and then
+//! we recombine vectors and commitments as follows:
+//!
+//! `a_3(X) <- a_1(X) + r * a_2(X)` (same for `d, q`)
+//!
+//! To compute the new error term, we have to use the formula
+//!
+//! `e_3(X) <- r * cross_term(X) + r^2 * e_2(X)`
+//!
+//! where `cross_term(X) := a_2 + u_2 * a_1 - q_2 * d_1 - q_1 * d_2`.
+//!
+//! Finally, in this file we provide a prover and verifier attesting
+//! to the validity of a relaxed instance using plonk-like protocol
+//! with IPA.
+//!
+//! For mor details see the full version of the protocol in the whitepaper.
 
 use crate::{Curve, CurveFqSponge, CurveFrSponge, ScalarField, SRS_SIZE};
 use ark_ec::AffineRepr;
@@ -32,7 +62,7 @@ pub struct RelaxedInstance {
 }
 
 #[derive(PartialEq, Eq)]
-// Relaxed witness contains evaluations on domain for data, query, answers and error term 
+// Relaxed witness contains evaluations on domain for data, query, answers and error term
 pub struct RelaxedWitness {
     d: Evaluations<ScalarField, R2D<ScalarField>>,
     q: Evaluations<ScalarField, R2D<ScalarField>>,
