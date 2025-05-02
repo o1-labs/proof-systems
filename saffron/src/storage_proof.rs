@@ -178,7 +178,8 @@ mod tests {
     use crate::{
         commitment::{combine_commitments, commit_to_field_elems},
         env,
-        utils::{encode_for_domain, test_utils::UserData},
+        utils::test_utils::UserData,
+        encoding::encode_for_domain
     };
 
     use ark_ff::UniformRand;

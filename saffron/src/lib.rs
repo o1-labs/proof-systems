@@ -2,8 +2,10 @@ pub mod blob;
 pub mod cli;
 pub mod commitment;
 pub mod diff;
+pub mod encoding;
 pub mod env;
 pub mod read_proof;
+pub mod storage;
 pub mod storage_proof;
 pub mod utils;
 

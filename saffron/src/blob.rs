@@ -1,7 +1,7 @@
 use crate::{
     commitment::commit_to_field_elems,
     diff::Diff,
-    utils::{decode_into, encode_for_domain},
+    encoding::{self, decode_from_field_elements, decode_into, encode_for_domain},
     Curve, ProjectiveCurve, ScalarField, SRS_SIZE,
 };
 use ark_ec::{AffineRepr, VariableBaseMSM};
@@ -120,31 +120,10 @@ impl FieldBlob {
         res
     }
 
-    /// Returns the byte representation of the `FieldBlob`. Note that
-    /// `bytes ≠ into_bytes(from_bytes(bytes))` if `bytes.len()` is not
-    /// divisible by 31*SRS_SIZE. In most cases `into_bytes` will return
-    /// more bytes than `from_bytes` created, so one has to truncate it
-    /// externally to achieve the expected result.
+    /// Returns the byte representation of the `FieldBlob`.
     #[instrument(skip_all, level = "debug")]
     pub fn into_bytes(blob: FieldBlob) -> Vec<u8> {
-        // n < m
-        // How many bytes fit into the field
-        let n = (ScalarField::MODULUS_BIT_SIZE / 8) as usize;
-        // How many bytes are necessary to fit a field element
-        let m = ScalarField::size_in_bytes();
-
-        let intended_vec_len = n * blob.commitments.len() * SRS_SIZE;
-        let mut bytes = Vec::with_capacity(intended_vec_len);
-        let mut buffer = vec![0u8; m];
-
-        for x in blob.data {
-            decode_into(&mut buffer, x);
-            bytes.extend_from_slice(&buffer[(m - n)..m]);
-        }
-
-        assert!(bytes.len() == intended_vec_len);
-
-        bytes
+        decode_from_field_elements(blob.data)
     }
 }
 
@@ -178,10 +157,6 @@ mod tests {
     #[test]
     fn test_round_trip_blob_encoding(UserData(xs) in UserData::arbitrary())
         {
-            let mut xs = xs.clone();
-            let xs_len_chunks = xs.len() / (31 * SRS_SIZE);
-            xs.truncate(xs_len_chunks * 31 * SRS_SIZE);
-
             let blob = FieldBlob::from_bytes::<_>(&SRS, *DOMAIN, &xs);
             let bytes = rmp_serde::to_vec(&blob).unwrap();
             let a = rmp_serde::from_slice(&bytes).unwrap();
@@ -202,17 +177,6 @@ mod tests {
         let blob = FieldBlob::from_bytes::<_>(&SRS, *DOMAIN, &xs);
         prop_assert_eq!(user_commitments, blob.commitments);
       }
-    }
-
-    fn encode_to_chunk_size(xs: &[u8], chunk_size: usize) -> FieldBlob {
-        let mut blob = FieldBlob::from_bytes::<_>(&SRS, *DOMAIN, xs);
-
-        assert!(blob.data.len() <= chunk_size * crate::SRS_SIZE);
-
-        blob.data.resize(chunk_size * crate::SRS_SIZE, Zero::zero());
-        blob.commitments.resize(chunk_size, Curve::zero());
-
-        blob
     }
 
     proptest! {
@@ -238,11 +202,11 @@ mod tests {
             for diff in diffs.iter() {
                 xs_blob.apply_diff(&SRS, &DOMAIN, diff);
             }
+            
+            let ys_blob = FieldBlob::from_bytes::<_>(&SRS, *DOMAIN, &ys);
 
-            // the updated blob should be the same as if we just start with the new data (with appropriate padding)
-            let ys_blob = encode_to_chunk_size(&ys, xs_blob.data.len() / SRS_SIZE);
-
-            prop_assert_eq!(xs_blob, ys_blob);
+            prop_assert_eq!(xs_blob.data, ys_blob.data);
+            prop_assert_eq!(xs_blob.commitments, ys_blob.commitments);
         }
 
     }

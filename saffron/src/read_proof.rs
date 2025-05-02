@@ -286,6 +286,7 @@ mod tests {
     use once_cell::sync::Lazy;
     use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
     use proptest::prelude::*;
+    use rand::rngs::StdRng;
 
     static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
         if let Ok(srs) = std::env::var("SRS_FILEPATH") {
@@ -301,8 +302,13 @@ mod tests {
     static GROUP_MAP: Lazy<<Vesta as CommitmentCurve>::Map> =
         Lazy::new(<Vesta as CommitmentCurve>::Map::setup);
 
-    #[test]
-    fn test_read_proof_completeness() {
+    fn generate_test_params() -> (
+        StdRng,
+        Vec<ScalarField>,
+        Curve,
+        Vec<ScalarField>,
+        Vec<ScalarField>,
+    ) {
         let mut rng = o1_utils::tests::make_test_rng(None);
 
         let data: Vec<ScalarField> = {
@@ -331,6 +337,13 @@ mod tests {
             .zip(query.iter())
             .map(|(d, q)| *d * q)
             .collect();
+
+        (rng, data, data_comm, query, answer)
+    }
+
+    #[test]
+    fn test_read_proof_completeness() {
+        let (mut rng, data, data_comm, query, answer) = generate_test_params();
 
         let proof = prove(
             *DOMAIN,
@@ -349,34 +362,7 @@ mod tests {
 
     #[test]
     fn test_read_proof_soundness() {
-        let mut rng = o1_utils::tests::make_test_rng(None);
-
-        let data: Vec<ScalarField> = {
-            let mut data = vec![];
-            (0..SRS_SIZE)
-                .into_iter()
-                .for_each(|_| data.push(Fp::rand(&mut rng)));
-            data
-        };
-
-        let data_poly: DensePolynomial<ScalarField> =
-            Evaluations::from_vec_and_domain(data.clone(), (*DOMAIN).d1).interpolate();
-        let data_comm: Curve = SRS.commit_non_hiding(&data_poly, 1).chunks[0];
-
-        let query: Vec<ScalarField> = {
-            let mut query = vec![];
-            (0..SRS_SIZE)
-                .into_iter()
-                .for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.1)));
-            query
-        };
-
-        let answer: Vec<ScalarField> = data
-            .clone()
-            .iter()
-            .zip(query.iter())
-            .map(|(d, q)| *d * q)
-            .collect();
+        let (mut rng, data, data_comm, query, answer) = generate_test_params();
 
         let proof = prove(
             *DOMAIN,

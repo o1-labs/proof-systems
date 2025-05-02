@@ -38,12 +38,17 @@ thiserror.workspace = true
 time = { version = "0.3", features = ["macros"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = [ "ansi", "env-filter", "fmt", "time" ] }
+ocaml = { workspace = true, optional = true }
+ocaml-gen = { workspace = true, optional = true }
 
 [dev-dependencies]
 ark-std.workspace = true
 ctor = "0.2"
 proptest.workspace = true
 once_cell.workspace = true
+
+[features]
+ocaml_types = ["ocaml", "ocaml-gen"]
 
 [[bin]]
 name = "saffron-og-flow"

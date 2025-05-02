@@ -1,4 +1,4 @@
-use crate::utils::encode_for_domain;
+use crate::encoding::encode_for_domain;
 use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
 use rayon::prelude::*;
@@ -88,6 +88,19 @@ impl<F: PrimeField> Diff<F> {
 
         Self::create_from_field_elements(&old_elems, &new_elems)
     }
+
+    // Updates the data with the provided diff, replacing old values at specified addresses by corresponding new ones
+    pub fn apply_inplace(data: &mut [Vec<F>], diff: &Diff<F>) {
+        for (addr, new_value) in diff.addresses.iter().zip(diff.new_values.iter()) {
+            data[diff.region as usize][*addr as usize] = *new_value;
+        }
+    }
+    // Updates the data with the provided diff, replacing old values at specified addresses by corresponding new ones
+    pub fn apply(data: &[Vec<F>], diff: &Diff<F>) -> Vec<Vec<F>> {
+        let mut data = data.to_vec();
+        Self::apply_inplace(&mut data, diff);
+        data
+    }
 }
 
 #[cfg(test)]
@@ -131,13 +144,6 @@ pub mod tests {
             .boxed()
     }
 
-    // Adds diff to data
-    fn add_diff_to_data(data: &mut [Vec<Fp>], diff: &Diff<Fp>) {
-        for (addr, new_value) in diff.addresses.iter().zip(diff.new_values.iter()) {
-            data[diff.region as usize][*addr as usize] = *new_value;
-        }
-    }
-
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(20))]
         #[test]
@@ -150,17 +156,12 @@ pub mod tests {
             let diffs = diffs.unwrap();
 
             let xs_elems = encode_for_domain(DOMAIN.size(), &xs);
-            let ys_elems = {
-                let pad = vec![Fp::zero(); DOMAIN.size()];
-                let mut elems = encode_for_domain(DOMAIN.size(), &ys);
-                elems.resize(xs_elems.len(), pad);
-                elems
-            };
+            let ys_elems = encode_for_domain(DOMAIN.size(), &ys);
             assert!(xs_elems.len() == ys_elems.len());
 
             let mut result = xs_elems.clone();
             for diff in diffs.into_iter() {
-                add_diff_to_data(&mut result, &diff);
+                Diff::apply_inplace(&mut result, &diff);
             }
             prop_assert_eq!(result, ys_elems);
         }
