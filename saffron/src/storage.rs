@@ -3,15 +3,21 @@
 //! read the whole file (because producing a read proof requires the whole
 //! polynomial) and to update dispersed chunks of data.
 
-use crate::diff::Diff;
-use crate::{encoding, ScalarField};
+use crate::{diff::Diff, encoding, ScalarField};
+use ark_ff::PrimeField;
 use o1_utils::FieldHelpers;
-use std::fs::{File, OpenOptions};
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::{
+    fs::{File, OpenOptions},
+    io::{Read, Seek, SeekFrom, Write},
+};
 // use ocaml::prelude::*;   // For working with OCaml bindings
 // use ocaml_gen::prelude::*; // For auto-generating OCaml bindings
 
 use crate::SRS_SIZE;
+
+pub struct Data<F: PrimeField> {
+    pub data: Vec<F>,
+}
 
 /// Creates a file at [path] and fill it with [data]
 /// TODO: For now, we assume the data vector is smaller than SRS_SIZE
@@ -36,7 +42,7 @@ pub fn read(path: &str) -> std::io::Result<Vec<ScalarField>> {
     file.read_to_end(&mut buffer)?;
     // handle the > SRS_SIZE case
     // TODO: handle error properly
-    assert!(buffer.len() % ScalarField::size_in_bytes() == 0) ;
+    assert!(buffer.len() % ScalarField::size_in_bytes() == 0);
     Ok(encoding::scalars_from_bytes(&buffer))
 }
 
@@ -55,23 +61,53 @@ pub fn update(path: &str, diff: &Diff<ScalarField>) -> std::io::Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+
+    pub struct CamlData<CamlF> {
+        pub data: Vec<CamlF>,
+    }
+
+    // let x: Data<Fq> = Data { data: vec![Fq::one()] };
+    // let caml_x: CamlData<Fq> = x.into();
+
+    impl<F, CamlF> From<Data<F>> for CamlData<CamlF>
+    where
+        F: PrimeField,
+        CamlF: From<F>,
+    {
+        fn from(data: Data<F>) -> Self {
+            let data = data.data.into_iter().map(|x| x.into()).collect::<Vec<_>>();
+            Self { data }
+        }
+    }
+
+    impl<F, CamlF> From<CamlData<CamlF>> for Data<F>
+    where
+        F: PrimeField,
+        CamlF: Into<F>,
+    {
+        fn from(caml_data: CamlData<CamlF>) -> Self {
+            let data = caml_data
+                .data
+                .into_iter()
+                .map(|x| x.into())
+                .collect::<Vec<_>>();
+            Self { data }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::diff::Diff;
-    use crate::env;
-    use crate::storage;
-    use crate::Curve;
-    use crate::ScalarField;
-    use crate::SRS_SIZE;
+    use crate::{diff::Diff, env, storage, Curve, ScalarField, SRS_SIZE};
     use ark_ff::UniformRand;
-    use ark_poly::univariate::DensePolynomial;
-    use ark_poly::Evaluations;
+    use ark_poly::{univariate::DensePolynomial, Evaluations};
     use kimchi::circuits::domains::EvaluationDomains;
-    use mina_curves::pasta::Fp;
-    use mina_curves::pasta::Vesta;
+    use mina_curves::pasta::{Fp, Vesta};
     use once_cell::sync::Lazy;
-    use poly_commitment::ipa::SRS;
-    use poly_commitment::SRS as _;
+    use poly_commitment::{ipa::SRS, SRS as _};
     use rand::Rng;
 
     static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
