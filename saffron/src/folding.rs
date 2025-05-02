@@ -160,12 +160,12 @@ pub fn folding_prover(
 ) -> (RelaxedInstance, RelaxedWitness, Curve) {
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
 
-    let error_term: Evaluations<ScalarField, R2D<ScalarField>> =
+    let cross_term: Evaluations<ScalarField, R2D<ScalarField>> =
         &(&(&wit2.core.a + &(&wit1.a * inst2.u)) - &(&wit2.core.q * &wit1.d))
             - &(&wit1.q * &wit2.core.d);
 
-    let error_comm: Curve = srs
-        .commit_non_hiding(&error_term.clone().interpolate(), 1)
+    let cross_term_comm: Curve = srs
+        .commit_non_hiding(&cross_term.clone().interpolate(), 1)
         .chunks[0];
 
     fq_sponge.absorb_g(&[
@@ -176,7 +176,7 @@ pub fn folding_prover(
         inst2.core.comm_q,
         inst2.core.comm_a,
         inst2.comm_e,
-        error_comm,
+        cross_term_comm,
     ]);
 
     let recombination_chal = fq_sponge.squeeze(2);
@@ -192,9 +192,9 @@ pub fn folding_prover(
     let new_u = ScalarField::one() + recombination_chal * inst2.u;
 
     let e3 = &(&wit2.e * (recombination_chal * recombination_chal))
-        - &(&error_term * recombination_chal);
-    let comm_e3 =
-        inst2.comm_e * (recombination_chal * recombination_chal) - error_comm * recombination_chal;
+        - &(&cross_term * recombination_chal);
+    let comm_e3 = inst2.comm_e * (recombination_chal * recombination_chal)
+        - cross_term_comm * recombination_chal;
 
     let new_inst = RelaxedInstance {
         u: new_u,
@@ -215,13 +215,13 @@ pub fn folding_prover(
         },
     };
 
-    (new_inst, new_wit, error_comm)
+    (new_inst, new_wit, cross_term_comm)
 }
 
 pub fn folding_verifier(
     inst1: &CoreInstance,
     inst2: &RelaxedInstance,
-    error_comm: Curve,
+    cross_term_comm: Curve,
 ) -> RelaxedInstance {
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
     fq_sponge.absorb_g(&[
@@ -232,7 +232,7 @@ pub fn folding_verifier(
         inst2.core.comm_q,
         inst2.core.comm_a,
         inst2.comm_e,
-        error_comm,
+        cross_term_comm,
     ]);
 
     let recombination_chal = fq_sponge.squeeze(2);
@@ -243,8 +243,8 @@ pub fn folding_verifier(
 
     let new_u = ScalarField::one() + recombination_chal * inst2.u;
 
-    let comm_e3 =
-        inst2.comm_e * (recombination_chal * recombination_chal) - error_comm * recombination_chal;
+    let comm_e3 = inst2.comm_e * (recombination_chal * recombination_chal)
+        - cross_term_comm * recombination_chal;
 
     RelaxedInstance {
         u: new_u,
