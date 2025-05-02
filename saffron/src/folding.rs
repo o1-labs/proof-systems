@@ -48,26 +48,61 @@ use poly_commitment::{
 use rand::{CryptoRng, RngCore};
 
 #[derive(PartialEq, Eq)]
-pub struct RelaxedInstance {
-    // Homogeneization term for folding
-    u: ScalarField,
-    // Commitment to the data
+/// Non-relaxed instance attesting to `d * q - a = 0`
+pub struct CoreInstance {
+    /// Commitment to the data
     comm_d: Curve,
-    // Commitment to the query polynomial
+    /// Commitment to the query polynomial
     comm_q: Curve,
-    // Commitment to the answers
+    /// Commitment to the answers
     comm_a: Curve,
-    // Commitment to the error term for folding
-    comm_e: Curve,
 }
 
 #[derive(PartialEq, Eq)]
-// Relaxed witness contains evaluations on domain for data, query, answers and error term
-pub struct RelaxedWitness {
+/// Relaxed instance variant.
+pub struct RelaxedInstance {
+    /// Non-relaxed part
+    core: CoreInstance,
+    /// Homogeneization term for folding
+    u: ScalarField,
+    /// Commitment to the error term for folding
+    comm_e: Curve,
+}
+
+impl CoreInstance {
+    pub fn relax(self) -> RelaxedInstance {
+        RelaxedInstance {
+            core: self,
+            u: ScalarField::one(),
+            comm_e: Curve::zero(),
+        }
+    }
+}
+
+#[derive(PartialEq, Eq)]
+/// Non-relaxed witness contains evaluations (field vectors) for data,
+/// query, and answers.
+pub struct CoreWitness {
     d: Evaluations<ScalarField, R2D<ScalarField>>,
     q: Evaluations<ScalarField, R2D<ScalarField>>,
     a: Evaluations<ScalarField, R2D<ScalarField>>,
+}
+
+#[derive(PartialEq, Eq)]
+/// Relaxed witness extends the non-relaxed witness with evaluations
+/// of the error term.
+pub struct RelaxedWitness {
+    core: CoreWitness,
     e: Evaluations<ScalarField, R2D<ScalarField>>,
+}
+
+impl CoreWitness {
+    pub fn relax(self, domain: R2D<ScalarField>) -> RelaxedWitness {
+        RelaxedWitness {
+            core: self,
+            e: Evaluations::from_vec_and_domain(vec![ScalarField::zero(); domain.size()], domain),
+        }
+    }
 }
 
 impl RelaxedInstance {
@@ -77,27 +112,29 @@ impl RelaxedInstance {
     pub fn check_in_language(&self, srs: &SRS<Curve>, wit: &RelaxedWitness) -> bool {
         for i in 0..SRS_SIZE {
             // todo can be parallelized
-            if self.u * wit.a[i] - wit.q[i] * wit.d[i] + wit.e[i] != ScalarField::zero() {
+            if self.u * wit.core.a[i] - wit.core.q[i] * wit.core.d[i] + wit.e[i]
+                != ScalarField::zero()
+            {
                 return false;
             }
         }
-        if self.comm_a
+        if self.core.comm_a
             != srs
-                .commit_non_hiding(&wit.a.clone().interpolate(), 1)
+                .commit_non_hiding(&wit.core.a.clone().interpolate(), 1)
                 .chunks[0]
         {
             return false;
         }
-        if self.comm_d
+        if self.core.comm_d
             != srs
-                .commit_non_hiding(&wit.d.clone().interpolate(), 1)
+                .commit_non_hiding(&wit.core.d.clone().interpolate(), 1)
                 .chunks[0]
         {
             return false;
         }
-        if self.comm_q
+        if self.core.comm_q
             != srs
-                .commit_non_hiding(&wit.q.clone().interpolate(), 1)
+                .commit_non_hiding(&wit.core.q.clone().interpolate(), 1)
                 .chunks[0]
         {
             return false;
@@ -116,18 +153,16 @@ impl RelaxedInstance {
 // the first instance/witness is supposed to be non-relaxed
 pub fn folding_prover(
     srs: &SRS<Curve>,
-    inst1: &RelaxedInstance,
+    inst1: &CoreInstance,
     inst2: &RelaxedInstance,
-    wit1: &RelaxedWitness,
+    wit1: &CoreWitness,
     wit2: &RelaxedWitness,
 ) -> (RelaxedInstance, RelaxedWitness, Curve) {
-    assert!(inst1.u == ScalarField::one());
-    assert!(inst1.comm_e == Curve::zero());
-
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
 
     let error_term: Evaluations<ScalarField, R2D<ScalarField>> =
-        &(&(&wit2.a + &(&wit1.a * inst2.u)) - &(&wit2.q * &wit1.d)) - &(&wit1.q * &wit2.d);
+        &(&(&wit2.core.a + &(&wit1.a * inst2.u)) - &(&wit2.core.q * &wit1.d))
+            - &(&wit1.q * &wit2.core.d);
 
     let error_comm: Curve = srs
         .commit_non_hiding(&error_term.clone().interpolate(), 1)
@@ -137,23 +172,22 @@ pub fn folding_prover(
         inst1.comm_d,
         inst1.comm_q,
         inst1.comm_a,
-        inst1.comm_e,
-        inst2.comm_d,
-        inst2.comm_q,
-        inst2.comm_a,
+        inst2.core.comm_d,
+        inst2.core.comm_q,
+        inst2.core.comm_a,
         inst2.comm_e,
         error_comm,
     ]);
 
     let recombination_chal = fq_sponge.squeeze(2);
 
-    let a3 = &wit1.a + &(&wit2.a * recombination_chal);
-    let q3 = &wit1.q + &(&wit2.q * recombination_chal);
-    let d3 = &wit1.d + &(&wit2.d * recombination_chal);
+    let a3 = &wit1.a + &(&wit2.core.a * recombination_chal);
+    let q3 = &wit1.q + &(&wit2.core.q * recombination_chal);
+    let d3 = &wit1.d + &(&wit2.core.d * recombination_chal);
 
-    let comm_a3 = inst1.comm_a + inst2.comm_a * recombination_chal;
-    let comm_q3 = inst1.comm_q + inst2.comm_q * recombination_chal;
-    let comm_d3 = inst1.comm_d + inst2.comm_d * recombination_chal;
+    let comm_a3 = inst1.comm_a + inst2.core.comm_a * recombination_chal;
+    let comm_q3 = inst1.comm_q + inst2.core.comm_q * recombination_chal;
+    let comm_d3 = inst1.comm_d + inst2.core.comm_d * recombination_chal;
 
     let new_u = ScalarField::one() + recombination_chal * inst2.u;
 
@@ -164,48 +198,48 @@ pub fn folding_prover(
 
     let new_inst = RelaxedInstance {
         u: new_u,
-        comm_d: comm_d3.into(),
-        comm_q: comm_q3.into(),
-        comm_a: comm_a3.into(),
         comm_e: comm_e3.into(),
+        core: CoreInstance {
+            comm_d: comm_d3.into(),
+            comm_q: comm_q3.into(),
+            comm_a: comm_a3.into(),
+        },
     };
 
     let new_wit = RelaxedWitness {
-        d: d3,
-        q: q3,
-        a: a3,
         e: e3,
+        core: CoreWitness {
+            d: d3,
+            q: q3,
+            a: a3,
+        },
     };
 
     (new_inst, new_wit, error_comm)
 }
 
 pub fn folding_verifier(
-    inst1: &RelaxedInstance,
+    inst1: &CoreInstance,
     inst2: &RelaxedInstance,
     error_comm: Curve,
 ) -> RelaxedInstance {
-    assert!(inst1.u == ScalarField::one());
-    assert!(inst1.comm_e == Curve::zero());
-
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
     fq_sponge.absorb_g(&[
         inst1.comm_d,
         inst1.comm_q,
         inst1.comm_a,
-        inst1.comm_e,
-        inst2.comm_d,
-        inst2.comm_q,
-        inst2.comm_a,
+        inst2.core.comm_d,
+        inst2.core.comm_q,
+        inst2.core.comm_a,
         inst2.comm_e,
         error_comm,
     ]);
 
     let recombination_chal = fq_sponge.squeeze(2);
 
-    let comm_a3 = inst1.comm_a + inst2.comm_a * recombination_chal;
-    let comm_q3 = inst1.comm_q + inst2.comm_q * recombination_chal;
-    let comm_d3 = inst1.comm_d + inst2.comm_d * recombination_chal;
+    let comm_a3 = inst1.comm_a + inst2.core.comm_a * recombination_chal;
+    let comm_q3 = inst1.comm_q + inst2.core.comm_q * recombination_chal;
+    let comm_d3 = inst1.comm_d + inst2.core.comm_d * recombination_chal;
 
     let new_u = ScalarField::one() + recombination_chal * inst2.u;
 
@@ -214,28 +248,31 @@ pub fn folding_verifier(
 
     RelaxedInstance {
         u: new_u,
-        comm_d: comm_d3.into(),
-        comm_q: comm_q3.into(),
-        comm_a: comm_a3.into(),
         comm_e: comm_e3.into(),
+        core: CoreInstance {
+            comm_d: comm_d3.into(),
+            comm_q: comm_q3.into(),
+            comm_a: comm_a3.into(),
+        },
     }
 }
 
 #[derive(Debug, Clone)]
+/// The proof attesting to the validity of the relaxed instance.
 pub struct ReadProof {
-    // Commitment of quotient polynomial T (aka t_comm)
+    /// Commitment of quotient polynomial T (aka t_comm)
     pub quotient_comm: Curve,
 
-    // Evaluation of data polynomial at the required challenge point
+    /// Evaluation of data polynomial at the required challenge point
     pub data_eval: ScalarField,
-    // Evaluation of query polynomial at the required challenge point
+    /// Evaluation of query polynomial at the required challenge point
     pub query_eval: ScalarField,
-    // Evaluation of answer polynomial at the required challenge point
+    /// Evaluation of answer polynomial at the required challenge point
     pub answer_eval: ScalarField,
-    // Evaluation of error polynomial at the required challenge point
+    /// Evaluation of error polynomial at the required challenge point
     pub error_eval: ScalarField,
 
-    // Polynomial commitment’s proof for the validity of returned evaluations
+    /// Polynomial commitment’s proof for the validity of returned evaluations
     pub opening_proof: OpeningProof<Curve>,
 }
 
@@ -254,12 +291,17 @@ where
 
     // TODO we assume that (inst,wit) ∈ L, that is inst.comm_d = Com(wit.d), etc.
 
-    let data_poly: DensePolynomial<ScalarField> = wit.d.interpolate_by_ref();
-    let query_poly: DensePolynomial<ScalarField> = wit.q.interpolate_by_ref();
-    let answer_poly: DensePolynomial<ScalarField> = wit.a.interpolate_by_ref();
+    let data_poly: DensePolynomial<ScalarField> = wit.core.d.interpolate_by_ref();
+    let query_poly: DensePolynomial<ScalarField> = wit.core.q.interpolate_by_ref();
+    let answer_poly: DensePolynomial<ScalarField> = wit.core.a.interpolate_by_ref();
     let error_poly: DensePolynomial<ScalarField> = wit.e.interpolate_by_ref();
 
-    fq_sponge.absorb_g(&[inst.comm_d, inst.comm_q, inst.comm_a, inst.comm_e]);
+    fq_sponge.absorb_g(&[
+        inst.core.comm_d,
+        inst.core.comm_q,
+        inst.core.comm_a,
+        inst.comm_e,
+    ]);
 
     // quotient poly is (d * q - a * u + e) / (X^N-1)
     let quotient_poly: DensePolynomial<ScalarField> = {
@@ -375,7 +417,12 @@ where
     RNG: RngCore + CryptoRng,
 {
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
-    fq_sponge.absorb_g(&[inst.comm_d, inst.comm_q, inst.comm_a, inst.comm_e]);
+    fq_sponge.absorb_g(&[
+        inst.core.comm_d,
+        inst.core.comm_q,
+        inst.core.comm_a,
+        inst.comm_e,
+    ]);
     fq_sponge.absorb_g(&[proof.quotient_comm]);
 
     let evaluation_point = fq_sponge.challenge();
@@ -411,19 +458,19 @@ where
     let coms_and_evaluations = vec![
         Evaluation {
             commitment: PolyComm {
-                chunks: vec![inst.comm_d],
+                chunks: vec![inst.core.comm_d],
             },
             evaluations: vec![vec![proof.data_eval]],
         },
         Evaluation {
             commitment: PolyComm {
-                chunks: vec![inst.comm_q],
+                chunks: vec![inst.core.comm_q],
             },
             evaluations: vec![vec![proof.query_eval]],
         },
         Evaluation {
             commitment: PolyComm {
-                chunks: vec![inst.comm_a],
+                chunks: vec![inst.core.comm_a],
             },
             evaluations: vec![vec![proof.answer_eval]],
         },
@@ -491,7 +538,7 @@ mod tests {
     static GROUP_MAP: Lazy<<Vesta as CommitmentCurve>::Map> =
         Lazy::new(<Vesta as CommitmentCurve>::Map::setup);
 
-    fn generate_random_inst_wit<RNG>(rng: &mut RNG) -> (RelaxedInstance, RelaxedWitness)
+    fn generate_random_inst_wit<RNG>(rng: &mut RNG) -> (CoreInstance, CoreWitness)
     where
         RNG: RngCore + CryptoRng,
     {
@@ -532,46 +579,44 @@ mod tests {
             )
             .chunks[0];
 
-        let relaxed_instance = RelaxedInstance {
-            u: ScalarField::one(),
-            comm_e: Curve::zero(),
+        let core_instance = CoreInstance {
             comm_d: data_comm,
             comm_q,
             comm_a,
         };
 
-        let relaxed_witness = RelaxedWitness {
-            e: Evaluations::from_vec_and_domain(vec![ScalarField::zero(); SRS_SIZE], DOMAIN.d1),
+        let core_witness = CoreWitness {
             d: Evaluations::from_vec_and_domain(data, DOMAIN.d1),
             q: Evaluations::from_vec_and_domain(query, DOMAIN.d1),
             a: Evaluations::from_vec_and_domain(answer, DOMAIN.d1),
         };
 
-        (relaxed_instance, relaxed_witness)
+        (core_instance, core_witness)
     }
 
     #[test]
     fn test_folding_read_proof_completeness_soundness() {
         let mut rng = o1_utils::tests::make_test_rng(None);
 
-        let (relaxed_instance_1, relaxed_witness_1) = generate_random_inst_wit(&mut rng);
-        let (relaxed_instance_2, relaxed_witness_2) = generate_random_inst_wit(&mut rng);
+        let (core_instance_1, core_witness_1) = generate_random_inst_wit(&mut rng);
+        let (core_instance_2, core_witness_2) = generate_random_inst_wit(&mut rng);
+        let relaxed_instance_2 = core_instance_2.relax();
+        let relaxed_witness_2 = core_witness_2.relax(DOMAIN.d1);
 
-        assert!(relaxed_instance_1.check_in_language(&SRS, &relaxed_witness_1));
         assert!(relaxed_instance_2.check_in_language(&SRS, &relaxed_witness_2));
 
         let (relaxed_instance_3, relaxed_witness_3, error_term_1) = folding_prover(
             &SRS,
-            &relaxed_instance_1,
+            &core_instance_1,
             &relaxed_instance_2,
-            &relaxed_witness_1,
+            &core_witness_1,
             &relaxed_witness_2,
         );
 
         assert!(relaxed_instance_3.check_in_language(&SRS, &relaxed_witness_3));
 
         let relaxed_instance_3_v =
-            folding_verifier(&relaxed_instance_1, &relaxed_instance_2, error_term_1);
+            folding_verifier(&core_instance_1, &relaxed_instance_2, error_term_1);
 
         assert!(relaxed_instance_3_v == relaxed_instance_3);
 
