@@ -32,6 +32,7 @@ pub struct RelaxedInstance {
 }
 
 #[derive(PartialEq, Eq)]
+// Relaxed witness contains evaluations on domain for data, query, answers and error term 
 pub struct RelaxedWitness {
     d: Evaluations<ScalarField, R2D<ScalarField>>,
     q: Evaluations<ScalarField, R2D<ScalarField>>,
@@ -40,6 +41,9 @@ pub struct RelaxedWitness {
 }
 
 impl RelaxedInstance {
+    /// This function checks if the provided instance is valid regarding the
+    /// provided witness, by checking both the validity of the witness and its
+    /// consistency with the instance's commitments.
     pub fn check_in_language(&self, srs: &SRS<Curve>, wit: &RelaxedWitness) -> bool {
         for i in 0..SRS_SIZE {
             // todo can be parallelized
