@@ -1,9 +1,8 @@
-
 include = ["**/Cargo.toml"]
 exclude = ["o1vm/ethereum-optimism/**"]
 
 [formatting]
-reorder_keys = false
+reorder_keys = true
 
 [[rule]]
 include = ["**/Cargo.toml"]
