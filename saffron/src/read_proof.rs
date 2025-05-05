@@ -49,8 +49,8 @@ pub struct ReadProof {
 
 #[instrument(skip_all, level = "debug")]
 pub fn prove<RNG>(
-    domain: EvaluationDomains<ScalarField>,
     srs: &SRS<Curve>,
+    domain: EvaluationDomains<ScalarField>,
     group_map: &<Curve as CommitmentCurve>::Map,
     rng: &mut RNG,
     // data is the data that is stored and queried
@@ -180,8 +180,8 @@ where
 }
 
 pub fn verify<RNG>(
-    domain: EvaluationDomains<ScalarField>,
     srs: &SRS<Curve>,
+    domain: EvaluationDomains<ScalarField>,
     group_map: &<Curve as CommitmentCurve>::Map,
     rng: &mut RNG,
     // Commitment to data
@@ -324,8 +324,8 @@ mod tests {
         let answer: Vec<ScalarField> = data.iter().zip(query.iter()).map(|(d, q)| *d * q).collect();
 
         let proof = prove(
-            *DOMAIN,
             &SRS,
+            *DOMAIN,
             &GROUP_MAP,
             &mut rng,
             data.as_slice(),
@@ -333,7 +333,7 @@ mod tests {
             answer.as_slice(),
             &data_comm,
         );
-        let res = verify(*DOMAIN, &SRS, &GROUP_MAP, &mut rng, &data_comm, &proof);
+        let res = verify(&SRS, *DOMAIN, &GROUP_MAP, &mut rng, &data_comm, &proof);
 
         assert!(res, "Completeness: Proof must verify");
 
@@ -343,8 +343,8 @@ mod tests {
         };
 
         let res_1 = verify(
-            *DOMAIN,
             &SRS,
+            *DOMAIN,
             &GROUP_MAP,
             &mut rng,
             &data_comm,
@@ -359,8 +359,8 @@ mod tests {
         };
 
         let res_2 = verify(
-            *DOMAIN,
             &SRS,
+            *DOMAIN,
             &GROUP_MAP,
             &mut rng,
             &data_comm,
