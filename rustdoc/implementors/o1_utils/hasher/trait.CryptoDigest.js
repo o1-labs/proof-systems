@@ -1,3 +1,3 @@
 (function() {var implementors = {
-"kimchi":[["impl&lt;'a, F: PrimeField&gt; <a class=\"trait\" href=\"o1_utils/hasher/trait.CryptoDigest.html\" title=\"trait o1_utils::hasher::CryptoDigest\">CryptoDigest</a> for <a class=\"struct\" href=\"kimchi/circuits/gate/struct.Circuit.html\" title=\"struct kimchi::circuits::gate::Circuit\">Circuit</a>&lt;'a, F&gt;"]]
+"kimchi":[["impl&lt;'a, F: PrimeField&gt; CryptoDigest for <a class=\"struct\" href=\"kimchi/circuits/gate/struct.Circuit.html\" title=\"struct kimchi::circuits::gate::Circuit\">Circuit</a>&lt;'a, F&gt;"]]
 };if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
