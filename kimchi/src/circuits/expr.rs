@@ -2085,7 +2085,7 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
                     }
                 };
                 EvalResult::SubEvals {
-                    domain: env.column_domain(col),
+                    domain: d,
                     shift: row.shift(),
                     evals,
                 }
