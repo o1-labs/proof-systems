@@ -32,11 +32,12 @@ impl<F: PrimeField> Diff<F> {
         old: &Vec<Vec<F>>,
         new: &Vec<Vec<F>>,
     ) -> Result<Vec<Diff<F>>, DiffError> {
-        assert!(
-            old.len() == new.len(),
-            "Input 'old' and 'new' must have the same number of chunks"
-        );
-
+        if old.len() != new.len() {
+            return Err(DiffError::CapacityMismatch {
+                max_number_chunks: old.len(),
+                attempted: new.len(),
+            });
+        }
         let diffs: Vec<Diff<_>> = old
             .par_iter()
             .zip(new)
