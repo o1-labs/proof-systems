@@ -90,9 +90,6 @@ pub trait ColumnEnvironment<
     /// Return the evaluation of the given column, over the domain.
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>>;
 
-    /// Defines the domain over which the column is evaluated
-    fn column_domain(&self, col: &Self::Column) -> Domain;
-
     fn get_domain(&self, d: Domain) -> D<F>;
 
     /// Return the constants parameters that the expression might use.

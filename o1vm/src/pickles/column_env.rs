@@ -113,10 +113,6 @@ impl<'a, F: FftField> TColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyC
         }
     }
 
-    fn column_domain(&self, _col: &Self::Column) -> Domain {
-        Domain::D8
-    }
-
     fn get_constants(&self) -> &Constants<F> {
         &self.constants
     }

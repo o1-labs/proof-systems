@@ -262,14 +262,6 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyCh
         }
     }
 
-    fn column_domain(&self, col: &Self::Column) -> Domain {
-        match *col {
-            Self::Column::Index(GateType::Generic) => Domain::D4,
-            Self::Column::Index(GateType::CompleteAdd) => Domain::D4,
-            _ => Domain::D8,
-        }
-    }
-
     fn get_constants(&self) -> &Constants<F> {
         &self.constants
     }
