@@ -78,6 +78,22 @@ impl<F: PrimeField> Diff<F> {
         let new_elems: Vec<Vec<F>> = encode_for_domain(domain.size(), new);
         Self::create_from_field_elements(&old_elems, &new_elems)
     }
+
+    /// Updates the data with the provided diff, replacing old values at
+    /// specified addresses by corresponding new ones
+    pub fn apply_inplace(data: &mut [Vec<F>], diff: &Diff<F>) {
+        for (addr, new_value) in diff.addresses.iter().zip(diff.new_values.iter()) {
+            data[diff.region as usize][*addr as usize] = *new_value;
+        }
+    }
+
+    /// Returns a new vector that contains the data updated with the specified
+    /// diff
+    pub fn apply(data: &[Vec<F>], diff: &Diff<F>) -> Vec<Vec<F>> {
+        let mut data = data.to_vec();
+        Self::apply_inplace(&mut data, diff);
+        data
+    }
 }
 
 #[cfg(test)]
@@ -120,13 +136,6 @@ pub mod tests {
             .boxed()
     }
 
-    // Adds diff to data
-    fn add_diff_to_data(data: &mut [Vec<Fp>], diff: &Diff<Fp>) {
-        for (addr, new_value) in diff.addresses.iter().zip(diff.new_values.iter()) {
-            data[diff.region as usize][*addr as usize] = *new_value;
-        }
-    }
-
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(20))]
         #[test]
@@ -146,7 +155,7 @@ pub mod tests {
 
             let mut result = xs_elems.clone();
             for diff in diffs.into_iter() {
-                add_diff_to_data(&mut result, &diff);
+                Diff::apply_inplace(&mut result, &diff);
             }
             prop_assert_eq!(result, ys_elems);
         }
