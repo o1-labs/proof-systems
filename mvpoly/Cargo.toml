@@ -1,17 +1,17 @@
 [package]
-name = "mvpoly"
-version = "0.1.0"
 description = "Symbolic interpreter of multivariate polyomials"
-repository = "https://github.com/o1-labs/proof-systems"
-homepage = "https://o1-labs.github.io/proof-systems/"
 documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
-readme = "README.md"
 edition = "2021"
+homepage = "https://o1-labs.github.io/proof-systems/"
 license = "Apache-2.0"
+name = "mvpoly"
+readme = "README.md"
+repository = "https://github.com/o1-labs/proof-systems"
+version = "0.1.0"
 
 [[bin]]
-path = "src/bin/bench_cross_terms.rs"
 name = "bench-cross-terms"
+path = "src/bin/bench_cross_terms.rs"
 
 [lib]
 path = "src/lib.rs"
@@ -26,14 +26,14 @@ o1-utils.workspace = true
 rand.workspace = true
 
 [dev-dependencies]
+criterion = { version = "0.5.1", features = ["html_reports"] }
 mina-curves.workspace = true
 rand.workspace = true
-criterion = { version = "0.5.1", features = ["html_reports"] }
 
 [[bench]]
+harness = false
 name = "prime"
-harness = false
 
 [[bench]]
-name = "monomials"
 harness = false
+name = "monomials"

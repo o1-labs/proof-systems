@@ -1,10 +1,10 @@
 [package]
-name = "snarky-deriver"
-version = "0.1.0"
+description = "The inner library of kimchi, for derive macros"
 edition = "2021"
 license = "Apache-2.0"
-description = "The inner library of kimchi, for derive macros"
+name = "snarky-deriver"
 repository = "https://github.com/o1-labs/proof-systems"
+version = "0.1.0"
 
 [lib]
 proc-macro = true

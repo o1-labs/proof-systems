@@ -1,13 +1,13 @@
 [package]
-name = "saffron"
-version = "0.1.0"
 description = "A mutable state layer"
-repository = "https://github.com/o1-labs/proof-systems"
-homepage = "https://o1-labs.github.io/proof-systems/"
 documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
-readme = "README.md"
 edition = "2021"
+homepage = "https://o1-labs.github.io/proof-systems/"
 license = "Apache-2.0"
+name = "saffron"
+readme = "README.md"
+repository = "https://github.com/o1-labs/proof-systems"
+version = "0.1.0"
 
 # [lib]
 # path = "src/lib.rs"
@@ -47,8 +47,8 @@ tracing-subscriber = { version = "0.3", features = [
 [dev-dependencies]
 ark-std.workspace = true
 ctor = "0.2"
-proptest.workspace = true
 once_cell.workspace = true
+proptest.workspace = true
 
 [[bin]]
 name = "saffron-og-flow"

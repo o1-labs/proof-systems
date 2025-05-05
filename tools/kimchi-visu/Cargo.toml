@@ -1,13 +1,13 @@
 [package]
-name = "kimchi-visu"
-version = "0.1.0"
 description = "A tool to visualize circuits in HTML"
-repository = "https://github.com/o1-labs/proof-systems"
-homepage = "https://o1-labs.github.io/proof-systems/"
 documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
-readme = "README.md"
 edition = "2021"
+homepage = "https://o1-labs.github.io/proof-systems/"
 license = "Apache-2.0"
+name = "kimchi-visu"
+readme = "README.md"
+repository = "https://github.com/o1-labs/proof-systems"
+version = "0.1.0"
 
 [lib]
 path = "src/lib.rs"

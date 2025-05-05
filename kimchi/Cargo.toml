@@ -1,17 +1,17 @@
 [package]
-name = "kimchi"
-version = "0.1.0"
 description = "The kimchi proof system"
-repository = "https://github.com/o1-labs/proof-systems"
-homepage = "https://o1-labs.github.io/proof-systems/"
 documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
-readme = "README.md"
 edition = "2021"
+homepage = "https://o1-labs.github.io/proof-systems/"
 license = "Apache-2.0"
+name = "kimchi"
+readme = "README.md"
+repository = "https://github.com/o1-labs/proof-systems"
+version = "0.1.0"
 
 [lib]
-path = "src/lib.rs"
 bench = false       # needed for criterion (https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options)
+path = "src/lib.rs"
 
 [dependencies]
 ark-bn254 = { workspace = true, optional = true }
@@ -53,33 +53,35 @@ turshi.workspace = true
 
 
 [dev-dependencies]
+num-bigint.workspace = true
 proptest.workspace = true
 proptest-derive.workspace = true
-serde_json.workspace = true
-num-bigint.workspace = true
 secp256k1.workspace = true
+serde_json.workspace = true
 
 # benchmarks
 criterion.workspace = true
 iai.workspace = true
 
 [[bench]]
+harness = false
 name = "proof_criterion"
-harness = false
 
 [[bench]]
+harness = false
 name = "proof_criterion_mina"
-harness = false
 
 [[bench]]
+harness = false
 name = "proof_iai"
-harness = false
 
 [[bench]]
-name = "amortization"
 harness = false
+name = "amortization"
 
 [features]
+bn254 = ["ark-bn254"]
+check_feature_flags = []
 default = []
 internal_tracing = ["internal-tracing/enabled"]
 ocaml_types = [
@@ -89,6 +91,4 @@ ocaml_types = [
   "mina-poseidon/ocaml_types",
   "internal-tracing/ocaml_types",
 ]
-bn254 = ["ark-bn254"]
 wasm_types = ["wasm-bindgen"]
-check_feature_flags = []

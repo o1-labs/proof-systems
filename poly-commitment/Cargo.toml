@@ -1,13 +1,13 @@
 [package]
-name = "poly-commitment"
-version = "0.1.0"
 description = "Library implementing different polynomial commitments schemes, like IPA and KZG10"
-repository = "https://github.com/o1-labs/proof-systems"
-homepage = "https://o1-labs.github.io/proof-systems/"
 documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
-readme = "../README.md"
 edition = "2021"
+homepage = "https://o1-labs.github.io/proof-systems/"
 license = "Apache-2.0"
+name = "poly-commitment"
+readme = "../README.md"
+repository = "https://github.com/o1-labs/proof-systems"
+version = "0.1.0"
 
 [dependencies]
 ark-ec.workspace = true
@@ -35,21 +35,21 @@ ocaml = { workspace = true, optional = true }
 ocaml-gen = { workspace = true, optional = true }
 
 [dev-dependencies]
+ark-bn254.workspace = true
 criterion.workspace = true
 rand_chacha.workspace = true
-ark-bn254.workspace = true
 
 [features]
 ocaml_types = ["ocaml", "ocaml-gen"]
 
 [[bench]]
+harness = false
 name = "poly_comm"
-harness = false
 
 [[bench]]
+harness = false
 name = "ipa"
-harness = false
 
 [[bench]]
-name = "msm"
 harness = false
+name = "msm"

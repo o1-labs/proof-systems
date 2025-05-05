@@ -1,13 +1,13 @@
 [package]
-name = "o1vm"
-version = "0.1.0"
 description = "o1VM"
-repository = "https://github.com/o1-labs/proof-systems"
-homepage = "https://o1-labs.github.io/proof-systems/"
 documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
-readme = "README.md"
 edition = "2021"
+homepage = "https://o1-labs.github.io/proof-systems/"
 license = "Apache-2.0"
+name = "o1vm"
+readme = "README.md"
+repository = "https://github.com/o1-labs/proof-systems"
+version = "0.1.0"
 
 [lib]
 path = "src/lib.rs"

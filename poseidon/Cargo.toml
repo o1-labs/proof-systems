@@ -1,13 +1,13 @@
 [package]
-name = "mina-poseidon"
-version = "0.1.0"
 description = "An instantiation of the Poseidon hash function for the pasta fields"
-repository = "https://github.com/o1-labs/proof-systems"
-homepage = "https://o1-labs.github.io/proof-systems/"
 documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
-readme = "README.md"
 edition = "2021"
+homepage = "https://o1-labs.github.io/proof-systems/"
 license = "Apache-2.0"
+name = "mina-poseidon"
+readme = "README.md"
+repository = "https://github.com/o1-labs/proof-systems"
+version = "0.1.0"
 
 [lib]
 path = "src/lib.rs"
@@ -37,5 +37,5 @@ default = []
 ocaml_types = ["ocaml", "ocaml-gen"]
 
 [[bench]]
-name = "poseidon_bench"
 harness = false
+name = "poseidon_bench"
