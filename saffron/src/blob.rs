@@ -222,13 +222,17 @@ mod tests {
         fn test_allow_legal_updates((UserData(xs), UserData(ys)) in
             (UserData::arbitrary_with(DataSize::Medium).prop_flat_map(random_diff))
         ) {
+            // equalize the length of input data
+            let min_len = xs.len().min(ys.len());
+            let (xs, ys) = (&xs[..min_len], &ys[..min_len]) ;
+
             // start with some random user data
-            let mut xs_blob = FieldBlob::from_bytes::<_>(&SRS, *DOMAIN, &xs);
-            let diffs = Diff::<ScalarField>::create_from_bytes(&*DOMAIN, &xs, &ys).unwrap();
+            let mut xs_blob = FieldBlob::from_bytes::<_>(&SRS, *DOMAIN, xs);
+            let diffs = Diff::<ScalarField>::create_from_bytes(&*DOMAIN, xs, ys).unwrap();
 
             // check that the user and SP agree on the data
             let user_commitment: Vec<_> = {
-                let elems: Vec<_> = encode_for_domain(DOMAIN.size(), &xs).into_iter().flatten().collect();
+                let elems: Vec<_> = encode_for_domain(DOMAIN.size(), xs).into_iter().flatten().collect();
                 commit_to_field_elems(&SRS, &elems)
 
             };
@@ -240,7 +244,7 @@ mod tests {
             }
 
             // the updated blob should be the same as if we just start with the new data (with appropriate padding)
-            let ys_blob = encode_to_chunk_size(&ys, xs_blob.data.len() / SRS_SIZE);
+            let ys_blob = encode_to_chunk_size(ys, xs_blob.data.len() / SRS_SIZE);
 
             prop_assert_eq!(xs_blob, ys_blob);
         }
