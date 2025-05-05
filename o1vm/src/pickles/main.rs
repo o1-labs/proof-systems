@@ -188,7 +188,9 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             instruction_set = HashSet::new();
         }
     }
-    if curr_proof_inputs.evaluations.instruction_counter.len() < domain_size {
+    if curr_proof_inputs.evaluations.instruction_counter.len() < domain_size
+        && !curr_proof_inputs.evaluations.instruction_counter.is_empty()
+    {
         debug!("Padding witness for proof generation");
         pad(&mips_wit_env, &mut curr_proof_inputs, &mut rng);
         prove_and_verify(

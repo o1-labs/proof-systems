@@ -1,5 +1,5 @@
 use crate::{lookups::FixedLookup, pickles::multiplicities_columns::*};
-use ark_ff::{batch_inversion, One, PrimeField, Zero};
+use ark_ff::{batch_inversion, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain};
 use kimchi::{
     circuits::{
@@ -13,7 +13,6 @@ use kimchi::{
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{commitment::absorb_commitment, ipa::SRS, OpenProof, SRS as _};
-use std::ops::{AddAssign, Mul};
 
 use poly_commitment::{ipa::OpeningProof, utils::DensePolynomialOrEvaluations, PolyComm};
 use rand::{CryptoRng, RngCore};
@@ -113,7 +112,7 @@ pub fn multiplicities_prove_snd_part<
     srs: &SRS<G>,
     domain: EvaluationDomains<G::ScalarField>,
     mut fq_sponge: EFqSponge,
-    constraints: &[EMultiplicities<G::ScalarField>],
+    constraint: &EMultiplicities<G::ScalarField>,
     rng: &mut RNG,
     state: MultiplicitiesProverState<G::ScalarField>,
 ) -> Proof<G>
@@ -123,8 +122,6 @@ where
 {
     let MultiplicitiesProverState { inverses, acc } = state;
 
-    // TODO change that
-    let num_chunk = 8;
     let MultiplicitiesProofInput {
         fixedlookup,
         fixedlookup_transposed: _,
@@ -141,6 +138,7 @@ where
         multiplicities,
     };
 
+    ///// Commit to columns and squeeze the constraint combiner alpha
     // Interpolating
     let interpolate_col = |evals: Vec<G::ScalarField>| {
         Evaluations::<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>::from_vec_and_domain(
@@ -149,20 +147,12 @@ where
         .interpolate()
     };
     let columns_poly = columns.map(interpolate_col);
-
     // TODO avoid cloning
     // TODO don't commit to fixedlookup
     let columns_com = columns_poly.clone().map(|poly| {
         let PolyComm { chunks } = srs.commit_non_hiding(&poly, 1);
         chunks[0]
     });
-
-    // eval on d8
-    // TODO: avoid cloning
-    // TODO don't eval fixedlookup
-    let columns_eval_d8 = columns_poly
-        .clone()
-        .map(|poly| poly.evaluate_over_domain_by_ref(domain.d8));
     // absorbing commit
     // TODO don't absorb the wires which already have been
     // TODO avoid cloning
@@ -170,10 +160,16 @@ where
         .clone()
         .into_iter()
         .for_each(|com| absorb_commitment(&mut fq_sponge, &PolyComm { chunks: vec![com] }));
-
     // Constraints combiner
     let alpha: G::ScalarField = fq_sponge.challenge();
 
+    ////// Compute the quotient polynomial T
+    // eval on d2
+    // TODO: avoid cloning
+    // TODO don't eval fixedlookup
+    let columns_eval_d2 = columns_poly
+        .clone()
+        .map(|poly| poly.evaluate_over_domain_by_ref(domain.d2));
     let challenges = MultiplicitiesChallenges {
         alpha,
         beta: beta_challenge,
@@ -181,38 +177,25 @@ where
     };
     let eval_env = MultiplicitiesEvalEnvironment {
         challenges,
-        columns: &columns_eval_d8,
+        columns: &columns_eval_d2,
         domain: &domain,
         constants: Constants {
             endo_coefficient: G::ScalarField::zero(),
             mds: &G::sponge_params().mds,
             zk_rows: 0,
         },
-
         l0_1: l0_1(domain.d1),
     };
-    let (t_numerator_evaluation, _) = constraints.iter().fold(
-        (
-            Evaluations::from_vec_and_domain(
-                vec![G::ScalarField::zero(); domain.d8.size as usize],
-                domain.d8,
-            ),
-            G::ScalarField::one(),
-        ),
-        |(mut acc, alpha_pow), cst| {
-            acc.add_assign(&cst.evaluations_d8(&eval_env).mul(alpha_pow));
-            (acc, alpha_pow * alpha)
-        },
-    );
+    let t_numerator_evaluation = constraint.evaluations(&eval_env);
     let t_numerator_poly = t_numerator_evaluation.interpolate();
     let (t, rem) = t_numerator_poly
         .divide_by_vanishing_poly(domain.d1)
         .unwrap();
     assert!(rem.is_zero());
-    let t_commitment = srs.commit_non_hiding(
-        // TODO: change the nb of chunks later
-        &t, num_chunk,
-    );
+
+    ///// Commit to T and squeeze the evaluation challenge zeta
+    let num_chunk = 1;
+    let t_commitment = srs.commit_non_hiding(&t, num_chunk);
     // TODO avoid cloning
     let commitments = AllColumns {
         cols: columns_com,
@@ -221,7 +204,6 @@ where
     // Absorb t
     absorb_commitment(&mut fq_sponge, &t_commitment);
     // evaluate and prepare for IPA proof
-    // TODO check num_chunks and srs length
     let t_chunks = t.to_chunked_polynomial(num_chunk, srs.size());
     // squeeze zeta
     // TODO: understand why we use the endo here and for IPA ,
@@ -230,6 +212,8 @@ where
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
     let zeta: G::ScalarField = zeta_chal.to_field(endo_r);
     let zeta_omega = zeta * domain.d1.group_gen;
+
+    ///// Evaluate and create the IPA proof
     let eval =
         |x,
          cols_poly: ColumnEnv<DensePolynomial<_>>,

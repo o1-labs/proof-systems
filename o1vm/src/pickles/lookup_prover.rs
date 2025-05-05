@@ -4,7 +4,7 @@ use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain};
 use kimchi::{
     circuits::{
-        domains::EvaluationDomains,
+        domains::{Domain, EvaluationDomains},
         expr::{l0_1, Constants},
     },
     curve::KimchiCurve,
@@ -130,8 +130,6 @@ where
     RNG: RngCore + CryptoRng,
 {
     let LookupProverState { inverses, acc } = state;
-    // TODO check that
-    let num_chunk = 8;
     let LookupProofInput {
         wires,
         arity: _,
@@ -146,6 +144,8 @@ where
         acc,
         dynamicselectors,
     };
+
+    ////// Commit and squeeze the constraint combiner alpha
     //interpolating
     let interpolate_col = |evals: Vec<G::ScalarField>| {
         Evaluations::<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>::from_vec_and_domain(
@@ -173,12 +173,6 @@ where
             .collect(),
     };
 
-    // eval on d8
-    // TODO: check the degree
-    // TODO: avoid cloning
-    let columns_eval_d8 = columns_poly
-        .clone()
-        .map(|poly| poly.evaluate_over_domain_by_ref(domain.d8));
     // abosrbing commit
     // TODO don't absorb the wires which already have been
     // TODO avoid cloning
@@ -190,14 +184,22 @@ where
     // Constraints combiner
     let alpha: G::ScalarField = fq_sponge.challenge();
 
+    ////// Compute the quotient polynomial T
+
+    // eval on d4
+    // TODO: avoid cloning
+    let columns_eval_d4 = columns_poly
+        .clone()
+        .map(|poly| poly.evaluate_over_domain_by_ref(domain.d4));
     let challenges = LookupChallenges {
         alpha,
         beta: beta_challenge,
         gamma: gamma_challenge,
     };
+
     let eval_env = LookupEvalEnvironment {
         challenges,
-        columns: &columns_eval_d8,
+        columns: &columns_eval_d4,
         domain: &domain,
         constants: Constants {
             endo_coefficient: G::ScalarField::zero(),
@@ -207,16 +209,21 @@ where
 
         l0_1: l0_1(domain.d1),
     };
+
     let (t_numerator_evaluation, _) = constraints.iter().fold(
         (
             Evaluations::from_vec_and_domain(
-                vec![G::ScalarField::zero(); domain.d8.size as usize],
-                domain.d8,
+                vec![G::ScalarField::zero(); domain.d4.size as usize],
+                domain.d4,
             ),
             G::ScalarField::one(),
         ),
+        // TODO use horner
         |(mut acc, alpha_pow), cst| {
-            acc.add_assign(&cst.evaluations_d8(&eval_env).mul(alpha_pow));
+            acc.add_assign(
+                &cst.evaluations_with_domain(&eval_env, Domain::D4)
+                    .mul(alpha_pow),
+            );
             (acc, alpha_pow * alpha)
         },
     );
@@ -225,11 +232,11 @@ where
         .divide_by_vanishing_poly(domain.d1)
         .unwrap();
     assert!(rem.is_zero());
-    let t_commitment = srs.commit_non_hiding(
-        // TODO: change the nb of chunks later
-        // For now we use this because the constraints null
-        &t, num_chunk,
-    );
+
+    //////// Squeeze the evaluation point zeta
+    // The constraint is of degree 3
+    let num_chunk = 2;
+    let t_commitment = srs.commit_non_hiding(&t, num_chunk);
     // TODO avoid cloning
     let commitments = AllColumns {
         cols: columns_com,
@@ -237,8 +244,6 @@ where
     };
     // Absorb t
     absorb_commitment(&mut fq_sponge, &t_commitment);
-    // evaluate and prepare for IPA proof
-    // TODO check num_chunks and srs length
     let t_chunks = t.to_chunked_polynomial(num_chunk, srs.size());
     // squeeze zeta
     // TODO: understand why we use the endo here and for IPA ,
@@ -247,6 +252,8 @@ where
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
     let zeta: G::ScalarField = zeta_chal.to_field(endo_r);
     let zeta_omega = zeta * domain.d1.group_gen;
+
+    /////// evaluate create the IPA proof
     let eval =
         |x,
          cols_poly: ColumnEnv<DensePolynomial<_>>,

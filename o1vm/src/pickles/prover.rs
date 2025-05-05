@@ -5,7 +5,7 @@ use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2Evalu
 use kimchi::{
     circuits::{
         berkeley_columns::BerkeleyChallenges,
-        domains::EvaluationDomains,
+        domains::{Domain, EvaluationDomains},
         expr::{l0_1, Constants},
     },
     curve::KimchiCurve,
@@ -291,7 +291,10 @@ where
                 G::ScalarField::one(),
             ),
             |(mut acc, alpha_pow), cst| {
-                acc.add_assign(&cst.evaluations_d8(&column_env).mul(alpha_pow));
+                acc.add_assign(
+                    &cst.evaluations_with_domain(&column_env, Domain::D8)
+                        .mul(alpha_pow),
+                );
                 (acc, alpha_pow * alpha)
             },
         );
