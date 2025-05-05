@@ -13,15 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # for reasons not at all clear to me this seems to be needed on hetzner but not any of the sdk runners?
-  install-unzstd:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install unzstd
-        run: sudo apt-get update && sudo apt-get install -y zstd
-
   trigger_o1js_checks:
-    needs: install-unzstd
     uses: o1-labs/o1js/.github/workflows/checks.yml@brian/proof-systems-test #TODO change to main after merging o1js changes
     with:
       proof_systems_commit: ${{ github.ref }}
