@@ -74,18 +74,13 @@ impl<F: PrimeField> Diff<F> {
         new: &[u8],
     ) -> Result<Vec<Diff<F>>, DiffError> {
         let old_elems: Vec<Vec<F>> = encode_for_domain(domain.size(), old);
-        let mut new_elems: Vec<Vec<F>> = encode_for_domain(domain.size(), new);
-        if old_elems.len() < new_elems.len() {
+        let new_elems: Vec<Vec<F>> = encode_for_domain(domain.size(), new);
+        if old_elems.len() != new_elems.len() {
             return Err(DiffError::CapacityMismatch {
                 max_number_chunks: old_elems.len(),
                 attempted: new_elems.len(),
             });
         }
-        if old_elems.len() > new_elems.len() {
-            let padding = vec![F::zero(); domain.size()];
-            new_elems.resize(old_elems.len(), padding);
-        }
-
         Self::create_from_field_elements(&old_elems, &new_elems)
     }
 }
@@ -94,7 +89,6 @@ impl<F: PrimeField> Diff<F> {
 pub mod tests {
     use super::*;
     use crate::utils::{chunk_size_in_bytes, min_encoding_chunks, test_utils::UserData};
-    use ark_ff::Zero;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
     use mina_curves::pasta::Fp;
     use once_cell::sync::Lazy;
@@ -145,17 +139,14 @@ pub mod tests {
         fn test_allow_legal_diff((UserData(xs), UserData(ys)) in
             (UserData::arbitrary().prop_flat_map(random_diff))
         ) {
-            let diffs = Diff::<Fp>::create_from_bytes(&*DOMAIN, &xs, &ys);
+            let min_len = xs.len().min(ys.len());
+            let (xs, ys) = (&xs[..min_len], &ys[..min_len]) ;
+            let diffs = Diff::<Fp>::create_from_bytes(&*DOMAIN, xs, ys);
             prop_assert!(diffs.is_ok());
             let diffs = diffs.unwrap();
 
-            let xs_elems = encode_for_domain(DOMAIN.size(), &xs);
-            let ys_elems = {
-                let pad = vec![Fp::zero(); DOMAIN.size()];
-                let mut elems = encode_for_domain(DOMAIN.size(), &ys);
-                elems.resize(xs_elems.len(), pad);
-                elems
-            };
+            let xs_elems = encode_for_domain(DOMAIN.size(), xs);
+            let ys_elems = encode_for_domain(DOMAIN.size(), ys);
             assert!(xs_elems.len() == ys_elems.len());
 
             let mut result = xs_elems.clone();
