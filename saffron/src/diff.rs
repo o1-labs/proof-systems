@@ -76,12 +76,6 @@ impl<F: PrimeField> Diff<F> {
     ) -> Result<Vec<Diff<F>>, DiffError> {
         let old_elems: Vec<Vec<F>> = encode_for_domain(domain.size(), old);
         let new_elems: Vec<Vec<F>> = encode_for_domain(domain.size(), new);
-        if old_elems.len() != new_elems.len() {
-            return Err(DiffError::CapacityMismatch {
-                max_number_chunks: old_elems.len(),
-                attempted: new_elems.len(),
-            });
-        }
         Self::create_from_field_elements(&old_elems, &new_elems)
     }
 }
