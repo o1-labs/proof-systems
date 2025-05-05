@@ -222,8 +222,7 @@ dependencies = [
 [[package]]
 name = "ark-ff-macros"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7abe79b0e4288889c4574159ab790824d0033b9fdcb2a112a3182fac2e514565"
+source = "git+https://github.com/richardpringle/algebra?branch=fix-warning#3f06040925f313f3dcaaebafa69e94a664eb200c"
 dependencies = [
  "num-bigint",
  "num-traits",
