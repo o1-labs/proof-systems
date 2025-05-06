@@ -32,14 +32,6 @@ serde_with.workspace = true
 spmc.workspace = true
 # Strictly enforcing 0.2.87
 wasm-bindgen.workspace = true
-web-sys = { workspace = true, features = [
-  "Window",
-  "Document",
-  "HtmlElement",
-  "Text",
-  "Node",
-  "Element",
-] }
 
 # arkworks
 ark-ec = { workspace = true, features = ["parallel"] }
