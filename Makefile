@@ -34,15 +34,10 @@ NIGHTLY_RUST_VERSION = "nightly-2024-09-05"
 PLONK_WASM_NODEJS_OUTDIR ?= target/nodejs
 PLONK_WASM_WEB_OUTDIR ?= target/web
 
-# This should stay in line with the version used by the argument
-# WASM_PACK_VERSION in
-# MinaProtocol/mina/dockerfiles/stages/1-build-deps
-WASM_PACK_VERSION=0.12.1
-
 # Default target
 all: release
 
-setup: setup-git setup-wasm-pack setup-wasm-toolchain
+setup: setup-git setup-wasm-toolchain
 
 setup-git:
 		@echo ""
@@ -52,10 +47,6 @@ setup-git:
 		git submodule update --init --recursive
 		@echo ""
 		@echo "Git submodules synced."
-
-setup-wasm-pack:
-		@echo "Install wasm-pack"
-		@cargo install wasm-pack@${WASM_PACK_VERSION} --force
 
 setup-wasm-toolchain:
 		@ARCH=$$(uname -m); \
