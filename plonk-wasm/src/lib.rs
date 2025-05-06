@@ -9,8 +9,6 @@
 
 use wasm_bindgen::prelude::*;
 
-compile_error!("Brian broke it!")
-
 mod wasm_flat_vector;
 mod wasm_vector;
 
