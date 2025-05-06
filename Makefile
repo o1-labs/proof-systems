@@ -243,13 +243,13 @@ fclean: clean ## Clean the tooling artefacts in addition to running clean
 		rm -rf ${RISCV32_TOOLCHAIN_PATH}
 
 build-nodejs:
-		cargo +nightly xtask build-wasm \
+		cargo +nightly run --package xtask -- build-wasm \
 		--target nodejs \
 		--out-dir ${PLONK_WASM_NODEJS_OUTDIR} \
 		--rust-version ${NIGHTLY_RUST_VERSION}
 
 build-web:
-		cargo +nightly xtask build-wasm \
+		cargo +nightly run --package xtask -- build-wasm \
 		--target web \
 		--out-dir ${PLONK_WASM_WEB_OUTDIR} \
 		--rust-version ${NIGHTLY_RUST_VERSION}
