@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust_toolchain_version: ["1.79"]
+        rust_toolchain_version: ["1.81"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -60,7 +60,7 @@ jobs:
       os: ${{ steps.os.outputs.version }}
     steps:
       - id: rust
-        run: echo 'version=["1.79", "1.80", "1.81", "1.82"]' >> "$GITHUB_OUTPUT"
+        run: echo 'version=["1.81", "1.82"]' >> "$GITHUB_OUTPUT"
       # FIXME: currently not available for 5.0.0.
       # It might be related to boxroot dependency, and we would need to bump
       # up the ocaml-rs dependency
