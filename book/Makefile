@@ -2,12 +2,12 @@
 # list versions of mdbook and mdbook plugins
 #
 
-MDBOOK_VERSION = 0.4.35
-MDBOOK_KATEX_VERSION = 0.3.8
-MDBOOK_ADMONISH_VERSION = 1.14.0
+MDBOOK_VERSION = 0.4.49
+MDBOOK_KATEX_VERSION = 0.9.4
+MDBOOK_ADMONISH_VERSION = 1.19.0
 MDBOOK_LINKCHECK_VERSION = 0.7.7
-MDBOOK_MERMAID_VERSION = 0.12.6
-MDBOOK_TOC_VERSION = 0.14.1
+MDBOOK_MERMAID_VERSION = 0.15.0
+MDBOOK_TOC_VERSION = 0.14.2
 
 
 all: deps check build serve
@@ -17,12 +17,12 @@ all: deps check build serve
 #
 
 deps:
-	cargo install --locked "mdbook@$(MDBOOK_VERSION)"
-	cargo install --locked "mdbook-admonish@$(MDBOOK_ADMONISH_VERSION)"
-	cargo install --locked "mdbook-katex@$(MDBOOK_KATEX_VERSION)"
-	cargo install --locked --git https://github.com/o1-labs/mdbook-linkcheck --rev 8cccfc8fee397092ecdf1236a42871c5c980672e mdbook-linkcheck
-	cargo install --locked "mdbook-mermaid@$(MDBOOK_MERMAID_VERSION)"
-	cargo install --locked "mdbook-toc@$(MDBOOK_TOC_VERSION)"
+	cargo install --locked "mdbook@$(MDBOOK_VERSION)" --force
+	cargo install --locked "mdbook-admonish@$(MDBOOK_ADMONISH_VERSION)" --force
+	cargo install --locked "mdbook-katex@$(MDBOOK_KATEX_VERSION)" --force
+	cargo install --locked --git https://github.com/o1-labs/mdbook-linkcheck --rev 8cccfc8fee397092ecdf1236a42871c5c980672e mdbook-linkcheck --force
+	cargo install --locked "mdbook-mermaid@$(MDBOOK_MERMAID_VERSION)" --force
+	cargo install --locked "mdbook-toc@$(MDBOOK_TOC_VERSION)" --force
 
 #
 # Checks if your installed dependencies match what we've listed above
