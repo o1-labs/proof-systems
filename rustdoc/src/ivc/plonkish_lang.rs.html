@@ -1,537 +1,268 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `ivc/src/plonkish_lang.rs`."><title>plonkish_lang.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="ivc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../ivc/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
-<a href="#2" id="2">2</a>
-<a href="#3" id="3">3</a>
-<a href="#4" id="4">4</a>
-<a href="#5" id="5">5</a>
-<a href="#6" id="6">6</a>
-<a href="#7" id="7">7</a>
-<a href="#8" id="8">8</a>
-<a href="#9" id="9">9</a>
-<a href="#10" id="10">10</a>
-<a href="#11" id="11">11</a>
-<a href="#12" id="12">12</a>
-<a href="#13" id="13">13</a>
-<a href="#14" id="14">14</a>
-<a href="#15" id="15">15</a>
-<a href="#16" id="16">16</a>
-<a href="#17" id="17">17</a>
-<a href="#18" id="18">18</a>
-<a href="#19" id="19">19</a>
-<a href="#20" id="20">20</a>
-<a href="#21" id="21">21</a>
-<a href="#22" id="22">22</a>
-<a href="#23" id="23">23</a>
-<a href="#24" id="24">24</a>
-<a href="#25" id="25">25</a>
-<a href="#26" id="26">26</a>
-<a href="#27" id="27">27</a>
-<a href="#28" id="28">28</a>
-<a href="#29" id="29">29</a>
-<a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a>
-<a href="#35" id="35">35</a>
-<a href="#36" id="36">36</a>
-<a href="#37" id="37">37</a>
-<a href="#38" id="38">38</a>
-<a href="#39" id="39">39</a>
-<a href="#40" id="40">40</a>
-<a href="#41" id="41">41</a>
-<a href="#42" id="42">42</a>
-<a href="#43" id="43">43</a>
-<a href="#44" id="44">44</a>
-<a href="#45" id="45">45</a>
-<a href="#46" id="46">46</a>
-<a href="#47" id="47">47</a>
-<a href="#48" id="48">48</a>
-<a href="#49" id="49">49</a>
-<a href="#50" id="50">50</a>
-<a href="#51" id="51">51</a>
-<a href="#52" id="52">52</a>
-<a href="#53" id="53">53</a>
-<a href="#54" id="54">54</a>
-<a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a>
-<a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
-<a href="#60" id="60">60</a>
-<a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a>
-<a href="#63" id="63">63</a>
-<a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
-<a href="#66" id="66">66</a>
-<a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
-<a href="#71" id="71">71</a>
-<a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a>
-<a href="#74" id="74">74</a>
-<a href="#75" id="75">75</a>
-<a href="#76" id="76">76</a>
-<a href="#77" id="77">77</a>
-<a href="#78" id="78">78</a>
-<a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a>
-<a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
-<a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
-<a href="#234" id="234">234</a>
-<a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
-<a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
-<a href="#241" id="241">241</a>
-<a href="#242" id="242">242</a>
-<a href="#243" id="243">243</a>
-<a href="#244" id="244">244</a>
-<a href="#245" id="245">245</a>
-<a href="#246" id="246">246</a>
-<a href="#247" id="247">247</a>
-<a href="#248" id="248">248</a>
-<a href="#249" id="249">249</a>
-<a href="#250" id="250">250</a>
-<a href="#251" id="251">251</a>
-<a href="#252" id="252">252</a>
-<a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-</pre></div><pre class="rust"><code><span class="doccomment">/// Provides definition of plonkish language related instance,
-/// witness, and tools to work with them. The IVC is specialized for
-/// exactly the plonkish language.
-</span><span class="kw">use </span>ark_ff::{FftField, Field, One};
-<span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain <span class="kw">as </span>R2D};
-<span class="kw">use </span>core::ops::Index;
-<span class="kw">use </span>folding::{instance_witness::Foldable, Alphas, Instance, Witness};
-<span class="kw">use </span>itertools::Itertools;
-<span class="kw">use </span>kimchi::{<span class="self">self</span>, circuits::berkeley_columns::BerkeleyChallengeTerm};
-<span class="kw">use </span>kimchi_msm::{columns::Column, witness::Witness <span class="kw">as </span>GenericWitness};
-<span class="kw">use </span>mina_poseidon::FqSponge;
-<span class="kw">use </span>poly_commitment::{
-    commitment::{absorb_commitment, CommitmentCurve},
-    PolyComm, SRS,
-};
-<span class="kw">use </span>rayon::iter::{IntoParallelIterator <span class="kw">as _</span>, ParallelIterator <span class="kw">as _</span>};
-<span class="kw">use </span>strum_macros::{EnumCount <span class="kw">as </span>EnumCountMacro, EnumIter};
-
-<span class="doccomment">/// Vector field over F. Something like a vector.
-</span><span class="kw">pub trait </span>CombinableEvals&lt;F: Field&gt;: PartialEq {
-    <span class="kw">fn </span>e_as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[F];
-    <span class="kw">fn </span>e_as_mut_slice(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[F];
-}
-
-<span class="kw">impl</span>&lt;F: FftField&gt; CombinableEvals&lt;F&gt; <span class="kw">for </span>Evaluations&lt;F, R2D&lt;F&gt;&gt; {
-    <span class="kw">fn </span>e_as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[F] {
-        <span class="self">self</span>.evals.as_slice()
-    }
-    <span class="kw">fn </span>e_as_mut_slice(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[F] {
-        <span class="self">self</span>.evals.as_mut_slice()
-    }
-}
-
-<span class="kw">impl</span>&lt;F: FftField&gt; CombinableEvals&lt;F&gt; <span class="kw">for </span>Vec&lt;F&gt; {
-    <span class="kw">fn </span>e_as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[F] {
-        <span class="self">self</span>.as_slice()
-    }
-    <span class="kw">fn </span>e_as_mut_slice(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[F] {
-        <span class="self">self</span>.as_mut_slice()
-    }
-}
-
-<span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-</span><span class="kw">pub struct </span>PlonkishWitnessGeneric&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F: Field, Evals&gt; {
-    <span class="kw">pub </span>witness: GenericWitness&lt;N_COL, Evals&gt;,
-    <span class="comment">// This does not have to be part of the witness... can be a static
-    // precompiled object.
-    </span><span class="kw">pub </span>fixed_selectors: GenericWitness&lt;N_FSEL, Evals&gt;,
-    <span class="kw">pub </span>phantom: core::marker::PhantomData&lt;F&gt;,
-}
-
-<span class="kw">pub type </span>PlonkishWitness&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F&gt; =
-    PlonkishWitnessGeneric&lt;N_COL, N_FSEL, F, Evaluations&lt;F, R2D&lt;F&gt;&gt;&gt;;
-
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F: Field, Evals: CombinableEvals&lt;F&gt;&gt; Foldable&lt;F&gt;
-    <span class="kw">for </span>PlonkishWitnessGeneric&lt;N_COL, N_FSEL, F, Evals&gt;
-{
-    <span class="kw">fn </span>combine(<span class="kw-2">mut </span>a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: F) -&gt; <span class="self">Self </span>{
-        <span class="kw">for </span>(a, b) <span class="kw">in </span>(<span class="kw-2">*</span>a.witness.cols).iter_mut().zip(<span class="kw-2">*</span>(b.witness.cols)) {
-            <span class="kw">for </span>(a, b) <span class="kw">in </span>(a.e_as_mut_slice()).iter_mut().zip(b.e_as_slice()) {
-                <span class="kw-2">*</span>a += <span class="kw-2">*</span>b * challenge;
-            }
-        }
-        <span class="macro">assert!</span>(a.fixed_selectors == b.fixed_selectors);
-        a
-    }
-}
-
-<span class="kw">impl</span>&lt;
-        <span class="kw">const </span>N_COL: usize,
-        <span class="kw">const </span>N_FSEL: usize,
-        Curve: CommitmentCurve,
-        Evals: CombinableEvals&lt;Curve::ScalarField&gt;,
-    &gt; Witness&lt;Curve&gt; <span class="kw">for </span>PlonkishWitnessGeneric&lt;N_COL, N_FSEL, Curve::ScalarField, Evals&gt;
-{
-}
-
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F: FftField, Evals: CombinableEvals&lt;F&gt;&gt;
-    Index&lt;Column&lt;usize&gt;&gt; <span class="kw">for </span>PlonkishWitnessGeneric&lt;N_COL, N_FSEL, F, Evals&gt;
-{
-    <span class="kw">type </span>Output = [F];
-
-    <span class="doccomment">/// Map a column alias to the corresponding witness column.
-    </span><span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: Column&lt;usize&gt;) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
-        <span class="kw">match </span>index {
-            Column::Relation(i) =&gt; <span class="self">self</span>.witness.cols[i].e_as_slice(),
-            Column::FixedSelector(i) =&gt; <span class="self">self</span>.fixed_selectors[i].e_as_slice(),
-            other =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid column index: {other:?}&quot;</span>),
-        }
-    }
-}
-
-<span class="comment">// for selectors, () in this case as we have none
-</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F: FftField&gt; Index&lt;()&gt;
-    <span class="kw">for </span>PlonkishWitness&lt;N_COL, N_FSEL, F&gt;
-{
-    <span class="kw">type </span>Output = [F];
-
-    <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, _index: ()) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
-        <span class="macro">unreachable!</span>()
-    }
-}
-
-<span class="attr">#[derive(PartialEq, Eq, Clone, Debug)]
-</span><span class="kw">pub struct </span>PlonkishInstance&lt;
-    G: CommitmentCurve,
-    <span class="kw">const </span>N_COL: usize,
-    <span class="kw">const </span>N_CHALS: usize,
-    <span class="kw">const </span>N_ALPHAS: usize,
-&gt; {
-    <span class="kw">pub </span>commitments: [G; N_COL],
-    <span class="kw">pub </span>challenges: [G::ScalarField; N_CHALS],
-    <span class="kw">pub </span>alphas: Alphas&lt;G::ScalarField&gt;,
-    <span class="kw">pub </span>blinder: G::ScalarField,
-}
-
-<span class="kw">impl</span>&lt;G: CommitmentCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_CHALS: usize, <span class="kw">const </span>N_ALPHAS: usize&gt;
-    Foldable&lt;G::ScalarField&gt; <span class="kw">for </span>PlonkishInstance&lt;G, N_COL, N_CHALS, N_ALPHAS&gt;
-{
-    <span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: G::ScalarField) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            commitments: core::array::from_fn(|i| {
-                (a.commitments[i] + b.commitments[i].mul(challenge)).into()
-            }),
-            challenges: core::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
-            alphas: Alphas::combine(a.alphas, b.alphas, challenge),
-            blinder: a.blinder + challenge * b.blinder,
-        }
-    }
-}
-
-<span class="kw">impl</span>&lt;G: CommitmentCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_CHALS: usize, <span class="kw">const </span>N_ALPHAS: usize&gt;
-    Instance&lt;G&gt; <span class="kw">for </span>PlonkishInstance&lt;G, N_COL, N_CHALS, N_ALPHAS&gt;
-{
-    <span class="kw">fn </span>to_absorb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (Vec&lt;G::ScalarField&gt;, Vec&lt;G&gt;) {
-        <span class="comment">// FIXME: check!!!!
-        </span><span class="kw">let </span><span class="kw-2">mut </span>scalars = Vec::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>points = Vec::new();
-        points.extend(<span class="self">self</span>.commitments);
-        scalars.extend(<span class="self">self</span>.challenges);
-        scalars.extend(<span class="self">self</span>.alphas.clone().powers());
-        (scalars, points)
-    }
-
-    <span class="kw">fn </span>get_alphas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Alphas&lt;G::ScalarField&gt; {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.alphas
-    }
-
-    <span class="kw">fn </span>get_blinder(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; G::ScalarField {
-        <span class="self">self</span>.blinder
-    }
-}
-
-<span class="comment">// Implementation for 3 challenges; only for now.
-</span><span class="kw">impl</span>&lt;G: CommitmentCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_ALPHAS: usize&gt;
-    PlonkishInstance&lt;G, N_COL, <span class="number">3</span>, N_ALPHAS&gt;
-{
-    <span class="kw">pub fn </span>from_witness&lt;
-        EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
-        Srs: SRS&lt;G&gt; + core::marker::Sync,
-    &gt;(
-        w: <span class="kw-2">&amp;</span>GenericWitness&lt;N_COL, Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt;,
-        fq_sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
-        srs: <span class="kw-2">&amp;</span>Srs,
-        domain: R2D&lt;G::ScalarField&gt;,
-    ) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>blinder = G::ScalarField::one();
-
-        <span class="kw">let </span>commitments: GenericWitness&lt;N_COL, PolyComm&lt;G&gt;&gt; = w
-            .into_par_iter()
-            .map(|w| {
-                <span class="kw">let </span>blinder = PolyComm::new(<span class="macro">vec!</span>[blinder; <span class="number">1</span>]);
-                <span class="kw">let </span>unblinded = srs.commit_evaluations_non_hiding(domain, w);
-                srs.mask_custom(unblinded, <span class="kw-2">&amp;</span>blinder).unwrap().commitment
-            })
-            .collect();
-
-        <span class="comment">// Absorbing commitments
-        </span>(<span class="kw-2">&amp;</span>commitments).into_iter().for_each(|c| {
-            <span class="macro">assert!</span>(c.len() == <span class="number">1</span>);
-            absorb_commitment(fq_sponge, c)
-        });
-
-        <span class="kw">let </span>commitments: [G; N_COL] = commitments
-            .into_iter()
-            .map(|c| c.get_first_chunk())
-            .collect_vec()
-            .try_into()
-            .unwrap();
-
-        <span class="kw">let </span>beta = fq_sponge.challenge();
-        <span class="kw">let </span>gamma = fq_sponge.challenge();
-        <span class="kw">let </span>joint_combiner = fq_sponge.challenge();
-        <span class="kw">let </span>challenges = [beta, gamma, joint_combiner];
-
-        <span class="kw">let </span>alpha = fq_sponge.challenge();
-        <span class="kw">let </span>alphas = Alphas::new_sized(alpha, N_ALPHAS);
-
-        <span class="self">Self </span>{
-            commitments,
-            challenges,
-            alphas,
-            blinder,
-        }
-    }
-
-    <span class="kw">pub fn </span>verify_from_witness&lt;EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        fq_sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
-        (<span class="self">self</span>.blinder == G::ScalarField::one())
-            .then_some(())
-            .ok_or(<span class="string">&quot;Blinder must be one&quot;</span>)<span class="question-mark">?</span>;
-
-        <span class="comment">// Absorbing commitments
-        </span><span class="self">self</span>.commitments
-            .iter()
-            .for_each(|c| absorb_commitment(fq_sponge, <span class="kw-2">&amp;</span>PolyComm { chunks: <span class="macro">vec!</span>[<span class="kw-2">*</span>c] }));
-
-        <span class="kw">let </span>beta = fq_sponge.challenge();
-        <span class="kw">let </span>gamma = fq_sponge.challenge();
-        <span class="kw">let </span>joint_combiner = fq_sponge.challenge();
-
-        (<span class="self">self</span>.challenges == [beta, gamma, joint_combiner])
-            .then_some(())
-            .ok_or(<span class="string">&quot;Challenges do not match the expected result&quot;</span>)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>alpha = fq_sponge.challenge();
-
-        (<span class="self">self</span>.alphas == Alphas::new_sized(alpha, N_ALPHAS))
-            .then_some(())
-            .ok_or(<span class="string">&quot;Alphas do not match the expected result&quot;</span>)<span class="question-mark">?</span>;
-
-        <span class="prelude-val">Ok</span>(())
-    }
-}
-
-<span class="attr">#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, EnumIter, EnumCountMacro)]
-</span><span class="kw">pub enum </span>PlonkishChallenge {
-    Beta,
-    Gamma,
-    JointCombiner,
-}
-
-<span class="kw">impl </span>From&lt;BerkeleyChallengeTerm&gt; <span class="kw">for </span>PlonkishChallenge {
-    <span class="kw">fn </span>from(chal: BerkeleyChallengeTerm) -&gt; <span class="self">Self </span>{
-        <span class="kw">match </span>chal {
-            BerkeleyChallengeTerm::Beta =&gt; PlonkishChallenge::Beta,
-            BerkeleyChallengeTerm::Gamma =&gt; PlonkishChallenge::Gamma,
-            BerkeleyChallengeTerm::JointCombiner =&gt; PlonkishChallenge::JointCombiner,
-            BerkeleyChallengeTerm::Alpha =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Alpha not allowed in folding expressions&quot;</span>),
-        }
-    }
-}
-
-<span class="kw">impl</span>&lt;G: CommitmentCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_ALPHAS: usize&gt; Index&lt;PlonkishChallenge&gt;
-    <span class="kw">for </span>PlonkishInstance&lt;G, N_COL, <span class="number">3</span>, N_ALPHAS&gt;
-{
-    <span class="kw">type </span>Output = G::ScalarField;
-
-    <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: PlonkishChallenge) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
-        <span class="kw">match </span>index {
-            PlonkishChallenge::Beta =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.challenges[<span class="number">0</span>],
-            PlonkishChallenge::Gamma =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.challenges[<span class="number">1</span>],
-            PlonkishChallenge::JointCombiner =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.challenges[<span class="number">2</span>],
-        }
-    }
-}
-</code></pre></div></section></main></body></html>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `ivc/src/plonkish_lang.rs`."><title>plonkish_lang.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-20739d33.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="ivc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.88.0-nightly (2e6882ac5 2025-05-05)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../static.files/storage-4e99c027.js"></script><script defer src="../../static.files/src-script-63605ae7.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-7ef8a74a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">ivc/</div>plonkish_lang.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">/// Provides definition of plonkish language related instance,
+<a href=#2 id=2 data-nosnippet>2</a>/// witness, and tools to work with them. The IVC is specialized for
+<a href=#3 id=3 data-nosnippet>3</a>/// exactly the plonkish language.
+<a href=#4 id=4 data-nosnippet>4</a></span><span class="kw">use </span>ark_ff::{FftField, Field, One};
+<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain <span class="kw">as </span>R2D};
+<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>core::ops::Index;
+<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>folding::{instance_witness::Foldable, Alphas, Instance, Witness};
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>itertools::Itertools;
+<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>kimchi::{<span class="self">self</span>, circuits::berkeley_columns::BerkeleyChallengeTerm};
+<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>kimchi_msm::{columns::Column, witness::Witness <span class="kw">as </span>GenericWitness};
+<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>mina_poseidon::FqSponge;
+<a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span>poly_commitment::{
+<a href=#13 id=13 data-nosnippet>13</a>    commitment::{absorb_commitment, CommitmentCurve},
+<a href=#14 id=14 data-nosnippet>14</a>    PolyComm, SRS,
+<a href=#15 id=15 data-nosnippet>15</a>};
+<a href=#16 id=16 data-nosnippet>16</a><span class="kw">use </span>rayon::iter::{IntoParallelIterator <span class="kw">as _</span>, ParallelIterator <span class="kw">as _</span>};
+<a href=#17 id=17 data-nosnippet>17</a><span class="kw">use </span>strum_macros::{EnumCount <span class="kw">as </span>EnumCountMacro, EnumIter};
+<a href=#18 id=18 data-nosnippet>18</a>
+<a href=#19 id=19 data-nosnippet>19</a><span class="doccomment">/// Vector field over F. Something like a vector.
+<a href=#20 id=20 data-nosnippet>20</a></span><span class="kw">pub trait </span>CombinableEvals&lt;F: Field&gt;: PartialEq {
+<a href=#21 id=21 data-nosnippet>21</a>    <span class="kw">fn </span>e_as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[F];
+<a href=#22 id=22 data-nosnippet>22</a>    <span class="kw">fn </span>e_as_mut_slice(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[F];
+<a href=#23 id=23 data-nosnippet>23</a>}
+<a href=#24 id=24 data-nosnippet>24</a>
+<a href=#25 id=25 data-nosnippet>25</a><span class="kw">impl</span>&lt;F: FftField&gt; CombinableEvals&lt;F&gt; <span class="kw">for </span>Evaluations&lt;F, R2D&lt;F&gt;&gt; {
+<a href=#26 id=26 data-nosnippet>26</a>    <span class="kw">fn </span>e_as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[F] {
+<a href=#27 id=27 data-nosnippet>27</a>        <span class="self">self</span>.evals.as_slice()
+<a href=#28 id=28 data-nosnippet>28</a>    }
+<a href=#29 id=29 data-nosnippet>29</a>    <span class="kw">fn </span>e_as_mut_slice(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[F] {
+<a href=#30 id=30 data-nosnippet>30</a>        <span class="self">self</span>.evals.as_mut_slice()
+<a href=#31 id=31 data-nosnippet>31</a>    }
+<a href=#32 id=32 data-nosnippet>32</a>}
+<a href=#33 id=33 data-nosnippet>33</a>
+<a href=#34 id=34 data-nosnippet>34</a><span class="kw">impl</span>&lt;F: FftField&gt; CombinableEvals&lt;F&gt; <span class="kw">for </span>Vec&lt;F&gt; {
+<a href=#35 id=35 data-nosnippet>35</a>    <span class="kw">fn </span>e_as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[F] {
+<a href=#36 id=36 data-nosnippet>36</a>        <span class="self">self</span>.as_slice()
+<a href=#37 id=37 data-nosnippet>37</a>    }
+<a href=#38 id=38 data-nosnippet>38</a>    <span class="kw">fn </span>e_as_mut_slice(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[F] {
+<a href=#39 id=39 data-nosnippet>39</a>        <span class="self">self</span>.as_mut_slice()
+<a href=#40 id=40 data-nosnippet>40</a>    }
+<a href=#41 id=41 data-nosnippet>41</a>}
+<a href=#42 id=42 data-nosnippet>42</a>
+<a href=#43 id=43 data-nosnippet>43</a><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+<a href=#44 id=44 data-nosnippet>44</a></span><span class="kw">pub struct </span>PlonkishWitnessGeneric&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F: Field, Evals&gt; {
+<a href=#45 id=45 data-nosnippet>45</a>    <span class="kw">pub </span>witness: GenericWitness&lt;N_COL, Evals&gt;,
+<a href=#46 id=46 data-nosnippet>46</a>    <span class="comment">// This does not have to be part of the witness... can be a static
+<a href=#47 id=47 data-nosnippet>47</a>    // precompiled object.
+<a href=#48 id=48 data-nosnippet>48</a>    </span><span class="kw">pub </span>fixed_selectors: GenericWitness&lt;N_FSEL, Evals&gt;,
+<a href=#49 id=49 data-nosnippet>49</a>    <span class="kw">pub </span>phantom: core::marker::PhantomData&lt;F&gt;,
+<a href=#50 id=50 data-nosnippet>50</a>}
+<a href=#51 id=51 data-nosnippet>51</a>
+<a href=#52 id=52 data-nosnippet>52</a><span class="kw">pub type </span>PlonkishWitness&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F&gt; =
+<a href=#53 id=53 data-nosnippet>53</a>    PlonkishWitnessGeneric&lt;N_COL, N_FSEL, F, Evaluations&lt;F, R2D&lt;F&gt;&gt;&gt;;
+<a href=#54 id=54 data-nosnippet>54</a>
+<a href=#55 id=55 data-nosnippet>55</a><span class="kw">impl</span>&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F: Field, Evals: CombinableEvals&lt;F&gt;&gt; Foldable&lt;F&gt;
+<a href=#56 id=56 data-nosnippet>56</a>    <span class="kw">for </span>PlonkishWitnessGeneric&lt;N_COL, N_FSEL, F, Evals&gt;
+<a href=#57 id=57 data-nosnippet>57</a>{
+<a href=#58 id=58 data-nosnippet>58</a>    <span class="kw">fn </span>combine(<span class="kw-2">mut </span>a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: F) -&gt; <span class="self">Self </span>{
+<a href=#59 id=59 data-nosnippet>59</a>        <span class="kw">for </span>(a, b) <span class="kw">in </span>(<span class="kw-2">*</span>a.witness.cols).iter_mut().zip(<span class="kw-2">*</span>(b.witness.cols)) {
+<a href=#60 id=60 data-nosnippet>60</a>            <span class="kw">for </span>(a, b) <span class="kw">in </span>(a.e_as_mut_slice()).iter_mut().zip(b.e_as_slice()) {
+<a href=#61 id=61 data-nosnippet>61</a>                <span class="kw-2">*</span>a += <span class="kw-2">*</span>b * challenge;
+<a href=#62 id=62 data-nosnippet>62</a>            }
+<a href=#63 id=63 data-nosnippet>63</a>        }
+<a href=#64 id=64 data-nosnippet>64</a>        <span class="macro">assert!</span>(a.fixed_selectors == b.fixed_selectors);
+<a href=#65 id=65 data-nosnippet>65</a>        a
+<a href=#66 id=66 data-nosnippet>66</a>    }
+<a href=#67 id=67 data-nosnippet>67</a>}
+<a href=#68 id=68 data-nosnippet>68</a>
+<a href=#69 id=69 data-nosnippet>69</a><span class="kw">impl</span>&lt;
+<a href=#70 id=70 data-nosnippet>70</a>        <span class="kw">const </span>N_COL: usize,
+<a href=#71 id=71 data-nosnippet>71</a>        <span class="kw">const </span>N_FSEL: usize,
+<a href=#72 id=72 data-nosnippet>72</a>        Curve: CommitmentCurve,
+<a href=#73 id=73 data-nosnippet>73</a>        Evals: CombinableEvals&lt;Curve::ScalarField&gt;,
+<a href=#74 id=74 data-nosnippet>74</a>    &gt; Witness&lt;Curve&gt; <span class="kw">for </span>PlonkishWitnessGeneric&lt;N_COL, N_FSEL, Curve::ScalarField, Evals&gt;
+<a href=#75 id=75 data-nosnippet>75</a>{
+<a href=#76 id=76 data-nosnippet>76</a>}
+<a href=#77 id=77 data-nosnippet>77</a>
+<a href=#78 id=78 data-nosnippet>78</a><span class="kw">impl</span>&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F: FftField, Evals: CombinableEvals&lt;F&gt;&gt;
+<a href=#79 id=79 data-nosnippet>79</a>    Index&lt;Column&lt;usize&gt;&gt; <span class="kw">for </span>PlonkishWitnessGeneric&lt;N_COL, N_FSEL, F, Evals&gt;
+<a href=#80 id=80 data-nosnippet>80</a>{
+<a href=#81 id=81 data-nosnippet>81</a>    <span class="kw">type </span>Output = [F];
+<a href=#82 id=82 data-nosnippet>82</a>
+<a href=#83 id=83 data-nosnippet>83</a>    <span class="doccomment">/// Map a column alias to the corresponding witness column.
+<a href=#84 id=84 data-nosnippet>84</a>    </span><span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: Column&lt;usize&gt;) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
+<a href=#85 id=85 data-nosnippet>85</a>        <span class="kw">match </span>index {
+<a href=#86 id=86 data-nosnippet>86</a>            Column::Relation(i) =&gt; <span class="self">self</span>.witness.cols[i].e_as_slice(),
+<a href=#87 id=87 data-nosnippet>87</a>            Column::FixedSelector(i) =&gt; <span class="self">self</span>.fixed_selectors[i].e_as_slice(),
+<a href=#88 id=88 data-nosnippet>88</a>            other =&gt; <span class="macro">panic!</span>(<span class="string">"Invalid column index: {other:?}"</span>),
+<a href=#89 id=89 data-nosnippet>89</a>        }
+<a href=#90 id=90 data-nosnippet>90</a>    }
+<a href=#91 id=91 data-nosnippet>91</a>}
+<a href=#92 id=92 data-nosnippet>92</a>
+<a href=#93 id=93 data-nosnippet>93</a><span class="comment">// for selectors, () in this case as we have none
+<a href=#94 id=94 data-nosnippet>94</a></span><span class="kw">impl</span>&lt;<span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_FSEL: usize, F: FftField&gt; Index&lt;()&gt;
+<a href=#95 id=95 data-nosnippet>95</a>    <span class="kw">for </span>PlonkishWitness&lt;N_COL, N_FSEL, F&gt;
+<a href=#96 id=96 data-nosnippet>96</a>{
+<a href=#97 id=97 data-nosnippet>97</a>    <span class="kw">type </span>Output = [F];
+<a href=#98 id=98 data-nosnippet>98</a>
+<a href=#99 id=99 data-nosnippet>99</a>    <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, _index: ()) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
+<a href=#100 id=100 data-nosnippet>100</a>        <span class="macro">unreachable!</span>()
+<a href=#101 id=101 data-nosnippet>101</a>    }
+<a href=#102 id=102 data-nosnippet>102</a>}
+<a href=#103 id=103 data-nosnippet>103</a>
+<a href=#104 id=104 data-nosnippet>104</a><span class="attr">#[derive(PartialEq, Eq, Clone, Debug)]
+<a href=#105 id=105 data-nosnippet>105</a></span><span class="kw">pub struct </span>PlonkishInstance&lt;
+<a href=#106 id=106 data-nosnippet>106</a>    G: CommitmentCurve,
+<a href=#107 id=107 data-nosnippet>107</a>    <span class="kw">const </span>N_COL: usize,
+<a href=#108 id=108 data-nosnippet>108</a>    <span class="kw">const </span>N_CHALS: usize,
+<a href=#109 id=109 data-nosnippet>109</a>    <span class="kw">const </span>N_ALPHAS: usize,
+<a href=#110 id=110 data-nosnippet>110</a>&gt; {
+<a href=#111 id=111 data-nosnippet>111</a>    <span class="kw">pub </span>commitments: [G; N_COL],
+<a href=#112 id=112 data-nosnippet>112</a>    <span class="kw">pub </span>challenges: [G::ScalarField; N_CHALS],
+<a href=#113 id=113 data-nosnippet>113</a>    <span class="kw">pub </span>alphas: Alphas&lt;G::ScalarField&gt;,
+<a href=#114 id=114 data-nosnippet>114</a>    <span class="kw">pub </span>blinder: G::ScalarField,
+<a href=#115 id=115 data-nosnippet>115</a>}
+<a href=#116 id=116 data-nosnippet>116</a>
+<a href=#117 id=117 data-nosnippet>117</a><span class="kw">impl</span>&lt;G: CommitmentCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_CHALS: usize, <span class="kw">const </span>N_ALPHAS: usize&gt;
+<a href=#118 id=118 data-nosnippet>118</a>    Foldable&lt;G::ScalarField&gt; <span class="kw">for </span>PlonkishInstance&lt;G, N_COL, N_CHALS, N_ALPHAS&gt;
+<a href=#119 id=119 data-nosnippet>119</a>{
+<a href=#120 id=120 data-nosnippet>120</a>    <span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: G::ScalarField) -&gt; <span class="self">Self </span>{
+<a href=#121 id=121 data-nosnippet>121</a>        <span class="self">Self </span>{
+<a href=#122 id=122 data-nosnippet>122</a>            commitments: core::array::from_fn(|i| {
+<a href=#123 id=123 data-nosnippet>123</a>                (a.commitments[i] + b.commitments[i].mul(challenge)).into()
+<a href=#124 id=124 data-nosnippet>124</a>            }),
+<a href=#125 id=125 data-nosnippet>125</a>            challenges: core::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
+<a href=#126 id=126 data-nosnippet>126</a>            alphas: Alphas::combine(a.alphas, b.alphas, challenge),
+<a href=#127 id=127 data-nosnippet>127</a>            blinder: a.blinder + challenge * b.blinder,
+<a href=#128 id=128 data-nosnippet>128</a>        }
+<a href=#129 id=129 data-nosnippet>129</a>    }
+<a href=#130 id=130 data-nosnippet>130</a>}
+<a href=#131 id=131 data-nosnippet>131</a>
+<a href=#132 id=132 data-nosnippet>132</a><span class="kw">impl</span>&lt;G: CommitmentCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_CHALS: usize, <span class="kw">const </span>N_ALPHAS: usize&gt;
+<a href=#133 id=133 data-nosnippet>133</a>    Instance&lt;G&gt; <span class="kw">for </span>PlonkishInstance&lt;G, N_COL, N_CHALS, N_ALPHAS&gt;
+<a href=#134 id=134 data-nosnippet>134</a>{
+<a href=#135 id=135 data-nosnippet>135</a>    <span class="kw">fn </span>to_absorb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (Vec&lt;G::ScalarField&gt;, Vec&lt;G&gt;) {
+<a href=#136 id=136 data-nosnippet>136</a>        <span class="comment">// FIXME: check!!!!
+<a href=#137 id=137 data-nosnippet>137</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>scalars = Vec::new();
+<a href=#138 id=138 data-nosnippet>138</a>        <span class="kw">let </span><span class="kw-2">mut </span>points = Vec::new();
+<a href=#139 id=139 data-nosnippet>139</a>        points.extend(<span class="self">self</span>.commitments);
+<a href=#140 id=140 data-nosnippet>140</a>        scalars.extend(<span class="self">self</span>.challenges);
+<a href=#141 id=141 data-nosnippet>141</a>        scalars.extend(<span class="self">self</span>.alphas.clone().powers());
+<a href=#142 id=142 data-nosnippet>142</a>        (scalars, points)
+<a href=#143 id=143 data-nosnippet>143</a>    }
+<a href=#144 id=144 data-nosnippet>144</a>
+<a href=#145 id=145 data-nosnippet>145</a>    <span class="kw">fn </span>get_alphas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Alphas&lt;G::ScalarField&gt; {
+<a href=#146 id=146 data-nosnippet>146</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.alphas
+<a href=#147 id=147 data-nosnippet>147</a>    }
+<a href=#148 id=148 data-nosnippet>148</a>
+<a href=#149 id=149 data-nosnippet>149</a>    <span class="kw">fn </span>get_blinder(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; G::ScalarField {
+<a href=#150 id=150 data-nosnippet>150</a>        <span class="self">self</span>.blinder
+<a href=#151 id=151 data-nosnippet>151</a>    }
+<a href=#152 id=152 data-nosnippet>152</a>}
+<a href=#153 id=153 data-nosnippet>153</a>
+<a href=#154 id=154 data-nosnippet>154</a><span class="comment">// Implementation for 3 challenges; only for now.
+<a href=#155 id=155 data-nosnippet>155</a></span><span class="kw">impl</span>&lt;G: CommitmentCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_ALPHAS: usize&gt;
+<a href=#156 id=156 data-nosnippet>156</a>    PlonkishInstance&lt;G, N_COL, <span class="number">3</span>, N_ALPHAS&gt;
+<a href=#157 id=157 data-nosnippet>157</a>{
+<a href=#158 id=158 data-nosnippet>158</a>    <span class="kw">pub fn </span>from_witness&lt;
+<a href=#159 id=159 data-nosnippet>159</a>        EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
+<a href=#160 id=160 data-nosnippet>160</a>        Srs: SRS&lt;G&gt; + core::marker::Sync,
+<a href=#161 id=161 data-nosnippet>161</a>    &gt;(
+<a href=#162 id=162 data-nosnippet>162</a>        w: <span class="kw-2">&amp;</span>GenericWitness&lt;N_COL, Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt;,
+<a href=#163 id=163 data-nosnippet>163</a>        fq_sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
+<a href=#164 id=164 data-nosnippet>164</a>        srs: <span class="kw-2">&amp;</span>Srs,
+<a href=#165 id=165 data-nosnippet>165</a>        domain: R2D&lt;G::ScalarField&gt;,
+<a href=#166 id=166 data-nosnippet>166</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#167 id=167 data-nosnippet>167</a>        <span class="kw">let </span>blinder = G::ScalarField::one();
+<a href=#168 id=168 data-nosnippet>168</a>
+<a href=#169 id=169 data-nosnippet>169</a>        <span class="kw">let </span>commitments: GenericWitness&lt;N_COL, PolyComm&lt;G&gt;&gt; = w
+<a href=#170 id=170 data-nosnippet>170</a>            .into_par_iter()
+<a href=#171 id=171 data-nosnippet>171</a>            .map(|w| {
+<a href=#172 id=172 data-nosnippet>172</a>                <span class="kw">let </span>blinder = PolyComm::new(<span class="macro">vec!</span>[blinder; <span class="number">1</span>]);
+<a href=#173 id=173 data-nosnippet>173</a>                <span class="kw">let </span>unblinded = srs.commit_evaluations_non_hiding(domain, w);
+<a href=#174 id=174 data-nosnippet>174</a>                srs.mask_custom(unblinded, <span class="kw-2">&amp;</span>blinder).unwrap().commitment
+<a href=#175 id=175 data-nosnippet>175</a>            })
+<a href=#176 id=176 data-nosnippet>176</a>            .collect();
+<a href=#177 id=177 data-nosnippet>177</a>
+<a href=#178 id=178 data-nosnippet>178</a>        <span class="comment">// Absorbing commitments
+<a href=#179 id=179 data-nosnippet>179</a>        </span>(<span class="kw-2">&amp;</span>commitments).into_iter().for_each(|c| {
+<a href=#180 id=180 data-nosnippet>180</a>            <span class="macro">assert!</span>(c.len() == <span class="number">1</span>);
+<a href=#181 id=181 data-nosnippet>181</a>            absorb_commitment(fq_sponge, c)
+<a href=#182 id=182 data-nosnippet>182</a>        });
+<a href=#183 id=183 data-nosnippet>183</a>
+<a href=#184 id=184 data-nosnippet>184</a>        <span class="kw">let </span>commitments: [G; N_COL] = commitments
+<a href=#185 id=185 data-nosnippet>185</a>            .into_iter()
+<a href=#186 id=186 data-nosnippet>186</a>            .map(|c| c.get_first_chunk())
+<a href=#187 id=187 data-nosnippet>187</a>            .collect_vec()
+<a href=#188 id=188 data-nosnippet>188</a>            .try_into()
+<a href=#189 id=189 data-nosnippet>189</a>            .unwrap();
+<a href=#190 id=190 data-nosnippet>190</a>
+<a href=#191 id=191 data-nosnippet>191</a>        <span class="kw">let </span>beta = fq_sponge.challenge();
+<a href=#192 id=192 data-nosnippet>192</a>        <span class="kw">let </span>gamma = fq_sponge.challenge();
+<a href=#193 id=193 data-nosnippet>193</a>        <span class="kw">let </span>joint_combiner = fq_sponge.challenge();
+<a href=#194 id=194 data-nosnippet>194</a>        <span class="kw">let </span>challenges = [beta, gamma, joint_combiner];
+<a href=#195 id=195 data-nosnippet>195</a>
+<a href=#196 id=196 data-nosnippet>196</a>        <span class="kw">let </span>alpha = fq_sponge.challenge();
+<a href=#197 id=197 data-nosnippet>197</a>        <span class="kw">let </span>alphas = Alphas::new_sized(alpha, N_ALPHAS);
+<a href=#198 id=198 data-nosnippet>198</a>
+<a href=#199 id=199 data-nosnippet>199</a>        <span class="self">Self </span>{
+<a href=#200 id=200 data-nosnippet>200</a>            commitments,
+<a href=#201 id=201 data-nosnippet>201</a>            challenges,
+<a href=#202 id=202 data-nosnippet>202</a>            alphas,
+<a href=#203 id=203 data-nosnippet>203</a>            blinder,
+<a href=#204 id=204 data-nosnippet>204</a>        }
+<a href=#205 id=205 data-nosnippet>205</a>    }
+<a href=#206 id=206 data-nosnippet>206</a>
+<a href=#207 id=207 data-nosnippet>207</a>    <span class="kw">pub fn </span>verify_from_witness&lt;EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
+<a href=#208 id=208 data-nosnippet>208</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#209 id=209 data-nosnippet>209</a>        fq_sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
+<a href=#210 id=210 data-nosnippet>210</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+<a href=#211 id=211 data-nosnippet>211</a>        (<span class="self">self</span>.blinder == G::ScalarField::one())
+<a href=#212 id=212 data-nosnippet>212</a>            .then_some(())
+<a href=#213 id=213 data-nosnippet>213</a>            .ok_or(<span class="string">"Blinder must be one"</span>)<span class="question-mark">?</span>;
+<a href=#214 id=214 data-nosnippet>214</a>
+<a href=#215 id=215 data-nosnippet>215</a>        <span class="comment">// Absorbing commitments
+<a href=#216 id=216 data-nosnippet>216</a>        </span><span class="self">self</span>.commitments
+<a href=#217 id=217 data-nosnippet>217</a>            .iter()
+<a href=#218 id=218 data-nosnippet>218</a>            .for_each(|c| absorb_commitment(fq_sponge, <span class="kw-2">&amp;</span>PolyComm { chunks: <span class="macro">vec!</span>[<span class="kw-2">*</span>c] }));
+<a href=#219 id=219 data-nosnippet>219</a>
+<a href=#220 id=220 data-nosnippet>220</a>        <span class="kw">let </span>beta = fq_sponge.challenge();
+<a href=#221 id=221 data-nosnippet>221</a>        <span class="kw">let </span>gamma = fq_sponge.challenge();
+<a href=#222 id=222 data-nosnippet>222</a>        <span class="kw">let </span>joint_combiner = fq_sponge.challenge();
+<a href=#223 id=223 data-nosnippet>223</a>
+<a href=#224 id=224 data-nosnippet>224</a>        (<span class="self">self</span>.challenges == [beta, gamma, joint_combiner])
+<a href=#225 id=225 data-nosnippet>225</a>            .then_some(())
+<a href=#226 id=226 data-nosnippet>226</a>            .ok_or(<span class="string">"Challenges do not match the expected result"</span>)<span class="question-mark">?</span>;
+<a href=#227 id=227 data-nosnippet>227</a>
+<a href=#228 id=228 data-nosnippet>228</a>        <span class="kw">let </span>alpha = fq_sponge.challenge();
+<a href=#229 id=229 data-nosnippet>229</a>
+<a href=#230 id=230 data-nosnippet>230</a>        (<span class="self">self</span>.alphas == Alphas::new_sized(alpha, N_ALPHAS))
+<a href=#231 id=231 data-nosnippet>231</a>            .then_some(())
+<a href=#232 id=232 data-nosnippet>232</a>            .ok_or(<span class="string">"Alphas do not match the expected result"</span>)<span class="question-mark">?</span>;
+<a href=#233 id=233 data-nosnippet>233</a>
+<a href=#234 id=234 data-nosnippet>234</a>        <span class="prelude-val">Ok</span>(())
+<a href=#235 id=235 data-nosnippet>235</a>    }
+<a href=#236 id=236 data-nosnippet>236</a>}
+<a href=#237 id=237 data-nosnippet>237</a>
+<a href=#238 id=238 data-nosnippet>238</a><span class="attr">#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, EnumIter, EnumCountMacro)]
+<a href=#239 id=239 data-nosnippet>239</a></span><span class="kw">pub enum </span>PlonkishChallenge {
+<a href=#240 id=240 data-nosnippet>240</a>    Beta,
+<a href=#241 id=241 data-nosnippet>241</a>    Gamma,
+<a href=#242 id=242 data-nosnippet>242</a>    JointCombiner,
+<a href=#243 id=243 data-nosnippet>243</a>}
+<a href=#244 id=244 data-nosnippet>244</a>
+<a href=#245 id=245 data-nosnippet>245</a><span class="kw">impl </span>From&lt;BerkeleyChallengeTerm&gt; <span class="kw">for </span>PlonkishChallenge {
+<a href=#246 id=246 data-nosnippet>246</a>    <span class="kw">fn </span>from(chal: BerkeleyChallengeTerm) -&gt; <span class="self">Self </span>{
+<a href=#247 id=247 data-nosnippet>247</a>        <span class="kw">match </span>chal {
+<a href=#248 id=248 data-nosnippet>248</a>            BerkeleyChallengeTerm::Beta =&gt; PlonkishChallenge::Beta,
+<a href=#249 id=249 data-nosnippet>249</a>            BerkeleyChallengeTerm::Gamma =&gt; PlonkishChallenge::Gamma,
+<a href=#250 id=250 data-nosnippet>250</a>            BerkeleyChallengeTerm::JointCombiner =&gt; PlonkishChallenge::JointCombiner,
+<a href=#251 id=251 data-nosnippet>251</a>            BerkeleyChallengeTerm::Alpha =&gt; <span class="macro">panic!</span>(<span class="string">"Alpha not allowed in folding expressions"</span>),
+<a href=#252 id=252 data-nosnippet>252</a>        }
+<a href=#253 id=253 data-nosnippet>253</a>    }
+<a href=#254 id=254 data-nosnippet>254</a>}
+<a href=#255 id=255 data-nosnippet>255</a>
+<a href=#256 id=256 data-nosnippet>256</a><span class="kw">impl</span>&lt;G: CommitmentCurve, <span class="kw">const </span>N_COL: usize, <span class="kw">const </span>N_ALPHAS: usize&gt; Index&lt;PlonkishChallenge&gt;
+<a href=#257 id=257 data-nosnippet>257</a>    <span class="kw">for </span>PlonkishInstance&lt;G, N_COL, <span class="number">3</span>, N_ALPHAS&gt;
+<a href=#258 id=258 data-nosnippet>258</a>{
+<a href=#259 id=259 data-nosnippet>259</a>    <span class="kw">type </span>Output = G::ScalarField;
+<a href=#260 id=260 data-nosnippet>260</a>
+<a href=#261 id=261 data-nosnippet>261</a>    <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: PlonkishChallenge) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
+<a href=#262 id=262 data-nosnippet>262</a>        <span class="kw">match </span>index {
+<a href=#263 id=263 data-nosnippet>263</a>            PlonkishChallenge::Beta =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.challenges[<span class="number">0</span>],
+<a href=#264 id=264 data-nosnippet>264</a>            PlonkishChallenge::Gamma =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.challenges[<span class="number">1</span>],
+<a href=#265 id=265 data-nosnippet>265</a>            PlonkishChallenge::JointCombiner =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.challenges[<span class="number">2</span>],
+<a href=#266 id=266 data-nosnippet>266</a>        }
+<a href=#267 id=267 data-nosnippet>267</a>    }
+<a href=#268 id=268 data-nosnippet>268</a>}</code></pre></div></section></main></body></html>

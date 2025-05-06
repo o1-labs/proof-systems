@@ -1,431 +1,215 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `folding/src/quadraticization.rs`."><title>quadraticization.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="folding" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../folding/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
-<a href="#2" id="2">2</a>
-<a href="#3" id="3">3</a>
-<a href="#4" id="4">4</a>
-<a href="#5" id="5">5</a>
-<a href="#6" id="6">6</a>
-<a href="#7" id="7">7</a>
-<a href="#8" id="8">8</a>
-<a href="#9" id="9">9</a>
-<a href="#10" id="10">10</a>
-<a href="#11" id="11">11</a>
-<a href="#12" id="12">12</a>
-<a href="#13" id="13">13</a>
-<a href="#14" id="14">14</a>
-<a href="#15" id="15">15</a>
-<a href="#16" id="16">16</a>
-<a href="#17" id="17">17</a>
-<a href="#18" id="18">18</a>
-<a href="#19" id="19">19</a>
-<a href="#20" id="20">20</a>
-<a href="#21" id="21">21</a>
-<a href="#22" id="22">22</a>
-<a href="#23" id="23">23</a>
-<a href="#24" id="24">24</a>
-<a href="#25" id="25">25</a>
-<a href="#26" id="26">26</a>
-<a href="#27" id="27">27</a>
-<a href="#28" id="28">28</a>
-<a href="#29" id="29">29</a>
-<a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a>
-<a href="#35" id="35">35</a>
-<a href="#36" id="36">36</a>
-<a href="#37" id="37">37</a>
-<a href="#38" id="38">38</a>
-<a href="#39" id="39">39</a>
-<a href="#40" id="40">40</a>
-<a href="#41" id="41">41</a>
-<a href="#42" id="42">42</a>
-<a href="#43" id="43">43</a>
-<a href="#44" id="44">44</a>
-<a href="#45" id="45">45</a>
-<a href="#46" id="46">46</a>
-<a href="#47" id="47">47</a>
-<a href="#48" id="48">48</a>
-<a href="#49" id="49">49</a>
-<a href="#50" id="50">50</a>
-<a href="#51" id="51">51</a>
-<a href="#52" id="52">52</a>
-<a href="#53" id="53">53</a>
-<a href="#54" id="54">54</a>
-<a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a>
-<a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
-<a href="#60" id="60">60</a>
-<a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a>
-<a href="#63" id="63">63</a>
-<a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
-<a href="#66" id="66">66</a>
-<a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
-<a href="#71" id="71">71</a>
-<a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a>
-<a href="#74" id="74">74</a>
-<a href="#75" id="75">75</a>
-<a href="#76" id="76">76</a>
-<a href="#77" id="77">77</a>
-<a href="#78" id="78">78</a>
-<a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a>
-<a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! A library to reduce constraints into degree 2.
-</span><span class="comment">// TODO: more documentation
-
-</span><span class="kw">use crate</span>::{
-    columns::ExtendedFoldingColumn,
-    error_term::{eval_sided, ExtendedEnv, Side},
-    expressions::{Degree, FoldingExp},
-    FoldingConfig,
-};
-<span class="kw">use </span>std::collections::{BTreeMap, HashMap, VecDeque};
-
-<span class="kw">pub struct </span>Quadraticized&lt;C: FoldingConfig&gt; {
-    <span class="kw">pub </span>original_constraints: Vec&lt;FoldingExp&lt;C&gt;&gt;,
-    <span class="kw">pub </span>extra_constraints: Vec&lt;FoldingExp&lt;C&gt;&gt;,
-    <span class="kw">pub </span>extended_witness_generator: ExtendedWitnessGenerator&lt;C&gt;,
-}
-
-<span class="doccomment">/// Returns the constraints converted into degree 2 or less and the extra
-/// constraints added in the process
-</span><span class="kw">pub fn </span>quadraticize&lt;C: FoldingConfig&gt;(
-    constraints: Vec&lt;FoldingExp&lt;C&gt;&gt;,
-) -&gt; (Quadraticized&lt;C&gt;, usize) {
-    <span class="kw">let </span><span class="kw-2">mut </span>recorder = ExpRecorder::new();
-    <span class="kw">let </span>original_constraints = constraints
-        .into_iter()
-        .map(|exp| lower_degree_to_2(exp, <span class="kw-2">&amp;mut </span>recorder))
-        .collect();
-    <span class="kw">let </span>added_columns = recorder.next;
-    <span class="kw">let </span>(extra_constraints, exprs) = recorder.into_constraints();
-    (
-        Quadraticized {
-            original_constraints,
-            extra_constraints,
-            extended_witness_generator: ExtendedWitnessGenerator { exprs },
-        },
-        added_columns,
-    )
-}
-
-<span class="doccomment">/// Records expressions that have been extracted into an extra column
-</span><span class="kw">struct </span>ExpRecorder&lt;C: FoldingConfig&gt; {
-    recorded_exprs: HashMap&lt;FoldingExp&lt;C&gt;, usize&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) next: usize,
-}
-
-<span class="kw">impl</span>&lt;C: FoldingConfig&gt; ExpRecorder&lt;C&gt; {
-    <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            recorded_exprs: Default::default(),
-            next: <span class="number">0</span>,
-        }
-    }
-
-    <span class="kw">fn </span>get_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exp: FoldingExp&lt;C&gt;) -&gt; usize {
-        <span class="kw-2">*</span><span class="self">self</span>.recorded_exprs.entry(exp).or_insert_with(|| {
-            <span class="kw">let </span>id = <span class="self">self</span>.next;
-            <span class="self">self</span>.next += <span class="number">1</span>;
-            id
-        })
-    }
-
-    <span class="attr">#[allow(clippy::type_complexity)]
-    </span><span class="kw">fn </span>into_constraints(<span class="self">self</span>) -&gt; (Vec&lt;FoldingExp&lt;C&gt;&gt;, VecDeque&lt;(usize, FoldingExp&lt;C&gt;)&gt;) {
-        <span class="kw">let </span>ExpRecorder { recorded_exprs, .. } = <span class="self">self</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>witness_generator = VecDeque::with_capacity(recorded_exprs.len());
-        <span class="kw">let </span><span class="kw-2">mut </span>new_constraints = BTreeMap::new();
-        <span class="kw">for </span>(exp, id) <span class="kw">in </span>recorded_exprs.into_iter() {
-            <span class="kw">let </span>left = FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id));
-            <span class="kw">let </span>constraint = FoldingExp::Sub(Box::new(left), Box::new(exp.clone()));
-            new_constraints.insert(id, constraint);
-            witness_generator.push_front((id, exp));
-        }
-        (new_constraints.into_values().collect(), witness_generator)
-    }
-}
-
-<span class="kw">impl</span>&lt;C: FoldingConfig&gt; FoldingExp&lt;C&gt; {
-    <span class="kw">fn </span>degree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="kw">match </span><span class="self">self </span>{
-            e @ FoldingExp::Atom(<span class="kw">_</span>) =&gt; <span class="kw">match </span>e.folding_degree() {
-                Degree::Zero =&gt; <span class="number">0</span>,
-                Degree::One =&gt; <span class="number">1</span>,
-                Degree::Two =&gt; <span class="number">2</span>,
-            },
-            FoldingExp::Double(exp) =&gt; exp.degree(),
-            FoldingExp::Square(exp) =&gt; exp.degree() * <span class="number">2</span>,
-            FoldingExp::Add(e1, e2) | FoldingExp::Sub(e1, e2) =&gt; {
-                core::cmp::max(e1.degree(), e2.degree())
-            }
-            FoldingExp::Mul(e1, e2) =&gt; e1.degree() + e2.degree(),
-            FoldingExp::Pow(e, i) =&gt; e.degree() * (<span class="kw-2">*</span>i <span class="kw">as </span>usize),
-        }
-    }
-}
-
-<span class="kw">fn </span>lower_degree_to_1&lt;C: FoldingConfig&gt;(
-    exp: FoldingExp&lt;C&gt;,
-    rec: <span class="kw-2">&amp;mut </span>ExpRecorder&lt;C&gt;,
-) -&gt; FoldingExp&lt;C&gt; {
-    <span class="kw">let </span>degree = exp.degree();
-    <span class="kw">match </span>degree {
-        <span class="number">0 </span>=&gt; exp,
-        <span class="number">1 </span>=&gt; exp,
-        <span class="kw">_ </span>=&gt; <span class="kw">match </span>exp {
-            FoldingExp::Add(e1, e2) =&gt; FoldingExp::Add(
-                Box::new(lower_degree_to_1(<span class="kw-2">*</span>e1, rec)),
-                Box::new(lower_degree_to_1(<span class="kw-2">*</span>e2, rec)),
-            ),
-            FoldingExp::Sub(e1, e2) =&gt; FoldingExp::Sub(
-                Box::new(lower_degree_to_1(<span class="kw-2">*</span>e1, rec)),
-                Box::new(lower_degree_to_1(<span class="kw-2">*</span>e2, rec)),
-            ),
-            e @ FoldingExp::Square(<span class="kw">_</span>) | e @ FoldingExp::Mul(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span>exp = lower_degree_to_2(e, rec);
-                <span class="kw">let </span>id = rec.get_id(exp);
-                FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id))
-            }
-            FoldingExp::Double(exp) =&gt; FoldingExp::Double(Box::new(lower_degree_to_1(<span class="kw-2">*</span>exp, rec))),
-            <span class="kw">_ </span>=&gt; <span class="macro">todo!</span>(),
-        },
-    }
-}
-
-<span class="kw">fn </span>lower_degree_to_2&lt;C: FoldingConfig&gt;(
-    exp: FoldingExp&lt;C&gt;,
-    rec: <span class="kw-2">&amp;mut </span>ExpRecorder&lt;C&gt;,
-) -&gt; FoldingExp&lt;C&gt; {
-    <span class="kw">use </span>FoldingExp::<span class="kw-2">*</span>;
-    <span class="kw">let </span>degree = exp.degree();
-    <span class="kw">if </span>degree &lt;= <span class="number">2 </span>{
-        <span class="kw">return </span>exp;
-    }
-
-    <span class="kw">match </span>exp {
-        FoldingExp::Atom(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;a column shouldn&#39;t be above degree 1&quot;</span>),
-        FoldingExp::Double(exp) =&gt; Double(Box::new(lower_degree_to_2(<span class="kw-2">*</span>exp, rec))),
-        FoldingExp::Square(exp) =&gt; Square(Box::new(lower_degree_to_1(<span class="kw-2">*</span>exp, rec))),
-        FoldingExp::Add(e1, e2) =&gt; {
-            <span class="kw">let </span>e1 = lower_degree_to_2(<span class="kw-2">*</span>e1, rec);
-            <span class="kw">let </span>e2 = lower_degree_to_2(<span class="kw-2">*</span>e2, rec);
-            Add(Box::new(e1), Box::new(e2))
-        }
-        FoldingExp::Sub(e1, e2) =&gt; {
-            <span class="kw">let </span>e1 = lower_degree_to_2(<span class="kw-2">*</span>e1, rec);
-            <span class="kw">let </span>e2 = lower_degree_to_2(<span class="kw-2">*</span>e2, rec);
-            Sub(Box::new(e1), Box::new(e2))
-        }
-        FoldingExp::Mul(e1, e2) =&gt; {
-            <span class="kw">let </span>d1 = e1.degree();
-            <span class="kw">let </span>d2 = e2.degree();
-            <span class="macro">assert_eq!</span>(degree, d1 + d2);
-            <span class="kw">let </span>(e1, e2) = (<span class="kw-2">*</span>e1, <span class="kw-2">*</span>e2);
-            <span class="kw">let </span>(e1, e2) = <span class="kw">match </span>(d1, d2) {
-                (<span class="number">0</span>, <span class="kw">_</span>) =&gt; (e1, lower_degree_to_2(e2, rec)),
-                (<span class="kw">_</span>, <span class="number">0</span>) =&gt; (lower_degree_to_2(e1, rec), e2),
-                (<span class="kw">_</span>, <span class="kw">_</span>) =&gt; (lower_degree_to_1(e1, rec), lower_degree_to_1(e2, rec)),
-            };
-            Mul(Box::new(e1), Box::new(e2))
-        }
-        exp @ FoldingExp::Pow(<span class="kw">_</span>, <span class="number">0</span>) =&gt; exp,
-        FoldingExp::Pow(e, <span class="number">1</span>) =&gt; lower_degree_to_2(<span class="kw-2">*</span>e, rec),
-        FoldingExp::Pow(e, <span class="number">2</span>) =&gt; FoldingExp::Pow(Box::new(lower_degree_to_1(<span class="kw-2">*</span>e, rec)), <span class="number">2</span>),
-        FoldingExp::Pow(e, i) =&gt; {
-            <span class="kw">let </span>e = lower_degree_to_1(<span class="kw-2">*</span>e, rec);
-            <span class="kw">let </span><span class="kw-2">mut </span>acc = e.clone();
-            <span class="kw">for _ in </span><span class="number">1</span>..i - <span class="number">1 </span>{
-                acc = lower_degree_to_1(FoldingExp::Mul(Box::new(e.clone()), Box::new(acc)), rec);
-            }
-            FoldingExp::Mul(Box::new(e.clone()), Box::new(acc))
-        }
-    }
-}
-
-<span class="kw">pub struct </span>ExtendedWitnessGenerator&lt;C: FoldingConfig&gt; {
-    exprs: VecDeque&lt;(usize, FoldingExp&lt;C&gt;)&gt;,
-}
-
-<span class="kw">impl</span>&lt;C: FoldingConfig&gt; ExtendedWitnessGenerator&lt;C&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_extended_witness(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw-2">mut </span>env: ExtendedEnv&lt;C&gt;,
-        side: Side,
-    ) -&gt; ExtendedEnv&lt;C&gt; {
-        <span class="kw">if </span>env.needs_extension(side) {
-            <span class="kw">let </span><span class="kw-2">mut </span>pending = <span class="self">self</span>.exprs.clone();
-
-            <span class="kw">while let </span><span class="prelude-val">Some</span>((i, exp)) = pending.pop_front() {
-                <span class="kw">if </span>check_evaluable(<span class="kw-2">&amp;</span>exp, <span class="kw-2">&amp;</span>env, side) {
-                    <span class="kw">let </span>evals = eval_sided(<span class="kw-2">&amp;</span>exp, <span class="kw-2">&amp;</span>env, side).unwrap();
-                    env.add_witness_evals(i, evals, side);
-                } <span class="kw">else </span>{
-                    pending.push_back((i, exp))
-                }
-            }
-        }
-
-        env
-    }
-}
-
-<span class="doccomment">/// Checks if the expression can be evaluated in the current environment
-</span><span class="kw">fn </span>check_evaluable&lt;C: FoldingConfig&gt;(
-    exp: <span class="kw-2">&amp;</span>FoldingExp&lt;C&gt;,
-    env: <span class="kw-2">&amp;</span>ExtendedEnv&lt;C&gt;,
-    side: Side,
-) -&gt; bool {
-    <span class="kw">match </span>exp {
-        FoldingExp::Atom(col) =&gt; env.col_try(col, side),
-        FoldingExp::Double(e) | FoldingExp::Square(e) =&gt; check_evaluable(e, env, side),
-        FoldingExp::Add(e1, e2) | FoldingExp::Sub(e1, e2) | FoldingExp::Mul(e1, e2) =&gt; {
-            check_evaluable(e1, env, side) &amp;&amp; check_evaluable(e2, env, side)
-        }
-        FoldingExp::Pow(e, <span class="kw">_</span>) =&gt; check_evaluable(e, env, side),
-    }
-}
-</code></pre></div></section></main></body></html>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `folding/src/quadraticization.rs`."><title>quadraticization.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-20739d33.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="folding" data-themes="" data-resource-suffix="" data-rustdoc-version="1.88.0-nightly (2e6882ac5 2025-05-05)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../static.files/storage-4e99c027.js"></script><script defer src="../../static.files/src-script-63605ae7.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-7ef8a74a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">folding/</div>quadraticization.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! A library to reduce constraints into degree 2.
+<a href=#2 id=2 data-nosnippet>2</a></span><span class="comment">// TODO: more documentation
+<a href=#3 id=3 data-nosnippet>3</a>
+<a href=#4 id=4 data-nosnippet>4</a></span><span class="kw">use crate</span>::{
+<a href=#5 id=5 data-nosnippet>5</a>    columns::ExtendedFoldingColumn,
+<a href=#6 id=6 data-nosnippet>6</a>    error_term::{eval_sided, ExtendedEnv, Side},
+<a href=#7 id=7 data-nosnippet>7</a>    expressions::{Degree, FoldingExp},
+<a href=#8 id=8 data-nosnippet>8</a>    FoldingConfig,
+<a href=#9 id=9 data-nosnippet>9</a>};
+<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>std::collections::{BTreeMap, HashMap, VecDeque};
+<a href=#11 id=11 data-nosnippet>11</a>
+<a href=#12 id=12 data-nosnippet>12</a><span class="kw">pub struct </span>Quadraticized&lt;C: FoldingConfig&gt; {
+<a href=#13 id=13 data-nosnippet>13</a>    <span class="kw">pub </span>original_constraints: Vec&lt;FoldingExp&lt;C&gt;&gt;,
+<a href=#14 id=14 data-nosnippet>14</a>    <span class="kw">pub </span>extra_constraints: Vec&lt;FoldingExp&lt;C&gt;&gt;,
+<a href=#15 id=15 data-nosnippet>15</a>    <span class="kw">pub </span>extended_witness_generator: ExtendedWitnessGenerator&lt;C&gt;,
+<a href=#16 id=16 data-nosnippet>16</a>}
+<a href=#17 id=17 data-nosnippet>17</a>
+<a href=#18 id=18 data-nosnippet>18</a><span class="doccomment">/// Returns the constraints converted into degree 2 or less and the extra
+<a href=#19 id=19 data-nosnippet>19</a>/// constraints added in the process
+<a href=#20 id=20 data-nosnippet>20</a></span><span class="kw">pub fn </span>quadraticize&lt;C: FoldingConfig&gt;(
+<a href=#21 id=21 data-nosnippet>21</a>    constraints: Vec&lt;FoldingExp&lt;C&gt;&gt;,
+<a href=#22 id=22 data-nosnippet>22</a>) -&gt; (Quadraticized&lt;C&gt;, usize) {
+<a href=#23 id=23 data-nosnippet>23</a>    <span class="kw">let </span><span class="kw-2">mut </span>recorder = ExpRecorder::new();
+<a href=#24 id=24 data-nosnippet>24</a>    <span class="kw">let </span>original_constraints = constraints
+<a href=#25 id=25 data-nosnippet>25</a>        .into_iter()
+<a href=#26 id=26 data-nosnippet>26</a>        .map(|exp| lower_degree_to_2(exp, <span class="kw-2">&amp;mut </span>recorder))
+<a href=#27 id=27 data-nosnippet>27</a>        .collect();
+<a href=#28 id=28 data-nosnippet>28</a>    <span class="kw">let </span>added_columns = recorder.next;
+<a href=#29 id=29 data-nosnippet>29</a>    <span class="kw">let </span>(extra_constraints, exprs) = recorder.into_constraints();
+<a href=#30 id=30 data-nosnippet>30</a>    (
+<a href=#31 id=31 data-nosnippet>31</a>        Quadraticized {
+<a href=#32 id=32 data-nosnippet>32</a>            original_constraints,
+<a href=#33 id=33 data-nosnippet>33</a>            extra_constraints,
+<a href=#34 id=34 data-nosnippet>34</a>            extended_witness_generator: ExtendedWitnessGenerator { exprs },
+<a href=#35 id=35 data-nosnippet>35</a>        },
+<a href=#36 id=36 data-nosnippet>36</a>        added_columns,
+<a href=#37 id=37 data-nosnippet>37</a>    )
+<a href=#38 id=38 data-nosnippet>38</a>}
+<a href=#39 id=39 data-nosnippet>39</a>
+<a href=#40 id=40 data-nosnippet>40</a><span class="doccomment">/// Records expressions that have been extracted into an extra column
+<a href=#41 id=41 data-nosnippet>41</a></span><span class="kw">struct </span>ExpRecorder&lt;C: FoldingConfig&gt; {
+<a href=#42 id=42 data-nosnippet>42</a>    recorded_exprs: HashMap&lt;FoldingExp&lt;C&gt;, usize&gt;,
+<a href=#43 id=43 data-nosnippet>43</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) next: usize,
+<a href=#44 id=44 data-nosnippet>44</a>}
+<a href=#45 id=45 data-nosnippet>45</a>
+<a href=#46 id=46 data-nosnippet>46</a><span class="kw">impl</span>&lt;C: FoldingConfig&gt; ExpRecorder&lt;C&gt; {
+<a href=#47 id=47 data-nosnippet>47</a>    <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
+<a href=#48 id=48 data-nosnippet>48</a>        <span class="self">Self </span>{
+<a href=#49 id=49 data-nosnippet>49</a>            recorded_exprs: Default::default(),
+<a href=#50 id=50 data-nosnippet>50</a>            next: <span class="number">0</span>,
+<a href=#51 id=51 data-nosnippet>51</a>        }
+<a href=#52 id=52 data-nosnippet>52</a>    }
+<a href=#53 id=53 data-nosnippet>53</a>
+<a href=#54 id=54 data-nosnippet>54</a>    <span class="kw">fn </span>get_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exp: FoldingExp&lt;C&gt;) -&gt; usize {
+<a href=#55 id=55 data-nosnippet>55</a>        <span class="kw-2">*</span><span class="self">self</span>.recorded_exprs.entry(exp).or_insert_with(|| {
+<a href=#56 id=56 data-nosnippet>56</a>            <span class="kw">let </span>id = <span class="self">self</span>.next;
+<a href=#57 id=57 data-nosnippet>57</a>            <span class="self">self</span>.next += <span class="number">1</span>;
+<a href=#58 id=58 data-nosnippet>58</a>            id
+<a href=#59 id=59 data-nosnippet>59</a>        })
+<a href=#60 id=60 data-nosnippet>60</a>    }
+<a href=#61 id=61 data-nosnippet>61</a>
+<a href=#62 id=62 data-nosnippet>62</a>    <span class="attr">#[allow(clippy::type_complexity)]
+<a href=#63 id=63 data-nosnippet>63</a>    </span><span class="kw">fn </span>into_constraints(<span class="self">self</span>) -&gt; (Vec&lt;FoldingExp&lt;C&gt;&gt;, VecDeque&lt;(usize, FoldingExp&lt;C&gt;)&gt;) {
+<a href=#64 id=64 data-nosnippet>64</a>        <span class="kw">let </span>ExpRecorder { recorded_exprs, .. } = <span class="self">self</span>;
+<a href=#65 id=65 data-nosnippet>65</a>        <span class="kw">let </span><span class="kw-2">mut </span>witness_generator = VecDeque::with_capacity(recorded_exprs.len());
+<a href=#66 id=66 data-nosnippet>66</a>        <span class="kw">let </span><span class="kw-2">mut </span>new_constraints = BTreeMap::new();
+<a href=#67 id=67 data-nosnippet>67</a>        <span class="kw">for </span>(exp, id) <span class="kw">in </span>recorded_exprs.into_iter() {
+<a href=#68 id=68 data-nosnippet>68</a>            <span class="kw">let </span>left = FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id));
+<a href=#69 id=69 data-nosnippet>69</a>            <span class="kw">let </span>constraint = FoldingExp::Sub(Box::new(left), Box::new(exp.clone()));
+<a href=#70 id=70 data-nosnippet>70</a>            new_constraints.insert(id, constraint);
+<a href=#71 id=71 data-nosnippet>71</a>            witness_generator.push_front((id, exp));
+<a href=#72 id=72 data-nosnippet>72</a>        }
+<a href=#73 id=73 data-nosnippet>73</a>        (new_constraints.into_values().collect(), witness_generator)
+<a href=#74 id=74 data-nosnippet>74</a>    }
+<a href=#75 id=75 data-nosnippet>75</a>}
+<a href=#76 id=76 data-nosnippet>76</a>
+<a href=#77 id=77 data-nosnippet>77</a><span class="kw">impl</span>&lt;C: FoldingConfig&gt; FoldingExp&lt;C&gt; {
+<a href=#78 id=78 data-nosnippet>78</a>    <span class="kw">fn </span>degree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+<a href=#79 id=79 data-nosnippet>79</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#80 id=80 data-nosnippet>80</a>            e @ FoldingExp::Atom(<span class="kw">_</span>) =&gt; <span class="kw">match </span>e.folding_degree() {
+<a href=#81 id=81 data-nosnippet>81</a>                Degree::Zero =&gt; <span class="number">0</span>,
+<a href=#82 id=82 data-nosnippet>82</a>                Degree::One =&gt; <span class="number">1</span>,
+<a href=#83 id=83 data-nosnippet>83</a>                Degree::Two =&gt; <span class="number">2</span>,
+<a href=#84 id=84 data-nosnippet>84</a>            },
+<a href=#85 id=85 data-nosnippet>85</a>            FoldingExp::Double(exp) =&gt; exp.degree(),
+<a href=#86 id=86 data-nosnippet>86</a>            FoldingExp::Square(exp) =&gt; exp.degree() * <span class="number">2</span>,
+<a href=#87 id=87 data-nosnippet>87</a>            FoldingExp::Add(e1, e2) | FoldingExp::Sub(e1, e2) =&gt; {
+<a href=#88 id=88 data-nosnippet>88</a>                core::cmp::max(e1.degree(), e2.degree())
+<a href=#89 id=89 data-nosnippet>89</a>            }
+<a href=#90 id=90 data-nosnippet>90</a>            FoldingExp::Mul(e1, e2) =&gt; e1.degree() + e2.degree(),
+<a href=#91 id=91 data-nosnippet>91</a>            FoldingExp::Pow(e, i) =&gt; e.degree() * (<span class="kw-2">*</span>i <span class="kw">as </span>usize),
+<a href=#92 id=92 data-nosnippet>92</a>        }
+<a href=#93 id=93 data-nosnippet>93</a>    }
+<a href=#94 id=94 data-nosnippet>94</a>}
+<a href=#95 id=95 data-nosnippet>95</a>
+<a href=#96 id=96 data-nosnippet>96</a><span class="kw">fn </span>lower_degree_to_1&lt;C: FoldingConfig&gt;(
+<a href=#97 id=97 data-nosnippet>97</a>    exp: FoldingExp&lt;C&gt;,
+<a href=#98 id=98 data-nosnippet>98</a>    rec: <span class="kw-2">&amp;mut </span>ExpRecorder&lt;C&gt;,
+<a href=#99 id=99 data-nosnippet>99</a>) -&gt; FoldingExp&lt;C&gt; {
+<a href=#100 id=100 data-nosnippet>100</a>    <span class="kw">let </span>degree = exp.degree();
+<a href=#101 id=101 data-nosnippet>101</a>    <span class="kw">match </span>degree {
+<a href=#102 id=102 data-nosnippet>102</a>        <span class="number">0 </span>=&gt; exp,
+<a href=#103 id=103 data-nosnippet>103</a>        <span class="number">1 </span>=&gt; exp,
+<a href=#104 id=104 data-nosnippet>104</a>        <span class="kw">_ </span>=&gt; <span class="kw">match </span>exp {
+<a href=#105 id=105 data-nosnippet>105</a>            FoldingExp::Add(e1, e2) =&gt; FoldingExp::Add(
+<a href=#106 id=106 data-nosnippet>106</a>                Box::new(lower_degree_to_1(<span class="kw-2">*</span>e1, rec)),
+<a href=#107 id=107 data-nosnippet>107</a>                Box::new(lower_degree_to_1(<span class="kw-2">*</span>e2, rec)),
+<a href=#108 id=108 data-nosnippet>108</a>            ),
+<a href=#109 id=109 data-nosnippet>109</a>            FoldingExp::Sub(e1, e2) =&gt; FoldingExp::Sub(
+<a href=#110 id=110 data-nosnippet>110</a>                Box::new(lower_degree_to_1(<span class="kw-2">*</span>e1, rec)),
+<a href=#111 id=111 data-nosnippet>111</a>                Box::new(lower_degree_to_1(<span class="kw-2">*</span>e2, rec)),
+<a href=#112 id=112 data-nosnippet>112</a>            ),
+<a href=#113 id=113 data-nosnippet>113</a>            e @ FoldingExp::Square(<span class="kw">_</span>) | e @ FoldingExp::Mul(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
+<a href=#114 id=114 data-nosnippet>114</a>                <span class="kw">let </span>exp = lower_degree_to_2(e, rec);
+<a href=#115 id=115 data-nosnippet>115</a>                <span class="kw">let </span>id = rec.get_id(exp);
+<a href=#116 id=116 data-nosnippet>116</a>                FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id))
+<a href=#117 id=117 data-nosnippet>117</a>            }
+<a href=#118 id=118 data-nosnippet>118</a>            FoldingExp::Double(exp) =&gt; FoldingExp::Double(Box::new(lower_degree_to_1(<span class="kw-2">*</span>exp, rec))),
+<a href=#119 id=119 data-nosnippet>119</a>            <span class="kw">_ </span>=&gt; <span class="macro">todo!</span>(),
+<a href=#120 id=120 data-nosnippet>120</a>        },
+<a href=#121 id=121 data-nosnippet>121</a>    }
+<a href=#122 id=122 data-nosnippet>122</a>}
+<a href=#123 id=123 data-nosnippet>123</a>
+<a href=#124 id=124 data-nosnippet>124</a><span class="kw">fn </span>lower_degree_to_2&lt;C: FoldingConfig&gt;(
+<a href=#125 id=125 data-nosnippet>125</a>    exp: FoldingExp&lt;C&gt;,
+<a href=#126 id=126 data-nosnippet>126</a>    rec: <span class="kw-2">&amp;mut </span>ExpRecorder&lt;C&gt;,
+<a href=#127 id=127 data-nosnippet>127</a>) -&gt; FoldingExp&lt;C&gt; {
+<a href=#128 id=128 data-nosnippet>128</a>    <span class="kw">use </span>FoldingExp::<span class="kw-2">*</span>;
+<a href=#129 id=129 data-nosnippet>129</a>    <span class="kw">let </span>degree = exp.degree();
+<a href=#130 id=130 data-nosnippet>130</a>    <span class="kw">if </span>degree &lt;= <span class="number">2 </span>{
+<a href=#131 id=131 data-nosnippet>131</a>        <span class="kw">return </span>exp;
+<a href=#132 id=132 data-nosnippet>132</a>    }
+<a href=#133 id=133 data-nosnippet>133</a>
+<a href=#134 id=134 data-nosnippet>134</a>    <span class="kw">match </span>exp {
+<a href=#135 id=135 data-nosnippet>135</a>        FoldingExp::Atom(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">"a column shouldn't be above degree 1"</span>),
+<a href=#136 id=136 data-nosnippet>136</a>        FoldingExp::Double(exp) =&gt; Double(Box::new(lower_degree_to_2(<span class="kw-2">*</span>exp, rec))),
+<a href=#137 id=137 data-nosnippet>137</a>        FoldingExp::Square(exp) =&gt; Square(Box::new(lower_degree_to_1(<span class="kw-2">*</span>exp, rec))),
+<a href=#138 id=138 data-nosnippet>138</a>        FoldingExp::Add(e1, e2) =&gt; {
+<a href=#139 id=139 data-nosnippet>139</a>            <span class="kw">let </span>e1 = lower_degree_to_2(<span class="kw-2">*</span>e1, rec);
+<a href=#140 id=140 data-nosnippet>140</a>            <span class="kw">let </span>e2 = lower_degree_to_2(<span class="kw-2">*</span>e2, rec);
+<a href=#141 id=141 data-nosnippet>141</a>            Add(Box::new(e1), Box::new(e2))
+<a href=#142 id=142 data-nosnippet>142</a>        }
+<a href=#143 id=143 data-nosnippet>143</a>        FoldingExp::Sub(e1, e2) =&gt; {
+<a href=#144 id=144 data-nosnippet>144</a>            <span class="kw">let </span>e1 = lower_degree_to_2(<span class="kw-2">*</span>e1, rec);
+<a href=#145 id=145 data-nosnippet>145</a>            <span class="kw">let </span>e2 = lower_degree_to_2(<span class="kw-2">*</span>e2, rec);
+<a href=#146 id=146 data-nosnippet>146</a>            Sub(Box::new(e1), Box::new(e2))
+<a href=#147 id=147 data-nosnippet>147</a>        }
+<a href=#148 id=148 data-nosnippet>148</a>        FoldingExp::Mul(e1, e2) =&gt; {
+<a href=#149 id=149 data-nosnippet>149</a>            <span class="kw">let </span>d1 = e1.degree();
+<a href=#150 id=150 data-nosnippet>150</a>            <span class="kw">let </span>d2 = e2.degree();
+<a href=#151 id=151 data-nosnippet>151</a>            <span class="macro">assert_eq!</span>(degree, d1 + d2);
+<a href=#152 id=152 data-nosnippet>152</a>            <span class="kw">let </span>(e1, e2) = (<span class="kw-2">*</span>e1, <span class="kw-2">*</span>e2);
+<a href=#153 id=153 data-nosnippet>153</a>            <span class="kw">let </span>(e1, e2) = <span class="kw">match </span>(d1, d2) {
+<a href=#154 id=154 data-nosnippet>154</a>                (<span class="number">0</span>, <span class="kw">_</span>) =&gt; (e1, lower_degree_to_2(e2, rec)),
+<a href=#155 id=155 data-nosnippet>155</a>                (<span class="kw">_</span>, <span class="number">0</span>) =&gt; (lower_degree_to_2(e1, rec), e2),
+<a href=#156 id=156 data-nosnippet>156</a>                (<span class="kw">_</span>, <span class="kw">_</span>) =&gt; (lower_degree_to_1(e1, rec), lower_degree_to_1(e2, rec)),
+<a href=#157 id=157 data-nosnippet>157</a>            };
+<a href=#158 id=158 data-nosnippet>158</a>            Mul(Box::new(e1), Box::new(e2))
+<a href=#159 id=159 data-nosnippet>159</a>        }
+<a href=#160 id=160 data-nosnippet>160</a>        exp @ FoldingExp::Pow(<span class="kw">_</span>, <span class="number">0</span>) =&gt; exp,
+<a href=#161 id=161 data-nosnippet>161</a>        FoldingExp::Pow(e, <span class="number">1</span>) =&gt; lower_degree_to_2(<span class="kw-2">*</span>e, rec),
+<a href=#162 id=162 data-nosnippet>162</a>        FoldingExp::Pow(e, <span class="number">2</span>) =&gt; FoldingExp::Pow(Box::new(lower_degree_to_1(<span class="kw-2">*</span>e, rec)), <span class="number">2</span>),
+<a href=#163 id=163 data-nosnippet>163</a>        FoldingExp::Pow(e, i) =&gt; {
+<a href=#164 id=164 data-nosnippet>164</a>            <span class="kw">let </span>e = lower_degree_to_1(<span class="kw-2">*</span>e, rec);
+<a href=#165 id=165 data-nosnippet>165</a>            <span class="kw">let </span><span class="kw-2">mut </span>acc = e.clone();
+<a href=#166 id=166 data-nosnippet>166</a>            <span class="kw">for _ in </span><span class="number">1</span>..i - <span class="number">1 </span>{
+<a href=#167 id=167 data-nosnippet>167</a>                acc = lower_degree_to_1(FoldingExp::Mul(Box::new(e.clone()), Box::new(acc)), rec);
+<a href=#168 id=168 data-nosnippet>168</a>            }
+<a href=#169 id=169 data-nosnippet>169</a>            FoldingExp::Mul(Box::new(e.clone()), Box::new(acc))
+<a href=#170 id=170 data-nosnippet>170</a>        }
+<a href=#171 id=171 data-nosnippet>171</a>    }
+<a href=#172 id=172 data-nosnippet>172</a>}
+<a href=#173 id=173 data-nosnippet>173</a>
+<a href=#174 id=174 data-nosnippet>174</a><span class="kw">pub struct </span>ExtendedWitnessGenerator&lt;C: FoldingConfig&gt; {
+<a href=#175 id=175 data-nosnippet>175</a>    exprs: VecDeque&lt;(usize, FoldingExp&lt;C&gt;)&gt;,
+<a href=#176 id=176 data-nosnippet>176</a>}
+<a href=#177 id=177 data-nosnippet>177</a>
+<a href=#178 id=178 data-nosnippet>178</a><span class="kw">impl</span>&lt;C: FoldingConfig&gt; ExtendedWitnessGenerator&lt;C&gt; {
+<a href=#179 id=179 data-nosnippet>179</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_extended_witness(
+<a href=#180 id=180 data-nosnippet>180</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#181 id=181 data-nosnippet>181</a>        <span class="kw-2">mut </span>env: ExtendedEnv&lt;C&gt;,
+<a href=#182 id=182 data-nosnippet>182</a>        side: Side,
+<a href=#183 id=183 data-nosnippet>183</a>    ) -&gt; ExtendedEnv&lt;C&gt; {
+<a href=#184 id=184 data-nosnippet>184</a>        <span class="kw">if </span>env.needs_extension(side) {
+<a href=#185 id=185 data-nosnippet>185</a>            <span class="kw">let </span><span class="kw-2">mut </span>pending = <span class="self">self</span>.exprs.clone();
+<a href=#186 id=186 data-nosnippet>186</a>
+<a href=#187 id=187 data-nosnippet>187</a>            <span class="kw">while let </span><span class="prelude-val">Some</span>((i, exp)) = pending.pop_front() {
+<a href=#188 id=188 data-nosnippet>188</a>                <span class="kw">if </span>check_evaluable(<span class="kw-2">&amp;</span>exp, <span class="kw-2">&amp;</span>env, side) {
+<a href=#189 id=189 data-nosnippet>189</a>                    <span class="kw">let </span>evals = eval_sided(<span class="kw-2">&amp;</span>exp, <span class="kw-2">&amp;</span>env, side).unwrap();
+<a href=#190 id=190 data-nosnippet>190</a>                    env.add_witness_evals(i, evals, side);
+<a href=#191 id=191 data-nosnippet>191</a>                } <span class="kw">else </span>{
+<a href=#192 id=192 data-nosnippet>192</a>                    pending.push_back((i, exp))
+<a href=#193 id=193 data-nosnippet>193</a>                }
+<a href=#194 id=194 data-nosnippet>194</a>            }
+<a href=#195 id=195 data-nosnippet>195</a>        }
+<a href=#196 id=196 data-nosnippet>196</a>
+<a href=#197 id=197 data-nosnippet>197</a>        env
+<a href=#198 id=198 data-nosnippet>198</a>    }
+<a href=#199 id=199 data-nosnippet>199</a>}
+<a href=#200 id=200 data-nosnippet>200</a>
+<a href=#201 id=201 data-nosnippet>201</a><span class="doccomment">/// Checks if the expression can be evaluated in the current environment
+<a href=#202 id=202 data-nosnippet>202</a></span><span class="kw">fn </span>check_evaluable&lt;C: FoldingConfig&gt;(
+<a href=#203 id=203 data-nosnippet>203</a>    exp: <span class="kw-2">&amp;</span>FoldingExp&lt;C&gt;,
+<a href=#204 id=204 data-nosnippet>204</a>    env: <span class="kw-2">&amp;</span>ExtendedEnv&lt;C&gt;,
+<a href=#205 id=205 data-nosnippet>205</a>    side: Side,
+<a href=#206 id=206 data-nosnippet>206</a>) -&gt; bool {
+<a href=#207 id=207 data-nosnippet>207</a>    <span class="kw">match </span>exp {
+<a href=#208 id=208 data-nosnippet>208</a>        FoldingExp::Atom(col) =&gt; env.col_try(col, side),
+<a href=#209 id=209 data-nosnippet>209</a>        FoldingExp::Double(e) | FoldingExp::Square(e) =&gt; check_evaluable(e, env, side),
+<a href=#210 id=210 data-nosnippet>210</a>        FoldingExp::Add(e1, e2) | FoldingExp::Sub(e1, e2) | FoldingExp::Mul(e1, e2) =&gt; {
+<a href=#211 id=211 data-nosnippet>211</a>            check_evaluable(e1, env, side) &amp;&amp; check_evaluable(e2, env, side)
+<a href=#212 id=212 data-nosnippet>212</a>        }
+<a href=#213 id=213 data-nosnippet>213</a>        FoldingExp::Pow(e, <span class="kw">_</span>) =&gt; check_evaluable(e, env, side),
+<a href=#214 id=214 data-nosnippet>214</a>    }
+<a href=#215 id=215 data-nosnippet>215</a>}</code></pre></div></section></main></body></html>

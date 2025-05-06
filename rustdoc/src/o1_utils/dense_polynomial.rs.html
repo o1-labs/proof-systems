@@ -1,139 +1,69 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `utils/src/dense_polynomial.rs`."><title>dense_polynomial.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="o1_utils" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../o1_utils/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
-<a href="#2" id="2">2</a>
-<a href="#3" id="3">3</a>
-<a href="#4" id="4">4</a>
-<a href="#5" id="5">5</a>
-<a href="#6" id="6">6</a>
-<a href="#7" id="7">7</a>
-<a href="#8" id="8">8</a>
-<a href="#9" id="9">9</a>
-<a href="#10" id="10">10</a>
-<a href="#11" id="11">11</a>
-<a href="#12" id="12">12</a>
-<a href="#13" id="13">13</a>
-<a href="#14" id="14">14</a>
-<a href="#15" id="15">15</a>
-<a href="#16" id="16">16</a>
-<a href="#17" id="17">17</a>
-<a href="#18" id="18">18</a>
-<a href="#19" id="19">19</a>
-<a href="#20" id="20">20</a>
-<a href="#21" id="21">21</a>
-<a href="#22" id="22">22</a>
-<a href="#23" id="23">23</a>
-<a href="#24" id="24">24</a>
-<a href="#25" id="25">25</a>
-<a href="#26" id="26">26</a>
-<a href="#27" id="27">27</a>
-<a href="#28" id="28">28</a>
-<a href="#29" id="29">29</a>
-<a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a>
-<a href="#35" id="35">35</a>
-<a href="#36" id="36">36</a>
-<a href="#37" id="37">37</a>
-<a href="#38" id="38">38</a>
-<a href="#39" id="39">39</a>
-<a href="#40" id="40">40</a>
-<a href="#41" id="41">41</a>
-<a href="#42" id="42">42</a>
-<a href="#43" id="43">43</a>
-<a href="#44" id="44">44</a>
-<a href="#45" id="45">45</a>
-<a href="#46" id="46">46</a>
-<a href="#47" id="47">47</a>
-<a href="#48" id="48">48</a>
-<a href="#49" id="49">49</a>
-<a href="#50" id="50">50</a>
-<a href="#51" id="51">51</a>
-<a href="#52" id="52">52</a>
-<a href="#53" id="53">53</a>
-<a href="#54" id="54">54</a>
-<a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a>
-<a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
-<a href="#60" id="60">60</a>
-<a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a>
-<a href="#63" id="63">63</a>
-<a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
-<a href="#66" id="66">66</a>
-<a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! This adds a few utility functions for the [DensePolynomial] arkworks type.
-
-</span><span class="kw">use </span>ark_ff::Field;
-<span class="kw">use </span>ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Polynomial};
-<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
-
-<span class="kw">use </span><span class="kw">crate</span>::chunked_polynomial::ChunkedPolynomial;
-
-<span class="comment">//
-// ExtendedDensePolynomial trait
-//
-
-</span><span class="doccomment">/// An extension for the [DensePolynomial] type.
-</span><span class="kw">pub trait </span>ExtendedDensePolynomial&lt;F: Field&gt; {
-    <span class="doccomment">/// This function &quot;scales&quot; (multiplies all the coefficients of) a polynomial with a scalar.
-    </span><span class="kw">fn </span>scale(<span class="kw-2">&amp;</span><span class="self">self</span>, elm: F) -&gt; <span class="self">Self</span>;
-
-    <span class="doccomment">/// Shifts all the coefficients to the right.
-    </span><span class="kw">fn </span>shiftr(<span class="kw-2">&amp;</span><span class="self">self</span>, size: usize) -&gt; <span class="self">Self</span>;
-
-    <span class="doccomment">/// `eval_polynomial(coeffs, x)` evaluates a polynomial given its coefficients `coeffs` and a point `x`.
-    </span><span class="kw">fn </span>eval_polynomial(coeffs: <span class="kw-2">&amp;</span>[F], x: F) -&gt; F;
-
-    <span class="doccomment">/// Convert a polynomial into chunks.
-    /// Implementors must ensure that the result contains exactly num_chunks.
-    </span><span class="kw">fn </span>to_chunked_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>, num_chunks: usize, size: usize) -&gt; ChunkedPolynomial&lt;F&gt;;
-}
-
-<span class="kw">impl</span>&lt;F: Field&gt; ExtendedDensePolynomial&lt;F&gt; <span class="kw">for </span>DensePolynomial&lt;F&gt; {
-    <span class="kw">fn </span>scale(<span class="kw-2">&amp;</span><span class="self">self</span>, elm: F) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="self">self</span>.clone();
-        result
-            .coeffs
-            .par_iter_mut()
-            .for_each(|coeff: <span class="kw-2">&amp;mut </span>F| <span class="kw-2">*</span>coeff <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>elm);
-        result
-    }
-
-    <span class="kw">fn </span>shiftr(<span class="kw-2">&amp;</span><span class="self">self</span>, size: usize) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="macro">vec!</span>[F::zero(); size];
-        result.extend(<span class="self">self</span>.coeffs.clone());
-        DensePolynomial::&lt;F&gt;::from_coefficients_vec(result)
-    }
-
-    <span class="kw">fn </span>eval_polynomial(coeffs: <span class="kw-2">&amp;</span>[F], x: F) -&gt; F {
-        DensePolynomial::from_coefficients_slice(coeffs).evaluate(<span class="kw-2">&amp;</span>x)
-    }
-
-    <span class="kw">fn </span>to_chunked_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>, num_chunks: usize, chunk_size: usize) -&gt; ChunkedPolynomial&lt;F&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>chunk_polys: Vec&lt;DensePolynomial&lt;F&gt;&gt; = Vec::with_capacity(num_chunks);
-        <span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.coeffs.chunks(chunk_size) {
-            chunk_polys.push(DensePolynomial::from_coefficients_slice(chunk));
-        }
-
-        <span class="comment">// Pad unused chunks with zeros.
-        </span><span class="kw">for _ in </span>chunk_polys.len()..num_chunks {
-            chunk_polys.push(DensePolynomial::from_coefficients_vec(<span class="macro">vec!</span>[]));
-        }
-
-        <span class="comment">// Ensuring that the number of chunks is the one requested, following
-        // trait documentation
-        </span><span class="macro">assert_eq!</span>(chunk_polys.len(), num_chunks);
-
-        ChunkedPolynomial {
-            polys: chunk_polys,
-            size: chunk_size,
-        }
-    }
-}
-</code></pre></div></section></main></body></html>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `utils/src/dense_polynomial.rs`."><title>dense_polynomial.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-20739d33.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="o1_utils" data-themes="" data-resource-suffix="" data-rustdoc-version="1.88.0-nightly (2e6882ac5 2025-05-05)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../static.files/storage-4e99c027.js"></script><script defer src="../../static.files/src-script-63605ae7.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-7ef8a74a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">o1_utils/</div>dense_polynomial.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-2"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This adds a few utility functions for the [DensePolynomial] arkworks type.
+<a href=#2 id=2 data-nosnippet>2</a>
+<a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use </span>ark_ff::Field;
+<a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Polynomial};
+<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
+<a href=#6 id=6 data-nosnippet>6</a>
+<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span><span class="kw">crate</span>::chunked_polynomial::ChunkedPolynomial;
+<a href=#8 id=8 data-nosnippet>8</a>
+<a href=#9 id=9 data-nosnippet>9</a><span class="comment">//
+<a href=#10 id=10 data-nosnippet>10</a>// ExtendedDensePolynomial trait
+<a href=#11 id=11 data-nosnippet>11</a>//
+<a href=#12 id=12 data-nosnippet>12</a>
+<a href=#13 id=13 data-nosnippet>13</a></span><span class="doccomment">/// An extension for the [DensePolynomial] type.
+<a href=#14 id=14 data-nosnippet>14</a></span><span class="kw">pub trait </span>ExtendedDensePolynomial&lt;F: Field&gt; {
+<a href=#15 id=15 data-nosnippet>15</a>    <span class="doccomment">/// This function "scales" (multiplies all the coefficients of) a polynomial with a scalar.
+<a href=#16 id=16 data-nosnippet>16</a>    </span><span class="kw">fn </span>scale(<span class="kw-2">&amp;</span><span class="self">self</span>, elm: F) -&gt; <span class="self">Self</span>;
+<a href=#17 id=17 data-nosnippet>17</a>
+<a href=#18 id=18 data-nosnippet>18</a>    <span class="doccomment">/// Shifts all the coefficients to the right.
+<a href=#19 id=19 data-nosnippet>19</a>    </span><span class="kw">fn </span>shiftr(<span class="kw-2">&amp;</span><span class="self">self</span>, size: usize) -&gt; <span class="self">Self</span>;
+<a href=#20 id=20 data-nosnippet>20</a>
+<a href=#21 id=21 data-nosnippet>21</a>    <span class="doccomment">/// `eval_polynomial(coeffs, x)` evaluates a polynomial given its coefficients `coeffs` and a point `x`.
+<a href=#22 id=22 data-nosnippet>22</a>    </span><span class="kw">fn </span>eval_polynomial(coeffs: <span class="kw-2">&amp;</span>[F], x: F) -&gt; F;
+<a href=#23 id=23 data-nosnippet>23</a>
+<a href=#24 id=24 data-nosnippet>24</a>    <span class="doccomment">/// Convert a polynomial into chunks.
+<a href=#25 id=25 data-nosnippet>25</a>    /// Implementors must ensure that the result contains exactly num_chunks.
+<a href=#26 id=26 data-nosnippet>26</a>    </span><span class="kw">fn </span>to_chunked_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>, num_chunks: usize, size: usize) -&gt; ChunkedPolynomial&lt;F&gt;;
+<a href=#27 id=27 data-nosnippet>27</a>}
+<a href=#28 id=28 data-nosnippet>28</a>
+<a href=#29 id=29 data-nosnippet>29</a><span class="kw">impl</span>&lt;F: Field&gt; ExtendedDensePolynomial&lt;F&gt; <span class="kw">for </span>DensePolynomial&lt;F&gt; {
+<a href=#30 id=30 data-nosnippet>30</a>    <span class="kw">fn </span>scale(<span class="kw-2">&amp;</span><span class="self">self</span>, elm: F) -&gt; <span class="self">Self </span>{
+<a href=#31 id=31 data-nosnippet>31</a>        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="self">self</span>.clone();
+<a href=#32 id=32 data-nosnippet>32</a>        result
+<a href=#33 id=33 data-nosnippet>33</a>            .coeffs
+<a href=#34 id=34 data-nosnippet>34</a>            .par_iter_mut()
+<a href=#35 id=35 data-nosnippet>35</a>            .for_each(|coeff: <span class="kw-2">&amp;mut </span>F| <span class="kw-2">*</span>coeff <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>elm);
+<a href=#36 id=36 data-nosnippet>36</a>        result
+<a href=#37 id=37 data-nosnippet>37</a>    }
+<a href=#38 id=38 data-nosnippet>38</a>
+<a href=#39 id=39 data-nosnippet>39</a>    <span class="kw">fn </span>shiftr(<span class="kw-2">&amp;</span><span class="self">self</span>, size: usize) -&gt; <span class="self">Self </span>{
+<a href=#40 id=40 data-nosnippet>40</a>        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="macro">vec!</span>[F::zero(); size];
+<a href=#41 id=41 data-nosnippet>41</a>        result.extend(<span class="self">self</span>.coeffs.clone());
+<a href=#42 id=42 data-nosnippet>42</a>        DensePolynomial::&lt;F&gt;::from_coefficients_vec(result)
+<a href=#43 id=43 data-nosnippet>43</a>    }
+<a href=#44 id=44 data-nosnippet>44</a>
+<a href=#45 id=45 data-nosnippet>45</a>    <span class="kw">fn </span>eval_polynomial(coeffs: <span class="kw-2">&amp;</span>[F], x: F) -&gt; F {
+<a href=#46 id=46 data-nosnippet>46</a>        DensePolynomial::from_coefficients_slice(coeffs).evaluate(<span class="kw-2">&amp;</span>x)
+<a href=#47 id=47 data-nosnippet>47</a>    }
+<a href=#48 id=48 data-nosnippet>48</a>
+<a href=#49 id=49 data-nosnippet>49</a>    <span class="kw">fn </span>to_chunked_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>, num_chunks: usize, chunk_size: usize) -&gt; ChunkedPolynomial&lt;F&gt; {
+<a href=#50 id=50 data-nosnippet>50</a>        <span class="kw">let </span><span class="kw-2">mut </span>chunk_polys: Vec&lt;DensePolynomial&lt;F&gt;&gt; = Vec::with_capacity(num_chunks);
+<a href=#51 id=51 data-nosnippet>51</a>        <span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.coeffs.chunks(chunk_size) {
+<a href=#52 id=52 data-nosnippet>52</a>            chunk_polys.push(DensePolynomial::from_coefficients_slice(chunk));
+<a href=#53 id=53 data-nosnippet>53</a>        }
+<a href=#54 id=54 data-nosnippet>54</a>
+<a href=#55 id=55 data-nosnippet>55</a>        <span class="comment">// Pad unused chunks with zeros.
+<a href=#56 id=56 data-nosnippet>56</a>        </span><span class="kw">for _ in </span>chunk_polys.len()..num_chunks {
+<a href=#57 id=57 data-nosnippet>57</a>            chunk_polys.push(DensePolynomial::from_coefficients_vec(<span class="macro">vec!</span>[]));
+<a href=#58 id=58 data-nosnippet>58</a>        }
+<a href=#59 id=59 data-nosnippet>59</a>
+<a href=#60 id=60 data-nosnippet>60</a>        <span class="comment">// Ensuring that the number of chunks is the one requested, following
+<a href=#61 id=61 data-nosnippet>61</a>        // trait documentation
+<a href=#62 id=62 data-nosnippet>62</a>        </span><span class="macro">assert_eq!</span>(chunk_polys.len(), num_chunks);
+<a href=#63 id=63 data-nosnippet>63</a>
+<a href=#64 id=64 data-nosnippet>64</a>        ChunkedPolynomial {
+<a href=#65 id=65 data-nosnippet>65</a>            polys: chunk_polys,
+<a href=#66 id=66 data-nosnippet>66</a>            size: chunk_size,
+<a href=#67 id=67 data-nosnippet>67</a>        }
+<a href=#68 id=68 data-nosnippet>68</a>    }
+<a href=#69 id=69 data-nosnippet>69</a>}</code></pre></div></section></main></body></html>

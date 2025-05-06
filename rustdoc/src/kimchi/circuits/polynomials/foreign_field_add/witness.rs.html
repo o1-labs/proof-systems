@@ -1,623 +1,311 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_add/witness.rs`."><title>witness.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../../../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../../../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
-<a href="#2" id="2">2</a>
-<a href="#3" id="3">3</a>
-<a href="#4" id="4">4</a>
-<a href="#5" id="5">5</a>
-<a href="#6" id="6">6</a>
-<a href="#7" id="7">7</a>
-<a href="#8" id="8">8</a>
-<a href="#9" id="9">9</a>
-<a href="#10" id="10">10</a>
-<a href="#11" id="11">11</a>
-<a href="#12" id="12">12</a>
-<a href="#13" id="13">13</a>
-<a href="#14" id="14">14</a>
-<a href="#15" id="15">15</a>
-<a href="#16" id="16">16</a>
-<a href="#17" id="17">17</a>
-<a href="#18" id="18">18</a>
-<a href="#19" id="19">19</a>
-<a href="#20" id="20">20</a>
-<a href="#21" id="21">21</a>
-<a href="#22" id="22">22</a>
-<a href="#23" id="23">23</a>
-<a href="#24" id="24">24</a>
-<a href="#25" id="25">25</a>
-<a href="#26" id="26">26</a>
-<a href="#27" id="27">27</a>
-<a href="#28" id="28">28</a>
-<a href="#29" id="29">29</a>
-<a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a>
-<a href="#35" id="35">35</a>
-<a href="#36" id="36">36</a>
-<a href="#37" id="37">37</a>
-<a href="#38" id="38">38</a>
-<a href="#39" id="39">39</a>
-<a href="#40" id="40">40</a>
-<a href="#41" id="41">41</a>
-<a href="#42" id="42">42</a>
-<a href="#43" id="43">43</a>
-<a href="#44" id="44">44</a>
-<a href="#45" id="45">45</a>
-<a href="#46" id="46">46</a>
-<a href="#47" id="47">47</a>
-<a href="#48" id="48">48</a>
-<a href="#49" id="49">49</a>
-<a href="#50" id="50">50</a>
-<a href="#51" id="51">51</a>
-<a href="#52" id="52">52</a>
-<a href="#53" id="53">53</a>
-<a href="#54" id="54">54</a>
-<a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a>
-<a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a>
-<a href="#60" id="60">60</a>
-<a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a>
-<a href="#63" id="63">63</a>
-<a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
-<a href="#66" id="66">66</a>
-<a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
-<a href="#71" id="71">71</a>
-<a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a>
-<a href="#74" id="74">74</a>
-<a href="#75" id="75">75</a>
-<a href="#76" id="76">76</a>
-<a href="#77" id="77">77</a>
-<a href="#78" id="78">78</a>
-<a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a>
-<a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
-<a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
-<a href="#234" id="234">234</a>
-<a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
-<a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
-<a href="#241" id="241">241</a>
-<a href="#242" id="242">242</a>
-<a href="#243" id="243">243</a>
-<a href="#244" id="244">244</a>
-<a href="#245" id="245">245</a>
-<a href="#246" id="246">246</a>
-<a href="#247" id="247">247</a>
-<a href="#248" id="248">248</a>
-<a href="#249" id="249">249</a>
-<a href="#250" id="250">250</a>
-<a href="#251" id="251">251</a>
-<a href="#252" id="252">252</a>
-<a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! This module computes the witness of a foreign field addition circuit.
-
-</span><span class="kw">use crate</span>::{
-    circuits::{
-        expr::constraints::compact_limb,
-        polynomial::COLUMNS,
-        polynomials::foreign_field_common::{
-            BigUintForeignFieldHelpers, KimchiForeignElement, HI, LIMB_BITS, LO, MI,
-        },
-        witness::{<span class="self">self</span>, ConstantCell, VariableCell, Variables, WitnessCell},
-    },
-    variable_map,
-};
-<span class="kw">use </span>ark_ff::PrimeField;
-<span class="kw">use </span>core::array;
-<span class="kw">use </span>num_bigint::BigUint;
-<span class="kw">use </span>o1_utils::foreign_field::{ForeignElement, ForeignFieldHelpers};
-
-<span class="doccomment">/// All foreign field operations allowed
-</span><span class="attr">#[derive(PartialEq, Eq, Debug, Copy, Clone)]
-</span><span class="kw">pub enum </span>FFOps {
-    <span class="doccomment">/// Addition
-    </span>Add,
-    <span class="doccomment">/// Subtraction
-    </span>Sub,
-}
-
-<span class="doccomment">/// Implementation of the FFOps enum
-</span><span class="kw">impl </span>FFOps {
-    <span class="doccomment">/// Returns the sign of the operation as a field element
-    </span><span class="kw">pub fn </span>sign&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
-        <span class="kw">match </span><span class="self">self </span>{
-            FFOps::Add =&gt; F::one(),
-            FFOps::Sub =&gt; -F::one(),
-        }
-    }
-}
-
-<span class="comment">// Given a left and right inputs to an addition or subtraction, and a modulus, it computes
-// all necessary values needed for the witness layout. Meaning, it returns an [FFAddValues] instance
-// - the result of the addition/subtraction as a ForeignElement
-// - the sign of the operation
-// - the overflow flag
-// - the carry value
-</span><span class="kw">fn </span>compute_ffadd_values&lt;F: PrimeField&gt;(
-    left_input: <span class="kw-2">&amp;</span>ForeignElement&lt;F, LIMB_BITS, <span class="number">3</span>&gt;,
-    right_input: <span class="kw-2">&amp;</span>ForeignElement&lt;F, LIMB_BITS, <span class="number">4</span>&gt;,
-    opcode: FFOps,
-    foreign_modulus: <span class="kw-2">&amp;</span>ForeignElement&lt;F, LIMB_BITS, <span class="number">3</span>&gt;,
-) -&gt; (ForeignElement&lt;F, LIMB_BITS, <span class="number">3</span>&gt;, F, F, F) {
-    <span class="comment">// Compute bigint version of the inputs
-    </span><span class="kw">let </span>left = left_input.to_biguint();
-    <span class="kw">let </span>right = right_input.to_biguint();
-
-    <span class="comment">// Clarification:
-    </span><span class="kw">let </span>right_hi = right_input[<span class="number">3</span>] * KimchiForeignElement::&lt;F&gt;::two_to_limb() + right_input[HI]; <span class="comment">// This allows to store 2^88 in the high limb
-
-    </span><span class="kw">let </span>modulus = foreign_modulus.to_biguint();
-
-    <span class="comment">// Addition or subtraction
-    </span><span class="kw">let </span>sign = <span class="kw">if </span>opcode == FFOps::Add {
-        F::one()
-    } <span class="kw">else </span>{
-        -F::one()
-    };
-
-    <span class="comment">// Overflow if addition and greater than modulus or
-    // underflow if subtraction and less than zero
-    </span><span class="kw">let </span>has_overflow = <span class="kw">if </span>opcode == FFOps::Add {
-        left.clone() + right.clone() &gt;= modulus
-    } <span class="kw">else </span>{
-        left &lt; right
-    };
-
-    <span class="comment">// 0 for no overflow
-    // -1 for underflow
-    // +1 for overflow
-    </span><span class="kw">let </span>field_overflow = <span class="kw">if </span>has_overflow { sign } <span class="kw">else </span>{ F::zero() };
-
-    <span class="comment">// Compute the result
-    // result = left + sign * right - field_overflow * modulus
-    // TODO: unluckily, we cannot do it in one line if we keep these types, because one
-    //       cannot combine field elements and biguints in the same operation automatically
-    </span><span class="kw">let </span>result = ForeignElement::from_biguint({
-        <span class="kw">if </span>opcode == FFOps::Add {
-            <span class="kw">if </span>!has_overflow {
-                <span class="comment">// normal addition
-                </span>left + right
-            } <span class="kw">else </span>{
-                <span class="comment">// overflow
-                </span>left + right - modulus
-            }
-        } <span class="kw">else if </span>opcode == FFOps::Sub {
-            <span class="kw">if </span>!has_overflow {
-                <span class="comment">// normal subtraction
-                </span>left - right
-            } <span class="kw">else </span>{
-                <span class="comment">// underflow
-                </span>modulus + left - right
-            }
-        } <span class="kw">else </span>{
-            <span class="macro">unreachable!</span>()
-        }
-    });
-
-    <span class="comment">// c = [ (a1 * 2^88 + a0) + s * (b1 * 2^88 + b0) - q * (f1 * 2^88 + f0) - (r1 * 2^88 + r0) ] / 2^176
-    //  &lt;=&gt;
-    // c = r2 - a2 - s*b2 + q*f2
-
-    </span><span class="kw">let </span>carry_bot: F = (compact_limb(<span class="kw-2">&amp;</span>left_input[LO], <span class="kw-2">&amp;</span>left_input[MI])
-        + compact_limb(<span class="kw-2">&amp;</span>right_input[LO], <span class="kw-2">&amp;</span>right_input[MI]) * sign
-        - compact_limb(<span class="kw-2">&amp;</span>foreign_modulus[LO], <span class="kw-2">&amp;</span>foreign_modulus[MI]) * field_overflow
-        - compact_limb(<span class="kw-2">&amp;</span>result[LO], <span class="kw-2">&amp;</span>result[MI]))
-        / KimchiForeignElement::&lt;F&gt;::two_to_2limb();
-
-    <span class="kw">let </span>carry_top: F =
-        result[HI] - left_input[HI] - sign * right_hi + field_overflow * foreign_modulus[HI];
-
-    <span class="comment">// Check that both ways of computing the carry value are equal
-    </span><span class="macro">assert_eq!</span>(carry_top, carry_bot);
-
-    (result, sign, field_overflow, carry_bot)
-}
-
-<span class="doccomment">/// Creates a FFAdd witness (including `ForeignFieldAdd` rows, and one final `ForeignFieldAdd` row for bound)
-/// inputs: list of all inputs to the chain of additions/subtractions
-/// opcode: true for addition, false for subtraction
-/// modulus: modulus of the foreign field
-</span><span class="kw">pub fn </span>create_chain&lt;F: PrimeField&gt;(
-    inputs: <span class="kw-2">&amp;</span>[BigUint],
-    opcodes: <span class="kw-2">&amp;</span>[FFOps],
-    modulus: BigUint,
-) -&gt; [Vec&lt;F&gt;; COLUMNS] {
-    <span class="kw">if </span>modulus &gt; BigUint::max_foreign_field_modulus::&lt;F&gt;() {
-        <span class="macro">panic!</span>(
-            <span class="string">&quot;foreign_field_modulus exceeds maximum: {} &gt; {}&quot;</span>,
-            modulus,
-            BigUint::max_foreign_field_modulus::&lt;F&gt;()
-        );
-    }
-
-    <span class="kw">let </span>num = inputs.len() - <span class="number">1</span>; <span class="comment">// number of chained additions
-
-    // make sure there are as many operands as operations
-    </span><span class="macro">assert_eq!</span>(opcodes.len(), num);
-
-    <span class="comment">// Make sure that the inputs are smaller than the modulus just in case
-    </span><span class="kw">let </span>inputs: Vec&lt;BigUint&gt; = inputs.iter().map(|input| input % modulus.clone()).collect();
-
-    <span class="kw">let </span><span class="kw-2">mut </span>witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
-
-    <span class="kw">let </span>foreign_modulus = ForeignElement::from_biguint(modulus);
-
-    <span class="kw">let </span><span class="kw-2">mut </span>left = ForeignElement::from_biguint(inputs[<span class="number">0</span>].clone());
-
-    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num {
-        <span class="comment">// Create foreign field addition row
-        </span><span class="kw">for </span>w <span class="kw">in </span><span class="kw-2">&amp;mut </span>witness {
-            w.extend(core::iter::repeat(F::zero()).take(<span class="number">1</span>));
-        }
-        <span class="kw">let </span>right = ForeignElement::from_biguint(inputs[i + <span class="number">1</span>].clone());
-        <span class="kw">let </span>(output, _sign, ovf, carry) =
-            compute_ffadd_values(<span class="kw-2">&amp;</span>left, <span class="kw-2">&amp;</span>right, opcodes[i], <span class="kw-2">&amp;</span>foreign_modulus);
-        init_ffadd_row(
-            <span class="kw-2">&amp;mut </span>witness,
-            i,
-            left.limbs,
-            [right[LO], right[MI], right[HI]],
-            ovf,
-            carry,
-        );
-        left = output; <span class="comment">// output is next left input
-    </span>}
-
-    extend_witness_bound_addition(<span class="kw-2">&amp;mut </span>witness, <span class="kw-2">&amp;</span>left.limbs, <span class="kw-2">&amp;</span>foreign_modulus.limbs);
-
-    witness
-}
-
-<span class="kw">fn </span>init_ffadd_row&lt;F: PrimeField&gt;(
-    witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
-    offset: usize,
-    left: [F; <span class="number">3</span>],
-    right: [F; <span class="number">3</span>],
-    overflow: F,
-    carry: F,
-) {
-    <span class="kw">let </span>layout: [Vec&lt;Box&lt;<span class="kw">dyn </span>WitnessCell&lt;F&gt;&gt;&gt;; <span class="number">1</span>] = [
-        <span class="comment">// ForeignFieldAdd row
-        </span><span class="macro">vec!</span>[
-            VariableCell::create(<span class="string">&quot;left_lo&quot;</span>),
-            VariableCell::create(<span class="string">&quot;left_mi&quot;</span>),
-            VariableCell::create(<span class="string">&quot;left_hi&quot;</span>),
-            VariableCell::create(<span class="string">&quot;right_lo&quot;</span>),
-            VariableCell::create(<span class="string">&quot;right_mi&quot;</span>),
-            VariableCell::create(<span class="string">&quot;right_hi&quot;</span>),
-            VariableCell::create(<span class="string">&quot;overflow&quot;</span>), <span class="comment">// field_overflow
-            </span>VariableCell::create(<span class="string">&quot;carry&quot;</span>),    <span class="comment">// carry bit
-            </span>ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-        ],
-    ];
-
-    witness::init(
-        witness,
-        offset,
-        <span class="kw-2">&amp;</span>layout,
-        <span class="kw-2">&amp;</span><span class="macro">variable_map!</span>[<span class="string">&quot;left_lo&quot; </span>=&gt; left[LO], <span class="string">&quot;left_mi&quot; </span>=&gt; left[MI], <span class="string">&quot;left_hi&quot; </span>=&gt; left[HI], <span class="string">&quot;right_lo&quot; </span>=&gt; right[LO], <span class="string">&quot;right_mi&quot; </span>=&gt; right[MI], <span class="string">&quot;right_hi&quot; </span>=&gt; right[HI], <span class="string">&quot;overflow&quot; </span>=&gt; overflow, <span class="string">&quot;carry&quot; </span>=&gt; carry],
-    );
-}
-
-<span class="kw">fn </span>init_bound_rows&lt;F: PrimeField&gt;(
-    witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
-    offset: usize,
-    result: <span class="kw-2">&amp;</span>[F; <span class="number">3</span>],
-    bound: <span class="kw-2">&amp;</span>[F; <span class="number">3</span>],
-    carry: <span class="kw-2">&amp;</span>F,
-) {
-    <span class="kw">let </span>layout: [Vec&lt;Box&lt;<span class="kw">dyn </span>WitnessCell&lt;F&gt;&gt;&gt;; <span class="number">2</span>] = [
-        <span class="macro">vec!</span>[
-            <span class="comment">// ForeignFieldAdd row
-            </span>VariableCell::create(<span class="string">&quot;result_lo&quot;</span>),
-            VariableCell::create(<span class="string">&quot;result_mi&quot;</span>),
-            VariableCell::create(<span class="string">&quot;result_hi&quot;</span>),
-            ConstantCell::create(F::zero()), <span class="comment">// 0
-            </span>ConstantCell::create(F::zero()), <span class="comment">// 0
-            </span>ConstantCell::create(KimchiForeignElement::&lt;F&gt;::two_to_limb()), <span class="comment">// 2^88
-            </span>ConstantCell::create(F::one()),  <span class="comment">// field_overflow
-            </span>VariableCell::create(<span class="string">&quot;carry&quot;</span>),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-        ],
-        <span class="macro">vec!</span>[
-            <span class="comment">// Zero Row
-            </span>VariableCell::create(<span class="string">&quot;bound_lo&quot;</span>),
-            VariableCell::create(<span class="string">&quot;bound_mi&quot;</span>),
-            VariableCell::create(<span class="string">&quot;bound_hi&quot;</span>),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-        ],
-    ];
-
-    witness::init(
-        witness,
-        offset,
-        <span class="kw-2">&amp;</span>layout,
-        <span class="kw-2">&amp;</span><span class="macro">variable_map!</span>[<span class="string">&quot;carry&quot; </span>=&gt; <span class="kw-2">*</span>carry, <span class="string">&quot;result_lo&quot; </span>=&gt; result[LO], <span class="string">&quot;result_mi&quot; </span>=&gt; result[MI], <span class="string">&quot;result_hi&quot; </span>=&gt; result[HI], <span class="string">&quot;bound_lo&quot; </span>=&gt; bound[LO], <span class="string">&quot;bound_mi&quot; </span>=&gt; bound[MI], <span class="string">&quot;bound_hi&quot; </span>=&gt; bound[HI]],
-    );
-}
-
-<span class="doccomment">/// Create witness for bound computation addition gate
-</span><span class="kw">pub fn </span>extend_witness_bound_addition&lt;F: PrimeField&gt;(
-    witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
-    limbs: <span class="kw-2">&amp;</span>[F; <span class="number">3</span>],
-    foreign_field_modulus: <span class="kw-2">&amp;</span>[F; <span class="number">3</span>],
-) {
-    <span class="comment">// Convert to types used by this module
-    </span><span class="kw">let </span>fe = ForeignElement::&lt;F, LIMB_BITS, <span class="number">3</span>&gt;::new(<span class="kw-2">*</span>limbs);
-    <span class="kw">let </span>foreign_field_modulus = ForeignElement::&lt;F, LIMB_BITS, <span class="number">3</span>&gt;::new(<span class="kw-2">*</span>foreign_field_modulus);
-    <span class="kw">if </span>foreign_field_modulus.to_biguint() &gt; BigUint::max_foreign_field_modulus::&lt;F&gt;() {
-        <span class="macro">panic!</span>(
-            <span class="string">&quot;foreign_field_modulus exceeds maximum: {} &gt; {}&quot;</span>,
-            foreign_field_modulus.to_biguint(),
-            BigUint::max_foreign_field_modulus::&lt;F&gt;()
-        );
-    }
-
-    <span class="comment">// Compute values for final bound check, needs a 4 limb right input
-    </span><span class="kw">let </span>right_input = ForeignElement::&lt;F, LIMB_BITS, <span class="number">4</span>&gt;::from_biguint(BigUint::binary_modulus());
-
-    <span class="comment">// Compute the bound and related witness data
-    </span><span class="kw">let </span>(bound_output, bound_sign, bound_ovf, bound_carry) =
-        compute_ffadd_values(<span class="kw-2">&amp;</span>fe, <span class="kw-2">&amp;</span>right_input, FFOps::Add, <span class="kw-2">&amp;</span>foreign_field_modulus);
-    <span class="comment">// Make sure they have the right value
-    </span><span class="macro">assert_eq!</span>(bound_sign, F::one());
-    <span class="macro">assert_eq!</span>(bound_ovf, F::one());
-
-    <span class="comment">// Extend the witness for the add gate
-    </span><span class="kw">let </span>offset = witness[<span class="number">0</span>].len();
-    <span class="kw">for </span>col <span class="kw">in </span>witness.iter_mut().take(COLUMNS) {
-        col.extend(core::iter::repeat(F::zero()).take(<span class="number">2</span>))
-    }
-
-    init_bound_rows(
-        witness,
-        offset,
-        <span class="kw-2">&amp;</span>fe.limbs,
-        <span class="kw-2">&amp;</span>bound_output.limbs,
-        <span class="kw-2">&amp;</span>bound_carry,
-    );
-}
-</code></pre></div></section></main></body></html>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_add/witness.rs`."><title>witness.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-20739d33.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.88.0-nightly (2e6882ac5 2025-05-05)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../../../../static.files/storage-4e99c027.js"></script><script defer src="../../../../../static.files/src-script-63605ae7.js"></script><script defer src="../../../../../src-files.js"></script><script defer src="../../../../../static.files/main-7ef8a74a.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi/circuits/polynomials/foreign_field_add/</div>witness.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module computes the witness of a foreign field addition circuit.
+<a href=#2 id=2 data-nosnippet>2</a>
+<a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use crate</span>::{
+<a href=#4 id=4 data-nosnippet>4</a>    circuits::{
+<a href=#5 id=5 data-nosnippet>5</a>        expr::constraints::compact_limb,
+<a href=#6 id=6 data-nosnippet>6</a>        polynomial::COLUMNS,
+<a href=#7 id=7 data-nosnippet>7</a>        polynomials::foreign_field_common::{
+<a href=#8 id=8 data-nosnippet>8</a>            BigUintForeignFieldHelpers, KimchiForeignElement, HI, LIMB_BITS, LO, MI,
+<a href=#9 id=9 data-nosnippet>9</a>        },
+<a href=#10 id=10 data-nosnippet>10</a>        witness::{<span class="self">self</span>, ConstantCell, VariableCell, Variables, WitnessCell},
+<a href=#11 id=11 data-nosnippet>11</a>    },
+<a href=#12 id=12 data-nosnippet>12</a>    variable_map,
+<a href=#13 id=13 data-nosnippet>13</a>};
+<a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span>ark_ff::PrimeField;
+<a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span>core::array;
+<a href=#16 id=16 data-nosnippet>16</a><span class="kw">use </span>num_bigint::BigUint;
+<a href=#17 id=17 data-nosnippet>17</a><span class="kw">use </span>o1_utils::foreign_field::{ForeignElement, ForeignFieldHelpers};
+<a href=#18 id=18 data-nosnippet>18</a>
+<a href=#19 id=19 data-nosnippet>19</a><span class="doccomment">/// All foreign field operations allowed
+<a href=#20 id=20 data-nosnippet>20</a></span><span class="attr">#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+<a href=#21 id=21 data-nosnippet>21</a></span><span class="kw">pub enum </span>FFOps {
+<a href=#22 id=22 data-nosnippet>22</a>    <span class="doccomment">/// Addition
+<a href=#23 id=23 data-nosnippet>23</a>    </span>Add,
+<a href=#24 id=24 data-nosnippet>24</a>    <span class="doccomment">/// Subtraction
+<a href=#25 id=25 data-nosnippet>25</a>    </span>Sub,
+<a href=#26 id=26 data-nosnippet>26</a>}
+<a href=#27 id=27 data-nosnippet>27</a>
+<a href=#28 id=28 data-nosnippet>28</a><span class="doccomment">/// Implementation of the FFOps enum
+<a href=#29 id=29 data-nosnippet>29</a></span><span class="kw">impl </span>FFOps {
+<a href=#30 id=30 data-nosnippet>30</a>    <span class="doccomment">/// Returns the sign of the operation as a field element
+<a href=#31 id=31 data-nosnippet>31</a>    </span><span class="kw">pub fn </span>sign&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+<a href=#32 id=32 data-nosnippet>32</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#33 id=33 data-nosnippet>33</a>            FFOps::Add =&gt; F::one(),
+<a href=#34 id=34 data-nosnippet>34</a>            FFOps::Sub =&gt; -F::one(),
+<a href=#35 id=35 data-nosnippet>35</a>        }
+<a href=#36 id=36 data-nosnippet>36</a>    }
+<a href=#37 id=37 data-nosnippet>37</a>}
+<a href=#38 id=38 data-nosnippet>38</a>
+<a href=#39 id=39 data-nosnippet>39</a><span class="comment">// Given a left and right inputs to an addition or subtraction, and a modulus, it computes
+<a href=#40 id=40 data-nosnippet>40</a>// all necessary values needed for the witness layout. Meaning, it returns an [FFAddValues] instance
+<a href=#41 id=41 data-nosnippet>41</a>// - the result of the addition/subtraction as a ForeignElement
+<a href=#42 id=42 data-nosnippet>42</a>// - the sign of the operation
+<a href=#43 id=43 data-nosnippet>43</a>// - the overflow flag
+<a href=#44 id=44 data-nosnippet>44</a>// - the carry value
+<a href=#45 id=45 data-nosnippet>45</a></span><span class="kw">fn </span>compute_ffadd_values&lt;F: PrimeField&gt;(
+<a href=#46 id=46 data-nosnippet>46</a>    left_input: <span class="kw-2">&amp;</span>ForeignElement&lt;F, LIMB_BITS, <span class="number">3</span>&gt;,
+<a href=#47 id=47 data-nosnippet>47</a>    right_input: <span class="kw-2">&amp;</span>ForeignElement&lt;F, LIMB_BITS, <span class="number">4</span>&gt;,
+<a href=#48 id=48 data-nosnippet>48</a>    opcode: FFOps,
+<a href=#49 id=49 data-nosnippet>49</a>    foreign_modulus: <span class="kw-2">&amp;</span>ForeignElement&lt;F, LIMB_BITS, <span class="number">3</span>&gt;,
+<a href=#50 id=50 data-nosnippet>50</a>) -&gt; (ForeignElement&lt;F, LIMB_BITS, <span class="number">3</span>&gt;, F, F, F) {
+<a href=#51 id=51 data-nosnippet>51</a>    <span class="comment">// Compute bigint version of the inputs
+<a href=#52 id=52 data-nosnippet>52</a>    </span><span class="kw">let </span>left = left_input.to_biguint();
+<a href=#53 id=53 data-nosnippet>53</a>    <span class="kw">let </span>right = right_input.to_biguint();
+<a href=#54 id=54 data-nosnippet>54</a>
+<a href=#55 id=55 data-nosnippet>55</a>    <span class="comment">// Clarification:
+<a href=#56 id=56 data-nosnippet>56</a>    </span><span class="kw">let </span>right_hi = right_input[<span class="number">3</span>] * KimchiForeignElement::&lt;F&gt;::two_to_limb() + right_input[HI]; <span class="comment">// This allows to store 2^88 in the high limb
+<a href=#57 id=57 data-nosnippet>57</a>
+<a href=#58 id=58 data-nosnippet>58</a>    </span><span class="kw">let </span>modulus = foreign_modulus.to_biguint();
+<a href=#59 id=59 data-nosnippet>59</a>
+<a href=#60 id=60 data-nosnippet>60</a>    <span class="comment">// Addition or subtraction
+<a href=#61 id=61 data-nosnippet>61</a>    </span><span class="kw">let </span>sign = <span class="kw">if </span>opcode == FFOps::Add {
+<a href=#62 id=62 data-nosnippet>62</a>        F::one()
+<a href=#63 id=63 data-nosnippet>63</a>    } <span class="kw">else </span>{
+<a href=#64 id=64 data-nosnippet>64</a>        -F::one()
+<a href=#65 id=65 data-nosnippet>65</a>    };
+<a href=#66 id=66 data-nosnippet>66</a>
+<a href=#67 id=67 data-nosnippet>67</a>    <span class="comment">// Overflow if addition and greater than modulus or
+<a href=#68 id=68 data-nosnippet>68</a>    // underflow if subtraction and less than zero
+<a href=#69 id=69 data-nosnippet>69</a>    </span><span class="kw">let </span>has_overflow = <span class="kw">if </span>opcode == FFOps::Add {
+<a href=#70 id=70 data-nosnippet>70</a>        left.clone() + right.clone() &gt;= modulus
+<a href=#71 id=71 data-nosnippet>71</a>    } <span class="kw">else </span>{
+<a href=#72 id=72 data-nosnippet>72</a>        left &lt; right
+<a href=#73 id=73 data-nosnippet>73</a>    };
+<a href=#74 id=74 data-nosnippet>74</a>
+<a href=#75 id=75 data-nosnippet>75</a>    <span class="comment">// 0 for no overflow
+<a href=#76 id=76 data-nosnippet>76</a>    // -1 for underflow
+<a href=#77 id=77 data-nosnippet>77</a>    // +1 for overflow
+<a href=#78 id=78 data-nosnippet>78</a>    </span><span class="kw">let </span>field_overflow = <span class="kw">if </span>has_overflow { sign } <span class="kw">else </span>{ F::zero() };
+<a href=#79 id=79 data-nosnippet>79</a>
+<a href=#80 id=80 data-nosnippet>80</a>    <span class="comment">// Compute the result
+<a href=#81 id=81 data-nosnippet>81</a>    // result = left + sign * right - field_overflow * modulus
+<a href=#82 id=82 data-nosnippet>82</a>    // TODO: unluckily, we cannot do it in one line if we keep these types, because one
+<a href=#83 id=83 data-nosnippet>83</a>    //       cannot combine field elements and biguints in the same operation automatically
+<a href=#84 id=84 data-nosnippet>84</a>    </span><span class="kw">let </span>result = ForeignElement::from_biguint({
+<a href=#85 id=85 data-nosnippet>85</a>        <span class="kw">if </span>opcode == FFOps::Add {
+<a href=#86 id=86 data-nosnippet>86</a>            <span class="kw">if </span>!has_overflow {
+<a href=#87 id=87 data-nosnippet>87</a>                <span class="comment">// normal addition
+<a href=#88 id=88 data-nosnippet>88</a>                </span>left + right
+<a href=#89 id=89 data-nosnippet>89</a>            } <span class="kw">else </span>{
+<a href=#90 id=90 data-nosnippet>90</a>                <span class="comment">// overflow
+<a href=#91 id=91 data-nosnippet>91</a>                </span>left + right - modulus
+<a href=#92 id=92 data-nosnippet>92</a>            }
+<a href=#93 id=93 data-nosnippet>93</a>        } <span class="kw">else if </span>opcode == FFOps::Sub {
+<a href=#94 id=94 data-nosnippet>94</a>            <span class="kw">if </span>!has_overflow {
+<a href=#95 id=95 data-nosnippet>95</a>                <span class="comment">// normal subtraction
+<a href=#96 id=96 data-nosnippet>96</a>                </span>left - right
+<a href=#97 id=97 data-nosnippet>97</a>            } <span class="kw">else </span>{
+<a href=#98 id=98 data-nosnippet>98</a>                <span class="comment">// underflow
+<a href=#99 id=99 data-nosnippet>99</a>                </span>modulus + left - right
+<a href=#100 id=100 data-nosnippet>100</a>            }
+<a href=#101 id=101 data-nosnippet>101</a>        } <span class="kw">else </span>{
+<a href=#102 id=102 data-nosnippet>102</a>            <span class="macro">unreachable!</span>()
+<a href=#103 id=103 data-nosnippet>103</a>        }
+<a href=#104 id=104 data-nosnippet>104</a>    });
+<a href=#105 id=105 data-nosnippet>105</a>
+<a href=#106 id=106 data-nosnippet>106</a>    <span class="comment">// c = [ (a1 * 2^88 + a0) + s * (b1 * 2^88 + b0) - q * (f1 * 2^88 + f0) - (r1 * 2^88 + r0) ] / 2^176
+<a href=#107 id=107 data-nosnippet>107</a>    //  &lt;=&gt;
+<a href=#108 id=108 data-nosnippet>108</a>    // c = r2 - a2 - s*b2 + q*f2
+<a href=#109 id=109 data-nosnippet>109</a>
+<a href=#110 id=110 data-nosnippet>110</a>    </span><span class="kw">let </span>carry_bot: F = (compact_limb(<span class="kw-2">&amp;</span>left_input[LO], <span class="kw-2">&amp;</span>left_input[MI])
+<a href=#111 id=111 data-nosnippet>111</a>        + compact_limb(<span class="kw-2">&amp;</span>right_input[LO], <span class="kw-2">&amp;</span>right_input[MI]) * sign
+<a href=#112 id=112 data-nosnippet>112</a>        - compact_limb(<span class="kw-2">&amp;</span>foreign_modulus[LO], <span class="kw-2">&amp;</span>foreign_modulus[MI]) * field_overflow
+<a href=#113 id=113 data-nosnippet>113</a>        - compact_limb(<span class="kw-2">&amp;</span>result[LO], <span class="kw-2">&amp;</span>result[MI]))
+<a href=#114 id=114 data-nosnippet>114</a>        / KimchiForeignElement::&lt;F&gt;::two_to_2limb();
+<a href=#115 id=115 data-nosnippet>115</a>
+<a href=#116 id=116 data-nosnippet>116</a>    <span class="kw">let </span>carry_top: F =
+<a href=#117 id=117 data-nosnippet>117</a>        result[HI] - left_input[HI] - sign * right_hi + field_overflow * foreign_modulus[HI];
+<a href=#118 id=118 data-nosnippet>118</a>
+<a href=#119 id=119 data-nosnippet>119</a>    <span class="comment">// Check that both ways of computing the carry value are equal
+<a href=#120 id=120 data-nosnippet>120</a>    </span><span class="macro">assert_eq!</span>(carry_top, carry_bot);
+<a href=#121 id=121 data-nosnippet>121</a>
+<a href=#122 id=122 data-nosnippet>122</a>    (result, sign, field_overflow, carry_bot)
+<a href=#123 id=123 data-nosnippet>123</a>}
+<a href=#124 id=124 data-nosnippet>124</a>
+<a href=#125 id=125 data-nosnippet>125</a><span class="doccomment">/// Creates a FFAdd witness (including `ForeignFieldAdd` rows, and one final `ForeignFieldAdd` row for bound)
+<a href=#126 id=126 data-nosnippet>126</a>/// inputs: list of all inputs to the chain of additions/subtractions
+<a href=#127 id=127 data-nosnippet>127</a>/// opcode: true for addition, false for subtraction
+<a href=#128 id=128 data-nosnippet>128</a>/// modulus: modulus of the foreign field
+<a href=#129 id=129 data-nosnippet>129</a></span><span class="kw">pub fn </span>create_chain&lt;F: PrimeField&gt;(
+<a href=#130 id=130 data-nosnippet>130</a>    inputs: <span class="kw-2">&amp;</span>[BigUint],
+<a href=#131 id=131 data-nosnippet>131</a>    opcodes: <span class="kw-2">&amp;</span>[FFOps],
+<a href=#132 id=132 data-nosnippet>132</a>    modulus: BigUint,
+<a href=#133 id=133 data-nosnippet>133</a>) -&gt; [Vec&lt;F&gt;; COLUMNS] {
+<a href=#134 id=134 data-nosnippet>134</a>    <span class="kw">if </span>modulus &gt; BigUint::max_foreign_field_modulus::&lt;F&gt;() {
+<a href=#135 id=135 data-nosnippet>135</a>        <span class="macro">panic!</span>(
+<a href=#136 id=136 data-nosnippet>136</a>            <span class="string">"foreign_field_modulus exceeds maximum: {} &gt; {}"</span>,
+<a href=#137 id=137 data-nosnippet>137</a>            modulus,
+<a href=#138 id=138 data-nosnippet>138</a>            BigUint::max_foreign_field_modulus::&lt;F&gt;()
+<a href=#139 id=139 data-nosnippet>139</a>        );
+<a href=#140 id=140 data-nosnippet>140</a>    }
+<a href=#141 id=141 data-nosnippet>141</a>
+<a href=#142 id=142 data-nosnippet>142</a>    <span class="kw">let </span>num = inputs.len() - <span class="number">1</span>; <span class="comment">// number of chained additions
+<a href=#143 id=143 data-nosnippet>143</a>
+<a href=#144 id=144 data-nosnippet>144</a>    // make sure there are as many operands as operations
+<a href=#145 id=145 data-nosnippet>145</a>    </span><span class="macro">assert_eq!</span>(opcodes.len(), num);
+<a href=#146 id=146 data-nosnippet>146</a>
+<a href=#147 id=147 data-nosnippet>147</a>    <span class="comment">// Make sure that the inputs are smaller than the modulus just in case
+<a href=#148 id=148 data-nosnippet>148</a>    </span><span class="kw">let </span>inputs: Vec&lt;BigUint&gt; = inputs.iter().map(|input| input % modulus.clone()).collect();
+<a href=#149 id=149 data-nosnippet>149</a>
+<a href=#150 id=150 data-nosnippet>150</a>    <span class="kw">let </span><span class="kw-2">mut </span>witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
+<a href=#151 id=151 data-nosnippet>151</a>
+<a href=#152 id=152 data-nosnippet>152</a>    <span class="kw">let </span>foreign_modulus = ForeignElement::from_biguint(modulus);
+<a href=#153 id=153 data-nosnippet>153</a>
+<a href=#154 id=154 data-nosnippet>154</a>    <span class="kw">let </span><span class="kw-2">mut </span>left = ForeignElement::from_biguint(inputs[<span class="number">0</span>].clone());
+<a href=#155 id=155 data-nosnippet>155</a>
+<a href=#156 id=156 data-nosnippet>156</a>    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num {
+<a href=#157 id=157 data-nosnippet>157</a>        <span class="comment">// Create foreign field addition row
+<a href=#158 id=158 data-nosnippet>158</a>        </span><span class="kw">for </span>w <span class="kw">in </span><span class="kw-2">&amp;mut </span>witness {
+<a href=#159 id=159 data-nosnippet>159</a>            w.extend(core::iter::repeat(F::zero()).take(<span class="number">1</span>));
+<a href=#160 id=160 data-nosnippet>160</a>        }
+<a href=#161 id=161 data-nosnippet>161</a>        <span class="kw">let </span>right = ForeignElement::from_biguint(inputs[i + <span class="number">1</span>].clone());
+<a href=#162 id=162 data-nosnippet>162</a>        <span class="kw">let </span>(output, _sign, ovf, carry) =
+<a href=#163 id=163 data-nosnippet>163</a>            compute_ffadd_values(<span class="kw-2">&amp;</span>left, <span class="kw-2">&amp;</span>right, opcodes[i], <span class="kw-2">&amp;</span>foreign_modulus);
+<a href=#164 id=164 data-nosnippet>164</a>        init_ffadd_row(
+<a href=#165 id=165 data-nosnippet>165</a>            <span class="kw-2">&amp;mut </span>witness,
+<a href=#166 id=166 data-nosnippet>166</a>            i,
+<a href=#167 id=167 data-nosnippet>167</a>            left.limbs,
+<a href=#168 id=168 data-nosnippet>168</a>            [right[LO], right[MI], right[HI]],
+<a href=#169 id=169 data-nosnippet>169</a>            ovf,
+<a href=#170 id=170 data-nosnippet>170</a>            carry,
+<a href=#171 id=171 data-nosnippet>171</a>        );
+<a href=#172 id=172 data-nosnippet>172</a>        left = output; <span class="comment">// output is next left input
+<a href=#173 id=173 data-nosnippet>173</a>    </span>}
+<a href=#174 id=174 data-nosnippet>174</a>
+<a href=#175 id=175 data-nosnippet>175</a>    extend_witness_bound_addition(<span class="kw-2">&amp;mut </span>witness, <span class="kw-2">&amp;</span>left.limbs, <span class="kw-2">&amp;</span>foreign_modulus.limbs);
+<a href=#176 id=176 data-nosnippet>176</a>
+<a href=#177 id=177 data-nosnippet>177</a>    witness
+<a href=#178 id=178 data-nosnippet>178</a>}
+<a href=#179 id=179 data-nosnippet>179</a>
+<a href=#180 id=180 data-nosnippet>180</a><span class="kw">fn </span>init_ffadd_row&lt;F: PrimeField&gt;(
+<a href=#181 id=181 data-nosnippet>181</a>    witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
+<a href=#182 id=182 data-nosnippet>182</a>    offset: usize,
+<a href=#183 id=183 data-nosnippet>183</a>    left: [F; <span class="number">3</span>],
+<a href=#184 id=184 data-nosnippet>184</a>    right: [F; <span class="number">3</span>],
+<a href=#185 id=185 data-nosnippet>185</a>    overflow: F,
+<a href=#186 id=186 data-nosnippet>186</a>    carry: F,
+<a href=#187 id=187 data-nosnippet>187</a>) {
+<a href=#188 id=188 data-nosnippet>188</a>    <span class="kw">let </span>layout: [Vec&lt;Box&lt;<span class="kw">dyn </span>WitnessCell&lt;F&gt;&gt;&gt;; <span class="number">1</span>] = [
+<a href=#189 id=189 data-nosnippet>189</a>        <span class="comment">// ForeignFieldAdd row
+<a href=#190 id=190 data-nosnippet>190</a>        </span><span class="macro">vec!</span>[
+<a href=#191 id=191 data-nosnippet>191</a>            VariableCell::create(<span class="string">"left_lo"</span>),
+<a href=#192 id=192 data-nosnippet>192</a>            VariableCell::create(<span class="string">"left_mi"</span>),
+<a href=#193 id=193 data-nosnippet>193</a>            VariableCell::create(<span class="string">"left_hi"</span>),
+<a href=#194 id=194 data-nosnippet>194</a>            VariableCell::create(<span class="string">"right_lo"</span>),
+<a href=#195 id=195 data-nosnippet>195</a>            VariableCell::create(<span class="string">"right_mi"</span>),
+<a href=#196 id=196 data-nosnippet>196</a>            VariableCell::create(<span class="string">"right_hi"</span>),
+<a href=#197 id=197 data-nosnippet>197</a>            VariableCell::create(<span class="string">"overflow"</span>), <span class="comment">// field_overflow
+<a href=#198 id=198 data-nosnippet>198</a>            </span>VariableCell::create(<span class="string">"carry"</span>),    <span class="comment">// carry bit
+<a href=#199 id=199 data-nosnippet>199</a>            </span>ConstantCell::create(F::zero()),
+<a href=#200 id=200 data-nosnippet>200</a>            ConstantCell::create(F::zero()),
+<a href=#201 id=201 data-nosnippet>201</a>            ConstantCell::create(F::zero()),
+<a href=#202 id=202 data-nosnippet>202</a>            ConstantCell::create(F::zero()),
+<a href=#203 id=203 data-nosnippet>203</a>            ConstantCell::create(F::zero()),
+<a href=#204 id=204 data-nosnippet>204</a>            ConstantCell::create(F::zero()),
+<a href=#205 id=205 data-nosnippet>205</a>            ConstantCell::create(F::zero()),
+<a href=#206 id=206 data-nosnippet>206</a>        ],
+<a href=#207 id=207 data-nosnippet>207</a>    ];
+<a href=#208 id=208 data-nosnippet>208</a>
+<a href=#209 id=209 data-nosnippet>209</a>    witness::init(
+<a href=#210 id=210 data-nosnippet>210</a>        witness,
+<a href=#211 id=211 data-nosnippet>211</a>        offset,
+<a href=#212 id=212 data-nosnippet>212</a>        <span class="kw-2">&amp;</span>layout,
+<a href=#213 id=213 data-nosnippet>213</a>        <span class="kw-2">&amp;</span><span class="macro">variable_map!</span>[<span class="string">"left_lo" </span>=&gt; left[LO], <span class="string">"left_mi" </span>=&gt; left[MI], <span class="string">"left_hi" </span>=&gt; left[HI], <span class="string">"right_lo" </span>=&gt; right[LO], <span class="string">"right_mi" </span>=&gt; right[MI], <span class="string">"right_hi" </span>=&gt; right[HI], <span class="string">"overflow" </span>=&gt; overflow, <span class="string">"carry" </span>=&gt; carry],
+<a href=#214 id=214 data-nosnippet>214</a>    );
+<a href=#215 id=215 data-nosnippet>215</a>}
+<a href=#216 id=216 data-nosnippet>216</a>
+<a href=#217 id=217 data-nosnippet>217</a><span class="kw">fn </span>init_bound_rows&lt;F: PrimeField&gt;(
+<a href=#218 id=218 data-nosnippet>218</a>    witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
+<a href=#219 id=219 data-nosnippet>219</a>    offset: usize,
+<a href=#220 id=220 data-nosnippet>220</a>    result: <span class="kw-2">&amp;</span>[F; <span class="number">3</span>],
+<a href=#221 id=221 data-nosnippet>221</a>    bound: <span class="kw-2">&amp;</span>[F; <span class="number">3</span>],
+<a href=#222 id=222 data-nosnippet>222</a>    carry: <span class="kw-2">&amp;</span>F,
+<a href=#223 id=223 data-nosnippet>223</a>) {
+<a href=#224 id=224 data-nosnippet>224</a>    <span class="kw">let </span>layout: [Vec&lt;Box&lt;<span class="kw">dyn </span>WitnessCell&lt;F&gt;&gt;&gt;; <span class="number">2</span>] = [
+<a href=#225 id=225 data-nosnippet>225</a>        <span class="macro">vec!</span>[
+<a href=#226 id=226 data-nosnippet>226</a>            <span class="comment">// ForeignFieldAdd row
+<a href=#227 id=227 data-nosnippet>227</a>            </span>VariableCell::create(<span class="string">"result_lo"</span>),
+<a href=#228 id=228 data-nosnippet>228</a>            VariableCell::create(<span class="string">"result_mi"</span>),
+<a href=#229 id=229 data-nosnippet>229</a>            VariableCell::create(<span class="string">"result_hi"</span>),
+<a href=#230 id=230 data-nosnippet>230</a>            ConstantCell::create(F::zero()), <span class="comment">// 0
+<a href=#231 id=231 data-nosnippet>231</a>            </span>ConstantCell::create(F::zero()), <span class="comment">// 0
+<a href=#232 id=232 data-nosnippet>232</a>            </span>ConstantCell::create(KimchiForeignElement::&lt;F&gt;::two_to_limb()), <span class="comment">// 2^88
+<a href=#233 id=233 data-nosnippet>233</a>            </span>ConstantCell::create(F::one()),  <span class="comment">// field_overflow
+<a href=#234 id=234 data-nosnippet>234</a>            </span>VariableCell::create(<span class="string">"carry"</span>),
+<a href=#235 id=235 data-nosnippet>235</a>            ConstantCell::create(F::zero()),
+<a href=#236 id=236 data-nosnippet>236</a>            ConstantCell::create(F::zero()),
+<a href=#237 id=237 data-nosnippet>237</a>            ConstantCell::create(F::zero()),
+<a href=#238 id=238 data-nosnippet>238</a>            ConstantCell::create(F::zero()),
+<a href=#239 id=239 data-nosnippet>239</a>            ConstantCell::create(F::zero()),
+<a href=#240 id=240 data-nosnippet>240</a>            ConstantCell::create(F::zero()),
+<a href=#241 id=241 data-nosnippet>241</a>            ConstantCell::create(F::zero()),
+<a href=#242 id=242 data-nosnippet>242</a>        ],
+<a href=#243 id=243 data-nosnippet>243</a>        <span class="macro">vec!</span>[
+<a href=#244 id=244 data-nosnippet>244</a>            <span class="comment">// Zero Row
+<a href=#245 id=245 data-nosnippet>245</a>            </span>VariableCell::create(<span class="string">"bound_lo"</span>),
+<a href=#246 id=246 data-nosnippet>246</a>            VariableCell::create(<span class="string">"bound_mi"</span>),
+<a href=#247 id=247 data-nosnippet>247</a>            VariableCell::create(<span class="string">"bound_hi"</span>),
+<a href=#248 id=248 data-nosnippet>248</a>            ConstantCell::create(F::zero()),
+<a href=#249 id=249 data-nosnippet>249</a>            ConstantCell::create(F::zero()),
+<a href=#250 id=250 data-nosnippet>250</a>            ConstantCell::create(F::zero()),
+<a href=#251 id=251 data-nosnippet>251</a>            ConstantCell::create(F::zero()),
+<a href=#252 id=252 data-nosnippet>252</a>            ConstantCell::create(F::zero()),
+<a href=#253 id=253 data-nosnippet>253</a>            ConstantCell::create(F::zero()),
+<a href=#254 id=254 data-nosnippet>254</a>            ConstantCell::create(F::zero()),
+<a href=#255 id=255 data-nosnippet>255</a>            ConstantCell::create(F::zero()),
+<a href=#256 id=256 data-nosnippet>256</a>            ConstantCell::create(F::zero()),
+<a href=#257 id=257 data-nosnippet>257</a>            ConstantCell::create(F::zero()),
+<a href=#258 id=258 data-nosnippet>258</a>            ConstantCell::create(F::zero()),
+<a href=#259 id=259 data-nosnippet>259</a>            ConstantCell::create(F::zero()),
+<a href=#260 id=260 data-nosnippet>260</a>        ],
+<a href=#261 id=261 data-nosnippet>261</a>    ];
+<a href=#262 id=262 data-nosnippet>262</a>
+<a href=#263 id=263 data-nosnippet>263</a>    witness::init(
+<a href=#264 id=264 data-nosnippet>264</a>        witness,
+<a href=#265 id=265 data-nosnippet>265</a>        offset,
+<a href=#266 id=266 data-nosnippet>266</a>        <span class="kw-2">&amp;</span>layout,
+<a href=#267 id=267 data-nosnippet>267</a>        <span class="kw-2">&amp;</span><span class="macro">variable_map!</span>[<span class="string">"carry" </span>=&gt; <span class="kw-2">*</span>carry, <span class="string">"result_lo" </span>=&gt; result[LO], <span class="string">"result_mi" </span>=&gt; result[MI], <span class="string">"result_hi" </span>=&gt; result[HI], <span class="string">"bound_lo" </span>=&gt; bound[LO], <span class="string">"bound_mi" </span>=&gt; bound[MI], <span class="string">"bound_hi" </span>=&gt; bound[HI]],
+<a href=#268 id=268 data-nosnippet>268</a>    );
+<a href=#269 id=269 data-nosnippet>269</a>}
+<a href=#270 id=270 data-nosnippet>270</a>
+<a href=#271 id=271 data-nosnippet>271</a><span class="doccomment">/// Create witness for bound computation addition gate
+<a href=#272 id=272 data-nosnippet>272</a></span><span class="kw">pub fn </span>extend_witness_bound_addition&lt;F: PrimeField&gt;(
+<a href=#273 id=273 data-nosnippet>273</a>    witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
+<a href=#274 id=274 data-nosnippet>274</a>    limbs: <span class="kw-2">&amp;</span>[F; <span class="number">3</span>],
+<a href=#275 id=275 data-nosnippet>275</a>    foreign_field_modulus: <span class="kw-2">&amp;</span>[F; <span class="number">3</span>],
+<a href=#276 id=276 data-nosnippet>276</a>) {
+<a href=#277 id=277 data-nosnippet>277</a>    <span class="comment">// Convert to types used by this module
+<a href=#278 id=278 data-nosnippet>278</a>    </span><span class="kw">let </span>fe = ForeignElement::&lt;F, LIMB_BITS, <span class="number">3</span>&gt;::new(<span class="kw-2">*</span>limbs);
+<a href=#279 id=279 data-nosnippet>279</a>    <span class="kw">let </span>foreign_field_modulus = ForeignElement::&lt;F, LIMB_BITS, <span class="number">3</span>&gt;::new(<span class="kw-2">*</span>foreign_field_modulus);
+<a href=#280 id=280 data-nosnippet>280</a>    <span class="kw">if </span>foreign_field_modulus.to_biguint() &gt; BigUint::max_foreign_field_modulus::&lt;F&gt;() {
+<a href=#281 id=281 data-nosnippet>281</a>        <span class="macro">panic!</span>(
+<a href=#282 id=282 data-nosnippet>282</a>            <span class="string">"foreign_field_modulus exceeds maximum: {} &gt; {}"</span>,
+<a href=#283 id=283 data-nosnippet>283</a>            foreign_field_modulus.to_biguint(),
+<a href=#284 id=284 data-nosnippet>284</a>            BigUint::max_foreign_field_modulus::&lt;F&gt;()
+<a href=#285 id=285 data-nosnippet>285</a>        );
+<a href=#286 id=286 data-nosnippet>286</a>    }
+<a href=#287 id=287 data-nosnippet>287</a>
+<a href=#288 id=288 data-nosnippet>288</a>    <span class="comment">// Compute values for final bound check, needs a 4 limb right input
+<a href=#289 id=289 data-nosnippet>289</a>    </span><span class="kw">let </span>right_input = ForeignElement::&lt;F, LIMB_BITS, <span class="number">4</span>&gt;::from_biguint(BigUint::binary_modulus());
+<a href=#290 id=290 data-nosnippet>290</a>
+<a href=#291 id=291 data-nosnippet>291</a>    <span class="comment">// Compute the bound and related witness data
+<a href=#292 id=292 data-nosnippet>292</a>    </span><span class="kw">let </span>(bound_output, bound_sign, bound_ovf, bound_carry) =
+<a href=#293 id=293 data-nosnippet>293</a>        compute_ffadd_values(<span class="kw-2">&amp;</span>fe, <span class="kw-2">&amp;</span>right_input, FFOps::Add, <span class="kw-2">&amp;</span>foreign_field_modulus);
+<a href=#294 id=294 data-nosnippet>294</a>    <span class="comment">// Make sure they have the right value
+<a href=#295 id=295 data-nosnippet>295</a>    </span><span class="macro">assert_eq!</span>(bound_sign, F::one());
+<a href=#296 id=296 data-nosnippet>296</a>    <span class="macro">assert_eq!</span>(bound_ovf, F::one());
+<a href=#297 id=297 data-nosnippet>297</a>
+<a href=#298 id=298 data-nosnippet>298</a>    <span class="comment">// Extend the witness for the add gate
+<a href=#299 id=299 data-nosnippet>299</a>    </span><span class="kw">let </span>offset = witness[<span class="number">0</span>].len();
+<a href=#300 id=300 data-nosnippet>300</a>    <span class="kw">for </span>col <span class="kw">in </span>witness.iter_mut().take(COLUMNS) {
+<a href=#301 id=301 data-nosnippet>301</a>        col.extend(core::iter::repeat(F::zero()).take(<span class="number">2</span>))
+<a href=#302 id=302 data-nosnippet>302</a>    }
+<a href=#303 id=303 data-nosnippet>303</a>
+<a href=#304 id=304 data-nosnippet>304</a>    init_bound_rows(
+<a href=#305 id=305 data-nosnippet>305</a>        witness,
+<a href=#306 id=306 data-nosnippet>306</a>        offset,
+<a href=#307 id=307 data-nosnippet>307</a>        <span class="kw-2">&amp;</span>fe.limbs,
+<a href=#308 id=308 data-nosnippet>308</a>        <span class="kw-2">&amp;</span>bound_output.limbs,
+<a href=#309 id=309 data-nosnippet>309</a>        <span class="kw-2">&amp;</span>bound_carry,
+<a href=#310 id=310 data-nosnippet>310</a>    );
+<a href=#311 id=311 data-nosnippet>311</a>}</code></pre></div></section></main></body></html>

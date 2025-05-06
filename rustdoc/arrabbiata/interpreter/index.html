@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="This module contains the implementation of the IVC scheme in addition to running an arbitrary function that can use up to crate::NUMBER_OF_COLUMNS columns. At the moment, all constraints must be of maximum degree crate::MAX_DEGREE, but it might change in the future."><title>arrabbiata::interpreter - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="arrabbiata" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../../arrabbiata/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../../arrabbiata/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">Module interpreter</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#enums">Enums</a></li><li><a href="#constants">Constants</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../index.html">arrabbiata</a>::<wbr><a class="mod" href="#">interpreter</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../../src/arrabbiata/interpreter.rs.html#1-1234">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This module contains the implementation of the IVC scheme in addition to
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="This module contains the implementation of the IVC scheme in addition to running an arbitrary function that can use up to crate::NUMBER_OF_COLUMNS columns. At the moment, all constraints must be of maximum degree crate::MAX_DEGREE, but it might change in the future."><title>arrabbiata::interpreter - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-20739d33.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="arrabbiata" data-themes="" data-resource-suffix="" data-rustdoc-version="1.88.0-nightly (2e6882ac5 2025-05-05)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../static.files/storage-4e99c027.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-7ef8a74a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../arrabbiata/index.html">arrabbiata</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module interpreter</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#gadgets-implemented" title="Gadgets implemented">Gadgets implemented</a><ul><li><a href="#elliptic-curve-addition" title="Elliptic curve addition">Elliptic curve addition</a></li><li><a href="#hash---poseidon" title="Hash - Poseidon">Hash - Poseidon</a></li><li><a href="#elliptic-curve-scalar-multiplication" title="Elliptic curve scalar multiplication">Elliptic curve scalar multiplication</a></li></ul></li><li><a href="#handle-the-combinaison-of-constraints" title="Handle the combinaison of constraints">Handle the combinaison of constraints</a></li><li><a href="#permutation-argument" title="Permutation argument">Permutation argument</a></li><li><a href="#fiat-shamir-challenges" title="Fiat-Shamir challenges">Fiat-Shamir challenges</a></li><li><a href="#folding" title="Folding">Folding</a></li><li><a href="#message-passing" title="Message passing">Message passing</a><ul><li><a href="#workflow-example-for-handling-a-challenge" title="Workflow example for handling a challenge">Workflow example for handling a challenge</a></li></ul></li></ul><h3><a href="#enums">Module Items</a></h3><ul class="block"><li><a href="#enums" title="Enums">Enums</a></li><li><a href="#constants" title="Constants">Constants</a></li><li><a href="#traits" title="Traits">Traits</a></li><li><a href="#functions" title="Functions">Functions</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="../index.html">In crate arrabbiata</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../index.html">arrabbiata</a></div><h1>Module <span>interpreter</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/arrabbiata/interpreter.rs.html#1-1234">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This module contains the implementation of the IVC scheme in addition to
 running an arbitrary function that can use up to <a href="../constant.NUMBER_OF_COLUMNS.html" title="constant arrabbiata::NUMBER_OF_COLUMNS">crate::NUMBER_OF_COLUMNS</a>
 columns.
 At the moment, all constraints must be of maximum degree
@@ -40,7 +40,7 @@ how they are implemented with this abstraction.</p>
 <li><a href="#folding">Folding</a></li>
 <li><a href="#message-passing">Message passing</a></li>
 </ul>
-<h3 id="gadgets-implemented"><a href="#gadgets-implemented">Gadgets implemented</a></h3><h4 id="elliptic-curve-addition"><a href="#elliptic-curve-addition">Elliptic curve addition</a></h4>
+<h3 id="gadgets-implemented"><a class="doc-anchor" href="#gadgets-implemented">§</a>Gadgets implemented</h3><h4 id="elliptic-curve-addition"><a class="doc-anchor" href="#elliptic-curve-addition">§</a>Elliptic curve addition</h4>
 <p>The Nova augmented circuit requires to perform elliptic curve operations, in
 particular additions and scalar multiplications.</p>
 <p>To reduce the number of operations, we consider the affine coordinates.
@@ -48,22 +48,18 @@ As a reminder, here are the equations to compute the addition of two
 different points <code>P1 = (X1, Y1)</code> and <code>P2 = (X2, Y2)</code>. Let define <code>P3 = (X3, Y3) = P1 + P2</code>.</p>
 <div class="example-wrap"><pre class="language-text"><code>- λ = (Y1 - Y2) / (X1 - X2)
 - X3 = λ^2 - X1 - X2
-- Y3 = λ (X1 - X3) - Y1
-</code></pre></div>
+- Y3 = λ (X1 - X3) - Y1</code></pre></div>
 <p>Therefore, the addition of elliptic curve points can be computed using the
 following degree-2 constraints</p>
 <div class="example-wrap"><pre class="language-text"><code>- Constraint 1: λ (X1 - X2) - Y1 + Y2 = 0
 - Constraint 2: X3 + X1 + X2 - λ^2 = 0
-- Constraint 3: Y3 - λ (X1 - X3) + Y1 = 0
-</code></pre></div>
+- Constraint 3: Y3 - λ (X1 - X3) + Y1 = 0</code></pre></div>
 <p>If the points are the same, the λ is computed as follows:</p>
-<div class="example-wrap"><pre class="language-text"><code>- λ = (3 X1^2 + a) / (2Y1)
-</code></pre></div><h5 id="gadget-layout"><a href="#gadget-layout">Gadget layout</a></h5>
+<div class="example-wrap"><pre class="language-text"><code>- λ = (3 X1^2 + a) / (2Y1)</code></pre></div><h5 id="gadget-layout"><a class="doc-anchor" href="#gadget-layout">§</a>Gadget layout</h5>
 <p>For given inputs (x1, y1) and (x2, y2), the layout will be as follow:</p>
 <div class="example-wrap"><pre class="language-text"><code>| C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9 | C10 | C11 | C12 | C13 | C14 | C15 |
 | -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- | --- | --- |
-| x1 | y1 | x2 | y2 | b0 | λ  | x3 | y3 |    |     |     |     |     |     |     |
-</code></pre></div>
+| x1 | y1 | x2 | y2 | b0 | λ  | x3 | y3 |    |     |     |     |     |     |     |</code></pre></div>
 <p>where <code>b0</code> is equal two <code>1</code> if the points are the same, and <code>0</code> otherwise.</p>
 <p>TBD/FIXME: supports negation and the infinity point.</p>
 <p>TBD/FIXME: the gadget layout might change when we will implement the
@@ -71,7 +67,7 @@ permutation argument. The values <code>(x1, y1)</code> can be public inputs.
 The values <code>(x2, y2)</code> can be fetched from the permutation argument, and must
 be the output of the elliptic curve scaling.</p>
 <p>The gadget requires therefore 7 columns.</p>
-<h4 id="hash---poseidon"><a href="#hash---poseidon">Hash - Poseidon</a></h4>
+<h4 id="hash---poseidon"><a class="doc-anchor" href="#hash---poseidon">§</a>Hash - Poseidon</h4>
 <p>Hashing is a crucial part of the IVC scheme. The hash function the
 interpreter does use for the moment is an instance of the Poseidon hash
 function with a fixed state size of
@@ -96,7 +92,7 @@ see <a href="https://eprint.iacr.org/2022/462">New Optimization techniques for P
 arithmetisation</a>. The techniques described
 in the paper can also be generalized to other constraints used in the
 interpreter, but we leave this for future works.</p>
-<h5 id="gadget-layout-1"><a href="#gadget-layout-1">Gadget layout</a></h5>
+<h5 id="gadget-layout-1"><a class="doc-anchor" href="#gadget-layout-1">§</a>Gadget layout</h5>
 <p>We start with the assumption that <a href="../constant.NUMBER_OF_COLUMNS.html" title="constant arrabbiata::NUMBER_OF_COLUMNS">crate::NUMBER_OF_COLUMNS</a> columns are
 available for the whole circuit, and we can support constraints up to degree
 <a href="../constant.MAX_DEGREE.html" title="constant arrabbiata::MAX_DEGREE">crate::MAX_DEGREE</a>.
@@ -108,8 +104,7 @@ the gadget <a href="../column/enum.Gadget.html#variant.PoseidonFullRound" title=
 <div class="example-wrap"><pre class="language-text"><code>| C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9 | C10 | C11 | C12 | C13 | C14 | C15 |
 | -- | -- | -- | -- | -- | -- | -- | -- | -- | --- | --- | --- | --- | --- | --- |
 | x  | y  | z  | a1 | a2 | a3 | b1 | b2 | b3 | c1  | c2  | c3  | d1  | d2  | d3  |
-| o1 | o2 | o2
-</code></pre></div>
+| o1 | o2 | o2</code></pre></div>
 <p>where (x, y, z) is the input of the current step, (o1, o2, o3) is the
 output, and the other values are intermediary values. And we have the
 following equalities:</p>
@@ -117,15 +112,14 @@ following equalities:</p>
 (b1, b2, b3) = PoseidonRound(a1, a2, a3)
 (c1, c2, c3) = PoseidonRound(b1, b2, b3)
 (d1, d2, d3) = PoseidonRound(c1, c2, c3)
-(o1, o2, o3) = PoseidonRound(d1, d2, d3)
-</code></pre></div>
+(o1, o2, o3) = PoseidonRound(d1, d2, d3)</code></pre></div>
 <p>Round constants are passed as public inputs. As a
 reminder, public inputs are simply additional columns known by the prover
 and verifier.
 Also, the elements to absorb are added to the initial state at the beginning
 of the call of the Poseidon full hash. The elements to absorb are supposed
 to be passed as public inputs.</p>
-<h4 id="elliptic-curve-scalar-multiplication"><a href="#elliptic-curve-scalar-multiplication">Elliptic curve scalar multiplication</a></h4>
+<h4 id="elliptic-curve-scalar-multiplication"><a class="doc-anchor" href="#elliptic-curve-scalar-multiplication">§</a>Elliptic curve scalar multiplication</h4>
 <p>The Nova-based IVC schemes require to perform scalar multiplications on
 elliptic curve points. The scalar multiplication is computed using the
 double-and-add algorithm.</p>
@@ -137,7 +131,7 @@ permutation argument (FIXME: to be implemented).
 More than one bit can be decomposed at the same time, and we could reduce
 the number of rows.
 We leave this for future work.</p>
-<h5 id="gadget-layout-2"><a href="#gadget-layout-2">Gadget layout</a></h5>
+<h5 id="gadget-layout-2"><a class="doc-anchor" href="#gadget-layout-2">§</a>Gadget layout</h5>
 <p>For a (x, y) point and a scalar, we apply the double-and-add algorithm, one
 step per row.</p>
 <p>Therefore, we have 255 rows to compute the scalar multiplication.
@@ -155,13 +149,12 @@ otherwise equal to <code>o_x</code> and <code>o_y</code>.</li>
 <div class="example-wrap"><pre class="language-text"><code>| C1   |   C2   |      C3       |      C4       |    C5     | C7 |       C7       |       C8       | C9 | C10 |   C11    | C12 | C13 | C14 | C15 |
 | --   | -----  | ------------- | ------------- | --------- | -- | -------------- | -------------- | -- | --- | -------- | --- | --- | --- | --- |
 | o_x  |  o_y   | double_tmp_x  | double_tmp_y  |    r_i    | λ  | res_plus_tmp_x | res_plus_tmp_y | λ&#39; |  b  |
-| o&#39;_x |  o&#39;_y  | double_tmp&#39;_x | double_tmp&#39;_y |  r_(i+1)  |
-</code></pre></div>
+| o&#39;_x |  o&#39;_y  | double_tmp&#39;_x | double_tmp&#39;_y |  r_(i+1)  |</code></pre></div>
 <p>FIXME: an optimisation can be implemented using “a bucket” style algorithm,
 as described in <a href="https://github.com/o1-labs/rfcs/blob/main/0013-efficient-msms-for-non-native-pickles-verification.md">Efficient MSMs in Kimchi
 Circuits</a>.
 We leave this for future work.</p>
-<h3 id="handle-the-combinaison-of-constraints"><a href="#handle-the-combinaison-of-constraints">Handle the combinaison of constraints</a></h3>
+<h3 id="handle-the-combinaison-of-constraints"><a class="doc-anchor" href="#handle-the-combinaison-of-constraints">§</a>Handle the combinaison of constraints</h3>
 <p>The prover will have to combine the constraints to generate the
 full circuit at the end. The constraints will be combined using a
 challenge (often called α) that will be generated in the verifier circuit by
@@ -175,7 +168,7 @@ for the constraints has been absorbed properly in the verifier circuit.</p>
 <code>5 + 1</code> constraints, as the challenge will be considered as a variable.
 The reader can refer to this <a href="https://hackmd.io/@dannywillems/Syo5MBq90">HackMD
 document</a> for more details.</p>
-<h3 id="permutation-argument"><a href="#permutation-argument">Permutation argument</a></h3>
+<h3 id="permutation-argument"><a class="doc-anchor" href="#permutation-argument">§</a>Permutation argument</h3>
 <p>Communication between rows must be done using a permutation argument. The
 argument we use will be a generalisation of the one used in the <a href="https://eprint.iacr.org/2019/953">PlonK
 paper</a>.</p>
@@ -195,8 +188,7 @@ f&#39;(X) = f(X) + β X + γ
 g&#39;(X) = g(X) + β σ(X) + γ
          |      |
          --------
-         Can be seen as T[g(X)] = σ(X)
-</code></pre></div>
+         Can be seen as T[g(X)] = σ(X)</code></pre></div>
 <p>And from this, we build an accumulator, like for Plookup.
 The accumulator requires to coin two challenges, β and γ, and it must be
 done after the commitments to the columns have been absorbed.
@@ -230,7 +222,7 @@ of columns we can perform the permutation on?</p>
 <p>TBD/FIXME: We can have more than one permutation argument. For instance, we
 can have a permutation argument for the columns 0, 1, 2, 3 and one for the
 columns 4, 5, 6, 7. It can help to decrease the degree.</p>
-<h3 id="fiat-shamir-challenges"><a href="#fiat-shamir-challenges">Fiat-Shamir challenges</a></h3>
+<h3 id="fiat-shamir-challenges"><a class="doc-anchor" href="#fiat-shamir-challenges">§</a>Fiat-Shamir challenges</h3>
 <p>The challenges sent by the verifier must also be simulated by the verifier
 circuit. It is done by passing “messages” as public inputs to the next
 instances. Diagrams recapitulating the messages that must be passed are
@@ -240,7 +232,7 @@ verifier in the circuit, and check that it corresponds to the ones received
 as a public input.</p>
 <p>TBD/FIXME: specify. Might require foreign field arithmetic.</p>
 <p>TBD/FIXME: do we need to aggregate them for the end?</p>
-<h3 id="folding"><a href="#folding">Folding</a></h3>
+<h3 id="folding"><a class="doc-anchor" href="#folding">§</a>Folding</h3>
 <p>Constraints must be homogenized for the folding scheme.
 Homogenising a constraint means that we add a new variable (called “U” in
 Nova for instance) that will be used to homogenize the degree of the monomials
@@ -267,7 +259,7 @@ homogenize the constraints. The constraints can be converted into a type
 implementing the trait <a href="../../mvpoly/trait.MVPoly.html" title="trait mvpoly::MVPoly">MVPoly</a> and the method
 <a href="../../mvpoly/trait.MVPoly.html#tymethod.compute_cross_terms" title="method mvpoly::MVPoly::compute_cross_terms">compute_cross_terms</a> can be used from
 there.</p>
-<h3 id="message-passing"><a href="#message-passing">Message passing</a></h3>
+<h3 id="message-passing"><a class="doc-anchor" href="#message-passing">§</a>Message passing</h3>
 <p>The message passing is a crucial part of the IVC scheme. The messages are
 mostly commitments and challenges that must be passed from one step to
 another, and by “jumping” between curves. In the implementation,
@@ -368,8 +360,7 @@ TODO: define msgs                  |                            |    TODO: defin
         IO                         |                            |          IO
                                    |                            |
                                    |                            |
-                                   +----------------------------+
-</code></pre></div><h4 id="workflow-example-for-handling-a-challenge"><a href="#workflow-example-for-handling-a-challenge">Workflow example for handling a challenge</a></h4>
+                                   +----------------------------+</code></pre></div><h4 id="workflow-example-for-handling-a-challenge"><a class="doc-anchor" href="#workflow-example-for-handling-a-challenge">§</a>Workflow example for handling a challenge</h4>
 <p>Handling challenges is performed in two steps. Let’s take the example of the
 verifier coin <code>u</code> used to homogenize the constraints/polynomials in the
 accumulation protocol. For the sake of simplicity, we only focus on the work
@@ -390,8 +381,7 @@ diagram:</p>
 | - r                                      |
 | - &quot;accumulated u&quot;: u_p + r * u_(p, n)    |
 |     (note the operations are over Fp)    |
-+------------------------------------------+
-</code></pre></div>
++------------------------------------------+</code></pre></div>
 <p>The coins <code>u_(p, n)</code> and <code>r</code> are generated after absorbing a few committed
 values (i.e. points over Fq). The verifier will have to check the following:</p>
 <ul>
@@ -444,8 +434,7 @@ first two checks. We have then the following diagram.</p>
                       | - run the sponge to         |
                       | check the value u_(p, n)    |
                       | and r                       |
-                      +-----------------------------+
-</code></pre></div>
+                      +-----------------------------+</code></pre></div>
 <p>The last check, i.e. checking the accumulation of <code>u</code>, is “delayed” for the
 instance (n + 2), to be able to perform the accumulation over Fp.</p>
 <p>Therefore, we end up with the following diagram:</p>
@@ -496,16 +485,15 @@ instance (n + 2), to be able to perform the accumulation over Fp.</p>
                       | - run the sponge to         |
                       | check the value u_(p, n)    |
                       | and r                       |
-                      +-----------------------------+
-</code></pre></div></div></details><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.Instruction.html" title="enum arrabbiata::interpreter::Instruction">Instruction</a></div><div class="desc docblock-short">A list of instruction/gadget implemented in the interpreter.
+                      +-----------------------------+</code></pre></div></div></details><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><dl class="item-table"><dt><a class="enum" href="enum.Instruction.html" title="enum arrabbiata::interpreter::Instruction">Instruction</a></dt><dd>A list of instruction/gadget implemented in the interpreter.
 The control flow can be managed by implementing a function
 <code>fetch_next_instruction</code> and <code>fetch_instruction</code> on a witness environnement.
-See the <a href="../witness/struct.Env.html" title="struct arrabbiata::witness::Env">Witness environment</a> for more details.</div></li><li><div class="item-name"><a class="enum" href="enum.Side.html" title="enum arrabbiata::interpreter::Side">Side</a></div><div class="desc docblock-short">Define the side of the temporary accumulator.
+See the <a href="../witness/struct.Env.html" title="struct arrabbiata::witness::Env">Witness environment</a> for more details.</dd><dt><a class="enum" href="enum.Side.html" title="enum arrabbiata::interpreter::Side">Side</a></dt><dd>Define the side of the temporary accumulator.
 When computing G1 + G2, the interpreter will load G1 and after that G2.
 This enum is used to decide which side fetching into the cells.
-In the near future, it can be replaced by an index.</div></li></ul><h2 id="constants" class="small-section-header"><a href="#constants">Constants</a></h2><ul class="item-table"><li><div class="item-name"><a class="constant" href="constant.VERIFIER_STARTING_INSTRUCTION.html" title="constant arrabbiata::interpreter::VERIFIER_STARTING_INSTRUCTION">VERIFIER_STARTING_INSTRUCTION</a></div><div class="desc docblock-short">The first instruction in the verifier circuit (often shortened in “IVC” in
+In the near future, it can be replaced by an index.</dd></dl><h2 id="constants" class="section-header">Constants<a href="#constants" class="anchor">§</a></h2><dl class="item-table"><dt><a class="constant" href="constant.VERIFIER_STARTING_INSTRUCTION.html" title="constant arrabbiata::interpreter::VERIFIER_STARTING_INSTRUCTION">VERIFIER_<wbr>STARTING_<wbr>INSTRUCTION</a></dt><dd>The first instruction in the verifier circuit (often shortened in “IVC” in
 the crate) is the Poseidon permutation. It is used to start hashing the
-public input.</div></li></ul><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.InterpreterEnv.html" title="trait arrabbiata::interpreter::InterpreterEnv">InterpreterEnv</a></div><div class="desc docblock-short">An abstract interpreter that provides some functionality on the circuit. The
+public input.</dd></dl><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><dl class="item-table"><dt><a class="trait" href="trait.InterpreterEnv.html" title="trait arrabbiata::interpreter::InterpreterEnv">Interpreter<wbr>Env</a></dt><dd>An abstract interpreter that provides some functionality on the circuit. The
 interpreter should be seen as a state machine with some built-in
 functionality whose state is a matrix, and whose transitions are described
-by polynomial functions.</div></li></ul><h2 id="functions" class="small-section-header"><a href="#functions">Functions</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.fetch_next_instruction.html" title="fn arrabbiata::interpreter::fetch_next_instruction">fetch_next_instruction</a></div><div class="desc docblock-short">Describe the control-flow for the verifier circuit.</div></li><li><div class="item-name"><a class="fn" href="fn.run_app.html" title="fn arrabbiata::interpreter::run_app">run_app</a></div><div class="desc docblock-short">Run the application</div></li><li><div class="item-name"><a class="fn" href="fn.run_ivc.html" title="fn arrabbiata::interpreter::run_ivc">run_ivc</a></div><div class="desc docblock-short">Run an iteration of the IVC scheme</div></li></ul></section></div></main></body></html>
+by polynomial functions.</dd></dl><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><dl class="item-table"><dt><a class="fn" href="fn.fetch_next_instruction.html" title="fn arrabbiata::interpreter::fetch_next_instruction">fetch_<wbr>next_<wbr>instruction</a></dt><dd>Describe the control-flow for the verifier circuit.</dd><dt><a class="fn" href="fn.run_app.html" title="fn arrabbiata::interpreter::run_app">run_app</a></dt><dd>Run the application</dd><dt><a class="fn" href="fn.run_ivc.html" title="fn arrabbiata::interpreter::run_ivc">run_ivc</a></dt><dd>Run an iteration of the IVC scheme</dd></dl></section></div></main></body></html>

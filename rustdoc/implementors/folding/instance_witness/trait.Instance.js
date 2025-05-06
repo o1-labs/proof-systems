@@ -1,4 +1,0 @@
-(function() {var implementors = {
-"folding":[],
-"ivc":[["impl&lt;G: CommitmentCurve, const N_COL: <a class=\"primitive\" href=\"https://doc.rust-lang.org/1.72.1/std/primitive.usize.html\">usize</a>, const N_CHALS: <a class=\"primitive\" href=\"https://doc.rust-lang.org/1.72.1/std/primitive.usize.html\">usize</a>, const N_ALPHAS: <a class=\"primitive\" href=\"https://doc.rust-lang.org/1.72.1/std/primitive.usize.html\">usize</a>&gt; Instance&lt;G&gt; for <a class=\"struct\" href=\"ivc/plonkish_lang/struct.PlonkishInstance.html\" title=\"struct ivc::plonkish_lang::PlonkishInstance\">PlonkishInstance</a>&lt;G, N_COL, N_CHALS, N_ALPHAS&gt;"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

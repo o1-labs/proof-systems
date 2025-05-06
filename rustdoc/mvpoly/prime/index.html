@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Multivariate polynomial dense representation using prime numbers"><title>mvpoly::prime - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="mvpoly" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../../mvpoly/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2></h2></nav><nav class="sidebar"><a class="logo-container" href="../../mvpoly/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">Module prime</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#structs">Structs</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../index.html">mvpoly</a>::<wbr><a class="mod" href="#">prime</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="srclink" href="../../src/mvpoly/prime.rs.html#1-757">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Multivariate polynomial dense representation using prime numbers</p>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Multivariate polynomial dense representation using prime numbers"><title>mvpoly::prime - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-20739d33.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="mvpoly" data-themes="" data-resource-suffix="" data-rustdoc-version="1.88.0-nightly (2e6882ac5 2025-05-05)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../static.files/storage-4e99c027.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-7ef8a74a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../mvpoly/index.html">mvpoly</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module prime</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#other-examples-degree-2-with-3-variables" title="Other examples degree $2$ with 3 variables.">Other examples degree $2$ with 3 variables.</a></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="../index.html">In crate mvpoly</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../index.html">mvpoly</a></div><h1>Module <span>prime</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/mvpoly/prime.rs.html#1-757">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Multivariate polynomial dense representation using prime numbers</p>
 <p>First, we start by attributing a different prime number for each variable.
 For instance, for <code>F^{&lt;=2}[X_{1}, X_{2}]</code>, we assign <code>X_{1}</code> to <code>2</code>
 and $X_{2}$ to $3$.
@@ -11,16 +11,14 @@ cells, noted <code>NA</code>, won’t be used for certain vector spaces.</p>
  |    |    |    |     |    |     |     |     |
  1    2    3    4     5    6     7     8     9
  |    |    |    |     |    |     |     |     |
- cst  X1  X2   X1^2   NA  X1*X2  NA   NA    X2^2
-</code></pre></div>
+ cst  X1  X2   X1^2   NA  X1*X2  NA   NA    X2^2</code></pre></div>
 <p>and the polynomial <code>42 X_{1} + 3 X_{1} X_{2} + 14 X_{2}^2</code> will be represented
 as</p>
 <div class="example-wrap"><pre class="language-text"><code>[0,  42,   1,   0,    0,   3,    0,    0,    14]
  |    |    |    |     |    |     |     |     |
  1    2    3    4     5    6     7     8     9
  |    |    |    |     |    |     |     |     |
- cst  X1  X2   X1^2   NA  X1*X2  NA   NA    X2^2
-</code></pre></div>
+ cst  X1  X2   X1^2   NA  X1*X2  NA   NA    X2^2</code></pre></div>
 <p>Adding two polynomials in this base is pretty straightforward: we simply add the
 coefficients of the two lists.</p>
 <p>Multiplication is not more complicated.
@@ -36,7 +34,6 @@ of the decompositions.</p>
  1    2    3    4     5    6     7     8     9
  |    |    |    |     |    |     |     |     |
  cst  X1  X2   X1^2   NA  X1*X2  NA   NA    X2^2
-
 </code></pre></div><div class="example-wrap"><pre class="language-text"><code>For P_{2}:
 
 [3,   0,   1,   0,    0,   0,    0,    0,    0]
@@ -44,7 +41,6 @@ of the decompositions.</p>
  1    2    3    4     5    6     7     8     9
  |    |    |    |     |    |     |     |     |
  cst  X1  X2   X1^2   NA  X1*X2  NA   NA    X2^2
-
 </code></pre></div><div class="example-wrap"><pre class="language-text"><code>For P_{3}:
 
 [0,   6,   3,   0,    0,   2,    0,    0,    1]
@@ -52,7 +48,6 @@ of the decompositions.</p>
  1    2    3    4     5    6     7     8     9
  |    |    |    |     |    |     |     |     |
  cst  X1  X2   X1^2   NA  X1*X2  NA   NA    X2^2
-
 </code></pre></div>
 <p>To compute <code>P_{3}</code>, we get iterate over an empty list of $9$ elements which will
 define <code>P_{3}</code>.</p>
@@ -80,7 +75,7 @@ decompositions of $6$. Therefore we sum <code>P_{1}[2] * P_{2}[3]</code> and <co
 </ul>
 </li>
 </ul>
-<h5 id="other-examples-degree-2-with-3-variables"><a href="#other-examples-degree-2-with-3-variables">Other examples degree $2$ with 3 variables.</a></h5><div class="example-wrap"><pre class="language-math"><code>\begin{align}
+<h5 id="other-examples-degree-2-with-3-variables"><a class="doc-anchor" href="#other-examples-degree-2-with-3-variables">§</a>Other examples degree $2$ with 3 variables.</h5><div class="example-wrap"><pre class="language-math"><code>\begin{align}
 $\mathbb{F}^{\le 2}[X_{1}, X_{2}, X_{3}] = \{
         &amp; \, a_{0} + \\
         &amp; \, a_{1} X_{1} + \\
@@ -93,8 +88,7 @@ $\mathbb{F}^{\le 2}[X_{1}, X_{2}, X_{3}] = \{
         &amp; \, a_{8} X_{2}^2 + \\
         &amp; \, a_{9} X_{3}^2 \, | \, a_{i} \in \mathbb{F}
         \}
-\end{align}
-</code></pre></div>
+\end{align}</code></pre></div>
 <p>We assign:</p>
 <ul>
 <li><code>X_{1} = 2</code></li>
@@ -111,9 +105,9 @@ $\mathbb{F}^{\le 2}[X_{1}, X_{2}, X_{3}] = \{
 <li><code>X_{3}^2 = 25</code></li>
 </ul>
 <p>We have an array with 25 indices, even though we need 10 elements only.</p>
-</div></details><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Dense.html" title="struct mvpoly::prime::Dense">Dense</a></div><div class="desc docblock-short">Represents a multivariate polynomial of degree less than <code>D</code> in <code>N</code> variables.
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><dl class="item-table"><dt><a class="struct" href="struct.Dense.html" title="struct mvpoly::prime::Dense">Dense</a></dt><dd>Represents a multivariate polynomial of degree less than <code>D</code> in <code>N</code> variables.
 The representation is dense, i.e., all coefficients are stored.
 The polynomial is represented as a vector of coefficients, where the index
 of the coefficient corresponds to the index of the monomial.
 A mapping between the index and the prime decomposition of the monomial is
-stored in <code>normalized_indices</code>.</div></li></ul></section></div></main></body></html>
+stored in <code>normalized_indices</code>.</dd></dl></section></div></main></body></html>
