@@ -7,7 +7,7 @@ on:
 
 env:
   OCAML_VERSION: "4.14.0"
-  RUST_TOOLCHAIN_VERSION: "1.79"
+  RUST_TOOLCHAIN_VERSION: "1.81"
 
 jobs:
   bench:

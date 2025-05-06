@@ -15,7 +15,7 @@ jobs:
 
     strategy:
       matrix:
-        rust_toolchain_version: ["nightly-2024-06-13"]
+        rust_toolchain_version: ["nightly-2024-09-05"]
 
     steps:
       - name: Checkout repository

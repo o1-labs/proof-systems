@@ -30,7 +30,6 @@ serde-wasm-bindgen.workspace = true
 serde_json.workspace = true
 serde_with.workspace = true
 spmc.workspace = true
-# Strictly enforcing 0.2.87
 wasm-bindgen.workspace = true
 
 # arkworks
