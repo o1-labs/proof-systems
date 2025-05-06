@@ -7,4 +7,7 @@ publish = false
 [dependencies]
 anyhow = "1.0"
 clap = { version = "4.4.6", features = ["derive"] }
+# This should stay in line with the version used by the argument
+# WASM_PACK_VERSION in
+# MinaProtocol/mina/dockerfiles/stages/1-build-deps
 wasm-pack = "=0.12.1"
