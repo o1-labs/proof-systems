@@ -29,10 +29,6 @@ jobs:
           rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
           targets: wasm32-unknown-unknown
 
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: wasm-pack@0.12.1
-
       - shell: bash
         run: rustup component add rust-src
 
