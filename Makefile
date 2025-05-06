@@ -31,7 +31,6 @@ O1VM_MIPS_BIN_FILES = $(patsubst ${O1VM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIPS_BIN_D
 # In addition to that, the version in the CI (see file
 # .github/workflows/wasm.yml) should be changed accordingly.
 NIGHTLY_RUST_VERSION = "nightly-2024-06-13"
-WASM_RUSTFLAGS = "-C target-feature=+atomics,+bulk-memory,+mutable-globals -C link-arg=--max-memory=4294967296"
 PLONK_WASM_NODEJS_OUTDIR ?= target/nodejs
 PLONK_WASM_WEB_OUTDIR ?= target/web
 
@@ -98,11 +97,11 @@ clean: ## Clean the project
 
 
 build: ## Build the project
-		cargo build --all-targets --all-features --workspace --exclude plonk_wasm
+		cargo build --all-targets --all-features --workspace --exclude plonk_wasm --exclude xtask
 
 
 release: ## Build the project in release mode
-		cargo build --release --all-targets --all-features --workspace --exclude plonk_wasm
+		cargo build --release --all-targets --all-features --workspace --exclude plonk_wasm --exclude xtask
 
 
 test-doc: ## Test the project's docs comments
@@ -134,7 +133,7 @@ test-all-with-coverage:
 
 
 nextest: ## Test the project with non-heavy tests and using nextest test runner
-		cargo nextest run --all-features --release $(CARGO_EXTRA_ARGS) --profile ci -E "not test(heavy)" $(BIN_EXTRA_ARGS)
+		cargo nextest run --all --all-features --exclude xtask --release $(CARGO_EXTRA_ARGS) --profile ci -E "not test(heavy)" $(BIN_EXTRA_ARGS)
 
 nextest-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest
@@ -163,7 +162,7 @@ format: ## Format the code
 		taplo fmt
 
 lint: ## Lint the code
-		cargo clippy --all-features --all-targets --tests $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
+		cargo clippy --all --all-features --all-targets --tests --exclude xtask $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
 
 generate-test-coverage-report: ## Generate the code coverage report
 		@echo ""
@@ -183,7 +182,7 @@ generate-doc: ## Generate the Rust documentation
 		@echo ""
 		@echo "Generating the documentation."
 		@echo ""
-		RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps --document-private-items
+		RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps --document-private-items --workspace --exclude xtask
 		@echo ""
 		@echo "The documentation is available at: ./target/doc"
 		@echo ""
@@ -244,18 +243,15 @@ fclean: clean ## Clean the tooling artefacts in addition to running clean
 		rm -rf ${RISCV32_TOOLCHAIN_PATH}
 
 build-nodejs:
-		RUSTFLAGS=${WASM_RUSTFLAGS} rustup run ${NIGHTLY_RUST_VERSION} wasm-pack build \
+		cargo +nightly xtask build-wasm \
 		--target nodejs \
 		--out-dir ${PLONK_WASM_NODEJS_OUTDIR} \
-		plonk-wasm -- \
-		-Z build-std=panic_abort,std \
-		--features nodejs
+		--rust-version ${NIGHTLY_RUST_VERSION}
 
 build-web:
-		RUSTFLAGS=${WASM_RUSTFLAGS} rustup run ${NIGHTLY_RUST_VERSION} wasm-pack build \
+		cargo +nightly xtask build-wasm \
 		--target web \
 		--out-dir ${PLONK_WASM_WEB_OUTDIR} \
-		plonk-wasm -- \
-		-Z build-std=panic_abort,std
+		--rust-version ${NIGHTLY_RUST_VERSION}
 
 .PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs check-format build-web build-nodejs
