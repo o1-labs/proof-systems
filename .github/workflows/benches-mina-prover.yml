@@ -36,6 +36,11 @@ jobs:
         with:
           ocaml_version: ${{ env.OCAML_VERSION }}
 
+      - name: Ensure that everything builds
+        run: |
+          eval $(opam env)
+          cargo build --benches --release
+
       # 'sleep 1' are necessary because otherwise the outputs are intermixed.
       - name: Copy previous baseline to target folder
         run: |
