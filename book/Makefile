@@ -20,7 +20,7 @@ deps:
 	cargo install --locked "mdbook@$(MDBOOK_VERSION)" --force
 	cargo install --locked "mdbook-admonish@$(MDBOOK_ADMONISH_VERSION)" --force
 	cargo install --locked "mdbook-katex@$(MDBOOK_KATEX_VERSION)" --force
-	cargo install --locked --git https://github.com/o1-labs/mdbook-linkcheck --rev 8cccfc8fee397092ecdf1236a42871c5c980672e mdbook-linkcheck --force
+	cargo install --locked --git https://github.com/o1-labs/mdbook-linkcheck --rev 126bf7b191cefffe7990db6c7235da4658c85a7c mdbook-linkcheck --force
 	cargo install --locked "mdbook-mermaid@$(MDBOOK_MERMAID_VERSION)" --force
 	cargo install --locked "mdbook-toc@$(MDBOOK_TOC_VERSION)" --force
 
