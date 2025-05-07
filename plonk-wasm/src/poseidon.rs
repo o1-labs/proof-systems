@@ -1,3 +1,13 @@
+//! This file defines wrapper for the Poseidon hash function that are used in
+//! the Mina codebase.
+//!
+//! It is a wrapper around the Poseidon implementation in the `mina_poseidon` crate.
+//! It is required as the native OCaml implementation of Mina does use the Rust
+//! implementation defined in the crate `mina_poseidon` instead of defining its
+//! own natively in OCaml for performance reasons. The bindings in OCaml can be
+//! found in `src/lib/crypto/kimchi_bindings/pasta_fp_poseidon` and
+//! `src/lib/crypto/kimchi_bindings/pasta_fq_poseidon` in the Mina codebase.
+
 use mina_curves::pasta::{Fp, Fq};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, permutation::poseidon_block_cipher};
 use wasm_bindgen::prelude::*;
