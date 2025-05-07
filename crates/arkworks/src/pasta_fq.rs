@@ -41,7 +41,7 @@ impl<'a> From<&'a WasmPastaFq> for &'a Fq {
 
 impl wasm_bindgen::describe::WasmDescribe for WasmPastaFq {
     fn describe() {
-        <Vec<u8> as wasm_bindgen::describe::WasmDescribe>::describe()
+        <Vec<u8> as wasm_bindgen::describe::WasmDescribe>::describe();
     }
 }
 
