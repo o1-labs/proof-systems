@@ -29,7 +29,7 @@ pub struct WasmBigInteger256(pub BigInteger256);
 
 impl wasm_bindgen::describe::WasmDescribe for WasmBigInteger256 {
     fn describe() {
-        <Vec<u8> as wasm_bindgen::describe::WasmDescribe>::describe()
+        <Vec<u8> as wasm_bindgen::describe::WasmDescribe>::describe();
     }
 }
 
@@ -60,7 +60,7 @@ pub fn of_biguint(x: &BigUint) -> BigInteger256 {
     let mut bytes = x.to_bytes_le();
     bytes.resize(BIGINT256_NUM_BYTES, 0);
     let limbs = bytes.as_ptr();
-    let limbs = limbs as *const [u64; BIGINT256_NUM_LIMBS as usize];
+    let limbs = limbs.cast::<[u64; BIGINT256_NUM_LIMBS as usize]>();
     let limbs = unsafe { &(*limbs) };
     BigInt(*limbs)
 }
