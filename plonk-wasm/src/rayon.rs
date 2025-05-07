@@ -43,12 +43,14 @@ extern "C" {
     #[wasm_bindgen(js_name = startWorkers)]
     fn start_workers(module: JsValue, memory: JsValue, builder: PoolBuilder) -> Promise;
 }
+
 #[cfg(feature = "nodejs")]
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_name = startWorkers)]
     fn start_workers(module: JsString, memory: JsValue, builder: PoolBuilder) -> Promise;
 }
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_name = terminateWorkers)]
