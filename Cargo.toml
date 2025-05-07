@@ -109,6 +109,9 @@ signer = { path = "./signer", version = "0.1.0" }
 turshi = { path = "./turshi", version = "0.1.0" }
 utils = { path = "./utils", version = "0.1.0" }
 
+[patch.crates-io]
+ark-ff-macros = { git = "https://github.com/richardpringle/algebra", branch = "fix-warning", package = "ark-ff-macros" }
+
 [profile.release]
 lto = true
 panic = 'abort'
