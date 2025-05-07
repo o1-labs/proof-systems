@@ -1,14 +1,13 @@
 //! A GateVector: this is used to represent a list of gates.
 
-use crate::wasm_flat_vector::WasmFlatVector;
 use kimchi::circuits::{
     gate::{Circuit, CircuitGate, GateType},
     wires::Wire,
 };
 use o1_utils::hasher::CryptoDigest;
-use wasm_bindgen::prelude::*;
-
 use paste::paste;
+use wasm_bindgen::prelude::*;
+use wasm_types::FlatVector as WasmFlatVector;
 
 #[wasm_bindgen]
 #[derive(Clone, Copy, Debug)]
@@ -178,7 +177,7 @@ macro_rules! impl_gate_vector {
 
 pub mod fp {
     use super::*;
-    use crate::arkworks::WasmPastaFp as WasmF;
+    use arkworks::WasmPastaFp as WasmF;
     use mina_curves::pasta::Fp as F;
 
     impl_gate_vector!(fp, WasmF, F, Fp);
@@ -190,7 +189,7 @@ pub mod fp {
 
 pub mod fq {
     use super::*;
-    use crate::arkworks::WasmPastaFq as WasmF;
+    use arkworks::WasmPastaFq as WasmF;
     use mina_curves::pasta::Fq as F;
 
     impl_gate_vector!(fq, WasmF, F, Fq);
