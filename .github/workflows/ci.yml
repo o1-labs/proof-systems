@@ -6,7 +6,6 @@ on:
   workflow_run:
     workflows: [Nightly tests with the code coverage]
     types: [completed]
-  pull_request:
   push:
     branches:
       - master

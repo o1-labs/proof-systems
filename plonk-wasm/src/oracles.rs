@@ -40,7 +40,7 @@ macro_rules! impl_oracles {
      $field_name: ident) => {
 
         paste! {
-            use crate::wasm_flat_vector::WasmFlatVector;
+            use wasm_types::FlatVector as WasmFlatVector;
             use mina_poseidon::sponge::ScalarChallenge;
 
             #[wasm_bindgen]
@@ -281,10 +281,11 @@ macro_rules! impl_oracles {
 pub mod fp {
     use super::*;
     use crate::{
-        arkworks::WasmPastaFp, plonk_proof::fp::WasmFpProverProof as WasmProverProof,
+        plonk_proof::fp::WasmFpProverProof as WasmProverProof,
         plonk_verifier_index::fp::WasmFpPlonkVerifierIndex as WasmPlonkVerifierIndex,
         poly_comm::vesta::WasmFpPolyComm as WasmPolyComm,
     };
+    use arkworks::WasmPastaFp;
     use mina_curves::pasta::{Fp, Vesta as GAffine, VestaParameters};
 
     impl_oracles!(
@@ -303,10 +304,11 @@ pub mod fp {
 pub mod fq {
     use super::*;
     use crate::{
-        arkworks::WasmPastaFq, plonk_proof::fq::WasmFqProverProof as WasmProverProof,
+        plonk_proof::fq::WasmFqProverProof as WasmProverProof,
         plonk_verifier_index::fq::WasmFqPlonkVerifierIndex as WasmPlonkVerifierIndex,
         poly_comm::pallas::WasmFqPolyComm as WasmPolyComm,
     };
+    use arkworks::WasmPastaFq;
     use mina_curves::pasta::{Fq, Pallas as GAffine, PallasParameters};
 
     impl_oracles!(

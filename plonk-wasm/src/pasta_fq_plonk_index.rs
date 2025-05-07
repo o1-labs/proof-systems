@@ -1,15 +1,16 @@
-use ark_poly::EvaluationDomain;
-use kimchi::circuits::lookup::runtime_tables::RuntimeTableCfg;
-
 use crate::{
-    arkworks::WasmPastaFq,
     gate_vector::fq::WasmGateVector,
     srs::fq::WasmFqSrs as WasmSrs,
-    wasm_flat_vector::WasmFlatVector,
     wasm_vector::{fq::*, WasmVector},
 };
+use ark_poly::EvaluationDomain;
+use arkworks::WasmPastaFq;
 use kimchi::{
-    circuits::{constraints::ConstraintSystem, gate::CircuitGate, lookup::tables::LookupTable},
+    circuits::{
+        constraints::ConstraintSystem,
+        gate::CircuitGate,
+        lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
+    },
     linearization::expr_linearization,
     poly_commitment::{ipa::OpeningProof, SRS as _},
     prover_index::ProverIndex,
@@ -22,6 +23,7 @@ use std::{
     io::{BufReader, BufWriter, Seek, SeekFrom::Start},
 };
 use wasm_bindgen::prelude::*;
+use wasm_types::FlatVector as WasmFlatVector;
 
 //
 // CamlPastaFqPlonkIndex (custom type)
