@@ -31,12 +31,13 @@ use core::{convert::From, ops::Deref};
 pub struct FlatVector<T>(Vec<T>);
 
 impl<T: FlatVectorElem> FlatVector<T> {
+    #[must_use]
     pub fn from_bytes(data: Vec<u8>) -> Self {
         let mut res: Vec<T> = Vec::with_capacity(data.len() / T::FLATTENED_SIZE);
 
         let mut buf = Vec::with_capacity(T::FLATTENED_SIZE);
 
-        for x in data.into_iter() {
+        for x in data {
             assert!(buf.len() < T::FLATTENED_SIZE);
 
             buf.push(x);
@@ -121,13 +122,13 @@ impl<T> core::iter::Extend<T> for FlatVector<T> {
     where
         I: IntoIterator<Item = T>,
     {
-        self.0.extend(iter)
+        self.0.extend(iter);
     }
 }
 
 impl<T> wasm_bindgen::describe::WasmDescribe for FlatVector<T> {
     fn describe() {
-        <Vec<u8> as wasm_bindgen::describe::WasmDescribe>::describe()
+        <Vec<u8> as wasm_bindgen::describe::WasmDescribe>::describe();
     }
 }
 
@@ -138,7 +139,7 @@ impl<T: FlatVectorElem> FromWasmAbi for FlatVector<T> {
         let mut res: Vec<T> = Vec::with_capacity(data.len() / T::FLATTENED_SIZE);
 
         let mut buf = Vec::with_capacity(T::FLATTENED_SIZE);
-        for x in data.into_iter() {
+        for x in data {
             assert!(buf.len() < T::FLATTENED_SIZE);
             buf.push(x);
             if buf.len() >= T::FLATTENED_SIZE {
@@ -161,7 +162,7 @@ impl<T: FlatVectorElem> IntoWasmAbi for FlatVector<T> {
     type Abi = <Vec<u8> as FromWasmAbi>::Abi;
     fn into_abi(self) -> Self::Abi {
         let mut data: Vec<u8> = Vec::with_capacity(self.0.len() * T::FLATTENED_SIZE);
-        for x in self.0.into_iter() {
+        for x in self.0 {
             data.extend(x.flatten().into_iter());
         }
         IntoWasmAbi::into_abi(data)
