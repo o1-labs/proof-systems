@@ -213,7 +213,7 @@
 <a href=#213 id=213 data-nosnippet>213</a>                <span class="kw">crate</span>::rayon::run_in_pool(|| {
 <a href=#214 id=214 data-nosnippet>214</a>                    <span class="kw">let </span>comms: Vec&lt;<span class="kw">_</span>&gt; = comms.into_iter().map(Into::into).collect();
 <a href=#215 id=215 data-nosnippet>215</a>                    <span class="kw">let </span>chals: Vec&lt;<span class="kw">_</span>&gt; = chals.into_iter().map(Into::into).collect();
-<a href=#216 id=216 data-nosnippet>216</a>                    <span class="kw">crate</span>::urs_utils::batch_dlog_accumulator_check(<span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>comms, <span class="kw-2">&amp;</span>chals)
+<a href=#216 id=216 data-nosnippet>216</a>                    poly_commitment::utils::batch_dlog_accumulator_check(<span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>comms, <span class="kw-2">&amp;</span>chals)
 <a href=#217 id=217 data-nosnippet>217</a>                })
 <a href=#218 id=218 data-nosnippet>218</a>            }
 <a href=#219 id=219 data-nosnippet>219</a>
@@ -223,7 +223,7 @@
 <a href=#223 id=223 data-nosnippet>223</a>                comms: i32,
 <a href=#224 id=224 data-nosnippet>224</a>                chals: WasmFlatVector&lt;<span class="macro-nonterminal">$WasmF</span>&gt;,
 <a href=#225 id=225 data-nosnippet>225</a>            ) -&gt; WasmVector&lt;<span class="macro-nonterminal">$WasmG</span>&gt; {
-<a href=#226 id=226 data-nosnippet>226</a>                <span class="kw">crate</span>::urs_utils::batch_dlog_accumulator_generate::&lt;<span class="macro-nonterminal">$G</span>&gt;(
+<a href=#226 id=226 data-nosnippet>226</a>                poly_commitment::utils::batch_dlog_accumulator_generate::&lt;<span class="macro-nonterminal">$G</span>&gt;(
 <a href=#227 id=227 data-nosnippet>227</a>                    <span class="kw-2">&amp;</span>srs,
 <a href=#228 id=228 data-nosnippet>228</a>                    comms <span class="kw">as </span>usize,
 <a href=#229 id=229 data-nosnippet>229</a>                    <span class="kw-2">&amp;</span>chals.into_iter().map(From::from).collect(),

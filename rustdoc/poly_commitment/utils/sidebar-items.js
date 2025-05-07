@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["DensePolynomialOrEvaluations"],"fn":["combine_polys"]};
+window.SIDEBAR_ITEMS = {"enum":["DensePolynomialOrEvaluations"],"fn":["batch_dlog_accumulator_check","batch_dlog_accumulator_generate","combine_polys"]};
