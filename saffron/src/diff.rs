@@ -1,4 +1,4 @@
-use crate::utils::encode_for_domain;
+use crate::encoding::encode_for_domain;
 use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
 use rayon::prelude::*;
