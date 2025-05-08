@@ -47,7 +47,7 @@ We will give a recursive definition of a few concepts. Making this mathematicall
 
 The data of an **inductive rule for a type $A$** is
 
-- a sequence of inductive sets $A_0, \dots, A_{n-1}$ (note the recursive reference to )
+- a sequence of inductive sets $A_0, \dots, A_{n-1}$ (note the recursive reference to inductive sets)
 
 - a type $W$
 
