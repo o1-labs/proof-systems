@@ -1,7 +1,7 @@
 use crate::{
     commitment::commit_to_field_elems,
     diff::Diff,
-    utils::{decode_into, encode_for_domain},
+    utils::{decode_into_full, encode_for_domain},
     Curve, ProjectiveCurve, ScalarField, SRS_SIZE,
 };
 use ark_ec::{AffineRepr, VariableBaseMSM};
@@ -138,7 +138,7 @@ impl FieldBlob {
         let mut buffer = vec![0u8; m];
 
         for x in blob.data {
-            decode_into(&mut buffer, x);
+            decode_into_full(&mut buffer, x);
             bytes.extend_from_slice(&buffer[(m - n)..m]);
         }
 
