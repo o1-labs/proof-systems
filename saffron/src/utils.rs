@@ -1,8 +1,8 @@
-use crate::encoding::decode_into_full;
+use crate::encoding::decode_into;
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
-use o1_utils::{field_helpers::pows, FieldHelpers};
+use o1_utils::field_helpers::pows;
 use std::marker::PhantomData;
 use thiserror::Error;
 use tracing::instrument;
@@ -43,16 +43,15 @@ impl<F: PrimeField> QueryField<F> {
     #[instrument(skip_all, level = "debug")]
     pub fn apply(self, data: &[Vec<F>]) -> Vec<u8> {
         let n = (F::MODULUS_BIT_SIZE / 8) as usize;
-        let m = F::size_in_bytes();
-        let mut buffer = vec![0u8; m];
+        let mut buffer = vec![0u8; n];
         let mut answer = Vec::new();
         self.start
             .into_iter()
             .take_while(|x| x <= &self.end)
             .for_each(|x| {
                 let value = data[x.poly_index][x.eval_index];
-                decode_into_full(&mut buffer, value);
-                answer.extend_from_slice(&buffer[(m - n)..m]);
+                decode_into(&mut buffer, value);
+                answer.extend_from_slice(&buffer);
             });
 
         answer[(self.leftover_start)..(answer.len() - self.leftover_end)].to_vec()
