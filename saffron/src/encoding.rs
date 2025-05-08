@@ -9,20 +9,20 @@ use ark_ff::{BigInteger, PrimeField};
 // For injectivity, you can only use this on inputs of length at most
 // 'F::MODULUS_BIT_SIZE / 8', e.g. for Pallas & Vesta this is 31.
 /// Converts `bytes` into a field element ; `bytes` length can be arbitrary.
-pub fn encode<Fp: PrimeField>(bytes: &[u8]) -> Fp {
-    Fp::from_be_bytes_mod_order(bytes)
+pub fn encode<F: PrimeField>(bytes: &[u8]) -> F {
+    F::from_be_bytes_mod_order(bytes)
 }
 
 /// Copies in `buffer` the `Fp::size_in_bytes()` decimal representation of `x`
 /// in big endian (for Pallas & Vesta, the representation is 32 bytes)
-pub fn decode_into_full<Fp: PrimeField>(buffer: &mut [u8], x: Fp) {
+pub fn decode_into_full<F: PrimeField>(buffer: &mut [u8], x: F) {
     let bytes = x.into_bigint().to_bytes_be();
     buffer.copy_from_slice(&bytes);
 }
 
 /// Returns the `Fp::size_in_bytes()` decimal representation of `x`
 /// in big endian (for Pallas & Vesta, the representation is 32 bytes)
-pub fn decode_into_vec_full<Fp: PrimeField>(x: Fp) -> Vec<u8> {
+pub fn decode_into_vec_full<F: PrimeField>(x: F) -> Vec<u8> {
     x.into_bigint().to_bytes_be()
 }
 
@@ -70,8 +70,8 @@ mod tests {
     use crate::utils::test_utils::UserData;
 
     /// Convert the provided scalar in its 32 bytes representation
-    fn decode_full<Fp: PrimeField>(x: Fp) -> Vec<u8> {
-        let mut buffer = vec![0u8; Fp::size_in_bytes()];
+    fn decode_full<F: PrimeField>(x: F) -> Vec<u8> {
+        let mut buffer = vec![0u8; F::size_in_bytes()];
         decode_into_full(&mut buffer, x);
         buffer
     }
