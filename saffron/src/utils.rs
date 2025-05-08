@@ -7,20 +7,26 @@ use thiserror::Error;
 use tracing::instrument;
 
 // For injectivity, you can only use this on inputs of length at most
-// 'F::MODULUS_BIT_SIZE / 8', e.g. for Vesta this is 31.
+// 'F::MODULUS_BIT_SIZE / 8', e.g. for Pallas & Vesta this is 31.
+/// Converts `bytes` into a field element ; `bytes` length can be arbitrary.
 pub fn encode<Fp: PrimeField>(bytes: &[u8]) -> Fp {
     Fp::from_be_bytes_mod_order(bytes)
 }
 
-pub fn decode_into<Fp: PrimeField>(buffer: &mut [u8], x: Fp) {
+/// Copies in `buffer` the `Fp::size_in_bytes()` decimal representation of `x`
+/// in big endian (for Pallas & Vesta, the representation is 32 bytes)
+pub fn decode_into_full<Fp: PrimeField>(buffer: &mut [u8], x: Fp) {
     let bytes = x.into_bigint().to_bytes_be();
     buffer.copy_from_slice(&bytes);
 }
 
-pub fn decode_into_vec<Fp: PrimeField>(x: Fp) -> Vec<u8> {
+/// Returns the `Fp::size_in_bytes()` decimal representation of `x`
+/// in big endian (for Pallas & Vesta, the representation is 32 bytes)
+pub fn decode_into_vec_full<Fp: PrimeField>(x: Fp) -> Vec<u8> {
     x.into_bigint().to_bytes_be()
 }
 
+/// Converts each chunk of size `F::MODULUS_BIT_SIZE / 8` from `bytes` to a field element
 pub fn encode_as_field_elements<F: PrimeField>(bytes: &[u8]) -> Vec<F> {
     let n = (F::MODULUS_BIT_SIZE / 8) as usize;
     bytes
@@ -33,6 +39,8 @@ pub fn encode_as_field_elements<F: PrimeField>(bytes: &[u8]) -> Vec<F> {
         .collect::<Vec<_>>()
 }
 
+/// Same as [encode_as_field_elements], but the returned vector is divided in
+/// chunks of `domain_size` (except for the last chunk if its size is smaller)
 pub fn encode_for_domain<F: PrimeField>(domain_size: usize, bytes: &[u8]) -> Vec<Vec<F>> {
     let xs = encode_as_field_elements(bytes);
     xs.chunks(domain_size)
@@ -93,7 +101,7 @@ impl<F: PrimeField> QueryField<F> {
             .take_while(|x| x <= &self.end)
             .for_each(|x| {
                 let value = data[x.poly_index][x.eval_index];
-                decode_into(&mut buffer, value);
+                decode_into_full(&mut buffer, value);
                 answer.extend_from_slice(&buffer[(m - n)..m]);
             });
 
@@ -297,9 +305,10 @@ mod tests {
     use test_utils::{DataSize, UserData};
     use tracing::debug;
 
-    fn decode<Fp: PrimeField>(x: Fp) -> Vec<u8> {
+    /// Convert the provided scalar in its 32 bytes representation
+    fn decode_full<Fp: PrimeField>(x: Fp) -> Vec<u8> {
         let mut buffer = vec![0u8; Fp::size_in_bytes()];
-        decode_into(&mut buffer, x);
+        decode_into_full(&mut buffer, x);
         buffer
     }
 
@@ -309,7 +318,7 @@ mod tests {
         let mut buffer = vec![0u8; F::size_in_bytes()];
         xs.iter()
             .flat_map(|x| {
-                decode_into(&mut buffer, *x);
+                decode_into_full(&mut buffer, *x);
                 buffer[(m - n)..m].to_vec()
             })
             .collect()
@@ -320,7 +329,7 @@ mod tests {
         #[test]
         fn test_round_trip_from_bytes(xs in any::<[u8;31]>())
           { let n : Fp = encode(&xs);
-            let ys : [u8; 31] = decode(n).as_slice()[1..32].try_into().unwrap();
+            let ys : [u8; 31] = decode_full(n).as_slice()[1..32].try_into().unwrap();
             prop_assert_eq!(xs, ys);
           }
     }
@@ -331,7 +340,7 @@ mod tests {
         fn test_round_trip_from_fp(
             x in prop::strategy::Just(Fp::rand(&mut ark_std::rand::thread_rng()))
         ) {
-            let bytes = decode(x);
+            let bytes = decode_full(x);
             let y = encode(&bytes);
             prop_assert_eq!(x,y);
         }
