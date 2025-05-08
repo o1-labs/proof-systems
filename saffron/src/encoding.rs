@@ -15,14 +15,14 @@ pub fn encode<F: PrimeField>(bytes: &[u8]) -> F {
 
 /// Returns the `Fp::size_in_bytes()` decimal representation of `x`
 /// in big endian (for Pallas & Vesta, the representation is 32 bytes)
-pub fn decode_into_vec_full<F: PrimeField>(x: F) -> Vec<u8> {
+pub fn decode_full<F: PrimeField>(x: F) -> Vec<u8> {
     x.into_bigint().to_bytes_be()
 }
 
 /// Copies in `buffer` the `Fp::size_in_bytes()` decimal representation of `x`
 /// in big endian (for Pallas & Vesta, the representation is 32 bytes)
 pub fn decode_into_full<F: PrimeField>(buffer: &mut [u8], x: F) {
-    let bytes = decode_into_vec_full(x);
+    let bytes = decode_full(x);
     buffer.copy_from_slice(&bytes);
 }
 
@@ -86,7 +86,7 @@ mod tests {
         #[test]
         fn test_round_trip_from_bytes(xs in any::<[u8;31]>())
           { let n : Fp = encode(&xs);
-            let ys : [u8; 31] = decode_into_vec_full(n).as_slice()[1..32].try_into().unwrap();
+            let ys : [u8; 31] = decode_full(n).as_slice()[1..32].try_into().unwrap();
             prop_assert_eq!(xs, ys);
           }
     }
@@ -97,7 +97,7 @@ mod tests {
         fn test_round_trip_from_fp(
             x in prop::strategy::Just(Fp::rand(&mut ark_std::rand::thread_rng()))
         ) {
-            let bytes = decode_into_vec_full(x);
+            let bytes = decode_full(x);
             let y = encode(&bytes);
             prop_assert_eq!(x,y);
         }
