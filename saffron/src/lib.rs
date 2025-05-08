@@ -6,6 +6,7 @@ pub mod encoding;
 pub mod env;
 pub mod folding;
 pub mod read_proof;
+pub mod storage;
 pub mod storage_proof;
 pub mod utils;
 
