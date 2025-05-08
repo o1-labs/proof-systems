@@ -7,6 +7,18 @@
 use ark_ff::{BigInteger, PrimeField};
 use o1_utils::FieldHelpers;
 
+/// The size in bytes of the full representation of a field element (32 for
+/// Pallas & Vesta)
+pub fn encoding_size_full<F: PrimeField>() -> usize {
+    F::size_in_bytes()
+}
+
+/// The number of bytes that can be fully represented by a scalar (31 for
+/// Pallas & Vesta)
+pub fn encoding_size<F: PrimeField>() -> usize {
+    (F::MODULUS_BIT_SIZE / 8) as usize
+}
+
 // For injectivity, you can only use this on inputs of length at most
 // 'F::MODULUS_BIT_SIZE / 8', e.g. for Pallas & Vesta this is 31.
 /// Converts `bytes` into a field element ; `bytes` length can be arbitrary.
@@ -30,9 +42,9 @@ pub fn decode_into_full<F: PrimeField>(buffer: &mut [u8], x: F) {
 /// `F::MODULUS_BIT_SIZE / 8`
 pub fn decode<F: PrimeField>(x: F) -> Vec<u8> {
     // How many bytes fit into the field
-    let n = (F::MODULUS_BIT_SIZE / 8) as usize;
+    let n = encoding_size::<F>();
     // How many bytes are necessary to fit a field element
-    let m = F::size_in_bytes();
+    let m = encoding_size_full::<F>();
     let full_bytes = decode_full(x);
     full_bytes[(m - n)..m].to_vec()
 }
@@ -51,7 +63,7 @@ pub fn decode_from_field_elements<F: PrimeField>(xs: Vec<F>) -> Vec<u8> {
 
 /// Converts each chunk of size `F::MODULUS_BIT_SIZE / 8` from `bytes` to a field element
 pub fn encode_as_field_elements<F: PrimeField>(bytes: &[u8]) -> Vec<F> {
-    let n = (F::MODULUS_BIT_SIZE / 8) as usize;
+    let n = encoding_size::<F>();
     bytes
         .chunks(n)
         .map(|chunk| {
