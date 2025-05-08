@@ -69,13 +69,6 @@ mod tests {
 
     use crate::utils::test_utils::UserData;
 
-    /// Convert the provided scalar in its 32 bytes representation
-    fn decode_full<F: PrimeField>(x: F) -> Vec<u8> {
-        let mut buffer = vec![0u8; F::size_in_bytes()];
-        decode_into_full(&mut buffer, x);
-        buffer
-    }
-
     fn decode_from_field_elements<F: PrimeField>(xs: Vec<F>) -> Vec<u8> {
         let n = (F::MODULUS_BIT_SIZE / 8) as usize;
         let m = F::size_in_bytes();
@@ -93,7 +86,7 @@ mod tests {
         #[test]
         fn test_round_trip_from_bytes(xs in any::<[u8;31]>())
           { let n : Fp = encode(&xs);
-            let ys : [u8; 31] = decode_full(n).as_slice()[1..32].try_into().unwrap();
+            let ys : [u8; 31] = decode_into_vec_full(n).as_slice()[1..32].try_into().unwrap();
             prop_assert_eq!(xs, ys);
           }
     }
@@ -104,7 +97,7 @@ mod tests {
         fn test_round_trip_from_fp(
             x in prop::strategy::Just(Fp::rand(&mut ark_std::rand::thread_rng()))
         ) {
-            let bytes = decode_full(x);
+            let bytes = decode_into_vec_full(x);
             let y = encode(&bytes);
             prop_assert_eq!(x,y);
         }
