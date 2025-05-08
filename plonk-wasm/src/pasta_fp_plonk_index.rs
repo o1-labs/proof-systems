@@ -131,6 +131,7 @@ pub fn caml_pasta_fp_plonk_index_create(
             .public(public_ as usize)
             .prev_challenges(prev_challenges as usize)
             .lookup(rust_lookup_tables)
+            .max_poly_size(Some(srs.0.max_poly_size()))
             .runtime(if rust_runtime_table_cfgs.is_empty() {
                 None
             } else {
