@@ -1,7 +1,7 @@
 use crate::{
     commitment::commit_to_field_elems,
     diff::Diff,
-    utils::{decode_into_full, encode_for_domain},
+    encoding::{decode_into_full, encode_for_domain},
     Curve, ProjectiveCurve, ScalarField, SRS_SIZE,
 };
 use ark_ec::{AffineRepr, VariableBaseMSM};
