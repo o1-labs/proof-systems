@@ -62,9 +62,8 @@ pub fn decode_from_field_elements<F: PrimeField>(xs: Vec<F>) -> Vec<u8> {
     xs.iter().flat_map(|x| decode(*x)).collect()
 }
 
-/// Converts each chunk of size `F::MODULUS_BIT_SIZE / 8` from `bytes` to a field element
-pub fn encode_as_field_elements<F: PrimeField>(bytes: &[u8]) -> Vec<F> {
-    let n = encoding_size::<F>();
+/// Converts each chunk of size `n` from `bytes` to a field element
+fn encode_as_field_elements_aux<F: PrimeField>(n: usize, bytes: &[u8]) -> Vec<F> {
     bytes
         .chunks(n)
         .map(|chunk| {
@@ -73,6 +72,16 @@ pub fn encode_as_field_elements<F: PrimeField>(bytes: &[u8]) -> Vec<F> {
             encode(&bytes)
         })
         .collect::<Vec<_>>()
+}
+
+/// Converts each chunk of size `F::MODULUS_BIT_SIZE / 8` from `bytes` to a field element
+pub fn encode_as_field_elements<F: PrimeField>(bytes: &[u8]) -> Vec<F> {
+    encode_as_field_elements_aux(encoding_size::<F>(), bytes)
+}
+
+/// Converts each chunk of size `F::size_in_bytes()` from `bytes` to a field element
+pub fn encode_as_field_elements_full<F: PrimeField>(bytes: &[u8]) -> Vec<F> {
+    encode_as_field_elements_aux(encoding_size_full::<F>(), bytes)
 }
 
 /// Same as [encode_as_field_elements], but the returned vector is divided in
