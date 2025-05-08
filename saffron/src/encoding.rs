@@ -26,18 +26,27 @@ pub fn decode_into_full<F: PrimeField>(buffer: &mut [u8], x: F) {
     let bytes = decode_full(x);
     buffer.copy_from_slice(&bytes);
 }
+/// Converts provided field element `x` into a vector of bytes of size
+/// `F::MODULUS_BIT_SIZE / 8`
+pub fn decode<F: PrimeField>(x: F) -> Vec<u8> {
+    // How many bytes fit into the field
+    let n = (F::MODULUS_BIT_SIZE / 8) as usize;
+    // How many bytes are necessary to fit a field element
+    let m = F::size_in_bytes();
+    let full_bytes = decode_full(x);
+    full_bytes[(m - n)..m].to_vec()
+}
+
+/// Converts provided field element `x` into a vector of bytes of size
+/// `F::MODULUS_BIT_SIZE / 8`
+pub fn decode_into<F: PrimeField>(buffer: &mut [u8], x: F) {
+    let bytes = decode(x);
+    buffer.copy_from_slice(&bytes);
+}
 
 /// Creates a bytes vector that represents each element of `xs` over 31 bytes
 pub fn decode_from_field_elements<F: PrimeField>(xs: Vec<F>) -> Vec<u8> {
-    let n = (F::MODULUS_BIT_SIZE / 8) as usize;
-    let m = F::size_in_bytes();
-    let mut buffer = vec![0u8; F::size_in_bytes()];
-    xs.iter()
-        .flat_map(|x| {
-            decode_into_full(&mut buffer, *x);
-            buffer[(m - n)..m].to_vec()
-        })
-        .collect()
+    xs.iter().flat_map(|x| decode(*x)).collect()
 }
 
 /// Converts each chunk of size `F::MODULUS_BIT_SIZE / 8` from `bytes` to a field element
@@ -80,6 +89,17 @@ mod tests {
     use proptest::prelude::*;
 
     use crate::utils::test_utils::UserData;
+
+    // Check that the different decoding functions output the same result for the same input
+    proptest! {
+        #[test]
+        fn test_decodes_consistency(xs in any::<[u8;31]>())
+          { let n : Fp = encode(&xs);
+            let y_full : [u8; 31] = decode_full(n).as_slice()[1..32].try_into().unwrap();
+            let y = decode(n);
+            prop_assert_eq!(y_full, y.as_slice());
+          }
+    }
 
     // Check that [u8] -> Fp -> [u8] is the identity function.
     proptest! {
