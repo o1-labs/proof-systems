@@ -1,4 +1,4 @@
-use crate::encoding::decode_into;
+use crate::encoding::{decode_into, encoding_size};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
@@ -42,8 +42,7 @@ pub struct QueryField<F> {
 impl<F: PrimeField> QueryField<F> {
     #[instrument(skip_all, level = "debug")]
     pub fn apply(self, data: &[Vec<F>]) -> Vec<u8> {
-        let n = (F::MODULUS_BIT_SIZE / 8) as usize;
-        let mut buffer = vec![0u8; n];
+        let mut buffer = vec![0u8; encoding_size::<F>()];
         let mut answer = Vec::new();
         self.start
             .into_iter()
@@ -93,7 +92,7 @@ impl QueryBytes {
         domain_size: usize,
         n_polys: usize,
     ) -> Result<QueryField<F>, QueryError> {
-        let n = (F::MODULUS_BIT_SIZE / 8) as usize;
+        let n = encoding_size::<F>();
         let start = {
             let start_field_nb = self.start / n;
             FieldElt {
@@ -221,14 +220,14 @@ pub mod test_utils {
 
 // returns the minimum number of polynomials required to encode the data
 pub fn min_encoding_chunks<F: PrimeField, D: EvaluationDomain<F>>(domain: &D, xs: &[u8]) -> usize {
-    let m = F::MODULUS_BIT_SIZE as usize / 8;
+    let m = encoding_size::<F>();
     let n = xs.len();
     let num_field_elems = (n + m - 1) / m;
     (num_field_elems + domain.size() - 1) / domain.size()
 }
 
 pub fn chunk_size_in_bytes<F: PrimeField, D: EvaluationDomain<F>>(domain: &D) -> usize {
-    let m = F::MODULUS_BIT_SIZE as usize / 8;
+    let m = encoding_size::<F>();
     domain.size() * m
 }
 
