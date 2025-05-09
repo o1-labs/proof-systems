@@ -1,17 +1,23 @@
+use crate::{
+    arkworks::{CamlFp, CamlGVesta},
+    field_vector::fp::CamlFpVector,
+    srs::fp::CamlFpSrs,
+    CamlOpeningProof,
+};
 use ark_ff::{Field, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain,
 };
-use kimchi::groupmap::GroupMap;
-use kimchi::mina_poseidon::FqSponge;
-use kimchi::plonk_sponge::FrSponge;
 use kimchi::{
     circuits::domains::EvaluationDomains,
     curve::KimchiCurve,
+    groupmap::GroupMap,
     mina_poseidon::{
         constants::PlonkSpongeConstantsKimchi,
         sponge::{DefaultFqSponge, DefaultFrSponge},
+        FqSponge,
     },
+    plonk_sponge::FrSponge,
     poly_commitment::{
         commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
         ipa::{OpeningProof, SRS},
@@ -19,10 +25,6 @@ use kimchi::{
         PolyComm, SRS as _,
     },
 };
-use crate::arkworks::{CamlFp, CamlGVesta};
-use crate::field_vector::fp::CamlFpVector;
-use crate::srs::fp::CamlFpSrs;
-use crate::CamlOpeningProof;
 use mina_curves::pasta::{Fp, Fq, Vesta, VestaParameters};
 use poly_commitment::commitment::combined_inner_product;
 use rand::{CryptoRng, RngCore};
@@ -49,14 +51,14 @@ struct Proof {
 }
 
 #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-pub struct CamlBooleanProof {
+pub struct CamlPastaFpBooleanProof {
     pub poly_commitment: CamlGVesta,
     pub quotient_commitment: CamlGVesta,
     pub evaluation: CamlFp,
     pub opening_proof: CamlOpeningProof<CamlGVesta, CamlFp>,
 }
 
-impl From<Proof> for CamlBooleanProof {
+impl From<Proof> for CamlPastaFpBooleanProof {
     fn from(proof: Proof) -> Self {
         Self {
             poly_commitment: proof.poly_commitment.into(),
@@ -67,8 +69,8 @@ impl From<Proof> for CamlBooleanProof {
     }
 }
 
-impl From<CamlBooleanProof> for Proof {
-    fn from(proof: CamlBooleanProof) -> Self {
+impl From<CamlPastaFpBooleanProof> for Proof {
+    fn from(proof: CamlPastaFpBooleanProof) -> Self {
         Self {
             poly_commitment: proof.poly_commitment.into(),
             quotient_commitment: proof.quotient_commitment.into(),
@@ -176,7 +178,10 @@ where
 }
 #[ocaml_gen::func]
 #[ocaml::func]
-pub fn caml_fp_prove_boolean(srs: CamlFpSrs, witness: CamlFpVector) -> CamlBooleanProof {
+pub fn caml_pasta_fp_prove_boolean(
+    srs: CamlFpSrs,
+    witness: CamlFpVector,
+) -> CamlPastaFpBooleanProof {
     let group_map = GroupMap::<Fq>::setup();
     let domain = EvaluationDomains::<Fp>::create(srs.size()).unwrap();
     let boolean_circuit = from_caml_fp_vector(witness);
@@ -260,7 +265,7 @@ where
 
 #[ocaml_gen::func]
 #[ocaml::func]
-pub fn caml_fp_verify_boolean(srs: CamlFpSrs, proof: CamlBooleanProof) -> bool {
+pub fn caml_pasta_fp_verify_boolean(srs: CamlFpSrs, proof: CamlPastaFpBooleanProof) -> bool {
     let group_map = GroupMap::<Fq>::setup();
     let domain = EvaluationDomains::<Fp>::create(srs.size()).unwrap();
     let proof = Proof::from(proof);
@@ -275,8 +280,7 @@ mod tests {
     use ark_ff::One;
     use kimchi::groupmap::GroupMap;
     use once_cell::sync::Lazy;
-    use rand::thread_rng;
-    use rand::Rng;
+    use rand::{thread_rng, Rng};
 
     const SRS_SIZE: usize = 1 << 16;
 
