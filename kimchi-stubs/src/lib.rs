@@ -70,3 +70,5 @@ pub use {
     mina_poseidon::sponge::caml::CamlScalarChallenge,
     poly_commitment::{commitment::caml::CamlPolyComm, ipa::caml::CamlOpeningProof},
 };
+
+pub mod pasta_fp_boolean_circuit;
