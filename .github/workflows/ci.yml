@@ -9,7 +9,7 @@ on:
   pull_request:
   push:
     branches:
-       - master
+      - master
 
 concurrency:
   group: ${{ github.ref }}
@@ -24,40 +24,18 @@ env:
   CARGO_TERM_COLOR: always
   # 30 MB of stack for Keccak tests
   RUST_MIN_STACK: 31457280
-  CARGO_EXTRA_ARGS: "--workspace"
+  CARGO_EXTRA_ARGS: '--workspace'
 
 jobs:
-  run_mdbook:
-    name: Building MDBook
-    if: ${{ github.event_name != 'workflow_run' }}
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust_toolchain_version: ["1.81"]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Use shared Rust toolchain setting up steps
-        uses: ./.github/actions/toolchain-shared
-        with:
-          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
-
-      - name: Build the mdbook
-        run: |
-          cd book
-          make deps
-          make build
-
   define-matrix:
     runs-on: ubuntu-latest
     outputs:
       rust_toolchain_version: ${{ steps.rust.outputs.version }}
+      default_rust_version: ${{ fromJson(steps.rust.outputs.version)[0] }}
       ocaml_version: ${{ steps.ocaml.outputs.version }}
       node: ${{ steps.node.outputs.version }}
       os: ${{ steps.os.outputs.version }}
+      default_os: ${{ fromJson(steps.os.outputs.version)[0] }}
     steps:
       - id: rust
         run: echo 'version=["1.81", "1.82"]' >> "$GITHUB_OUTPUT"
@@ -72,14 +50,13 @@ jobs:
         run: echo 'version=["ubuntu-latest", "ubuntu-24.04-arm"]' >> "$GITHUB_OUTPUT"
 
   refresh-cache:
-    needs: ["define-matrix"]
+    needs: ['define-matrix']
     strategy:
       matrix:
         rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
         os: ${{ fromJSON(needs.define-matrix.outputs.os) }}
     runs-on: ${{ matrix.os }}
     steps:
-
       # if 'workflow_run'
 
       - uses: actions/checkout@v4
@@ -101,7 +78,7 @@ jobs:
         run: echo 'no need to refresh'
 
   doc-and-spec:
-    needs: ["define-matrix", "refresh-cache"]
+    needs: ['define-matrix', 'refresh-cache']
     strategy:
       matrix:
         rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
@@ -166,8 +143,44 @@ jobs:
           eval $(opam env)
           make generate-doc
 
+      #
+      # MD Book
+      #
+
+      - name: Build the mdbook
+        run: |
+          cd book
+          make deps
+          make build
+
+      #
+      # Deploy Book on push to master
+      #
+
+      - name: Rerun doc generation with different args and copy into book directory
+        if: >-
+          github.event_name == 'push' && 
+          github.ref == 'refs/heads/master' &&
+          matrix.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
+          matrix.os == needs.define-matrix.outputs.default_os
+        run: |
+          eval $(opam env)
+          RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --all-features --no-deps --workspace --exclude xtask
+          cp -r ./target/doc ./book/book/html/rustdoc
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e
+        if: >-
+          github.event_name == 'push' && 
+          github.ref == 'refs/heads/master' &&
+          matrix.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
+          matrix.os == needs.define-matrix.outputs.default_os
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./book/book/html
+
   lint:
-    needs: ["define-matrix", "refresh-cache"]
+    needs: ['define-matrix', 'refresh-cache']
     strategy:
       matrix:
         rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
@@ -200,7 +213,7 @@ jobs:
           make lint
 
   build:
-    needs: ["define-matrix", "refresh-cache"]
+    needs: ['define-matrix', 'refresh-cache']
     strategy:
       matrix:
         rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
@@ -233,7 +246,7 @@ jobs:
           make
 
   tests:
-    needs: ["define-matrix", "refresh-cache"]
+    needs: ['define-matrix', 'refresh-cache']
     strategy:
       matrix:
         rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_toolchain_version) }}
