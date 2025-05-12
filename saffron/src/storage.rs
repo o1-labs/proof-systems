@@ -9,7 +9,8 @@
 //! Using the 31 version leads currently to inconsistency when updating if the
 //! diff's new values are greater than what is representable over 31 bytes.
 
-use crate::{diff::Diff, encoding, ScalarField};
+use crate::{diff::Diff, encoding};
+use ark_ff::PrimeField;
 use std::{
     fs::{File, OpenOptions},
     io::{Read, Seek, SeekFrom, Write},
@@ -19,7 +20,7 @@ use crate::SRS_SIZE;
 
 /// Creates a file at `path` and fill it with `data`
 /// TODO: For now, we assume the data vector is smaller than SRS_SIZE
-pub fn init(path: &str, data: &Vec<ScalarField>) -> std::io::Result<()> {
+pub fn init<F: PrimeField>(path: &str, data: &Vec<F>) -> std::io::Result<()> {
     // TODO: handle the > SRS_SIZE case
     assert!(data.len() <= SRS_SIZE);
     let mut file = File::create(path)?;
@@ -34,7 +35,7 @@ pub fn init(path: &str, data: &Vec<ScalarField>) -> std::io::Result<()> {
 /// bytes.
 /// This function raises an error when the path does not exist, or if there is
 /// an issue with reading.
-pub fn read(path: &str) -> std::io::Result<Vec<ScalarField>> {
+pub fn read<F: PrimeField>(path: &str) -> std::io::Result<Vec<F>> {
     let mut file = File::open(path)?;
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
@@ -47,10 +48,10 @@ pub fn read(path: &str) -> std::io::Result<Vec<ScalarField>> {
 /// are specified by scalars (not by bytes) and the values of the diff are the
 /// new scalar value expected for the new data.
 /// Note that this only update the file, not the commitment
-pub fn update(path: &str, diff: &Diff<ScalarField>) -> std::io::Result<()> {
+pub fn update<F: PrimeField>(path: &str, diff: &Diff<F>) -> std::io::Result<()> {
     let mut file = OpenOptions::new().write(true).open(path)?;
     let region_offset = diff.region * (SRS_SIZE as u64);
-    let scalar_size = encoding::encoding_size_full::<ScalarField>() as u64;
+    let scalar_size = encoding::encoding_size_full::<F>() as u64;
     for (index, new_value) in diff.addresses.iter().zip(diff.new_values.iter()) {
         let corresponding_bytes_index = (region_offset + index) * scalar_size;
         file.seek(SeekFrom::Start(corresponding_bytes_index))?;
