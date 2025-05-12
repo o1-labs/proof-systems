@@ -2818,6 +2818,7 @@ dependencies = [
  "itertools 0.12.1",
  "mina-curves",
  "mina-poseidon",
+ "num-bigint",
  "o1-utils",
  "ocaml",
  "ocaml-gen",
