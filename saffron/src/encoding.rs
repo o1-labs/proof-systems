@@ -38,6 +38,7 @@ pub fn decode_into_full<F: PrimeField>(buffer: &mut [u8], x: F) {
     let bytes = decode_full(x);
     buffer.copy_from_slice(&bytes);
 }
+
 /// Converts provided field element `x` into a vector of bytes of size
 /// `F::MODULUS_BIT_SIZE / 8`
 pub fn decode<F: PrimeField>(x: F) -> Vec<u8> {
@@ -91,6 +92,7 @@ pub fn encode_for_domain<F: PrimeField>(domain_size: usize, bytes: &[u8]) -> Vec
         })
         .collect()
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -157,5 +159,5 @@ mod tests {
               .collect::<Vec<u8>>();
             prop_assert_eq!(xs,ys);
           }
-        }
+    }
 }
