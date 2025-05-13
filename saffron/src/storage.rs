@@ -22,6 +22,45 @@ pub struct Data<F: PrimeField> {
     pub data: Vec<F>,
 }
 
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlData<CamlF> {
+        pub data: Vec<CamlF>,
+    }
+
+    // let x: Data<Fq> = Data { data: vec![Fq::one()] };
+    // let caml_x: CamlData<Fq> = x.into();
+
+    impl<F, CamlF> From<Data<F>> for CamlData<CamlF>
+    where
+        F: PrimeField,
+        CamlF: From<F>,
+    {
+        fn from(data: Data<F>) -> Self {
+            let data = data.data.into_iter().map(|x| x.into()).collect::<Vec<_>>();
+            Self { data }
+        }
+    }
+
+    impl<F, CamlF> From<CamlData<CamlF>> for Data<F>
+    where
+        F: PrimeField,
+        CamlF: Into<F>,
+    {
+        fn from(caml_data: CamlData<CamlF>) -> Self {
+            let data = caml_data
+                .data
+                .into_iter()
+                .map(|x| x.into())
+                .collect::<Vec<_>>();
+            Self { data }
+        }
+    }
+}
+
 /// Creates a file at `path` and fill it with `data`
 /// TODO: For now, we assume the data vector is smaller than SRS_SIZE
 pub fn init<F: PrimeField>(path: &str, data: &Data<F>) -> std::io::Result<()> {
