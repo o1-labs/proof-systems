@@ -2,9 +2,12 @@
 //! which defines how a pair of curves interact.
 
 use ark_ec::{short_weierstrass::Affine, AffineRepr, CurveConfig};
-use mina_curves::pasta::curves::{
-    pallas::{LegacyPallasParameters, PallasParameters},
-    vesta::{LegacyVestaParameters, VestaParameters},
+use mina_curves::{
+    named::NamedCurve,
+    pasta::curves::{
+        pallas::{LegacyPallasParameters, PallasParameters},
+        vesta::{LegacyVestaParameters, VestaParameters},
+    },
 };
 use mina_poseidon::poseidon::ArithmeticSpongeParams;
 use once_cell::sync::Lazy;
@@ -15,10 +18,7 @@ use poly_commitment::{
 
 /// Represents additional information that a curve needs in order to be used
 /// with Kimchi
-pub trait KimchiCurve: CommitmentCurve + EndoCurve {
-    /// A human readable name.
-    const NAME: &'static str;
-
+pub trait KimchiCurve: CommitmentCurve + EndoCurve + NamedCurve {
     /// Provides the sponge params to be used with this curve.
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField>;
 
@@ -61,8 +61,6 @@ pub fn pallas_endos() -> &'static (
 }
 
 impl KimchiCurve for Affine<VestaParameters> {
-    const NAME: &'static str = "vesta";
-
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
         mina_poseidon::pasta::fp_kimchi::static_params()
     }
@@ -87,8 +85,6 @@ impl KimchiCurve for Affine<VestaParameters> {
 }
 
 impl KimchiCurve for Affine<PallasParameters> {
-    const NAME: &'static str = "pallas";
-
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
         mina_poseidon::pasta::fq_kimchi::static_params()
     }
@@ -117,8 +113,6 @@ impl KimchiCurve for Affine<PallasParameters> {
 //
 
 impl KimchiCurve for Affine<LegacyVestaParameters> {
-    const NAME: &'static str = "legacy_vesta";
-
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
         mina_poseidon::pasta::fp_legacy::static_params()
     }
@@ -143,8 +137,6 @@ impl KimchiCurve for Affine<LegacyVestaParameters> {
 }
 
 impl KimchiCurve for Affine<LegacyPallasParameters> {
-    const NAME: &'static str = "legacy_pallas";
-
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
         mina_poseidon::pasta::fq_legacy::static_params()
     }
@@ -173,8 +165,6 @@ use mina_poseidon::dummy_values::kimchi_dummy;
 
 #[cfg(feature = "bn254")]
 impl KimchiCurve for Affine<ark_bn254::g1::Config> {
-    const NAME: &'static str = "bn254";
-
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
         // TODO: Generate some params
         static PARAMS: Lazy<ArithmeticSpongeParams<ark_bn254::Fr>> = Lazy::new(kimchi_dummy);
