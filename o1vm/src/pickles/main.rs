@@ -1,6 +1,6 @@
 use ark_ff::{UniformRand, Zero};
 use clap::Parser;
-use kimchi::{circuits::domains::EvaluationDomains, precomputed_srs::TestSRS};
+use kimchi::circuits::domains::EvaluationDomains;
 use log::debug;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -20,7 +20,7 @@ use o1vm::{
     preimage_oracle::{NullPreImageOracle, PreImageOracle, PreImageOracleT},
     test_preimage_read, E,
 };
-use poly_commitment::{ipa::SRS, SRS as _};
+use poly_commitment::{ipa::SRS, precomputed_srs::TestSRS, SRS as _};
 use rand::rngs::ThreadRng;
 use std::{fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant};
 
