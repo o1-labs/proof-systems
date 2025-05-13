@@ -30,19 +30,14 @@ O1VM_MIPS_BIN_FILES = $(patsubst ${O1VM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIPS_BIN_D
 # in rust-toolchain.toml.
 # In addition to that, the version in the CI (see file
 # .github/workflows/wasm.yml) should be changed accordingly.
-NIGHTLY_RUST_VERSION = "nightly-2024-06-13"
+NIGHTLY_RUST_VERSION = "nightly-2024-09-05"
 PLONK_WASM_NODEJS_OUTDIR ?= target/nodejs
 PLONK_WASM_WEB_OUTDIR ?= target/web
-
-# This should stay in line with the version used by the argument
-# WASM_PACK_VERSION in
-# MinaProtocol/mina/dockerfiles/stages/1-build-deps
-WASM_PACK_VERSION=0.12.1
 
 # Default target
 all: release
 
-setup: setup-git setup-wasm-pack setup-wasm-toolchain
+setup: setup-git setup-wasm-toolchain
 
 setup-git:
 		@echo ""
@@ -52,10 +47,6 @@ setup-git:
 		git submodule update --init --recursive
 		@echo ""
 		@echo "Git submodules synced."
-
-setup-wasm-pack:
-		@echo "Install wasm-pack"
-		@cargo install wasm-pack@${WASM_PACK_VERSION} --force
 
 setup-wasm-toolchain:
 		@ARCH=$$(uname -m); \
@@ -244,14 +235,14 @@ fclean: clean ## Clean the tooling artefacts in addition to running clean
 
 .PHONY: build-nodejs
 build-nodejs: ## Compile the Kimchi library into WebAssembly to be used in NodeJS
-		cargo +nightly xtask build-wasm \
+		cargo +nightly run --package xtask -- build-wasm \
 		--target nodejs \
 		--out-dir ${PLONK_WASM_NODEJS_OUTDIR} \
 		--rust-version ${NIGHTLY_RUST_VERSION}
 
 .PHONY: build-web
 build-web: ## Compile the Kimchi library into WebAssembly to be used in the browser
-		cargo +nightly xtask build-wasm \
+		cargo +nightly run --package xtask -- build-wasm \
 		--target web \
 		--out-dir ${PLONK_WASM_WEB_OUTDIR} \
 		--rust-version ${NIGHTLY_RUST_VERSION}
