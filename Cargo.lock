@@ -2186,6 +2186,7 @@ name = "mina-curves"
 version = "0.1.0"
 dependencies = [
  "ark-algebra-test-templates",
+ "ark-bn254",
  "ark-ec",
  "ark-ff",
  "ark-serialize",
@@ -2849,6 +2850,7 @@ dependencies = [
  "blake2",
  "criterion",
  "groupmap",
+ "hex",
  "itertools 0.12.1",
  "mina-curves",
  "mina-poseidon",
