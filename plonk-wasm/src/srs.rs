@@ -213,7 +213,7 @@ macro_rules! impl_srs {
                 crate::rayon::run_in_pool(|| {
                     let comms: Vec<_> = comms.into_iter().map(Into::into).collect();
                     let chals: Vec<_> = chals.into_iter().map(Into::into).collect();
-                    crate::urs_utils::batch_dlog_accumulator_check(&srs, &comms, &chals)
+                    poly_commitment::utils::batch_dlog_accumulator_check(&srs, &comms, &chals)
                 })
             }
 
@@ -223,7 +223,7 @@ macro_rules! impl_srs {
                 comms: i32,
                 chals: WasmFlatVector<$WasmF>,
             ) -> WasmVector<$WasmG> {
-                crate::urs_utils::batch_dlog_accumulator_generate::<$G>(
+                poly_commitment::utils::batch_dlog_accumulator_generate::<$G>(
                     &srs,
                     comms as usize,
                     &chals.into_iter().map(From::from).collect(),

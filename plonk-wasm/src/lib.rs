@@ -111,9 +111,6 @@ pub mod rayon;
 /// Arkworks types
 pub mod arkworks;
 
-/// Utils
-pub mod urs_utils; // TODO: move this logic to proof-systems
-
 /// Vectors
 pub mod gate_vector;
 

@@ -46,6 +46,7 @@ tracing-subscriber = { version = "0.3", features = [
 
 [dev-dependencies]
 ark-std.workspace = true
+criterion = { workspace = true, features = ["html_reports"] }
 ctor = "0.2"
 proptest.workspace = true
 once_cell.workspace = true
@@ -53,3 +54,7 @@ once_cell.workspace = true
 [[bin]]
 name = "saffron-og-flow"
 path = "og-flow/main.rs"
+
+[[bench]]
+name = "read_proof_bench"
+harness = false

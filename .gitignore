@@ -23,6 +23,8 @@ build
 *.swp
 *.swo
 .vscode
+.envrc
+.direnv
 
 *.html
 # If symlink created for kimchi-visu

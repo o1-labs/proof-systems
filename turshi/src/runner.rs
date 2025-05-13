@@ -403,8 +403,8 @@ impl<'a, F: Field> CairoStep<'a, F> {
     }
 
     /// This function computes the next values of the allocation and frame pointers
-    /// Panics if in a `call` instruction the flagset [AP_UP] is incorrect
-    ///     or if in any other instruction the flagset AP_UP has more than 1 nonzero bit
+    /// Panics if in a `call` instruction the flagset [FlagSets::ap_up] is incorrect
+    ///     or if in any other instruction the flagset [FlagSets::ap_up] has more than 1 nonzero bit
     ///     or if the flagset `OPCODE` has more than 1 nonzero bit
     fn next_apfp(&mut self) -> (Option<F>, Option<F>) {
         let (next_ap, next_fp);
