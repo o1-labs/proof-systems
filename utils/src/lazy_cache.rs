@@ -168,18 +168,18 @@ where
 // Unit tests for LazyCache
 mod test {
     use super::*;
+    use jemalloc_ctl::{epoch, stats};
+    #[cfg(all(feature = "logs", not(target_arch = "wasm32")))]
+    use jemallocator::Jemalloc;
     use std::{
         sync::{Arc, Mutex},
         thread,
     };
-    use jemalloc_ctl::{epoch, stats};
-    #[cfg(all(feature = "logs", not(target_arch = "wasm32")))]
-    use jemallocator::Jemalloc;
 
     fn print_heap_usage(label: &str) {
         epoch::advance().unwrap(); // refresh internal stats!
         let allocated = stats::allocated::read().unwrap();
-        println!("[{label}] Heap allocated: {} kilobytes", allocated/1024);
+        println!("[{label}] Heap allocated: {} kilobytes", allocated / 1024);
     }
 
     /// Test creating and getting `LazyCache` values

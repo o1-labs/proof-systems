@@ -174,7 +174,10 @@ where
         );
         if self.with_logs {
             let at_index = heap_allocated();
-            println!("- heap after creating prover index: {:?} MB", at_index / (1024 * 1024));
+            println!(
+                "- heap after creating prover index: {:?} MB",
+                at_index / (1024 * 1024)
+            );
         }
 
         self.verifier_index = Some(index.verifier_index());
@@ -210,10 +213,13 @@ where
             "- time to create prover index: {:?}s",
             start.elapsed().as_secs()
         );
-        
+
         if self.with_logs {
             let bytes = heap_allocated();
-            println!("- heap after creating prover index: {:?} MB", bytes / (1024 * 1024));
+            println!(
+                "- heap after creating prover index: {:?} MB",
+                bytes / (1024 * 1024)
+            );
         };
 
         self.verifier_index = Some(index.verifier_index());
@@ -312,7 +318,10 @@ where
 
         if self.0.with_logs {
             let bytes = heap_allocated();
-            println!("- heap before creating proof: {:?} MB", bytes / (1024 * 1024));
+            println!(
+                "- heap before creating proof: {:?} MB",
+                bytes / (1024 * 1024)
+            );
         }
 
         let proof = ProverProof::create_recursive::<EFqSponge, EFrSponge, _>(
@@ -329,7 +338,10 @@ where
 
         if self.0.with_logs {
             let bytes = heap_allocated();
-            println!("- heap after creating proof: {:?} MB", bytes / (1024 * 1024));
+            println!(
+                "- heap after creating proof: {:?} MB",
+                bytes / (1024 * 1024)
+            );
         }
 
         // verify the proof (propagate any errors)
@@ -344,7 +356,10 @@ where
         println!("- time to verify: {}ms", start.elapsed().as_millis());
         if self.0.with_logs {
             let bytes = heap_allocated();
-            println!("- heap after verifying proof: {:?} MB", bytes / (1024 * 1024));
+            println!(
+                "- heap after verifying proof: {:?} MB",
+                bytes / (1024 * 1024)
+            );
         }
 
         Ok(())

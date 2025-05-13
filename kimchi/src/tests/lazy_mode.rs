@@ -21,7 +21,6 @@ type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
-
 // Unit tests for LazyCache
 
 #[test]
@@ -67,13 +66,12 @@ fn test_lazy_mode_benchmark() {
         TestFramework::<Vesta>::default()
             .gates(gates.clone())
             .witness(witness.clone())
-            .public_inputs(public.clone())  
+            .public_inputs(public.clone())
             .lazy_mode(false) // optional, default is false
             .with_logs(true)
             .setup()
             .prove_and_verify::<BaseSponge, ScalarSponge>()
             .unwrap();
-
     }
 
     {
