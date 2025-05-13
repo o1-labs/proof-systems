@@ -18,13 +18,17 @@ use std::{
 
 use crate::SRS_SIZE;
 
+pub struct Data<F: PrimeField> {
+    pub data: Vec<F>,
+}
+
 /// Creates a file at `path` and fill it with `data`
 /// TODO: For now, we assume the data vector is smaller than SRS_SIZE
-pub fn init<F: PrimeField>(path: &str, data: &Vec<F>) -> std::io::Result<()> {
+pub fn init<F: PrimeField>(path: &str, data: &Data<F>) -> std::io::Result<()> {
     // TODO: handle the > SRS_SIZE case
-    assert!(data.len() <= SRS_SIZE);
+    assert!(data.data.len() <= SRS_SIZE);
     let mut file = File::create(path)?;
-    for x in data {
+    for x in &data.data {
         let x_bytes = encoding::decode_full(*x);
         file.write_all(&x_bytes)?
     }
@@ -35,12 +39,13 @@ pub fn init<F: PrimeField>(path: &str, data: &Vec<F>) -> std::io::Result<()> {
 /// bytes.
 /// This function raises an error when the path does not exist, or if there is
 /// an issue with reading.
-pub fn read<F: PrimeField>(path: &str) -> std::io::Result<Vec<F>> {
+pub fn read<F: PrimeField>(path: &str) -> std::io::Result<Data<F>> {
     let mut file = File::open(path)?;
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
     // TODO: handle the > SRS_SIZE case (ie Vec<Vec<F>>)
-    Ok(encoding::encode_as_field_elements_full(&buffer))
+    let data = encoding::encode_as_field_elements_full(&buffer);
+    Ok(Data { data })
 }
 
 /// Takes a valid diff and update the file accordingly, replacing the old
@@ -63,7 +68,7 @@ pub fn update<F: PrimeField>(path: &str, diff: &Diff<F>) -> std::io::Result<()> 
 
 #[cfg(test)]
 mod tests {
-    use crate::{diff::Diff, encoding, env, storage, Curve, ScalarField, SRS_SIZE};
+    use crate::{diff::Diff, encoding, env, storage, storage::Data, Curve, ScalarField, SRS_SIZE};
     use ark_ff::{One, UniformRand, Zero};
     use ark_poly::{univariate::DensePolynomial, Evaluations};
     use kimchi::circuits::domains::EvaluationDomains;
@@ -105,10 +110,12 @@ mod tests {
         let data: Vec<ScalarField> = encoding::encode_as_field_elements_full(&data_bytes);
         let data_comm = compute_comm(&data);
 
+        let data_struct = Data { data };
+
         let read_consistency = {
-            let _init_storage_file = storage::init(path, &data);
-            let read_data: Vec<ScalarField> = storage::read(path).unwrap();
-            let read_data_comm = compute_comm(&read_data);
+            let _init_storage_file = storage::init(path, &data_struct);
+            let read_data_struct: Data<ScalarField> = storage::read(path).unwrap();
+            let read_data_comm = compute_comm(&read_data_struct.data);
 
             // True if read data are the same as initial data
             Curve::eq(&data_comm, &read_data_comm)
@@ -119,10 +126,10 @@ mod tests {
                 // The number of updates is proportional to the data length,
                 // but we make sure to have at least one update if the data is
                 // small
-                let nb_updates = std::cmp::max(data.len() / 20, 1);
+                let nb_updates = std::cmp::max(data_struct.data.len() / 20, 1);
                 let region = 0;
                 let addresses: Vec<u64> = (0..nb_updates)
-                    .map(|_| (rng.gen_range(0..data.len() as u64)))
+                    .map(|_| (rng.gen_range(0..data_struct.data.len() as u64)))
                     .collect();
                 let mut new_values: Vec<ScalarField> =
                     addresses.iter().map(|_| Fp::rand(&mut rng)).collect();
@@ -137,13 +144,13 @@ mod tests {
                 }
             };
 
-            let updated_data = &Diff::apply(&[data], &diff)[0];
+            let updated_data = &Diff::apply(&[data_struct.data], &diff)[0];
             let updated_data_comm = compute_comm(updated_data);
 
             let _file_update = storage::update(path, &diff);
 
-            let updated_read_data: Vec<ScalarField> = storage::read(path).unwrap();
-            let updated_read_data_comm = compute_comm(&updated_read_data);
+            let updated_read_data_struct: Data<ScalarField> = storage::read(path).unwrap();
+            let updated_read_data_comm = compute_comm(&updated_read_data_struct.data);
 
             (
                 Curve::ne(&updated_data_comm, &data_comm),
