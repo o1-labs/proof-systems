@@ -8,6 +8,7 @@ use crate::circuits::{
 use ark_ff::Zero;
 use core::array;
 use itertools::iterate;
+#[cfg(all(feature = "logs", not(target_arch = "wasm32")))]
 use jemallocator::Jemalloc;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -25,6 +26,7 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[test]
 fn test_lazy_mode_benchmark() {
+    #[cfg(all(feature = "logs", not(target_arch = "wasm32")))]
     #[global_allocator]
     static GLOBAL: Jemalloc = Jemalloc;
 

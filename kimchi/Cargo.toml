@@ -22,8 +22,8 @@ ark-serialize.workspace = true
 blake2.workspace = true
 hex.workspace = true
 itertools.workspace = true
-jemalloc-ctl.workspace = true
-jemallocator.workspace = true
+jemalloc-ctl = { workspace = true, optional = true }
+jemallocator = { workspace = true, optional = true }
 log.workspace = true
 num-bigint.workspace = true
 num-integer.workspace = true
@@ -94,3 +94,4 @@ ocaml_types = [
 bn254 = ["ark-bn254"]
 wasm_types = ["wasm-bindgen"]
 check_feature_flags = []
+logs = ["jemalloc-ctl", "jemallocator"]

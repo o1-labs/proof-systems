@@ -173,6 +173,7 @@ mod test {
         thread,
     };
     use jemalloc_ctl::{epoch, stats};
+    #[cfg(all(feature = "logs", not(target_arch = "wasm32")))]
     use jemallocator::Jemalloc;
 
     fn print_heap_usage(label: &str) {
@@ -265,6 +266,7 @@ mod test {
 
     #[test]
     fn test_lazy_cache_allocation() {
+        #[cfg(all(feature = "logs", not(target_arch = "wasm32")))]
         #[global_allocator]
         static GLOBAL: Jemalloc = Jemalloc;
 
