@@ -9,9 +9,9 @@
 //! If you modify the SRS, you will need to regenerate the SRS by passing the
 //! `SRS_OVERWRITE` env var.
 
-use crate::curve::KimchiCurve;
+use crate::{hash_map_cache::HashMapCache, ipa::SRS, CommitmentCurve, PolyComm};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use poly_commitment::{hash_map_cache::HashMapCache, ipa::SRS, PolyComm};
+use mina_curves::named::NamedCurve;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::{collections::HashMap, fs::File, io::BufReader, path::PathBuf};
@@ -72,7 +72,7 @@ impl<G> From<TestSRS<G>> for SRS<G> {
 pub const SERIALIZED_SRS_SIZE: u32 = 16;
 
 /// The path of the serialized SRS.
-fn get_srs_path<G: KimchiCurve>(srs_type: StoredSRSType) -> PathBuf {
+fn get_srs_path<G: NamedCurve>(srs_type: StoredSRSType) -> PathBuf {
     let test_prefix: String = (match srs_type {
         StoredSRSType::Test => "test_",
         StoredSRSType::Prod => "",
@@ -87,7 +87,7 @@ fn get_srs_path<G: KimchiCurve>(srs_type: StoredSRSType) -> PathBuf {
 /// Generic SRS getter fuction.
 pub fn get_srs_generic<G>(srs_type: StoredSRSType) -> SRS<G>
 where
-    G: KimchiCurve,
+    G: NamedCurve + CommitmentCurve,
 {
     let srs_path = get_srs_path::<G>(srs_type);
     let file =
@@ -106,7 +106,7 @@ where
 /// Panics if the SRS does not exists.
 pub fn get_srs<G>() -> SRS<G>
 where
-    G: KimchiCurve,
+    G: NamedCurve + CommitmentCurve,
 {
     get_srs_generic(StoredSRSType::Prod)
 }
@@ -115,7 +115,7 @@ where
 /// Panics if the SRS does not exists.
 pub fn get_srs_test<G>() -> SRS<G>
 where
-    G: KimchiCurve,
+    G: NamedCurve + CommitmentCurve,
 {
     get_srs_generic(StoredSRSType::Test)
 }
@@ -124,14 +124,13 @@ where
 mod tests {
     use super::*;
 
+    use crate::{hash_map_cache::HashMapCache, SRS as _};
     use ark_ec::AffineRepr;
     use ark_ff::PrimeField;
+    use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
     use ark_serialize::Write;
     use hex;
     use mina_curves::pasta::{Pallas, Vesta};
-    use poly_commitment::{hash_map_cache::HashMapCache, SRS as _};
-
-    use crate::circuits::domains::EvaluationDomains;
 
     fn test_regression_serialization_srs_with_generators<G: AffineRepr>(exp_output: String) {
         let h = G::generator();
@@ -165,7 +164,7 @@ mod tests {
 
     fn create_or_check_srs<G>(log2_size: u32, srs_type: StoredSRSType)
     where
-        G: KimchiCurve,
+        G: NamedCurve + CommitmentCurve,
         G::BaseField: PrimeField,
     {
         // generate SRS
@@ -174,9 +173,10 @@ mod tests {
 
         // Test SRS objects have Lagrange bases precomputed
         if srs_type == StoredSRSType::Test {
+            // FIXME we should iterate by powers of 2, instead we iterate over all the integers? why?
             for sub_domain_size in 1..=domain_size {
-                let domain = EvaluationDomains::<G::ScalarField>::create(sub_domain_size).unwrap();
-                srs.get_lagrange_basis(domain.d1);
+                let domain = Radix2EvaluationDomain::new(sub_domain_size).unwrap();
+                srs.get_lagrange_basis(domain);
             }
         }
 
