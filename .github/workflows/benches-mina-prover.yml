@@ -42,11 +42,7 @@ jobs:
           set -x
           pwd
           sleep 1
-          ls target/
-          sleep 1
           ls .
-          sleep 1
-          ls criterion-ps-mina-master-baseline/
           sleep 1
           tree criterion-ps-mina-master-baseline/
           sleep 1
