@@ -8,6 +8,7 @@ use crate::circuits::{
 use ark_ff::Zero;
 use core::array;
 use itertools::iterate;
+use jemallocator::Jemalloc;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -19,10 +20,14 @@ type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
+
 // Unit tests for LazyCache
 
 #[test]
 fn test_lazy_mode_benchmark() {
+    #[global_allocator]
+    static GLOBAL: Jemalloc = Jemalloc;
+
     let public = vec![Fp::from(1u8); 5];
     let circuit_size = 1 << 16;
 
@@ -59,12 +64,14 @@ fn test_lazy_mode_benchmark() {
         eprintln!("LAZY MODE: false (default)");
         TestFramework::<Vesta>::default()
             .gates(gates.clone())
-            .witness(witnes.clone())
+            .witness(witness.clone())
             .public_inputs(public.clone())  
             .lazy_mode(false) // optional, default is false
+            .with_logs(true)
             .setup()
             .prove_and_verify::<BaseSponge, ScalarSponge>()
             .unwrap();
+
     }
 
     {
@@ -75,6 +82,7 @@ fn test_lazy_mode_benchmark() {
             .witness(witness)
             .public_inputs(public)
             .lazy_mode(true)
+            .with_logs(true)
             .setup()
             .prove_and_verify::<BaseSponge, ScalarSponge>()
             .unwrap();

@@ -25,6 +25,7 @@ use ark_ff::PrimeField;
 use ark_poly::Radix2EvaluationDomain as D;
 use core::fmt::Write;
 use groupmap::GroupMap;
+use jemalloc_ctl::{epoch, stats};
 use mina_poseidon::sponge::FqSponge;
 use num_bigint::BigUint;
 use poly_commitment::{
@@ -32,6 +33,12 @@ use poly_commitment::{
 };
 use rand_core::{CryptoRng, RngCore};
 use std::time::Instant;
+
+// Returns the number of bytes allocated by the heap at a given point in time
+fn heap_allocated() -> usize {
+    epoch::advance().unwrap(); // refresh internal stats!
+    stats::allocated::read().unwrap()
+}
 
 // aliases
 
@@ -56,6 +63,8 @@ where
 
     prover_index: Option<ProverIndex<G, OpeningProof>>,
     verifier_index: Option<VerifierIndex<G, OpeningProof>>,
+
+    with_logs: bool,
 }
 
 #[derive(Clone)]
@@ -130,6 +139,11 @@ where
         self
     }
 
+    pub(crate) fn with_logs(mut self, with_logs: bool) -> Self {
+        self.with_logs = with_logs;
+        self
+    }
+
     // Re allow(dead_code): this method is used in tests; without the annotation it warns unnecessarily.
     /// creates the indexes
     #[must_use]
@@ -158,6 +172,10 @@ where
             "- time to create prover index: {:?}s",
             start.elapsed().as_secs()
         );
+        if self.with_logs {
+            let at_index = heap_allocated();
+            println!("- heap after creating prover index: {:?} MB", at_index / (1024 * 1024));
+        }
 
         self.verifier_index = Some(index.verifier_index());
         self.prover_index = Some(index);
@@ -192,6 +210,11 @@ where
             "- time to create prover index: {:?}s",
             start.elapsed().as_secs()
         );
+        
+        if self.with_logs {
+            let bytes = heap_allocated();
+            println!("- heap after creating prover index: {:?} MB", bytes / (1024 * 1024));
+        };
 
         self.verifier_index = Some(index.verifier_index());
         self.prover_index = Some(index);
@@ -287,6 +310,11 @@ where
 
         let group_map = <G as CommitmentCurve>::Map::setup();
 
+        if self.0.with_logs {
+            let bytes = heap_allocated();
+            println!("- heap before creating proof: {:?} MB", bytes / (1024 * 1024));
+        }
+
         let proof = ProverProof::create_recursive::<EFqSponge, EFrSponge, _>(
             &group_map,
             witness,
@@ -299,6 +327,11 @@ where
         .map_err(|e| e.to_string())?;
         println!("- time to create proof: {:?}s", start.elapsed().as_secs());
 
+        if self.0.with_logs {
+            let bytes = heap_allocated();
+            println!("- heap after creating proof: {:?} MB", bytes / (1024 * 1024));
+        }
+
         // verify the proof (propagate any errors)
         let start = Instant::now();
         verify::<G, EFqSponge, EFrSponge, OpeningProof>(
@@ -309,6 +342,10 @@ where
         )
         .map_err(|e| e.to_string())?;
         println!("- time to verify: {}ms", start.elapsed().as_millis());
+        if self.0.with_logs {
+            let bytes = heap_allocated();
+            println!("- heap after verifying proof: {:?} MB", bytes / (1024 * 1024));
+        }
 
         Ok(())
     }

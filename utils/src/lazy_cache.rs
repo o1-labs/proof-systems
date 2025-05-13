@@ -164,17 +164,26 @@ where
     }
 }
 
+#[cfg(test)]
 // Unit tests for LazyCache
 mod test {
+    use super::*;
+    use std::{
+        sync::{Arc, Mutex},
+        thread,
+    };
+    use jemalloc_ctl::{epoch, stats};
+    use jemallocator::Jemalloc;
+
+    fn print_heap_usage(label: &str) {
+        epoch::advance().unwrap(); // refresh internal stats!
+        let allocated = stats::allocated::read().unwrap();
+        println!("[{label}] Heap allocated: {} kilobytes", allocated/1024);
+    }
 
     /// Test creating and getting `LazyCache` values
     #[test]
     fn test_lazy_cache() {
-        use super::*;
-        use std::{
-            sync::{Arc, Mutex},
-            thread,
-        };
         // get
         {
             // Cached variant
@@ -252,5 +261,21 @@ mod test {
             let result = lazy.try_initialize();
             assert_eq!(result, Err(LazyCacheError::LockPoisoned));
         }
+    }
+
+    #[test]
+    fn test_lazy_cache_allocation() {
+        #[global_allocator]
+        static GLOBAL: Jemalloc = Jemalloc;
+
+        print_heap_usage("Start");
+
+        let cache = Arc::new(LazyCache::new(|| vec![42u8; 1024 * 1024])); // 1MB
+
+        print_heap_usage("Before initializing LazyCache");
+
+        let _ = cache.get();
+
+        print_heap_usage("After initializing LazyCache");
     }
 }

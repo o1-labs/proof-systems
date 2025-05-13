@@ -53,6 +53,8 @@ getrandom = { version = "=0.2.15", features = ["js"] }
 hex = { version = "0.4", features = ["serde"] }
 iai = "0.1"
 itertools = "0.12.1"
+jemalloc-ctl = "0.5"
+jemallocator = "0.5"
 js-sys = "=0.3.64"
 libc = "=0.2.169"
 libflate = "2"
