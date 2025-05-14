@@ -33,16 +33,23 @@ struct BooleanCircuit {
     vals: Vec<Fp>,
 }
 
-fn from_caml_fp_vector(v: CamlFpVector) -> BooleanCircuit {
+fn from_caml_fp_vector(v: CamlPastaFpBooleanCircuit) -> BooleanCircuit {
     BooleanCircuit {
-        vals: v.as_slice().into(),
+        vals: v.vals.as_slice().into(),
     }
 }
 
-pub fn new(srs: CamlFpSrs, mut v: CamlFpVector) -> CamlFpVector {
+#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+pub struct CamlPastaFpBooleanCircuit {
+    vals: CamlFpVector,
+}
+
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fp_new_boolean_circuit(srs: CamlFpSrs, mut v: CamlFpVector) -> CamlPastaFpBooleanCircuit {
     let n = srs.0.size();
     v.resize_with(n, || Fp::zero());
-    v
+    CamlPastaFpBooleanCircuit { vals: v }
 }
 
 type VestaFqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
@@ -186,7 +193,7 @@ where
 #[ocaml::func]
 pub fn caml_pasta_fp_prove_boolean(
     srs: CamlFpSrs,
-    witness: CamlFpVector,
+    witness: CamlPastaFpBooleanCircuit,
 ) -> CamlPastaFpBooleanProof {
     let group_map = GroupMap::<Fq>::setup();
     let domain = EvaluationDomains::<Fp>::create(srs.size()).unwrap();
