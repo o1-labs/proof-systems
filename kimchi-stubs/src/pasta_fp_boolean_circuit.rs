@@ -39,6 +39,12 @@ fn from_caml_fp_vector(v: CamlFpVector) -> BooleanCircuit {
     }
 }
 
+pub fn new(srs: CamlFpSrs, mut v: CamlFpVector) -> CamlFpVector {
+    let n = srs.0.size();
+    v.resize_with(n, || Fp::zero());
+    v
+}
+
 type VestaFqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 
 type VestaFrSponge = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
