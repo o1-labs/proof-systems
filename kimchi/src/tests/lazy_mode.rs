@@ -8,14 +8,14 @@ use crate::circuits::{
 use ark_ff::Zero;
 use core::array;
 use itertools::iterate;
-#[cfg(all(feature = "logs", not(target_arch = "wasm32")))]
-use jemallocator::Jemalloc;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::Rng;
+#[cfg(not(target_arch = "wasm32"))]
+use tikv_jemallocator::Jemalloc;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
@@ -25,7 +25,7 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[test]
 fn test_lazy_mode_benchmark() {
-    #[cfg(all(feature = "logs", not(target_arch = "wasm32")))]
+    #[cfg(not(target_arch = "wasm32"))]
     #[global_allocator]
     static GLOBAL: Jemalloc = Jemalloc;
 
@@ -73,7 +73,6 @@ fn test_lazy_mode_benchmark() {
             .prove_and_verify::<BaseSponge, ScalarSponge>()
             .unwrap();
     }
-
     {
         // LAZY CACHE TRUE
         eprintln!("LAZY MODE: true");

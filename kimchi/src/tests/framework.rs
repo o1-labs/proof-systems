@@ -25,7 +25,6 @@ use ark_ff::PrimeField;
 use ark_poly::Radix2EvaluationDomain as D;
 use core::fmt::Write;
 use groupmap::GroupMap;
-use jemalloc_ctl::{epoch, stats};
 use mina_poseidon::sponge::FqSponge;
 use num_bigint::BigUint;
 use poly_commitment::{
@@ -35,9 +34,17 @@ use rand_core::{CryptoRng, RngCore};
 use std::time::Instant;
 
 // Returns the number of bytes allocated by the heap at a given point in time
+#[cfg(not(target_arch = "wasm32"))]
 fn heap_allocated() -> usize {
+    use tikv_jemalloc_ctl::{epoch, stats};
+
     epoch::advance().unwrap(); // refresh internal stats!
     stats::allocated::read().unwrap()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn heap_allocated() -> usize {
+    0
 }
 
 // aliases

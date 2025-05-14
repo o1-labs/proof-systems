@@ -53,8 +53,6 @@ getrandom = { version = "=0.2.15", features = ["js"] }
 hex = { version = "0.4", features = ["serde"] }
 iai = "0.1"
 itertools = "0.12.1"
-jemalloc-ctl = { version = "0.5" }
-jemallocator = { version = "0.5" }
 js-sys = "=0.3.64"
 libc = "=0.2.169"
 libflate = "2"
@@ -85,6 +83,8 @@ spmc = "=0.3.0"
 strum = "0.26.1"
 strum_macros = "0.26.1"
 thiserror = { version = "2", default-features = false }
+tikv-jemalloc-ctl = { version = "0.5" }
+tikv-jemallocator = { version = "0.5" }
 tinytemplate = "1.1"
 wasm-bindgen = "=0.2.89"
 wasm-bindgen-test = ">=0.3.0"
@@ -93,7 +93,7 @@ arrabbiata = { path = "./arrabbiata", version = "0.1.0" }
 folding = { path = "./folding", version = "0.1.0" }
 groupmap = { path = "./groupmap", version = "0.1.0" }
 internal-tracing = { path = "./internal-tracing", version = "0.1.0" }
-kimchi = { path = "./kimchi", version = "0.1.0", features = ["bn254", "logs"] }
+kimchi = { path = "./kimchi", version = "0.1.0", features = ["bn254"] }
 kimchi-msm = { path = "./msm", version = "0.1.0" }
 kimchi-stubs = { path = "./kimchi-stubs", version = "0.1.0" }
 kimchi-visu = { path = "./tools/kimchi-visu", version = "0.1.0" }
@@ -101,7 +101,7 @@ mina-curves = { path = "./curves", version = "0.1.0" }
 mina-hasher = { path = "./hasher", version = "0.1.0" }
 mina-poseidon = { path = "./poseidon", version = "0.1.0" }
 mvpoly = { path = "./mvpoly", version = "0.1.0" }
-o1-utils = { path = "./utils", version = "0.1.0", features = ["logs"] }
+o1-utils = { path = "./utils", version = "0.1.0" }
 o1vm = { path = "./o1vm", version = "0.1.0" }
 optimism = { path = "./optimism", version = "0.1.0" }
 plonk_wasm = { path = "./plonk-wasm", version = "0.1.0" }

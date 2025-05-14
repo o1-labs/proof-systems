@@ -1,7 +1,7 @@
 //! This is a polyfill of the `LazyLock` type in the std library as of Rust 1.80.
-//! The current file should be deleted as soon as we support Rust >1.79 and
-//! use the official `LazyLock` type when available, and `LazyCache` as a
-//! wrapper around `LazyLock` to allow for serialization definitions.
+//! The current file should be deleted soon, as we now support Rust 1.81 and
+//! use the official `LazyLock`, and `LazyCache` as a wrapper around `LazyLock`
+//! to allow for custom serialization definitions.
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize, Serializer};
 use std::{cell::UnsafeCell, fmt, ops::Deref, sync::Once};
@@ -168,15 +168,15 @@ where
 // Unit tests for LazyCache
 mod test {
     use super::*;
-    use jemalloc_ctl::{epoch, stats};
-    #[cfg(all(feature = "logs", not(target_arch = "wasm32")))]
-    use jemallocator::Jemalloc;
     use std::{
         sync::{Arc, Mutex},
         thread,
     };
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn print_heap_usage(label: &str) {
+        use tikv_jemalloc_ctl::{epoch, stats};
+
         epoch::advance().unwrap(); // refresh internal stats!
         let allocated = stats::allocated::read().unwrap();
         println!("[{label}] Heap allocated: {} kilobytes", allocated / 1024);
@@ -264,9 +264,11 @@ mod test {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn test_lazy_cache_allocation() {
-        #[cfg(all(feature = "logs", not(target_arch = "wasm32")))]
+        use tikv_jemallocator::Jemalloc;
+
         #[global_allocator]
         static GLOBAL: Jemalloc = Jemalloc;
 
