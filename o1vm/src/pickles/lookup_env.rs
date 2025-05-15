@@ -2,29 +2,36 @@ use crate::{
     interpreters::mips::witness::LookupMultiplicities,
     lookups::{FixedLookupTables, LookupTable},
 };
-use ark_ff::One;
+
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain};
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
-use poly_commitment::{commitment::BlindedCommitment, ipa::SRS, PolyComm, SRS as _};
+use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
 
-/// This is what the prover needs to remember
+/// This is what the prover needs to rembember
 /// while doing individual proofs, in order
 /// to prove the lookup protocol we do in the end
 pub struct LookupEnvironment<G: KimchiCurve> {
-    /// fixed tables pre-existing the protocol
+    /// Fixed tables pre-existing the protocol
     pub tables_poly: Vec<Vec<DensePolynomial<G::ScalarField>>>,
-    pub tables_comm: Vec<Vec<BlindedCommitment<G>>>,
-    ///multiplicities
+    pub tables_comm: Vec<Vec<PolyComm<G>>>,
+    /// Multiplicities
     pub multiplicities: LookupMultiplicities,
+    /// Commitments to the lookup state
+    /// Separated by the proof they come from
+    pub cms: Vec<Vec<PolyComm<G>>>,
 }
 
-/// Create a new prover environment, which interpolates the fixed tables
-/// and commit to them.
-/// Fills the multiplicities with zeroes
+/// The persistent environment across all proofs.
+/// It stores the some fixed values (fixed lookup),
+/// and some proof dependent values: an accumulation
+/// of the multiplicities and the commitments to the lookup state
 impl<G: KimchiCurve> LookupEnvironment<G> {
+    /// Create a new prover environment, which interpolates the fixed tables
+    /// and commit to them.
+    /// Fills the multiplicities with zeroes
     pub fn new(srs: &SRS<G>, domain: EvaluationDomains<G::ScalarField>) -> Self {
         let tables: Vec<LookupTable<G::ScalarField>> =
-            LookupTable::<G::ScalarField>::get_all_tables();
+            LookupTable::<G::ScalarField>::get_all_tables_transposed();
         let eval_col = |evals: Vec<G::ScalarField>| {
             Evaluations::<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
                 .interpolate()
@@ -35,15 +42,12 @@ impl<G: KimchiCurve> LookupEnvironment<G> {
             .into_iter()
             .map(|lookup| eval_columns(lookup.entries))
             .collect();
-        let tables_comm: Vec<Vec<BlindedCommitment<G>>> = tables_poly
+        let tables_comm: Vec<Vec<_>> = tables_poly
             .iter()
             .map(|poly_vec| {
                 poly_vec
                     .iter()
-                    .map(|poly| {
-                        srs.commit_custom(poly, 1, &PolyComm::new(vec![G::ScalarField::one()]))
-                            .unwrap()
-                    })
+                    .map(|poly| srs.commit_non_hiding(poly, 1))
                     .collect()
             })
             .collect();
@@ -51,8 +55,10 @@ impl<G: KimchiCurve> LookupEnvironment<G> {
             tables_poly,
             tables_comm,
             multiplicities: LookupMultiplicities::new(),
+            cms: vec![],
         }
     }
+
     /// Take a prover environment, a multiplicities, and returns
     /// a prover environment with the multiplicities being the addition of both
     pub fn add_multiplicities(&mut self, multiplicities: LookupMultiplicities) {
@@ -118,5 +124,11 @@ impl<G: KimchiCurve> LookupEnvironment<G> {
         {
             *x += y
         }
+    }
+
+    /// Cherry picks the commimtments to the lookup state from a proof
+    /// and add it to the env
+    pub fn add_cms(&mut self, cms: &[PolyComm<G>]) {
+        self.cms.push(cms.to_vec())
     }
 }
