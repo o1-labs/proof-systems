@@ -39,7 +39,7 @@ jobs:
       - name: Ensure that everything builds
         run: |
           eval $(opam env)
-          cargo build --benches --release
+          cargo check --benches --examples
 
       # 'sleep 1' are necessary because otherwise the outputs are intermixed.
       - name: Copy previous baseline to target folder
