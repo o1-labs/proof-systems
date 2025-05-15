@@ -1,7 +1,4 @@
-use crate::{
-    wasm_flat_vector::WasmFlatVector,
-    wasm_vector::{fp::WasmVecVecFp, fq::WasmVecVecFq, WasmVector},
-};
+use crate::wasm_vector::{fp::WasmVecVecFp, fq::WasmVecVecFq, WasmVector};
 use ark_ec::AffineRepr;
 use ark_ff::One;
 use core::{array, convert::TryInto};
@@ -27,6 +24,7 @@ use poly_commitment::{
 };
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
+use wasm_types::FlatVector as WasmFlatVector;
 
 #[wasm_bindgen]
 extern "C" {
@@ -857,11 +855,11 @@ macro_rules! impl_proof {
 pub mod fp {
     use super::*;
     use crate::{
-        arkworks::{WasmGVesta, WasmPastaFp},
         pasta_fp_plonk_index::WasmPastaFpPlonkIndex,
         plonk_verifier_index::fp::WasmFpPlonkVerifierIndex as WasmPlonkVerifierIndex,
         poly_comm::vesta::WasmFpPolyComm as WasmPolyComm,
     };
+    use arkworks::{WasmGVesta, WasmPastaFp};
     use mina_curves::pasta::{Fp, Vesta as GAffine};
 
     impl_proof!(
@@ -884,11 +882,11 @@ pub mod fp {
 pub mod fq {
     use super::*;
     use crate::{
-        arkworks::{WasmGPallas, WasmPastaFq},
         pasta_fq_plonk_index::WasmPastaFqPlonkIndex,
         plonk_verifier_index::fq::WasmFqPlonkVerifierIndex as WasmPlonkVerifierIndex,
         poly_comm::pallas::WasmFqPolyComm as WasmPolyComm,
     };
+    use arkworks::{WasmGPallas, WasmPastaFq};
     use mina_curves::pasta::{Fq, Pallas as GAffine};
 
     impl_proof!(
