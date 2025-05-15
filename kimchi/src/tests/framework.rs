@@ -33,6 +33,20 @@ use poly_commitment::{
 use rand_core::{CryptoRng, RngCore};
 use std::time::Instant;
 
+// Returns the number of bytes allocated by the heap at a given point in time
+#[cfg(not(target_arch = "wasm32"))]
+fn heap_allocated() -> usize {
+    use tikv_jemalloc_ctl::{epoch, stats};
+
+    epoch::advance().unwrap(); // refresh internal stats!
+    stats::allocated::read().unwrap()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn heap_allocated() -> usize {
+    0
+}
+
 // aliases
 
 #[derive(Default, Clone)]
@@ -52,9 +66,12 @@ where
     num_prev_challenges: usize,
     disable_gates_checks: bool,
     override_srs_size: Option<usize>,
+    lazy_mode: bool,
 
     prover_index: Option<ProverIndex<G, OpeningProof>>,
     verifier_index: Option<VerifierIndex<G, OpeningProof>>,
+
+    with_logs: bool,
 }
 
 #[derive(Clone)]
@@ -123,6 +140,17 @@ where
         self
     }
 
+    #[must_use]
+    pub(crate) fn lazy_mode(mut self, lazy_mode: bool) -> Self {
+        self.lazy_mode = lazy_mode;
+        self
+    }
+
+    pub(crate) fn with_logs(mut self, with_logs: bool) -> Self {
+        self.with_logs = with_logs;
+        self
+    }
+
     // Re allow(dead_code): this method is used in tests; without the annotation it warns unnecessarily.
     /// creates the indexes
     #[must_use]
@@ -145,11 +173,19 @@ where
             self.disable_gates_checks,
             self.override_srs_size,
             get_srs,
+            self.lazy_mode,
         );
         println!(
             "- time to create prover index: {:?}s",
             start.elapsed().as_secs()
         );
+        if self.with_logs {
+            let at_index = heap_allocated();
+            println!(
+                "- heap after creating prover index: {:?} MB",
+                at_index / (1024 * 1024)
+            );
+        }
 
         self.verifier_index = Some(index.verifier_index());
         self.prover_index = Some(index);
@@ -178,11 +214,20 @@ where
             runtime_tables_setup,
             self.disable_gates_checks,
             self.override_srs_size,
+            self.lazy_mode,
         );
         println!(
             "- time to create prover index: {:?}s",
             start.elapsed().as_secs()
         );
+
+        if self.with_logs {
+            let bytes = heap_allocated();
+            println!(
+                "- heap after creating prover index: {:?} MB",
+                bytes / (1024 * 1024)
+            );
+        };
 
         self.verifier_index = Some(index.verifier_index());
         self.prover_index = Some(index);
@@ -278,6 +323,14 @@ where
 
         let group_map = <G as CommitmentCurve>::Map::setup();
 
+        if self.0.with_logs {
+            let bytes = heap_allocated();
+            println!(
+                "- heap before creating proof: {:?} MB",
+                bytes / (1024 * 1024)
+            );
+        }
+
         let proof = ProverProof::create_recursive::<EFqSponge, EFrSponge, _>(
             &group_map,
             witness,
@@ -290,6 +343,14 @@ where
         .map_err(|e| e.to_string())?;
         println!("- time to create proof: {:?}s", start.elapsed().as_secs());
 
+        if self.0.with_logs {
+            let bytes = heap_allocated();
+            println!(
+                "- heap after creating proof: {:?} MB",
+                bytes / (1024 * 1024)
+            );
+        }
+
         // verify the proof (propagate any errors)
         let start = Instant::now();
         verify::<G, EFqSponge, EFrSponge, OpeningProof>(
@@ -300,6 +361,13 @@ where
         )
         .map_err(|e| e.to_string())?;
         println!("- time to verify: {}ms", start.elapsed().as_millis());
+        if self.0.with_logs {
+            let bytes = heap_allocated();
+            println!(
+                "- heap after verifying proof: {:?} MB",
+                bytes / (1024 * 1024)
+            );
+        }
 
         Ok(())
     }

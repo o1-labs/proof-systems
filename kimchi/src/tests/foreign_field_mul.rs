@@ -24,6 +24,7 @@ use mina_poseidon::{
 };
 use num_bigint::{BigUint, RandBigInt};
 use o1_utils::{FieldHelpers, Two};
+use std::sync::Arc;
 
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type VestaField = <Vesta as AffineRepr>::BaseField;
@@ -197,7 +198,7 @@ where
         runner.clone().prover_index().cs.clone()
     } else {
         // If not full mode, just create constraint system (this is much faster)
-        ConstraintSystem::create(gates.clone()).build().unwrap()
+        Arc::new(ConstraintSystem::create(gates.clone()).build().unwrap())
     };
 
     // Perform witness verification that everything is ok before invalidation (quick checks)

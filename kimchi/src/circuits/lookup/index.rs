@@ -21,7 +21,7 @@ use serde_with::serde_as;
 use thiserror::Error;
 
 /// Represents an error found when computing the lookup constraint system
-#[derive(Debug, Error, Clone)]
+#[derive(Debug, Error, Clone, Serialize, Deserialize)]
 pub enum LookupError {
     #[error("One of the lookup tables has columns of different lengths")]
     InconsistentTableLength,
