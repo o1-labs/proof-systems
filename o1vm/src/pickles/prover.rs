@@ -1,4 +1,4 @@
-use std::array;
+use std::{array, ops::AddAssign};
 
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
@@ -24,6 +24,7 @@ use poly_commitment::{
 };
 use rand::{CryptoRng, RngCore};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use std::ops::Mul;
 
 use super::{
     column_env::ColumnEnvironment,
@@ -267,10 +268,6 @@ where
     // git revert 96d42c127ef025869c91e5fed680e0e383108706
     // ```
     let quotient_poly: DensePolynomial<G::ScalarField> = {
-        // Compute ∑ α^i constraint_i as an expression
-        let combined_expr =
-            E::combine_constraints(0..(constraints.len() as u32), (constraints).to_vec());
-
         // We want to compute the quotient polynomial, i.e.
         // t(X) = (∑ α^i constraint_i(X)) / Z_H(X).
         // The sum of the expressions is called the "constraint polynomial".
@@ -283,8 +280,21 @@ where
         // Reminder: to compute P(X) = P_{1}(X) * P_{2}(X), from the evaluations
         // of P_{1} and P_{2}, with deg(P_{1}) = deg(P_{2}(X)) = N, we must have
         // 2N evaluation points to compute P as deg(P(X)) <= 2N.
-        let expr_evaluation: Evaluations<G::ScalarField, D<G::ScalarField>> =
-            combined_expr.evaluations(&column_env);
+
+        // Compute ∑ α^i constraint_i as an evaluation
+        let (expr_evaluation, _) = constraints.iter().fold(
+            (
+                Evaluations::from_vec_and_domain(
+                    vec![G::ScalarField::zero(); domain.d8.size as usize],
+                    domain.d8,
+                ),
+                G::ScalarField::one(),
+            ),
+            |(mut acc, alpha_pow), cst| {
+                acc.add_assign(&cst.evaluations_d8(&column_env).mul(alpha_pow));
+                (acc, alpha_pow * alpha)
+            },
+        );
 
         // And we interpolate using the evaluations
         let expr_evaluation_interpolated = expr_evaluation.interpolate();

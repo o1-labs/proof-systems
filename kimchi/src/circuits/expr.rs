@@ -1848,6 +1848,7 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
     /// respective values using `evaluate_constants` and will after evaluate the
     /// monomials with the corresponding column values using the method
     /// `evaluations`.
+    /// This function chooses the smallest domain to evaluate on.
     pub fn evaluations<
         'a,
         Challenge: Index<ChallengeTerm, Output = F>,
@@ -1857,6 +1858,24 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
         env: &Environment,
     ) -> Evaluations<F, D<F>> {
         self.evaluate_constants(env).evaluations(env)
+    }
+
+    /// Compute the polynomial corresponding to this expression, in evaluation form.
+    /// The routine will first replace the constants (verifier challenges and
+    /// constants like the matrix used by `Poseidon`) in the expression with their
+    /// respective values using `evaluate_constants` and will after evaluate the
+    /// monomials with the corresponding column values using the method
+    /// `evaluations`.
+    /// This function always evaluate on D8
+    pub fn evaluations_d8<
+        'a,
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+    >(
+        &self,
+        env: &Environment,
+    ) -> Evaluations<F, D<F>> {
+        self.evaluate_constants(env).evaluations_d8(env)
     }
 }
 
@@ -1922,8 +1941,10 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
         }
     }
 
-    /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations<
+    /// Helper function to compute the polynomial corresponding
+    /// to this expression, in evaluation form.
+    /// Compute the smallest domain or uses D8 depending on compute_domain.
+    fn evaluations_conditional<
         'a,
         ChallengeTerm,
         Challenge: Index<ChallengeTerm, Output = F>,
@@ -1931,21 +1952,14 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
     >(
         &self,
         env: &Environment,
+        compute_domain: bool,
     ) -> Evaluations<F, D<F>> {
-        let d1_size = env.get_domain(Domain::D1).size;
-        let deg = self.degree(d1_size, env.get_constants().zk_rows);
-        let d = if deg <= d1_size {
-            Domain::D1
-        } else if deg <= 4 * d1_size {
-            Domain::D4
-        } else if deg <= 8 * d1_size {
-            Domain::D8
-        } else {
-            panic!("constraint had degree {deg} > d8 ({})", 8 * d1_size);
-        };
-
         let mut cache = HashMap::new();
-
+        let d = if compute_domain {
+            self.get_domain(env)
+        } else {
+            Domain::D8
+        };
         let evals = match self.evaluations_helper(&mut cache, d, env) {
             Either::Left(x) => x,
             Either::Right(id) => cache.get(&id).unwrap().clone(),
@@ -1975,6 +1989,57 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
                 })
             }
         }
+    }
+    fn get_domain<
+        'a,
+        ChallengeTerm,
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+    >(
+        &self,
+        env: &Environment,
+    ) -> Domain {
+        let d1_size = env.get_domain(Domain::D1).size;
+        let deg = self.degree(d1_size, env.get_constants().zk_rows);
+        if deg <= d1_size {
+            Domain::D1
+        } else if deg <= 4 * d1_size {
+            Domain::D4
+        } else if deg <= 8 * d1_size {
+            Domain::D8
+        } else {
+            panic!("constraint had degree {deg} > d8 ({})", 8 * d1_size);
+        }
+    }
+
+    /// Compute the polynomial corresponding
+    /// to this expression, in evaluation form.
+    /// Uses the smallest domain needed.
+    pub fn evaluations<
+        'a,
+        ChallengeTerm,
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+    >(
+        &self,
+        env: &Environment,
+    ) -> Evaluations<F, D<F>> {
+        self.evaluations_conditional(env, true)
+    }
+
+    /// Compute the polynomial corresponding
+    /// to this expression, in evaluation form.
+    /// Uses D8, regardless of the degree of the expression.
+    pub fn evaluations_d8<
+        'a,
+        ChallengeTerm,
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+    >(
+        &self,
+        env: &Environment,
+    ) -> Evaluations<F, D<F>> {
+        self.evaluations_conditional(env, false)
     }
 
     fn evaluations_helper<

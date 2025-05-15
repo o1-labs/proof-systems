@@ -5,6 +5,7 @@ use crate::{
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain};
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
 use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
+
 /// This is what the prover needs to rembember
 /// while doing individual proofs, in order
 /// to prove the lookup protocol we do in the end

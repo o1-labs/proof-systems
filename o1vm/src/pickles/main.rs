@@ -1,5 +1,6 @@
 use ark_ff::{UniformRand, Zero};
 use clap::Parser;
+
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
 use log::debug;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
@@ -238,8 +239,8 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
 
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
-        // TODO factorise the addtion of the wit env to the proof input in a seprate function
         // Lookup state
+        // TODO factorise the addtion of the wit env to the proof input in a seprate function
         // TODO factorise padding of lookup in a separate function
         {
             let proof_inputs_length = curr_proof_inputs.evaluations.lookup_state.len();
@@ -269,6 +270,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             arity.push(mips_wit_env.lookup_arity.clone());
             lookup_env.add_multiplicities(mips_wit_env.lookup_multiplicities.clone());
         }
+        // TODO add selectors to proof input
         // TODO get rid of this rng creation
         let rng = &mut rand::thread_rng();
         if curr_proof_inputs.evaluations.lookup_state[0].len() == domain_size {
@@ -281,8 +283,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                 rng,
                 sponge.clone(),
                 acc,
-                // TODO O(n) complexity, use a better data structure
-                lookup_env.cms.remove(0),
+                lookup_env.cms.pop().unwrap(),
             );
 
             curr_proof_inputs = ProofInputs::new(domain_size);
@@ -388,6 +389,7 @@ fn lookup_prove_and_verify(
         "Lookup verification done in {elapsed} μs",
         elapsed = start_iteration.elapsed().as_micros()
     );
+    assert!(verif);
     acc
 }
 
