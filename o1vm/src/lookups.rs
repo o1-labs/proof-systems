@@ -159,8 +159,8 @@ impl LookupTableID for LookupTableIDs {
 ///  Each table can be returned in a 'defauly form with the outer vector
 /// indexing the row, and the inner the vector, or the transposed:
 /// eg. a range check for n
-/// would be [[0],[1],...,[n]]
-/// or its transposed version [[0,...,n]]
+/// would be \[\[0\],\[1\],...,\[n\]\]
+/// or its transposed version \[\[0,...,n\]\]
 pub(crate) trait FixedLookupTables<F> {
     /// Checks whether a value is in a table and returns the position if it is
     /// or None otherwise.
