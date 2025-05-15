@@ -29,7 +29,7 @@ use o1vm::{
     test_preimage_read, E,
 };
 use poly_commitment::{
-    commitment::absorb_commitment, ipa::SRS, precomputed_srs::TestSRS, SRS as _,
+    commitment::absorb_commitment, ipa::SRS, precomputed_srs::TestSRS, PolyComm, SRS as _,
 };
 use rand::rngs::ThreadRng;
 use std::{fs::File, io::BufReader, path::Path, process::ExitCode, time::Instant};
@@ -191,7 +191,9 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
             &constraints,
             curr_proof_inputs,
             &mut rng,
-            lookup_env,
+            // FIXME: we use a dummy lookup env here,
+            // we do not pad the lookup arg yet
+            &mut LookupEnvironment::new(&srs, domain_fp),
         );
     }
     // Second loop, do the lookup delayed argument
@@ -209,6 +211,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     // TODO use lookup proof input type, containing the arity
     curr_proof_inputs = ProofInputs::new(domain_size);
     let mut arity: Vec<Vec<usize>> = vec![];
+    let mut lookup_env = LookupEnvironment::new(&srs, domain_fp);
     let mut acc = Fp::zero();
 
     // Initialize the environments
@@ -235,7 +238,9 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
 
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
+        // TODO factorise the addtion of the wit env to the proof input in a seprate function
         // Lookup state
+        // TODO factorise padding of lookup in a separate function
         {
             let proof_inputs_length = curr_proof_inputs.evaluations.lookup_state.len();
             let environment_length = mips_wit_env.lookup_state.len();
@@ -256,10 +261,14 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                         .push(Fp::from(mips_wit_env.lookup_state[idx]));
                 }
             }
+            // TODO: understand why we need to update the instruction counter
+            curr_proof_inputs
+                .evaluations
+                .instruction_counter
+                .push(Fp::from(mips_wit_env.instruction_counter));
             arity.push(mips_wit_env.lookup_arity.clone());
             lookup_env.add_multiplicities(mips_wit_env.lookup_multiplicities.clone());
         }
-
         // TODO get rid of this rng creation
         let rng = &mut rand::thread_rng();
         if curr_proof_inputs.evaluations.lookup_state[0].len() == domain_size {
@@ -272,6 +281,8 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
                 rng,
                 sponge.clone(),
                 acc,
+                // TODO O(n) complexity, use a better data structure
+                lookup_env.cms.remove(0),
             );
 
             curr_proof_inputs = ProofInputs::new(domain_size);
@@ -317,6 +328,7 @@ fn prove_and_verify(
     assert!(verif);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn lookup_prove_and_verify(
     domain_fp: EvaluationDomains<Fp>,
     srs: &SRS<Vesta>,
@@ -326,6 +338,7 @@ fn lookup_prove_and_verify(
     rng: &mut ThreadRng,
     mut sponge: DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
     acc: Fp,
+    cm_wires: Vec<PolyComm<Vesta>>,
 ) -> Fp {
     let start_iteration = Instant::now();
     let sponge_verifier = sponge.clone();
@@ -350,6 +363,7 @@ fn lookup_prove_and_verify(
         sponge,
         &constraint,
         rng,
+        cm_wires,
     );
     debug!(
         "Lookup proof generated in {elapsed} μs",
@@ -369,11 +383,11 @@ fn lookup_prove_and_verify(
         srs,
         &proof,
     );
+    assert!(verif);
     debug!(
         "Lookup verification done in {elapsed} μs",
         elapsed = start_iteration.elapsed().as_micros()
     );
-    assert!(verif);
     acc
 }
 

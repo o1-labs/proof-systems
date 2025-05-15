@@ -2,11 +2,9 @@ use crate::{
     interpreters::mips::witness::LookupMultiplicities,
     lookups::{FixedLookupTables, LookupTable},
 };
-
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain};
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
 use poly_commitment::{ipa::SRS, PolyComm, SRS as _};
-
 /// This is what the prover needs to rembember
 /// while doing individual proofs, in order
 /// to prove the lookup protocol we do in the end
@@ -21,14 +19,10 @@ pub struct LookupEnvironment<G: KimchiCurve> {
     pub cms: Vec<Vec<PolyComm<G>>>,
 }
 
-/// The persistent environment across all proofs.
-/// It stores the some fixed values (fixed lookup),
-/// and some proof dependent values: an accumulation
-/// of the multiplicities and the commitments to the lookup state
+/// Create a new prover environment, which interpolates the fixed tables
+/// and commit to them.
+/// Fills the multiplicities with zeroes
 impl<G: KimchiCurve> LookupEnvironment<G> {
-    /// Create a new prover environment, which interpolates the fixed tables
-    /// and commit to them.
-    /// Fills the multiplicities with zeroes
     pub fn new(srs: &SRS<G>, domain: EvaluationDomains<G::ScalarField>) -> Self {
         let tables: Vec<LookupTable<G::ScalarField>> =
             LookupTable::<G::ScalarField>::get_all_tables_transposed();
