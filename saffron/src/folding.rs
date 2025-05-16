@@ -51,22 +51,22 @@ use rand::{CryptoRng, RngCore};
 /// Non-relaxed instance attesting to `d * q - a = 0`
 pub struct CoreInstance {
     /// Commitment to the data
-    comm_d: Curve,
+    pub comm_d: Curve,
     /// Commitment to the query polynomial
-    comm_q: Curve,
+    pub comm_q: Curve,
     /// Commitment to the answers
-    comm_a: Curve,
+    pub comm_a: Curve,
 }
 
 #[derive(PartialEq, Eq)]
 /// Relaxed instance variant.
 pub struct RelaxedInstance {
     /// Non-relaxed part
-    core: CoreInstance,
+    pub core: CoreInstance,
     /// Homogeneization term for folding
-    u: ScalarField,
+    pub u: ScalarField,
     /// Commitment to the error term for folding
-    comm_e: Curve,
+    pub comm_e: Curve,
 }
 
 impl CoreInstance {
@@ -83,17 +83,17 @@ impl CoreInstance {
 /// Non-relaxed witness contains evaluations (field vectors) for data,
 /// query, and answers.
 pub struct CoreWitness {
-    d: Evaluations<ScalarField, R2D<ScalarField>>,
-    q: Evaluations<ScalarField, R2D<ScalarField>>,
-    a: Evaluations<ScalarField, R2D<ScalarField>>,
+    pub d: Evaluations<ScalarField, R2D<ScalarField>>,
+    pub q: Evaluations<ScalarField, R2D<ScalarField>>,
+    pub a: Evaluations<ScalarField, R2D<ScalarField>>,
 }
 
 #[derive(PartialEq, Eq)]
 /// Relaxed witness extends the non-relaxed witness with evaluations
 /// of the error term.
 pub struct RelaxedWitness {
-    core: CoreWitness,
-    e: Evaluations<ScalarField, R2D<ScalarField>>,
+    pub core: CoreWitness,
+    pub e: Evaluations<ScalarField, R2D<ScalarField>>,
 }
 
 impl CoreWitness {
@@ -510,18 +510,92 @@ where
     )
 }
 
+// #[cfg(any(test, feature = "bench"))]
+pub mod testing {
+    use super::*;
+    use crate::{Curve, ScalarField};
+    use ark_ff::UniformRand;
+    use ark_poly::Evaluations;
+    use kimchi::circuits::domains::EvaluationDomains;
+    use mina_curves::pasta::{Fp, Vesta};
+    use poly_commitment::ipa::SRS;
+    use rand::Rng;
+
+    pub fn generate_random_inst_wit<RNG>(
+        srs: &SRS<Vesta>,
+        domain: EvaluationDomains<ScalarField>,
+        rng: &mut RNG,
+    ) -> (CoreInstance, CoreWitness)
+    where
+        RNG: RngCore + CryptoRng,
+    {
+        let data: Vec<ScalarField> = {
+            let mut data = vec![];
+            (0..domain.d1.size).for_each(|_| data.push(Fp::rand(rng)));
+            data
+        };
+
+        let data_comm: Curve = srs
+            .commit_evaluations_non_hiding(
+                domain.d1,
+                &Evaluations::from_vec_and_domain(data.clone(), domain.d1),
+            )
+            .chunks[0];
+
+        let query: Vec<ScalarField> = {
+            let mut query = vec![];
+            (0..domain.d1.size)
+                .for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.1)));
+            query
+        };
+
+        let answer: Vec<ScalarField> = data
+            .clone()
+            .iter()
+            .zip(query.iter())
+            .map(|(d, q)| *d * q)
+            .collect();
+
+        let comm_q = srs
+            .commit_evaluations_non_hiding(
+                domain.d1,
+                &Evaluations::from_vec_and_domain(query.clone(), domain.d1),
+            )
+            .chunks[0];
+
+        let comm_a = srs
+            .commit_evaluations_non_hiding(
+                domain.d1,
+                &Evaluations::from_vec_and_domain(answer.clone(), domain.d1),
+            )
+            .chunks[0];
+
+        let core_instance = CoreInstance {
+            comm_d: data_comm,
+            comm_q,
+            comm_a,
+        };
+
+        let core_witness = CoreWitness {
+            d: Evaluations::from_vec_and_domain(data, domain.d1),
+            q: Evaluations::from_vec_and_domain(query, domain.d1),
+            a: Evaluations::from_vec_and_domain(answer, domain.d1),
+        };
+
+        (core_instance, core_witness)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{testing::generate_random_inst_wit, *};
     use crate::{env, Curve, ScalarField, SRS_SIZE};
     use ark_ec::AffineRepr;
-    use ark_ff::{One, UniformRand};
-    use ark_poly::Evaluations;
+    use ark_ff::One;
     use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
-    use mina_curves::pasta::{Fp, Vesta};
+    use mina_curves::pasta::Vesta;
     use once_cell::sync::Lazy;
     use poly_commitment::{commitment::CommitmentCurve, ipa::SRS};
-    use proptest::prelude::*;
 
     static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
         if let Ok(srs) = std::env::var("SRS_FILEPATH") {
@@ -537,71 +611,12 @@ mod tests {
     static GROUP_MAP: Lazy<<Vesta as CommitmentCurve>::Map> =
         Lazy::new(<Vesta as CommitmentCurve>::Map::setup);
 
-    fn generate_random_inst_wit<RNG>(rng: &mut RNG) -> (CoreInstance, CoreWitness)
-    where
-        RNG: RngCore + CryptoRng,
-    {
-        let data: Vec<ScalarField> = {
-            let mut data = vec![];
-            (0..SRS_SIZE).for_each(|_| data.push(Fp::rand(rng)));
-            data
-        };
-
-        let data_comm: Curve = SRS
-            .commit_evaluations_non_hiding(
-                DOMAIN.d1,
-                &Evaluations::from_vec_and_domain(data.clone(), DOMAIN.d1),
-            )
-            .chunks[0];
-
-        let query: Vec<ScalarField> = {
-            let mut query = vec![];
-            (0..SRS_SIZE).for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.1)));
-            query
-        };
-
-        let answer: Vec<ScalarField> = data
-            .clone()
-            .iter()
-            .zip(query.iter())
-            .map(|(d, q)| *d * q)
-            .collect();
-
-        let comm_q = SRS
-            .commit_evaluations_non_hiding(
-                DOMAIN.d1,
-                &Evaluations::from_vec_and_domain(query.clone(), DOMAIN.d1),
-            )
-            .chunks[0];
-
-        let comm_a = SRS
-            .commit_evaluations_non_hiding(
-                DOMAIN.d1,
-                &Evaluations::from_vec_and_domain(answer.clone(), DOMAIN.d1),
-            )
-            .chunks[0];
-
-        let core_instance = CoreInstance {
-            comm_d: data_comm,
-            comm_q,
-            comm_a,
-        };
-
-        let core_witness = CoreWitness {
-            d: Evaluations::from_vec_and_domain(data, DOMAIN.d1),
-            q: Evaluations::from_vec_and_domain(query, DOMAIN.d1),
-            a: Evaluations::from_vec_and_domain(answer, DOMAIN.d1),
-        };
-
-        (core_instance, core_witness)
-    }
-
     #[test]
     fn test_folding_read_proof_completeness_soundness() {
         let mut rng = o1_utils::tests::make_test_rng(None);
 
-        let (core_instance_1, core_witness_1) = generate_random_inst_wit(&mut rng);
-        let (core_instance_2, core_witness_2) = generate_random_inst_wit(&mut rng);
+        let (core_instance_1, core_witness_1) = generate_random_inst_wit(&SRS, *DOMAIN, &mut rng);
+        let (core_instance_2, core_witness_2) = generate_random_inst_wit(&SRS, *DOMAIN, &mut rng);
         let relaxed_instance_2 = core_instance_2.relax();
         let relaxed_witness_2 = core_witness_2.relax(DOMAIN.d1);
 
@@ -623,7 +638,7 @@ mod tests {
                 == relaxed_instance_3
         );
 
-        let (core_instance_4, core_witness_4) = generate_random_inst_wit(&mut rng);
+        let (core_instance_4, core_witness_4) = generate_random_inst_wit(&SRS, *DOMAIN, &mut rng);
         let (relaxed_instance_5, relaxed_witness_5, error_term_2) = folding_prover(
             &SRS,
             DOMAIN.d1,
