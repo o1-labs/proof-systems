@@ -68,8 +68,8 @@ fn bench_read_proof_prove(c: &mut Criterion) {
             || OsRng,
             |mut rng| {
                 black_box(prove(
-                    *DOMAIN,
                     &SRS,
+                    *DOMAIN,
                     &GROUP_MAP,
                     &mut rng,
                     data.as_slice(),
@@ -89,8 +89,8 @@ fn bench_read_proof_verify(c: &mut Criterion) {
     // Create proof first
     let mut rng = OsRng;
     let proof = prove(
-        *DOMAIN,
         &SRS,
+        *DOMAIN,
         &GROUP_MAP,
         &mut rng,
         data.as_slice(),
@@ -105,7 +105,7 @@ fn bench_read_proof_verify(c: &mut Criterion) {
             || OsRng,
             |mut rng| {
                 black_box(verify(
-                    *DOMAIN, &SRS, &GROUP_MAP, &mut rng, &data_comm, &proof,
+                    &SRS, *DOMAIN, &GROUP_MAP, &mut rng, &data_comm, &proof,
                 ))
             },
             BatchSize::SmallInput,
