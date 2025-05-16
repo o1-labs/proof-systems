@@ -180,7 +180,7 @@ pub fn folding_prover(
         cross_term_comm,
     ]);
 
-    let recombination_chal = fq_sponge.squeeze(2);
+    let recombination_chal = fq_sponge.challenge();
 
     let a3 = &wit1.a + &(&wit2.core.a * recombination_chal);
     let q3 = &wit1.q + &(&wit2.core.q * recombination_chal);
@@ -236,7 +236,7 @@ pub fn folding_verifier(
         cross_term_comm,
     ]);
 
-    let recombination_chal = fq_sponge.squeeze(2);
+    let recombination_chal = fq_sponge.challenge();
 
     let comm_a3 = inst1.comm_a + inst2.core.comm_a * recombination_chal;
     let comm_q3 = inst1.comm_q + inst2.core.comm_q * recombination_chal;
