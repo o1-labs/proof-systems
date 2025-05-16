@@ -59,6 +59,8 @@ pub fn caml_pasta_fp_plonk_index_create(
     srs: CamlFpSrs,
     lazy_mode: bool,
 ) -> Result<CamlPastaFpPlonkIndex, ocaml::Error> {
+    println!("caml_pasta_fp_plonk_index_create: lazy_mode: {}", lazy_mode);
+
     let gates: Vec<_> = gates
         .as_ref()
         .0
