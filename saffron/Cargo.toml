@@ -58,3 +58,10 @@ path = "og-flow/main.rs"
 [[bench]]
 name = "read_proof_bench"
 harness = false
+
+[[bench]]
+name = "folding_bench"
+harness = false
+
+[features]
+bench = []
