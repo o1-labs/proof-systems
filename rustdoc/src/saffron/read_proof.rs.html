@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `saffron/src/read_proof.rs`."><title>read_proof.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-0ce1a80b.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="saffron" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0-nightly (414482f6a 2025-05-13)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../static.files/storage-4e99c027.js"></script><script defer src="../../static.files/src-script-63605ae7.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-7ef8a74a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">saffron/</div>read_proof.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module defines the read proof prover and verifier. Given a
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `saffron/src/read_proof.rs`."><title>read_proof.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-0ce1a80b.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="saffron" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0-nightly (d97326eab 2025-05-15)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../static.files/storage-4e99c027.js"></script><script defer src="../../static.files/src-script-63605ae7.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-7ef8a74a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">saffron/</div>read_proof.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module defines the read proof prover and verifier. Given a
 <a href=#2 id=2 data-nosnippet>2</a>//! query vector q, a vector of data d, and a commitment to this data
 <a href=#3 id=3 data-nosnippet>3</a>//! C, the prover will return an answer a and a proof that the answers
 <a href=#4 id=4 data-nosnippet>4</a>//! correspond to the data committed in C at the specified indexes in
@@ -49,8 +49,8 @@
 <a href=#49 id=49 data-nosnippet>49</a>
 <a href=#50 id=50 data-nosnippet>50</a><span class="attr">#[instrument(skip_all, level = <span class="string">"debug"</span>)]
 <a href=#51 id=51 data-nosnippet>51</a></span><span class="kw">pub fn </span>prove&lt;RNG&gt;(
-<a href=#52 id=52 data-nosnippet>52</a>    domain: EvaluationDomains&lt;ScalarField&gt;,
-<a href=#53 id=53 data-nosnippet>53</a>    srs: <span class="kw-2">&amp;</span>SRS&lt;Curve&gt;,
+<a href=#52 id=52 data-nosnippet>52</a>    srs: <span class="kw-2">&amp;</span>SRS&lt;Curve&gt;,
+<a href=#53 id=53 data-nosnippet>53</a>    domain: EvaluationDomains&lt;ScalarField&gt;,
 <a href=#54 id=54 data-nosnippet>54</a>    group_map: <span class="kw-2">&amp;</span>&lt;Curve <span class="kw">as </span>CommitmentCurve&gt;::Map,
 <a href=#55 id=55 data-nosnippet>55</a>    rng: <span class="kw-2">&amp;mut </span>RNG,
 <a href=#56 id=56 data-nosnippet>56</a>    <span class="comment">// data is the data that is stored and queried
@@ -180,8 +180,8 @@
 <a href=#180 id=180 data-nosnippet>180</a>}
 <a href=#181 id=181 data-nosnippet>181</a>
 <a href=#182 id=182 data-nosnippet>182</a><span class="kw">pub fn </span>verify&lt;RNG&gt;(
-<a href=#183 id=183 data-nosnippet>183</a>    domain: EvaluationDomains&lt;ScalarField&gt;,
-<a href=#184 id=184 data-nosnippet>184</a>    srs: <span class="kw-2">&amp;</span>SRS&lt;Curve&gt;,
+<a href=#183 id=183 data-nosnippet>183</a>    srs: <span class="kw-2">&amp;</span>SRS&lt;Curve&gt;,
+<a href=#184 id=184 data-nosnippet>184</a>    domain: EvaluationDomains&lt;ScalarField&gt;,
 <a href=#185 id=185 data-nosnippet>185</a>    group_map: <span class="kw-2">&amp;</span>&lt;Curve <span class="kw">as </span>CommitmentCurve&gt;::Map,
 <a href=#186 id=186 data-nosnippet>186</a>    rng: <span class="kw-2">&amp;mut </span>RNG,
 <a href=#187 id=187 data-nosnippet>187</a>    <span class="comment">// Commitment to data
@@ -324,8 +324,8 @@
 <a href=#324 id=324 data-nosnippet>324</a>        <span class="kw">let </span>answer: Vec&lt;ScalarField&gt; = data.iter().zip(query.iter()).map(|(d, q)| <span class="kw-2">*</span>d * q).collect();
 <a href=#325 id=325 data-nosnippet>325</a>
 <a href=#326 id=326 data-nosnippet>326</a>        <span class="kw">let </span>proof = prove(
-<a href=#327 id=327 data-nosnippet>327</a>            <span class="kw-2">*</span>DOMAIN,
-<a href=#328 id=328 data-nosnippet>328</a>            <span class="kw-2">&amp;</span>SRS,
+<a href=#327 id=327 data-nosnippet>327</a>            <span class="kw-2">&amp;</span>SRS,
+<a href=#328 id=328 data-nosnippet>328</a>            <span class="kw-2">*</span>DOMAIN,
 <a href=#329 id=329 data-nosnippet>329</a>            <span class="kw-2">&amp;</span>GROUP_MAP,
 <a href=#330 id=330 data-nosnippet>330</a>            <span class="kw-2">&amp;mut </span>rng,
 <a href=#331 id=331 data-nosnippet>331</a>            data.as_slice(),
@@ -333,7 +333,7 @@
 <a href=#333 id=333 data-nosnippet>333</a>            answer.as_slice(),
 <a href=#334 id=334 data-nosnippet>334</a>            <span class="kw-2">&amp;</span>data_comm,
 <a href=#335 id=335 data-nosnippet>335</a>        );
-<a href=#336 id=336 data-nosnippet>336</a>        <span class="kw">let </span>res = verify(<span class="kw-2">*</span>DOMAIN, <span class="kw-2">&amp;</span>SRS, <span class="kw-2">&amp;</span>GROUP_MAP, <span class="kw-2">&amp;mut </span>rng, <span class="kw-2">&amp;</span>data_comm, <span class="kw-2">&amp;</span>proof);
+<a href=#336 id=336 data-nosnippet>336</a>        <span class="kw">let </span>res = verify(<span class="kw-2">&amp;</span>SRS, <span class="kw-2">*</span>DOMAIN, <span class="kw-2">&amp;</span>GROUP_MAP, <span class="kw-2">&amp;mut </span>rng, <span class="kw-2">&amp;</span>data_comm, <span class="kw-2">&amp;</span>proof);
 <a href=#337 id=337 data-nosnippet>337</a>
 <a href=#338 id=338 data-nosnippet>338</a>        <span class="macro">assert!</span>(res, <span class="string">"Completeness: Proof must verify"</span>);
 <a href=#339 id=339 data-nosnippet>339</a>
@@ -343,8 +343,8 @@
 <a href=#343 id=343 data-nosnippet>343</a>        };
 <a href=#344 id=344 data-nosnippet>344</a>
 <a href=#345 id=345 data-nosnippet>345</a>        <span class="kw">let </span>res_1 = verify(
-<a href=#346 id=346 data-nosnippet>346</a>            <span class="kw-2">*</span>DOMAIN,
-<a href=#347 id=347 data-nosnippet>347</a>            <span class="kw-2">&amp;</span>SRS,
+<a href=#346 id=346 data-nosnippet>346</a>            <span class="kw-2">&amp;</span>SRS,
+<a href=#347 id=347 data-nosnippet>347</a>            <span class="kw-2">*</span>DOMAIN,
 <a href=#348 id=348 data-nosnippet>348</a>            <span class="kw-2">&amp;</span>GROUP_MAP,
 <a href=#349 id=349 data-nosnippet>349</a>            <span class="kw-2">&amp;mut </span>rng,
 <a href=#350 id=350 data-nosnippet>350</a>            <span class="kw-2">&amp;</span>data_comm,
@@ -359,8 +359,8 @@
 <a href=#359 id=359 data-nosnippet>359</a>        };
 <a href=#360 id=360 data-nosnippet>360</a>
 <a href=#361 id=361 data-nosnippet>361</a>        <span class="kw">let </span>res_2 = verify(
-<a href=#362 id=362 data-nosnippet>362</a>            <span class="kw-2">*</span>DOMAIN,
-<a href=#363 id=363 data-nosnippet>363</a>            <span class="kw-2">&amp;</span>SRS,
+<a href=#362 id=362 data-nosnippet>362</a>            <span class="kw-2">&amp;</span>SRS,
+<a href=#363 id=363 data-nosnippet>363</a>            <span class="kw-2">*</span>DOMAIN,
 <a href=#364 id=364 data-nosnippet>364</a>            <span class="kw-2">&amp;</span>GROUP_MAP,
 <a href=#365 id=365 data-nosnippet>365</a>            <span class="kw-2">&amp;mut </span>rng,
 <a href=#366 id=366 data-nosnippet>366</a>            <span class="kw-2">&amp;</span>data_comm,
