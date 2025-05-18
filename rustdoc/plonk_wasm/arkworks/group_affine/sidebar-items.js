@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["caml_pallas_affine_one","caml_vesta_affine_one"],"struct":["WasmGPallas","WasmGVesta"]};
