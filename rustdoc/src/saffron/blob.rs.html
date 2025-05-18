@@ -222,28 +222,32 @@
 <a href=#222 id=222 data-nosnippet>222</a>        </span><span class="kw">fn </span>test_allow_legal_updates((UserData(xs), UserData(ys)) <span class="kw">in
 <a href=#223 id=223 data-nosnippet>223</a>            </span>(UserData::arbitrary_with(DataSize::Medium).prop_flat_map(random_diff))
 <a href=#224 id=224 data-nosnippet>224</a>        ) {
-<a href=#225 id=225 data-nosnippet>225</a>            <span class="comment">// start with some random user data
-<a href=#226 id=226 data-nosnippet>226</a>            </span><span class="kw">let </span><span class="kw-2">mut </span>xs_blob = FieldBlob::from_bytes::&lt;<span class="kw">_</span>&gt;(<span class="kw-2">&amp;</span>SRS, <span class="kw-2">*</span>DOMAIN, <span class="kw-2">&amp;</span>xs);
-<a href=#227 id=227 data-nosnippet>227</a>            <span class="kw">let </span>diffs = Diff::&lt;ScalarField&gt;::create_from_bytes(<span class="kw-2">&amp;*</span>DOMAIN, <span class="kw-2">&amp;</span>xs, <span class="kw-2">&amp;</span>ys).unwrap();
+<a href=#225 id=225 data-nosnippet>225</a>            <span class="comment">// equalize the length of input data
+<a href=#226 id=226 data-nosnippet>226</a>            </span><span class="kw">let </span>min_len = xs.len().min(ys.len());
+<a href=#227 id=227 data-nosnippet>227</a>            <span class="kw">let </span>(xs, ys) = (<span class="kw-2">&amp;</span>xs[..min_len], <span class="kw-2">&amp;</span>ys[..min_len]) ;
 <a href=#228 id=228 data-nosnippet>228</a>
-<a href=#229 id=229 data-nosnippet>229</a>            <span class="comment">// check that the user and SP agree on the data
-<a href=#230 id=230 data-nosnippet>230</a>            </span><span class="kw">let </span>user_commitment: Vec&lt;<span class="kw">_</span>&gt; = {
-<a href=#231 id=231 data-nosnippet>231</a>                <span class="kw">let </span>elems: Vec&lt;<span class="kw">_</span>&gt; = encode_for_domain(DOMAIN.size(), <span class="kw-2">&amp;</span>xs).into_iter().flatten().collect();
-<a href=#232 id=232 data-nosnippet>232</a>                commit_to_field_elems(<span class="kw-2">&amp;</span>SRS, <span class="kw-2">&amp;</span>elems)
-<a href=#233 id=233 data-nosnippet>233</a>
-<a href=#234 id=234 data-nosnippet>234</a>            };
-<a href=#235 id=235 data-nosnippet>235</a>            <span class="macro">prop_assert_eq!</span>(user_commitment.clone(), xs_blob.commitments.clone());
-<a href=#236 id=236 data-nosnippet>236</a>
-<a href=#237 id=237 data-nosnippet>237</a>            <span class="comment">// Update the blob with the diff and check the user can match the commitment
-<a href=#238 id=238 data-nosnippet>238</a>            </span><span class="kw">for </span>diff <span class="kw">in </span>diffs.iter() {
-<a href=#239 id=239 data-nosnippet>239</a>                xs_blob.apply_diff(<span class="kw-2">&amp;</span>SRS, <span class="kw-2">&amp;</span>DOMAIN, diff);
-<a href=#240 id=240 data-nosnippet>240</a>            }
-<a href=#241 id=241 data-nosnippet>241</a>
-<a href=#242 id=242 data-nosnippet>242</a>            <span class="comment">// the updated blob should be the same as if we just start with the new data (with appropriate padding)
-<a href=#243 id=243 data-nosnippet>243</a>            </span><span class="kw">let </span>ys_blob = encode_to_chunk_size(<span class="kw-2">&amp;</span>ys, xs_blob.data.len() / SRS_SIZE);
-<a href=#244 id=244 data-nosnippet>244</a>
-<a href=#245 id=245 data-nosnippet>245</a>            <span class="macro">prop_assert_eq!</span>(xs_blob, ys_blob);
-<a href=#246 id=246 data-nosnippet>246</a>        }
-<a href=#247 id=247 data-nosnippet>247</a>
-<a href=#248 id=248 data-nosnippet>248</a>    }
-<a href=#249 id=249 data-nosnippet>249</a>}</code></pre></div></section></main></body></html>
+<a href=#229 id=229 data-nosnippet>229</a>            <span class="comment">// start with some random user data
+<a href=#230 id=230 data-nosnippet>230</a>            </span><span class="kw">let </span><span class="kw-2">mut </span>xs_blob = FieldBlob::from_bytes::&lt;<span class="kw">_</span>&gt;(<span class="kw-2">&amp;</span>SRS, <span class="kw-2">*</span>DOMAIN, xs);
+<a href=#231 id=231 data-nosnippet>231</a>            <span class="kw">let </span>diffs = Diff::&lt;ScalarField&gt;::create_from_bytes(<span class="kw-2">&amp;*</span>DOMAIN, xs, ys).unwrap();
+<a href=#232 id=232 data-nosnippet>232</a>
+<a href=#233 id=233 data-nosnippet>233</a>            <span class="comment">// check that the user and SP agree on the data
+<a href=#234 id=234 data-nosnippet>234</a>            </span><span class="kw">let </span>user_commitment: Vec&lt;<span class="kw">_</span>&gt; = {
+<a href=#235 id=235 data-nosnippet>235</a>                <span class="kw">let </span>elems: Vec&lt;<span class="kw">_</span>&gt; = encode_for_domain(DOMAIN.size(), xs).into_iter().flatten().collect();
+<a href=#236 id=236 data-nosnippet>236</a>                commit_to_field_elems(<span class="kw-2">&amp;</span>SRS, <span class="kw-2">&amp;</span>elems)
+<a href=#237 id=237 data-nosnippet>237</a>
+<a href=#238 id=238 data-nosnippet>238</a>            };
+<a href=#239 id=239 data-nosnippet>239</a>            <span class="macro">prop_assert_eq!</span>(user_commitment.clone(), xs_blob.commitments.clone());
+<a href=#240 id=240 data-nosnippet>240</a>
+<a href=#241 id=241 data-nosnippet>241</a>            <span class="comment">// Update the blob with the diff and check the user can match the commitment
+<a href=#242 id=242 data-nosnippet>242</a>            </span><span class="kw">for </span>diff <span class="kw">in </span>diffs.iter() {
+<a href=#243 id=243 data-nosnippet>243</a>                xs_blob.apply_diff(<span class="kw-2">&amp;</span>SRS, <span class="kw-2">&amp;</span>DOMAIN, diff);
+<a href=#244 id=244 data-nosnippet>244</a>            }
+<a href=#245 id=245 data-nosnippet>245</a>
+<a href=#246 id=246 data-nosnippet>246</a>            <span class="comment">// the updated blob should be the same as if we just start with the new data (with appropriate padding)
+<a href=#247 id=247 data-nosnippet>247</a>            </span><span class="kw">let </span>ys_blob = encode_to_chunk_size(ys, xs_blob.data.len() / SRS_SIZE);
+<a href=#248 id=248 data-nosnippet>248</a>
+<a href=#249 id=249 data-nosnippet>249</a>            <span class="macro">prop_assert_eq!</span>(xs_blob, ys_blob);
+<a href=#250 id=250 data-nosnippet>250</a>        }
+<a href=#251 id=251 data-nosnippet>251</a>
+<a href=#252 id=252 data-nosnippet>252</a>    }
+<a href=#253 id=253 data-nosnippet>253</a>}</code></pre></div></section></main></body></html>
