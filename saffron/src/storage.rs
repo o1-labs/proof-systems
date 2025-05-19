@@ -70,36 +70,29 @@ pub fn update<F: PrimeField>(path: &str, diff: &Diff<F>) -> std::io::Result<()> 
 pub mod caml {
     use super::*;
     use crate::ScalarField;
+    use kimchi_stubs::field_vector::fp::CamlFpVector;
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlData<CamlF> {
-        pub data: Vec<CamlF>,
+    pub struct CamlData {
+        pub data: CamlFpVector,
     }
 
     // let x: Data<Fq> = Data { data: vec![Fq::one()] };
     // let caml_x: CamlData<Fq> = x.into();
 
-    impl<CamlF> From<Data<ScalarField>> for CamlData<CamlF>
-    where
-        CamlF: From<ScalarField>,
-    {
+    impl From<Data<ScalarField>> for CamlData {
         fn from(data: Data<ScalarField>) -> Self {
-            let data = data.data.into_iter().map(|x| x.into()).collect::<Vec<_>>();
-            Self { data }
+            Self {
+                data: CamlFpVector::create(data.data),
+            }
         }
     }
 
-    impl<CamlF> From<CamlData<CamlF>> for Data<ScalarField>
-    where
-        CamlF: Into<ScalarField>,
-    {
-        fn from(caml_data: CamlData<CamlF>) -> Self {
-            let data = caml_data
-                .data
-                .into_iter()
-                .map(|x| x.into())
-                .collect::<Vec<_>>();
-            Self { data }
+    impl From<CamlData> for Data<ScalarField> {
+        fn from(caml_data: CamlData) -> Self {
+            Self {
+                data: caml_data.data.as_slice().into(),
+            }
         }
     }
 }
