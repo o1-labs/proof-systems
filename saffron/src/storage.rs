@@ -69,6 +69,7 @@ pub fn update<F: PrimeField>(path: &str, diff: &Diff<F>) -> std::io::Result<()> 
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
+    use crate::ScalarField;
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlData<CamlF> {
@@ -78,21 +79,19 @@ pub mod caml {
     // let x: Data<Fq> = Data { data: vec![Fq::one()] };
     // let caml_x: CamlData<Fq> = x.into();
 
-    impl<F, CamlF> From<Data<F>> for CamlData<CamlF>
+    impl<CamlF> From<Data<ScalarField>> for CamlData<CamlF>
     where
-        F: PrimeField,
-        CamlF: From<F>,
+        CamlF: From<ScalarField>,
     {
-        fn from(data: Data<F>) -> Self {
+        fn from(data: Data<ScalarField>) -> Self {
             let data = data.data.into_iter().map(|x| x.into()).collect::<Vec<_>>();
             Self { data }
         }
     }
 
-    impl<F, CamlF> From<CamlData<CamlF>> for Data<F>
+    impl<CamlF> From<CamlData<CamlF>> for Data<ScalarField>
     where
-        F: PrimeField,
-        CamlF: Into<F>,
+        CamlF: Into<ScalarField>,
     {
         fn from(caml_data: CamlData<CamlF>) -> Self {
             let data = caml_data
