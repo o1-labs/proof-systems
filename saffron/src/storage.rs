@@ -152,6 +152,15 @@ pub mod caml {
             }
         }
     }
+
+    #[ocaml_gen::func]
+    #[ocaml::func]
+    pub fn caml_init(path: String, data: CamlData) -> Result<(), ocaml::Error> {
+        match init(&path, &data.into()) {
+            Err(_) => ocaml::Error::failwith("Storage.caml_init: error in file initialisation"),
+            Ok(()) => Ok(()),
+        }
+    }
 }
 
 #[cfg(test)]
