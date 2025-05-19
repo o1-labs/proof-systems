@@ -660,6 +660,7 @@ where
         //~~ * the negated public polynomial
         //~    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
         //~    TODO: specify the split of the permutation polynomial into perm and bnd?
+
         let lookup_env = if let Some(lcs) = &index.cs.lookup_constraint_system {
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
@@ -763,130 +764,18 @@ where
 
         internal_tracing::checkpoint!(internal_traces; compute_quotient_poly);
 
+        // The only contraint is a bool constraint on the first wire.
         let quotient_poly = {
-            // generic
-            let mut t4 = {
-                let generic_constraint =
-                    generic::Generic::combined_constraints(&all_alphas, &mut cache);
-                let generic4 = generic_constraint.evaluations(&env);
-
-                if cfg!(debug_assertions) {
-                    let p4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
-                    let gen_minus_pub = &generic4 + &p4;
-
-                    check_constraint!(index, gen_minus_pub);
+            let eval_wire_0 = &lagrange.d4.this.w[0].evals;
+            let f = {
+                let mut res = Vec::new();
+                for x in eval_wire_0.iter() {
+                    res.push(*x * *x - *x);
                 }
-
-                generic4
+                Evaluations::from_vec_and_domain(res, index.cs.domain.d4).interpolate()
             };
-
-            // permutation
-            let (mut t8, bnd) = {
-                let alphas =
-                    all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                let (perm, bnd) = index.perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
-
-                check_constraint!(index, perm);
-
-                (perm, bnd)
-            };
-
-            {
-                use crate::circuits::argument::DynArgument;
-
-                let range_check0_enabled =
-                    index.column_evaluations.range_check0_selector8.is_some();
-                let range_check1_enabled =
-                    index.column_evaluations.range_check1_selector8.is_some();
-                let foreign_field_addition_enabled = index
-                    .column_evaluations
-                    .foreign_field_add_selector8
-                    .is_some();
-                let foreign_field_multiplication_enabled = index
-                    .column_evaluations
-                    .foreign_field_mul_selector8
-                    .is_some();
-                let xor_enabled = index.column_evaluations.xor_selector8.is_some();
-                let rot_enabled = index.column_evaluations.rot_selector8.is_some();
-
-                for gate in [
-                    (
-                        (&CompleteAdd::default() as &dyn DynArgument<G::ScalarField>),
-                        true,
-                    ),
-                    (&VarbaseMul::default(), true),
-                    (&EndosclMul::default(), true),
-                    (&EndomulScalar::default(), true),
-                    (&Poseidon::default(), true),
-                    // Range check gates
-                    (&RangeCheck0::default(), range_check0_enabled),
-                    (&RangeCheck1::default(), range_check1_enabled),
-                    // Foreign field addition gate
-                    (&ForeignFieldAdd::default(), foreign_field_addition_enabled),
-                    // Foreign field multiplication gate
-                    (
-                        &ForeignFieldMul::default(),
-                        foreign_field_multiplication_enabled,
-                    ),
-                    // Xor gate
-                    (&Xor16::default(), xor_enabled),
-                    // Rot gate
-                    (&Rot64::default(), rot_enabled),
-                ]
-                .into_iter()
-                .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })
-                {
-                    let constraint = gate.combined_constraints(&all_alphas, &mut cache);
-                    let eval = constraint.evaluations(&env);
-                    if eval.domain().size == t4.domain().size {
-                        t4 += &eval;
-                    } else if eval.domain().size == t8.domain().size {
-                        t8 += &eval;
-                    } else {
-                        panic!("Bad evaluation")
-                    }
-                    check_constraint!(index, format!("{:?}", gate.argument_type()), eval);
-                }
-            };
-
-            // lookup
-            {
-                if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
-                    let constraints = lookup::constraints::constraints(&lcs.configuration, false);
-                    let constraints_len = u32::try_from(constraints.len())
-                        .expect("not expecting a large amount of constraints");
-                    let lookup_alphas =
-                        all_alphas.get_alphas(ArgumentType::Lookup, constraints_len);
-
-                    // as lookup constraints are computed with the expression framework,
-                    // each of them can result in Evaluations of different domains
-                    for (ii, (constraint, alpha_pow)) in
-                        constraints.into_iter().zip_eq(lookup_alphas).enumerate()
-                    {
-                        let mut eval = constraint.evaluations(&env);
-                        eval.evals.par_iter_mut().for_each(|x| *x *= alpha_pow);
-
-                        if eval.domain().size == t4.domain().size {
-                            t4 += &eval;
-                        } else if eval.domain().size == t8.domain().size {
-                            t8 += &eval;
-                        } else if eval.evals.iter().all(|x| x.is_zero()) {
-                            // Skip any 0-valued evaluations
-                        } else {
-                            panic!("Bad evaluation")
-                        }
-
-                        check_constraint!(index, format!("lookup constraint #{ii}"), eval);
-                    }
-                }
-            }
-
-            // public polynomial
-            let mut f = t4.interpolate() + t8.interpolate();
-            f += &public_poly;
-
             // divide contributions with vanishing polynomial
-            let (mut quotient, res) = f
+            let (quotient, res) = f
                 .divide_by_vanishing_poly(index.cs.domain.d1)
                 .ok_or(ProverError::Prover("division by vanishing polynomial"))?;
             if !res.is_zero() {
@@ -895,7 +784,6 @@ where
                 ));
             }
 
-            quotient += &bnd; // already divided by Z_H
             quotient
         };
 
