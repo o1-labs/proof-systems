@@ -161,6 +161,15 @@ pub mod caml {
             Ok(()) => Ok(()),
         }
     }
+
+    #[ocaml_gen::func]
+    #[ocaml::func]
+    pub fn caml_read(path: String) -> Result<CamlData, ocaml::Error> {
+        match read(&path) {
+            Err(e) => return Err(e.into()),
+            Ok(data) => Ok(data.into()),
+        }
+    }
 }
 
 #[cfg(test)]
