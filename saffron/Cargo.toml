@@ -24,6 +24,7 @@ ark-poly.workspace = true
 ark-serialize = { workspace = true, features = ["derive"] }
 clap = { workspace = true, features = ["derive"] }
 hex.workspace = true
+kimchi-stubs.workspace = true
 kimchi.workspace = true
 mina-curves.workspace = true
 mina-poseidon.workspace = true
