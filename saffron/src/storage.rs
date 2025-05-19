@@ -153,6 +153,23 @@ pub mod caml {
         }
     }
 
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlDiff {
+        pub region: ocaml::Uint,
+        pub addresses: Vec<ocaml::Uint>,
+        pub new_values: CamlFpVector,
+    }
+
+    impl From<CamlDiff> for Diff<ScalarField> {
+        fn from(caml_diff: CamlDiff) -> Self {
+            Self {
+                region: caml_diff.region as u64,
+                addresses: caml_diff.addresses.into_iter().map(|x| x as u64).collect(),
+                new_values: caml_diff.new_values.as_slice().into(),
+            }
+        }
+    }
+
     #[ocaml_gen::func]
     #[ocaml::func]
     pub fn caml_init(path: String, data: CamlData) -> Result<(), ocaml::Error> {
@@ -168,6 +185,15 @@ pub mod caml {
         match read(&path) {
             Err(e) => return Err(e.into()),
             Ok(data) => Ok(data.into()),
+        }
+    }
+
+    #[ocaml_gen::func]
+    #[ocaml::func]
+    pub fn caml_update(path: String, diff: CamlDiff) -> Result<(), ocaml::Error> {
+        match update(&path, &diff.into()) {
+            Err(_) => ocaml::Error::failwith("Storage.caml_update: error in file initialisation"),
+            Ok(()) => Ok(()),
         }
     }
 }
