@@ -3392,6 +3392,7 @@ dependencies = [
  "ctor",
  "hex",
  "kimchi",
+ "kimchi-stubs",
  "mina-curves",
  "mina-poseidon",
  "o1-utils",
