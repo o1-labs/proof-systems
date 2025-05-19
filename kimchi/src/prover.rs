@@ -774,6 +774,7 @@ where
                 }
                 Evaluations::from_vec_and_domain(res, index.cs.domain.d4).interpolate()
             };
+            println!("proving");
             // divide contributions with vanishing polynomial
             let (quotient, res) = f
                 .divide_by_vanishing_poly(index.cs.domain.d1)
