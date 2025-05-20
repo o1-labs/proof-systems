@@ -1,10 +1,10 @@
-use crate::wasm_flat_vector::WasmFlatVector;
 use core::{convert::From, ops::Deref};
 use paste::paste;
 use wasm_bindgen::{
     convert::{FromWasmAbi, IntoWasmAbi, OptionFromWasmAbi, OptionIntoWasmAbi},
     prelude::*,
 };
+use wasm_types::FlatVector as WasmFlatVector;
 
 #[derive(Clone, Debug)]
 pub struct WasmVector<T>(Vec<T>);
@@ -152,7 +152,7 @@ macro_rules! impl_vec_vec_fp {
 
 pub mod fp {
     use super::*;
-    use crate::arkworks::WasmPastaFp;
+    use arkworks::WasmPastaFp;
     use mina_curves::pasta::Fp;
 
     impl_vec_vec_fp!(Fp, WasmPastaFp);
@@ -160,7 +160,7 @@ pub mod fp {
 
 pub mod fq {
     use super::*;
-    use crate::arkworks::WasmPastaFq;
+    use arkworks::WasmPastaFq;
     use mina_curves::pasta::Fq;
 
     impl_vec_vec_fp!(Fq, WasmPastaFq);

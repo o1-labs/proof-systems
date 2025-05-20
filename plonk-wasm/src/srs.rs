@@ -1,4 +1,4 @@
-use crate::{wasm_flat_vector::WasmFlatVector, wasm_vector::WasmVector};
+use crate::wasm_vector::WasmVector;
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
 use core::ops::Deref;
 use paste::paste;
@@ -12,6 +12,7 @@ use std::{
     sync::Arc,
 };
 use wasm_bindgen::prelude::*;
+use wasm_types::FlatVector as WasmFlatVector;
 
 macro_rules! impl_srs {
     ($name: ident,
@@ -213,7 +214,7 @@ macro_rules! impl_srs {
                 crate::rayon::run_in_pool(|| {
                     let comms: Vec<_> = comms.into_iter().map(Into::into).collect();
                     let chals: Vec<_> = chals.into_iter().map(Into::into).collect();
-                    crate::urs_utils::batch_dlog_accumulator_check(&srs, &comms, &chals)
+                    poly_commitment::utils::batch_dlog_accumulator_check(&srs, &comms, &chals)
                 })
             }
 
@@ -223,7 +224,7 @@ macro_rules! impl_srs {
                 comms: i32,
                 chals: WasmFlatVector<$WasmF>,
             ) -> WasmVector<$WasmG> {
-                crate::urs_utils::batch_dlog_accumulator_generate::<$G>(
+                poly_commitment::utils::batch_dlog_accumulator_generate::<$G>(
                     &srs,
                     comms as usize,
                     &chals.into_iter().map(From::from).collect(),
@@ -244,10 +245,8 @@ macro_rules! impl_srs {
 
 pub mod fp {
     use super::*;
-    use crate::{
-        arkworks::{WasmGVesta as WasmG, WasmPastaFp},
-        poly_comm::vesta::WasmFpPolyComm as WasmPolyComm,
-    };
+    use crate::poly_comm::vesta::WasmFpPolyComm as WasmPolyComm;
+    use arkworks::{WasmGVesta as WasmG, WasmPastaFp};
     use mina_curves::pasta::{Fp, Vesta as G};
 
     impl_srs!(caml_fp_srs, WasmPastaFp, WasmG, Fp, G, WasmPolyComm, Fp);
@@ -325,10 +324,8 @@ pub mod fp {
 
 pub mod fq {
     use super::*;
-    use crate::{
-        arkworks::{WasmGPallas as WasmG, WasmPastaFq},
-        poly_comm::pallas::WasmFqPolyComm as WasmPolyComm,
-    };
+    use crate::poly_comm::pallas::WasmFqPolyComm as WasmPolyComm;
+    use arkworks::{WasmGPallas as WasmG, WasmPastaFq};
     use mina_curves::pasta::{Fq, Pallas as G};
 
     impl_srs!(caml_fq_srs, WasmPastaFq, WasmG, Fq, G, WasmPolyComm, Fq);

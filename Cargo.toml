@@ -2,6 +2,7 @@
 members = [
   "arrabbiata",
   "book",
+  "crates/*",
   "curves",
   "folding",
   "groupmap",
@@ -13,6 +14,7 @@ members = [
   "msm",
   "mvpoly",
   "o1vm",
+  "plonk-neon",
   "plonk-wasm",
   "poly-commitment",
   "poseidon",
@@ -86,15 +88,8 @@ thiserror = { version = "2", default-features = false }
 tinytemplate = "1.1"
 wasm-bindgen = "=0.2.89"
 wasm-bindgen-test = ">=0.3.0"
-web-sys = { version = "=0.3.64", features = [
-  "Window",
-  "Document",
-  "HtmlElement",
-  "Text",
-  "Node",
-  "Element",
-] }
 
+arkworks = { path = "crates/arkworks" }
 arrabbiata = { path = "./arrabbiata", version = "0.1.0" }
 folding = { path = "./folding", version = "0.1.0" }
 groupmap = { path = "./groupmap", version = "0.1.0" }
@@ -116,6 +111,7 @@ saffron = { path = "./poly-commitment", version = "0.1.0" }
 signer = { path = "./signer", version = "0.1.0" }
 turshi = { path = "./turshi", version = "0.1.0" }
 utils = { path = "./utils", version = "0.1.0" }
+wasm-types = { path = "./crates/wasm-types" }
 
 [profile.release]
 lto = true

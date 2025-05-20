@@ -1,7 +1,6 @@
 use std::{fs::File, path::Path};
 
-use kimchi::precomputed_srs::TestSRS;
-use poly_commitment::{commitment::CommitmentCurve, ipa::SRS};
+use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, precomputed_srs::TestSRS};
 use time::macros::format_description;
 use tracing::debug;
 use tracing_subscriber::{

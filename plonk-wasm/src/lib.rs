@@ -9,7 +9,6 @@
 
 use wasm_bindgen::prelude::*;
 
-mod wasm_flat_vector;
 mod wasm_vector;
 
 #[wasm_bindgen]
@@ -90,12 +89,6 @@ pub unsafe fn wait_until_non_zero(ptr: *const u32) -> u32 {
 }
 
 pub mod rayon;
-
-/// Arkworks types
-pub mod arkworks;
-
-/// Utils
-pub mod urs_utils; // TODO: move this logic to proof-systems
 
 /// Vectors
 pub mod gate_vector;

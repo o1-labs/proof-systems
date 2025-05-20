@@ -135,18 +135,15 @@ where
 
 pub mod testing {
     use super::*;
-    use crate::{
-        circuits::{
-            gate::CircuitGate,
-            lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
-        },
-        precomputed_srs,
+    use crate::circuits::{
+        gate::CircuitGate,
+        lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     };
     use ark_ff::PrimeField;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use poly_commitment::{
         ipa::{OpeningProof, SRS},
-        OpenProof,
+        precomputed_srs, OpenProof,
     };
 
     #[allow(clippy::too_many_arguments)]

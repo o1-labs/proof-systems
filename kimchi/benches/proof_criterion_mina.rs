@@ -6,10 +6,12 @@ use kimchi::{
         bench_arguments_from_file, BaseSpongePallas, BaseSpongeVesta, ScalarSpongePallas,
         ScalarSpongeVesta,
     },
-    curve::KimchiCurve,
     proof::ProverProof,
 };
-use mina_curves::pasta::{Pallas, Vesta};
+use mina_curves::{
+    named::NamedCurve,
+    pasta::{Pallas, Vesta},
+};
 
 pub fn bench_proof_creation_mina(c: &mut Criterion) {
     let mut group = c.benchmark_group("proof_creation_mina");
@@ -34,7 +36,7 @@ pub fn bench_proof_creation_mina(c: &mut Criterion) {
 
     if curve_name == Vesta::NAME {
         // Vesta
-        let srs = kimchi::precomputed_srs::get_srs_test();
+        let srs = poly_commitment::precomputed_srs::get_srs_test();
         let (index, witness, runtime_tables, prev) =
             bench_arguments_from_file::<Vesta, BaseSpongeVesta>(srs.clone(), filename.clone());
 
@@ -61,7 +63,7 @@ pub fn bench_proof_creation_mina(c: &mut Criterion) {
         );
     } else if curve_name == Pallas::NAME {
         // Pallas
-        let srs = kimchi::precomputed_srs::get_srs_test();
+        let srs = poly_commitment::precomputed_srs::get_srs_test();
         let (index, witness, runtime_tables, prev) =
             bench_arguments_from_file::<Pallas, BaseSpongePallas>(srs.clone(), filename.clone());
 

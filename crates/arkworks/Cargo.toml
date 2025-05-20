@@ -1,0 +1,23 @@
+[package]
+name = "arkworks"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["wasm"]
+wasm = []
+std = []
+
+[dependencies]
+# arkworks
+ark-ec.workspace = true
+ark-ff.workspace = true
+ark-poly.workspace = true
+ark-serialize.workspace = true
+
+# proof-systems
+mina-curves.workspace = true
+num-bigint.workspace = true
+rand.workspace = true
+wasm-bindgen.workspace = true
+wasm-types.workspace = true
