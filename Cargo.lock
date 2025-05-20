@@ -1972,6 +1972,7 @@ dependencies = [
  "rand",
  "rayon",
  "rmp-serde",
+ "saffron",
  "serde",
  "serde_json",
 ]
@@ -3318,7 +3319,6 @@ dependencies = [
  "ctor",
  "hex",
  "kimchi",
- "kimchi-stubs",
  "mina-curves",
  "mina-poseidon",
  "o1-utils",
