@@ -1,8 +1,8 @@
-#[cfg(feature = "ocaml_types")]
+// #[cfg(feature = "ocaml_types")]
 pub mod caml {
-    use super::*;
-    use crate::ScalarField;
-    use kimchi_stubs::field_vector::fp::CamlFpVector;
+    use crate::field_vector::fp::CamlFpVector;
+    use mina_curves::pasta::Fp;
+    use saffron::{diff::Diff, storage::*};
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlData {
@@ -12,15 +12,15 @@ pub mod caml {
     // let x: Data<Fq> = Data { data: vec![Fq::one()] };
     // let caml_x: CamlData<Fq> = x.into();
 
-    impl From<Data<ScalarField>> for CamlData {
-        fn from(data: Data<ScalarField>) -> Self {
+    impl From<Data<Fp>> for CamlData {
+        fn from(data: Data<Fp>) -> Self {
             Self {
                 data: CamlFpVector::create(data.data),
             }
         }
     }
 
-    impl From<CamlData> for Data<ScalarField> {
+    impl From<CamlData> for Data<Fp> {
         fn from(caml_data: CamlData) -> Self {
             Self {
                 data: caml_data.data.as_slice().into(),
@@ -35,7 +35,7 @@ pub mod caml {
         pub new_values: CamlFpVector,
     }
 
-    impl From<CamlDiff> for Diff<ScalarField> {
+    impl From<CamlDiff> for Diff<Fp> {
         fn from(caml_diff: CamlDiff) -> Self {
             Self {
                 region: caml_diff.region as u64,
