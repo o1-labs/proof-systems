@@ -51,22 +51,22 @@ use rand::{CryptoRng, RngCore};
 /// Non-relaxed instance attesting to `d * q - a = 0`
 pub struct CoreInstance {
     /// Commitment to the data
-    comm_d: Curve,
+    pub comm_d: Curve,
     /// Commitment to the query polynomial
-    comm_q: Curve,
+    pub comm_q: Curve,
     /// Commitment to the answers
-    comm_a: Curve,
+    pub comm_a: Curve,
 }
 
 #[derive(PartialEq, Eq)]
-/// Relaxed instance variant.
+/// Relaxed instance variant, attesting to `d * q - a * u - e = 0`
 pub struct RelaxedInstance {
     /// Non-relaxed part
-    core: CoreInstance,
+    pub core: CoreInstance,
     /// Homogeneization term for folding
-    u: ScalarField,
+    pub u: ScalarField,
     /// Commitment to the error term for folding
-    comm_e: Curve,
+    pub comm_e: Curve,
 }
 
 impl CoreInstance {
@@ -83,17 +83,17 @@ impl CoreInstance {
 /// Non-relaxed witness contains evaluations (field vectors) for data,
 /// query, and answers.
 pub struct CoreWitness {
-    d: Evaluations<ScalarField, R2D<ScalarField>>,
-    q: Evaluations<ScalarField, R2D<ScalarField>>,
-    a: Evaluations<ScalarField, R2D<ScalarField>>,
+    pub d: Evaluations<ScalarField, R2D<ScalarField>>,
+    pub q: Evaluations<ScalarField, R2D<ScalarField>>,
+    pub a: Evaluations<ScalarField, R2D<ScalarField>>,
 }
 
 #[derive(PartialEq, Eq)]
 /// Relaxed witness extends the non-relaxed witness with evaluations
 /// of the error term.
 pub struct RelaxedWitness {
-    core: CoreWitness,
-    e: Evaluations<ScalarField, R2D<ScalarField>>,
+    pub core: CoreWitness,
+    pub e: Evaluations<ScalarField, R2D<ScalarField>>,
 }
 
 impl CoreWitness {
@@ -180,7 +180,7 @@ pub fn folding_prover(
         cross_term_comm,
     ]);
 
-    let recombination_chal = fq_sponge.squeeze(2);
+    let recombination_chal = fq_sponge.challenge();
 
     let a3 = &wit1.a + &(&wit2.core.a * recombination_chal);
     let q3 = &wit1.q + &(&wit2.core.q * recombination_chal);
@@ -236,7 +236,7 @@ pub fn folding_verifier(
         cross_term_comm,
     ]);
 
-    let recombination_chal = fq_sponge.squeeze(2);
+    let recombination_chal = fq_sponge.challenge();
 
     let comm_a3 = inst1.comm_a + inst2.core.comm_a * recombination_chal;
     let comm_q3 = inst1.comm_q + inst2.core.comm_q * recombination_chal;
@@ -510,53 +510,42 @@ where
     )
 }
 
-#[cfg(test)]
-mod tests {
+pub mod testing {
     use super::*;
-    use crate::{env, Curve, ScalarField, SRS_SIZE};
-    use ark_ec::AffineRepr;
-    use ark_ff::{One, UniformRand};
+    use crate::{Curve, ScalarField};
+    use ark_ff::UniformRand;
     use ark_poly::Evaluations;
-    use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
+    use kimchi::circuits::domains::EvaluationDomains;
     use mina_curves::pasta::{Fp, Vesta};
-    use once_cell::sync::Lazy;
-    use poly_commitment::{commitment::CommitmentCurve, ipa::SRS};
-    use proptest::prelude::*;
+    use poly_commitment::ipa::SRS;
+    use rand::Rng;
 
-    static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
-        if let Ok(srs) = std::env::var("SRS_FILEPATH") {
-            env::get_srs_from_cache(srs)
-        } else {
-            SRS::create(SRS_SIZE)
-        }
-    });
-
-    static DOMAIN: Lazy<EvaluationDomains<ScalarField>> =
-        Lazy::new(|| EvaluationDomains::<ScalarField>::create(SRS_SIZE).unwrap());
-
-    static GROUP_MAP: Lazy<<Vesta as CommitmentCurve>::Map> =
-        Lazy::new(<Vesta as CommitmentCurve>::Map::setup);
-
-    fn generate_random_inst_wit<RNG>(rng: &mut RNG) -> (CoreInstance, CoreWitness)
+    /// Generates a random core instance and witness
+    pub fn generate_random_inst_wit_core<RNG>(
+        srs: &SRS<Vesta>,
+        domain: EvaluationDomains<ScalarField>,
+        rng: &mut RNG,
+    ) -> (CoreInstance, CoreWitness)
     where
         RNG: RngCore + CryptoRng,
     {
         let data: Vec<ScalarField> = {
             let mut data = vec![];
-            (0..SRS_SIZE).for_each(|_| data.push(Fp::rand(rng)));
+            (0..domain.d1.size).for_each(|_| data.push(Fp::rand(rng)));
             data
         };
 
-        let data_comm: Curve = SRS
+        let data_comm: Curve = srs
             .commit_evaluations_non_hiding(
-                DOMAIN.d1,
-                &Evaluations::from_vec_and_domain(data.clone(), DOMAIN.d1),
+                domain.d1,
+                &Evaluations::from_vec_and_domain(data.clone(), domain.d1),
             )
             .chunks[0];
 
         let query: Vec<ScalarField> = {
             let mut query = vec![];
-            (0..SRS_SIZE).for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.1)));
+            (0..domain.d1.size)
+                .for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.1)));
             query
         };
 
@@ -567,17 +556,17 @@ mod tests {
             .map(|(d, q)| *d * q)
             .collect();
 
-        let comm_q = SRS
+        let comm_q = srs
             .commit_evaluations_non_hiding(
-                DOMAIN.d1,
-                &Evaluations::from_vec_and_domain(query.clone(), DOMAIN.d1),
+                domain.d1,
+                &Evaluations::from_vec_and_domain(query.clone(), domain.d1),
             )
             .chunks[0];
 
-        let comm_a = SRS
+        let comm_a = srs
             .commit_evaluations_non_hiding(
-                DOMAIN.d1,
-                &Evaluations::from_vec_and_domain(answer.clone(), DOMAIN.d1),
+                domain.d1,
+                &Evaluations::from_vec_and_domain(answer.clone(), domain.d1),
             )
             .chunks[0];
 
@@ -588,70 +577,118 @@ mod tests {
         };
 
         let core_witness = CoreWitness {
-            d: Evaluations::from_vec_and_domain(data, DOMAIN.d1),
-            q: Evaluations::from_vec_and_domain(query, DOMAIN.d1),
-            a: Evaluations::from_vec_and_domain(answer, DOMAIN.d1),
+            d: Evaluations::from_vec_and_domain(data, domain.d1),
+            q: Evaluations::from_vec_and_domain(query, domain.d1),
+            a: Evaluations::from_vec_and_domain(answer, domain.d1),
         };
 
         (core_instance, core_witness)
     }
 
+    /// Generates a relaxed instance and witness. Note that the result
+    /// of this function is _not_ an instance-witness pair produced by
+    /// a valid folding procedure, but just a generic relaxed pair instead.
+    pub fn generate_random_inst_wit_relaxed<RNG>(
+        srs: &SRS<Vesta>,
+        domain: EvaluationDomains<ScalarField>,
+        rng: &mut RNG,
+    ) -> (RelaxedInstance, RelaxedWitness)
+    where
+        RNG: RngCore + CryptoRng,
+    {
+        let (inst, wit) = generate_random_inst_wit_core(srs, domain, rng);
+        let u = Fp::rand(rng);
+        let e = &(&wit.d * &wit.q) - &(&wit.a * u);
+        let comm_e = srs.commit_evaluations_non_hiding(domain.d1, &e).chunks[0];
+
+        let relaxed_instance = RelaxedInstance {
+            core: inst,
+            u,
+            comm_e,
+        };
+
+        let relaxed_witness = RelaxedWitness { core: wit, e };
+
+        assert!(relaxed_instance.check_in_language(srs, domain.d1, &relaxed_witness));
+
+        (relaxed_instance, relaxed_witness)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{testing::generate_random_inst_wit_core, *};
+    use crate::{Curve, ScalarField};
+    use ark_ec::AffineRepr;
+    use ark_ff::One;
+    use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
+    use mina_curves::pasta::Vesta;
+    use poly_commitment::commitment::CommitmentCurve;
+
     #[test]
     fn test_folding_read_proof_completeness_soundness() {
         let mut rng = o1_utils::tests::make_test_rng(None);
 
-        let (core_instance_1, core_witness_1) = generate_random_inst_wit(&mut rng);
-        let (core_instance_2, core_witness_2) = generate_random_inst_wit(&mut rng);
+        let srs = poly_commitment::precomputed_srs::get_srs_test();
+        let domain: EvaluationDomains<ScalarField> =
+            EvaluationDomains::<ScalarField>::create(srs.size()).unwrap();
+        let group_map = <Vesta as CommitmentCurve>::Map::setup();
+
+        let (core_instance_1, core_witness_1) =
+            generate_random_inst_wit_core(&srs, domain, &mut rng);
+        let (core_instance_2, core_witness_2) =
+            generate_random_inst_wit_core(&srs, domain, &mut rng);
         let relaxed_instance_2 = core_instance_2.relax();
-        let relaxed_witness_2 = core_witness_2.relax(DOMAIN.d1);
+        let relaxed_witness_2 = core_witness_2.relax(domain.d1);
 
-        assert!(relaxed_instance_2.check_in_language(&SRS, DOMAIN.d1, &relaxed_witness_2));
+        assert!(relaxed_instance_2.check_in_language(&srs, domain.d1, &relaxed_witness_2));
 
-        let (relaxed_instance_3, relaxed_witness_3, error_term_1) = folding_prover(
-            &SRS,
-            DOMAIN.d1,
+        let (relaxed_instance_3, relaxed_witness_3, cross_term_1) = folding_prover(
+            &srs,
+            domain.d1,
             &core_instance_1,
             &core_witness_1,
             &relaxed_instance_2,
             &relaxed_witness_2,
         );
 
-        assert!(relaxed_instance_3.check_in_language(&SRS, DOMAIN.d1, &relaxed_witness_3));
+        assert!(relaxed_instance_3.check_in_language(&srs, domain.d1, &relaxed_witness_3));
 
         assert!(
-            folding_verifier(&core_instance_1, &relaxed_instance_2, error_term_1)
+            folding_verifier(&core_instance_1, &relaxed_instance_2, cross_term_1)
                 == relaxed_instance_3
         );
 
-        let (core_instance_4, core_witness_4) = generate_random_inst_wit(&mut rng);
-        let (relaxed_instance_5, relaxed_witness_5, error_term_2) = folding_prover(
-            &SRS,
-            DOMAIN.d1,
+        let (core_instance_4, core_witness_4) =
+            generate_random_inst_wit_core(&srs, domain, &mut rng);
+        let (relaxed_instance_5, relaxed_witness_5, cross_term_2) = folding_prover(
+            &srs,
+            domain.d1,
             &core_instance_4,
             &core_witness_4,
             &relaxed_instance_3,
             &relaxed_witness_3,
         );
 
-        assert!(relaxed_instance_5.check_in_language(&SRS, DOMAIN.d1, &relaxed_witness_5));
+        assert!(relaxed_instance_5.check_in_language(&srs, domain.d1, &relaxed_witness_5));
 
         assert!(
-            folding_verifier(&core_instance_4, &relaxed_instance_3, error_term_2)
+            folding_verifier(&core_instance_4, &relaxed_instance_3, cross_term_2)
                 == relaxed_instance_5
         );
 
         let proof = prove_relaxed(
-            &SRS,
-            *DOMAIN,
-            &GROUP_MAP,
+            &srs,
+            domain,
+            &group_map,
             &mut rng,
             &relaxed_instance_5,
             &relaxed_witness_5,
         );
         let res = verify_relaxed(
-            &SRS,
-            *DOMAIN,
-            &GROUP_MAP,
+            &srs,
+            domain,
+            &group_map,
             &mut rng,
             &relaxed_instance_5,
             &proof,
@@ -665,9 +702,9 @@ mod tests {
         };
 
         let res_1 = verify_relaxed(
-            &SRS,
-            *DOMAIN,
-            &GROUP_MAP,
+            &srs,
+            domain,
+            &group_map,
             &mut rng,
             &relaxed_instance_5,
             &proof_malformed_1,
@@ -681,9 +718,9 @@ mod tests {
         };
 
         let res_2 = verify_relaxed(
-            &SRS,
-            *DOMAIN,
-            &GROUP_MAP,
+            &srs,
+            domain,
+            &group_map,
             &mut rng,
             &relaxed_instance_5,
             &proof_malformed_2,
