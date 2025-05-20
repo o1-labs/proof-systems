@@ -59,7 +59,7 @@ pub struct CoreInstance {
 }
 
 #[derive(PartialEq, Eq)]
-/// Relaxed instance variant.
+/// Relaxed instance variant, attesting to `d * q - a * u - e = 0`
 pub struct RelaxedInstance {
     /// Non-relaxed part
     pub core: CoreInstance,
@@ -520,7 +520,8 @@ pub mod testing {
     use poly_commitment::ipa::SRS;
     use rand::Rng;
 
-    pub fn generate_random_inst_wit<RNG>(
+    /// Generates a random core instance and witness
+    pub fn generate_random_inst_wit_core<RNG>(
         srs: &SRS<Vesta>,
         domain: EvaluationDomains<ScalarField>,
         rng: &mut RNG,
@@ -583,11 +584,40 @@ pub mod testing {
 
         (core_instance, core_witness)
     }
+
+    /// Generates a relaxed instance and witness. Note that the result
+    /// of this function is _not_ an instance-witness pair produced by
+    /// a valid folding procedure, but just a generic relaxed pair instead.
+    pub fn generate_random_inst_wit_relaxed<RNG>(
+        srs: &SRS<Vesta>,
+        domain: EvaluationDomains<ScalarField>,
+        rng: &mut RNG,
+    ) -> (RelaxedInstance, RelaxedWitness)
+    where
+        RNG: RngCore + CryptoRng,
+    {
+        let (inst, wit) = generate_random_inst_wit_core(srs, domain, rng);
+        let u = Fp::rand(rng);
+        let e = &(&wit.d * &wit.q) - &(&wit.a * u);
+        let comm_e = srs.commit_evaluations_non_hiding(domain.d1, &e).chunks[0];
+
+        let relaxed_instance = RelaxedInstance {
+            core: inst,
+            u,
+            comm_e,
+        };
+
+        let relaxed_witness = RelaxedWitness { core: wit, e };
+
+        assert!(relaxed_instance.check_in_language(srs, domain.d1, &relaxed_witness));
+
+        (relaxed_instance, relaxed_witness)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{testing::generate_random_inst_wit, *};
+    use super::{testing::generate_random_inst_wit_core, *};
     use crate::{Curve, ScalarField};
     use ark_ec::AffineRepr;
     use ark_ff::One;
@@ -604,8 +634,10 @@ mod tests {
             EvaluationDomains::<ScalarField>::create(srs.size()).unwrap();
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
-        let (core_instance_1, core_witness_1) = generate_random_inst_wit(&srs, domain, &mut rng);
-        let (core_instance_2, core_witness_2) = generate_random_inst_wit(&srs, domain, &mut rng);
+        let (core_instance_1, core_witness_1) =
+            generate_random_inst_wit_core(&srs, domain, &mut rng);
+        let (core_instance_2, core_witness_2) =
+            generate_random_inst_wit_core(&srs, domain, &mut rng);
         let relaxed_instance_2 = core_instance_2.relax();
         let relaxed_witness_2 = core_witness_2.relax(domain.d1);
 
@@ -627,7 +659,8 @@ mod tests {
                 == relaxed_instance_3
         );
 
-        let (core_instance_4, core_witness_4) = generate_random_inst_wit(&srs, domain, &mut rng);
+        let (core_instance_4, core_witness_4) =
+            generate_random_inst_wit_core(&srs, domain, &mut rng);
         let (relaxed_instance_5, relaxed_witness_5, cross_term_2) = folding_prover(
             &srs,
             domain.d1,
