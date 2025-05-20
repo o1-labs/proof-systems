@@ -53,6 +53,9 @@ pub mod pasta_fq_plonk_proof;
 pub mod pasta_fp_poseidon;
 pub mod pasta_fq_poseidon;
 
+/// Safron
+pub mod saffron_storage;
+
 /// Linearization helpers
 pub mod linearization;
 
