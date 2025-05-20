@@ -8,7 +8,8 @@ use poly_commitment::{commitment::CommitmentCurve, SRS as _};
 
 use saffron::{
     folding::{
-        folding_prover, folding_verifier, prove_relaxed, testing::generate_random_inst_wit_core,
+        folding_prover, folding_verifier, prove_relaxed,
+        testing::{generate_random_inst_wit_core, generate_random_inst_wit_relaxed},
         verify_relaxed,
     },
     ScalarField,
@@ -27,41 +28,21 @@ fn bench_folding(c: &mut Criterion) {
     let domain: EvaluationDomains<ScalarField> =
         EvaluationDomains::<ScalarField>::create(srs.size()).unwrap();
 
-    let (core_instance_1, core_witness_1) = generate_random_inst_wit_core(&srs, domain, &mut rng);
-    let (core_instance_2, core_witness_2) = generate_random_inst_wit_core(&srs, domain, &mut rng);
-    let relaxed_instance_2 = core_instance_2.relax();
-    let relaxed_witness_2 = core_witness_2.relax(domain.d1);
-
-    assert!(relaxed_instance_2.check_in_language(&srs, domain.d1, &relaxed_witness_2));
-
-    // This creates a pseudo random relaxed instance, combining a core
-    // one and a trivially relaxed core one.
-    let (relaxed_instance_3, relaxed_witness_3, cross_term_1) = folding_prover(
-        &srs,
-        domain.d1,
-        &core_instance_1,
-        &core_witness_1,
-        &relaxed_instance_2,
-        &relaxed_witness_2,
-    );
-
-    assert!(relaxed_instance_3.check_in_language(&srs, domain.d1, &relaxed_witness_3));
-
-    assert!(
-        folding_verifier(&core_instance_1, &relaxed_instance_2, cross_term_1) == relaxed_instance_3
-    );
-
     group.bench_function("folding_prover", |b| {
         b.iter_batched(
-            || generate_random_inst_wit_core(&srs, domain, &mut rng),
-            |(core_instance_4, core_witness_4)| {
+            || {
+                let relaxed = generate_random_inst_wit_relaxed(&srs, domain, &mut rng);
+                let core = generate_random_inst_wit_core(&srs, domain, &mut rng);
+                (core, relaxed)
+            },
+            |((core_instance, core_witness), (relaxed_instance, relaxed_witness))| {
                 black_box(folding_prover(
                     &srs,
                     domain.d1,
-                    &core_instance_4,
-                    &core_witness_4,
-                    &relaxed_instance_3,
-                    &relaxed_witness_3,
+                    &core_instance,
+                    &core_witness,
+                    &relaxed_instance,
+                    &relaxed_witness,
                 ))
             },
             BatchSize::LargeInput,
@@ -71,59 +52,57 @@ fn bench_folding(c: &mut Criterion) {
     group.bench_function("folding_verifier", |b| {
         b.iter_batched(
             || {
-                let (core_instance_4, core_witness_4) =
+                let (relaxed_instance, relaxed_witness) =
+                    generate_random_inst_wit_relaxed(&srs, domain, &mut rng);
+                let (core_instance, core_witness) =
                     generate_random_inst_wit_core(&srs, domain, &mut rng);
-                let (_, _, cross_term_2) = folding_prover(
+                let (_, _, cross_term) = folding_prover(
                     &srs,
                     domain.d1,
-                    &core_instance_4,
-                    &core_witness_4,
-                    &relaxed_instance_3,
-                    &relaxed_witness_3,
+                    &core_instance,
+                    &core_witness,
+                    &relaxed_instance,
+                    &relaxed_witness,
                 );
-                (core_instance_4, cross_term_2)
+                (core_instance, relaxed_instance, cross_term)
             },
-            |(core_instance_4, cross_term_2)| {
+            |(core_instance, relaxed_instance, cross_term)| {
                 black_box(folding_verifier(
-                    &core_instance_4,
-                    &relaxed_instance_3,
-                    cross_term_2,
+                    &core_instance,
+                    &relaxed_instance,
+                    cross_term,
                 ))
             },
             BatchSize::LargeInput,
         )
     });
 
-    let (core_instance_4, core_witness_4) = generate_random_inst_wit_core(&srs, domain, &mut rng);
-    let (relaxed_instance_5, relaxed_witness_5, _cross_term_2) = folding_prover(
-        &srs,
-        domain.d1,
-        &core_instance_4,
-        &core_witness_4,
-        &relaxed_instance_3,
-        &relaxed_witness_3,
-    );
-
     group.bench_function("prover_relaxed", |b| {
-        b.iter(|| {
-            black_box(prove_relaxed(
-                &srs,
-                domain,
-                &group_map,
-                &mut rng,
-                &relaxed_instance_5,
-                &relaxed_witness_5,
-            ))
-        })
+        b.iter_batched(
+            || generate_random_inst_wit_relaxed(&srs, domain, &mut rng),
+            |(relaxed_instance, relaxed_witness)| {
+                black_box(prove_relaxed(
+                    &srs,
+                    domain,
+                    &group_map,
+                    &mut rand::thread_rng(), // it is not possible to pass &rng to both arguments of iter_batched
+                    &relaxed_instance,
+                    &relaxed_witness,
+                ))
+            },
+            BatchSize::LargeInput,
+        )
     });
 
+    let (relaxed_instance, relaxed_witness) =
+        generate_random_inst_wit_relaxed(&srs, domain, &mut rng);
     let proof = prove_relaxed(
         &srs,
         domain,
         &group_map,
         &mut rng,
-        &relaxed_instance_5,
-        &relaxed_witness_5,
+        &relaxed_instance,
+        &relaxed_witness,
     );
 
     group.bench_function("verifier_relaxed", |b| {
@@ -133,7 +112,7 @@ fn bench_folding(c: &mut Criterion) {
                 domain,
                 &group_map,
                 &mut rng,
-                &relaxed_instance_5,
+                &relaxed_instance,
                 &proof,
             ))
         })
