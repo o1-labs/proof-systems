@@ -611,7 +611,7 @@ mod tests {
 
         assert!(relaxed_instance_2.check_in_language(&srs, domain.d1, &relaxed_witness_2));
 
-        let (relaxed_instance_3, relaxed_witness_3, error_term_1) = folding_prover(
+        let (relaxed_instance_3, relaxed_witness_3, cross_term_1) = folding_prover(
             &srs,
             domain.d1,
             &core_instance_1,
@@ -623,12 +623,12 @@ mod tests {
         assert!(relaxed_instance_3.check_in_language(&srs, domain.d1, &relaxed_witness_3));
 
         assert!(
-            folding_verifier(&core_instance_1, &relaxed_instance_2, error_term_1)
+            folding_verifier(&core_instance_1, &relaxed_instance_2, cross_term_1)
                 == relaxed_instance_3
         );
 
         let (core_instance_4, core_witness_4) = generate_random_inst_wit(&srs, domain, &mut rng);
-        let (relaxed_instance_5, relaxed_witness_5, error_term_2) = folding_prover(
+        let (relaxed_instance_5, relaxed_witness_5, cross_term_2) = folding_prover(
             &srs,
             domain.d1,
             &core_instance_4,
@@ -640,7 +640,7 @@ mod tests {
         assert!(relaxed_instance_5.check_in_language(&srs, domain.d1, &relaxed_witness_5));
 
         assert!(
-            folding_verifier(&core_instance_4, &relaxed_instance_3, error_term_2)
+            folding_verifier(&core_instance_4, &relaxed_instance_3, cross_term_2)
                 == relaxed_instance_5
         );
 

@@ -34,7 +34,7 @@ fn bench_folding(c: &mut Criterion) {
 
     assert!(relaxed_instance_2.check_in_language(&srs, domain.d1, &relaxed_witness_2));
 
-    let (relaxed_instance_3, relaxed_witness_3, error_term_1) = folding_prover(
+    let (relaxed_instance_3, relaxed_witness_3, cross_term_1) = folding_prover(
         &srs,
         domain.d1,
         &core_instance_1,
@@ -46,7 +46,7 @@ fn bench_folding(c: &mut Criterion) {
     assert!(relaxed_instance_3.check_in_language(&srs, domain.d1, &relaxed_witness_3));
 
     assert!(
-        folding_verifier(&core_instance_1, &relaxed_instance_2, error_term_1) == relaxed_instance_3
+        folding_verifier(&core_instance_1, &relaxed_instance_2, cross_term_1) == relaxed_instance_3
     );
 
     group.bench_function("folding_prover", |b| {
@@ -71,7 +71,7 @@ fn bench_folding(c: &mut Criterion) {
             || {
                 let (core_instance_4, core_witness_4) =
                     generate_random_inst_wit(&srs, domain, &mut rng);
-                let (_, _, error_term_2) = folding_prover(
+                let (_, _, cross_term_2) = folding_prover(
                     &srs,
                     domain.d1,
                     &core_instance_4,
@@ -79,13 +79,13 @@ fn bench_folding(c: &mut Criterion) {
                     &relaxed_instance_3,
                     &relaxed_witness_3,
                 );
-                (core_instance_4, error_term_2)
+                (core_instance_4, cross_term_2)
             },
-            |(core_instance_4, error_term_2)| {
+            |(core_instance_4, cross_term_2)| {
                 black_box(folding_verifier(
                     &core_instance_4,
                     &relaxed_instance_3,
-                    error_term_2,
+                    cross_term_2,
                 ))
             },
             BatchSize::LargeInput,
@@ -93,7 +93,7 @@ fn bench_folding(c: &mut Criterion) {
     });
 
     let (core_instance_4, core_witness_4) = generate_random_inst_wit(&srs, domain, &mut rng);
-    let (relaxed_instance_5, relaxed_witness_5, _error_term_2) = folding_prover(
+    let (relaxed_instance_5, relaxed_witness_5, _cross_term_2) = folding_prover(
         &srs,
         domain.d1,
         &core_instance_4,
