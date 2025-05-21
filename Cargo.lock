@@ -3414,6 +3414,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "saffron-stubs"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "ocaml",
+ "ocaml-gen",
+]
+
+[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
