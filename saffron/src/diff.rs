@@ -13,8 +13,8 @@ pub struct Diff<F: PrimeField> {
     pub region: u64,
     /// A list of unique addresses, each ∈ [0, SRS_SIZE]
     pub addresses: Vec<u64>,
-    /// A list of new values, each corresponding to address in `addresses`
-    pub new_values: Vec<F>,
+    /// A list of `new_value - old_values`, each corresponding to address in `addresses`
+    pub diff_values: Vec<F>,
 }
 
 #[derive(Debug, Error, Clone, PartialEq)]
@@ -44,11 +44,11 @@ impl<F: PrimeField> Diff<F> {
             .enumerate()
             .filter_map(|(region, (o, n))| {
                 let mut addresses: Vec<u64> = vec![];
-                let mut new_values: Vec<F> = vec![];
+                let mut diff_values: Vec<F> = vec![];
                 for (index, (o_elem, n_elem)) in o.iter().zip(n.iter()).enumerate() {
                     if o_elem != n_elem {
                         addresses.push(index as u64);
-                        new_values.push(*n_elem);
+                        diff_values.push(*n_elem - *o_elem);
                     }
                 }
 
@@ -56,7 +56,7 @@ impl<F: PrimeField> Diff<F> {
                     Some(Diff {
                         region: region as u64,
                         addresses,
-                        new_values,
+                        diff_values,
                     })
                 } else {
                     // do not record a diff with empty changes
@@ -82,8 +82,8 @@ impl<F: PrimeField> Diff<F> {
     /// Updates the data with the provided diff, replacing old values at
     /// specified addresses by corresponding new ones
     pub fn apply_inplace(data: &mut [Vec<F>], diff: &Diff<F>) {
-        for (addr, new_value) in diff.addresses.iter().zip(diff.new_values.iter()) {
-            data[diff.region as usize][*addr as usize] = *new_value;
+        for (addr, diff_value) in diff.addresses.iter().zip(diff.diff_values.iter()) {
+            data[diff.region as usize][*addr as usize] += *diff_value;
         }
     }
 
