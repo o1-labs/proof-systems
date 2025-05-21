@@ -1,0 +1,20 @@
+[package]
+name = "saffron-stubs"
+version = "0.1.0"
+authors = ["opensource@o1labs.org"]
+description = "OCaml stubs for Saffron"
+repository = "https://github.com/MinaProtocol/mina"
+license = "MIT/Apache-2.0"
+edition = "2021"
+
+[lib]
+name = "saffron_stubs"
+# Important: do not ask to build a dynamic library.
+# On MacOS arm64, ocaml-rs.v0.2.2 causes build issues.
+# On the Mina side, a fake and empty dllkimchi_stubs.so file is used.
+crate-type = ["lib", "staticlib"]
+
+[dependencies]
+libc.workspace = true
+ocaml = { workspace = true, features = ["no-caml-startup"] }
+ocaml-gen.workspace = true

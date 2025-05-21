@@ -20,6 +20,7 @@ members = [
   "poseidon",
   "poseidon/export_test_vectors",
   "saffron",
+  "saffron-stubs",
   "signer",
   "tools/kimchi-visu",
   "turshi",
