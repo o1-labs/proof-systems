@@ -32,7 +32,7 @@ pub mod caml {
     pub struct CamlDiff {
         pub region: ocaml::Uint,
         pub addresses: Vec<ocaml::Uint>,
-        pub new_values: CamlFpVector,
+        pub diff_values: CamlFpVector,
     }
 
     impl From<CamlDiff> for Diff<Fp> {
@@ -40,7 +40,7 @@ pub mod caml {
             Self {
                 region: caml_diff.region as u64,
                 addresses: caml_diff.addresses.into_iter().map(|x| x as u64).collect(),
-                new_values: caml_diff.new_values.as_slice().into(),
+                diff_values: caml_diff.diff_values.as_slice().into(),
             }
         }
     }
