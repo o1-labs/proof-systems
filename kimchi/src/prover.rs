@@ -368,7 +368,12 @@ where
         let mut lookup_context = LookupContext::default();
 
         //~ 1. If using lookup:
-        if let Some(lcs) = &index.cs.lookup_constraint_system {
+        let lookup_constraint_system = index
+            .cs
+            .lookup_constraint_system
+            .try_get_or_err()
+            .map_err(ProverError::from)?;
+        if let Some(lcs) = lookup_constraint_system {
             internal_tracing::checkpoint!(internal_traces; use_lookup, {
                 "uses_lookup": true,
                 "uses_runtime_tables": lcs.runtime_tables.is_some(),
@@ -593,7 +598,7 @@ where
         let gamma = fq_sponge.challenge();
 
         //~ 1. If using lookup:
-        if let Some(lcs) = &index.cs.lookup_constraint_system {
+        if let Some(lcs) = lookup_constraint_system {
             //~~ * Compute the lookup aggregation polynomial.
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
@@ -632,6 +637,8 @@ where
             lookup_context.aggreg8 = Some(aggreg8);
         }
 
+        let column_evaluations = index.column_evaluations.get();
+
         //~ 1. Compute the permutation aggregation polynomial $z$.
         internal_tracing::checkpoint!(internal_traces; z_permutation_aggregation_polynomial);
         let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
@@ -660,7 +667,7 @@ where
         //~~ * the negated public polynomial
         //~    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
         //~    TODO: specify the split of the permutation polynomial into perm and bnd?
-        let lookup_env = if let Some(lcs) = &index.cs.lookup_constraint_system {
+        let lookup_env = if let Some(lcs) = lookup_constraint_system {
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
             Some(LookupEnvironment {
@@ -681,40 +688,26 @@ where
         let env = {
             let mut index_evals = HashMap::new();
             use GateType::*;
-            index_evals.insert(Generic, &index.column_evaluations.generic_selector4);
-            index_evals.insert(Poseidon, &index.column_evaluations.poseidon_selector8);
-            index_evals.insert(
-                CompleteAdd,
-                &index.column_evaluations.complete_add_selector4,
-            );
-            index_evals.insert(VarBaseMul, &index.column_evaluations.mul_selector8);
-            index_evals.insert(EndoMul, &index.column_evaluations.emul_selector8);
-            index_evals.insert(
-                EndoMulScalar,
-                &index.column_evaluations.endomul_scalar_selector8,
-            );
+            index_evals.insert(Generic, &column_evaluations.generic_selector4);
+            index_evals.insert(Poseidon, &column_evaluations.poseidon_selector8);
+            index_evals.insert(CompleteAdd, &column_evaluations.complete_add_selector4);
+            index_evals.insert(VarBaseMul, &column_evaluations.mul_selector8);
+            index_evals.insert(EndoMul, &column_evaluations.emul_selector8);
+            index_evals.insert(EndoMulScalar, &column_evaluations.endomul_scalar_selector8);
 
-            if let Some(selector) = &index.column_evaluations.range_check0_selector8.as_ref() {
+            if let Some(selector) = &column_evaluations.range_check0_selector8 {
                 index_evals.insert(GateType::RangeCheck0, selector);
             }
 
-            if let Some(selector) = &index.column_evaluations.range_check1_selector8.as_ref() {
+            if let Some(selector) = &column_evaluations.range_check1_selector8 {
                 index_evals.insert(GateType::RangeCheck1, selector);
             }
 
-            if let Some(selector) = index
-                .column_evaluations
-                .foreign_field_add_selector8
-                .as_ref()
-            {
+            if let Some(selector) = &column_evaluations.foreign_field_add_selector8 {
                 index_evals.insert(GateType::ForeignFieldAdd, selector);
             }
 
-            if let Some(selector) = index
-                .column_evaluations
-                .foreign_field_mul_selector8
-                .as_ref()
-            {
+            if let Some(selector) = &column_evaluations.foreign_field_mul_selector8 {
                 index_evals.extend(
                     foreign_field_mul::gadget::circuit_gates()
                         .iter()
@@ -722,11 +715,11 @@ where
                 );
             }
 
-            if let Some(selector) = index.column_evaluations.xor_selector8.as_ref() {
+            if let Some(selector) = &column_evaluations.xor_selector8 {
                 index_evals.insert(GateType::Xor16, selector);
             }
 
-            if let Some(selector) = index.column_evaluations.rot_selector8.as_ref() {
+            if let Some(selector) = &column_evaluations.rot_selector8 {
                 index_evals.insert(GateType::Rot64, selector);
             }
 
@@ -746,7 +739,7 @@ where
                         .unwrap_or(G::ScalarField::zero()),
                 },
                 witness: &lagrange.d8.this.w,
-                coefficient: &index.column_evaluations.coefficients8,
+                coefficient: &column_evaluations.coefficients8,
                 vanishes_on_zero_knowledge_and_previous_rows: &index
                     .cs
                     .precomputations()
@@ -794,20 +787,14 @@ where
             {
                 use crate::circuits::argument::DynArgument;
 
-                let range_check0_enabled =
-                    index.column_evaluations.range_check0_selector8.is_some();
-                let range_check1_enabled =
-                    index.column_evaluations.range_check1_selector8.is_some();
-                let foreign_field_addition_enabled = index
-                    .column_evaluations
-                    .foreign_field_add_selector8
-                    .is_some();
-                let foreign_field_multiplication_enabled = index
-                    .column_evaluations
-                    .foreign_field_mul_selector8
-                    .is_some();
-                let xor_enabled = index.column_evaluations.xor_selector8.is_some();
-                let rot_enabled = index.column_evaluations.rot_selector8.is_some();
+                let range_check0_enabled = column_evaluations.range_check0_selector8.is_some();
+                let range_check1_enabled = column_evaluations.range_check1_selector8.is_some();
+                let foreign_field_addition_enabled =
+                    column_evaluations.foreign_field_add_selector8.is_some();
+                let foreign_field_multiplication_enabled =
+                    column_evaluations.foreign_field_mul_selector8.is_some();
+                let xor_enabled = column_evaluations.xor_selector8.is_some();
+                let rot_enabled = column_evaluations.rot_selector8.is_some();
 
                 for gate in [
                     (
@@ -851,7 +838,7 @@ where
 
             // lookup
             {
-                if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
+                if let Some(lcs) = lookup_constraint_system {
                     let constraints = lookup::constraints::constraints(&lcs.configuration, false);
                     let constraints_len = u32::try_from(constraints.len())
                         .expect("not expecting a large amount of constraints");
@@ -915,7 +902,7 @@ where
         let zeta_omega = zeta * omega;
 
         //~ 1. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
-        if index.cs.lookup_constraint_system.is_some() {
+        if lookup_constraint_system.is_some() {
             //~~ * the aggregation polynomial
             let aggreg = lookup_context
                 .aggreg_coeffs
@@ -1014,12 +1001,10 @@ where
                 })
             },
             s: array::from_fn(|i| {
-                chunked_evals_for_evaluations(
-                    &index.column_evaluations.permutation_coefficients8[i],
-                )
+                chunked_evals_for_evaluations(&column_evaluations.permutation_coefficients8[i])
             }),
             coefficients: array::from_fn(|i| {
-                chunked_evals_for_evaluations(&index.column_evaluations.coefficients8[i])
+                chunked_evals_for_evaluations(&column_evaluations.coefficients8[i])
             }),
             w: array::from_fn(|i| {
                 let chunked =
@@ -1042,89 +1027,71 @@ where
             lookup_table: lookup_context.lookup_table_eval.take(),
             lookup_sorted: array::from_fn(|i| lookup_context.lookup_sorted_eval[i].take()),
             runtime_lookup_table: lookup_context.runtime_lookup_table_eval.take(),
-            generic_selector: chunked_evals_for_selector(
-                &index.column_evaluations.generic_selector4,
-            ),
-            poseidon_selector: chunked_evals_for_selector(
-                &index.column_evaluations.poseidon_selector8,
-            ),
+            generic_selector: chunked_evals_for_selector(&column_evaluations.generic_selector4),
+            poseidon_selector: chunked_evals_for_selector(&column_evaluations.poseidon_selector8),
             complete_add_selector: chunked_evals_for_selector(
-                &index.column_evaluations.complete_add_selector4,
+                &column_evaluations.complete_add_selector4,
             ),
-            mul_selector: chunked_evals_for_selector(&index.column_evaluations.mul_selector8),
-            emul_selector: chunked_evals_for_selector(&index.column_evaluations.emul_selector8),
+            mul_selector: chunked_evals_for_selector(&column_evaluations.mul_selector8),
+            emul_selector: chunked_evals_for_selector(&column_evaluations.emul_selector8),
             endomul_scalar_selector: chunked_evals_for_selector(
-                &index.column_evaluations.endomul_scalar_selector8,
+                &column_evaluations.endomul_scalar_selector8,
             ),
 
-            range_check0_selector: index
-                .column_evaluations
+            range_check0_selector: column_evaluations
                 .range_check0_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
-            range_check1_selector: index
-                .column_evaluations
+            range_check1_selector: column_evaluations
                 .range_check1_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
-            foreign_field_add_selector: index
-                .column_evaluations
+            foreign_field_add_selector: column_evaluations
                 .foreign_field_add_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
-            foreign_field_mul_selector: index
-                .column_evaluations
+            foreign_field_mul_selector: column_evaluations
                 .foreign_field_mul_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
-            xor_selector: index
-                .column_evaluations
+            xor_selector: column_evaluations
                 .xor_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
-            rot_selector: index
-                .column_evaluations
+            rot_selector: column_evaluations
                 .rot_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
 
-            runtime_lookup_table_selector: index.cs.lookup_constraint_system.as_ref().and_then(
-                |lcs| {
-                    lcs.runtime_selector
-                        .as_ref()
-                        .map(chunked_evals_for_selector)
-                },
-            ),
-            xor_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(|lcs| {
+            runtime_lookup_table_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
+                lcs.runtime_selector
+                    .as_ref()
+                    .map(chunked_evals_for_selector)
+            }),
+            xor_lookup_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
                 lcs.lookup_selectors
                     .xor
                     .as_ref()
                     .map(chunked_evals_for_selector)
             }),
-            lookup_gate_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
-                |lcs| {
-                    lcs.lookup_selectors
-                        .lookup
-                        .as_ref()
-                        .map(chunked_evals_for_selector)
-                },
-            ),
-            range_check_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
-                |lcs| {
-                    lcs.lookup_selectors
-                        .range_check
-                        .as_ref()
-                        .map(chunked_evals_for_selector)
-                },
-            ),
-            foreign_field_mul_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
-                |lcs| {
-                    lcs.lookup_selectors
-                        .ffmul
-                        .as_ref()
-                        .map(chunked_evals_for_selector)
-                },
-            ),
+            lookup_gate_lookup_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
+                lcs.lookup_selectors
+                    .lookup
+                    .as_ref()
+                    .map(chunked_evals_for_selector)
+            }),
+            range_check_lookup_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
+                lcs.lookup_selectors
+                    .range_check
+                    .as_ref()
+                    .map(chunked_evals_for_selector)
+            }),
+            foreign_field_mul_lookup_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
+                lcs.lookup_selectors
+                    .ffmul
+                    .as_ref()
+                    .map(chunked_evals_for_selector)
+            }),
         };
 
         let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);
@@ -1283,27 +1250,27 @@ where
         polynomials.push((coefficients_form(&ft), blinding_ft));
         polynomials.push((coefficients_form(&z_poly), z_comm.blinders));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.generic_selector4),
+            evaluations_form(&column_evaluations.generic_selector4),
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.poseidon_selector8),
+            evaluations_form(&column_evaluations.poseidon_selector8),
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.complete_add_selector4),
+            evaluations_form(&column_evaluations.complete_add_selector4),
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.mul_selector8),
+            evaluations_form(&column_evaluations.mul_selector8),
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.emul_selector8),
+            evaluations_form(&column_evaluations.emul_selector8),
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.endomul_scalar_selector8),
+            evaluations_form(&column_evaluations.endomul_scalar_selector8),
             fixed_hiding(num_chunks),
         ));
         polynomials.extend(
@@ -1314,67 +1281,54 @@ where
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
-            index
-                .column_evaluations
+            column_evaluations
                 .coefficients8
                 .iter()
                 .map(|coefficientm| (evaluations_form(coefficientm), non_hiding(num_chunks)))
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
-            index.column_evaluations.permutation_coefficients8[0..PERMUTS - 1]
+            column_evaluations.permutation_coefficients8[0..PERMUTS - 1]
                 .iter()
                 .map(|w| (evaluations_form(w), non_hiding(num_chunks)))
                 .collect::<Vec<_>>(),
         );
 
         //~~ * the optional gates
-        if let Some(range_check0_selector8) =
-            index.column_evaluations.range_check0_selector8.as_ref()
-        {
+        if let Some(range_check0_selector8) = &column_evaluations.range_check0_selector8 {
             polynomials.push((
                 evaluations_form(range_check0_selector8),
                 non_hiding(num_chunks),
             ));
         }
-        if let Some(range_check1_selector8) =
-            index.column_evaluations.range_check1_selector8.as_ref()
-        {
+        if let Some(range_check1_selector8) = &column_evaluations.range_check1_selector8 {
             polynomials.push((
                 evaluations_form(range_check1_selector8),
                 non_hiding(num_chunks),
             ));
         }
-        if let Some(foreign_field_add_selector8) = index
-            .column_evaluations
-            .foreign_field_add_selector8
-            .as_ref()
-        {
+        if let Some(foreign_field_add_selector8) = &column_evaluations.foreign_field_add_selector8 {
             polynomials.push((
                 evaluations_form(foreign_field_add_selector8),
                 non_hiding(num_chunks),
             ));
         }
-        if let Some(foreign_field_mul_selector8) = index
-            .column_evaluations
-            .foreign_field_mul_selector8
-            .as_ref()
-        {
+        if let Some(foreign_field_mul_selector8) = &column_evaluations.foreign_field_mul_selector8 {
             polynomials.push((
                 evaluations_form(foreign_field_mul_selector8),
                 non_hiding(num_chunks),
             ));
         }
-        if let Some(xor_selector8) = index.column_evaluations.xor_selector8.as_ref() {
+        if let Some(xor_selector8) = &column_evaluations.xor_selector8 {
             polynomials.push((evaluations_form(xor_selector8), non_hiding(num_chunks)));
         }
-        if let Some(rot_selector8) = index.column_evaluations.rot_selector8.as_ref() {
+        if let Some(rot_selector8) = &column_evaluations.rot_selector8 {
             polynomials.push((evaluations_form(rot_selector8), non_hiding(num_chunks)));
         }
 
         //~~ * optionally, the runtime table
         //~ 1. if using lookup:
-        if let Some(lcs) = &index.cs.lookup_constraint_system {
+        if let Some(lcs) = lookup_constraint_system {
             //~~ * add the lookup sorted polynomials
             let sorted_poly = lookup_context.sorted_coeffs.as_ref().unwrap();
             let sorted_comms = lookup_context.sorted_comms.as_ref().unwrap();
@@ -1445,22 +1399,22 @@ where
 
             //~~ * the lookup selectors
 
-            if let Some(runtime_lookup_table_selector) = lcs.runtime_selector.as_ref() {
+            if let Some(runtime_lookup_table_selector) = &lcs.runtime_selector {
                 polynomials.push((
                     evaluations_form(runtime_lookup_table_selector),
                     non_hiding(1),
                 ))
             }
-            if let Some(xor_lookup_selector) = lcs.lookup_selectors.xor.as_ref() {
+            if let Some(xor_lookup_selector) = &lcs.lookup_selectors.xor {
                 polynomials.push((evaluations_form(xor_lookup_selector), non_hiding(1)))
             }
-            if let Some(lookup_gate_selector) = lcs.lookup_selectors.lookup.as_ref() {
+            if let Some(lookup_gate_selector) = &lcs.lookup_selectors.lookup {
                 polynomials.push((evaluations_form(lookup_gate_selector), non_hiding(1)))
             }
-            if let Some(range_check_lookup_selector) = lcs.lookup_selectors.range_check.as_ref() {
+            if let Some(range_check_lookup_selector) = &lcs.lookup_selectors.range_check {
                 polynomials.push((evaluations_form(range_check_lookup_selector), non_hiding(1)))
             }
-            if let Some(foreign_field_mul_lookup_selector) = lcs.lookup_selectors.ffmul.as_ref() {
+            if let Some(foreign_field_mul_lookup_selector) = &lcs.lookup_selectors.ffmul {
                 polynomials.push((
                     evaluations_form(foreign_field_mul_lookup_selector),
                     non_hiding(1),

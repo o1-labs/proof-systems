@@ -80,7 +80,7 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// coefficient commitment array
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub coefficients_comm: [PolyComm<G>; COLUMNS],
-    /// coefficient commitment array
+    /// generic gate commitment array
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub generic_comm: PolyComm<G>,
 
@@ -183,6 +183,9 @@ where
         let lookup_index = {
             self.cs
                 .lookup_constraint_system
+                .get()
+                .as_ref()
+                .unwrap()
                 .as_ref()
                 .map(|cs| LookupVerifierIndex {
                     joint_lookup_used: cs.configuration.lookup_info.features.joint_lookup_used,
@@ -206,6 +209,9 @@ where
                 })
         };
 
+        // Defined as variable for convenience to avoid verbosity
+        let column_evaluations = self.column_evaluations.get();
+
         // TODO: Switch to commit_evaluations for all index polys
         VerifierIndex {
             domain,
@@ -219,75 +225,67 @@ where
             sigma_comm: array::from_fn(|i| {
                 self.srs.commit_evaluations_non_hiding(
                     domain,
-                    &self.column_evaluations.permutation_coefficients8[i],
+                    &column_evaluations.permutation_coefficients8[i],
                 )
             }),
             coefficients_comm: array::from_fn(|i| {
-                self.srs.commit_evaluations_non_hiding(
-                    domain,
-                    &self.column_evaluations.coefficients8[i],
-                )
+                self.srs
+                    .commit_evaluations_non_hiding(domain, &column_evaluations.coefficients8[i])
             }),
             generic_comm: mask_fixed(
-                self.srs.commit_evaluations_non_hiding(
-                    domain,
-                    &self.column_evaluations.generic_selector4,
-                ),
+                self.srs
+                    .commit_evaluations_non_hiding(domain, &column_evaluations.generic_selector4),
             ),
 
-            psm_comm: mask_fixed(self.srs.commit_evaluations_non_hiding(
-                domain,
-                &self.column_evaluations.poseidon_selector8,
-            )),
+            psm_comm: mask_fixed(
+                self.srs
+                    .commit_evaluations_non_hiding(domain, &column_evaluations.poseidon_selector8),
+            ),
 
-            complete_add_comm: mask_fixed(self.srs.commit_evaluations_non_hiding(
-                domain,
-                &self.column_evaluations.complete_add_selector4,
-            )),
+            complete_add_comm: mask_fixed(
+                self.srs.commit_evaluations_non_hiding(
+                    domain,
+                    &column_evaluations.complete_add_selector4,
+                ),
+            ),
             mul_comm: mask_fixed(
                 self.srs
-                    .commit_evaluations_non_hiding(domain, &self.column_evaluations.mul_selector8),
+                    .commit_evaluations_non_hiding(domain, &column_evaluations.mul_selector8),
             ),
             emul_comm: mask_fixed(
                 self.srs
-                    .commit_evaluations_non_hiding(domain, &self.column_evaluations.emul_selector8),
+                    .commit_evaluations_non_hiding(domain, &column_evaluations.emul_selector8),
             ),
 
             endomul_scalar_comm: mask_fixed(self.srs.commit_evaluations_non_hiding(
                 domain,
-                &self.column_evaluations.endomul_scalar_selector8,
+                &column_evaluations.endomul_scalar_selector8,
             )),
 
-            range_check0_comm: self
-                .column_evaluations
+            range_check0_comm: column_evaluations
                 .range_check0_selector8
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
-            range_check1_comm: self
-                .column_evaluations
+            range_check1_comm: column_evaluations
                 .range_check1_selector8
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
-            foreign_field_add_comm: self
-                .column_evaluations
+            foreign_field_add_comm: column_evaluations
                 .foreign_field_add_selector8
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
-            foreign_field_mul_comm: self
-                .column_evaluations
+            foreign_field_mul_comm: column_evaluations
                 .foreign_field_mul_selector8
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
-            xor_comm: self
-                .column_evaluations
+            xor_comm: column_evaluations
                 .xor_selector8
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
-            rot_comm: self
-                .column_evaluations
+            rot_comm: column_evaluations
                 .rot_selector8
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),

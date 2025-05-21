@@ -1,12 +1,13 @@
 //! This module implements the [`ProverError`] type.
 
 use crate::circuits::lookup::index::LookupError; // not sure about hierarchy
+use o1_utils::lazy_cache::{LazyCacheError, LazyCacheErrorOr};
 use poly_commitment::error::CommitmentError;
 use thiserror::Error;
 
 /// Errors that can arise when creating a proof
 // TODO(mimoo): move this out of oracle
-#[derive(Error, Debug, Clone, Copy)]
+#[derive(Error, Debug, Clone)]
 pub enum ProverError {
     #[error("the circuit is too large")]
     NoRoomForZkInWitness,
@@ -33,6 +34,9 @@ pub enum ProverError {
 
     #[error("wrong number of custom blinders given: {0}")]
     WrongBlinders(CommitmentError),
+
+    #[error("relation polynomials failed to initialize in lazy mode: {0}")]
+    LazySetup(SetupError),
 }
 
 /// Errors that can arise when verifying a proof
@@ -104,6 +108,9 @@ pub enum SetupError {
 
     #[error("the lookup constraint system cannot not be constructed: {0}")]
     LookupCreation(LookupError),
+
+    #[error("lazy evaluation failed")]
+    LazyEvaluation(LazyCacheError),
 }
 
 /// Errors that can arise when creating a verifier index
@@ -111,4 +118,20 @@ pub enum SetupError {
 pub enum VerifierIndexError {
     #[error("srs has already been set")]
     SRSHasBeenSet,
+}
+
+// Handling of lookup errors happening inside creation of LookupConstraintSystem
+impl From<LazyCacheErrorOr<LookupError>> for SetupError {
+    fn from(e: LazyCacheErrorOr<LookupError>) -> Self {
+        match e {
+            LazyCacheErrorOr::Inner(inner) => SetupError::LookupCreation(inner.clone()),
+            LazyCacheErrorOr::Outer(err) => SetupError::LazyEvaluation(err),
+        }
+    }
+}
+
+impl From<LazyCacheErrorOr<LookupError>> for ProverError {
+    fn from(e: LazyCacheErrorOr<LookupError>) -> Self {
+        ProverError::LazySetup(SetupError::from(e))
+    }
 }

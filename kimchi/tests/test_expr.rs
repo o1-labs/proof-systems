@@ -72,7 +72,7 @@ fn test_degree_tracking() {
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(constraint_system, endo_q, srs)
+        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(constraint_system, endo_q, srs, false)
     };
 
     let witness_cols: [_; COLUMNS] = array::from_fn(|_| DensePolynomial::zero());
@@ -92,7 +92,7 @@ fn test_degree_tracking() {
             joint_combiner: one,
         },
         witness: &domain_evals.d8.this.w,
-        coefficient: &index.column_evaluations.coefficients8,
+        coefficient: &index.column_evaluations.get().coefficients8,
         vanishes_on_zero_knowledge_and_previous_rows: &index
             .cs
             .precomputations()

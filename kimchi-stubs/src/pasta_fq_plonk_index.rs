@@ -57,6 +57,7 @@ pub fn caml_pasta_fq_plonk_index_create(
     runtime_tables: Vec<CamlRuntimeTableCfg<CamlFq>>,
     prev_challenges: ocaml::Int,
     srs: CamlFqSrs,
+    lazy_mode: bool,
 ) -> Result<CamlPastaFqPlonkIndex, ocaml::Error> {
     let gates: Vec<_> = gates
         .as_ref()
@@ -84,6 +85,7 @@ pub fn caml_pasta_fq_plonk_index_create(
         } else {
             Some(runtime_tables)
         })
+        .lazy_mode(lazy_mode)
         .build()
     {
         Err(e) => return Err(e.into()),
@@ -96,7 +98,8 @@ pub fn caml_pasta_fq_plonk_index_create(
     srs.0.with_lagrange_basis(cs.domain.d1);
 
     // create index
-    let mut index = ProverIndex::<Pallas, OpeningProof<Pallas>>::create(cs, endo_q, srs.clone());
+    let mut index =
+        ProverIndex::<Pallas, OpeningProof<Pallas>>::create(cs, endo_q, srs.clone(), lazy_mode);
     // Compute and cache the verifier index digest
     index.compute_verifier_index_digest::<DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>>();
 

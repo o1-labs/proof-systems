@@ -231,7 +231,8 @@ where
     let cs: ConstraintSystem<G::ScalarField> = rmp_serde::from_read(bytes_cs.as_slice()).unwrap();
 
     let endo = cs.endo;
-    let mut index: ProverIndex<G, OpeningProof<G>> = ProverIndex::create(cs, endo, srs.into());
+    let mut index: ProverIndex<G, OpeningProof<G>> =
+        ProverIndex::create(cs, endo, srs.into(), false);
     index.compute_verifier_index_digest::<BaseSponge>();
 
     (index, witness, runtime_tables, prev)
