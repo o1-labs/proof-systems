@@ -141,7 +141,10 @@ pub fn update<F: PrimeField>(path: &str, diff: &Diff<F>) -> std::io::Result<()> 
 
 #[cfg(test)]
 mod tests {
-    use crate::{commitment::Commitment, diff::Diff, encoding, env, storage, storage::Data, ScalarField, SRS_SIZE};
+    use crate::{
+        commitment::Commitment, diff::Diff, encoding, env, storage, storage::Data, ScalarField,
+        SRS_SIZE,
+    };
     use ark_ff::{One, UniformRand, Zero};
     use mina_curves::pasta::{Fp, Vesta};
     use once_cell::sync::Lazy;
@@ -187,7 +190,7 @@ mod tests {
             Commitment::eq(&data_comm, &read_data_comm)
         };
 
-        let (data_updated, update_consistency) = {
+        let (data_updated, update_consistency, diff_comm_consistency) = {
             let diff = {
                 // The number of updates is proportional to the data length,
                 // but we make sure to have at least one update if the data is
@@ -218,11 +221,15 @@ mod tests {
             let updated_read_data = storage::read(path).unwrap();
             let updated_read_data_comm = updated_read_data.to_commitment(&SRS);
 
+            let updated_diff_data_comm = data_comm.update(&SRS, diff);
+
             (
                 // True if the data have changed because of the update
                 Commitment::ne(&updated_data_comm, &data_comm),
                 // True if read data from updated file are the same as updated data
                 Commitment::eq(&updated_data_comm, &updated_read_data_comm),
+                // True if the commitments are the same as the commitment obtained by direct diff application
+                Commitment::eq(&updated_diff_data_comm, &updated_data_comm),
             )
         };
 
@@ -231,5 +238,6 @@ mod tests {
         assert!(read_consistency);
         assert!(data_updated);
         assert!(update_consistency);
+        assert!(diff_comm_consistency);
     }
 }
