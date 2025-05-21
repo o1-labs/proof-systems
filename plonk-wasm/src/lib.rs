@@ -10,7 +10,6 @@
 use wasm_bindgen::prelude::*;
 
 mod wasm_vector;
-compile_error!("Brian broke it!")
 
 #[wasm_bindgen]
 extern "C" {
