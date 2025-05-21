@@ -85,7 +85,8 @@ pub fn update<F: PrimeField>(path: &str, diff: &Diff<F>) -> std::io::Result<()> 
 #[cfg(test)]
 mod tests {
     use crate::{
-        commitment, diff::Diff, encoding, env, storage, storage::Data, Curve, ScalarField, SRS_SIZE,
+        commitment::Commitment, diff::Diff, encoding, env, storage, storage::Data, ScalarField,
+        SRS_SIZE,
     };
     use ark_ff::{One, UniformRand, Zero};
     use mina_curves::pasta::{Fp, Vesta};
@@ -118,20 +119,20 @@ mod tests {
         // Setting the first value of data to zero will make the updated bytes
         // with the well chosen diff
         data[0] = Fp::zero();
-        let data_comm = commitment::commit_to_field_elems(&SRS, &data)[0];
+        let data_comm = Commitment::from_data(&SRS, &data);
 
         let data_struct = Data { data };
 
         let read_consistency = {
             let _init_storage_file = storage::init(path, &data_struct);
             let read_data_struct: Data<ScalarField> = storage::read(path).unwrap();
-            let read_data_comm = commitment::commit_to_field_elems(&SRS, &read_data_struct.data)[0];
+            let read_data_comm = Commitment::from_data(&SRS, &read_data_struct.data);
 
             // True if read data are the same as initial data
-            Curve::eq(&data_comm, &read_data_comm)
+            Commitment::eq(&data_comm, &read_data_comm)
         };
 
-        let (data_updated, update_consistency) = {
+        let (data_updated, update_consistency, diff_comm_consistency) = {
             let diff = {
                 // The number of updates is proportional to the data length,
                 // but we make sure to have at least one update if the data is
@@ -155,18 +156,19 @@ mod tests {
             };
 
             let updated_data = &Diff::apply(&[data_struct.data], &diff)[0];
-            let updated_data_comm = commitment::commit_to_field_elems(&SRS, updated_data)[0];
+            let updated_data_comm = Commitment::from_data(&SRS, updated_data);
 
             let _file_update = storage::update(path, &diff);
 
             let updated_read_data_struct: Data<ScalarField> = storage::read(path).unwrap();
             let updated_read_data_comm =
-                commitment::commit_to_field_elems(&SRS, &updated_read_data_struct.data)[0];
+                Commitment::from_data(&SRS, &updated_read_data_struct.data);
 
             (
-                Curve::ne(&updated_data_comm, &data_comm),
+                // True if the data have changed because of the update
+                Commitment::ne(&updated_data_comm, &data_comm),
                 // True if read data from updated file are the same as updated data
-                Curve::eq(&updated_data_comm, &updated_read_data_comm),
+                Commitment::eq(&updated_data_comm, &updated_read_data_comm),
             )
         };
 
