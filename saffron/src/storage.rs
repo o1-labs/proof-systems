@@ -164,11 +164,15 @@ mod tests {
             let updated_read_data_comm =
                 Commitment::from_data(&SRS, &updated_read_data_struct.data);
 
+            let updated_diff_data_comm = data_comm.update(&SRS, diff);
+
             (
                 // True if the data have changed because of the update
                 Commitment::ne(&updated_data_comm, &data_comm),
                 // True if read data from updated file are the same as updated data
                 Commitment::eq(&updated_data_comm, &updated_read_data_comm),
+                // True if the commitments are the same as the commitment obtained by direct diff application
+                Commitment::eq(&updated_diff_data_comm, &updated_data_comm),
             )
         };
 
@@ -177,5 +181,6 @@ mod tests {
         assert!(read_consistency);
         assert!(data_updated);
         assert!(update_consistency);
+        assert!(diff_comm_consistency);
     }
 }
