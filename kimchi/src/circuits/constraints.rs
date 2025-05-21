@@ -6,7 +6,7 @@ use crate::{
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
         lookup::{
-            index::LookupConstraintSystem,
+            index::{LookupConstraintSystem, LookupError},
             lookups::{LookupFeatures, LookupPatterns},
             tables::{GateLookupTables, LookupTable},
         },
@@ -16,6 +16,7 @@ use crate::{
     },
     curve::KimchiCurve,
     error::{DomainCreationError, SetupError},
+    o1_utils::lazy_cache::LazyCache,
     prover_index::ProverIndex,
 };
 use ark_ff::{PrimeField, Zero};
@@ -25,7 +26,6 @@ use ark_poly::{
 };
 use core::{array, default::Default};
 use o1_utils::ExtendedEvaluations;
-use once_cell::sync::OnceCell;
 use poly_commitment::OpenProof;
 use rayon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -168,7 +168,7 @@ pub struct ColumnEvaluations<F: PrimeField> {
 }
 
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Debug)]
 pub struct ConstraintSystem<F: PrimeField> {
     // Basics
     // ------
@@ -181,7 +181,7 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub domain: EvaluationDomains<F>,
     /// circuit gates
     #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
-    pub gates: Vec<CircuitGate<F>>,
+    pub gates: Arc<Vec<CircuitGate<F>>>,
 
     pub zk_rows: u64,
 
@@ -200,13 +200,76 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub endo: F,
     /// lookup constraint system
     #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
-    pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
+    pub lookup_constraint_system: Arc<LookupConstraintSystemCache<F>>,
     /// precomputes
     #[serde(skip)]
-    precomputations: OnceCell<Arc<DomainConstantEvaluations<F>>>,
+    precomputations: Arc<LazyCache<Arc<DomainConstantEvaluations<F>>>>,
 
     /// Disable gates checks (for testing; only enables with development builds)
     pub disable_gates_checks: bool,
+}
+
+pub(crate) type LookupConstraintSystemCache<F> =
+    LazyCache<Result<Option<LookupConstraintSystem<F>>, LookupError>>;
+
+impl<'de, F> Deserialize<'de> for ConstraintSystem<F>
+where
+    F: PrimeField,
+    EvaluationDomains<F>: Serialize + DeserializeOwned,
+    CircuitGate<F>: Serialize + DeserializeOwned,
+    LookupConstraintSystem<F>: Serialize + DeserializeOwned,
+{
+    fn deserialize<D>(deserializer: D) -> Result<ConstraintSystem<F>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[serde_as]
+        #[derive(Clone, Serialize, Deserialize, Debug)]
+        struct ConstraintSystemSerde<F: PrimeField> {
+            public: usize,
+            prev_challenges: usize,
+            #[serde(bound = "EvaluationDomains<F>: Serialize + DeserializeOwned")]
+            domain: EvaluationDomains<F>,
+            #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
+            gates: Arc<Vec<CircuitGate<F>>>,
+            zk_rows: u64,
+            feature_flags: FeatureFlags,
+            lazy_mode: bool,
+            #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+            sid: Vec<F>,
+            #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
+            shift: [F; PERMUTS],
+            #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+            endo: F,
+            #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
+            lookup_constraint_system: Arc<LookupConstraintSystemCache<F>>,
+            disable_gates_checks: bool,
+        }
+
+        // This is to avoid implementing a default value for LazyCache
+        let cs = ConstraintSystemSerde::<F>::deserialize(deserializer)?;
+
+        let precomputations = Arc::new({
+            LazyCache::new(move || {
+                Arc::new(DomainConstantEvaluations::create(cs.domain, cs.zk_rows).unwrap())
+            })
+        });
+
+        Ok(ConstraintSystem {
+            public: cs.public,
+            prev_challenges: cs.prev_challenges,
+            domain: cs.domain,
+            gates: cs.gates,
+            zk_rows: cs.zk_rows,
+            feature_flags: cs.feature_flags,
+            sid: cs.sid,
+            shift: cs.shift,
+            endo: cs.endo,
+            lookup_constraint_system: cs.lookup_constraint_system,
+            disable_gates_checks: cs.disable_gates_checks,
+            precomputations,
+        })
+    }
 }
 
 /// Represents an error found when verifying a witness with a gate
@@ -229,6 +292,7 @@ pub struct Builder<F: PrimeField> {
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
     disable_gates_checks: bool,
     max_poly_size: Option<usize>,
+    lazy_mode: bool,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -272,10 +336,11 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// - `runtime_tables: None`,
     /// - `precomputations: None`,
     /// - `disable_gates_checks: false`,
+    /// - `lazy_mode: false`,
     ///
     /// How to use it:
     /// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`
-    /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations()``
+    /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations(), lazy_mode()`
     /// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`
     pub fn create(gates: Vec<CircuitGate<F>>) -> Builder<F> {
         Builder {
@@ -287,19 +352,12 @@ impl<F: PrimeField> ConstraintSystem<F> {
             precomputations: None,
             disable_gates_checks: false,
             max_poly_size: None,
+            lazy_mode: false,
         }
     }
 
-    pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<F>> {
-        self.precomputations.get_or_init(|| {
-            Arc::new(DomainConstantEvaluations::create(self.domain, self.zk_rows).unwrap())
-        })
-    }
-
-    pub fn set_precomputations(&self, precomputations: Arc<DomainConstantEvaluations<F>>) {
-        self.precomputations
-            .set(precomputations)
-            .expect("Precomputation has been set before");
+    pub fn precomputations(&self) -> Arc<DomainConstantEvaluations<F>> {
+        self.precomputations.get().clone()
     }
 
     /// test helpers
@@ -805,11 +863,16 @@ impl<F: PrimeField> Builder<F> {
         self
     }
 
+    pub fn lazy_mode(mut self, lazy_mode: bool) -> Self {
+        self.lazy_mode = lazy_mode;
+        self
+    }
+
     /// Build the [ConstraintSystem] from a [Builder].
     pub fn build(self) -> Result<ConstraintSystem<F>, SetupError> {
         let mut gates = self.gates;
-        let lookup_tables = self.lookup_tables;
-        let runtime_tables = self.runtime_tables;
+        let lookup_tables = self.lookup_tables.clone();
+        let runtime_tables = self.runtime_tables.clone();
 
         //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
@@ -835,7 +898,7 @@ impl<F: PrimeField> Builder<F> {
                 })
                 .sum();
             // After that on the runtime tables
-            if let Some(runtime_tables) = runtime_tables.as_ref() {
+            if let Some(runtime_tables) = &runtime_tables {
                 // FIXME: Check that a runtime table with ID 0 is enforced to
                 // contain a zero entry row.
                 for runtime_table in runtime_tables.iter() {
@@ -948,21 +1011,41 @@ impl<F: PrimeField> Builder<F> {
         //
         // Lookup
         // ------
-        let lookup_constraint_system = LookupConstraintSystem::create(
-            &gates,
-            lookup_tables,
-            runtime_tables,
-            &domain,
-            zk_rows as usize,
-        )
-        .map_err(SetupError::LookupCreation)?;
+        let gates = Arc::new(gates);
+        let gates_clone = Arc::clone(&gates);
+        let lookup_constraint_system = LazyCache::new(move || {
+            LookupConstraintSystem::create(
+                &gates_clone,
+                self.lookup_tables,
+                self.runtime_tables,
+                &domain,
+                zk_rows as usize,
+            )
+        });
+        if !self.lazy_mode {
+            // Precompute and map setup error
+            lookup_constraint_system
+                .try_get_or_err()
+                .map_err(SetupError::from)?;
+        }
 
         let sid = shifts.map[0].clone();
 
         // TODO: remove endo as a field
         let endo = F::zero();
 
-        let domain_constant_evaluation = OnceCell::new();
+        let precomputations = if !self.lazy_mode {
+            match self.precomputations {
+                Some(t) => LazyCache::preinit(t),
+                None => LazyCache::preinit(Arc::new(
+                    DomainConstantEvaluations::create(domain, zk_rows).unwrap(),
+                )),
+            }
+        } else {
+            LazyCache::new(move || {
+                Arc::new(DomainConstantEvaluations::create(domain, zk_rows).unwrap())
+            })
+        };
 
         let constraints = ConstraintSystem {
             domain,
@@ -974,20 +1057,12 @@ impl<F: PrimeField> Builder<F> {
             endo,
             zk_rows,
             //fr_sponge_params: self.sponge_params,
-            lookup_constraint_system,
+            lookup_constraint_system: Arc::new(lookup_constraint_system),
             feature_flags,
-            precomputations: domain_constant_evaluation,
+            precomputations: Arc::new(precomputations),
             disable_gates_checks: self.disable_gates_checks,
         };
 
-        match self.precomputations {
-            Some(t) => {
-                constraints.set_precomputations(t);
-            }
-            None => {
-                constraints.precomputations();
-            }
-        }
         Ok(constraints)
     }
 }
