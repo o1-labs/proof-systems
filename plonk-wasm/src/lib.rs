@@ -9,7 +9,6 @@
 
 use wasm_bindgen::prelude::*;
 
-mod wasm_flat_vector;
 mod wasm_vector;
 
 #[wasm_bindgen]
@@ -107,9 +106,6 @@ pub fn get_memory_byte_length() -> usize {
 }
 
 pub mod rayon;
-
-/// Arkworks types
-pub mod arkworks;
 
 /// Vectors
 pub mod gate_vector;
