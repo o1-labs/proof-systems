@@ -84,10 +84,10 @@ pub fn update<F: PrimeField>(path: &str, diff: &Diff<F>) -> std::io::Result<()> 
 
 #[cfg(test)]
 mod tests {
-    use crate::{diff::Diff, encoding, env, storage, storage::Data, Curve, ScalarField, SRS_SIZE};
+    use crate::{
+        commitment, diff::Diff, encoding, env, storage, storage::Data, Curve, ScalarField, SRS_SIZE,
+    };
     use ark_ff::{One, UniformRand, Zero};
-    use ark_poly::{univariate::DensePolynomial, Evaluations};
-    use kimchi::circuits::domains::EvaluationDomains;
     use mina_curves::pasta::{Fp, Vesta};
     use once_cell::sync::Lazy;
     use poly_commitment::{ipa::SRS, SRS as _};
@@ -101,15 +101,6 @@ mod tests {
             SRS::create(SRS_SIZE)
         }
     });
-
-    static DOMAIN: Lazy<EvaluationDomains<ScalarField>> =
-        Lazy::new(|| EvaluationDomains::<ScalarField>::create(SRS_SIZE).unwrap());
-
-    fn compute_comm(data: &[ScalarField]) -> Curve {
-        let data_poly: DensePolynomial<ScalarField> =
-            Evaluations::from_vec_and_domain(data.to_vec(), (DOMAIN).d1).interpolate();
-        SRS.commit_non_hiding(&data_poly, 1).chunks[0]
-    }
 
     #[test]
     // Test that data commitment stays the same after reading (i.e. data stay
@@ -127,14 +118,14 @@ mod tests {
         // Setting the first value of data to zero will make the updated bytes
         // with the well chosen diff
         data[0] = Fp::zero();
-        let data_comm = compute_comm(&data);
+        let data_comm = commitment::commit_to_field_elems(&SRS, &data)[0];
 
         let data_struct = Data { data };
 
         let read_consistency = {
             let _init_storage_file = storage::init(path, &data_struct);
             let read_data_struct: Data<ScalarField> = storage::read(path).unwrap();
-            let read_data_comm = compute_comm(&read_data_struct.data);
+            let read_data_comm = commitment::commit_to_field_elems(&SRS, &read_data_struct.data)[0];
 
             // True if read data are the same as initial data
             Curve::eq(&data_comm, &read_data_comm)
@@ -164,12 +155,13 @@ mod tests {
             };
 
             let updated_data = &Diff::apply(&[data_struct.data], &diff)[0];
-            let updated_data_comm = compute_comm(updated_data);
+            let updated_data_comm = commitment::commit_to_field_elems(&SRS, updated_data)[0];
 
             let _file_update = storage::update(path, &diff);
 
             let updated_read_data_struct: Data<ScalarField> = storage::read(path).unwrap();
-            let updated_read_data_comm = compute_comm(&updated_read_data_struct.data);
+            let updated_read_data_comm =
+                commitment::commit_to_field_elems(&SRS, &updated_read_data_struct.data)[0];
 
             (
                 Curve::ne(&updated_data_comm, &data_comm),
