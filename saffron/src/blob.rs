@@ -1,14 +1,13 @@
 use crate::{
     commitment::commit_to_field_elems,
     diff::Diff,
-    utils::{decode_into, encode_for_domain},
+    encoding::{decode_from_field_elements, encode_for_domain, encoding_size},
     Curve, ProjectiveCurve, ScalarField, SRS_SIZE,
 };
 use ark_ec::{AffineRepr, VariableBaseMSM};
-use ark_ff::{PrimeField, Zero};
+use ark_ff::Zero;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use o1_utils::FieldHelpers;
 use poly_commitment::{ipa::SRS, SRS as _};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -127,23 +126,9 @@ impl FieldBlob {
     /// externally to achieve the expected result.
     #[instrument(skip_all, level = "debug")]
     pub fn into_bytes(blob: FieldBlob) -> Vec<u8> {
-        // n < m
-        // How many bytes fit into the field
-        let n = (ScalarField::MODULUS_BIT_SIZE / 8) as usize;
-        // How many bytes are necessary to fit a field element
-        let m = ScalarField::size_in_bytes();
-
-        let intended_vec_len = n * blob.commitments.len() * SRS_SIZE;
-        let mut bytes = Vec::with_capacity(intended_vec_len);
-        let mut buffer = vec![0u8; m];
-
-        for x in blob.data {
-            decode_into(&mut buffer, x);
-            bytes.extend_from_slice(&buffer[(m - n)..m]);
-        }
-
+        let intended_vec_len = encoding_size::<ScalarField>() * blob.commitments.len() * SRS_SIZE;
+        let bytes = decode_from_field_elements(blob.data);
         assert!(bytes.len() == intended_vec_len);
-
         bytes
     }
 }
