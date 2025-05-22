@@ -1972,6 +1972,7 @@ dependencies = [
  "rand",
  "rayon",
  "rmp-serde",
+ "saffron",
  "serde",
  "serde_json",
 ]
@@ -3321,6 +3322,8 @@ dependencies = [
  "mina-curves",
  "mina-poseidon",
  "o1-utils",
+ "ocaml",
+ "ocaml-gen",
  "once_cell",
  "poly-commitment",
  "proptest",

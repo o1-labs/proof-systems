@@ -43,6 +43,8 @@ tracing-subscriber = { version = "0.3", features = [
   "fmt",
   "time",
 ] }
+ocaml = { workspace = true, optional = true }
+ocaml-gen = { workspace = true, optional = true }
 
 [dev-dependencies]
 ark-std.workspace = true
@@ -65,3 +67,4 @@ harness = false
 
 [features]
 bench = []
+ocaml_types = ["ocaml", "ocaml-gen"]
