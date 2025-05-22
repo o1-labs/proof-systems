@@ -1,23 +1,38 @@
 // #[cfg(feature = "ocaml_types")]
 pub mod caml {
     pub mod diff {
-        use crate::field_vector::fp::CamlFpVector;
+        use crate::arkworks::CamlFp;
         use mina_curves::pasta::Fp;
         use saffron::diff::Diff;
 
         #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+        // TODO: Note the current implementation of Diff in OCaml does not involve region yet
+        pub struct CamlSingleDiff {
+            address: ocaml::Uint,
+            old_value: CamlFp,
+            new_value: CamlFp,
+        }
+
+        #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
         pub struct CamlDiff {
-            pub region: ocaml::Uint,
-            pub addresses: Vec<ocaml::Uint>,
-            pub diff_values: CamlFpVector,
+            diff: Vec<CamlSingleDiff>,
         }
 
         impl From<CamlDiff> for Diff<Fp> {
-            fn from(caml_diff: CamlDiff) -> Self {
-                Self {
-                    region: caml_diff.region as u64,
-                    addresses: caml_diff.addresses.into_iter().map(|x| x as u64).collect(),
-                    diff_values: caml_diff.diff_values.as_slice().into(),
+            fn from(caml_diff: CamlDiff) -> Diff<Fp> {
+                Diff {
+                    // TODO: in our current version with 1 commitment / Data / Contract, region is always set to 0
+                    region: 0u64,
+                    addresses: caml_diff.diff.iter().map(|x| x.address as u64).collect(),
+                    diff_values: caml_diff
+                        .diff
+                        .iter()
+                        .map(|x| {
+                            let new: Fp = x.new_value.into();
+                            let old: Fp = x.old_value.into();
+                            new - old
+                        })
+                        .collect(),
                 }
             }
         }
