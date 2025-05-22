@@ -368,3 +368,49 @@ mod tests {
         assert!(!res_2, "Soundness: Malformed proof #2 must NOT verify");
     }
 }
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+    use kimchi_stubs::arkworks::{group_affine::CamlGVesta, pasta_fp::CamlFp};
+    use poly_commitment::ipa::caml::CamlOpeningProof;
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlReadProof {
+        pub query_comm: CamlGVesta,
+        pub answer_comm: CamlGVesta,
+        pub quotient_comm: CamlGVesta,
+        pub data_eval: CamlFp,
+        pub query_eval: CamlFp,
+        pub answer_eval: CamlFp,
+        pub opening_proof: CamlOpeningProof<CamlGVesta, CamlFp>,
+    }
+
+    impl From<ReadProof> for CamlReadProof {
+        fn from(proof: ReadProof) -> Self {
+            Self {
+                query_comm: proof.query_comm.into(),
+                answer_comm: proof.answer_comm.into(),
+                quotient_comm: proof.quotient_comm.into(),
+                data_eval: proof.data_eval.into(),
+                query_eval: proof.query_eval.into(),
+                answer_eval: proof.answer_eval.into(),
+                opening_proof: proof.opening_proof.into(),
+            }
+        }
+    }
+
+    impl From<CamlReadProof> for ReadProof {
+        fn from(proof: CamlReadProof) -> Self {
+            Self {
+                query_comm: proof.query_comm.into(),
+                answer_comm: proof.answer_comm.into(),
+                quotient_comm: proof.quotient_comm.into(),
+                data_eval: proof.data_eval.into(),
+                query_eval: proof.query_eval.into(),
+                answer_eval: proof.answer_eval.into(),
+                opening_proof: proof.opening_proof.into(),
+            }
+        }
+    }
+}
