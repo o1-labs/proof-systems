@@ -3342,9 +3342,14 @@ dependencies = [
 name = "saffron-stubs"
 version = "0.1.0"
 dependencies = [
+ "kimchi",
+ "kimchi-stubs",
  "libc",
  "ocaml",
  "ocaml-gen",
+ "poly-commitment",
+ "rand",
+ "saffron",
 ]
 
 [[package]]
