@@ -66,6 +66,45 @@ pub fn update<F: PrimeField>(path: &str, diff: &Diff<F>) -> std::io::Result<()> 
     Ok(())
 }
 
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlData<CamlF> {
+        pub data: Vec<CamlF>,
+    }
+
+    // let x: Data<Fq> = Data { data: vec![Fq::one()] };
+    // let caml_x: CamlData<Fq> = x.into();
+
+    impl<F, CamlF> From<Data<F>> for CamlData<CamlF>
+    where
+        F: PrimeField,
+        CamlF: From<F>,
+    {
+        fn from(data: Data<F>) -> Self {
+            let data = data.data.into_iter().map(|x| x.into()).collect::<Vec<_>>();
+            Self { data }
+        }
+    }
+
+    impl<F, CamlF> From<CamlData<CamlF>> for Data<F>
+    where
+        F: PrimeField,
+        CamlF: Into<F>,
+    {
+        fn from(caml_data: CamlData<CamlF>) -> Self {
+            let data = caml_data
+                .data
+                .into_iter()
+                .map(|x| x.into())
+                .collect::<Vec<_>>();
+            Self { data }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{diff::Diff, encoding, env, storage, storage::Data, Curve, ScalarField, SRS_SIZE};
