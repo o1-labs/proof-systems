@@ -295,3 +295,34 @@ mod tests {
       }
     }
 }
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+    use kimchi_stubs::arkworks::{group_affine::CamlGVesta, pasta_fp::CamlFp};
+    use poly_commitment::ipa::caml::CamlOpeningProof;
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlStorageProof {
+        pub combined_data_eval: CamlFp,
+        pub opening_proof: CamlOpeningProof<CamlGVesta, CamlFp>,
+    }
+
+    impl From<StorageProof> for CamlStorageProof {
+        fn from(proof: StorageProof) -> Self {
+            Self {
+                combined_data_eval: proof.combined_data_eval.into(),
+                opening_proof: proof.opening_proof.into(),
+            }
+        }
+    }
+
+    impl From<CamlStorageProof> for StorageProof {
+        fn from(proof: CamlStorageProof) -> Self {
+            Self {
+                combined_data_eval: proof.combined_data_eval.into(),
+                opening_proof: proof.opening_proof.into(),
+            }
+        }
+    }
+}
