@@ -1,9 +1,32 @@
 // #[cfg(feature = "ocaml_types")]
 pub mod caml {
-    pub mod storage {
+    pub mod diff {
         use crate::field_vector::fp::CamlFpVector;
         use mina_curves::pasta::Fp;
-        use saffron::{diff::Diff, storage::*};
+        use saffron::diff::Diff;
+
+        #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+        pub struct CamlDiff {
+            pub region: ocaml::Uint,
+            pub addresses: Vec<ocaml::Uint>,
+            pub diff_values: CamlFpVector,
+        }
+
+        impl From<CamlDiff> for Diff<Fp> {
+            fn from(caml_diff: CamlDiff) -> Self {
+                Self {
+                    region: caml_diff.region as u64,
+                    addresses: caml_diff.addresses.into_iter().map(|x| x as u64).collect(),
+                    diff_values: caml_diff.diff_values.as_slice().into(),
+                }
+            }
+        }
+    }
+    pub mod storage {
+        use super::diff::*;
+        use crate::field_vector::fp::CamlFpVector;
+        use mina_curves::pasta::Fp;
+        use saffron::storage::*;
 
         #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
         pub struct CamlData {
@@ -22,23 +45,6 @@ pub mod caml {
             fn from(caml_data: CamlData) -> Self {
                 Self {
                     data: caml_data.data.as_slice().into(),
-                }
-            }
-        }
-
-        #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-        pub struct CamlDiff {
-            pub region: ocaml::Uint,
-            pub addresses: Vec<ocaml::Uint>,
-            pub diff_values: CamlFpVector,
-        }
-
-        impl From<CamlDiff> for Diff<Fp> {
-            fn from(caml_diff: CamlDiff) -> Self {
-                Self {
-                    region: caml_diff.region as u64,
-                    addresses: caml_diff.addresses.into_iter().map(|x| x as u64).collect(),
-                    diff_values: caml_diff.diff_values.as_slice().into(),
                 }
             }
         }
