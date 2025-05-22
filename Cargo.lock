@@ -3395,6 +3395,8 @@ dependencies = [
  "mina-curves",
  "mina-poseidon",
  "o1-utils",
+ "ocaml",
+ "ocaml-gen",
  "once_cell",
  "poly-commitment",
  "proptest",
