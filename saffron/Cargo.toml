@@ -9,8 +9,8 @@ readme = "README.md"
 edition = "2021"
 license = "Apache-2.0"
 
-# [lib]
-# path = "src/lib.rs"
+[lib]
+path = "src/lib.rs"
 
 [[bin]]
 name = "saffron"
@@ -25,9 +25,12 @@ ark-serialize = { workspace = true, features = ["derive"] }
 clap = { workspace = true, features = ["derive"] }
 hex.workspace = true
 kimchi.workspace = true
+kimchi-stubs = { workspace = true, optional = true }
 mina-curves.workspace = true
 mina-poseidon.workspace = true
 o1-utils.workspace = true
+ocaml = { workspace = true, optional = true }
+ocaml-gen = { workspace = true, optional = true }
 poly-commitment.workspace = true
 rand.workspace = true
 rayon.workspace = true
@@ -65,3 +68,4 @@ harness = false
 
 [features]
 bench = []
+ocaml_types = ["kimchi-stubs", "ocaml", "ocaml-gen"]
