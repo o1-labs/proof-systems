@@ -123,6 +123,37 @@ pub fn update<F: PrimeField>(path: &str, diff: &Diff<F>) -> std::io::Result<()> 
     Ok(())
 }
 
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+    use crate::ScalarField;
+    use kimchi_stubs::field_vector::fp::CamlFpVector;
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlData {
+        pub data: CamlFpVector,
+    }
+
+    // let x: Data<Fq> = Data { data: vec![Fq::one()] };
+    // let caml_x: CamlData<Fq> = x.into();
+
+    impl From<Data<ScalarField>> for CamlData {
+        fn from(data: Data<ScalarField>) -> Self {
+            Self {
+                data: CamlFpVector::create(data.data),
+            }
+        }
+    }
+
+    impl From<CamlData> for Data<ScalarField> {
+        fn from(caml_data: CamlData) -> Self {
+            Self {
+                data: caml_data.data.as_slice().into(),
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{diff::Diff, encoding, storage, storage::Data, Curve, ScalarField, SRS_SIZE};

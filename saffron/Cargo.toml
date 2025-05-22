@@ -28,6 +28,8 @@ kimchi.workspace = true
 mina-curves.workspace = true
 mina-poseidon.workspace = true
 o1-utils.workspace = true
+ocaml = { workspace = true, optional = true }
+ocaml-gen = { workspace = true, optional = true }
 poly-commitment.workspace = true
 rand.workspace = true
 rayon.workspace = true
@@ -66,3 +68,4 @@ harness = false
 
 [features]
 bench = []
+ocaml_types = ["ocaml", "ocaml-gen"]
