@@ -26,5 +26,3 @@ pub type BaseField = Fq;
 
 pub type CurveFqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 pub type CurveFrSponge = DefaultFrSponge<ScalarField, PlonkSpongeConstantsKimchi>;
-
-//pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
