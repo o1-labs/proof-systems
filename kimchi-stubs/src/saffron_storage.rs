@@ -9,9 +9,6 @@ pub mod caml {
         pub data: CamlFpVector,
     }
 
-    // let x: Data<Fq> = Data { data: vec![Fq::one()] };
-    // let caml_x: CamlData<Fq> = x.into();
-
     impl From<Data<Fp>> for CamlData {
         fn from(data: Data<Fp>) -> Self {
             Self {
