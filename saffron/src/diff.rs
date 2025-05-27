@@ -193,3 +193,47 @@ pub mod tests {
         }
     }
 }
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+    use kimchi_stubs::arkworks::CamlFp;
+    use mina_curves::pasta::Fp;
+    // pub use caml::CamlDiff;
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    // TODO: Note the current implementation of Diff in OCaml does not involve region yet
+    pub struct CamlSingleDiff {
+        address: ocaml::Uint,
+        old_value: CamlFp,
+        new_value: CamlFp,
+    }
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlDiff {
+        diff: Vec<CamlSingleDiff>,
+    }
+
+    impl From<CamlDiff> for Diff<Fp> {
+        fn from(caml_diff: CamlDiff) -> Diff<Fp> {
+            Diff {
+                // TODO: in our current version with 1 commitment / Data / Contract, region is always set to 0
+                region: 0u64,
+                addresses: caml_diff.diff.iter().map(|x| x.address as u64).collect(),
+                diff_values: caml_diff
+                    .diff
+                    .iter()
+                    .map(|x| {
+                        let new: Fp = x.new_value.into();
+                        let old: Fp = x.old_value.into();
+                        new - old
+                    })
+                    .collect(),
+            }
+        }
+    }
+}
+
+// This is needed to export CamlDiff in storage::ocaml
+#[cfg(feature = "ocaml_types")]
+pub use caml::CamlDiff;
