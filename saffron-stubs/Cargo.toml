@@ -15,6 +15,11 @@ name = "saffron_stubs"
 crate-type = ["lib", "staticlib"]
 
 [dependencies]
+kimchi-stubs.workspace = true
 libc.workspace = true
 ocaml = { workspace = true, features = ["no-caml-startup"] }
 ocaml-gen.workspace = true
+saffron = { workspace = true, features = ["ocaml_types"] }
+
+[features]
+ocaml_types = ["saffron/ocaml_types"]
