@@ -25,6 +25,7 @@ ark-serialize = { workspace = true, features = ["derive"] }
 clap = { workspace = true, features = ["derive"] }
 hex.workspace = true
 kimchi.workspace = true
+kimchi-stubs = { workspace = true, optional = true }
 mina-curves.workspace = true
 mina-poseidon.workspace = true
 o1-utils.workspace = true
@@ -68,4 +69,4 @@ harness = false
 
 [features]
 bench = []
-ocaml_types = ["ocaml", "ocaml-gen"]
+ocaml_types = ["kimchi-stubs", "ocaml", "ocaml-gen"]
