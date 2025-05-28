@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi-stubs/src/pasta_fq_plonk_index.rs`."><title>pasta_fq_plonk_index.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-0ce1a80b.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi_stubs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0-nightly (60dabef95 2025-05-19)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../static.files/storage-4e99c027.js"></script><script defer src="../../static.files/src-script-63605ae7.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-7ef8a74a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi_stubs/</div>pasta_fq_plonk_index.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use crate</span>::{
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi-stubs/src/pasta_fq_plonk_index.rs`."><title>pasta_fq_plonk_index.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-84e720fa.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi_stubs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0-nightly (45f256d9d 2025-05-27)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../static.files/storage-4e99c027.js"></script><script defer src="../../static.files/src-script-63605ae7.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-fd3af306.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi_stubs/</div>pasta_fq_plonk_index.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use crate</span>::{
 <a href=#2 id=2 data-nosnippet>2</a>    arkworks::CamlFq, gate_vector::fq::CamlPastaFqPlonkGateVectorPtr, srs::fq::CamlFqSrs,
 <a href=#3 id=3 data-nosnippet>3</a>    WithLagrangeBasis,
 <a href=#4 id=4 data-nosnippet>4</a>};
@@ -57,139 +57,142 @@
 <a href=#57 id=57 data-nosnippet>57</a>    runtime_tables: Vec&lt;CamlRuntimeTableCfg&lt;CamlFq&gt;&gt;,
 <a href=#58 id=58 data-nosnippet>58</a>    prev_challenges: ocaml::Int,
 <a href=#59 id=59 data-nosnippet>59</a>    srs: CamlFqSrs,
-<a href=#60 id=60 data-nosnippet>60</a>) -&gt; <span class="prelude-ty">Result</span>&lt;CamlPastaFqPlonkIndex, ocaml::Error&gt; {
-<a href=#61 id=61 data-nosnippet>61</a>    <span class="kw">let </span>gates: Vec&lt;<span class="kw">_</span>&gt; = gates
-<a href=#62 id=62 data-nosnippet>62</a>        .as_ref()
-<a href=#63 id=63 data-nosnippet>63</a>        .<span class="number">0
-<a href=#64 id=64 data-nosnippet>64</a>        </span>.iter()
-<a href=#65 id=65 data-nosnippet>65</a>        .map(|gate| CircuitGate::&lt;Fq&gt; {
-<a href=#66 id=66 data-nosnippet>66</a>            typ: gate.typ,
-<a href=#67 id=67 data-nosnippet>67</a>            wires: gate.wires,
-<a href=#68 id=68 data-nosnippet>68</a>            coeffs: gate.coeffs.clone(),
-<a href=#69 id=69 data-nosnippet>69</a>        })
-<a href=#70 id=70 data-nosnippet>70</a>        .collect();
-<a href=#71 id=71 data-nosnippet>71</a>
-<a href=#72 id=72 data-nosnippet>72</a>    <span class="kw">let </span>runtime_tables: Vec&lt;RuntimeTableCfg&lt;Fq&gt;&gt; =
-<a href=#73 id=73 data-nosnippet>73</a>        runtime_tables.into_iter().map(Into::into).collect();
-<a href=#74 id=74 data-nosnippet>74</a>
-<a href=#75 id=75 data-nosnippet>75</a>    <span class="kw">let </span>lookup_tables: Vec&lt;LookupTable&lt;Fq&gt;&gt; = lookup_tables.into_iter().map(Into::into).collect();
-<a href=#76 id=76 data-nosnippet>76</a>
-<a href=#77 id=77 data-nosnippet>77</a>    <span class="comment">// create constraint system
-<a href=#78 id=78 data-nosnippet>78</a>    </span><span class="kw">let </span>cs = <span class="kw">match </span>ConstraintSystem::&lt;Fq&gt;::create(gates)
-<a href=#79 id=79 data-nosnippet>79</a>        .public(public <span class="kw">as </span>usize)
-<a href=#80 id=80 data-nosnippet>80</a>        .prev_challenges(prev_challenges <span class="kw">as </span>usize)
-<a href=#81 id=81 data-nosnippet>81</a>        .lookup(lookup_tables)
-<a href=#82 id=82 data-nosnippet>82</a>        .runtime(<span class="kw">if </span>runtime_tables.is_empty() {
-<a href=#83 id=83 data-nosnippet>83</a>            <span class="prelude-val">None
-<a href=#84 id=84 data-nosnippet>84</a>        </span>} <span class="kw">else </span>{
-<a href=#85 id=85 data-nosnippet>85</a>            <span class="prelude-val">Some</span>(runtime_tables)
-<a href=#86 id=86 data-nosnippet>86</a>        })
-<a href=#87 id=87 data-nosnippet>87</a>        .build()
-<a href=#88 id=88 data-nosnippet>88</a>    {
-<a href=#89 id=89 data-nosnippet>89</a>        <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e.into()),
-<a href=#90 id=90 data-nosnippet>90</a>        <span class="prelude-val">Ok</span>(cs) =&gt; cs,
-<a href=#91 id=91 data-nosnippet>91</a>    };
-<a href=#92 id=92 data-nosnippet>92</a>
-<a href=#93 id=93 data-nosnippet>93</a>    <span class="comment">// endo
-<a href=#94 id=94 data-nosnippet>94</a>    </span><span class="kw">let </span>(endo_q, _endo_r) = poly_commitment::ipa::endos::&lt;Vesta&gt;();
-<a href=#95 id=95 data-nosnippet>95</a>
-<a href=#96 id=96 data-nosnippet>96</a>    srs.<span class="number">0</span>.with_lagrange_basis(cs.domain.d1);
+<a href=#60 id=60 data-nosnippet>60</a>    lazy_mode: bool,
+<a href=#61 id=61 data-nosnippet>61</a>) -&gt; <span class="prelude-ty">Result</span>&lt;CamlPastaFqPlonkIndex, ocaml::Error&gt; {
+<a href=#62 id=62 data-nosnippet>62</a>    <span class="kw">let </span>gates: Vec&lt;<span class="kw">_</span>&gt; = gates
+<a href=#63 id=63 data-nosnippet>63</a>        .as_ref()
+<a href=#64 id=64 data-nosnippet>64</a>        .<span class="number">0
+<a href=#65 id=65 data-nosnippet>65</a>        </span>.iter()
+<a href=#66 id=66 data-nosnippet>66</a>        .map(|gate| CircuitGate::&lt;Fq&gt; {
+<a href=#67 id=67 data-nosnippet>67</a>            typ: gate.typ,
+<a href=#68 id=68 data-nosnippet>68</a>            wires: gate.wires,
+<a href=#69 id=69 data-nosnippet>69</a>            coeffs: gate.coeffs.clone(),
+<a href=#70 id=70 data-nosnippet>70</a>        })
+<a href=#71 id=71 data-nosnippet>71</a>        .collect();
+<a href=#72 id=72 data-nosnippet>72</a>
+<a href=#73 id=73 data-nosnippet>73</a>    <span class="kw">let </span>runtime_tables: Vec&lt;RuntimeTableCfg&lt;Fq&gt;&gt; =
+<a href=#74 id=74 data-nosnippet>74</a>        runtime_tables.into_iter().map(Into::into).collect();
+<a href=#75 id=75 data-nosnippet>75</a>
+<a href=#76 id=76 data-nosnippet>76</a>    <span class="kw">let </span>lookup_tables: Vec&lt;LookupTable&lt;Fq&gt;&gt; = lookup_tables.into_iter().map(Into::into).collect();
+<a href=#77 id=77 data-nosnippet>77</a>
+<a href=#78 id=78 data-nosnippet>78</a>    <span class="comment">// create constraint system
+<a href=#79 id=79 data-nosnippet>79</a>    </span><span class="kw">let </span>cs = <span class="kw">match </span>ConstraintSystem::&lt;Fq&gt;::create(gates)
+<a href=#80 id=80 data-nosnippet>80</a>        .public(public <span class="kw">as </span>usize)
+<a href=#81 id=81 data-nosnippet>81</a>        .prev_challenges(prev_challenges <span class="kw">as </span>usize)
+<a href=#82 id=82 data-nosnippet>82</a>        .lookup(lookup_tables)
+<a href=#83 id=83 data-nosnippet>83</a>        .runtime(<span class="kw">if </span>runtime_tables.is_empty() {
+<a href=#84 id=84 data-nosnippet>84</a>            <span class="prelude-val">None
+<a href=#85 id=85 data-nosnippet>85</a>        </span>} <span class="kw">else </span>{
+<a href=#86 id=86 data-nosnippet>86</a>            <span class="prelude-val">Some</span>(runtime_tables)
+<a href=#87 id=87 data-nosnippet>87</a>        })
+<a href=#88 id=88 data-nosnippet>88</a>        .lazy_mode(lazy_mode)
+<a href=#89 id=89 data-nosnippet>89</a>        .build()
+<a href=#90 id=90 data-nosnippet>90</a>    {
+<a href=#91 id=91 data-nosnippet>91</a>        <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e.into()),
+<a href=#92 id=92 data-nosnippet>92</a>        <span class="prelude-val">Ok</span>(cs) =&gt; cs,
+<a href=#93 id=93 data-nosnippet>93</a>    };
+<a href=#94 id=94 data-nosnippet>94</a>
+<a href=#95 id=95 data-nosnippet>95</a>    <span class="comment">// endo
+<a href=#96 id=96 data-nosnippet>96</a>    </span><span class="kw">let </span>(endo_q, _endo_r) = poly_commitment::ipa::endos::&lt;Vesta&gt;();
 <a href=#97 id=97 data-nosnippet>97</a>
-<a href=#98 id=98 data-nosnippet>98</a>    <span class="comment">// create index
-<a href=#99 id=99 data-nosnippet>99</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>index = ProverIndex::&lt;Pallas, OpeningProof&lt;Pallas&gt;&gt;::create(cs, endo_q, srs.clone());
-<a href=#100 id=100 data-nosnippet>100</a>    <span class="comment">// Compute and cache the verifier index digest
-<a href=#101 id=101 data-nosnippet>101</a>    </span>index.compute_verifier_index_digest::&lt;DefaultFqSponge&lt;PallasParameters, PlonkSpongeConstantsKimchi&gt;&gt;();
-<a href=#102 id=102 data-nosnippet>102</a>
-<a href=#103 id=103 data-nosnippet>103</a>    <span class="prelude-val">Ok</span>(CamlPastaFqPlonkIndex(Box::new(index)))
-<a href=#104 id=104 data-nosnippet>104</a>}
+<a href=#98 id=98 data-nosnippet>98</a>    srs.<span class="number">0</span>.with_lagrange_basis(cs.domain.d1);
+<a href=#99 id=99 data-nosnippet>99</a>
+<a href=#100 id=100 data-nosnippet>100</a>    <span class="comment">// create index
+<a href=#101 id=101 data-nosnippet>101</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>index =
+<a href=#102 id=102 data-nosnippet>102</a>        ProverIndex::&lt;Pallas, OpeningProof&lt;Pallas&gt;&gt;::create(cs, endo_q, srs.clone(), lazy_mode);
+<a href=#103 id=103 data-nosnippet>103</a>    <span class="comment">// Compute and cache the verifier index digest
+<a href=#104 id=104 data-nosnippet>104</a>    </span>index.compute_verifier_index_digest::&lt;DefaultFqSponge&lt;PallasParameters, PlonkSpongeConstantsKimchi&gt;&gt;();
 <a href=#105 id=105 data-nosnippet>105</a>
-<a href=#106 id=106 data-nosnippet>106</a><span class="attr">#[ocaml_gen::func]
-<a href=#107 id=107 data-nosnippet>107</a>#[ocaml::func]
-<a href=#108 id=108 data-nosnippet>108</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_index_max_degree(index: CamlPastaFqPlonkIndexPtr) -&gt; ocaml::Int {
-<a href=#109 id=109 data-nosnippet>109</a>    index.as_ref().<span class="number">0</span>.srs.max_poly_size() <span class="kw">as </span>isize
-<a href=#110 id=110 data-nosnippet>110</a>}
-<a href=#111 id=111 data-nosnippet>111</a>
-<a href=#112 id=112 data-nosnippet>112</a><span class="attr">#[ocaml_gen::func]
-<a href=#113 id=113 data-nosnippet>113</a>#[ocaml::func]
-<a href=#114 id=114 data-nosnippet>114</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_index_public_inputs(index: CamlPastaFqPlonkIndexPtr) -&gt; ocaml::Int {
-<a href=#115 id=115 data-nosnippet>115</a>    index.as_ref().<span class="number">0</span>.cs.public <span class="kw">as </span>isize
-<a href=#116 id=116 data-nosnippet>116</a>}
-<a href=#117 id=117 data-nosnippet>117</a>
-<a href=#118 id=118 data-nosnippet>118</a><span class="attr">#[ocaml_gen::func]
-<a href=#119 id=119 data-nosnippet>119</a>#[ocaml::func]
-<a href=#120 id=120 data-nosnippet>120</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_index_domain_d1_size(index: CamlPastaFqPlonkIndexPtr) -&gt; ocaml::Int {
-<a href=#121 id=121 data-nosnippet>121</a>    index.as_ref().<span class="number">0</span>.cs.domain.d1.size() <span class="kw">as </span>isize
-<a href=#122 id=122 data-nosnippet>122</a>}
-<a href=#123 id=123 data-nosnippet>123</a>
-<a href=#124 id=124 data-nosnippet>124</a><span class="attr">#[ocaml_gen::func]
-<a href=#125 id=125 data-nosnippet>125</a>#[ocaml::func]
-<a href=#126 id=126 data-nosnippet>126</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_index_domain_d4_size(index: CamlPastaFqPlonkIndexPtr) -&gt; ocaml::Int {
-<a href=#127 id=127 data-nosnippet>127</a>    index.as_ref().<span class="number">0</span>.cs.domain.d4.size() <span class="kw">as </span>isize
-<a href=#128 id=128 data-nosnippet>128</a>}
-<a href=#129 id=129 data-nosnippet>129</a>
-<a href=#130 id=130 data-nosnippet>130</a><span class="attr">#[ocaml_gen::func]
-<a href=#131 id=131 data-nosnippet>131</a>#[ocaml::func]
-<a href=#132 id=132 data-nosnippet>132</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_index_domain_d8_size(index: CamlPastaFqPlonkIndexPtr) -&gt; ocaml::Int {
-<a href=#133 id=133 data-nosnippet>133</a>    index.as_ref().<span class="number">0</span>.cs.domain.d8.size() <span class="kw">as </span>isize
-<a href=#134 id=134 data-nosnippet>134</a>}
-<a href=#135 id=135 data-nosnippet>135</a>
-<a href=#136 id=136 data-nosnippet>136</a><span class="attr">#[ocaml_gen::func]
-<a href=#137 id=137 data-nosnippet>137</a>#[ocaml::func]
-<a href=#138 id=138 data-nosnippet>138</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_index_read(
-<a href=#139 id=139 data-nosnippet>139</a>    offset: <span class="prelude-ty">Option</span>&lt;ocaml::Int&gt;,
-<a href=#140 id=140 data-nosnippet>140</a>    srs: CamlFqSrs,
-<a href=#141 id=141 data-nosnippet>141</a>    path: String,
-<a href=#142 id=142 data-nosnippet>142</a>) -&gt; <span class="prelude-ty">Result</span>&lt;CamlPastaFqPlonkIndex, ocaml::Error&gt; {
-<a href=#143 id=143 data-nosnippet>143</a>    <span class="comment">// open the file for reading
-<a href=#144 id=144 data-nosnippet>144</a>    </span><span class="kw">let </span>file = <span class="kw">match </span>File::open(path) {
-<a href=#145 id=145 data-nosnippet>145</a>        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-<a href=#146 id=146 data-nosnippet>146</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(
-<a href=#147 id=147 data-nosnippet>147</a>                ocaml::Error::invalid_argument(<span class="string">"caml_pasta_fp_plonk_index_read"</span>)
-<a href=#148 id=148 data-nosnippet>148</a>                    .err()
-<a href=#149 id=149 data-nosnippet>149</a>                    .unwrap(),
-<a href=#150 id=150 data-nosnippet>150</a>            )
-<a href=#151 id=151 data-nosnippet>151</a>        }
-<a href=#152 id=152 data-nosnippet>152</a>        <span class="prelude-val">Ok</span>(file) =&gt; file,
-<a href=#153 id=153 data-nosnippet>153</a>    };
-<a href=#154 id=154 data-nosnippet>154</a>    <span class="kw">let </span><span class="kw-2">mut </span>r = BufReader::new(file);
-<a href=#155 id=155 data-nosnippet>155</a>
-<a href=#156 id=156 data-nosnippet>156</a>    <span class="comment">// optional offset in file
-<a href=#157 id=157 data-nosnippet>157</a>    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(offset) = offset {
-<a href=#158 id=158 data-nosnippet>158</a>        r.seek(Start(offset <span class="kw">as </span>u64))<span class="question-mark">?</span>;
-<a href=#159 id=159 data-nosnippet>159</a>    }
-<a href=#160 id=160 data-nosnippet>160</a>
-<a href=#161 id=161 data-nosnippet>161</a>    <span class="comment">// deserialize the index
-<a href=#162 id=162 data-nosnippet>162</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>t = ProverIndex::&lt;Pallas, OpeningProof&lt;Pallas&gt;&gt;::deserialize(
-<a href=#163 id=163 data-nosnippet>163</a>        <span class="kw-2">&amp;mut </span>rmp_serde::Deserializer::new(r),
-<a href=#164 id=164 data-nosnippet>164</a>    )<span class="question-mark">?</span>;
-<a href=#165 id=165 data-nosnippet>165</a>    t.srs = srs.clone();
-<a href=#166 id=166 data-nosnippet>166</a>
-<a href=#167 id=167 data-nosnippet>167</a>    <span class="kw">let </span>(linearization, powers_of_alpha) = expr_linearization(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>t.cs.feature_flags), <span class="bool-val">true</span>);
-<a href=#168 id=168 data-nosnippet>168</a>    t.linearization = linearization;
-<a href=#169 id=169 data-nosnippet>169</a>    t.powers_of_alpha = powers_of_alpha;
-<a href=#170 id=170 data-nosnippet>170</a>
-<a href=#171 id=171 data-nosnippet>171</a>    <span class="prelude-val">Ok</span>(CamlPastaFqPlonkIndex(Box::new(t)))
-<a href=#172 id=172 data-nosnippet>172</a>}
+<a href=#106 id=106 data-nosnippet>106</a>    <span class="prelude-val">Ok</span>(CamlPastaFqPlonkIndex(Box::new(index)))
+<a href=#107 id=107 data-nosnippet>107</a>}
+<a href=#108 id=108 data-nosnippet>108</a>
+<a href=#109 id=109 data-nosnippet>109</a><span class="attr">#[ocaml_gen::func]
+<a href=#110 id=110 data-nosnippet>110</a>#[ocaml::func]
+<a href=#111 id=111 data-nosnippet>111</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_index_max_degree(index: CamlPastaFqPlonkIndexPtr) -&gt; ocaml::Int {
+<a href=#112 id=112 data-nosnippet>112</a>    index.as_ref().<span class="number">0</span>.srs.max_poly_size() <span class="kw">as </span>isize
+<a href=#113 id=113 data-nosnippet>113</a>}
+<a href=#114 id=114 data-nosnippet>114</a>
+<a href=#115 id=115 data-nosnippet>115</a><span class="attr">#[ocaml_gen::func]
+<a href=#116 id=116 data-nosnippet>116</a>#[ocaml::func]
+<a href=#117 id=117 data-nosnippet>117</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_index_public_inputs(index: CamlPastaFqPlonkIndexPtr) -&gt; ocaml::Int {
+<a href=#118 id=118 data-nosnippet>118</a>    index.as_ref().<span class="number">0</span>.cs.public <span class="kw">as </span>isize
+<a href=#119 id=119 data-nosnippet>119</a>}
+<a href=#120 id=120 data-nosnippet>120</a>
+<a href=#121 id=121 data-nosnippet>121</a><span class="attr">#[ocaml_gen::func]
+<a href=#122 id=122 data-nosnippet>122</a>#[ocaml::func]
+<a href=#123 id=123 data-nosnippet>123</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_index_domain_d1_size(index: CamlPastaFqPlonkIndexPtr) -&gt; ocaml::Int {
+<a href=#124 id=124 data-nosnippet>124</a>    index.as_ref().<span class="number">0</span>.cs.domain.d1.size() <span class="kw">as </span>isize
+<a href=#125 id=125 data-nosnippet>125</a>}
+<a href=#126 id=126 data-nosnippet>126</a>
+<a href=#127 id=127 data-nosnippet>127</a><span class="attr">#[ocaml_gen::func]
+<a href=#128 id=128 data-nosnippet>128</a>#[ocaml::func]
+<a href=#129 id=129 data-nosnippet>129</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_index_domain_d4_size(index: CamlPastaFqPlonkIndexPtr) -&gt; ocaml::Int {
+<a href=#130 id=130 data-nosnippet>130</a>    index.as_ref().<span class="number">0</span>.cs.domain.d4.size() <span class="kw">as </span>isize
+<a href=#131 id=131 data-nosnippet>131</a>}
+<a href=#132 id=132 data-nosnippet>132</a>
+<a href=#133 id=133 data-nosnippet>133</a><span class="attr">#[ocaml_gen::func]
+<a href=#134 id=134 data-nosnippet>134</a>#[ocaml::func]
+<a href=#135 id=135 data-nosnippet>135</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_index_domain_d8_size(index: CamlPastaFqPlonkIndexPtr) -&gt; ocaml::Int {
+<a href=#136 id=136 data-nosnippet>136</a>    index.as_ref().<span class="number">0</span>.cs.domain.d8.size() <span class="kw">as </span>isize
+<a href=#137 id=137 data-nosnippet>137</a>}
+<a href=#138 id=138 data-nosnippet>138</a>
+<a href=#139 id=139 data-nosnippet>139</a><span class="attr">#[ocaml_gen::func]
+<a href=#140 id=140 data-nosnippet>140</a>#[ocaml::func]
+<a href=#141 id=141 data-nosnippet>141</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_index_read(
+<a href=#142 id=142 data-nosnippet>142</a>    offset: <span class="prelude-ty">Option</span>&lt;ocaml::Int&gt;,
+<a href=#143 id=143 data-nosnippet>143</a>    srs: CamlFqSrs,
+<a href=#144 id=144 data-nosnippet>144</a>    path: String,
+<a href=#145 id=145 data-nosnippet>145</a>) -&gt; <span class="prelude-ty">Result</span>&lt;CamlPastaFqPlonkIndex, ocaml::Error&gt; {
+<a href=#146 id=146 data-nosnippet>146</a>    <span class="comment">// open the file for reading
+<a href=#147 id=147 data-nosnippet>147</a>    </span><span class="kw">let </span>file = <span class="kw">match </span>File::open(path) {
+<a href=#148 id=148 data-nosnippet>148</a>        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+<a href=#149 id=149 data-nosnippet>149</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(
+<a href=#150 id=150 data-nosnippet>150</a>                ocaml::Error::invalid_argument(<span class="string">"caml_pasta_fp_plonk_index_read"</span>)
+<a href=#151 id=151 data-nosnippet>151</a>                    .err()
+<a href=#152 id=152 data-nosnippet>152</a>                    .unwrap(),
+<a href=#153 id=153 data-nosnippet>153</a>            )
+<a href=#154 id=154 data-nosnippet>154</a>        }
+<a href=#155 id=155 data-nosnippet>155</a>        <span class="prelude-val">Ok</span>(file) =&gt; file,
+<a href=#156 id=156 data-nosnippet>156</a>    };
+<a href=#157 id=157 data-nosnippet>157</a>    <span class="kw">let </span><span class="kw-2">mut </span>r = BufReader::new(file);
+<a href=#158 id=158 data-nosnippet>158</a>
+<a href=#159 id=159 data-nosnippet>159</a>    <span class="comment">// optional offset in file
+<a href=#160 id=160 data-nosnippet>160</a>    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(offset) = offset {
+<a href=#161 id=161 data-nosnippet>161</a>        r.seek(Start(offset <span class="kw">as </span>u64))<span class="question-mark">?</span>;
+<a href=#162 id=162 data-nosnippet>162</a>    }
+<a href=#163 id=163 data-nosnippet>163</a>
+<a href=#164 id=164 data-nosnippet>164</a>    <span class="comment">// deserialize the index
+<a href=#165 id=165 data-nosnippet>165</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>t = ProverIndex::&lt;Pallas, OpeningProof&lt;Pallas&gt;&gt;::deserialize(
+<a href=#166 id=166 data-nosnippet>166</a>        <span class="kw-2">&amp;mut </span>rmp_serde::Deserializer::new(r),
+<a href=#167 id=167 data-nosnippet>167</a>    )<span class="question-mark">?</span>;
+<a href=#168 id=168 data-nosnippet>168</a>    t.srs = srs.clone();
+<a href=#169 id=169 data-nosnippet>169</a>
+<a href=#170 id=170 data-nosnippet>170</a>    <span class="kw">let </span>(linearization, powers_of_alpha) = expr_linearization(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>t.cs.feature_flags), <span class="bool-val">true</span>);
+<a href=#171 id=171 data-nosnippet>171</a>    t.linearization = linearization;
+<a href=#172 id=172 data-nosnippet>172</a>    t.powers_of_alpha = powers_of_alpha;
 <a href=#173 id=173 data-nosnippet>173</a>
-<a href=#174 id=174 data-nosnippet>174</a><span class="attr">#[ocaml_gen::func]
-<a href=#175 id=175 data-nosnippet>175</a>#[ocaml::func]
-<a href=#176 id=176 data-nosnippet>176</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_index_write(
-<a href=#177 id=177 data-nosnippet>177</a>    append: <span class="prelude-ty">Option</span>&lt;bool&gt;,
-<a href=#178 id=178 data-nosnippet>178</a>    index: CamlPastaFqPlonkIndexPtr&lt;<span class="lifetime">'static</span>&gt;,
-<a href=#179 id=179 data-nosnippet>179</a>    path: String,
-<a href=#180 id=180 data-nosnippet>180</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ocaml::Error&gt; {
-<a href=#181 id=181 data-nosnippet>181</a>    <span class="kw">let </span>file = OpenOptions::new()
-<a href=#182 id=182 data-nosnippet>182</a>        .append(append.unwrap_or(<span class="bool-val">true</span>))
-<a href=#183 id=183 data-nosnippet>183</a>        .open(path)
-<a href=#184 id=184 data-nosnippet>184</a>        .map_err(|<span class="kw">_</span>| {
-<a href=#185 id=185 data-nosnippet>185</a>            ocaml::Error::invalid_argument(<span class="string">"caml_pasta_fq_plonk_index_write"</span>)
-<a href=#186 id=186 data-nosnippet>186</a>                .err()
-<a href=#187 id=187 data-nosnippet>187</a>                .unwrap()
-<a href=#188 id=188 data-nosnippet>188</a>        })<span class="question-mark">?</span>;
-<a href=#189 id=189 data-nosnippet>189</a>    <span class="kw">let </span>w = BufWriter::new(file);
-<a href=#190 id=190 data-nosnippet>190</a>    index
-<a href=#191 id=191 data-nosnippet>191</a>        .as_ref()
-<a href=#192 id=192 data-nosnippet>192</a>        .<span class="number">0
-<a href=#193 id=193 data-nosnippet>193</a>        </span>.serialize(<span class="kw-2">&amp;mut </span>rmp_serde::Serializer::new(w))
-<a href=#194 id=194 data-nosnippet>194</a>        .map_err(|e| e.into())
-<a href=#195 id=195 data-nosnippet>195</a>}</code></pre></div></section></main></body></html>
+<a href=#174 id=174 data-nosnippet>174</a>    <span class="prelude-val">Ok</span>(CamlPastaFqPlonkIndex(Box::new(t)))
+<a href=#175 id=175 data-nosnippet>175</a>}
+<a href=#176 id=176 data-nosnippet>176</a>
+<a href=#177 id=177 data-nosnippet>177</a><span class="attr">#[ocaml_gen::func]
+<a href=#178 id=178 data-nosnippet>178</a>#[ocaml::func]
+<a href=#179 id=179 data-nosnippet>179</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_index_write(
+<a href=#180 id=180 data-nosnippet>180</a>    append: <span class="prelude-ty">Option</span>&lt;bool&gt;,
+<a href=#181 id=181 data-nosnippet>181</a>    index: CamlPastaFqPlonkIndexPtr&lt;<span class="lifetime">'static</span>&gt;,
+<a href=#182 id=182 data-nosnippet>182</a>    path: String,
+<a href=#183 id=183 data-nosnippet>183</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ocaml::Error&gt; {
+<a href=#184 id=184 data-nosnippet>184</a>    <span class="kw">let </span>file = OpenOptions::new()
+<a href=#185 id=185 data-nosnippet>185</a>        .append(append.unwrap_or(<span class="bool-val">true</span>))
+<a href=#186 id=186 data-nosnippet>186</a>        .open(path)
+<a href=#187 id=187 data-nosnippet>187</a>        .map_err(|<span class="kw">_</span>| {
+<a href=#188 id=188 data-nosnippet>188</a>            ocaml::Error::invalid_argument(<span class="string">"caml_pasta_fq_plonk_index_write"</span>)
+<a href=#189 id=189 data-nosnippet>189</a>                .err()
+<a href=#190 id=190 data-nosnippet>190</a>                .unwrap()
+<a href=#191 id=191 data-nosnippet>191</a>        })<span class="question-mark">?</span>;
+<a href=#192 id=192 data-nosnippet>192</a>    <span class="kw">let </span>w = BufWriter::new(file);
+<a href=#193 id=193 data-nosnippet>193</a>    index
+<a href=#194 id=194 data-nosnippet>194</a>        .as_ref()
+<a href=#195 id=195 data-nosnippet>195</a>        .<span class="number">0
+<a href=#196 id=196 data-nosnippet>196</a>        </span>.serialize(<span class="kw-2">&amp;mut </span>rmp_serde::Serializer::new(w))
+<a href=#197 id=197 data-nosnippet>197</a>        .map_err(|e| e.into())
+<a href=#198 id=198 data-nosnippet>198</a>}</code></pre></div></section></main></body></html>

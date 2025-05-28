@@ -1718,7 +1718,7 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 <pre><code class="language-rs">pub struct ProverIndex&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; {
     /// constraints system polynomials
     #[serde(bound = &quot;ConstraintSystem&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;)]
-    pub cs: ConstraintSystem&lt;G::ScalarField&gt;,
+    pub cs: Arc&lt;ConstraintSystem&lt;G::ScalarField&gt;&gt;,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
@@ -1738,7 +1738,7 @@ These pre-computations are optimizations, in the context of normal proofs, but t
     pub max_poly_size: usize,
 
     #[serde(bound = &quot;ColumnEvaluations&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;)]
-    pub column_evaluations: ColumnEvaluations&lt;G::ScalarField&gt;,
+    pub column_evaluations: Arc&lt;LazyCache&lt;ColumnEvaluations&lt;G::ScalarField&gt;&gt;&gt;,
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
@@ -1799,7 +1799,7 @@ pub struct VerifierIndex&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt;
     /// coefficient commitment array
     #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
     pub coefficients_comm: [PolyComm&lt;G&gt;; COLUMNS],
-    /// coefficient commitment array
+    /// generic gate commitment array
     #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
     pub generic_comm: PolyComm&lt;G&gt;,
 

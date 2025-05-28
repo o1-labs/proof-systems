@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"macro":["box_array","box_array2"],"mod":["adjacent_pairs","array","biguint_helpers","bitwise_operations","chunked_evaluations","chunked_polynomial","dense_polynomial","evaluations","field_helpers","foreign_field","hasher","math","serialization","tests"]};
+window.SIDEBAR_ITEMS = {"macro":["box_array","box_array2"],"mod":["adjacent_pairs","array","biguint_helpers","bitwise_operations","chunked_evaluations","chunked_polynomial","dense_polynomial","evaluations","field_helpers","foreign_field","hasher","lazy_cache","math","serialization","tests"]};

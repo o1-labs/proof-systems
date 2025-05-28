@@ -1,6 +1,6 @@
-<mxfile host="Electron" modified="2024-02-20T16:40:47.864Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/120.0.6099.56 Electron/28.0.0 Safari/537.36" etag="0BjVqvvDlMvGHV3SNBCh" version="22.1.2" type="device">
+<mxfile host="Electron" modified="2025-05-28T10:42:39.293Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.4.0 Chrome/126.0.6478.234 Electron/31.7.6 Safari/537.36" etag="HKN8rCDHJ5KpC-UtCu-k" version="24.3.1" type="device">
   <diagram name="Page-1" id="jt6pdz1mvKQ4YR085iyc">
-    <mxGraphModel dx="1852" dy="1166" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
+    <mxGraphModel dx="1036" dy="640" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -3423,7 +3423,7 @@
         <mxCell id="LG20NbsoZ6-E1O0Kml7B-197" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=default;strokeColor=#000000;strokeWidth=2;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;endArrow=classic;" parent="1" source="LG20NbsoZ6-E1O0Kml7B-174" target="LG20NbsoZ6-E1O0Kml7B-162" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="LG20NbsoZ6-E1O0Kml7B-174" value="Produced 2 iterations ago, in the previous Step" style="text;html=1;strokeColor=none;fillColor=#9C0053;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=#ffffff;" parent="1" vertex="1">
+        <mxCell id="LG20NbsoZ6-E1O0Kml7B-174" value="Produced 4&lt;span style=&quot;background-color: initial;&quot;&gt;&amp;nbsp;iterations ago, in the previous Step&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=#9C0053;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=#ffffff;" parent="1" vertex="1">
           <mxGeometry x="2440" y="510" width="120" height="80" as="geometry" />
         </mxCell>
         <mxCell id="LG20NbsoZ6-E1O0Kml7B-179" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;labelBackgroundColor=default;strokeColor=#00FFFF;strokeWidth=2;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;endArrow=classic;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="_LjTmAN7AVqkgN4aoZ2N-51" target="Rct82W0HXJ28LCBq3rn3-6" edge="1">
@@ -3464,11 +3464,20 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="CsT-GZbtp9g-T2GshL0j-1" value="In this step circuit this value is returned from the circuit directly.&lt;br&gt;While in Wrap, the mechanism of returning is not implemented, so the assertion is there to &quot;return&quot; this value to the out-of-circuit computation" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+        <mxCell id="CsT-GZbtp9g-T2GshL0j-1" value="In this step circuit this value is returned from the circuit directly.&lt;br&gt;While in Wrap, the mechanism of returning is not implemented, so the assertion is there to &quot;return&quot; this value to the out-of-circuit computation" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="7740" y="5320" width="280" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="CsT-GZbtp9g-T2GshL0j-6" value="Does not matter for soundness. Merely simulates return from the circuit." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+        <mxCell id="CsT-GZbtp9g-T2GshL0j-6" value="Does not matter for soundness. Merely simulates return from the circuit." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="6050" y="3700" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="H_JHZp2QvCyslY3b5wGs-1" value="Text" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="4230" y="3200" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="H_JHZp2QvCyslY3b5wGs-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;endArrow=none;endFill=0;dashed=1;" edge="1" parent="1" source="H_JHZp2QvCyslY3b5wGs-7" target="_LjTmAN7AVqkgN4aoZ2N-759">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="H_JHZp2QvCyslY3b5wGs-7" value="&lt;p style=&quot;font-size: 9px;&quot;&gt;&lt;span style=&quot;text-wrap: nowrap; background-color: initial;&quot;&gt;also called prev_challenges.&lt;/span&gt;&lt;br&gt;&lt;/p&gt;&lt;div style=&quot;text-wrap: nowrap; font-size: 9px;&quot;&gt;&lt;font style=&quot;font-size: 9px;&quot;&gt;wrap-t0 verifies wrap-t1, the prover of&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;text-wrap: nowrap; font-size: 9px;&quot;&gt;&lt;font style=&quot;font-size: 9px;&quot;&gt;which absorbs prev_challenges of wrap-t2.&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;text-wrap: nowrap; font-size: 9px;&quot;&gt;&lt;font style=&quot;font-size: 9px;&quot;&gt;see kimchi.prove(), fr_sponge initialisation&lt;/font&gt;&lt;/div&gt;" style="text;html=1;strokeColor=default;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;fontSize=9;fontFamily=Helvetica;fontColor=#000000;align=center;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="4030" y="3100" width="220" height="60" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
