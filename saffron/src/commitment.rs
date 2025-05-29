@@ -92,3 +92,40 @@ impl<G: KimchiCurve> Commitment<G> {
         }
     }
 }
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use crate::{commitment::*, diff::caml::*};
+    use kimchi_stubs::{arkworks::CamlGVesta, srs::fp::CamlFpSrs};
+    use mina_curves::pasta::Vesta;
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlCommitment {
+        pub cm: CamlGVesta,
+    }
+
+    impl From<Commitment<Vesta>> for CamlCommitment {
+        fn from(cm: Commitment<Vesta>) -> Self {
+            Self { cm: cm.cm.into() }
+        }
+    }
+
+    impl From<CamlCommitment> for Commitment<Vesta> {
+        fn from(caml_cm: CamlCommitment) -> Self {
+            Self {
+                cm: caml_cm.cm.into(),
+            }
+        }
+    }
+
+    #[ocaml_gen::func]
+    #[ocaml::func]
+    pub fn caml_commitment_update(
+        srs: CamlFpSrs,
+        commitment: CamlCommitment,
+        diff: CamlDiff,
+    ) -> CamlCommitment {
+        let commitment: Commitment<Vesta> = commitment.into();
+        commitment.update(&srs, diff.into()).into()
+    }
+}
