@@ -32,16 +32,9 @@ pub fn decode_full<F: PrimeField>(x: F) -> Vec<u8> {
     x.into_bigint().to_bytes_be()
 }
 
-/// Copies in `buffer` the `Fp::size_in_bytes()` decimal representation of `x`
-/// in big endian (for Pallas & Vesta, the representation is 32 bytes)
-pub fn decode_into_full<F: PrimeField>(buffer: &mut [u8], x: F) {
-    let bytes = decode_full(x);
-    buffer.copy_from_slice(&bytes);
-}
-
 /// Converts provided field element `x` into a vector of bytes of size
 /// `F::MODULUS_BIT_SIZE / 8`
-pub fn decode<F: PrimeField>(x: F) -> Vec<u8> {
+fn decode<F: PrimeField>(x: F) -> Vec<u8> {
     // How many bytes fit into the field
     let n = encoding_size::<F>();
     // How many bytes are necessary to fit a field element
