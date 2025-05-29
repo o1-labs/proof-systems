@@ -74,13 +74,15 @@ pub fn encode_for_domain<F: PrimeField>(domain_size: usize, bytes: &[u8]) -> Vec
     let xs = encode_as_field_elements(bytes);
     xs.chunks(domain_size)
         .map(|chunk| {
-            if chunk.len() < domain_size {
+            if chunk.len() == domain_size {
+                chunk.to_vec()
+            } else {
+                // chunk.len() < domain_size: this is the last chunk that needs
+                // to be padded
                 let mut padded_chunk = Vec::with_capacity(domain_size);
                 padded_chunk.extend_from_slice(chunk);
                 padded_chunk.resize(domain_size, F::zero());
                 padded_chunk
-            } else {
-                chunk.to_vec()
             }
         })
         .collect()
