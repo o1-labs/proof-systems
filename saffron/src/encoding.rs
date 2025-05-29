@@ -65,7 +65,7 @@ pub fn encode_as_field_elements<F: PrimeField>(bytes: &[u8]) -> Vec<F> {
             bytes[..chunk.len()].copy_from_slice(chunk);
             encode(&bytes)
         })
-        .collect::<Vec<_>>()
+        .collect()
 }
 
 /// Same as [encode_as_field_elements], but the returned vector is divided in
