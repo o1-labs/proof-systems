@@ -9,13 +9,13 @@ use o1_utils::FieldHelpers;
 
 /// The size in bytes of the full representation of a field element (32 for
 /// Pallas & Vesta)
-pub fn encoding_size_full<F: PrimeField>() -> usize {
+pub(crate) fn encoding_size_full<F: PrimeField>() -> usize {
     F::size_in_bytes()
 }
 
 /// The number of bytes that can be fully represented by a scalar (31 for
 /// Pallas & Vesta)
-pub const fn encoding_size<F: PrimeField>() -> usize {
+pub(crate) const fn encoding_size<F: PrimeField>() -> usize {
     (F::MODULUS_BIT_SIZE / 8) as usize
 }
 
@@ -28,7 +28,7 @@ pub fn encode<F: PrimeField>(bytes: &[u8]) -> F {
 
 /// Returns the `Fp::size_in_bytes()` decimal representation of `x`
 /// in big endian (for Pallas & Vesta, the representation is 32 bytes)
-pub fn decode_full<F: PrimeField>(x: F) -> Vec<u8> {
+pub(crate) fn decode_full<F: PrimeField>(x: F) -> Vec<u8> {
     x.into_bigint().to_bytes_be()
 }
 
@@ -45,13 +45,13 @@ fn decode<F: PrimeField>(x: F) -> Vec<u8> {
 
 /// Converts provided field element `x` into a vector of bytes of size
 /// `F::MODULUS_BIT_SIZE / 8`
-pub fn decode_into<F: PrimeField>(buffer: &mut [u8], x: F) {
+pub(crate) fn decode_into<F: PrimeField>(buffer: &mut [u8], x: F) {
     let bytes = decode(x);
     buffer.copy_from_slice(&bytes);
 }
 
 /// Creates a bytes vector that represents each element of `xs` over 31 bytes
-pub fn decode_from_field_elements<F: PrimeField>(xs: Vec<F>) -> Vec<u8> {
+pub(crate) fn decode_from_field_elements<F: PrimeField>(xs: Vec<F>) -> Vec<u8> {
     xs.iter().flat_map(|x| decode(*x)).collect()
 }
 
