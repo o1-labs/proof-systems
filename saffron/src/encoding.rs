@@ -6,6 +6,7 @@
 
 use ark_ff::{BigInteger, PrimeField};
 use o1_utils::FieldHelpers;
+use std::iter::repeat;
 
 /// The size in bytes of the full representation of a field element (32 for
 /// Pallas & Vesta)
@@ -61,9 +62,14 @@ pub fn encode_as_field_elements<F: PrimeField>(bytes: &[u8]) -> Vec<F> {
     bytes
         .chunks(n)
         .map(|chunk| {
-            let mut bytes = vec![0u8; n];
-            bytes[..chunk.len()].copy_from_slice(chunk);
-            encode(&bytes)
+            if chunk.len() == n {
+                encode(chunk)
+            } else {
+                // chunck.len() < n, this is the last chunk; we encode the
+                // corresponding bytes padded with zeroes
+                let bytes: Vec<_> = chunk.iter().copied().chain(repeat(0)).take(n).collect();
+                encode(&bytes)
+            }
         })
         .collect()
 }
