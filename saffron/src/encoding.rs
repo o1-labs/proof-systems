@@ -99,8 +99,8 @@ mod tests {
 
     use crate::utils::test_utils::UserData;
 
-    // Check that the different decoding functions output the same result for the same input
     proptest! {
+        // Check that the different decoding functions output the same result for the same input
         #[test]
         fn test_decodes_consistency(xs in any::<[u8;31]>())
           { let n : Fp = encode(&xs);
@@ -108,20 +108,16 @@ mod tests {
             let y = decode(n);
             prop_assert_eq!(y_full, y.as_slice());
           }
-    }
 
-    // Check that [u8] -> Fp -> [u8] is the identity function.
-    proptest! {
+        // Check that [u8] -> Fp -> [u8] is the identity function.
         #[test]
         fn test_round_trip_from_bytes(xs in any::<[u8;31]>())
           { let n : Fp = encode(&xs);
             let ys : [u8; 31] = decode_full(n).as_slice()[1..32].try_into().unwrap();
             prop_assert_eq!(xs, ys);
           }
-    }
 
-    // Check that Fp -> [u8] -> Fp is the identity function.
-    proptest! {
+        // Check that Fp -> [u8] -> Fp is the identity function.
         #[test]
         fn test_round_trip_from_fp(
             x in prop::strategy::Just(Fp::rand(&mut ark_std::rand::thread_rng()))
