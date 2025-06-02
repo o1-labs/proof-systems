@@ -13,7 +13,7 @@ use crate::{
     utils::{evals_to_polynomial, evals_to_polynomial_and_commitment},
     Curve, CurveFqSponge, CurveFrSponge, ScalarField,
 };
-use ark_ff::{Field, Zero};
+use ark_ff::{Field, One, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as R2D,
@@ -28,6 +28,40 @@ use poly_commitment::{
 };
 use rand::{CryptoRng, RngCore};
 use tracing::instrument;
+
+/// Indexes of the data to be read ; this will be stored onchain
+/// Note: indexes are represented with u16, matching indexes from 0 to 2¹⁶ - 1. If the SRS is made bigger, the integer type has to handle this
+pub struct Query {
+    pub query: Vec<u16>,
+}
+
+impl Query {
+    fn to_evals_vector(&self, domain_size: usize) -> Vec<ScalarField> {
+        let mut evals = vec![ScalarField::zero(); domain_size];
+        for i in self.query.iter() {
+            evals[*i as usize] = ScalarField::one();
+        }
+        evals
+    }
+    fn to_polynomial(&self, domain: R2D<ScalarField>) -> DensePolynomial<ScalarField> {
+        evals_to_polynomial(self.to_evals_vector(domain.size as usize), domain)
+    }
+    pub fn to_commitment(&self, domain: R2D<ScalarField>, srs: &SRS<Curve>) -> Curve {
+        let evals = self.to_evals_vector(domain.size as usize);
+        let (_poly, comm) = evals_to_polynomial_and_commitment(evals, domain, srs);
+        comm
+    }
+    pub fn to_answer_sparse(&self, data: &[ScalarField]) -> Vec<ScalarField> {
+        self.query.iter().map(|i| data[*i as usize]).collect()
+    }
+    fn to_answer_evals(&self, data: &[ScalarField], domain_size: usize) -> Vec<ScalarField> {
+        let mut evals = vec![ScalarField::zero(); domain_size];
+        for i in self.query.iter() {
+            evals[*i as usize] = data[*i as usize];
+        }
+        evals
+    }
+}
 
 // #[serde_as]
 #[derive(Debug, Clone)]
@@ -58,7 +92,7 @@ pub fn prove<RNG>(
     // data is the data that is stored and queried
     data: &[ScalarField],
     // data[i] is queried if query[i] ≠ 0
-    query: &[ScalarField],
+    query: &Query,
     // Commitment to data
     data_comm: &Commitment<Curve>,
     // Commitment to query
@@ -71,10 +105,10 @@ where
 
     let data_poly = evals_to_polynomial(data.to_vec(), domain.d1);
 
-    let query_poly = evals_to_polynomial(query.to_vec(), domain.d1);
+    let query_poly = query.to_polynomial(domain.d1);
 
     let (answer_poly, answer_comm) = {
-        let answer: Vec<ScalarField> = data.iter().zip(query.iter()).map(|(d, q)| *d * q).collect();
+        let answer = query.to_answer_evals(data, domain.d1.size());
         evals_to_polynomial_and_commitment(answer, domain.d1, srs)
     };
 
@@ -275,7 +309,6 @@ mod tests {
     use super::*;
     use crate::{
         commitment::{commit_to_poly, Commitment},
-        utils::evals_to_polynomial_and_commitment,
         Curve, ScalarField, SRS_SIZE,
     };
     use ark_ec::AffineRepr;
@@ -306,13 +339,17 @@ mod tests {
             cm: commit_to_poly(&srs, &data_poly),
         };
 
-        let query: Vec<ScalarField> = {
+        let query: Query = {
             let mut query = vec![];
-            (0..SRS_SIZE).for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.1)));
-            query
+            (0..SRS_SIZE).for_each(|i| {
+                if rand::thread_rng().gen::<f64>() < 0.1 {
+                    query.push(i as u16)
+                }
+            });
+            Query { query }
         };
-        let (_query_poly, query_comm) =
-            evals_to_polynomial_and_commitment(query.clone(), domain.d1, &srs);
+
+        let query_comm = query.to_commitment(domain.d1, &srs);
 
         let proof = prove(
             &srs,
@@ -320,7 +357,7 @@ mod tests {
             &group_map,
             &mut rng,
             data.as_slice(),
-            query.as_slice(),
+            &query,
             &data_comm,
             &query_comm,
         );
