@@ -17,13 +17,7 @@ fn generate_test_data(
     srs: &SRS<Curve>,
     domain: EvaluationDomains<ScalarField>,
     size: usize,
-) -> (
-    Vec<ScalarField>,
-    Vec<ScalarField>,
-    Vec<ScalarField>,
-    Commitment<Curve>,
-    Curve,
-) {
+) -> (Vec<ScalarField>, Vec<ScalarField>, Commitment<Curve>, Curve) {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
     // Generate data with specified size
@@ -51,10 +45,7 @@ fn generate_test_data(
         .chunks[0]
     };
 
-    // Compute answer as data * query
-    let answer: Vec<ScalarField> = data.iter().zip(query.iter()).map(|(d, q)| *d * q).collect();
-
-    (data, query, answer, data_comm, query_comm)
+    (data, query, data_comm, query_comm)
 }
 
 fn bench_read_proof_prove(c: &mut Criterion) {
@@ -62,7 +53,7 @@ fn bench_read_proof_prove(c: &mut Criterion) {
     let group_map = <Curve as CommitmentCurve>::Map::setup();
     let domain: EvaluationDomains<ScalarField> = EvaluationDomains::create(srs.size()).unwrap();
 
-    let (data, query, answer, data_comm, query_comm) = generate_test_data(&srs, domain, SRS_SIZE);
+    let (data, query, data_comm, query_comm) = generate_test_data(&srs, domain, SRS_SIZE);
 
     let description = format!("prove size {}", SRS_SIZE);
     c.bench_function(description.as_str(), |b| {
@@ -76,7 +67,6 @@ fn bench_read_proof_prove(c: &mut Criterion) {
                     &mut rng,
                     data.as_slice(),
                     query.as_slice(),
-                    answer.as_slice(),
                     &data_comm,
                     &query_comm,
                 ))
@@ -91,7 +81,7 @@ fn bench_read_proof_verify(c: &mut Criterion) {
     let group_map = <Curve as CommitmentCurve>::Map::setup();
     let domain: EvaluationDomains<ScalarField> = EvaluationDomains::create(srs.size()).unwrap();
 
-    let (data, query, answer, data_comm, query_comm) = generate_test_data(&srs, domain, SRS_SIZE);
+    let (data, query, data_comm, query_comm) = generate_test_data(&srs, domain, SRS_SIZE);
 
     // Create proof first
     let mut rng = OsRng;
@@ -102,7 +92,6 @@ fn bench_read_proof_verify(c: &mut Criterion) {
         &mut rng,
         data.as_slice(),
         query.as_slice(),
-        answer.as_slice(),
         &data_comm,
         &query_comm,
     );
