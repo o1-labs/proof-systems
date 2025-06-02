@@ -1,7 +1,6 @@
 //! Run this bench using `cargo criterion -p saffron --bench read_proof_bench`
 
 use ark_ff::{One, UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, Evaluations};
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
 use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
 use mina_curves::pasta::{Fp, Vesta};
@@ -9,8 +8,10 @@ use once_cell::sync::Lazy;
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
 use rand::rngs::OsRng;
 use saffron::{
+    commitment::Commitment,
     env,
     read_proof::{prove, verify},
+    utils::evals_to_polynomial_and_commitment,
     ScalarField, SRS_SIZE,
 };
 
@@ -31,16 +32,19 @@ static GROUP_MAP: Lazy<<Vesta as CommitmentCurve>::Map> =
 
 fn generate_test_data(
     size: usize,
-) -> (Vec<ScalarField>, Vec<ScalarField>, Vec<ScalarField>, Vesta) {
+) -> (
+    Vec<ScalarField>,
+    Vec<ScalarField>,
+    Vec<ScalarField>,
+    Commitment<Vesta>,
+) {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
     // Generate data with specified size
     let data: Vec<ScalarField> = (0..size).map(|_| Fp::rand(&mut rng)).collect();
 
     // Create data commitment
-    let data_poly: DensePolynomial<ScalarField> =
-        Evaluations::from_vec_and_domain(data.clone(), DOMAIN.d1).interpolate();
-    let data_comm: Vesta = SRS.commit_non_hiding(&data_poly, 1).chunks[0];
+    let (_data_poly, data_comm) = evals_to_polynomial_and_commitment(&data, DOMAIN.d1, &SRS);
 
     // Generate query (about 10% of positions will be queried)
     let query: Vec<ScalarField> = (0..size)

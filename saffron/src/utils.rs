@@ -1,4 +1,7 @@
-use crate::encoding::{decode_into, encoding_size};
+use crate::{
+    commitment::{commit_to_poly, Commitment},
+    encoding::{decode_into, encoding_size},
+};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::PrimeField;
 use ark_poly::{
@@ -6,7 +9,7 @@ use ark_poly::{
 };
 use kimchi::curve::KimchiCurve;
 use o1_utils::field_helpers::pows;
-use poly_commitment::{ipa::SRS, SRS as _};
+use poly_commitment::ipa::SRS;
 use std::marker::PhantomData;
 use thiserror::Error;
 use tracing::instrument;
@@ -22,9 +25,9 @@ pub(crate) fn evals_to_polynomial_and_commitment<G: KimchiCurve>(
     evals: Vec<G::ScalarField>,
     domain: R2D<G::ScalarField>,
     srs: &SRS<G>,
-) -> (DensePolynomial<G::ScalarField>, G) {
+) -> (DensePolynomial<G::ScalarField>, Commitment<G>) {
     let poly = evals_to_polynomial(evals, domain);
-    let comm: G = srs.commit_non_hiding(&poly, 1).chunks[0];
+    let comm = commit_to_poly(srs, &poly);
     (poly, comm)
 }
 

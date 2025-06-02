@@ -9,6 +9,7 @@
 //! We call answer the vector such that `answer[i] = data[i] * query[i]`
 
 use crate::{
+    commitment::*,
     utils::{evals_to_polynomial, evals_to_polynomial_and_commitment},
     Curve, CurveFqSponge, CurveFrSponge, ScalarField,
 };
@@ -23,7 +24,7 @@ use poly_commitment::{
     commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
     utils::DensePolynomialOrEvaluations,
-    PolyComm, SRS as _,
+    PolyComm,
 };
 use rand::{CryptoRng, RngCore};
 use tracing::instrument;
@@ -33,11 +34,11 @@ use tracing::instrument;
 // TODO? serialize, deserialize
 pub struct ReadProof {
     // Commitment to the query vector
-    pub query_comm: Curve,
+    pub query_comm: Commitment<Curve>,
     // Commitment to the answer
-    pub answer_comm: Curve,
+    pub answer_comm: Commitment<Curve>,
     // Commitment of quotient polynomial T (aka t_comm)
-    pub quotient_comm: Curve,
+    pub quotient_comm: Commitment<Curve>,
 
     // Evaluation of data polynomial at the required challenge point
     pub data_eval: ScalarField,
@@ -63,7 +64,7 @@ pub fn prove<RNG>(
     // answer[i] = data[i] * query[i]
     answer: &[ScalarField],
     // Commitment to data
-    data_comm: &Curve,
+    data_comm: &Commitment<Curve>,
 ) -> ReadProof
 where
     RNG: RngCore + CryptoRng,
@@ -71,15 +72,12 @@ where
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
 
     let data_poly = evals_to_polynomial(data.to_vec(), domain.d1);
-    let data_comm: PolyComm<Curve> = PolyComm {
-        chunks: vec![*data_comm],
-    };
 
     let (query_poly, query_comm) = evals_to_polynomial_and_commitment(query.to_vec(), domain.d1, srs);
 
     let (answer_poly, answer_comm) = evals_to_polynomial_and_commitment(answer.to_vec(), domain.d1, srs);
 
-    fq_sponge.absorb_g(&[data_comm.chunks[0], query_comm, answer_comm]);
+    fq_sponge.absorb_g(&[data_comm.cm, query_comm.cm, answer_comm.cm]);
 
     // coefficient form, over d4? d2?
     // quotient_Poly has degree d1
@@ -112,8 +110,8 @@ where
 
     // commit to the quotient polynomial $t$.
     // num_chunks = 1 because our constraint is degree 2, which makes the quotient polynomial of degree d1
-    let quotient_comm = srs.commit_non_hiding(&quotient_poly, 1).chunks[0];
-    fq_sponge.absorb_g(&[quotient_comm]);
+    let quotient_comm = commit_to_poly(srs, &quotient_poly);
+    fq_sponge.absorb_g(&[quotient_comm.cm]);
 
     // aka zeta
     let evaluation_point = fq_sponge.challenge();
@@ -180,15 +178,15 @@ pub fn verify<RNG>(
     group_map: &<Curve as CommitmentCurve>::Map,
     rng: &mut RNG,
     // Commitment to data
-    data_comm: &Curve,
+    data_comm: &Commitment<Curve>,
     proof: &ReadProof,
 ) -> bool
 where
     RNG: RngCore + CryptoRng,
 {
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
-    fq_sponge.absorb_g(&[*data_comm, proof.query_comm, proof.answer_comm]);
-    fq_sponge.absorb_g(&[proof.quotient_comm]);
+    fq_sponge.absorb_g(&[data_comm.cm, proof.query_comm.cm, proof.answer_comm.cm]);
+    fq_sponge.absorb_g(&[proof.quotient_comm.cm]);
 
     let evaluation_point = fq_sponge.challenge();
 
@@ -222,25 +220,25 @@ where
     let coms_and_evaluations = vec![
         Evaluation {
             commitment: PolyComm {
-                chunks: vec![*data_comm],
+                chunks: vec![data_comm.cm],
             },
             evaluations: vec![vec![proof.data_eval]],
         },
         Evaluation {
             commitment: PolyComm {
-                chunks: vec![proof.query_comm],
+                chunks: vec![proof.query_comm.cm],
             },
             evaluations: vec![vec![proof.query_eval]],
         },
         Evaluation {
             commitment: PolyComm {
-                chunks: vec![proof.answer_comm],
+                chunks: vec![proof.answer_comm.cm],
             },
             evaluations: vec![vec![proof.answer_eval]],
         },
         Evaluation {
             commitment: PolyComm {
-                chunks: vec![proof.quotient_comm],
+                chunks: vec![proof.quotient_comm.cm],
             },
             evaluations: vec![vec![quotient_eval]],
         },
@@ -272,7 +270,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::{prove, verify, ReadProof};
-    use crate::{env, Curve, ScalarField, SRS_SIZE};
+    use crate::{
+        commitment::{commit_to_poly, Commitment},
+        env, Curve, ScalarField, SRS_SIZE,
+    };
     use ark_ec::AffineRepr;
     use ark_ff::{One, UniformRand};
     use ark_poly::{univariate::DensePolynomial, Evaluations};
@@ -308,7 +309,7 @@ mod tests {
 
         let data_poly: DensePolynomial<ScalarField> =
             Evaluations::from_vec_and_domain(data.clone(), DOMAIN.d1).interpolate();
-        let data_comm: Curve = SRS.commit_non_hiding(&data_poly, 1).chunks[0];
+        let data_comm = commit_to_poly(&SRS, &data_poly);
 
         let query: Vec<ScalarField> = {
             let mut query = vec![];
@@ -333,7 +334,7 @@ mod tests {
         assert!(res, "Completeness: Proof must verify");
 
         let proof_malformed_1 = ReadProof {
-            answer_comm: Curve::zero(),
+            answer_comm: Commitment { cm: Curve::zero() },
             ..proof.clone()
         };
 
@@ -386,9 +387,9 @@ pub mod caml {
     impl From<ReadProof> for CamlReadProof {
         fn from(proof: ReadProof) -> Self {
             Self {
-                query_comm: proof.query_comm.into(),
-                answer_comm: proof.answer_comm.into(),
-                quotient_comm: proof.quotient_comm.into(),
+                query_comm: proof.query_comm.cm.into(),
+                answer_comm: proof.answer_comm.cm.into(),
+                quotient_comm: proof.quotient_comm.cm.into(),
                 data_eval: proof.data_eval.into(),
                 query_eval: proof.query_eval.into(),
                 answer_eval: proof.answer_eval.into(),
@@ -400,9 +401,15 @@ pub mod caml {
     impl From<CamlReadProof> for ReadProof {
         fn from(proof: CamlReadProof) -> Self {
             Self {
-                query_comm: proof.query_comm.into(),
-                answer_comm: proof.answer_comm.into(),
-                quotient_comm: proof.quotient_comm.into(),
+                query_comm: Commitment {
+                    cm: proof.query_comm.into(),
+                },
+                answer_comm: Commitment {
+                    cm: proof.answer_comm.into(),
+                },
+                quotient_comm: Commitment {
+                    cm: proof.quotient_comm.into(),
+                },
                 data_eval: proof.data_eval.into(),
                 query_eval: proof.query_eval.into(),
                 answer_eval: proof.answer_eval.into(),
