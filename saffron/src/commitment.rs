@@ -6,6 +6,13 @@ use poly_commitment::{ipa::SRS, SRS as _};
 use rayon::prelude::*;
 use tracing::instrument;
 
+fn get_lagrange_basis<G: KimchiCurve>(srs: &SRS<G>) -> Vec<G> {
+    srs.get_lagrange_basis_from_domain_size(crate::SRS_SIZE)
+        .iter()
+        .map(|x| x.chunks[0])
+        .collect()
+}
+
 /// Compute the commitment to `data` ; if the length of `data` is greater than
 /// `SRS_SIZE`, the data is splitted in chunks of at most `SRS_SIZE` length.
 #[instrument(skip_all, level = "debug")]
@@ -13,11 +20,7 @@ pub fn commit_to_field_elems<G: KimchiCurve>(srs: &SRS<G>, data: &[G::ScalarFiel
 where
     <G as AffineRepr>::Group: VariableBaseMSM,
 {
-    let basis: Vec<G> = srs
-        .get_lagrange_basis_from_domain_size(crate::SRS_SIZE)
-        .iter()
-        .map(|x| x.chunks[0])
-        .collect();
+    let basis = get_lagrange_basis(srs);
 
     let commitments_projective = (0..data.len() / crate::SRS_SIZE)
         .into_par_iter()
@@ -80,11 +83,7 @@ impl<G: KimchiCurve> Commitment<G> {
     /// This function is tested in storage.rs
     pub fn update(&self, srs: &SRS<G>, diff: Diff<G::ScalarField>) -> Commitment<G> {
         // TODO: precompute this, or cache it & compute it in a lazy way ; it feels like it’s already cached but I’m not sure
-        let basis: Vec<G> = srs
-            .get_lagrange_basis_from_domain_size(crate::SRS_SIZE)
-            .iter()
-            .map(|x| x.chunks[0])
-            .collect();
+        let basis = get_lagrange_basis(srs);
         let basis: Vec<G> = diff.addresses.iter().map(|&i| basis[i as usize]).collect();
         let cm_diff = G::Group::msm(&basis, &diff.diff_values).unwrap();
         Commitment {
