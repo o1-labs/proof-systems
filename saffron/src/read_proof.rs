@@ -33,8 +33,6 @@ use tracing::instrument;
 #[derive(Debug, Clone)]
 // TODO? serialize, deserialize
 pub struct ReadProof {
-    // Commitment to the query vector
-    pub query_comm: Commitment<Curve>,
     // Commitment to the answer
     pub answer_comm: Commitment<Curve>,
     // Commitment of quotient polynomial T (aka t_comm)
@@ -65,6 +63,8 @@ pub fn prove<RNG>(
     answer: &[ScalarField],
     // Commitment to data
     data_comm: &Commitment<Curve>,
+    // Commitment to query
+    query_comm: &Commitment<Curve>,
 ) -> ReadProof
 where
     RNG: RngCore + CryptoRng,
@@ -73,9 +73,10 @@ where
 
     let data_poly = evals_to_polynomial(data.to_vec(), domain.d1);
 
-    let (query_poly, query_comm) = evals_to_polynomial_and_commitment(query.to_vec(), domain.d1, srs);
+    let query_poly = evals_to_polynomial(query.to_vec(), domain.d1);
 
-    let (answer_poly, answer_comm) = evals_to_polynomial_and_commitment(answer.to_vec(), domain.d1, srs);
+    let (answer_poly, answer_comm) =
+        evals_to_polynomial_and_commitment(answer.to_vec(), domain.d1, srs);
 
     fq_sponge.absorb_g(&[data_comm.cm, query_comm.cm, answer_comm.cm]);
 
@@ -162,7 +163,6 @@ where
     );
 
     ReadProof {
-        query_comm,
         answer_comm,
         quotient_comm,
         data_eval,
@@ -179,13 +179,15 @@ pub fn verify<RNG>(
     rng: &mut RNG,
     // Commitment to data
     data_comm: &Commitment<Curve>,
+    // Commitment to query
+    query_comm: &Commitment<Curve>,
     proof: &ReadProof,
 ) -> bool
 where
     RNG: RngCore + CryptoRng,
 {
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
-    fq_sponge.absorb_g(&[data_comm.cm, proof.query_comm.cm, proof.answer_comm.cm]);
+    fq_sponge.absorb_g(&[data_comm.cm, query_comm.cm, proof.answer_comm.cm]);
     fq_sponge.absorb_g(&[proof.quotient_comm.cm]);
 
     let evaluation_point = fq_sponge.challenge();
@@ -226,7 +228,7 @@ where
         },
         Evaluation {
             commitment: PolyComm {
-                chunks: vec![proof.query_comm.cm],
+                chunks: vec![query_comm.cm],
             },
             evaluations: vec![vec![proof.query_eval]],
         },
@@ -272,7 +274,9 @@ mod tests {
     use super::{prove, verify, ReadProof};
     use crate::{
         commitment::{commit_to_poly, Commitment},
-        env, Curve, ScalarField, SRS_SIZE,
+        env,
+        utils::evals_to_polynomial_and_commitment,
+        Curve, ScalarField, SRS_SIZE,
     };
     use ark_ec::AffineRepr;
     use ark_ff::{One, UniformRand};
@@ -316,6 +320,8 @@ mod tests {
             (0..SRS_SIZE).for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.1)));
             query
         };
+        let (_query_poly, query_comm) =
+            evals_to_polynomial_and_commitment(query.clone(), DOMAIN.d1, &SRS);
 
         let answer: Vec<ScalarField> = data.iter().zip(query.iter()).map(|(d, q)| *d * q).collect();
 
@@ -328,8 +334,17 @@ mod tests {
             query.as_slice(),
             answer.as_slice(),
             &data_comm,
+            &query_comm,
         );
-        let res = verify(&SRS, *DOMAIN, &GROUP_MAP, &mut rng, &data_comm, &proof);
+        let res = verify(
+            &SRS,
+            *DOMAIN,
+            &GROUP_MAP,
+            &mut rng,
+            &data_comm,
+            &query_comm,
+            &proof,
+        );
 
         assert!(res, "Completeness: Proof must verify");
 
@@ -344,6 +359,7 @@ mod tests {
             &GROUP_MAP,
             &mut rng,
             &data_comm,
+            &query_comm,
             &proof_malformed_1,
         );
 
@@ -360,6 +376,7 @@ mod tests {
             &GROUP_MAP,
             &mut rng,
             &data_comm,
+            &query_comm,
             &proof_malformed_2,
         );
 
@@ -375,7 +392,6 @@ pub mod caml {
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlReadProof {
-        pub query_comm: CamlGVesta,
         pub answer_comm: CamlGVesta,
         pub quotient_comm: CamlGVesta,
         pub data_eval: CamlFp,
@@ -387,7 +403,6 @@ pub mod caml {
     impl From<ReadProof> for CamlReadProof {
         fn from(proof: ReadProof) -> Self {
             Self {
-                query_comm: proof.query_comm.cm.into(),
                 answer_comm: proof.answer_comm.cm.into(),
                 quotient_comm: proof.quotient_comm.cm.into(),
                 data_eval: proof.data_eval.into(),
@@ -401,9 +416,6 @@ pub mod caml {
     impl From<CamlReadProof> for ReadProof {
         fn from(proof: CamlReadProof) -> Self {
             Self {
-                query_comm: Commitment {
-                    cm: proof.query_comm.into(),
-                },
                 answer_comm: Commitment {
                     cm: proof.answer_comm.into(),
                 },
