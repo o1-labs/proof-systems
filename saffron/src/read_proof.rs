@@ -268,12 +268,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{prove, verify, ReadProof};
+    use super::*;
     use crate::{
         commitment::{commit_to_poly, Commitment},
-        env,
-        utils::evals_to_polynomial_and_commitment,
-        Curve, ScalarField, SRS_SIZE,
+        env, Curve, ScalarField, SRS_SIZE,
     };
     use ark_ec::AffineRepr;
     use ark_ff::{One, UniformRand};
