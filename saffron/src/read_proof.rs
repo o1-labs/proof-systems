@@ -411,6 +411,31 @@ mod tests {
         );
 
         assert!(!res_2, "Soundness: Malformed proof #2 must NOT verify");
+
+        let mut wrong_query = query.query.clone();
+        wrong_query.truncate(query.query.len() - 2);
+
+        let proof_for_wrong_query = prove(
+            &SRS,
+            *DOMAIN,
+            &GROUP_MAP,
+            &mut rng,
+            data.as_slice(),
+            &Query { query: wrong_query },
+            &data_comm,
+            &query_comm,
+        );
+        let res_3 = verify(
+            &SRS,
+            *DOMAIN,
+            &GROUP_MAP,
+            &mut rng,
+            &data_comm,
+            &query_comm,
+            &proof_for_wrong_query,
+        );
+
+        assert!(!res_3, "Soundness: Truncated query must NOT verify");
     }
 }
 
