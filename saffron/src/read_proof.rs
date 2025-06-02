@@ -72,6 +72,10 @@ impl Query {
         });
         Query { query }
     }
+    fn commit_answers(&self, answer: &[ScalarField], srs: &SRS<Curve>) -> Curve {
+        let indexes: Vec<u64> = self.query.iter().map(|i| *i as u64).collect();
+        commit_sparse(srs, answer, &indexes)
+    }
 }
 
 // #[serde_as]
@@ -315,6 +319,19 @@ where
     )
 }
 
+/// Checks that the provided answer is consistent with the proof
+/// Here, we just recompute the commitment
+/// TODO: could we just recompute the evaluation ?
+pub fn verify_answer(
+    srs: &SRS<Curve>,
+    query: &Query,
+    answer: &[ScalarField],
+    proof: &ReadProof,
+) -> bool {
+    let answer_comm = query.commit_answers(answer, srs);
+    answer_comm == proof.answer_comm
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -408,5 +425,42 @@ mod tests {
         );
 
         assert!(!res_2, "Soundness: Malformed proof #2 must NOT verify");
+
+        let mut wrong_query = query.query.clone();
+        wrong_query.truncate(query.query.len() - 2);
+
+        let proof_for_wrong_query = prove(
+            &srs,
+            domain,
+            &group_map,
+            &mut rng,
+            data.as_slice(),
+            &Query { query: wrong_query },
+            &data_comm,
+            &query_comm,
+        );
+        let res_3 = verify(
+            &srs,
+            domain,
+            &group_map,
+            &mut rng,
+            &data_comm,
+            &query_comm,
+            &proof_for_wrong_query,
+        );
+
+        assert!(!res_3, "Soundness: Truncated query must NOT verify");
+
+        let mut answer = query.to_answer_sparse(&data);
+
+        let res_4 = verify_answer(&srs, &query, &answer, &proof);
+
+        assert!(res_4, "Completeness: Answer must be consistent with proof");
+
+        answer[0] = ScalarField::one();
+
+        let res_5 = verify_answer(&srs, &query, &answer, &proof);
+
+        assert!(!res_5, "Soundness: Wrong answer must NOT verify");
     }
 }
