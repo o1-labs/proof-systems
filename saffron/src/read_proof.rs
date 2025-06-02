@@ -8,7 +8,10 @@
 //! We call data the data vector that is stored and queried
 //! We call answer the vector such that `answer[i] = data[i] * query[i]`
 
-use crate::{Curve, CurveFqSponge, CurveFrSponge, ScalarField};
+use crate::{
+    utils::{evals_to_polynomial, evals_to_polynomial_and_commitment},
+    Curve, CurveFqSponge, CurveFrSponge, ScalarField,
+};
 use ark_ff::{Field, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
@@ -24,21 +27,6 @@ use poly_commitment::{
 };
 use rand::{CryptoRng, RngCore};
 use tracing::instrument;
-
-fn to_polynomial(evals: &[ScalarField], domain: R2D<ScalarField>) -> DensePolynomial<ScalarField> {
-    let evals = Evaluations::from_vec_and_domain(evals.to_vec(), domain);
-    evals.interpolate_by_ref()
-}
-
-fn to_polynomial_and_commitment(
-    evals: &[ScalarField],
-    domain: R2D<ScalarField>,
-    srs: &SRS<Curve>,
-) -> (DensePolynomial<ScalarField>, Curve) {
-    let poly = to_polynomial(evals, domain);
-    let comm: Curve = srs.commit_non_hiding(&poly, 1).chunks[0];
-    (poly, comm)
-}
 
 // #[serde_as]
 #[derive(Debug, Clone)]
@@ -82,14 +70,14 @@ where
 {
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
 
-    let data_poly = to_polynomial(data, domain.d1);
+    let data_poly = evals_to_polynomial(data.to_vec(), domain.d1);
     let data_comm: PolyComm<Curve> = PolyComm {
         chunks: vec![*data_comm],
     };
 
-    let (query_poly, query_comm) = to_polynomial_and_commitment(query, domain.d1, srs);
+    let (query_poly, query_comm) = evals_to_polynomial_and_commitment(query.to_vec(), domain.d1, srs);
 
-    let (answer_poly, answer_comm) = to_polynomial_and_commitment(answer, domain.d1, srs);
+    let (answer_poly, answer_comm) = evals_to_polynomial_and_commitment(answer.to_vec(), domain.d1, srs);
 
     fq_sponge.absorb_g(&[data_comm.chunks[0], query_comm, answer_comm]);
 
