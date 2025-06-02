@@ -1,7 +1,6 @@
 //! Run this bench using `cargo criterion -p saffron --bench read_proof_bench`
 
-use ark_ff::{One, UniformRand, Zero};
-use ark_poly::Evaluations;
+use ark_ff::UniformRand;
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
 use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
 use mina_curves::pasta::Fp;
@@ -9,7 +8,7 @@ use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
 use rand::rngs::OsRng;
 use saffron::{
     commitment::Commitment,
-    read_proof::{prove, verify},
+    read_proof::{prove, verify, Query},
     Curve, ScalarField, SRS_SIZE,
 };
 
@@ -17,7 +16,7 @@ fn generate_test_data(
     srs: &SRS<Curve>,
     domain: EvaluationDomains<ScalarField>,
     size: usize,
-) -> (Vec<ScalarField>, Vec<ScalarField>, Commitment<Curve>, Curve) {
+) -> (Vec<ScalarField>, Query, Commitment<Curve>, Curve) {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
     // Generate data with specified size
@@ -27,23 +26,9 @@ fn generate_test_data(
     let data_comm = Commitment::from_data(srs, &data);
 
     // Generate query (about 10% of positions will be queried)
-    let query: Vec<ScalarField> = (0..size)
-        .map(|_| {
-            if rand::random::<f32>() < 0.1 {
-                Fp::one()
-            } else {
-                Fp::zero()
-            }
-        })
-        .collect();
+    let query = Query::random(0.1, SRS_SIZE);
 
-    let query_comm = {
-        srs.commit_non_hiding(
-            &Evaluations::from_vec_and_domain(query.clone(), domain.d1).interpolate_by_ref(),
-            1,
-        )
-        .chunks[0]
-    };
+    let query_comm = query.to_commitment(domain.d1, srs);
 
     (data, query, data_comm, query_comm)
 }
@@ -66,7 +51,7 @@ fn bench_read_proof_prove(c: &mut Criterion) {
                     &group_map,
                     &mut rng,
                     data.as_slice(),
-                    query.as_slice(),
+                    &query,
                     &data_comm,
                     &query_comm,
                 ))
@@ -91,7 +76,7 @@ fn bench_read_proof_verify(c: &mut Criterion) {
         &group_map,
         &mut rng,
         data.as_slice(),
-        query.as_slice(),
+        &query,
         &data_comm,
         &query_comm,
     );
