@@ -1,5 +1,6 @@
 use crate::{diff::Diff, utils};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
+use ark_poly::univariate::DensePolynomial;
 use kimchi::curve::KimchiCurve;
 use mina_poseidon::FqSponge;
 use poly_commitment::{ipa::SRS, SRS as _};
@@ -36,6 +37,16 @@ where
     let commitments = G::Group::normalize_batch(commitments_projective.as_slice());
 
     commitments
+}
+
+/// Returns the non-hiding commitment to the provided polynomial
+pub fn commit_poly<G: KimchiCurve>(
+    srs: &SRS<G>,
+    poly: &DensePolynomial<G::ScalarField>,
+) -> Commitment<G> {
+    Commitment {
+        cm: srs.commit_non_hiding(poly, 1).chunks[0],
+    }
 }
 
 /// Compute the commitment to the polynomial `P` of same degree as `srs`
