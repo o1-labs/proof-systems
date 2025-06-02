@@ -272,7 +272,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{prove, verify, ReadProof};
+    use super::*;
     use crate::{
         commitment::{commit_to_poly, Commitment},
         utils::evals_to_polynomial_and_commitment,
