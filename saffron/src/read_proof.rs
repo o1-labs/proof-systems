@@ -33,8 +33,6 @@ use tracing::instrument;
 #[derive(Debug, Clone)]
 // TODO? serialize, deserialize
 pub struct ReadProof {
-    // Commitment to the query vector
-    pub query_comm: Curve,
     // Commitment to the answer
     pub answer_comm: Curve,
     // Commitment of quotient polynomial T (aka t_comm)
@@ -65,6 +63,8 @@ pub fn prove<RNG>(
     answer: &[ScalarField],
     // Commitment to data
     data_comm: &Commitment<Curve>,
+    // Commitment to query
+    query_comm: &Curve,
 ) -> ReadProof
 where
     RNG: RngCore + CryptoRng,
@@ -73,13 +73,12 @@ where
 
     let data_poly = evals_to_polynomial(data.to_vec(), domain.d1);
 
-    let (query_poly, query_comm) =
-        evals_to_polynomial_and_commitment(query.to_vec(), domain.d1, srs);
+    let query_poly = evals_to_polynomial(query.to_vec(), domain.d1);
 
     let (answer_poly, answer_comm) =
         evals_to_polynomial_and_commitment(answer.to_vec(), domain.d1, srs);
 
-    fq_sponge.absorb_g(&[data_comm.cm, query_comm, answer_comm]);
+    fq_sponge.absorb_g(&[data_comm.cm, *query_comm, answer_comm]);
 
     // coefficient form, over d4? d2?
     // quotient_Poly has degree d1
@@ -164,7 +163,6 @@ where
     );
 
     ReadProof {
-        query_comm,
         answer_comm,
         quotient_comm,
         data_eval,
@@ -181,6 +179,8 @@ pub fn verify<RNG>(
     rng: &mut RNG,
     // Commitment to data
     data_comm: &Commitment<Curve>,
+    // Commitment to query
+    query_comm: &Curve,
     proof: &ReadProof,
 ) -> bool
 where
@@ -189,7 +189,7 @@ where
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
     fq_sponge.absorb_g(&[
         data_comm.cm,
-        proof.query_comm,
+        *query_comm,
         proof.answer_comm,
         proof.quotient_comm,
     ]);
@@ -232,7 +232,7 @@ where
         },
         Evaluation {
             commitment: PolyComm {
-                chunks: vec![proof.query_comm],
+                chunks: vec![*query_comm],
             },
             evaluations: vec![vec![proof.query_eval]],
         },
@@ -278,6 +278,7 @@ mod tests {
     use super::{prove, verify, ReadProof};
     use crate::{
         commitment::{commit_poly, Commitment},
+        utils::evals_to_polynomial_and_commitment,
         Curve, ScalarField, SRS_SIZE,
     };
     use ark_ec::AffineRepr;
@@ -313,6 +314,8 @@ mod tests {
             (0..SRS_SIZE).for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.1)));
             query
         };
+        let (_query_poly, query_comm) =
+            evals_to_polynomial_and_commitment(query.clone(), domain.d1, &srs);
 
         let answer: Vec<ScalarField> = data.iter().zip(query.iter()).map(|(d, q)| *d * q).collect();
 
@@ -325,8 +328,17 @@ mod tests {
             query.as_slice(),
             answer.as_slice(),
             &data_comm,
+            &query_comm,
         );
-        let res = verify(&srs, domain, &group_map, &mut rng, &data_comm, &proof);
+        let res = verify(
+            &srs,
+            domain,
+            &group_map,
+            &mut rng,
+            &data_comm,
+            &query_comm,
+            &proof,
+        );
 
         assert!(res, "Completeness: Proof must verify");
 
@@ -341,6 +353,7 @@ mod tests {
             &group_map,
             &mut rng,
             &data_comm,
+            &query_comm,
             &proof_malformed_1,
         );
 
@@ -357,6 +370,7 @@ mod tests {
             &group_map,
             &mut rng,
             &data_comm,
+            &query_comm,
             &proof_malformed_2,
         );
 
