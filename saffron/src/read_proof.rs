@@ -25,6 +25,21 @@ use poly_commitment::{
 use rand::{CryptoRng, RngCore};
 use tracing::instrument;
 
+fn to_polynomial(evals: &[ScalarField], domain: R2D<ScalarField>) -> DensePolynomial<ScalarField> {
+    let evals = Evaluations::from_vec_and_domain(evals.to_vec(), domain);
+    evals.interpolate_by_ref()
+}
+
+fn to_polynomial_and_commitment(
+    evals: &[ScalarField],
+    domain: R2D<ScalarField>,
+    srs: &SRS<Curve>,
+) -> (DensePolynomial<ScalarField>, Curve) {
+    let poly = to_polynomial(evals, domain);
+    let comm: Curve = srs.commit_non_hiding(&poly, 1).chunks[0];
+    (poly, comm)
+}
+
 // #[serde_as]
 #[derive(Debug, Clone)]
 // TODO? serialize, deserialize
@@ -67,20 +82,14 @@ where
 {
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
 
-    let data_d1 = Evaluations::from_vec_and_domain(data.to_vec(), domain.d1);
-    let data_poly: DensePolynomial<ScalarField> = data_d1.interpolate_by_ref();
+    let data_poly = to_polynomial(data, domain.d1);
     let data_comm: PolyComm<Curve> = PolyComm {
         chunks: vec![*data_comm],
     };
 
-    let query_d1 = Evaluations::from_vec_and_domain(query.to_vec(), domain.d1);
-    let query_poly: DensePolynomial<ScalarField> = query_d1.interpolate_by_ref();
-    let query_comm: Curve = srs.commit_non_hiding(&query_poly, 1).chunks[0];
-    // TODO:
+    let (query_poly, query_comm) = to_polynomial_and_commitment(query, domain.d1, srs);
 
-    let answer_d1 = Evaluations::from_vec_and_domain(answer.to_vec(), domain.d1);
-    let answer_poly: DensePolynomial<ScalarField> = answer_d1.interpolate_by_ref();
-    let answer_comm: Curve = srs.commit_non_hiding(&answer_poly, 1).chunks[0];
+    let (answer_poly, answer_comm) = to_polynomial_and_commitment(answer, domain.d1, srs);
 
     fq_sponge.absorb_g(&[data_comm.chunks[0], query_comm, answer_comm]);
 
