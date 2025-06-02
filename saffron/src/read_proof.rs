@@ -59,8 +59,6 @@ pub fn prove<RNG>(
     data: &[ScalarField],
     // data[i] is queried if query[i] ≠ 0
     query: &[ScalarField],
-    // answer[i] = data[i] * query[i]
-    answer: &[ScalarField],
     // Commitment to data
     data_comm: &Commitment<Curve>,
     // Commitment to query
@@ -75,8 +73,10 @@ where
 
     let query_poly = evals_to_polynomial(query.to_vec(), domain.d1);
 
-    let (answer_poly, answer_comm) =
-        evals_to_polynomial_and_commitment(answer.to_vec(), domain.d1, srs);
+    let (answer_poly, answer_comm) = {
+        let answer: Vec<ScalarField> = data.iter().zip(query.iter()).map(|(d, q)| *d * q).collect();
+        evals_to_polynomial_and_commitment(answer, domain.d1, srs)
+    };
 
     fq_sponge.absorb_g(&[data_comm.cm, query_comm.cm, answer_comm.cm]);
 
@@ -318,8 +318,6 @@ mod tests {
         let (_query_poly, query_comm) =
             evals_to_polynomial_and_commitment(query.clone(), DOMAIN.d1, &SRS);
 
-        let answer: Vec<ScalarField> = data.iter().zip(query.iter()).map(|(d, q)| *d * q).collect();
-
         let proof = prove(
             &SRS,
             *DOMAIN,
@@ -327,7 +325,6 @@ mod tests {
             &mut rng,
             data.as_slice(),
             query.as_slice(),
-            answer.as_slice(),
             &data_comm,
             &query_comm,
         );
