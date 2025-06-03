@@ -44,7 +44,7 @@ use tracing::instrument;
 
 pub struct Query {
     // Indexes of the data to be read ; this will be stored onchain
-    pub query: Vec<usize>,
+    pub query: Vec<u16>,
 }
 
 /// Answer to a query regarding some data
@@ -56,7 +56,7 @@ impl Query {
     fn to_evals_vector(&self, domain_size: usize) -> Vec<ScalarField> {
         let mut evals = vec![ScalarField::zero(); domain_size];
         for i in self.query.iter() {
-            evals[*i] = ScalarField::one();
+            evals[*i as usize] = ScalarField::one();
         }
         evals
     }
@@ -76,13 +76,13 @@ impl Query {
     }
     pub fn to_answer(&self, data: &[ScalarField]) -> Answer {
         Answer {
-            answer: self.query.iter().map(|i| data[*i]).collect(),
+            answer: self.query.iter().map(|i| data[*i as usize]).collect(),
         }
     }
     fn to_answer_evals(&self, data: &[ScalarField], domain_size: usize) -> Vec<ScalarField> {
         let mut evals = vec![ScalarField::zero(); domain_size];
         for i in self.query.iter() {
-            evals[*i] = data[*i];
+            evals[*i as usize] = data[*i as usize];
         }
         evals
     }
@@ -388,7 +388,7 @@ mod tests {
             let mut query = vec![];
             (0..SRS_SIZE).for_each(|i| {
                 if rand::thread_rng().gen::<f64>() < 0.1 {
-                    query.push(i)
+                    query.push(i as u16)
                 }
             });
             Query { query }
