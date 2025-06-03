@@ -42,8 +42,9 @@ use poly_commitment::{
 use rand::{CryptoRng, RngCore};
 use tracing::instrument;
 
+/// Indexes of the data to be read ; this will be stored onchain
+/// Note: indexes are represented with u16, matching indexes from 0 to 2¹⁶ - 1. If the SRS is made bigger, the integer type has to handle this
 pub struct Query {
-    // Indexes of the data to be read ; this will be stored onchain
     pub query: Vec<u16>,
 }
 
