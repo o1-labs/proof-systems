@@ -7,7 +7,7 @@ use mina_curves::pasta::Fp;
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
 use rand::rngs::OsRng;
 use saffron::{
-    commitment::Commitment,
+    commitment::{commit_poly, Commitment},
     read_proof::{prove, verify, Query},
     Curve, ScalarField, SRS_SIZE,
 };
@@ -28,7 +28,7 @@ fn generate_test_data(
     // Generate query (about 10% of positions will be queried)
     let query = Query::random(0.1, SRS_SIZE);
 
-    let query_comm = query.to_commitment(domain.d1, srs);
+    let query_comm = commit_poly(srs, &query.to_polynomial(domain.d1));
 
     (data, query, data_comm, query_comm)
 }

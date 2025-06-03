@@ -43,13 +43,15 @@ impl Query {
         }
         evals
     }
-    fn to_polynomial(&self, domain: R2D<ScalarField>) -> DensePolynomial<ScalarField> {
+    pub fn to_polynomial(&self, domain: R2D<ScalarField>) -> DensePolynomial<ScalarField> {
         evals_to_polynomial(self.to_evals_vector(domain.size as usize), domain)
     }
-    pub fn to_commitment(&self, domain: R2D<ScalarField>, srs: &SRS<Curve>) -> Curve {
-        let evals = self.to_evals_vector(domain.size as usize);
-        let (_poly, comm) = evals_to_polynomial_and_commitment(evals, domain, srs);
-        comm
+    /// Computes the commitment to the query from its sparse form, without
+    /// recomputing the polynomial
+    pub fn to_commitment(&self, srs: &SRS<Curve>) -> Curve {
+        let query_evals: Vec<ScalarField> = self.query.iter().map(|_| ScalarField::one()).collect();
+        let indexes: Vec<u64> = self.query.iter().map(|i| *i as u64).collect();
+        commit_sparse(srs, &query_evals, &indexes)
     }
     pub fn to_answer_sparse(&self, data: &[ScalarField]) -> Vec<ScalarField> {
         self.query.iter().map(|i| data[*i as usize]).collect()
@@ -368,7 +370,14 @@ mod tests {
 
         let query = Query::random(0.1, SRS_SIZE);
 
-        let query_comm = query.to_commitment(domain.d1, &srs);
+        let query_comm = { commit_poly(&srs, &query.to_polynomial(domain.d1)) };
+
+        let query_comm_sparse = query.to_commitment(&srs);
+
+        assert!(
+            query_comm == query_comm_sparse,
+            "Query commitment: commitment should be the same whatever the computation method is."
+        );
 
         let proof = prove(
             &srs,
