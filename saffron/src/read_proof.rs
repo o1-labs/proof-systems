@@ -48,6 +48,11 @@ pub struct Query {
     pub query: Vec<u16>,
 }
 
+/// Answer to a query regarding some data
+pub struct Answer {
+    answer: Vec<ScalarField>,
+}
+
 impl Query {
     fn to_evals_vector(&self, domain_size: usize) -> Vec<ScalarField> {
         let mut evals = vec![ScalarField::zero(); domain_size];
@@ -70,8 +75,10 @@ impl Query {
         let indexes: Vec<u64> = self.query.iter().map(|i| *i as u64).collect();
         commit_sparse(srs, &query_evals, &indexes)
     }
-    pub fn to_answer_sparse(&self, data: &[ScalarField]) -> Vec<ScalarField> {
-        self.query.iter().map(|i| data[*i as usize]).collect()
+    pub fn to_answer(&self, data: &[ScalarField]) -> Answer {
+        Answer {
+            answer: self.query.iter().map(|i| data[*i as usize]).collect(),
+        }
     }
     fn to_answer_evals(&self, data: &[ScalarField], domain_size: usize) -> Vec<ScalarField> {
         let mut evals = vec![ScalarField::zero(); domain_size];
@@ -80,9 +87,12 @@ impl Query {
         }
         evals
     }
-    fn commit_answers(&self, answer: &[ScalarField], srs: &SRS<Curve>) -> Commitment<Curve> {
-        let indexes: Vec<u64> = self.query.iter().map(|i| *i as u64).collect();
-        commit_sparse(srs, answer, &indexes)
+}
+
+impl Answer {
+    fn to_commitment(&self, query: &Query, srs: &SRS<Curve>) -> Curve {
+        let indexes: Vec<u64> = query.query.iter().map(|i| *i as u64).collect();
+        commit_sparse(srs, &self.answer, &indexes)
     }
 }
 
@@ -330,13 +340,8 @@ where
 /// Checks that the provided answer is consistent with the proof
 /// Here, we just recompute the commitment
 /// TODO: could we just recompute the evaluation ?
-pub fn verify_answer(
-    srs: &SRS<Curve>,
-    query: &Query,
-    answer: &[ScalarField],
-    proof: &ReadProof,
-) -> bool {
-    let answer_comm = query.commit_answers(answer, srs);
+pub fn verify_answer(srs: &SRS<Curve>, query: &Query, answer: &Answer, proof: &ReadProof) -> bool {
+    let answer_comm = answer.to_commitment(query, srs);
     answer_comm == proof.answer_comm
 }
 
@@ -475,13 +480,13 @@ mod tests {
 
         assert!(!res_3, "Soundness: Truncated query must NOT verify");
 
-        let mut answer = query.to_answer_sparse(&data);
+        let mut answer = query.to_answer(&data);
 
         let res_4 = verify_answer(&SRS, &query, &answer, &proof);
 
         assert!(res_4, "Completeness: Answer must be consistent with proof");
 
-        answer[0] = ScalarField::one();
+        answer.answer[0] = ScalarField::one();
 
         let res_5 = verify_answer(&SRS, &query, &answer, &proof);
 
