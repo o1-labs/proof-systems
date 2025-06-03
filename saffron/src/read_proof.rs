@@ -7,6 +7,19 @@
 //! The folding version is TBD
 //! We call data the data vector that is stored and queried
 //! We call answer the vector such that `answer[i] = data[i] * query[i]`
+//!
+//! The considered protocol involves a user, the chain and the storage provider
+//! and behaves as following:
+//! 1. The user sends a request to the chain, containing a commitment to a data
+//!    handled by the storage provider with a query that specifies which indexes
+//!    to read.
+//! 2. The chains includes the query if it’s valid and computes the commitment
+//!    to the query.
+//! 3. The state replicator fetch the request with the data & query commitments
+//!    on the chain, computes the corresponding answer & proof, and sends it to
+//!    the chain.
+//! 4. The chain includes the proof if it verifies, and if it’s consistent with
+//!    the provided answer.
 
 use crate::{
     commitment::*,
