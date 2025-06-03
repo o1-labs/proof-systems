@@ -74,7 +74,7 @@ impl Query {
         let indexes: Vec<u64> = self.query.iter().map(|i| *i as u64).collect();
         commit_sparse(srs, &query_evals, &indexes)
     }
-    pub fn to_answer_sparse(&self, data: &[ScalarField]) -> Answer {
+    pub fn to_answer(&self, data: &[ScalarField]) -> Answer {
         Answer {
             answer: self.query.iter().map(|i| data[*i]).collect(),
         }
@@ -484,7 +484,7 @@ mod tests {
 
         assert!(!res_3, "Soundness: Truncated query must NOT verify");
 
-        let mut answer = query.to_answer_sparse(&data);
+        let mut answer = query.to_answer(&data);
 
         let res_4 = verify_answer(&SRS, &query, &answer, &proof);
 
