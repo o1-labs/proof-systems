@@ -51,6 +51,12 @@ impl Query {
         let (_poly, comm) = evals_to_polynomial_and_commitment(evals, domain, srs);
         comm
     }
+    // This function should be used for the chain to compute the commitment
+    pub fn to_commitment_sparse(&self, srs: &SRS<Curve>) -> Curve {
+        let query_evals: Vec<ScalarField> = self.query.iter().map(|_| ScalarField::one()).collect();
+        let indexes: Vec<u64> = self.query.iter().map(|i| *i as u64).collect();
+        commit_sparse(srs, &query_evals, &indexes)
+    }
     pub fn to_answer_sparse(&self, data: &[ScalarField]) -> Vec<ScalarField> {
         self.query.iter().map(|i| data[*i as usize]).collect()
     }
@@ -369,6 +375,13 @@ mod tests {
         let query = Query::random(0.1, SRS_SIZE);
 
         let query_comm = query.to_commitment(domain.d1, &srs);
+
+        let query_comm_sparse = query.to_commitment_sparse(&srs);
+
+        assert!(
+            query_comm == query_comm_sparse,
+            "Query commitment: commitment should be the same whatever the computation method is."
+        );
 
         let proof = prove(
             &srs,
