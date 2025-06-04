@@ -23,6 +23,7 @@
 
 use crate::{
     commitment::*,
+    storage::Data,
     utils::{evals_to_polynomial, evals_to_polynomial_and_commitment},
     Curve, CurveFqSponge, CurveFrSponge, ScalarField,
 };
@@ -71,9 +72,9 @@ impl Query {
         let indexes: Vec<u64> = self.query.iter().map(|i| *i as u64).collect();
         commit_sparse(srs, &query_evals, &indexes)
     }
-    pub fn to_answer(&self, data: &[ScalarField]) -> Answer {
+    pub fn to_answer(&self, data: &Data<ScalarField>) -> Answer {
         Answer {
-            answer: self.query.iter().map(|i| data[*i as usize]).collect(),
+            answer: self.query.iter().map(|i| data.data[*i as usize]).collect(),
         }
     }
     fn to_answer_evals(&self, data: &[ScalarField], domain_size: usize) -> Vec<ScalarField> {
@@ -130,7 +131,7 @@ pub fn prove<RNG>(
     group_map: &<Curve as CommitmentCurve>::Map,
     rng: &mut RNG,
     // data is the data that is stored and queried
-    data: &[ScalarField],
+    data: &Data<ScalarField>,
     // data[i] is queried if query[i] ≠ 0
     query: &Query,
     // Commitment to data
@@ -141,6 +142,8 @@ pub fn prove<RNG>(
 where
     RNG: RngCore + CryptoRng,
 {
+    let data = &data.data;
+
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
 
     let data_poly = evals_to_polynomial(data.to_vec(), domain.d1);
@@ -355,13 +358,9 @@ pub fn verify_answer(srs: &SRS<Curve>, query: &Query, answer: &Answer, proof: &R
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        commitment::{commit_poly, Commitment},
-        Curve, ScalarField, SRS_SIZE,
-    };
+    use crate::{Curve, ScalarField, SRS_SIZE};
     use ark_ec::AffineRepr;
     use ark_ff::{One, UniformRand};
-    use ark_poly::{univariate::DensePolynomial, Evaluations};
     use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
     use mina_curves::pasta::{Fp, Vesta};
     use poly_commitment::{commitment::CommitmentCurve, SRS as _};
@@ -374,17 +373,13 @@ mod tests {
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
         let domain: EvaluationDomains<ScalarField> = EvaluationDomains::create(srs.size()).unwrap();
 
-        let data: Vec<ScalarField> = {
+        let data = {
             let mut data = vec![];
             (0..SRS_SIZE).for_each(|_| data.push(Fp::rand(&mut rng)));
-            data
+            Data { data }
         };
 
-        let data_poly: DensePolynomial<ScalarField> =
-            Evaluations::from_vec_and_domain(data.clone(), domain.d1).interpolate();
-        let data_comm = Commitment {
-            cm: commit_poly(&srs, &data_poly),
-        };
+        let data_comm = data.to_commitment(&srs);
 
         let query = Query::random(0.1, SRS_SIZE);
 
@@ -402,7 +397,7 @@ mod tests {
             domain,
             &group_map,
             &mut rng,
-            data.as_slice(),
+            &data,
             &query,
             &data_comm,
             &query_comm,
@@ -461,7 +456,7 @@ mod tests {
             domain,
             &group_map,
             &mut rng,
-            data.as_slice(),
+            &data,
             &Query { query: wrong_query },
             &data_comm,
             &query_comm,

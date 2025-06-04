@@ -9,6 +9,7 @@ use rand::rngs::OsRng;
 use saffron::{
     commitment::{commit_poly, Commitment},
     read_proof::{prove, verify, Query},
+    storage::Data,
     Curve, ScalarField, SRS_SIZE,
 };
 
@@ -16,14 +17,16 @@ fn generate_test_data(
     srs: &SRS<Curve>,
     domain: EvaluationDomains<ScalarField>,
     size: usize,
-) -> (Vec<ScalarField>, Query, Commitment<Curve>, Curve) {
+) -> (Data<ScalarField>, Query, Commitment<Curve>, Curve) {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
     // Generate data with specified size
-    let data: Vec<ScalarField> = (0..size).map(|_| Fp::rand(&mut rng)).collect();
+    let data = Data {
+        data: (0..size).map(|_| Fp::rand(&mut rng)).collect(),
+    };
 
     // Create data commitment
-    let data_comm = Commitment::from_data(srs, &data);
+    let data_comm = data.to_commitment(srs);
 
     // Generate query (about 10% of positions will be queried)
     let query = Query::random(0.1, SRS_SIZE);
@@ -50,7 +53,7 @@ fn bench_read_proof_prove(c: &mut Criterion) {
                     domain,
                     &group_map,
                     &mut rng,
-                    data.as_slice(),
+                    &data,
                     &query,
                     &data_comm,
                     &query_comm,
@@ -75,7 +78,7 @@ fn bench_read_proof_verify(c: &mut Criterion) {
         domain,
         &group_map,
         &mut rng,
-        data.as_slice(),
+        &data,
         &query,
         &data_comm,
         &query_comm,
