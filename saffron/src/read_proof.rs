@@ -23,6 +23,7 @@
 
 use crate::{
     commitment::*,
+    storage::Data,
     utils::{evals_to_polynomial, evals_to_polynomial_and_commitment},
     Curve, CurveFqSponge, CurveFrSponge, ScalarField,
 };
@@ -75,9 +76,9 @@ impl Query {
         let indexes: Vec<u64> = self.query.iter().map(|i| *i as u64).collect();
         commit_sparse(srs, &query_evals, &indexes)
     }
-    pub fn to_answer(&self, data: &[ScalarField]) -> Answer {
+    pub fn to_answer(&self, data: &Data<ScalarField>) -> Answer {
         Answer {
-            answer: self.query.iter().map(|i| data[*i as usize]).collect(),
+            answer: self.query.iter().map(|i| data.data[*i as usize]).collect(),
         }
     }
     fn to_answer_evals(&self, data: &[ScalarField], domain_size: usize) -> Vec<ScalarField> {
@@ -123,7 +124,7 @@ pub fn prove<RNG>(
     group_map: &<Curve as CommitmentCurve>::Map,
     rng: &mut RNG,
     // data is the data that is stored and queried
-    data: &[ScalarField],
+    data: &Data<ScalarField>,
     // data[i] is queried if query[i] ≠ 0
     query: &Query,
     // Commitment to data
@@ -134,6 +135,8 @@ pub fn prove<RNG>(
 where
     RNG: RngCore + CryptoRng,
 {
+    let data = &data.data;
+
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
 
     let data_poly = evals_to_polynomial(data.to_vec(), domain.d1);
@@ -348,13 +351,9 @@ pub fn verify_answer(srs: &SRS<Curve>, query: &Query, answer: &Answer, proof: &R
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        commitment::{commit_to_poly, Commitment},
-        Curve, ScalarField, SRS_SIZE,
-    };
+    use crate::{Curve, ScalarField, SRS_SIZE};
     use ark_ec::AffineRepr;
     use ark_ff::{One, UniformRand};
-    use ark_poly::{univariate::DensePolynomial, Evaluations};
     use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
     use mina_curves::pasta::{Fp, Vesta};
     use poly_commitment::{commitment::CommitmentCurve, SRS as _};
@@ -368,17 +367,13 @@ mod tests {
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
         let domain: EvaluationDomains<ScalarField> = EvaluationDomains::create(srs.size()).unwrap();
 
-        let data: Vec<ScalarField> = {
+        let data = {
             let mut data = vec![];
             (0..SRS_SIZE).for_each(|_| data.push(Fp::rand(&mut rng)));
-            data
+            Data { data }
         };
 
-        let data_poly: DensePolynomial<ScalarField> =
-            Evaluations::from_vec_and_domain(data.clone(), domain.d1).interpolate();
-        let data_comm = Commitment {
-            cm: commit_to_poly(&srs, &data_poly),
-        };
+        let data_comm = data.to_commitment(&srs);
 
         let query: Query = {
             let mut query = vec![];
@@ -392,7 +387,7 @@ mod tests {
 
         let query_comm = query.to_commitment(domain.d1, &srs);
 
-        let query_comm_sparse = query.to_commitment_sparse(&SRS);
+        let query_comm_sparse = query.to_commitment_sparse(&srs);
 
         assert!(
             query_comm == query_comm_sparse,
@@ -404,7 +399,7 @@ mod tests {
             domain,
             &group_map,
             &mut rng,
-            data.as_slice(),
+            &data,
             &query,
             &data_comm,
             &query_comm,
@@ -459,19 +454,19 @@ mod tests {
         wrong_query.truncate(query.query.len() - 2);
 
         let proof_for_wrong_query = prove(
-            &SRS,
-            *DOMAIN,
-            &GROUP_MAP,
+            &srs,
+            domain,
+            &group_map,
             &mut rng,
-            data.as_slice(),
+            &data,
             &Query { query: wrong_query },
             &data_comm,
             &query_comm,
         );
         let res_3 = verify(
-            &SRS,
-            *DOMAIN,
-            &GROUP_MAP,
+            &srs,
+            domain,
+            &group_map,
             &mut rng,
             &data_comm,
             &query_comm,
@@ -482,13 +477,13 @@ mod tests {
 
         let mut answer = query.to_answer(&data);
 
-        let res_4 = verify_answer(&SRS, &query, &answer, &proof);
+        let res_4 = verify_answer(&srs, &query, &answer, &proof);
 
         assert!(res_4, "Completeness: Answer must be consistent with proof");
 
         answer.answer[0] = ScalarField::one();
 
-        let res_5 = verify_answer(&SRS, &query, &answer, &proof);
+        let res_5 = verify_answer(&srs, &query, &answer, &proof);
 
         assert!(!res_5, "Soundness: Wrong answer must NOT verify");
     }
