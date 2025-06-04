@@ -504,9 +504,14 @@ mod tests {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use crate::caml_commitment::CamlCommitment;
-    use kimchi_stubs::arkworks::{group_affine::CamlGVesta, pasta_fp::CamlFp};
-    use poly_commitment::ipa::caml::CamlOpeningProof;
+    use crate::{commitment::caml::CamlCommitment, read_proof, storage::caml::CamlData, BaseField};
+    use kimchi::groupmap::GroupMap;
+    use kimchi_stubs::{
+        arkworks::{group_affine::CamlGVesta, pasta_fp::CamlFp},
+        field_vector::fp::CamlFpVector,
+        srs::fp::CamlFpSrs,
+    };
+    use poly_commitment::{ipa::caml::CamlOpeningProof, SRS};
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlReadProof {
@@ -542,5 +547,102 @@ pub mod caml {
                 opening_proof: proof.opening_proof.into(),
             }
         }
+    }
+
+    // ocaml::Int are represented as usize, so extra attention is needed to
+    // convert into u16
+    pub fn caml_int_to_u16(caml_int: ocaml::Int) -> u16 {
+        match u16::try_from(caml_int) {
+            Ok(u) => u,
+            Err(_) => panic!("OCaml int out of range for u16: {}", caml_int),
+        }
+    }
+
+    #[ocaml_gen::func]
+    #[ocaml::func]
+    pub fn caml_read_prove(
+        caml_srs: CamlFpSrs,
+        caml_data: CamlData,
+        caml_query: Vec<ocaml::Int>,
+        caml_data_comm: CamlCommitment,
+        caml_query_comm: CamlCommitment,
+    ) -> CamlReadProof {
+        let srs = caml_srs.0;
+        let data: Data<ScalarField> = caml_data.into();
+        let query: Query = Query {
+            query: caml_query.into_iter().map(caml_int_to_u16).collect(),
+        };
+        let data_comm: Commitment<Curve> = caml_data_comm.into();
+        let query_comm: Commitment<Curve> = caml_query_comm.into();
+
+        let srs_size = srs.max_poly_size();
+        let domain = EvaluationDomains::<ScalarField>::create(srs_size).unwrap();
+
+        let group_map = GroupMap::<BaseField>::setup();
+
+        let mut rng = rand::thread_rng();
+
+        let read_proof = read_proof::prove(
+            &srs,
+            domain,
+            &group_map,
+            &mut rng,
+            &data,
+            &query,
+            &data_comm,
+            &query_comm,
+        );
+        read_proof.into()
+    }
+
+    #[ocaml_gen::func]
+    #[ocaml::func]
+    pub fn caml_read_verify(
+        caml_srs: CamlFpSrs,
+        caml_data_comm: CamlCommitment,
+        caml_query_comm: CamlCommitment,
+        caml_proof: CamlReadProof,
+    ) -> bool {
+        let srs = caml_srs.0;
+        let data_comm: Commitment<Curve> = caml_data_comm.into();
+        let query_comm: Commitment<Curve> = caml_query_comm.into();
+        let proof: ReadProof = caml_proof.into();
+
+        let srs_size = srs.max_poly_size();
+        let domain = EvaluationDomains::<ScalarField>::create(srs_size).unwrap();
+
+        let group_map = GroupMap::<BaseField>::setup();
+
+        let mut rng = rand::thread_rng();
+
+        read_proof::verify(
+            &srs,
+            domain,
+            &group_map,
+            &mut rng,
+            &data_comm,
+            &query_comm,
+            &proof,
+        )
+    }
+
+    #[ocaml_gen::func]
+    #[ocaml::func]
+    pub fn caml_read_answer_verify(
+        caml_srs: CamlFpSrs,
+        caml_query: Vec<ocaml::Int>,
+        caml_answer: CamlFpVector,
+        caml_proof: CamlReadProof,
+    ) -> bool {
+        let srs = caml_srs.0;
+        let query: Query = Query {
+            query: caml_query.into_iter().map(caml_int_to_u16).collect(),
+        };
+        let answer = Answer {
+            answer: caml_answer.as_slice().into(),
+        };
+        let proof = caml_proof.into();
+
+        read_proof::verify_answer(&srs, &query, &answer, &proof)
     }
 }
