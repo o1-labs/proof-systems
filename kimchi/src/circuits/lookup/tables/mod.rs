@@ -214,7 +214,7 @@ pub mod caml {
     // CamlLookupTable<CamlF>
     //
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlLookupTable<CamlF> {
         pub id: i32,
         pub data: Vec<Vec<CamlF>>,

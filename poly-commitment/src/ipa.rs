@@ -106,7 +106,7 @@ where
         base_fields.push(t)
     }
 
-    let t = G::BaseField::from_base_prime_field_elems(&base_fields).unwrap();
+    let t = G::BaseField::from_base_prime_field_elems(base_fields).unwrap();
 
     let (x, y) = map.to_group(t);
     G::of_coordinates(x, y).mul_by_cofactor()
@@ -1018,21 +1018,24 @@ pub mod caml {
     use ark_ec::AffineRepr;
     use ocaml;
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlOpeningProof<G, F> {
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlOpeningProof<
+        CamlG: ocaml::FromValue + ocaml::ToValue,
+        CamlF: ocaml::FromValue + ocaml::ToValue,
+    > {
         /// vector of rounds of L & R commitments
-        pub lr: Vec<(G, G)>,
-        pub delta: G,
-        pub z1: F,
-        pub z2: F,
-        pub sg: G,
+        pub lr: Vec<(CamlG, CamlG)>,
+        pub delta: CamlG,
+        pub z1: CamlF,
+        pub z2: CamlF,
+        pub sg: CamlG,
     }
 
     impl<G, CamlF, CamlG> From<OpeningProof<G>> for CamlOpeningProof<CamlG, CamlF>
     where
         G: AffineRepr,
-        CamlG: From<G>,
-        CamlF: From<G::ScalarField>,
+        CamlG: From<G> + ocaml::ToValue + ocaml::FromValue,
+        CamlF: From<G::ScalarField> + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(opening_proof: OpeningProof<G>) -> Self {
             Self {
@@ -1052,8 +1055,8 @@ pub mod caml {
     impl<G, CamlF, CamlG> From<CamlOpeningProof<CamlG, CamlF>> for OpeningProof<G>
     where
         G: AffineRepr,
-        CamlG: Into<G>,
-        CamlF: Into<G::ScalarField>,
+        CamlG: Into<G> + ocaml::FromValue + ocaml::ToValue,
+        CamlF: Into<G::ScalarField> + ocaml::FromValue + ocaml::ToValue,
     {
         fn from(caml: CamlOpeningProof<CamlG, CamlF>) -> Self {
             Self {

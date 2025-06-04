@@ -116,7 +116,7 @@ impl<Field: PrimeField> GateSpec<usize, Field> {
 #[derive(Debug)]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 pub struct ScaleRound<A> {
     pub accs: Vec<(A, A)>,
@@ -130,7 +130,7 @@ pub struct ScaleRound<A> {
 #[derive(Debug)]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 pub struct EndoscaleRound<A> {
     pub xt: A,
@@ -151,7 +151,7 @@ pub struct EndoscaleRound<A> {
 #[derive(Debug)]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 pub struct EndoscaleScalarRound<A> {
     pub n0: A,
@@ -182,7 +182,7 @@ pub enum BasicSnarkyConstraint<Var> {
 #[derive(Debug)]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 pub struct BasicInput<Var, Field> {
     pub l: (Field, Var),
@@ -195,7 +195,7 @@ pub struct BasicInput<Var, Field> {
 #[derive(Debug)]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 pub struct PoseidonInput<Var> {
     // TODO: revert back to arrays once we don't need to expose this struct to OCaml
@@ -208,7 +208,7 @@ pub struct PoseidonInput<Var> {
 #[derive(Debug)]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 pub struct EcAddCompleteInput<Var> {
     pub p1: (Var, Var),
@@ -224,7 +224,7 @@ pub struct EcAddCompleteInput<Var> {
 #[derive(Debug)]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 pub struct EcEndoscaleInput<Var> {
     pub state: Vec<EndoscaleRound<Var>>,
@@ -239,7 +239,7 @@ pub struct EcEndoscaleInput<Var> {
 #[derive(Debug)]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 pub enum KimchiConstraint<Var, Field> {
     Basic(BasicInput<Var, Field>),

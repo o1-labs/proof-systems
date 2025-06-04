@@ -21,7 +21,7 @@ use serde_with::serde_as;
 #[derive(Copy, Clone, Serialize, Deserialize, Default, Debug, PartialEq)]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 #[serde(bound(
     serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Evals>",
@@ -501,7 +501,7 @@ pub mod caml {
     // CamlRecursionChallenge<CamlG, CamlF>
     //
 
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    #[derive(Clone, ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlRecursionChallenge<CamlG, CamlF> {
         pub chals: Vec<CamlF>,
         pub comm: CamlPolyComm<CamlG>,
@@ -543,7 +543,7 @@ pub mod caml {
     //
 
     #[allow(clippy::type_complexity)]
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    #[derive(Clone, ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProofEvaluations<CamlF> {
         pub w: (
             PointEvaluations<Vec<CamlF>>,

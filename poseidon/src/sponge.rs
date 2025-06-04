@@ -111,7 +111,7 @@ pub struct DefaultFrSponge<Fr: Field, SC: SpongeConstants> {
 fn pack<B: BigInteger>(limbs_lsb: &[u64]) -> B {
     let mut res: B = 0u64.into();
     for &x in limbs_lsb.iter().rev() {
-        res.muln(64);
+        res <<= 64;
         res.add_with_carry(&x.into());
     }
     res
@@ -275,12 +275,12 @@ pub mod caml {
     // ScalarChallenge<F> <-> CamlScalarChallenge<CamlF>
     //
 
-    #[derive(Debug, Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlScalarChallenge<CamlF>(pub CamlF);
+    #[derive(Debug, Clone, ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlScalarChallenge<CamlF: ocaml::ToValue + ocaml::FromValue>(pub CamlF);
 
     impl<F, CamlF> From<ScalarChallenge<F>> for CamlScalarChallenge<CamlF>
     where
-        CamlF: From<F>,
+        CamlF: From<F> + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(sc: ScalarChallenge<F>) -> Self {
             Self(sc.0.into())
@@ -289,7 +289,7 @@ pub mod caml {
 
     impl<F, CamlF> From<CamlScalarChallenge<CamlF>> for ScalarChallenge<F>
     where
-        CamlF: Into<F>,
+        CamlF: Into<F> + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(caml_sc: CamlScalarChallenge<CamlF>) -> Self {
             Self(caml_sc.0.into())
