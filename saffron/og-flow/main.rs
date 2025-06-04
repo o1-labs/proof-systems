@@ -13,7 +13,7 @@ use poly_commitment::{
     PolyComm, SRS as _,
 };
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use saffron::utils::encode_for_domain;
+use saffron::encoding::encode_for_domain;
 use std::{fs::File, io::Read, process::ExitCode};
 
 // To run:
