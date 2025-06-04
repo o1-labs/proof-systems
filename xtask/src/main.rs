@@ -115,7 +115,7 @@ fn build_wasm(out_dir: &str, target: Target, rust_version: RustVersion) -> Resul
     };
 
     let status = cmd
-        .args(&args)
+        .args(args)
         .args(target_args)
         .env("RUSTFLAGS", RUSTFLAGS)
         .status()
@@ -175,6 +175,6 @@ impl DerefMut for RustVersionCommand<'_> {
             return &mut self.cmd;
         };
 
-        self.cmd.arg("run").arg(format!("{version}")).arg(program)
+        self.cmd.arg("run").arg(version).arg(program)
     }
 }
