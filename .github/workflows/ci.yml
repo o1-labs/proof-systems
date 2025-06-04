@@ -38,7 +38,7 @@ jobs:
       default_os: ${{ fromJson(steps.os.outputs.version)[0] }}
     steps:
       - id: rust
-        run: echo 'version=["1.81", "1.82"]' >> "$GITHUB_OUTPUT"
+        run: echo 'version=["1.81", "1.82", "1.83", "1.84", "1.85", "1.86"]' >> "$GITHUB_OUTPUT"
       # FIXME: currently not available for 5.0.0.
       # It might be related to boxroot dependency, and we would need to bump
       # up the ocaml-rs dependency
