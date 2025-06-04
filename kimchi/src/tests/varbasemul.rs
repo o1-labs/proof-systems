@@ -6,7 +6,7 @@ use crate::{
     },
     tests::framework::TestFramework,
 };
-use ark_ec::{AffineRepr, CurveGroup};
+use ark_ec::{AdditiveGroup, AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{

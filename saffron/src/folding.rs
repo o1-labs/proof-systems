@@ -318,9 +318,7 @@ where
         let fail_final_q_division = || panic!("Division by vanishing poly must not fail");
         // We compute the polynomial t(X) by dividing the constraints polynomial
         // by the vanishing polynomial, i.e. Z_H(X).
-        let (quotient, res) = numerator_eval_interpolated
-            .divide_by_vanishing_poly(domain.d1)
-            .unwrap_or_else(fail_final_q_division);
+        let (quotient, res) = numerator_eval_interpolated.divide_by_vanishing_poly(domain.d1);
         // As the constraints must be verified on H, the rest of the division
         // must be equal to 0 as the constraints polynomial and Z_H(X) are both
         // equal on H.

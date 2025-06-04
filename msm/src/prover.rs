@@ -265,14 +265,11 @@ where
         let mut last_constraint_failed = None;
         // Only for debugging purposes
         for expr in constraints.iter() {
-            let fail_q_division =
-                ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:}", expr));
             // Check this expression are witness satisfied
             let (_, res) = expr
                 .evaluations(&column_env)
                 .interpolate_by_ref()
-                .divide_by_vanishing_poly(domain.d1)
-                .ok_or(fail_q_division.clone())?;
+                .divide_by_vanishing_poly(domain.d1);
             if !res.is_zero() {
                 eprintln!("Unsatisfied expression: {}", expr);
                 //return Err(fail_q_division);
@@ -313,9 +310,7 @@ where
         };
         // We compute the polynomial t(X) by dividing the constraints polynomial
         // by the vanishing polynomial, i.e. Z_H(X).
-        let (quotient, res) = expr_evaluation_interpolated
-            .divide_by_vanishing_poly(domain.d1)
-            .unwrap_or_else(fail_final_q_division);
+        let (quotient, res) = expr_evaluation_interpolated.divide_by_vanishing_poly(domain.d1);
         // As the constraints must be verified on H, the rest of the division
         // must be equal to 0 as the constraints polynomial and Z_H(X) are both
         // equal on H.

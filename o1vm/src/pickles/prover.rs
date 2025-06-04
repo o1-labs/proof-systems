@@ -288,14 +288,11 @@ where
         // And we interpolate using the evaluations
         let expr_evaluation_interpolated = expr_evaluation.interpolate();
 
-        let fail_final_q_division = || panic!("Fail division by vanishing poly");
         let fail_remainder_not_zero =
             || panic!("The constraints are not satisfied since the remainder is not zero");
         // We compute the polynomial t(X) by dividing the constraints polynomial
         // by the vanishing polynomial, i.e. Z_H(X).
-        let (quotient, rem) = expr_evaluation_interpolated
-            .divide_by_vanishing_poly(domain.d1)
-            .unwrap_or_else(fail_final_q_division);
+        let (quotient, rem) = expr_evaluation_interpolated.divide_by_vanishing_poly(domain.d1);
         // As the constraints must be verified on H, the rest of the division
         // must be equal to 0 as the constraints polynomial and Z_H(X) are both
         // equal on H.

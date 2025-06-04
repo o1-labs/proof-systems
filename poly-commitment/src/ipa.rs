@@ -106,7 +106,7 @@ where
         base_fields.push(t)
     }
 
-    let t = G::BaseField::from_base_prime_field_elems(&base_fields).unwrap();
+    let t = G::BaseField::from_base_prime_field_elems(base_fields).unwrap();
 
     let (x, y) = map.to_group(t);
     G::of_coordinates(x, y).mul_by_cofactor()

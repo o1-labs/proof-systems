@@ -318,9 +318,7 @@ where
                 println!("Interpolated expression is zero");
             }
 
-            let (quotient, remainder) = interpolated
-                .divide_by_vanishing_poly(domain.d1)
-                .unwrap_or_else(|| panic!("ERROR: Cannot divide by vanishing polynomial"));
+            let (quotient, remainder) = interpolated.divide_by_vanishing_poly(domain.d1);
             if !remainder.is_zero() {
                 panic!("ERROR: Remainder is not zero for joint folding expression",);
             }
