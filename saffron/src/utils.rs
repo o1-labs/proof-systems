@@ -1,11 +1,20 @@
 use crate::encoding::{decode_into, encoding_size};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::PrimeField;
-use ark_poly::EvaluationDomain;
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as R2D,
+};
 use o1_utils::field_helpers::pows;
 use std::marker::PhantomData;
 use thiserror::Error;
 use tracing::instrument;
+
+pub(crate) fn evals_to_polynomial<F: PrimeField>(
+    evals: Vec<F>,
+    domain: R2D<F>,
+) -> DensePolynomial<F> {
+    Evaluations::from_vec_and_domain(evals, domain).interpolate_by_ref()
+}
 
 #[derive(Clone, Debug)]
 /// Represents the bytes a user query
