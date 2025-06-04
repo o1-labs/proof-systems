@@ -2,6 +2,6 @@
     index: &amp;<a class="struct" href="../../pasta_fp_plonk_index/struct.WasmPastaFpPlonkIndex.html" title="struct plonk_wasm::pasta_fp_plonk_index::WasmPastaFpPlonkIndex">WasmPastaFpPlonkIndex</a>,
     witness: WasmVecVecFp,
     wasm_runtime_tables: WasmVector&lt;<a class="struct" href="struct.WasmFpRuntimeTable.html" title="struct plonk_wasm::plonk_proof::fp::WasmFpRuntimeTable">WasmFpRuntimeTable</a>&gt;,
-    prev_challenges: <a class="struct" href="../../../wasm_types/flat_vector/struct.FlatVector.html" title="struct wasm_types::flat_vector::FlatVector">WasmFlatVector</a>&lt;<a class="struct" href="../../../arkworks/pasta_fp/struct.WasmPastaFp.html" title="struct arkworks::pasta_fp::WasmPastaFp">WasmPastaFp</a>&gt;,
-    prev_sgs: WasmVector&lt;<a class="struct" href="../../../arkworks/group_affine/struct.WasmGVesta.html" title="struct arkworks::group_affine::WasmGVesta">WasmGVesta</a>&gt;,
+    prev_challenges: WasmFlatVector&lt;WasmPastaFp&gt;,
+    prev_sgs: WasmVector&lt;WasmGVesta&gt;,
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="struct.WasmFpProverProof.html" title="struct plonk_wasm::plonk_proof::fp::WasmFpProverProof">WasmFpProverProof</a>, <a class="struct" href="https://docs.rs/wasm-bindgen/0.2/wasm_bindgen/struct.JsError.html" title="struct wasm_bindgen::JsError">JsError</a>&gt;</code></pre></section></div></main></body></html>
