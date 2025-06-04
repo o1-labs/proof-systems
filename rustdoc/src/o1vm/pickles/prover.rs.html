@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `o1vm/src/pickles/prover.rs`."><title>prover.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-84e720fa.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="o1vm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0-nightly (99e7c15e8 2025-06-01)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../../../static.files/src-script-63605ae7.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-fd3af306.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">o1vm/pickles/</div>prover.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::array;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `o1vm/src/pickles/prover.rs`."><title>prover.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-84e720fa.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="o1vm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0-nightly (59aa1e873 2025-06-03)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../../static.files/storage-4e99c027.js"></script><script defer src="../../../static.files/src-script-63605ae7.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-fd3af306.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">o1vm/pickles/</div>prover.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::array;
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
@@ -288,200 +288,197 @@
 <a href=#288 id=288 data-nosnippet>288</a>        <span class="comment">// And we interpolate using the evaluations
 <a href=#289 id=289 data-nosnippet>289</a>        </span><span class="kw">let </span>expr_evaluation_interpolated = expr_evaluation.interpolate();
 <a href=#290 id=290 data-nosnippet>290</a>
-<a href=#291 id=291 data-nosnippet>291</a>        <span class="kw">let </span>fail_final_q_division = || <span class="macro">panic!</span>(<span class="string">"Fail division by vanishing poly"</span>);
-<a href=#292 id=292 data-nosnippet>292</a>        <span class="kw">let </span>fail_remainder_not_zero =
-<a href=#293 id=293 data-nosnippet>293</a>            || <span class="macro">panic!</span>(<span class="string">"The constraints are not satisfied since the remainder is not zero"</span>);
-<a href=#294 id=294 data-nosnippet>294</a>        <span class="comment">// We compute the polynomial t(X) by dividing the constraints polynomial
-<a href=#295 id=295 data-nosnippet>295</a>        // by the vanishing polynomial, i.e. Z_H(X).
-<a href=#296 id=296 data-nosnippet>296</a>        </span><span class="kw">let </span>(quotient, rem) = expr_evaluation_interpolated
-<a href=#297 id=297 data-nosnippet>297</a>            .divide_by_vanishing_poly(domain.d1)
-<a href=#298 id=298 data-nosnippet>298</a>            .unwrap_or_else(fail_final_q_division);
-<a href=#299 id=299 data-nosnippet>299</a>        <span class="comment">// As the constraints must be verified on H, the rest of the division
-<a href=#300 id=300 data-nosnippet>300</a>        // must be equal to 0 as the constraints polynomial and Z_H(X) are both
-<a href=#301 id=301 data-nosnippet>301</a>        // equal on H.
-<a href=#302 id=302 data-nosnippet>302</a>        </span><span class="kw">if </span>!rem.is_zero() {
-<a href=#303 id=303 data-nosnippet>303</a>            fail_remainder_not_zero();
-<a href=#304 id=304 data-nosnippet>304</a>        }
+<a href=#291 id=291 data-nosnippet>291</a>        <span class="kw">let </span>fail_remainder_not_zero =
+<a href=#292 id=292 data-nosnippet>292</a>            || <span class="macro">panic!</span>(<span class="string">"The constraints are not satisfied since the remainder is not zero"</span>);
+<a href=#293 id=293 data-nosnippet>293</a>        <span class="comment">// We compute the polynomial t(X) by dividing the constraints polynomial
+<a href=#294 id=294 data-nosnippet>294</a>        // by the vanishing polynomial, i.e. Z_H(X).
+<a href=#295 id=295 data-nosnippet>295</a>        </span><span class="kw">let </span>(quotient, rem) = expr_evaluation_interpolated.divide_by_vanishing_poly(domain.d1);
+<a href=#296 id=296 data-nosnippet>296</a>        <span class="comment">// As the constraints must be verified on H, the rest of the division
+<a href=#297 id=297 data-nosnippet>297</a>        // must be equal to 0 as the constraints polynomial and Z_H(X) are both
+<a href=#298 id=298 data-nosnippet>298</a>        // equal on H.
+<a href=#299 id=299 data-nosnippet>299</a>        </span><span class="kw">if </span>!rem.is_zero() {
+<a href=#300 id=300 data-nosnippet>300</a>            fail_remainder_not_zero();
+<a href=#301 id=301 data-nosnippet>301</a>        }
+<a href=#302 id=302 data-nosnippet>302</a>
+<a href=#303 id=303 data-nosnippet>303</a>        quotient
+<a href=#304 id=304 data-nosnippet>304</a>    };
 <a href=#305 id=305 data-nosnippet>305</a>
-<a href=#306 id=306 data-nosnippet>306</a>        quotient
-<a href=#307 id=307 data-nosnippet>307</a>    };
-<a href=#308 id=308 data-nosnippet>308</a>
-<a href=#309 id=309 data-nosnippet>309</a>    <span class="kw">let </span>quotient_commitment = srs
-<a href=#310 id=310 data-nosnippet>310</a>        .commit_custom(
-<a href=#311 id=311 data-nosnippet>311</a>            <span class="kw-2">&amp;</span>quotient_poly,
-<a href=#312 id=312 data-nosnippet>312</a>            DEGREE_QUOTIENT_POLYNOMIAL <span class="kw">as </span>usize,
-<a href=#313 id=313 data-nosnippet>313</a>            <span class="kw-2">&amp;</span>PolyComm::new(<span class="macro">vec!</span>[
-<a href=#314 id=314 data-nosnippet>314</a>                G::ScalarField::one();
-<a href=#315 id=315 data-nosnippet>315</a>                DEGREE_QUOTIENT_POLYNOMIAL <span class="kw">as </span>usize
-<a href=#316 id=316 data-nosnippet>316</a>            ]),
-<a href=#317 id=317 data-nosnippet>317</a>        )
-<a href=#318 id=318 data-nosnippet>318</a>        .unwrap();
-<a href=#319 id=319 data-nosnippet>319</a>    absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>quotient_commitment.commitment);
-<a href=#320 id=320 data-nosnippet>320</a>
-<a href=#321 id=321 data-nosnippet>321</a>    <span class="comment">////////////////////////////////////////////////////////////////////////////
-<a href=#322 id=322 data-nosnippet>322</a>    // Round 3: Evaluations at ζ and ζω
-<a href=#323 id=323 data-nosnippet>323</a>    ////////////////////////////////////////////////////////////////////////////
+<a href=#306 id=306 data-nosnippet>306</a>    <span class="kw">let </span>quotient_commitment = srs
+<a href=#307 id=307 data-nosnippet>307</a>        .commit_custom(
+<a href=#308 id=308 data-nosnippet>308</a>            <span class="kw-2">&amp;</span>quotient_poly,
+<a href=#309 id=309 data-nosnippet>309</a>            DEGREE_QUOTIENT_POLYNOMIAL <span class="kw">as </span>usize,
+<a href=#310 id=310 data-nosnippet>310</a>            <span class="kw-2">&amp;</span>PolyComm::new(<span class="macro">vec!</span>[
+<a href=#311 id=311 data-nosnippet>311</a>                G::ScalarField::one();
+<a href=#312 id=312 data-nosnippet>312</a>                DEGREE_QUOTIENT_POLYNOMIAL <span class="kw">as </span>usize
+<a href=#313 id=313 data-nosnippet>313</a>            ]),
+<a href=#314 id=314 data-nosnippet>314</a>        )
+<a href=#315 id=315 data-nosnippet>315</a>        .unwrap();
+<a href=#316 id=316 data-nosnippet>316</a>    absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>quotient_commitment.commitment);
+<a href=#317 id=317 data-nosnippet>317</a>
+<a href=#318 id=318 data-nosnippet>318</a>    <span class="comment">////////////////////////////////////////////////////////////////////////////
+<a href=#319 id=319 data-nosnippet>319</a>    // Round 3: Evaluations at ζ and ζω
+<a href=#320 id=320 data-nosnippet>320</a>    ////////////////////////////////////////////////////////////////////////////
+<a href=#321 id=321 data-nosnippet>321</a>
+<a href=#322 id=322 data-nosnippet>322</a>    </span><span class="macro">debug!</span>(<span class="string">"Prover: evaluating all columns, including the selectors, at ζ and ζω"</span>);
+<a href=#323 id=323 data-nosnippet>323</a>    <span class="kw">let </span>zeta_chal = ScalarChallenge(fq_sponge.challenge());
 <a href=#324 id=324 data-nosnippet>324</a>
-<a href=#325 id=325 data-nosnippet>325</a>    </span><span class="macro">debug!</span>(<span class="string">"Prover: evaluating all columns, including the selectors, at ζ and ζω"</span>);
-<a href=#326 id=326 data-nosnippet>326</a>    <span class="kw">let </span>zeta_chal = ScalarChallenge(fq_sponge.challenge());
+<a href=#325 id=325 data-nosnippet>325</a>    <span class="kw">let </span>zeta = zeta_chal.to_field(endo_r);
+<a href=#326 id=326 data-nosnippet>326</a>    <span class="kw">let </span>zeta_omega = zeta * omega;
 <a href=#327 id=327 data-nosnippet>327</a>
-<a href=#328 id=328 data-nosnippet>328</a>    <span class="kw">let </span>zeta = zeta_chal.to_field(endo_r);
-<a href=#329 id=329 data-nosnippet>329</a>    <span class="kw">let </span>zeta_omega = zeta * omega;
-<a href=#330 id=330 data-nosnippet>330</a>
-<a href=#331 id=331 data-nosnippet>331</a>    <span class="kw">let </span>evals = |point| {
-<a href=#332 id=332 data-nosnippet>332</a>        <span class="kw">let </span>WitnessColumns {
-<a href=#333 id=333 data-nosnippet>333</a>            scratch,
-<a href=#334 id=334 data-nosnippet>334</a>            scratch_inverse,
-<a href=#335 id=335 data-nosnippet>335</a>            lookup_state,
-<a href=#336 id=336 data-nosnippet>336</a>            instruction_counter,
-<a href=#337 id=337 data-nosnippet>337</a>            error,
-<a href=#338 id=338 data-nosnippet>338</a>            selector,
-<a href=#339 id=339 data-nosnippet>339</a>        } = <span class="kw-2">&amp;</span>polys;
-<a href=#340 id=340 data-nosnippet>340</a>        <span class="kw">let </span>eval = |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| poly.evaluate(point);
-<a href=#341 id=341 data-nosnippet>341</a>        <span class="kw">let </span>scratch = scratch.par_iter().map(eval).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-<a href=#342 id=342 data-nosnippet>342</a>        <span class="kw">let </span>scratch_inverse = scratch_inverse.par_iter().map(eval).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-<a href=#343 id=343 data-nosnippet>343</a>        <span class="kw">let </span>lookup_state = lookup_state.par_iter().map(eval).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-<a href=#344 id=344 data-nosnippet>344</a>        <span class="kw">let </span>selector = selector.par_iter().map(eval).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-<a href=#345 id=345 data-nosnippet>345</a>        WitnessColumns {
-<a href=#346 id=346 data-nosnippet>346</a>            scratch: scratch.try_into().unwrap(),
-<a href=#347 id=347 data-nosnippet>347</a>            scratch_inverse: scratch_inverse.try_into().unwrap(),
-<a href=#348 id=348 data-nosnippet>348</a>            lookup_state,
-<a href=#349 id=349 data-nosnippet>349</a>            instruction_counter: eval(instruction_counter),
-<a href=#350 id=350 data-nosnippet>350</a>            error: eval(error),
-<a href=#351 id=351 data-nosnippet>351</a>            selector: selector.try_into().unwrap(),
-<a href=#352 id=352 data-nosnippet>352</a>        }
-<a href=#353 id=353 data-nosnippet>353</a>    };
-<a href=#354 id=354 data-nosnippet>354</a>    <span class="comment">// All evaluations at ζ
-<a href=#355 id=355 data-nosnippet>355</a>    </span><span class="kw">let </span>zeta_evaluations: WitnessColumns&lt;G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]&gt; =
-<a href=#356 id=356 data-nosnippet>356</a>        evals(<span class="kw-2">&amp;</span>zeta);
-<a href=#357 id=357 data-nosnippet>357</a>
-<a href=#358 id=358 data-nosnippet>358</a>    <span class="comment">// All evaluations at ζω
-<a href=#359 id=359 data-nosnippet>359</a>    </span><span class="kw">let </span>zeta_omega_evaluations: WitnessColumns&lt;G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]&gt; =
-<a href=#360 id=360 data-nosnippet>360</a>        evals(<span class="kw-2">&amp;</span>zeta_omega);
-<a href=#361 id=361 data-nosnippet>361</a>
-<a href=#362 id=362 data-nosnippet>362</a>    <span class="kw">let </span>chunked_quotient = quotient_poly
-<a href=#363 id=363 data-nosnippet>363</a>        .to_chunked_polynomial(DEGREE_QUOTIENT_POLYNOMIAL <span class="kw">as </span>usize, domain.d1.size <span class="kw">as </span>usize);
-<a href=#364 id=364 data-nosnippet>364</a>    <span class="kw">let </span>quotient_evaluations = PointEvaluations {
-<a href=#365 id=365 data-nosnippet>365</a>        zeta: chunked_quotient
-<a href=#366 id=366 data-nosnippet>366</a>            .polys
-<a href=#367 id=367 data-nosnippet>367</a>            .iter()
-<a href=#368 id=368 data-nosnippet>368</a>            .map(|p| p.evaluate(<span class="kw-2">&amp;</span>zeta))
-<a href=#369 id=369 data-nosnippet>369</a>            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-<a href=#370 id=370 data-nosnippet>370</a>        zeta_omega: chunked_quotient
-<a href=#371 id=371 data-nosnippet>371</a>            .polys
-<a href=#372 id=372 data-nosnippet>372</a>            .iter()
-<a href=#373 id=373 data-nosnippet>373</a>            .map(|p| p.evaluate(<span class="kw-2">&amp;</span>zeta_omega))
-<a href=#374 id=374 data-nosnippet>374</a>            .collect(),
-<a href=#375 id=375 data-nosnippet>375</a>    };
-<a href=#376 id=376 data-nosnippet>376</a>
-<a href=#377 id=377 data-nosnippet>377</a>    <span class="comment">// Absorbing evaluations with a sponge for the other field
-<a href=#378 id=378 data-nosnippet>378</a>    // We initialize the state with the previous state of the fq_sponge
-<a href=#379 id=379 data-nosnippet>379</a>    </span><span class="kw">let </span>fq_sponge_before_evaluations = fq_sponge.clone();
-<a href=#380 id=380 data-nosnippet>380</a>    <span class="kw">let </span><span class="kw-2">mut </span>fr_sponge = EFrSponge::new(G::sponge_params());
-<a href=#381 id=381 data-nosnippet>381</a>    fr_sponge.absorb(<span class="kw-2">&amp;</span>fq_sponge.digest());
-<a href=#382 id=382 data-nosnippet>382</a>
-<a href=#383 id=383 data-nosnippet>383</a>    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations
-<a href=#384 id=384 data-nosnippet>384</a>        .scratch
-<a href=#385 id=385 data-nosnippet>385</a>        .iter()
-<a href=#386 id=386 data-nosnippet>386</a>        .zip(zeta_omega_evaluations.scratch.iter())
-<a href=#387 id=387 data-nosnippet>387</a>    {
-<a href=#388 id=388 data-nosnippet>388</a>        fr_sponge.absorb(zeta_eval);
-<a href=#389 id=389 data-nosnippet>389</a>        fr_sponge.absorb(zeta_omega_eval);
-<a href=#390 id=390 data-nosnippet>390</a>    }
-<a href=#391 id=391 data-nosnippet>391</a>    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations
-<a href=#392 id=392 data-nosnippet>392</a>        .scratch_inverse
-<a href=#393 id=393 data-nosnippet>393</a>        .iter()
-<a href=#394 id=394 data-nosnippet>394</a>        .zip(zeta_omega_evaluations.scratch_inverse.iter())
-<a href=#395 id=395 data-nosnippet>395</a>    {
-<a href=#396 id=396 data-nosnippet>396</a>        fr_sponge.absorb(zeta_eval);
-<a href=#397 id=397 data-nosnippet>397</a>        fr_sponge.absorb(zeta_omega_eval);
-<a href=#398 id=398 data-nosnippet>398</a>    }
-<a href=#399 id=399 data-nosnippet>399</a>
-<a href=#400 id=400 data-nosnippet>400</a>    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations
-<a href=#401 id=401 data-nosnippet>401</a>        .lookup_state
-<a href=#402 id=402 data-nosnippet>402</a>        .iter()
-<a href=#403 id=403 data-nosnippet>403</a>        .zip(zeta_omega_evaluations.lookup_state.iter())
-<a href=#404 id=404 data-nosnippet>404</a>    {
-<a href=#405 id=405 data-nosnippet>405</a>        fr_sponge.absorb(zeta_eval);
-<a href=#406 id=406 data-nosnippet>406</a>        fr_sponge.absorb(zeta_omega_eval);
-<a href=#407 id=407 data-nosnippet>407</a>    }
-<a href=#408 id=408 data-nosnippet>408</a>    fr_sponge.absorb(<span class="kw-2">&amp;</span>zeta_evaluations.instruction_counter);
-<a href=#409 id=409 data-nosnippet>409</a>    fr_sponge.absorb(<span class="kw-2">&amp;</span>zeta_omega_evaluations.instruction_counter);
-<a href=#410 id=410 data-nosnippet>410</a>    fr_sponge.absorb(<span class="kw-2">&amp;</span>zeta_evaluations.error);
-<a href=#411 id=411 data-nosnippet>411</a>    fr_sponge.absorb(<span class="kw-2">&amp;</span>zeta_omega_evaluations.error);
-<a href=#412 id=412 data-nosnippet>412</a>    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations
-<a href=#413 id=413 data-nosnippet>413</a>        .selector
-<a href=#414 id=414 data-nosnippet>414</a>        .iter()
-<a href=#415 id=415 data-nosnippet>415</a>        .zip(zeta_omega_evaluations.selector.iter())
-<a href=#416 id=416 data-nosnippet>416</a>    {
-<a href=#417 id=417 data-nosnippet>417</a>        fr_sponge.absorb(zeta_eval);
-<a href=#418 id=418 data-nosnippet>418</a>        fr_sponge.absorb(zeta_omega_eval);
-<a href=#419 id=419 data-nosnippet>419</a>    }
-<a href=#420 id=420 data-nosnippet>420</a>    <span class="kw">for </span>(quotient_zeta_eval, quotient_zeta_omega_eval) <span class="kw">in </span>quotient_evaluations
-<a href=#421 id=421 data-nosnippet>421</a>        .zeta
-<a href=#422 id=422 data-nosnippet>422</a>        .iter()
-<a href=#423 id=423 data-nosnippet>423</a>        .zip(quotient_evaluations.zeta_omega.iter())
-<a href=#424 id=424 data-nosnippet>424</a>    {
-<a href=#425 id=425 data-nosnippet>425</a>        fr_sponge.absorb(quotient_zeta_eval);
-<a href=#426 id=426 data-nosnippet>426</a>        fr_sponge.absorb(quotient_zeta_omega_eval);
-<a href=#427 id=427 data-nosnippet>427</a>    }
-<a href=#428 id=428 data-nosnippet>428</a>    <span class="comment">////////////////////////////////////////////////////////////////////////////
-<a href=#429 id=429 data-nosnippet>429</a>    // Round 4: Opening proof w/o linearization polynomial
-<a href=#430 id=430 data-nosnippet>430</a>    ////////////////////////////////////////////////////////////////////////////
-<a href=#431 id=431 data-nosnippet>431</a>
-<a href=#432 id=432 data-nosnippet>432</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>polynomials: Vec&lt;<span class="kw">_</span>&gt; = polys.scratch.into_iter().collect();
-<a href=#433 id=433 data-nosnippet>433</a>    polynomials.extend(polys.scratch_inverse);
-<a href=#434 id=434 data-nosnippet>434</a>    polynomials.extend(polys.lookup_state);
-<a href=#435 id=435 data-nosnippet>435</a>    polynomials.push(polys.instruction_counter);
-<a href=#436 id=436 data-nosnippet>436</a>    polynomials.push(polys.error);
-<a href=#437 id=437 data-nosnippet>437</a>    polynomials.extend(polys.selector);
-<a href=#438 id=438 data-nosnippet>438</a>
-<a href=#439 id=439 data-nosnippet>439</a>    <span class="comment">// Preparing the polynomials for the opening proof
-<a href=#440 id=440 data-nosnippet>440</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>polynomials: Vec&lt;<span class="kw">_</span>&gt; = polynomials
-<a href=#441 id=441 data-nosnippet>441</a>        .iter()
-<a href=#442 id=442 data-nosnippet>442</a>        .map(|poly| {
-<a href=#443 id=443 data-nosnippet>443</a>            (
-<a href=#444 id=444 data-nosnippet>444</a>                DensePolynomialOrEvaluations::DensePolynomial(poly),
-<a href=#445 id=445 data-nosnippet>445</a>                <span class="comment">// We do not have any blinder, therefore we set to 1.
-<a href=#446 id=446 data-nosnippet>446</a>                </span>PolyComm::new(<span class="macro">vec!</span>[G::ScalarField::one()]),
-<a href=#447 id=447 data-nosnippet>447</a>            )
-<a href=#448 id=448 data-nosnippet>448</a>        })
-<a href=#449 id=449 data-nosnippet>449</a>        .collect();
-<a href=#450 id=450 data-nosnippet>450</a>    <span class="comment">// we handle the quotient separately because the number of blinders =
-<a href=#451 id=451 data-nosnippet>451</a>    // number of chunks, which is different for just the quotient polynomial.
-<a href=#452 id=452 data-nosnippet>452</a>    </span>polynomials.push((
-<a href=#453 id=453 data-nosnippet>453</a>        DensePolynomialOrEvaluations::DensePolynomial(<span class="kw-2">&amp;</span>quotient_poly),
-<a href=#454 id=454 data-nosnippet>454</a>        quotient_commitment.blinders,
-<a href=#455 id=455 data-nosnippet>455</a>    ));
-<a href=#456 id=456 data-nosnippet>456</a>
-<a href=#457 id=457 data-nosnippet>457</a>    <span class="comment">// poly scale
-<a href=#458 id=458 data-nosnippet>458</a>    </span><span class="kw">let </span>v_chal = fr_sponge.challenge();
-<a href=#459 id=459 data-nosnippet>459</a>    <span class="kw">let </span>v = v_chal.to_field(endo_r);
-<a href=#460 id=460 data-nosnippet>460</a>    <span class="comment">// eval scale
-<a href=#461 id=461 data-nosnippet>461</a>    </span><span class="kw">let </span>u_chal = fr_sponge.challenge();
-<a href=#462 id=462 data-nosnippet>462</a>    <span class="kw">let </span>u = u_chal.to_field(endo_r);
-<a href=#463 id=463 data-nosnippet>463</a>
-<a href=#464 id=464 data-nosnippet>464</a>    <span class="kw">let </span>group_map = G::Map::setup();
-<a href=#465 id=465 data-nosnippet>465</a>
-<a href=#466 id=466 data-nosnippet>466</a>    <span class="macro">debug!</span>(<span class="string">"Prover: computing the (batched) opening proof using the IPA PCS"</span>);
-<a href=#467 id=467 data-nosnippet>467</a>    <span class="comment">// Computing the opening proof for the IPA PCS
-<a href=#468 id=468 data-nosnippet>468</a>    </span><span class="kw">let </span>opening_proof = OpeningProof::open::&lt;<span class="kw">_</span>, <span class="kw">_</span>, D&lt;G::ScalarField&gt;&gt;(
-<a href=#469 id=469 data-nosnippet>469</a>        srs,
-<a href=#470 id=470 data-nosnippet>470</a>        <span class="kw-2">&amp;</span>group_map,
-<a href=#471 id=471 data-nosnippet>471</a>        polynomials.as_slice(),
-<a href=#472 id=472 data-nosnippet>472</a>        <span class="kw-2">&amp;</span>[zeta, zeta_omega],
-<a href=#473 id=473 data-nosnippet>473</a>        v,
-<a href=#474 id=474 data-nosnippet>474</a>        u,
-<a href=#475 id=475 data-nosnippet>475</a>        fq_sponge_before_evaluations,
-<a href=#476 id=476 data-nosnippet>476</a>        rng,
-<a href=#477 id=477 data-nosnippet>477</a>    );
-<a href=#478 id=478 data-nosnippet>478</a>
-<a href=#479 id=479 data-nosnippet>479</a>    <span class="prelude-val">Ok</span>(Proof {
-<a href=#480 id=480 data-nosnippet>480</a>        commitments,
-<a href=#481 id=481 data-nosnippet>481</a>        zeta_evaluations,
-<a href=#482 id=482 data-nosnippet>482</a>        zeta_omega_evaluations,
-<a href=#483 id=483 data-nosnippet>483</a>        quotient_commitment: quotient_commitment.commitment,
-<a href=#484 id=484 data-nosnippet>484</a>        quotient_evaluations,
-<a href=#485 id=485 data-nosnippet>485</a>        opening_proof,
-<a href=#486 id=486 data-nosnippet>486</a>    })
-<a href=#487 id=487 data-nosnippet>487</a>}</code></pre></div></section></main></body></html>
+<a href=#328 id=328 data-nosnippet>328</a>    <span class="kw">let </span>evals = |point| {
+<a href=#329 id=329 data-nosnippet>329</a>        <span class="kw">let </span>WitnessColumns {
+<a href=#330 id=330 data-nosnippet>330</a>            scratch,
+<a href=#331 id=331 data-nosnippet>331</a>            scratch_inverse,
+<a href=#332 id=332 data-nosnippet>332</a>            lookup_state,
+<a href=#333 id=333 data-nosnippet>333</a>            instruction_counter,
+<a href=#334 id=334 data-nosnippet>334</a>            error,
+<a href=#335 id=335 data-nosnippet>335</a>            selector,
+<a href=#336 id=336 data-nosnippet>336</a>        } = <span class="kw-2">&amp;</span>polys;
+<a href=#337 id=337 data-nosnippet>337</a>        <span class="kw">let </span>eval = |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| poly.evaluate(point);
+<a href=#338 id=338 data-nosnippet>338</a>        <span class="kw">let </span>scratch = scratch.par_iter().map(eval).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+<a href=#339 id=339 data-nosnippet>339</a>        <span class="kw">let </span>scratch_inverse = scratch_inverse.par_iter().map(eval).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+<a href=#340 id=340 data-nosnippet>340</a>        <span class="kw">let </span>lookup_state = lookup_state.par_iter().map(eval).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+<a href=#341 id=341 data-nosnippet>341</a>        <span class="kw">let </span>selector = selector.par_iter().map(eval).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+<a href=#342 id=342 data-nosnippet>342</a>        WitnessColumns {
+<a href=#343 id=343 data-nosnippet>343</a>            scratch: scratch.try_into().unwrap(),
+<a href=#344 id=344 data-nosnippet>344</a>            scratch_inverse: scratch_inverse.try_into().unwrap(),
+<a href=#345 id=345 data-nosnippet>345</a>            lookup_state,
+<a href=#346 id=346 data-nosnippet>346</a>            instruction_counter: eval(instruction_counter),
+<a href=#347 id=347 data-nosnippet>347</a>            error: eval(error),
+<a href=#348 id=348 data-nosnippet>348</a>            selector: selector.try_into().unwrap(),
+<a href=#349 id=349 data-nosnippet>349</a>        }
+<a href=#350 id=350 data-nosnippet>350</a>    };
+<a href=#351 id=351 data-nosnippet>351</a>    <span class="comment">// All evaluations at ζ
+<a href=#352 id=352 data-nosnippet>352</a>    </span><span class="kw">let </span>zeta_evaluations: WitnessColumns&lt;G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]&gt; =
+<a href=#353 id=353 data-nosnippet>353</a>        evals(<span class="kw-2">&amp;</span>zeta);
+<a href=#354 id=354 data-nosnippet>354</a>
+<a href=#355 id=355 data-nosnippet>355</a>    <span class="comment">// All evaluations at ζω
+<a href=#356 id=356 data-nosnippet>356</a>    </span><span class="kw">let </span>zeta_omega_evaluations: WitnessColumns&lt;G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]&gt; =
+<a href=#357 id=357 data-nosnippet>357</a>        evals(<span class="kw-2">&amp;</span>zeta_omega);
+<a href=#358 id=358 data-nosnippet>358</a>
+<a href=#359 id=359 data-nosnippet>359</a>    <span class="kw">let </span>chunked_quotient = quotient_poly
+<a href=#360 id=360 data-nosnippet>360</a>        .to_chunked_polynomial(DEGREE_QUOTIENT_POLYNOMIAL <span class="kw">as </span>usize, domain.d1.size <span class="kw">as </span>usize);
+<a href=#361 id=361 data-nosnippet>361</a>    <span class="kw">let </span>quotient_evaluations = PointEvaluations {
+<a href=#362 id=362 data-nosnippet>362</a>        zeta: chunked_quotient
+<a href=#363 id=363 data-nosnippet>363</a>            .polys
+<a href=#364 id=364 data-nosnippet>364</a>            .iter()
+<a href=#365 id=365 data-nosnippet>365</a>            .map(|p| p.evaluate(<span class="kw-2">&amp;</span>zeta))
+<a href=#366 id=366 data-nosnippet>366</a>            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+<a href=#367 id=367 data-nosnippet>367</a>        zeta_omega: chunked_quotient
+<a href=#368 id=368 data-nosnippet>368</a>            .polys
+<a href=#369 id=369 data-nosnippet>369</a>            .iter()
+<a href=#370 id=370 data-nosnippet>370</a>            .map(|p| p.evaluate(<span class="kw-2">&amp;</span>zeta_omega))
+<a href=#371 id=371 data-nosnippet>371</a>            .collect(),
+<a href=#372 id=372 data-nosnippet>372</a>    };
+<a href=#373 id=373 data-nosnippet>373</a>
+<a href=#374 id=374 data-nosnippet>374</a>    <span class="comment">// Absorbing evaluations with a sponge for the other field
+<a href=#375 id=375 data-nosnippet>375</a>    // We initialize the state with the previous state of the fq_sponge
+<a href=#376 id=376 data-nosnippet>376</a>    </span><span class="kw">let </span>fq_sponge_before_evaluations = fq_sponge.clone();
+<a href=#377 id=377 data-nosnippet>377</a>    <span class="kw">let </span><span class="kw-2">mut </span>fr_sponge = EFrSponge::new(G::sponge_params());
+<a href=#378 id=378 data-nosnippet>378</a>    fr_sponge.absorb(<span class="kw-2">&amp;</span>fq_sponge.digest());
+<a href=#379 id=379 data-nosnippet>379</a>
+<a href=#380 id=380 data-nosnippet>380</a>    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations
+<a href=#381 id=381 data-nosnippet>381</a>        .scratch
+<a href=#382 id=382 data-nosnippet>382</a>        .iter()
+<a href=#383 id=383 data-nosnippet>383</a>        .zip(zeta_omega_evaluations.scratch.iter())
+<a href=#384 id=384 data-nosnippet>384</a>    {
+<a href=#385 id=385 data-nosnippet>385</a>        fr_sponge.absorb(zeta_eval);
+<a href=#386 id=386 data-nosnippet>386</a>        fr_sponge.absorb(zeta_omega_eval);
+<a href=#387 id=387 data-nosnippet>387</a>    }
+<a href=#388 id=388 data-nosnippet>388</a>    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations
+<a href=#389 id=389 data-nosnippet>389</a>        .scratch_inverse
+<a href=#390 id=390 data-nosnippet>390</a>        .iter()
+<a href=#391 id=391 data-nosnippet>391</a>        .zip(zeta_omega_evaluations.scratch_inverse.iter())
+<a href=#392 id=392 data-nosnippet>392</a>    {
+<a href=#393 id=393 data-nosnippet>393</a>        fr_sponge.absorb(zeta_eval);
+<a href=#394 id=394 data-nosnippet>394</a>        fr_sponge.absorb(zeta_omega_eval);
+<a href=#395 id=395 data-nosnippet>395</a>    }
+<a href=#396 id=396 data-nosnippet>396</a>
+<a href=#397 id=397 data-nosnippet>397</a>    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations
+<a href=#398 id=398 data-nosnippet>398</a>        .lookup_state
+<a href=#399 id=399 data-nosnippet>399</a>        .iter()
+<a href=#400 id=400 data-nosnippet>400</a>        .zip(zeta_omega_evaluations.lookup_state.iter())
+<a href=#401 id=401 data-nosnippet>401</a>    {
+<a href=#402 id=402 data-nosnippet>402</a>        fr_sponge.absorb(zeta_eval);
+<a href=#403 id=403 data-nosnippet>403</a>        fr_sponge.absorb(zeta_omega_eval);
+<a href=#404 id=404 data-nosnippet>404</a>    }
+<a href=#405 id=405 data-nosnippet>405</a>    fr_sponge.absorb(<span class="kw-2">&amp;</span>zeta_evaluations.instruction_counter);
+<a href=#406 id=406 data-nosnippet>406</a>    fr_sponge.absorb(<span class="kw-2">&amp;</span>zeta_omega_evaluations.instruction_counter);
+<a href=#407 id=407 data-nosnippet>407</a>    fr_sponge.absorb(<span class="kw-2">&amp;</span>zeta_evaluations.error);
+<a href=#408 id=408 data-nosnippet>408</a>    fr_sponge.absorb(<span class="kw-2">&amp;</span>zeta_omega_evaluations.error);
+<a href=#409 id=409 data-nosnippet>409</a>    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations
+<a href=#410 id=410 data-nosnippet>410</a>        .selector
+<a href=#411 id=411 data-nosnippet>411</a>        .iter()
+<a href=#412 id=412 data-nosnippet>412</a>        .zip(zeta_omega_evaluations.selector.iter())
+<a href=#413 id=413 data-nosnippet>413</a>    {
+<a href=#414 id=414 data-nosnippet>414</a>        fr_sponge.absorb(zeta_eval);
+<a href=#415 id=415 data-nosnippet>415</a>        fr_sponge.absorb(zeta_omega_eval);
+<a href=#416 id=416 data-nosnippet>416</a>    }
+<a href=#417 id=417 data-nosnippet>417</a>    <span class="kw">for </span>(quotient_zeta_eval, quotient_zeta_omega_eval) <span class="kw">in </span>quotient_evaluations
+<a href=#418 id=418 data-nosnippet>418</a>        .zeta
+<a href=#419 id=419 data-nosnippet>419</a>        .iter()
+<a href=#420 id=420 data-nosnippet>420</a>        .zip(quotient_evaluations.zeta_omega.iter())
+<a href=#421 id=421 data-nosnippet>421</a>    {
+<a href=#422 id=422 data-nosnippet>422</a>        fr_sponge.absorb(quotient_zeta_eval);
+<a href=#423 id=423 data-nosnippet>423</a>        fr_sponge.absorb(quotient_zeta_omega_eval);
+<a href=#424 id=424 data-nosnippet>424</a>    }
+<a href=#425 id=425 data-nosnippet>425</a>    <span class="comment">////////////////////////////////////////////////////////////////////////////
+<a href=#426 id=426 data-nosnippet>426</a>    // Round 4: Opening proof w/o linearization polynomial
+<a href=#427 id=427 data-nosnippet>427</a>    ////////////////////////////////////////////////////////////////////////////
+<a href=#428 id=428 data-nosnippet>428</a>
+<a href=#429 id=429 data-nosnippet>429</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>polynomials: Vec&lt;<span class="kw">_</span>&gt; = polys.scratch.into_iter().collect();
+<a href=#430 id=430 data-nosnippet>430</a>    polynomials.extend(polys.scratch_inverse);
+<a href=#431 id=431 data-nosnippet>431</a>    polynomials.extend(polys.lookup_state);
+<a href=#432 id=432 data-nosnippet>432</a>    polynomials.push(polys.instruction_counter);
+<a href=#433 id=433 data-nosnippet>433</a>    polynomials.push(polys.error);
+<a href=#434 id=434 data-nosnippet>434</a>    polynomials.extend(polys.selector);
+<a href=#435 id=435 data-nosnippet>435</a>
+<a href=#436 id=436 data-nosnippet>436</a>    <span class="comment">// Preparing the polynomials for the opening proof
+<a href=#437 id=437 data-nosnippet>437</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>polynomials: Vec&lt;<span class="kw">_</span>&gt; = polynomials
+<a href=#438 id=438 data-nosnippet>438</a>        .iter()
+<a href=#439 id=439 data-nosnippet>439</a>        .map(|poly| {
+<a href=#440 id=440 data-nosnippet>440</a>            (
+<a href=#441 id=441 data-nosnippet>441</a>                DensePolynomialOrEvaluations::DensePolynomial(poly),
+<a href=#442 id=442 data-nosnippet>442</a>                <span class="comment">// We do not have any blinder, therefore we set to 1.
+<a href=#443 id=443 data-nosnippet>443</a>                </span>PolyComm::new(<span class="macro">vec!</span>[G::ScalarField::one()]),
+<a href=#444 id=444 data-nosnippet>444</a>            )
+<a href=#445 id=445 data-nosnippet>445</a>        })
+<a href=#446 id=446 data-nosnippet>446</a>        .collect();
+<a href=#447 id=447 data-nosnippet>447</a>    <span class="comment">// we handle the quotient separately because the number of blinders =
+<a href=#448 id=448 data-nosnippet>448</a>    // number of chunks, which is different for just the quotient polynomial.
+<a href=#449 id=449 data-nosnippet>449</a>    </span>polynomials.push((
+<a href=#450 id=450 data-nosnippet>450</a>        DensePolynomialOrEvaluations::DensePolynomial(<span class="kw-2">&amp;</span>quotient_poly),
+<a href=#451 id=451 data-nosnippet>451</a>        quotient_commitment.blinders,
+<a href=#452 id=452 data-nosnippet>452</a>    ));
+<a href=#453 id=453 data-nosnippet>453</a>
+<a href=#454 id=454 data-nosnippet>454</a>    <span class="comment">// poly scale
+<a href=#455 id=455 data-nosnippet>455</a>    </span><span class="kw">let </span>v_chal = fr_sponge.challenge();
+<a href=#456 id=456 data-nosnippet>456</a>    <span class="kw">let </span>v = v_chal.to_field(endo_r);
+<a href=#457 id=457 data-nosnippet>457</a>    <span class="comment">// eval scale
+<a href=#458 id=458 data-nosnippet>458</a>    </span><span class="kw">let </span>u_chal = fr_sponge.challenge();
+<a href=#459 id=459 data-nosnippet>459</a>    <span class="kw">let </span>u = u_chal.to_field(endo_r);
+<a href=#460 id=460 data-nosnippet>460</a>
+<a href=#461 id=461 data-nosnippet>461</a>    <span class="kw">let </span>group_map = G::Map::setup();
+<a href=#462 id=462 data-nosnippet>462</a>
+<a href=#463 id=463 data-nosnippet>463</a>    <span class="macro">debug!</span>(<span class="string">"Prover: computing the (batched) opening proof using the IPA PCS"</span>);
+<a href=#464 id=464 data-nosnippet>464</a>    <span class="comment">// Computing the opening proof for the IPA PCS
+<a href=#465 id=465 data-nosnippet>465</a>    </span><span class="kw">let </span>opening_proof = OpeningProof::open::&lt;<span class="kw">_</span>, <span class="kw">_</span>, D&lt;G::ScalarField&gt;&gt;(
+<a href=#466 id=466 data-nosnippet>466</a>        srs,
+<a href=#467 id=467 data-nosnippet>467</a>        <span class="kw-2">&amp;</span>group_map,
+<a href=#468 id=468 data-nosnippet>468</a>        polynomials.as_slice(),
+<a href=#469 id=469 data-nosnippet>469</a>        <span class="kw-2">&amp;</span>[zeta, zeta_omega],
+<a href=#470 id=470 data-nosnippet>470</a>        v,
+<a href=#471 id=471 data-nosnippet>471</a>        u,
+<a href=#472 id=472 data-nosnippet>472</a>        fq_sponge_before_evaluations,
+<a href=#473 id=473 data-nosnippet>473</a>        rng,
+<a href=#474 id=474 data-nosnippet>474</a>    );
+<a href=#475 id=475 data-nosnippet>475</a>
+<a href=#476 id=476 data-nosnippet>476</a>    <span class="prelude-val">Ok</span>(Proof {
+<a href=#477 id=477 data-nosnippet>477</a>        commitments,
+<a href=#478 id=478 data-nosnippet>478</a>        zeta_evaluations,
+<a href=#479 id=479 data-nosnippet>479</a>        zeta_omega_evaluations,
+<a href=#480 id=480 data-nosnippet>480</a>        quotient_commitment: quotient_commitment.commitment,
+<a href=#481 id=481 data-nosnippet>481</a>        quotient_evaluations,
+<a href=#482 id=482 data-nosnippet>482</a>        opening_proof,
+<a href=#483 id=483 data-nosnippet>483</a>    })
+<a href=#484 id=484 data-nosnippet>484</a>}</code></pre></div></section></main></body></html>
