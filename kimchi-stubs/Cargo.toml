@@ -41,3 +41,7 @@ mina-curves = { workspace = true }
 mina-poseidon = { workspace = true }
 o1-utils = { workspace = true }
 poly-commitment = { workspace = true, features = ["ocaml_types"] }
+
+[[bin]]
+name = "main"
+path = "src/bin/main.rs"
