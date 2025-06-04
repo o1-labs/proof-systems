@@ -3,7 +3,7 @@ use crate::circuits::{
     gate::{CircuitGate, GateType},
     wires::*,
 };
-use ark_ec::{AffineRepr, CurveGroup};
+use ark_ec::{AdditiveGroup, AffineRepr, CurveGroup};
 use ark_ff::{Field, One, UniformRand, Zero};
 use core::{array, ops::Mul};
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};

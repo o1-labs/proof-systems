@@ -362,10 +362,8 @@ pub mod testing {
             // would be better just to check the equation on all the rows.
 
             // verify that it is divisible by Z_H
-            match res.divide_by_vanishing_poly(self.cs.domain.d1) {
-                Some((_quotient, rest)) => rest.is_zero(),
-                None => false,
-            }
+            let (_quotient, rest) = res.divide_by_vanishing_poly(self.cs.domain.d1);
+            rest.is_zero()
         }
     }
 

@@ -16,8 +16,8 @@
 //! such a scratch array within each algorithm.
 
 use ark_ec::{
-    models::short_weierstrass::Affine as SWJAffine, short_weierstrass::SWCurveConfig, AffineRepr,
-    CurveGroup, Group,
+    models::short_weierstrass::Affine as SWJAffine, short_weierstrass::SWCurveConfig,
+    AdditiveGroup, AffineRepr, CurveGroup,
 };
 use ark_ff::{BitIteratorBE, Field, One, PrimeField, Zero};
 use itertools::Itertools;

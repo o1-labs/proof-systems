@@ -6,7 +6,7 @@ use crate::{
     instance_witness::Instance,
     ExpExtension, FoldingConfig, Radix2EvaluationDomain, RelaxedInstance, RelaxedWitness,
 };
-use ark_ec::AffineRepr;
+use ark_ec::{AdditiveGroup, AffineRepr};
 use ark_ff::{Field, Zero};
 use ark_poly::Evaluations;
 use core::ops::Index;

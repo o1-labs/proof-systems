@@ -111,7 +111,7 @@ pub struct DefaultFrSponge<Fr: Field, SC: SpongeConstants> {
 fn pack<B: BigInteger>(limbs_lsb: &[u64]) -> B {
     let mut res: B = 0u64.into();
     for &x in limbs_lsb.iter().rev() {
-        res.muln(64);
+        res <<= 64;
         res.add_with_carry(&x.into());
     }
     res
