@@ -504,13 +504,14 @@ mod tests {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
+    use crate::caml_commitment::CamlCommitment;
     use kimchi_stubs::arkworks::{group_affine::CamlGVesta, pasta_fp::CamlFp};
     use poly_commitment::ipa::caml::CamlOpeningProof;
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlReadProof {
-        pub answer_comm: CamlGVesta,
-        pub quotient_comm: CamlGVesta,
+        pub answer_comm: CamlCommitment,
+        pub quotient_comm: CamlCommitment,
         pub data_eval: CamlFp,
         pub query_eval: CamlFp,
         pub answer_eval: CamlFp,
@@ -520,8 +521,8 @@ pub mod caml {
     impl From<ReadProof> for CamlReadProof {
         fn from(proof: ReadProof) -> Self {
             Self {
-                answer_comm: proof.answer_comm.cm.into(),
-                quotient_comm: proof.quotient_comm.cm.into(),
+                answer_comm: proof.answer_comm.into(),
+                quotient_comm: proof.quotient_comm.into(),
                 data_eval: proof.data_eval.into(),
                 query_eval: proof.query_eval.into(),
                 answer_eval: proof.answer_eval.into(),
@@ -533,12 +534,8 @@ pub mod caml {
     impl From<CamlReadProof> for ReadProof {
         fn from(proof: CamlReadProof) -> Self {
             Self {
-                answer_comm: Commitment {
-                    cm: proof.answer_comm.into(),
-                },
-                quotient_comm: Commitment {
-                    cm: proof.quotient_comm.into(),
-                },
+                answer_comm: proof.answer_comm.into(),
+                quotient_comm: proof.quotient_comm.into(),
                 data_eval: proof.data_eval.into(),
                 query_eval: proof.query_eval.into(),
                 answer_eval: proof.answer_eval.into(),
