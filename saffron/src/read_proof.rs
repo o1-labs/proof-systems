@@ -23,6 +23,7 @@
 
 use crate::{
     commitment::*,
+    storage::Data,
     utils::{evals_to_polynomial, evals_to_polynomial_and_commitment},
     Curve, CurveFqSponge, CurveFrSponge, ScalarField,
 };
@@ -75,9 +76,9 @@ impl Query {
         let indexes: Vec<u64> = self.query.iter().map(|i| *i as u64).collect();
         commit_sparse(srs, &query_evals, &indexes)
     }
-    pub fn to_answer(&self, data: &[ScalarField]) -> Answer {
+    pub fn to_answer(&self, data: &Data<ScalarField>) -> Answer {
         Answer {
-            answer: self.query.iter().map(|i| data[*i as usize]).collect(),
+            answer: self.query.iter().map(|i| data.data[*i as usize]).collect(),
         }
     }
     fn to_answer_evals(&self, data: &[ScalarField], domain_size: usize) -> Vec<ScalarField> {
@@ -123,7 +124,7 @@ pub fn prove<RNG>(
     group_map: &<Curve as CommitmentCurve>::Map,
     rng: &mut RNG,
     // data is the data that is stored and queried
-    data: &[ScalarField],
+    data: &Data<ScalarField>,
     // data[i] is queried if query[i] ≠ 0
     query: &Query,
     // Commitment to data
@@ -134,6 +135,8 @@ pub fn prove<RNG>(
 where
     RNG: RngCore + CryptoRng,
 {
+    let data = &data.data;
+
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
 
     let data_poly = evals_to_polynomial(data.to_vec(), domain.d1);
@@ -350,7 +353,7 @@ mod tests {
     };
     use ark_ec::AffineRepr;
     use ark_ff::{One, UniformRand};
-    use ark_poly::{univariate::DensePolynomial, Evaluations};
+    use ark_poly::univariate::DensePolynomial;
     use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
     use mina_curves::pasta::{Fp, Vesta};
     use once_cell::sync::Lazy;
@@ -375,14 +378,13 @@ mod tests {
     fn test_read_proof_completeness_soundness() {
         let mut rng = o1_utils::tests::make_test_rng(None);
 
-        let data: Vec<ScalarField> = {
+        let data = {
             let mut data = vec![];
             (0..SRS_SIZE).for_each(|_| data.push(Fp::rand(&mut rng)));
-            data
+            Data { data }
         };
 
-        let data_poly: DensePolynomial<ScalarField> =
-            Evaluations::from_vec_and_domain(data.clone(), DOMAIN.d1).interpolate();
+        let data_poly: DensePolynomial<ScalarField> = data.to_polynomial(DOMAIN.d1);
         let data_comm = commit_to_poly(&SRS, &data_poly);
 
         let query: Query = {
@@ -409,7 +411,7 @@ mod tests {
             *DOMAIN,
             &GROUP_MAP,
             &mut rng,
-            data.as_slice(),
+            &data,
             &query,
             &data_comm,
             &query_comm,
@@ -468,7 +470,7 @@ mod tests {
             *DOMAIN,
             &GROUP_MAP,
             &mut rng,
-            data.as_slice(),
+            &data,
             &Query { query: wrong_query },
             &data_comm,
             &query_comm,
