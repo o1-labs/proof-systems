@@ -8,6 +8,7 @@
 //!
 
 use wasm_bindgen::prelude::*;
+pub use arkworks::WasmGVesta;
 
 pub mod wasm_vector;
 
