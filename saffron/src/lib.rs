@@ -15,6 +15,8 @@ pub use commitment::caml as caml_commitment;
 #[cfg(feature = "ocaml_types")]
 pub use diff::caml as caml_diff;
 #[cfg(feature = "ocaml_types")]
+pub use read_proof::caml as caml_read_proof;
+#[cfg(feature = "ocaml_types")]
 pub use storage::caml as caml_storage;
 
 use mina_curves::pasta::{Fp, Fq, ProjectiveVesta, Vesta, VestaParameters};
