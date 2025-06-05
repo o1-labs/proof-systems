@@ -1,8 +1,8 @@
 #[cfg(feature = "ocaml_types")]
-pub use saffron::commitment::caml as commitment;
+pub use saffron::caml_commitment as commitment;
 
 #[cfg(feature = "ocaml_types")]
-pub use saffron::diff::caml as diff;
+pub use saffron::caml_diff as diff;
 
 #[cfg(feature = "ocaml_types")]
-pub use saffron::storage::caml as storage;
+pub use saffron::caml_storage as storage;
