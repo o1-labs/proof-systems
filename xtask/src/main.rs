@@ -84,7 +84,7 @@ fn build_kimchi_stubs(target_dir: Option<&str>, offline: bool) -> Result<()> {
     // `RUST_TARGET_FEATURE_OPTIMISATIONS` environment variable to any other
     // value than "y".
     let optimisations_enabled = env::var("RUST_TARGET_FEATURE_OPTIMISATIONS")
-        .map(|v| v == "y")
+        .map(|v| ["y", "1", "true"].contains(&v.to_lowercase().as_str()))
         .unwrap_or(true);
 
     let cpu_supports_adx_bmi2 = {
