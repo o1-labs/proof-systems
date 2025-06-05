@@ -9,7 +9,7 @@
 
 use wasm_bindgen::prelude::*;
 
-mod wasm_vector;
+pub mod wasm_vector;
 
 #[wasm_bindgen]
 extern "C" {
