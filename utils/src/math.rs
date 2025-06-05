@@ -2,7 +2,8 @@
 
 /// Returns ceil(log2(d)) but panics if d = 0.
 pub fn ceil_log2(d: usize) -> usize {
-    // NOTE: should this really be usize, since usize is depended on the underlying system architecture?
+    // NOTE: should this really be usize, since usize is depended on the
+    // underlying system architecture?
 
     assert!(d != 0);
     let mut pow2 = 1;
@@ -17,7 +18,8 @@ pub fn ceil_log2(d: usize) -> usize {
     ceil_log2
 }
 
-/// This function is bound to be stable soon. See <https://github.com/rust-lang/rust/issues/88581>
+/// This function is bound to be stable soon. See
+/// <https://github.com/rust-lang/rust/issues/88581>
 pub fn div_ceil(a: usize, b: usize) -> usize {
-    (a + b - 1) / b
+    a.div_ceil(b)
 }
