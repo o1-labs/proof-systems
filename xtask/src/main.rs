@@ -96,21 +96,26 @@ fn build_kimchi_stubs(target_dir: Option<&str>, offline: bool) -> Result<()> {
 
     // If optimisations are enabled and the CPU supports ADX and BMI2, we enable
     // those features.
-    let rustflags = if optimisations_enabled && cpu_supports_adx_bmi2 {
-        Some("-C target-feature=+bmi2,+adx".to_string())
-    } else if !optimisations_enabled && cpu_supports_adx_bmi2 {
-        // If optimisations are disabled but the CPU supports ADX and BMI2,
-        // we explicitly disable them.
-        Some("-C target-feature=-bmi2,-adx".to_string())
-    } else if !cpu_supports_adx_bmi2 {
-        // If the CPU does not support ADX and BMI2, we do not set any
-        // target features. It could be handled in the `else` branch, but we
-        // want to be explicit. If the CPU does not support these features, but
-        // we still add the -bmi2 and -adx flags, it will cause a build warning
-        // we want to avoid on the user console.
-        None
-    } else {
-        None
+    let rustflags = match (optimisations_enabled, cpu_supports_adx_bmi2) {
+        (true, true) => {
+            // If optimisations are enabled and the CPU supports ADX and BMI2,
+            // we enable them.
+            Some("-C target-feature=+bmi2,+adx".to_string())
+        }
+        (false, true) => {
+            // If optimisations are disabled but the CPU supports ADX and BMI2,
+            // we explicitly disable them.
+            Some("-C target-feature=-bmi2,-adx".to_string())
+        }
+        (true, false) => {
+            // If the CPU does not support ADX and BMI2, we do not set any
+            // target features. It could be handled in the `else` branch, but we
+            // want to be explicit. If the CPU does not support these features, but
+            // we still add the -bmi2 and -adx flags, it will cause a build warning
+            // we want to avoid on the user console.
+            None
+        }
+        (false, false) => None,
     };
 
     let target_dir = target_dir.unwrap_or("target/kimchi_stubs_build");
