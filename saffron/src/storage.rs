@@ -132,6 +132,7 @@ mod tests {
     use poly_commitment::{ipa::SRS, SRS as _};
     use rand::Rng;
     use std::fs;
+    use tempfile::NamedTempFile;
 
     static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
         if let Ok(srs) = std::env::var("SRS_FILEPATH") {
@@ -147,8 +148,10 @@ mod tests {
     // consistently performed in the file
     fn test_data_consistency() {
         let mut rng = o1_utils::tests::make_test_rng(None);
-        // Path of th file that will contain the test data
-        let path = "./test";
+
+        // Path of the file that will contain the test data
+        let file = NamedTempFile::new().unwrap();
+        let path = file.path().to_str().unwrap();
 
         let data_bytes: Vec<u8> = (0..(SRS_SIZE * (encoding::encoding_size_full::<ScalarField>())))
             .map(|_| rng.gen())

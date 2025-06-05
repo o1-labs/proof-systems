@@ -50,6 +50,7 @@ criterion = { workspace = true, features = ["html_reports"] }
 ctor = "0.2"
 proptest.workspace = true
 once_cell.workspace = true
+tempfile = "3"
 
 [[bin]]
 name = "saffron-og-flow"
