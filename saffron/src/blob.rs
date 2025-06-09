@@ -135,8 +135,6 @@ impl FieldBlob {
 
 #[cfg(test)]
 mod tests {
-    use crate::env;
-
     use super::*;
 
     use crate::{diff::tests::*, utils::test_utils::*, Curve, ScalarField};
@@ -146,13 +144,7 @@ mod tests {
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
 
-    static SRS: Lazy<SRS<Curve>> = Lazy::new(|| {
-        if let Ok(srs) = std::env::var("SRS_FILEPATH") {
-            env::get_srs_from_cache(srs)
-        } else {
-            SRS::create(1 << 16)
-        }
-    });
+    static SRS: Lazy<SRS<Curve>> = Lazy::new(poly_commitment::precomputed_srs::get_srs_test);
 
     static DOMAIN: Lazy<Radix2EvaluationDomain<ScalarField>> =
         Lazy::new(|| Radix2EvaluationDomain::new(SRS.size()).unwrap());

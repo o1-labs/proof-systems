@@ -275,33 +275,22 @@ where
 #[cfg(test)]
 mod tests {
     use super::{prove, verify, ReadProof};
-    use crate::{env, Curve, ScalarField, SRS_SIZE};
+    use crate::{Curve, ScalarField, SRS_SIZE};
     use ark_ec::AffineRepr;
     use ark_ff::{One, UniformRand};
     use ark_poly::{univariate::DensePolynomial, Evaluations};
     use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
     use mina_curves::pasta::{Fp, Vesta};
-    use once_cell::sync::Lazy;
-    use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
+    use poly_commitment::{commitment::CommitmentCurve, SRS as _};
     use proptest::prelude::*;
-
-    static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
-        if let Ok(srs) = std::env::var("SRS_FILEPATH") {
-            env::get_srs_from_cache(srs)
-        } else {
-            SRS::create(SRS_SIZE)
-        }
-    });
-
-    static DOMAIN: Lazy<EvaluationDomains<ScalarField>> =
-        Lazy::new(|| EvaluationDomains::<ScalarField>::create(SRS_SIZE).unwrap());
-
-    static GROUP_MAP: Lazy<<Vesta as CommitmentCurve>::Map> =
-        Lazy::new(<Vesta as CommitmentCurve>::Map::setup);
 
     #[test]
     fn test_read_proof_completeness_soundness() {
         let mut rng = o1_utils::tests::make_test_rng(None);
+
+        let srs = poly_commitment::precomputed_srs::get_srs_test();
+        let group_map = <Vesta as CommitmentCurve>::Map::setup();
+        let domain: EvaluationDomains<ScalarField> = EvaluationDomains::create(srs.size()).unwrap();
 
         let data: Vec<ScalarField> = {
             let mut data = vec![];
@@ -310,8 +299,8 @@ mod tests {
         };
 
         let data_poly: DensePolynomial<ScalarField> =
-            Evaluations::from_vec_and_domain(data.clone(), DOMAIN.d1).interpolate();
-        let data_comm: Curve = SRS.commit_non_hiding(&data_poly, 1).chunks[0];
+            Evaluations::from_vec_and_domain(data.clone(), domain.d1).interpolate();
+        let data_comm: Curve = srs.commit_non_hiding(&data_poly, 1).chunks[0];
 
         let query: Vec<ScalarField> = {
             let mut query = vec![];
@@ -322,16 +311,16 @@ mod tests {
         let answer: Vec<ScalarField> = data.iter().zip(query.iter()).map(|(d, q)| *d * q).collect();
 
         let proof = prove(
-            &SRS,
-            *DOMAIN,
-            &GROUP_MAP,
+            &srs,
+            domain,
+            &group_map,
             &mut rng,
             data.as_slice(),
             query.as_slice(),
             answer.as_slice(),
             &data_comm,
         );
-        let res = verify(&SRS, *DOMAIN, &GROUP_MAP, &mut rng, &data_comm, &proof);
+        let res = verify(&srs, domain, &group_map, &mut rng, &data_comm, &proof);
 
         assert!(res, "Completeness: Proof must verify");
 
@@ -341,9 +330,9 @@ mod tests {
         };
 
         let res_1 = verify(
-            &SRS,
-            *DOMAIN,
-            &GROUP_MAP,
+            &srs,
+            domain,
+            &group_map,
             &mut rng,
             &data_comm,
             &proof_malformed_1,
@@ -357,9 +346,9 @@ mod tests {
         };
 
         let res_2 = verify(
-            &SRS,
-            *DOMAIN,
-            &GROUP_MAP,
+            &srs,
+            domain,
+            &group_map,
             &mut rng,
             &data_comm,
             &proof_malformed_2,

@@ -125,22 +125,12 @@ pub fn update<F: PrimeField>(path: &str, diff: &Diff<F>) -> std::io::Result<()> 
 
 #[cfg(test)]
 mod tests {
-    use crate::{diff::Diff, encoding, env, storage, storage::Data, Curve, ScalarField, SRS_SIZE};
+    use crate::{diff::Diff, encoding, storage, storage::Data, Curve, ScalarField, SRS_SIZE};
     use ark_ff::{One, UniformRand, Zero};
-    use mina_curves::pasta::{Fp, Vesta};
-    use once_cell::sync::Lazy;
-    use poly_commitment::{ipa::SRS, SRS as _};
+    use mina_curves::pasta::Fp;
     use rand::Rng;
     use std::fs;
     use tempfile::NamedTempFile;
-
-    static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
-        if let Ok(srs) = std::env::var("SRS_FILEPATH") {
-            env::get_srs_from_cache(srs)
-        } else {
-            SRS::create(SRS_SIZE)
-        }
-    });
 
     #[test]
     // Test that data commitment stays the same after reading (i.e. data stay
@@ -148,6 +138,8 @@ mod tests {
     // consistently performed in the file
     fn test_data_consistency() {
         let mut rng = o1_utils::tests::make_test_rng(None);
+
+        let srs = poly_commitment::precomputed_srs::get_srs_test();
 
         // Path of the file that will contain the test data
         let file = NamedTempFile::new().unwrap();
@@ -157,12 +149,12 @@ mod tests {
             .map(|_| rng.gen())
             .collect();
         let data = Data::of_bytes(&data_bytes);
-        let data_comm = data.to_commitment(&SRS);
+        let data_comm = data.to_commitment(&srs);
 
         let read_consistency = {
             let _init_storage_file = storage::init(path, &data);
             let read_data = storage::read(path).unwrap();
-            let read_data_comm = read_data.to_commitment(&SRS);
+            let read_data_comm = read_data.to_commitment(&srs);
 
             // True if read data are the same as initial data
             Curve::eq(&data_comm, &read_data_comm)
@@ -192,12 +184,12 @@ mod tests {
             };
 
             let updated_data = data.apply(&diff);
-            let updated_data_comm = updated_data.to_commitment(&SRS);
+            let updated_data_comm = updated_data.to_commitment(&srs);
 
             let _file_update = storage::update(path, &diff);
 
             let updated_read_data = storage::read(path).unwrap();
-            let updated_read_data_comm = updated_read_data.to_commitment(&SRS);
+            let updated_read_data_comm = updated_read_data.to_commitment(&srs);
 
             (
                 Curve::ne(&updated_data_comm, &data_comm),
