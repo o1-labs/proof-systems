@@ -60,8 +60,8 @@ impl<F: PrimeField> Data<F> {
 
     /// Commit a `data` of length smaller than `SRS_SIZE`
     /// If greater data is provided, anything above `SRS_SIZE` is ignored
-    pub fn to_commitment<G: KimchiCurve<ScalarField = F>>(&self, srs: &SRS<G>) -> G {
-        commit_to_field_elems::<G>(srs, &self.data)[0]
+    pub fn to_commitment<G: KimchiCurve<ScalarField = F>>(&self, srs: &SRS<G>) -> Commitment<G> {
+        Commitment::from_data(srs, &self.data)
     }
 
     /// Modifies inplace the provided data with `diff`
@@ -141,9 +141,15 @@ pub fn update<F: PrimeField>(path: &str, diff: &Diff<F>) -> std::io::Result<()> 
 
 #[cfg(test)]
 mod tests {
-    use crate::{diff::Diff, encoding, storage, storage::Data, Curve, ScalarField, SRS_SIZE};
+    use crate::{
+        diff::Diff,
+        encoding, storage,
+        storage::{Commitment, Data},
+        Curve, ScalarField, SRS_SIZE,
+    };
     use ark_ff::{One, UniformRand, Zero};
     use mina_curves::pasta::Fp;
+    use poly_commitment::ipa::SRS;
     use rand::Rng;
     use std::fs;
     use tempfile::NamedTempFile;
@@ -155,7 +161,7 @@ mod tests {
     fn test_data_consistency() {
         let mut rng = o1_utils::tests::make_test_rng(None);
 
-        let srs = poly_commitment::precomputed_srs::get_srs_test();
+        let srs: SRS<Curve> = poly_commitment::precomputed_srs::get_srs_test();
 
         // Path of the file that will contain the test data
         let file = NamedTempFile::new().unwrap();
@@ -176,7 +182,7 @@ mod tests {
             let read_data_comm = read_data.to_commitment(&srs);
 
             // True if read data are the same as initial data
-            Curve::eq(&data_comm, &read_data_comm)
+            Commitment::eq(&data_comm, &read_data_comm)
         };
 
         let (data_updated, update_consistency) = {
@@ -211,9 +217,10 @@ mod tests {
             let updated_read_data_comm = updated_read_data.to_commitment(&srs);
 
             (
-                Curve::ne(&updated_data_comm, &data_comm),
+                // True if the data have changed because of the update
+                Commitment::ne(&updated_data_comm, &data_comm),
                 // True if read data from updated file are the same as updated data
-                Curve::eq(&updated_data_comm, &updated_read_data_comm),
+                Commitment::eq(&updated_data_comm, &updated_read_data_comm),
             )
         };
 
