@@ -41,4 +41,3 @@ mina-curves = { workspace = true }
 mina-poseidon = { workspace = true }
 o1-utils = { workspace = true }
 poly-commitment = { workspace = true, features = ["ocaml_types"] }
-saffron = { workspace = true, features = ["ocaml_types"] }

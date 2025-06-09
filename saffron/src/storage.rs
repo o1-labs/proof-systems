@@ -241,3 +241,59 @@ mod tests {
         assert!(diff_comm_consistency);
     }
 }
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+    use crate::diff::caml::*;
+    use kimchi_stubs::field_vector::fp::CamlFpVector;
+    use mina_curves::pasta::Fp;
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlData {
+        pub data: CamlFpVector,
+    }
+
+    impl From<Data<Fp>> for CamlData {
+        fn from(data: Data<Fp>) -> Self {
+            Self {
+                data: CamlFpVector::create(data.data),
+            }
+        }
+    }
+
+    impl From<CamlData> for Data<Fp> {
+        fn from(caml_data: CamlData) -> Self {
+            Self {
+                data: caml_data.data.as_slice().into(),
+            }
+        }
+    }
+
+    #[ocaml_gen::func]
+    #[ocaml::func]
+    pub fn caml_init(path: String, data: CamlData) -> Result<(), ocaml::Error> {
+        match init(&path, &data.into()) {
+            Err(_) => ocaml::Error::failwith("Storage.caml_init: error in file initialisation"),
+            Ok(()) => Ok(()),
+        }
+    }
+
+    #[ocaml_gen::func]
+    #[ocaml::func]
+    pub fn caml_read(path: String) -> Result<CamlData, ocaml::Error> {
+        match read(&path) {
+            Err(e) => return Err(e.into()),
+            Ok(data) => Ok(data.into()),
+        }
+    }
+
+    #[ocaml_gen::func]
+    #[ocaml::func]
+    pub fn caml_update(path: String, diff: CamlDiff) -> Result<(), ocaml::Error> {
+        match update(&path, &diff.into()) {
+            Err(_) => ocaml::Error::failwith("Storage.caml_update: error in file initialisation"),
+            Ok(()) => Ok(()),
+        }
+    }
+}
