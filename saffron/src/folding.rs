@@ -513,7 +513,6 @@ pub mod testing {
     use crate::{Curve, ScalarField};
     use ark_ff::UniformRand;
     use ark_poly::Evaluations;
-    use kimchi::circuits::domains::EvaluationDomains;
     use mina_curves::pasta::{Fp, Vesta};
     use poly_commitment::ipa::SRS;
     use rand::Rng;
@@ -521,7 +520,7 @@ pub mod testing {
     /// Generates a random core instance and witness
     pub fn generate_random_inst_wit_core<RNG>(
         srs: &SRS<Vesta>,
-        domain: EvaluationDomains<ScalarField>,
+        domain: R2D<ScalarField>,
         rng: &mut RNG,
     ) -> (CoreInstance, CoreWitness)
     where
@@ -529,20 +528,20 @@ pub mod testing {
     {
         let data: Vec<ScalarField> = {
             let mut data = vec![];
-            (0..domain.d1.size).for_each(|_| data.push(Fp::rand(rng)));
+            (0..domain.size).for_each(|_| data.push(Fp::rand(rng)));
             data
         };
 
         let data_comm: Curve = srs
             .commit_evaluations_non_hiding(
-                domain.d1,
-                &Evaluations::from_vec_and_domain(data.clone(), domain.d1),
+                domain,
+                &Evaluations::from_vec_and_domain(data.clone(), domain),
             )
             .chunks[0];
 
         let query: Vec<ScalarField> = {
             let mut query = vec![];
-            (0..domain.d1.size)
+            (0..domain.size)
                 .for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.1)));
             query
         };
@@ -556,15 +555,15 @@ pub mod testing {
 
         let comm_q = srs
             .commit_evaluations_non_hiding(
-                domain.d1,
-                &Evaluations::from_vec_and_domain(query.clone(), domain.d1),
+                domain,
+                &Evaluations::from_vec_and_domain(query.clone(), domain),
             )
             .chunks[0];
 
         let comm_a = srs
             .commit_evaluations_non_hiding(
-                domain.d1,
-                &Evaluations::from_vec_and_domain(answer.clone(), domain.d1),
+                domain,
+                &Evaluations::from_vec_and_domain(answer.clone(), domain),
             )
             .chunks[0];
 
@@ -575,9 +574,9 @@ pub mod testing {
         };
 
         let core_witness = CoreWitness {
-            d: Evaluations::from_vec_and_domain(data, domain.d1),
-            q: Evaluations::from_vec_and_domain(query, domain.d1),
-            a: Evaluations::from_vec_and_domain(answer, domain.d1),
+            d: Evaluations::from_vec_and_domain(data, domain),
+            q: Evaluations::from_vec_and_domain(query, domain),
+            a: Evaluations::from_vec_and_domain(answer, domain),
         };
 
         (core_instance, core_witness)
@@ -588,7 +587,7 @@ pub mod testing {
     /// a valid folding procedure, but just a generic relaxed pair instead.
     pub fn generate_random_inst_wit_relaxed<RNG>(
         srs: &SRS<Vesta>,
-        domain: EvaluationDomains<ScalarField>,
+        domain: R2D<ScalarField>,
         rng: &mut RNG,
     ) -> (RelaxedInstance, RelaxedWitness)
     where
@@ -597,7 +596,7 @@ pub mod testing {
         let (inst, wit) = generate_random_inst_wit_core(srs, domain, rng);
         let u = Fp::rand(rng);
         let e = &(&wit.d * &wit.q) - &(&wit.a * u);
-        let comm_e = srs.commit_evaluations_non_hiding(domain.d1, &e).chunks[0];
+        let comm_e = srs.commit_evaluations_non_hiding(domain, &e).chunks[0];
 
         let relaxed_instance = RelaxedInstance {
             core: inst,
@@ -607,7 +606,7 @@ pub mod testing {
 
         let relaxed_witness = RelaxedWitness { core: wit, e };
 
-        assert!(relaxed_instance.check_in_language(srs, domain.d1, &relaxed_witness));
+        assert!(relaxed_instance.check_in_language(srs, domain, &relaxed_witness));
 
         (relaxed_instance, relaxed_witness)
     }
@@ -630,12 +629,13 @@ mod tests {
         let srs = poly_commitment::precomputed_srs::get_srs_test();
         let domain: EvaluationDomains<ScalarField> =
             EvaluationDomains::<ScalarField>::create(srs.size()).unwrap();
+
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
         let (core_instance_1, core_witness_1) =
-            generate_random_inst_wit_core(&srs, domain, &mut rng);
+            generate_random_inst_wit_core(&srs, domain.d1, &mut rng);
         let (core_instance_2, core_witness_2) =
-            generate_random_inst_wit_core(&srs, domain, &mut rng);
+            generate_random_inst_wit_core(&srs, domain.d1, &mut rng);
         let relaxed_instance_2 = core_instance_2.relax();
         let relaxed_witness_2 = core_witness_2.relax(domain.d1);
 
@@ -658,7 +658,7 @@ mod tests {
         );
 
         let (core_instance_4, core_witness_4) =
-            generate_random_inst_wit_core(&srs, domain, &mut rng);
+            generate_random_inst_wit_core(&srs, domain.d1, &mut rng);
         let (relaxed_instance_5, relaxed_witness_5, cross_term_2) = folding_prover(
             &srs,
             domain.d1,

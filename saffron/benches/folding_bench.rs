@@ -31,8 +31,8 @@ fn bench_folding(c: &mut Criterion) {
     group.bench_function("folding_prover", |b| {
         b.iter_batched(
             || {
-                let relaxed = generate_random_inst_wit_relaxed(&srs, domain, &mut rng);
-                let core = generate_random_inst_wit_core(&srs, domain, &mut rng);
+                let relaxed = generate_random_inst_wit_relaxed(&srs, domain.d1, &mut rng);
+                let core = generate_random_inst_wit_core(&srs, domain.d1, &mut rng);
                 (core, relaxed)
             },
             |((core_instance, core_witness), (relaxed_instance, relaxed_witness))| {
@@ -53,9 +53,9 @@ fn bench_folding(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let (relaxed_instance, relaxed_witness) =
-                    generate_random_inst_wit_relaxed(&srs, domain, &mut rng);
+                    generate_random_inst_wit_relaxed(&srs, domain.d1, &mut rng);
                 let (core_instance, core_witness) =
-                    generate_random_inst_wit_core(&srs, domain, &mut rng);
+                    generate_random_inst_wit_core(&srs, domain.d1, &mut rng);
                 let (_, _, cross_term) = folding_prover(
                     &srs,
                     domain.d1,
@@ -79,7 +79,7 @@ fn bench_folding(c: &mut Criterion) {
 
     group.bench_function("prover_relaxed", |b| {
         b.iter_batched(
-            || generate_random_inst_wit_relaxed(&srs, domain, &mut rng),
+            || generate_random_inst_wit_relaxed(&srs, domain.d1, &mut rng),
             |(relaxed_instance, relaxed_witness)| {
                 black_box(prove_relaxed(
                     &srs,
@@ -95,7 +95,7 @@ fn bench_folding(c: &mut Criterion) {
     });
 
     let (relaxed_instance, relaxed_witness) =
-        generate_random_inst_wit_relaxed(&srs, domain, &mut rng);
+        generate_random_inst_wit_relaxed(&srs, domain.d1, &mut rng);
     let proof = prove_relaxed(
         &srs,
         domain,
