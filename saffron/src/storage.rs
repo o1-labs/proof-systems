@@ -60,8 +60,8 @@ impl<F: PrimeField> Data<F> {
 
     /// Commit a `data` of length smaller than `SRS_SIZE`
     /// If greater data is provided, anything above `SRS_SIZE` is ignored
-    pub fn to_commitment<G: KimchiCurve<ScalarField = F>>(&self, srs: &SRS<G>) -> G {
-        commit_to_field_elems::<G>(srs, &self.data)[0]
+    pub fn to_commitment<G: KimchiCurve<ScalarField = F>>(&self, srs: &SRS<G>) -> Commitment<G> {
+        Commitment::from_data(srs, &self.data)
     }
 
     /// Modifies inplace the provided data with `diff`
@@ -141,7 +141,7 @@ pub fn update<F: PrimeField>(path: &str, diff: &Diff<F>) -> std::io::Result<()> 
 
 #[cfg(test)]
 mod tests {
-    use crate::{diff::Diff, encoding, env, storage, storage::Data, Curve, ScalarField, SRS_SIZE};
+    use crate::{commitment::Commitment, diff::Diff, encoding, env, storage, storage::Data, ScalarField, SRS_SIZE};
     use ark_ff::{One, UniformRand, Zero};
     use mina_curves::pasta::{Fp, Vesta};
     use once_cell::sync::Lazy;
@@ -184,7 +184,7 @@ mod tests {
             let read_data_comm = read_data.to_commitment(&SRS);
 
             // True if read data are the same as initial data
-            Curve::eq(&data_comm, &read_data_comm)
+            Commitment::eq(&data_comm, &read_data_comm)
         };
 
         let (data_updated, update_consistency) = {
@@ -219,9 +219,10 @@ mod tests {
             let updated_read_data_comm = updated_read_data.to_commitment(&SRS);
 
             (
-                Curve::ne(&updated_data_comm, &data_comm),
+                // True if the data have changed because of the update
+                Commitment::ne(&updated_data_comm, &data_comm),
                 // True if read data from updated file are the same as updated data
-                Curve::eq(&updated_data_comm, &updated_read_data_comm),
+                Commitment::eq(&updated_data_comm, &updated_read_data_comm),
             )
         };
 
