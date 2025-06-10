@@ -203,19 +203,19 @@ pub mod caml {
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     // TODO: Note the current implementation of Diff in OCaml does not involve region yet
-    pub struct CamlSingleDiff {
+    pub struct CamlSaffronSingleDiff {
         address: ocaml::Uint,
         old_value: CamlFp,
         new_value: CamlFp,
     }
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlDiff {
-        diff: Vec<CamlSingleDiff>,
+    pub struct CamlSaffronDiff {
+        diff: Vec<CamlSaffronSingleDiff>,
     }
 
-    impl From<CamlDiff> for Diff<Fp> {
-        fn from(caml_diff: CamlDiff) -> Diff<Fp> {
+    impl From<CamlSaffronDiff> for Diff<Fp> {
+        fn from(caml_diff: CamlSaffronDiff) -> Diff<Fp> {
             Diff {
                 // TODO: in our current version with 1 commitment / Data / Contract, region is always set to 0
                 region: 0u64,
@@ -236,4 +236,4 @@ pub mod caml {
 
 // This is needed to export CamlDiff in storage::ocaml
 #[cfg(feature = "ocaml_types")]
-pub use caml::CamlDiff;
+pub use caml::CamlSaffronDiff;

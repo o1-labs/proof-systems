@@ -504,7 +504,9 @@ mod tests {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use crate::{commitment::caml::CamlCommitment, read_proof, storage::caml::CamlData, BaseField};
+    use crate::{
+        commitment::caml::CamlSaffronCommitment, read_proof, storage::caml::CamlSaffronData, BaseField,
+    };
     use kimchi::groupmap::GroupMap;
     use kimchi_stubs::{
         arkworks::{group_affine::CamlGVesta, pasta_fp::CamlFp},
@@ -514,16 +516,16 @@ pub mod caml {
     use poly_commitment::{ipa::caml::CamlOpeningProof, SRS};
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlReadProof {
-        pub answer_comm: CamlCommitment,
-        pub quotient_comm: CamlCommitment,
+    pub struct CamlSaffronReadProof {
+        pub answer_comm: CamlSaffronCommitment,
+        pub quotient_comm: CamlSaffronCommitment,
         pub data_eval: CamlFp,
         pub query_eval: CamlFp,
         pub answer_eval: CamlFp,
         pub opening_proof: CamlOpeningProof<CamlGVesta, CamlFp>,
     }
 
-    impl From<ReadProof> for CamlReadProof {
+    impl From<ReadProof> for CamlSaffronReadProof {
         fn from(proof: ReadProof) -> Self {
             Self {
                 answer_comm: proof.answer_comm.into(),
@@ -536,8 +538,8 @@ pub mod caml {
         }
     }
 
-    impl From<CamlReadProof> for ReadProof {
-        fn from(proof: CamlReadProof) -> Self {
+    impl From<CamlSaffronReadProof> for ReadProof {
+        fn from(proof: CamlSaffronReadProof) -> Self {
             Self {
                 answer_comm: proof.answer_comm.into(),
                 quotient_comm: proof.quotient_comm.into(),
@@ -560,13 +562,13 @@ pub mod caml {
 
     #[ocaml_gen::func]
     #[ocaml::func]
-    pub fn caml_read_prove(
+    pub fn caml_saffron_read_prove(
         caml_srs: CamlFpSrs,
-        caml_data: CamlData,
+        caml_data: CamlSaffronData,
         caml_query: Vec<ocaml::Int>,
-        caml_data_comm: CamlCommitment,
-        caml_query_comm: CamlCommitment,
-    ) -> CamlReadProof {
+        caml_data_comm: CamlSaffronCommitment,
+        caml_query_comm: CamlSaffronCommitment,
+    ) -> CamlSaffronReadProof {
         let srs = caml_srs.0;
         let data: Data<ScalarField> = caml_data.into();
         let query: Query = Query {
@@ -597,11 +599,11 @@ pub mod caml {
 
     #[ocaml_gen::func]
     #[ocaml::func]
-    pub fn caml_read_verify(
+    pub fn caml_saffron_read_verify(
         caml_srs: CamlFpSrs,
-        caml_data_comm: CamlCommitment,
-        caml_query_comm: CamlCommitment,
-        caml_proof: CamlReadProof,
+        caml_data_comm: CamlSaffronCommitment,
+        caml_query_comm: CamlSaffronCommitment,
+        caml_proof: CamlSaffronReadProof,
     ) -> bool {
         let srs = caml_srs.0;
         let data_comm: Commitment<Curve> = caml_data_comm.into();
@@ -628,11 +630,11 @@ pub mod caml {
 
     #[ocaml_gen::func]
     #[ocaml::func]
-    pub fn caml_read_answer_verify(
+    pub fn caml_saffron_read_answer_verify(
         caml_srs: CamlFpSrs,
         caml_query: Vec<ocaml::Int>,
         caml_answer: CamlFpVector,
-        caml_proof: CamlReadProof,
+        caml_proof: CamlSaffronReadProof,
     ) -> bool {
         let srs = caml_srs.0;
         let query: Query = Query {
