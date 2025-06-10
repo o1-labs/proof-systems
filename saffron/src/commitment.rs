@@ -133,18 +133,18 @@ pub mod caml {
     use mina_curves::pasta::Vesta;
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlCommitment {
+    pub struct CamlSaffronCommitment {
         pub cm: CamlGVesta,
     }
 
-    impl From<Commitment<Vesta>> for CamlCommitment {
+    impl From<Commitment<Vesta>> for CamlSaffronCommitment {
         fn from(cm: Commitment<Vesta>) -> Self {
             Self { cm: cm.cm.into() }
         }
     }
 
-    impl From<CamlCommitment> for Commitment<Vesta> {
-        fn from(caml_cm: CamlCommitment) -> Self {
+    impl From<CamlSaffronCommitment> for Commitment<Vesta> {
+        fn from(caml_cm: CamlSaffronCommitment) -> Self {
             Self {
                 cm: caml_cm.cm.into(),
             }
@@ -153,11 +153,11 @@ pub mod caml {
 
     #[ocaml_gen::func]
     #[ocaml::func]
-    pub fn caml_commitment_update(
+    pub fn caml_saffron_commitment_update(
         srs: CamlFpSrs,
-        commitment: CamlCommitment,
-        diff: CamlDiff,
-    ) -> CamlCommitment {
+        commitment: CamlSaffronCommitment,
+        diff: CamlSaffronDiff,
+    ) -> CamlSaffronCommitment {
         let commitment: Commitment<Vesta> = commitment.into();
         commitment.update(&srs, diff.into()).into()
     }
