@@ -178,7 +178,6 @@ mod tests {
     use crate::{
         commitment::{combine_commitments, commit_to_field_elems},
         encoding::encode_for_domain,
-        env,
         utils::test_utils::UserData,
     };
 
@@ -190,13 +189,9 @@ mod tests {
     use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
     use proptest::prelude::*;
 
-    static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
-        if let Ok(srs) = std::env::var("SRS_FILEPATH") {
-            env::get_srs_from_cache(srs)
-        } else {
-            SRS::create(1 << 16)
-        }
-    });
+    // Lazy variables used because proptest does not trivially accept
+    // test precomputes.
+    static SRS: Lazy<SRS<Vesta>> = Lazy::new(poly_commitment::precomputed_srs::get_srs_test);
 
     static DOMAIN: Lazy<Radix2EvaluationDomain<Fp>> =
         Lazy::new(|| Radix2EvaluationDomain::new(SRS.size()).unwrap());

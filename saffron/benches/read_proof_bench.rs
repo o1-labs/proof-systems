@@ -4,34 +4,19 @@ use ark_ff::{One, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations};
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
 use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
-use mina_curves::pasta::{Fp, Vesta};
-use once_cell::sync::Lazy;
+use mina_curves::pasta::Fp;
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
 use rand::rngs::OsRng;
 use saffron::{
-    env,
     read_proof::{prove, verify},
-    ScalarField, SRS_SIZE,
+    Curve, ScalarField, SRS_SIZE,
 };
 
-// Set up static resources to avoid re-computation during benchmarks
-static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
-    if let Ok(srs) = std::env::var("SRS_FILEPATH") {
-        env::get_srs_from_cache(srs)
-    } else {
-        SRS::create(SRS_SIZE)
-    }
-});
-
-static DOMAIN: Lazy<EvaluationDomains<ScalarField>> =
-    Lazy::new(|| EvaluationDomains::<ScalarField>::create(SRS_SIZE).unwrap());
-
-static GROUP_MAP: Lazy<<Vesta as CommitmentCurve>::Map> =
-    Lazy::new(<Vesta as CommitmentCurve>::Map::setup);
-
 fn generate_test_data(
+    srs: &SRS<Curve>,
+    domain: EvaluationDomains<ScalarField>,
     size: usize,
-) -> (Vec<ScalarField>, Vec<ScalarField>, Vec<ScalarField>, Vesta) {
+) -> (Vec<ScalarField>, Vec<ScalarField>, Vec<ScalarField>, Curve) {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
     // Generate data with specified size
@@ -39,8 +24,8 @@ fn generate_test_data(
 
     // Create data commitment
     let data_poly: DensePolynomial<ScalarField> =
-        Evaluations::from_vec_and_domain(data.clone(), DOMAIN.d1).interpolate();
-    let data_comm: Vesta = SRS.commit_non_hiding(&data_poly, 1).chunks[0];
+        Evaluations::from_vec_and_domain(data.clone(), domain.d1).interpolate();
+    let data_comm: Curve = srs.commit_non_hiding(&data_poly, 1).chunks[0];
 
     // Generate query (about 10% of positions will be queried)
     let query: Vec<ScalarField> = (0..size)
@@ -60,7 +45,11 @@ fn generate_test_data(
 }
 
 fn bench_read_proof_prove(c: &mut Criterion) {
-    let (data, query, answer, data_comm) = generate_test_data(SRS_SIZE);
+    let srs = poly_commitment::precomputed_srs::get_srs_test();
+    let group_map = <Curve as CommitmentCurve>::Map::setup();
+    let domain: EvaluationDomains<ScalarField> = EvaluationDomains::create(srs.size()).unwrap();
+
+    let (data, query, answer, data_comm) = generate_test_data(&srs, domain, SRS_SIZE);
 
     let description = format!("prove size {}", SRS_SIZE);
     c.bench_function(description.as_str(), |b| {
@@ -68,9 +57,9 @@ fn bench_read_proof_prove(c: &mut Criterion) {
             || OsRng,
             |mut rng| {
                 black_box(prove(
-                    &SRS,
-                    *DOMAIN,
-                    &GROUP_MAP,
+                    &srs,
+                    domain,
+                    &group_map,
                     &mut rng,
                     data.as_slice(),
                     query.as_slice(),
@@ -84,14 +73,18 @@ fn bench_read_proof_prove(c: &mut Criterion) {
 }
 
 fn bench_read_proof_verify(c: &mut Criterion) {
-    let (data, query, answer, data_comm) = generate_test_data(SRS_SIZE);
+    let srs = poly_commitment::precomputed_srs::get_srs_test();
+    let group_map = <Curve as CommitmentCurve>::Map::setup();
+    let domain: EvaluationDomains<ScalarField> = EvaluationDomains::create(srs.size()).unwrap();
+
+    let (data, query, answer, data_comm) = generate_test_data(&srs, domain, SRS_SIZE);
 
     // Create proof first
     let mut rng = OsRng;
     let proof = prove(
-        &SRS,
-        *DOMAIN,
-        &GROUP_MAP,
+        &srs,
+        domain,
+        &group_map,
         &mut rng,
         data.as_slice(),
         query.as_slice(),
@@ -105,7 +98,7 @@ fn bench_read_proof_verify(c: &mut Criterion) {
             || OsRng,
             |mut rng| {
                 black_box(verify(
-                    &SRS, *DOMAIN, &GROUP_MAP, &mut rng, &data_comm, &proof,
+                    &srs, domain, &group_map, &mut rng, &data_comm, &proof,
                 ))
             },
             BatchSize::SmallInput,
