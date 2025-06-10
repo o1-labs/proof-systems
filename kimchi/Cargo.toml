@@ -14,8 +14,8 @@ path = "src/lib.rs"
 bench = false       # needed for criterion (https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options)
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tikv-jemalloc-ctl = { workspace = true }
-tikv-jemallocator = { workspace = true }
+tikv-jemalloc-ctl = { workspace = true, optional = true }
+tikv-jemallocator = { workspace = true, optional = true }
 
 [dependencies]
 ark-bn254 = { workspace = true, optional = true }
@@ -96,3 +96,4 @@ ocaml_types = [
 bn254 = ["ark-bn254"]
 wasm_types = ["wasm-bindgen"]
 check_feature_flags = []
+diagnostics = ["tikv-jemalloc-ctl", "tikv-jemallocator"]

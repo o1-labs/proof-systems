@@ -14,7 +14,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::Rng;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "diagnostics"))]
 use tikv_jemallocator::Jemalloc;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
@@ -25,7 +25,7 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[test]
 fn test_lazy_mode_benchmark() {
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(not(target_arch = "wasm32"), feature = "diagnostics"))]
     #[global_allocator]
     static GLOBAL: Jemalloc = Jemalloc;
 
