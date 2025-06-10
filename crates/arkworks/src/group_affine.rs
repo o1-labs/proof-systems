@@ -28,6 +28,14 @@ pub struct WasmGVesta {
     pub infinity: bool,
 }
 
+#[wasm_bindgen]
+impl WasmGVesta {
+    #[wasm_bindgen]
+    pub fn clone(&self) -> Self {
+        *self
+    }
+}
+
 // Conversions from/to AffineVesta
 
 impl From<AffineVesta> for WasmGVesta {
