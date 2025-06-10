@@ -34,7 +34,7 @@ use rand_core::{CryptoRng, RngCore};
 use std::time::Instant;
 
 // Returns the number of bytes allocated by the heap at a given point in time
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "diagnostics"))]
 fn heap_allocated() -> usize {
     use tikv_jemalloc_ctl::{epoch, stats};
 
@@ -42,7 +42,7 @@ fn heap_allocated() -> usize {
     stats::allocated::read().unwrap()
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", not(feature = "diagnostics")))]
 fn heap_allocated() -> usize {
     0
 }
