@@ -245,11 +245,11 @@ pub mod caml {
     use mina_curves::pasta::Fp;
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlData {
+    pub struct CamlSaffronData {
         pub data: CamlFpVector,
     }
 
-    impl From<Data<Fp>> for CamlData {
+    impl From<Data<Fp>> for CamlSaffronData {
         fn from(data: Data<Fp>) -> Self {
             Self {
                 data: CamlFpVector::create(data.data),
@@ -257,8 +257,8 @@ pub mod caml {
         }
     }
 
-    impl From<CamlData> for Data<Fp> {
-        fn from(caml_data: CamlData) -> Self {
+    impl From<CamlSaffronData> for Data<Fp> {
+        fn from(caml_data: CamlSaffronData) -> Self {
             Self {
                 data: caml_data.data.as_slice().into(),
             }
@@ -267,7 +267,10 @@ pub mod caml {
 
     #[ocaml_gen::func]
     #[ocaml::func]
-    pub fn caml_init(path: String, data: CamlData) -> Result<(), ocaml::Error> {
+    pub fn caml_saffron_storage_init(
+        path: String,
+        data: CamlSaffronData,
+    ) -> Result<(), ocaml::Error> {
         match init(&path, &data.into()) {
             Err(_) => ocaml::Error::failwith("Storage.caml_init: error in file initialisation"),
             Ok(()) => Ok(()),
@@ -276,7 +279,7 @@ pub mod caml {
 
     #[ocaml_gen::func]
     #[ocaml::func]
-    pub fn caml_read(path: String) -> Result<CamlData, ocaml::Error> {
+    pub fn caml_saffron_storage_read(path: String) -> Result<CamlSaffronData, ocaml::Error> {
         match read(&path) {
             Err(e) => return Err(e.into()),
             Ok(data) => Ok(data.into()),
@@ -285,7 +288,10 @@ pub mod caml {
 
     #[ocaml_gen::func]
     #[ocaml::func]
-    pub fn caml_update(path: String, diff: CamlDiff) -> Result<(), ocaml::Error> {
+    pub fn caml_saffron_storage_update(
+        path: String,
+        diff: CamlSaffronDiff,
+    ) -> Result<(), ocaml::Error> {
         match update(&path, &diff.into()) {
             Err(_) => ocaml::Error::failwith("Storage.caml_update: error in file initialisation"),
             Ok(()) => Ok(()),
