@@ -173,7 +173,7 @@
 <a href=#173 id=173 data-nosnippet>173</a>        thread,
 <a href=#174 id=174 data-nosnippet>174</a>    };
 <a href=#175 id=175 data-nosnippet>175</a>
-<a href=#176 id=176 data-nosnippet>176</a>    <span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
+<a href=#176 id=176 data-nosnippet>176</a>    <span class="attr">#[cfg(all(not(target_arch = <span class="string">"wasm32"</span>), feature = <span class="string">"diagnostics"</span>))]
 <a href=#177 id=177 data-nosnippet>177</a>    </span><span class="kw">fn </span>print_heap_usage(label: <span class="kw-2">&amp;</span>str) {
 <a href=#178 id=178 data-nosnippet>178</a>        <span class="kw">use </span>tikv_jemalloc_ctl::{epoch, stats};
 <a href=#179 id=179 data-nosnippet>179</a>
@@ -264,7 +264,7 @@
 <a href=#264 id=264 data-nosnippet>264</a>        }
 <a href=#265 id=265 data-nosnippet>265</a>    }
 <a href=#266 id=266 data-nosnippet>266</a>
-<a href=#267 id=267 data-nosnippet>267</a>    <span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
+<a href=#267 id=267 data-nosnippet>267</a>    <span class="attr">#[cfg(all(not(target_arch = <span class="string">"wasm32"</span>), feature = <span class="string">"diagnostics"</span>))]
 <a href=#268 id=268 data-nosnippet>268</a>    #[test]
 <a href=#269 id=269 data-nosnippet>269</a>    </span><span class="kw">fn </span>test_lazy_cache_allocation() {
 <a href=#270 id=270 data-nosnippet>270</a>        <span class="kw">use </span>tikv_jemallocator::Jemalloc;
