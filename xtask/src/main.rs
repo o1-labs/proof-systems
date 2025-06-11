@@ -138,6 +138,8 @@ fn build_kimchi_stubs(target_dir: Option<&str>, offline: bool) -> Result<()> {
         cmd.env("RUSTFLAGS", rustflags);
     }
 
+    println!("Cmd: {:?}", cmd);
+
     let status = cmd.status().context("Failed to build kimchi-stubs")?;
 
     if !status.success() {
@@ -197,6 +199,7 @@ fn build_wasm(out_dir: &str, target: Target, rust_version: RustVersion) -> Resul
         &[]
     };
 
+
     let status = cmd
         .args(args)
         .args(target_args)
@@ -211,6 +214,7 @@ fn build_wasm(out_dir: &str, target: Target, rust_version: RustVersion) -> Resul
     Ok(())
 }
 
+#[derive(Debug)]
 struct RustVersionCommand<'a> {
     cmd: Command,
     rustup_args: Option<(OsString, &'a str)>,
