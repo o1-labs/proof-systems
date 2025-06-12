@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi-stubs/src/pasta_fq_plonk_proof.rs`."><title>pasta_fq_plonk_proof.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-84e720fa.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi_stubs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0-nightly (d13a431a6 2025-06-09)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../static.files/storage-4e99c027.js"></script><script defer src="../../static.files/src-script-63605ae7.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-fd3af306.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi_stubs/</div>pasta_fq_plonk_proof.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use crate</span>::{
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi-stubs/src/pasta_fq_plonk_proof.rs`."><title>pasta_fq_plonk_proof.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-84e720fa.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi_stubs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0-nightly (e703dff8f 2025-06-11)" data-channel="nightly" data-search-js="search-f7877310.js" data-settings-js="settings-5514c975.js" ><script src="../../static.files/storage-4e99c027.js"></script><script defer src="../../static.files/src-script-63605ae7.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-fd3af306.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi_stubs/</div>pasta_fq_plonk_proof.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use crate</span>::{
 <a href=#2 id=2 data-nosnippet>2</a>    arkworks::{CamlFq, CamlGPallas},
 <a href=#3 id=3 data-nosnippet>3</a>    field_vector::fq::CamlFqVector,
 <a href=#4 id=4 data-nosnippet>4</a>    pasta_fq_plonk_index::CamlPastaFqPlonkIndexPtr,
@@ -79,175 +79,179 @@
 <a href=#79 id=79 data-nosnippet>79</a>    <span class="comment">// public input
 <a href=#80 id=80 data-nosnippet>80</a>    </span><span class="kw">let </span>public_input = witness[<span class="number">0</span>][<span class="number">0</span>..index.cs.public].to_vec();
 <a href=#81 id=81 data-nosnippet>81</a>
-<a href=#82 id=82 data-nosnippet>82</a>    <span class="comment">// NB: This method is designed only to be used by tests. However, since
-<a href=#83 id=83 data-nosnippet>83</a>    // creating a new reference will cause `drop` to be called on it once we are
-<a href=#84 id=84 data-nosnippet>84</a>    // done with it. Since `drop` calls `caml_shutdown` internally, we *really,
-<a href=#85 id=85 data-nosnippet>85</a>    // really* do not want to do this, but we have no other way to get at the
-<a href=#86 id=86 data-nosnippet>86</a>    // active runtime.
-<a href=#87 id=87 data-nosnippet>87</a>    // TODO: There's actually a way to get a handle to the runtime as a function
-<a href=#88 id=88 data-nosnippet>88</a>    // argument. Switch to doing this instead.
-<a href=#89 id=89 data-nosnippet>89</a>    </span><span class="kw">let </span>runtime = <span class="kw">unsafe </span>{ ocaml::Runtime::recover_handle() };
-<a href=#90 id=90 data-nosnippet>90</a>
-<a href=#91 id=91 data-nosnippet>91</a>    <span class="comment">// Release the runtime lock so that other threads can run using it while we
-<a href=#92 id=92 data-nosnippet>92</a>    // generate the proof.
-<a href=#93 id=93 data-nosnippet>93</a>    </span>runtime.releasing_runtime(|| {
-<a href=#94 id=94 data-nosnippet>94</a>        <span class="kw">let </span>group_map = GroupMap::&lt;Fp&gt;::setup();
-<a href=#95 id=95 data-nosnippet>95</a>        <span class="kw">let </span>proof = ProverProof::create_recursive::&lt;
-<a href=#96 id=96 data-nosnippet>96</a>            DefaultFqSponge&lt;PallasParameters, PlonkSpongeConstantsKimchi&gt;,
-<a href=#97 id=97 data-nosnippet>97</a>            DefaultFrSponge&lt;Fq, PlonkSpongeConstantsKimchi&gt;,
-<a href=#98 id=98 data-nosnippet>98</a>            <span class="kw">_</span>,
-<a href=#99 id=99 data-nosnippet>99</a>        &gt;(
-<a href=#100 id=100 data-nosnippet>100</a>            <span class="kw-2">&amp;</span>group_map,
-<a href=#101 id=101 data-nosnippet>101</a>            witness,
-<a href=#102 id=102 data-nosnippet>102</a>            <span class="kw-2">&amp;</span>runtime_tables,
-<a href=#103 id=103 data-nosnippet>103</a>            index,
-<a href=#104 id=104 data-nosnippet>104</a>            prev,
-<a href=#105 id=105 data-nosnippet>105</a>            <span class="prelude-val">None</span>,
-<a href=#106 id=106 data-nosnippet>106</a>            <span class="kw-2">&amp;mut </span>rand::rngs::OsRng,
-<a href=#107 id=107 data-nosnippet>107</a>        )
-<a href=#108 id=108 data-nosnippet>108</a>        .map_err(|e| ocaml::Error::Error(e.into()))<span class="question-mark">?</span>;
-<a href=#109 id=109 data-nosnippet>109</a>        <span class="prelude-val">Ok</span>((proof, public_input).into())
-<a href=#110 id=110 data-nosnippet>110</a>    })
-<a href=#111 id=111 data-nosnippet>111</a>}
-<a href=#112 id=112 data-nosnippet>112</a>
-<a href=#113 id=113 data-nosnippet>113</a><span class="attr">#[ocaml_gen::func]
-<a href=#114 id=114 data-nosnippet>114</a>#[ocaml::func]
-<a href=#115 id=115 data-nosnippet>115</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_proof_verify(
-<a href=#116 id=116 data-nosnippet>116</a>    index: CamlPastaFqPlonkVerifierIndex,
-<a href=#117 id=117 data-nosnippet>117</a>    proof: CamlProofWithPublic&lt;CamlGPallas, CamlFq&gt;,
-<a href=#118 id=118 data-nosnippet>118</a>) -&gt; bool {
-<a href=#119 id=119 data-nosnippet>119</a>    <span class="kw">let </span>group_map = &lt;Pallas <span class="kw">as </span>CommitmentCurve&gt;::Map::setup();
-<a href=#120 id=120 data-nosnippet>120</a>
-<a href=#121 id=121 data-nosnippet>121</a>    <span class="kw">let </span>(proof, public_input) = proof.into();
-<a href=#122 id=122 data-nosnippet>122</a>    <span class="kw">let </span>verifier_index = index.into();
-<a href=#123 id=123 data-nosnippet>123</a>    <span class="kw">let </span>context = Context {
-<a href=#124 id=124 data-nosnippet>124</a>        verifier_index: <span class="kw-2">&amp;</span>verifier_index,
-<a href=#125 id=125 data-nosnippet>125</a>        proof: <span class="kw-2">&amp;</span>proof,
-<a href=#126 id=126 data-nosnippet>126</a>        public_input: <span class="kw-2">&amp;</span>public_input,
-<a href=#127 id=127 data-nosnippet>127</a>    };
-<a href=#128 id=128 data-nosnippet>128</a>
-<a href=#129 id=129 data-nosnippet>129</a>    batch_verify::&lt;
-<a href=#130 id=130 data-nosnippet>130</a>        Pallas,
-<a href=#131 id=131 data-nosnippet>131</a>        DefaultFqSponge&lt;PallasParameters, PlonkSpongeConstantsKimchi&gt;,
-<a href=#132 id=132 data-nosnippet>132</a>        DefaultFrSponge&lt;Fq, PlonkSpongeConstantsKimchi&gt;,
-<a href=#133 id=133 data-nosnippet>133</a>        OpeningProof&lt;Pallas&gt;,
-<a href=#134 id=134 data-nosnippet>134</a>    &gt;(<span class="kw-2">&amp;</span>group_map, <span class="kw-2">&amp;</span>[context])
-<a href=#135 id=135 data-nosnippet>135</a>    .is_ok()
-<a href=#136 id=136 data-nosnippet>136</a>}
-<a href=#137 id=137 data-nosnippet>137</a>
-<a href=#138 id=138 data-nosnippet>138</a><span class="attr">#[ocaml_gen::func]
-<a href=#139 id=139 data-nosnippet>139</a>#[ocaml::func]
-<a href=#140 id=140 data-nosnippet>140</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_proof_batch_verify(
-<a href=#141 id=141 data-nosnippet>141</a>    indexes: Vec&lt;CamlPastaFqPlonkVerifierIndex&gt;,
-<a href=#142 id=142 data-nosnippet>142</a>    proofs: Vec&lt;CamlProofWithPublic&lt;CamlGPallas, CamlFq&gt;&gt;,
-<a href=#143 id=143 data-nosnippet>143</a>) -&gt; bool {
-<a href=#144 id=144 data-nosnippet>144</a>    <span class="kw">let </span>ts: Vec&lt;<span class="kw">_</span>&gt; = indexes
-<a href=#145 id=145 data-nosnippet>145</a>        .into_iter()
-<a href=#146 id=146 data-nosnippet>146</a>        .zip(proofs.into_iter())
-<a href=#147 id=147 data-nosnippet>147</a>        .map(|(caml_index, caml_proof)| {
-<a href=#148 id=148 data-nosnippet>148</a>            <span class="kw">let </span>verifier_index: VerifierIndex&lt;Pallas, OpeningProof&lt;Pallas&gt;&gt; = caml_index.into();
-<a href=#149 id=149 data-nosnippet>149</a>            <span class="kw">let </span>(proof, public_input): (ProverProof&lt;Pallas, OpeningProof&lt;Pallas&gt;&gt;, Vec&lt;<span class="kw">_</span>&gt;) =
-<a href=#150 id=150 data-nosnippet>150</a>                caml_proof.into();
-<a href=#151 id=151 data-nosnippet>151</a>            (verifier_index, proof, public_input)
-<a href=#152 id=152 data-nosnippet>152</a>        })
-<a href=#153 id=153 data-nosnippet>153</a>        .collect();
-<a href=#154 id=154 data-nosnippet>154</a>    <span class="kw">let </span>ts_ref: Vec&lt;Context&lt;Pallas, OpeningProof&lt;Pallas&gt;&gt;&gt; = ts
-<a href=#155 id=155 data-nosnippet>155</a>        .iter()
-<a href=#156 id=156 data-nosnippet>156</a>        .map(|(verifier_index, proof, public_input)| Context {
-<a href=#157 id=157 data-nosnippet>157</a>            verifier_index,
-<a href=#158 id=158 data-nosnippet>158</a>            proof,
-<a href=#159 id=159 data-nosnippet>159</a>            public_input,
-<a href=#160 id=160 data-nosnippet>160</a>        })
-<a href=#161 id=161 data-nosnippet>161</a>        .collect();
-<a href=#162 id=162 data-nosnippet>162</a>    <span class="kw">let </span>group_map = GroupMap::&lt;Fp&gt;::setup();
-<a href=#163 id=163 data-nosnippet>163</a>
-<a href=#164 id=164 data-nosnippet>164</a>    batch_verify::&lt;
-<a href=#165 id=165 data-nosnippet>165</a>        Pallas,
-<a href=#166 id=166 data-nosnippet>166</a>        DefaultFqSponge&lt;PallasParameters, PlonkSpongeConstantsKimchi&gt;,
-<a href=#167 id=167 data-nosnippet>167</a>        DefaultFrSponge&lt;Fq, PlonkSpongeConstantsKimchi&gt;,
-<a href=#168 id=168 data-nosnippet>168</a>        OpeningProof&lt;Pallas&gt;,
-<a href=#169 id=169 data-nosnippet>169</a>    &gt;(<span class="kw-2">&amp;</span>group_map, <span class="kw-2">&amp;</span>ts_ref)
-<a href=#170 id=170 data-nosnippet>170</a>    .is_ok()
-<a href=#171 id=171 data-nosnippet>171</a>}
-<a href=#172 id=172 data-nosnippet>172</a>
-<a href=#173 id=173 data-nosnippet>173</a><span class="attr">#[ocaml_gen::func]
-<a href=#174 id=174 data-nosnippet>174</a>#[ocaml::func]
-<a href=#175 id=175 data-nosnippet>175</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_proof_dummy() -&gt; CamlProofWithPublic&lt;CamlGPallas, CamlFq&gt; {
-<a href=#176 id=176 data-nosnippet>176</a>    <span class="kw">fn </span>comm() -&gt; PolyComm&lt;Pallas&gt; {
-<a href=#177 id=177 data-nosnippet>177</a>        <span class="kw">let </span>g = Pallas::generator();
-<a href=#178 id=178 data-nosnippet>178</a>        PolyComm {
-<a href=#179 id=179 data-nosnippet>179</a>            chunks: <span class="macro">vec!</span>[g, g, g],
-<a href=#180 id=180 data-nosnippet>180</a>        }
-<a href=#181 id=181 data-nosnippet>181</a>    }
-<a href=#182 id=182 data-nosnippet>182</a>
-<a href=#183 id=183 data-nosnippet>183</a>    <span class="kw">let </span>prev = RecursionChallenge {
-<a href=#184 id=184 data-nosnippet>184</a>        chals: <span class="macro">vec!</span>[Fq::one(), Fq::one()],
-<a href=#185 id=185 data-nosnippet>185</a>        comm: comm(),
-<a href=#186 id=186 data-nosnippet>186</a>    };
-<a href=#187 id=187 data-nosnippet>187</a>    <span class="kw">let </span>prev_challenges = <span class="macro">vec!</span>[prev.clone(), prev.clone(), prev];
-<a href=#188 id=188 data-nosnippet>188</a>
-<a href=#189 id=189 data-nosnippet>189</a>    <span class="kw">let </span>g = Pallas::generator();
-<a href=#190 id=190 data-nosnippet>190</a>    <span class="kw">let </span>proof = OpeningProof {
-<a href=#191 id=191 data-nosnippet>191</a>        lr: <span class="macro">vec!</span>[(g, g), (g, g), (g, g)],
-<a href=#192 id=192 data-nosnippet>192</a>        z1: Fq::one(),
-<a href=#193 id=193 data-nosnippet>193</a>        z2: Fq::one(),
-<a href=#194 id=194 data-nosnippet>194</a>        delta: g,
-<a href=#195 id=195 data-nosnippet>195</a>        sg: g,
-<a href=#196 id=196 data-nosnippet>196</a>    };
-<a href=#197 id=197 data-nosnippet>197</a>    <span class="kw">let </span>eval = || PointEvaluations {
-<a href=#198 id=198 data-nosnippet>198</a>        zeta: <span class="macro">vec!</span>[Fq::one()],
-<a href=#199 id=199 data-nosnippet>199</a>        zeta_omega: <span class="macro">vec!</span>[Fq::one()],
+<a href=#82 id=82 data-nosnippet>82</a>    <span class="kw">if </span>std::env::var(<span class="string">"KIMCHI_PROVER_DUMP_ARGUMENTS"</span>).is_ok() {
+<a href=#83 id=83 data-nosnippet>83</a>        kimchi::bench::bench_arguments_dump_into_file(<span class="kw-2">&amp;</span>index.cs, <span class="kw-2">&amp;</span>witness, <span class="kw-2">&amp;</span>runtime_tables, <span class="kw-2">&amp;</span>prev);
+<a href=#84 id=84 data-nosnippet>84</a>    }
+<a href=#85 id=85 data-nosnippet>85</a>
+<a href=#86 id=86 data-nosnippet>86</a>    <span class="comment">// NB: This method is designed only to be used by tests. However, since
+<a href=#87 id=87 data-nosnippet>87</a>    // creating a new reference will cause `drop` to be called on it once we are
+<a href=#88 id=88 data-nosnippet>88</a>    // done with it. Since `drop` calls `caml_shutdown` internally, we *really,
+<a href=#89 id=89 data-nosnippet>89</a>    // really* do not want to do this, but we have no other way to get at the
+<a href=#90 id=90 data-nosnippet>90</a>    // active runtime.
+<a href=#91 id=91 data-nosnippet>91</a>    // TODO: There's actually a way to get a handle to the runtime as a function
+<a href=#92 id=92 data-nosnippet>92</a>    // argument. Switch to doing this instead.
+<a href=#93 id=93 data-nosnippet>93</a>    </span><span class="kw">let </span>runtime = <span class="kw">unsafe </span>{ ocaml::Runtime::recover_handle() };
+<a href=#94 id=94 data-nosnippet>94</a>
+<a href=#95 id=95 data-nosnippet>95</a>    <span class="comment">// Release the runtime lock so that other threads can run using it while we
+<a href=#96 id=96 data-nosnippet>96</a>    // generate the proof.
+<a href=#97 id=97 data-nosnippet>97</a>    </span>runtime.releasing_runtime(|| {
+<a href=#98 id=98 data-nosnippet>98</a>        <span class="kw">let </span>group_map = GroupMap::&lt;Fp&gt;::setup();
+<a href=#99 id=99 data-nosnippet>99</a>        <span class="kw">let </span>proof = ProverProof::create_recursive::&lt;
+<a href=#100 id=100 data-nosnippet>100</a>            DefaultFqSponge&lt;PallasParameters, PlonkSpongeConstantsKimchi&gt;,
+<a href=#101 id=101 data-nosnippet>101</a>            DefaultFrSponge&lt;Fq, PlonkSpongeConstantsKimchi&gt;,
+<a href=#102 id=102 data-nosnippet>102</a>            <span class="kw">_</span>,
+<a href=#103 id=103 data-nosnippet>103</a>        &gt;(
+<a href=#104 id=104 data-nosnippet>104</a>            <span class="kw-2">&amp;</span>group_map,
+<a href=#105 id=105 data-nosnippet>105</a>            witness,
+<a href=#106 id=106 data-nosnippet>106</a>            <span class="kw-2">&amp;</span>runtime_tables,
+<a href=#107 id=107 data-nosnippet>107</a>            index,
+<a href=#108 id=108 data-nosnippet>108</a>            prev,
+<a href=#109 id=109 data-nosnippet>109</a>            <span class="prelude-val">None</span>,
+<a href=#110 id=110 data-nosnippet>110</a>            <span class="kw-2">&amp;mut </span>rand::rngs::OsRng,
+<a href=#111 id=111 data-nosnippet>111</a>        )
+<a href=#112 id=112 data-nosnippet>112</a>        .map_err(|e| ocaml::Error::Error(e.into()))<span class="question-mark">?</span>;
+<a href=#113 id=113 data-nosnippet>113</a>        <span class="prelude-val">Ok</span>((proof, public_input).into())
+<a href=#114 id=114 data-nosnippet>114</a>    })
+<a href=#115 id=115 data-nosnippet>115</a>}
+<a href=#116 id=116 data-nosnippet>116</a>
+<a href=#117 id=117 data-nosnippet>117</a><span class="attr">#[ocaml_gen::func]
+<a href=#118 id=118 data-nosnippet>118</a>#[ocaml::func]
+<a href=#119 id=119 data-nosnippet>119</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_proof_verify(
+<a href=#120 id=120 data-nosnippet>120</a>    index: CamlPastaFqPlonkVerifierIndex,
+<a href=#121 id=121 data-nosnippet>121</a>    proof: CamlProofWithPublic&lt;CamlGPallas, CamlFq&gt;,
+<a href=#122 id=122 data-nosnippet>122</a>) -&gt; bool {
+<a href=#123 id=123 data-nosnippet>123</a>    <span class="kw">let </span>group_map = &lt;Pallas <span class="kw">as </span>CommitmentCurve&gt;::Map::setup();
+<a href=#124 id=124 data-nosnippet>124</a>
+<a href=#125 id=125 data-nosnippet>125</a>    <span class="kw">let </span>(proof, public_input) = proof.into();
+<a href=#126 id=126 data-nosnippet>126</a>    <span class="kw">let </span>verifier_index = index.into();
+<a href=#127 id=127 data-nosnippet>127</a>    <span class="kw">let </span>context = Context {
+<a href=#128 id=128 data-nosnippet>128</a>        verifier_index: <span class="kw-2">&amp;</span>verifier_index,
+<a href=#129 id=129 data-nosnippet>129</a>        proof: <span class="kw-2">&amp;</span>proof,
+<a href=#130 id=130 data-nosnippet>130</a>        public_input: <span class="kw-2">&amp;</span>public_input,
+<a href=#131 id=131 data-nosnippet>131</a>    };
+<a href=#132 id=132 data-nosnippet>132</a>
+<a href=#133 id=133 data-nosnippet>133</a>    batch_verify::&lt;
+<a href=#134 id=134 data-nosnippet>134</a>        Pallas,
+<a href=#135 id=135 data-nosnippet>135</a>        DefaultFqSponge&lt;PallasParameters, PlonkSpongeConstantsKimchi&gt;,
+<a href=#136 id=136 data-nosnippet>136</a>        DefaultFrSponge&lt;Fq, PlonkSpongeConstantsKimchi&gt;,
+<a href=#137 id=137 data-nosnippet>137</a>        OpeningProof&lt;Pallas&gt;,
+<a href=#138 id=138 data-nosnippet>138</a>    &gt;(<span class="kw-2">&amp;</span>group_map, <span class="kw-2">&amp;</span>[context])
+<a href=#139 id=139 data-nosnippet>139</a>    .is_ok()
+<a href=#140 id=140 data-nosnippet>140</a>}
+<a href=#141 id=141 data-nosnippet>141</a>
+<a href=#142 id=142 data-nosnippet>142</a><span class="attr">#[ocaml_gen::func]
+<a href=#143 id=143 data-nosnippet>143</a>#[ocaml::func]
+<a href=#144 id=144 data-nosnippet>144</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_proof_batch_verify(
+<a href=#145 id=145 data-nosnippet>145</a>    indexes: Vec&lt;CamlPastaFqPlonkVerifierIndex&gt;,
+<a href=#146 id=146 data-nosnippet>146</a>    proofs: Vec&lt;CamlProofWithPublic&lt;CamlGPallas, CamlFq&gt;&gt;,
+<a href=#147 id=147 data-nosnippet>147</a>) -&gt; bool {
+<a href=#148 id=148 data-nosnippet>148</a>    <span class="kw">let </span>ts: Vec&lt;<span class="kw">_</span>&gt; = indexes
+<a href=#149 id=149 data-nosnippet>149</a>        .into_iter()
+<a href=#150 id=150 data-nosnippet>150</a>        .zip(proofs.into_iter())
+<a href=#151 id=151 data-nosnippet>151</a>        .map(|(caml_index, caml_proof)| {
+<a href=#152 id=152 data-nosnippet>152</a>            <span class="kw">let </span>verifier_index: VerifierIndex&lt;Pallas, OpeningProof&lt;Pallas&gt;&gt; = caml_index.into();
+<a href=#153 id=153 data-nosnippet>153</a>            <span class="kw">let </span>(proof, public_input): (ProverProof&lt;Pallas, OpeningProof&lt;Pallas&gt;&gt;, Vec&lt;<span class="kw">_</span>&gt;) =
+<a href=#154 id=154 data-nosnippet>154</a>                caml_proof.into();
+<a href=#155 id=155 data-nosnippet>155</a>            (verifier_index, proof, public_input)
+<a href=#156 id=156 data-nosnippet>156</a>        })
+<a href=#157 id=157 data-nosnippet>157</a>        .collect();
+<a href=#158 id=158 data-nosnippet>158</a>    <span class="kw">let </span>ts_ref: Vec&lt;Context&lt;Pallas, OpeningProof&lt;Pallas&gt;&gt;&gt; = ts
+<a href=#159 id=159 data-nosnippet>159</a>        .iter()
+<a href=#160 id=160 data-nosnippet>160</a>        .map(|(verifier_index, proof, public_input)| Context {
+<a href=#161 id=161 data-nosnippet>161</a>            verifier_index,
+<a href=#162 id=162 data-nosnippet>162</a>            proof,
+<a href=#163 id=163 data-nosnippet>163</a>            public_input,
+<a href=#164 id=164 data-nosnippet>164</a>        })
+<a href=#165 id=165 data-nosnippet>165</a>        .collect();
+<a href=#166 id=166 data-nosnippet>166</a>    <span class="kw">let </span>group_map = GroupMap::&lt;Fp&gt;::setup();
+<a href=#167 id=167 data-nosnippet>167</a>
+<a href=#168 id=168 data-nosnippet>168</a>    batch_verify::&lt;
+<a href=#169 id=169 data-nosnippet>169</a>        Pallas,
+<a href=#170 id=170 data-nosnippet>170</a>        DefaultFqSponge&lt;PallasParameters, PlonkSpongeConstantsKimchi&gt;,
+<a href=#171 id=171 data-nosnippet>171</a>        DefaultFrSponge&lt;Fq, PlonkSpongeConstantsKimchi&gt;,
+<a href=#172 id=172 data-nosnippet>172</a>        OpeningProof&lt;Pallas&gt;,
+<a href=#173 id=173 data-nosnippet>173</a>    &gt;(<span class="kw-2">&amp;</span>group_map, <span class="kw-2">&amp;</span>ts_ref)
+<a href=#174 id=174 data-nosnippet>174</a>    .is_ok()
+<a href=#175 id=175 data-nosnippet>175</a>}
+<a href=#176 id=176 data-nosnippet>176</a>
+<a href=#177 id=177 data-nosnippet>177</a><span class="attr">#[ocaml_gen::func]
+<a href=#178 id=178 data-nosnippet>178</a>#[ocaml::func]
+<a href=#179 id=179 data-nosnippet>179</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_proof_dummy() -&gt; CamlProofWithPublic&lt;CamlGPallas, CamlFq&gt; {
+<a href=#180 id=180 data-nosnippet>180</a>    <span class="kw">fn </span>comm() -&gt; PolyComm&lt;Pallas&gt; {
+<a href=#181 id=181 data-nosnippet>181</a>        <span class="kw">let </span>g = Pallas::generator();
+<a href=#182 id=182 data-nosnippet>182</a>        PolyComm {
+<a href=#183 id=183 data-nosnippet>183</a>            chunks: <span class="macro">vec!</span>[g, g, g],
+<a href=#184 id=184 data-nosnippet>184</a>        }
+<a href=#185 id=185 data-nosnippet>185</a>    }
+<a href=#186 id=186 data-nosnippet>186</a>
+<a href=#187 id=187 data-nosnippet>187</a>    <span class="kw">let </span>prev = RecursionChallenge {
+<a href=#188 id=188 data-nosnippet>188</a>        chals: <span class="macro">vec!</span>[Fq::one(), Fq::one()],
+<a href=#189 id=189 data-nosnippet>189</a>        comm: comm(),
+<a href=#190 id=190 data-nosnippet>190</a>    };
+<a href=#191 id=191 data-nosnippet>191</a>    <span class="kw">let </span>prev_challenges = <span class="macro">vec!</span>[prev.clone(), prev.clone(), prev];
+<a href=#192 id=192 data-nosnippet>192</a>
+<a href=#193 id=193 data-nosnippet>193</a>    <span class="kw">let </span>g = Pallas::generator();
+<a href=#194 id=194 data-nosnippet>194</a>    <span class="kw">let </span>proof = OpeningProof {
+<a href=#195 id=195 data-nosnippet>195</a>        lr: <span class="macro">vec!</span>[(g, g), (g, g), (g, g)],
+<a href=#196 id=196 data-nosnippet>196</a>        z1: Fq::one(),
+<a href=#197 id=197 data-nosnippet>197</a>        z2: Fq::one(),
+<a href=#198 id=198 data-nosnippet>198</a>        delta: g,
+<a href=#199 id=199 data-nosnippet>199</a>        sg: g,
 <a href=#200 id=200 data-nosnippet>200</a>    };
-<a href=#201 id=201 data-nosnippet>201</a>    <span class="kw">let </span>evals = ProofEvaluations {
-<a href=#202 id=202 data-nosnippet>202</a>        public: <span class="prelude-val">Some</span>(eval()),
-<a href=#203 id=203 data-nosnippet>203</a>        w: core::array::from_fn(|<span class="kw">_</span>| eval()),
-<a href=#204 id=204 data-nosnippet>204</a>        coefficients: core::array::from_fn(|<span class="kw">_</span>| eval()),
-<a href=#205 id=205 data-nosnippet>205</a>        z: eval(),
-<a href=#206 id=206 data-nosnippet>206</a>        s: core::array::from_fn(|<span class="kw">_</span>| eval()),
-<a href=#207 id=207 data-nosnippet>207</a>        generic_selector: eval(),
-<a href=#208 id=208 data-nosnippet>208</a>        poseidon_selector: eval(),
-<a href=#209 id=209 data-nosnippet>209</a>        complete_add_selector: eval(),
-<a href=#210 id=210 data-nosnippet>210</a>        mul_selector: eval(),
-<a href=#211 id=211 data-nosnippet>211</a>        emul_selector: eval(),
-<a href=#212 id=212 data-nosnippet>212</a>        endomul_scalar_selector: eval(),
-<a href=#213 id=213 data-nosnippet>213</a>        range_check0_selector: <span class="prelude-val">None</span>,
-<a href=#214 id=214 data-nosnippet>214</a>        range_check1_selector: <span class="prelude-val">None</span>,
-<a href=#215 id=215 data-nosnippet>215</a>        foreign_field_add_selector: <span class="prelude-val">None</span>,
-<a href=#216 id=216 data-nosnippet>216</a>        foreign_field_mul_selector: <span class="prelude-val">None</span>,
-<a href=#217 id=217 data-nosnippet>217</a>        xor_selector: <span class="prelude-val">None</span>,
-<a href=#218 id=218 data-nosnippet>218</a>        rot_selector: <span class="prelude-val">None</span>,
-<a href=#219 id=219 data-nosnippet>219</a>        lookup_aggregation: <span class="prelude-val">None</span>,
-<a href=#220 id=220 data-nosnippet>220</a>        lookup_table: <span class="prelude-val">None</span>,
-<a href=#221 id=221 data-nosnippet>221</a>        lookup_sorted: array::from_fn(|<span class="kw">_</span>| <span class="prelude-val">None</span>),
-<a href=#222 id=222 data-nosnippet>222</a>        runtime_lookup_table: <span class="prelude-val">None</span>,
-<a href=#223 id=223 data-nosnippet>223</a>        runtime_lookup_table_selector: <span class="prelude-val">None</span>,
-<a href=#224 id=224 data-nosnippet>224</a>        xor_lookup_selector: <span class="prelude-val">None</span>,
-<a href=#225 id=225 data-nosnippet>225</a>        lookup_gate_lookup_selector: <span class="prelude-val">None</span>,
-<a href=#226 id=226 data-nosnippet>226</a>        range_check_lookup_selector: <span class="prelude-val">None</span>,
-<a href=#227 id=227 data-nosnippet>227</a>        foreign_field_mul_lookup_selector: <span class="prelude-val">None</span>,
-<a href=#228 id=228 data-nosnippet>228</a>    };
-<a href=#229 id=229 data-nosnippet>229</a>
-<a href=#230 id=230 data-nosnippet>230</a>    <span class="kw">let </span>public = <span class="macro">vec!</span>[Fq::one(), Fq::one()];
-<a href=#231 id=231 data-nosnippet>231</a>    <span class="kw">let </span>dlogproof = ProverProof {
-<a href=#232 id=232 data-nosnippet>232</a>        commitments: ProverCommitments {
-<a href=#233 id=233 data-nosnippet>233</a>            w_comm: core::array::from_fn(|<span class="kw">_</span>| comm()),
-<a href=#234 id=234 data-nosnippet>234</a>            z_comm: comm(),
-<a href=#235 id=235 data-nosnippet>235</a>            t_comm: comm(),
-<a href=#236 id=236 data-nosnippet>236</a>            lookup: <span class="prelude-val">None</span>,
-<a href=#237 id=237 data-nosnippet>237</a>        },
-<a href=#238 id=238 data-nosnippet>238</a>        proof,
-<a href=#239 id=239 data-nosnippet>239</a>        evals,
-<a href=#240 id=240 data-nosnippet>240</a>        ft_eval1: Fq::one(),
-<a href=#241 id=241 data-nosnippet>241</a>        prev_challenges,
-<a href=#242 id=242 data-nosnippet>242</a>    };
-<a href=#243 id=243 data-nosnippet>243</a>
-<a href=#244 id=244 data-nosnippet>244</a>    (dlogproof, public).into()
-<a href=#245 id=245 data-nosnippet>245</a>}
-<a href=#246 id=246 data-nosnippet>246</a>
-<a href=#247 id=247 data-nosnippet>247</a><span class="attr">#[ocaml_gen::func]
-<a href=#248 id=248 data-nosnippet>248</a>#[ocaml::func]
-<a href=#249 id=249 data-nosnippet>249</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_proof_deep_copy(
-<a href=#250 id=250 data-nosnippet>250</a>    x: CamlProofWithPublic&lt;CamlGPallas, CamlFq&gt;,
-<a href=#251 id=251 data-nosnippet>251</a>) -&gt; CamlProofWithPublic&lt;CamlGPallas, CamlFq&gt; {
-<a href=#252 id=252 data-nosnippet>252</a>    x
-<a href=#253 id=253 data-nosnippet>253</a>}</code></pre></div></section></main></body></html>
+<a href=#201 id=201 data-nosnippet>201</a>    <span class="kw">let </span>eval = || PointEvaluations {
+<a href=#202 id=202 data-nosnippet>202</a>        zeta: <span class="macro">vec!</span>[Fq::one()],
+<a href=#203 id=203 data-nosnippet>203</a>        zeta_omega: <span class="macro">vec!</span>[Fq::one()],
+<a href=#204 id=204 data-nosnippet>204</a>    };
+<a href=#205 id=205 data-nosnippet>205</a>    <span class="kw">let </span>evals = ProofEvaluations {
+<a href=#206 id=206 data-nosnippet>206</a>        public: <span class="prelude-val">Some</span>(eval()),
+<a href=#207 id=207 data-nosnippet>207</a>        w: core::array::from_fn(|<span class="kw">_</span>| eval()),
+<a href=#208 id=208 data-nosnippet>208</a>        coefficients: core::array::from_fn(|<span class="kw">_</span>| eval()),
+<a href=#209 id=209 data-nosnippet>209</a>        z: eval(),
+<a href=#210 id=210 data-nosnippet>210</a>        s: core::array::from_fn(|<span class="kw">_</span>| eval()),
+<a href=#211 id=211 data-nosnippet>211</a>        generic_selector: eval(),
+<a href=#212 id=212 data-nosnippet>212</a>        poseidon_selector: eval(),
+<a href=#213 id=213 data-nosnippet>213</a>        complete_add_selector: eval(),
+<a href=#214 id=214 data-nosnippet>214</a>        mul_selector: eval(),
+<a href=#215 id=215 data-nosnippet>215</a>        emul_selector: eval(),
+<a href=#216 id=216 data-nosnippet>216</a>        endomul_scalar_selector: eval(),
+<a href=#217 id=217 data-nosnippet>217</a>        range_check0_selector: <span class="prelude-val">None</span>,
+<a href=#218 id=218 data-nosnippet>218</a>        range_check1_selector: <span class="prelude-val">None</span>,
+<a href=#219 id=219 data-nosnippet>219</a>        foreign_field_add_selector: <span class="prelude-val">None</span>,
+<a href=#220 id=220 data-nosnippet>220</a>        foreign_field_mul_selector: <span class="prelude-val">None</span>,
+<a href=#221 id=221 data-nosnippet>221</a>        xor_selector: <span class="prelude-val">None</span>,
+<a href=#222 id=222 data-nosnippet>222</a>        rot_selector: <span class="prelude-val">None</span>,
+<a href=#223 id=223 data-nosnippet>223</a>        lookup_aggregation: <span class="prelude-val">None</span>,
+<a href=#224 id=224 data-nosnippet>224</a>        lookup_table: <span class="prelude-val">None</span>,
+<a href=#225 id=225 data-nosnippet>225</a>        lookup_sorted: array::from_fn(|<span class="kw">_</span>| <span class="prelude-val">None</span>),
+<a href=#226 id=226 data-nosnippet>226</a>        runtime_lookup_table: <span class="prelude-val">None</span>,
+<a href=#227 id=227 data-nosnippet>227</a>        runtime_lookup_table_selector: <span class="prelude-val">None</span>,
+<a href=#228 id=228 data-nosnippet>228</a>        xor_lookup_selector: <span class="prelude-val">None</span>,
+<a href=#229 id=229 data-nosnippet>229</a>        lookup_gate_lookup_selector: <span class="prelude-val">None</span>,
+<a href=#230 id=230 data-nosnippet>230</a>        range_check_lookup_selector: <span class="prelude-val">None</span>,
+<a href=#231 id=231 data-nosnippet>231</a>        foreign_field_mul_lookup_selector: <span class="prelude-val">None</span>,
+<a href=#232 id=232 data-nosnippet>232</a>    };
+<a href=#233 id=233 data-nosnippet>233</a>
+<a href=#234 id=234 data-nosnippet>234</a>    <span class="kw">let </span>public = <span class="macro">vec!</span>[Fq::one(), Fq::one()];
+<a href=#235 id=235 data-nosnippet>235</a>    <span class="kw">let </span>dlogproof = ProverProof {
+<a href=#236 id=236 data-nosnippet>236</a>        commitments: ProverCommitments {
+<a href=#237 id=237 data-nosnippet>237</a>            w_comm: core::array::from_fn(|<span class="kw">_</span>| comm()),
+<a href=#238 id=238 data-nosnippet>238</a>            z_comm: comm(),
+<a href=#239 id=239 data-nosnippet>239</a>            t_comm: comm(),
+<a href=#240 id=240 data-nosnippet>240</a>            lookup: <span class="prelude-val">None</span>,
+<a href=#241 id=241 data-nosnippet>241</a>        },
+<a href=#242 id=242 data-nosnippet>242</a>        proof,
+<a href=#243 id=243 data-nosnippet>243</a>        evals,
+<a href=#244 id=244 data-nosnippet>244</a>        ft_eval1: Fq::one(),
+<a href=#245 id=245 data-nosnippet>245</a>        prev_challenges,
+<a href=#246 id=246 data-nosnippet>246</a>    };
+<a href=#247 id=247 data-nosnippet>247</a>
+<a href=#248 id=248 data-nosnippet>248</a>    (dlogproof, public).into()
+<a href=#249 id=249 data-nosnippet>249</a>}
+<a href=#250 id=250 data-nosnippet>250</a>
+<a href=#251 id=251 data-nosnippet>251</a><span class="attr">#[ocaml_gen::func]
+<a href=#252 id=252 data-nosnippet>252</a>#[ocaml::func]
+<a href=#253 id=253 data-nosnippet>253</a></span><span class="kw">pub fn </span>caml_pasta_fq_plonk_proof_deep_copy(
+<a href=#254 id=254 data-nosnippet>254</a>    x: CamlProofWithPublic&lt;CamlGPallas, CamlFq&gt;,
+<a href=#255 id=255 data-nosnippet>255</a>) -&gt; CamlProofWithPublic&lt;CamlGPallas, CamlFq&gt; {
+<a href=#256 id=256 data-nosnippet>256</a>    x
+<a href=#257 id=257 data-nosnippet>257</a>}</code></pre></div></section></main></body></html>
