@@ -1,5 +1,5 @@
 use crate::{
-    commitment::{commit_to_poly, Commitment},
+    commitment::commit_to_poly,
     encoding::{decode_into, encoding_size},
 };
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
@@ -25,7 +25,7 @@ pub(crate) fn evals_to_polynomial_and_commitment<G: KimchiCurve>(
     evals: Vec<G::ScalarField>,
     domain: R2D<G::ScalarField>,
     srs: &SRS<G>,
-) -> (DensePolynomial<G::ScalarField>, Commitment<G>) {
+) -> (DensePolynomial<G::ScalarField>, G) {
     let poly = evals_to_polynomial(evals, domain);
     let comm = commit_to_poly(srs, &poly);
     (poly, comm)

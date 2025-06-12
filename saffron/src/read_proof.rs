@@ -65,13 +65,13 @@ impl Query {
     fn to_polynomial(&self, domain: R2D<ScalarField>) -> DensePolynomial<ScalarField> {
         evals_to_polynomial(self.to_evals_vector(domain.size as usize), domain)
     }
-    pub fn to_commitment(&self, domain: R2D<ScalarField>, srs: &SRS<Curve>) -> Commitment<Curve> {
+    pub fn to_commitment(&self, domain: R2D<ScalarField>, srs: &SRS<Curve>) -> Curve {
         let evals = self.to_evals_vector(domain.size as usize);
         let (_poly, comm) = evals_to_polynomial_and_commitment(evals, domain, srs);
         comm
     }
     // This function should be used for the chain to compute the commitment
-    pub fn to_commitment_sparse(&self, srs: &SRS<Curve>) -> Commitment<Curve> {
+    pub fn to_commitment_sparse(&self, srs: &SRS<Curve>) -> Curve {
         let query_evals: Vec<ScalarField> = self.query.iter().map(|_| ScalarField::one()).collect();
         let indexes: Vec<u64> = self.query.iter().map(|i| *i as u64).collect();
         commit_sparse(srs, &query_evals, &indexes)
@@ -91,7 +91,7 @@ impl Query {
 }
 
 impl Answer {
-    fn to_commitment(&self, query: &Query, srs: &SRS<Curve>) -> Commitment<Curve> {
+    fn to_commitment(&self, query: &Query, srs: &SRS<Curve>) -> Curve {
         let indexes: Vec<u64> = query.query.iter().map(|i| *i as u64).collect();
         commit_sparse(srs, &self.answer, &indexes)
     }
@@ -102,9 +102,9 @@ impl Answer {
 // TODO? serialize, deserialize
 pub struct ReadProof {
     // Commitment to the answer
-    pub answer_comm: Commitment<Curve>,
+    pub answer_comm: Curve,
     // Commitment of quotient polynomial T (aka t_comm)
-    pub quotient_comm: Commitment<Curve>,
+    pub quotient_comm: Curve,
 
     // Evaluation of data polynomial at the required challenge point
     pub data_eval: ScalarField,
@@ -130,7 +130,7 @@ pub fn prove<RNG>(
     // Commitment to data
     data_comm: &Commitment<Curve>,
     // Commitment to query
-    query_comm: &Commitment<Curve>,
+    query_comm: &Curve,
 ) -> ReadProof
 where
     RNG: RngCore + CryptoRng,
@@ -148,7 +148,7 @@ where
         evals_to_polynomial_and_commitment(answer, domain.d1, srs)
     };
 
-    fq_sponge.absorb_g(&[data_comm.cm, query_comm.cm, answer_comm.cm]);
+    fq_sponge.absorb_g(&[data_comm.cm, *query_comm, answer_comm]);
 
     // coefficient form, over d4? d2?
     // quotient_Poly has degree d1
@@ -179,7 +179,7 @@ where
     // commit to the quotient polynomial $t$.
     // num_chunks = 1 because our constraint is degree 2, which makes the quotient polynomial of degree d1
     let quotient_comm = commit_to_poly(srs, &quotient_poly);
-    fq_sponge.absorb_g(&[quotient_comm.cm]);
+    fq_sponge.absorb_g(&[quotient_comm]);
 
     // aka zeta
     let evaluation_point = fq_sponge.challenge();
@@ -247,15 +247,15 @@ pub fn verify<RNG>(
     // Commitment to data
     data_comm: &Commitment<Curve>,
     // Commitment to query
-    query_comm: &Commitment<Curve>,
+    query_comm: Curve,
     proof: &ReadProof,
 ) -> bool
 where
     RNG: RngCore + CryptoRng,
 {
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
-    fq_sponge.absorb_g(&[data_comm.cm, query_comm.cm, proof.answer_comm.cm]);
-    fq_sponge.absorb_g(&[proof.quotient_comm.cm]);
+    fq_sponge.absorb_g(&[data_comm.cm, query_comm, proof.answer_comm]);
+    fq_sponge.absorb_g(&[proof.quotient_comm]);
 
     let evaluation_point = fq_sponge.challenge();
 
@@ -295,19 +295,19 @@ where
         },
         Evaluation {
             commitment: PolyComm {
-                chunks: vec![query_comm.cm],
+                chunks: vec![query_comm],
             },
             evaluations: vec![vec![proof.query_eval]],
         },
         Evaluation {
             commitment: PolyComm {
-                chunks: vec![proof.answer_comm.cm],
+                chunks: vec![proof.answer_comm],
             },
             evaluations: vec![vec![proof.answer_eval]],
         },
         Evaluation {
             commitment: PolyComm {
-                chunks: vec![proof.quotient_comm.cm],
+                chunks: vec![proof.quotient_comm],
             },
             evaluations: vec![vec![quotient_eval]],
         },
@@ -347,13 +347,9 @@ pub fn verify_answer(srs: &SRS<Curve>, query: &Query, answer: &Answer, proof: &R
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        commitment::{commit_to_poly, Commitment},
-        env, Curve, ScalarField, SRS_SIZE,
-    };
+    use crate::{env, Curve, ScalarField, SRS_SIZE};
     use ark_ec::AffineRepr;
     use ark_ff::{One, UniformRand};
-    use ark_poly::univariate::DensePolynomial;
     use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
     use mina_curves::pasta::{Fp, Vesta};
     use once_cell::sync::Lazy;
@@ -384,8 +380,7 @@ mod tests {
             Data { data }
         };
 
-        let data_poly: DensePolynomial<ScalarField> = data.to_polynomial(DOMAIN.d1);
-        let data_comm = commit_to_poly(&SRS, &data_poly);
+        let data_comm = data.to_commitment(&SRS);
 
         let query: Query = {
             let mut query = vec![];
@@ -417,19 +412,13 @@ mod tests {
             &query_comm,
         );
         let res = verify(
-            &SRS,
-            *DOMAIN,
-            &GROUP_MAP,
-            &mut rng,
-            &data_comm,
-            &query_comm,
-            &proof,
+            &SRS, *DOMAIN, &GROUP_MAP, &mut rng, &data_comm, query_comm, &proof,
         );
 
         assert!(res, "Completeness: Proof must verify");
 
         let proof_malformed_1 = ReadProof {
-            answer_comm: Commitment { cm: Curve::zero() },
+            answer_comm: Curve::zero(),
             ..proof.clone()
         };
 
@@ -439,7 +428,7 @@ mod tests {
             &GROUP_MAP,
             &mut rng,
             &data_comm,
-            &query_comm,
+            query_comm,
             &proof_malformed_1,
         );
 
@@ -456,7 +445,7 @@ mod tests {
             &GROUP_MAP,
             &mut rng,
             &data_comm,
-            &query_comm,
+            query_comm,
             &proof_malformed_2,
         );
 
@@ -481,7 +470,7 @@ mod tests {
             &GROUP_MAP,
             &mut rng,
             &data_comm,
-            &query_comm,
+            query_comm,
             &proof_for_wrong_query,
         );
 
@@ -505,7 +494,8 @@ mod tests {
 pub mod caml {
     use super::*;
     use crate::{
-        commitment::caml::CamlSaffronCommitment, read_proof, storage::caml::CamlSaffronData, BaseField,
+        commitment::caml::CamlSaffronCommitment, read_proof, storage::caml::CamlSaffronData,
+        BaseField,
     };
     use kimchi::groupmap::GroupMap;
     use kimchi_stubs::{
@@ -517,8 +507,8 @@ pub mod caml {
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlSaffronReadProof {
-        pub answer_comm: CamlSaffronCommitment,
-        pub quotient_comm: CamlSaffronCommitment,
+        pub answer_comm: CamlGVesta,
+        pub quotient_comm: CamlGVesta,
         pub data_eval: CamlFp,
         pub query_eval: CamlFp,
         pub answer_eval: CamlFp,
@@ -567,7 +557,7 @@ pub mod caml {
         caml_data: CamlSaffronData,
         caml_query: Vec<ocaml::Int>,
         caml_data_comm: CamlSaffronCommitment,
-        caml_query_comm: CamlSaffronCommitment,
+        caml_query_comm: CamlGVesta,
     ) -> CamlSaffronReadProof {
         let srs = caml_srs.0;
         let data: Data<ScalarField> = caml_data.into();
@@ -575,7 +565,7 @@ pub mod caml {
             query: caml_query.into_iter().map(caml_int_to_u16).collect(),
         };
         let data_comm: Commitment<Curve> = caml_data_comm.into();
-        let query_comm: Commitment<Curve> = caml_query_comm.into();
+        let query_comm: Curve = caml_query_comm.into();
 
         let srs_size = srs.max_poly_size();
         let domain = EvaluationDomains::<ScalarField>::create(srs_size).unwrap();
@@ -602,12 +592,12 @@ pub mod caml {
     pub fn caml_saffron_read_verify(
         caml_srs: CamlFpSrs,
         caml_data_comm: CamlSaffronCommitment,
-        caml_query_comm: CamlSaffronCommitment,
+        caml_query_comm: CamlGVesta,
         caml_proof: CamlSaffronReadProof,
     ) -> bool {
         let srs = caml_srs.0;
         let data_comm: Commitment<Curve> = caml_data_comm.into();
-        let query_comm: Commitment<Curve> = caml_query_comm.into();
+        let query_comm: Curve = caml_query_comm.into();
         let proof: ReadProof = caml_proof.into();
 
         let srs_size = srs.max_poly_size();
@@ -618,13 +608,7 @@ pub mod caml {
         let mut rng = rand::thread_rng();
 
         read_proof::verify(
-            &srs,
-            domain,
-            &group_map,
-            &mut rng,
-            &data_comm,
-            &query_comm,
-            &proof,
+            &srs, domain, &group_map, &mut rng, &data_comm, query_comm, &proof,
         )
     }
 
