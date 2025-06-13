@@ -23,27 +23,6 @@ extern "C" {
 static mut MESSAGE_HANDLER: Option<Function> = None;
 
 #[wasm_bindgen]
-pub unsafe fn set_message_handler(handler: Function) {
-    unsafe {
-        console_log("setting message handler");
-        MESSAGE_HANDLER = Some(handler);
-        console_log("set");
-    }
-}
-
-pub fn send_message(msg: &str) {
-    unsafe {
-        if let Some(ref handler) = MESSAGE_HANDLER {
-            console_log("sending ");
-
-            let result = JsValue::from_str(msg); // creates a string
-            let _ = handler.call1(&JsValue::NULL, &result);
-            console_log("sent ");
-        }
-    }
-}
-
-#[wasm_bindgen]
 extern "C" {
     pub fn alert(s: &str);
 }
