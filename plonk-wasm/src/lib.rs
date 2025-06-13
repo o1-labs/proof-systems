@@ -11,16 +11,24 @@ use wasm_bindgen::prelude::*;
 
 mod wasm_vector;
 
-use js_sys::Function;
 use wasm_bindgen::JsValue;
+
+use wasm_bindgen::JsCast;
+use web_sys;
+
+fn send_message_from_worker(msg: &JsValue) {
+    // TODO: Use a more structured approach and msg format
+    // also TODO: ideally use worker communication - look into how web_sys does it
+    // right now this looks to the console right away, which is cool, but having actual worker comms is more useful
+    web_sys::console::log_1(msg);
+    postMessageToMain(msg);
+}
 
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_name = postMessage)]
     fn postMessageToMain(data: &JsValue);
 }
-
-static mut MESSAGE_HANDLER: Option<Function> = None;
 
 #[wasm_bindgen]
 extern "C" {
