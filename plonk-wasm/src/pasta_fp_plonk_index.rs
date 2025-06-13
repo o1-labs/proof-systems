@@ -111,7 +111,10 @@ pub fn caml_pasta_fp_plonk_index_create(
     lazy_mode: bool,
 ) -> Result<WasmPastaFpPlonkIndex, JsError> {
     console_error_panic_hook::set_once();
+    super::postMessageToMain(&JsValue::from_str("hello from Rayon thread!"));
     let index = crate::rayon::run_in_pool(|| {
+        super::postMessageToMain(&JsValue::from_str("hello from Rayon worker!"));
+
         // flatten the permutation information (because OCaml has a different way of keeping track of permutations)
         let gates: Vec<_> = gates
             .0
@@ -122,6 +125,11 @@ pub fn caml_pasta_fp_plonk_index_create(
                 coeffs: gate.coeffs.clone(),
             })
             .collect();
+        super::postMessageToMain(&JsValue::from_str("hello from Rayon again!"));
+        super::postMessageToMain(&JsValue::from_str(&format!(
+            "logging something from rayon {:?}",
+            gates[0].typ
+        )));
 
         let rust_runtime_table_cfgs: Vec<RuntimeTableCfg<Fp>> =
             runtime_table_cfgs.into_iter().map(Into::into).collect();
@@ -148,6 +156,7 @@ pub fn caml_pasta_fp_plonk_index_create(
             }
             Ok(cs) => cs,
         };
+        super::send_message(&format!("cs table done"));
 
         // endo
         let (endo_q, _endo_r) = poly_commitment::ipa::endos::<GAffineOther>();
@@ -160,6 +169,8 @@ pub fn caml_pasta_fp_plonk_index_create(
             srs.0.clone(),
             lazy_mode,
         );
+        super::send_message(&format!("index table done"));
+
         // Compute and cache the verifier index digest
         index.compute_verifier_index_digest::<DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>();
         Ok(index)
