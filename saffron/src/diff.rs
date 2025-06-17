@@ -99,14 +99,16 @@ impl<F: PrimeField> Diff<F> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::utils::{chunk_size_in_bytes, min_encoding_chunks, test_utils::UserData};
+    use crate::{
+        utils::{chunk_size_in_bytes, min_encoding_chunks, test_utils::UserData},
+        ScalarField,
+    };
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
-    use mina_curves::pasta::Fp;
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
     use rand::Rng;
 
-    static DOMAIN: Lazy<Radix2EvaluationDomain<Fp>> =
+    static DOMAIN: Lazy<Radix2EvaluationDomain<ScalarField>> =
         Lazy::new(|| Radix2EvaluationDomain::new(1 << 16).unwrap());
 
     pub fn randomize_data(threshold: f64, data: &[u8]) -> Vec<u8> {
@@ -145,7 +147,7 @@ pub mod tests {
         ) {
             let min_len = xs.len().min(ys.len());
             let (xs, ys) = (&xs[..min_len], &ys[..min_len]) ;
-            let diffs = Diff::<Fp>::create_from_bytes(&*DOMAIN, xs, ys);
+            let diffs = Diff::<ScalarField>::create_from_bytes(&*DOMAIN, xs, ys);
             prop_assert!(diffs.is_ok());
             let diffs = diffs.unwrap();
 
@@ -188,7 +190,7 @@ pub mod tests {
         ) {
             let mut ys = randomize_data(threshold, &data);
             ys.append(&mut extra);
-            let diff = Diff::<Fp>::create_from_bytes(&*DOMAIN, &data, &ys);
+            let diff = Diff::<ScalarField>::create_from_bytes(&*DOMAIN, &data, &ys);
             prop_assert!(diff.is_err());
         }
     }
@@ -197,16 +199,14 @@ pub mod tests {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use kimchi_stubs::arkworks::CamlFp;
-    use mina_curves::pasta::Fp;
-    // pub use caml::CamlDiff;
+    use crate::{CamlScalar, ScalarField};
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     // TODO: Note the current implementation of Diff in OCaml does not involve region yet
     pub struct CamlSaffronSingleDiff {
         address: ocaml::Uint,
-        old_value: CamlFp,
-        new_value: CamlFp,
+        old_value: CamlScalar,
+        new_value: CamlScalar,
     }
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
@@ -214,8 +214,8 @@ pub mod caml {
         diff: Vec<CamlSaffronSingleDiff>,
     }
 
-    impl From<CamlSaffronDiff> for Diff<Fp> {
-        fn from(caml_diff: CamlSaffronDiff) -> Diff<Fp> {
+    impl From<CamlSaffronDiff> for Diff<ScalarField> {
+        fn from(caml_diff: CamlSaffronDiff) -> Diff<ScalarField> {
             Diff {
                 // TODO: in our current version with 1 commitment / Data / Contract, region is always set to 0
                 region: 0u64,
@@ -224,8 +224,8 @@ pub mod caml {
                     .diff
                     .iter()
                     .map(|x| {
-                        let new: Fp = x.new_value.into();
-                        let old: Fp = x.old_value.into();
+                        let new: ScalarField = x.new_value.into();
+                        let old: ScalarField = x.old_value.into();
                         new - old
                     })
                     .collect(),

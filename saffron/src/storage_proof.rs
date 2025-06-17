@@ -182,15 +182,15 @@ mod tests {
         utils::test_utils::UserData,
     };
 
+    use crate::{Curve, ScalarField};
     use ark_ff::UniformRand;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
     use kimchi::groupmap::GroupMap;
-    use mina_curves::pasta::{Fp, Vesta};
     use once_cell::sync::Lazy;
     use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
     use proptest::prelude::*;
 
-    static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
+    static SRS: Lazy<SRS<Curve>> = Lazy::new(|| {
         if let Ok(srs) = std::env::var("SRS_FILEPATH") {
             env::get_srs_from_cache(srs)
         } else {
@@ -198,11 +198,11 @@ mod tests {
         }
     });
 
-    static DOMAIN: Lazy<Radix2EvaluationDomain<Fp>> =
+    static DOMAIN: Lazy<Radix2EvaluationDomain<ScalarField>> =
         Lazy::new(|| Radix2EvaluationDomain::new(SRS.size()).unwrap());
 
-    static GROUP_MAP: Lazy<<Vesta as CommitmentCurve>::Map> =
-        Lazy::new(<Vesta as CommitmentCurve>::Map::setup);
+    static GROUP_MAP: Lazy<<Curve as CommitmentCurve>::Map> =
+        Lazy::new(<Curve as CommitmentCurve>::Map::setup);
 
     proptest! {
     #![proptest_config(ProptestConfig::with_cases(5))]

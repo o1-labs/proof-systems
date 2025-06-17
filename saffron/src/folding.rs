@@ -514,13 +514,12 @@ pub mod testing {
     use ark_ff::UniformRand;
     use ark_poly::Evaluations;
     use kimchi::circuits::domains::EvaluationDomains;
-    use mina_curves::pasta::{Fp, Vesta};
     use poly_commitment::ipa::SRS;
     use rand::Rng;
 
     /// Generates a random core instance and witness
     pub fn generate_random_inst_wit_core<RNG>(
-        srs: &SRS<Vesta>,
+        srs: &SRS<Curve>,
         domain: EvaluationDomains<ScalarField>,
         rng: &mut RNG,
     ) -> (CoreInstance, CoreWitness)
@@ -529,7 +528,7 @@ pub mod testing {
     {
         let data: Vec<ScalarField> = {
             let mut data = vec![];
-            (0..domain.d1.size).for_each(|_| data.push(Fp::rand(rng)));
+            (0..domain.d1.size).for_each(|_| data.push(ScalarField::rand(rng)));
             data
         };
 
@@ -543,7 +542,7 @@ pub mod testing {
         let query: Vec<ScalarField> = {
             let mut query = vec![];
             (0..domain.d1.size)
-                .for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.1)));
+                .for_each(|_| query.push(ScalarField::from(rand::thread_rng().gen::<f64>() < 0.1)));
             query
         };
 
@@ -587,7 +586,7 @@ pub mod testing {
     /// of this function is _not_ an instance-witness pair produced by
     /// a valid folding procedure, but just a generic relaxed pair instead.
     pub fn generate_random_inst_wit_relaxed<RNG>(
-        srs: &SRS<Vesta>,
+        srs: &SRS<Curve>,
         domain: EvaluationDomains<ScalarField>,
         rng: &mut RNG,
     ) -> (RelaxedInstance, RelaxedWitness)
@@ -595,7 +594,7 @@ pub mod testing {
         RNG: RngCore + CryptoRng,
     {
         let (inst, wit) = generate_random_inst_wit_core(srs, domain, rng);
-        let u = Fp::rand(rng);
+        let u = ScalarField::rand(rng);
         let e = &(&wit.d * &wit.q) - &(&wit.a * u);
         let comm_e = srs.commit_evaluations_non_hiding(domain.d1, &e).chunks[0];
 
@@ -620,7 +619,6 @@ mod tests {
     use ark_ec::AffineRepr;
     use ark_ff::One;
     use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
-    use mina_curves::pasta::Vesta;
     use poly_commitment::commitment::CommitmentCurve;
 
     #[test]
@@ -630,7 +628,7 @@ mod tests {
         let srs = poly_commitment::precomputed_srs::get_srs_test();
         let domain: EvaluationDomains<ScalarField> =
             EvaluationDomains::<ScalarField>::create(srs.size()).unwrap();
-        let group_map = <Vesta as CommitmentCurve>::Map::setup();
+        let group_map = <Curve as CommitmentCurve>::Map::setup();
 
         let (core_instance_1, core_witness_1) =
             generate_random_inst_wit_core(&srs, domain, &mut rng);

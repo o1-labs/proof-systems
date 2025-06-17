@@ -351,12 +351,11 @@ mod tests {
     use ark_ec::AffineRepr;
     use ark_ff::{One, UniformRand};
     use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
-    use mina_curves::pasta::{Fp, Vesta};
     use once_cell::sync::Lazy;
     use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
     use proptest::prelude::*;
 
-    static SRS: Lazy<SRS<Vesta>> = Lazy::new(|| {
+    static SRS: Lazy<SRS<Curve>> = Lazy::new(|| {
         if let Ok(srs) = std::env::var("SRS_FILEPATH") {
             env::get_srs_from_cache(srs)
         } else {
@@ -367,8 +366,8 @@ mod tests {
     static DOMAIN: Lazy<EvaluationDomains<ScalarField>> =
         Lazy::new(|| EvaluationDomains::<ScalarField>::create(SRS_SIZE).unwrap());
 
-    static GROUP_MAP: Lazy<<Vesta as CommitmentCurve>::Map> =
-        Lazy::new(<Vesta as CommitmentCurve>::Map::setup);
+    static GROUP_MAP: Lazy<<Curve as CommitmentCurve>::Map> =
+        Lazy::new(<Curve as CommitmentCurve>::Map::setup);
 
     #[test]
     fn test_read_proof_completeness_soundness() {
@@ -376,7 +375,7 @@ mod tests {
 
         let data = {
             let mut data = vec![];
-            (0..SRS_SIZE).for_each(|_| data.push(Fp::rand(&mut rng)));
+            (0..SRS_SIZE).for_each(|_| data.push(ScalarField::rand(&mut rng)));
             Data { data }
         };
 
@@ -495,24 +494,19 @@ pub mod caml {
     use super::*;
     use crate::{
         commitment::caml::CamlSaffronCommitment, read_proof, storage::caml::CamlSaffronData,
-        BaseField,
+        BaseField, CamlG, CamlScalar, CamlScalarVector, CamlSrs,
     };
     use kimchi::groupmap::GroupMap;
-    use kimchi_stubs::{
-        arkworks::{group_affine::CamlGVesta, pasta_fp::CamlFp},
-        field_vector::fp::CamlFpVector,
-        srs::fp::CamlFpSrs,
-    };
     use poly_commitment::{ipa::caml::CamlOpeningProof, SRS};
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlSaffronReadProof {
-        pub answer_comm: CamlGVesta,
-        pub quotient_comm: CamlGVesta,
-        pub data_eval: CamlFp,
-        pub query_eval: CamlFp,
-        pub answer_eval: CamlFp,
-        pub opening_proof: CamlOpeningProof<CamlGVesta, CamlFp>,
+        pub answer_comm: CamlG,
+        pub quotient_comm: CamlG,
+        pub data_eval: CamlScalar,
+        pub query_eval: CamlScalar,
+        pub answer_eval: CamlScalar,
+        pub opening_proof: CamlOpeningProof<CamlG, CamlScalar>,
     }
 
     impl From<ReadProof> for CamlSaffronReadProof {
@@ -553,11 +547,11 @@ pub mod caml {
     #[ocaml_gen::func]
     #[ocaml::func]
     pub fn caml_saffron_read_prove(
-        caml_srs: CamlFpSrs,
+        caml_srs: CamlSrs,
         caml_data: CamlSaffronData,
         caml_query: Vec<ocaml::Int>,
         caml_data_comm: CamlSaffronCommitment,
-        caml_query_comm: CamlGVesta,
+        caml_query_comm: CamlG,
     ) -> CamlSaffronReadProof {
         let srs = caml_srs.0;
         let data: Data<ScalarField> = caml_data.into();
@@ -590,9 +584,9 @@ pub mod caml {
     #[ocaml_gen::func]
     #[ocaml::func]
     pub fn caml_saffron_read_verify(
-        caml_srs: CamlFpSrs,
+        caml_srs: CamlSrs,
         caml_data_comm: CamlSaffronCommitment,
-        caml_query_comm: CamlGVesta,
+        caml_query_comm: CamlG,
         caml_proof: CamlSaffronReadProof,
     ) -> bool {
         let srs = caml_srs.0;
@@ -615,9 +609,9 @@ pub mod caml {
     #[ocaml_gen::func]
     #[ocaml::func]
     pub fn caml_saffron_read_answer_verify(
-        caml_srs: CamlFpSrs,
+        caml_srs: CamlSrs,
         caml_query: Vec<ocaml::Int>,
-        caml_answer: CamlFpVector,
+        caml_answer: CamlScalarVector,
         caml_proof: CamlSaffronReadProof,
     ) -> bool {
         let srs = caml_srs.0;
