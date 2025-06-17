@@ -2,7 +2,6 @@ use anyhow::Result;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use clap::Parser;
 use kimchi::{curve::KimchiCurve, groupmap::GroupMap, mina_poseidon::FqSponge};
-use mina_curves::pasta::{Fp, Vesta};
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rand::rngs::OsRng;
 use saffron::{
@@ -18,7 +17,7 @@ use std::{
 };
 use tracing::{debug, debug_span};
 
-fn get_srs_and_domain(cache: Option<String>) -> (SRS<Vesta>, Radix2EvaluationDomain<Fp>) {
+fn get_srs_and_domain(cache: Option<String>) -> (SRS<Curve>, Radix2EvaluationDomain<ScalarField>) {
     let res = match cache {
         Some(cache) => {
             let srs = env::get_srs_from_cache(cache);
@@ -165,7 +164,7 @@ pub fn storage_proof(args: cli::StorageProofArgs) -> Result<HexString> {
     let challenge_seed: ScalarField = encoding::encode(&args.challenge_seed.0);
     let proof = {
         let (srs, _) = get_srs_and_domain(args.srs_cache);
-        let group_map = <Vesta as CommitmentCurve>::Map::setup();
+        let group_map = <Curve as CommitmentCurve>::Map::setup();
         let mut rng = OsRng;
 
         let mut sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());

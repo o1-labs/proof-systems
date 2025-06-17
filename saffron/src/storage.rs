@@ -142,13 +142,10 @@ pub fn update<F: PrimeField>(path: &str, diff: &Diff<F>) -> std::io::Result<()> 
 #[cfg(test)]
 mod tests {
     use crate::{
-        diff::Diff,
-        encoding, storage,
-        storage::{Commitment, Data},
-        Curve, ScalarField, SRS_SIZE,
+        commitment::Commitment, diff::Diff, encoding, storage, storage::Data, Curve, ScalarField,
+        SRS_SIZE,
     };
     use ark_ff::{One, UniformRand, Zero};
-    use mina_curves::pasta::Fp;
     use poly_commitment::ipa::SRS;
     use rand::Rng;
     use std::fs;
@@ -173,7 +170,7 @@ mod tests {
         let mut data = Data::of_bytes(&data_bytes);
         // Setting the first value of data to zero will make the updated bytes
         // with the well chosen diff
-        data.data[0] = Fp::zero();
+        data.data[0] = ScalarField::zero();
         let data_comm = data.to_commitment(&srs);
 
         let read_consistency = {
@@ -195,12 +192,14 @@ mod tests {
                 let addresses: Vec<u64> = (0..nb_updates)
                     .map(|_| (rng.gen_range(0..data.len() as u64)))
                     .collect();
-                let mut diff_values: Vec<ScalarField> =
-                    addresses.iter().map(|_| Fp::rand(&mut rng)).collect();
+                let mut diff_values: Vec<ScalarField> = addresses
+                    .iter()
+                    .map(|_| ScalarField::rand(&mut rng))
+                    .collect();
                 // The first value is replaced by a scalar that would
                 // overflow 31 bytes, so the update is not consistent and the
                 // test fails if this case is not handled
-                diff_values[0] = Fp::zero() - Fp::one();
+                diff_values[0] = ScalarField::zero() - ScalarField::one();
                 Diff {
                     region,
                     addresses,
@@ -240,24 +239,22 @@ mod tests {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use crate::diff::caml::*;
-    use kimchi_stubs::field_vector::fp::CamlFpVector;
-    use mina_curves::pasta::Fp;
+    use crate::{diff::caml::*, CamlScalarVector, ScalarField};
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlSaffronData {
-        pub data: CamlFpVector,
+        pub data: CamlScalarVector,
     }
 
-    impl From<Data<Fp>> for CamlSaffronData {
-        fn from(data: Data<Fp>) -> Self {
+    impl From<Data<ScalarField>> for CamlSaffronData {
+        fn from(data: Data<ScalarField>) -> Self {
             Self {
-                data: CamlFpVector::create(data.data),
+                data: CamlScalarVector::create(data.data),
             }
         }
     }
 
-    impl From<CamlSaffronData> for Data<Fp> {
+    impl From<CamlSaffronData> for Data<ScalarField> {
         fn from(caml_data: CamlSaffronData) -> Self {
             Self {
                 data: caml_data.data.as_slice().into(),
