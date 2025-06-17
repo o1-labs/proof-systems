@@ -99,14 +99,16 @@ impl<F: PrimeField> Diff<F> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::utils::{chunk_size_in_bytes, min_encoding_chunks, test_utils::UserData};
+    use crate::{
+        utils::{chunk_size_in_bytes, min_encoding_chunks, test_utils::UserData},
+        ScalarField,
+    };
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
-    use mina_curves::pasta::Fp;
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
     use rand::Rng;
 
-    static DOMAIN: Lazy<Radix2EvaluationDomain<Fp>> =
+    static DOMAIN: Lazy<Radix2EvaluationDomain<ScalarField>> =
         Lazy::new(|| Radix2EvaluationDomain::new(1 << 16).unwrap());
 
     pub fn randomize_data(threshold: f64, data: &[u8]) -> Vec<u8> {
@@ -145,7 +147,7 @@ pub mod tests {
         ) {
             let min_len = xs.len().min(ys.len());
             let (xs, ys) = (&xs[..min_len], &ys[..min_len]) ;
-            let diffs = Diff::<Fp>::create_from_bytes(&*DOMAIN, xs, ys);
+            let diffs = Diff::<ScalarField>::create_from_bytes(&*DOMAIN, xs, ys);
             prop_assert!(diffs.is_ok());
             let diffs = diffs.unwrap();
 
@@ -188,7 +190,7 @@ pub mod tests {
         ) {
             let mut ys = randomize_data(threshold, &data);
             ys.append(&mut extra);
-            let diff = Diff::<Fp>::create_from_bytes(&*DOMAIN, &data, &ys);
+            let diff = Diff::<ScalarField>::create_from_bytes(&*DOMAIN, &data, &ys);
             prop_assert!(diff.is_err());
         }
     }
