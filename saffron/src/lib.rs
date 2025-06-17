@@ -28,9 +28,9 @@ use mina_poseidon::{
 
 pub const SRS_SIZE: usize = 1 << 16;
 
-pub type Curve = mina_curves::pasta::Vesta;
-pub type ProjectiveCurve = mina_curves::pasta::ProjectiveVesta;
-pub type CurveParameters = mina_curves::pasta::VestaParameters;
+pub type Curve = mina_curves::pasta::Pallas;
+pub type ProjectiveCurve = mina_curves::pasta::ProjectivePallas;
+pub type CurveParameters = mina_curves::pasta::PallasParameters;
 pub type ScalarField = <CurveParameters as ark_ec::CurveConfig>::ScalarField;
 pub type BaseField = <CurveParameters as ark_ec::CurveConfig>::BaseField;
 
@@ -38,10 +38,10 @@ pub type CurveFqSponge = DefaultFqSponge<CurveParameters, PlonkSpongeConstantsKi
 pub type CurveFrSponge = DefaultFrSponge<ScalarField, PlonkSpongeConstantsKimchi>;
 
 #[cfg(feature = "ocaml_types")]
-pub type CamlG = kimchi_stubs::arkworks::CamlGVesta;
+pub type CamlG = kimchi_stubs::arkworks::CamlGPallas;
 #[cfg(feature = "ocaml_types")]
-pub type CamlScalar = kimchi_stubs::arkworks::CamlFp;
+pub type CamlScalar = kimchi_stubs::arkworks::CamlFq;
 #[cfg(feature = "ocaml_types")]
-pub type CamlSrs = kimchi_stubs::srs::fp::CamlFpSrs;
+pub type CamlSrs = kimchi_stubs::srs::fq::CamlFqSrs;
 #[cfg(feature = "ocaml_types")]
-pub type CamlScalarVector = field_vector::fp::CamlFpVector;
+pub type CamlScalarVector = field_vector::fq::CamlFqVector;
