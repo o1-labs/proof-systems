@@ -355,7 +355,6 @@ mod tests {
     use ark_ec::AffineRepr;
     use ark_ff::{One, UniformRand};
     use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
-    use mina_curves::pasta::{Fp, Vesta};
     use poly_commitment::{commitment::CommitmentCurve, SRS as _};
     use proptest::prelude::*;
 
@@ -364,12 +363,12 @@ mod tests {
         let mut rng = o1_utils::tests::make_test_rng(None);
 
         let srs = poly_commitment::precomputed_srs::get_srs_test();
-        let group_map = <Vesta as CommitmentCurve>::Map::setup();
+        let group_map = <Curve as CommitmentCurve>::Map::setup();
         let domain: EvaluationDomains<ScalarField> = EvaluationDomains::create(srs.size()).unwrap();
 
         let data = {
             let mut data = vec![];
-            (0..SRS_SIZE).for_each(|_| data.push(Fp::rand(&mut rng)));
+            (0..SRS_SIZE).for_each(|_| data.push(ScalarField::rand(&mut rng)));
             Data { data }
         };
 
