@@ -9,6 +9,7 @@ pub mod read_proof;
 pub mod storage;
 pub mod storage_proof;
 pub mod utils;
+pub mod vid;
 
 use mina_curves::pasta::{Fp, Fq, ProjectiveVesta, Vesta, VestaParameters};
 use mina_poseidon::{
