@@ -230,7 +230,7 @@ fn test_regression_commit_non_hiding_expected_number_of_chunks() {
 }
 
 #[test]
-fn dlog_commitment_test() {
+fn test_dlog_commitment() {
     let rng = &mut rand::thread_rng();
     let mut random = rand::thread_rng();
 
