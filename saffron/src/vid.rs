@@ -34,10 +34,10 @@ pub fn divide_by_sub_vanishing_poly(
     poly: &DensePolynomial<ScalarField>,
     domain_size: usize,
     coeff: ScalarField,
-) -> (DensePolynomial<ScalarField>, DensePolynomial<ScalarField>) {
+) -> DensePolynomial<ScalarField> {
     if poly.coeffs.len() < domain_size {
         // If degree(poly) < len(Domain), then the quotient is zero, and the entire polynomial is the remainder
-        (DensePolynomial::<ScalarField>::zero(), poly.clone())
+        DensePolynomial::<ScalarField>::zero()
     } else {
         // Compute the quotient
         //
@@ -50,35 +50,16 @@ pub fn divide_by_sub_vanishing_poly(
 
         let mut quotient_vec = poly.coeffs[domain_size..].to_vec();
         //println!("poly.len(): {:?}", poly.len());
-        assert!(poly.len() / domain_size <= 2);
+        //assert!(poly.len() / domain_size <= 2);
         for i in 1..(poly.len() / domain_size) {
             quotient_vec
                 .iter_mut()
                 .zip(&poly.coeffs[domain_size * (i + 1)..])
-                .for_each(|(s, c)| *s += c * &coeff);
+                .for_each(|(s, c)| *s += c * &(coeff.pow([i as u64])));
         }
 
-        // Compute the remainder
-        //
-        // `remainder = poly - quotient_vec * (x^domain_size - 1)`
-        //
-        // Note that remainder must be smaller than `domain_size`.
-        // So we can look at only the first `domain_size` terms.
-        //
-        // Therefore,
-        // `remainder = poly.coeffs[0..domain_size] - quotient_vec * (-1)`
-        // i.e.,
-        // `remainder = poly.coeffs[0..domain_size] + quotient_vec`
-        //
-        let mut remainder_vec = poly.coeffs[0..domain_size].to_vec();
-        remainder_vec
-            .iter_mut()
-            .zip(&quotient_vec)
-            .for_each(|(s, c)| *s += c * &coeff);
-
         let quotient = DensePolynomial::from_coefficients_vec(quotient_vec);
-        let remainder = DensePolynomial::from_coefficients_vec(remainder_vec);
-        (quotient, remainder)
+        quotient
     }
 }
 
@@ -633,8 +614,9 @@ mod tests {
             Evaluations::from_vec_and_domain(data, domain.d2);
 
         let verifier_ix = 1;
-        //let per_node_size = 256;
-        let per_node_size = domain.d1.size();
+        //let per_node_size = domain.d1.size();
+        //let per_node_size = domain.d1.size() / 2;
+        let per_node_size = 1024;
         let proofs_number = domain.d2.size() / per_node_size;
 
         let indices: Vec<usize> = (0..per_node_size)
@@ -669,6 +651,8 @@ mod tests {
         let numerator_eval_interpolated = numerator_eval.interpolate();
 
         // sanity checking numerator_eval
+        if numerator_eval_interpolated.len() >= 2 * per_node_size
+            && numerator_eval_interpolated.len() < 3 * per_node_size
         {
             let numerator_1 = DensePolynomial {
                 coeffs: numerator_eval_interpolated[..per_node_size].to_vec(),
@@ -694,7 +678,7 @@ mod tests {
         }
 
         println!("Division");
-        let (quot, rem) =
+        let quot =
             divide_by_sub_vanishing_poly(&numerator_eval_interpolated, per_node_size, coset_omega);
 
         println!(
@@ -709,8 +693,5 @@ mod tests {
         println!("error degree: {:?}", error.degree());
 
         assert!(&quot * &divisor == numerator_eval_interpolated);
-        assert!(&quot * &divisor + &rem == numerator_eval_interpolated);
-        println!("rem degree: {:?}", rem.degree());
-        assert!(rem.is_zero());
     }
 }
