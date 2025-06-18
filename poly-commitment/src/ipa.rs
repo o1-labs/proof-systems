@@ -637,8 +637,6 @@ impl<G: CommitmentCurve> SRS<G> {
             res
         };
 
-        println!("IPA, b_init[5]: {:?}", b_init[5]);
-
         // Combined polynomial p(X) evaluated at the combined eval point b_init.
         let combined_inner_product = p
             .coeffs
@@ -646,11 +644,6 @@ impl<G: CommitmentCurve> SRS<G> {
             .zip(b_init.iter())
             .map(|(a, b)| *a * b)
             .fold(G::ScalarField::zero(), |acc, x| acc + x);
-
-        println!(
-            "Prover, combined_inner_product_1: {:?}",
-            combined_inner_product
-        );
 
         // Usually, the prover sends `combined_inner_product`` to the verifier
         // So we should absorb `combined_inner_product``

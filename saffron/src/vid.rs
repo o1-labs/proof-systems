@@ -14,7 +14,9 @@ use poly_commitment::{
     PolyComm, SRS as _,
 };
 use rand::{CryptoRng, RngCore};
-use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
+use rayon::iter::{
+    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefMutIterator, ParallelIterator,
+};
 
 #[derive(Debug, Clone)]
 pub struct VIDProof {
@@ -94,10 +96,10 @@ pub fn prove_vid_ipa<RNG>(
     domain: EvaluationDomains<ScalarField>,
     group_map: &<Curve as CommitmentCurve>::Map,
     rng: &mut RNG,
-    indices: &[usize],
+    per_node_size: usize,
     data: &[Evaluations<ScalarField, R2D<ScalarField>>],
     data_comms: &[Curve],
-) -> VIDProof
+) -> Vec<VIDProof>
 where
     RNG: RngCore + CryptoRng,
 {
@@ -107,8 +109,6 @@ where
 
     let recombination_point = fq_sponge.challenge();
     println!("Prover, recombination point: {:?}", recombination_point);
-
-    // TODO extend over D2
 
     let combined_data: Vec<ScalarField> = {
         let mut initial: Vec<ScalarField> = data[data.len() - 1].evals.to_vec();
@@ -126,193 +126,197 @@ where
     let combined_data_poly: DensePolynomial<ScalarField> =
         Evaluations::from_vec_and_domain(combined_data, domain.d1).interpolate_by_ref();
 
-    let omegas: Vec<ScalarField> = indices
-        .iter()
-        .map(|i| domain.d2.group_gen.pow([*i as u64]))
+    let combined_data_d2 = combined_data_poly.evaluate_over_domain_by_ref(domain.d2);
+
+    let mut proofs: Vec<VIDProof> = vec![];
+    let proofs_number = domain.d2.size() / per_node_size;
+
+    let fq_sponge_common = fq_sponge.clone();
+
+    println!("computing all divisors");
+    //let all_divisors: Vec<DensePolynomial<ScalarField>> = (0..proofs_number)
+    //    .map(|i| {
+    //        let indices: Vec<usize> = (i * per_node_size..(i + 1) * per_node_size).collect();
+    //        let omegas: Vec<ScalarField> = indices
+    //            .iter()
+    //            .map(|i| domain.d2.group_gen.pow([*i as u64]))
+    //            .collect();
+
+    //        println!("Divisor");
+    //        omegas
+    //            .into_par_iter()
+    //            .map(|omega| DensePolynomial {
+    //                coeffs: vec![-omega.clone(), ScalarField::one()],
+    //            })
+    //            .reduce_with(|mut l, r| &l * &r)
+    //            .unwrap()
+    //    })
+    //    .collect();
+
+    // do it faster
+    let all_omegas: Vec<ScalarField> = (0..domain.d2.size())
+        .into_par_iter()
+        .map(|i| domain.d2.group_gen.pow([i as u64]))
         .collect();
 
-    let quotient_poly: DensePolynomial<ScalarField> = {
-        let combined_data_d2 = combined_data_poly.evaluate_over_domain_by_ref(domain.d2);
-
-        // p(X) - \prod L_i(X) e_i
-        let numerator_eval: Evaluations<ScalarField, R2D<ScalarField>> = {
-            let mut res = combined_data_d2;
-            for i in indices {
-                res.evals[*i] = ScalarField::zero();
-            }
+    // divisors with cosets
+    let all_divisors: Vec<DensePolynomial<ScalarField>> = (0..proofs_number)
+        .into_par_iter()
+        .map(|i| {
+            let mut res = DensePolynomial {
+                coeffs: vec![ScalarField::zero(); per_node_size + 1],
+            };
+            res[0] = -all_omegas[i * per_node_size];
+            res[per_node_size] = ScalarField::one();
             res
-        };
+        })
+        .collect();
 
-        let numerator_eval_interpolated = numerator_eval.interpolate();
+    assert!(all_divisors[5].evaluate(&all_omegas[per_node_size + 5]) == ScalarField::zero());
 
-        let divisor: DensePolynomial<ScalarField> = omegas
-            .iter()
-            .map(|omega| DensePolynomial {
-                coeffs: vec![-omega.clone(), ScalarField::one()],
-            })
-            .reduce(|a, b| a * b)
-            .unwrap();
-
-        let fail_final_q_division = || panic!("Division by poly must not fail");
-        // We compute the polynomial t(X) by dividing the constraints polynomial
-        // by the vanishing polynomial, i.e. Z_H(X).
-        let (quotient, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
-            &From::from(numerator_eval_interpolated),
-            &From::from(divisor),
-        )
-        .unwrap();
-
-        // As the constraints must be verified on H, the rest of the division
-        // must be equal to 0 as the constraints polynomial and Z_H(X) are both
-        // equal on H.
-        if !res.is_zero() {
-            fail_final_q_division();
+    for i in 0..proofs_number {
+        // TEMPORARILY skip most iterations
+        if i > 4 {
+            continue;
         }
 
-        quotient
-    };
+        println!("Creating proof number {:?}", i);
+        let indices: Vec<usize> = (0..per_node_size).map(|j| j * proofs_number + i).collect();
 
-    println!("Degree of quotient poly: {:?}", quotient_poly.degree());
+        for j in indices.iter() {
+            assert!(all_divisors[i].evaluate(&all_omegas[*j]) == ScalarField::zero());
+        }
 
-    let (quotient_poly_1, quotient_poly_2) = {
-        let mut quotient_poly_1 = quotient_poly.clone();
-        let quotient_poly_2 = DensePolynomial {
-            coeffs: quotient_poly_1.coeffs()[srs.size()..].to_vec(),
-        };
-        quotient_poly_1.coeffs.truncate(srs.size());
-        (quotient_poly_1, quotient_poly_2)
-    };
+        println!("Quotient");
 
-    // commit to the quotient polynomial $t$.
-    // num_chunks = 1 because our constraint is degree 2, which makes the quotient polynomial of degree d1
-    let quotient_comm: Vec<Curve> = srs.commit_non_hiding(&quotient_poly, 2).chunks;
-    fq_sponge.absorb_g(&quotient_comm);
+        let quotient_poly: DensePolynomial<ScalarField> = {
+            println!("Numerator eval");
+            // p(X) - \prod L_i(X) e_i
+            let numerator_eval: Evaluations<ScalarField, R2D<ScalarField>> = {
+                let mut res = combined_data_d2.clone();
+                for i in indices {
+                    res.evals[i] = ScalarField::zero();
+                }
+                res
+            };
 
-    // aka zeta
-    let evaluation_point = fq_sponge.challenge();
-    println!("Prover, evaluation point: {:?}", evaluation_point);
-    println!(
-        "Prover, evaluation point^4, ^5: {:?}, {:?}",
-        evaluation_point.pow([4]),
-        evaluation_point.pow([5])
-    );
+            println!("Numerator eval interpolate");
+            let numerator_eval_interpolated = numerator_eval.interpolate();
 
-    // Fiat Shamir - absorbing evaluations
-    let mut fr_sponge = CurveFrSponge::new(Curve::sponge_params());
-    fr_sponge.absorb(&fq_sponge.clone().digest());
+            println!("Division");
+            // We compute the polynomial t(X) by dividing the constraints polynomial
+            // by the vanishing polynomial, i.e. Z_H(X).
+            let (quotient, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
+                &From::from(numerator_eval_interpolated),
+                &From::from(all_divisors[i].clone()),
+            )
+            .unwrap();
 
-    let combined_data_eval = combined_data_poly.evaluate(&evaluation_point);
-    let quotient_eval = quotient_poly.evaluate(&evaluation_point);
-    let quotient_eval_1 = quotient_poly_1.evaluate(&evaluation_point);
-    let quotient_eval_2 = quotient_poly_2.evaluate(&evaluation_point);
-    println!("Prover, quotient eval: {:?}", quotient_eval);
-    println!("Prover, quotient eval 1: {:?}", quotient_eval_1);
-    println!("Prover, quotient eval 2: {:?}", quotient_eval_2);
+            // As the constraints must be verified on H, the rest of the division
+            // must be equal to 0 as the constraints polynomial and Z_H(X) are both
+            // equal on H.
+            if !res.is_zero() {
+                println!("res degree: {:?}", res.degree());
+                let fail_final_q_division = || panic!("Division by poly must not fail");
+                fail_final_q_division();
+            }
 
-    for eval in [combined_data_eval, quotient_eval_1, quotient_eval_2].into_iter() {
-        fr_sponge.absorb(&eval);
-    }
-
-    let (_, endo_r) = Curve::endos();
-    // Generate scalars used as combiners for sub-statements within our IPA opening proof.
-    //let polyscale = ScalarField::one();
-    //let evalscale = ScalarField::one();
-    let polyscale = fr_sponge.challenge().to_field(endo_r);
-    let evalscale = fr_sponge.challenge().to_field(endo_r);
-    println!(
-        "Prover, polyscale {:?}, evalscale {:?}",
-        polyscale, evalscale
-    );
-
-    // Creating the polynomials for the batch proof
-    // Gathering all polynomials to use in the opening proof
-    let opening_proof_inputs: Vec<_> = {
-        let coefficients_form =
-            DensePolynomialOrEvaluations::<_, R2D<ScalarField>>::DensePolynomial;
-        let non_hiding = |n_chunks| PolyComm {
-            chunks: vec![ScalarField::zero(); n_chunks],
+            quotient
         };
 
-        vec![
-            (coefficients_form(&combined_data_poly), non_hiding(1)),
-            (coefficients_form(&quotient_poly_1), non_hiding(1)),
-            (coefficients_form(&quotient_poly_2), non_hiding(1)),
-        ]
-    };
+        println!("Quotient poly split");
 
-    let opening_proof = srs.open(
-        group_map,
-        opening_proof_inputs.as_slice(),
-        &[evaluation_point],
-        polyscale,
-        evalscale,
-        fq_sponge.clone(),
-        rng,
-    );
+        let (quotient_poly_1, quotient_poly_2) = {
+            let mut quotient_poly_1 = quotient_poly.clone();
+            let quotient_poly_2 = DensePolynomial {
+                coeffs: quotient_poly_1.coeffs()[srs.size()..].to_vec(),
+            };
+            quotient_poly_1.coeffs.truncate(srs.size());
+            (quotient_poly_1, quotient_poly_2)
+        };
 
-    //    // sanity checking
-    //    {
-    //        let combined_data_commitment_v =
-    //            crate::utils::aggregate_commitments(recombination_point, data_comms);
-    //
-    //        let combined_data_commitment = srs.commit_non_hiding(&combined_data_poly, 1).chunks[0];
-    //
-    //        assert!(combined_data_commitment_v == combined_data_commitment);
-    //
-    //        let coms_and_evaluations = vec![
-    //            //Evaluation {
-    //            //    commitment: PolyComm {
-    //            //        chunks: vec![combined_data_commitment],
-    //            //    },
-    //            //    evaluations: vec![vec![combined_data_eval.clone()]],
-    //            //},
-    //            Evaluation {
-    //                commitment: PolyComm {
-    //                    chunks: vec![quotient_comm[0].clone()],
-    //                },
-    //                evaluations: vec![vec![quotient_eval_1.clone()]],
-    //            },
-    //            Evaluation {
-    //                commitment: PolyComm {
-    //                    chunks: vec![quotient_comm[1].clone()],
-    //                },
-    //                evaluations: vec![vec![quotient_eval_2.clone()]],
-    //            },
-    //        ];
-    //        let combined_inner_product = {
-    //            let evaluations: Vec<_> = coms_and_evaluations
-    //                .iter()
-    //                .map(|Evaluation { evaluations, .. }| evaluations.clone())
-    //                .collect();
-    //
-    //            combined_inner_product(&polyscale, &evalscale, evaluations.as_slice())
-    //        };
-    //        println!(
-    //            "Prover, combined_inner_product_2: {:?}",
-    //            combined_inner_product
-    //        );
-    //
-    //        assert!(srs.verify(
-    //            group_map,
-    //            &mut [BatchEvaluationProof {
-    //                sponge: fq_sponge.clone(),
-    //                evaluation_points: vec![evaluation_point],
-    //                polyscale,
-    //                evalscale,
-    //                evaluations: coms_and_evaluations,
-    //                opening: &opening_proof,
-    //                combined_inner_product,
-    //            }],
-    //            rng,
-    //        ));
-    //    }
+        println!("Quotient comm");
+        // commit to the quotient polynomial $t$.
+        // num_chunks = 1 because our constraint is degree 2, which makes the quotient polynomial of degree d1
+        let quotient_comm: Vec<Curve> = srs.commit_non_hiding(&quotient_poly, 2).chunks;
 
-    VIDProof {
-        quotient_comm,
-        quotient_evals: vec![quotient_eval_1, quotient_eval_2],
-        combined_data_eval,
-        opening_proof,
+        fq_sponge = fq_sponge_common.clone(); // reset the sponge
+        fq_sponge.absorb_g(&quotient_comm);
+
+        // aka zeta
+        let evaluation_point = fq_sponge.challenge();
+        println!("Prover, evaluation point: {:?}", evaluation_point);
+        println!(
+            "Prover, evaluation point^4, ^5: {:?}, {:?}",
+            evaluation_point.pow([4]),
+            evaluation_point.pow([5])
+        );
+
+        // Fiat Shamir - absorbing evaluations
+        let mut fr_sponge = CurveFrSponge::new(Curve::sponge_params());
+        fr_sponge.absorb(&fq_sponge.clone().digest());
+
+        println!("evals");
+
+        let combined_data_eval = combined_data_poly.evaluate(&evaluation_point);
+        //let quotient_eval = quotient_poly.evaluate(&evaluation_point);
+        let quotient_eval_1 = quotient_poly_1.evaluate(&evaluation_point);
+        let quotient_eval_2 = quotient_poly_2.evaluate(&evaluation_point);
+        //println!("Prover, quotient eval: {:?}", quotient_eval);
+        println!("Prover, quotient eval 1: {:?}", quotient_eval_1);
+        println!("Prover, quotient eval 2: {:?}", quotient_eval_2);
+
+        for eval in [combined_data_eval, quotient_eval_1, quotient_eval_2].into_iter() {
+            fr_sponge.absorb(&eval);
+        }
+
+        let (_, endo_r) = Curve::endos();
+        // Generate scalars used as combiners for sub-statements within our IPA opening proof.
+        let polyscale = fr_sponge.challenge().to_field(endo_r);
+        let evalscale = fr_sponge.challenge().to_field(endo_r);
+        println!(
+            "Prover, polyscale {:?}, evalscale {:?}",
+            polyscale, evalscale
+        );
+
+        // Creating the polynomials for the batch proof
+        // Gathering all polynomials to use in the opening proof
+        let opening_proof_inputs: Vec<_> = {
+            let coefficients_form =
+                DensePolynomialOrEvaluations::<_, R2D<ScalarField>>::DensePolynomial;
+            let non_hiding = |n_chunks| PolyComm {
+                chunks: vec![ScalarField::zero(); n_chunks],
+            };
+
+            vec![
+                (coefficients_form(&combined_data_poly), non_hiding(1)),
+                (coefficients_form(&quotient_poly_1), non_hiding(1)),
+                (coefficients_form(&quotient_poly_2), non_hiding(1)),
+            ]
+        };
+
+        println!("Creating opening proof");
+
+        let opening_proof = srs.open(
+            group_map,
+            opening_proof_inputs.as_slice(),
+            &[evaluation_point],
+            polyscale,
+            evalscale,
+            fq_sponge.clone(),
+            rng,
+        );
+        println!("Opening proof created");
+
+        proofs.push(VIDProof {
+            quotient_comm,
+            quotient_evals: vec![quotient_eval_1, quotient_eval_2],
+            combined_data_eval,
+            opening_proof,
+        })
     }
+
+    proofs
 }
 
 pub fn verify_vid_ipa<RNG>(
@@ -321,7 +325,8 @@ pub fn verify_vid_ipa<RNG>(
     bases_d2: &[DensePolynomial<ScalarField>],
     group_map: &<Curve as CommitmentCurve>::Map,
     rng: &mut RNG,
-    indices: &[usize],
+    per_node_size: usize,
+    node_ix: &usize,
     proof: &VIDProof,
     data_comms: &[Curve],
     data: &[Vec<ScalarField>],
@@ -346,11 +351,6 @@ where
     let mut fr_sponge = CurveFrSponge::new(Curve::sponge_params());
     fr_sponge.absorb(&fq_sponge.clone().digest());
 
-    let omegas: Vec<ScalarField> = indices
-        .iter()
-        .map(|i| domain.d2.group_gen.pow([*i as u64]))
-        .collect();
-
     let combined_data: Vec<ScalarField> = {
         let mut initial: Vec<ScalarField> = data[data.len() - 1].clone();
 
@@ -365,11 +365,10 @@ where
     };
 
     let quotient_eval = {
-        let divisor_poly_at_zeta: ScalarField = omegas
-            .iter()
-            .map(|omega| &evaluation_point - &omega)
-            .reduce(|a, b| a * b)
-            .unwrap();
+        let divisor_poly_at_zeta: ScalarField = {
+            evaluation_point.pow([per_node_size as u64])
+                - domain.d2.group_gen.pow([*node_ix as u64])
+        };
 
         let mut eval = -proof.combined_data_eval;
         for (lagrange, data_eval) in bases_d2.iter().zip(combined_data.iter()) {
@@ -483,11 +482,19 @@ mod tests {
         let srs = poly_commitment::precomputed_srs::get_srs_test();
         let domain: EvaluationDomains<ScalarField> =
             EvaluationDomains::<ScalarField>::create(srs.size()).unwrap();
-
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
-        let all_indices: Vec<usize> = (0..1 << 17).collect();
-        let verifier_indices: Vec<usize> = generate_unique_u64(512, 1 << 17);
+        let number_of_coms = 32;
+        let per_node_size = 2048;
+        let proofs_number = domain.d2.size() / per_node_size;
+
+        //let verifier_indices: Vec<usize> = generate_unique_u64(512, 1 << 17);
+        //let verifier_indices: Vec<usize> = (0..(domain.d2.size() / per_node_size)).collect();
+        //let verifier_indices: Vec<usize> = (0..per_node_size).map(|j| j * (i + 1)).collect();
+        let verifier_ix = 0; // we're testing verifier 0
+        let verifier_indices: Vec<usize> = (0..per_node_size)
+            .map(|j| j * proofs_number + verifier_ix)
+            .collect();
 
         println!("Generating bases");
         let bases_d2: Vec<DensePolynomial<ScalarField>> =
@@ -495,7 +502,7 @@ mod tests {
         println!("Generating bases DONE");
 
         println!("Creating data");
-        let number_of_coms = 16;
+
         let data: Vec<Vec<ScalarField>> = (0..number_of_coms)
             .map(|_| {
                 (0..domain.d1.size)
@@ -520,12 +527,12 @@ mod tests {
 
         println!("Calling the prover");
 
-        let proof = prove_vid_ipa(
+        let proofs = prove_vid_ipa(
             &srs,
             domain,
             &group_map,
             &mut rng,
-            &verifier_indices,
+            per_node_size,
             &data_evals,
             &data_comms,
         );
@@ -549,8 +556,9 @@ mod tests {
             &bases_d2,
             &group_map,
             &mut rng,
-            &verifier_indices,
-            &proof,
+            per_node_size,
+            &verifier_ix,
+            &proofs[0],
             &data_comms,
             &expanded_data_at_ixs,
         );
