@@ -48,6 +48,7 @@ pub fn divide_by_sub_vanishing_poly(
         //    which can be computed using the following algorithm.
         //
 
+        // TODO parallelise
         let mut quotient_vec = poly.coeffs[domain_size..].to_vec();
         //println!("poly.len(): {:?}", poly.len());
         //assert!(poly.len() / domain_size <= 2);
@@ -208,17 +209,21 @@ where
 
     assert!(all_divisors[5].evaluate(&all_omegas[per_node_size + 5]) == ScalarField::zero());
 
-    for i in 0..proofs_number {
+    for node_ix in 0..proofs_number {
         // TEMPORARILY skip most iterations
-        if i > 4 {
+        if node_ix > 4 {
             continue;
         }
 
-        println!("Creating proof number {:?}", i);
-        let indices: Vec<usize> = (0..per_node_size).map(|j| j * proofs_number + i).collect();
+        println!("Creating proof number {:?}", node_ix);
+        let indices: Vec<usize> = (0..per_node_size)
+            .map(|j| j * proofs_number + node_ix)
+            .collect();
+
+        let coset_omega = all_omegas[node_ix * per_node_size].clone();
 
         for j in indices.iter() {
-            assert!(all_divisors[i].evaluate(&all_omegas[*j]) == ScalarField::zero());
+            assert!(all_divisors[node_ix].evaluate(&all_omegas[*j]) == ScalarField::zero());
         }
 
         println!("Quotient");
@@ -240,20 +245,25 @@ where
             println!("Division");
             // We compute the polynomial t(X) by dividing the constraints polynomial
             // by the vanishing polynomial, i.e. Z_H(X).
-            let (quotient, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
-                &From::from(numerator_eval_interpolated),
-                &From::from(all_divisors[i].clone()),
-            )
-            .unwrap();
+            let quotient = divide_by_sub_vanishing_poly(
+                &numerator_eval_interpolated,
+                per_node_size,
+                coset_omega,
+            );
+            //            let (quotient, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
+            //                &From::from(numerator_eval_interpolated),
+            //                &From::from(all_divisors[i].clone()),
+            //            )
+            //            .unwrap();
 
-            // As the constraints must be verified on H, the rest of the division
-            // must be equal to 0 as the constraints polynomial and Z_H(X) are both
-            // equal on H.
-            if !res.is_zero() {
-                println!("res degree: {:?}", res.degree());
-                let fail_final_q_division = || panic!("Division by poly must not fail");
-                fail_final_q_division();
-            }
+            //            // As the constraints must be verified on H, the rest of the division
+            //            // must be equal to 0 as the constraints polynomial and Z_H(X) are both
+            //            // equal on H.
+            //            if !res.is_zero() {
+            //                println!("res degree: {:?}", res.degree());
+            //                let fail_final_q_division = || panic!("Division by poly must not fail");
+            //                fail_final_q_division();
+            //            }
 
             quotient
         };
