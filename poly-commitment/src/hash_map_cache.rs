@@ -37,8 +37,9 @@ impl<Key: Hash + Eq, Value> HashMapCache<Key, Value> {
             }
         };
 
-        // This is safe because we never delete entries from the cache, and the value reference
-        // must live at least at most as long as the cache value.
+        // This is safe because we never delete entries from the cache, and the
+        // value reference must live at least at most as long as the cache
+        // value.
         unsafe { &*inner_ptr }
     }
 
