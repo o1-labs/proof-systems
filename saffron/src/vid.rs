@@ -29,6 +29,59 @@ pub struct VIDProof {
     pub opening_proof: OpeningProof<Curve>,
 }
 
+/// Divide `self` by the vanishing polynomial for the sub-domain, `X^{domain_size} - coeff`.
+pub fn divide_by_sub_vanishing_poly(
+    poly: &DensePolynomial<ScalarField>,
+    domain_size: usize,
+    coeff: ScalarField,
+) -> (DensePolynomial<ScalarField>, DensePolynomial<ScalarField>) {
+    if poly.coeffs.len() < domain_size {
+        // If degree(poly) < len(Domain), then the quotient is zero, and the entire polynomial is the remainder
+        (DensePolynomial::<ScalarField>::zero(), poly.clone())
+    } else {
+        // Compute the quotient
+        //
+        // If `poly.len() <= 2 * domain_size`
+        //    then quotient is simply `poly.coeffs[domain_size..]`
+        // Otherwise
+        //    during the division by `x^domain_size - 1`, some of `poly.coeffs[domain_size..]` will be updated as well
+        //    which can be computed using the following algorithm.
+        //
+
+        let mut quotient_vec = poly.coeffs[domain_size..].to_vec();
+        //println!("poly.len(): {:?}", poly.len());
+        assert!(poly.len() / domain_size <= 2);
+        for i in 1..(poly.len() / domain_size) {
+            quotient_vec
+                .iter_mut()
+                .zip(&poly.coeffs[domain_size * (i + 1)..])
+                .for_each(|(s, c)| *s += c * &coeff);
+        }
+
+        // Compute the remainder
+        //
+        // `remainder = poly - quotient_vec * (x^domain_size - 1)`
+        //
+        // Note that remainder must be smaller than `domain_size`.
+        // So we can look at only the first `domain_size` terms.
+        //
+        // Therefore,
+        // `remainder = poly.coeffs[0..domain_size] - quotient_vec * (-1)`
+        // i.e.,
+        // `remainder = poly.coeffs[0..domain_size] + quotient_vec`
+        //
+        let mut remainder_vec = poly.coeffs[0..domain_size].to_vec();
+        remainder_vec
+            .iter_mut()
+            .zip(&quotient_vec)
+            .for_each(|(s, c)| *s += c * &coeff);
+
+        let quotient = DensePolynomial::from_coefficients_vec(quotient_vec);
+        let remainder = DensePolynomial::from_coefficients_vec(remainder_vec);
+        (quotient, remainder)
+    }
+}
+
 //pub fn precompute_quotient_helpers_alt(
 //    srs: &SRS<Curve>,
 //    domain: EvaluationDomains<ScalarField>,
@@ -563,5 +616,101 @@ mod tests {
             &expanded_data_at_ixs,
         );
         assert!(res, "proof must verify")
+    }
+
+    #[test]
+    fn test_vid_poly_div() {
+        let mut rng = OsRng;
+        let srs = poly_commitment::precomputed_srs::get_srs_test::<Vesta>();
+        let domain: EvaluationDomains<ScalarField> =
+            EvaluationDomains::<ScalarField>::create(srs.size()).unwrap();
+
+        let data: Vec<ScalarField> = (0..domain.d2.size)
+            .map(|_| ScalarField::rand(&mut rng))
+            .collect();
+
+        let data_eval: Evaluations<ScalarField, R2D<ScalarField>> =
+            Evaluations::from_vec_and_domain(data, domain.d2);
+
+        let verifier_ix = 1;
+        //let per_node_size = 256;
+        let per_node_size = domain.d1.size();
+        let proofs_number = domain.d2.size() / per_node_size;
+
+        let indices: Vec<usize> = (0..per_node_size)
+            .map(|j| j * proofs_number + verifier_ix)
+            .collect();
+
+        let numerator_eval: Evaluations<ScalarField, R2D<ScalarField>> = {
+            let mut res = data_eval.clone();
+            for i in indices {
+                res.evals[i] = ScalarField::zero();
+            }
+            res
+        };
+
+        let coset_omega = domain
+            .d2
+            .group_gen
+            .pow([(verifier_ix * per_node_size) as u64]);
+
+        // X^per_node_size - w^verifier_ix
+        let divisor = {
+            let mut res = DensePolynomial {
+                coeffs: vec![ScalarField::zero(); per_node_size + 1],
+            };
+            res[0] = -coset_omega;
+            //res[0] = -ScalarField::one();
+            res[per_node_size] = ScalarField::one();
+            res
+        };
+
+        println!("Numerator eval interpolate");
+        let numerator_eval_interpolated = numerator_eval.interpolate();
+
+        // sanity checking numerator_eval
+        {
+            let numerator_1 = DensePolynomial {
+                coeffs: numerator_eval_interpolated[..per_node_size].to_vec(),
+            };
+            let numerator_2 = DensePolynomial {
+                coeffs: numerator_eval_interpolated[per_node_size..2 * per_node_size].to_vec(),
+            };
+            let numerator_3 = DensePolynomial {
+                coeffs: numerator_eval_interpolated[2 * per_node_size..].to_vec(),
+            };
+
+            for zero_point in (0..per_node_size)
+                .map(|i| domain.d2.group_gen.pow([i as u64]) * coset_omega)
+                .take(15)
+            {
+                assert!(
+                    numerator_1.evaluate(&zero_point)
+                        + coset_omega * numerator_2.evaluate(&zero_point)
+                        + coset_omega * coset_omega * numerator_3.evaluate(&zero_point)
+                        == ScalarField::zero()
+                );
+            }
+        }
+
+        println!("Division");
+        let (quot, rem) =
+            divide_by_sub_vanishing_poly(&numerator_eval_interpolated, per_node_size, coset_omega);
+
+        println!(
+            "Degree of numerator_eval_interpolated: {:?}",
+            numerator_eval_interpolated.degree()
+        );
+        println!("Degree of divisor: {:?}", divisor.degree());
+        println!("Degree of quot: {:?}", quot.degree());
+
+        let error = &(&quot * &divisor) - &numerator_eval_interpolated;
+
+        println!("error degree: {:?}", error.degree());
+
+        assert!(&quot * &divisor == numerator_eval_interpolated);
+        assert!(&quot * &divisor + &rem == numerator_eval_interpolated);
+        println!("rem degree: {:?}", rem.degree());
+        assert!(rem.is_zero());
     }
 }
