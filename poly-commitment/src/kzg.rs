@@ -386,8 +386,8 @@ impl<
     /// - `srs`: the structured reference string used to commit
     ///   to the polynomials
     /// - `plnms`: the list of polynomials to open.
-    ///   The type is simply an alias to handle the polynomials in evaluations or
-    ///   coefficients forms.
+    ///   The type is simply an alias to handle the polynomials in evaluations
+    ///   or coefficients forms.
     /// - `elm`: vector of evaluation points. Note that it only works for two
     ///   elements for now.
     /// - `polyscale`: a challenge to batch the polynomials.
@@ -431,7 +431,7 @@ impl<
     /// Also, chunking is not supported.
     pub fn verify(
         &self,
-        srs: &PairingSRS<Pair>,        // SRS
+        srs: &PairingSRS<Pair>,
         evaluations: &[Evaluation<G>], // commitments to the polynomials
         polyscale: F,                  // scaling factor for polynoms
         elm: &[F],                     // vector of evaluation points
@@ -455,31 +455,36 @@ impl<
         // same comment in combine_evaluations
         let evals = combine_evaluations(evaluations, polyscale);
         let blinding_commitment = srs.full_srs.h.mul(self.blinding);
-        // Taking the first element of the commitment, i.e. no support for chunking.
+        // Taking the first element of the commitment, i.e. no support for
+        // chunking.
         let divisor_commitment = srs
             .verifier_srs
             .commit_non_hiding(&divisor_polynomial(elm), 1)
             .get_first_chunk();
-        // Taking the first element of the commitment, i.e. no support for chunking.
+        // Taking the first element of the commitment, i.e. no support for
+        // chunking.
         let eval_commitment = srs
             .full_srs
             .commit_non_hiding(&eval_polynomial(elm, &evals), 1)
             .get_first_chunk()
             .into_group();
         let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
-        // We compute the result of the multiplication of two miller loop,
-        // to apply only one final exponentation
+        // We compute the result of the multiplication of two miller loop, to
+        // apply only one final exponentation
         let to_loop_left = [
             ark_ec::pairing::prepare_g1::<Pair>(numerator_commitment),
-            // Note that we do a neagtion here, to put everything on the same side
+            // Note that we do a neagtion here, to put everything on the same
+            // side
             ark_ec::pairing::prepare_g1::<Pair>(self.quotient.into_group().neg()),
         ];
         let to_loop_right = [
             ark_ec::pairing::prepare_g2::<Pair>(Pair::G2Affine::generator()),
             ark_ec::pairing::prepare_g2::<Pair>(divisor_commitment),
         ];
-        // the result here is numerator_commitment * 1 - quotient * divisor_commitment
-        // Note that the unwrap cannot fail as the output of a miller loop is non zero
+        // the result here is
+        // `numerator_commitment * 1 - quotient * divisor_commitment`.
+        // Note that the unwrap cannot fail as the output of a miller loop is
+        // non zero
         let res = Pair::multi_pairing(to_loop_left, to_loop_right);
 
         res.is_zero()
