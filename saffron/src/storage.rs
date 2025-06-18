@@ -294,7 +294,7 @@ pub mod caml {
     #[ocaml::func]
     pub fn caml_saffron_storage_update(
         path: String,
-        diff: CamlSaffronDiff,
+        diff: Vec<CamlSaffronSingleDiff>,
     ) -> Result<(), ocaml::Error> {
         match update(&path, &diff.into()) {
             Err(_) => ocaml::Error::failwith("Storage.caml_update: error in file initialisation"),

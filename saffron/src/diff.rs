@@ -209,19 +209,13 @@ pub mod caml {
         new_value: CamlScalar,
     }
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlSaffronDiff {
-        diff: Vec<CamlSaffronSingleDiff>,
-    }
-
-    impl From<CamlSaffronDiff> for Diff<ScalarField> {
-        fn from(caml_diff: CamlSaffronDiff) -> Diff<ScalarField> {
+    impl From<Vec<CamlSaffronSingleDiff>> for Diff<ScalarField> {
+        fn from(caml_diff: Vec<CamlSaffronSingleDiff>) -> Diff<ScalarField> {
             Diff {
                 // TODO: in our current version with 1 commitment / Data / Contract, region is always set to 0
                 region: 0u64,
-                addresses: caml_diff.diff.iter().map(|x| x.address as u64).collect(),
+                addresses: caml_diff.iter().map(|x| x.address as u64).collect(),
                 diff_values: caml_diff
-                    .diff
                     .iter()
                     .map(|x| {
                         let new: ScalarField = x.new_value.into();
@@ -234,6 +228,6 @@ pub mod caml {
     }
 }
 
-// This is needed to export CamlDiff in storage::ocaml
+// This is needed to export CamlSingleDiff in storage::ocaml
 #[cfg(feature = "ocaml_types")]
-pub use caml::CamlSaffronDiff;
+pub use caml::CamlSaffronSingleDiff;

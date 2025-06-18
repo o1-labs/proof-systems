@@ -147,7 +147,7 @@ pub mod caml {
     pub fn caml_saffron_commitment_update(
         srs: CamlSrs,
         commitment: CamlSaffronCommitment,
-        diff: CamlSaffronDiff,
+        diff: Vec<CamlSaffronSingleDiff>,
     ) -> CamlSaffronCommitment {
         let commitment: Commitment<Curve> = commitment.into();
         commitment.update(&srs, diff.into()).into()
