@@ -30,10 +30,12 @@ pub struct VIDProof {
 }
 
 /// Divide `self` by the vanishing polynomial for the sub-domain, `X^{domain_size} - coeff`.
+///
+/// coeff_powers are w^i starting with i = 0
 pub fn divide_by_sub_vanishing_poly(
     poly: &DensePolynomial<ScalarField>,
     domain_size: usize,
-    coeff: ScalarField,
+    coeff_powers: &[ScalarField],
 ) -> DensePolynomial<ScalarField> {
     if poly.coeffs.len() < domain_size {
         // If degree(poly) < len(Domain), then the quotient is zero, and the entire polynomial is the remainder
@@ -48,16 +50,48 @@ pub fn divide_by_sub_vanishing_poly(
         //    which can be computed using the following algorithm.
         //
 
-        // TODO parallelise
-        let mut quotient_vec = poly.coeffs[domain_size..].to_vec();
-        //println!("poly.len(): {:?}", poly.len());
-        //assert!(poly.len() / domain_size <= 2);
-        for i in 1..(poly.len() / domain_size) {
-            quotient_vec
-                .iter_mut()
-                .zip(&poly.coeffs[domain_size * (i + 1)..])
-                .for_each(|(s, c)| *s += c * &(coeff.pow([i as u64])));
-        }
+        let quotient_vec = (0..(poly.len() / domain_size))
+            .into_par_iter()
+            .map(|i| poly.coeffs[domain_size * (i + 1)..].to_vec())
+            .zip(coeff_powers)
+            .map(|(poly, pow)| poly.into_iter().map(|v| v * pow).collect::<Vec<_>>())
+            .reduce_with(|mut l, r| {
+                for i in 0..std::cmp::min(l.len(), r.len()) {
+                    l[i] += r[i]
+                }
+                l
+            })
+            .unwrap();
+
+        //        // TODO parallelise
+        //        let mut quotient_vec = poly.coeffs[domain_size..].to_vec();
+        //
+        //        //println!("poly.len(): {:?}", poly.len());
+        //        //assert!(poly.len() / domain_size <= 2);
+        //
+        //        if poly.len() / domain_size > 1 {
+        //            let mut addons: Vec<_> = (1..(poly.len() / domain_size))
+        //                .into_par_iter()
+        //                .map(|i| poly.coeffs[domain_size * (i + 1)..].to_vec())
+        //                .zip(coeff_powers)
+        //                .map(|(poly, pow)| poly.into_iter().map(|v| v * pow).collect::<Vec<_>>())
+        //                .reduce_with(|mut l, r| {
+        //                    for i in 0..std::cmp::min(l.len(), r.len()) {
+        //                        l[i] += r[i]
+        //                    }
+        //                    l
+        //                })
+        //                .unwrap();
+        //
+        //            for i in 1..(poly.len() / domain_size) {
+        //                quotient_vec
+        //                    .iter_mut()
+        //                    .zip(&poly.coeffs[domain_size * (i + 1)..])
+        //                    .for_each(|(s, c)| *s += c * &(coeff_powers[i]));
+        //            }
+        //        }
+        //            .reduce_with(|mut l, r| &l * &r)
+        //            .unwrap()
 
         let quotient = DensePolynomial::from_coefficients_vec(quotient_vec);
         quotient
@@ -222,6 +256,10 @@ where
 
         let coset_omega = all_omegas[node_ix * per_node_size].clone();
 
+        let coeff_powers: Vec<_> = (0..proofs_number)
+            .map(|i| coset_omega.pow([i as u64]))
+            .collect();
+
         for j in indices.iter() {
             assert!(all_divisors[node_ix].evaluate(&all_omegas[*j]) == ScalarField::zero());
         }
@@ -248,7 +286,7 @@ where
             let quotient = divide_by_sub_vanishing_poly(
                 &numerator_eval_interpolated,
                 per_node_size,
-                coset_omega,
+                &coeff_powers,
             );
             //            let (quotient, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
             //                &From::from(numerator_eval_interpolated),
@@ -687,9 +725,16 @@ mod tests {
             }
         }
 
+        let coeff_powers: Vec<_> = (0..proofs_number)
+            .map(|i| coset_omega.pow([i as u64]))
+            .collect();
+
         println!("Division");
-        let quot =
-            divide_by_sub_vanishing_poly(&numerator_eval_interpolated, per_node_size, coset_omega);
+        let quot = divide_by_sub_vanishing_poly(
+            &numerator_eval_interpolated,
+            per_node_size,
+            &coeff_powers,
+        );
 
         println!(
             "Degree of numerator_eval_interpolated: {:?}",
