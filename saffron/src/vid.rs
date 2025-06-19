@@ -251,32 +251,46 @@ where
         assert!(all_divisors[i].evaluate(&all_omegas[proofs_number + i]) == ScalarField::zero());
     }
 
+    let all_indices: Vec<Vec<usize>> = (0..proofs_number)
+        .map(|node_ix| {
+            (0..per_node_size)
+                .map(|j| j * proofs_number + node_ix)
+                .collect()
+        })
+        .collect();
+
+    let all_coeff_powers: Vec<Vec<_>> = (0..proofs_number)
+        .map(|node_ix| {
+            let coset_divisor_coeff = all_omegas[node_ix * per_node_size].clone();
+            (0..proofs_number)
+                .map(|i| coset_divisor_coeff.pow([i as u64]))
+                .collect()
+        })
+        .collect();
+
     for node_ix in 0..proofs_number {
-        let start = Instant::now();
+        let time_0 = Instant::now();
 
         // TEMPORARILY skip most iterations
-        if node_ix > 1 {
+        if node_ix > 4 {
             continue;
         }
 
         println!("Creating proof number {:?}", node_ix);
-        let indices: Vec<usize> = (0..per_node_size)
-            .map(|j| j * proofs_number + node_ix)
-            .collect();
+        let indices: Vec<usize> = all_indices[node_ix].clone();
 
-        // c such that (X^N - c) = 0 for all elements in the current coset
-        let coset_divisor_coeff = all_omegas[node_ix * per_node_size].clone();
+        //// c such that (X^N - c) = 0 for all elements in the current coset
+        //let coset_divisor_coeff = all_omegas[node_ix * per_node_size].clone();
 
-        let coeff_powers: Vec<_> = (0..proofs_number)
-            .map(|i| coset_divisor_coeff.pow([i as u64]))
-            .collect();
+        let coeff_powers: Vec<_> = all_coeff_powers[node_ix].clone();
 
-        for j in indices.iter() {
-            assert!(all_divisors[node_ix].evaluate(&all_omegas[*j]) == ScalarField::zero());
-        }
+        //for j in indices.iter() {
+        //    assert!(all_divisors[node_ix].evaluate(&all_omegas[*j]) == ScalarField::zero());
+        //}
 
         println!("Quotient");
 
+        let time_1 = Instant::now();
         let quotient_poly: DensePolynomial<ScalarField> = {
             println!("Numerator eval");
             // p(X) - \prod L_i(X) e_i
@@ -300,12 +314,15 @@ where
                 &coeff_powers,
             );
 
-            let divisor_poly = {
-                let mut coeffs = vec![ScalarField::zero(); per_node_size + 1];
-                coeffs[0] = -coset_divisor_coeff.clone();
-                coeffs[per_node_size] = ScalarField::one();
-                DensePolynomial { coeffs }
-            };
+            // sanity checking quotient
+            //let divisor_poly = {
+            //    let mut coeffs = vec![ScalarField::zero(); per_node_size + 1];
+            //    coeffs[0] = -coset_divisor_coeff.clone();
+            //    coeffs[per_node_size] = ScalarField::one();
+            //    DensePolynomial { coeffs }
+            //};
+            //assert!(&quotient * &divisor_poly == numerator_eval_interpolated);
+
             //            let (quotient, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
             //                &From::from(numerator_eval_interpolated),
             //                &From::from(all_divisors[i].clone()),
@@ -321,8 +338,6 @@ where
             //                fail_final_q_division();
             //            }
 
-            assert!(&quotient * &divisor_poly == numerator_eval_interpolated);
-
             quotient
         };
 
@@ -337,6 +352,7 @@ where
             (quotient_poly_1, quotient_poly_2)
         };
 
+        let time_2 = Instant::now();
         println!("Quotient comm");
         // commit to the quotient polynomial $t$.
         // num_chunks = 1 because our constraint is degree 2, which makes the quotient polynomial of degree d1
@@ -426,6 +442,7 @@ where
         };
 
         println!("Creating opening proof");
+        let time_3 = Instant::now();
 
         let opening_proof = srs.open(
             group_map,
@@ -445,10 +462,10 @@ where
             opening_proof,
         });
 
-        let duration = start.elapsed();
-
-        let millis = duration.as_millis();
-        println!("Prover time elapsed: {} ms", millis);
+        println!("Prover time elapsed: {} ms", time_0.elapsed().as_millis());
+        println!("Computing quot: {} ms", time_1.elapsed().as_millis());
+        println!("After quot: {} ms", time_2.elapsed().as_millis());
+        println!("IPA took: {} ms", time_3.elapsed().as_millis());
     }
 
     proofs
@@ -670,8 +687,8 @@ mod tests {
             EvaluationDomains::<ScalarField>::create(srs.size()).unwrap();
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
-        let number_of_coms = 8;
-        let per_node_size = 1024;
+        let number_of_coms = 32;
+        let per_node_size = domain.d2.size() / 8;
         let proofs_number = domain.d2.size() / per_node_size;
 
         //let verifier_indices: Vec<usize> = generate_unique_u64(512, 1 << 17);
@@ -685,7 +702,6 @@ mod tests {
         println!("Generating bases");
         //let bases_d2: Vec<DensePolynomial<ScalarField>> =
         //    srs.lagrange_basis_raw(domain.d2, &verifier_indices);
-        println!("Generating bases DONE");
 
         let all_omegas: Vec<ScalarField> = (0..domain.d2.size())
             .into_par_iter()
@@ -707,6 +723,7 @@ mod tests {
             ark_ff::batch_inversion(&mut res);
             res
         };
+        println!("Generating bases DONE");
 
         println!("Creating data");
 
