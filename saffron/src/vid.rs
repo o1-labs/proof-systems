@@ -17,6 +17,7 @@ use rand::{CryptoRng, RngCore};
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelIterator, IntoParallelRefMutIterator, ParallelIterator,
 };
+use std::time::Instant;
 
 #[derive(Debug, Clone)]
 pub struct VIDProof {
@@ -163,6 +164,7 @@ pub fn divide_by_sub_vanishing_poly(
 pub fn prove_vid_ipa<RNG>(
     srs: &SRS<Curve>,
     domain: EvaluationDomains<ScalarField>,
+    bases_d2: &[DensePolynomial<ScalarField>],
     group_map: &<Curve as CommitmentCurve>::Map,
     rng: &mut RNG,
     per_node_size: usize,
@@ -193,12 +195,15 @@ where
     };
 
     let combined_data_poly: DensePolynomial<ScalarField> =
-        Evaluations::from_vec_and_domain(combined_data, domain.d1).interpolate_by_ref();
+        Evaluations::from_vec_and_domain(combined_data.clone(), domain.d1).interpolate_by_ref();
 
     let combined_data_d2 = combined_data_poly.evaluate_over_domain_by_ref(domain.d2);
 
     let mut proofs: Vec<VIDProof> = vec![];
     let proofs_number = domain.d2.size() / per_node_size;
+
+    println!("proofs_number: {:?}", proofs_number);
+    println!("per_node_size: {:?}", per_node_size);
 
     let fq_sponge_common = fq_sponge.clone();
 
@@ -229,23 +234,29 @@ where
         .collect();
 
     // divisors with cosets
+    // div_i(X) = X^per_node_size - w^{i*per_node_size}
+    // div_i(X) is supposed to be zero on all elements from coset i
     let all_divisors: Vec<DensePolynomial<ScalarField>> = (0..proofs_number)
         .into_par_iter()
-        .map(|i| {
+        .map(|node_ix| {
             let mut res = DensePolynomial {
                 coeffs: vec![ScalarField::zero(); per_node_size + 1],
             };
-            res[0] = -all_omegas[i * per_node_size];
+            res[0] = -all_omegas[node_ix * per_node_size];
             res[per_node_size] = ScalarField::one();
             res
         })
         .collect();
 
-    assert!(all_divisors[5].evaluate(&all_omegas[per_node_size + 5]) == ScalarField::zero());
+    for i in 0..3 {
+        assert!(all_divisors[i].evaluate(&all_omegas[proofs_number + i]) == ScalarField::zero());
+    }
 
     for node_ix in 0..proofs_number {
+        let start = Instant::now();
+
         // TEMPORARILY skip most iterations
-        if node_ix > 4 {
+        if node_ix > 1 {
             continue;
         }
 
@@ -254,10 +265,11 @@ where
             .map(|j| j * proofs_number + node_ix)
             .collect();
 
-        let coset_omega = all_omegas[node_ix * per_node_size].clone();
+        // c such that (X^N - c) = 0 for all elements in the current coset
+        let coset_divisor_coeff = all_omegas[node_ix * per_node_size].clone();
 
         let coeff_powers: Vec<_> = (0..proofs_number)
-            .map(|i| coset_omega.pow([i as u64]))
+            .map(|i| coset_divisor_coeff.pow([i as u64]))
             .collect();
 
         for j in indices.iter() {
@@ -271,8 +283,8 @@ where
             // p(X) - \prod L_i(X) e_i
             let numerator_eval: Evaluations<ScalarField, R2D<ScalarField>> = {
                 let mut res = combined_data_d2.clone();
-                for i in indices {
-                    res.evals[i] = ScalarField::zero();
+                for i in indices.iter() {
+                    res.evals[*i] = ScalarField::zero();
                 }
                 res
             };
@@ -288,6 +300,13 @@ where
                 per_node_size,
                 &coeff_powers,
             );
+
+            let divisor_poly = {
+                let mut coeffs = vec![ScalarField::zero(); per_node_size + 1];
+                coeffs[0] = -coset_divisor_coeff.clone();
+                coeffs[per_node_size] = ScalarField::one();
+                DensePolynomial { coeffs }
+            };
             //            let (quotient, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
             //                &From::from(numerator_eval_interpolated),
             //                &From::from(all_divisors[i].clone()),
@@ -302,6 +321,8 @@ where
             //                let fail_final_q_division = || panic!("Division by poly must not fail");
             //                fail_final_q_division();
             //            }
+
+            assert!(&quotient * &divisor_poly == numerator_eval_interpolated);
 
             quotient
         };
@@ -322,7 +343,8 @@ where
         // num_chunks = 1 because our constraint is degree 2, which makes the quotient polynomial of degree d1
         let quotient_comm: Vec<Curve> = srs.commit_non_hiding(&quotient_poly, 2).chunks;
 
-        fq_sponge = fq_sponge_common.clone(); // reset the sponge
+        let mut fq_sponge = fq_sponge_common.clone(); // reset the sponge
+        println!("Prover, Quotient comm: {:?}", quotient_comm);
         fq_sponge.absorb_g(&quotient_comm);
 
         // aka zeta
@@ -341,12 +363,39 @@ where
         println!("evals");
 
         let combined_data_eval = combined_data_poly.evaluate(&evaluation_point);
-        //let quotient_eval = quotient_poly.evaluate(&evaluation_point);
+        let quotient_eval = quotient_poly.evaluate(&evaluation_point);
         let quotient_eval_1 = quotient_poly_1.evaluate(&evaluation_point);
         let quotient_eval_2 = quotient_poly_2.evaluate(&evaluation_point);
-        //println!("Prover, quotient eval: {:?}", quotient_eval);
+        println!("Prover, quotient eval: {:?}", quotient_eval);
         println!("Prover, quotient eval 1: {:?}", quotient_eval_1);
         println!("Prover, quotient eval 2: {:?}", quotient_eval_2);
+
+        assert!(
+            quotient_eval
+                == quotient_eval_1 + evaluation_point.pow([srs.size() as u64]) * quotient_eval_2
+        );
+
+        //// Sanity check for verification
+        //if node_ix == 1 {
+        //    let combined_data_at_ixs: Vec<ScalarField> = indices
+        //        .iter()
+        //        .map(|&i| combined_data_d2[i].clone())
+        //        .collect();
+
+        //    let quotient_eval_alt = {
+        //        let divisor_poly_at_zeta: ScalarField =
+        //            evaluation_point.pow([per_node_size as u64]) - coset_divisor_coeff;
+
+        //        let mut eval = -combined_data_eval;
+        //        for (lagrange, data_eval) in bases_d2.iter().zip(combined_data_at_ixs.iter()) {
+        //            eval += lagrange.evaluate(&evaluation_point) * data_eval;
+        //        }
+        //        eval = ScalarField::zero() - eval;
+        //        eval = eval * divisor_poly_at_zeta.inverse().unwrap();
+        //        eval
+        //    };
+        //    assert!(quotient_eval_alt == quotient_eval);
+        //}
 
         for eval in [combined_data_eval, quotient_eval_1, quotient_eval_2].into_iter() {
             fr_sponge.absorb(&eval);
@@ -395,7 +444,12 @@ where
             quotient_evals: vec![quotient_eval_1, quotient_eval_2],
             combined_data_eval,
             opening_proof,
-        })
+        });
+
+        let duration = start.elapsed();
+
+        let millis = duration.as_millis();
+        println!("Prover time elapsed: {} ms", millis);
     }
 
     proofs
@@ -409,6 +463,7 @@ pub fn verify_vid_ipa<RNG>(
     rng: &mut RNG,
     per_node_size: usize,
     node_ix: &usize,
+    verifier_indices: &[usize],
     proof: &VIDProof,
     data_comms: &[Curve],
     data: &[Vec<ScalarField>],
@@ -416,15 +471,19 @@ pub fn verify_vid_ipa<RNG>(
 where
     RNG: RngCore + CryptoRng,
 {
+    let start = Instant::now();
+
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
     fq_sponge.absorb_g(&data_comms);
 
     let recombination_point = fq_sponge.challenge();
     println!("Verifier, recombination point: {:?}", recombination_point);
 
+    println!("combining data commitments");
     let combined_data_commitment =
         crate::utils::aggregate_commitments(recombination_point, data_comms);
 
+    println!("Verifier, Quotient comm: {:?}", proof.quotient_comm);
     fq_sponge.absorb_g(&proof.quotient_comm);
 
     let evaluation_point = fq_sponge.challenge();
@@ -446,14 +505,62 @@ where
         initial
     };
 
+    println!("Computing alt lagrange");
+    //let all_omegas: Vec<ScalarField> = (0..domain.d2.size())
+    //    .into_par_iter()
+    //    .map(|i| domain.d2.group_gen.pow([i as u64]))
+    //    .collect();
+    //let denominators: Vec<ScalarField> = {
+    //    let mut res: Vec<_> = verifier_indices
+    //        .iter()
+    //        .map(|i| {
+    //            let mut acc = ScalarField::zero();
+    //            for j in 0..domain.d2.size() {
+    //                if j != *i {
+    //                    acc *= all_omegas[*i] - all_omegas[j]
+    //                }
+    //            }
+    //            acc
+    //        })
+    //        .collect();
+    //    ark_ff::batch_inversion(&mut res);
+    //    res
+    //};
+    //let nominator_total: ScalarField = all_omegas
+    //    .clone()
+    //    .into_par_iter()
+    //    .map(|omega_i| evaluation_point - omega_i)
+    //    .reduce_with(|mut l, r| {
+    //        l *= r;
+    //        l
+    //    })
+    //    .unwrap();
+
+    //let nominator_diffs: Vec<ScalarField> = {
+    //    let mut res: Vec<_> = verifier_indices
+    //        .iter()
+    //        .map(|i| evaluation_point - all_omegas[*i])
+    //        .collect();
+    //    ark_ff::batch_inversion(&mut res);
+    //    res
+    //};
+
+    //for (i, lagrange) in bases_d2.iter().enumerate() {
+    //    assert!(
+    //        lagrange.evaluate(&evaluation_point)
+    //            == nominator_total * nominator_diffs[i] * denominators[i]
+    //    );
+    //}
+
+    let coset_divisor_coeff = domain.d2.group_gen.pow([(node_ix * per_node_size) as u64]);
+
+    println!("quotient eval");
     let quotient_eval = {
-        let divisor_poly_at_zeta: ScalarField = {
-            evaluation_point.pow([per_node_size as u64])
-                - domain.d2.group_gen.pow([*node_ix as u64])
-        };
+        let divisor_poly_at_zeta: ScalarField =
+            evaluation_point.pow([per_node_size as u64]) - coset_divisor_coeff;
 
         let mut eval = -proof.combined_data_eval;
-        for (lagrange, data_eval) in bases_d2.iter().zip(combined_data.iter()) {
+        for (i, (lagrange, data_eval)) in bases_d2.iter().zip(combined_data.iter()).enumerate() {
             eval += lagrange.evaluate(&evaluation_point) * data_eval;
         }
         eval = ScalarField::zero() - eval;
@@ -516,7 +623,8 @@ where
         combined_inner_product(&polyscale, &evalscale, evaluations.as_slice())
     };
 
-    srs.verify(
+    println!("verifying IPA");
+    let res = srs.verify(
         group_map,
         &mut [BatchEvaluationProof {
             sponge: fq_sponge,
@@ -528,7 +636,14 @@ where
             combined_inner_product,
         }],
         rng,
-    )
+    );
+
+    let duration = start.elapsed();
+
+    let millis = duration.as_millis();
+    println!("Verifier time elapsed: {} ms", millis);
+
+    res
 }
 
 #[cfg(test)]
@@ -566,14 +681,14 @@ mod tests {
             EvaluationDomains::<ScalarField>::create(srs.size()).unwrap();
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
-        let number_of_coms = 32;
-        let per_node_size = 2048;
+        let number_of_coms = 8;
+        let per_node_size = 1024;
         let proofs_number = domain.d2.size() / per_node_size;
 
         //let verifier_indices: Vec<usize> = generate_unique_u64(512, 1 << 17);
         //let verifier_indices: Vec<usize> = (0..(domain.d2.size() / per_node_size)).collect();
         //let verifier_indices: Vec<usize> = (0..per_node_size).map(|j| j * (i + 1)).collect();
-        let verifier_ix = 0; // we're testing verifier 0
+        let verifier_ix = 1; // we're testing verifier 0
         let verifier_indices: Vec<usize> = (0..per_node_size)
             .map(|j| j * proofs_number + verifier_ix)
             .collect();
@@ -612,6 +727,7 @@ mod tests {
         let proofs = prove_vid_ipa(
             &srs,
             domain,
+            &bases_d2,
             &group_map,
             &mut rng,
             per_node_size,
@@ -632,19 +748,22 @@ mod tests {
             })
             .collect();
 
-        let res = verify_vid_ipa(
-            &srs,
-            domain,
-            &bases_d2,
-            &group_map,
-            &mut rng,
-            per_node_size,
-            &verifier_ix,
-            &proofs[0],
-            &data_comms,
-            &expanded_data_at_ixs,
-        );
-        assert!(res, "proof must verify")
+        for i in 0..4 {
+            let res = verify_vid_ipa(
+                &srs,
+                domain,
+                &bases_d2,
+                &group_map,
+                &mut rng,
+                per_node_size,
+                &verifier_ix,
+                &verifier_indices,
+                &proofs[verifier_ix],
+                &data_comms,
+                &expanded_data_at_ixs,
+            );
+            assert!(res, "proof must verify")
+        }
     }
 
     #[test]
