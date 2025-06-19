@@ -164,7 +164,6 @@ pub fn divide_by_sub_vanishing_poly(
 pub fn prove_vid_ipa<RNG>(
     srs: &SRS<Curve>,
     domain: EvaluationDomains<ScalarField>,
-    bases_d2: &[DensePolynomial<ScalarField>],
     group_map: &<Curve as CommitmentCurve>::Map,
     rng: &mut RNG,
     per_node_size: usize,
@@ -458,7 +457,6 @@ where
 pub fn verify_vid_ipa<RNG>(
     srs: &SRS<Curve>,
     domain: EvaluationDomains<ScalarField>,
-    bases_d2: &[DensePolynomial<ScalarField>],
     group_map: &<Curve as CommitmentCurve>::Map,
     rng: &mut RNG,
     per_node_size: usize,
@@ -467,6 +465,8 @@ pub fn verify_vid_ipa<RNG>(
     proof: &VIDProof,
     data_comms: &[Curve],
     data: &[Vec<ScalarField>],
+    all_omegas: &[ScalarField],
+    lagrange_denominators: &[ScalarField],
 ) -> bool
 where
     RNG: RngCore + CryptoRng,
@@ -506,51 +506,32 @@ where
     };
 
     println!("Computing alt lagrange");
-    //let all_omegas: Vec<ScalarField> = (0..domain.d2.size())
-    //    .into_par_iter()
-    //    .map(|i| domain.d2.group_gen.pow([i as u64]))
-    //    .collect();
-    //let denominators: Vec<ScalarField> = {
-    //    let mut res: Vec<_> = verifier_indices
-    //        .iter()
-    //        .map(|i| {
-    //            let mut acc = ScalarField::zero();
-    //            for j in 0..domain.d2.size() {
-    //                if j != *i {
-    //                    acc *= all_omegas[*i] - all_omegas[j]
-    //                }
-    //            }
-    //            acc
-    //        })
-    //        .collect();
-    //    ark_ff::batch_inversion(&mut res);
-    //    res
-    //};
-    //let nominator_total: ScalarField = all_omegas
-    //    .clone()
-    //    .into_par_iter()
-    //    .map(|omega_i| evaluation_point - omega_i)
-    //    .reduce_with(|mut l, r| {
-    //        l *= r;
-    //        l
-    //    })
-    //    .unwrap();
 
-    //let nominator_diffs: Vec<ScalarField> = {
-    //    let mut res: Vec<_> = verifier_indices
-    //        .iter()
-    //        .map(|i| evaluation_point - all_omegas[*i])
-    //        .collect();
-    //    ark_ff::batch_inversion(&mut res);
-    //    res
-    //};
+    let nominator_total: ScalarField = all_omegas
+        .clone()
+        .into_par_iter()
+        .map(|omega_i| evaluation_point - omega_i)
+        .reduce_with(|mut l, r| {
+            l *= r;
+            l
+        })
+        .unwrap();
 
-    //for (i, lagrange) in bases_d2.iter().enumerate() {
-    //    assert!(
-    //        lagrange.evaluate(&evaluation_point)
-    //            == nominator_total * nominator_diffs[i] * denominators[i]
-    //    );
-    //}
+    let nominator_diffs: Vec<ScalarField> = {
+        let mut res: Vec<_> = verifier_indices
+            .iter()
+            .map(|i| evaluation_point - all_omegas[*i])
+            .collect();
+        ark_ff::batch_inversion(&mut res);
+        res
+    };
+
+    //    for (i, lagrange) in bases_d2.iter().enumerate().take(15) {
+    //        assert!(
+    //            lagrange.evaluate(&evaluation_point)
+    //                == nominator_total * nominator_diffs[i] * denominators[i]
+    //        );
+    //    }
 
     let coset_divisor_coeff = domain.d2.group_gen.pow([(node_ix * per_node_size) as u64]);
 
@@ -560,9 +541,17 @@ where
             evaluation_point.pow([per_node_size as u64]) - coset_divisor_coeff;
 
         let mut eval = -proof.combined_data_eval;
-        for (i, (lagrange, data_eval)) in bases_d2.iter().zip(combined_data.iter()).enumerate() {
-            eval += lagrange.evaluate(&evaluation_point) * data_eval;
-        }
+        eval += combined_data
+            .into_par_iter()
+            .zip(lagrange_denominators.into_par_iter())
+            .zip(nominator_diffs.into_par_iter())
+            .map(|((data_eval, denom), nom)| nominator_total * denom * nom * data_eval)
+            .reduce_with(|mut l, r| {
+                l += r;
+                l
+            })
+            .unwrap();
+
         eval = ScalarField::zero() - eval;
         eval = eval * divisor_poly_at_zeta.inverse().unwrap();
         eval
@@ -694,9 +683,30 @@ mod tests {
             .collect();
 
         println!("Generating bases");
-        let bases_d2: Vec<DensePolynomial<ScalarField>> =
-            srs.lagrange_basis_raw(domain.d2, &verifier_indices);
+        //let bases_d2: Vec<DensePolynomial<ScalarField>> =
+        //    srs.lagrange_basis_raw(domain.d2, &verifier_indices);
         println!("Generating bases DONE");
+
+        let all_omegas: Vec<ScalarField> = (0..domain.d2.size())
+            .into_par_iter()
+            .map(|i| domain.d2.group_gen.pow([i as u64]))
+            .collect();
+        let lagrange_denominators: Vec<ScalarField> = {
+            let mut res: Vec<_> = verifier_indices
+                .iter()
+                .map(|i| {
+                    let mut acc = ScalarField::one();
+                    for j in 0..domain.d2.size() {
+                        if j != *i {
+                            acc *= all_omegas[*i] - all_omegas[j]
+                        }
+                    }
+                    acc
+                })
+                .collect();
+            ark_ff::batch_inversion(&mut res);
+            res
+        };
 
         println!("Creating data");
 
@@ -727,7 +737,6 @@ mod tests {
         let proofs = prove_vid_ipa(
             &srs,
             domain,
-            &bases_d2,
             &group_map,
             &mut rng,
             per_node_size,
@@ -748,11 +757,10 @@ mod tests {
             })
             .collect();
 
-        for i in 0..4 {
+        for _i in 0..4 {
             let res = verify_vid_ipa(
                 &srs,
                 domain,
-                &bases_d2,
                 &group_map,
                 &mut rng,
                 per_node_size,
@@ -761,6 +769,8 @@ mod tests {
                 &proofs[verifier_ix],
                 &data_comms,
                 &expanded_data_at_ixs,
+                &all_omegas,
+                &lagrange_denominators,
             );
             assert!(res, "proof must verify")
         }
