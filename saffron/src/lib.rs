@@ -10,7 +10,7 @@ pub mod storage;
 pub mod storage_proof;
 pub mod utils;
 
-use mina_curves::pasta::{Fp, Fq, ProjectiveVesta, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, ProjectivePallas};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -18,13 +18,13 @@ use mina_poseidon::{
 
 pub const SRS_SIZE: usize = 1 << 16;
 
-pub type Curve = Vesta;
-pub type ProjectiveCurve = ProjectiveVesta;
-pub type CurveParameters = VestaParameters;
-pub type ScalarField = Fp;
-pub type BaseField = Fq;
+pub type Curve = Pallas;
+pub type ProjectiveCurve = ProjectivePallas;
+pub type CurveParameters = PallasParameters;
+pub type ScalarField = Fq;
+pub type BaseField = Fp;
 
-pub type CurveFqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
+pub type CurveFqSponge = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>;
 pub type CurveFrSponge = DefaultFrSponge<ScalarField, PlonkSpongeConstantsKimchi>;
 
 //pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
