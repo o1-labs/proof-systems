@@ -184,20 +184,19 @@ mod tests {
     use ark_ff::UniformRand;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
     use kimchi::groupmap::GroupMap;
-    use mina_curves::pasta::{Fp, Vesta};
     use once_cell::sync::Lazy;
     use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
     use proptest::prelude::*;
 
     // Lazy variables used because proptest does not trivially accept
     // test precomputes.
-    static SRS: Lazy<SRS<Vesta>> = Lazy::new(poly_commitment::precomputed_srs::get_srs_test);
+    static SRS: Lazy<SRS<Curve>> = Lazy::new(poly_commitment::precomputed_srs::get_srs_test);
 
-    static DOMAIN: Lazy<Radix2EvaluationDomain<Fp>> =
+    static DOMAIN: Lazy<Radix2EvaluationDomain<ScalarField>> =
         Lazy::new(|| Radix2EvaluationDomain::new(SRS.size()).unwrap());
 
-    static GROUP_MAP: Lazy<<Vesta as CommitmentCurve>::Map> =
-        Lazy::new(<Vesta as CommitmentCurve>::Map::setup);
+    static GROUP_MAP: Lazy<<Curve as CommitmentCurve>::Map> =
+        Lazy::new(<Curve as CommitmentCurve>::Map::setup);
 
     proptest! {
     #![proptest_config(ProptestConfig::with_cases(5))]

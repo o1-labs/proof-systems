@@ -127,7 +127,6 @@ pub fn update<F: PrimeField>(path: &str, diff: &Diff<F>) -> std::io::Result<()> 
 mod tests {
     use crate::{diff::Diff, encoding, storage, storage::Data, Curve, ScalarField, SRS_SIZE};
     use ark_ff::{One, UniformRand, Zero};
-    use mina_curves::pasta::Fp;
     use rand::Rng;
     use std::fs;
     use tempfile::NamedTempFile;
@@ -170,12 +169,14 @@ mod tests {
                 let addresses: Vec<u64> = (0..nb_updates)
                     .map(|_| (rng.gen_range(0..data.len() as u64)))
                     .collect();
-                let mut new_values: Vec<ScalarField> =
-                    addresses.iter().map(|_| Fp::rand(&mut rng)).collect();
+                let mut new_values: Vec<ScalarField> = addresses
+                    .iter()
+                    .map(|_| ScalarField::rand(&mut rng))
+                    .collect();
                 // The first value is replaced by a scalar that would
                 // overflow 31 bytes, so the update is not consistent and the
                 // test fails if this case is not handled
-                new_values[0] = Fp::zero() - Fp::one();
+                new_values[0] = ScalarField::zero() - ScalarField::one();
                 Diff {
                     region,
                     addresses,
