@@ -159,7 +159,7 @@ jobs:
 
       - name: Rerun doc generation with different args and copy into book directory
         if: >-
-          github.event_name == 'push' && 
+          github.event_name == 'push' &&
           github.ref == 'refs/heads/master' &&
           matrix.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
           matrix.os == needs.define-matrix.outputs.default_os
@@ -171,7 +171,7 @@ jobs:
       - name: Deploy
         uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e
         if: >-
-          github.event_name == 'push' && 
+          github.event_name == 'push' &&
           github.ref == 'refs/heads/master' &&
           matrix.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
           matrix.os == needs.define-matrix.outputs.default_os
