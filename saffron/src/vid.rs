@@ -30,6 +30,10 @@ pub struct VIDProof {
     pub opening_proof: OpeningProof<Curve>,
 }
 
+pub struct VIDProofAlt {
+    pub opening_proof: OpeningProof<Curve>,
+}
+
 /// Divide `self` by the vanishing polynomial for the sub-domain, `X^{domain_size} - coeff`.
 ///
 /// coeff_powers are w^i starting with i = 0
@@ -525,7 +529,6 @@ where
     println!("Computing alt lagrange");
 
     let nominator_total: ScalarField = all_omegas
-        .clone()
         .into_par_iter()
         .map(|omega_i| evaluation_point - omega_i)
         .reduce_with(|mut l, r| {
@@ -635,6 +638,223 @@ where
         &mut [BatchEvaluationProof {
             sponge: fq_sponge,
             evaluation_points: vec![evaluation_point],
+            polyscale,
+            evalscale,
+            evaluations: coms_and_evaluations,
+            opening: &proof.opening_proof,
+            combined_inner_product,
+        }],
+        rng,
+    );
+
+    let duration = start.elapsed();
+
+    let millis = duration.as_millis();
+    println!("Verifier time elapsed: {} ms", millis);
+
+    res
+}
+
+pub fn prove_vid_ipa_alt<RNG>(
+    srs: &SRS<Curve>,
+    domain: EvaluationDomains<ScalarField>,
+    group_map: &<Curve as CommitmentCurve>::Map,
+    rng: &mut RNG,
+    per_node_size: usize,
+    data: &[Evaluations<ScalarField, R2D<ScalarField>>],
+    data_comms: &[Curve],
+) -> Vec<VIDProofAlt>
+where
+    RNG: RngCore + CryptoRng,
+{
+    let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+
+    fq_sponge.absorb_g(&data_comms);
+
+    let recombination_point = fq_sponge.challenge();
+    println!("Prover, recombination point: {:?}", recombination_point);
+
+    let combined_data: Vec<ScalarField> = {
+        let mut initial: Vec<ScalarField> = data[data.len() - 1].evals.to_vec();
+
+        (0..data.len() - 1).rev().for_each(|chunk_ix| {
+            initial.par_iter_mut().enumerate().for_each(|(idx, acc)| {
+                *acc *= recombination_point;
+                *acc += data[chunk_ix].evals[idx];
+            })
+        });
+
+        initial
+    };
+
+    let combined_data_poly: DensePolynomial<ScalarField> =
+        Evaluations::from_vec_and_domain(combined_data.clone(), domain.d1).interpolate_by_ref();
+
+    let mut proofs: Vec<VIDProofAlt> = vec![];
+    let proofs_number = domain.d2.size() / per_node_size;
+
+    println!("proofs_number: {:?}", proofs_number);
+    println!("per_node_size: {:?}", per_node_size);
+
+    let fq_sponge_common = fq_sponge.clone();
+
+    for node_ix in 0..proofs_number {
+        let time_0 = Instant::now();
+
+        // TEMPORARILY skip most iterations
+        if node_ix > 4 {
+            continue;
+        }
+
+        println!("Creating proof number {:?}", node_ix);
+
+        let time_1 = Instant::now();
+        let fq_sponge = fq_sponge_common.clone(); // reset the sponge
+        let mut fr_sponge = CurveFrSponge::new(Curve::sponge_params());
+        fr_sponge.absorb(&fq_sponge.clone().digest());
+
+        let (_, endo_r) = Curve::endos();
+        // Generate scalars used as combiners for sub-statements within our IPA opening proof.
+        let polyscale = fr_sponge.challenge().to_field(endo_r);
+        let evalscale = fr_sponge.challenge().to_field(endo_r);
+        println!(
+            "Prover, polyscale {:?}, evalscale {:?}",
+            polyscale, evalscale
+        );
+
+        // Creating the polynomials for the batch proof
+        // Gathering all polynomials to use in the opening proof
+        let opening_proof_inputs: Vec<_> = {
+            let coefficients_form =
+                DensePolynomialOrEvaluations::<_, R2D<ScalarField>>::DensePolynomial;
+            let non_hiding = |n_chunks| PolyComm {
+                chunks: vec![ScalarField::zero(); n_chunks],
+            };
+
+            vec![(coefficients_form(&combined_data_poly), non_hiding(1))]
+        };
+
+        println!("Creating opening proof");
+        let time_2 = Instant::now();
+
+        let eval_points: Vec<ScalarField> = (0..per_node_size)
+            .map(|j| {
+                domain
+                    .d2
+                    .group_gen
+                    .pow([(j * proofs_number + node_ix) as u64])
+            })
+            .collect();
+
+        let opening_proof = srs.open(
+            group_map,
+            opening_proof_inputs.as_slice(),
+            &eval_points,
+            polyscale,
+            evalscale,
+            fq_sponge.clone(),
+            rng,
+        );
+        println!("Opening proof created");
+
+        proofs.push(VIDProofAlt { opening_proof });
+
+        println!("Prover time elapsed: {} ms", time_0.elapsed().as_millis());
+        println!("Computing quot: {} ms", time_1.elapsed().as_millis());
+        println!("IPA took: {} ms", time_2.elapsed().as_millis());
+    }
+
+    proofs
+}
+
+pub fn verify_vid_ipa_alt<RNG>(
+    srs: &SRS<Curve>,
+    domain: EvaluationDomains<ScalarField>,
+    group_map: &<Curve as CommitmentCurve>::Map,
+    rng: &mut RNG,
+    per_node_size: usize,
+    node_ix: &usize,
+    verifier_indices: &[usize],
+    proof: &VIDProofAlt,
+    data_comms: &[Curve],
+    data: &[Vec<ScalarField>],
+) -> bool
+where
+    RNG: RngCore + CryptoRng,
+{
+    let start = Instant::now();
+    let proofs_number = domain.d2.size() / per_node_size;
+
+    let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+    fq_sponge.absorb_g(&data_comms);
+
+    let recombination_point = fq_sponge.challenge();
+    println!("Verifier, recombination point: {:?}", recombination_point);
+
+    println!("combining data commitments");
+    let combined_data_commitment =
+        crate::utils::aggregate_commitments(recombination_point, data_comms);
+
+    let mut fr_sponge = CurveFrSponge::new(Curve::sponge_params());
+    fr_sponge.absorb(&fq_sponge.clone().digest());
+
+    let combined_data: Vec<ScalarField> = {
+        let mut initial: Vec<ScalarField> = data[data.len() - 1].clone();
+
+        (0..data.len() - 1).rev().for_each(|chunk_ix| {
+            initial.par_iter_mut().enumerate().for_each(|(idx, acc)| {
+                *acc *= recombination_point;
+                *acc += data[chunk_ix][idx];
+            })
+        });
+
+        initial
+    };
+
+    let combined_data_wrapped: Vec<Vec<ScalarField>> =
+        combined_data.into_iter().map(|v| vec![v]).collect();
+
+    println!("Computing alt lagrange");
+
+    let (_, endo_r) = Curve::endos();
+    // Generate scalars used as combiners for sub-statements within our IPA opening proof.
+    let polyscale = fr_sponge.challenge().to_field(endo_r);
+    let evalscale = fr_sponge.challenge().to_field(endo_r);
+    println!(
+        "Verifier, polyscale {:?}, evalscale {:?}",
+        polyscale, evalscale
+    );
+
+    let coms_and_evaluations = vec![Evaluation {
+        commitment: PolyComm {
+            chunks: vec![combined_data_commitment],
+        },
+        evaluations: combined_data_wrapped,
+    }];
+    let combined_inner_product = {
+        let evaluations: Vec<_> = coms_and_evaluations
+            .iter()
+            .map(|Evaluation { evaluations, .. }| evaluations.clone())
+            .collect();
+
+        combined_inner_product(&polyscale, &evalscale, evaluations.as_slice())
+    };
+
+    let eval_points: Vec<ScalarField> = (0..per_node_size)
+        .map(|j| {
+            domain
+                .d2
+                .group_gen
+                .pow([(j * proofs_number + node_ix) as u64])
+        })
+        .collect();
+
+    println!("verifying IPA");
+    let res = srs.verify(
+        group_map,
+        &mut [BatchEvaluationProof {
+            sponge: fq_sponge,
+            evaluation_points: eval_points,
             polyscale,
             evalscale,
             evaluations: coms_and_evaluations,
@@ -788,6 +1008,93 @@ mod tests {
                 &expanded_data_at_ixs,
                 &all_omegas,
                 &lagrange_denominators,
+            );
+            assert!(res, "proof must verify")
+        }
+    }
+
+    #[test]
+    fn test_run_vid_alt() {
+        let mut rng = OsRng;
+
+        let srs = poly_commitment::precomputed_srs::get_srs_test();
+        let domain: EvaluationDomains<ScalarField> =
+            EvaluationDomains::<ScalarField>::create(srs.size()).unwrap();
+        let group_map = <Vesta as CommitmentCurve>::Map::setup();
+
+        let number_of_coms = 32;
+        let per_node_size = domain.d2.size() / 8;
+        let proofs_number = domain.d2.size() / per_node_size;
+
+        //let verifier_indices: Vec<usize> = generate_unique_u64(512, 1 << 17);
+        //let verifier_indices: Vec<usize> = (0..(domain.d2.size() / per_node_size)).collect();
+        //let verifier_indices: Vec<usize> = (0..per_node_size).map(|j| j * (i + 1)).collect();
+        let verifier_ix = 1; // we're testing verifier 0
+        let verifier_indices: Vec<usize> = (0..per_node_size)
+            .map(|j| j * proofs_number + verifier_ix)
+            .collect();
+
+        println!("Creating data");
+
+        let data: Vec<Vec<ScalarField>> = (0..number_of_coms)
+            .map(|_| {
+                (0..domain.d1.size)
+                    .map(|_| ScalarField::rand(&mut rng))
+                    .collect()
+            })
+            .collect();
+
+        let data_evals: Vec<Evaluations<ScalarField, R2D<ScalarField>>> = data
+            .into_iter()
+            .map(|col| Evaluations::from_vec_and_domain(col, domain.d1))
+            .collect();
+
+        println!("Committing to data");
+        let data_comms: Vec<Curve> = data_evals
+            .iter()
+            .map(|data_col| {
+                srs.commit_evaluations_non_hiding(domain.d1, data_col)
+                    .chunks[0]
+            })
+            .collect();
+
+        println!("Calling the prover");
+
+        let proofs = prove_vid_ipa_alt(
+            &srs,
+            domain,
+            &group_map,
+            &mut rng,
+            per_node_size,
+            &data_evals,
+            &data_comms,
+        );
+
+        let expanded_data_at_ixs: Vec<Vec<ScalarField>> = data_evals
+            .iter()
+            .map(|column_evals| {
+                let expanded = column_evals
+                    .interpolate_by_ref()
+                    .evaluate_over_domain_by_ref(domain.d2);
+                verifier_indices
+                    .iter()
+                    .map(|&i| expanded[i].clone())
+                    .collect()
+            })
+            .collect();
+
+        for _i in 0..4 {
+            let res = verify_vid_ipa_alt(
+                &srs,
+                domain,
+                &group_map,
+                &mut rng,
+                per_node_size,
+                &verifier_ix,
+                &verifier_indices,
+                &proofs[verifier_ix],
+                &data_comms,
+                &expanded_data_at_ixs,
             );
             assert!(res, "proof must verify")
         }
