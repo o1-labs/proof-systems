@@ -10,6 +10,7 @@
 use wasm_bindgen::prelude::*;
 
 mod wasm_vector;
+mod memory_tracking;
 
 #[wasm_bindgen]
 extern "C" {
@@ -34,6 +35,7 @@ pub fn console_log(s: &str) {
 
 #[wasm_bindgen]
 pub fn create_zero_u32_ptr() -> *mut u32 {
+    crate::memory_tracking::track_allocation();
     Box::into_raw(std::boxed::Box::new(0))
 }
 
@@ -47,6 +49,7 @@ pub fn create_zero_u32_ptr() -> *mut u32 {
 #[wasm_bindgen]
 pub unsafe fn free_u32_ptr(ptr: *mut u32) {
     let _drop_me = unsafe { std::boxed::Box::from_raw(ptr) };
+    crate::memory_tracking::track_deallocation();
 }
 
 /// Set the value of a pointer. This method is exported in the WebAssembly

@@ -139,10 +139,57 @@ macro_rules! impl_srs {
                     .map(|x| x.into())
                     .collect();
                 let boxed_comm = Box::<WasmVector<WasmPolyComm>>::new(comm);
+                crate::memory_tracking::track_allocation();
                 Box::into_raw(boxed_comm)
             }
 
+            /// Direct version that doesn't use raw pointers, for single-threaded use.
+            #[wasm_bindgen]
+            pub fn [<$name:snake _lagrange_commitments_whole_domain>](
+                srs: &[<Wasm $field_name:camel Srs>],
+                domain_size: i32,
+            ) -> WasmVector<$WasmPolyComm> {
+                srs.get_lagrange_basis_from_domain_size(domain_size as usize)
+                    .clone()
+                    .into_iter()
+                    .map(|x| x.into())
+                    .collect()
+            }
+
+            /// Takes ownership of the lagrange commitments from a raw pointer.
+            /// This properly deallocates the memory and should be used instead of read_from_ptr.
+            ///
+            /// # Safety
+            ///
+            /// This function is unsafe because it dereferences a raw pointer.
+            /// The pointer must be valid and must not be used after this call.
+            #[wasm_bindgen]
+            pub unsafe fn [<$name:snake _lagrange_commitments_whole_domain_take>](
+                ptr: *mut WasmVector<$WasmPolyComm>,
+            ) -> WasmVector<$WasmPolyComm> {
+                // Take ownership of the Box and move out its contents
+                let b = unsafe { Box::from_raw(ptr) };
+                crate::memory_tracking::track_deallocation();
+                *b  // Move the value out, Box is properly dropped
+            }
+
+            /// Frees the memory allocated for lagrange commitments without returning the data.
+            ///
+            /// # Safety
+            ///
+            /// This function is unsafe because it dereferences a raw pointer.
+            /// The pointer must be valid and must not be used after this call.
+            #[wasm_bindgen]
+            pub unsafe fn [<$name:snake _lagrange_commitments_whole_domain_free>](
+                ptr: *mut WasmVector<$WasmPolyComm>,
+            ) {
+                // Reconstruct and immediately drop the Box to free memory
+                let _ = unsafe { Box::from_raw(ptr) };
+                crate::memory_tracking::track_deallocation();
+            }
+
             /// Reads the lagrange commitments from a raw pointer.
+            /// DEPRECATED: This function has undefined behavior. Use lagrange_commitments_whole_domain_take instead.
             ///
             /// # Safety
             ///
@@ -154,8 +201,11 @@ macro_rules! impl_srs {
             ) -> WasmVector<$WasmPolyComm> {
                 // read the commitment at the pointers address, hack for the web
                 // worker implementation (see o1js web worker impl for details)
+                // WARNING: This implementation has been fixed to avoid use-after-free
                 let b = unsafe { Box::from_raw(ptr) };
-                b.as_ref().clone()
+                let data = b.as_ref().clone();
+                Box::into_raw(b); // Re-leak to avoid double-free for backward compatibility
+                data
             }
 
             #[wasm_bindgen]
