@@ -83,11 +83,11 @@ An effort is made to have the documentation being self-contained, referring to
 the mina book for more details when necessary. You can build the rust
 documentation with
 
-<!-- This must be the same than the content in .github/workflows/gh-page.yml -->
+<!-- This must be the same than the content in .github/workflows/ci.yml -->
 
 ```shell
 rustup install nightly
-RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --all --no-deps
+make generate-doc
 ```
 
 You can visualize the documentation by opening the file `target/doc/index.html`.
