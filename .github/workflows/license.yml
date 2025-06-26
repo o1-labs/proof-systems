@@ -11,12 +11,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Rust
+      - name: Set up Rust and cargo deny
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.85.0
-
-      - name: Install cargo-deny
         run: cargo install cargo-deny
 
       - name: Run cargo-deny
