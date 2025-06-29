@@ -110,7 +110,7 @@ macro_rules! decl_traces {
             pub mod caml {
                 use super::*;
 
-                #[derive(Debug, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+                #[derive(Debug, ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
                 pub struct CamlTraces(String);
 
                 impl From<Traces> for CamlTraces {
