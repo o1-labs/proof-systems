@@ -9,6 +9,7 @@
 //! We call answer the vector such that `answer[i] = data[i] * query[i]`
 
 use crate::{
+    commitment::*,
     utils::{evals_to_polynomial, evals_to_polynomial_and_commitment},
     Curve, CurveFqSponge, CurveFrSponge, ScalarField,
 };
@@ -23,7 +24,7 @@ use poly_commitment::{
     commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
     utils::DensePolynomialOrEvaluations,
-    PolyComm, SRS as _,
+    PolyComm,
 };
 use rand::{CryptoRng, RngCore};
 use tracing::instrument;
@@ -63,7 +64,7 @@ pub fn prove<RNG>(
     // answer[i] = data[i] * query[i]
     answer: &[ScalarField],
     // Commitment to data
-    data_comm: &Curve,
+    data_comm: &Commitment<Curve>,
 ) -> ReadProof
 where
     RNG: RngCore + CryptoRng,
@@ -71,15 +72,14 @@ where
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
 
     let data_poly = evals_to_polynomial(data.to_vec(), domain.d1);
-    let data_comm: PolyComm<Curve> = PolyComm {
-        chunks: vec![*data_comm],
-    };
 
-    let (query_poly, query_comm) = evals_to_polynomial_and_commitment(query.to_vec(), domain.d1, srs);
+    let (query_poly, query_comm) =
+        evals_to_polynomial_and_commitment(query.to_vec(), domain.d1, srs);
 
-    let (answer_poly, answer_comm) = evals_to_polynomial_and_commitment(answer.to_vec(), domain.d1, srs);
+    let (answer_poly, answer_comm) =
+        evals_to_polynomial_and_commitment(answer.to_vec(), domain.d1, srs);
 
-    fq_sponge.absorb_g(&[data_comm.chunks[0], query_comm, answer_comm]);
+    fq_sponge.absorb_g(&[data_comm.cm, query_comm, answer_comm]);
 
     // coefficient form, over d4? d2?
     // quotient_Poly has degree d1
@@ -112,7 +112,7 @@ where
 
     // commit to the quotient polynomial $t$.
     // num_chunks = 1 because our constraint is degree 2, which makes the quotient polynomial of degree d1
-    let quotient_comm = srs.commit_non_hiding(&quotient_poly, 1).chunks[0];
+    let quotient_comm = commit_to_poly(srs, &quotient_poly);
     fq_sponge.absorb_g(&[quotient_comm]);
 
     // aka zeta
@@ -180,15 +180,19 @@ pub fn verify<RNG>(
     group_map: &<Curve as CommitmentCurve>::Map,
     rng: &mut RNG,
     // Commitment to data
-    data_comm: &Curve,
+    data_comm: &Commitment<Curve>,
     proof: &ReadProof,
 ) -> bool
 where
     RNG: RngCore + CryptoRng,
 {
     let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
-    fq_sponge.absorb_g(&[*data_comm, proof.query_comm, proof.answer_comm]);
-    fq_sponge.absorb_g(&[proof.quotient_comm]);
+    fq_sponge.absorb_g(&[
+        data_comm.cm,
+        proof.query_comm,
+        proof.answer_comm,
+        proof.quotient_comm,
+    ]);
 
     let evaluation_point = fq_sponge.challenge();
 
@@ -222,7 +226,7 @@ where
     let coms_and_evaluations = vec![
         Evaluation {
             commitment: PolyComm {
-                chunks: vec![*data_comm],
+                chunks: vec![data_comm.cm],
             },
             evaluations: vec![vec![proof.data_eval]],
         },
@@ -272,7 +276,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::{prove, verify, ReadProof};
-    use crate::{Curve, ScalarField, SRS_SIZE};
+    use crate::{
+        commitment::{commit_to_poly, Commitment},
+        Curve, ScalarField, SRS_SIZE,
+    };
     use ark_ec::AffineRepr;
     use ark_ff::{One, UniformRand};
     use ark_poly::{univariate::DensePolynomial, Evaluations};
@@ -297,7 +304,9 @@ mod tests {
 
         let data_poly: DensePolynomial<ScalarField> =
             Evaluations::from_vec_and_domain(data.clone(), domain.d1).interpolate();
-        let data_comm: Curve = srs.commit_non_hiding(&data_poly, 1).chunks[0];
+        let data_comm = Commitment {
+            cm: commit_to_poly(&srs, &data_poly),
+        };
 
         let query: Vec<ScalarField> = {
             let mut query = vec![];
