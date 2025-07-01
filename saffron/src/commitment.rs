@@ -40,13 +40,8 @@ where
 }
 
 /// Returns the non-hiding commitment to the provided polynomial
-pub fn commit_poly<G: KimchiCurve>(
-    srs: &SRS<G>,
-    poly: &DensePolynomial<G::ScalarField>,
-) -> Commitment<G> {
-    Commitment {
-        cm: srs.commit_non_hiding(poly, 1).chunks[0],
-    }
+pub fn commit_poly<G: KimchiCurve>(srs: &SRS<G>, poly: &DensePolynomial<G::ScalarField>) -> G {
+    srs.commit_non_hiding(poly, 1).chunks[0]
 }
 
 /// Compute the commitment to the polynomial `P` of same degree as `srs`
@@ -59,7 +54,7 @@ pub fn commit_sparse<G: KimchiCurve>(
     srs: &SRS<G>,
     sparse_data: &[G::ScalarField],
     indexes: &[u64],
-) -> Commitment<G> {
+) -> G {
     if sparse_data.len() != indexes.len() {
         panic!(
             "commitment::commit_sparse: size mismatch (sparse_data: {}, indexes: {})",
@@ -69,9 +64,7 @@ pub fn commit_sparse<G: KimchiCurve>(
     };
     let basis = get_lagrange_basis(srs);
     let basis: Vec<G> = indexes.iter().map(|&i| basis[i as usize]).collect();
-    Commitment {
-        cm: G::Group::msm(&basis, sparse_data).unwrap().into(),
-    }
+    G::Group::msm(&basis, sparse_data).unwrap().into()
 }
 
 /// Takes commitments C_i, computes α = hash(C_0 || C_1 || ... || C_n),
@@ -121,7 +114,7 @@ impl<G: KimchiCurve> Commitment<G> {
         // TODO: precompute this, or cache it & compute it in a lazy way ; it feels like it’s already cached but I’m not sure
         let cm_diff = commit_sparse(srs, &diff.diff_values, &diff.addresses);
         Commitment {
-            cm: self.cm.add(cm_diff.cm).into(),
+            cm: self.cm.add(cm_diff).into(),
         }
     }
 }
