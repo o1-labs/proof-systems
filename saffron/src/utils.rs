@@ -4,7 +4,9 @@ use ark_ff::PrimeField;
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as R2D,
 };
+use kimchi::curve::KimchiCurve;
 use o1_utils::field_helpers::pows;
+use poly_commitment::{ipa::SRS, SRS as _};
 use std::marker::PhantomData;
 use thiserror::Error;
 use tracing::instrument;
@@ -14,6 +16,16 @@ pub(crate) fn evals_to_polynomial<F: PrimeField>(
     domain: R2D<F>,
 ) -> DensePolynomial<F> {
     Evaluations::from_vec_and_domain(evals, domain).interpolate_by_ref()
+}
+
+pub(crate) fn evals_to_polynomial_and_commitment<G: KimchiCurve>(
+    evals: Vec<G::ScalarField>,
+    domain: R2D<G::ScalarField>,
+    srs: &SRS<G>,
+) -> (DensePolynomial<G::ScalarField>, G) {
+    let poly = evals_to_polynomial(evals, domain);
+    let comm: G = srs.commit_non_hiding(&poly, 1).chunks[0];
+    (poly, comm)
 }
 
 #[derive(Clone, Debug)]
