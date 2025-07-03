@@ -24,15 +24,15 @@
 use crate::{
     commitment::*,
     storage::Data,
-    utils::{evals_to_polynomial, evals_to_polynomial_and_commitment},
-    Curve, CurveSponge, ScalarField, Sponge,
+    utils::{evals_to_polynomial, evals_to_polynomial_and_commitment, new_sponge},
+    Curve, ScalarField, Sponge,
 };
 use ark_ff::{Field, One, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as R2D,
 };
-use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
+use kimchi::circuits::domains::EvaluationDomains;
 use poly_commitment::{
     commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
@@ -143,7 +143,7 @@ where
 {
     let data = &data.data;
 
-    let mut curve_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    let mut curve_sponge = new_sponge();
 
     let data_poly = evals_to_polynomial(data.to_vec(), domain.d1);
 
@@ -191,7 +191,7 @@ where
     let evaluation_point = curve_sponge.challenge();
 
     // Fiat Shamir - absorbing evaluations
-    let mut scalar_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    let mut scalar_sponge = new_sponge();
     scalar_sponge.absorb_fr(&[curve_sponge.clone().digest()]);
 
     let data_eval = data_poly.evaluate(&evaluation_point);
@@ -256,7 +256,7 @@ pub fn verify<RNG>(
 where
     RNG: RngCore + CryptoRng,
 {
-    let mut curve_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    let mut curve_sponge = new_sponge();
     curve_sponge.absorb_g(&[
         data_comm.cm,
         *query_comm,
@@ -266,7 +266,7 @@ where
 
     let evaluation_point = curve_sponge.challenge();
 
-    let mut scalar_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    let mut scalar_sponge = new_sponge();
     scalar_sponge.absorb_fr(&[curve_sponge.clone().digest()]);
 
     let vanishing_poly_at_zeta = domain.d1.vanishing_polynomial().evaluate(&evaluation_point);

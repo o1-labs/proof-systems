@@ -10,13 +10,12 @@
 //! essense proves knowledge of the opening to all the commitments C_i
 //! simultaneously.
 
-use crate::{blob::FieldBlob, utils, Curve, CurveSponge, ScalarField, Sponge, SRS_SIZE};
+use crate::{blob::FieldBlob, utils, utils::new_sponge, Curve, ScalarField, Sponge, SRS_SIZE};
 use ark_ec::AffineRepr;
 use ark_ff::{One, Zero};
 use ark_poly::{
     EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D, Radix2EvaluationDomain,
 };
-use kimchi::curve::KimchiCurve;
 use poly_commitment::{
     commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
@@ -72,7 +71,7 @@ pub fn prove(
         initial
     };
 
-    let mut curve_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    let mut curve_sponge = new_sponge();
     curve_sponge.absorb_g(&[combined_data_commitment]);
     let evaluation_point = curve_sponge.squeeze(2);
 
@@ -82,7 +81,7 @@ pub fn prove(
     // TODO: Do we need to use scalar_sponge? Can't we just use curve_sponge for everything?
     // TODO: check and see if we need to also absorb the absorb the poly cm
     // see https://github.com/o1-labs/proof-systems/blob/feature/test-data-storage-commitments/data-storage/src/main.rs#L265-L269
-    let mut scalar_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    let mut scalar_sponge = new_sponge();
     scalar_sponge.absorb_fr(&[curve_sponge.clone().digest(), combined_data_eval]);
 
     let opening_proof =
@@ -120,13 +119,13 @@ pub fn verify_wrt_combined_data_commitment(
     proof: &StorageProof,
     rng: &mut OsRng,
 ) -> bool {
-    let mut curve_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    let mut curve_sponge = new_sponge();
     let evaluation_point = {
         curve_sponge.absorb_g(&[combined_data_commitment]);
         curve_sponge.squeeze(2)
     };
 
-    let mut scalar_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    let mut scalar_sponge = new_sponge();
     scalar_sponge.absorb_fr(&[curve_sponge.clone().digest(), proof.combined_data_eval]);
 
     srs.verify(
@@ -203,7 +202,7 @@ mod tests {
         // extra seed
         let challenge_seed: ScalarField = ScalarField::rand(&mut rng);
 
-        let mut sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+        let mut sponge = new_sponge();
         sponge.absorb_fr(&[challenge_seed]);
         let (combined_data_commitment, challenge) =
             combine_commitments(&mut sponge, commitments.as_slice());
@@ -235,7 +234,7 @@ mod tests {
         // extra seed
         let challenge_seed: ScalarField = ScalarField::rand(&mut rng);
 
-        let mut sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+        let mut sponge = new_sponge();
         sponge.absorb_fr(&[challenge_seed]);
         let (combined_data_commitment, challenge) =
             combine_commitments(&mut sponge, commitments.as_slice());

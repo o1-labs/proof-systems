@@ -30,14 +30,14 @@
 //!
 //! For mor details see the full version of the protocol in the whitepaper.
 
-use crate::{Curve, CurveSponge, ScalarField, Sponge, SRS_SIZE};
+use crate::{utils::new_sponge, Curve, ScalarField, Sponge, SRS_SIZE};
 use ark_ec::AffineRepr;
 use ark_ff::{Field, One, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as R2D,
 };
-use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
+use kimchi::circuits::domains::EvaluationDomains;
 use poly_commitment::{
     commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
@@ -158,7 +158,7 @@ pub fn folding_prover(
     inst2: &RelaxedInstance,
     wit2: &RelaxedWitness,
 ) -> (RelaxedInstance, RelaxedWitness, Curve) {
-    let mut curve_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    let mut curve_sponge = new_sponge();
 
     let cross_term: Evaluations<ScalarField, R2D<ScalarField>> =
         &(&(&wit2.core.a + &(&wit1.a * inst2.u)) - &(&wit2.core.q * &wit1.d))
@@ -223,7 +223,7 @@ pub fn folding_verifier(
     inst2: &RelaxedInstance,
     cross_term_comm: Curve,
 ) -> RelaxedInstance {
-    let mut curve_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    let mut curve_sponge = new_sponge();
     curve_sponge.absorb_g(&[
         inst1.comm_d,
         inst1.comm_q,
@@ -287,7 +287,7 @@ pub fn prove_relaxed<RNG>(
 where
     RNG: RngCore + CryptoRng,
 {
-    let mut curve_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    let mut curve_sponge = new_sponge();
 
     let data_poly: DensePolynomial<ScalarField> = wit.core.d.interpolate_by_ref();
     let query_poly: DensePolynomial<ScalarField> = wit.core.q.interpolate_by_ref();
@@ -337,7 +337,7 @@ where
     let evaluation_point = curve_sponge.challenge();
 
     // Fiat Shamir - absorbing evaluations
-    let mut scalar_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    let mut scalar_sponge = new_sponge();
     scalar_sponge.absorb_fr(&[curve_sponge.clone().digest()]);
 
     let data_eval = data_poly.evaluate(&evaluation_point);
@@ -407,7 +407,7 @@ pub fn verify_relaxed<RNG>(
 where
     RNG: RngCore + CryptoRng,
 {
-    let mut curve_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    let mut curve_sponge = new_sponge();
     curve_sponge.absorb_g(&[
         inst.core.comm_d,
         inst.core.comm_q,
@@ -418,7 +418,7 @@ where
 
     let evaluation_point = curve_sponge.challenge();
 
-    let mut scalar_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    let mut scalar_sponge = new_sponge();
     scalar_sponge.absorb_fr(&[curve_sponge.clone().digest()]);
 
     let vanishing_poly_at_zeta = domain.d1.vanishing_polynomial().evaluate(&evaluation_point);

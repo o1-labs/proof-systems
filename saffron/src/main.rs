@@ -1,7 +1,7 @@
 use anyhow::Result;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use clap::Parser;
-use kimchi::{curve::KimchiCurve, groupmap::GroupMap};
+use kimchi::groupmap::GroupMap;
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rand::rngs::OsRng;
 use saffron::{
@@ -9,7 +9,8 @@ use saffron::{
     cli::{self, HexString},
     commitment, encoding, env,
     storage_proof::{self, StorageProof},
-    Curve, CurveSponge, ScalarField, Sponge,
+    utils::new_sponge,
+    Curve, ScalarField, Sponge,
 };
 use std::{
     fs::File,
@@ -85,7 +86,7 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
             .expect("if assert-commitment is requested, challenge-seed must be provided");
         let challenge_seed: ScalarField = encoding::encode(&challenge_seed_args.0);
 
-        let mut sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+        let mut sponge = new_sponge();
         sponge.absorb_fr(&[challenge_seed]);
         let (combined_data_commitment, _challenge) =
             commitment::combine_commitments(&mut sponge, blob.commitments.as_slice());
@@ -123,7 +124,7 @@ pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<HexString>
     let blob = FieldBlob::from_bytes(&srs, domain_fp, buf.as_slice());
 
     let challenge_seed: ScalarField = encoding::encode(&args.challenge_seed.0);
-    let mut sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    let mut sponge = new_sponge();
     sponge.absorb_fr(&[challenge_seed]);
     let (combined_data_commitment, _challenge) =
         commitment::combine_commitments(&mut sponge, blob.commitments.as_slice());
@@ -167,7 +168,7 @@ pub fn storage_proof(args: cli::StorageProofArgs) -> Result<HexString> {
         let group_map = <Curve as CommitmentCurve>::Map::setup();
         let mut rng = OsRng;
 
-        let mut sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+        let mut sponge = new_sponge();
         sponge.absorb_fr(&[challenge_seed]);
         let (_combined_data_commitment, challenge) =
             commitment::combine_commitments(&mut sponge, blob.commitments.as_slice());
