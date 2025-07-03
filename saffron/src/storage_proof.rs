@@ -10,15 +10,13 @@
 //! essense proves knowledge of the opening to all the commitments C_i
 //! simultaneously.
 
-use crate::{
-    blob::FieldBlob, utils, Curve, CurveScalarSponge, CurveSponge, ScalarField, Sponge, SRS_SIZE,
-};
+use crate::{blob::FieldBlob, utils, Curve, CurveSponge, ScalarField, Sponge, SRS_SIZE};
 use ark_ec::AffineRepr;
 use ark_ff::{One, Zero};
 use ark_poly::{
     EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D, Radix2EvaluationDomain,
 };
-use kimchi::{curve::KimchiCurve, plonk_sponge::FrSponge};
+use kimchi::curve::KimchiCurve;
 use poly_commitment::{
     commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
@@ -82,13 +80,10 @@ pub fn prove(
     let combined_data_eval = combined_data_poly.evaluate(&evaluation_point);
 
     // TODO: Do we need to use scalar_sponge? Can't we just use curve_sponge for everything?
-    let curve_sponge_before_evaluations = curve_sponge.clone();
-    let mut scalar_sponge = CurveScalarSponge::new(Curve::sponge_params());
-    scalar_sponge.absorb(&curve_sponge.digest());
-
     // TODO: check and see if we need to also absorb the absorb the poly cm
     // see https://github.com/o1-labs/proof-systems/blob/feature/test-data-storage-commitments/data-storage/src/main.rs#L265-L269
-    scalar_sponge.absorb(&combined_data_eval);
+    let mut scalar_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    scalar_sponge.absorb_fr(&[curve_sponge.clone().digest(), combined_data_eval]);
 
     let opening_proof =
         srs.open(
@@ -107,7 +102,7 @@ pub fn prove(
             &[evaluation_point],
             ScalarField::one(), // Single evaluation, so we don't care
             ScalarField::one(), // Single evaluation, so we don't care
-            curve_sponge_before_evaluations,
+            curve_sponge,
             rng,
         );
 
@@ -131,18 +126,13 @@ pub fn verify_wrt_combined_data_commitment(
         curve_sponge.squeeze(2)
     };
 
-    let curve_sponge_before_evaluations = curve_sponge.clone();
-    let mut scalar_sponge = CurveScalarSponge::new(Curve::sponge_params());
-    scalar_sponge.absorb(&curve_sponge.digest());
-
-    // TODO: check and see if we need to also absorb the absorb the poly cm
-    // see https://github.com/o1-labs/proof-systems/blob/feature/test-data-storage-commitments/data-storage/src/main.rs#L265-L269
-    scalar_sponge.absorb(&proof.combined_data_eval);
+    let mut scalar_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    scalar_sponge.absorb_fr(&[curve_sponge.clone().digest(), proof.combined_data_eval]);
 
     srs.verify(
         group_map,
         &mut [BatchEvaluationProof {
-            sponge: curve_sponge_before_evaluations,
+            sponge: curve_sponge,
             evaluation_points: vec![evaluation_point],
             polyscale: ScalarField::one(),
             evalscale: ScalarField::one(),

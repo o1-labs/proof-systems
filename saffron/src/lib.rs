@@ -10,10 +10,7 @@ pub mod storage;
 pub mod storage_proof;
 pub mod utils;
 
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
+use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 
 pub use mina_poseidon::FqSponge as Sponge;
 
@@ -26,4 +23,3 @@ pub type ScalarField = <CurveParameters as ark_ec::CurveConfig>::ScalarField;
 pub type BaseField = <CurveParameters as ark_ec::CurveConfig>::BaseField;
 
 pub type CurveSponge = DefaultFqSponge<CurveParameters, PlonkSpongeConstantsKimchi>;
-pub type CurveScalarSponge = DefaultFrSponge<ScalarField, PlonkSpongeConstantsKimchi>;

@@ -30,14 +30,14 @@
 //!
 //! For mor details see the full version of the protocol in the whitepaper.
 
-use crate::{Curve, CurveScalarSponge, CurveSponge, ScalarField, Sponge, SRS_SIZE};
+use crate::{Curve, CurveSponge, ScalarField, Sponge, SRS_SIZE};
 use ark_ec::AffineRepr;
 use ark_ff::{Field, One, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as R2D,
 };
-use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_sponge::FrSponge};
+use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
 use poly_commitment::{
     commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
@@ -337,8 +337,8 @@ where
     let evaluation_point = curve_sponge.challenge();
 
     // Fiat Shamir - absorbing evaluations
-    let mut scalar_sponge = CurveScalarSponge::new(Curve::sponge_params());
-    scalar_sponge.absorb(&curve_sponge.clone().digest());
+    let mut scalar_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    scalar_sponge.absorb_fr(&[curve_sponge.clone().digest()]);
 
     let data_eval = data_poly.evaluate(&evaluation_point);
     let query_eval = query_poly.evaluate(&evaluation_point);
@@ -346,22 +346,17 @@ where
     let error_eval = error_poly.evaluate(&evaluation_point);
     let quotient_eval = quotient_poly.evaluate(&evaluation_point);
 
-    for eval in [
+    scalar_sponge.absorb_fr(&[
         data_eval,
         query_eval,
         answer_eval,
         error_eval,
         quotient_eval,
-    ]
-    .into_iter()
-    {
-        scalar_sponge.absorb(&eval);
-    }
+    ]);
 
-    let (_, endo_r) = Curve::endos();
     // Generate scalars used as combiners for sub-statements within our IPA opening proof.
-    let polyscale = scalar_sponge.challenge().to_field(endo_r);
-    let evalscale = scalar_sponge.challenge().to_field(endo_r);
+    let polyscale = scalar_sponge.challenge();
+    let evalscale = scalar_sponge.challenge();
 
     // Creating the polynomials for the batch proof
     // Gathering all polynomials to use in the opening proof
@@ -423,8 +418,8 @@ where
 
     let evaluation_point = curve_sponge.challenge();
 
-    let mut scalar_sponge = CurveScalarSponge::new(Curve::sponge_params());
-    scalar_sponge.absorb(&curve_sponge.clone().digest());
+    let mut scalar_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    scalar_sponge.absorb_fr(&[curve_sponge.clone().digest()]);
 
     let vanishing_poly_at_zeta = domain.d1.vanishing_polynomial().evaluate(&evaluation_point);
     let quotient_eval = {
@@ -434,22 +429,17 @@ where
                 .unwrap_or_else(|| panic!("Inverse fails only with negligible probability"))
     };
 
-    for eval in [
+    scalar_sponge.absorb_fr(&[
         proof.data_eval,
         proof.query_eval,
         proof.answer_eval,
         proof.error_eval,
         quotient_eval,
-    ]
-    .into_iter()
-    {
-        scalar_sponge.absorb(&eval);
-    }
+    ]);
 
-    let (_, endo_r) = Curve::endos();
     // Generate scalars used as combiners for sub-statements within our IPA opening proof.
-    let polyscale = scalar_sponge.challenge().to_field(endo_r);
-    let evalscale = scalar_sponge.challenge().to_field(endo_r);
+    let polyscale = scalar_sponge.challenge();
+    let evalscale = scalar_sponge.challenge();
 
     let coms_and_evaluations = vec![
         Evaluation {
