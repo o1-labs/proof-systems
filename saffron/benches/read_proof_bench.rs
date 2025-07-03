@@ -3,7 +3,6 @@
 use ark_ff::UniformRand;
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
 use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
-use mina_curves::pasta::Fp;
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
 use rand::rngs::OsRng;
 use saffron::{
@@ -22,7 +21,7 @@ fn generate_test_data(
 
     // Generate data with specified size
     let data = Data {
-        data: (0..size).map(|_| Fp::rand(&mut rng)).collect(),
+        data: (0..size).map(|_| ScalarField::rand(&mut rng)).collect(),
     };
 
     // Create data commitment

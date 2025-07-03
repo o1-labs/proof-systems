@@ -10,14 +10,12 @@
 //! essense proves knowledge of the opening to all the commitments C_i
 //! simultaneously.
 
-use crate::{blob::FieldBlob, utils, Curve, CurveFqSponge, CurveFrSponge, ScalarField, SRS_SIZE};
+use crate::{blob::FieldBlob, utils, utils::new_sponge, Curve, ScalarField, Sponge, SRS_SIZE};
 use ark_ec::AffineRepr;
 use ark_ff::{One, Zero};
 use ark_poly::{
     EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D, Radix2EvaluationDomain,
 };
-use kimchi::{curve::KimchiCurve, plonk_sponge::FrSponge};
-use mina_poseidon::FqSponge;
 use poly_commitment::{
     commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
@@ -73,21 +71,18 @@ pub fn prove(
         initial
     };
 
-    let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
-    fq_sponge.absorb_g(&[combined_data_commitment]);
-    let evaluation_point = fq_sponge.squeeze(2);
+    let mut base_sponge = new_sponge();
+    base_sponge.absorb_g(&[combined_data_commitment]);
+    let evaluation_point = base_sponge.squeeze(2);
 
     let combined_data_poly = Evaluations::from_vec_and_domain(combined_data, domain).interpolate();
     let combined_data_eval = combined_data_poly.evaluate(&evaluation_point);
 
-    // TODO: Do we need to use fr_sponge? Can't we just use fq_sponge for everything?
-    let fq_sponge_before_evaluations = fq_sponge.clone();
-    let mut fr_sponge = CurveFrSponge::new(Curve::sponge_params());
-    fr_sponge.absorb(&fq_sponge.digest());
-
+    // TODO: Do we need to use scalar_sponge? Can't we just use base_sponge for everything?
     // TODO: check and see if we need to also absorb the absorb the poly cm
     // see https://github.com/o1-labs/proof-systems/blob/feature/test-data-storage-commitments/data-storage/src/main.rs#L265-L269
-    fr_sponge.absorb(&combined_data_eval);
+    let mut scalar_sponge = new_sponge();
+    scalar_sponge.absorb_fr(&[base_sponge.clone().digest(), combined_data_eval]);
 
     let opening_proof =
         srs.open(
@@ -106,7 +101,7 @@ pub fn prove(
             &[evaluation_point],
             ScalarField::one(), // Single evaluation, so we don't care
             ScalarField::one(), // Single evaluation, so we don't care
-            fq_sponge_before_evaluations,
+            base_sponge,
             rng,
         );
 
@@ -124,24 +119,19 @@ pub fn verify_wrt_combined_data_commitment(
     proof: &StorageProof,
     rng: &mut OsRng,
 ) -> bool {
-    let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+    let mut base_sponge = new_sponge();
     let evaluation_point = {
-        fq_sponge.absorb_g(&[combined_data_commitment]);
-        fq_sponge.squeeze(2)
+        base_sponge.absorb_g(&[combined_data_commitment]);
+        base_sponge.squeeze(2)
     };
 
-    let fq_sponge_before_evaluations = fq_sponge.clone();
-    let mut fr_sponge = CurveFrSponge::new(Curve::sponge_params());
-    fr_sponge.absorb(&fq_sponge.digest());
-
-    // TODO: check and see if we need to also absorb the absorb the poly cm
-    // see https://github.com/o1-labs/proof-systems/blob/feature/test-data-storage-commitments/data-storage/src/main.rs#L265-L269
-    fr_sponge.absorb(&proof.combined_data_eval);
+    let mut scalar_sponge = new_sponge();
+    scalar_sponge.absorb_fr(&[base_sponge.clone().digest(), proof.combined_data_eval]);
 
     srs.verify(
         group_map,
         &mut [BatchEvaluationProof {
-            sponge: fq_sponge_before_evaluations,
+            sponge: base_sponge,
             evaluation_points: vec![evaluation_point],
             polyscale: ScalarField::one(),
             evalscale: ScalarField::one(),
@@ -181,23 +171,23 @@ mod tests {
         utils::test_utils::UserData,
     };
 
+    use crate::{Curve, ScalarField};
     use ark_ff::UniformRand;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
     use kimchi::groupmap::GroupMap;
-    use mina_curves::pasta::{Fp, Vesta};
     use once_cell::sync::Lazy;
     use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
     use proptest::prelude::*;
 
     // Lazy variables used because proptest does not trivially accept
     // test precomputes.
-    static SRS: Lazy<SRS<Vesta>> = Lazy::new(poly_commitment::precomputed_srs::get_srs_test);
+    static SRS: Lazy<SRS<Curve>> = Lazy::new(poly_commitment::precomputed_srs::get_srs_test);
 
-    static DOMAIN: Lazy<Radix2EvaluationDomain<Fp>> =
+    static DOMAIN: Lazy<Radix2EvaluationDomain<ScalarField>> =
         Lazy::new(|| Radix2EvaluationDomain::new(SRS.size()).unwrap());
 
-    static GROUP_MAP: Lazy<<Vesta as CommitmentCurve>::Map> =
-        Lazy::new(<Vesta as CommitmentCurve>::Map::setup);
+    static GROUP_MAP: Lazy<<Curve as CommitmentCurve>::Map> =
+        Lazy::new(<Curve as CommitmentCurve>::Map::setup);
 
     proptest! {
     #![proptest_config(ProptestConfig::with_cases(5))]
@@ -212,7 +202,7 @@ mod tests {
         // extra seed
         let challenge_seed: ScalarField = ScalarField::rand(&mut rng);
 
-        let mut sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+        let mut sponge = new_sponge();
         sponge.absorb_fr(&[challenge_seed]);
         let (combined_data_commitment, challenge) =
             combine_commitments(&mut sponge, commitments.as_slice());
@@ -244,7 +234,7 @@ mod tests {
         // extra seed
         let challenge_seed: ScalarField = ScalarField::rand(&mut rng);
 
-        let mut sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+        let mut sponge = new_sponge();
         sponge.absorb_fr(&[challenge_seed]);
         let (combined_data_commitment, challenge) =
             combine_commitments(&mut sponge, commitments.as_slice());
