@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["combine_commitments","commit_to_field_elems"]};
+window.SIDEBAR_ITEMS = {"fn":["combine_commitments","commit_to_field_elems"],"struct":["Commitment"]};
