@@ -12,7 +12,6 @@ pub mod evaluations;
 pub mod field_helpers;
 pub mod foreign_field;
 pub mod hasher;
-pub mod lazy_cache;
 pub mod math;
 pub mod serialization;
 

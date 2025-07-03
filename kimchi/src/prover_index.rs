@@ -9,7 +9,6 @@ use crate::{
     },
     curve::KimchiCurve,
     linearization::expr_linearization,
-    o1_utils::lazy_cache::LazyCache,
     verifier_index::VerifierIndex,
 };
 use ark_ff::PrimeField;
@@ -21,12 +20,12 @@ use std::sync::Arc;
 
 /// The index used by the prover
 #[serde_as]
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 //~spec:startcode
 pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub cs: Arc<ConstraintSystem<G::ScalarField>>,
+    pub cs: ConstraintSystem<G::ScalarField>,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
@@ -46,7 +45,7 @@ pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub max_poly_size: usize,
 
     #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub column_evaluations: Arc<LazyCache<ColumnEvaluations<G::ScalarField>>>,
+    pub column_evaluations: ColumnEvaluations<G::ScalarField>,
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
@@ -67,7 +66,6 @@ where
         mut cs: ConstraintSystem<G::ScalarField>,
         endo_q: G::ScalarField,
         srs: Arc<OpeningProof::SRS>,
-        lazy_mode: bool,
     ) -> Self {
         let max_poly_size = srs.max_poly_size();
         cs.endo = endo_q;
@@ -77,14 +75,7 @@ where
 
         let evaluated_column_coefficients = cs.evaluated_column_coefficients();
 
-        let cs = Arc::new(cs);
-        let cs_clone = Arc::clone(&cs);
-        let column_evaluations =
-            LazyCache::new(move || cs_clone.column_evaluations(&evaluated_column_coefficients));
-        if !lazy_mode {
-            // precompute the values
-            column_evaluations.get();
-        };
+        let column_evaluations = cs.column_evaluations(&evaluated_column_coefficients);
 
         ProverIndex {
             cs,
@@ -92,7 +83,7 @@ where
             powers_of_alpha,
             srs,
             max_poly_size,
-            column_evaluations: Arc::new(column_evaluations),
+            column_evaluations,
             verifier_index: None,
             verifier_index_digest: None,
         }
@@ -169,7 +160,6 @@ pub mod testing {
         disable_gates_checks: bool,
         override_srs_size: Option<usize>,
         mut get_srs: F,
-        lazy_mode: bool,
     ) -> ProverIndex<G, OpeningProof>
     where
         G::BaseField: PrimeField,
@@ -183,7 +173,6 @@ pub mod testing {
             .prev_challenges(prev_challenges)
             .disable_gates_checks(disable_gates_checks)
             .max_poly_size(override_srs_size)
-            .lazy_mode(lazy_mode)
             .build()
             .unwrap();
 
@@ -192,7 +181,7 @@ pub mod testing {
         let srs = Arc::new(srs);
 
         let &endo_q = G::other_curve_endo();
-        ProverIndex::create(cs, endo_q, srs, lazy_mode)
+        ProverIndex::create(cs, endo_q, srs)
     }
 
     /// Create new index for lookups.
@@ -208,7 +197,6 @@ pub mod testing {
         runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
         disable_gates_checks: bool,
         override_srs_size: Option<usize>,
-        lazy_mode: bool,
     ) -> ProverIndex<G, OpeningProof<G>>
     where
         G::BaseField: PrimeField,
@@ -235,7 +223,6 @@ pub mod testing {
                 srs.get_lagrange_basis(d1);
                 srs
             },
-            lazy_mode,
         )
     }
 
@@ -247,6 +234,6 @@ pub mod testing {
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField,
     {
-        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, false, None, false)
+        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, false, None)
     }
 }

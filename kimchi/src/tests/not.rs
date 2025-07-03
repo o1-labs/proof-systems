@@ -23,7 +23,6 @@ use mina_poseidon::{
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
 use poly_commitment::ipa::OpeningProof;
-use std::sync::Arc;
 
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type VestaField = <Vesta as AffineRepr>::BaseField;
@@ -395,14 +394,13 @@ fn test_bad_not_gnrc() {
     );
     witness[0][1] += PallasField::one();
     let index = new_index_for_test_with_lookups(
-        Arc::try_unwrap(cs.gates).unwrap(),
+        cs.gates,
         1,
         0,
         vec![xor::lookup_table()],
         None,
         false,
         None,
-        false,
     );
     assert_eq!(
         index.cs.gates[1].verify::<Vesta, OpeningProof<Vesta>>(1, &witness, &index, &[]),
@@ -440,7 +438,7 @@ fn test_bad_not_xor() {
 
     assert_eq!(
         TestFramework::<Vesta>::default()
-            .gates(Arc::try_unwrap(cs.gates).unwrap())
+            .gates(cs.gates)
             .witness(witness)
             .setup()
             .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>(),
