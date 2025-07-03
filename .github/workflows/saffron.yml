@@ -46,14 +46,14 @@ jobs:
 
       - name: Run the saffron unit tests
         run: |
-          SRS_FILEPATH=../srs/test_vesta.srs RUST_LOG=debug cargo test -p saffron  --release -- --nocapture
+          SRS_FILEPATH=../srs/test_pallas.srs RUST_LOG=debug cargo test -p saffron  --release -- --nocapture
 
       - name: Run the saffron e2e encoding tests on small lorem file
         run: |
-          ./saffron/e2e-test.sh saffron/fixtures/lorem.txt ./srs/test_vesta.srs
+          ./saffron/e2e-test.sh saffron/fixtures/lorem.txt ./srs/test_pallas.srs
 
       # Randomly generate an input file between roughly 50MB and 200MB
       - name: Run the saffron e2e encoding on large random file
         run: |
           (base64 /dev/urandom | head -c $(shuf -i 50000000-200000000 -n 1) | tr -dc "A-Za-z0-9 " | fold -w100 > bigfile.txt) 2>/dev/null
-          RUST_LOG=debug ./saffron/e2e-test.sh bigfile.txt ./srs/test_vesta.srs
+          RUST_LOG=debug ./saffron/e2e-test.sh bigfile.txt ./srs/test_pallas.srs
