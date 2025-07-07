@@ -10,21 +10,20 @@
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">pub mod </span>storage_proof;
 <a href=#11 id=11 data-nosnippet>11</a><span class="kw">pub mod </span>utils;
 <a href=#12 id=12 data-nosnippet>12</a>
-<a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span>mina_curves::pasta::{Fp, Fq, ProjectiveVesta, Vesta, VestaParameters};
-<a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span>mina_poseidon::{
-<a href=#15 id=15 data-nosnippet>15</a>    constants::PlonkSpongeConstantsKimchi,
-<a href=#16 id=16 data-nosnippet>16</a>    sponge::{DefaultFqSponge, DefaultFrSponge},
-<a href=#17 id=17 data-nosnippet>17</a>};
-<a href=#18 id=18 data-nosnippet>18</a>
-<a href=#19 id=19 data-nosnippet>19</a><span class="kw">pub const </span>SRS_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">16</span>;
-<a href=#20 id=20 data-nosnippet>20</a>
-<a href=#21 id=21 data-nosnippet>21</a><span class="kw">pub type </span>Curve = Vesta;
-<a href=#22 id=22 data-nosnippet>22</a><span class="kw">pub type </span>ProjectiveCurve = ProjectiveVesta;
-<a href=#23 id=23 data-nosnippet>23</a><span class="kw">pub type </span>CurveParameters = VestaParameters;
-<a href=#24 id=24 data-nosnippet>24</a><span class="kw">pub type </span>ScalarField = Fp;
-<a href=#25 id=25 data-nosnippet>25</a><span class="kw">pub type </span>BaseField = Fq;
-<a href=#26 id=26 data-nosnippet>26</a>
-<a href=#27 id=27 data-nosnippet>27</a><span class="kw">pub type </span>CurveFqSponge = DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;;
-<a href=#28 id=28 data-nosnippet>28</a><span class="kw">pub type </span>CurveFrSponge = DefaultFrSponge&lt;ScalarField, PlonkSpongeConstantsKimchi&gt;;
-<a href=#29 id=29 data-nosnippet>29</a>
-<a href=#30 id=30 data-nosnippet>30</a><span class="comment">//pub type ScalarSponge = DefaultFrSponge&lt;Fp, SpongeParams&gt;;</span></code></pre></div></section></main></body></html>
+<a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span>mina_poseidon::{
+<a href=#14 id=14 data-nosnippet>14</a>    constants::PlonkSpongeConstantsKimchi,
+<a href=#15 id=15 data-nosnippet>15</a>    sponge::{DefaultFqSponge, DefaultFrSponge},
+<a href=#16 id=16 data-nosnippet>16</a>};
+<a href=#17 id=17 data-nosnippet>17</a>
+<a href=#18 id=18 data-nosnippet>18</a><span class="kw">pub use </span>mina_poseidon::FqSponge <span class="kw">as </span>Sponge;
+<a href=#19 id=19 data-nosnippet>19</a>
+<a href=#20 id=20 data-nosnippet>20</a><span class="kw">pub const </span>SRS_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">16</span>;
+<a href=#21 id=21 data-nosnippet>21</a>
+<a href=#22 id=22 data-nosnippet>22</a><span class="kw">pub type </span>Curve = mina_curves::pasta::Pallas;
+<a href=#23 id=23 data-nosnippet>23</a><span class="kw">pub type </span>ProjectiveCurve = mina_curves::pasta::ProjectivePallas;
+<a href=#24 id=24 data-nosnippet>24</a><span class="kw">pub type </span>CurveParameters = mina_curves::pasta::PallasParameters;
+<a href=#25 id=25 data-nosnippet>25</a><span class="kw">pub type </span>ScalarField = &lt;CurveParameters <span class="kw">as </span>ark_ec::CurveConfig&gt;::ScalarField;
+<a href=#26 id=26 data-nosnippet>26</a><span class="kw">pub type </span>BaseField = &lt;CurveParameters <span class="kw">as </span>ark_ec::CurveConfig&gt;::BaseField;
+<a href=#27 id=27 data-nosnippet>27</a>
+<a href=#28 id=28 data-nosnippet>28</a><span class="kw">pub type </span>CurveSponge = DefaultFqSponge&lt;CurveParameters, PlonkSpongeConstantsKimchi&gt;;
+<a href=#29 id=29 data-nosnippet>29</a><span class="kw">pub type </span>CurveScalarSponge = DefaultFrSponge&lt;ScalarField, PlonkSpongeConstantsKimchi&gt;;</code></pre></div></section></main></body></html>

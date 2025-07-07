@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["SRS_SIZE"],"mod":["blob","cli","commitment","diff","encoding","env","folding","read_proof","storage","storage_proof","utils"],"type":["BaseField","Curve","CurveFqSponge","CurveFrSponge","CurveParameters","ProjectiveCurve","ScalarField"]};
+window.SIDEBAR_ITEMS = {"constant":["SRS_SIZE"],"mod":["blob","cli","commitment","diff","encoding","env","folding","read_proof","storage","storage_proof","utils"],"trait":["Sponge"],"type":["BaseField","Curve","CurveParameters","CurveScalarSponge","CurveSponge","ProjectiveCurve","ScalarField"]};

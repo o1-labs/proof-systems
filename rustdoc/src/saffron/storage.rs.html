@@ -142,97 +142,96 @@
 <a href=#142 id=142 data-nosnippet>142</a><span class="attr">#[cfg(test)]
 <a href=#143 id=143 data-nosnippet>143</a></span><span class="kw">mod </span>tests {
 <a href=#144 id=144 data-nosnippet>144</a>    <span class="kw">use crate</span>::{
-<a href=#145 id=145 data-nosnippet>145</a>        diff::Diff,
-<a href=#146 id=146 data-nosnippet>146</a>        encoding, storage,
-<a href=#147 id=147 data-nosnippet>147</a>        storage::{Commitment, Data},
-<a href=#148 id=148 data-nosnippet>148</a>        Curve, ScalarField, SRS_SIZE,
-<a href=#149 id=149 data-nosnippet>149</a>    };
-<a href=#150 id=150 data-nosnippet>150</a>    <span class="kw">use </span>ark_ff::{One, UniformRand, Zero};
-<a href=#151 id=151 data-nosnippet>151</a>    <span class="kw">use </span>mina_curves::pasta::Fp;
-<a href=#152 id=152 data-nosnippet>152</a>    <span class="kw">use </span>poly_commitment::ipa::SRS;
-<a href=#153 id=153 data-nosnippet>153</a>    <span class="kw">use </span>rand::Rng;
-<a href=#154 id=154 data-nosnippet>154</a>    <span class="kw">use </span>std::fs;
-<a href=#155 id=155 data-nosnippet>155</a>    <span class="kw">use </span>tempfile::NamedTempFile;
-<a href=#156 id=156 data-nosnippet>156</a>
-<a href=#157 id=157 data-nosnippet>157</a>    <span class="attr">#[test]
-<a href=#158 id=158 data-nosnippet>158</a>    </span><span class="comment">// Test that data commitment stays the same after reading (i.e. data stay
-<a href=#159 id=159 data-nosnippet>159</a>    // consistent through writing and reading), and test that update is
-<a href=#160 id=160 data-nosnippet>160</a>    // consistently performed in the file
-<a href=#161 id=161 data-nosnippet>161</a>    </span><span class="kw">fn </span>test_data_consistency() {
-<a href=#162 id=162 data-nosnippet>162</a>        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
-<a href=#163 id=163 data-nosnippet>163</a>
-<a href=#164 id=164 data-nosnippet>164</a>        <span class="kw">let </span>srs: SRS&lt;Curve&gt; = poly_commitment::precomputed_srs::get_srs_test();
-<a href=#165 id=165 data-nosnippet>165</a>
-<a href=#166 id=166 data-nosnippet>166</a>        <span class="comment">// Path of the file that will contain the test data
-<a href=#167 id=167 data-nosnippet>167</a>        </span><span class="kw">let </span>file = NamedTempFile::new().unwrap();
-<a href=#168 id=168 data-nosnippet>168</a>        <span class="kw">let </span>path = file.path().to_str().unwrap();
-<a href=#169 id=169 data-nosnippet>169</a>
-<a href=#170 id=170 data-nosnippet>170</a>        <span class="kw">let </span>data_bytes: Vec&lt;u8&gt; = (<span class="number">0</span>..(SRS_SIZE * (encoding::encoding_size_full::&lt;ScalarField&gt;())))
-<a href=#171 id=171 data-nosnippet>171</a>            .map(|<span class="kw">_</span>| rng.gen())
-<a href=#172 id=172 data-nosnippet>172</a>            .collect();
-<a href=#173 id=173 data-nosnippet>173</a>        <span class="kw">let </span><span class="kw-2">mut </span>data = Data::of_bytes(<span class="kw-2">&amp;</span>data_bytes);
-<a href=#174 id=174 data-nosnippet>174</a>        <span class="comment">// Setting the first value of data to zero will make the updated bytes
-<a href=#175 id=175 data-nosnippet>175</a>        // with the well chosen diff
-<a href=#176 id=176 data-nosnippet>176</a>        </span>data.data[<span class="number">0</span>] = Fp::zero();
-<a href=#177 id=177 data-nosnippet>177</a>        <span class="kw">let </span>data_comm = data.to_commitment(<span class="kw-2">&amp;</span>srs);
-<a href=#178 id=178 data-nosnippet>178</a>
-<a href=#179 id=179 data-nosnippet>179</a>        <span class="kw">let </span>read_consistency = {
-<a href=#180 id=180 data-nosnippet>180</a>            <span class="kw">let </span>_init_storage_file = storage::init(path, <span class="kw-2">&amp;</span>data);
-<a href=#181 id=181 data-nosnippet>181</a>            <span class="kw">let </span>read_data = storage::read(path).unwrap();
-<a href=#182 id=182 data-nosnippet>182</a>            <span class="kw">let </span>read_data_comm = read_data.to_commitment(<span class="kw-2">&amp;</span>srs);
-<a href=#183 id=183 data-nosnippet>183</a>
-<a href=#184 id=184 data-nosnippet>184</a>            <span class="comment">// True if read data are the same as initial data
-<a href=#185 id=185 data-nosnippet>185</a>            </span>Commitment::eq(<span class="kw-2">&amp;</span>data_comm, <span class="kw-2">&amp;</span>read_data_comm)
-<a href=#186 id=186 data-nosnippet>186</a>        };
-<a href=#187 id=187 data-nosnippet>187</a>
-<a href=#188 id=188 data-nosnippet>188</a>        <span class="kw">let </span>(data_updated, update_consistency, diff_comm_consistency) = {
-<a href=#189 id=189 data-nosnippet>189</a>            <span class="kw">let </span>diff = {
-<a href=#190 id=190 data-nosnippet>190</a>                <span class="comment">// The number of updates is proportional to the data length,
-<a href=#191 id=191 data-nosnippet>191</a>                // but we make sure to have at least one update if the data is
-<a href=#192 id=192 data-nosnippet>192</a>                // small
-<a href=#193 id=193 data-nosnippet>193</a>                </span><span class="kw">let </span>nb_updates = std::cmp::max(data.len() / <span class="number">20</span>, <span class="number">1</span>);
-<a href=#194 id=194 data-nosnippet>194</a>                <span class="kw">let </span>region = <span class="number">0</span>;
-<a href=#195 id=195 data-nosnippet>195</a>                <span class="kw">let </span>addresses: Vec&lt;u64&gt; = (<span class="number">0</span>..nb_updates)
-<a href=#196 id=196 data-nosnippet>196</a>                    .map(|<span class="kw">_</span>| (rng.gen_range(<span class="number">0</span>..data.len() <span class="kw">as </span>u64)))
-<a href=#197 id=197 data-nosnippet>197</a>                    .collect();
-<a href=#198 id=198 data-nosnippet>198</a>                <span class="kw">let </span><span class="kw-2">mut </span>diff_values: Vec&lt;ScalarField&gt; =
-<a href=#199 id=199 data-nosnippet>199</a>                    addresses.iter().map(|<span class="kw">_</span>| Fp::rand(<span class="kw-2">&amp;mut </span>rng)).collect();
-<a href=#200 id=200 data-nosnippet>200</a>                <span class="comment">// The first value is replaced by a scalar that would
-<a href=#201 id=201 data-nosnippet>201</a>                // overflow 31 bytes, so the update is not consistent and the
-<a href=#202 id=202 data-nosnippet>202</a>                // test fails if this case is not handled
-<a href=#203 id=203 data-nosnippet>203</a>                </span>diff_values[<span class="number">0</span>] = Fp::zero() - Fp::one();
-<a href=#204 id=204 data-nosnippet>204</a>                Diff {
-<a href=#205 id=205 data-nosnippet>205</a>                    region,
-<a href=#206 id=206 data-nosnippet>206</a>                    addresses,
-<a href=#207 id=207 data-nosnippet>207</a>                    diff_values,
-<a href=#208 id=208 data-nosnippet>208</a>                }
-<a href=#209 id=209 data-nosnippet>209</a>            };
-<a href=#210 id=210 data-nosnippet>210</a>
-<a href=#211 id=211 data-nosnippet>211</a>            <span class="kw">let </span>updated_data = data.apply(<span class="kw-2">&amp;</span>diff);
-<a href=#212 id=212 data-nosnippet>212</a>            <span class="kw">let </span>updated_data_comm = updated_data.to_commitment(<span class="kw-2">&amp;</span>srs);
-<a href=#213 id=213 data-nosnippet>213</a>
-<a href=#214 id=214 data-nosnippet>214</a>            <span class="kw">let </span>_file_update = storage::update(path, <span class="kw-2">&amp;</span>diff);
-<a href=#215 id=215 data-nosnippet>215</a>
-<a href=#216 id=216 data-nosnippet>216</a>            <span class="kw">let </span>updated_read_data = storage::read(path).unwrap();
-<a href=#217 id=217 data-nosnippet>217</a>            <span class="kw">let </span>updated_read_data_comm = updated_read_data.to_commitment(<span class="kw-2">&amp;</span>srs);
-<a href=#218 id=218 data-nosnippet>218</a>
-<a href=#219 id=219 data-nosnippet>219</a>            <span class="kw">let </span>updated_diff_data_comm = data_comm.update(<span class="kw-2">&amp;</span>srs, diff);
-<a href=#220 id=220 data-nosnippet>220</a>
-<a href=#221 id=221 data-nosnippet>221</a>            (
-<a href=#222 id=222 data-nosnippet>222</a>                <span class="comment">// True if the data have changed because of the update
-<a href=#223 id=223 data-nosnippet>223</a>                </span>Commitment::ne(<span class="kw-2">&amp;</span>updated_data_comm, <span class="kw-2">&amp;</span>data_comm),
-<a href=#224 id=224 data-nosnippet>224</a>                <span class="comment">// True if read data from updated file are the same as updated data
-<a href=#225 id=225 data-nosnippet>225</a>                </span>Commitment::eq(<span class="kw-2">&amp;</span>updated_data_comm, <span class="kw-2">&amp;</span>updated_read_data_comm),
-<a href=#226 id=226 data-nosnippet>226</a>                <span class="comment">// True if the commitments are the same as the commitment obtained by direct diff application
-<a href=#227 id=227 data-nosnippet>227</a>                </span>Commitment::eq(<span class="kw-2">&amp;</span>updated_diff_data_comm, <span class="kw-2">&amp;</span>updated_data_comm),
-<a href=#228 id=228 data-nosnippet>228</a>            )
-<a href=#229 id=229 data-nosnippet>229</a>        };
-<a href=#230 id=230 data-nosnippet>230</a>
-<a href=#231 id=231 data-nosnippet>231</a>        <span class="kw">let </span>_remove_file = fs::remove_file(path);
-<a href=#232 id=232 data-nosnippet>232</a>
-<a href=#233 id=233 data-nosnippet>233</a>        <span class="macro">assert!</span>(read_consistency);
-<a href=#234 id=234 data-nosnippet>234</a>        <span class="macro">assert!</span>(data_updated);
-<a href=#235 id=235 data-nosnippet>235</a>        <span class="macro">assert!</span>(update_consistency);
-<a href=#236 id=236 data-nosnippet>236</a>        <span class="macro">assert!</span>(diff_comm_consistency);
-<a href=#237 id=237 data-nosnippet>237</a>    }
-<a href=#238 id=238 data-nosnippet>238</a>}</code></pre></div></section></main></body></html>
+<a href=#145 id=145 data-nosnippet>145</a>        commitment::Commitment, diff::Diff, encoding, storage, storage::Data, Curve, ScalarField,
+<a href=#146 id=146 data-nosnippet>146</a>        SRS_SIZE,
+<a href=#147 id=147 data-nosnippet>147</a>    };
+<a href=#148 id=148 data-nosnippet>148</a>    <span class="kw">use </span>ark_ff::{One, UniformRand, Zero};
+<a href=#149 id=149 data-nosnippet>149</a>    <span class="kw">use </span>poly_commitment::ipa::SRS;
+<a href=#150 id=150 data-nosnippet>150</a>    <span class="kw">use </span>rand::Rng;
+<a href=#151 id=151 data-nosnippet>151</a>    <span class="kw">use </span>std::fs;
+<a href=#152 id=152 data-nosnippet>152</a>    <span class="kw">use </span>tempfile::NamedTempFile;
+<a href=#153 id=153 data-nosnippet>153</a>
+<a href=#154 id=154 data-nosnippet>154</a>    <span class="attr">#[test]
+<a href=#155 id=155 data-nosnippet>155</a>    </span><span class="comment">// Test that data commitment stays the same after reading (i.e. data stay
+<a href=#156 id=156 data-nosnippet>156</a>    // consistent through writing and reading), and test that update is
+<a href=#157 id=157 data-nosnippet>157</a>    // consistently performed in the file
+<a href=#158 id=158 data-nosnippet>158</a>    </span><span class="kw">fn </span>test_data_consistency() {
+<a href=#159 id=159 data-nosnippet>159</a>        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng(<span class="prelude-val">None</span>);
+<a href=#160 id=160 data-nosnippet>160</a>
+<a href=#161 id=161 data-nosnippet>161</a>        <span class="kw">let </span>srs: SRS&lt;Curve&gt; = poly_commitment::precomputed_srs::get_srs_test();
+<a href=#162 id=162 data-nosnippet>162</a>
+<a href=#163 id=163 data-nosnippet>163</a>        <span class="comment">// Path of the file that will contain the test data
+<a href=#164 id=164 data-nosnippet>164</a>        </span><span class="kw">let </span>file = NamedTempFile::new().unwrap();
+<a href=#165 id=165 data-nosnippet>165</a>        <span class="kw">let </span>path = file.path().to_str().unwrap();
+<a href=#166 id=166 data-nosnippet>166</a>
+<a href=#167 id=167 data-nosnippet>167</a>        <span class="kw">let </span>data_bytes: Vec&lt;u8&gt; = (<span class="number">0</span>..(SRS_SIZE * (encoding::encoding_size_full::&lt;ScalarField&gt;())))
+<a href=#168 id=168 data-nosnippet>168</a>            .map(|<span class="kw">_</span>| rng.gen())
+<a href=#169 id=169 data-nosnippet>169</a>            .collect();
+<a href=#170 id=170 data-nosnippet>170</a>        <span class="kw">let </span><span class="kw-2">mut </span>data = Data::of_bytes(<span class="kw-2">&amp;</span>data_bytes);
+<a href=#171 id=171 data-nosnippet>171</a>        <span class="comment">// Setting the first value of data to zero will make the updated bytes
+<a href=#172 id=172 data-nosnippet>172</a>        // with the well chosen diff
+<a href=#173 id=173 data-nosnippet>173</a>        </span>data.data[<span class="number">0</span>] = ScalarField::zero();
+<a href=#174 id=174 data-nosnippet>174</a>        <span class="kw">let </span>data_comm = data.to_commitment(<span class="kw-2">&amp;</span>srs);
+<a href=#175 id=175 data-nosnippet>175</a>
+<a href=#176 id=176 data-nosnippet>176</a>        <span class="kw">let </span>read_consistency = {
+<a href=#177 id=177 data-nosnippet>177</a>            <span class="kw">let </span>_init_storage_file = storage::init(path, <span class="kw-2">&amp;</span>data);
+<a href=#178 id=178 data-nosnippet>178</a>            <span class="kw">let </span>read_data = storage::read(path).unwrap();
+<a href=#179 id=179 data-nosnippet>179</a>            <span class="kw">let </span>read_data_comm = read_data.to_commitment(<span class="kw-2">&amp;</span>srs);
+<a href=#180 id=180 data-nosnippet>180</a>
+<a href=#181 id=181 data-nosnippet>181</a>            <span class="comment">// True if read data are the same as initial data
+<a href=#182 id=182 data-nosnippet>182</a>            </span>Commitment::eq(<span class="kw-2">&amp;</span>data_comm, <span class="kw-2">&amp;</span>read_data_comm)
+<a href=#183 id=183 data-nosnippet>183</a>        };
+<a href=#184 id=184 data-nosnippet>184</a>
+<a href=#185 id=185 data-nosnippet>185</a>        <span class="kw">let </span>(data_updated, update_consistency, diff_comm_consistency) = {
+<a href=#186 id=186 data-nosnippet>186</a>            <span class="kw">let </span>diff = {
+<a href=#187 id=187 data-nosnippet>187</a>                <span class="comment">// The number of updates is proportional to the data length,
+<a href=#188 id=188 data-nosnippet>188</a>                // but we make sure to have at least one update if the data is
+<a href=#189 id=189 data-nosnippet>189</a>                // small
+<a href=#190 id=190 data-nosnippet>190</a>                </span><span class="kw">let </span>nb_updates = std::cmp::max(data.len() / <span class="number">20</span>, <span class="number">1</span>);
+<a href=#191 id=191 data-nosnippet>191</a>                <span class="kw">let </span>region = <span class="number">0</span>;
+<a href=#192 id=192 data-nosnippet>192</a>                <span class="kw">let </span>addresses: Vec&lt;u64&gt; = (<span class="number">0</span>..nb_updates)
+<a href=#193 id=193 data-nosnippet>193</a>                    .map(|<span class="kw">_</span>| (rng.gen_range(<span class="number">0</span>..data.len() <span class="kw">as </span>u64)))
+<a href=#194 id=194 data-nosnippet>194</a>                    .collect();
+<a href=#195 id=195 data-nosnippet>195</a>                <span class="kw">let </span><span class="kw-2">mut </span>diff_values: Vec&lt;ScalarField&gt; = addresses
+<a href=#196 id=196 data-nosnippet>196</a>                    .iter()
+<a href=#197 id=197 data-nosnippet>197</a>                    .map(|<span class="kw">_</span>| ScalarField::rand(<span class="kw-2">&amp;mut </span>rng))
+<a href=#198 id=198 data-nosnippet>198</a>                    .collect();
+<a href=#199 id=199 data-nosnippet>199</a>                <span class="comment">// The first value is replaced by a scalar that would
+<a href=#200 id=200 data-nosnippet>200</a>                // overflow 31 bytes, so the update is not consistent and the
+<a href=#201 id=201 data-nosnippet>201</a>                // test fails if this case is not handled
+<a href=#202 id=202 data-nosnippet>202</a>                </span>diff_values[<span class="number">0</span>] = ScalarField::zero() - ScalarField::one();
+<a href=#203 id=203 data-nosnippet>203</a>                Diff {
+<a href=#204 id=204 data-nosnippet>204</a>                    region,
+<a href=#205 id=205 data-nosnippet>205</a>                    addresses,
+<a href=#206 id=206 data-nosnippet>206</a>                    diff_values,
+<a href=#207 id=207 data-nosnippet>207</a>                }
+<a href=#208 id=208 data-nosnippet>208</a>            };
+<a href=#209 id=209 data-nosnippet>209</a>
+<a href=#210 id=210 data-nosnippet>210</a>            <span class="kw">let </span>updated_data = data.apply(<span class="kw-2">&amp;</span>diff);
+<a href=#211 id=211 data-nosnippet>211</a>            <span class="kw">let </span>updated_data_comm = updated_data.to_commitment(<span class="kw-2">&amp;</span>srs);
+<a href=#212 id=212 data-nosnippet>212</a>
+<a href=#213 id=213 data-nosnippet>213</a>            <span class="kw">let </span>_file_update = storage::update(path, <span class="kw-2">&amp;</span>diff);
+<a href=#214 id=214 data-nosnippet>214</a>
+<a href=#215 id=215 data-nosnippet>215</a>            <span class="kw">let </span>updated_read_data = storage::read(path).unwrap();
+<a href=#216 id=216 data-nosnippet>216</a>            <span class="kw">let </span>updated_read_data_comm = updated_read_data.to_commitment(<span class="kw-2">&amp;</span>srs);
+<a href=#217 id=217 data-nosnippet>217</a>
+<a href=#218 id=218 data-nosnippet>218</a>            <span class="kw">let </span>updated_diff_data_comm = data_comm.update(<span class="kw-2">&amp;</span>srs, diff);
+<a href=#219 id=219 data-nosnippet>219</a>
+<a href=#220 id=220 data-nosnippet>220</a>            (
+<a href=#221 id=221 data-nosnippet>221</a>                <span class="comment">// True if the data have changed because of the update
+<a href=#222 id=222 data-nosnippet>222</a>                </span>Commitment::ne(<span class="kw-2">&amp;</span>updated_data_comm, <span class="kw-2">&amp;</span>data_comm),
+<a href=#223 id=223 data-nosnippet>223</a>                <span class="comment">// True if read data from updated file are the same as updated data
+<a href=#224 id=224 data-nosnippet>224</a>                </span>Commitment::eq(<span class="kw-2">&amp;</span>updated_data_comm, <span class="kw-2">&amp;</span>updated_read_data_comm),
+<a href=#225 id=225 data-nosnippet>225</a>                <span class="comment">// True if the commitments are the same as the commitment obtained by direct diff application
+<a href=#226 id=226 data-nosnippet>226</a>                </span>Commitment::eq(<span class="kw-2">&amp;</span>updated_diff_data_comm, <span class="kw-2">&amp;</span>updated_data_comm),
+<a href=#227 id=227 data-nosnippet>227</a>            )
+<a href=#228 id=228 data-nosnippet>228</a>        };
+<a href=#229 id=229 data-nosnippet>229</a>
+<a href=#230 id=230 data-nosnippet>230</a>        <span class="kw">let </span>_remove_file = fs::remove_file(path);
+<a href=#231 id=231 data-nosnippet>231</a>
+<a href=#232 id=232 data-nosnippet>232</a>        <span class="macro">assert!</span>(read_consistency);
+<a href=#233 id=233 data-nosnippet>233</a>        <span class="macro">assert!</span>(data_updated);
+<a href=#234 id=234 data-nosnippet>234</a>        <span class="macro">assert!</span>(update_consistency);
+<a href=#235 id=235 data-nosnippet>235</a>        <span class="macro">assert!</span>(diff_comm_consistency);
+<a href=#236 id=236 data-nosnippet>236</a>    }
+<a href=#237 id=237 data-nosnippet>237</a>}</code></pre></div></section></main></body></html>
