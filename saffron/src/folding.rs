@@ -30,7 +30,7 @@
 //!
 //! For mor details see the full version of the protocol in the whitepaper.
 
-use crate::{Curve, CurveFqSponge, CurveFrSponge, ScalarField, SRS_SIZE};
+use crate::{Curve, CurveScalarSponge, CurveSponge, ScalarField, Sponge, SRS_SIZE};
 use ark_ec::AffineRepr;
 use ark_ff::{Field, One, Zero};
 use ark_poly::{
@@ -38,7 +38,6 @@ use ark_poly::{
     Radix2EvaluationDomain as R2D,
 };
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_sponge::FrSponge};
-use mina_poseidon::FqSponge;
 use poly_commitment::{
     commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
@@ -159,7 +158,7 @@ pub fn folding_prover(
     inst2: &RelaxedInstance,
     wit2: &RelaxedWitness,
 ) -> (RelaxedInstance, RelaxedWitness, Curve) {
-    let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+    let mut curve_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
 
     let cross_term: Evaluations<ScalarField, R2D<ScalarField>> =
         &(&(&wit2.core.a + &(&wit1.a * inst2.u)) - &(&wit2.core.q * &wit1.d))
@@ -169,7 +168,7 @@ pub fn folding_prover(
         .commit_evaluations_non_hiding(domain, &cross_term.clone())
         .chunks[0];
 
-    fq_sponge.absorb_g(&[
+    curve_sponge.absorb_g(&[
         inst1.comm_d,
         inst1.comm_q,
         inst1.comm_a,
@@ -180,7 +179,7 @@ pub fn folding_prover(
         cross_term_comm,
     ]);
 
-    let recombination_chal = fq_sponge.challenge();
+    let recombination_chal = curve_sponge.challenge();
 
     let a3 = &wit1.a + &(&wit2.core.a * recombination_chal);
     let q3 = &wit1.q + &(&wit2.core.q * recombination_chal);
@@ -224,8 +223,8 @@ pub fn folding_verifier(
     inst2: &RelaxedInstance,
     cross_term_comm: Curve,
 ) -> RelaxedInstance {
-    let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
-    fq_sponge.absorb_g(&[
+    let mut curve_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    curve_sponge.absorb_g(&[
         inst1.comm_d,
         inst1.comm_q,
         inst1.comm_a,
@@ -236,7 +235,7 @@ pub fn folding_verifier(
         cross_term_comm,
     ]);
 
-    let recombination_chal = fq_sponge.challenge();
+    let recombination_chal = curve_sponge.challenge();
 
     let comm_a3 = inst1.comm_a + inst2.core.comm_a * recombination_chal;
     let comm_q3 = inst1.comm_q + inst2.core.comm_q * recombination_chal;
@@ -288,14 +287,14 @@ pub fn prove_relaxed<RNG>(
 where
     RNG: RngCore + CryptoRng,
 {
-    let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+    let mut curve_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
 
     let data_poly: DensePolynomial<ScalarField> = wit.core.d.interpolate_by_ref();
     let query_poly: DensePolynomial<ScalarField> = wit.core.q.interpolate_by_ref();
     let answer_poly: DensePolynomial<ScalarField> = wit.core.a.interpolate_by_ref();
     let error_poly: DensePolynomial<ScalarField> = wit.e.interpolate_by_ref();
 
-    fq_sponge.absorb_g(&[
+    curve_sponge.absorb_g(&[
         inst.core.comm_d,
         inst.core.comm_q,
         inst.core.comm_a,
@@ -332,14 +331,14 @@ where
     // commit to the quotient polynomial $t$.
     // num_chunks = 1 because our constraint is degree 2, which makes the quotient polynomial of degree d1
     let quotient_comm = srs.commit_non_hiding(&quotient_poly, 1).chunks[0];
-    fq_sponge.absorb_g(&[quotient_comm]);
+    curve_sponge.absorb_g(&[quotient_comm]);
 
     // aka zeta
-    let evaluation_point = fq_sponge.challenge();
+    let evaluation_point = curve_sponge.challenge();
 
     // Fiat Shamir - absorbing evaluations
-    let mut fr_sponge = CurveFrSponge::new(Curve::sponge_params());
-    fr_sponge.absorb(&fq_sponge.clone().digest());
+    let mut scalar_sponge = CurveScalarSponge::new(Curve::sponge_params());
+    scalar_sponge.absorb(&curve_sponge.clone().digest());
 
     let data_eval = data_poly.evaluate(&evaluation_point);
     let query_eval = query_poly.evaluate(&evaluation_point);
@@ -356,13 +355,13 @@ where
     ]
     .into_iter()
     {
-        fr_sponge.absorb(&eval);
+        scalar_sponge.absorb(&eval);
     }
 
     let (_, endo_r) = Curve::endos();
     // Generate scalars used as combiners for sub-statements within our IPA opening proof.
-    let polyscale = fr_sponge.challenge().to_field(endo_r);
-    let evalscale = fr_sponge.challenge().to_field(endo_r);
+    let polyscale = scalar_sponge.challenge().to_field(endo_r);
+    let evalscale = scalar_sponge.challenge().to_field(endo_r);
 
     // Creating the polynomials for the batch proof
     // Gathering all polynomials to use in the opening proof
@@ -388,7 +387,7 @@ where
         &[evaluation_point],
         polyscale,
         evalscale,
-        fq_sponge,
+        curve_sponge,
         rng,
     );
 
@@ -413,19 +412,19 @@ pub fn verify_relaxed<RNG>(
 where
     RNG: RngCore + CryptoRng,
 {
-    let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
-    fq_sponge.absorb_g(&[
+    let mut curve_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    curve_sponge.absorb_g(&[
         inst.core.comm_d,
         inst.core.comm_q,
         inst.core.comm_a,
         inst.comm_e,
     ]);
-    fq_sponge.absorb_g(&[proof.quotient_comm]);
+    curve_sponge.absorb_g(&[proof.quotient_comm]);
 
-    let evaluation_point = fq_sponge.challenge();
+    let evaluation_point = curve_sponge.challenge();
 
-    let mut fr_sponge = CurveFrSponge::new(Curve::sponge_params());
-    fr_sponge.absorb(&fq_sponge.clone().digest());
+    let mut scalar_sponge = CurveScalarSponge::new(Curve::sponge_params());
+    scalar_sponge.absorb(&curve_sponge.clone().digest());
 
     let vanishing_poly_at_zeta = domain.d1.vanishing_polynomial().evaluate(&evaluation_point);
     let quotient_eval = {
@@ -444,13 +443,13 @@ where
     ]
     .into_iter()
     {
-        fr_sponge.absorb(&eval);
+        scalar_sponge.absorb(&eval);
     }
 
     let (_, endo_r) = Curve::endos();
     // Generate scalars used as combiners for sub-statements within our IPA opening proof.
-    let polyscale = fr_sponge.challenge().to_field(endo_r);
-    let evalscale = fr_sponge.challenge().to_field(endo_r);
+    let polyscale = scalar_sponge.challenge().to_field(endo_r);
+    let evalscale = scalar_sponge.challenge().to_field(endo_r);
 
     let coms_and_evaluations = vec![
         Evaluation {
@@ -496,7 +495,7 @@ where
     srs.verify(
         group_map,
         &mut [BatchEvaluationProof {
-            sponge: fq_sponge,
+            sponge: curve_sponge,
             evaluation_points: vec![evaluation_point],
             polyscale,
             evalscale,
@@ -513,13 +512,12 @@ pub mod testing {
     use crate::{Curve, ScalarField};
     use ark_ff::UniformRand;
     use ark_poly::Evaluations;
-    use mina_curves::pasta::{Fp, Vesta};
     use poly_commitment::ipa::SRS;
     use rand::Rng;
 
     /// Generates a random core instance and witness
     pub fn generate_random_inst_wit_core<RNG>(
-        srs: &SRS<Vesta>,
+        srs: &SRS<Curve>,
         domain: R2D<ScalarField>,
         rng: &mut RNG,
     ) -> (CoreInstance, CoreWitness)
@@ -528,7 +526,7 @@ pub mod testing {
     {
         let data: Vec<ScalarField> = {
             let mut data = vec![];
-            (0..domain.size).for_each(|_| data.push(Fp::rand(rng)));
+            (0..domain.size).for_each(|_| data.push(ScalarField::rand(rng)));
             data
         };
 
@@ -542,7 +540,7 @@ pub mod testing {
         let query: Vec<ScalarField> = {
             let mut query = vec![];
             (0..domain.size)
-                .for_each(|_| query.push(Fp::from(rand::thread_rng().gen::<f64>() < 0.1)));
+                .for_each(|_| query.push(ScalarField::from(rand::thread_rng().gen::<f64>() < 0.1)));
             query
         };
 
@@ -586,7 +584,7 @@ pub mod testing {
     /// of this function is _not_ an instance-witness pair produced by
     /// a valid folding procedure, but just a generic relaxed pair instead.
     pub fn generate_random_inst_wit_relaxed<RNG>(
-        srs: &SRS<Vesta>,
+        srs: &SRS<Curve>,
         domain: R2D<ScalarField>,
         rng: &mut RNG,
     ) -> (RelaxedInstance, RelaxedWitness)
@@ -594,7 +592,7 @@ pub mod testing {
         RNG: RngCore + CryptoRng,
     {
         let (inst, wit) = generate_random_inst_wit_core(srs, domain, rng);
-        let u = Fp::rand(rng);
+        let u = ScalarField::rand(rng);
         let e = &(&wit.d * &wit.q) - &(&wit.a * u);
         let comm_e = srs.commit_evaluations_non_hiding(domain, &e).chunks[0];
 
@@ -619,7 +617,6 @@ mod tests {
     use ark_ec::AffineRepr;
     use ark_ff::One;
     use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
-    use mina_curves::pasta::Vesta;
     use poly_commitment::commitment::CommitmentCurve;
 
     #[test]
@@ -629,8 +626,7 @@ mod tests {
         let srs = poly_commitment::precomputed_srs::get_srs_test();
         let domain: EvaluationDomains<ScalarField> =
             EvaluationDomains::<ScalarField>::create(srs.size()).unwrap();
-
-        let group_map = <Vesta as CommitmentCurve>::Map::setup();
+        let group_map = <Curve as CommitmentCurve>::Map::setup();
 
         let (core_instance_1, core_witness_1) =
             generate_random_inst_wit_core(&srs, domain.d1, &mut rng);

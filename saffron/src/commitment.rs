@@ -1,8 +1,7 @@
-use crate::{diff::Diff, utils};
+use crate::{diff::Diff, utils, Sponge};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_poly::univariate::DensePolynomial;
 use kimchi::curve::KimchiCurve;
-use mina_poseidon::FqSponge;
 use poly_commitment::{ipa::SRS, SRS as _};
 use rayon::prelude::*;
 use tracing::instrument;
@@ -70,8 +69,8 @@ pub fn commit_sparse<G: KimchiCurve>(
 /// Takes commitments C_i, computes α = hash(C_0 || C_1 || ... || C_n),
 /// returns ∑ α^i C_i.
 #[instrument(skip_all, level = "debug")]
-pub fn combine_commitments<G: AffineRepr, EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
-    sponge: &mut EFqSponge,
+pub fn combine_commitments<G: AffineRepr, Spng: Sponge<G::BaseField, G, G::ScalarField>>(
+    sponge: &mut Spng,
     commitments: &[G],
 ) -> (G, G::ScalarField) {
     for commitment in commitments.iter() {

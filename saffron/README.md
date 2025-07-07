@@ -29,7 +29,7 @@ cargo test -p kimchi heavy_test_srs_serialization --release
 You can run this e2e test on any file. For example, to run with the provided lorem file using the SRS cache for testing:
 
 ```bash
-./e2e-test.sh fixtures/lorem.txt ../srs/test_vesta.srs
+./e2e-test.sh fixtures/lorem.txt ../srs/test_pallas.srs
 ```
 
 Note that the log level can be controlled by setting the `RUST_LOG` environment variable.

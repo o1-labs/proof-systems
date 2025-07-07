@@ -142,13 +142,10 @@ pub fn update<F: PrimeField>(path: &str, diff: &Diff<F>) -> std::io::Result<()> 
 #[cfg(test)]
 mod tests {
     use crate::{
-        diff::Diff,
-        encoding, storage,
-        storage::{Commitment, Data},
-        Curve, ScalarField, SRS_SIZE,
+        commitment::Commitment, diff::Diff, encoding, storage, storage::Data, Curve, ScalarField,
+        SRS_SIZE,
     };
     use ark_ff::{One, UniformRand, Zero};
-    use mina_curves::pasta::Fp;
     use poly_commitment::ipa::SRS;
     use rand::Rng;
     use std::fs;
@@ -173,7 +170,7 @@ mod tests {
         let mut data = Data::of_bytes(&data_bytes);
         // Setting the first value of data to zero will make the updated bytes
         // with the well chosen diff
-        data.data[0] = Fp::zero();
+        data.data[0] = ScalarField::zero();
         let data_comm = data.to_commitment(&srs);
 
         let read_consistency = {
@@ -195,12 +192,14 @@ mod tests {
                 let addresses: Vec<u64> = (0..nb_updates)
                     .map(|_| (rng.gen_range(0..data.len() as u64)))
                     .collect();
-                let mut diff_values: Vec<ScalarField> =
-                    addresses.iter().map(|_| Fp::rand(&mut rng)).collect();
+                let mut diff_values: Vec<ScalarField> = addresses
+                    .iter()
+                    .map(|_| ScalarField::rand(&mut rng))
+                    .collect();
                 // The first value is replaced by a scalar that would
                 // overflow 31 bytes, so the update is not consistent and the
                 // test fails if this case is not handled
-                diff_values[0] = Fp::zero() - Fp::one();
+                diff_values[0] = ScalarField::zero() - ScalarField::one();
                 Diff {
                     region,
                     addresses,

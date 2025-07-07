@@ -25,7 +25,7 @@ use crate::{
     commitment::*,
     storage::Data,
     utils::{evals_to_polynomial, evals_to_polynomial_and_commitment},
-    Curve, CurveFqSponge, CurveFrSponge, ScalarField,
+    Curve, CurveScalarSponge, CurveSponge, ScalarField, Sponge,
 };
 use ark_ff::{Field, One, Zero};
 use ark_poly::{
@@ -33,7 +33,6 @@ use ark_poly::{
     Radix2EvaluationDomain as R2D,
 };
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_sponge::FrSponge};
-use mina_poseidon::FqSponge;
 use poly_commitment::{
     commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::{OpeningProof, SRS},
@@ -144,7 +143,7 @@ where
 {
     let data = &data.data;
 
-    let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+    let mut curve_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
 
     let data_poly = evals_to_polynomial(data.to_vec(), domain.d1);
 
@@ -155,7 +154,7 @@ where
         evals_to_polynomial_and_commitment(answer, domain.d1, srs)
     };
 
-    fq_sponge.absorb_g(&[data_comm.cm, *query_comm, answer_comm]);
+    curve_sponge.absorb_g(&[data_comm.cm, *query_comm, answer_comm]);
 
     // coefficient form, over d4? d2?
     // quotient_Poly has degree d1
@@ -186,14 +185,14 @@ where
     // commit to the quotient polynomial $t$.
     // num_chunks = 1 because our constraint is degree 2, which makes the quotient polynomial of degree d1
     let quotient_comm = commit_poly(srs, &quotient_poly);
-    fq_sponge.absorb_g(&[quotient_comm]);
+    curve_sponge.absorb_g(&[quotient_comm]);
 
     // aka zeta
-    let evaluation_point = fq_sponge.challenge();
+    let evaluation_point = curve_sponge.challenge();
 
     // Fiat Shamir - absorbing evaluations
-    let mut fr_sponge = CurveFrSponge::new(Curve::sponge_params());
-    fr_sponge.absorb(&fq_sponge.clone().digest());
+    let mut scalar_sponge = CurveScalarSponge::new(Curve::sponge_params());
+    scalar_sponge.absorb(&curve_sponge.clone().digest());
 
     let data_eval = data_poly.evaluate(&evaluation_point);
     let query_eval = query_poly.evaluate(&evaluation_point);
@@ -201,13 +200,13 @@ where
     let quotient_eval = quotient_poly.evaluate(&evaluation_point);
 
     for eval in [data_eval, query_eval, answer_eval, quotient_eval].into_iter() {
-        fr_sponge.absorb(&eval);
+        scalar_sponge.absorb(&eval);
     }
 
     let (_, endo_r) = Curve::endos();
     // Generate scalars used as combiners for sub-statements within our IPA opening proof.
-    let polyscale = fr_sponge.challenge().to_field(endo_r);
-    let evalscale = fr_sponge.challenge().to_field(endo_r);
+    let polyscale = scalar_sponge.challenge().to_field(endo_r);
+    let evalscale = scalar_sponge.challenge().to_field(endo_r);
 
     // Creating the polynomials for the batch proof
     // Gathering all polynomials to use in the opening proof
@@ -232,7 +231,7 @@ where
         &[evaluation_point],
         polyscale,
         evalscale,
-        fq_sponge,
+        curve_sponge,
         rng,
     );
 
@@ -260,18 +259,18 @@ pub fn verify<RNG>(
 where
     RNG: RngCore + CryptoRng,
 {
-    let mut fq_sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
-    fq_sponge.absorb_g(&[
+    let mut curve_sponge = CurveSponge::new(Curve::other_curve_sponge_params());
+    curve_sponge.absorb_g(&[
         data_comm.cm,
         *query_comm,
         proof.answer_comm,
         proof.quotient_comm,
     ]);
 
-    let evaluation_point = fq_sponge.challenge();
+    let evaluation_point = curve_sponge.challenge();
 
-    let mut fr_sponge = CurveFrSponge::new(Curve::sponge_params());
-    fr_sponge.absorb(&fq_sponge.clone().digest());
+    let mut scalar_sponge = CurveScalarSponge::new(Curve::sponge_params());
+    scalar_sponge.absorb(&curve_sponge.clone().digest());
 
     let vanishing_poly_at_zeta = domain.d1.vanishing_polynomial().evaluate(&evaluation_point);
     let quotient_eval = {
@@ -289,13 +288,13 @@ where
     ]
     .into_iter()
     {
-        fr_sponge.absorb(&eval);
+        scalar_sponge.absorb(&eval);
     }
 
     let (_, endo_r) = Curve::endos();
     // Generate scalars used as combiners for sub-statements within our IPA opening proof.
-    let polyscale = fr_sponge.challenge().to_field(endo_r);
-    let evalscale = fr_sponge.challenge().to_field(endo_r);
+    let polyscale = scalar_sponge.challenge().to_field(endo_r);
+    let evalscale = scalar_sponge.challenge().to_field(endo_r);
 
     let coms_and_evaluations = vec![
         Evaluation {
@@ -335,7 +334,7 @@ where
     srs.verify(
         group_map,
         &mut [BatchEvaluationProof {
-            sponge: fq_sponge,
+            sponge: curve_sponge,
             evaluation_points: vec![evaluation_point],
             polyscale,
             evalscale,
@@ -362,7 +361,6 @@ mod tests {
     use ark_ec::AffineRepr;
     use ark_ff::{One, UniformRand};
     use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
-    use mina_curves::pasta::{Fp, Vesta};
     use poly_commitment::{commitment::CommitmentCurve, SRS as _};
 
     #[test]
@@ -370,12 +368,12 @@ mod tests {
         let mut rng = o1_utils::tests::make_test_rng(None);
 
         let srs = poly_commitment::precomputed_srs::get_srs_test();
-        let group_map = <Vesta as CommitmentCurve>::Map::setup();
+        let group_map = <Curve as CommitmentCurve>::Map::setup();
         let domain: EvaluationDomains<ScalarField> = EvaluationDomains::create(srs.size()).unwrap();
 
         let data = {
             let mut data = vec![];
-            (0..SRS_SIZE).for_each(|_| data.push(Fp::rand(&mut rng)));
+            (0..SRS_SIZE).for_each(|_| data.push(ScalarField::rand(&mut rng)));
             Data { data }
         };
 
