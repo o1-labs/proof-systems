@@ -75,9 +75,11 @@ where
         chunks: vec![*data_comm],
     };
 
-    let (query_poly, query_comm) = evals_to_polynomial_and_commitment(query.to_vec(), domain.d1, srs);
+    let (query_poly, query_comm) =
+        evals_to_polynomial_and_commitment(query.to_vec(), domain.d1, srs);
 
-    let (answer_poly, answer_comm) = evals_to_polynomial_and_commitment(answer.to_vec(), domain.d1, srs);
+    let (answer_poly, answer_comm) =
+        evals_to_polynomial_and_commitment(answer.to_vec(), domain.d1, srs);
 
     fq_sponge.absorb_g(&[data_comm.chunks[0], query_comm, answer_comm]);
 
