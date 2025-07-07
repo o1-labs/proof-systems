@@ -1,10 +1,18 @@
 use crate::{diff::Diff, utils};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
+use ark_poly::univariate::DensePolynomial;
 use kimchi::curve::KimchiCurve;
 use mina_poseidon::FqSponge;
 use poly_commitment::{ipa::SRS, SRS as _};
 use rayon::prelude::*;
 use tracing::instrument;
+
+fn get_lagrange_basis<G: KimchiCurve>(srs: &SRS<G>) -> Vec<G> {
+    srs.get_lagrange_basis_from_domain_size(crate::SRS_SIZE)
+        .iter()
+        .map(|x| x.chunks[0])
+        .collect()
+}
 
 /// Compute the commitment to `data` ; if the length of `data` is greater than
 /// `SRS_SIZE`, the data is splitted in chunks of at most `SRS_SIZE` length.
@@ -13,11 +21,7 @@ pub fn commit_to_field_elems<G: KimchiCurve>(srs: &SRS<G>, data: &[G::ScalarFiel
 where
     <G as AffineRepr>::Group: VariableBaseMSM,
 {
-    let basis: Vec<G> = srs
-        .get_lagrange_basis_from_domain_size(crate::SRS_SIZE)
-        .iter()
-        .map(|x| x.chunks[0])
-        .collect();
+    let basis = get_lagrange_basis(srs);
 
     let commitments_projective = (0..data.len() / crate::SRS_SIZE)
         .into_par_iter()
@@ -33,6 +37,34 @@ where
     let commitments = G::Group::normalize_batch(commitments_projective.as_slice());
 
     commitments
+}
+
+/// Returns the non-hiding commitment to the provided polynomial
+pub fn commit_poly<G: KimchiCurve>(srs: &SRS<G>, poly: &DensePolynomial<G::ScalarField>) -> G {
+    srs.commit_non_hiding(poly, 1).chunks[0]
+}
+
+/// Compute the commitment to the polynomial `P` of same degree as `srs`
+/// such that `P(ω_i) = sparse_data[i]` for all `ì` in `indexes` and `P(ω_i) = 0`
+/// for any other `ω_i` of the domain of the same size as `srs`.
+/// This commitment is computed in a sparse way through the sum of `sparse_data[i] × [L_i]`
+/// for all i in `indexes` and `[L_i]` the commitment to the i-th Lagrange polynomial
+/// of same degree as `srs`.
+pub fn commit_sparse<G: KimchiCurve>(
+    srs: &SRS<G>,
+    sparse_data: &[G::ScalarField],
+    indexes: &[u64],
+) -> G {
+    if sparse_data.len() != indexes.len() {
+        panic!(
+            "commitment::commit_sparse: size mismatch (sparse_data: {}, indexes: {})",
+            sparse_data.len(),
+            indexes.len()
+        )
+    };
+    let basis = get_lagrange_basis(srs);
+    let basis: Vec<G> = indexes.iter().map(|&i| basis[i as usize]).collect();
+    G::Group::msm(&basis, sparse_data).unwrap().into()
 }
 
 /// Takes commitments C_i, computes α = hash(C_0 || C_1 || ... || C_n),
@@ -80,13 +112,7 @@ impl<G: KimchiCurve> Commitment<G> {
     /// This function is tested in storage.rs
     pub fn update(&self, srs: &SRS<G>, diff: Diff<G::ScalarField>) -> Commitment<G> {
         // TODO: precompute this, or cache it & compute it in a lazy way ; it feels like it’s already cached but I’m not sure
-        let basis: Vec<G> = srs
-            .get_lagrange_basis_from_domain_size(crate::SRS_SIZE)
-            .iter()
-            .map(|x| x.chunks[0])
-            .collect();
-        let basis: Vec<G> = diff.addresses.iter().map(|&i| basis[i as usize]).collect();
-        let cm_diff = G::Group::msm(&basis, &diff.diff_values).unwrap();
+        let cm_diff = commit_sparse(srs, &diff.diff_values, &diff.addresses);
         Commitment {
             cm: self.cm.add(cm_diff).into(),
         }

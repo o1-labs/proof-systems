@@ -1,14 +1,15 @@
 //! Run this bench using `cargo criterion -p saffron --bench read_proof_bench`
 
-use ark_ff::{One, UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, Evaluations};
+use ark_ff::UniformRand;
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
 use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
 use mina_curves::pasta::Fp;
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, SRS as _};
 use rand::rngs::OsRng;
 use saffron::{
-    read_proof::{prove, verify},
+    commitment::{commit_poly, Commitment},
+    read_proof::{prove, verify, Query},
+    storage::Data,
     Curve, ScalarField, SRS_SIZE,
 };
 
@@ -16,32 +17,23 @@ fn generate_test_data(
     srs: &SRS<Curve>,
     domain: EvaluationDomains<ScalarField>,
     size: usize,
-) -> (Vec<ScalarField>, Vec<ScalarField>, Vec<ScalarField>, Curve) {
+) -> (Data<ScalarField>, Query, Commitment<Curve>, Curve) {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
     // Generate data with specified size
-    let data: Vec<ScalarField> = (0..size).map(|_| Fp::rand(&mut rng)).collect();
+    let data = Data {
+        data: (0..size).map(|_| Fp::rand(&mut rng)).collect(),
+    };
 
     // Create data commitment
-    let data_poly: DensePolynomial<ScalarField> =
-        Evaluations::from_vec_and_domain(data.clone(), domain.d1).interpolate();
-    let data_comm: Curve = srs.commit_non_hiding(&data_poly, 1).chunks[0];
+    let data_comm = data.to_commitment(srs);
 
     // Generate query (about 10% of positions will be queried)
-    let query: Vec<ScalarField> = (0..size)
-        .map(|_| {
-            if rand::random::<f32>() < 0.1 {
-                Fp::one()
-            } else {
-                Fp::zero()
-            }
-        })
-        .collect();
+    let query = Query::random(0.1, SRS_SIZE);
 
-    // Compute answer as data * query
-    let answer: Vec<ScalarField> = data.iter().zip(query.iter()).map(|(d, q)| *d * q).collect();
+    let query_comm = commit_poly(srs, &query.to_polynomial(domain.d1));
 
-    (data, query, answer, data_comm)
+    (data, query, data_comm, query_comm)
 }
 
 fn bench_read_proof_prove(c: &mut Criterion) {
@@ -49,7 +41,7 @@ fn bench_read_proof_prove(c: &mut Criterion) {
     let group_map = <Curve as CommitmentCurve>::Map::setup();
     let domain: EvaluationDomains<ScalarField> = EvaluationDomains::create(srs.size()).unwrap();
 
-    let (data, query, answer, data_comm) = generate_test_data(&srs, domain, SRS_SIZE);
+    let (data, query, data_comm, query_comm) = generate_test_data(&srs, domain, SRS_SIZE);
 
     let description = format!("prove size {}", SRS_SIZE);
     c.bench_function(description.as_str(), |b| {
@@ -61,10 +53,10 @@ fn bench_read_proof_prove(c: &mut Criterion) {
                     domain,
                     &group_map,
                     &mut rng,
-                    data.as_slice(),
-                    query.as_slice(),
-                    answer.as_slice(),
+                    &data,
+                    &query,
                     &data_comm,
+                    &query_comm,
                 ))
             },
             BatchSize::NumIterations(10),
@@ -77,7 +69,7 @@ fn bench_read_proof_verify(c: &mut Criterion) {
     let group_map = <Curve as CommitmentCurve>::Map::setup();
     let domain: EvaluationDomains<ScalarField> = EvaluationDomains::create(srs.size()).unwrap();
 
-    let (data, query, answer, data_comm) = generate_test_data(&srs, domain, SRS_SIZE);
+    let (data, query, data_comm, query_comm) = generate_test_data(&srs, domain, SRS_SIZE);
 
     // Create proof first
     let mut rng = OsRng;
@@ -86,10 +78,10 @@ fn bench_read_proof_verify(c: &mut Criterion) {
         domain,
         &group_map,
         &mut rng,
-        data.as_slice(),
-        query.as_slice(),
-        answer.as_slice(),
+        &data,
+        &query,
         &data_comm,
+        &query_comm,
     );
 
     let description = format!("verify size {}", SRS_SIZE);
@@ -98,7 +90,13 @@ fn bench_read_proof_verify(c: &mut Criterion) {
             || OsRng,
             |mut rng| {
                 black_box(verify(
-                    &srs, domain, &group_map, &mut rng, &data_comm, &proof,
+                    &srs,
+                    domain,
+                    &group_map,
+                    &mut rng,
+                    &data_comm,
+                    &query_comm,
+                    &proof,
                 ))
             },
             BatchSize::SmallInput,
