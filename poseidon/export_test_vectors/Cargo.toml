@@ -13,12 +13,11 @@ license = "Apache-2.0"
 ark-ff.workspace = true
 ark-serialize.workspace = true
 hex.workspace = true
+mina-curves.workspace = true
+mina-poseidon.workspace = true
 num-bigint.workspace = true
+o1-utils.workspace = true
 rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_with.workspace = true
-
-mina-curves.workspace = true
-mina-poseidon.workspace = true
-o1-utils.workspace = true
