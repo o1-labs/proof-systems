@@ -1,0 +1,69 @@
+name: Update Outdated Auto-Merge PRs
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-branches:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Find and update outdated PRs with auto-merge enabled
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100
+            });
+
+            for (const pr of prs) {
+              if (
+                pr.auto_merge !== null &&
+                pr.mergeable_state === "behind"
+              ) {
+                console.log(`Updating PR #${pr.number}...`);
+
+                const { data: prDetails } = await github.graphql(`
+                  query($owner: String!, $repo: String!, $number: Int!) {
+                    repository(owner: $owner, name: $repo) {
+                      pullRequest(number: $number) {
+                        id
+                        headRefOid
+                      }
+                    }
+                  }
+                `, {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  number: pr.number
+                });
+
+                await github.graphql(`
+                  mutation($pullRequestId: ID!, $expectedHeadOid: GitObjectID!) {
+                    updatePullRequestBranch(input: {
+                      pullRequestId: $pullRequestId,
+                      expectedHeadOid: $expectedHeadOid
+                    }) {
+                      pullRequest {
+                        number
+                      }
+                    }
+                  }
+                `, {
+                  pullRequestId: prDetails.repository.pullRequest.id,
+                  expectedHeadOid: prDetails.repository.pullRequest.headRefOid
+                });
+
+                console.log(`Triggered update on PR #${pr.number}`);
+              }
+            }
