@@ -6,6 +6,26 @@ use std::{
 };
 mod vectors;
 
+/// Parse a hex string into a 32-byte seed
+fn parse_seed(seed_str: &str) -> Result<[u8; 32], String> {
+    if seed_str.len() != 64 {
+        return Err(format!(
+            "Seed must be exactly 64 hex characters (32 bytes), got {}",
+            seed_str.len()
+        ));
+    }
+
+    let mut seed = [0u8; 32];
+    for (i, chunk) in seed_str.as_bytes().chunks(2).enumerate() {
+        let hex_str =
+            std::str::from_utf8(chunk).map_err(|_| "Invalid UTF-8 in seed".to_string())?;
+        seed[i] = u8::from_str_radix(hex_str, 16)
+            .map_err(|_| format!("Invalid hex character in seed: {}", hex_str))?;
+    }
+
+    Ok(seed)
+}
+
 #[derive(Debug, Clone, ValueEnum)]
 pub enum Mode {
     B10,
@@ -87,13 +107,27 @@ struct Args {
     /// - deterministic=false: Use git commit hash in ES5 headers
     #[arg(long)]
     deterministic: bool,
+
+    /// Custom seed for test vector generation (32 bytes as hex string)
+    /// If not provided, uses a default fixed seed for reproducibility.
+    /// Example: --seed 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    #[arg(long)]
+    seed: Option<String>,
 }
 
 pub fn main() {
     let args = Args::parse();
 
+    // Parse seed if provided
+    let seed = args.seed.map(|seed_str| {
+        parse_seed(&seed_str).unwrap_or_else(|err| {
+            eprintln!("Error parsing seed: {}", err);
+            std::process::exit(1);
+        })
+    });
+
     // generate vectors
-    let vectors = vectors::generate(args.mode.clone(), args.param_type.clone());
+    let vectors = vectors::generate(args.mode.clone(), args.param_type.clone(), seed);
 
     // save to output file
     let mut writer: Box<dyn Write> = match args.output_file.as_str() {
@@ -103,8 +137,14 @@ pub fn main() {
 
     match args.format {
         OutputFormat::Es5 => {
-            vectors::write_es5(&mut writer, &vectors, args.param_type, args.deterministic)
-                .expect("could not write to file");
+            vectors::write_es5(
+                &mut writer,
+                &vectors,
+                args.param_type,
+                args.deterministic,
+                seed,
+            )
+            .expect("could not write to file");
         }
         OutputFormat::Json => {
             serde_json::to_writer_pretty(writer, &vectors).expect("could not write to file");

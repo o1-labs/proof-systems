@@ -55,12 +55,13 @@ fn rand_fields(rng: &mut impl Rng, length: u8) -> Vec<Fp> {
 }
 
 /// creates a set of test vectors
-/// Note: This function always uses a fixed seed for reproducible test
-/// vectors. The deterministic parameter (in write_es5) only affects ES5
-/// header generation.
-pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
-    // Always use fixed seed for reproducible test vectors
-    let rng = &mut o1_utils::tests::make_test_rng(Some([0u8; 32]));
+/// Uses a custom seed if provided, otherwise uses a default fixed seed for
+/// reproducible test vectors. The deterministic parameter (in write_es5) only
+/// affects ES5 header generation.
+pub fn generate(mode: Mode, param_type: ParamType, seed: Option<[u8; 32]>) -> TestVectors {
+    // Use custom seed if provided, otherwise use default fixed seed
+    let seed_bytes = seed.unwrap_or([0u8; 32]);
+    let rng = &mut o1_utils::tests::make_test_rng(Some(seed_bytes));
     let mut test_vectors = vec![];
 
     // generate inputs of different lengths
@@ -123,6 +124,7 @@ pub fn write_es5<W: Write>(
     vectors: &TestVectors,
     param_type: ParamType,
     deterministic: bool,
+    seed: Option<[u8; 32]>,
 ) -> std::io::Result<()> {
     let variable_name = match param_type {
         ParamType::Legacy => "testPoseidonLegacyFp",
@@ -182,6 +184,11 @@ pub fn write_es5<W: Write>(
         )?;
         writeln!(writer, "// from {}", repository)?;
     }
+
+    // Add seed information
+    let seed_bytes = seed.unwrap_or([0u8; 32]);
+    writeln!(writer, "// Seed: {}", hex::encode(seed_bytes))?;
+
     writeln!(writer)?;
     writeln!(writer, "const {} = {{", variable_name)?;
     writeln!(writer, "  name: '{}',", vectors.name)?;
@@ -323,13 +330,15 @@ mod tests {
                 ParamType::Kimchi => expected_output_0_hex_kimchi,
             };
 
-            let test_vectors_hex = generate(Mode::Hex, param_type);
+            let test_vectors_hex = generate(Mode::Hex, param_type, None);
             assert!(test_vectors_hex.test_vectors[0].output == expected_output_0_hex);
         }
     }
 
     #[test]
     fn test_export_regression_all_formats() {
+        let seed: Option<_> = None;
+
         // This test ensures that the generated files are always the same
         // for all combinations of mode, param_type, and output format
 
@@ -385,7 +394,9 @@ mod tests {
         ];
 
         for (mode, param_type, format, expected_file) in test_cases {
-            let vectors = generate(mode, param_type.clone());
+            // Use default seed (None) to maintain compatibility with existing
+            // reference files
+            let vectors = generate(mode, param_type.clone(), seed);
 
             let mut generated_output = Vec::new();
             match format {
@@ -394,7 +405,7 @@ mod tests {
                         .expect("Failed to serialize JSON");
                 }
                 OutputFormat::Es5 => {
-                    write_es5(&mut generated_output, &vectors, param_type, true) // Use deterministic mode
+                    write_es5(&mut generated_output, &vectors, param_type, true, seed) // Use deterministic mode with default seed
                         .expect("Failed to write ES5");
                 }
             }
