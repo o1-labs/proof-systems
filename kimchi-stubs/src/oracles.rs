@@ -19,7 +19,7 @@ use poly_commitment::{
     SRS,
 };
 
-#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+#[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
 pub struct CamlOracles<F> {
     pub o: CamlRandomOracles<F>,
     pub p_eval: (F, F),

@@ -38,7 +38,7 @@ jobs:
       default_os: ${{ fromJson(steps.os.outputs.version)[0] }}
     steps:
       - id: rust
-        run: echo 'version=["1.81", "1.82"]' >> "$GITHUB_OUTPUT"
+        run: echo 'version=["1.81", "1.82", "1.83", "1.84", "1.85", "1.86"]' >> "$GITHUB_OUTPUT"
       # FIXME: currently not available for 5.0.0.
       # It might be related to boxroot dependency, and we would need to bump
       # up the ocaml-rs dependency
@@ -159,7 +159,7 @@ jobs:
 
       - name: Rerun doc generation with different args and copy into book directory
         if: >-
-          github.event_name == 'push' && 
+          github.event_name == 'push' &&
           github.ref == 'refs/heads/master' &&
           matrix.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
           matrix.os == needs.define-matrix.outputs.default_os
@@ -171,7 +171,7 @@ jobs:
       - name: Deploy
         uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e
         if: >-
-          github.event_name == 'push' && 
+          github.event_name == 'push' &&
           github.ref == 'refs/heads/master' &&
           matrix.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
           matrix.os == needs.define-matrix.outputs.default_os

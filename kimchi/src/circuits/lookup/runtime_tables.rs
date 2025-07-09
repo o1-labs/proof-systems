@@ -91,7 +91,7 @@ pub mod caml {
     //
     // CamlRuntimeTable<CamlF>
     //
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlRuntimeTable<CamlF> {
         pub id: i32,
         pub data: Vec<CamlF>,
@@ -124,7 +124,7 @@ pub mod caml {
         }
     }
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlRuntimeTableSpec {
         pub id: i32,
         pub len: usize,
@@ -149,7 +149,7 @@ pub mod caml {
     }
 
     // CamlRuntimetableCfg
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlRuntimeTableCfg<CamlF> {
         pub id: i32,
         pub first_column: Vec<CamlF>,

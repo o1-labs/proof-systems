@@ -47,7 +47,7 @@ pub mod caml {
 
     use super::*;
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlOracles<CamlF> {
         pub o: CamlRandomOracles<CamlF>,
         pub public_evals: (CamlF, CamlF),
