@@ -10,6 +10,7 @@ use mina_poseidon::{
 use num_bigint::BigUint;
 use rand::Rng;
 use serde::Serialize;
+use std::io::Write;
 
 //
 // generate different test vectors depending on [ParamType]
@@ -111,6 +112,53 @@ pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
     .into();
 
     TestVectors { name, test_vectors }
+}
+
+pub fn write_es5<W: Write>(
+    writer: &mut W,
+    vectors: &TestVectors,
+    param_type: ParamType,
+) -> std::io::Result<()> {
+    let variable_name = match param_type {
+        ParamType::Legacy => "testPoseidonLegacyFp",
+        ParamType::Kimchi => "testPoseidonKimchiFp",
+    };
+
+    writeln!(
+        writer,
+        "// @gen this file is generated - don't edit it directly"
+    )?;
+    writeln!(writer, "")?;
+    writeln!(writer, "const {} = {{", variable_name)?;
+    writeln!(writer, "  name: '{}',", vectors.name)?;
+    writeln!(writer, "  test_vectors: [")?;
+
+    for (i, test_vector) in vectors.test_vectors.iter().enumerate() {
+        writeln!(writer, "    {{")?;
+        writeln!(
+            writer,
+            "      input: [{}],",
+            test_vector
+                .input
+                .iter()
+                .map(|s| format!("'{}'", s))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )?;
+        writeln!(writer, "      output: '{}',", test_vector.output)?;
+        if i < vectors.test_vectors.len() - 1 {
+            writeln!(writer, "    }},")?;
+        } else {
+            writeln!(writer, "    }}")?;
+        }
+    }
+
+    writeln!(writer, "  ],")?;
+    writeln!(writer, "}};")?;
+    writeln!(writer, "")?;
+    writeln!(writer, "export {{ {} }};", variable_name)?;
+
+    Ok(())
 }
 
 #[cfg(test)]
