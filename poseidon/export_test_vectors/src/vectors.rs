@@ -44,7 +44,7 @@ fn poseidon<SC: SpongeConstants>(input: &[Fp], params: &'static ArithmeticSponge
     s.squeeze()
 }
 
-/// generates a vector of `length` field elements
+/// generates a vector of `length` field elements using the provided RNG
 fn rand_fields(rng: &mut impl Rng, length: u8) -> Vec<Fp> {
     let mut fields = vec![];
     for _ in 0..length {
@@ -55,7 +55,11 @@ fn rand_fields(rng: &mut impl Rng, length: u8) -> Vec<Fp> {
 }
 
 /// creates a set of test vectors
+/// Note: This function always uses a fixed seed for reproducible test
+/// vectors. The deterministic parameter (in write_es5) only affects ES5
+/// header generation.
 pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
+    // Always use fixed seed for reproducible test vectors
     let rng = &mut o1_utils::tests::make_test_rng(Some([0u8; 32]));
     let mut test_vectors = vec![];
 
@@ -118,6 +122,7 @@ pub fn write_es5<W: Write>(
     writer: &mut W,
     vectors: &TestVectors,
     param_type: ParamType,
+    deterministic: bool,
 ) -> std::io::Result<()> {
     let variable_name = match param_type {
         ParamType::Legacy => "testPoseidonLegacyFp",
@@ -125,26 +130,34 @@ pub fn write_es5<W: Write>(
     };
 
     // Get commit hash or fallback to crate version
-    let version_info = std::process::Command::new("git")
-        .args(["rev-parse", "HEAD"])
-        .output()
-        .ok()
-        .and_then(|output| {
-            if output.status.success() {
-                String::from_utf8(output.stdout).ok()
-            } else {
-                None
-            }
-        })
-        .map(|s| {
-            let trimmed = s.trim();
-            if trimmed.len() >= 8 {
-                trimmed[..8].to_string()
-            } else {
-                trimmed.to_string()
-            }
-        })
-        .unwrap_or_else(|| format!("v{}", env!("CARGO_PKG_VERSION")));
+    // The deterministic flag only controls header generation, not test vector content.
+    // Test vectors always use a fixed seed (see line 58) for reproducibility.
+    let version_info = if deterministic {
+        // Use stable version for regression testing
+        format!("v{}", env!("CARGO_PKG_VERSION"))
+    } else {
+        // Use git commit hash for production traceability
+        std::process::Command::new("git")
+            .args(["rev-parse", "HEAD"])
+            .output()
+            .ok()
+            .and_then(|output| {
+                if output.status.success() {
+                    String::from_utf8(output.stdout).ok()
+                } else {
+                    None
+                }
+            })
+            .map(|s| {
+                let trimmed = s.trim();
+                if trimmed.len() >= 8 {
+                    trimmed[..8].to_string()
+                } else {
+                    trimmed.to_string()
+                }
+            })
+            .unwrap_or_else(|| format!("v{}", env!("CARGO_PKG_VERSION")))
+    };
 
     // Get repository URL
     let repository = env!("CARGO_PKG_REPOSITORY");
@@ -206,6 +219,7 @@ pub fn write_es5<W: Write>(
 mod tests {
 
     use super::*;
+    use crate::OutputFormat;
 
     #[test]
     fn poseidon_test_vectors_regression() {
@@ -311,6 +325,92 @@ mod tests {
 
             let test_vectors_hex = generate(Mode::Hex, param_type);
             assert!(test_vectors_hex.test_vectors[0].output == expected_output_0_hex);
+        }
+    }
+
+    #[test]
+    fn test_export_regression_all_formats() {
+        // This test ensures that the generated files are always the same
+        // for all combinations of mode, param_type, and output format
+
+        let test_cases = [
+            (
+                Mode::B10,
+                ParamType::Legacy,
+                OutputFormat::Json,
+                "test_vectors/b10_legacy.json",
+            ),
+            (
+                Mode::B10,
+                ParamType::Kimchi,
+                OutputFormat::Json,
+                "test_vectors/b10_kimchi.json",
+            ),
+            (
+                Mode::Hex,
+                ParamType::Legacy,
+                OutputFormat::Json,
+                "test_vectors/hex_legacy.json",
+            ),
+            (
+                Mode::Hex,
+                ParamType::Kimchi,
+                OutputFormat::Json,
+                "test_vectors/hex_kimchi.json",
+            ),
+            (
+                Mode::B10,
+                ParamType::Legacy,
+                OutputFormat::Es5,
+                "test_vectors/b10_legacy.js",
+            ),
+            (
+                Mode::B10,
+                ParamType::Kimchi,
+                OutputFormat::Es5,
+                "test_vectors/b10_kimchi.js",
+            ),
+            (
+                Mode::Hex,
+                ParamType::Legacy,
+                OutputFormat::Es5,
+                "test_vectors/hex_legacy.js",
+            ),
+            (
+                Mode::Hex,
+                ParamType::Kimchi,
+                OutputFormat::Es5,
+                "test_vectors/hex_kimchi.js",
+            ),
+        ];
+
+        for (mode, param_type, format, expected_file) in test_cases {
+            let vectors = generate(mode, param_type.clone());
+
+            let mut generated_output = Vec::new();
+            match format {
+                OutputFormat::Json => {
+                    serde_json::to_writer_pretty(&mut generated_output, &vectors)
+                        .expect("Failed to serialize JSON");
+                }
+                OutputFormat::Es5 => {
+                    write_es5(&mut generated_output, &vectors, param_type, true) // Use deterministic mode
+                        .expect("Failed to write ES5");
+                }
+            }
+
+            let expected_content = std::fs::read_to_string(expected_file)
+                .unwrap_or_else(|_| panic!("Failed to read expected file: {}", expected_file));
+
+            let generated_content =
+                String::from_utf8(generated_output).expect("Generated content is not valid UTF-8");
+
+            assert_eq!(
+                generated_content.trim(),
+                expected_content.trim(),
+                "Generated output doesn't match expected file: {}",
+                expected_file
+            );
         }
     }
 }
