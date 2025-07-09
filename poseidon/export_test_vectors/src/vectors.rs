@@ -124,6 +124,7 @@ pub fn write_es5<W: Write>(
     vectors: &TestVectors,
     param_type: ParamType,
     deterministic: bool,
+    seed: Option<[u8; 32]>,
 ) -> std::io::Result<()> {
     let variable_name = match param_type {
         ParamType::Legacy => "testPoseidonLegacyFp",
@@ -183,6 +184,11 @@ pub fn write_es5<W: Write>(
         )?;
         writeln!(writer, "// from {}", repository)?;
     }
+
+    // Add seed information
+    let seed_bytes = seed.unwrap_or([0u8; 32]);
+    writeln!(writer, "// Seed: {}", hex::encode(seed_bytes))?;
+
     writeln!(writer)?;
     writeln!(writer, "const {} = {{", variable_name)?;
     writeln!(writer, "  name: '{}',", vectors.name)?;
@@ -331,6 +337,8 @@ mod tests {
 
     #[test]
     fn test_export_regression_all_formats() {
+        let seed: Option<_> = None;
+
         // This test ensures that the generated files are always the same
         // for all combinations of mode, param_type, and output format
 
@@ -388,7 +396,7 @@ mod tests {
         for (mode, param_type, format, expected_file) in test_cases {
             // Use default seed (None) to maintain compatibility with existing
             // reference files
-            let vectors = generate(mode, param_type.clone(), None);
+            let vectors = generate(mode, param_type.clone(), seed);
 
             let mut generated_output = Vec::new();
             match format {
@@ -397,7 +405,7 @@ mod tests {
                         .expect("Failed to serialize JSON");
                 }
                 OutputFormat::Es5 => {
-                    write_es5(&mut generated_output, &vectors, param_type, true) // Use deterministic mode
+                    write_es5(&mut generated_output, &vectors, param_type, true, seed) // Use deterministic mode with default seed
                         .expect("Failed to write ES5");
                 }
             }

@@ -137,8 +137,14 @@ pub fn main() {
 
     match args.format {
         OutputFormat::Es5 => {
-            vectors::write_es5(&mut writer, &vectors, args.param_type, args.deterministic)
-                .expect("could not write to file");
+            vectors::write_es5(
+                &mut writer,
+                &vectors,
+                args.param_type,
+                args.deterministic,
+                seed,
+            )
+            .expect("could not write to file");
         }
         OutputFormat::Json => {
             serde_json::to_writer_pretty(writer, &vectors).expect("could not write to file");
