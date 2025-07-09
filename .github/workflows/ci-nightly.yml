@@ -32,7 +32,7 @@ jobs:
         # FIXME: currently not available for 5.0.0.
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency
-        ocaml_version: ["4.14"]
+        ocaml_version: ["4.14.2"]
         os: ["hetzner-1"]
     steps:
       - name: Checkout repository
