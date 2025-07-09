@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Mode","ParamType"],"fn":["main"],"mod":["vectors"],"struct":["Args"]};
+window.SIDEBAR_ITEMS = {"enum":["Mode","OutputFormat","ParamType"],"fn":["main"],"mod":["vectors"],"struct":["Args"]};
