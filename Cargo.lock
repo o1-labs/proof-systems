@@ -1258,6 +1258,7 @@ version = "0.1.0"
 dependencies = [
  "ark-ff",
  "ark-serialize",
+ "clap 4.4.18",
  "hex",
  "mina-curves",
  "mina-poseidon",
