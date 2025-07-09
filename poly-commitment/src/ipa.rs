@@ -16,7 +16,8 @@ use crate::{
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::{BigInteger, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
+    univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations,
+    Radix2EvaluationDomain as D,
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use blake2::{Blake2b512, Digest};
@@ -808,6 +809,29 @@ impl<G: CommitmentCurve> SRS<G> {
             z2,
             sg: g0,
         }
+    }
+
+    pub fn lagrange_basis_raw(
+        &self,
+        domain: D<G::ScalarField>,
+        indices: &[usize],
+    ) -> Vec<DensePolynomial<G::ScalarField>> {
+        let n = domain.size();
+
+        let mut polys: Vec<DensePolynomial<_>> = vec![];
+
+        for i in indices.iter() {
+            println!("Generating lagrange poly number {:?}", i);
+            let mut ifft_input: Vec<G::ScalarField> = vec![G::ScalarField::zero(); n];
+            ifft_input[*i] = G::ScalarField::one();
+            // Apply the IFFT
+            domain.ifft_in_place(&mut ifft_input);
+            polys.push(DensePolynomial::from_coefficients_vec(ifft_input));
+            // Append the 'partial Langrange polynomials' to the vector of elems chunks
+            //polys.push(<G as AffineRepr>::Group::normalize_batch(lg.as_mut_slice()));
+        }
+
+        polys
     }
 
     fn lagrange_basis(&self, domain: D<G::ScalarField>) -> Vec<PolyComm<G>> {
