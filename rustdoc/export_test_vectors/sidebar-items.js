@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["main"],"mod":["inner","vectors"]};
+window.SIDEBAR_ITEMS = {"enum":["Mode","ParamType"],"fn":["main"],"mod":["vectors"],"struct":["Args"]};
