@@ -1,4 +1,7 @@
-use crate::encoding::{decode_into, encoding_size};
+use crate::{
+    encoding::{decode_into, encoding_size},
+    Curve, CurveSponge, Sponge,
+};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::PrimeField;
 use ark_poly::{
@@ -10,6 +13,10 @@ use poly_commitment::{ipa::SRS, SRS as _};
 use std::marker::PhantomData;
 use thiserror::Error;
 use tracing::instrument;
+
+pub fn new_sponge() -> CurveSponge {
+    CurveSponge::new(Curve::other_curve_sponge_params())
+}
 
 pub(crate) fn evals_to_polynomial<F: PrimeField>(
     evals: Vec<F>,
