@@ -12,8 +12,8 @@
 <a href=#12 id=12 data-nosnippet>12</a>//! parallel elliptic curve operations, it is actually cheaper to use affine coordinates.
 <a href=#13 id=13 data-nosnippet>13</a>//!
 <a href=#14 id=14 data-nosnippet>14</a>//! Most algorithms in this module take an argument `denominators: &amp;mut Vec&lt;F&gt;` which
-<a href=#15 id=15 data-nosnippet>15</a>//! is a scratch array used for performing inversions. It is passed around to avoid re-allocating
-<a href=#16 id=16 data-nosnippet>16</a>//! such a scratch array within each algorithm.
+<a href=#15 id=15 data-nosnippet>15</a>//! is a scratch array used for performing inversions. It is passed around to
+<a href=#16 id=16 data-nosnippet>16</a>//! avoid re-allocating such a scratch array within each algorithm.
 <a href=#17 id=17 data-nosnippet>17</a>
 <a href=#18 id=18 data-nosnippet>18</a></span><span class="kw">use </span>ark_ec::{
 <a href=#19 id=19 data-nosnippet>19</a>    models::short_weierstrass::Affine <span class="kw">as </span>SWJAffine, short_weierstrass::SWCurveConfig,
@@ -286,210 +286,210 @@
 <a href=#286 id=286 data-nosnippet>286</a>    });
 <a href=#287 id=287 data-nosnippet>287</a>}
 <a href=#288 id=288 data-nosnippet>288</a>
-<a href=#289 id=289 data-nosnippet>289</a><span class="doccomment">/// Uses a batch version of Algorithm 1 of &lt;https://eprint.iacr.org/2019/1021.pdf&gt; (on page 19) to
-<a href=#290 id=290 data-nosnippet>290</a>/// compute `g1 + g2.scale(chal.to_field(endo_coeff))`
-<a href=#291 id=291 data-nosnippet>291</a></span><span class="kw">fn </span>affine_window_combine_one_endo_base&lt;P: SWCurveConfig&gt;(
-<a href=#292 id=292 data-nosnippet>292</a>    endo_coeff: P::BaseField,
-<a href=#293 id=293 data-nosnippet>293</a>    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
-<a href=#294 id=294 data-nosnippet>294</a>    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
-<a href=#295 id=295 data-nosnippet>295</a>    chal: ScalarChallenge&lt;P::ScalarField&gt;,
-<a href=#296 id=296 data-nosnippet>296</a>) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
-<a href=#297 id=297 data-nosnippet>297</a>    <span class="kw">fn </span>assign&lt;A: Copy&gt;(dst: <span class="kw-2">&amp;mut </span>[A], src: <span class="kw-2">&amp;</span>[A]) {
-<a href=#298 id=298 data-nosnippet>298</a>        <span class="kw">let </span>n = dst.len();
-<a href=#299 id=299 data-nosnippet>299</a>        dst[..n].clone_from_slice(<span class="kw-2">&amp;</span>src[..n]);
-<a href=#300 id=300 data-nosnippet>300</a>    }
-<a href=#301 id=301 data-nosnippet>301</a>
-<a href=#302 id=302 data-nosnippet>302</a>    <span class="kw">fn </span>get_bit(limbs_lsb: <span class="kw-2">&amp;</span>[u64], i: u64) -&gt; u64 {
-<a href=#303 id=303 data-nosnippet>303</a>        <span class="kw">let </span>limb = i / <span class="number">64</span>;
-<a href=#304 id=304 data-nosnippet>304</a>        <span class="kw">let </span>j = i % <span class="number">64</span>;
-<a href=#305 id=305 data-nosnippet>305</a>        (limbs_lsb[limb <span class="kw">as </span>usize] &gt;&gt; j) &amp; <span class="number">1
-<a href=#306 id=306 data-nosnippet>306</a>    </span>}
-<a href=#307 id=307 data-nosnippet>307</a>
-<a href=#308 id=308 data-nosnippet>308</a>    <span class="kw">let </span>rep = chal.<span class="number">0</span>.into_bigint();
-<a href=#309 id=309 data-nosnippet>309</a>    <span class="kw">let </span>r = rep.as_ref();
-<a href=#310 id=310 data-nosnippet>310</a>
-<a href=#311 id=311 data-nosnippet>311</a>    <span class="kw">let </span><span class="kw-2">mut </span>denominators = <span class="macro">vec!</span>[P::BaseField::zero(); g1.len()];
-<a href=#312 id=312 data-nosnippet>312</a>    <span class="comment">// acc = 2 (phi(g2) + g2)
-<a href=#313 id=313 data-nosnippet>313</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>points = g2.to_vec();
-<a href=#314 id=314 data-nosnippet>314</a>    batch_endo_in_place(endo_coeff, <span class="kw-2">&amp;mut </span>points);
-<a href=#315 id=315 data-nosnippet>315</a>    batch_add_assign_no_branch(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, g2);
-<a href=#316 id=316 data-nosnippet>316</a>    batch_double_in_place(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points);
-<a href=#317 id=317 data-nosnippet>317</a>
-<a href=#318 id=318 data-nosnippet>318</a>    <span class="kw">let </span><span class="kw-2">mut </span>tmp_s = g2.to_vec();
-<a href=#319 id=319 data-nosnippet>319</a>    <span class="kw">let </span><span class="kw-2">mut </span>tmp_acc = g2.to_vec();
-<a href=#320 id=320 data-nosnippet>320</a>    <span class="kw">for </span>i <span class="kw">in </span>(<span class="number">0</span>..(<span class="number">128 </span>/ <span class="number">2</span>)).rev() {
-<a href=#321 id=321 data-nosnippet>321</a>        <span class="comment">// s = g2
-<a href=#322 id=322 data-nosnippet>322</a>        </span>assign(<span class="kw-2">&amp;mut </span>tmp_s, g2);
-<a href=#323 id=323 data-nosnippet>323</a>        <span class="comment">// tmp = acc
-<a href=#324 id=324 data-nosnippet>324</a>        </span>assign(<span class="kw-2">&amp;mut </span>tmp_acc, <span class="kw-2">&amp;</span>points);
-<a href=#325 id=325 data-nosnippet>325</a>
-<a href=#326 id=326 data-nosnippet>326</a>        <span class="kw">let </span>r_2i = get_bit(r, <span class="number">2 </span>* i);
-<a href=#327 id=327 data-nosnippet>327</a>        <span class="kw">if </span>r_2i == <span class="number">0 </span>{
-<a href=#328 id=328 data-nosnippet>328</a>            batch_negate_in_place(<span class="kw-2">&amp;mut </span>tmp_s);
-<a href=#329 id=329 data-nosnippet>329</a>        }
-<a href=#330 id=330 data-nosnippet>330</a>        <span class="kw">if </span>get_bit(r, <span class="number">2 </span>* i + <span class="number">1</span>) == <span class="number">1 </span>{
-<a href=#331 id=331 data-nosnippet>331</a>            batch_endo_in_place(endo_coeff, <span class="kw-2">&amp;mut </span>tmp_s);
-<a href=#332 id=332 data-nosnippet>332</a>        }
-<a href=#333 id=333 data-nosnippet>333</a>
-<a href=#334 id=334 data-nosnippet>334</a>        <span class="comment">// acc = (acc + s) + acc
-<a href=#335 id=335 data-nosnippet>335</a>        </span>batch_add_assign_no_branch(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>tmp_s);
-<a href=#336 id=336 data-nosnippet>336</a>        batch_add_assign_no_branch(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>tmp_acc);
-<a href=#337 id=337 data-nosnippet>337</a>    }
-<a href=#338 id=338 data-nosnippet>338</a>    <span class="comment">// acc += g1
-<a href=#339 id=339 data-nosnippet>339</a>    </span>batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, g1);
-<a href=#340 id=340 data-nosnippet>340</a>    points
-<a href=#341 id=341 data-nosnippet>341</a>}
-<a href=#342 id=342 data-nosnippet>342</a>
-<a href=#343 id=343 data-nosnippet>343</a><span class="doccomment">/// Double an array of curve points in-place.
-<a href=#344 id=344 data-nosnippet>344</a></span><span class="kw">fn </span>batch_double_in_place&lt;P: SWCurveConfig&gt;(
-<a href=#345 id=345 data-nosnippet>345</a>    denominators: <span class="kw-2">&amp;mut </span>Vec&lt;P::BaseField&gt;,
-<a href=#346 id=346 data-nosnippet>346</a>    points: <span class="kw-2">&amp;mut </span>[SWJAffine&lt;P&gt;],
-<a href=#347 id=347 data-nosnippet>347</a>) {
-<a href=#348 id=348 data-nosnippet>348</a>    denominators
-<a href=#349 id=349 data-nosnippet>349</a>        .par_iter_mut()
-<a href=#350 id=350 data-nosnippet>350</a>        .zip(points.par_iter())
-<a href=#351 id=351 data-nosnippet>351</a>        .for_each(|(d, p)| {
-<a href=#352 id=352 data-nosnippet>352</a>            <span class="kw-2">*</span>d = p.y.double();
-<a href=#353 id=353 data-nosnippet>353</a>        });
-<a href=#354 id=354 data-nosnippet>354</a>    ark_ff::batch_inversion::&lt;P::BaseField&gt;(denominators);
-<a href=#355 id=355 data-nosnippet>355</a>
-<a href=#356 id=356 data-nosnippet>356</a>    <span class="comment">// TODO: Use less memory
-<a href=#357 id=357 data-nosnippet>357</a>    </span>denominators
-<a href=#358 id=358 data-nosnippet>358</a>        .par_iter()
-<a href=#359 id=359 data-nosnippet>359</a>        .zip(points.par_iter_mut())
-<a href=#360 id=360 data-nosnippet>360</a>        .for_each(|(d, p)| {
-<a href=#361 id=361 data-nosnippet>361</a>            <span class="kw">let </span>sq = p.x.square();
-<a href=#362 id=362 data-nosnippet>362</a>            <span class="kw">let </span>s = (sq.double() + sq + P::COEFF_A) * d;
-<a href=#363 id=363 data-nosnippet>363</a>            <span class="kw">let </span>x = s.square() - p.x.double();
-<a href=#364 id=364 data-nosnippet>364</a>            <span class="kw">let </span>y = -p.y - (s * (x - p.x));
-<a href=#365 id=365 data-nosnippet>365</a>            p.x = x;
-<a href=#366 id=366 data-nosnippet>366</a>            p.y = y;
-<a href=#367 id=367 data-nosnippet>367</a>        });
-<a href=#368 id=368 data-nosnippet>368</a>}
-<a href=#369 id=369 data-nosnippet>369</a>
-<a href=#370 id=370 data-nosnippet>370</a><span class="kw">fn </span>affine_window_combine_one_base&lt;P: SWCurveConfig&gt;(
-<a href=#371 id=371 data-nosnippet>371</a>    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
-<a href=#372 id=372 data-nosnippet>372</a>    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
-<a href=#373 id=373 data-nosnippet>373</a>    x2: P::ScalarField,
-<a href=#374 id=374 data-nosnippet>374</a>) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
-<a href=#375 id=375 data-nosnippet>375</a>    <span class="kw">let </span>windows2 = BitIteratorBE::new(x2.into_bigint()).tuples();
-<a href=#376 id=376 data-nosnippet>376</a>
-<a href=#377 id=377 data-nosnippet>377</a>    <span class="kw">let </span><span class="kw-2">mut </span>points = <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); g1.len()];
-<a href=#378 id=378 data-nosnippet>378</a>
-<a href=#379 id=379 data-nosnippet>379</a>    <span class="kw">let </span><span class="kw-2">mut </span>denominators = <span class="macro">vec!</span>[P::BaseField::zero(); g1.len()];
-<a href=#380 id=380 data-nosnippet>380</a>
-<a href=#381 id=381 data-nosnippet>381</a>    <span class="kw">let </span>[g01, g10, g11] = affine_shamir_window_table_one(<span class="kw-2">&amp;mut </span>denominators, g2);
-<a href=#382 id=382 data-nosnippet>382</a>
-<a href=#383 id=383 data-nosnippet>383</a>    <span class="kw">for </span>(hi_2, lo_2) <span class="kw">in </span>windows2 {
-<a href=#384 id=384 data-nosnippet>384</a>        <span class="comment">// double in place
-<a href=#385 id=385 data-nosnippet>385</a>        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">2 </span>{
-<a href=#386 id=386 data-nosnippet>386</a>            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..g1.len() {
-<a href=#387 id=387 data-nosnippet>387</a>                denominators[i] = points[i].y.double();
-<a href=#388 id=388 data-nosnippet>388</a>            }
-<a href=#389 id=389 data-nosnippet>389</a>            ark_ff::batch_inversion::&lt;P::BaseField&gt;(<span class="kw-2">&amp;mut </span>denominators);
-<a href=#390 id=390 data-nosnippet>390</a>
-<a href=#391 id=391 data-nosnippet>391</a>            <span class="comment">// TODO: Use less memory
-<a href=#392 id=392 data-nosnippet>392</a>            </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..g1.len() {
-<a href=#393 id=393 data-nosnippet>393</a>                <span class="kw">let </span>d = denominators[i];
-<a href=#394 id=394 data-nosnippet>394</a>                <span class="kw">let </span>sq = points[i].x.square();
-<a href=#395 id=395 data-nosnippet>395</a>                <span class="kw">let </span>s = (sq.double() + sq + P::COEFF_A) * d;
-<a href=#396 id=396 data-nosnippet>396</a>                <span class="kw">let </span>x = s.square() - points[i].x.double();
-<a href=#397 id=397 data-nosnippet>397</a>                <span class="kw">let </span>y = -points[i].y - (s * (x - points[i].x));
-<a href=#398 id=398 data-nosnippet>398</a>                points[i].x = x;
-<a href=#399 id=399 data-nosnippet>399</a>                points[i].y = y;
-<a href=#400 id=400 data-nosnippet>400</a>            }
-<a href=#401 id=401 data-nosnippet>401</a>        }
-<a href=#402 id=402 data-nosnippet>402</a>
-<a href=#403 id=403 data-nosnippet>403</a>        <span class="kw">match </span>(hi_2, lo_2) {
-<a href=#404 id=404 data-nosnippet>404</a>            (<span class="bool-val">false</span>, <span class="bool-val">false</span>) =&gt; (),
-<a href=#405 id=405 data-nosnippet>405</a>            (<span class="bool-val">false</span>, <span class="bool-val">true</span>) =&gt; batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g01),
-<a href=#406 id=406 data-nosnippet>406</a>            (<span class="bool-val">true</span>, <span class="bool-val">false</span>) =&gt; batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g10),
-<a href=#407 id=407 data-nosnippet>407</a>            (<span class="bool-val">true</span>, <span class="bool-val">true</span>) =&gt; batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g11),
-<a href=#408 id=408 data-nosnippet>408</a>        }
-<a href=#409 id=409 data-nosnippet>409</a>    }
-<a href=#410 id=410 data-nosnippet>410</a>
-<a href=#411 id=411 data-nosnippet>411</a>    batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, g1);
-<a href=#412 id=412 data-nosnippet>412</a>
-<a href=#413 id=413 data-nosnippet>413</a>    points
-<a href=#414 id=414 data-nosnippet>414</a>}
-<a href=#415 id=415 data-nosnippet>415</a>
-<a href=#416 id=416 data-nosnippet>416</a><span class="kw">pub fn </span>affine_window_combine&lt;P: SWCurveConfig&gt;(
-<a href=#417 id=417 data-nosnippet>417</a>    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
-<a href=#418 id=418 data-nosnippet>418</a>    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
-<a href=#419 id=419 data-nosnippet>419</a>    x1: P::ScalarField,
-<a href=#420 id=420 data-nosnippet>420</a>    x2: P::ScalarField,
-<a href=#421 id=421 data-nosnippet>421</a>) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
-<a href=#422 id=422 data-nosnippet>422</a>    <span class="kw">const </span>CHUNK_SIZE: usize = <span class="number">10_000</span>;
-<a href=#423 id=423 data-nosnippet>423</a>    <span class="kw">let </span>b: Vec&lt;<span class="kw">_</span>&gt; = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
-<a href=#424 id=424 data-nosnippet>424</a>    <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = b
-<a href=#425 id=425 data-nosnippet>425</a>        .into_par_iter()
-<a href=#426 id=426 data-nosnippet>426</a>        .map(|(v1, v2)| affine_window_combine_base(v1, v2, x1, x2))
-<a href=#427 id=427 data-nosnippet>427</a>        .collect();
-<a href=#428 id=428 data-nosnippet>428</a>    v.concat()
-<a href=#429 id=429 data-nosnippet>429</a>}
-<a href=#430 id=430 data-nosnippet>430</a>
-<a href=#431 id=431 data-nosnippet>431</a><span class="doccomment">/// Given vectors of curve points `g1` and `g2`, compute a vector whose ith entry is
-<a href=#432 id=432 data-nosnippet>432</a>/// `g1[i] + g2[i].scale(chal.to_field(endo_coeff))`
-<a href=#433 id=433 data-nosnippet>433</a>///
-<a href=#434 id=434 data-nosnippet>434</a>/// Internally, it uses the curve endomorphism to speed up this operation.
-<a href=#435 id=435 data-nosnippet>435</a></span><span class="kw">pub fn </span>affine_window_combine_one_endo&lt;P: SWCurveConfig&gt;(
-<a href=#436 id=436 data-nosnippet>436</a>    endo_coeff: P::BaseField,
-<a href=#437 id=437 data-nosnippet>437</a>    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
-<a href=#438 id=438 data-nosnippet>438</a>    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
-<a href=#439 id=439 data-nosnippet>439</a>    chal: ScalarChallenge&lt;P::ScalarField&gt;,
-<a href=#440 id=440 data-nosnippet>440</a>) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
-<a href=#441 id=441 data-nosnippet>441</a>    <span class="kw">const </span>CHUNK_SIZE: usize = <span class="number">4096</span>;
-<a href=#442 id=442 data-nosnippet>442</a>    <span class="kw">let </span>b: Vec&lt;<span class="kw">_</span>&gt; = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
-<a href=#443 id=443 data-nosnippet>443</a>    <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = b
-<a href=#444 id=444 data-nosnippet>444</a>        .into_par_iter()
-<a href=#445 id=445 data-nosnippet>445</a>        .map(|(v1, v2)| affine_window_combine_one_endo_base(endo_coeff, v1, v2, chal.clone()))
-<a href=#446 id=446 data-nosnippet>446</a>        .collect();
-<a href=#447 id=447 data-nosnippet>447</a>    v.concat()
-<a href=#448 id=448 data-nosnippet>448</a>}
-<a href=#449 id=449 data-nosnippet>449</a><span class="kw">pub fn </span>affine_window_combine_one&lt;P: SWCurveConfig&gt;(
-<a href=#450 id=450 data-nosnippet>450</a>    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
-<a href=#451 id=451 data-nosnippet>451</a>    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
-<a href=#452 id=452 data-nosnippet>452</a>    x2: P::ScalarField,
-<a href=#453 id=453 data-nosnippet>453</a>) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
-<a href=#454 id=454 data-nosnippet>454</a>    <span class="kw">const </span>CHUNK_SIZE: usize = <span class="number">10_000</span>;
-<a href=#455 id=455 data-nosnippet>455</a>    <span class="kw">let </span>b: Vec&lt;<span class="kw">_</span>&gt; = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
-<a href=#456 id=456 data-nosnippet>456</a>    <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = b
-<a href=#457 id=457 data-nosnippet>457</a>        .into_par_iter()
-<a href=#458 id=458 data-nosnippet>458</a>        .map(|(v1, v2)| affine_window_combine_one_base(v1, v2, x2))
-<a href=#459 id=459 data-nosnippet>459</a>        .collect();
-<a href=#460 id=460 data-nosnippet>460</a>    v.concat()
-<a href=#461 id=461 data-nosnippet>461</a>}
-<a href=#462 id=462 data-nosnippet>462</a>
-<a href=#463 id=463 data-nosnippet>463</a><span class="kw">pub fn </span>window_combine&lt;G: AffineRepr&gt;(
-<a href=#464 id=464 data-nosnippet>464</a>    g_lo: <span class="kw-2">&amp;</span>[G],
-<a href=#465 id=465 data-nosnippet>465</a>    g_hi: <span class="kw-2">&amp;</span>[G],
-<a href=#466 id=466 data-nosnippet>466</a>    x_lo: G::ScalarField,
-<a href=#467 id=467 data-nosnippet>467</a>    x_hi: G::ScalarField,
-<a href=#468 id=468 data-nosnippet>468</a>) -&gt; Vec&lt;G&gt; {
-<a href=#469 id=469 data-nosnippet>469</a>    <span class="kw">let </span><span class="kw-2">mut </span>g_proj: Vec&lt;G::Group&gt; = {
-<a href=#470 id=470 data-nosnippet>470</a>        <span class="kw">let </span>pairs: Vec&lt;<span class="kw">_</span>&gt; = g_lo.iter().zip(g_hi).collect();
-<a href=#471 id=471 data-nosnippet>471</a>        pairs
-<a href=#472 id=472 data-nosnippet>472</a>            .into_par_iter()
-<a href=#473 id=473 data-nosnippet>473</a>            .map(|(lo, hi)| window_shamir::&lt;G&gt;(x_lo, <span class="kw-2">*</span>lo, x_hi, <span class="kw-2">*</span>hi))
-<a href=#474 id=474 data-nosnippet>474</a>            .collect()
-<a href=#475 id=475 data-nosnippet>475</a>    };
-<a href=#476 id=476 data-nosnippet>476</a>    G::Group::normalize_batch(g_proj.as_mut_slice())
-<a href=#477 id=477 data-nosnippet>477</a>}
-<a href=#478 id=478 data-nosnippet>478</a>
-<a href=#479 id=479 data-nosnippet>479</a><span class="kw">pub fn </span>affine_shamir_window_table&lt;P: SWCurveConfig&gt;(
-<a href=#480 id=480 data-nosnippet>480</a>    denominators: <span class="kw-2">&amp;mut </span>[P::BaseField],
-<a href=#481 id=481 data-nosnippet>481</a>    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
-<a href=#482 id=482 data-nosnippet>482</a>    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
-<a href=#483 id=483 data-nosnippet>483</a>) -&gt; [Vec&lt;SWJAffine&lt;P&gt;&gt;; <span class="number">15</span>] {
-<a href=#484 id=484 data-nosnippet>484</a>    <span class="kw">fn </span>assign&lt;A: Copy&gt;(dst: <span class="kw-2">&amp;mut </span>[A], src: <span class="kw-2">&amp;</span>[A]) {
-<a href=#485 id=485 data-nosnippet>485</a>        <span class="kw">let </span>n = dst.len();
-<a href=#486 id=486 data-nosnippet>486</a>        dst[..n].clone_from_slice(<span class="kw-2">&amp;</span>src[..n]);
-<a href=#487 id=487 data-nosnippet>487</a>    }
-<a href=#488 id=488 data-nosnippet>488</a>
-<a href=#489 id=489 data-nosnippet>489</a>    <span class="kw">let </span>n = g1.len();
-<a href=#490 id=490 data-nosnippet>490</a>
-<a href=#491 id=491 data-nosnippet>491</a>    <span class="kw">let </span><span class="kw-2">mut </span>res: [Vec&lt;<span class="kw">_</span>&gt;; <span class="number">15</span>] = [
-<a href=#492 id=492 data-nosnippet>492</a>        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+<a href=#289 id=289 data-nosnippet>289</a><span class="doccomment">/// Uses a batch version of Algorithm 1 of
+<a href=#290 id=290 data-nosnippet>290</a>/// &lt;https://eprint.iacr.org/2019/1021.pdf&gt; (on page 19) to compute `g1 +
+<a href=#291 id=291 data-nosnippet>291</a>/// g2.scale(chal.to_field(endo_coeff))`
+<a href=#292 id=292 data-nosnippet>292</a></span><span class="kw">fn </span>affine_window_combine_one_endo_base&lt;P: SWCurveConfig&gt;(
+<a href=#293 id=293 data-nosnippet>293</a>    endo_coeff: P::BaseField,
+<a href=#294 id=294 data-nosnippet>294</a>    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+<a href=#295 id=295 data-nosnippet>295</a>    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+<a href=#296 id=296 data-nosnippet>296</a>    chal: ScalarChallenge&lt;P::ScalarField&gt;,
+<a href=#297 id=297 data-nosnippet>297</a>) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
+<a href=#298 id=298 data-nosnippet>298</a>    <span class="kw">fn </span>assign&lt;A: Copy&gt;(dst: <span class="kw-2">&amp;mut </span>[A], src: <span class="kw-2">&amp;</span>[A]) {
+<a href=#299 id=299 data-nosnippet>299</a>        <span class="kw">let </span>n = dst.len();
+<a href=#300 id=300 data-nosnippet>300</a>        dst[..n].clone_from_slice(<span class="kw-2">&amp;</span>src[..n]);
+<a href=#301 id=301 data-nosnippet>301</a>    }
+<a href=#302 id=302 data-nosnippet>302</a>
+<a href=#303 id=303 data-nosnippet>303</a>    <span class="kw">fn </span>get_bit(limbs_lsb: <span class="kw-2">&amp;</span>[u64], i: u64) -&gt; u64 {
+<a href=#304 id=304 data-nosnippet>304</a>        <span class="kw">let </span>limb = i / <span class="number">64</span>;
+<a href=#305 id=305 data-nosnippet>305</a>        <span class="kw">let </span>j = i % <span class="number">64</span>;
+<a href=#306 id=306 data-nosnippet>306</a>        (limbs_lsb[limb <span class="kw">as </span>usize] &gt;&gt; j) &amp; <span class="number">1
+<a href=#307 id=307 data-nosnippet>307</a>    </span>}
+<a href=#308 id=308 data-nosnippet>308</a>
+<a href=#309 id=309 data-nosnippet>309</a>    <span class="kw">let </span>rep = chal.<span class="number">0</span>.into_bigint();
+<a href=#310 id=310 data-nosnippet>310</a>    <span class="kw">let </span>r = rep.as_ref();
+<a href=#311 id=311 data-nosnippet>311</a>
+<a href=#312 id=312 data-nosnippet>312</a>    <span class="kw">let </span><span class="kw-2">mut </span>denominators = <span class="macro">vec!</span>[P::BaseField::zero(); g1.len()];
+<a href=#313 id=313 data-nosnippet>313</a>    <span class="comment">// acc = 2 (phi(g2) + g2)
+<a href=#314 id=314 data-nosnippet>314</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>points = g2.to_vec();
+<a href=#315 id=315 data-nosnippet>315</a>    batch_endo_in_place(endo_coeff, <span class="kw-2">&amp;mut </span>points);
+<a href=#316 id=316 data-nosnippet>316</a>    batch_add_assign_no_branch(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, g2);
+<a href=#317 id=317 data-nosnippet>317</a>    batch_double_in_place(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points);
+<a href=#318 id=318 data-nosnippet>318</a>
+<a href=#319 id=319 data-nosnippet>319</a>    <span class="kw">let </span><span class="kw-2">mut </span>tmp_s = g2.to_vec();
+<a href=#320 id=320 data-nosnippet>320</a>    <span class="kw">let </span><span class="kw-2">mut </span>tmp_acc = g2.to_vec();
+<a href=#321 id=321 data-nosnippet>321</a>    <span class="kw">for </span>i <span class="kw">in </span>(<span class="number">0</span>..(<span class="number">128 </span>/ <span class="number">2</span>)).rev() {
+<a href=#322 id=322 data-nosnippet>322</a>        <span class="comment">// s = g2
+<a href=#323 id=323 data-nosnippet>323</a>        </span>assign(<span class="kw-2">&amp;mut </span>tmp_s, g2);
+<a href=#324 id=324 data-nosnippet>324</a>        <span class="comment">// tmp = acc
+<a href=#325 id=325 data-nosnippet>325</a>        </span>assign(<span class="kw-2">&amp;mut </span>tmp_acc, <span class="kw-2">&amp;</span>points);
+<a href=#326 id=326 data-nosnippet>326</a>
+<a href=#327 id=327 data-nosnippet>327</a>        <span class="kw">let </span>r_2i = get_bit(r, <span class="number">2 </span>* i);
+<a href=#328 id=328 data-nosnippet>328</a>        <span class="kw">if </span>r_2i == <span class="number">0 </span>{
+<a href=#329 id=329 data-nosnippet>329</a>            batch_negate_in_place(<span class="kw-2">&amp;mut </span>tmp_s);
+<a href=#330 id=330 data-nosnippet>330</a>        }
+<a href=#331 id=331 data-nosnippet>331</a>        <span class="kw">if </span>get_bit(r, <span class="number">2 </span>* i + <span class="number">1</span>) == <span class="number">1 </span>{
+<a href=#332 id=332 data-nosnippet>332</a>            batch_endo_in_place(endo_coeff, <span class="kw-2">&amp;mut </span>tmp_s);
+<a href=#333 id=333 data-nosnippet>333</a>        }
+<a href=#334 id=334 data-nosnippet>334</a>
+<a href=#335 id=335 data-nosnippet>335</a>        <span class="comment">// acc = (acc + s) + acc
+<a href=#336 id=336 data-nosnippet>336</a>        </span>batch_add_assign_no_branch(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>tmp_s);
+<a href=#337 id=337 data-nosnippet>337</a>        batch_add_assign_no_branch(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>tmp_acc);
+<a href=#338 id=338 data-nosnippet>338</a>    }
+<a href=#339 id=339 data-nosnippet>339</a>    <span class="comment">// acc += g1
+<a href=#340 id=340 data-nosnippet>340</a>    </span>batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, g1);
+<a href=#341 id=341 data-nosnippet>341</a>    points
+<a href=#342 id=342 data-nosnippet>342</a>}
+<a href=#343 id=343 data-nosnippet>343</a>
+<a href=#344 id=344 data-nosnippet>344</a><span class="doccomment">/// Double an array of curve points in-place.
+<a href=#345 id=345 data-nosnippet>345</a></span><span class="kw">fn </span>batch_double_in_place&lt;P: SWCurveConfig&gt;(
+<a href=#346 id=346 data-nosnippet>346</a>    denominators: <span class="kw-2">&amp;mut </span>Vec&lt;P::BaseField&gt;,
+<a href=#347 id=347 data-nosnippet>347</a>    points: <span class="kw-2">&amp;mut </span>[SWJAffine&lt;P&gt;],
+<a href=#348 id=348 data-nosnippet>348</a>) {
+<a href=#349 id=349 data-nosnippet>349</a>    denominators
+<a href=#350 id=350 data-nosnippet>350</a>        .par_iter_mut()
+<a href=#351 id=351 data-nosnippet>351</a>        .zip(points.par_iter())
+<a href=#352 id=352 data-nosnippet>352</a>        .for_each(|(d, p)| {
+<a href=#353 id=353 data-nosnippet>353</a>            <span class="kw-2">*</span>d = p.y.double();
+<a href=#354 id=354 data-nosnippet>354</a>        });
+<a href=#355 id=355 data-nosnippet>355</a>    ark_ff::batch_inversion::&lt;P::BaseField&gt;(denominators);
+<a href=#356 id=356 data-nosnippet>356</a>
+<a href=#357 id=357 data-nosnippet>357</a>    <span class="comment">// TODO: Use less memory
+<a href=#358 id=358 data-nosnippet>358</a>    </span>denominators
+<a href=#359 id=359 data-nosnippet>359</a>        .par_iter()
+<a href=#360 id=360 data-nosnippet>360</a>        .zip(points.par_iter_mut())
+<a href=#361 id=361 data-nosnippet>361</a>        .for_each(|(d, p)| {
+<a href=#362 id=362 data-nosnippet>362</a>            <span class="kw">let </span>sq = p.x.square();
+<a href=#363 id=363 data-nosnippet>363</a>            <span class="kw">let </span>s = (sq.double() + sq + P::COEFF_A) * d;
+<a href=#364 id=364 data-nosnippet>364</a>            <span class="kw">let </span>x = s.square() - p.x.double();
+<a href=#365 id=365 data-nosnippet>365</a>            <span class="kw">let </span>y = -p.y - (s * (x - p.x));
+<a href=#366 id=366 data-nosnippet>366</a>            p.x = x;
+<a href=#367 id=367 data-nosnippet>367</a>            p.y = y;
+<a href=#368 id=368 data-nosnippet>368</a>        });
+<a href=#369 id=369 data-nosnippet>369</a>}
+<a href=#370 id=370 data-nosnippet>370</a>
+<a href=#371 id=371 data-nosnippet>371</a><span class="kw">fn </span>affine_window_combine_one_base&lt;P: SWCurveConfig&gt;(
+<a href=#372 id=372 data-nosnippet>372</a>    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+<a href=#373 id=373 data-nosnippet>373</a>    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+<a href=#374 id=374 data-nosnippet>374</a>    x2: P::ScalarField,
+<a href=#375 id=375 data-nosnippet>375</a>) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
+<a href=#376 id=376 data-nosnippet>376</a>    <span class="kw">let </span>windows2 = BitIteratorBE::new(x2.into_bigint()).tuples();
+<a href=#377 id=377 data-nosnippet>377</a>
+<a href=#378 id=378 data-nosnippet>378</a>    <span class="kw">let </span><span class="kw-2">mut </span>points = <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); g1.len()];
+<a href=#379 id=379 data-nosnippet>379</a>
+<a href=#380 id=380 data-nosnippet>380</a>    <span class="kw">let </span><span class="kw-2">mut </span>denominators = <span class="macro">vec!</span>[P::BaseField::zero(); g1.len()];
+<a href=#381 id=381 data-nosnippet>381</a>
+<a href=#382 id=382 data-nosnippet>382</a>    <span class="kw">let </span>[g01, g10, g11] = affine_shamir_window_table_one(<span class="kw-2">&amp;mut </span>denominators, g2);
+<a href=#383 id=383 data-nosnippet>383</a>
+<a href=#384 id=384 data-nosnippet>384</a>    <span class="kw">for </span>(hi_2, lo_2) <span class="kw">in </span>windows2 {
+<a href=#385 id=385 data-nosnippet>385</a>        <span class="comment">// double in place
+<a href=#386 id=386 data-nosnippet>386</a>        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">2 </span>{
+<a href=#387 id=387 data-nosnippet>387</a>            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..g1.len() {
+<a href=#388 id=388 data-nosnippet>388</a>                denominators[i] = points[i].y.double();
+<a href=#389 id=389 data-nosnippet>389</a>            }
+<a href=#390 id=390 data-nosnippet>390</a>            ark_ff::batch_inversion::&lt;P::BaseField&gt;(<span class="kw-2">&amp;mut </span>denominators);
+<a href=#391 id=391 data-nosnippet>391</a>
+<a href=#392 id=392 data-nosnippet>392</a>            <span class="comment">// TODO: Use less memory
+<a href=#393 id=393 data-nosnippet>393</a>            </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..g1.len() {
+<a href=#394 id=394 data-nosnippet>394</a>                <span class="kw">let </span>d = denominators[i];
+<a href=#395 id=395 data-nosnippet>395</a>                <span class="kw">let </span>sq = points[i].x.square();
+<a href=#396 id=396 data-nosnippet>396</a>                <span class="kw">let </span>s = (sq.double() + sq + P::COEFF_A) * d;
+<a href=#397 id=397 data-nosnippet>397</a>                <span class="kw">let </span>x = s.square() - points[i].x.double();
+<a href=#398 id=398 data-nosnippet>398</a>                <span class="kw">let </span>y = -points[i].y - (s * (x - points[i].x));
+<a href=#399 id=399 data-nosnippet>399</a>                points[i].x = x;
+<a href=#400 id=400 data-nosnippet>400</a>                points[i].y = y;
+<a href=#401 id=401 data-nosnippet>401</a>            }
+<a href=#402 id=402 data-nosnippet>402</a>        }
+<a href=#403 id=403 data-nosnippet>403</a>
+<a href=#404 id=404 data-nosnippet>404</a>        <span class="kw">match </span>(hi_2, lo_2) {
+<a href=#405 id=405 data-nosnippet>405</a>            (<span class="bool-val">false</span>, <span class="bool-val">false</span>) =&gt; (),
+<a href=#406 id=406 data-nosnippet>406</a>            (<span class="bool-val">false</span>, <span class="bool-val">true</span>) =&gt; batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g01),
+<a href=#407 id=407 data-nosnippet>407</a>            (<span class="bool-val">true</span>, <span class="bool-val">false</span>) =&gt; batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g10),
+<a href=#408 id=408 data-nosnippet>408</a>            (<span class="bool-val">true</span>, <span class="bool-val">true</span>) =&gt; batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g11),
+<a href=#409 id=409 data-nosnippet>409</a>        }
+<a href=#410 id=410 data-nosnippet>410</a>    }
+<a href=#411 id=411 data-nosnippet>411</a>
+<a href=#412 id=412 data-nosnippet>412</a>    batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, g1);
+<a href=#413 id=413 data-nosnippet>413</a>
+<a href=#414 id=414 data-nosnippet>414</a>    points
+<a href=#415 id=415 data-nosnippet>415</a>}
+<a href=#416 id=416 data-nosnippet>416</a>
+<a href=#417 id=417 data-nosnippet>417</a><span class="kw">pub fn </span>affine_window_combine&lt;P: SWCurveConfig&gt;(
+<a href=#418 id=418 data-nosnippet>418</a>    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+<a href=#419 id=419 data-nosnippet>419</a>    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+<a href=#420 id=420 data-nosnippet>420</a>    x1: P::ScalarField,
+<a href=#421 id=421 data-nosnippet>421</a>    x2: P::ScalarField,
+<a href=#422 id=422 data-nosnippet>422</a>) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
+<a href=#423 id=423 data-nosnippet>423</a>    <span class="kw">const </span>CHUNK_SIZE: usize = <span class="number">10_000</span>;
+<a href=#424 id=424 data-nosnippet>424</a>    <span class="kw">let </span>b: Vec&lt;<span class="kw">_</span>&gt; = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
+<a href=#425 id=425 data-nosnippet>425</a>    <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = b
+<a href=#426 id=426 data-nosnippet>426</a>        .into_par_iter()
+<a href=#427 id=427 data-nosnippet>427</a>        .map(|(v1, v2)| affine_window_combine_base(v1, v2, x1, x2))
+<a href=#428 id=428 data-nosnippet>428</a>        .collect();
+<a href=#429 id=429 data-nosnippet>429</a>    v.concat()
+<a href=#430 id=430 data-nosnippet>430</a>}
+<a href=#431 id=431 data-nosnippet>431</a>
+<a href=#432 id=432 data-nosnippet>432</a><span class="doccomment">/// Given vectors of curve points `g1` and `g2`, compute a vector whose ith
+<a href=#433 id=433 data-nosnippet>433</a>/// entry is `g1[i] + g2[i].scale(chal.to_field(endo_coeff))`
+<a href=#434 id=434 data-nosnippet>434</a>///
+<a href=#435 id=435 data-nosnippet>435</a>/// Internally, it uses the curve endomorphism to speed up this operation.
+<a href=#436 id=436 data-nosnippet>436</a></span><span class="kw">pub fn </span>affine_window_combine_one_endo&lt;P: SWCurveConfig&gt;(
+<a href=#437 id=437 data-nosnippet>437</a>    endo_coeff: P::BaseField,
+<a href=#438 id=438 data-nosnippet>438</a>    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+<a href=#439 id=439 data-nosnippet>439</a>    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+<a href=#440 id=440 data-nosnippet>440</a>    chal: ScalarChallenge&lt;P::ScalarField&gt;,
+<a href=#441 id=441 data-nosnippet>441</a>) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
+<a href=#442 id=442 data-nosnippet>442</a>    <span class="kw">const </span>CHUNK_SIZE: usize = <span class="number">4096</span>;
+<a href=#443 id=443 data-nosnippet>443</a>    <span class="kw">let </span>b: Vec&lt;<span class="kw">_</span>&gt; = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
+<a href=#444 id=444 data-nosnippet>444</a>    <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = b
+<a href=#445 id=445 data-nosnippet>445</a>        .into_par_iter()
+<a href=#446 id=446 data-nosnippet>446</a>        .map(|(v1, v2)| affine_window_combine_one_endo_base(endo_coeff, v1, v2, chal.clone()))
+<a href=#447 id=447 data-nosnippet>447</a>        .collect();
+<a href=#448 id=448 data-nosnippet>448</a>    v.concat()
+<a href=#449 id=449 data-nosnippet>449</a>}
+<a href=#450 id=450 data-nosnippet>450</a><span class="kw">pub fn </span>affine_window_combine_one&lt;P: SWCurveConfig&gt;(
+<a href=#451 id=451 data-nosnippet>451</a>    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+<a href=#452 id=452 data-nosnippet>452</a>    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+<a href=#453 id=453 data-nosnippet>453</a>    x2: P::ScalarField,
+<a href=#454 id=454 data-nosnippet>454</a>) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
+<a href=#455 id=455 data-nosnippet>455</a>    <span class="kw">const </span>CHUNK_SIZE: usize = <span class="number">10_000</span>;
+<a href=#456 id=456 data-nosnippet>456</a>    <span class="kw">let </span>b: Vec&lt;<span class="kw">_</span>&gt; = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
+<a href=#457 id=457 data-nosnippet>457</a>    <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = b
+<a href=#458 id=458 data-nosnippet>458</a>        .into_par_iter()
+<a href=#459 id=459 data-nosnippet>459</a>        .map(|(v1, v2)| affine_window_combine_one_base(v1, v2, x2))
+<a href=#460 id=460 data-nosnippet>460</a>        .collect();
+<a href=#461 id=461 data-nosnippet>461</a>    v.concat()
+<a href=#462 id=462 data-nosnippet>462</a>}
+<a href=#463 id=463 data-nosnippet>463</a>
+<a href=#464 id=464 data-nosnippet>464</a><span class="kw">pub fn </span>window_combine&lt;G: AffineRepr&gt;(
+<a href=#465 id=465 data-nosnippet>465</a>    g_lo: <span class="kw-2">&amp;</span>[G],
+<a href=#466 id=466 data-nosnippet>466</a>    g_hi: <span class="kw-2">&amp;</span>[G],
+<a href=#467 id=467 data-nosnippet>467</a>    x_lo: G::ScalarField,
+<a href=#468 id=468 data-nosnippet>468</a>    x_hi: G::ScalarField,
+<a href=#469 id=469 data-nosnippet>469</a>) -&gt; Vec&lt;G&gt; {
+<a href=#470 id=470 data-nosnippet>470</a>    <span class="kw">let </span><span class="kw-2">mut </span>g_proj: Vec&lt;G::Group&gt; = {
+<a href=#471 id=471 data-nosnippet>471</a>        <span class="kw">let </span>pairs: Vec&lt;<span class="kw">_</span>&gt; = g_lo.iter().zip(g_hi).collect();
+<a href=#472 id=472 data-nosnippet>472</a>        pairs
+<a href=#473 id=473 data-nosnippet>473</a>            .into_par_iter()
+<a href=#474 id=474 data-nosnippet>474</a>            .map(|(lo, hi)| window_shamir::&lt;G&gt;(x_lo, <span class="kw-2">*</span>lo, x_hi, <span class="kw-2">*</span>hi))
+<a href=#475 id=475 data-nosnippet>475</a>            .collect()
+<a href=#476 id=476 data-nosnippet>476</a>    };
+<a href=#477 id=477 data-nosnippet>477</a>    G::Group::normalize_batch(g_proj.as_mut_slice())
+<a href=#478 id=478 data-nosnippet>478</a>}
+<a href=#479 id=479 data-nosnippet>479</a>
+<a href=#480 id=480 data-nosnippet>480</a><span class="kw">pub fn </span>affine_shamir_window_table&lt;P: SWCurveConfig&gt;(
+<a href=#481 id=481 data-nosnippet>481</a>    denominators: <span class="kw-2">&amp;mut </span>[P::BaseField],
+<a href=#482 id=482 data-nosnippet>482</a>    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+<a href=#483 id=483 data-nosnippet>483</a>    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+<a href=#484 id=484 data-nosnippet>484</a>) -&gt; [Vec&lt;SWJAffine&lt;P&gt;&gt;; <span class="number">15</span>] {
+<a href=#485 id=485 data-nosnippet>485</a>    <span class="kw">fn </span>assign&lt;A: Copy&gt;(dst: <span class="kw-2">&amp;mut </span>[A], src: <span class="kw-2">&amp;</span>[A]) {
+<a href=#486 id=486 data-nosnippet>486</a>        <span class="kw">let </span>n = dst.len();
+<a href=#487 id=487 data-nosnippet>487</a>        dst[..n].clone_from_slice(<span class="kw-2">&amp;</span>src[..n]);
+<a href=#488 id=488 data-nosnippet>488</a>    }
+<a href=#489 id=489 data-nosnippet>489</a>
+<a href=#490 id=490 data-nosnippet>490</a>    <span class="kw">let </span>n = g1.len();
+<a href=#491 id=491 data-nosnippet>491</a>
+<a href=#492 id=492 data-nosnippet>492</a>    <span class="kw">let </span><span class="kw-2">mut </span>res: [Vec&lt;<span class="kw">_</span>&gt;; <span class="number">15</span>] = [
 <a href=#493 id=493 data-nosnippet>493</a>        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
 <a href=#494 id=494 data-nosnippet>494</a>        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
 <a href=#495 id=495 data-nosnippet>495</a>        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
@@ -504,204 +504,205 @@
 <a href=#504 id=504 data-nosnippet>504</a>        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
 <a href=#505 id=505 data-nosnippet>505</a>        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
 <a href=#506 id=506 data-nosnippet>506</a>        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
-<a href=#507 id=507 data-nosnippet>507</a>    ];
-<a href=#508 id=508 data-nosnippet>508</a>
-<a href=#509 id=509 data-nosnippet>509</a>    <span class="kw">let </span>[g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10, g11_10, g00_11, g01_11, g10_11, g11_11] =
-<a href=#510 id=510 data-nosnippet>510</a>        <span class="kw-2">&amp;mut </span>res;
-<a href=#511 id=511 data-nosnippet>511</a>
-<a href=#512 id=512 data-nosnippet>512</a>    assign(g01_00, g1);
-<a href=#513 id=513 data-nosnippet>513</a>
-<a href=#514 id=514 data-nosnippet>514</a>    assign(g10_00, g1);
-<a href=#515 id=515 data-nosnippet>515</a>    batch_add_assign(denominators, g10_00, g1);
-<a href=#516 id=516 data-nosnippet>516</a>
-<a href=#517 id=517 data-nosnippet>517</a>    assign(g11_00, g10_00);
-<a href=#518 id=518 data-nosnippet>518</a>    batch_add_assign(denominators, g11_00, g1);
-<a href=#519 id=519 data-nosnippet>519</a>
-<a href=#520 id=520 data-nosnippet>520</a>    assign(g00_01, g2);
-<a href=#521 id=521 data-nosnippet>521</a>
-<a href=#522 id=522 data-nosnippet>522</a>    assign(g01_01, g00_01);
-<a href=#523 id=523 data-nosnippet>523</a>    batch_add_assign(denominators, g01_01, g1);
-<a href=#524 id=524 data-nosnippet>524</a>
-<a href=#525 id=525 data-nosnippet>525</a>    assign(g10_01, g01_01);
-<a href=#526 id=526 data-nosnippet>526</a>    batch_add_assign(denominators, g10_01, g1);
-<a href=#527 id=527 data-nosnippet>527</a>
-<a href=#528 id=528 data-nosnippet>528</a>    assign(g11_01, g10_01);
-<a href=#529 id=529 data-nosnippet>529</a>    batch_add_assign(denominators, g11_01, g1);
-<a href=#530 id=530 data-nosnippet>530</a>
-<a href=#531 id=531 data-nosnippet>531</a>    assign(g00_10, g00_01);
-<a href=#532 id=532 data-nosnippet>532</a>    batch_add_assign(denominators, g00_10, g2);
-<a href=#533 id=533 data-nosnippet>533</a>
-<a href=#534 id=534 data-nosnippet>534</a>    assign(g01_10, g00_10);
-<a href=#535 id=535 data-nosnippet>535</a>    batch_add_assign(denominators, g01_10, g1);
-<a href=#536 id=536 data-nosnippet>536</a>
-<a href=#537 id=537 data-nosnippet>537</a>    assign(g10_10, g01_10);
-<a href=#538 id=538 data-nosnippet>538</a>    batch_add_assign(denominators, g10_10, g1);
-<a href=#539 id=539 data-nosnippet>539</a>
-<a href=#540 id=540 data-nosnippet>540</a>    assign(g11_10, g10_10);
-<a href=#541 id=541 data-nosnippet>541</a>    batch_add_assign(denominators, g11_10, g1);
-<a href=#542 id=542 data-nosnippet>542</a>
-<a href=#543 id=543 data-nosnippet>543</a>    assign(g00_11, g00_10);
-<a href=#544 id=544 data-nosnippet>544</a>    batch_add_assign(denominators, g00_11, g2);
-<a href=#545 id=545 data-nosnippet>545</a>
-<a href=#546 id=546 data-nosnippet>546</a>    assign(g01_11, g00_11);
-<a href=#547 id=547 data-nosnippet>547</a>    batch_add_assign(denominators, g01_11, g1);
-<a href=#548 id=548 data-nosnippet>548</a>
-<a href=#549 id=549 data-nosnippet>549</a>    assign(g10_11, g01_11);
-<a href=#550 id=550 data-nosnippet>550</a>    batch_add_assign(denominators, g10_11, g1);
-<a href=#551 id=551 data-nosnippet>551</a>
-<a href=#552 id=552 data-nosnippet>552</a>    assign(g11_11, g10_11);
-<a href=#553 id=553 data-nosnippet>553</a>    batch_add_assign(denominators, g11_11, g1);
-<a href=#554 id=554 data-nosnippet>554</a>
-<a href=#555 id=555 data-nosnippet>555</a>    res
-<a href=#556 id=556 data-nosnippet>556</a>}
-<a href=#557 id=557 data-nosnippet>557</a>
-<a href=#558 id=558 data-nosnippet>558</a><span class="kw">pub fn </span>affine_shamir_window_table_one&lt;P: SWCurveConfig&gt;(
-<a href=#559 id=559 data-nosnippet>559</a>    denominators: <span class="kw-2">&amp;mut </span>[P::BaseField],
-<a href=#560 id=560 data-nosnippet>560</a>    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
-<a href=#561 id=561 data-nosnippet>561</a>) -&gt; [Vec&lt;SWJAffine&lt;P&gt;&gt;; <span class="number">3</span>] {
-<a href=#562 id=562 data-nosnippet>562</a>    <span class="kw">fn </span>assign&lt;A: Copy&gt;(dst: <span class="kw-2">&amp;mut </span>[A], src: <span class="kw-2">&amp;</span>[A]) {
-<a href=#563 id=563 data-nosnippet>563</a>        <span class="kw">let </span>n = dst.len();
-<a href=#564 id=564 data-nosnippet>564</a>        dst[..n].clone_from_slice(<span class="kw-2">&amp;</span>src[..n]);
-<a href=#565 id=565 data-nosnippet>565</a>    }
-<a href=#566 id=566 data-nosnippet>566</a>
-<a href=#567 id=567 data-nosnippet>567</a>    <span class="kw">let </span>n = g1.len();
-<a href=#568 id=568 data-nosnippet>568</a>
-<a href=#569 id=569 data-nosnippet>569</a>    <span class="kw">let </span><span class="kw-2">mut </span>res: [Vec&lt;<span class="kw">_</span>&gt;; <span class="number">3</span>] = [
-<a href=#570 id=570 data-nosnippet>570</a>        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+<a href=#507 id=507 data-nosnippet>507</a>        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+<a href=#508 id=508 data-nosnippet>508</a>    ];
+<a href=#509 id=509 data-nosnippet>509</a>
+<a href=#510 id=510 data-nosnippet>510</a>    <span class="kw">let </span>[g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10, g11_10, g00_11, g01_11, g10_11, g11_11] =
+<a href=#511 id=511 data-nosnippet>511</a>        <span class="kw-2">&amp;mut </span>res;
+<a href=#512 id=512 data-nosnippet>512</a>
+<a href=#513 id=513 data-nosnippet>513</a>    assign(g01_00, g1);
+<a href=#514 id=514 data-nosnippet>514</a>
+<a href=#515 id=515 data-nosnippet>515</a>    assign(g10_00, g1);
+<a href=#516 id=516 data-nosnippet>516</a>    batch_add_assign(denominators, g10_00, g1);
+<a href=#517 id=517 data-nosnippet>517</a>
+<a href=#518 id=518 data-nosnippet>518</a>    assign(g11_00, g10_00);
+<a href=#519 id=519 data-nosnippet>519</a>    batch_add_assign(denominators, g11_00, g1);
+<a href=#520 id=520 data-nosnippet>520</a>
+<a href=#521 id=521 data-nosnippet>521</a>    assign(g00_01, g2);
+<a href=#522 id=522 data-nosnippet>522</a>
+<a href=#523 id=523 data-nosnippet>523</a>    assign(g01_01, g00_01);
+<a href=#524 id=524 data-nosnippet>524</a>    batch_add_assign(denominators, g01_01, g1);
+<a href=#525 id=525 data-nosnippet>525</a>
+<a href=#526 id=526 data-nosnippet>526</a>    assign(g10_01, g01_01);
+<a href=#527 id=527 data-nosnippet>527</a>    batch_add_assign(denominators, g10_01, g1);
+<a href=#528 id=528 data-nosnippet>528</a>
+<a href=#529 id=529 data-nosnippet>529</a>    assign(g11_01, g10_01);
+<a href=#530 id=530 data-nosnippet>530</a>    batch_add_assign(denominators, g11_01, g1);
+<a href=#531 id=531 data-nosnippet>531</a>
+<a href=#532 id=532 data-nosnippet>532</a>    assign(g00_10, g00_01);
+<a href=#533 id=533 data-nosnippet>533</a>    batch_add_assign(denominators, g00_10, g2);
+<a href=#534 id=534 data-nosnippet>534</a>
+<a href=#535 id=535 data-nosnippet>535</a>    assign(g01_10, g00_10);
+<a href=#536 id=536 data-nosnippet>536</a>    batch_add_assign(denominators, g01_10, g1);
+<a href=#537 id=537 data-nosnippet>537</a>
+<a href=#538 id=538 data-nosnippet>538</a>    assign(g10_10, g01_10);
+<a href=#539 id=539 data-nosnippet>539</a>    batch_add_assign(denominators, g10_10, g1);
+<a href=#540 id=540 data-nosnippet>540</a>
+<a href=#541 id=541 data-nosnippet>541</a>    assign(g11_10, g10_10);
+<a href=#542 id=542 data-nosnippet>542</a>    batch_add_assign(denominators, g11_10, g1);
+<a href=#543 id=543 data-nosnippet>543</a>
+<a href=#544 id=544 data-nosnippet>544</a>    assign(g00_11, g00_10);
+<a href=#545 id=545 data-nosnippet>545</a>    batch_add_assign(denominators, g00_11, g2);
+<a href=#546 id=546 data-nosnippet>546</a>
+<a href=#547 id=547 data-nosnippet>547</a>    assign(g01_11, g00_11);
+<a href=#548 id=548 data-nosnippet>548</a>    batch_add_assign(denominators, g01_11, g1);
+<a href=#549 id=549 data-nosnippet>549</a>
+<a href=#550 id=550 data-nosnippet>550</a>    assign(g10_11, g01_11);
+<a href=#551 id=551 data-nosnippet>551</a>    batch_add_assign(denominators, g10_11, g1);
+<a href=#552 id=552 data-nosnippet>552</a>
+<a href=#553 id=553 data-nosnippet>553</a>    assign(g11_11, g10_11);
+<a href=#554 id=554 data-nosnippet>554</a>    batch_add_assign(denominators, g11_11, g1);
+<a href=#555 id=555 data-nosnippet>555</a>
+<a href=#556 id=556 data-nosnippet>556</a>    res
+<a href=#557 id=557 data-nosnippet>557</a>}
+<a href=#558 id=558 data-nosnippet>558</a>
+<a href=#559 id=559 data-nosnippet>559</a><span class="kw">pub fn </span>affine_shamir_window_table_one&lt;P: SWCurveConfig&gt;(
+<a href=#560 id=560 data-nosnippet>560</a>    denominators: <span class="kw-2">&amp;mut </span>[P::BaseField],
+<a href=#561 id=561 data-nosnippet>561</a>    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+<a href=#562 id=562 data-nosnippet>562</a>) -&gt; [Vec&lt;SWJAffine&lt;P&gt;&gt;; <span class="number">3</span>] {
+<a href=#563 id=563 data-nosnippet>563</a>    <span class="kw">fn </span>assign&lt;A: Copy&gt;(dst: <span class="kw-2">&amp;mut </span>[A], src: <span class="kw-2">&amp;</span>[A]) {
+<a href=#564 id=564 data-nosnippet>564</a>        <span class="kw">let </span>n = dst.len();
+<a href=#565 id=565 data-nosnippet>565</a>        dst[..n].clone_from_slice(<span class="kw-2">&amp;</span>src[..n]);
+<a href=#566 id=566 data-nosnippet>566</a>    }
+<a href=#567 id=567 data-nosnippet>567</a>
+<a href=#568 id=568 data-nosnippet>568</a>    <span class="kw">let </span>n = g1.len();
+<a href=#569 id=569 data-nosnippet>569</a>
+<a href=#570 id=570 data-nosnippet>570</a>    <span class="kw">let </span><span class="kw-2">mut </span>res: [Vec&lt;<span class="kw">_</span>&gt;; <span class="number">3</span>] = [
 <a href=#571 id=571 data-nosnippet>571</a>        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
 <a href=#572 id=572 data-nosnippet>572</a>        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
-<a href=#573 id=573 data-nosnippet>573</a>    ];
-<a href=#574 id=574 data-nosnippet>574</a>
-<a href=#575 id=575 data-nosnippet>575</a>    <span class="kw">let </span>[g01, g10, g11] = <span class="kw-2">&amp;mut </span>res;
-<a href=#576 id=576 data-nosnippet>576</a>
-<a href=#577 id=577 data-nosnippet>577</a>    assign(g01, g1);
-<a href=#578 id=578 data-nosnippet>578</a>
-<a href=#579 id=579 data-nosnippet>579</a>    assign(g10, g1);
-<a href=#580 id=580 data-nosnippet>580</a>    batch_add_assign(denominators, g10, g1);
-<a href=#581 id=581 data-nosnippet>581</a>
-<a href=#582 id=582 data-nosnippet>582</a>    assign(g11, g10);
-<a href=#583 id=583 data-nosnippet>583</a>    batch_add_assign(denominators, g11, g1);
-<a href=#584 id=584 data-nosnippet>584</a>
-<a href=#585 id=585 data-nosnippet>585</a>    res
-<a href=#586 id=586 data-nosnippet>586</a>}
-<a href=#587 id=587 data-nosnippet>587</a>
-<a href=#588 id=588 data-nosnippet>588</a><span class="kw">fn </span>window_shamir&lt;G: AffineRepr&gt;(x1: G::ScalarField, g1: G, x2: G::ScalarField, g2: G) -&gt; G::Group {
-<a href=#589 id=589 data-nosnippet>589</a>    <span class="kw">let </span>[_g00_00, g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10, g11_10, g00_11, g01_11, g10_11, g11_11] =
-<a href=#590 id=590 data-nosnippet>590</a>        shamir_window_table(g1, g2);
-<a href=#591 id=591 data-nosnippet>591</a>
-<a href=#592 id=592 data-nosnippet>592</a>    <span class="kw">let </span>windows1 = BitIteratorBE::new(x1.into_bigint()).tuples();
-<a href=#593 id=593 data-nosnippet>593</a>    <span class="kw">let </span>windows2 = BitIteratorBE::new(x2.into_bigint()).tuples();
-<a href=#594 id=594 data-nosnippet>594</a>
-<a href=#595 id=595 data-nosnippet>595</a>    <span class="kw">let </span><span class="kw-2">mut </span>res = G::Group::zero();
-<a href=#596 id=596 data-nosnippet>596</a>
-<a href=#597 id=597 data-nosnippet>597</a>    <span class="kw">for </span>((hi_1, lo_1), (hi_2, lo_2)) <span class="kw">in </span>windows1.zip(windows2) {
-<a href=#598 id=598 data-nosnippet>598</a>        res.double_in_place();
+<a href=#573 id=573 data-nosnippet>573</a>        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+<a href=#574 id=574 data-nosnippet>574</a>    ];
+<a href=#575 id=575 data-nosnippet>575</a>
+<a href=#576 id=576 data-nosnippet>576</a>    <span class="kw">let </span>[g01, g10, g11] = <span class="kw-2">&amp;mut </span>res;
+<a href=#577 id=577 data-nosnippet>577</a>
+<a href=#578 id=578 data-nosnippet>578</a>    assign(g01, g1);
+<a href=#579 id=579 data-nosnippet>579</a>
+<a href=#580 id=580 data-nosnippet>580</a>    assign(g10, g1);
+<a href=#581 id=581 data-nosnippet>581</a>    batch_add_assign(denominators, g10, g1);
+<a href=#582 id=582 data-nosnippet>582</a>
+<a href=#583 id=583 data-nosnippet>583</a>    assign(g11, g10);
+<a href=#584 id=584 data-nosnippet>584</a>    batch_add_assign(denominators, g11, g1);
+<a href=#585 id=585 data-nosnippet>585</a>
+<a href=#586 id=586 data-nosnippet>586</a>    res
+<a href=#587 id=587 data-nosnippet>587</a>}
+<a href=#588 id=588 data-nosnippet>588</a>
+<a href=#589 id=589 data-nosnippet>589</a><span class="kw">fn </span>window_shamir&lt;G: AffineRepr&gt;(x1: G::ScalarField, g1: G, x2: G::ScalarField, g2: G) -&gt; G::Group {
+<a href=#590 id=590 data-nosnippet>590</a>    <span class="kw">let </span>[_g00_00, g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10, g11_10, g00_11, g01_11, g10_11, g11_11] =
+<a href=#591 id=591 data-nosnippet>591</a>        shamir_window_table(g1, g2);
+<a href=#592 id=592 data-nosnippet>592</a>
+<a href=#593 id=593 data-nosnippet>593</a>    <span class="kw">let </span>windows1 = BitIteratorBE::new(x1.into_bigint()).tuples();
+<a href=#594 id=594 data-nosnippet>594</a>    <span class="kw">let </span>windows2 = BitIteratorBE::new(x2.into_bigint()).tuples();
+<a href=#595 id=595 data-nosnippet>595</a>
+<a href=#596 id=596 data-nosnippet>596</a>    <span class="kw">let </span><span class="kw-2">mut </span>res = G::Group::zero();
+<a href=#597 id=597 data-nosnippet>597</a>
+<a href=#598 id=598 data-nosnippet>598</a>    <span class="kw">for </span>((hi_1, lo_1), (hi_2, lo_2)) <span class="kw">in </span>windows1.zip(windows2) {
 <a href=#599 id=599 data-nosnippet>599</a>        res.double_in_place();
-<a href=#600 id=600 data-nosnippet>600</a>        <span class="kw">match </span>((hi_1, lo_1), (hi_2, lo_2)) {
-<a href=#601 id=601 data-nosnippet>601</a>            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; (),
-<a href=#602 id=602 data-nosnippet>602</a>            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g01_00),
-<a href=#603 id=603 data-nosnippet>603</a>            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g10_00),
-<a href=#604 id=604 data-nosnippet>604</a>            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g11_00),
-<a href=#605 id=605 data-nosnippet>605</a>
-<a href=#606 id=606 data-nosnippet>606</a>            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g00_01),
-<a href=#607 id=607 data-nosnippet>607</a>            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g01_01),
-<a href=#608 id=608 data-nosnippet>608</a>            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g10_01),
-<a href=#609 id=609 data-nosnippet>609</a>            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g11_01),
-<a href=#610 id=610 data-nosnippet>610</a>
-<a href=#611 id=611 data-nosnippet>611</a>            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g00_10),
-<a href=#612 id=612 data-nosnippet>612</a>            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g01_10),
-<a href=#613 id=613 data-nosnippet>613</a>            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g10_10),
-<a href=#614 id=614 data-nosnippet>614</a>            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g11_10),
-<a href=#615 id=615 data-nosnippet>615</a>
-<a href=#616 id=616 data-nosnippet>616</a>            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g00_11),
-<a href=#617 id=617 data-nosnippet>617</a>            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g01_11),
-<a href=#618 id=618 data-nosnippet>618</a>            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g10_11),
-<a href=#619 id=619 data-nosnippet>619</a>            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g11_11),
-<a href=#620 id=620 data-nosnippet>620</a>        }
-<a href=#621 id=621 data-nosnippet>621</a>    }
-<a href=#622 id=622 data-nosnippet>622</a>
-<a href=#623 id=623 data-nosnippet>623</a>    res
-<a href=#624 id=624 data-nosnippet>624</a>}
-<a href=#625 id=625 data-nosnippet>625</a>
-<a href=#626 id=626 data-nosnippet>626</a><span class="kw">pub fn </span>shamir_window_table&lt;G: AffineRepr&gt;(g1: G, g2: G) -&gt; [G; <span class="number">16</span>] {
-<a href=#627 id=627 data-nosnippet>627</a>    <span class="kw">let </span>g00_00 = G::generator().into_group();
-<a href=#628 id=628 data-nosnippet>628</a>    <span class="kw">let </span>g01_00 = g1.into_group();
-<a href=#629 id=629 data-nosnippet>629</a>    <span class="kw">let </span>g10_00 = {
-<a href=#630 id=630 data-nosnippet>630</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g01_00;
-<a href=#631 id=631 data-nosnippet>631</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
-<a href=#632 id=632 data-nosnippet>632</a>        g
-<a href=#633 id=633 data-nosnippet>633</a>    };
-<a href=#634 id=634 data-nosnippet>634</a>    <span class="kw">let </span>g11_00 = {
-<a href=#635 id=635 data-nosnippet>635</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g10_00;
-<a href=#636 id=636 data-nosnippet>636</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
-<a href=#637 id=637 data-nosnippet>637</a>        g
-<a href=#638 id=638 data-nosnippet>638</a>    };
-<a href=#639 id=639 data-nosnippet>639</a>
-<a href=#640 id=640 data-nosnippet>640</a>    <span class="kw">let </span>g00_01 = g2.into_group();
-<a href=#641 id=641 data-nosnippet>641</a>    <span class="kw">let </span>g01_01 = {
-<a href=#642 id=642 data-nosnippet>642</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g00_01;
-<a href=#643 id=643 data-nosnippet>643</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
-<a href=#644 id=644 data-nosnippet>644</a>        g
-<a href=#645 id=645 data-nosnippet>645</a>    };
-<a href=#646 id=646 data-nosnippet>646</a>    <span class="kw">let </span>g10_01 = {
-<a href=#647 id=647 data-nosnippet>647</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g01_01;
-<a href=#648 id=648 data-nosnippet>648</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
-<a href=#649 id=649 data-nosnippet>649</a>        g
-<a href=#650 id=650 data-nosnippet>650</a>    };
-<a href=#651 id=651 data-nosnippet>651</a>    <span class="kw">let </span>g11_01 = {
-<a href=#652 id=652 data-nosnippet>652</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g10_01;
-<a href=#653 id=653 data-nosnippet>653</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
-<a href=#654 id=654 data-nosnippet>654</a>        g
-<a href=#655 id=655 data-nosnippet>655</a>    };
-<a href=#656 id=656 data-nosnippet>656</a>
-<a href=#657 id=657 data-nosnippet>657</a>    <span class="kw">let </span>g00_10 = {
-<a href=#658 id=658 data-nosnippet>658</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g00_01;
-<a href=#659 id=659 data-nosnippet>659</a>        g.add_assign(<span class="kw-2">&amp;</span>g2);
-<a href=#660 id=660 data-nosnippet>660</a>        g
-<a href=#661 id=661 data-nosnippet>661</a>    };
-<a href=#662 id=662 data-nosnippet>662</a>    <span class="kw">let </span>g01_10 = {
-<a href=#663 id=663 data-nosnippet>663</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g00_10;
-<a href=#664 id=664 data-nosnippet>664</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
-<a href=#665 id=665 data-nosnippet>665</a>        g
-<a href=#666 id=666 data-nosnippet>666</a>    };
-<a href=#667 id=667 data-nosnippet>667</a>    <span class="kw">let </span>g10_10 = {
-<a href=#668 id=668 data-nosnippet>668</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g01_10;
-<a href=#669 id=669 data-nosnippet>669</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
-<a href=#670 id=670 data-nosnippet>670</a>        g
-<a href=#671 id=671 data-nosnippet>671</a>    };
-<a href=#672 id=672 data-nosnippet>672</a>    <span class="kw">let </span>g11_10 = {
-<a href=#673 id=673 data-nosnippet>673</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g10_10;
-<a href=#674 id=674 data-nosnippet>674</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
-<a href=#675 id=675 data-nosnippet>675</a>        g
-<a href=#676 id=676 data-nosnippet>676</a>    };
-<a href=#677 id=677 data-nosnippet>677</a>    <span class="kw">let </span>g00_11 = {
-<a href=#678 id=678 data-nosnippet>678</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g00_10;
-<a href=#679 id=679 data-nosnippet>679</a>        g.add_assign(<span class="kw-2">&amp;</span>g2);
-<a href=#680 id=680 data-nosnippet>680</a>        g
-<a href=#681 id=681 data-nosnippet>681</a>    };
-<a href=#682 id=682 data-nosnippet>682</a>    <span class="kw">let </span>g01_11 = {
-<a href=#683 id=683 data-nosnippet>683</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g00_11;
-<a href=#684 id=684 data-nosnippet>684</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
-<a href=#685 id=685 data-nosnippet>685</a>        g
-<a href=#686 id=686 data-nosnippet>686</a>    };
-<a href=#687 id=687 data-nosnippet>687</a>    <span class="kw">let </span>g10_11 = {
-<a href=#688 id=688 data-nosnippet>688</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g01_11;
-<a href=#689 id=689 data-nosnippet>689</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
-<a href=#690 id=690 data-nosnippet>690</a>        g
-<a href=#691 id=691 data-nosnippet>691</a>    };
-<a href=#692 id=692 data-nosnippet>692</a>    <span class="kw">let </span>g11_11 = {
-<a href=#693 id=693 data-nosnippet>693</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g10_11;
-<a href=#694 id=694 data-nosnippet>694</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
-<a href=#695 id=695 data-nosnippet>695</a>        g
-<a href=#696 id=696 data-nosnippet>696</a>    };
-<a href=#697 id=697 data-nosnippet>697</a>
-<a href=#698 id=698 data-nosnippet>698</a>    <span class="kw">let </span><span class="kw-2">mut </span>v = <span class="macro">vec!</span>[
-<a href=#699 id=699 data-nosnippet>699</a>        g00_00, g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10,
-<a href=#700 id=700 data-nosnippet>700</a>        g11_10, g00_11, g01_11, g10_11, g11_11,
-<a href=#701 id=701 data-nosnippet>701</a>    ];
-<a href=#702 id=702 data-nosnippet>702</a>    <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = G::Group::normalize_batch(v.as_mut_slice());
-<a href=#703 id=703 data-nosnippet>703</a>    [
-<a href=#704 id=704 data-nosnippet>704</a>        v[<span class="number">0</span>], v[<span class="number">1</span>], v[<span class="number">2</span>], v[<span class="number">3</span>], v[<span class="number">4</span>], v[<span class="number">5</span>], v[<span class="number">6</span>], v[<span class="number">7</span>], v[<span class="number">8</span>], v[<span class="number">9</span>], v[<span class="number">10</span>], v[<span class="number">11</span>], v[<span class="number">12</span>], v[<span class="number">13</span>],
-<a href=#705 id=705 data-nosnippet>705</a>        v[<span class="number">14</span>], v[<span class="number">15</span>],
-<a href=#706 id=706 data-nosnippet>706</a>    ]
-<a href=#707 id=707 data-nosnippet>707</a>}</code></pre></div></section></main></body></html>
+<a href=#600 id=600 data-nosnippet>600</a>        res.double_in_place();
+<a href=#601 id=601 data-nosnippet>601</a>        <span class="kw">match </span>((hi_1, lo_1), (hi_2, lo_2)) {
+<a href=#602 id=602 data-nosnippet>602</a>            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; (),
+<a href=#603 id=603 data-nosnippet>603</a>            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g01_00),
+<a href=#604 id=604 data-nosnippet>604</a>            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g10_00),
+<a href=#605 id=605 data-nosnippet>605</a>            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g11_00),
+<a href=#606 id=606 data-nosnippet>606</a>
+<a href=#607 id=607 data-nosnippet>607</a>            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g00_01),
+<a href=#608 id=608 data-nosnippet>608</a>            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g01_01),
+<a href=#609 id=609 data-nosnippet>609</a>            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g10_01),
+<a href=#610 id=610 data-nosnippet>610</a>            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g11_01),
+<a href=#611 id=611 data-nosnippet>611</a>
+<a href=#612 id=612 data-nosnippet>612</a>            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g00_10),
+<a href=#613 id=613 data-nosnippet>613</a>            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g01_10),
+<a href=#614 id=614 data-nosnippet>614</a>            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g10_10),
+<a href=#615 id=615 data-nosnippet>615</a>            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g11_10),
+<a href=#616 id=616 data-nosnippet>616</a>
+<a href=#617 id=617 data-nosnippet>617</a>            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g00_11),
+<a href=#618 id=618 data-nosnippet>618</a>            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g01_11),
+<a href=#619 id=619 data-nosnippet>619</a>            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g10_11),
+<a href=#620 id=620 data-nosnippet>620</a>            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign(<span class="kw-2">&amp;</span>g11_11),
+<a href=#621 id=621 data-nosnippet>621</a>        }
+<a href=#622 id=622 data-nosnippet>622</a>    }
+<a href=#623 id=623 data-nosnippet>623</a>
+<a href=#624 id=624 data-nosnippet>624</a>    res
+<a href=#625 id=625 data-nosnippet>625</a>}
+<a href=#626 id=626 data-nosnippet>626</a>
+<a href=#627 id=627 data-nosnippet>627</a><span class="kw">pub fn </span>shamir_window_table&lt;G: AffineRepr&gt;(g1: G, g2: G) -&gt; [G; <span class="number">16</span>] {
+<a href=#628 id=628 data-nosnippet>628</a>    <span class="kw">let </span>g00_00 = G::generator().into_group();
+<a href=#629 id=629 data-nosnippet>629</a>    <span class="kw">let </span>g01_00 = g1.into_group();
+<a href=#630 id=630 data-nosnippet>630</a>    <span class="kw">let </span>g10_00 = {
+<a href=#631 id=631 data-nosnippet>631</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g01_00;
+<a href=#632 id=632 data-nosnippet>632</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
+<a href=#633 id=633 data-nosnippet>633</a>        g
+<a href=#634 id=634 data-nosnippet>634</a>    };
+<a href=#635 id=635 data-nosnippet>635</a>    <span class="kw">let </span>g11_00 = {
+<a href=#636 id=636 data-nosnippet>636</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g10_00;
+<a href=#637 id=637 data-nosnippet>637</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
+<a href=#638 id=638 data-nosnippet>638</a>        g
+<a href=#639 id=639 data-nosnippet>639</a>    };
+<a href=#640 id=640 data-nosnippet>640</a>
+<a href=#641 id=641 data-nosnippet>641</a>    <span class="kw">let </span>g00_01 = g2.into_group();
+<a href=#642 id=642 data-nosnippet>642</a>    <span class="kw">let </span>g01_01 = {
+<a href=#643 id=643 data-nosnippet>643</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g00_01;
+<a href=#644 id=644 data-nosnippet>644</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
+<a href=#645 id=645 data-nosnippet>645</a>        g
+<a href=#646 id=646 data-nosnippet>646</a>    };
+<a href=#647 id=647 data-nosnippet>647</a>    <span class="kw">let </span>g10_01 = {
+<a href=#648 id=648 data-nosnippet>648</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g01_01;
+<a href=#649 id=649 data-nosnippet>649</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
+<a href=#650 id=650 data-nosnippet>650</a>        g
+<a href=#651 id=651 data-nosnippet>651</a>    };
+<a href=#652 id=652 data-nosnippet>652</a>    <span class="kw">let </span>g11_01 = {
+<a href=#653 id=653 data-nosnippet>653</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g10_01;
+<a href=#654 id=654 data-nosnippet>654</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
+<a href=#655 id=655 data-nosnippet>655</a>        g
+<a href=#656 id=656 data-nosnippet>656</a>    };
+<a href=#657 id=657 data-nosnippet>657</a>
+<a href=#658 id=658 data-nosnippet>658</a>    <span class="kw">let </span>g00_10 = {
+<a href=#659 id=659 data-nosnippet>659</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g00_01;
+<a href=#660 id=660 data-nosnippet>660</a>        g.add_assign(<span class="kw-2">&amp;</span>g2);
+<a href=#661 id=661 data-nosnippet>661</a>        g
+<a href=#662 id=662 data-nosnippet>662</a>    };
+<a href=#663 id=663 data-nosnippet>663</a>    <span class="kw">let </span>g01_10 = {
+<a href=#664 id=664 data-nosnippet>664</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g00_10;
+<a href=#665 id=665 data-nosnippet>665</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
+<a href=#666 id=666 data-nosnippet>666</a>        g
+<a href=#667 id=667 data-nosnippet>667</a>    };
+<a href=#668 id=668 data-nosnippet>668</a>    <span class="kw">let </span>g10_10 = {
+<a href=#669 id=669 data-nosnippet>669</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g01_10;
+<a href=#670 id=670 data-nosnippet>670</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
+<a href=#671 id=671 data-nosnippet>671</a>        g
+<a href=#672 id=672 data-nosnippet>672</a>    };
+<a href=#673 id=673 data-nosnippet>673</a>    <span class="kw">let </span>g11_10 = {
+<a href=#674 id=674 data-nosnippet>674</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g10_10;
+<a href=#675 id=675 data-nosnippet>675</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
+<a href=#676 id=676 data-nosnippet>676</a>        g
+<a href=#677 id=677 data-nosnippet>677</a>    };
+<a href=#678 id=678 data-nosnippet>678</a>    <span class="kw">let </span>g00_11 = {
+<a href=#679 id=679 data-nosnippet>679</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g00_10;
+<a href=#680 id=680 data-nosnippet>680</a>        g.add_assign(<span class="kw-2">&amp;</span>g2);
+<a href=#681 id=681 data-nosnippet>681</a>        g
+<a href=#682 id=682 data-nosnippet>682</a>    };
+<a href=#683 id=683 data-nosnippet>683</a>    <span class="kw">let </span>g01_11 = {
+<a href=#684 id=684 data-nosnippet>684</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g00_11;
+<a href=#685 id=685 data-nosnippet>685</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
+<a href=#686 id=686 data-nosnippet>686</a>        g
+<a href=#687 id=687 data-nosnippet>687</a>    };
+<a href=#688 id=688 data-nosnippet>688</a>    <span class="kw">let </span>g10_11 = {
+<a href=#689 id=689 data-nosnippet>689</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g01_11;
+<a href=#690 id=690 data-nosnippet>690</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
+<a href=#691 id=691 data-nosnippet>691</a>        g
+<a href=#692 id=692 data-nosnippet>692</a>    };
+<a href=#693 id=693 data-nosnippet>693</a>    <span class="kw">let </span>g11_11 = {
+<a href=#694 id=694 data-nosnippet>694</a>        <span class="kw">let </span><span class="kw-2">mut </span>g = g10_11;
+<a href=#695 id=695 data-nosnippet>695</a>        g.add_assign(<span class="kw-2">&amp;</span>g1);
+<a href=#696 id=696 data-nosnippet>696</a>        g
+<a href=#697 id=697 data-nosnippet>697</a>    };
+<a href=#698 id=698 data-nosnippet>698</a>
+<a href=#699 id=699 data-nosnippet>699</a>    <span class="kw">let </span><span class="kw-2">mut </span>v = <span class="macro">vec!</span>[
+<a href=#700 id=700 data-nosnippet>700</a>        g00_00, g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10,
+<a href=#701 id=701 data-nosnippet>701</a>        g11_10, g00_11, g01_11, g10_11, g11_11,
+<a href=#702 id=702 data-nosnippet>702</a>    ];
+<a href=#703 id=703 data-nosnippet>703</a>    <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = G::Group::normalize_batch(v.as_mut_slice());
+<a href=#704 id=704 data-nosnippet>704</a>    [
+<a href=#705 id=705 data-nosnippet>705</a>        v[<span class="number">0</span>], v[<span class="number">1</span>], v[<span class="number">2</span>], v[<span class="number">3</span>], v[<span class="number">4</span>], v[<span class="number">5</span>], v[<span class="number">6</span>], v[<span class="number">7</span>], v[<span class="number">8</span>], v[<span class="number">9</span>], v[<span class="number">10</span>], v[<span class="number">11</span>], v[<span class="number">12</span>], v[<span class="number">13</span>],
+<a href=#706 id=706 data-nosnippet>706</a>        v[<span class="number">14</span>], v[<span class="number">15</span>],
+<a href=#707 id=707 data-nosnippet>707</a>    ]
+<a href=#708 id=708 data-nosnippet>708</a>}</code></pre></div></section></main></body></html>

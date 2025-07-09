@@ -386,8 +386,8 @@
 <a href=#386 id=386 data-nosnippet>386</a>    /// - `srs`: the structured reference string used to commit
 <a href=#387 id=387 data-nosnippet>387</a>    ///   to the polynomials
 <a href=#388 id=388 data-nosnippet>388</a>    /// - `plnms`: the list of polynomials to open.
-<a href=#389 id=389 data-nosnippet>389</a>    ///   The type is simply an alias to handle the polynomials in evaluations or
-<a href=#390 id=390 data-nosnippet>390</a>    ///   coefficients forms.
+<a href=#389 id=389 data-nosnippet>389</a>    ///   The type is simply an alias to handle the polynomials in evaluations
+<a href=#390 id=390 data-nosnippet>390</a>    ///   or coefficients forms.
 <a href=#391 id=391 data-nosnippet>391</a>    /// - `elm`: vector of evaluation points. Note that it only works for two
 <a href=#392 id=392 data-nosnippet>392</a>    ///   elements for now.
 <a href=#393 id=393 data-nosnippet>393</a>    /// - `polyscale`: a challenge to batch the polynomials.
@@ -431,8 +431,8 @@
 <a href=#431 id=431 data-nosnippet>431</a>    /// Also, chunking is not supported.
 <a href=#432 id=432 data-nosnippet>432</a>    </span><span class="kw">pub fn </span>verify(
 <a href=#433 id=433 data-nosnippet>433</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#434 id=434 data-nosnippet>434</a>        srs: <span class="kw-2">&amp;</span>PairingSRS&lt;Pair&gt;,        <span class="comment">// SRS
-<a href=#435 id=435 data-nosnippet>435</a>        </span>evaluations: <span class="kw-2">&amp;</span>[Evaluation&lt;G&gt;], <span class="comment">// commitments to the polynomials
+<a href=#434 id=434 data-nosnippet>434</a>        srs: <span class="kw-2">&amp;</span>PairingSRS&lt;Pair&gt;,
+<a href=#435 id=435 data-nosnippet>435</a>        evaluations: <span class="kw-2">&amp;</span>[Evaluation&lt;G&gt;], <span class="comment">// commitments to the polynomials
 <a href=#436 id=436 data-nosnippet>436</a>        </span>polyscale: F,                  <span class="comment">// scaling factor for polynoms
 <a href=#437 id=437 data-nosnippet>437</a>        </span>elm: <span class="kw-2">&amp;</span>[F],                     <span class="comment">// vector of evaluation points
 <a href=#438 id=438 data-nosnippet>438</a>    </span>) -&gt; bool {
@@ -455,33 +455,38 @@
 <a href=#455 id=455 data-nosnippet>455</a>        // same comment in combine_evaluations
 <a href=#456 id=456 data-nosnippet>456</a>        </span><span class="kw">let </span>evals = combine_evaluations(evaluations, polyscale);
 <a href=#457 id=457 data-nosnippet>457</a>        <span class="kw">let </span>blinding_commitment = srs.full_srs.h.mul(<span class="self">self</span>.blinding);
-<a href=#458 id=458 data-nosnippet>458</a>        <span class="comment">// Taking the first element of the commitment, i.e. no support for chunking.
-<a href=#459 id=459 data-nosnippet>459</a>        </span><span class="kw">let </span>divisor_commitment = srs
-<a href=#460 id=460 data-nosnippet>460</a>            .verifier_srs
-<a href=#461 id=461 data-nosnippet>461</a>            .commit_non_hiding(<span class="kw-2">&amp;</span>divisor_polynomial(elm), <span class="number">1</span>)
-<a href=#462 id=462 data-nosnippet>462</a>            .get_first_chunk();
-<a href=#463 id=463 data-nosnippet>463</a>        <span class="comment">// Taking the first element of the commitment, i.e. no support for chunking.
-<a href=#464 id=464 data-nosnippet>464</a>        </span><span class="kw">let </span>eval_commitment = srs
-<a href=#465 id=465 data-nosnippet>465</a>            .full_srs
-<a href=#466 id=466 data-nosnippet>466</a>            .commit_non_hiding(<span class="kw-2">&amp;</span>eval_polynomial(elm, <span class="kw-2">&amp;</span>evals), <span class="number">1</span>)
-<a href=#467 id=467 data-nosnippet>467</a>            .get_first_chunk()
-<a href=#468 id=468 data-nosnippet>468</a>            .into_group();
-<a href=#469 id=469 data-nosnippet>469</a>        <span class="kw">let </span>numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
-<a href=#470 id=470 data-nosnippet>470</a>        <span class="comment">// We compute the result of the multiplication of two miller loop,
-<a href=#471 id=471 data-nosnippet>471</a>        // to apply only one final exponentation
-<a href=#472 id=472 data-nosnippet>472</a>        </span><span class="kw">let </span>to_loop_left = [
-<a href=#473 id=473 data-nosnippet>473</a>            ark_ec::pairing::prepare_g1::&lt;Pair&gt;(numerator_commitment),
-<a href=#474 id=474 data-nosnippet>474</a>            <span class="comment">// Note that we do a neagtion here, to put everything on the same side
-<a href=#475 id=475 data-nosnippet>475</a>            </span>ark_ec::pairing::prepare_g1::&lt;Pair&gt;(<span class="self">self</span>.quotient.into_group().neg()),
-<a href=#476 id=476 data-nosnippet>476</a>        ];
-<a href=#477 id=477 data-nosnippet>477</a>        <span class="kw">let </span>to_loop_right = [
-<a href=#478 id=478 data-nosnippet>478</a>            ark_ec::pairing::prepare_g2::&lt;Pair&gt;(Pair::G2Affine::generator()),
-<a href=#479 id=479 data-nosnippet>479</a>            ark_ec::pairing::prepare_g2::&lt;Pair&gt;(divisor_commitment),
-<a href=#480 id=480 data-nosnippet>480</a>        ];
-<a href=#481 id=481 data-nosnippet>481</a>        <span class="comment">// the result here is numerator_commitment * 1 - quotient * divisor_commitment
-<a href=#482 id=482 data-nosnippet>482</a>        // Note that the unwrap cannot fail as the output of a miller loop is non zero
-<a href=#483 id=483 data-nosnippet>483</a>        </span><span class="kw">let </span>res = Pair::multi_pairing(to_loop_left, to_loop_right);
-<a href=#484 id=484 data-nosnippet>484</a>
-<a href=#485 id=485 data-nosnippet>485</a>        res.is_zero()
-<a href=#486 id=486 data-nosnippet>486</a>    }
-<a href=#487 id=487 data-nosnippet>487</a>}</code></pre></div></section></main></body></html>
+<a href=#458 id=458 data-nosnippet>458</a>        <span class="comment">// Taking the first element of the commitment, i.e. no support for
+<a href=#459 id=459 data-nosnippet>459</a>        // chunking.
+<a href=#460 id=460 data-nosnippet>460</a>        </span><span class="kw">let </span>divisor_commitment = srs
+<a href=#461 id=461 data-nosnippet>461</a>            .verifier_srs
+<a href=#462 id=462 data-nosnippet>462</a>            .commit_non_hiding(<span class="kw-2">&amp;</span>divisor_polynomial(elm), <span class="number">1</span>)
+<a href=#463 id=463 data-nosnippet>463</a>            .get_first_chunk();
+<a href=#464 id=464 data-nosnippet>464</a>        <span class="comment">// Taking the first element of the commitment, i.e. no support for
+<a href=#465 id=465 data-nosnippet>465</a>        // chunking.
+<a href=#466 id=466 data-nosnippet>466</a>        </span><span class="kw">let </span>eval_commitment = srs
+<a href=#467 id=467 data-nosnippet>467</a>            .full_srs
+<a href=#468 id=468 data-nosnippet>468</a>            .commit_non_hiding(<span class="kw-2">&amp;</span>eval_polynomial(elm, <span class="kw-2">&amp;</span>evals), <span class="number">1</span>)
+<a href=#469 id=469 data-nosnippet>469</a>            .get_first_chunk()
+<a href=#470 id=470 data-nosnippet>470</a>            .into_group();
+<a href=#471 id=471 data-nosnippet>471</a>        <span class="kw">let </span>numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
+<a href=#472 id=472 data-nosnippet>472</a>        <span class="comment">// We compute the result of the multiplication of two miller loop, to
+<a href=#473 id=473 data-nosnippet>473</a>        // apply only one final exponentation
+<a href=#474 id=474 data-nosnippet>474</a>        </span><span class="kw">let </span>to_loop_left = [
+<a href=#475 id=475 data-nosnippet>475</a>            ark_ec::pairing::prepare_g1::&lt;Pair&gt;(numerator_commitment),
+<a href=#476 id=476 data-nosnippet>476</a>            <span class="comment">// Note that we do a neagtion here, to put everything on the same
+<a href=#477 id=477 data-nosnippet>477</a>            // side
+<a href=#478 id=478 data-nosnippet>478</a>            </span>ark_ec::pairing::prepare_g1::&lt;Pair&gt;(<span class="self">self</span>.quotient.into_group().neg()),
+<a href=#479 id=479 data-nosnippet>479</a>        ];
+<a href=#480 id=480 data-nosnippet>480</a>        <span class="kw">let </span>to_loop_right = [
+<a href=#481 id=481 data-nosnippet>481</a>            ark_ec::pairing::prepare_g2::&lt;Pair&gt;(Pair::G2Affine::generator()),
+<a href=#482 id=482 data-nosnippet>482</a>            ark_ec::pairing::prepare_g2::&lt;Pair&gt;(divisor_commitment),
+<a href=#483 id=483 data-nosnippet>483</a>        ];
+<a href=#484 id=484 data-nosnippet>484</a>        <span class="comment">// the result here is
+<a href=#485 id=485 data-nosnippet>485</a>        // `numerator_commitment * 1 - quotient * divisor_commitment`.
+<a href=#486 id=486 data-nosnippet>486</a>        // Note that the unwrap cannot fail as the output of a miller loop is
+<a href=#487 id=487 data-nosnippet>487</a>        // non zero
+<a href=#488 id=488 data-nosnippet>488</a>        </span><span class="kw">let </span>res = Pair::multi_pairing(to_loop_left, to_loop_right);
+<a href=#489 id=489 data-nosnippet>489</a>
+<a href=#490 id=490 data-nosnippet>490</a>        res.is_zero()
+<a href=#491 id=491 data-nosnippet>491</a>    }
+<a href=#492 id=492 data-nosnippet>492</a>}</code></pre></div></section></main></body></html>
