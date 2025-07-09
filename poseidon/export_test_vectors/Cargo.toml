@@ -12,6 +12,7 @@ license = "Apache-2.0"
 [dependencies]
 ark-ff.workspace = true
 ark-serialize.workspace = true
+clap = { workspace = true, features = ["derive"] }
 hex.workspace = true
 mina-curves.workspace = true
 mina-poseidon.workspace = true
