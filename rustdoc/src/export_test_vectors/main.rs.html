@@ -78,27 +78,36 @@
 <a href=#78 id=78 data-nosnippet>78</a>    <span class="doccomment">/// Output file format
 <a href=#79 id=79 data-nosnippet>79</a>    </span><span class="attr">#[arg(value_enum, default_value = <span class="string">"json"</span>, short, long)]
 <a href=#80 id=80 data-nosnippet>80</a>    </span>format: OutputFormat,
-<a href=#81 id=81 data-nosnippet>81</a>}
-<a href=#82 id=82 data-nosnippet>82</a>
-<a href=#83 id=83 data-nosnippet>83</a><span class="kw">pub fn </span>main() {
-<a href=#84 id=84 data-nosnippet>84</a>    <span class="kw">let </span>args = Args::parse();
-<a href=#85 id=85 data-nosnippet>85</a>
-<a href=#86 id=86 data-nosnippet>86</a>    <span class="comment">// generate vectors
-<a href=#87 id=87 data-nosnippet>87</a>    </span><span class="kw">let </span>vectors = vectors::generate(args.mode.clone(), args.param_type.clone());
-<a href=#88 id=88 data-nosnippet>88</a>
-<a href=#89 id=89 data-nosnippet>89</a>    <span class="comment">// save to output file
-<a href=#90 id=90 data-nosnippet>90</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>writer: Box&lt;<span class="kw">dyn </span>Write&gt; = <span class="kw">match </span>args.output_file.as_str() {
-<a href=#91 id=91 data-nosnippet>91</a>        <span class="string">"-" </span>=&gt; Box::new(io::stdout()),
-<a href=#92 id=92 data-nosnippet>92</a>        <span class="kw">_ </span>=&gt; Box::new(File::create(<span class="kw-2">&amp;</span>args.output_file).expect(<span class="string">"could not create file"</span>)),
-<a href=#93 id=93 data-nosnippet>93</a>    };
+<a href=#81 id=81 data-nosnippet>81</a>
+<a href=#82 id=82 data-nosnippet>82</a>    <span class="doccomment">/// Use deterministic output for regression testing (stable version info)
+<a href=#83 id=83 data-nosnippet>83</a>    /// This only affects the version info in ES5 file headers, not the test
+<a href=#84 id=84 data-nosnippet>84</a>    /// vectors themselves. Test vectors always use a fixed seed for
+<a href=#85 id=85 data-nosnippet>85</a>    /// reproducibility.
+<a href=#86 id=86 data-nosnippet>86</a>    /// - deterministic=true: Use crate version (v0.1.0) in ES5 headers
+<a href=#87 id=87 data-nosnippet>87</a>    /// - deterministic=false: Use git commit hash in ES5 headers
+<a href=#88 id=88 data-nosnippet>88</a>    </span><span class="attr">#[arg(long)]
+<a href=#89 id=89 data-nosnippet>89</a>    </span>deterministic: bool,
+<a href=#90 id=90 data-nosnippet>90</a>}
+<a href=#91 id=91 data-nosnippet>91</a>
+<a href=#92 id=92 data-nosnippet>92</a><span class="kw">pub fn </span>main() {
+<a href=#93 id=93 data-nosnippet>93</a>    <span class="kw">let </span>args = Args::parse();
 <a href=#94 id=94 data-nosnippet>94</a>
-<a href=#95 id=95 data-nosnippet>95</a>    <span class="kw">match </span>args.format {
-<a href=#96 id=96 data-nosnippet>96</a>        OutputFormat::Es5 =&gt; {
-<a href=#97 id=97 data-nosnippet>97</a>            vectors::write_es5(<span class="kw-2">&amp;mut </span>writer, <span class="kw-2">&amp;</span>vectors, args.param_type)
-<a href=#98 id=98 data-nosnippet>98</a>                .expect(<span class="string">"could not write to file"</span>);
-<a href=#99 id=99 data-nosnippet>99</a>        }
-<a href=#100 id=100 data-nosnippet>100</a>        OutputFormat::Json =&gt; {
-<a href=#101 id=101 data-nosnippet>101</a>            serde_json::to_writer_pretty(writer, <span class="kw-2">&amp;</span>vectors).expect(<span class="string">"could not write to file"</span>);
-<a href=#102 id=102 data-nosnippet>102</a>        }
-<a href=#103 id=103 data-nosnippet>103</a>    }
-<a href=#104 id=104 data-nosnippet>104</a>}</code></pre></div></section></main></body></html>
+<a href=#95 id=95 data-nosnippet>95</a>    <span class="comment">// generate vectors
+<a href=#96 id=96 data-nosnippet>96</a>    </span><span class="kw">let </span>vectors = vectors::generate(args.mode.clone(), args.param_type.clone());
+<a href=#97 id=97 data-nosnippet>97</a>
+<a href=#98 id=98 data-nosnippet>98</a>    <span class="comment">// save to output file
+<a href=#99 id=99 data-nosnippet>99</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>writer: Box&lt;<span class="kw">dyn </span>Write&gt; = <span class="kw">match </span>args.output_file.as_str() {
+<a href=#100 id=100 data-nosnippet>100</a>        <span class="string">"-" </span>=&gt; Box::new(io::stdout()),
+<a href=#101 id=101 data-nosnippet>101</a>        <span class="kw">_ </span>=&gt; Box::new(File::create(<span class="kw-2">&amp;</span>args.output_file).expect(<span class="string">"could not create file"</span>)),
+<a href=#102 id=102 data-nosnippet>102</a>    };
+<a href=#103 id=103 data-nosnippet>103</a>
+<a href=#104 id=104 data-nosnippet>104</a>    <span class="kw">match </span>args.format {
+<a href=#105 id=105 data-nosnippet>105</a>        OutputFormat::Es5 =&gt; {
+<a href=#106 id=106 data-nosnippet>106</a>            vectors::write_es5(<span class="kw-2">&amp;mut </span>writer, <span class="kw-2">&amp;</span>vectors, args.param_type, args.deterministic)
+<a href=#107 id=107 data-nosnippet>107</a>                .expect(<span class="string">"could not write to file"</span>);
+<a href=#108 id=108 data-nosnippet>108</a>        }
+<a href=#109 id=109 data-nosnippet>109</a>        OutputFormat::Json =&gt; {
+<a href=#110 id=110 data-nosnippet>110</a>            serde_json::to_writer_pretty(writer, <span class="kw-2">&amp;</span>vectors).expect(<span class="string">"could not write to file"</span>);
+<a href=#111 id=111 data-nosnippet>111</a>        }
+<a href=#112 id=112 data-nosnippet>112</a>    }
+<a href=#113 id=113 data-nosnippet>113</a>}</code></pre></div></section></main></body></html>
