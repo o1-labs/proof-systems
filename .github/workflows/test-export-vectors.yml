@@ -46,13 +46,20 @@ jobs:
           # Test all valid command combinations
           FORMATS="b10 hex"
           MODES="legacy kimchi"
+          OUTPUT_FORMATS="json es5"
 
           eval $(opam env)
 
           for format in $FORMATS; do
             for mode in $MODES; do
-              echo "Testing $format $mode mode..."
-              cargo run --bin export_test_vectors --all-features -- $format $mode /tmp/test_${format}_${mode}.json
+              for output_format in $OUTPUT_FORMATS; do
+                echo "Testing $format $mode --format $output_format..."
+                if [ "$output_format" = "json" ]; then
+                  cargo run --bin export_test_vectors --all-features -- $format $mode /tmp/test_${format}_${mode}.json --format $output_format
+                else
+                  cargo run --bin export_test_vectors --all-features -- $format $mode /tmp/test_${format}_${mode}.js --format $output_format
+                fi
+              done
             done
           done
 
@@ -61,29 +68,49 @@ jobs:
 
       - name: Verify output files
         run: |
-          # Check that output files exist and are valid JSON
+          # Check that output files exist and are valid
           echo "Verifying output files..."
 
           FORMATS="b10 hex"
           MODES="legacy kimchi"
+          OUTPUT_FORMATS="json es5"
 
-          # Check all format/mode combinations
+          # Check all format/mode/output combinations
           for format in $FORMATS; do
             for mode in $MODES; do
-              file="/tmp/test_${format}_${mode}.json"
-              if [ -f "$file" ]; then
-                echo "✓ $file exists"
-                # Verify it's valid JSON
-                if jq empty "$file" 2>/dev/null; then
-                  echo "✓ $file is valid JSON"
+              for output_format in $OUTPUT_FORMATS; do
+                if [ "$output_format" = "json" ]; then
+                  file="/tmp/test_${format}_${mode}.json"
+                  if [ -f "$file" ]; then
+                    echo "✓ $file exists"
+                    # Verify it's valid JSON
+                    if jq empty "$file" 2>/dev/null; then
+                      echo "✓ $file is valid JSON"
+                    else
+                      echo "✗ $file is not valid JSON"
+                      exit 1
+                    fi
+                  else
+                    echo "✗ $file does not exist"
+                    exit 1
+                  fi
                 else
-                  echo "✗ $file is not valid JSON"
-                  exit 1
+                  file="/tmp/test_${format}_${mode}.js"
+                  if [ -f "$file" ]; then
+                    echo "✓ $file exists"
+                    # Basic syntax check for JavaScript
+                    if node -c "$file" 2>/dev/null; then
+                      echo "✓ $file is valid JavaScript"
+                    else
+                      echo "✗ $file is not valid JavaScript"
+                      exit 1
+                    fi
+                  else
+                    echo "✗ $file does not exist"
+                    exit 1
+                  fi
                 fi
-              else
-                echo "✗ $file does not exist"
-                exit 1
-              fi
+              done
             done
           done
 
@@ -102,3 +129,9 @@ jobs:
             echo "✗ $file does not exist"
             exit 1
           fi
+
+      - name: Run regression tests
+        run: |
+          eval $(opam env)
+          echo "Running regression tests..."
+          cargo test --bin export_test_vectors test_export_regression_all_formats

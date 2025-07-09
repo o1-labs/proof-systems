@@ -78,6 +78,15 @@ struct Args {
     /// Output file format
     #[arg(value_enum, default_value = "json", short, long)]
     format: OutputFormat,
+
+    /// Use deterministic output for regression testing (stable version info)
+    /// This only affects the version info in ES5 file headers, not the test
+    /// vectors themselves. Test vectors always use a fixed seed for
+    /// reproducibility.
+    /// - deterministic=true: Use crate version (v0.1.0) in ES5 headers
+    /// - deterministic=false: Use git commit hash in ES5 headers
+    #[arg(long)]
+    deterministic: bool,
 }
 
 pub fn main() {
@@ -94,7 +103,7 @@ pub fn main() {
 
     match args.format {
         OutputFormat::Es5 => {
-            vectors::write_es5(&mut writer, &vectors, args.param_type)
+            vectors::write_es5(&mut writer, &vectors, args.param_type, args.deterministic)
                 .expect("could not write to file");
         }
         OutputFormat::Json => {
