@@ -150,11 +150,44 @@ macro_rules! impl_vec_vec_fp {
     };
 }
 
+macro_rules! impl_vec_fp {
+    ( $F:ty, $WasmF:ty ) => {
+        paste! {
+            #[wasm_bindgen]
+            pub struct [<WasmVec $F:camel>](#[wasm_bindgen(skip)] pub Vec<$F>);
+
+            #[wasm_bindgen]
+            impl [<WasmVec $F:camel>] {
+                #[wasm_bindgen(constructor)]
+                pub fn create(n: i32) -> Self {
+                    [<WasmVec $F:camel>](Vec::with_capacity(n as usize))
+                }
+
+                #[wasm_bindgen]
+                pub fn push(&mut self, x: $WasmF) {
+                    self.0.push(Into::into(x))
+                }
+
+                #[wasm_bindgen]
+                pub fn get(&self, i: i32) -> $WasmF {
+                    Into::into(self.0[i as usize].clone())
+                }
+
+                #[wasm_bindgen]
+                pub fn set(&mut self, i: i32, x: $WasmF) {
+                    self.0[i as usize] = Into::into(x)
+                }
+            }
+        }
+    };
+}
+
 pub mod fp {
     use super::*;
     use arkworks::WasmPastaFp;
     use mina_curves::pasta::Fp;
 
+    impl_vec_fp!(Fp, WasmPastaFp);
     impl_vec_vec_fp!(Fp, WasmPastaFp);
 }
 
@@ -163,5 +196,6 @@ pub mod fq {
     use arkworks::WasmPastaFq;
     use mina_curves::pasta::Fq;
 
+    impl_vec_fp!(Fq, WasmPastaFq);
     impl_vec_vec_fp!(Fq, WasmPastaFq);
 }
