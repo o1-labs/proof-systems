@@ -60,7 +60,7 @@ macro_rules! assert_sign_verify_tx {
 }
 
 #[test]
-fn signer_test_raw() {
+fn test_signer_test_raw() {
     let kp = Keypair::from_hex("164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718")
         .expect("failed to create keypair");
     let tx = Transaction::new_payment(
@@ -92,7 +92,7 @@ fn signer_test_raw() {
 }
 
 #[test]
-fn signer_zero_test() {
+fn test_signer_zero_test() {
     let kp = Keypair::from_hex("164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718")
         .expect("failed to create keypair");
     let tx = Transaction::new_payment(
@@ -121,7 +121,7 @@ fn signer_zero_test() {
 }
 
 #[test]
-fn sign_payment_test_1() {
+fn test_sign_payment_test_1() {
     assert_sign_verify_tx!(
         /* Transaction type   */ TransactionType::PaymentTx,
         /* sender secret key  */ "164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718",
@@ -138,7 +138,7 @@ fn sign_payment_test_1() {
 }
 
 #[test]
-fn sign_payment_test_2() {
+fn test_sign_payment_test_2() {
     assert_sign_verify_tx!(
         /* Transaction type  */ TransactionType::PaymentTx,
         /* sender secret key */ "3414fc16e86e6ac272fda03cf8dcb4d7d47af91b4b726494dab43bf773ce1779",
@@ -155,7 +155,7 @@ fn sign_payment_test_2() {
 }
 
 #[test]
-fn sign_payment_test_3() {
+fn test_sign_payment_test_3() {
     assert_sign_verify_tx!(
         /* Transaction type  */ TransactionType::PaymentTx,
         /* sender secret key */ "3414fc16e86e6ac272fda03cf8dcb4d7d47af91b4b726494dab43bf773ce1779",
@@ -172,7 +172,7 @@ fn sign_payment_test_3() {
 }
 
 #[test]
-fn sign_payment_test_4() {
+fn test_sign_payment_test_4() {
     assert_sign_verify_tx!(
         /* Transaction type  */ TransactionType::PaymentTx,
         /* sender secret key */ "1dee867358d4000f1dafa5978341fb515f89eeddbe450bd57df091f1e63d4444",
@@ -189,7 +189,7 @@ fn sign_payment_test_4() {
 }
 
 #[test]
-fn sign_delegation_test_1() {
+fn test_sign_delegation_test_1() {
     assert_sign_verify_tx!(
         /* Transaction type  */ TransactionType::DelegationTx,
         /* sender secret key */ "164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718",
@@ -206,7 +206,7 @@ fn sign_delegation_test_1() {
 }
 
 #[test]
-fn sign_delegation_test_2() {
+fn test_sign_delegation_test_2() {
     assert_sign_verify_tx!(
         /* Transaction type  */ TransactionType::DelegationTx,
         /* sender secret key */ "20f84123a26e58dd32b0ea3c80381f35cd01bc22a20346cc65b0a67ae48532ba",
@@ -223,7 +223,7 @@ fn sign_delegation_test_2() {
 }
 
 #[test]
-fn sign_delegation_test_3() {
+fn test_sign_delegation_test_3() {
     assert_sign_verify_tx!(
         /* Transaction type  */ TransactionType::DelegationTx,
         /* sender secret key */ "3414fc16e86e6ac272fda03cf8dcb4d7d47af91b4b726494dab43bf773ce1779",
@@ -240,7 +240,7 @@ fn sign_delegation_test_3() {
 }
 
 #[test]
-fn sign_delegation_test_4() {
+fn test_sign_delegation_test_4() {
     assert_sign_verify_tx!(
         /* Transaction type  */ TransactionType::DelegationTx,
         /* sender secret key */ "336eb4a19b3d8905824b0f2254fb495573be302c17582748bf7e101965aa4774",
