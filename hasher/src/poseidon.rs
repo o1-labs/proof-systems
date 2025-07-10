@@ -73,8 +73,10 @@ where
     }
 
     fn init(&mut self, domain_param: H::D) -> &mut dyn Hasher<H> {
-        // Set sponge initial state and save it so the hasher context can be reused efficiently
-        // N.B. Mina sets the sponge's initial state by hashing the input type's domain bytes
+        // Set sponge initial state and save it so the hasher context can be
+        // reused efficiently
+        // N.B. Mina sets the sponge's initial state by hashing the input type's
+        // domain bytes
         self.sponge.reset();
 
         if let Some(domain_string) = H::domain_string(domain_param) {

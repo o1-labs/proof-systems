@@ -15,7 +15,8 @@ use ark_ff::PrimeField;
 use o1_utils::FieldHelpers;
 
 /// The domain parameter trait is used during hashing to convey extra
-/// arguments to domain string generation.  It is also used by generic signing code.
+/// arguments to domain string generation. It is also used by generic signing
+/// code.
 pub trait DomainParameter: Clone {
     /// Conversion into vector of bytes
     fn into_bytes(self) -> Vec<u8>;
@@ -41,13 +42,16 @@ impl DomainParameter for u64 {
 
 /// Interface for hashable objects
 ///
-/// Mina uses fixed-length hashing with domain separation for each type of object hashed.
-/// The prior means that `Hashable` only supports types whose size is not variable.
+/// Mina uses fixed-length hashing with domain separation for each type of
+/// object hashed. The prior means that `Hashable` only supports types whose
+/// size is not variable.
 ///
-/// **Important:** The developer MUST assure that all domain strings used throughout the
-/// system are unique and that all structures hashed are of fixed size.
+/// **Important:** The developer MUST assure that all domain strings used
+/// throughout the system are unique and that all structures hashed are of fixed
+/// size.
 ///
-/// Here is an example of how to implement the `Hashable` trait for am `Example` type.
+/// Here is an example of how to implement the `Hashable` trait for am `Example`
+/// type.
 ///
 /// ```rust
 /// use mina_hasher::{Hashable, ROInput};
@@ -81,8 +85,8 @@ pub trait Hashable: Clone {
 
     /// Generate unique domain string of length `<= 20`.
     ///
-    /// The length bound is guarded by an assertion, but uniqueness must
-    /// be enforced by the developer implementing the traits (see [`Hashable`] for
+    /// The length bound is guarded by an assertion, but uniqueness must be
+    /// enforced by the developer implementing the traits (see [`Hashable`] for
     /// more details). The domain string may be parameterized by the contents of
     /// the generic `domain_param` argument.
     ///
@@ -93,9 +97,11 @@ pub trait Hashable: Clone {
 
 /// Interface for hashing [`Hashable`] inputs
 ///
-/// Mina uses a unique hasher configured with domain separation for each type of object hashed.
-/// The underlying hash parameters are large and costly to initialize, so the [`Hasher`] interface
-/// provides a reusable context for efficient hashing with domain separation.
+/// Mina uses a unique hasher configured with domain separation for each type of
+/// object hashed.
+/// The underlying hash parameters are large and costly to initialize, so the
+/// [`Hasher`] interface provides a reusable context for efficient hashing with
+/// domain separation.
 ///
 /// Example usage
 ///
@@ -124,8 +130,8 @@ pub trait Hashable: Clone {
 /// ```
 ///
 pub trait Hasher<H: Hashable> {
-    /// Set the initial state based on domain separation string
-    /// generated from `H::domain_string(domain_param)`
+    /// Set the initial state based on domain separation string generated from
+    /// `H::domain_string(domain_param)`
     fn init(&mut self, domain_param: H::D) -> &mut dyn Hasher<H>;
 
     /// Restore the initial state that was set most recently
