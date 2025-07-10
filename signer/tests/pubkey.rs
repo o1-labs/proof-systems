@@ -1,7 +1,7 @@
 use mina_signer::{pubkey::PubKeyError, CompressedPubKey, PubKey, SecKey};
 
 #[test]
-fn from_hex() {
+fn test_from_hex() {
     assert_eq!(
             PubKey::to_hex(
                 &PubKey::from_hex(
@@ -44,7 +44,7 @@ fn from_hex() {
 }
 
 #[test]
-fn from_secret_key() {
+fn test_from_secret_key() {
     assert_eq!(PubKey::from_secret_key(
                 SecKey::from_hex("090dd91a2505081a158782c5a24fef63f326749b383423c29827e465f7ca262b").expect("failed to decode sec key")
             ).expect("failed to decode pub key").to_hex(),
@@ -65,7 +65,7 @@ fn from_secret_key() {
 }
 
 #[test]
-fn from_address() {
+fn test_from_address() {
     macro_rules! assert_from_address_check {
         ($address:expr) => {
             let pk = PubKey::from_address($address).expect("failed to create pubkey");
@@ -82,7 +82,7 @@ fn from_address() {
 }
 
 #[test]
-fn to_bytes() {
+fn test_to_bytes() {
     let mut bytes = vec![
         68, 16, 4, 133, 212, 102, 164, 201, 244, 129, 212, 59, 233, 166, 212, 169, 165, 233, 122,
         218, 193, 151, 119, 177, 75, 107, 122, 129, 237, 238, 57, 9, 49, 121, 244, 241, 40, 151,
@@ -115,7 +115,7 @@ fn to_bytes() {
 }
 
 #[test]
-fn compressed_from_hex() {
+fn test_compressed_from_hex() {
     assert_eq!(PubKey::from_hex(
                 "44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168735883c"
             ).expect("failed to decode pub key").into_address(),
@@ -194,7 +194,7 @@ fn compressed_from_hex() {
 }
 
 #[test]
-fn compressed_to_bytes() {
+fn test_compressed_to_bytes() {
     let mut bytes = vec![
         68, 16, 4, 133, 212, 102, 164, 201, 244, 129, 212, 59, 233, 166, 212, 169, 165, 233, 122,
         218, 193, 151, 119, 177, 75, 107, 122, 129, 237, 238, 57, 9, 1,
