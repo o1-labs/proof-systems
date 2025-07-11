@@ -12,8 +12,8 @@ use bitvec::{prelude::*, view::AsBits};
 use mina_curves::pasta::{Fp, Fq};
 use o1_utils::FieldHelpers;
 
-const SER_HEADER_SIZE: usize = 16;
-const BYTE_SIZE: usize = 8;
+const SER_HEADER_SIZE: usize = 8;
+const SINGLE_HEADER_SIZE: usize = 4;
 
 /// Random oracle input structure
 ///
@@ -180,9 +180,9 @@ impl ROInput {
 
     /// Serialize the ROInput into bytes
     pub fn serialize(&self) -> Vec<u8> {
-        // 8-byte LE field count, 8-byte LE bit count, then payload
-        let fields_len = self.fields.len() as u64;
-        let bits_len = self.bits.len() as u64;
+        // 4-byte LE field count, 4-byte LE bit count, then payload
+        let fields_len = self.fields.len() as u32;
+        let bits_len = self.bits.len() as u32;
 
         let mut bytes = Vec::with_capacity(SER_HEADER_SIZE + self.to_bytes().len());
         bytes.extend_from_slice(&fields_len.to_le_bytes());
@@ -198,12 +198,24 @@ impl ROInput {
         }
 
         // read back our two u64 little-endian lengths
-        let fields_len = u64::from_le_bytes(input[0..BYTE_SIZE].try_into().unwrap()) as usize;
-        let bits_len =
-            u64::from_le_bytes(input[BYTE_SIZE..SER_HEADER_SIZE].try_into().unwrap()) as usize;
+        let fields_len =
+            u32::from_le_bytes(input[0..SINGLE_HEADER_SIZE].try_into().unwrap()) as usize;
+        let bits_len = u32::from_le_bytes(
+            input[SINGLE_HEADER_SIZE..SER_HEADER_SIZE]
+                .try_into()
+                .unwrap(),
+        ) as usize;
 
         // the rest is payload
         let bits = input[SER_HEADER_SIZE..].view_bits::<Lsb0>();
+
+        // Check that the number of bytes is consistent with the expected lengths
+        let expected_len_bits = fields_len * Fp::MODULUS_BIT_SIZE as usize + bits_len;
+        // Round up to nearest multiple of 8
+        let expected_len = (expected_len_bits + 7) / 8 + SER_HEADER_SIZE;
+        if input.len() != expected_len {
+            return Err(Error);
+        }
 
         // allocate space for exactly `fields_ctr` elements
         let mut fields = Vec::with_capacity(fields_len);
@@ -1000,8 +1012,8 @@ mod tests {
         assert_eq!(
             serialized,
             [
-                0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Field count
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Bit count
+                0x01, 0x00, 0x00, 0x00, // Field count
+                0x00, 0x00, 0x00, 0x00, // Bit count
                 0x41, 0x20, 0x3c, 0x6b, 0xba, 0xc1, 0x4b, 0x35, 0x73, 0x01, 0xe1, 0xf3, 0x86, 0xd8,
                 0x0f, 0x52, 0x12, 0x3f, 0xd0, 0x0f, 0x02, 0x19, 0x74, 0x91, 0xb6, 0x90, 0xbd, 0xdf,
                 0xa7, 0x42, 0xca, 0x22
@@ -1031,8 +1043,8 @@ mod tests {
         assert_eq!(
             serialized,
             [
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, // Bit count
+                0x00, 0x00, 0x00, 0x00,
+                0x01, 0x00, 0x00, 0x00,
                 0x01  // Boolean value
             ]
             .to_vec(),
@@ -1044,6 +1056,23 @@ mod tests {
             ROInput::deserialize(&serialized).expect("Failed to deserialize ROInput"),
             "Serialized and deserialized ROInput do not match"
         );
+    }
+
+    #[test]
+    fn serialize_multiple_bools_length() {
+        for i in 0..1024 {
+            let roi = ROInput::new().append_bool(i % 2 == 0);
+            let serialized = roi.serialize();
+
+            // Deserualize and check if it matches
+            let deserialized_roi =
+                ROInput::deserialize(&serialized).expect("Failed to deserialize ROInput");
+            assert_eq!(
+                roi, deserialized_roi,
+                "Serialized and deserialized ROInput do not match for i={}",
+                i
+            );
+        }
     }
 
     #[test]
@@ -1060,7 +1089,7 @@ mod tests {
     #[test]
     fn deserialize_invalid_inconsistent_bitlen() {
         let invalid_data = vec![
-            0x01, 0x00, 0x00, 0x00, // Field count
+            0x01, 0x00, 0x00, // Field count
             0x01, 0x00, 0x00, 0x00, // Bit count
             0x01, // Boolean value
                   // Missing bits for the boolean
@@ -1070,6 +1099,16 @@ mod tests {
         assert!(
             result.is_err(),
             "Deserialization should fail for inconsistent bit length"
+        );
+    }
+
+    #[test]
+    fn deserialize_invalid_message() {
+        let msg = b"Test message for Mina compatibility".to_vec();
+        let result = ROInput::deserialize(&msg);
+        assert!(
+            result.is_err(),
+            "Deserialization should fail for invalid message format"
         );
     }
 
