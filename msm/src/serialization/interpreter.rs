@@ -218,7 +218,7 @@ pub fn deserialize_field_element<
                 + shl_88_var.clone() * shl_88_var.clone() * limb2_vars[0].clone()
         };
 
-        // Substracting 15 bits values
+        // Subtracting 15 bits values
         let (constraint, _) = (0..=11).fold(
             (constraint, Env::constant(F::one())),
             |(acc, shl_var), i| {

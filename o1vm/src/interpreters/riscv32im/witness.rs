@@ -1,5 +1,5 @@
 // TODO: do we want to be more restrictive and refer to the number of accesses
-//       to the SAME register/memory addrss?
+//       to the SAME register/memory address?
 use super::{
     column::Column,
     interpreter::{
