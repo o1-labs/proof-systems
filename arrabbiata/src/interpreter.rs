@@ -906,7 +906,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
             } else {
                 env.read_position(scalar_col)
             };
-            // FIXME: we do add the blinder. We must substract it at the end.
+            // FIXME: we do add the blinder. We must subtract it at the end.
             // Perform the following algorithm (double-and-add):
             // res = O <-- blinder
             // tmp = P
@@ -1206,7 +1206,7 @@ pub fn fetch_next_instruction(current_instruction: Instruction) -> Instruction {
             Instruction::PoseidonFullRound(0)
         }
         Instruction::EllipticCurveScaling(i_comm, bit) => {
-            // TODO: we still need to substract (or not?) the blinder.
+            // TODO: we still need to subtract (or not?) the blinder.
             // Maybe we can avoid this by aggregating them.
             // TODO: we also need to aggregate the cross-terms.
             // Therefore i_comm must also take into the account the number

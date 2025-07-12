@@ -698,7 +698,7 @@ where
                             }
                             // As it is the first iteration, we must use the point at infinity.
                             // However, to avoid handling the case equal to zero, we will
-                            // use a blinder, that we will substract at the end.
+                            // use a blinder, that we will subtract at the end.
                             // As we suppose the probability to get a folding combiner
                             // equals to zero is negligible, we know we have a negligible
                             // probability to request to compute `0 * P`.
@@ -724,7 +724,7 @@ where
                             }
                             // As it is the first iteration, we must use the point at infinity.
                             // However, to avoid handling the case equal to zero, we will
-                            // use a blinder, that we will substract at the end.
+                            // use a blinder, that we will subtract at the end.
                             // As we suppose the probability to get a folding combiner
                             // equals to zero is negligible, we know we have a negligible
                             // probability to request to compute `0 * P`.
