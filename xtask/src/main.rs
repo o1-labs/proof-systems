@@ -30,6 +30,10 @@ enum Commands {
         /// Version of `rustc`
         #[arg(long)]
         rust_version: Option<String>,
+
+        /// Enable silent build mode
+        #[arg(long)]
+        silent: bool,
     },
 }
 
@@ -58,13 +62,14 @@ fn main() -> Result<()> {
             out_dir,
             target,
             rust_version,
-        } => build_wasm(out_dir, *target, rust_version.as_deref()),
+            silent,
+        } => build_wasm(out_dir, *target, rust_version.as_deref(), *silent),
     }
 }
 
 type RustVersion<'a> = Option<&'a str>;
 
-fn build_wasm(out_dir: &str, target: Target, rust_version: RustVersion) -> Result<()> {
+fn build_wasm(out_dir: &str, target: Target, rust_version: RustVersion, silent: bool) -> Result<()> {
     const RUSTFLAGS: &str = "-C target-feature=+atomics,+bulk-memory,+mutable-globals -C link-arg=--max-memory=4294967296";
 
     let cargo_target_dir = env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_string());
@@ -72,7 +77,7 @@ fn build_wasm(out_dir: &str, target: Target, rust_version: RustVersion) -> Resul
 
     let mut cmd = RustVersionCommand::for_cargo(rust_version);
 
-    let args = [
+    let mut args = vec![
         "build",
         "--release",
         "--package=wasm-pack",
@@ -81,6 +86,10 @@ fn build_wasm(out_dir: &str, target: Target, rust_version: RustVersion) -> Resul
         artifact_dir.to_str().unwrap(),
         "-Z=unstable-options",
     ];
+    
+    if silent {
+        args.push("--quiet");
+    }
 
     let status = cmd
         .args(args)
@@ -96,17 +105,24 @@ fn build_wasm(out_dir: &str, target: Target, rust_version: RustVersion) -> Resul
     let mut cmd = RustVersionCommand::for_wasm_pack(wasm_pack_path, rust_version);
 
     // Prepare the command arguments
-    let args = [
+    let mut args = vec![
         "build",
         "--target",
         target.into(),
         "--out-dir",
         out_dir,
         "plonk-wasm",
+    ];
+    
+    if silent {
+        args.push("--quiet");
+    }
+    
+    args.extend_from_slice(&[
         "--",
         "-Z",
         "build-std=panic_abort,std",
-    ];
+    ]);
 
     let target_args: &[_] = if target == Target::Nodejs {
         &["--features", "nodejs"]
