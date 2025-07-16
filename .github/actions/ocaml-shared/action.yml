@@ -8,6 +8,6 @@ runs:
   using: "composite"
   steps:
     - name: Setup OCaml ${{ inputs.ocaml_version }}
-      uses: ocaml/setup-ocaml@v3.2.17
+      uses: ocaml/setup-ocaml@v3
       with:
         ocaml-compiler: ${{ inputs.ocaml_version }}

@@ -43,7 +43,7 @@ jobs:
       # It might be related to boxroot dependency, and we would need to bump
       # up the ocaml-rs dependency
       - id: ocaml
-        run: echo 'version=["4.14"]' >> "$GITHUB_OUTPUT"
+        run: echo 'version=["4.14.2"]' >> "$GITHUB_OUTPUT"
       - id: node
         run: echo 'version=["20"]' >> "$GITHUB_OUTPUT"
       - id: os
@@ -132,7 +132,7 @@ jobs:
 
       - name: Check that up-to-date specification is checked in
         run: |
-          git diff --exit-code ":(exclude)rust-toolchain"
+          git diff --exit-code ":(exclude)rust-toolchain.toml"
 
       - name: Doc tests
         run: |

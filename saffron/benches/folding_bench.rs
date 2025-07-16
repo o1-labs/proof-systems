@@ -3,7 +3,6 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion, SamplingMode};
 use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
-use mina_curves::pasta::Vesta;
 use poly_commitment::{commitment::CommitmentCurve, SRS as _};
 
 use saffron::{
@@ -12,7 +11,7 @@ use saffron::{
         testing::{generate_random_inst_wit_core, generate_random_inst_wit_relaxed},
         verify_relaxed,
     },
-    ScalarField,
+    Curve, ScalarField,
 };
 
 fn bench_folding(c: &mut Criterion) {
@@ -23,7 +22,7 @@ fn bench_folding(c: &mut Criterion) {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
     let srs = poly_commitment::precomputed_srs::get_srs_test();
-    let group_map = <Vesta as CommitmentCurve>::Map::setup();
+    let group_map = <Curve as CommitmentCurve>::Map::setup();
 
     let domain: EvaluationDomains<ScalarField> =
         EvaluationDomains::<ScalarField>::create(srs.size()).unwrap();

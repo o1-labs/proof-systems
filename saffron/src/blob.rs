@@ -45,7 +45,7 @@ impl FieldBlob {
         domain: &Radix2EvaluationDomain<ScalarField>,
         diff: &Diff<ScalarField>,
     ) {
-        assert!(diff.addresses.len() == diff.new_values.len());
+        assert_eq!(diff.addresses.len(), diff.diff_values.len());
 
         let lagrange_basis = srs
             .get_lagrange_basis(*domain)
@@ -60,28 +60,13 @@ impl FieldBlob {
             .map(|idx| basis[*idx as usize])
             .collect();
 
-        // Old values at `addresses`
-        let old_values_at_addr: Vec<_> = diff
-            .addresses
-            .iter()
-            .map(|idx| self.data[diff.region as usize * SRS_SIZE + *idx as usize])
-            .collect();
-
-        for (idx, value) in diff.addresses.iter().zip(diff.new_values.iter()) {
-            self.data[SRS_SIZE * diff.region as usize + *idx as usize] = *value;
+        for (idx, value) in diff.addresses.iter().zip(diff.diff_values.iter()) {
+            self.data[SRS_SIZE * diff.region as usize + *idx as usize] += *value;
         }
 
         // Lagrange commitment to the (new values-old values) at `addresses`
-        let delta_data_commitment_at_addr = ProjectiveCurve::msm(
-            address_basis.as_slice(),
-            old_values_at_addr
-                .iter()
-                .zip(diff.new_values.iter())
-                .map(|(old, new)| new - old)
-                .collect::<Vec<_>>()
-                .as_slice(),
-        )
-        .unwrap();
+        let delta_data_commitment_at_addr =
+            ProjectiveCurve::msm(address_basis.as_slice(), diff.diff_values.as_slice()).unwrap();
 
         let new_commitment =
             (self.commitments[diff.region as usize] + delta_data_commitment_at_addr).into();

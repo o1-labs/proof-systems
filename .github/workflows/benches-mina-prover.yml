@@ -4,7 +4,7 @@ on:
   pull_request:
 
 env:
-  OCAML_VERSION: "4.14"
+  OCAML_VERSION: "4.14.2"
   RUST_TOOLCHAIN_VERSION: "1.81"
 
 jobs:
