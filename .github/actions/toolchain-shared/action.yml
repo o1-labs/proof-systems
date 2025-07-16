@@ -21,7 +21,10 @@ runs:
     - shell: bash
       run: |
         # overwriting default rust-toolchain
-        echo ${{ inputs.rust_toolchain_version }} > rust-toolchain
+        cat > rust-toolchain.toml << EOF
+        [toolchain]
+        channel = "${{ inputs.rust_toolchain_version }}"
+        EOF
     - uses: dtolnay/rust-toolchain@master
       id: toolchain
       with:
