@@ -52,7 +52,7 @@ pub(crate) fn decode_into<F: PrimeField>(buffer: &mut [u8], x: F) {
 }
 
 /// Creates a bytes vector that represents each element of `xs` over 31 bytes
-pub(crate) fn decode_from_field_elements<F: PrimeField>(xs: Vec<F>) -> Vec<u8> {
+pub fn decode_from_field_elements<F: PrimeField>(xs: Vec<F>) -> Vec<u8> {
     xs.into_iter().flat_map(decode).collect()
 }
 
