@@ -652,7 +652,7 @@ pub mod prover {
             // @volhovm TODO make sure this is h_i. It looks like f_i for fixed tables.
             // It is an actual fixed column containing "fixed lookup data".
             //
-            // Contain the evalations of the h_i. We divide the looked-up values
+            // Contain the evaluations of the h_i. We divide the looked-up values
             // in chunks of (MAX_SUPPORTED_DEGREE - 2)
             let mut fixed_lookup_tables: BTreeMap<ID, Vec<G::ScalarField>> = BTreeMap::new();
 
