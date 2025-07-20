@@ -93,7 +93,7 @@
 //! and the computation of the partial sums will be translated into a constraint
 //! in a new power of alpha.
 //!
-//! Note that the inner sum h(X) can be constrainted as followed:
+//! Note that the inner sum h(X) can be constrained as followed:
 //! ```text
 //!         k                   k  /             k                \
 //! h(X) *  ᴨ  (β + f_{i}(X)) = ∑  | m_{i}(X) *  ᴨ  (β + f_{j}(X)) |     (5)
