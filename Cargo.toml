@@ -51,12 +51,12 @@ criterion = { version = "0.5", features = [
 ] }
 elf = "0.7.2"
 env_logger = "0.11.1"
-getrandom = { version = "0.2", features = ["js"] }
+getrandom = { version = "=0.2.15", features = ["js"] }
 hex = { version = "0.4", features = ["serde"] }
 iai = "0.1"
 itertools = "0.12.1"
 js-sys = "0.3"
-libc = "0.2.62"
+libc = "=0.2.169"
 libflate = "2"
 log = "0.4.20"
 num-bigint = { version = "0.4.4", features = ["rand", "serde"] }
