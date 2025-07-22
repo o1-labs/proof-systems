@@ -27,7 +27,8 @@ use mina_hasher::{self, DomainParameter, Hasher, ROInput};
 
 /// Schnorr signer context for the Mina signature algorithm
 ///
-/// For details about the signature algorithm please see the [`schnorr`](crate::schnorr) documentation
+/// For details about the signature algorithm please see the
+/// [`schnorr`](crate::schnorr) documentation
 pub struct Schnorr<H: Hashable> {
     hasher: Box<dyn Hasher<Message<H>>>,
     domain_param: H::D,
@@ -77,7 +78,8 @@ impl<H: 'static + Hashable> Signer<H> for Schnorr<H> {
         let sv = CurvePoint::generator()
             .mul_bigint(sig.s.into_bigint())
             .into_affine();
-        // Perform addition and infinity check in projective coordinates for performance
+        // Perform addition and infinity check in projective coordinates for
+        // performance
         let rv = public.point().mul_bigint(ev.into_bigint()).neg().add(sv);
 
         if rv.is_zero() {
@@ -109,9 +111,9 @@ pub(crate) fn create_kimchi<H: 'static + Hashable>(domain_param: H::D) -> impl S
 }
 
 impl<H: 'static + Hashable> Schnorr<H> {
-    /// This function uses a cryptographic hash function to create a uniformly and
-    /// randomly distributed nonce.  It is crucial for security that no two different
-    /// messages share the same nonce.
+    /// This function uses a cryptographic hash function to create a uniformly
+    /// and randomly distributed nonce. It is crucial for security that no two
+    /// different messages share the same nonce.
     fn derive_nonce(&self, kp: &Keypair, input: &H) -> ScalarField {
         let mut blake_hasher = Blake2bVar::new(32).unwrap();
 
@@ -137,11 +139,13 @@ impl<H: 'static + Hashable> Schnorr<H> {
         ScalarField::from_random_bytes(&bytes[..]).expect("failed to create scalar from bytes")
     }
 
-    /// This function uses a cryptographic hash function (based on a sponge construction) to
-    /// convert the message to be signed (and some other information) into a uniformly and
-    /// randomly distributed scalar field element.  It uses Mina's variant of the Poseidon
-    /// SNARK-friendly cryptographic hash function.
-    /// Details: <https://github.com/o1-labs/cryptography-rfcs/blob/httpsnapps-notary-signatures/mina/001-poseidon-sponge.md>
+    /// This function uses a cryptographic hash function (based on a sponge
+    /// construction) to convert the message to be signed (and some other
+    /// information) into a uniformly and randomly distributed scalar field
+    /// element. It uses Mina's variant of the Poseidon SNARK-friendly
+    /// cryptographic hash function.
+    /// Details:
+    /// <https://github.com/o1-labs/cryptography-rfcs/blob/httpsnapps-notary-signatures/mina/001-poseidon-sponge.md>
     fn message_hash(&mut self, pub_key: &PubKey, rx: BaseField, input: &H) -> ScalarField {
         let schnorr_input = Message::<H> {
             input: input.clone(),
@@ -151,8 +155,8 @@ impl<H: 'static + Hashable> Schnorr<H> {
         };
 
         // Squeeze and convert from base field element to scalar field element
-        // Since the difference in modulus between the two fields is < 2^125, w.h.p., a
-        // random value from one field will fit in the other field.
+        // Since the difference in modulus between the two fields is < 2^125,
+        // w.h.p., a random value from one field will fit in the other field.
         ScalarField::from(self.hasher.hash(&schnorr_input).into_bigint())
     }
 }

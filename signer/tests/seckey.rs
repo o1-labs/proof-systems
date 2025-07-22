@@ -1,7 +1,7 @@
 use mina_signer::{seckey::SecKeyError, SecKey};
 
 #[test]
-fn from_hex() {
+fn test_from_hex() {
     assert_eq!(
         SecKey::to_hex(
             &SecKey::from_hex("3d12f41e24f105366b609aa23a4ef28cbae919239177275ea27bd0cabd1debd1")
@@ -30,7 +30,7 @@ fn from_hex() {
 }
 
 #[test]
-fn to_bytes() {
+fn test_to_bytes() {
     let bytes = [
         40, 95, 46, 42, 83, 74, 159, 242, 89, 113, 135, 85, 56, 234, 52, 96, 56, 151, 78, 241, 55,
         160, 105, 164, 137, 47, 80, 230, 9, 16, 247, 216,
@@ -62,7 +62,7 @@ fn to_bytes() {
 }
 
 #[test]
-fn base58() {
+fn test_base58() {
     assert_eq!(
         SecKey::from_base58("EKFS3M4Fe1VkVjPMn2jauXa1Vv6w6gRES5oLbH3vZmP26uQESodY")
             .expect("failed to decode sec key")
