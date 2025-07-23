@@ -12,8 +12,8 @@ use bitvec::{prelude::*, view::AsBits};
 use mina_curves::pasta::{Fp, Fq};
 use o1_utils::FieldHelpers;
 
-const SER_HEADER_SIZE: usize = 8;
-const SINGLE_HEADER_SIZE: usize = 4;
+const SER_HEADER_SIZE: usize = 8; // total number of bytes for the header of the serialized ROInput
+const SINGLE_HEADER_SIZE: usize = 4; // number of bytes for each part of the header of the serialized ROInput
 
 /// Random oracle input structure
 ///
@@ -197,7 +197,7 @@ impl ROInput {
             return Err(Error);
         }
 
-        // read back our two u64 little-endian lengths
+        // read back our two u32 little-endian lengths
         let fields_len =
             u32::from_le_bytes(input[0..SINGLE_HEADER_SIZE].try_into().unwrap()) as usize;
         let bits_len = u32::from_le_bytes(
@@ -217,7 +217,7 @@ impl ROInput {
             return Err(Error);
         }
 
-        // allocate space for exactly `fields_ctr` elements
+        // allocate space for exactly `fields_len` elements
         let mut fields = Vec::with_capacity(fields_len);
 
         for chunk in bits.chunks(Fp::MODULUS_BIT_SIZE as usize).take(fields_len) {
@@ -1064,7 +1064,7 @@ mod tests {
             let roi = ROInput::new().append_bool(i % 2 == 0);
             let serialized = roi.serialize();
 
-            // Deserualize and check if it matches
+            // Deserialize and check if it matches
             let deserialized_roi =
                 ROInput::deserialize(&serialized).expect("Failed to deserialize ROInput");
             assert_eq!(
