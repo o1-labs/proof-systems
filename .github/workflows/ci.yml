@@ -132,7 +132,7 @@ jobs:
 
       - name: Check that up-to-date specification is checked in
         run: |
-          git diff --exit-code ":(exclude)rust-toolchain"
+          git diff --exit-code ":(exclude)rust-toolchain.toml"
 
       - name: Doc tests
         run: |

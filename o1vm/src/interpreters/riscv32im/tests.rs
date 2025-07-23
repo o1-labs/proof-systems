@@ -20,7 +20,7 @@ fn test_regression_selectors_for_instructions() {
     let mips_con_env = constraints::Env::<Fp>::default();
     let constraints = mips_con_env.get_selector_constraints();
     assert_eq!(
-        // We substract 1 as we have one boolean check per sel
+        // We subtract 1 as we have one boolean check per sel
         // and 1 constraint to check that one and only one
         // sel is activated
         constraints.len() - 1,
