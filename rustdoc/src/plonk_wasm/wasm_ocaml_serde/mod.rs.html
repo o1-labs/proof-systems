@@ -13,13 +13,13 @@
 <a href=#13 id=13 data-nosnippet>13</a>//! ```
 <a href=#14 id=14 data-nosnippet>14</a>//! See the following example on how to use it:
 <a href=#15 id=15 data-nosnippet>15</a>//!
-<a href=#16 id=16 data-nosnippet>16</a>//! ```
+<a href=#16 id=16 data-nosnippet>16</a>//! ```ignore
 <a href=#17 id=17 data-nosnippet>17</a>//! #[derive(serde::Serialize, serde::Deserialize)]
 <a href=#18 id=18 data-nosnippet>18</a>//! struct Thing { a: usize, b: u32 }
 <a href=#19 id=19 data-nosnippet>19</a>//!
-<a href=#20 id=20 data-nosnippet>20</a>//! let serializer = crate::wasm_ocaml_serde::ser::Serializer::new();
+<a href=#20 id=20 data-nosnippet>20</a>//! let serializer = crate::plonk_wasm::wasm_ocaml_serde::ser::Serializer::new();
 <a href=#21 id=21 data-nosnippet>21</a>//! let thing = Thing { a: 5, b: 6 };
-<a href=#22 id=22 data-nosnippet>22</a>//! let js_value = serde::Serialize::serialize(thing, &amp;mut serializer).unwrap();
+<a href=#22 id=22 data-nosnippet>22</a>//! let js_value = serde::Serialize::serialize(&amp;thing, &amp;mut serializer).unwrap();
 <a href=#23 id=23 data-nosnippet>23</a>//! assert_eq!(format!("{}", js_value), "[0, 5, 6]");
 <a href=#24 id=24 data-nosnippet>24</a>//! ```
 <a href=#25 id=25 data-nosnippet>25</a>

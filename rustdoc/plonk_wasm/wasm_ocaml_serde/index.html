@@ -8,11 +8,11 @@ js-of-ocaml expects arrays of values instead of objects, so a Rust structure lik
 </span>[<span class="number">0</span>, a, b, c]</code></pre></div>
 <p>See the following example on how to use it:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[derive(serde::Serialize, serde::Deserialize)]
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="attr">#[derive(serde::Serialize, serde::Deserialize)]
 </span><span class="kw">struct </span>Thing { a: usize, b: u32 }
 
-<span class="kw">let </span>serializer = <span class="kw">crate</span>::wasm_ocaml_serde::ser::Serializer::new();
+<span class="kw">let </span>serializer = <span class="kw">crate</span>::plonk_wasm::wasm_ocaml_serde::ser::Serializer::new();
 <span class="kw">let </span>thing = Thing { a: <span class="number">5</span>, b: <span class="number">6 </span>};
-<span class="kw">let </span>js_value = serde::Serialize::serialize(thing, <span class="kw-2">&amp;mut </span>serializer).unwrap();
+<span class="kw">let </span>js_value = serde::Serialize::serialize(<span class="kw-2">&amp;</span>thing, <span class="kw-2">&amp;mut </span>serializer).unwrap();
 <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">"{}"</span>, js_value), <span class="string">"[0, 5, 6]"</span>);</code></pre></div>
 </div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><dl class="item-table"><dt><a class="mod" href="de/index.html" title="mod plonk_wasm::wasm_ocaml_serde::de">de</a></dt><dt><a class="mod" href="ser/index.html" title="mod plonk_wasm::wasm_ocaml_serde::ser">ser</a></dt></dl><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><dl class="item-table"><dt><a class="struct" href="struct.Error.html" title="struct plonk_wasm::wasm_ocaml_serde::Error">Error</a></dt><dd>A newtype that represents Serde errors as JavaScript exceptions.</dd></dl><h2 id="types" class="section-header">Type Aliases<a href="#types" class="anchor">§</a></h2><dl class="item-table"><dt><a class="type" href="type.Result.html" title="type plonk_wasm::wasm_ocaml_serde::Result">Result</a></dt></dl></section></div></main></body></html>
