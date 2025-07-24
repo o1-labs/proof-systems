@@ -606,7 +606,7 @@ where
 /// For instance, if we have 3 commitments, the `scalars` vector will
 /// contain the values
 /// ```text
-/// [rand_base, rand_base * polyscale, rand_base * polyscale^2]`
+/// [rand_base, rand_base * polyscale, rand_base * polyscale^2]
 /// ```
 /// and the vector `points` will contain the commitments.
 ///
