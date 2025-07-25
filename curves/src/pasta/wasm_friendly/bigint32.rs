@@ -17,7 +17,14 @@ use ark_std::{
         Rng,
     },
 };
-use num_bigint::BigUint;
+use core::{
+    ops::{
+        BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Shl, ShlAssign, Shr,
+        ShrAssign,
+    },
+    str::FromStr,
+};
+use num_bigint::{BigUint, ParseBigIntError};
 use zeroize::Zeroize;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, Zeroize)]
@@ -145,267 +152,6 @@ impl<const N: usize> BigInt<N> {
         //}
         //*self = Self::from_64x4(this);
         //borrow != 0
-    }
-}
-
-impl<const N: usize> BigInteger for BigInt<N> {
-    const NUM_LIMBS: usize = N;
-
-    #[inline]
-    fn add_with_carry(&mut self, other: &Self) -> bool {
-        {
-            todo!();
-            //use arithmetic::adc_for_add_with_carry as adc;
-
-            //let a = &mut self.0;
-            //let b = &other.0;
-            //let mut carry = 0;
-
-            //if N >= 1 {
-            //    carry = adc(&mut a[0], b[0], carry);
-            //}
-            //if N >= 2 {
-            //    carry = adc(&mut a[1], b[1], carry);
-            //}
-            //if N >= 3 {
-            //    carry = adc(&mut a[2], b[2], carry);
-            //}
-            //if N >= 4 {
-            //    carry = adc(&mut a[3], b[3], carry);
-            //}
-            //if N >= 5 {
-            //    carry = adc(&mut a[4], b[4], carry);
-            //}
-            //if N >= 6 {
-            //    carry = adc(&mut a[5], b[5], carry);
-            //}
-            //for i in 6..N {
-            //    carry = adc(&mut a[i], b[i], carry);
-            //}
-            //carry != 0
-        }
-    }
-
-    #[inline]
-    fn sub_with_borrow(&mut self, other: &Self) -> bool {
-        todo!()
-        //use arithmetic::sbb_for_sub_with_borrow as sbb;
-
-        //let a = &mut self.0;
-        //let b = &other.0;
-        //let mut borrow = 0u8;
-
-        //if N >= 1 {
-        //    borrow = sbb(&mut a[0], b[0], borrow);
-        //}
-        //if N >= 2 {
-        //    borrow = sbb(&mut a[1], b[1], borrow);
-        //}
-        //if N >= 3 {
-        //    borrow = sbb(&mut a[2], b[2], borrow);
-        //}
-        //if N >= 4 {
-        //    borrow = sbb(&mut a[3], b[3], borrow);
-        //}
-        //if N >= 5 {
-        //    borrow = sbb(&mut a[4], b[4], borrow);
-        //}
-        //if N >= 6 {
-        //    borrow = sbb(&mut a[5], b[5], borrow);
-        //}
-        //for i in 6..N {
-        //    borrow = sbb(&mut a[i], b[i], borrow);
-        //}
-        //borrow != 0
-    }
-
-    #[inline]
-    #[allow(unused)]
-    fn mul2(&mut self) -> bool {
-        #[cfg(all(target_arch = "x86_64", feature = "asm"))]
-        #[allow(unsafe_code)]
-        {
-            let mut carry = 0;
-
-            for i in 0..N {
-                unsafe {
-                    use core::arch::x86_64::_addcarry_u64;
-                    carry = _addcarry_u64(carry, self.0[i], self.0[i], &mut self.0[i])
-                };
-            }
-
-            carry != 0
-        }
-
-        #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
-        {
-            todo!()
-            //let mut last = 0;
-            //for i in 0..N {
-            //    let a = &mut self.0[i];
-            //    let tmp = *a >> 63;
-            //    *a <<= 1;
-            //    *a |= last;
-            //    last = tmp;
-            //}
-            //last != 0
-        }
-    }
-
-    #[inline]
-    fn muln(&mut self, mut n: u32) {
-        if n >= (64 * N) as u32 {
-            *self = Self::from(0u64);
-            return;
-        }
-
-        while n >= 64 {
-            let mut t = 0;
-            for i in 0..N {
-                core::mem::swap(&mut t, &mut self.0[i]);
-            }
-            n -= 64;
-        }
-
-        if n > 0 {
-            let mut t = 0;
-            #[allow(unused)]
-            for i in 0..N {
-                let a = &mut self.0[i];
-                let t2 = *a >> (64 - n);
-                *a <<= n;
-                *a |= t;
-                t = t2;
-            }
-        }
-    }
-
-    #[inline]
-    fn div2(&mut self) {
-        todo!()
-        //let mut t = 0;
-        //for i in 0..N {
-        //    let a = &mut self.0[N - i - 1];
-        //    let t2 = *a << 63;
-        //    *a >>= 1;
-        //    *a |= t;
-        //    t = t2;
-        //}
-    }
-
-    #[inline]
-    fn divn(&mut self, mut n: u32) {
-        if n >= (64 * N) as u32 {
-            *self = Self::from(0u64);
-            return;
-        }
-
-        while n >= 64 {
-            let mut t = 0;
-            for i in 0..N {
-                core::mem::swap(&mut t, &mut self.0[N - i - 1]);
-            }
-            n -= 64;
-        }
-
-        if n > 0 {
-            let mut t = 0;
-            #[allow(unused)]
-            for i in 0..N {
-                let a = &mut self.0[N - i - 1];
-                let t2 = *a << (64 - n);
-                *a >>= n;
-                *a |= t;
-                t = t2;
-            }
-        }
-    }
-
-    #[inline]
-    fn is_odd(&self) -> bool {
-        self.0[0] & 1 == 1
-    }
-
-    #[inline]
-    fn is_even(&self) -> bool {
-        !self.is_odd()
-    }
-
-    #[inline]
-    fn is_zero(&self) -> bool {
-        self.0.iter().all(|&e| e == 0)
-    }
-
-    #[inline]
-    fn num_bits(&self) -> u32 {
-        let mut ret = N as u32 * 64;
-        for i in self.0.iter().rev() {
-            let leading = i.leading_zeros();
-            ret -= leading;
-            if leading != 64 {
-                break;
-            }
-        }
-
-        ret
-    }
-
-    #[inline]
-    fn get_bit(&self, i: usize) -> bool {
-        if i >= 64 * N {
-            false
-        } else {
-            let limb = i / 64;
-            let bit = i - (64 * limb);
-            (self.0[limb] & (1 << bit)) != 0
-        }
-    }
-
-    #[inline]
-    fn from_bits_be(bits: &[bool]) -> Self {
-        todo!()
-        //let mut res = Self::default();
-        //let mut acc: u64 = 0;
-
-        //let mut bits = bits.to_vec();
-        //bits.reverse();
-        //for (i, bits64) in bits.chunks(64).enumerate() {
-        //    for bit in bits64.iter().rev() {
-        //        acc <<= 1;
-        //        acc += *bit as u64;
-        //    }
-        //    res.0[i] = acc;
-        //    acc = 0;
-        //}
-        //res
-    }
-
-    fn from_bits_le(bits: &[bool]) -> Self {
-        todo!()
-        //let mut res = Self::zero();
-        //for (bits64, res_i) in bits.chunks(64).zip(&mut res.0) {
-        //    for (i, bit) in bits64.iter().enumerate() {
-        //        *res_i |= (*bit as u64) << i;
-        //    }
-        //}
-        //res
-    }
-
-    #[inline]
-    fn to_bytes_be(&self) -> Vec<u8> {
-        let mut le_bytes = self.to_bytes_le();
-        le_bytes.reverse();
-        le_bytes
-    }
-
-    #[inline]
-    fn to_bytes_le(&self) -> Vec<u8> {
-        let array_map = self.0.iter().map(|limb| limb.to_le_bytes());
-        let mut res = Vec::with_capacity(N * 8);
-        for limb in array_map {
-            res.extend_from_slice(&limb);
-        }
-        res
     }
 }
 
@@ -574,5 +320,465 @@ impl<const N: usize> Distribution<BigInt<N>> for Standard {
         //    *item = rng.gen();
         //}
         //BigInt::<N>(res)
+    }
+}
+
+// do not use forward_ref_ref_binop_commutative! for bitand so that we can
+// clone as needed, avoiding over-allocation
+impl<const N: usize> BitAnd<&BigInt<N>> for &BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn bitand(self, other: &BigInt<N>) -> BigInt<N> {
+        todo!()
+    }
+}
+
+impl<const N: usize> BitAnd<&BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn bitand(mut self, other: &BigInt<N>) -> BigInt<N> {
+        todo!()
+    }
+}
+
+impl<const N: usize> BitAnd<BigInt<N>> for &BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn bitand(self, other: BigInt<N>) -> BigInt<N> {
+        todo!()
+    }
+}
+
+impl<const N: usize> BitAnd<BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn bitand(mut self, other: BigInt<N>) -> BigInt<N> {
+        todo!()
+    }
+}
+
+impl<const N: usize> BitAndAssign<BigInt<N>> for BigInt<N> {
+    fn bitand_assign(&mut self, other: BigInt<N>) {
+        todo!()
+    }
+}
+
+impl<const N: usize> BitAndAssign<&BigInt<N>> for BigInt<N> {
+    fn bitand_assign(&mut self, other: &BigInt<N>) {
+        todo!()
+    }
+}
+
+impl<const N: usize> BitOr<BigInt<N>> for &BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn bitor(self, other: BigInt<N>) -> BigInt<N> {
+        todo!()
+    }
+}
+
+impl<const N: usize> BitOr<&BigInt<N>> for &BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn bitor(self, other: &BigInt<N>) -> BigInt<N> {
+        todo!()
+    }
+}
+
+impl<const N: usize> BitOr<&BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn bitor(mut self, other: &BigInt<N>) -> BigInt<N> {
+        todo!()
+    }
+}
+
+impl<const N: usize> BitOr<BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn bitor(mut self, other: BigInt<N>) -> BigInt<N> {
+        todo!()
+    }
+}
+
+impl<const N: usize> BitOrAssign<BigInt<N>> for BigInt<N> {
+    fn bitor_assign(&mut self, other: BigInt<N>) {
+        todo!()
+    }
+}
+
+impl<const N: usize> BitOrAssign<&BigInt<N>> for BigInt<N> {
+    fn bitor_assign(&mut self, other: &BigInt<N>) {
+        todo!()
+    }
+}
+
+impl<const N: usize> Shl<u32> for BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn shl(self, rhs: u32) -> BigInt<N> {
+        todo!()
+    }
+}
+impl<const N: usize> Shl<u32> for &BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn shl(self, rhs: u32) -> BigInt<N> {
+        todo!()
+    }
+}
+impl<const N: usize> ShlAssign<u32> for BigInt<N> {
+    #[inline]
+    fn shl_assign(&mut self, rhs: u32) {
+        todo!()
+    }
+}
+
+impl<const N: usize> Shr<u32> for BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn shr(self, rhs: u32) -> BigInt<N> {
+        todo!()
+    }
+}
+impl<const N: usize> Shr<u32> for &BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn shr(self, rhs: u32) -> BigInt<N> {
+        todo!()
+    }
+}
+impl<const N: usize> ShrAssign<u32> for BigInt<N> {
+    #[inline]
+    fn shr_assign(&mut self, rhs: u32) {
+        todo!()
+    }
+}
+
+impl<const N: usize> BitXor<&BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn bitxor(mut self, other: &BigInt<N>) -> BigInt<N> {
+        self ^= other;
+        self
+    }
+}
+
+impl<const N: usize> BitXor<BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn bitxor(mut self, other: BigInt<N>) -> BigInt<N> {
+        todo!()
+    }
+}
+
+impl<const N: usize> BitXorAssign<BigInt<N>> for BigInt<N> {
+    fn bitxor_assign(&mut self, other: BigInt<N>) {
+        todo!()
+    }
+}
+
+impl<const N: usize> BitXorAssign<&BigInt<N>> for BigInt<N> {
+    fn bitxor_assign(&mut self, other: &BigInt<N>) {
+        todo!()
+    }
+}
+
+impl<const N: usize> FromStr for BigInt<N> {
+    type Err = ParseBigIntError;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<BigInt<N>, ParseBigIntError> {
+        todo!()
+    }
+}
+
+impl<const N: usize> BigInteger for BigInt<N> {
+    const NUM_LIMBS: usize = N;
+
+    #[inline]
+    fn add_with_carry(&mut self, other: &Self) -> bool {
+        {
+            todo!();
+            //use arithmetic::adc_for_add_with_carry as adc;
+
+            //let a = &mut self.0;
+            //let b = &other.0;
+            //let mut carry = 0;
+
+            //if N >= 1 {
+            //    carry = adc(&mut a[0], b[0], carry);
+            //}
+            //if N >= 2 {
+            //    carry = adc(&mut a[1], b[1], carry);
+            //}
+            //if N >= 3 {
+            //    carry = adc(&mut a[2], b[2], carry);
+            //}
+            //if N >= 4 {
+            //    carry = adc(&mut a[3], b[3], carry);
+            //}
+            //if N >= 5 {
+            //    carry = adc(&mut a[4], b[4], carry);
+            //}
+            //if N >= 6 {
+            //    carry = adc(&mut a[5], b[5], carry);
+            //}
+            //for i in 6..N {
+            //    carry = adc(&mut a[i], b[i], carry);
+            //}
+            //carry != 0
+        }
+    }
+
+    #[inline]
+    fn sub_with_borrow(&mut self, other: &Self) -> bool {
+        todo!()
+        //use arithmetic::sbb_for_sub_with_borrow as sbb;
+
+        //let a = &mut self.0;
+        //let b = &other.0;
+        //let mut borrow = 0u8;
+
+        //if N >= 1 {
+        //    borrow = sbb(&mut a[0], b[0], borrow);
+        //}
+        //if N >= 2 {
+        //    borrow = sbb(&mut a[1], b[1], borrow);
+        //}
+        //if N >= 3 {
+        //    borrow = sbb(&mut a[2], b[2], borrow);
+        //}
+        //if N >= 4 {
+        //    borrow = sbb(&mut a[3], b[3], borrow);
+        //}
+        //if N >= 5 {
+        //    borrow = sbb(&mut a[4], b[4], borrow);
+        //}
+        //if N >= 6 {
+        //    borrow = sbb(&mut a[5], b[5], borrow);
+        //}
+        //for i in 6..N {
+        //    borrow = sbb(&mut a[i], b[i], borrow);
+        //}
+        //borrow != 0
+    }
+
+    #[inline]
+    #[allow(unused)]
+    fn mul2(&mut self) -> bool {
+        #[cfg(all(target_arch = "x86_64", feature = "asm"))]
+        #[allow(unsafe_code)]
+        {
+            let mut carry = 0;
+
+            for i in 0..N {
+                unsafe {
+                    use core::arch::x86_64::_addcarry_u64;
+                    carry = _addcarry_u64(carry, self.0[i], self.0[i], &mut self.0[i])
+                };
+            }
+
+            carry != 0
+        }
+
+        #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
+        {
+            todo!()
+            //let mut last = 0;
+            //for i in 0..N {
+            //    let a = &mut self.0[i];
+            //    let tmp = *a >> 63;
+            //    *a <<= 1;
+            //    *a |= last;
+            //    last = tmp;
+            //}
+            //last != 0
+        }
+    }
+
+    #[inline]
+    fn mul(&self, other: &Self) -> (Self, Self) {
+        todo!()
+    }
+
+    #[inline]
+    fn mul_low(&self, other: &Self) -> Self {
+        todo!()
+    }
+
+    #[inline]
+    fn mul_high(&self, other: &Self) -> Self {
+        todo!()
+    }
+
+    #[inline]
+    fn muln(&mut self, mut n: u32) {
+        if n >= (64 * N) as u32 {
+            *self = Self::from(0u64);
+            return;
+        }
+
+        while n >= 64 {
+            let mut t = 0;
+            for i in 0..N {
+                core::mem::swap(&mut t, &mut self.0[i]);
+            }
+            n -= 64;
+        }
+
+        if n > 0 {
+            let mut t = 0;
+            #[allow(unused)]
+            for i in 0..N {
+                let a = &mut self.0[i];
+                let t2 = *a >> (64 - n);
+                *a <<= n;
+                *a |= t;
+                t = t2;
+            }
+        }
+    }
+
+    #[inline]
+    fn div2(&mut self) {
+        todo!()
+        //let mut t = 0;
+        //for i in 0..N {
+        //    let a = &mut self.0[N - i - 1];
+        //    let t2 = *a << 63;
+        //    *a >>= 1;
+        //    *a |= t;
+        //    t = t2;
+        //}
+    }
+
+    #[inline]
+    fn divn(&mut self, mut n: u32) {
+        if n >= (64 * N) as u32 {
+            *self = Self::from(0u64);
+            return;
+        }
+
+        while n >= 64 {
+            let mut t = 0;
+            for i in 0..N {
+                core::mem::swap(&mut t, &mut self.0[N - i - 1]);
+            }
+            n -= 64;
+        }
+
+        if n > 0 {
+            let mut t = 0;
+            #[allow(unused)]
+            for i in 0..N {
+                let a = &mut self.0[N - i - 1];
+                let t2 = *a << (64 - n);
+                *a >>= n;
+                *a |= t;
+                t = t2;
+            }
+        }
+    }
+
+    #[inline]
+    fn is_odd(&self) -> bool {
+        self.0[0] & 1 == 1
+    }
+
+    #[inline]
+    fn is_even(&self) -> bool {
+        !self.is_odd()
+    }
+
+    #[inline]
+    fn is_zero(&self) -> bool {
+        self.0.iter().all(|&e| e == 0)
+    }
+
+    #[inline]
+    fn num_bits(&self) -> u32 {
+        let mut ret = N as u32 * 64;
+        for i in self.0.iter().rev() {
+            let leading = i.leading_zeros();
+            ret -= leading;
+            if leading != 64 {
+                break;
+            }
+        }
+
+        ret
+    }
+
+    #[inline]
+    fn get_bit(&self, i: usize) -> bool {
+        if i >= 64 * N {
+            false
+        } else {
+            let limb = i / 64;
+            let bit = i - (64 * limb);
+            (self.0[limb] & (1 << bit)) != 0
+        }
+    }
+
+    #[inline]
+    fn from_bits_be(bits: &[bool]) -> Self {
+        todo!()
+        //let mut res = Self::default();
+        //let mut acc: u64 = 0;
+
+        //let mut bits = bits.to_vec();
+        //bits.reverse();
+        //for (i, bits64) in bits.chunks(64).enumerate() {
+        //    for bit in bits64.iter().rev() {
+        //        acc <<= 1;
+        //        acc += *bit as u64;
+        //    }
+        //    res.0[i] = acc;
+        //    acc = 0;
+        //}
+        //res
+    }
+
+    fn from_bits_le(bits: &[bool]) -> Self {
+        todo!()
+        //let mut res = Self::zero();
+        //for (bits64, res_i) in bits.chunks(64).zip(&mut res.0) {
+        //    for (i, bit) in bits64.iter().enumerate() {
+        //        *res_i |= (*bit as u64) << i;
+        //    }
+        //}
+        //res
+    }
+
+    #[inline]
+    fn to_bytes_be(&self) -> Vec<u8> {
+        let mut le_bytes = self.to_bytes_le();
+        le_bytes.reverse();
+        le_bytes
+    }
+
+    #[inline]
+    fn to_bytes_le(&self) -> Vec<u8> {
+        let array_map = self.0.iter().map(|limb| limb.to_le_bytes());
+        let mut res = Vec::with_capacity(N * 8);
+        for limb in array_map {
+            res.extend_from_slice(&limb);
+        }
+        res
     }
 }
