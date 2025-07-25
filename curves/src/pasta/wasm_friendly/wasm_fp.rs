@@ -4,7 +4,7 @@
  * Most of this code was copied over from ark_ff::Fp
  */
 use crate::pasta::wasm_friendly::bigint32::BigInt;
-use ark_ff::{FftField, Field, One, PrimeField, Zero};
+use ark_ff::{AdditiveGroup, FftField, Field, One, PrimeField, Zero};
 use ark_serialize::{
     CanonicalDeserialize, CanonicalDeserializeWithFlags, CanonicalSerialize,
     CanonicalSerializeWithFlags, Compress, Flags, Read, SerializationError, Valid, Validate, Write,
@@ -653,6 +653,36 @@ impl<P: FpBackend<N>, const N: usize> From<u8> for Fp<P, N> {
     }
 }
 
+impl<P: FpBackend<N>, const N: usize> From<i128> for Fp<P, N> {
+    fn from(other: i128) -> Self {
+        todo!()
+    }
+}
+
+impl<P: FpBackend<N>, const N: usize> From<i64> for Fp<P, N> {
+    fn from(other: i64) -> Self {
+        todo!()
+    }
+}
+
+impl<P: FpBackend<N>, const N: usize> From<i32> for Fp<P, N> {
+    fn from(other: i32) -> Self {
+        todo!()
+    }
+}
+
+impl<P: FpBackend<N>, const N: usize> From<i16> for Fp<P, N> {
+    fn from(other: i16) -> Self {
+        todo!()
+    }
+}
+
+impl<P: FpBackend<N>, const N: usize> From<i8> for Fp<P, N> {
+    fn from(other: i8) -> Self {
+        todo!()
+    }
+}
+
 impl<P: FpBackend<N>, const N: usize> From<bool> for Fp<P, N> {
     fn from(other: bool) -> Self {
         todo!()
@@ -722,32 +752,9 @@ impl<P: FpBackend<N>, const N: usize> FftField for Fp<P, N> {
     const LARGE_SUBGROUP_ROOT_OF_UNITY: Option<Self> = None; // FIXME! //P::LARGE_SUBGROUP_ROOT_OF_UNITY;
 }
 
-impl<P: FpBackend<N>, const N: usize> Field for Fp<P, N> {
-    type BasePrimeField = Self;
-    type BasePrimeFieldIter = core::iter::Once<Self::BasePrimeField>;
-
-    const SQRT_PRECOMP: Option<ark_ff::SqrtPrecomputation<Self>> = None; // FIXME //P::SQRT_PRECOMP;
+impl<P: FpBackend<N>, const N: usize> AdditiveGroup for Fp<P, N> {
+    type Scalar = Self;
     const ZERO: Self = Fp(P::ZERO, PhantomData);
-    const ONE: Self = Fp(P::ONE, PhantomData);
-
-    fn extension_degree() -> u64 {
-        1
-    }
-
-    fn from_base_prime_field(elem: Self::BasePrimeField) -> Self {
-        elem
-    }
-
-    fn to_base_prime_field_elements(&self) -> Self::BasePrimeFieldIter {
-        core::iter::once(*self)
-    }
-
-    fn from_base_prime_field_elems(elems: &[Self::BasePrimeField]) -> Option<Self> {
-        if elems.len() != (Self::extension_degree() as usize) {
-            return None;
-        }
-        Some(elems[0])
-    }
 
     #[inline]
     fn double(&self) -> Self {
@@ -768,6 +775,35 @@ impl<P: FpBackend<N>, const N: usize> Field for Fp<P, N> {
         todo!()
         //P::neg_in_place(self);
         //self
+    }
+}
+
+impl<P: FpBackend<N>, const N: usize> Field for Fp<P, N> {
+    type BasePrimeField = Self;
+
+    const SQRT_PRECOMP: Option<ark_ff::SqrtPrecomputation<Self>> = None; // FIXME //P::SQRT_PRECOMP;
+    const ONE: Self = Fp(P::ONE, PhantomData);
+
+    fn extension_degree() -> u64 {
+        1
+    }
+
+    fn from_base_prime_field(elem: Self::BasePrimeField) -> Self {
+        elem
+    }
+
+    fn to_base_prime_field_elements(&self) -> core::iter::Once<Self::BasePrimeField> {
+        core::iter::once(*self)
+    }
+
+    fn from_base_prime_field_elems(
+        elems: impl IntoIterator<Item = Self::BasePrimeField>,
+    ) -> Option<Self> {
+        todo!()
+        //        if elems.len() != (Self::extension_degree() as usize) {
+        //            return None;
+        //        }
+        //        Some(elems[0])
     }
 
     #[inline]
@@ -875,6 +911,10 @@ impl<P: FpBackend<N>, const N: usize> Field for Fp<P, N> {
         //} else {
         //    QuadraticNonResidue
         //}
+    }
+
+    fn mul_by_base_prime_field(&self, elem: &Self::BasePrimeField) -> Self {
+        todo!()
     }
 }
 
