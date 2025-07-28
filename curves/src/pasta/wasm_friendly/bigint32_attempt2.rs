@@ -32,44 +32,6 @@ impl<const N: usize> BigInt<N> {
         BigInt(BUintD32::from_digits(digits))
     }
 
-    pub const fn new(value: [u32; N]) -> Self {
-        todo!()
-    }
-
-    pub const fn zero() -> Self {
-        todo!()
-    }
-
-    pub const fn one() -> Self {
-        todo!()
-    }
-
-    #[doc(hidden)]
-    pub const fn const_is_even(&self) -> bool {
-        todo!()
-    }
-
-    #[doc(hidden)]
-    pub const fn const_is_odd(&self) -> bool {
-        todo!()
-    }
-
-    #[doc(hidden)]
-    pub const fn mod_4(&self) -> u8 {
-        todo!()
-    }
-
-    /// Compute a right shift of `self`
-    /// This is equivalent to a (saturating) division by 2.
-    #[doc(hidden)]
-    pub const fn const_shr(&self) -> Self {
-        todo!()
-    }
-
-    const fn const_geq(&self, other: &Self) -> bool {
-        todo!()
-    }
-
     /// Compute the smallest odd integer `t` such that `self = 2**s * t + 1` for some
     /// integer `s = self.two_adic_valuation()`.
     #[doc(hidden)]
