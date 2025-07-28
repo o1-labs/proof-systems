@@ -13,7 +13,6 @@ members = [
     "msm",
     "mvpoly",
     "o1vm",
-    "plonk-wasm",
     "poly-commitment",
     "poseidon",
     "poseidon/export_test_vectors",
@@ -40,7 +39,6 @@ blake2 = "0.10.0"
 bs58 = "0.5.0"
 clap = "4.4.6"
 command-fds = "0.3"
-console_error_panic_hook = { version = "0.1.6" }
 criterion = "0.5"
 elf = "0.7.2"
 env_logger = "0.11.1"
@@ -105,7 +103,6 @@ mvpoly = { path = "./mvpoly", version = "0.1.0" }
 o1-utils = { path = "./utils", version = "0.1.0" }
 o1vm = { path = "./o1vm", version = "0.1.0" }
 optimism = { path = "./optimism", version = "0.1.0" }
-plonk_wasm = { path = "./plonk-wasm", version = "0.1.0" }
 poly-commitment = { path = "./poly-commitment", version = "0.1.0" }
 saffron = { path = "./poly-commitment", version = "0.1.0" }
 signer = { path = "./signer", version = "0.1.0" }
