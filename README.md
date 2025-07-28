@@ -94,7 +94,7 @@ You can visualize the documentation by opening the file `target/doc/index.html`.
   This workflow runs benchmarks when a pull request is labeled with "benchmark." It sets up the Rust and OCaml environments, installs necessary tools, and executes cargo criterion benchmarks on the kimchi crate. The benchmark results are then posted as a comment on the pull request for review.
 - [Deploy Specifications & Docs to GitHub Pages](.github/workflows/gh-page.yml).
   When CI passes on master, the documentation built from the rust code will be available by this [link](https://o1-labs.github.io/proof-systems/rustdoc) and the book will be available by this [link](https://o1-labs.github.io/proof-systems).
-- [MIPS Build and Package](https://github.com/o1-labs/proof-systems/blob/master/.github/workflows/o1vm-upload-mips-build.yml)
+- [MIPS Build and Package](https://github.com/o1-labs/proof-systems/actions/workflows/mips-build.yml)
   This workflow runs the assembler and linker on the programs from the OpenMips test suite, and provides a link where you can download the artifacts (recommended if you don't have / can't install the required MIPS tooling). This workflow also runs the o1vm ELF parser on the artifacts to check that our parsing is working. Currently it is run via manual trigger only -- you can find the trigger in the [GitHub actions tab](https://github.com/o1-labs/proof-systems/actions/workflows/mips-build.yml) and the link to the artifacts will appear in logs of the `Upload Artifacts` stage.
 
 ## Nix for Dependencies (WIP)
