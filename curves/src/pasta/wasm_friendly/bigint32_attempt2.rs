@@ -17,10 +17,10 @@ use core::{
     },
     str::FromStr,
 };
-use num_bigint::{BigUint, ParseBigIntError};
+use num_bigint::BigUint;
 use zeroize::Zeroize;
 
-use bnum::BUintD32;
+use bnum::{errors::ParseIntError, BUintD32};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub struct BigInt<const N: usize>(pub BUintD32<N>);
@@ -240,7 +240,7 @@ impl<const N: usize> BitAnd<&BigInt<N>> for &BigInt<N> {
 
     #[inline]
     fn bitand(self, other: &BigInt<N>) -> BigInt<N> {
-        todo!()
+        BigInt(self.0.bitand(other.0))
     }
 }
 
@@ -248,8 +248,8 @@ impl<const N: usize> BitAnd<&BigInt<N>> for BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn bitand(mut self, other: &BigInt<N>) -> BigInt<N> {
-        todo!()
+    fn bitand(self, other: &BigInt<N>) -> BigInt<N> {
+        BigInt(self.0.bitand(other.0))
     }
 }
 
@@ -258,7 +258,7 @@ impl<const N: usize> BitAnd<BigInt<N>> for &BigInt<N> {
 
     #[inline]
     fn bitand(self, other: BigInt<N>) -> BigInt<N> {
-        todo!()
+        BigInt(self.0.bitand(other.0))
     }
 }
 
@@ -266,20 +266,20 @@ impl<const N: usize> BitAnd<BigInt<N>> for BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn bitand(mut self, other: BigInt<N>) -> BigInt<N> {
-        todo!()
+    fn bitand(self, other: BigInt<N>) -> BigInt<N> {
+        BigInt(self.0.bitand(other.0))
     }
 }
 
 impl<const N: usize> BitAndAssign<BigInt<N>> for BigInt<N> {
     fn bitand_assign(&mut self, other: BigInt<N>) {
-        todo!()
+        self.0.bitand_assign(other.0)
     }
 }
 
 impl<const N: usize> BitAndAssign<&BigInt<N>> for BigInt<N> {
     fn bitand_assign(&mut self, other: &BigInt<N>) {
-        todo!()
+        self.0.bitand_assign(other.0)
     }
 }
 
@@ -288,7 +288,7 @@ impl<const N: usize> BitOr<BigInt<N>> for &BigInt<N> {
 
     #[inline]
     fn bitor(self, other: BigInt<N>) -> BigInt<N> {
-        todo!()
+        BigInt(self.0.bitor(other.0))
     }
 }
 
@@ -297,7 +297,7 @@ impl<const N: usize> BitOr<&BigInt<N>> for &BigInt<N> {
 
     #[inline]
     fn bitor(self, other: &BigInt<N>) -> BigInt<N> {
-        todo!()
+        BigInt(self.0.bitor(other.0))
     }
 }
 
@@ -305,8 +305,8 @@ impl<const N: usize> BitOr<&BigInt<N>> for BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn bitor(mut self, other: &BigInt<N>) -> BigInt<N> {
-        todo!()
+    fn bitor(self, other: &BigInt<N>) -> BigInt<N> {
+        BigInt(self.0.bitor(other.0))
     }
 }
 
@@ -314,20 +314,20 @@ impl<const N: usize> BitOr<BigInt<N>> for BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn bitor(mut self, other: BigInt<N>) -> BigInt<N> {
-        todo!()
+    fn bitor(self, other: BigInt<N>) -> BigInt<N> {
+        BigInt(self.0.bitor(other.0))
     }
 }
 
 impl<const N: usize> BitOrAssign<BigInt<N>> for BigInt<N> {
     fn bitor_assign(&mut self, other: BigInt<N>) {
-        todo!()
+        self.0.bitor_assign(other.0)
     }
 }
 
 impl<const N: usize> BitOrAssign<&BigInt<N>> for BigInt<N> {
     fn bitor_assign(&mut self, other: &BigInt<N>) {
-        todo!()
+        self.0.bitor_assign(other.0)
     }
 }
 
@@ -336,7 +336,7 @@ impl<const N: usize> Shl<u32> for BigInt<N> {
 
     #[inline]
     fn shl(self, rhs: u32) -> BigInt<N> {
-        todo!()
+        BigInt(self.0.shl(rhs))
     }
 }
 impl<const N: usize> Shl<u32> for &BigInt<N> {
@@ -344,13 +344,13 @@ impl<const N: usize> Shl<u32> for &BigInt<N> {
 
     #[inline]
     fn shl(self, rhs: u32) -> BigInt<N> {
-        todo!()
+        BigInt(self.0.shl(rhs))
     }
 }
 impl<const N: usize> ShlAssign<u32> for BigInt<N> {
     #[inline]
     fn shl_assign(&mut self, rhs: u32) {
-        todo!()
+        self.0.shl_assign(rhs)
     }
 }
 
@@ -359,7 +359,7 @@ impl<const N: usize> Shr<u32> for BigInt<N> {
 
     #[inline]
     fn shr(self, rhs: u32) -> BigInt<N> {
-        todo!()
+        BigInt(self.0.shr(rhs))
     }
 }
 impl<const N: usize> Shr<u32> for &BigInt<N> {
@@ -367,13 +367,13 @@ impl<const N: usize> Shr<u32> for &BigInt<N> {
 
     #[inline]
     fn shr(self, rhs: u32) -> BigInt<N> {
-        todo!()
+        BigInt(self.0.shr(rhs))
     }
 }
 impl<const N: usize> ShrAssign<u32> for BigInt<N> {
     #[inline]
     fn shr_assign(&mut self, rhs: u32) {
-        todo!()
+        self.0.shr_assign(rhs)
     }
 }
 
@@ -381,9 +381,8 @@ impl<const N: usize> BitXor<&BigInt<N>> for BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn bitxor(mut self, other: &BigInt<N>) -> BigInt<N> {
-        self ^= other;
-        self
+    fn bitxor(self, other: &BigInt<N>) -> BigInt<N> {
+        BigInt(self.0.bitxor(other.0))
     }
 }
 
@@ -391,29 +390,31 @@ impl<const N: usize> BitXor<BigInt<N>> for BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn bitxor(mut self, other: BigInt<N>) -> BigInt<N> {
-        todo!()
+    fn bitxor(self, other: BigInt<N>) -> BigInt<N> {
+        BigInt(self.0.bitxor(other.0))
     }
 }
 
 impl<const N: usize> BitXorAssign<BigInt<N>> for BigInt<N> {
     fn bitxor_assign(&mut self, other: BigInt<N>) {
-        todo!()
+        self.0.bitxor_assign(other.0)
     }
 }
 
 impl<const N: usize> BitXorAssign<&BigInt<N>> for BigInt<N> {
     fn bitxor_assign(&mut self, other: &BigInt<N>) {
-        todo!()
+        self.0.bitxor_assign(other.0)
     }
 }
 
 impl<const N: usize> FromStr for BigInt<N> {
-    type Err = ParseBigIntError;
+    type Err = ParseIntError;
 
     #[inline]
-    fn from_str(s: &str) -> Result<BigInt<N>, ParseBigIntError> {
-        todo!()
+    fn from_str(s: &str) -> Result<BigInt<N>, Self::Err> {
+        let inner = BUintD32::<N>::from_str(s)?;
+        // Wrap it in your BigInt newtype
+        Ok(BigInt(inner))
     }
 }
 
