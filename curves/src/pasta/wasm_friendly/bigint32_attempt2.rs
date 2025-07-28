@@ -105,28 +105,28 @@ impl<const N: usize> AsRef<[u64]> for BigInt<N> {
 impl<const N: usize> From<u64> for BigInt<N> {
     #[inline]
     fn from(val: u64) -> BigInt<N> {
-        todo!()
+        BigInt(BUintD32::from(val))
     }
 }
 
 impl<const N: usize> From<u32> for BigInt<N> {
     #[inline]
     fn from(val: u32) -> BigInt<N> {
-        todo!()
+        BigInt(BUintD32::from(val))
     }
 }
 
 impl<const N: usize> From<u16> for BigInt<N> {
     #[inline]
     fn from(val: u16) -> BigInt<N> {
-        todo!()
+        BigInt(BUintD32::from(val))
     }
 }
 
 impl<const N: usize> From<u8> for BigInt<N> {
     #[inline]
     fn from(val: u8) -> BigInt<N> {
-        todo!()
+        BigInt(BUintD32::from(val))
     }
 }
 
@@ -205,7 +205,7 @@ impl<const N: usize> CanonicalDeserialize for BigInt<N> {
 impl<const N: usize> Ord for BigInt<N> {
     #[inline]
     fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
-        todo!()
+        self.0.cmp(&other.0)
     }
 }
 
@@ -224,12 +224,11 @@ impl<const N: usize> Display for BigInt<N> {
 
 impl<const N: usize> Distribution<BigInt<N>> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> BigInt<N> {
-        todo!()
-        //let mut res = [0u64; N];
-        //for item in res.iter_mut() {
-        //    *item = rng.gen();
-        //}
-        //BigInt::<N>(res)
+        let mut res = [0u32; N];
+        for item in res.iter_mut() {
+            *item = rng.gen();
+        }
+        BigInt::from_digits(res)
     }
 }
 
