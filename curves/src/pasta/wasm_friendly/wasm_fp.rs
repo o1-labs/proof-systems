@@ -3,7 +3,7 @@
  *
  * Most of this code was copied over from ark_ff::Fp
  */
-use crate::pasta::wasm_friendly::bigint32::BigInt;
+use crate::pasta::wasm_friendly::bigint32_attempt2::BigInt;
 use ark_ff::{AdditiveGroup, FftField, Field, One, PrimeField, Zero};
 use ark_serialize::{
     CanonicalDeserialize, CanonicalDeserializeWithFlags, CanonicalSerialize,
@@ -104,7 +104,7 @@ impl<P: FpBackend<N>, const N: usize> Into<BigInt<N>> for Fp<P, N> {
 
 impl<P: FpBackend<N>, const N: usize> From<[u32; N]> for Fp<P, N> {
     fn from(val: [u32; N]) -> Self {
-        Fp::from_bigint(BigInt(val)).unwrap()
+        Fp::from_bigint(BigInt::from_digits(val)).unwrap()
     }
 }
 

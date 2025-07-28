@@ -1,5 +1,5 @@
 use super::{backend9, wasm_fp};
-use crate::pasta::{Fp,Fq};
+use crate::pasta::{Fp, Fq};
 use ark_ff::PrimeField;
 
 pub struct Fp9Parameters;
@@ -23,7 +23,9 @@ pub type Fp9 = wasm_fp::Fp<Fp9Parameters, 9>;
 
 impl Fp9 {
     pub fn from_fp(fp: Fp) -> Self {
-        backend9::from_bigint_unsafe(super::BigInt(backend9::from_64x4(fp.into_bigint().0)))
+        backend9::from_bigint_unsafe(super::BigInt::from_digits(backend9::from_64x4(
+            fp.into_bigint().0,
+        )))
     }
 }
 
@@ -32,7 +34,6 @@ impl From<Fp> for Fp9 {
         Fp9::from_fp(fp)
     }
 }
-
 
 pub struct Fq9Parameters;
 
@@ -56,7 +57,9 @@ pub type Fq9 = wasm_fp::Fp<Fq9Parameters, 9>;
 
 impl Fq9 {
     pub fn from_fq(fp: Fq) -> Self {
-        backend9::from_bigint_unsafe(super::BigInt(backend9::from_64x4(fp.into_bigint().0)))
+        backend9::from_bigint_unsafe(super::BigInt::from_digits(backend9::from_64x4(
+            fp.into_bigint().0,
+        )))
     }
 }
 

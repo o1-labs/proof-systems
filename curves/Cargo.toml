@@ -15,6 +15,7 @@ ark-std.workspace = true
 ark-ec.workspace = true
 ark-ff.workspace = true
 num-bigint.workspace = true
+bnum.workspace = true
 ark-serialize.workspace = true
 wasm-bindgen.workspace = true
 derivative.workspace = true

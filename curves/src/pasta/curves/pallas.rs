@@ -1,4 +1,4 @@
-use crate::pasta::*;
+use crate::pasta::{wasm_friendly::BigInt, *};
 use ark_ec::{
     models::short_weierstrass::{Affine, Projective, SWCurveConfig},
     CurveConfig,
@@ -93,7 +93,7 @@ impl CurveConfig for WasmPallasParameters {
     /// COFACTOR_INV = 1
     // FIXME
     const COFACTOR_INV: crate::pasta::wasm_friendly::Fq9 =
-        crate::pasta::wasm_friendly::Fp(crate::pasta::wasm_friendly::BigInt([0; 9]), PhantomData);
+        crate::pasta::wasm_friendly::Fp(BigInt::ZERO, PhantomData);
 }
 
 pub type WasmPallas = Affine<WasmPallasParameters>;
@@ -102,16 +102,14 @@ pub type WasmProjectivePallas = Projective<WasmPallasParameters>;
 
 impl SWCurveConfig for WasmPallasParameters {
     // FIXME
-    const COEFF_A: Self::BaseField =
-        crate::pasta::wasm_friendly::Fp(crate::pasta::wasm_friendly::BigInt([0; 9]), PhantomData);
+    const COEFF_A: Self::BaseField = crate::pasta::wasm_friendly::Fp(BigInt::ZERO, PhantomData);
 
     // FIXME
-    const COEFF_B: Self::BaseField =
-        crate::pasta::wasm_friendly::Fp(crate::pasta::wasm_friendly::BigInt([0; 9]), PhantomData);
+    const COEFF_B: Self::BaseField = crate::pasta::wasm_friendly::Fp(BigInt::ZERO, PhantomData);
 
     // FIXME
     const GENERATOR: Affine<Self> = Affine::new_unchecked(
-        crate::pasta::wasm_friendly::Fp(crate::pasta::wasm_friendly::BigInt([0; 9]), PhantomData),
-        crate::pasta::wasm_friendly::Fp(crate::pasta::wasm_friendly::BigInt([0; 9]), PhantomData),
+        crate::pasta::wasm_friendly::Fp(BigInt::ZERO, PhantomData),
+        crate::pasta::wasm_friendly::Fp(BigInt::ZERO, PhantomData),
     );
 }

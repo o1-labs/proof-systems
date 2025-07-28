@@ -1,7 +1,7 @@
 /**
  * Implementation of `FpBackend` for N=9, using 29-bit limbs represented by `u32`s.
  */
-use super::bigint32::BigInt;
+use super::bigint32_attempt2::BigInt;
 use super::wasm_fp::{Fp, FpBackend};
 
 type B = [u32; 9];
@@ -168,47 +168,50 @@ pub fn mul_assign<FpC: FpConstants>(x: &mut B, y: &B) {
 // implement FpBackend given FpConstants
 
 pub fn from_bigint_unsafe<FpC: FpConstants>(x: BigInt<9>) -> Fp<FpC, 9> {
-    let mut r = x.0;
+    let mut r = Into::<[u32; 9]>::into(x);
     // convert to montgomery form
     mul_assign::<FpC>(&mut r, &FpC::R2);
-    Fp(BigInt(r), Default::default())
+    Fp(BigInt::from_digits(r), Default::default())
 }
 
 impl<FpC: FpConstants> FpBackend<9> for FpC {
-    const MODULUS: BigInt<9> = BigInt(Self::MODULUS);
-    const ZERO: BigInt<9> = BigInt([0; 9]);
-    const ONE: BigInt<9> = BigInt(Self::R);
+    const MODULUS: BigInt<9> = BigInt::from_digits(Self::MODULUS);
+    const ZERO: BigInt<9> = BigInt::from_digits([0; 9]);
+    const ONE: BigInt<9> = BigInt::from_digits(Self::R);
 
     fn add_assign(x: &mut Fp<Self, 9>, y: &Fp<Self, 9>) {
-        add_assign::<Self>(&mut x.0 .0, &y.0 .0);
+        todo!()
     }
 
     fn mul_assign(x: &mut Fp<Self, 9>, y: &Fp<Self, 9>) {
-        mul_assign::<Self>(&mut x.0 .0, &y.0 .0);
+        todo!()
     }
 
     fn from_bigint(x: BigInt<9>) -> Option<Fp<Self, 9>> {
-        if gte_modulus::<Self>(&x.0) {
+        if gte_modulus::<Self>(&Into::<[u32; 9]>::into(x)) {
             None
         } else {
             Some(from_bigint_unsafe(x))
         }
     }
+
     fn to_bigint(x: Fp<Self, 9>) -> BigInt<9> {
-        let one = [1, 0, 0, 0, 0, 0, 0, 0, 0];
-        let mut r = x.0 .0;
-        // convert back from montgomery form
-        mul_assign::<Self>(&mut r, &one);
-        BigInt(r)
+        todo!()
+        //let one = [1, 0, 0, 0, 0, 0, 0, 0, 0];
+        //let mut r = x.0 .0;
+        //// convert back from montgomery form
+        //mul_assign::<Self>(&mut r, &one);
+        //BigInt::from_digits(r)
     }
 
     fn pack(x: Fp<Self, 9>) -> Vec<u64> {
-        let x = Self::to_bigint(x).0;
-        let x64 = to_64x4(x);
-        let mut res = Vec::with_capacity(4);
-        for limb in x64.iter() {
-            res.push(*limb);
-        }
-        res
+        todo!()
+        //let x = Self::to_bigint(x).0;
+        //let x64 = to_64x4(x);
+        //let mut res = Vec::with_capacity(4);
+        //for limb in x64.iter() {
+        //    res.push(*limb);
+        //}
+        //res
     }
 }
