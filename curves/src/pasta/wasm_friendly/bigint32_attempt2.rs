@@ -22,63 +22,76 @@ use zeroize::Zeroize;
 
 use bnum::{errors::ParseIntError, BUintD32};
 
+/// Digits inside are stored in little endian
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub struct BigInt<const N: usize>(pub BUintD32<N>);
 
 impl<const N: usize> BigInt<N> {
     pub const ZERO: Self = BigInt(BUintD32::ZERO);
 
+    /// Returns limbs in little endian
     pub const fn from_digits(digits: [u32; N]) -> Self {
         BigInt(BUintD32::from_digits(digits))
+    }
+
+    #[doc(hidden)]
+    pub const fn const_is_even(&self) -> bool {
+        self.0.digits()[0] % 2 == 0
+    }
+
+    #[doc(hidden)]
+    pub const fn const_is_odd(&self) -> bool {
+        self.0.digits()[0] % 2 == 1
+    }
+
+    /// Compute a right shift of `self`
+    /// This is equivalent to a (saturating) division by 2.
+    #[doc(hidden)]
+    pub const fn const_shr(&self) -> Self {
+        BigInt(self.0.unbounded_shr(1))
     }
 
     /// Compute the smallest odd integer `t` such that `self = 2**s * t + 1` for some
     /// integer `s = self.two_adic_valuation()`.
     #[doc(hidden)]
     pub const fn two_adic_coefficient(mut self) -> Self {
-        todo!()
+        assert!(self.const_is_odd());
+        // Since `self` is odd, we can always subtract one
+        // without a borrow
+        self.const_shr();
+        while self.const_is_even() {
+            self = self.const_shr();
+        }
+        assert!(self.const_is_odd());
+        self
     }
 
     /// Divide `self` by 2, rounding down if necessary.
     /// That is, if `self.is_odd()`, compute `(self - 1)/2`.
     /// Else, compute `self/2`.
     #[doc(hidden)]
-    pub const fn divide_by_2_round_down(mut self) -> Self {
-        todo!()
+    pub const fn divide_by_2_round_down(self) -> Self {
+        BigInt(self.0.unbounded_shr(1))
     }
 
     /// Find the number of bits in the binary decomposition of `self`.
     #[doc(hidden)]
     pub const fn const_num_bits(self) -> u32 {
-        todo!()
+        self.0.bits()
     }
 
     #[inline]
     pub fn add_nocarry(&mut self, other: &Self) -> bool {
-        todo!()
-        //let mut this = self.to_64x4();
-        //let other = other.to_64x4();
-
-        //let mut carry = 0;
-        //for i in 0..4 {
-        //    this[i] = adc!(this[i], other[i], &mut carry);
-        //}
-        //*self = Self::from_64x4(this);
-        //carry != 0
+        let (new, res) = self.0.carrying_add(other.0, false);
+        self.0 = new;
+        res
     }
 
     #[inline]
     pub fn sub_noborrow(&mut self, other: &Self) -> bool {
-        todo!()
-        //let mut this = self.to_64x4();
-        //let other = other.to_64x4();
-
-        //let mut borrow = 0;
-        //for i in 0..4 {
-        //    this[i] = sbb!(this[i], other[i], &mut borrow);
-        //}
-        //*self = Self::from_64x4(this);
-        //borrow != 0
+        let (new, res) = self.0.borrowing_sub(other.0, false);
+        self.0 = new;
+        res
     }
 }
 
@@ -88,17 +101,30 @@ impl<const N: usize> Zeroize for BigInt<N> {
     }
 }
 
+// @volhovm: this is incredibly sketchy. The interface of Integer
+// itself (in arkworks) does not allow 32-bit integers... what the
+// hell.
 impl<const N: usize> AsMut<[u64]> for BigInt<N> {
     #[inline]
     fn as_mut(&mut self) -> &mut [u64] {
-        todo!()
+        assert!(
+            N % 2 == 0,
+            "N must be even to convert u32 array to u64 array"
+        );
+        unsafe {
+            std::slice::from_raw_parts_mut(self.0.digits_mut().as_mut_ptr() as *mut u64, N / 2)
+        }
     }
 }
 
 impl<const N: usize> AsRef<[u64]> for BigInt<N> {
     #[inline]
     fn as_ref(&self) -> &[u64] {
-        todo!()
+        assert!(
+            N % 2 == 0,
+            "N must be even to convert u32 array to u64 array"
+        );
+        unsafe { std::slice::from_raw_parts(self.0.digits().as_ptr() as *const u64, N / 2) }
     }
 }
 
@@ -137,25 +163,6 @@ impl<const N: usize> TryFrom<BigUint> for BigInt<N> {
     #[inline]
     fn try_from(val: num_bigint::BigUint) -> Result<BigInt<N>, Self::Error> {
         todo!()
-        //let bytes = val.to_bytes_le();
-
-        //if bytes.len() > N * 8 {
-        //    Err(())
-        //} else {
-        //    let mut limbs = [0u64; N];
-
-        //    bytes
-        //        .chunks(8)
-        //        .into_iter()
-        //        .enumerate()
-        //        .for_each(|(i, chunk)| {
-        //            let mut chunk_padded = [0u8; 8];
-        //            chunk_padded[..chunk.len()].copy_from_slice(chunk);
-        //            limbs[i] = u64::from_le_bytes(chunk_padded)
-        //        });
-
-        //    Ok(Self(limbs))
-        //}
     }
 }
 
