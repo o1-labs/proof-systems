@@ -422,113 +422,145 @@ impl<const N: usize> BigInteger for BigInt<N> {
 
     #[inline]
     fn add_with_carry(&mut self, other: &Self) -> bool {
-        todo!();
+        let (new, res) = self.0.carrying_add(other.0, false);
+        self.0 = new;
+        res
     }
 
     #[inline]
     fn sub_with_borrow(&mut self, other: &Self) -> bool {
-        todo!()
+        let (new, res) = self.0.borrowing_sub(other.0, false);
+        self.0 = new;
+        res
     }
 
     #[inline]
     #[allow(unused)]
     fn mul2(&mut self) -> bool {
-        todo!()
-    }
-
-    #[inline]
-    fn mul(&self, other: &Self) -> (Self, Self) {
-        todo!()
-    }
-
-    #[inline]
-    fn mul_low(&self, other: &Self) -> Self {
-        todo!()
-    }
-
-    #[inline]
-    fn mul_high(&self, other: &Self) -> Self {
-        todo!()
+        self.0.shr_assign(1);
+        true // FIXME should this be the shifted bit?
     }
 
     #[inline]
     fn muln(&mut self, mut n: u32) {
-        todo!()
+        self.0.shr_assign(n);
+    }
+
+    #[inline]
+    fn mul_low(&self, other: &Self) -> Self {
+        let (low, _) = self.0.widening_mul(other.0);
+        BigInt(low)
+    }
+
+    #[inline]
+    fn mul_high(&self, other: &Self) -> Self {
+        let (_, high) = self.0.widening_mul(other.0);
+        BigInt(high)
+    }
+
+    #[inline]
+    fn mul(&self, other: &Self) -> (Self, Self) {
+        let (low, high) = self.0.widening_mul(other.0);
+        (BigInt(low), BigInt(high))
     }
 
     #[inline]
     fn div2(&mut self) {
-        todo!()
+        self.0 /= BUintD32::from(2u32);
     }
 
     #[inline]
-    fn divn(&mut self, mut n: u32) {
-        todo!()
+    fn divn(&mut self, n: u32) {
+        self.0 /= BUintD32::from(n);
     }
 
     #[inline]
     fn is_odd(&self) -> bool {
-        todo!()
+        !self.0.rem_euclid(BUintD32::from(2u32)).is_zero()
     }
 
     #[inline]
     fn is_even(&self) -> bool {
-        todo!()
+        self.0.rem_euclid(BUintD32::from(2u32)).is_zero()
     }
 
     #[inline]
     fn is_zero(&self) -> bool {
-        todo!()
+        self.0.is_zero()
     }
 
     #[inline]
     fn num_bits(&self) -> u32 {
-        todo!()
+        self.0.bits()
     }
 
     #[inline]
     fn get_bit(&self, i: usize) -> bool {
-        todo!()
+        self.0.bit(i as u32)
     }
 
     #[inline]
     fn from_bits_be(bits: &[bool]) -> Self {
-        todo!()
-        //let mut res = Self::default();
-        //let mut acc: u64 = 0;
-
-        //let mut bits = bits.to_vec();
-        //bits.reverse();
-        //for (i, bits64) in bits.chunks(64).enumerate() {
-        //    for bit in bits64.iter().rev() {
-        //        acc <<= 1;
-        //        acc += *bit as u64;
-        //    }
-        //    res.0[i] = acc;
-        //    acc = 0;
-        //}
-        //res
+        // FIXME check this works
+        let mut bytes = vec![];
+        for chunk in bits.chunks(8) {
+            let mut byte = 0u8;
+            for (i, &bit) in chunk.iter().enumerate() {
+                if bit {
+                    byte |= 1 << (7 - i); // For big-endian, MSB is first
+                }
+            }
+            bytes.push(byte);
+        }
+        BigInt(BUintD32::from_be_slice(&bytes).unwrap())
     }
 
+    #[inline]
     fn from_bits_le(bits: &[bool]) -> Self {
-        todo!()
-        //let mut res = Self::zero();
-        //for (bits64, res_i) in bits.chunks(64).zip(&mut res.0) {
-        //    for (i, bit) in bits64.iter().enumerate() {
-        //        *res_i |= (*bit as u64) << i;
-        //    }
-        //}
-        //res
+        // FIXME check this works
+        let mut bytes = vec![];
+        for chunk in bits.chunks(8) {
+            let mut byte = 0u8;
+            for (i, &bit) in chunk.iter().enumerate() {
+                if bit {
+                    byte |= 1 << i; // For little-endian, LSB is first
+                }
+            }
+            bytes.push(byte);
+        }
+        BigInt(BUintD32::from_le_slice(&bytes).unwrap())
     }
 
     #[inline]
     fn to_bytes_be(&self) -> Vec<u8> {
-        todo!()
+        // digits() are little endian
+        let digits: &[u32; N] = self.0.digits();
+        let mut bytes = Vec::with_capacity(4 * N);
+
+        for &digit in digits.iter().rev() {
+            bytes.push((digit >> 24) as u8);
+            bytes.push((digit >> 16) as u8);
+            bytes.push((digit >> 8) as u8);
+            bytes.push(digit as u8);
+        }
+
+        bytes
     }
 
     #[inline]
     fn to_bytes_le(&self) -> Vec<u8> {
-        todo!()
+        // digits() are little endian
+        let digits: &[u32; N] = self.0.digits();
+        let mut bytes = Vec::with_capacity(4 * N);
+
+        for &digit in digits.iter() {
+            bytes.push(digit as u8);
+            bytes.push((digit >> 8) as u8);
+            bytes.push((digit >> 16) as u8);
+            bytes.push((digit >> 24) as u8);
+        }
+
+        bytes
     }
 }
 
