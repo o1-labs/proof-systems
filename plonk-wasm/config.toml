@@ -4,6 +4,8 @@ rustflags = [
   "target-feature=+atomics,+bulk-memory",
 ]
 
+# NB: atomics is required for concurrency
+# https://github.com/rust-lang/rust/issues/77839
 [target.wasm32-unknown-unknown]
 rustflags = [
   "-C",
