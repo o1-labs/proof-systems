@@ -30,7 +30,7 @@ pub fn bench_poseidon_kimchi(c: &mut Criterion) {
 
     // same as above but with Fp9
     group.bench_function("poseidon_hash_kimchi_fp9", |b| {
-        let mut hash: Fp9 = Fp9::zero();
+        let mut hash: Fp9 = Fp9::from(12345u64);
         let mut poseidon = Poseidon::<Fp9, PlonkSpongeConstantsKimchi>::new(fp9_static_params());
 
         // poseidon.absorb(&[Fp9::zero()]);

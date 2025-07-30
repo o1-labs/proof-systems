@@ -44,6 +44,31 @@ pub const fn to_64x4(pa: [u32; 9]) -> [u64; 4] {
     p
 }
 
+// Converts from "normal" 32 bit bignum limb format to the 32x9 with 29 bit limbs.
+pub const fn from_32x8(pa: [u32; 8]) -> [u32; 9] {
+    let mut p = [0u64; 4];
+    p[0] = (pa[0] as u64) | ((pa[1] as u64) << 32);
+    p[1] = (pa[2] as u64) | ((pa[3] as u64) << 32);
+    p[2] = (pa[4] as u64) | ((pa[5] as u64) << 32);
+    p[3] = (pa[6] as u64) | ((pa[7] as u64) << 32);
+    from_64x4(p)
+}
+
+/// Checks if the number satisfies 32x9 shape (each limb 29 bits).
+pub const fn is_32x9_shape(pa: [u32; 9]) -> bool {
+    let b0 = (pa[0] & MASK) != 0;
+    let b1 = (pa[1] & MASK) != 0;
+    let b2 = (pa[2] & MASK) != 0;
+    let b3 = (pa[3] & MASK) != 0;
+    let b4 = (pa[4] & MASK) != 0;
+    let b5 = (pa[5] & MASK) != 0;
+    let b6 = (pa[6] & MASK) != 0;
+    let b7 = (pa[7] & MASK) != 0;
+    let b8 = (pa[8] & MASK) != 0;
+
+    b0 && b1 && b2 && b3 && b4 && b5 && b6 && b7 && b8
+}
+
 pub trait FpConstants: Send + Sync + 'static + Sized {
     const MODULUS: B;
     const MODULUS64: B64 = {
@@ -83,6 +108,22 @@ fn gte_modulus<FpC: FpConstants>(x: &B) -> bool {
 // - introduce locals for a[i] instead of accessing memory multiple times
 // - only do 1 carry pass at the end, by proving properties of greater-than on uncarried result
 // - use cheaper, approximate greater-than check a[8] > Fp::MODULUS[8]
+/// Performs modular addition: x = (x + y) mod p
+///
+/// This function adds two field elements and stores the result in the first operand.
+/// The result is reduced to ensure it remains within the canonical range [0, p-1].
+///
+/// # Parameters
+/// * `x` - First operand, modified in-place to store the result
+/// * `y` - Second operand to add
+///
+/// # Type Parameters
+/// * `FpC` - Type implementing the FpConstants trait that defines the modulus
+///
+/// # Implementation Notes
+/// - First performs the addition with carry propagation
+/// - Then conditionally subtracts the modulus if the result is greater than or equal to it
+/// - Uses 30-bit limbs with SHIFT and MASK constants to handle overflow
 pub fn add_assign<FpC: FpConstants>(x: &mut B, y: &B) {
     let mut tmp: u32;
     let mut carry: i32 = 0;
@@ -122,7 +163,25 @@ fn conditional_reduce<FpC: FpConstants>(x: &mut B) {
     }
 }
 
-/// Montgomery multiplication
+/// Performs Montgomery multiplication: x = (x * y * R^-1) mod p
+///
+/// This function multiplies two field elements in Montgomery form and stores
+/// the result in the first operand. The implementation uses the CIOS (Coarsely
+/// Integrated Operand Scanning) method for Montgomery multiplication.
+///
+/// # Parameters
+/// * `x` - First operand, modified in-place to store the result
+/// * `y` - Second operand
+///
+/// # Type Parameters
+/// * `FpC` - Type implementing the FpConstants trait that defines the modulus
+///   and Montgomery reduction parameters
+///
+/// # Implementation Notes
+/// - Uses a 9-limb representation for intermediate calculations
+/// - Performs a conditional reduction at the end to ensure the result is in
+///   the canonical range [0, p-1]
+/// - Optimized to minimize carry operations in the main loop
 pub fn mul_assign<FpC: FpConstants>(x: &mut B, y: &B) {
     // load y[i] into local u64s
     // TODO make sure these are locals
@@ -168,7 +227,9 @@ pub fn mul_assign<FpC: FpConstants>(x: &mut B, y: &B) {
 // implement FpBackend given FpConstants
 
 pub fn from_bigint_unsafe<FpC: FpConstants>(x: BigInt<9>) -> Fp<FpC, 9> {
-    let mut r = Into::<[u32; 9]>::into(x);
+    let r: [u32; 9] = Into::into(x);
+    assert!(r[8] == 0);
+    let mut r = from_32x8(r[0..8].try_into().unwrap());
     // convert to montgomery form
     mul_assign::<FpC>(&mut r, &FpC::R2);
     Fp(BigInt::from_digits(r), Default::default())
@@ -196,22 +257,100 @@ impl<FpC: FpConstants> FpBackend<9> for FpC {
     }
 
     fn to_bigint(x: Fp<Self, 9>) -> BigInt<9> {
-        todo!()
-        //let one = [1, 0, 0, 0, 0, 0, 0, 0, 0];
-        //let mut r = x.0 .0;
-        //// convert back from montgomery form
-        //mul_assign::<Self>(&mut r, &one);
-        //BigInt::from_digits(r)
+        let one = [1, 0, 0, 0, 0, 0, 0, 0, 0];
+        let mut r = x.0.into_digits();
+        // convert back from montgomery form
+        mul_assign::<Self>(&mut r, &one);
+        BigInt::from_digits(r)
     }
 
     fn pack(x: Fp<Self, 9>) -> Vec<u64> {
-        todo!()
-        //let x = Self::to_bigint(x).0;
-        //let x64 = to_64x4(x);
-        //let mut res = Vec::with_capacity(4);
-        //for limb in x64.iter() {
-        //    res.push(*limb);
-        //}
-        //res
+        let x = Self::to_bigint(x).into_digits();
+        let x64 = to_64x4(x);
+        let mut res = Vec::with_capacity(4);
+        for limb in x64.iter() {
+            res.push(*limb);
+        }
+        res
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_64_32_conversion_identity() {
+        // Test with various inputs
+        let test_cases = [
+            [0u64; 4],
+            [1u64, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1],
+            [u64::MAX, u64::MAX, u64::MAX, u64::MAX],
+            [
+                0x123456789ABCDEF0,
+                0xFEDCBA9876543210,
+                0xAAAABBBBCCCCDDDD,
+                0x1122334455667788,
+            ],
+        ];
+
+        for input in &test_cases {
+            // Convert to 9x32-bit representation and back
+            let intermediate = from_64x4(*input);
+            let result = to_64x4(intermediate);
+
+            // Check if the round-trip conversion preserves the original value
+            assert_eq!(
+                result, *input,
+                "Conversion failed for input: {:?}, got: {:?}",
+                input, result
+            );
+        }
+
+        // Test with random inputs
+        for _ in 0..100 {
+            let random_input = [
+                rand::random::<u64>(),
+                rand::random::<u64>(),
+                rand::random::<u64>(),
+                rand::random::<u64>(),
+            ];
+
+            let intermediate = from_64x4(random_input);
+            let result = to_64x4(intermediate);
+
+            assert!(
+                is_32x9_shape(intermediate),
+                "from_64x4 does not pass the is_32x9_shape check"
+            );
+
+            assert_eq!(
+                result, random_input,
+                "Conversion failed for random input: {:?}",
+                random_input
+            );
+        }
+
+        {
+            let out_of_shape: [u32; 9] = [
+                1 << 31,
+                1 << 31,
+                1 << 31,
+                1 << 31,
+                1 << 31,
+                1 << 31,
+                1 << 31,
+                1 << 31,
+                1 << 31,
+            ];
+
+            assert!(
+                !is_32x9_shape(out_of_shape),
+                "out of shape must NOT pass is_32x9_shape check"
+            );
+        }
     }
 }

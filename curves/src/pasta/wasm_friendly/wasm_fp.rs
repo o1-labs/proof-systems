@@ -71,6 +71,7 @@ impl<P: FpBackend<N>, const N: usize> Fp<P, N> {
     pub fn from_bigint(r: BigInt<N>) -> Option<Self> {
         P::from_bigint(r)
     }
+
     #[inline]
     pub fn into_bigint(self) -> BigInt<N> {
         P::to_bigint(self)

@@ -93,23 +93,112 @@ impl CurveConfig for WasmPallasParameters {
     /// COFACTOR_INV = 1
     // FIXME
     const COFACTOR_INV: crate::pasta::wasm_friendly::Fq9 =
-        crate::pasta::wasm_friendly::Fp(BigInt::ZERO, PhantomData);
+        crate::pasta::wasm_friendly::Fp(BigInt::ONE, PhantomData);
 }
 
 pub type WasmPallas = Affine<WasmPallasParameters>;
 
 pub type WasmProjectivePallas = Projective<WasmPallasParameters>;
 
+//pub const G_GENERATOR_Y: Fp =
+//    MontFp!("12418654782883325593414442427049395787963493412651469444558597405572177144507");a
+//
+//    BigInt::from_digits([
+//        0x0, 0x1B74B5A3, 0x0A12937C, 0x53DFA9F0, 0x6378EE54, 0x8F655BD4, 0x333D4771, 0x19CF7A23,
+//        0xCAED2ABB,
+//    ]),
+pub const G_GENERATOR_Y_WASM: crate::pasta::wasm_friendly::Fp9 = crate::pasta::wasm_friendly::Fp(
+    BigInt::from_digits(crate::pasta::wasm_friendly::backend9::from_64x4([
+        0xBBA2DEAC32A7FC19,
+        0x1774D3334DB556F8,
+        0x45EE87360F9AFD35,
+        0xC73921A03A5B47B1,
+    ])),
+    PhantomData,
+);
+
 impl SWCurveConfig for WasmPallasParameters {
-    // FIXME
     const COEFF_A: Self::BaseField = crate::pasta::wasm_friendly::Fp(BigInt::ZERO, PhantomData);
 
-    // FIXME
-    const COEFF_B: Self::BaseField = crate::pasta::wasm_friendly::Fp(BigInt::ZERO, PhantomData);
+    const COEFF_B: Self::BaseField = crate::pasta::wasm_friendly::Fp(BigInt::FIVE, PhantomData);
 
-    // FIXME
     const GENERATOR: Affine<Self> = Affine::new_unchecked(
-        crate::pasta::wasm_friendly::Fp(BigInt::ZERO, PhantomData),
+        crate::pasta::wasm_friendly::Fp(BigInt::ONE, PhantomData),
         crate::pasta::wasm_friendly::Fp(BigInt::ZERO, PhantomData),
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::pasta::{
+        wasm_friendly::{wasm_fp::FpBackend, Fp9},
+        Fp,
+    };
+
+    #[test]
+    pub fn test_wasm_curve_basic_ops() {
+        {
+            //let x: Fp = rand::random();
+            let x: Fp = Fp::from(1u32);
+            let z: Fp9 = x.into();
+            let x2: Fp = z.into();
+            println!("x: {:?}", x);
+            println!("x limbs: {:?}", x.0 .0);
+            println!("z: {:?}", z);
+            println!("z limbs: {:?}", FpBackend::pack(z));
+            println!("x2: {:?}", x2);
+            assert!(x2 == x);
+        }
+
+        {
+            let x: Fp = rand::random();
+            let y: Fp = rand::random();
+            let z: Fp = x * y;
+        }
+
+        assert!(false);
+
+        {
+            let x: Fp = rand::random();
+            let y: Fp = rand::random();
+            let x_fp9: Fp9 = x.into();
+            let y_fp9: Fp9 = y.into();
+        }
+
+        {
+            let x: Fp = rand::random();
+            let y: Fp = rand::random();
+
+            let x_fp9: Fp9 = From::from(x);
+            let y_fp9: Fp9 = From::from(y);
+            let z_fp9: Fp9 = x_fp9 * y_fp9;
+        }
+
+        {
+            let x: Fp = rand::random();
+            let y: Fp = rand::random();
+            let z: Fp = x * y;
+            let z: Fp = z * x;
+        }
+
+        {
+            let x: Fp = rand::random();
+            let y: Fp = rand::random();
+            let x_fp9: Fp9 = From::from(x);
+            let y_fp9: Fp9 = From::from(y);
+            let z_fp9: Fp9 = x_fp9 * y_fp9;
+            let z_fp9: Fp9 = z_fp9 * x_fp9;
+        }
+
+        {
+            let x: Fp = rand::random();
+            let y: Fp = rand::random();
+            let z: Fp = x * y;
+            let z: Fp = z * x;
+            let z: Fp = z * y;
+            let z: Fp = z * x;
+        }
+    }
 }

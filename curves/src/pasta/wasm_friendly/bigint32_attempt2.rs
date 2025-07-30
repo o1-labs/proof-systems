@@ -28,10 +28,17 @@ pub struct BigInt<const N: usize>(pub BUintD32<N>);
 
 impl<const N: usize> BigInt<N> {
     pub const ZERO: Self = BigInt(BUintD32::ZERO);
+    pub const ONE: Self = BigInt(BUintD32::ONE);
+    pub const FIVE: Self = BigInt(BUintD32::FIVE);
 
     /// Returns limbs in little endian
     pub const fn from_digits(digits: [u32; N]) -> Self {
         BigInt(BUintD32::from_digits(digits))
+    }
+
+    /// Returns limbs in little endian
+    pub const fn into_digits(self) -> [u32; N] {
+        *self.0.digits()
     }
 
     #[doc(hidden)]

@@ -80,7 +80,7 @@ impl<const N: usize> BigInt<N> {
         //result
     }
 
-    const fn const_geq(&self, other: &Self) -> bool {
+    const fn const_geq(&self, _other: &Self) -> bool {
         todo!()
         //const_for!((i in 0..N) {
         //    let a = self.0[N - i - 1];
@@ -127,7 +127,7 @@ impl<const N: usize> BigInt<N> {
     }
 
     #[inline]
-    pub fn add_nocarry(&mut self, other: &Self) -> bool {
+    pub fn add_nocarry(&mut self, _other: &Self) -> bool {
         todo!()
         //let mut this = self.to_64x4();
         //let other = other.to_64x4();
@@ -141,7 +141,7 @@ impl<const N: usize> BigInt<N> {
     }
 
     #[inline]
-    pub fn sub_noborrow(&mut self, other: &Self) -> bool {
+    pub fn sub_noborrow(&mut self, _other: &Self) -> bool {
         todo!()
         //let mut this = self.to_64x4();
         //let other = other.to_64x4();
@@ -173,7 +173,7 @@ impl<const N: usize> AsRef<[u64]> for BigInt<N> {
 
 impl<const N: usize> From<u64> for BigInt<N> {
     #[inline]
-    fn from(val: u64) -> BigInt<N> {
+    fn from(_val: u64) -> BigInt<N> {
         todo!()
         //let mut repr = Self::default();
         //repr.0[0] = val;
@@ -213,7 +213,7 @@ impl<const N: usize> TryFrom<BigUint> for BigInt<N> {
 
     /// Returns `Err(())` if the bit size of `val` is more than `N * 64`.
     #[inline]
-    fn try_from(val: num_bigint::BigUint) -> Result<BigInt<N>, Self::Error> {
+    fn try_from(_val: num_bigint::BigUint) -> Result<BigInt<N>, Self::Error> {
         todo!()
         //let bytes = val.to_bytes_le();
 
@@ -329,7 +329,7 @@ impl<const N: usize> BitAnd<&BigInt<N>> for &BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn bitand(self, other: &BigInt<N>) -> BigInt<N> {
+    fn bitand(self, _other: &BigInt<N>) -> BigInt<N> {
         todo!()
     }
 }
@@ -338,7 +338,7 @@ impl<const N: usize> BitAnd<&BigInt<N>> for BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn bitand(mut self, other: &BigInt<N>) -> BigInt<N> {
+    fn bitand(self, _other: &BigInt<N>) -> BigInt<N> {
         todo!()
     }
 }
@@ -347,7 +347,7 @@ impl<const N: usize> BitAnd<BigInt<N>> for &BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn bitand(self, other: BigInt<N>) -> BigInt<N> {
+    fn bitand(self, _other: BigInt<N>) -> BigInt<N> {
         todo!()
     }
 }
@@ -356,19 +356,19 @@ impl<const N: usize> BitAnd<BigInt<N>> for BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn bitand(mut self, other: BigInt<N>) -> BigInt<N> {
+    fn bitand(self, _other: BigInt<N>) -> BigInt<N> {
         todo!()
     }
 }
 
 impl<const N: usize> BitAndAssign<BigInt<N>> for BigInt<N> {
-    fn bitand_assign(&mut self, other: BigInt<N>) {
+    fn bitand_assign(&mut self, _other: BigInt<N>) {
         todo!()
     }
 }
 
 impl<const N: usize> BitAndAssign<&BigInt<N>> for BigInt<N> {
-    fn bitand_assign(&mut self, other: &BigInt<N>) {
+    fn bitand_assign(&mut self, _other: &BigInt<N>) {
         todo!()
     }
 }
@@ -377,7 +377,7 @@ impl<const N: usize> BitOr<BigInt<N>> for &BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn bitor(self, other: BigInt<N>) -> BigInt<N> {
+    fn bitor(self, _other: BigInt<N>) -> BigInt<N> {
         todo!()
     }
 }
@@ -386,7 +386,7 @@ impl<const N: usize> BitOr<&BigInt<N>> for &BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn bitor(self, other: &BigInt<N>) -> BigInt<N> {
+    fn bitor(self, _other: &BigInt<N>) -> BigInt<N> {
         todo!()
     }
 }
@@ -395,7 +395,7 @@ impl<const N: usize> BitOr<&BigInt<N>> for BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn bitor(mut self, other: &BigInt<N>) -> BigInt<N> {
+    fn bitor(self, _other: &BigInt<N>) -> BigInt<N> {
         todo!()
     }
 }
@@ -404,19 +404,19 @@ impl<const N: usize> BitOr<BigInt<N>> for BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn bitor(mut self, other: BigInt<N>) -> BigInt<N> {
+    fn bitor(self, _other: BigInt<N>) -> BigInt<N> {
         todo!()
     }
 }
 
 impl<const N: usize> BitOrAssign<BigInt<N>> for BigInt<N> {
-    fn bitor_assign(&mut self, other: BigInt<N>) {
+    fn bitor_assign(&mut self, _other: BigInt<N>) {
         todo!()
     }
 }
 
 impl<const N: usize> BitOrAssign<&BigInt<N>> for BigInt<N> {
-    fn bitor_assign(&mut self, other: &BigInt<N>) {
+    fn bitor_assign(&mut self, _other: &BigInt<N>) {
         todo!()
     }
 }
@@ -425,7 +425,7 @@ impl<const N: usize> Shl<u32> for BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn shl(self, rhs: u32) -> BigInt<N> {
+    fn shl(self, _rhs: u32) -> BigInt<N> {
         todo!()
     }
 }
@@ -433,13 +433,13 @@ impl<const N: usize> Shl<u32> for &BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn shl(self, rhs: u32) -> BigInt<N> {
+    fn shl(self, _rhs: u32) -> BigInt<N> {
         todo!()
     }
 }
 impl<const N: usize> ShlAssign<u32> for BigInt<N> {
     #[inline]
-    fn shl_assign(&mut self, rhs: u32) {
+    fn shl_assign(&mut self, _rhs: u32) {
         todo!()
     }
 }
@@ -448,7 +448,7 @@ impl<const N: usize> Shr<u32> for BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn shr(self, rhs: u32) -> BigInt<N> {
+    fn shr(self, _rhs: u32) -> BigInt<N> {
         todo!()
     }
 }
@@ -456,13 +456,13 @@ impl<const N: usize> Shr<u32> for &BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn shr(self, rhs: u32) -> BigInt<N> {
+    fn shr(self, _rhs: u32) -> BigInt<N> {
         todo!()
     }
 }
 impl<const N: usize> ShrAssign<u32> for BigInt<N> {
     #[inline]
-    fn shr_assign(&mut self, rhs: u32) {
+    fn shr_assign(&mut self, _rhs: u32) {
         todo!()
     }
 }
@@ -481,19 +481,19 @@ impl<const N: usize> BitXor<BigInt<N>> for BigInt<N> {
     type Output = BigInt<N>;
 
     #[inline]
-    fn bitxor(mut self, other: BigInt<N>) -> BigInt<N> {
+    fn bitxor(self, _other: BigInt<N>) -> BigInt<N> {
         todo!()
     }
 }
 
 impl<const N: usize> BitXorAssign<BigInt<N>> for BigInt<N> {
-    fn bitxor_assign(&mut self, other: BigInt<N>) {
+    fn bitxor_assign(&mut self, _other: BigInt<N>) {
         todo!()
     }
 }
 
 impl<const N: usize> BitXorAssign<&BigInt<N>> for BigInt<N> {
-    fn bitxor_assign(&mut self, other: &BigInt<N>) {
+    fn bitxor_assign(&mut self, _other: &BigInt<N>) {
         todo!()
     }
 }
@@ -502,7 +502,7 @@ impl<const N: usize> FromStr for BigInt<N> {
     type Err = ParseBigIntError;
 
     #[inline]
-    fn from_str(s: &str) -> Result<BigInt<N>, ParseBigIntError> {
+    fn from_str(_s: &str) -> Result<BigInt<N>, ParseBigIntError> {
         todo!()
     }
 }
@@ -511,7 +511,7 @@ impl<const N: usize> BigInteger for BigInt<N> {
     const NUM_LIMBS: usize = N;
 
     #[inline]
-    fn add_with_carry(&mut self, other: &Self) -> bool {
+    fn add_with_carry(&mut self, _other: &Self) -> bool {
         {
             todo!();
             //use arithmetic::adc_for_add_with_carry as adc;
@@ -546,7 +546,7 @@ impl<const N: usize> BigInteger for BigInt<N> {
     }
 
     #[inline]
-    fn sub_with_borrow(&mut self, other: &Self) -> bool {
+    fn sub_with_borrow(&mut self, _other: &Self) -> bool {
         todo!()
         //use arithmetic::sbb_for_sub_with_borrow as sbb;
 
@@ -581,48 +581,49 @@ impl<const N: usize> BigInteger for BigInt<N> {
     #[inline]
     #[allow(unused)]
     fn mul2(&mut self) -> bool {
-        #[cfg(all(target_arch = "x86_64", feature = "asm"))]
-        #[allow(unsafe_code)]
-        {
-            let mut carry = 0;
-
-            for i in 0..N {
-                unsafe {
-                    use core::arch::x86_64::_addcarry_u64;
-                    carry = _addcarry_u64(carry, self.0[i], self.0[i], &mut self.0[i])
-                };
-            }
-
-            carry != 0
-        }
-
-        #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
-        {
-            todo!()
-            //let mut last = 0;
-            //for i in 0..N {
-            //    let a = &mut self.0[i];
-            //    let tmp = *a >> 63;
-            //    *a <<= 1;
-            //    *a |= last;
-            //    last = tmp;
-            //}
-            //last != 0
-        }
+        todo!()
+        //        #[cfg(all(target_arch = "x86_64", feature = "asm"))]
+        //        #[allow(unsafe_code)]
+        //        {
+        //            let mut carry = 0;
+        //
+        //            for i in 0..N {
+        //                unsafe {
+        //                    use core::arch::x86_64::_addcarry_u64;
+        //                    carry = _addcarry_u64(carry, self.0[i], self.0[i], &mut self.0[i])
+        //                };
+        //            }
+        //
+        //            carry != 0
+        //        }
+        //
+        //        #[cfg(not(all(target_arch = "x86_64", feature = "asm")))]
+        //        {
+        //            todo!()
+        //            //let mut last = 0;
+        //            //for i in 0..N {
+        //            //    let a = &mut self.0[i];
+        //            //    let tmp = *a >> 63;
+        //            //    *a <<= 1;
+        //            //    *a |= last;
+        //            //    last = tmp;
+        //            //}
+        //            //last != 0
+        //}
     }
 
     #[inline]
-    fn mul(&self, other: &Self) -> (Self, Self) {
+    fn mul(&self, _other: &Self) -> (Self, Self) {
         todo!()
     }
 
     #[inline]
-    fn mul_low(&self, other: &Self) -> Self {
+    fn mul_low(&self, _other: &Self) -> Self {
         todo!()
     }
 
     #[inline]
-    fn mul_high(&self, other: &Self) -> Self {
+    fn mul_high(&self, _other: &Self) -> Self {
         todo!()
     }
 
@@ -736,7 +737,7 @@ impl<const N: usize> BigInteger for BigInt<N> {
     }
 
     #[inline]
-    fn from_bits_be(bits: &[bool]) -> Self {
+    fn from_bits_be(_bits: &[bool]) -> Self {
         todo!()
         //let mut res = Self::default();
         //let mut acc: u64 = 0;
@@ -754,7 +755,7 @@ impl<const N: usize> BigInteger for BigInt<N> {
         //res
     }
 
-    fn from_bits_le(bits: &[bool]) -> Self {
+    fn from_bits_le(_bits: &[bool]) -> Self {
         todo!()
         //let mut res = Self::zero();
         //for (bits64, res_i) in bits.chunks(64).zip(&mut res.0) {
