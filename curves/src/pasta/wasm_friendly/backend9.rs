@@ -180,11 +180,11 @@ impl<FpC: FpConstants> FpBackend<9> for FpC {
     const ONE: BigInt<9> = BigInt::from_digits(Self::R);
 
     fn add_assign(x: &mut Fp<Self, 9>, y: &Fp<Self, 9>) {
-        todo!()
+        std::ops::AddAssign::add_assign(x, y)
     }
 
     fn mul_assign(x: &mut Fp<Self, 9>, y: &Fp<Self, 9>) {
-        todo!()
+        std::ops::MulAssign::mul_assign(x, y)
     }
 
     fn from_bigint(x: BigInt<9>) -> Option<Fp<Self, 9>> {

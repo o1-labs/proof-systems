@@ -19,8 +19,6 @@ use std::{
     str::FromStr,
 };
 
-use super::minimal_field::MinimalField;
-
 pub trait FpBackend<const N: usize>: Send + Sync + 'static + Sized {
     const MODULUS: BigInt<N>;
     const ZERO: BigInt<N>;
@@ -110,14 +108,14 @@ impl<P: FpBackend<N>, const N: usize> From<[u32; N]> for Fp<P, N> {
 
 // field
 
-impl<P: FpBackend<N>, const N: usize> MinimalField for Fp<P, N> {
-    fn square_in_place(&mut self) -> &mut Self {
-        // implemented with mul_assign for now
-        let self_copy = *self;
-        self.mul_assign(&self_copy);
-        self
-    }
-}
+//impl<P: FpBackend<N>, const N: usize> MinimalField for Fp<P, N> {
+//    fn square_in_place(&mut self) -> &mut Self {
+//        // implemented with mul_assign for now
+//        let self_copy = *self;
+//        self.mul_assign(&self_copy);
+//        self
+//    }
+//}
 
 // add, zero, neg
 
@@ -625,67 +623,97 @@ impl<P: FpBackend<N>, const N: usize> PartialOrd for Fp<P, N> {
 
 impl<P: FpBackend<N>, const N: usize> From<u128> for Fp<P, N> {
     fn from(other: u128) -> Self {
-        todo!()
+        Self::new(From::from(other))
     }
 }
 
 impl<P: FpBackend<N>, const N: usize> From<u64> for Fp<P, N> {
     fn from(other: u64) -> Self {
-        todo!()
+        Self::new(From::from(other))
     }
 }
 
 impl<P: FpBackend<N>, const N: usize> From<u32> for Fp<P, N> {
     fn from(other: u32) -> Self {
-        todo!()
+        Self::new(From::from(other))
     }
 }
 
 impl<P: FpBackend<N>, const N: usize> From<u16> for Fp<P, N> {
     fn from(other: u16) -> Self {
-        todo!()
+        Self::new(From::from(other))
     }
 }
 
 impl<P: FpBackend<N>, const N: usize> From<u8> for Fp<P, N> {
     fn from(other: u8) -> Self {
-        todo!()
+        Self::new(From::from(other))
     }
 }
 
 impl<P: FpBackend<N>, const N: usize> From<i128> for Fp<P, N> {
     fn from(other: i128) -> Self {
-        todo!()
+        if other >= 0 {
+            From::from(other as u128)
+        } else {
+            let other_bigint = From::from((-other) as u128);
+            assert!(P::MODULUS > other_bigint);
+            Fp::<P, N>::new(P::MODULUS) - Fp::<P, N>::new(other_bigint)
+        }
     }
 }
 
 impl<P: FpBackend<N>, const N: usize> From<i64> for Fp<P, N> {
     fn from(other: i64) -> Self {
-        todo!()
+        if other >= 0 {
+            From::from(other as u64)
+        } else {
+            let other_bigint = From::from((-other) as u64);
+            assert!(P::MODULUS > other_bigint);
+            Fp::<P, N>::new(P::MODULUS) - Fp::<P, N>::new(other_bigint)
+        }
     }
 }
 
 impl<P: FpBackend<N>, const N: usize> From<i32> for Fp<P, N> {
     fn from(other: i32) -> Self {
-        todo!()
+        if other >= 0 {
+            From::from(other as u32)
+        } else {
+            let other_bigint = From::from((-other) as u32);
+            assert!(P::MODULUS > other_bigint);
+            Fp::<P, N>::new(P::MODULUS) - Fp::<P, N>::new(other_bigint)
+        }
     }
 }
 
 impl<P: FpBackend<N>, const N: usize> From<i16> for Fp<P, N> {
     fn from(other: i16) -> Self {
-        todo!()
+        if other >= 0 {
+            From::from(other as u16)
+        } else {
+            let other_bigint = From::from((-other) as u16);
+            assert!(P::MODULUS > other_bigint);
+            Fp::<P, N>::new(P::MODULUS) - Fp::<P, N>::new(other_bigint)
+        }
     }
 }
 
 impl<P: FpBackend<N>, const N: usize> From<i8> for Fp<P, N> {
     fn from(other: i8) -> Self {
-        todo!()
+        if other >= 0 {
+            From::from(other as u8)
+        } else {
+            let other_bigint = From::from((-other) as u8);
+            assert!(P::MODULUS > other_bigint);
+            Fp::<P, N>::new(P::MODULUS) - Fp::<P, N>::new(other_bigint)
+        }
     }
 }
 
 impl<P: FpBackend<N>, const N: usize> From<bool> for Fp<P, N> {
     fn from(other: bool) -> Self {
-        todo!()
+        Self::new(From::from(other as u32))
     }
 }
 
@@ -733,13 +761,11 @@ impl<P: FpBackend<N>, const N: usize> PrimeField for Fp<P, N> {
 
     #[inline]
     fn from_bigint(r: BigInt<N>) -> Option<Self> {
-        todo!()
-        //P::from_bigint(r)
+        P::from_bigint(r)
     }
 
     fn into_bigint(self) -> BigInt<N> {
-        todo!()
-        //P::into_bigint(self)
+        P::to_bigint(self)
     }
 }
 
@@ -866,16 +892,16 @@ impl<P: FpBackend<N>, const N: usize> Field for Fp<P, N> {
 
     #[inline]
     fn square(&self) -> Self {
-        todo!()
-        //let mut temp = *self;
-        //temp.square_in_place();
-        //temp
+        let mut temp = *self;
+        temp.square_in_place();
+        temp
     }
 
     fn square_in_place(&mut self) -> &mut Self {
-        todo!()
-        //P::square_in_place(self);
-        //self
+        // implemented with mul_assign for now
+        let self_copy = *self;
+        self.mul_assign(&self_copy);
+        self
     }
 
     #[inline]

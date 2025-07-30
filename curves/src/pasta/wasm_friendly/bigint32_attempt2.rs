@@ -128,6 +128,13 @@ impl<const N: usize> AsRef<[u64]> for BigInt<N> {
     }
 }
 
+impl<const N: usize> From<u128> for BigInt<N> {
+    #[inline]
+    fn from(val: u128) -> BigInt<N> {
+        BigInt(BUintD32::from(val))
+    }
+}
+
 impl<const N: usize> From<u64> for BigInt<N> {
     #[inline]
     fn from(val: u64) -> BigInt<N> {
@@ -449,7 +456,7 @@ impl<const N: usize> BigInteger for BigInt<N> {
     }
 
     #[inline]
-    fn muln(&mut self, mut n: u32) {
+    fn muln(&mut self, n: u32) {
         self.0.shr_assign(n);
     }
 
