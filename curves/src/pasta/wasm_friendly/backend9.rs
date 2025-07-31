@@ -7,11 +7,11 @@ use super::wasm_fp::{Fp, FpBackend};
 type B = [u32; 9];
 type B64 = [u64; 9];
 
-const SHIFT: u32 = 29;
-const MASK: u32 = (1 << SHIFT) - 1;
+pub const SHIFT: u32 = 29;
+pub const MASK: u32 = (1 << SHIFT) - 1;
 
-const SHIFT64: u64 = SHIFT as u64;
-const MASK64: u64 = MASK as u64;
+pub const SHIFT64: u64 = SHIFT as u64;
+pub const MASK64: u64 = MASK as u64;
 
 pub const fn from_64x4(pa: [u64; 4]) -> [u32; 9] {
     let mut p = [0u32; 9];
@@ -54,6 +54,25 @@ pub const fn from_32x8(pa: [u32; 8]) -> [u32; 9] {
     from_64x4(p)
 }
 
+// Converts from 32x9 with 29 bit limbs back to "normal" 32 bit bignum limb format.
+pub fn to_32x8(limbs29: [u32; 9]) -> [u32; 8] {
+    // First convert to 64x4 format
+    let limbs64 = to_64x4(limbs29);
+
+    // Then split each 64-bit limb into two 32-bit limbs
+    let mut result = [0u32; 8];
+    result[0] = limbs64[0] as u32;
+    result[1] = (limbs64[0] >> 32) as u32;
+    result[2] = limbs64[1] as u32;
+    result[3] = (limbs64[1] >> 32) as u32;
+    result[4] = limbs64[2] as u32;
+    result[5] = (limbs64[2] >> 32) as u32;
+    result[6] = limbs64[3] as u32;
+    result[7] = (limbs64[3] >> 32) as u32;
+
+    result
+}
+
 /// Checks if the number satisfies 32x9 shape (each limb 29 bits).
 pub const fn is_32x9_shape(pa: [u32; 9]) -> bool {
     let b0 = (pa[0] & MASK) != 0;
@@ -90,7 +109,7 @@ pub trait FpConstants: Send + Sync + 'static + Sized {
 }
 
 #[inline]
-fn gte_modulus<FpC: FpConstants>(x: &B) -> bool {
+pub fn gte_modulus<FpC: FpConstants>(x: &B) -> bool {
     for i in (0..9).rev() {
         // don't fix warning -- that makes it 15% slower!
         #[allow(clippy::comparison_chain)]
@@ -146,7 +165,7 @@ pub fn add_assign<FpC: FpConstants>(x: &mut B, y: &B) {
 }
 
 #[inline]
-fn conditional_reduce<FpC: FpConstants>(x: &mut B) {
+pub fn conditional_reduce<FpC: FpConstants>(x: &mut B) {
     if gte_modulus::<FpC>(x) {
         #[allow(clippy::needless_range_loop)]
         for i in 0..9 {
@@ -256,12 +275,16 @@ impl<FpC: FpConstants> FpBackend<9> for FpC {
         }
     }
 
+    /// Return a "normal" bigint
     fn to_bigint(x: Fp<Self, 9>) -> BigInt<9> {
         let one = [1, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut r = x.0.into_digits();
         // convert back from montgomery form
         mul_assign::<Self>(&mut r, &one);
-        BigInt::from_digits(r)
+        let repr: [u32; 8] = to_32x8(r);
+        let mut extended_repr = [0u32; 9];
+        extended_repr[..8].copy_from_slice(&repr);
+        BigInt::from_digits(extended_repr)
     }
 
     fn pack(x: Fp<Self, 9>) -> Vec<u64> {

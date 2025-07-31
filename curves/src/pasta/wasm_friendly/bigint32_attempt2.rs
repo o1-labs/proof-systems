@@ -12,12 +12,13 @@ use ark_std::{
 };
 use core::{
     ops::{
-        BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Shl, ShlAssign, Shr,
-        ShrAssign,
+        Add, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Mul, Shl, ShlAssign,
+        Shr, ShrAssign,
     },
     str::FromStr,
 };
 use num_bigint::BigUint;
+use std::ops::Rem;
 use zeroize::Zeroize;
 
 use bnum::{errors::ParseIntError, BUintD32};
@@ -435,6 +436,60 @@ impl<const N: usize> FromStr for BigInt<N> {
         let inner = BUintD32::<N>::from_str(s)?;
         // Wrap it in your BigInt newtype
         Ok(BigInt(inner))
+    }
+}
+
+impl<const N: usize> Add<BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn add(self, rhs: BigInt<N>) -> BigInt<N> {
+        BigInt(self.0 + &rhs.0)
+    }
+}
+
+impl<const N: usize> Add<&BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn add(self, rhs: &BigInt<N>) -> BigInt<N> {
+        BigInt(self.0 + &rhs.0)
+    }
+}
+
+impl<const N: usize> Mul<BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn mul(self, rhs: BigInt<N>) -> BigInt<N> {
+        BigInt(self.0 * &rhs.0)
+    }
+}
+
+impl<const N: usize> Mul<&BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn mul(self, rhs: &BigInt<N>) -> BigInt<N> {
+        BigInt(self.0 * &rhs.0)
+    }
+}
+
+impl<const N: usize> Rem<BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn rem(self, rhs: BigInt<N>) -> BigInt<N> {
+        BigInt(self.0.rem_euclid(rhs.0))
+    }
+}
+
+impl<const N: usize> Rem<&BigInt<N>> for BigInt<N> {
+    type Output = BigInt<N>;
+
+    #[inline]
+    fn rem(self, rhs: &BigInt<N>) -> BigInt<N> {
+        BigInt(self.0.rem_euclid(rhs.0))
     }
 }
 
