@@ -1,5 +1,6 @@
 use super::fft::{FftParameters, Fp256Parameters};
 use ark_ff::{
+    Field,
     biginteger::BigInteger256 as BigInteger,
     fields::{MontBackend, MontConfig},
     Fp256,
@@ -78,4 +79,10 @@ impl super::fft::FpParameters for FpParameters {
 
     // -(MODULUS^{-1} mod 2^64) mod 2^64
     const INV: u64 = 11037532056220336127;
+}
+
+impl crate::pasta::wasm_friendly::MinimalField for Fp {
+    fn square_in_place(&mut self) -> &mut Self {
+        <Fp as Field>::square_in_place(self)
+    }
 }

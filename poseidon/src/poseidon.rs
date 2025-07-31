@@ -33,9 +33,9 @@ pub fn sbox<F: Field, SC: SpongeConstants>(mut x: F) -> F {
         // that it gives to hashing.
         let mut square = x;
         square.square_in_place();
-        x *= square;
+        x *= &square;
         square.square_in_place();
-        x *= square;
+        x *= &square;
         x
     } else {
         x.pow([SC::PERM_SBOX as u64])
@@ -141,5 +141,58 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
     fn reset(&mut self) {
         self.state = vec![F::zero(); self.state.len()];
         self.sponge_state = SpongeState::Absorbed(0);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::{
+        constants::PlonkSpongeConstantsKimchi,
+        pasta::fp_kimchi as SpongeParametersKimchi,
+        poseidon::{ArithmeticSponge as Poseidon, ArithmeticSpongeParams, Sponge},
+    };
+    use mina_curves::pasta::{wasm_friendly::Fp9, Fp};
+    use once_cell::sync::Lazy;
+
+    // sponge params for Fp9
+
+    fn fp9_sponge_params() -> ArithmeticSpongeParams<Fp9> {
+        let params = SpongeParametersKimchi::params();
+
+        // leverage .into() to convert from Fp to Fp9
+        ArithmeticSpongeParams::<Fp9> {
+            round_constants: params
+                .round_constants
+                .into_iter()
+                .map(|x| x.into_iter().map(Fp9::from).collect())
+                .collect(),
+            mds: params
+                .mds
+                .into_iter()
+                .map(|x| x.into_iter().map(Fp9::from).collect())
+                .collect(),
+        }
+    }
+
+    fn fp9_static_params() -> &'static ArithmeticSpongeParams<Fp9> {
+        static PARAMS: Lazy<ArithmeticSpongeParams<Fp9>> = Lazy::new(fp9_sponge_params);
+        &PARAMS
+    }
+
+    #[test]
+    fn test_poseidon_hash_iteration_fp9() {
+        let mut hash: Fp9 = Fp9::from(12345u64);
+        let mut poseidon = Poseidon::<Fp9, PlonkSpongeConstantsKimchi>::new(fp9_static_params());
+
+        // Run a few iterations to ensure it works
+        for _ in 0..10 {
+            poseidon.absorb(&[hash]);
+            hash = poseidon.squeeze();
+        }
+
+        // If we reach here without panicking, the test passes
+        assert!(true);
     }
 }
