@@ -35,7 +35,7 @@ let tx = Transaction::new_payment(
             );
 
 let mut ctx = mina_signer::create_legacy::<Transaction>(NetworkId::TESTNET);
-let sig = ctx.sign(&keypair, &tx);
+let sig = ctx.sign(&keypair, &tx, false);
 assert!(ctx.verify(&sig, &keypair.public, &tx));
 ```
 
