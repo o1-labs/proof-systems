@@ -55,7 +55,7 @@ impl DomainParameter for NetworkId {
 pub trait Signer<H: Hashable> {
     /// Sign `input` (see [`Hashable`]) using keypair `kp` and return the
     /// corresponding signature.
-    fn sign(&mut self, kp: &Keypair, input: &H) -> Signature;
+    fn sign(&mut self, kp: &Keypair, input: &H, packed: bool) -> Signature;
 
     /// Verify that the signature `sig` on `input` (see [`Hashable`]) is signed
     /// with the secret key corresponding to `pub_key`.
