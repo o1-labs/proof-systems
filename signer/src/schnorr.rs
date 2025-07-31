@@ -5,7 +5,7 @@
 //! Details: <https://github.com/MinaProtocol/mina/blob/develop/docs/specs/signatures/description.md>
 
 extern crate alloc;
-use alloc::{boxed::Box, string::String};
+use alloc::{boxed::Box, string::String, vec};
 
 use crate::{BaseField, CurvePoint, Hashable, Keypair, PubKey, ScalarField, Signature, Signer};
 use ark_ec::{
@@ -24,6 +24,7 @@ use blake2::{
 };
 use core::ops::{Add, Neg};
 use mina_hasher::{self, DomainParameter, Hasher, ROInput};
+use o1_utils::FieldHelpers;
 
 /// Schnorr signer context for the Mina signature algorithm
 ///
@@ -58,8 +59,11 @@ impl<H: Hashable> Hashable for Message<H> {
 }
 
 impl<H: 'static + Hashable> Signer<H> for Schnorr<H> {
-    fn sign(&mut self, kp: &Keypair, input: &H) -> Signature {
-        let k: ScalarField = self.derive_nonce(kp, input);
+    fn sign(&mut self, kp: &Keypair, input: &H, packed: bool) -> Signature {
+        let k: ScalarField = match packed {
+            true => self.derive_nonce_compatible(kp, input),
+            false => self.derive_nonce(kp, input),
+        };
         let r: CurvePoint = CurvePoint::generator()
             .mul_bigint(k.into_bigint())
             .into_affine();
@@ -109,6 +113,63 @@ pub(crate) fn create_kimchi<H: 'static + Hashable>(domain_param: H::D) -> impl S
 }
 
 impl<H: 'static + Hashable> Schnorr<H> {
+    // OCaml/Typescript compatible nonce derivation
+    fn derive_nonce_compatible(&self, kp: &Keypair, input: &H) -> ScalarField {
+        let mut blake_hasher = Blake2bVar::new(32).unwrap();
+
+        // Create ROInput with message + [px, py, private_key_as_field] + network_id_packed
+        let network_id_bytes = self.domain_param.clone().into_bytes();
+        let network_id_value = if network_id_bytes.is_empty() {
+            0u8
+        } else {
+            network_id_bytes[0]
+        };
+
+        let roi = input
+            .to_roinput()
+            .append_field(kp.public.point().x)
+            .append_field(kp.public.point().y)
+            .append_field(BaseField::from(kp.secret.scalar().into_bigint()))
+            .append_bytes(&[network_id_value]); // Network ID as packed 8 bits
+
+        // Get packed fields
+        let packed_fields = roi.to_packed_fields();
+
+        // Convert each field to bits and flatten
+        let mut all_bits = vec![];
+        for field in packed_fields {
+            let field_bytes = field.to_bytes();
+            let mut field_bits = 0;
+            for &byte in field_bytes.iter() {
+                for bit_idx in 0..8 {
+                    if field_bits < 255 {
+                        let bit = (byte & (1 << bit_idx)) != 0;
+                        all_bits.push(bit);
+                        field_bits += 1;
+                    }
+                }
+            }
+        }
+
+        // Convert bits to bytes for BLAKE2b
+        let mut input_bytes = vec![0u8; (all_bits.len() + 7) / 8];
+        for (i, &bit) in all_bits.iter().enumerate() {
+            if bit {
+                input_bytes[i / 8] |= 1 << (i % 8);
+            }
+        }
+
+        // Hash with BLAKE2b and drop top 2 bits
+        blake_hasher.update(&input_bytes);
+        let mut bytes = [0; 32];
+        blake_hasher
+            .finalize_variable(&mut bytes)
+            .expect("incorrect output size");
+        bytes[bytes.len() - 1] &= 0b0011_1111;
+
+        ScalarField::from_random_bytes(&bytes[..]).expect("failed to create scalar from bytes")
+    }
+
     /// This function uses a cryptographic hash function to create a uniformly and
     /// randomly distributed nonce.  It is crucial for security that no two different
     /// messages share the same nonce.

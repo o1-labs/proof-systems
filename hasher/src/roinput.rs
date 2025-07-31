@@ -122,6 +122,30 @@ impl ROInput {
         self.append_bytes(&x.to_le_bytes())
     }
 
+    /// Convert the random oracle input to a vector of packed field elements
+    pub fn to_packed_fields(&self) -> Vec<Fp> {
+        if self.bits.is_empty() {
+            return self.fields.clone();
+        }
+
+        let mut packed_bits = Vec::new();
+
+        let total_bits = self.bits.len();
+        if total_bits > 0 {
+            let mut field_value = 0u64;
+            for (i, bit) in self.bits.iter().enumerate() {
+                if *bit && i < 64 {
+                    field_value |= 1u64 << i;
+                }
+            }
+            packed_bits.push(Fp::from(field_value));
+        }
+
+        let mut result = self.fields.clone();
+        result.extend(packed_bits);
+        result
+    }
+
     /// Serialize random oracle input to bytes
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bits: BitVec<u8> = self.fields.iter().fold(BitVec::new(), |mut acc, fe| {
