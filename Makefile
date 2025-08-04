@@ -247,4 +247,8 @@ build-web: ## Compile the Kimchi library into WebAssembly to be used in the brow
 		--out-dir ${PLONK_WASM_WEB_OUTDIR} \
 		--rust-version ${NIGHTLY_RUST_VERSION}
 
+.PHONY: build-ocaml-kimchi-stubs
+build-ocaml-kimchi-stubs: ## Build the OCaml modules to call the Kimchi and Pasta primitives in Rust
+		dune build kimchi-stubs
+
 .PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs check-format
