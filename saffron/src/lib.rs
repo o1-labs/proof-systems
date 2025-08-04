@@ -9,6 +9,7 @@ pub mod read_proof;
 pub mod storage;
 pub mod storage_proof;
 pub mod utils;
+pub mod vid;
 
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
