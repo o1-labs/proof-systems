@@ -103,7 +103,7 @@ impl<F: PrimeField> CircuitGate<F> {
         row: usize,
         // first and last row of the poseidon circuit (because they are used in the permutation)
         first_and_last_row: [GateWires; 2],
-        round_constants: &[Vec<F>],
+        round_constants: &[[F; 3]],
     ) -> (Vec<Self>, usize) {
         let mut gates = vec![];
 
