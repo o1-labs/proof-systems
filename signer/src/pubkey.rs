@@ -302,7 +302,8 @@ impl CompressedPubKey {
 
     /// Create compressed public key from a secret key
     pub fn from_secret_key(sec_key: SecKey) -> Self {
-        // We do not need to check point is on the curve, since it's derived directly from the generator point
+        // We do not need to check point is on the curve, since it's derived
+        // directly from the generator point
         let public = PubKey::from_point_unsafe(
             CurvePoint::generator()
                 .mul(sec_key.into_scalar())
@@ -311,7 +312,8 @@ impl CompressedPubKey {
         public.into_compressed()
     }
 
-    /// Deserialize Mina address into compressed public key (via an uncompressed `PubKey`)
+    /// Deserialize Mina address into compressed public key (via an uncompressed
+    /// `PubKey`)
     ///
     /// # Errors
     ///
@@ -320,8 +322,9 @@ impl CompressedPubKey {
         Ok(PubKey::from_address(address)?.into_compressed())
     }
 
-    /// The empty [`CompressedPubKey`] value that is used as `public_key` in empty account
-    /// and [None] value for calculating the hash of [`Option<CompressedPubKey>`], etc.
+    /// The empty [`CompressedPubKey`] value that is used as `public_key` in
+    /// empty account and [None] value for calculating the hash of
+    /// [`Option<CompressedPubKey>`], etc.
     pub fn empty() -> Self {
         Self {
             x: BaseField::zero(),

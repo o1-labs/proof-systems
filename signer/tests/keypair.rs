@@ -1,7 +1,7 @@
 use mina_signer::{keypair::KeypairError, seckey::SecKeyError, Keypair};
 
 #[test]
-fn from_hex() {
+fn test_from_hex() {
     assert_eq!(
         Keypair::from_hex(""),
         Err(KeypairError::SecretKey(SecKeyError::SecretKeyBytes))
@@ -28,7 +28,7 @@ fn from_hex() {
 }
 
 #[test]
-fn get_address() {
+fn test_get_address() {
     macro_rules! assert_get_address_eq {
         ($sec_key_hex:expr, $target_address:expr) => {
             let kp = Keypair::from_hex($sec_key_hex).expect("failed to create keypair");
@@ -63,7 +63,7 @@ fn get_address() {
 }
 
 #[test]
-fn to_bytes() {
+fn test_to_bytes() {
     let bytes = [
         61, 18, 244, 30, 36, 241, 5, 54, 107, 96, 154, 162, 58, 78, 242, 140, 186, 233, 25, 35,
         145, 119, 39, 94, 162, 123, 208, 202, 189, 29, 235, 209,
