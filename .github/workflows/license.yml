@@ -1,0 +1,24 @@
+name: License Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  license-audit:
+    runs-on: ubuntu-latest
+    env:
+      RUST_VERSION: 1.85.0
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust and cargo deny
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: {{ env.RUST_VERSION }}
+        run: rustup run {{ env.RUST_VERSION }} cargo install cargo-deny
+
+      - name: Run cargo-deny
+        run: rustup run {{ env.RUST_VERSION }} cargo deny check licenses
