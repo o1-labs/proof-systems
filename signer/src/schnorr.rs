@@ -28,7 +28,8 @@ use o1_utils::FieldHelpers;
 
 /// Schnorr signer context for the Mina signature algorithm
 ///
-/// For details about the signature algorithm please see the [`schnorr`](crate::schnorr) documentation
+/// For details about the signature algorithm please see the
+/// [`schnorr`](crate::schnorr) documentation
 pub struct Schnorr<H: Hashable> {
     hasher: Box<dyn Hasher<Message<H>>>,
     domain_param: H::D,
@@ -113,7 +114,51 @@ pub(crate) fn create_kimchi<H: 'static + Hashable>(domain_param: H::D) -> impl S
 }
 
 impl<H: 'static + Hashable> Schnorr<H> {
-    // OCaml/Typescript compatible nonce derivation
+    /// Derives a nonce compatible with OCaml/TypeScript implementations
+    ///
+    /// This function implements the deterministic nonce derivation algorithm as
+    /// specified in the Mina signature specification:
+    /// <https://github.com/MinaProtocol/mina/blob/develop/docs/specs/signatures/description.md>
+    ///
+    /// # Compatibility
+    ///
+    /// This implementation is compatible with the TypeScript version:
+    /// <https://github.com/o1-labs/o1js/blob/main/src/mina-signer/src/signature.ts#L128>
+    ///
+    /// # Algorithm
+    ///
+    /// The nonce derivation follows this process:
+    /// 1. Create ROInput from: `message || public_key_x || public_key_y || private_key || network_id`
+    /// 2. Pack the ROInput into fields using Mina's field packing
+    /// 3. Convert packed fields to bits (255 bits per field)
+    /// 4. Convert bits to bytes for BLAKE2b input
+    /// 5. Hash with BLAKE2b-256
+    /// 6. Drop the top 2 bits to create a valid scalar field element
+    ///
+    /// # Parameters
+    ///
+    /// * `kp` - The keypair containing both public and private keys
+    /// * `input` - The message to be signed
+    ///
+    /// # Returns
+    ///
+    /// A deterministic nonce as a scalar field element, ensuring compatibility
+    /// with OCaml and TypeScript signature implementations.
+    ///
+    /// # Test Vectors
+    ///
+    /// For test vectors demonstrating this function's usage, see the `sign_fields_test`
+    /// in [`tests/signer.rs`](../../tests/signer.rs) which uses the compatible nonce
+    /// derivation mode (`packed: true`).
+    ///
+    /// # Security
+    ///
+    /// This function generates a cryptographically secure, deterministic nonce
+    /// that:
+    /// - Depends on the private key, public key, message, and network context
+    /// - Ensures no two different messages share the same nonce (with the same
+    ///   key)
+    /// - Is compatible with existing Mina protocol implementations
     fn derive_nonce_compatible(&self, kp: &Keypair, input: &H) -> ScalarField {
         let mut blake_hasher = Blake2bVar::new(32).unwrap();
 
@@ -170,9 +215,42 @@ impl<H: 'static + Hashable> Schnorr<H> {
         ScalarField::from_random_bytes(&bytes[..]).expect("failed to create scalar from bytes")
     }
 
-    /// This function uses a cryptographic hash function to create a uniformly and
-    /// randomly distributed nonce.  It is crucial for security that no two different
-    /// messages share the same nonce.
+    /// Standard nonce derivation using direct byte serialization
+    ///
+    /// This function uses a cryptographic hash function to create a uniformly
+    /// and randomly distributed nonce. It is crucial for security that no two
+    /// different messages share the same nonce.
+    ///
+    /// # Parameters
+    ///
+    /// * `kp` - The keypair containing both public and private keys
+    /// * `input` - The message to be signed
+    ///
+    /// # Returns
+    ///
+    /// A deterministic nonce as a scalar field element.
+    ///
+    /// # Compatibility
+    ///
+    /// For OCaml/TypeScript compatibility, use
+    /// [`derive_nonce_compatible`](Self::derive_nonce_compatible)
+    /// instead. This method will be deprecated in future versions.
+    ///
+    /// # Differences from `derive_nonce_compatible`
+    ///
+    /// This method differs from [`derive_nonce_compatible`](Self::derive_nonce_compatible) in several ways:
+    /// - Uses direct byte serialization (`roi.to_bytes()`) instead of field
+    ///   packing
+    /// - Appends private key as scalar field element instead of base field
+    ///   element
+    /// - Uses full network ID bytes instead of packed single byte
+    /// - Does not perform bit-level manipulation for BLAKE2b input
+    ///
+    /// # Security
+    ///
+    /// This function generates a cryptographically secure, deterministic nonce
+    /// that depends on the private key, public key, message, and network
+    /// context.
     fn derive_nonce(&self, kp: &Keypair, input: &H) -> ScalarField {
         let mut blake_hasher = Blake2bVar::new(32).unwrap();
 
@@ -198,9 +276,10 @@ impl<H: 'static + Hashable> Schnorr<H> {
         ScalarField::from_random_bytes(&bytes[..]).expect("failed to create scalar from bytes")
     }
 
-    /// This function uses a cryptographic hash function (based on a sponge construction) to
-    /// convert the message to be signed (and some other information) into a uniformly and
-    /// randomly distributed scalar field element.  It uses Mina's variant of the Poseidon
+    /// This function uses a cryptographic hash function (based on a sponge
+    /// construction) to convert the message to be signed (and some other
+    /// information) into a uniformly and randomly distributed scalar field
+    /// element. It uses Mina's variant of the Poseidon
     /// SNARK-friendly cryptographic hash function.
     /// Details: <https://github.com/o1-labs/cryptography-rfcs/blob/httpsnapps-notary-signatures/mina/001-poseidon-sponge.md>
     fn message_hash(&mut self, pub_key: &PubKey, rx: BaseField, input: &H) -> ScalarField {
@@ -212,8 +291,8 @@ impl<H: 'static + Hashable> Schnorr<H> {
         };
 
         // Squeeze and convert from base field element to scalar field element
-        // Since the difference in modulus between the two fields is < 2^125, w.h.p., a
-        // random value from one field will fit in the other field.
+        // Since the difference in modulus between the two fields is < 2^125,
+        // w.h.p., a random value from one field will fit in the other field.
         ScalarField::from(self.hasher.hash(&schnorr_input).into_bigint())
     }
 }
