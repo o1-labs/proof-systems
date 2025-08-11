@@ -1,5 +1,5 @@
 pub mod transaction;
-use ark_ff::{BigInteger, PrimeField, Zero};
+use ark_ff::{BigInteger, One, PrimeField, Zero};
 use mina_hasher::{Hashable, ROInput};
 use mina_signer::{self, BaseField, Keypair, NetworkId, PubKey, ScalarField, SecKey, Signer};
 use num_bigint::BigUint;
@@ -347,6 +347,36 @@ fn test_scalar_to_base_field_overflow() {
 
     // Create a keypair with a large scalar value to test derive_nonce_compatible
     let large_secret = SecKey::new(scalar_field_modulus_minus_diff.into());
+    let kp = Keypair::from_secret_key(large_secret).unwrap();
+
+    let input = Input {
+        fields: vec![BaseField::from(1), BaseField::from(2), BaseField::from(3)],
+    };
+
+    let mut testnet_ctx = mina_signer::create_kimchi::<Input>(NetworkId::TESTNET);
+
+    // This should not panic even with large scalar values
+    let sig = testnet_ctx.sign(&kp, &input, true);
+
+    // Verify the signature is valid
+    assert!(testnet_ctx.verify(&sig, &kp.public, &input));
+}
+
+#[test]
+fn test_base_field_modulus_minus_one_works() {
+    // Complementary test to test_scalar_to_base_field_overflow to ensure that
+    // the base field modulus minus one works correctly
+
+    let base_field_modulus: BigUint = BigUint::from_bytes_le(&BaseField::MODULUS.to_bytes_le());
+
+    // Create a scalar field element close to its modulus
+    // This test ensures that we can handle large scalar values, larger than the
+    // base field modulus
+    // Smaller than the difference between the two moduli
+    let base_field_modulus_minus_one: BigUint = base_field_modulus.clone() - BigUint::one();
+
+    // Create a keypair with a large scalar value to test derive_nonce_compatible
+    let large_secret = SecKey::new(base_field_modulus_minus_one.into());
     let kp = Keypair::from_secret_key(large_secret).unwrap();
 
     let input = Input {
