@@ -215,9 +215,42 @@ impl<H: 'static + Hashable> Schnorr<H> {
         ScalarField::from_random_bytes(&bytes[..]).expect("failed to create scalar from bytes")
     }
 
+    /// Standard nonce derivation using direct byte serialization
+    ///
     /// This function uses a cryptographic hash function to create a uniformly
     /// and randomly distributed nonce. It is crucial for security that no two
     /// different messages share the same nonce.
+    ///
+    /// # Parameters
+    ///
+    /// * `kp` - The keypair containing both public and private keys
+    /// * `input` - The message to be signed
+    ///
+    /// # Returns
+    ///
+    /// A deterministic nonce as a scalar field element.
+    ///
+    /// # Compatibility
+    ///
+    /// For OCaml/TypeScript compatibility, use
+    /// [`derive_nonce_compatible`](Self::derive_nonce_compatible)
+    /// instead. This method will be deprecated in future versions.
+    ///
+    /// # Differences from `derive_nonce_compatible`
+    ///
+    /// This method differs from [`derive_nonce_compatible`](Self::derive_nonce_compatible) in several ways:
+    /// - Uses direct byte serialization (`roi.to_bytes()`) instead of field
+    ///   packing
+    /// - Appends private key as scalar field element instead of base field
+    ///   element
+    /// - Uses full network ID bytes instead of packed single byte
+    /// - Does not perform bit-level manipulation for BLAKE2b input
+    ///
+    /// # Security
+    ///
+    /// This function generates a cryptographically secure, deterministic nonce
+    /// that depends on the private key, public key, message, and network
+    /// context.
     fn derive_nonce(&self, kp: &Keypair, input: &H) -> ScalarField {
         let mut blake_hasher = Blake2bVar::new(32).unwrap();
 
