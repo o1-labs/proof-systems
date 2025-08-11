@@ -115,7 +115,51 @@ pub(crate) fn create_kimchi<H: 'static + Hashable>(domain_param: H::D) -> impl S
 }
 
 impl<H: 'static + Hashable> Schnorr<H> {
-    // OCaml/Typescript compatible nonce derivation
+    /// Derives a nonce compatible with OCaml/TypeScript implementations
+    ///
+    /// This function implements the deterministic nonce derivation algorithm as
+    /// specified in the Mina signature specification:
+    /// <https://github.com/MinaProtocol/mina/blob/develop/docs/specs/signatures/description.md>
+    ///
+    /// # Compatibility
+    ///
+    /// This implementation is compatible with the TypeScript version:
+    /// <https://github.com/o1-labs/o1js/blob/main/src/mina-signer/src/signature.ts#L128>
+    ///
+    /// # Algorithm
+    ///
+    /// The nonce derivation follows this process:
+    /// 1. Create ROInput from: `message || public_key_x || public_key_y || private_key || network_id`
+    /// 2. Pack the ROInput into fields using Mina's field packing
+    /// 3. Convert packed fields to bits (255 bits per field)
+    /// 4. Convert bits to bytes for BLAKE2b input
+    /// 5. Hash with BLAKE2b-256
+    /// 6. Drop the top 2 bits to create a valid scalar field element
+    ///
+    /// # Parameters
+    ///
+    /// * `kp` - The keypair containing both public and private keys
+    /// * `input` - The message to be signed
+    ///
+    /// # Returns
+    ///
+    /// A deterministic nonce as a scalar field element, ensuring compatibility
+    /// with OCaml and TypeScript signature implementations.
+    ///
+    /// # Test Vectors
+    ///
+    /// For test vectors demonstrating this function's usage, see the `sign_fields_test`
+    /// in [`tests/signer.rs`](../../tests/signer.rs) which uses the compatible nonce
+    /// derivation mode (`packed: true`).
+    ///
+    /// # Security
+    ///
+    /// This function generates a cryptographically secure, deterministic nonce
+    /// that:
+    /// - Depends on the private key, public key, message, and network context
+    /// - Ensures no two different messages share the same nonce (with the same
+    ///   key)
+    /// - Is compatible with existing Mina protocol implementations
     fn derive_nonce_compatible(&self, kp: &Keypair, input: &H) -> ScalarField {
         let mut blake_hasher = Blake2bVar::new(32).unwrap();
 
