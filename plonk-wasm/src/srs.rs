@@ -320,6 +320,33 @@ pub mod fp {
         });
         basis.iter().map(Into::into).collect()
     }
+
+    /// Web-compatible version that returns pointer for worker communication
+    #[wasm_bindgen]
+    pub fn caml_fp_srs_get_lagrange_basis_ptr(
+        srs: &WasmFpSrs,
+        domain_size: i32,
+    ) -> *mut WasmVector<WasmPolyComm> {
+        let result = caml_fp_srs_get_lagrange_basis(srs, domain_size);
+        let boxed = Box::new(result);
+        Box::into_raw(boxed)
+    }
+
+    /// Reads the lagrange basis from a raw pointer.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it dereferences a raw pointer.
+    /// The pointer must be valid and point to a properly allocated WasmVector.
+    /// The pointer becomes invalid after this call (ownership transferred).
+    #[wasm_bindgen]
+    pub unsafe fn caml_fp_srs_get_lagrange_basis_read_from_ptr(
+        ptr: *mut WasmVector<WasmPolyComm>,
+    ) -> WasmVector<WasmPolyComm> {
+        // Reclaim ownership and extract data
+        let boxed = unsafe { Box::from_raw(ptr) };
+        *boxed  // Return owned data, automatically cleans up Box
+    }
 }
 
 pub mod fq {
