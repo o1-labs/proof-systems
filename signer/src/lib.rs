@@ -55,6 +55,28 @@ impl DomainParameter for NetworkId {
 pub trait Signer<H: Hashable> {
     /// Sign `input` (see [`Hashable`]) using keypair `kp` and return the
     /// corresponding signature.
+    ///
+    /// # Parameters
+    ///
+    /// * `kp` - The keypair to use for signing
+    /// * `input` - The message to sign (must implement [`Hashable`])
+    /// * `packed` - Controls nonce derivation method:
+    ///   - `true`: Use OCaml/TypeScript compatible nonce derivation with field packing
+    ///   - `false`: Use standard Rust nonce derivation
+    ///
+    /// # Returns
+    ///
+    /// A [`Signature`] over the input message.
+    ///
+    /// # Compatibility
+    ///
+    /// Use `packed: true` when compatibility with OCaml and TypeScript
+    /// implementations is required. Use `packed: false` for standard Rust-only
+    /// usage.
+    ///
+    /// **Note**: The standard nonce derivation (`packed: false`) will be
+    /// deprecated in future versions. Use `packed: true` for new code to ensure
+    /// forward compatibility.
     fn sign(&mut self, kp: &Keypair, input: &H, packed: bool) -> Signature;
 
     /// Verify that the signature `sig` on `input` (see [`Hashable`]) is signed
