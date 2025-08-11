@@ -21,6 +21,7 @@ bs58.workspace = true
 hex.workspace = true
 mina-curves.workspace = true
 mina-hasher.workspace = true
+num-bigint.workspace = true
 o1-utils.workspace = true
 rand.workspace = true
 sha2.workspace = true
