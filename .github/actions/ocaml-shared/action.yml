@@ -13,7 +13,6 @@ runs:
         ocaml-compiler: ${{ inputs.ocaml_version }}
 
     - name: Setup OPAM environment
-      shell: bash
       run: |
         # Export all OPAM environment variables to GITHUB_ENV
         # This avoids other steps to run `eval $(opam env)`
