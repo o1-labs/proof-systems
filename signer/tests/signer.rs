@@ -1,6 +1,7 @@
 pub mod transaction;
 use ark_ff::Zero;
-use mina_signer::{self, BaseField, Keypair, NetworkId, PubKey, ScalarField, Signer};
+use mina_hasher::{Hashable, ROInput};
+use mina_signer::{self, BaseField, Keypair, NetworkId, PubKey, ScalarField, SecKey, Signer};
 pub use transaction::Transaction;
 
 enum TransactionType {
@@ -37,8 +38,8 @@ macro_rules! assert_sign_verify_tx {
         // TODO only one context
         let mut testnet_ctx = mina_signer::create_legacy(NetworkId::TESTNET);
         let mut mainnet_ctx = mina_signer::create_legacy(NetworkId::MAINNET);
-        let testnet_sig = testnet_ctx.sign(&kp, &tx);
-        let mainnet_sig = mainnet_ctx.sign(&kp, &tx);
+        let testnet_sig = testnet_ctx.sign(&kp, &tx, false);
+        let mainnet_sig = mainnet_ctx.sign(&kp, &tx, false);
 
         // Signing checks
         assert_ne!(testnet_sig, mainnet_sig); // Testnet and mainnet sigs are not equal
@@ -85,7 +86,7 @@ fn signer_test_raw() {
     );
 
     let mut ctx = mina_signer::create_legacy(NetworkId::TESTNET);
-    let sig = ctx.sign(&kp, &tx);
+    let sig = ctx.sign(&kp, &tx, false);
 
     assert_eq!(sig.to_string(),
                 "11a36a8dfe5b857b95a2a7b7b17c62c3ea33411ae6f4eb3a907064aecae353c60794f1d0288322fe3f8bb69d6fabd4fd7c15f8d09f8783b2f087a80407e299af");
@@ -105,7 +106,7 @@ fn signer_zero_test() {
     );
 
     let mut ctx = mina_signer::create_legacy(NetworkId::TESTNET);
-    let sig = ctx.sign(&kp, &tx);
+    let sig = ctx.sign(&kp, &tx, false);
 
     assert!(ctx.verify(&sig, &kp.public, &tx));
 
@@ -254,4 +255,69 @@ fn sign_delegation_test_4() {
         /* testnet signature */ "26ca6b95dee29d956b813afa642a6a62cd89b1929320ed6b099fd191a217b08d2c9a54ba1c95e5000b44b93cfbd3b625e20e95636f1929311473c10858a27f09",
         /* mainnet signature */ "093f9ef0e4e051279da0a3ded85553847590ab739ee1bfd59e5bb30f98ed8a001a7a60d8506e2572164b7a525617a09f17e1756ac37555b72e01b90f37271595"
     );
+}
+
+#[derive(Clone)]
+struct Input {
+    fields: Vec<BaseField>,
+}
+
+impl Hashable for Input {
+    type D = NetworkId;
+
+    fn to_roinput(&self) -> ROInput {
+        let mut roi = ROInput::new();
+        for field in &self.fields {
+            roi = roi.append_field(*field);
+        }
+        roi
+    }
+
+    fn domain_string(network_id: NetworkId) -> Option<String> {
+        // Domain strings must have length <= 20
+        match network_id {
+            NetworkId::MAINNET => "MinaSignatureMainnet",
+            NetworkId::TESTNET => "CodaSignature*******",
+        }
+        .to_string()
+        .into()
+    }
+}
+
+#[test]
+fn sign_fields_test() {
+    let kp = Keypair::from_secret_key(
+        SecKey::from_base58("EKFXH5yESt7nsD1TJy5WNb4agVczkvzPRVexKQ8qYdNqauQRA8Ef")
+            .expect("failed to create secret key"),
+    )
+    .expect("failed to create keypair");
+
+    let input = Input {
+        fields: vec![BaseField::from(1), BaseField::from(2), BaseField::from(3)],
+    };
+
+    let mut testnet_ctx = mina_signer::create_kimchi::<Input>(NetworkId::TESTNET);
+    let mut mainnet_ctx = mina_signer::create_kimchi::<Input>(NetworkId::MAINNET);
+
+    let testnet_sig = testnet_ctx.sign(&kp, &input, true);
+    let mainnet_sig = mainnet_ctx.sign(&kp, &input, true);
+
+    assert_eq!(
+        testnet_sig.rx.to_string(),
+        "20765817320000234273433345899587917625188885976914380365037035465312392849949"
+    );
+    assert_eq!(
+        testnet_sig.s.to_string(),
+        "1002418623751815063744079415040141105602079382674393704838141255389705661040"
+    );
+    assert_eq!(
+        mainnet_sig.rx.to_string(),
+        "10877800556133241279092798070541266482295945495262263128372065874115589660865"
+    );
+    assert_eq!(
+        mainnet_sig.s.to_string(),
+        "7997465488592693587273287555462893250665854535708979748937792736327059812287"
+    );
+    assert!(testnet_ctx.verify(&testnet_sig, &kp.public, &input));
+    assert!(mainnet_ctx.verify(&mainnet_sig, &kp.public, &input));
 }
