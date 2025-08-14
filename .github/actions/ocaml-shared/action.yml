@@ -11,3 +11,10 @@ runs:
       uses: ocaml/setup-ocaml@v3
       with:
         ocaml-compiler: ${{ inputs.ocaml_version }}
+
+    - name: Setup OPAM environment
+      shell: bash
+      run: |
+        # Export all OPAM environment variables to GITHUB_ENV
+        # This avoids other steps to run `eval $(opam env)`
+        opam env | sed -E 's/; export [A-Za-z_][A-Za-z0-9_]*;?//g' >> $GITHUB_ENV

@@ -38,7 +38,6 @@ jobs:
 
       - name: Ensure that everything builds
         run: |
-          eval $(opam env)
           cargo check --benches --examples
 
       # 'sleep 1' are necessary because otherwise the outputs are intermixed.
@@ -63,5 +62,4 @@ jobs:
       - name: Run criterion bench
         run: |
           set -x
-          eval $(opam env)
           BASELINE_NAME=master-baseline-data bash scripts/bench-criterion-mina-circuits.sh cargo bench -p kimchi --bench proof_criterion

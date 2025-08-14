@@ -136,11 +136,9 @@ jobs:
 
       - name: Doc tests
         run: |
-          eval $(opam env)
           make test-doc
       - name: generate docs
         run: |
-          eval $(opam env)
           make generate-doc
 
       #
@@ -164,7 +162,6 @@ jobs:
           matrix.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
           matrix.os == needs.define-matrix.outputs.default_os
         run: |
-          eval $(opam env)
           RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --all-features --no-deps --workspace --exclude xtask
           cp -r ./target/doc ./book/book/html/rustdoc
 
@@ -209,7 +206,6 @@ jobs:
 
       - name: Lint (clippy)
         run: |
-          eval $(opam env)
           make lint
 
   build:
@@ -242,7 +238,6 @@ jobs:
 
       - name: Ensure that everything builds
         run: |
-          eval $(opam env)
           make
 
   tests:
@@ -283,5 +278,4 @@ jobs:
 
       - name: Run non-heavy tests without the code coverage
         run: |
-          eval $(opam env)
           make nextest
