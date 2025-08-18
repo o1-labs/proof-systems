@@ -137,3 +137,6 @@ pub mod poseidon;
 pub mod circuit;
 
 pub mod wasm_ocaml_serde;
+
+/// Memory tracking for leak investigation
+pub mod memory_tracker;

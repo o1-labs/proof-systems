@@ -16,6 +16,20 @@ macro_rules! impl_poly_comm {
                 #[wasm_bindgen(skip)]
                 pub unshifted: WasmVector<$WasmG>,
                 pub shifted: Option<$WasmG>,
+                #[wasm_bindgen(skip)]
+                pub id: u64,
+            }
+            
+            impl Drop for [<Wasm $field_name:camel PolyComm>] {
+                fn drop(&mut self) {
+                    let mut size = std::mem::size_of::<Self>();
+                    // WasmVector size is already tracked separately
+                    // Just add the shifted element size if present
+                    if self.shifted.is_some() {
+                        size += std::mem::size_of::<$WasmG>();
+                    }
+                    crate::memory_tracker::log_deallocation(concat!("Wasm", stringify!($field_name), "PolyComm"), size, self.id);
+                }
             }
 
             type WasmPolyComm = [<Wasm $field_name:camel PolyComm>];
@@ -28,7 +42,13 @@ macro_rules! impl_poly_comm {
                         shifted.is_none(),
                         "mina#14628: Shifted commitments are deprecated and must not be used"
                     );
-                    WasmPolyComm { unshifted, shifted }
+                    let id = crate::memory_tracker::next_id();
+                    let mut size = std::mem::size_of::<WasmPolyComm>();
+                    if shifted.is_some() {
+                        size += std::mem::size_of::<$WasmG>();
+                    }
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "PolyComm"), size, file!(), line!(), id);
+                    WasmPolyComm { unshifted, shifted, id }
                 }
 
                 #[wasm_bindgen(getter)]
@@ -47,9 +67,13 @@ macro_rules! impl_poly_comm {
                     let PolyComm { chunks } = x;
                     let unshifted: Vec<$WasmG> =
                         chunks.into_iter().map(|x| x.into()).collect();
+                    let id = crate::memory_tracker::next_id();
+                    let size = std::mem::size_of::<WasmPolyComm>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "PolyComm"), size, file!(), line!(), id);
                     WasmPolyComm {
                         unshifted: unshifted.into(),
-                        shifted: None
+                        shifted: None,
+                        id,
                     }
                 }
             }
@@ -58,22 +82,25 @@ macro_rules! impl_poly_comm {
                 fn from(x: &PolyComm<$G>) -> Self {
                     let unshifted: Vec<$WasmG> =
                         x.chunks.iter().map(|x| x.into()).collect();
+                    let id = crate::memory_tracker::next_id();
+                    let size = std::mem::size_of::<WasmPolyComm>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "PolyComm"), size, file!(), line!(), id);
                     WasmPolyComm {
                         unshifted: unshifted.into(),
                         shifted: None,
+                        id,
                     }
                 }
             }
 
             impl From<WasmPolyComm> for PolyComm<$G> {
                 fn from(x: WasmPolyComm) -> Self {
-                    let WasmPolyComm {unshifted, shifted} = x;
                     assert!(
-                        shifted.is_none(),
+                        x.shifted.is_none(),
                         "mina#14628: Shifted commitments are deprecated and must not be used"
                     );
                     PolyComm {
-                        chunks: (*unshifted).iter().map(|x| { (*x).into() }).collect(),
+                        chunks: x.unshifted.iter().map(|x| { (*x).into() }).collect(),
                     }
                 }
             }

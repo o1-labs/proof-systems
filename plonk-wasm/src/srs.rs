@@ -1,4 +1,5 @@
 use crate::wasm_vector::WasmVector;
+use crate::memory_tracker::{next_id, log_allocation, log_deallocation};
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
 use core::ops::Deref;
 use paste::paste;
@@ -25,43 +26,65 @@ macro_rules! impl_srs {
         paste! {
             #[wasm_bindgen]
             #[derive(Clone)]
-            pub struct [<Wasm $field_name:camel Srs>](
+            pub struct [<Wasm $field_name:camel Srs>] {
                 #[wasm_bindgen(skip)]
-                pub Arc<SRS<$G>>);
+                pub srs: Arc<SRS<$G>>,
+                #[wasm_bindgen(skip)]
+                pub id: u64,
+            }
 
             impl Deref for [<Wasm $field_name:camel Srs>] {
                 type Target = Arc<SRS<$G>>;
 
-                fn deref(&self) -> &Self::Target { &self.0 }
+                fn deref(&self) -> &Self::Target { &self.srs }
             }
 
             impl From<Arc<SRS<$G>>> for [<Wasm $field_name:camel Srs>] {
                 fn from(x: Arc<SRS<$G>>) -> Self {
-                    [<Wasm $field_name:camel Srs>](x)
+                    let id = crate::memory_tracker::next_id();
+                    // Calculate SRS size: g points + h point
+                    let size = x.g.len() * std::mem::size_of::<$G>() 
+                        + std::mem::size_of::<$G>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "Srs"), size, file!(), line!(), id);
+                    [<Wasm $field_name:camel Srs>] { srs: x, id }
                 }
             }
 
             impl From<&Arc<SRS<$G>>> for [<Wasm $field_name:camel Srs>] {
                 fn from(x: &Arc<SRS<$G>>) -> Self {
-                    [<Wasm $field_name:camel Srs>](x.clone())
+                    let id = crate::memory_tracker::next_id();
+                    // Calculate SRS size: g points + h point  
+                    let size = x.g.len() * std::mem::size_of::<$G>() 
+                        + std::mem::size_of::<$G>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "Srs"), size, file!(), line!(), id);
+                    [<Wasm $field_name:camel Srs>] { srs: x.clone(), id }
                 }
             }
 
             impl From<[<Wasm $field_name:camel Srs>]> for Arc<SRS<$G>> {
                 fn from(x: [<Wasm $field_name:camel Srs>]) -> Self {
-                    x.0
+                    x.srs.clone()
                 }
             }
 
             impl From<&[<Wasm $field_name:camel Srs>]> for Arc<SRS<$G>> {
                 fn from(x: &[<Wasm $field_name:camel Srs>]) -> Self {
-                    x.0.clone()
+                    x.srs.clone()
                 }
             }
 
             impl<'a> From<&'a [<Wasm $field_name:camel Srs>]> for &'a Arc<SRS<$G>> {
                 fn from(x: &'a [<Wasm $field_name:camel Srs>]) -> Self {
-                    &x.0
+                    &x.srs
+                }
+            }
+
+            impl Drop for [<Wasm $field_name:camel Srs>] {
+                fn drop(&mut self) {
+                    // Calculate actual size: g points + h point
+                    let size = self.srs.g.len() * std::mem::size_of::<$G>() 
+                        + std::mem::size_of::<$G>();
+                    crate::memory_tracker::log_deallocation(concat!("Wasm", stringify!($field_name), "Srs"), size, self.id);
                 }
             }
 
@@ -95,7 +118,7 @@ macro_rules! impl_srs {
                     })?;
                 let file = BufWriter::new(file);
 
-                srs.0.serialize(&mut rmp_serde::Serializer::new(file))
+                srs.srs.serialize(&mut rmp_serde::Serializer::new(file))
                 .map_err(|e| JsValue::from_str(format!("caml_pasta_fp_urs_write: {}", e).as_str()))
             }
 
@@ -259,8 +282,8 @@ pub mod fp {
     #[wasm_bindgen]
     pub fn caml_fp_srs_get(srs: &WasmFpSrs) -> WasmVector<WasmG> {
         // return a vector which consists of h, then all the gs
-        let mut h_and_gs: Vec<WasmG> = vec![srs.0.h.into()];
-        h_and_gs.extend(srs.0.g.iter().map(|x: &G| WasmG::from(*x)));
+        let mut h_and_gs: Vec<WasmG> = vec![srs.srs.h.into()];
+        h_and_gs.extend(srs.srs.g.iter().map(|x: &G| WasmG::from(*x)));
         h_and_gs.into()
     }
 
@@ -286,7 +309,7 @@ pub mod fp {
         domain_size: i32,
         i: i32,
     ) -> Option<WasmPolyComm> {
-        if !(srs.0.lagrange_bases.contains_key(&(domain_size as usize))) {
+        if !(srs.srs.lagrange_bases.contains_key(&(domain_size as usize))) {
             return None;
         }
         let basis = srs.get_lagrange_basis_from_domain_size(domain_size as usize);
@@ -339,8 +362,8 @@ pub mod fq {
     #[wasm_bindgen]
     pub fn caml_fq_srs_get(srs: &WasmFqSrs) -> WasmVector<WasmG> {
         // return a vector which consists of h, then all the gs
-        let mut h_and_gs: Vec<WasmG> = vec![srs.0.h.into()];
-        h_and_gs.extend(srs.0.g.iter().map(|x: &G| WasmG::from(*x)));
+        let mut h_and_gs: Vec<WasmG> = vec![srs.srs.h.into()];
+        h_and_gs.extend(srs.srs.g.iter().map(|x: &G| WasmG::from(*x)));
         h_and_gs.into()
     }
 
@@ -366,7 +389,7 @@ pub mod fq {
         domain_size: i32,
         i: i32,
     ) -> Option<WasmPolyComm> {
-        if !(srs.0.lagrange_bases.contains_key(&(domain_size as usize))) {
+        if !(srs.srs.lagrange_bases.contains_key(&(domain_size as usize))) {
             return None;
         }
         let basis = srs.get_lagrange_basis_from_domain_size(domain_size as usize);

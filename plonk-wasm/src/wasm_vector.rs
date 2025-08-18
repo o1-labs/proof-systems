@@ -5,41 +5,61 @@ use wasm_bindgen::{
     prelude::*,
 };
 use wasm_types::FlatVector as WasmFlatVector;
+use crate::memory_tracker::{next_id, log_allocation, log_deallocation, estimate_vec_size};
 
 #[derive(Clone, Debug)]
-pub struct WasmVector<T>(Vec<T>);
+pub struct WasmVector<T> {
+    pub data: Vec<T>,
+    pub id: u64,
+}
 
 impl<T> Deref for WasmVector<T> {
     type Target = Vec<T>;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.data
+    }
+}
+
+impl<T> WasmVector<T> {
+    pub fn get(&self, index: usize) -> Option<&T> {
+        self.data.get(index)
+    }
+}
+
+impl<T> Drop for WasmVector<T> {
+    fn drop(&mut self) {
+        let size = estimate_vec_size(&self.data);
+        log_deallocation("WasmVector", size, self.id);
     }
 }
 
 impl<T> From<Vec<T>> for WasmVector<T> {
     fn from(x: Vec<T>) -> Self {
-        WasmVector(x)
+        let id = next_id();
+        let size = estimate_vec_size(&x);
+        log_allocation("WasmVector", size, file!(), line!(), id);
+        WasmVector { data: x, id }
     }
 }
 
-impl<T> From<WasmVector<T>> for Vec<T> {
+impl<T: Clone> From<WasmVector<T>> for Vec<T> {
     fn from(x: WasmVector<T>) -> Self {
-        x.0
+        x.data.clone()
     }
 }
 
 impl<'a, T> From<&'a WasmVector<T>> for &'a Vec<T> {
     fn from(x: &'a WasmVector<T>) -> Self {
-        &x.0
+        &x.data
     }
 }
 
-impl<T> core::iter::IntoIterator for WasmVector<T> {
+impl<T: Clone> core::iter::IntoIterator for WasmVector<T> {
     type Item = <Vec<T> as core::iter::IntoIterator>::Item;
     type IntoIter = <Vec<T> as core::iter::IntoIterator>::IntoIter;
     fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
+        self.data.clone().into_iter()
     }
 }
 
@@ -47,7 +67,7 @@ impl<'a, T> core::iter::IntoIterator for &'a WasmVector<T> {
     type Item = <&'a Vec<T> as core::iter::IntoIterator>::Item;
     type IntoIter = <&'a Vec<T> as core::iter::IntoIterator>::IntoIter;
     fn into_iter(self) -> Self::IntoIter {
-        self.0.iter()
+        self.data.iter()
     }
 }
 
@@ -56,13 +76,21 @@ impl<T> core::iter::FromIterator<T> for WasmVector<T> {
     where
         I: IntoIterator<Item = T>,
     {
-        WasmVector(core::iter::FromIterator::from_iter(iter))
+        let data: Vec<T> = core::iter::FromIterator::from_iter(iter);
+        let id = next_id();
+        let size = estimate_vec_size(&data);
+        log_allocation("WasmVector", size, file!(), line!(), id);
+        WasmVector { data, id }
     }
 }
 
 impl<T> core::default::Default for WasmVector<T> {
     fn default() -> Self {
-        WasmVector(core::default::Default::default())
+        let data = Vec::new();
+        let id = next_id();
+        let size = estimate_vec_size(&data);
+        log_allocation("WasmVector", size, file!(), line!(), id);
+        WasmVector { data, id }
     }
 }
 
@@ -71,7 +99,7 @@ impl<T> core::iter::Extend<T> for WasmVector<T> {
     where
         I: IntoIterator<Item = T>,
     {
-        self.0.extend(iter)
+        self.data.extend(iter)
     }
 }
 
@@ -85,12 +113,14 @@ impl<T: FromWasmAbi<Abi = u32>> FromWasmAbi for WasmVector<T> {
     type Abi = <Vec<u32> as FromWasmAbi>::Abi;
     unsafe fn from_abi(js: Self::Abi) -> Self {
         let pointers: Vec<u32> = FromWasmAbi::from_abi(js);
-        WasmVector(
-            pointers
-                .into_iter()
-                .map(|x| FromWasmAbi::from_abi(x))
-                .collect(),
-        )
+        let data: Vec<T> = pointers
+            .into_iter()
+            .map(|x| FromWasmAbi::from_abi(x))
+            .collect();
+        let id = next_id();
+        let size = estimate_vec_size(&data);
+        log_allocation("WasmVector", size, file!(), line!(), id);
+        WasmVector { data, id }
     }
 }
 
@@ -100,11 +130,12 @@ impl<T: FromWasmAbi<Abi = u32>> OptionFromWasmAbi for WasmVector<T> {
     }
 }
 
-impl<T: IntoWasmAbi<Abi = u32>> IntoWasmAbi for WasmVector<T> {
+impl<T: IntoWasmAbi<Abi = u32> + Clone> IntoWasmAbi for WasmVector<T> {
     type Abi = <Vec<u32> as FromWasmAbi>::Abi;
     fn into_abi(self) -> Self::Abi {
         let pointers: Vec<u32> = self
-            .0
+            .data
+            .clone()
             .into_iter()
             .map(|x| IntoWasmAbi::into_abi(x))
             .collect();
@@ -112,7 +143,7 @@ impl<T: IntoWasmAbi<Abi = u32>> IntoWasmAbi for WasmVector<T> {
     }
 }
 
-impl<T: IntoWasmAbi<Abi = u32>> OptionIntoWasmAbi for WasmVector<T> {
+impl<T: IntoWasmAbi<Abi = u32> + Clone> OptionIntoWasmAbi for WasmVector<T> {
     fn none() -> Self::Abi {
         <Vec<u32> as OptionIntoWasmAbi>::none()
     }
@@ -122,28 +153,45 @@ macro_rules! impl_vec_vec_fp {
     ( $F:ty, $WasmF:ty ) => {
         paste! {
             #[wasm_bindgen]
-            pub struct [<WasmVecVec $F:camel>](#[wasm_bindgen(skip)] pub Vec<Vec<$F>>);
+            #[derive(Clone)]
+            pub struct [<WasmVecVec $F:camel>] {
+                #[wasm_bindgen(skip)] 
+                pub data: Vec<Vec<$F>>,
+                #[wasm_bindgen(skip)]
+                pub id: u64,
+            }
 
             #[wasm_bindgen]
             impl [<WasmVecVec $F:camel>] {
                 #[wasm_bindgen(constructor)]
                 pub fn create(n: i32) -> Self {
-                    [<WasmVecVec $F:camel>](Vec::with_capacity(n as usize))
+                    let data = Vec::with_capacity(n as usize);
+                    let id = next_id();
+                    let size = crate::memory_tracker::estimate_nested_vec_size(&data);
+                    log_allocation(concat!("WasmVecVec", stringify!($F)), size, file!(), line!(), id);
+                    [<WasmVecVec $F:camel>] { data, id }
                 }
 
                 #[wasm_bindgen]
                 pub fn push(&mut self, x: WasmFlatVector<$WasmF>) {
-                    self.0.push(x.into_iter().map(Into::into).collect())
+                    self.data.push(x.into_iter().map(Into::into).collect())
                 }
 
                 #[wasm_bindgen]
                 pub fn get(&self, i: i32) -> WasmFlatVector<$WasmF> {
-                    self.0[i as usize].clone().into_iter().map(Into::into).collect()
+                    self.data[i as usize].clone().into_iter().map(Into::into).collect()
                 }
 
                 #[wasm_bindgen]
                 pub fn set(&mut self, i: i32, x: WasmFlatVector<$WasmF>) {
-                    self.0[i as usize] = x.into_iter().map(Into::into).collect()
+                    self.data[i as usize] = x.into_iter().map(Into::into).collect()
+                }
+            }
+
+            impl Drop for [<WasmVecVec $F:camel>] {
+                fn drop(&mut self) {
+                    let size = crate::memory_tracker::estimate_nested_vec_size(&self.data);
+                    log_deallocation(concat!("WasmVecVec", stringify!($F)), size, self.id);
                 }
             }
         }

@@ -2,6 +2,7 @@ use crate::{
     gate_vector::fp::WasmGateVector,
     srs::fp::WasmFpSrs as WasmSrs,
     wasm_vector::{fp::*, WasmVector},
+    memory_tracker::{next_id, log_allocation, log_deallocation},
 };
 use ark_poly::EvaluationDomain;
 use arkworks::WasmPastaFp;
@@ -31,17 +32,57 @@ use wasm_types::FlatVector as WasmFlatVector;
 
 /// Boxed so that we don't store large proving indexes in the OCaml heap.
 #[wasm_bindgen]
-pub struct WasmPastaFpPlonkIndex(
-    #[wasm_bindgen(skip)] pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>,
-);
+pub struct WasmPastaFpPlonkIndex {
+    #[wasm_bindgen(skip)] 
+    pub index: Box<ProverIndex<GAffine, OpeningProof<GAffine>>>,
+    #[wasm_bindgen(skip)]
+    pub id: u64,
+}
+
+impl WasmPastaFpPlonkIndex {
+    fn calculate_size(&self) -> usize {
+        // Base struct size
+        let mut size = std::mem::size_of::<Self>();
+        
+        // ProverIndex is boxed, add its size
+        size += std::mem::size_of_val(&*self.index);
+        
+        // Add constraint system gates size
+        size += self.index.cs.gates.len() * std::mem::size_of::<kimchi::circuits::gate::CircuitGate<Fp>>();
+        
+        // Add domain sizes (polynomials)
+        size += self.index.cs.domain.d1.size() * std::mem::size_of::<Fp>();
+        size += self.index.cs.domain.d4.size() * std::mem::size_of::<Fp>();
+        size += self.index.cs.domain.d8.size() * std::mem::size_of::<Fp>();
+        
+        size
+    }
+}
+
+impl Drop for WasmPastaFpPlonkIndex {
+    fn drop(&mut self) {
+        let size = self.calculate_size();
+        crate::memory_tracker::log_deallocation("WasmPastaFpPlonkIndex", size, self.id);
+    }
+}
 
 // This should mimic LookupTable structure
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct WasmPastaFpLookupTable {
     #[wasm_bindgen(skip)]
-    pub id: i32,
+    pub table_id: i32,
     #[wasm_bindgen(skip)]
     pub data: WasmVecVecFp,
+    #[wasm_bindgen(skip)]
+    pub tracker_id: u64,
+}
+
+impl Drop for WasmPastaFpLookupTable {
+    fn drop(&mut self) {
+        let size = std::mem::size_of::<i32>() + crate::memory_tracker::estimate_nested_vec_size(&self.data.data);
+        crate::memory_tracker::log_deallocation("WasmPastaFpLookupTable", size, self.tracker_id);
+    }
 }
 
 // Converter from WasmPastaFpLookupTable to LookupTable, used by the binding
@@ -49,8 +90,8 @@ pub struct WasmPastaFpLookupTable {
 impl From<WasmPastaFpLookupTable> for LookupTable<Fp> {
     fn from(wasm_lt: WasmPastaFpLookupTable) -> LookupTable<Fp> {
         LookupTable {
-            id: wasm_lt.id,
-            data: wasm_lt.data.0,
+            id: wasm_lt.table_id,
+            data: wasm_lt.data.data.clone(),
         }
     }
 }
@@ -60,13 +101,17 @@ impl From<WasmPastaFpLookupTable> for LookupTable<Fp> {
 impl WasmPastaFpLookupTable {
     #[wasm_bindgen(constructor)]
     pub fn new(id: i32, data: WasmVecVecFp) -> WasmPastaFpLookupTable {
-        WasmPastaFpLookupTable { id, data }
+        let tracker_id = crate::memory_tracker::next_id();
+        let size = std::mem::size_of::<i32>() + crate::memory_tracker::estimate_nested_vec_size(&data.data);
+        crate::memory_tracker::log_allocation("WasmPastaFpLookupTable", size, file!(), line!(), tracker_id);
+        WasmPastaFpLookupTable { table_id: id, data, tracker_id }
     }
 }
 
 // Runtime table config
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct WasmPastaFpRuntimeTableCfg {
     #[wasm_bindgen(skip)]
     pub id: i32,
@@ -114,7 +159,7 @@ pub fn caml_pasta_fp_plonk_index_create(
     let index = crate::rayon::run_in_pool(|| {
         // flatten the permutation information (because OCaml has a different way of keeping track of permutations)
         let gates: Vec<_> = gates
-            .0
+            .data
             .iter()
             .map(|gate| CircuitGate::<Fp> {
                 typ: gate.typ,
@@ -124,17 +169,17 @@ pub fn caml_pasta_fp_plonk_index_create(
             .collect();
 
         let rust_runtime_table_cfgs: Vec<RuntimeTableCfg<Fp>> =
-            runtime_table_cfgs.into_iter().map(Into::into).collect();
+            runtime_table_cfgs.data.clone().into_iter().map(Into::into).collect();
 
         let rust_lookup_tables: Vec<LookupTable<Fp>> =
-            lookup_tables.into_iter().map(Into::into).collect();
+            lookup_tables.data.clone().into_iter().map(Into::into).collect();
 
         // create constraint system
         let cs = match ConstraintSystem::<Fp>::create(gates)
             .public(public_ as usize)
             .prev_challenges(prev_challenges as usize)
             .lookup(rust_lookup_tables)
-            .max_poly_size(Some(srs.0.max_poly_size()))
+            .max_poly_size(Some(srs.srs.max_poly_size()))
             .runtime(if rust_runtime_table_cfgs.is_empty() {
                 None
             } else {
@@ -152,12 +197,12 @@ pub fn caml_pasta_fp_plonk_index_create(
         // endo
         let (endo_q, _endo_r) = poly_commitment::ipa::endos::<GAffineOther>();
 
-        srs.0.get_lagrange_basis(cs.domain.d1);
+        srs.srs.get_lagrange_basis(cs.domain.d1);
 
         let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::create(
             cs,
             endo_q,
-            srs.0.clone(),
+            srs.srs.clone(),
             lazy_mode,
         );
         // Compute and cache the verifier index digest
@@ -167,34 +212,46 @@ pub fn caml_pasta_fp_plonk_index_create(
 
     // create index
     match index {
-        Ok(index) => Ok(WasmPastaFpPlonkIndex(Box::new(index))),
+        Ok(index) => {
+            let boxed_index = Box::new(index);
+            let id = crate::memory_tracker::next_id();
+            // Calculate actual size
+            let mut size = std::mem::size_of::<WasmPastaFpPlonkIndex>();
+            size += std::mem::size_of_val(&*boxed_index);
+            size += boxed_index.cs.gates.len() * std::mem::size_of::<kimchi::circuits::gate::CircuitGate<Fp>>();
+            size += boxed_index.cs.domain.d1.size() * std::mem::size_of::<Fp>();
+            size += boxed_index.cs.domain.d4.size() * std::mem::size_of::<Fp>();
+            size += boxed_index.cs.domain.d8.size() * std::mem::size_of::<Fp>();
+            crate::memory_tracker::log_allocation("WasmPastaFpPlonkIndex", size, file!(), line!(), id);
+            Ok(WasmPastaFpPlonkIndex { index: boxed_index, id })
+        },
         Err(str) => Err(JsError::new(str)),
     }
 }
 
 #[wasm_bindgen]
 pub fn caml_pasta_fp_plonk_index_max_degree(index: &WasmPastaFpPlonkIndex) -> i32 {
-    index.0.srs.max_poly_size() as i32
+    index.index.srs.max_poly_size() as i32
 }
 
 #[wasm_bindgen]
 pub fn caml_pasta_fp_plonk_index_public_inputs(index: &WasmPastaFpPlonkIndex) -> i32 {
-    index.0.cs.public as i32
+    index.index.cs.public as i32
 }
 
 #[wasm_bindgen]
 pub fn caml_pasta_fp_plonk_index_domain_d1_size(index: &WasmPastaFpPlonkIndex) -> i32 {
-    index.0.cs.domain.d1.size() as i32
+    index.index.cs.domain.d1.size() as i32
 }
 
 #[wasm_bindgen]
 pub fn caml_pasta_fp_plonk_index_domain_d4_size(index: &WasmPastaFpPlonkIndex) -> i32 {
-    index.0.cs.domain.d4.size() as i32
+    index.index.cs.domain.d4.size() as i32
 }
 
 #[wasm_bindgen]
 pub fn caml_pasta_fp_plonk_index_domain_d8_size(index: &WasmPastaFpPlonkIndex) -> i32 {
-    index.0.cs.domain.d8.size() as i32
+    index.index.cs.domain.d8.size() as i32
 }
 
 #[wasm_bindgen]
@@ -207,12 +264,22 @@ pub fn caml_pasta_fp_plonk_index_decode(
         ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
             .map_err(|e| JsError::new(&format!("caml_pasta_fp_plonk_index_decode: {}", e)))?;
 
-    index.srs = srs.0.clone();
+    index.srs = srs.srs.clone();
     let (linearization, powers_of_alpha) = expr_linearization(Some(&index.cs.feature_flags), true);
     index.linearization = linearization;
     index.powers_of_alpha = powers_of_alpha;
 
-    Ok(WasmPastaFpPlonkIndex(Box::new(index)))
+    let boxed_index = Box::new(index);
+    let id = next_id();
+    // Calculate actual size
+    let mut size = std::mem::size_of::<WasmPastaFpPlonkIndex>();
+    size += std::mem::size_of_val(&*boxed_index);
+    size += boxed_index.cs.gates.len() * std::mem::size_of::<kimchi::circuits::gate::CircuitGate<Fp>>();
+    size += boxed_index.cs.domain.d1.size() * std::mem::size_of::<Fp>();
+    size += boxed_index.cs.domain.d4.size() * std::mem::size_of::<Fp>();
+    size += boxed_index.cs.domain.d8.size() * std::mem::size_of::<Fp>();
+    log_allocation("WasmPastaFpPlonkIndex", size, file!(), line!(), id);
+    Ok(WasmPastaFpPlonkIndex { index: boxed_index, id })
 }
 
 #[wasm_bindgen]
@@ -220,7 +287,7 @@ pub fn caml_pasta_fp_plonk_index_encode(index: &WasmPastaFpPlonkIndex) -> Result
     let mut buffer = Vec::new();
     let mut serializer = rmp_serde::Serializer::new(&mut buffer);
     index
-        .0
+        .index
         .serialize(&mut serializer)
         .map_err(|e| JsError::new(&format!("caml_pasta_fp_plonk_index_encode: {}", e)))?;
     Ok(buffer)
@@ -250,13 +317,21 @@ pub fn caml_pasta_fp_plonk_index_read(
         &mut rmp_serde::Deserializer::new(r),
     )
     .map_err(|err| JsValue::from_str(&format!("caml_pasta_fp_plonk_index_read: {err}")))?;
-    t.srs = srs.0.clone();
+    t.srs = srs.srs.clone();
     let (linearization, powers_of_alpha) = expr_linearization(Some(&t.cs.feature_flags), true);
     t.linearization = linearization;
     t.powers_of_alpha = powers_of_alpha;
 
-    //
-    Ok(WasmPastaFpPlonkIndex(Box::new(t)))
+    let boxed_index = Box::new(t);
+    let id = crate::memory_tracker::next_id();
+    let mut size = std::mem::size_of::<WasmPastaFpPlonkIndex>();
+    size += std::mem::size_of_val(&*boxed_index);
+    size += boxed_index.cs.gates.len() * std::mem::size_of::<kimchi::circuits::gate::CircuitGate<Fp>>();
+    size += boxed_index.cs.domain.d1.size() * std::mem::size_of::<Fp>();
+    size += boxed_index.cs.domain.d4.size() * std::mem::size_of::<Fp>();
+    size += boxed_index.cs.domain.d8.size() * std::mem::size_of::<Fp>();
+    crate::memory_tracker::log_allocation("WasmPastaFpPlonkIndex", size, file!(), line!(), id);
+    Ok(WasmPastaFpPlonkIndex { index: boxed_index, id })
 }
 
 #[wasm_bindgen]
@@ -271,7 +346,7 @@ pub fn caml_pasta_fp_plonk_index_write(
         .map_err(|_| JsValue::from_str("caml_pasta_fp_plonk_index_write"))?;
     let w = BufWriter::new(file);
     index
-        .0
+        .index
         .serialize(&mut rmp_serde::Serializer::new(w))
         .map_err(|e| JsValue::from_str(&format!("caml_pasta_fp_plonk_index_read: {e}")))
 }
@@ -279,7 +354,7 @@ pub fn caml_pasta_fp_plonk_index_write(
 #[allow(deprecated)]
 #[wasm_bindgen]
 pub fn caml_pasta_fp_plonk_index_serialize(index: &WasmPastaFpPlonkIndex) -> String {
-    let serialized = rmp_serde::to_vec(&index.0).unwrap();
+    let serialized = rmp_serde::to_vec(&index.index).unwrap();
     // Deprecated used on purpose: updating this leads to a bug in o1js
     base64::encode(serialized)
 }

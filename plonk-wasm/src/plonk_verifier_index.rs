@@ -86,7 +86,17 @@ macro_rules! impl_verification_key {
                 #[wasm_bindgen(skip)]
                 pub foreign_field_mul_comm: Option<$WasmPolyComm>,
                 #[wasm_bindgen(skip)]
-                pub rot_comm: Option<$WasmPolyComm>
+                pub rot_comm: Option<$WasmPolyComm>,
+                #[wasm_bindgen(skip)]
+                pub id: u64,
+            }
+            
+            impl Drop for [<Wasm $field_name:camel PlonkVerificationEvals>] {
+                fn drop(&mut self) {
+                    // All WasmPolyComm fields track their own memory
+                    let size = std::mem::size_of::<Self>();
+                    crate::memory_tracker::log_deallocation(concat!("Wasm", stringify!($field_name), "PlonkVerificationEvals"), size, self.id);
+                }
             }
 
             type WasmPlonkVerificationEvals = [<Wasm $field_name:camel PlonkVerificationEvals>];
@@ -112,6 +122,9 @@ macro_rules! impl_verification_key {
                     foreign_field_mul_comm: Option<$WasmPolyComm>,
                     rot_comm: Option<$WasmPolyComm>,
                     ) -> Self {
+                    let id = crate::memory_tracker::next_id();
+                    let size = std::mem::size_of::<WasmPlonkVerificationEvals>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "PlonkVerificationEvals"), size, file!(), line!(), id);
                     WasmPlonkVerificationEvals {
                         sigma_comm: sigma_comm.clone(),
                         coefficients_comm: coefficients_comm.clone(),
@@ -127,6 +140,7 @@ macro_rules! impl_verification_key {
                         foreign_field_mul_comm: foreign_field_mul_comm.clone(),
                         foreign_field_add_comm: foreign_field_add_comm.clone(),
                         rot_comm: rot_comm.clone(),
+                        id,
                     }
                 }
 
@@ -437,32 +451,56 @@ macro_rules! impl_verification_key {
 
                 #[wasm_bindgen(skip)]
                 pub runtime_tables_selector: Option<$WasmPolyComm>,
+                
+                #[wasm_bindgen(skip)]
+                pub id: u64,
+            }
+            
+            impl Drop for [<Wasm $field_name:camel LookupVerifierIndex>] {
+                fn drop(&mut self) {
+                    // WasmVector and WasmPolyComm track their own memory
+                    // Just track the struct overhead and LookupInfo
+                    let mut size = std::mem::size_of::<Self>();
+                    // Add estimated size for LookupInfo (external type)
+                    size += std::mem::size_of::<LookupInfo>();
+                    crate::memory_tracker::log_deallocation(concat!("Wasm", stringify!($field_name), "LookupVerifierIndex"), size, self.id);
+                }
             }
 
             type WasmLookupVerifierIndex = [<Wasm $field_name:camel LookupVerifierIndex>];
 
             impl From<&LookupVerifierIndex<$G>> for WasmLookupVerifierIndex {
                 fn from(x: &LookupVerifierIndex<$G>) -> Self {
+                    let id = crate::memory_tracker::next_id();
+                    let mut size = std::mem::size_of::<WasmLookupVerifierIndex>();
+                    size += std::mem::size_of::<LookupInfo>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "LookupVerifierIndex"), size, file!(), line!(), id);
                     Self {
                         joint_lookup_used: x.joint_lookup_used.into(),
                         lookup_table: x.lookup_table.clone().iter().map(Into::into).collect(),
                         lookup_selectors: x.lookup_selectors.clone().into(),
                         table_ids: x.table_ids.clone().map(Into::into),
                         lookup_info: x.lookup_info.clone(),
-                        runtime_tables_selector: x.runtime_tables_selector.clone().map(Into::into)
+                        runtime_tables_selector: x.runtime_tables_selector.clone().map(Into::into),
+                        id,
                     }
                 }
             }
 
             impl From<LookupVerifierIndex<$G>> for WasmLookupVerifierIndex {
                 fn from(x: LookupVerifierIndex<$G>) -> Self {
+                    let id = crate::memory_tracker::next_id();
+                    let mut size = std::mem::size_of::<WasmLookupVerifierIndex>();
+                    size += std::mem::size_of::<LookupInfo>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "LookupVerifierIndex"), size, file!(), line!(), id);
                     Self {
                         joint_lookup_used: x.joint_lookup_used.into(),
                         lookup_table: x.lookup_table.iter().map(Into::into).collect(),
                         lookup_selectors: x.lookup_selectors.into(),
                         table_ids: x.table_ids.map(Into::into),
                         lookup_info: x.lookup_info,
-                        runtime_tables_selector: x.runtime_tables_selector.map(Into::into)
+                        runtime_tables_selector: x.runtime_tables_selector.map(Into::into),
+                        id,
                     }
                 }
             }
@@ -485,11 +523,11 @@ macro_rules! impl_verification_key {
                 fn from(x: WasmLookupVerifierIndex) -> Self {
                     Self {
                         joint_lookup_used: x.joint_lookup_used.into(),
-                        lookup_table: x.lookup_table.iter().map(Into::into).collect(),
-                        lookup_selectors: x.lookup_selectors.into(),
-                        table_ids: x.table_ids.map(Into::into),
-                        lookup_info: x.lookup_info,
-                        runtime_tables_selector: x.runtime_tables_selector.map(Into::into)
+                        lookup_table: x.lookup_table.clone().iter().map(Into::into).collect(),
+                        lookup_selectors: x.lookup_selectors.clone().into(),
+                        table_ids: x.table_ids.clone().map(Into::into),
+                        lookup_info: x.lookup_info.clone(),
+                        runtime_tables_selector: x.runtime_tables_selector.clone().map(Into::into)
                     }
                 }
             }
@@ -505,13 +543,18 @@ macro_rules! impl_verification_key {
                     lookup_info: &LookupInfo,
                     runtime_tables_selector: Option<$WasmPolyComm>
                 ) -> WasmLookupVerifierIndex {
+                    let id = crate::memory_tracker::next_id();
+                    let mut size = std::mem::size_of::<WasmLookupVerifierIndex>();
+                    size += std::mem::size_of::<LookupInfo>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "LookupVerifierIndex"), size, file!(), line!(), id);
                     WasmLookupVerifierIndex {
                         joint_lookup_used,
                         lookup_table,
                         lookup_selectors,
                         table_ids,
                         lookup_info: lookup_info.clone(),
-                        runtime_tables_selector
+                        runtime_tables_selector,
+                        id,
                     }
                 }
 
@@ -581,6 +624,18 @@ macro_rules! impl_verification_key {
                 #[wasm_bindgen(skip)]
                 pub lookup_index: Option<WasmLookupVerifierIndex>,
                 pub zk_rows: isize,
+                #[wasm_bindgen(skip)]
+                pub id: u64,
+            }
+            
+            impl Drop for [<Wasm $field_name:camel PlonkVerifierIndex>] {
+                fn drop(&mut self) {
+                    // Calculate size of the struct itself
+                    // Note: WasmDomain, WasmSrs, WasmPlonkVerificationEvals, and WasmLookupVerifierIndex
+                    // all track their own memory separately if they implement Drop
+                    let size = std::mem::size_of::<Self>();
+                    crate::memory_tracker::log_deallocation(concat!("Wasm", stringify!($field_name), "PlonkVerifierIndex"), size, self.id);
+                }
             }
             type WasmPlonkVerifierIndex = [<Wasm $field_name:camel PlonkVerifierIndex>];
 
@@ -599,6 +654,9 @@ macro_rules! impl_verification_key {
                     lookup_index: Option<WasmLookupVerifierIndex>,
                     zk_rows: isize,
                 ) -> Self {
+                    let id = crate::memory_tracker::next_id();
+                    let size = std::mem::size_of::<WasmPlonkVerifierIndex>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "PlonkVerifierIndex"), size, file!(), line!(), id);
                     WasmPlonkVerifierIndex {
                         domain: domain.clone(),
                         max_poly_size,
@@ -609,6 +667,7 @@ macro_rules! impl_verification_key {
                         shifts: shifts.clone(),
                         lookup_index: lookup_index.clone(),
                         zk_rows,
+                        id,
                     }
                 }
 
@@ -647,6 +706,9 @@ macro_rules! impl_verification_key {
                 srs: &Arc<SRS<$G>>,
                 vi: DlogVerifierIndex<$G, OpeningProof<$G>>,
             ) -> WasmPlonkVerifierIndex {
+                let id = crate::memory_tracker::next_id();
+                let size = std::mem::size_of::<WasmPlonkVerifierIndex>();
+                crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "PlonkVerifierIndex"), size, file!(), line!(), id);
                 WasmPlonkVerifierIndex {
                     domain: WasmDomain {
                         log_size_of_group: vi.domain.log_size_of_group as i32,
@@ -656,21 +718,27 @@ macro_rules! impl_verification_key {
                     public_: vi.public as i32,
                     prev_challenges: vi.prev_challenges as i32,
                     srs: srs.into(),
-                    evals: WasmPlonkVerificationEvals {
-                        sigma_comm: IntoIterator::into_iter(vi.sigma_comm).map(From::from).collect(),
-                        coefficients_comm: IntoIterator::into_iter(vi.coefficients_comm).map(From::from).collect(),
-                        generic_comm: vi.generic_comm.into(),
-                        psm_comm: vi.psm_comm.into(),
-                        complete_add_comm: vi.complete_add_comm.into(),
-                        mul_comm: vi.mul_comm.into(),
-                        emul_comm: vi.emul_comm.into(),
-                        endomul_scalar_comm: vi.endomul_scalar_comm.into(),
-                        xor_comm: vi.xor_comm.map(|v| v.into()),
-                        range_check0_comm: vi.range_check0_comm.map(|v| v.into()),
-                        range_check1_comm: vi.range_check1_comm.map(|v| v.into()),
-                        foreign_field_add_comm: vi.foreign_field_add_comm.map(|v| v.into()),
-                        foreign_field_mul_comm: vi.foreign_field_mul_comm.map(|v| v.into()),
-                        rot_comm: vi.rot_comm.map(|v| v.into())
+                    evals: {
+                        let id = crate::memory_tracker::next_id();
+                        let size = std::mem::size_of::<WasmPlonkVerificationEvals>();
+                        crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "PlonkVerificationEvals"), size, file!(), line!(), id);
+                        WasmPlonkVerificationEvals {
+                            sigma_comm: IntoIterator::into_iter(vi.sigma_comm).map(From::from).collect(),
+                            coefficients_comm: IntoIterator::into_iter(vi.coefficients_comm).map(From::from).collect(),
+                            generic_comm: vi.generic_comm.into(),
+                            psm_comm: vi.psm_comm.into(),
+                            complete_add_comm: vi.complete_add_comm.into(),
+                            mul_comm: vi.mul_comm.into(),
+                            emul_comm: vi.emul_comm.into(),
+                            endomul_scalar_comm: vi.endomul_scalar_comm.into(),
+                            xor_comm: vi.xor_comm.map(|v| v.into()),
+                            range_check0_comm: vi.range_check0_comm.map(|v| v.into()),
+                            range_check1_comm: vi.range_check1_comm.map(|v| v.into()),
+                            foreign_field_add_comm: vi.foreign_field_add_comm.map(|v| v.into()),
+                            foreign_field_mul_comm: vi.foreign_field_mul_comm.map(|v| v.into()),
+                            rot_comm: vi.rot_comm.map(|v| v.into()),
+                            id,
+                        }
                     },
                     shifts:
                         WasmShifts {
@@ -684,6 +752,7 @@ macro_rules! impl_verification_key {
                         },
                     lookup_index: vi.lookup_index.map(Into::into),
                     zk_rows: vi.zk_rows as isize,
+                    id,
                 }
             }
 
@@ -790,17 +859,17 @@ macro_rules! impl_verification_key {
                             shifts.s6.into()
                         ],
                         srs: {
-                          Arc::clone(&srs.0)
+                          Arc::clone(&srs.srs)
                         },
 
                         zk_rows,
 
                         linearization,
                         powers_of_alpha,
-                        lookup_index: index.lookup_index.map(Into::into),
+                        lookup_index: index.lookup_index.clone().map(Into::into),
                     }
                 };
-                (index, srs.0.clone())
+                (index, srs.srs.clone())
             }
 
             impl From<WasmPlonkVerifierIndex> for DlogVerifierIndex<$G, OpeningProof<$G>> {
@@ -817,7 +886,7 @@ macro_rules! impl_verification_key {
                 let path = Path::new(&path);
                 let (endo_q, _endo_r) = poly_commitment::ipa::endos::<GAffineOther>();
                 DlogVerifierIndex::<$G, OpeningProof<$G>>::from_file(
-                    srs.0.clone(),
+                    srs.srs.clone(),
                     path,
                     offset.map(|x| x as u64),
                     endo_q,
@@ -872,9 +941,9 @@ macro_rules! impl_verification_key {
             pub fn [<$name:snake _create>](
                 index: &$WasmIndex,
             ) -> WasmPlonkVerifierIndex {
-                index.0.srs.get_lagrange_basis(index.0.as_ref().cs.domain.d1);
-                let verifier_index = index.0.as_ref().verifier_index();
-                to_wasm(&index.0.as_ref().srs, verifier_index)
+                index.index.srs.get_lagrange_basis(index.index.as_ref().cs.domain.d1);
+                let verifier_index = index.index.as_ref().verifier_index();
+                to_wasm(&index.index.as_ref().srs, verifier_index)
             }
 
             #[wasm_bindgen]
@@ -897,15 +966,22 @@ macro_rules! impl_verification_key {
             pub fn [<$name:snake _dummy>]() -> WasmPlonkVerifierIndex {
                 fn comm() -> $WasmPolyComm {
                     let g: $WasmG = $G::generator().into();
+                    let id = crate::memory_tracker::next_id();
+                    let size = std::mem::size_of::<$WasmPolyComm>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "PolyComm"), size, file!(), line!(), id);
                     $WasmPolyComm {
                         shifted: None,
                         unshifted: vec![g].into(),
+                        id,
                     }
                 }
                 fn vec_comm(num: usize) -> WasmVector<$WasmPolyComm> {
                     (0..num).map(|_| comm()).collect()
                 }
 
+                let id = crate::memory_tracker::next_id();
+                let size = std::mem::size_of::<WasmPlonkVerifierIndex>();
+                crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "PlonkVerifierIndex"), size, file!(), line!(), id);
                 WasmPlonkVerifierIndex {
                     domain: WasmDomain {
                         log_size_of_group: 1,
@@ -914,22 +990,34 @@ macro_rules! impl_verification_key {
                     max_poly_size: 0,
                     public_: 0,
                     prev_challenges: 0,
-                    srs: $WasmSrs(Arc::new(SRS::create(0))),
-                    evals: WasmPlonkVerificationEvals {
-                        sigma_comm: vec_comm(PERMUTS),
-                        coefficients_comm: vec_comm(COLUMNS),
-                        generic_comm: comm(),
-                        psm_comm: comm(),
-                        complete_add_comm: comm(),
-                        mul_comm: comm(),
-                        emul_comm: comm(),
-                        endomul_scalar_comm: comm(),
-                        xor_comm: None,
-                        range_check0_comm: None,
-                        range_check1_comm: None,
-                        foreign_field_add_comm: None,
-                        foreign_field_mul_comm: None,
-                        rot_comm: None,
+                    srs: {
+                        let arc_srs = Arc::new(SRS::create(0));
+                        let id = crate::memory_tracker::next_id();
+                        let size = 0; // Empty SRS
+                        crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "Srs"), size, file!(), line!(), id);
+                        $WasmSrs { srs: arc_srs, id }
+                    },
+                    evals: {
+                        let id = crate::memory_tracker::next_id();
+                        let size = std::mem::size_of::<WasmPlonkVerificationEvals>();
+                        crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "PlonkVerificationEvals"), size, file!(), line!(), id);
+                        WasmPlonkVerificationEvals {
+                            sigma_comm: vec_comm(PERMUTS),
+                            coefficients_comm: vec_comm(COLUMNS),
+                            generic_comm: comm(),
+                            psm_comm: comm(),
+                            complete_add_comm: comm(),
+                            mul_comm: comm(),
+                            emul_comm: comm(),
+                            endomul_scalar_comm: comm(),
+                            xor_comm: None,
+                            range_check0_comm: None,
+                            range_check1_comm: None,
+                            foreign_field_add_comm: None,
+                            foreign_field_mul_comm: None,
+                            rot_comm: None,
+                            id,
+                        }
                     },
                     shifts:
                         WasmShifts {
@@ -943,6 +1031,7 @@ macro_rules! impl_verification_key {
                         },
                     lookup_index: None,
                     zk_rows: 3,
+                    id,
                 }
             }
 

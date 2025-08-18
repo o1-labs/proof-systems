@@ -90,6 +90,8 @@ tikv-jemallocator = { version = "0.5" }
 tinytemplate = "1.1"
 wasm-bindgen = "=0.2.89"
 wasm-bindgen-test = ">=0.3.0"
+talc = "4.4.1"
+spin = { version = "0.9", default-features = false, features = ["spin_mutex", "portable_atomic"] }
 
 arkworks = { path = "crates/arkworks" }
 arrabbiata = { path = "./arrabbiata", version = "0.1.0" }

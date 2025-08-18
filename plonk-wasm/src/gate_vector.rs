@@ -36,15 +36,34 @@ macro_rules! impl_gate_vector {
      $field_name: ident) => {
         paste! {
             #[wasm_bindgen]
-            pub struct [<Wasm $field_name:camel GateVector>](
-                #[wasm_bindgen(skip)] pub Vec<CircuitGate<$F>>);
+            pub struct [<Wasm $field_name:camel GateVector>] {
+                #[wasm_bindgen(skip)] 
+                pub data: Vec<CircuitGate<$F>>,
+                #[wasm_bindgen(skip)]
+                pub id: u64,
+            }
             pub type WasmGateVector = [<Wasm $field_name:camel GateVector>];
+            
+            impl Drop for [<Wasm $field_name:camel GateVector>] {
+                fn drop(&mut self) {
+                    let size = self.data.capacity() * std::mem::size_of::<CircuitGate<$F>>();
+                    crate::memory_tracker::log_deallocation(concat!("Wasm", stringify!($field_name), "GateVector"), size, self.id);
+                }
+            }
 
             #[wasm_bindgen]
             pub struct [<Wasm $field_name:camel Gate>] {
                 pub typ: GateType, // type of the gate
                 pub wires: WasmGateWires,  // gate wires
                 #[wasm_bindgen(skip)] pub coeffs: Vec<$WasmF>,  // constraints vector
+                #[wasm_bindgen(skip)] pub id: u64,
+            }
+            
+            impl Drop for [<Wasm $field_name:camel Gate>] {
+                fn drop(&mut self) {
+                    let size = std::mem::size_of::<Self>() + self.coeffs.capacity() * std::mem::size_of::<$WasmF>();
+                    crate::memory_tracker::log_deallocation(concat!("Wasm", stringify!($field_name), "Gate"), size, self.id);
+                }
             }
 
             #[wasm_bindgen]
@@ -54,10 +73,15 @@ macro_rules! impl_gate_vector {
                     typ: GateType,
                     wires: WasmGateWires,
                     coeffs: WasmFlatVector<$WasmF>) -> Self {
+                    let id = crate::memory_tracker::next_id();
+                    let coeffs_vec: Vec<$WasmF> = coeffs.into();
+                    let size = std::mem::size_of::<Self>() + coeffs_vec.capacity() * std::mem::size_of::<$WasmF>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "Gate"), size, file!(), line!(), id);
                     Self {
                         typ,
                         wires,
-                        coeffs: coeffs.into(),
+                        coeffs: coeffs_vec,
+                        id,
                     }
                 }
             }
@@ -65,6 +89,10 @@ macro_rules! impl_gate_vector {
             impl From<CircuitGate<$F>> for [<Wasm $field_name:camel Gate>]
             {
                 fn from(cg: CircuitGate<$F>) -> Self {
+                    let id = crate::memory_tracker::next_id();
+                    let coeffs: Vec<$WasmF> = cg.coeffs.into_iter().map(Into::into).collect();
+                    let size = std::mem::size_of::<Self>() + coeffs.capacity() * std::mem::size_of::<$WasmF>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "Gate"), size, file!(), line!(), id);
                     Self {
                         typ: cg.typ,
                         wires: WasmGateWires(
@@ -75,7 +103,8 @@ macro_rules! impl_gate_vector {
                             cg.wires[4],
                             cg.wires[5],
                             cg.wires[6]),
-                        coeffs: cg.coeffs.into_iter().map(Into::into).collect(),
+                        coeffs,
+                        id,
                     }
                 }
             }
@@ -83,6 +112,10 @@ macro_rules! impl_gate_vector {
             impl From<&CircuitGate<$F>> for [<Wasm $field_name:camel Gate>]
             {
                 fn from(cg: &CircuitGate<$F>) -> Self {
+                    let id = crate::memory_tracker::next_id();
+                    let coeffs: Vec<$WasmF> = cg.coeffs.clone().into_iter().map(Into::into).collect();
+                    let size = std::mem::size_of::<Self>() + coeffs.capacity() * std::mem::size_of::<$WasmF>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "Gate"), size, file!(), line!(), id);
                     Self {
                         typ: cg.typ,
                         wires: WasmGateWires(
@@ -93,7 +126,8 @@ macro_rules! impl_gate_vector {
                             cg.wires[4],
                             cg.wires[5],
                             cg.wires[6]),
-                        coeffs: cg.coeffs.clone().into_iter().map(Into::into).collect(),
+                        coeffs,
+                        id,
                     }
                 }
             }
@@ -112,14 +146,18 @@ macro_rules! impl_gate_vector {
                             ccg.wires.5,
                             ccg.wires.6
                         ],
-                        coeffs: ccg.coeffs.into_iter().map(Into::into).collect(),
+                        coeffs: ccg.coeffs.clone().into_iter().map(Into::into).collect(),
                     }
                 }
             }
 
             #[wasm_bindgen]
             pub fn [<caml_pasta_ $name:snake _plonk_gate_vector_create>]() -> WasmGateVector {
-                [<Wasm $field_name:camel GateVector>](Vec::new())
+                let id = crate::memory_tracker::next_id();
+                let data = Vec::new();
+                let size = data.capacity() * std::mem::size_of::<CircuitGate<$F>>();
+                crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "GateVector"), size, file!(), line!(), id);
+                [<Wasm $field_name:camel GateVector>] { data, id }
             }
 
             #[wasm_bindgen]
@@ -128,7 +166,7 @@ macro_rules! impl_gate_vector {
                 gate: [<Wasm $field_name:camel Gate>],
             ) {
                 let gate: CircuitGate<$F> = gate.into();
-                v.0.push(gate);
+                v.data.push(gate);
             }
 
             #[wasm_bindgen]
@@ -136,14 +174,14 @@ macro_rules! impl_gate_vector {
                 v: &WasmGateVector,
                 i: i32,
             ) -> [<Wasm $field_name:camel Gate>] {
-                (&(v.0)[i as usize]).into()
+                (&(v.data)[i as usize]).into()
             }
 
             #[wasm_bindgen]
             pub fn [<caml_pasta_ $name:snake _plonk_gate_vector_len>](
                 v: &WasmGateVector,
             ) -> usize {
-                v.0.len()
+                v.data.len()
             }
 
             #[wasm_bindgen]
@@ -152,7 +190,7 @@ macro_rules! impl_gate_vector {
                 t: Wire,
                 h: Wire,
             ) {
-                (v.0)[t.row as usize].wires[t.col as usize] = h.into();
+                (v.data)[t.row as usize].wires[t.col as usize] = h.into();
             }
 
             #[wasm_bindgen]
@@ -160,7 +198,7 @@ macro_rules! impl_gate_vector {
                 public_input_size: usize,
                 v: &WasmGateVector
             ) -> Box<[u8]> {
-                Circuit::new(public_input_size, &(v.0)).digest().to_vec().into_boxed_slice()
+                Circuit::new(public_input_size, &(v.data)).digest().to_vec().into_boxed_slice()
             }
 
             #[wasm_bindgen]
@@ -168,7 +206,7 @@ macro_rules! impl_gate_vector {
                 public_input_size: usize,
                 v: &WasmGateVector
             ) -> String {
-                let circuit = Circuit::new(public_input_size, &v.0);
+                let circuit = Circuit::new(public_input_size, &v.data);
                 serde_json::to_string(&circuit).expect("couldn't serialize constraints")
             }
         }

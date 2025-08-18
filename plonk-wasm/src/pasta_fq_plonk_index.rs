@@ -2,6 +2,7 @@ use crate::{
     gate_vector::fq::WasmGateVector,
     srs::fq::WasmFqSrs as WasmSrs,
     wasm_vector::{fq::*, WasmVector},
+    memory_tracker::{next_id, log_allocation, log_deallocation},
 };
 use ark_poly::EvaluationDomain;
 use arkworks::WasmPastaFq;
@@ -31,23 +32,55 @@ use wasm_types::FlatVector as WasmFlatVector;
 
 /// Boxed so that we don't store large proving indexes in the OCaml heap.
 #[wasm_bindgen]
-pub struct WasmPastaFqPlonkIndex(
-    #[wasm_bindgen(skip)] pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>,
-);
+pub struct WasmPastaFqPlonkIndex {
+    #[wasm_bindgen(skip)] 
+    pub index: Box<ProverIndex<GAffine, OpeningProof<GAffine>>>,
+    #[wasm_bindgen(skip)]
+    pub id: u64,
+}
+
+impl WasmPastaFqPlonkIndex {
+    fn calculate_size(&self) -> usize {
+        let mut size = std::mem::size_of::<Self>();
+        size += std::mem::size_of_val(&*self.index);
+        size += self.index.cs.gates.len() * std::mem::size_of::<kimchi::circuits::gate::CircuitGate<Fq>>();
+        size += self.index.cs.domain.d1.size() * std::mem::size_of::<Fq>();
+        size += self.index.cs.domain.d4.size() * std::mem::size_of::<Fq>();
+        size += self.index.cs.domain.d8.size() * std::mem::size_of::<Fq>();
+        size
+    }
+}
+
+impl Drop for WasmPastaFqPlonkIndex {
+    fn drop(&mut self) {
+        let size = self.calculate_size();
+        crate::memory_tracker::log_deallocation("WasmPastaFqPlonkIndex", size, self.id);
+    }
+}
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct WasmPastaFqLookupTable {
     #[wasm_bindgen(skip)]
-    pub id: i32,
+    pub table_id: i32,
     #[wasm_bindgen(skip)]
     pub data: WasmVecVecFq,
+    #[wasm_bindgen(skip)]
+    pub tracker_id: u64,
+}
+
+impl Drop for WasmPastaFqLookupTable {
+    fn drop(&mut self) {
+        let size = std::mem::size_of::<i32>() + crate::memory_tracker::estimate_nested_vec_size(&self.data.data);
+        crate::memory_tracker::log_deallocation("WasmPastaFqLookupTable", size, self.tracker_id);
+    }
 }
 
 impl From<WasmPastaFqLookupTable> for LookupTable<Fq> {
     fn from(wasm_lt: WasmPastaFqLookupTable) -> LookupTable<Fq> {
         LookupTable {
-            id: wasm_lt.id,
-            data: wasm_lt.data.0,
+            id: wasm_lt.table_id,
+            data: wasm_lt.data.data.clone(),
         }
     }
 }
@@ -57,13 +90,17 @@ impl From<WasmPastaFqLookupTable> for LookupTable<Fq> {
 impl WasmPastaFqLookupTable {
     #[wasm_bindgen(constructor)]
     pub fn new(id: i32, data: WasmVecVecFq) -> WasmPastaFqLookupTable {
-        WasmPastaFqLookupTable { id, data }
+        let tracker_id = crate::memory_tracker::next_id();
+        let size = std::mem::size_of::<i32>() + crate::memory_tracker::estimate_nested_vec_size(&data.data);
+        crate::memory_tracker::log_allocation("WasmPastaFqLookupTable", size, file!(), line!(), tracker_id);
+        WasmPastaFqLookupTable { table_id: id, data, tracker_id }
     }
 }
 
 // Runtime table config
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct WasmPastaFqRuntimeTableCfg {
     #[wasm_bindgen(skip)]
     pub id: i32,
@@ -112,7 +149,7 @@ pub fn caml_pasta_fq_plonk_index_create(
     let index = crate::rayon::run_in_pool(|| {
         // flatten the permutation information (because OCaml has a different way of keeping track of permutations)
         let gates: Vec<_> = gates
-            .0
+            .data
             .iter()
             .map(|gate| CircuitGate::<Fq> {
                 typ: gate.typ,
@@ -122,10 +159,10 @@ pub fn caml_pasta_fq_plonk_index_create(
             .collect();
 
         let rust_runtime_table_cfgs: Vec<RuntimeTableCfg<Fq>> =
-            runtime_table_cfgs.into_iter().map(Into::into).collect();
+            runtime_table_cfgs.data.clone().into_iter().map(Into::into).collect();
 
         let rust_lookup_tables: Vec<LookupTable<Fq>> =
-            lookup_tables.into_iter().map(Into::into).collect();
+            lookup_tables.data.clone().into_iter().map(Into::into).collect();
 
         // create constraint system
         let cs = match ConstraintSystem::<Fq>::create(gates)
@@ -149,12 +186,12 @@ pub fn caml_pasta_fq_plonk_index_create(
         // endo
         let (endo_q, _endo_r) = poly_commitment::ipa::endos::<GAffineOther>();
 
-        srs.0.get_lagrange_basis(cs.domain.d1);
+        srs.srs.get_lagrange_basis(cs.domain.d1);
 
         let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::create(
             cs,
             endo_q,
-            srs.0.clone(),
+            srs.srs.clone(),
             lazy_mode,
         );
         // Compute and cache the verifier index digest
@@ -165,34 +202,45 @@ pub fn caml_pasta_fq_plonk_index_create(
 
     // create index
     match index {
-        Ok(index) => Ok(WasmPastaFqPlonkIndex(Box::new(index))),
+        Ok(index) => {
+            let boxed_index = Box::new(index);
+            let id = crate::memory_tracker::next_id();
+            let mut size = std::mem::size_of::<WasmPastaFqPlonkIndex>();
+            size += std::mem::size_of_val(&*boxed_index);
+            size += boxed_index.cs.gates.len() * std::mem::size_of::<kimchi::circuits::gate::CircuitGate<Fq>>();
+            size += boxed_index.cs.domain.d1.size() * std::mem::size_of::<Fq>();
+            size += boxed_index.cs.domain.d4.size() * std::mem::size_of::<Fq>();
+            size += boxed_index.cs.domain.d8.size() * std::mem::size_of::<Fq>();
+            crate::memory_tracker::log_allocation("WasmPastaFqPlonkIndex", size, file!(), line!(), id);
+            Ok(WasmPastaFqPlonkIndex { index: boxed_index, id })
+        },
         Err(str) => Err(JsError::new(str)),
     }
 }
 
 #[wasm_bindgen]
 pub fn caml_pasta_fq_plonk_index_max_degree(index: &WasmPastaFqPlonkIndex) -> i32 {
-    index.0.srs.max_poly_size() as i32
+    index.index.srs.max_poly_size() as i32
 }
 
 #[wasm_bindgen]
 pub fn caml_pasta_fq_plonk_index_public_inputs(index: &WasmPastaFqPlonkIndex) -> i32 {
-    index.0.cs.public as i32
+    index.index.cs.public as i32
 }
 
 #[wasm_bindgen]
 pub fn caml_pasta_fq_plonk_index_domain_d1_size(index: &WasmPastaFqPlonkIndex) -> i32 {
-    index.0.cs.domain.d1.size() as i32
+    index.index.cs.domain.d1.size() as i32
 }
 
 #[wasm_bindgen]
 pub fn caml_pasta_fq_plonk_index_domain_d4_size(index: &WasmPastaFqPlonkIndex) -> i32 {
-    index.0.cs.domain.d4.size() as i32
+    index.index.cs.domain.d4.size() as i32
 }
 
 #[wasm_bindgen]
 pub fn caml_pasta_fq_plonk_index_domain_d8_size(index: &WasmPastaFqPlonkIndex) -> i32 {
-    index.0.cs.domain.d8.size() as i32
+    index.index.cs.domain.d8.size() as i32
 }
 
 #[wasm_bindgen]
@@ -205,12 +253,21 @@ pub fn caml_pasta_fq_plonk_index_decode(
         ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
             .map_err(|e| JsError::new(&format!("caml_pasta_fq_plonk_index_decode: {}", e)))?;
 
-    index.srs = srs.0.clone();
+    index.srs = srs.srs.clone();
     let (linearization, powers_of_alpha) = expr_linearization(Some(&index.cs.feature_flags), true);
     index.linearization = linearization;
     index.powers_of_alpha = powers_of_alpha;
 
-    Ok(WasmPastaFqPlonkIndex(Box::new(index)))
+    let boxed_index = Box::new(index);
+    let id = crate::memory_tracker::next_id();
+    let mut size = std::mem::size_of::<WasmPastaFqPlonkIndex>();
+    size += std::mem::size_of_val(&*boxed_index);
+    size += boxed_index.cs.gates.len() * std::mem::size_of::<kimchi::circuits::gate::CircuitGate<Fq>>();
+    size += boxed_index.cs.domain.d1.size() * std::mem::size_of::<Fq>();
+    size += boxed_index.cs.domain.d4.size() * std::mem::size_of::<Fq>();
+    size += boxed_index.cs.domain.d8.size() * std::mem::size_of::<Fq>();
+    crate::memory_tracker::log_allocation("WasmPastaFqPlonkIndex", size, file!(), line!(), id);
+    Ok(WasmPastaFqPlonkIndex { index: boxed_index, id })
 }
 
 #[wasm_bindgen]
@@ -218,7 +275,7 @@ pub fn caml_pasta_fq_plonk_index_encode(index: &WasmPastaFqPlonkIndex) -> Result
     let mut buffer = Vec::new();
     let mut serializer = rmp_serde::Serializer::new(&mut buffer);
     index
-        .0
+        .index
         .serialize(&mut serializer)
         .map_err(|e| JsError::new(&format!("caml_pasta_fq_plonk_index_encode: {}", e)))?;
     Ok(buffer)
@@ -248,13 +305,22 @@ pub fn caml_pasta_fq_plonk_index_read(
         &mut rmp_serde::Deserializer::new(r),
     )
     .map_err(|err| JsValue::from_str(&format!("caml_pasta_fq_plonk_index_read: {err}")))?;
-    t.srs = srs.0.clone();
+    t.srs = srs.srs.clone();
     let (linearization, powers_of_alpha) = expr_linearization(Some(&t.cs.feature_flags), true);
     t.linearization = linearization;
     t.powers_of_alpha = powers_of_alpha;
 
     //
-    Ok(WasmPastaFqPlonkIndex(Box::new(t)))
+    let boxed_index = Box::new(t);
+    let id = crate::memory_tracker::next_id();
+    let mut size = std::mem::size_of::<WasmPastaFqPlonkIndex>();
+    size += std::mem::size_of_val(&*boxed_index);
+    size += boxed_index.cs.gates.len() * std::mem::size_of::<kimchi::circuits::gate::CircuitGate<Fq>>();
+    size += boxed_index.cs.domain.d1.size() * std::mem::size_of::<Fq>();
+    size += boxed_index.cs.domain.d4.size() * std::mem::size_of::<Fq>();
+    size += boxed_index.cs.domain.d8.size() * std::mem::size_of::<Fq>();
+    crate::memory_tracker::log_allocation("WasmPastaFqPlonkIndex", size, file!(), line!(), id);
+    Ok(WasmPastaFqPlonkIndex { index: boxed_index, id })
 }
 
 #[wasm_bindgen]
@@ -269,7 +335,7 @@ pub fn caml_pasta_fq_plonk_index_write(
         .map_err(|_| JsValue::from_str("caml_pasta_fq_plonk_index_write"))?;
     let w = BufWriter::new(file);
     index
-        .0
+        .index
         .serialize(&mut rmp_serde::Serializer::new(w))
         .map_err(|e| JsValue::from_str(&format!("caml_pasta_fq_plonk_index_read: {e}")))
 }
@@ -277,7 +343,7 @@ pub fn caml_pasta_fq_plonk_index_write(
 #[allow(deprecated)]
 #[wasm_bindgen]
 pub fn caml_pasta_fq_plonk_index_serialize(index: &WasmPastaFqPlonkIndex) -> String {
-    let serialized = rmp_serde::to_vec(&index.0).unwrap();
+    let serialized = rmp_serde::to_vec(&index.index).unwrap();
     // Deprecated used on purpose: updating this leads to a bug in o1js
     base64::encode(serialized)
 }

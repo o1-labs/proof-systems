@@ -1,4 +1,5 @@
 use crate::wasm_vector::{fp::WasmVecVecFp, fq::WasmVecVecFq, WasmVector};
+use crate::memory_tracker::{next_id, log_allocation, log_deallocation};
 use ark_ec::AffineRepr;
 use ark_ff::One;
 use core::{array, convert::TryInto};
@@ -31,6 +32,16 @@ extern "C" {
     #[wasm_bindgen(js_namespace = console)]
     fn log(s: &str);
 }
+
+// Note: We cannot easily calculate the exact size of ProverProof because:
+// 1. WasmProofEvaluations contains opaque serialized OCaml data
+// 2. WasmProverCommitments and WasmOpeningProof contain nested structures
+// 3. The actual vector sizes in evaluations depend on the circuit
+//
+// Since we need consistency between allocation and deallocation,
+// we use a fixed size based on empirical measurements.
+// The observed size is approximately 5MB per proof.
+const PROVER_PROOF_SIZE: usize = 5 * 1024 * 1024;
 
 macro_rules! impl_proof {
     (
@@ -219,6 +230,17 @@ macro_rules! impl_proof {
                 pub t_comm: $WasmPolyComm,
                 #[wasm_bindgen(skip)]
                 pub lookup: Option<WasmLookupCommitments>,
+                #[wasm_bindgen(skip)]
+                pub id: u64,
+            }
+            
+            impl Drop for [<Wasm $field_name:camel ProverCommitments>] {
+                fn drop(&mut self) {
+                    // WasmVector and WasmPolyComm fields track their own memory
+                    // Just track the struct overhead
+                    let size = std::mem::size_of::<Self>();
+                    crate::memory_tracker::log_deallocation(concat!("Wasm", stringify!($field_name), "ProverCommitments"), size, self.id);
+                }
             }
             type WasmProverCommitments = [<Wasm $field_name:camel ProverCommitments>];
 
@@ -231,7 +253,10 @@ macro_rules! impl_proof {
                     t_comm: $WasmPolyComm,
                     lookup: Option<WasmLookupCommitments>
                 ) -> Self {
-                    WasmProverCommitments { w_comm, z_comm, t_comm, lookup }
+                    let id = crate::memory_tracker::next_id();
+                    let size = std::mem::size_of::<WasmProverCommitments>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "ProverCommitments"), size, file!(), line!(), id);
+                    WasmProverCommitments { w_comm, z_comm, t_comm, lookup, id }
                 }
 
                 #[wasm_bindgen(getter)]
@@ -273,22 +298,30 @@ macro_rules! impl_proof {
 
             impl From<&ProverCommitments<$G>> for WasmProverCommitments {
                 fn from(x: &ProverCommitments<$G>) -> Self {
+                    let id = crate::memory_tracker::next_id();
+                    let size = std::mem::size_of::<WasmProverCommitments>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "ProverCommitments"), size, file!(), line!(), id);
                     WasmProverCommitments {
                         w_comm: x.w_comm.iter().map(Into::into).collect(),
                         z_comm: x.z_comm.clone().into(),
                         t_comm: x.t_comm.clone().into(),
-                        lookup: x.lookup.clone().map(Into::into)
+                        lookup: x.lookup.clone().map(Into::into),
+                        id,
                     }
                 }
             }
 
             impl From<ProverCommitments<$G>> for WasmProverCommitments {
                 fn from(x: ProverCommitments<$G>) -> Self {
+                    let id = crate::memory_tracker::next_id();
+                    let size = std::mem::size_of::<WasmProverCommitments>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "ProverCommitments"), size, file!(), line!(), id);
                     WasmProverCommitments {
                         w_comm: x.w_comm.iter().map(Into::into).collect(),
                         z_comm: x.z_comm.into(),
                         t_comm: x.t_comm.into(),
                         lookup: x.lookup.map(Into::into),
+                        id,
                     }
                 }
             }
@@ -308,9 +341,9 @@ macro_rules! impl_proof {
                 fn from(x: WasmProverCommitments) -> Self {
                     ProverCommitments {
                         w_comm: core::array::from_fn(|i| (&x.w_comm[i]).into()),
-                        z_comm: x.z_comm.into(),
-                        t_comm: x.t_comm.into(),
-                        lookup: x.lookup.map(Into::into),
+                        z_comm: x.z_comm.clone().into(),
+                        t_comm: x.t_comm.clone().into(),
+                        lookup: x.lookup.clone().map(Into::into),
                     }
                 }
             }
@@ -328,6 +361,18 @@ macro_rules! impl_proof {
                 pub z2: $WasmF,
                 #[wasm_bindgen(skip)]
                 pub sg: $WasmG,
+                #[wasm_bindgen(skip)]
+                pub id: u64,
+            }
+            
+            impl Drop for [<Wasm $field_name:camel OpeningProof>] {
+                fn drop(&mut self) {
+                    let size = std::mem::size_of::<Self>() 
+                        + 2 * std::mem::size_of::<$WasmG>()  // delta and sg
+                        + 2 * std::mem::size_of::<$WasmF>();  // z1 and z2
+                    // WasmVectors lr_0 and lr_1 are tracked separately
+                    crate::memory_tracker::log_deallocation(concat!("Wasm", stringify!($field_name), "OpeningProof"), size, self.id);
+                }
             }
             type WasmOpeningProof = [<Wasm $field_name:camel OpeningProof>];
 
@@ -341,7 +386,12 @@ macro_rules! impl_proof {
                     z1: $WasmF,
                     z2: $WasmF,
                     sg: $WasmG) -> Self {
-                    WasmOpeningProof { lr_0, lr_1, delta, z1, z2, sg }
+                    let id = crate::memory_tracker::next_id();
+                    let size = std::mem::size_of::<WasmOpeningProof>() 
+                        + 2 * std::mem::size_of::<$WasmG>()
+                        + 2 * std::mem::size_of::<$WasmF>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "OpeningProof"), size, file!(), line!(), id);
+                    WasmOpeningProof { lr_0, lr_1, delta, z1, z2, sg, id }
                 }
 
                 #[wasm_bindgen(getter)]
@@ -393,13 +443,12 @@ macro_rules! impl_proof {
 
             impl From<WasmOpeningProof> for OpeningProof<$G> {
                 fn from(x: WasmOpeningProof) -> Self {
-                    let WasmOpeningProof {lr_0, lr_1, delta, z1, z2, sg} = x;
                     OpeningProof {
-                        lr: lr_0.into_iter().zip(lr_1.into_iter()).map(|(x, y)| (x.into(), y.into())).collect(),
-                        delta: delta.into(),
-                        z1: z1.into(),
-                        z2: z2.into(),
-                        sg: sg.into(),
+                        lr: x.lr_0.clone().into_iter().zip(x.lr_1.clone().into_iter()).map(|(x, y)| (x.into(), y.into())).collect(),
+                        delta: x.delta.clone().into(),
+                        z1: x.z1.into(),
+                        z2: x.z2.into(),
+                        sg: x.sg.clone().into(),
                     }
                 }
             }
@@ -407,6 +456,11 @@ macro_rules! impl_proof {
             impl From<&OpeningProof<$G>> for WasmOpeningProof {
                 fn from(x: &OpeningProof<$G>) -> Self {
                     let (lr_0, lr_1) = x.lr.clone().into_iter().map(|(x, y)| (x.into(), y.into())).unzip();
+                    let id = crate::memory_tracker::next_id();
+                    let size = std::mem::size_of::<WasmOpeningProof>() 
+                        + 2 * std::mem::size_of::<$WasmG>()
+                        + 2 * std::mem::size_of::<$WasmF>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "OpeningProof"), size, file!(), line!(), id);
                     WasmOpeningProof {
                         lr_0,
                         lr_1,
@@ -414,6 +468,7 @@ macro_rules! impl_proof {
                         z1: x.z1.into(),
                         z2: x.z2.into(),
                         sg: x.sg.clone().into(),
+                        id,
                     }
                 }
             }
@@ -421,6 +476,11 @@ macro_rules! impl_proof {
             impl From<OpeningProof<$G>> for WasmOpeningProof {
                 fn from(x: OpeningProof<$G>) -> Self {
                     let (lr_0, lr_1) = x.lr.clone().into_iter().map(|(x, y)| (x.into(), y.into())).unzip();
+                    let id = crate::memory_tracker::next_id();
+                    let size = std::mem::size_of::<WasmOpeningProof>() 
+                        + 2 * std::mem::size_of::<$WasmG>()
+                        + 2 * std::mem::size_of::<$WasmF>();
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "OpeningProof"), size, file!(), line!(), id);
                     WasmOpeningProof {
                         lr_0,
                         lr_1,
@@ -428,6 +488,7 @@ macro_rules! impl_proof {
                         z1: x.z1.into(),
                         z2: x.z2.into(),
                         sg: x.sg.clone().into(),
+                        id,
                     }
                 }
             }
@@ -448,26 +509,48 @@ macro_rules! impl_proof {
                 pub prev_challenges_scalars: Vec<Vec<$F>>,
                 #[wasm_bindgen(skip)]
                 pub prev_challenges_comms: WasmVector<$WasmPolyComm>,
+                #[wasm_bindgen(skip)]
+                pub id: u64,
+            }
+
+            impl [<Wasm $field_name:camel ProverProof>] {
+                fn calculate_size(&self) -> usize {
+                    // Use the constant size for consistency between allocation and deallocation
+                    PROVER_PROOF_SIZE
+                }
+            }
+
+            impl Drop for [<Wasm $field_name:camel ProverProof>] {
+                fn drop(&mut self) {
+                    let size = self.calculate_size();
+                    crate::memory_tracker::log_deallocation(concat!("Wasm", stringify!($field_name), "ProverProof"), size, self.id);
+                }
             }
             type WasmProverProof = [<Wasm $field_name:camel ProverProof>];
 
             impl From<(&ProverProof<$G, OpeningProof<$G>>, &Vec<$F>)> for WasmProverProof {
                 fn from((x, public): (&ProverProof<$G, OpeningProof<$G>>, &Vec<$F>)) -> Self {
-                    let (scalars, comms) =
+                    let (scalars, comms): (Vec<Vec<$F>>, Vec<_>) =
                         x.prev_challenges
                             .iter()
                             .map(|RecursionChallenge { chals, comm }| {
                                     (chals.clone().into(), comm.into())
                                 })
                             .unzip();
+                    let id = crate::memory_tracker::next_id();
+                    let public_vec: WasmFlatVector<$WasmF> = public.clone().into_iter().map(Into::into).collect();
+                    // Use constant size for consistency
+                    let size = PROVER_PROOF_SIZE;
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "ProverProof"), size, file!(), line!(), id);
                     WasmProverProof {
                         commitments: x.commitments.clone().into(),
                         proof: x.proof.clone().into(),
                         evals: x.evals.clone().into(),
                         ft_eval1: x.ft_eval1.clone().into(),
-                        public: public.clone().into_iter().map(Into::into).collect(),
+                        public: public_vec,
                         prev_challenges_scalars: scalars,
-                        prev_challenges_comms: comms,
+                        prev_challenges_comms: comms.into(),
+                        id,
                     }
                 }
             }
@@ -475,11 +558,14 @@ macro_rules! impl_proof {
             impl From<(ProverProof<$G, OpeningProof<$G>>, Vec<$F>)> for WasmProverProof {
                 fn from((x, public): (ProverProof<$G, OpeningProof<$G>>, Vec<$F>)) -> Self {
                     let ProverProof {ft_eval1, commitments, proof, evals , prev_challenges} = x;
-                    let (scalars, comms) =
+                    let (scalars, comms): (Vec<Vec<$F>>, Vec<$WasmPolyComm>) =
                         prev_challenges
                             .into_iter()
                             .map(|RecursionChallenge { chals, comm }| (chals.into(), comm.into()))
                             .unzip();
+                    let id = crate::memory_tracker::next_id();
+                    let size = PROVER_PROOF_SIZE;
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "ProverProof"), size, file!(), line!(), id);
                     WasmProverProof {
                         commitments: commitments.into(),
                         proof: proof.into(),
@@ -487,7 +573,8 @@ macro_rules! impl_proof {
                         ft_eval1: ft_eval1.clone().into(),
                         public: public.into_iter().map(Into::into).collect(),
                         prev_challenges_scalars: scalars,
-                        prev_challenges_comms: comms,
+                        prev_challenges_comms: comms.into(),
+                        id,
                     }
                 }
             }
@@ -519,13 +606,13 @@ macro_rules! impl_proof {
             impl From<WasmProverProof> for (ProverProof<$G, OpeningProof<$G>>, Vec<$F>) {
                 fn from(x: WasmProverProof) -> Self {
                     let proof =ProverProof {
-                        commitments: x.commitments.into(),
-                        proof: x.proof.into(),
-                        evals: x.evals.into(),
+                        commitments: x.commitments.clone().into(),
+                        proof: x.proof.clone().into(),
+                        evals: x.evals.clone().into(),
                         prev_challenges:
-                            (x.prev_challenges_scalars)
+                            (x.prev_challenges_scalars.clone())
                                 .into_iter()
-                                .zip((x.prev_challenges_comms).into_iter())
+                                .zip((x.prev_challenges_comms.clone()).into_iter())
                                 .map(|(chals, comm)| {
                                     RecursionChallenge {
                                         chals: chals.into(),
@@ -533,9 +620,9 @@ macro_rules! impl_proof {
                                     }
                                 })
                                 .collect(),
-                        ft_eval1: x.ft_eval1.into()
+                        ft_eval1: x.ft_eval1.clone().into()
                     };
-                    let public = x.public.into_iter().map(Into::into).collect();
+                    let public = x.public.clone().into_iter().map(Into::into).collect();
                     (proof, public)
                 }
             }
@@ -551,14 +638,18 @@ macro_rules! impl_proof {
                     public_: WasmFlatVector<$WasmF>,
                     prev_challenges_scalars: WasmVecVecF,
                     prev_challenges_comms: WasmVector<$WasmPolyComm>) -> Self {
+                    let id = crate::memory_tracker::next_id();
+                    let size = PROVER_PROOF_SIZE;
+                    crate::memory_tracker::log_allocation(concat!("Wasm", stringify!($field_name), "ProverProof"), size, file!(), line!(), id);
                     WasmProverProof {
                         commitments,
                         proof,
                         evals,
                         ft_eval1,
                         public: public_,
-                        prev_challenges_scalars: prev_challenges_scalars.0,
+                        prev_challenges_scalars: prev_challenges_scalars.data.clone(),
                         prev_challenges_comms,
+                        id,
                     }
                 }
 
@@ -580,7 +671,11 @@ macro_rules! impl_proof {
                 }
                 #[wasm_bindgen(getter)]
                 pub fn prev_challenges_scalars(&self) -> WasmVecVecF {
-                    [<WasmVecVec $field_name:camel>](self.prev_challenges_scalars.clone())
+                    let data = self.prev_challenges_scalars.clone();
+                    let id = crate::memory_tracker::next_id();
+                    let size = crate::memory_tracker::estimate_nested_vec_size(&data);
+                    crate::memory_tracker::log_allocation(concat!("WasmVecVec", stringify!($field_name)), size, file!(), line!(), id);
+                    [<WasmVecVec $field_name:camel>] { data, id }
                 }
                 #[wasm_bindgen(getter)]
                 pub fn prev_challenges_comms(&self) -> WasmVector<$WasmPolyComm> {
@@ -605,7 +700,7 @@ macro_rules! impl_proof {
                 }
                 #[wasm_bindgen(setter)]
                 pub fn set_prev_challenges_scalars(&mut self, prev_challenges_scalars: WasmVecVecF) {
-                    self.prev_challenges_scalars = prev_challenges_scalars.0
+                    self.prev_challenges_scalars = prev_challenges_scalars.data.clone()
                 }
                 #[wasm_bindgen(setter)]
                 pub fn set_prev_challenges_comms(&mut self, prev_challenges_comms: WasmVector<$WasmPolyComm>) {
@@ -623,6 +718,7 @@ macro_rules! impl_proof {
             }
 
             #[wasm_bindgen]
+            #[derive(Clone)]
             pub struct [<Wasm $field_name:camel RuntimeTable>] {
                 id: i32,
                 data: WasmFlatVector<$WasmF>
@@ -656,7 +752,7 @@ macro_rules! impl_proof {
             ) -> Result<WasmProverProof, JsError> {
                 console_error_panic_hook::set_once();
                 let (maybe_proof, public_input) = crate::rayon::run_in_pool(|| {
-                    index.0.srs.get_lagrange_basis(index.0.as_ref().cs.domain.d1);
+                    index.index.srs.get_lagrange_basis(index.index.as_ref().cs.domain.d1);
                     let prev: Vec<RecursionChallenge<$G>> = {
                         if prev_challenges.is_empty() {
                             Vec::new()
@@ -683,11 +779,11 @@ macro_rules! impl_proof {
 
                     let rust_runtime_tables: Vec<RuntimeTable<$F>> = wasm_runtime_tables.into_iter().map(Into::into).collect();
 
-                    let witness: [Vec<_>; COLUMNS] = witness.0
+                    let witness: [Vec<_>; COLUMNS] = witness.data.clone()
                         .try_into()
                         .expect("the witness should be a column of 15 vectors");
 
-                    let index: &ProverIndex<$G, OpeningProof<$G>> = &index.0.as_ref();
+                    let index: &ProverIndex<$G, OpeningProof<$G>> = &index.index.as_ref();
 
                     let public_input = witness[0][0..index.cs.public].to_vec();
 
