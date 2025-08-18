@@ -96,23 +96,30 @@ fn interfaces() {
     // Usage 1: incremental interface
     let mut hasher = create_legacy::<Foo>(0);
     hasher.update(&Foo { x: 3, y: 1 });
-    let x1 = hasher.digest(); // Resets to previous init state (0)
+    // Resets to previous init state (0)
+    let x1 = hasher.digest();
     hasher.update(&Foo { x: 82, y: 834 });
     hasher.update(&Foo { x: 1235, y: 93 });
-    hasher.digest(); // Resets to previous init state (0)
+    // Resets to previous init state (0)
+    hasher.digest();
     hasher.init(1);
     hasher.update(&Foo { x: 82, y: 834 });
-    let x2 = hasher.digest(); // Resets to previous init state (1)
+    // Resets to previous init state (1)
+    let x2 = hasher.digest();
 
     // Usage 2: builder interface with one-shot pattern
     let mut hasher = create_legacy::<Foo>(0);
-    let y1 = hasher.update(&Foo { x: 3, y: 1 }).digest(); // Resets to previous init state (0)
+    // Resets to previous init state (0)
+    let y1 = hasher.update(&Foo { x: 3, y: 1 }).digest();
+
     hasher.update(&Foo { x: 31, y: 21 }).digest();
 
     // Usage 3: builder interface with one-shot pattern also setting init state
     let mut hasher = create_legacy::<Foo>(0);
-    let y2 = hasher.init(0).update(&Foo { x: 3, y: 1 }).digest(); // Resets to previous init state (1)
-    let y3 = hasher.init(1).update(&Foo { x: 82, y: 834 }).digest(); // Resets to previous init state (2)
+    // Resets to previous init state (1)
+    let y2 = hasher.init(0).update(&Foo { x: 3, y: 1 }).digest();
+    // Resets to previous init state (2)
+    let y3 = hasher.init(1).update(&Foo { x: 82, y: 834 }).digest();
 
     // Usage 4: one-shot interfaces
     let mut hasher = create_legacy::<Foo>(0);
