@@ -1,0 +1,50 @@
+name: Detect Merge Commits
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-merge-commits:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Needed to access full commit history
+
+      - name: Fetch PR commits
+        id: commits
+        run: |
+          echo "COMMITS<<EOF" >> $GITHUB_OUTPUT
+          gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json commits --jq '.commits[].oid' >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for merge commits
+        id: merge_check
+        run: |
+          has_merge_commits=0
+          for sha in $(git rev-list origin/${{ github.event.pull_request.base.ref }}..HEAD); do
+            parents=$(git rev-list --parents -n 1 "$sha" | wc -w)
+            if [ "$parents" -gt 2 ]; then
+              echo "Merge commit detected: $sha"
+              has_merge_commits=1
+            fi
+          done
+          echo "has_merge_commits=$has_merge_commits" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR if merge commit is found
+        if: steps.merge_check.outputs.has_merge_commits == '1'
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "❌ Merge commit(s) detected in this PR. Please rebase or squash before merging."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fail if merge commits are present
+        if: steps.merge_check.outputs.has_merge_commits == '1'
+        run: |
+          echo "Merge commits found in PR, aborting."
+          exit 1
