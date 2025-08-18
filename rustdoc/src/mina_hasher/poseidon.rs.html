@@ -73,32 +73,34 @@
 <a href=#73 id=73 data-nosnippet>73</a>    </span>}
 <a href=#74 id=74 data-nosnippet>74</a>
 <a href=#75 id=75 data-nosnippet>75</a>    <span class="kw">fn </span>init(<span class="kw-2">&amp;mut </span><span class="self">self</span>, domain_param: H::D) -&gt; <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Hasher&lt;H&gt; {
-<a href=#76 id=76 data-nosnippet>76</a>        <span class="comment">// Set sponge initial state and save it so the hasher context can be reused efficiently
-<a href=#77 id=77 data-nosnippet>77</a>        // N.B. Mina sets the sponge's initial state by hashing the input type's domain bytes
-<a href=#78 id=78 data-nosnippet>78</a>        </span><span class="self">self</span>.sponge.reset();
-<a href=#79 id=79 data-nosnippet>79</a>
-<a href=#80 id=80 data-nosnippet>80</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(domain_string) = H::domain_string(domain_param) {
-<a href=#81 id=81 data-nosnippet>81</a>            <span class="self">self</span>.sponge
-<a href=#82 id=82 data-nosnippet>82</a>                .absorb(<span class="kw-2">&amp;</span>[domain_prefix_to_field::&lt;Fp&gt;(domain_string)]);
-<a href=#83 id=83 data-nosnippet>83</a>            <span class="self">self</span>.sponge.squeeze();
-<a href=#84 id=84 data-nosnippet>84</a>        }
-<a href=#85 id=85 data-nosnippet>85</a>
-<a href=#86 id=86 data-nosnippet>86</a>        <span class="comment">// Save initial state for efficient reset
-<a href=#87 id=87 data-nosnippet>87</a>        </span><span class="self">self</span>.sponge_state = <span class="self">self</span>.sponge.sponge_state.clone();
-<a href=#88 id=88 data-nosnippet>88</a>        <span class="self">self</span>.state.clone_from(<span class="kw-2">&amp;</span><span class="self">self</span>.sponge.state);
-<a href=#89 id=89 data-nosnippet>89</a>
-<a href=#90 id=90 data-nosnippet>90</a>        <span class="self">self
-<a href=#91 id=91 data-nosnippet>91</a>    </span>}
-<a href=#92 id=92 data-nosnippet>92</a>
-<a href=#93 id=93 data-nosnippet>93</a>    <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>H) -&gt; <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Hasher&lt;H&gt; {
-<a href=#94 id=94 data-nosnippet>94</a>        <span class="self">self</span>.sponge.absorb(<span class="kw-2">&amp;</span>input.to_roinput().to_fields());
-<a href=#95 id=95 data-nosnippet>95</a>
-<a href=#96 id=96 data-nosnippet>96</a>        <span class="self">self
-<a href=#97 id=97 data-nosnippet>97</a>    </span>}
-<a href=#98 id=98 data-nosnippet>98</a>
-<a href=#99 id=99 data-nosnippet>99</a>    <span class="kw">fn </span>digest(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Fp {
-<a href=#100 id=100 data-nosnippet>100</a>        <span class="kw">let </span>output = <span class="self">self</span>.sponge.squeeze();
-<a href=#101 id=101 data-nosnippet>101</a>        <span class="self">self</span>.sponge.reset();
-<a href=#102 id=102 data-nosnippet>102</a>        output
-<a href=#103 id=103 data-nosnippet>103</a>    }
-<a href=#104 id=104 data-nosnippet>104</a>}</code></pre></div></section></main></body></html>
+<a href=#76 id=76 data-nosnippet>76</a>        <span class="comment">// Set sponge initial state and save it so the hasher context can be
+<a href=#77 id=77 data-nosnippet>77</a>        // reused efficiently
+<a href=#78 id=78 data-nosnippet>78</a>        // N.B. Mina sets the sponge's initial state by hashing the input type's
+<a href=#79 id=79 data-nosnippet>79</a>        // domain bytes
+<a href=#80 id=80 data-nosnippet>80</a>        </span><span class="self">self</span>.sponge.reset();
+<a href=#81 id=81 data-nosnippet>81</a>
+<a href=#82 id=82 data-nosnippet>82</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(domain_string) = H::domain_string(domain_param) {
+<a href=#83 id=83 data-nosnippet>83</a>            <span class="self">self</span>.sponge
+<a href=#84 id=84 data-nosnippet>84</a>                .absorb(<span class="kw-2">&amp;</span>[domain_prefix_to_field::&lt;Fp&gt;(domain_string)]);
+<a href=#85 id=85 data-nosnippet>85</a>            <span class="self">self</span>.sponge.squeeze();
+<a href=#86 id=86 data-nosnippet>86</a>        }
+<a href=#87 id=87 data-nosnippet>87</a>
+<a href=#88 id=88 data-nosnippet>88</a>        <span class="comment">// Save initial state for efficient reset
+<a href=#89 id=89 data-nosnippet>89</a>        </span><span class="self">self</span>.sponge_state = <span class="self">self</span>.sponge.sponge_state.clone();
+<a href=#90 id=90 data-nosnippet>90</a>        <span class="self">self</span>.state.clone_from(<span class="kw-2">&amp;</span><span class="self">self</span>.sponge.state);
+<a href=#91 id=91 data-nosnippet>91</a>
+<a href=#92 id=92 data-nosnippet>92</a>        <span class="self">self
+<a href=#93 id=93 data-nosnippet>93</a>    </span>}
+<a href=#94 id=94 data-nosnippet>94</a>
+<a href=#95 id=95 data-nosnippet>95</a>    <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>H) -&gt; <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Hasher&lt;H&gt; {
+<a href=#96 id=96 data-nosnippet>96</a>        <span class="self">self</span>.sponge.absorb(<span class="kw-2">&amp;</span>input.to_roinput().to_fields());
+<a href=#97 id=97 data-nosnippet>97</a>
+<a href=#98 id=98 data-nosnippet>98</a>        <span class="self">self
+<a href=#99 id=99 data-nosnippet>99</a>    </span>}
+<a href=#100 id=100 data-nosnippet>100</a>
+<a href=#101 id=101 data-nosnippet>101</a>    <span class="kw">fn </span>digest(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Fp {
+<a href=#102 id=102 data-nosnippet>102</a>        <span class="kw">let </span>output = <span class="self">self</span>.sponge.squeeze();
+<a href=#103 id=103 data-nosnippet>103</a>        <span class="self">self</span>.sponge.reset();
+<a href=#104 id=104 data-nosnippet>104</a>        output
+<a href=#105 id=105 data-nosnippet>105</a>    }
+<a href=#106 id=106 data-nosnippet>106</a>}</code></pre></div></section></main></body></html>
