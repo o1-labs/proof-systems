@@ -88,11 +88,13 @@ clean: ## Clean the project
 
 
 build: ## Build the project
-		cargo build --all-targets --all-features --workspace --exclude plonk_wasm --exclude plonk_wasm --exclude xtask
+		cargo build --all-targets --all-features --workspace \
+			--exclude plonk_wasm --exclude plonk_wasm --exclude xtask
 
 
 release: ## Build the project in release mode
-		cargo build --release --all-targets --all-features --workspace --exclude plonk_neon --exclude plonk_wasm --exclude xtask
+		cargo build --release --all-targets --all-features --workspace \
+			--exclude plonk_neon --exclude plonk_wasm --exclude xtask
 
 
 test-doc: ## Test the project's docs comments
