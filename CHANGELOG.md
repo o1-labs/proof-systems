@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### CI
+
+#### Added
+
+- CI: add support for macos-latest with Rust 1.84
+  ([#3131](https://github.com/o1-labs/proof-systems/pull/3131))
+
 ### [arrabbiata](./arrabbiata)
 
 #### Changed

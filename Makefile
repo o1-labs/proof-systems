@@ -25,6 +25,10 @@ O1VM_MIPS_SOURCE_FILES = $(patsubst ${OPTIMISM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIP
 O1VM_MIPS_BIN_DIR = ${O1VM_RESOURCES_PATH}/mips/bin
 O1VM_MIPS_BIN_FILES = $(patsubst ${O1VM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIPS_BIN_DIR}/%.o,${O1VM_MIPS_SOURCE_FILES})
 
+# MIPS toolchain configuration (can be overridden for different platforms)
+MIPS_AS ?= mips-linux-gnu-as
+MIPS_LD ?= mips-linux-gnu-ld
+
 # This should be updated if rust-toolchain.toml is updated, and the nightly
 # version should be close to the date of the release of the stable version used
 # in rust-toolchain.toml.
@@ -229,8 +233,8 @@ ${O1VM_MIPS_SOURCE_DIR}/%.asm: ${OPTIMISM_MIPS_SOURCE_DIR}/%.asm
 ${O1VM_MIPS_BIN_DIR}/%.o: ${O1VM_MIPS_SOURCE_DIR}/%.asm
 		@echo "Building the MIPS binary: $(basename $@) using $<"
 		@mkdir -p ${O1VM_MIPS_BIN_DIR}
-		@mips-linux-gnu-as -defsym big_endian=1 -march=mips32r2 -o $@ $<
-		@mips-linux-gnu-ld -s -o $(basename $@) $@
+		@${MIPS_AS} -defsym big_endian=1 -march=mips32r2 -o $@ $<
+		@${MIPS_LD} -s -o $(basename $@) $@
 
 fclean: clean ## Clean the tooling artefacts in addition to running clean
 		rm -rf ${RISCV32_TOOLCHAIN_PATH}
