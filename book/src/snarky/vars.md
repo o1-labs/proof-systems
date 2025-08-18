@@ -123,7 +123,7 @@ where
 Such types are always handled as `OutOfCircuit` types (e.g. `bool`) by the users, and as a type implementing `SnarkyType` by snarky (e.g. [`Boolean`](./booleans.md)).
 Thus, the user can pass them to snarky in two ways:
 
-**As public inputs**. In this case they will be serialized into field elements for snarky before [witness-generation](./witness-generation.md) (via the `value_to_field_elements()` function)
+**As public inputs**. In this case they will be serialized into field elements for snarky before [witness-generation](./kimchi-backend.md#witness-generation) (via the `value_to_field_elements()` function)
 
 **As private inputs**. In this case, they must be created using the `compute()` function with a closure returning an `OutOfCircuit` value by the user. 
 The call to `compute()` will need to have some type hint, for snarky to understand what `SnarkyType` it is creating. 
