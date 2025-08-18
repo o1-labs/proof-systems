@@ -6,7 +6,7 @@ pub enum EvalLeaf<'a, F> {
     Result(Vec<F>),
 }
 
-impl<'a, F: core::fmt::Display> core::fmt::Display for EvalLeaf<'a, F> {
+impl<F: core::fmt::Display> core::fmt::Display for EvalLeaf<'_, F> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let slice = match self {
             EvalLeaf::Const(c) => {
@@ -25,7 +25,7 @@ impl<'a, F: core::fmt::Display> core::fmt::Display for EvalLeaf<'a, F> {
     }
 }
 
-impl<'a, F: core::ops::Add<Output = F> + Clone> core::ops::Add for EvalLeaf<'a, F> {
+impl<F: core::ops::Add<Output = F> + Clone> core::ops::Add for EvalLeaf<'_, F> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -33,7 +33,7 @@ impl<'a, F: core::ops::Add<Output = F> + Clone> core::ops::Add for EvalLeaf<'a, 
     }
 }
 
-impl<'a, F: core::ops::Sub<Output = F> + Clone> core::ops::Sub for EvalLeaf<'a, F> {
+impl<F: core::ops::Sub<Output = F> + Clone> core::ops::Sub for EvalLeaf<'_, F> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
@@ -41,7 +41,7 @@ impl<'a, F: core::ops::Sub<Output = F> + Clone> core::ops::Sub for EvalLeaf<'a, 
     }
 }
 
-impl<'a, F: core::ops::Mul<Output = F> + Clone> core::ops::Mul for EvalLeaf<'a, F> {
+impl<F: core::ops::Mul<Output = F> + Clone> core::ops::Mul for EvalLeaf<'_, F> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self {
@@ -49,7 +49,7 @@ impl<'a, F: core::ops::Mul<Output = F> + Clone> core::ops::Mul for EvalLeaf<'a, 
     }
 }
 
-impl<'a, F: core::ops::Mul<Output = F> + Clone> core::ops::Mul<F> for EvalLeaf<'a, F> {
+impl<F: core::ops::Mul<Output = F> + Clone> core::ops::Mul<F> for EvalLeaf<'_, F> {
     type Output = Self;
 
     fn mul(self, rhs: F) -> Self {
@@ -57,7 +57,7 @@ impl<'a, F: core::ops::Mul<Output = F> + Clone> core::ops::Mul<F> for EvalLeaf<'
     }
 }
 
-impl<'a, F: Clone> EvalLeaf<'a, F> {
+impl<F: Clone> EvalLeaf<'_, F> {
     pub fn map<M: Fn(&F) -> F, I: Fn(&mut F)>(self, map: M, in_place: I) -> Self {
         use EvalLeaf::*;
         match self {

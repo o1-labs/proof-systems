@@ -269,7 +269,7 @@ where
     }
 }
 
-impl<'a, 'b, C: AffineRepr> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
+impl<'a, C: AffineRepr> Add<&'a PolyComm<C>> for &PolyComm<C> {
     type Output = PolyComm<C>;
 
     fn add(self, other: &'a PolyComm<C>) -> PolyComm<C> {
@@ -290,7 +290,7 @@ impl<'a, 'b, C: AffineRepr> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
     }
 }
 
-impl<'a, 'b, C: AffineRepr + Sub<Output = C::Group>> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
+impl<'a, C: AffineRepr + Sub<Output = C::Group>> Sub<&'a PolyComm<C>> for &PolyComm<C> {
     type Output = PolyComm<C>;
 
     fn sub(self, other: &'a PolyComm<C>) -> PolyComm<C> {

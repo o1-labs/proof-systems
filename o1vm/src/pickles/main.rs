@@ -83,24 +83,26 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     };
 
     // Initialize the environments
-    let mut mips_wit_env = match configuration.host.clone() {
+    let (mut mips_wit_env, child_process) = match configuration.host.clone() {
         Some(host) => {
             let mut po = PreImageOracle::create(host);
-            let _child = po.start();
-            mips_witness::Env::<Fp, Box<dyn PreImageOracleT>>::create(
+            let child = po.start();
+            let env = mips_witness::Env::<Fp, Box<dyn PreImageOracleT>>::create(
                 cannon::PAGE_SIZE as usize,
                 state,
                 Box::new(po),
-            )
+            );
+            (env, Some(child))
         }
         None => {
             debug!("No preimage oracle provided 🤞");
             // warning: the null preimage oracle has no data and will crash the program if used
-            mips_witness::Env::<Fp, Box<dyn PreImageOracleT>>::create(
+            let env = mips_witness::Env::<Fp, Box<dyn PreImageOracleT>>::create(
                 cannon::PAGE_SIZE as usize,
                 state,
                 Box::new(NullPreImageOracle),
-            )
+            );
+            (env, None)
         }
     };
 
@@ -169,6 +171,11 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
         debug!("Padding witness for proof generation");
         pad(&mips_wit_env, &mut curr_proof_inputs, &mut rng);
         prove_and_verify(domain_fp, &srs, &constraints, curr_proof_inputs, &mut rng);
+    }
+
+    // Wait for child process to finish if it exists
+    if let Some(mut child) = child_process {
+        let _ = child.wait();
     }
 }
 

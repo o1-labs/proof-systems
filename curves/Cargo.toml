@@ -9,6 +9,9 @@ readme = "../README.md"
 edition = "2021"
 license = "Apache-2.0"
 
+[features]
+asm = ["ark-ff/asm"]
+
 [dependencies]
 ark-bn254.workspace = true
 ark-ec.workspace = true

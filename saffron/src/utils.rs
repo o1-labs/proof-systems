@@ -243,8 +243,8 @@ pub mod test_utils {
 pub fn min_encoding_chunks<F: PrimeField, D: EvaluationDomain<F>>(domain: &D, xs: &[u8]) -> usize {
     let m = encoding_size::<F>();
     let n = xs.len();
-    let num_field_elems = (n + m - 1) / m;
-    (num_field_elems + domain.size() - 1) / domain.size()
+    let num_field_elems = n.div_ceil(m);
+    num_field_elems.div_ceil(domain.size())
 }
 
 pub fn chunk_size_in_bytes<F: PrimeField, D: EvaluationDomain<F>>(domain: &D) -> usize {

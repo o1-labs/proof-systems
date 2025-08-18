@@ -20,7 +20,7 @@ pub fn main(args: cli::cannon::RunArgs) -> ExitCode {
     if let Some(preimage_key_dir) = preimage_db_dir {
         let host_program = configuration.host.expect("No host program specified");
         let mut po = PreImageOracle::create(host_program);
-        let _child = po.start();
+        let mut child = po.start();
         debug!("Let server start");
         std::thread::sleep(std::time::Duration::from_secs(5));
 
@@ -69,6 +69,9 @@ pub fn main(args: cli::cannon::RunArgs) -> ExitCode {
 
             assert_eq!(expected, got);
         }
+
+        // Wait for child process to finish
+        let _ = child.wait();
         ExitCode::SUCCESS
     } else {
         error!("Unset command-line argument --preimage-db-dir. Cannot run test. Please set parameter and rerun.");

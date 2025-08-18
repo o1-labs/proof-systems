@@ -208,13 +208,12 @@ impl<'a, F: PrimeField, CIx1: ColumnIndexer<usize>, Env1: ColAccessCap<F, CIx1>,
 }
 
 impl<
-        'a,
         F: PrimeField,
         CIx1: ColumnIndexer<usize>,
         CIx2: ColumnIndexer<usize>,
         Env1: ColAccessCap<F, CIx1>,
         L: MPrism<Source = CIx1, Target = CIx2>,
-    > ColAccessCap<F, CIx2> for SubEnv<'a, F, CIx1, Env1, L>
+    > ColAccessCap<F, CIx2> for SubEnv<'_, F, CIx1, Env1, L>
 {
     type Variable = Env1::Variable;
 
@@ -236,13 +235,12 @@ impl<
 }
 
 impl<
-        'a,
         F: PrimeField,
         CIx1: ColumnIndexer<usize>,
         CIx2: ColumnIndexer<usize>,
         Env1: ColWriteCap<F, CIx1>,
         L: MPrism<Source = CIx1, Target = CIx2>,
-    > ColWriteCap<F, CIx2> for SubEnv<'a, F, CIx1, Env1, L>
+    > ColWriteCap<F, CIx2> for SubEnv<'_, F, CIx1, Env1, L>
 {
     fn write_column(&mut self, ix: CIx2, value: &Self::Variable) {
         self.env.write_column(self.lens.re_get(ix), value)
@@ -250,13 +248,12 @@ impl<
 }
 
 impl<
-        'a,
         F: PrimeField,
         CIx1: ColumnIndexer<usize>,
         CIx2: ColumnIndexer<usize>,
         Env1: HybridCopyCap<F, CIx1>,
         L: MPrism<Source = CIx1, Target = CIx2>,
-    > HybridCopyCap<F, CIx2> for SubEnv<'a, F, CIx1, Env1, L>
+    > HybridCopyCap<F, CIx2> for SubEnv<'_, F, CIx1, Env1, L>
 {
     fn hcopy(&mut self, x: &Self::Variable, ix: CIx2) -> Self::Variable {
         self.env.hcopy(x, self.lens.re_get(ix))
@@ -264,13 +261,12 @@ impl<
 }
 
 impl<
-        'a,
         F: PrimeField,
         CIx1: ColumnIndexer<usize>,
         CIx2: ColumnIndexer<usize>,
         Env1: ColAccessCap<F, CIx1>,
         L: MPrism<Source = CIx1, Target = CIx2>,
-    > ColAccessCap<F, CIx2> for SubEnvColumn<'a, F, CIx1, Env1, L>
+    > ColAccessCap<F, CIx2> for SubEnvColumn<'_, F, CIx1, Env1, L>
 {
     type Variable = Env1::Variable;
 
@@ -292,13 +288,12 @@ impl<
 }
 
 impl<
-        'a,
         F: PrimeField,
         CIx1: ColumnIndexer<usize>,
         CIx2: ColumnIndexer<usize>,
         Env1: ColWriteCap<F, CIx1>,
         L: MPrism<Source = CIx1, Target = CIx2>,
-    > ColWriteCap<F, CIx2> for SubEnvColumn<'a, F, CIx1, Env1, L>
+    > ColWriteCap<F, CIx2> for SubEnvColumn<'_, F, CIx1, Env1, L>
 {
     fn write_column(&mut self, ix: CIx2, value: &Self::Variable) {
         self.0.write_column(ix, value);
@@ -306,21 +301,20 @@ impl<
 }
 
 impl<
-        'a,
         F: PrimeField,
         CIx1: ColumnIndexer<usize>,
         CIx2: ColumnIndexer<usize>,
         Env1: HybridCopyCap<F, CIx1>,
         L: MPrism<Source = CIx1, Target = CIx2>,
-    > HybridCopyCap<F, CIx2> for SubEnvColumn<'a, F, CIx1, Env1, L>
+    > HybridCopyCap<F, CIx2> for SubEnvColumn<'_, F, CIx1, Env1, L>
 {
     fn hcopy(&mut self, x: &Self::Variable, ix: CIx2) -> Self::Variable {
         self.0.hcopy(x, ix)
     }
 }
 
-impl<'a, F: PrimeField, CIx1: ColumnIndexer<usize>, Env1: ColAccessCap<F, CIx1>, L>
-    ColAccessCap<F, CIx1> for SubEnvLookup<'a, F, CIx1, Env1, L>
+impl<F: PrimeField, CIx1: ColumnIndexer<usize>, Env1: ColAccessCap<F, CIx1>, L>
+    ColAccessCap<F, CIx1> for SubEnvLookup<'_, F, CIx1, Env1, L>
 {
     type Variable = Env1::Variable;
 
@@ -341,16 +335,16 @@ impl<'a, F: PrimeField, CIx1: ColumnIndexer<usize>, Env1: ColAccessCap<F, CIx1>,
     }
 }
 
-impl<'a, F: PrimeField, CIx1: ColumnIndexer<usize>, Env1: ColWriteCap<F, CIx1>, L>
-    ColWriteCap<F, CIx1> for SubEnvLookup<'a, F, CIx1, Env1, L>
+impl<F: PrimeField, CIx1: ColumnIndexer<usize>, Env1: ColWriteCap<F, CIx1>, L> ColWriteCap<F, CIx1>
+    for SubEnvLookup<'_, F, CIx1, Env1, L>
 {
     fn write_column(&mut self, ix: CIx1, value: &Self::Variable) {
         self.0.env.write_column(ix, value);
     }
 }
 
-impl<'a, F: PrimeField, CIx1: ColumnIndexer<usize>, Env1: HybridCopyCap<F, CIx1>, L>
-    HybridCopyCap<F, CIx1> for SubEnvLookup<'a, F, CIx1, Env1, L>
+impl<F: PrimeField, CIx1: ColumnIndexer<usize>, Env1: HybridCopyCap<F, CIx1>, L>
+    HybridCopyCap<F, CIx1> for SubEnvLookup<'_, F, CIx1, Env1, L>
 {
     fn hcopy(&mut self, x: &Self::Variable, ix: CIx1) -> Self::Variable {
         self.0.env.hcopy(x, ix)
@@ -358,14 +352,13 @@ impl<'a, F: PrimeField, CIx1: ColumnIndexer<usize>, Env1: HybridCopyCap<F, CIx1>
 }
 
 impl<
-        'a,
         F: PrimeField,
         CIx: ColumnIndexer<usize>,
         LT1: LookupTableID,
         LT2: LookupTableID,
         Env1: LookupCap<F, CIx, LT1>,
         L: MPrism<Source = LT1, Target = LT2>,
-    > LookupCap<F, CIx, LT2> for SubEnvLookup<'a, F, CIx, Env1, L>
+    > LookupCap<F, CIx, LT2> for SubEnvLookup<'_, F, CIx, Env1, L>
 {
     fn lookup(&mut self, lookup_id: LT2, value: Vec<Self::Variable>) {
         self.0.env.lookup(self.0.lens.re_get(lookup_id), value)
@@ -379,14 +372,13 @@ impl<
 }
 
 impl<
-        'a,
         F: PrimeField,
         CIx1: ColumnIndexer<usize>,
         CIx2: ColumnIndexer<usize>,
         LT: LookupTableID,
         Env1: LookupCap<F, CIx1, LT>,
         L: MPrism<Source = CIx1, Target = CIx2>,
-    > LookupCap<F, CIx2, LT> for SubEnvColumn<'a, F, CIx1, Env1, L>
+    > LookupCap<F, CIx2, LT> for SubEnvColumn<'_, F, CIx1, Env1, L>
 {
     fn lookup(&mut self, lookup_id: LT, value: Vec<Self::Variable>) {
         self.0.env.lookup(lookup_id, value)
@@ -397,8 +389,8 @@ impl<
     }
 }
 
-impl<'a, F: PrimeField, CIx: ColumnIndexer<usize>, Env1: MultiRowReadCap<F, CIx>, L>
-    MultiRowReadCap<F, CIx> for SubEnvLookup<'a, F, CIx, Env1, L>
+impl<F: PrimeField, CIx: ColumnIndexer<usize>, Env1: MultiRowReadCap<F, CIx>, L>
+    MultiRowReadCap<F, CIx> for SubEnvLookup<'_, F, CIx, Env1, L>
 {
     /// Read value from a (row,column) position.
     fn read_row_column(&mut self, row: usize, col: CIx) -> Self::Variable {
@@ -416,8 +408,8 @@ impl<'a, F: PrimeField, CIx: ColumnIndexer<usize>, Env1: MultiRowReadCap<F, CIx>
     }
 }
 
-impl<'a, F: PrimeField, CIx: ColumnIndexer<usize>, Env1: DirectWitnessCap<F, CIx>, L>
-    DirectWitnessCap<F, CIx> for SubEnvLookup<'a, F, CIx, Env1, L>
+impl<F: PrimeField, CIx: ColumnIndexer<usize>, Env1: DirectWitnessCap<F, CIx>, L>
+    DirectWitnessCap<F, CIx> for SubEnvLookup<'_, F, CIx, Env1, L>
 {
     fn variable_to_field(value: Self::Variable) -> F {
         Env1::variable_to_field(value)

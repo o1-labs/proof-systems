@@ -59,7 +59,7 @@ impl From<JsValue> for Deserializer {
 
 // Ideally this would be implemented for `JsValue` instead, but we can't because
 // of the orphan rule.
-impl<'de> IntoDeserializer<'de, Error> for Deserializer {
+impl IntoDeserializer<'_, Error> for Deserializer {
     type Deserializer = Self;
 
     fn into_deserializer(self) -> Self::Deserializer {

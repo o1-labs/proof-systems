@@ -19,5 +19,5 @@ pub fn ceil_log2(d: usize) -> usize {
 
 /// This function is bound to be stable soon. See <https://github.com/rust-lang/rust/issues/88581>
 pub fn div_ceil(a: usize, b: usize) -> usize {
-    (a + b - 1) / b
+    a.div_ceil(b)
 }

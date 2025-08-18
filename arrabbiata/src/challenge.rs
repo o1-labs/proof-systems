@@ -142,6 +142,6 @@ impl<F> Index<ChallengeTerm> for Challenges<F> {
     }
 }
 
-impl<'a> AlphaChallengeTerm<'a> for ChallengeTerm {
+impl AlphaChallengeTerm<'_> for ChallengeTerm {
     const ALPHA: Self = Self::ConstraintCombiner;
 }

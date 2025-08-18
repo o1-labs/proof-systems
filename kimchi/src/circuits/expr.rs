@@ -1123,7 +1123,7 @@ fn unnormalized_lagrange_evals<
 
 /// Implement algebraic methods like `add`, `sub`, `mul`, `square`, etc to use
 /// algebra on the type `EvalResult`.
-impl<'a, F: FftField> EvalResult<'a, F> {
+impl<F: FftField> EvalResult<'_, F> {
     /// Create an evaluation over the domain `res_domain`.
     /// The second parameter, `g`, is a function used to define the
     /// evaluations at a given point of the domain.

@@ -80,6 +80,26 @@ impl ColumnIndexer<usize> for AdditionColumn {
     }
 }
 
+impl FoldingColumnTrait for AdditionColumn {
+    fn is_witness(&self) -> bool {
+        true
+    }
+}
+
+impl<const N_COL: usize, const N_FSEL: usize> Index<AdditionColumn>
+    for PlonkishWitness<N_COL, N_FSEL, Fp>
+{
+    type Output = [Fp];
+
+    fn index(&self, index: AdditionColumn) -> &Self::Output {
+        match index {
+            AdditionColumn::A => &self.witness.cols[0].evals,
+            AdditionColumn::B => &self.witness.cols[1].evals,
+            AdditionColumn::C => &self.witness.cols[2].evals,
+        }
+    }
+}
+
 /// Simply compute A + B - C
 pub fn interpreter_simple_add<
     F: PrimeField,
@@ -153,12 +173,6 @@ pub fn heavy_test_simple_add() {
 
     // ---- Defining the folding configuration ----
     // FoldingConfig
-    impl FoldingColumnTrait for AdditionColumn {
-        fn is_witness(&self) -> bool {
-            true
-        }
-    }
-
     type AppWitnessBuilderEnv = WitnessBuilderEnv<
         Fp,
         AdditionColumn,
@@ -168,20 +182,6 @@ pub fn heavy_test_simple_add() {
         0,
         DummyLookupTable,
     >;
-
-    impl<const N_COL: usize, const N_FSEL: usize> Index<AdditionColumn>
-        for PlonkishWitness<N_COL, N_FSEL, Fp>
-    {
-        type Output = [Fp];
-
-        fn index(&self, index: AdditionColumn) -> &Self::Output {
-            match index {
-                AdditionColumn::A => &self.witness.cols[0].evals,
-                AdditionColumn::B => &self.witness.cols[1].evals,
-                AdditionColumn::C => &self.witness.cols[2].evals,
-            }
-        }
-    }
 
     type Config<
         const N_COL_TOTAL: usize,

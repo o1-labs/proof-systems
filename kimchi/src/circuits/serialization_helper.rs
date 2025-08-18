@@ -39,7 +39,7 @@ impl<'de, F, G: DeserializeAs<'de, F>> DeserializeAs<'de, JointLookupValue<F>>
             ignore,
         }
         struct FieldVisitor;
-        impl<'de> serde::de::Visitor<'de> for FieldVisitor {
+        impl serde::de::Visitor<'_> for FieldVisitor {
             type Value = Field;
             fn expecting(&self, formatter: &mut Formatter) -> core::fmt::Result {
                 Formatter::write_str(formatter, "field identifier")

@@ -32,7 +32,7 @@ impl From<BigInteger256> for CamlBigInteger256 {
     }
 }
 
-unsafe impl<'a> ocaml::FromValue<'a> for CamlBigInteger256 {
+unsafe impl ocaml::FromValue<'_> for CamlBigInteger256 {
     fn from_value(value: ocaml::Value) -> Self {
         let x: ocaml::Pointer<Self> = ocaml::FromValue::from_value(value);
         *x.as_ref()

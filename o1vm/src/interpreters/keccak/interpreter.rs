@@ -654,7 +654,6 @@ where
     ///////////////////////////
     /// SELECTOR OPERATIONS ///
     ///////////////////////////
-
     /// Returns a degree-2 variable that encodes whether the current step is a
     /// sponge (1 = yes)
     fn is_sponge(&self, step: Steps) -> Self::Variable {
@@ -753,7 +752,6 @@ where
     /////////////////////////
     /// COLUMN OPERATIONS ///
     /////////////////////////
-
     /// This function returns the composed sparse variable from shifts of any
     /// correct length:
     /// - When the length is 400, two index configurations are possible:
