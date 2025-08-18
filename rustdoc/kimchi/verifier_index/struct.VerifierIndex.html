@@ -71,7 +71,7 @@
 <p>Will give error if it fails to open a file or writes to the file.</p>
 <h5 id="panics"><a class="doc-anchor" href="#panics">§</a>Panics</h5>
 <p>Will panic if <code>path</code> is invalid or <code>file serialization</code> has issue.</p>
-</div></details><details class="toggle method-toggle" open><summary><section id="method.digest" class="method"><a class="src rightside" href="../../src/kimchi/verifier_index.rs.html#396-522">Source</a><h4 class="code-header">pub fn <a href="#method.digest" class="fn">digest</a>&lt;EFqSponge: <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a> + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
+</div></details><details class="toggle method-toggle" open><summary><section id="method.digest" class="method"><a class="src rightside" href="../../src/kimchi/verifier_index.rs.html#396-522">Source</a><h4 class="code-header">pub fn <a href="#method.digest" class="fn">digest</a>&lt;EFqSponge: <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a> + <a class="trait" href="../../mina_poseidon/sponge/trait.FqSponge.html" title="trait mina_poseidon::sponge::FqSponge">FqSponge</a>&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
     &amp;self,
 ) -&gt; G::BaseField</h4></section></summary><div class="docblock"><p>Compute the digest of the <a href="struct.VerifierIndex.html" title="struct kimchi::verifier_index::VerifierIndex"><code>VerifierIndex</code></a>, which can be used for the Fiat-Shamir
 transformation while proving / verifying.</p>

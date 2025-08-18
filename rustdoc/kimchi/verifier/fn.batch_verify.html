@@ -4,7 +4,7 @@
 ) -&gt; <a class="type" href="type.Result.html" title="type kimchi::verifier::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>&gt;<div class="where">where
     G: <a class="trait" href="../curve/trait.KimchiCurve.html" title="trait kimchi::curve::KimchiCurve">KimchiCurve</a>,
     G::BaseField: PrimeField,
-    EFqSponge: <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a> + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
+    EFqSponge: <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a> + <a class="trait" href="../../mina_poseidon/sponge/trait.FqSponge.html" title="trait mina_poseidon::sponge::FqSponge">FqSponge</a>&lt;G::BaseField, G, G::ScalarField&gt;,
     EFrSponge: <a class="trait" href="../plonk_sponge/trait.FrSponge.html" title="trait kimchi::plonk_sponge::FrSponge">FrSponge</a>&lt;G::ScalarField&gt;,</div></code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This function verifies the batch of zk-proofs
 proofs: vector of Plonk proofs
 RETURN: verification status</p>

@@ -6,6 +6,6 @@
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="struct.CamlOracles.html" title="struct kimchi::oracles::caml::CamlOracles">CamlOracles</a>&lt;CamlF&gt;, <a class="enum" href="../../error/enum.VerifyError.html" title="enum kimchi::error::VerifyError">VerifyError</a>&gt;<div class="where">where
     G: <a class="trait" href="../../curve/trait.KimchiCurve.html" title="trait kimchi::curve::KimchiCurve">KimchiCurve</a>,
     G::BaseField: PrimeField,
-    EFqSponge: <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a> + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
+    EFqSponge: <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a> + <a class="trait" href="../../../mina_poseidon/sponge/trait.FqSponge.html" title="trait mina_poseidon::sponge::FqSponge">FqSponge</a>&lt;G::BaseField, G, G::ScalarField&gt;,
     EFrSponge: <a class="trait" href="../../plonk_sponge/trait.FrSponge.html" title="trait kimchi::plonk_sponge::FrSponge">FrSponge</a>&lt;G::ScalarField&gt;,
     CamlF: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.From.html" title="trait core::convert::From">From</a>&lt;G::ScalarField&gt;,</div></code></pre></section></div></main></body></html>
