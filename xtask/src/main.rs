@@ -87,12 +87,16 @@ fn build_kimchi_stubs(target_dir: Option<&str>, offline: bool) -> Result<()> {
         .map(|v| ["y", "1", "true"].contains(&v.to_lowercase().as_str()))
         .unwrap_or(true);
 
+    #[cfg(target_arch = "x86_64")]
     let cpu_supports_adx_bmi2 = {
         let cpuid = CpuId::new();
         cpuid
             .get_extended_feature_info()
             .map_or(false, |f| f.has_adx() && f.has_bmi2())
     };
+    // ADX and BMI2 are not applicable to other architectures.
+    #[cfg(not(target_arch = "x86_64"))]
+    let cpu_supports_adx_bmi2 = false;
 
     // If optimisations are enabled and the CPU supports ADX and BMI2, we enable
     // those features.
