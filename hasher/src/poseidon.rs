@@ -25,7 +25,8 @@ use super::{domain_prefix_to_field, Hashable, Hasher};
 pub struct Poseidon<SC: SpongeConstants, H: Hashable> {
     sponge: ArithmeticSponge<Fp, SC>,
     sponge_state: SpongeState,
-    state: Vec<Fp>,
+    /// The state of the sponge
+    pub state: Vec<Fp>,
     phantom: PhantomData<H>,
 }
 
