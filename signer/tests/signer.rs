@@ -325,7 +325,29 @@ fn sign_fields_test() {
 }
 
 #[test]
-#[should_panic]
+fn test_signer_from_secret_key() {
+    let kp = Keypair::from_secret_key(
+        SecKey::from_hex("40000000000000000000000000000000224698FC0954F03125F7292BAAAAAAAB")
+            .expect("failed to create secret key"),
+    )
+    .expect("failed to create keypair");
+
+    let input = Input {
+        fields: vec![BaseField::from(1), BaseField::from(2), BaseField::from(3)],
+    };
+
+    let mut testnet_ctx = mina_signer::create_kimchi::<Input>(NetworkId::TESTNET);
+    let mut mainnet_ctx = mina_signer::create_kimchi::<Input>(NetworkId::MAINNET);
+
+    let testnet_sig = testnet_ctx.sign(&kp, &input, true);
+    let mainnet_sig = mainnet_ctx.sign(&kp, &input, true);
+
+    assert!(testnet_ctx.verify(&testnet_sig, &kp.public, &input));
+    assert!(mainnet_ctx.verify(&mainnet_sig, &kp.public, &input));
+
+}
+
+#[test]
 fn test_scalar_to_base_field_overflow() {
     // Test the potential issue where the secret key is larger than the base
     // field modulus could cause problems in derive_nonce_compatible when
