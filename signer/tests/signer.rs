@@ -91,7 +91,7 @@ fn signer_test_raw() {
     let sig = ctx.sign(&kp, &tx, false);
 
     assert_eq!(sig.to_string(),
-                "11a36a8dfe5b857b95a2a7b7b17c62c3ea33411ae6f4eb3a907064aecae353c60794f1d0288322fe3f8bb69d6fabd4fd7c15f8d09f8783b2f087a80407e299af");
+                "3043b286f5996fadf27a7f037ae6648b5f3282d537cde7f73e770b8ec8b6098a2055da539dcf904bf11b2332173f8d1b86720b7280eafa465c3972ee345208d2");
 }
 
 #[test]
@@ -135,8 +135,8 @@ fn sign_payment_test_1() {
         /* nonce              */ 16,
         /* valid until        */ 271828,
         /* memo               */ "Hello Mina!",
-        /* testntet signature */ "11a36a8dfe5b857b95a2a7b7b17c62c3ea33411ae6f4eb3a907064aecae353c60794f1d0288322fe3f8bb69d6fabd4fd7c15f8d09f8783b2f087a80407e299af",
-        /* mainnet signature  */ "124c592178ed380cdffb11a9f8e1521bf940e39c13f37ba4c55bb4454ea69fba3c3595a55b06dac86261bb8ab97126bf3f7fff70270300cb97ff41401a5ef789"
+        /* testnet signature */ "3043b286f5996fadf27a7f037ae6648b5f3282d537cde7f73e770b8ec8b6098a2055da539dcf904bf11b2332173f8d1b86720b7280eafa465c3972ee345208d2",
+        /* mainnet signature  */ "17ea50ada4b8cba16023cda7381e0b5c5383abffdaca5b29c638809fcab280213ee65f7f9a5bea9be80c17dd4dacfda2612be5ccbef312188cbdc07a7ba0cac8"
     );
 }
 
@@ -152,8 +152,8 @@ fn sign_payment_test_2() {
         /* nonce             */ 0,
         /* valid until       */ 4294967295,
         /* memo              */ "",
-        /* testnet signature */ "23a9e2375dd3d0cd061e05c33361e0ba270bf689c4945262abdcc81d7083d8c311ae46b8bebfc98c584e2fb54566851919b58cf0917a256d2c1113daa1ccb27f",
-        /* mainnet signature */ "204eb1a37e56d0255921edd5a7903c210730b289a622d45ed63a52d9e3e461d13dfcf301da98e218563893e6b30fa327600c5ff0788108652a06b970823a4124"
+        /* testnet signature */ "2d053885cd41cbd5128cdca6f892087243dc63a6884d6384d91d3725abfed6a91e526066e703e689a8c8d96ee5640462fc5682882de7c2955801949990fb7c46",
+        /* mainnet signature */ "2419053e871888667477091bdbe8ea63095aab12058f527f15f0926b8315085e0300e298e73148f671e32ab7345c0251c122cc0c377cd4c9963b7a8419d3bb2b"
     );
 }
 
@@ -169,8 +169,8 @@ fn sign_payment_test_3() {
         /* nonce             */ 5687,
         /* valid until       */ 4294967295,
         /* memo              */ "01234567890123456789012345678901",
-        /* testnet signature */ "2b4d0bffcb57981d11a93c05b17672b7be700d42af8496e1ba344394da5d0b0b0432c1e8a77ee1bd4b8ef6449297f7ed4956b81df95bdc6ac95d128984f77205",
-        /* mainnet signature */ "076d8ebca8ccbfd9c8297a768f756ff9d08c049e585c12c636d57ffcee7f6b3b1bd4b9bd42cc2cbee34b329adbfc5127fe5a2ceea45b7f55a1048b7f1a9f7559"
+        /* testnet signature */ "0ccf1074823edd6060b432b94114392ebf09a3f59beb014ce01c6a6ef5248e891931b86d2b23ee2a365d2cc1169e0e9c79f14ac99946dea88073eaa380f71949",
+        /* mainnet signature */ "0daa71681d0eb2a2609f6da1410b26f261712af5dfea37a28a75610d2357c78425b0bed8fdf0aa777b29b8360cd5678371fc81346f02a936dfd40c6579bc7a80"
     );
 }
 
@@ -186,8 +186,8 @@ fn sign_payment_test_4() {
         /* nonce             */ 0,
         /* valid until       */ 1982,
         /* memo              */ "",
-        /* testnet signature */ "25bb730a25ce7180b1e5766ff8cc67452631ee46e2d255bccab8662e5f1f0c850a4bb90b3e7399e935fff7f1a06195c6ef89891c0260331b9f381a13e5507a4c",
-        /* mainnet signature */ "058ed7fb4e17d9d400acca06fe20ca8efca2af4ac9a3ed279911b0bf93c45eea0e8961519b703c2fd0e431061d8997cac4a7574e622c0675227d27ce2ff357d9"
+        /* testnet signature */ "016605b969bc135983584f61b613a275e3f82246e33b647e9e36a788a444c26422bfa168c2bb35f60c652df76ef6e289f609f5ea2c0808b944b811870e3e22b4",
+        /* mainnet signature */ "20b655894f4b904a963e233997e4f581808bfe65d960d5d08b6ec800e96a92ed375afe75bea1e0769acd119ec9585663ac58d30708e15a313a378bc6791284aa"
     );
 }
 
@@ -203,8 +203,8 @@ fn sign_delegation_test_1() {
         /* nonce             */ 16,
         /* valid until       */ 1337,
         /* memo              */ "Delewho?",
-        /* testnet signature */ "30797d7d0426e54ff195d1f94dc412300f900cc9e84990603939a77b3a4d2fc11ebab12857b47c481c182abe147279732549f0fd49e68d5541f825e9d1e6fa04",
-        /* mainnet signature */ "0904e9521a95334e3f6757cb0007ec8af3322421954255e8d263d0616910b04d213344f8ec020a4b873747d1cbb07296510315a2ec76e52150a4c765520d387f"
+        /* testnet signature */ "2c824ef643a41c4612ba6a0c24ce846bed0ee777d7151e248c80a744039fdc9a0232fd582a8ce6d2835569e02dba417cc9bc5c2fb97bb75b9864a6a5eda793ca",
+        /* mainnet signature */ "0c950860119ac6ebcb15caea9a844173ec3bbc568873b2b2b612ff2af20f736a1e0a2ba404da4629b6a282620e27d87b149b24edf9690c8770597ca436703bf3"
     );
 }
 
@@ -220,8 +220,8 @@ fn sign_delegation_test_2() {
         /* nonce             */ 0,
         /* valid until       */ 4294967295,
         /* memo              */ "",
-        /* testnet signature */ "07e9f88fc671ed06781f9edb233fdbdee20fa32303015e795747ad9e43fcb47b3ce34e27e31f7c667756403df3eb4ce670d9175dd0ae8490b273485b71c56066",
-        /* mainnet signature */ "2406ab43f8201bd32bdd81b361fdb7871979c0eec4e3b7a91edf87473963c8a4069f4811ebc5a0e85cbb4951bffe93b638e230ce5a250cb08d2c250113a1967c"
+        /* testnet signature */ "05976ab6942a47947adb10a5efa5abd0c2243355e048561ba96bb6d5018a83dc38357aa49be01e0870d6cf5104d67e463fb893e77aae60f8f20b8b959e00c876",
+        /* mainnet signature */ "1aca6a2c25f5ea3613f2f1c667e4387389202ef61d0c707211ce752aa5d3952439afa9aad0e2552fb6b1287329a8645e0b607e97d1baa206a25143cf65120eeb"
     );
 }
 
@@ -237,8 +237,8 @@ fn sign_delegation_test_3() {
         /* nonce             */ 1,
         /* valid until       */ 4294967295,
         /* memo              */ "more delegates, more fun........",
-        /* testnet signature */ "1ff9f77fed4711e0ebe2a7a46a7b1988d1b62a850774bf299ec71a24d5ebfdd81d04a570e4811efe867adefe3491ba8b210f24bd0ec8577df72212d61b569b15",
-        /* mainnet signature */ "36a80d0421b9c0cbfa08ea95b27f401df108b30213ae138f1f5978ffc59606cf2b64758db9d26bd9c5b908423338f7445c8f0a07520f2154bbb62926aa0cb8fa"
+        /* testnet signature */ "36a2d0f90691277472f7e541e27041e52a9a854f10aebf98e692dcd19ab7b9160d8c69d3fb5493cb79eb9c15076ce2c7ac1039424b6eef0958788e8ac0f12192",
+        /* mainnet signature */ "18a0b829e18b8c3a9b2c5253be76059933e3ef56f0edab1ca145471139d94b7826c761c56eb118c535a9a1e705c9b3d13deb6ebe849ef9ee3b07e6e121af0a0d"
     );
 }
 
@@ -254,8 +254,8 @@ fn sign_delegation_test_4() {
         /* nonce             */ 0,
         /* valid until       */ 577216,
         /* memo              */ "",
-        /* testnet signature */ "26ca6b95dee29d956b813afa642a6a62cd89b1929320ed6b099fd191a217b08d2c9a54ba1c95e5000b44b93cfbd3b625e20e95636f1929311473c10858a27f09",
-        /* mainnet signature */ "093f9ef0e4e051279da0a3ded85553847590ab739ee1bfd59e5bb30f98ed8a001a7a60d8506e2572164b7a525617a09f17e1756ac37555b72e01b90f37271595"
+        /* testnet signature */ "358ce127f348f39f6a0ee759696ed8c23987d7026d719706953014cdbbc8131b2f5cc547123a30720c2b7eb2abab2ee0971b82cb51288a26ffd2068f9515a38f",
+        /* mainnet signature */ "09294417d4886cbb3e17aea3b84827677b39b80d7beda72f66b72e1d09e4dd6a2917d064697d643d869a1951911387bef5e1754e6cde5281dd61047c91dc1fcd"
     );
 }
 
