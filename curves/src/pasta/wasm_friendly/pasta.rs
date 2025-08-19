@@ -88,8 +88,8 @@ mod tests {
     use crate::pasta::{
         wasm_friendly::{
             backend9::{
-                add_assign, conditional_reduce, from_32x8, gte_modulus, mul_assign, to_32x8,
-                FpConstants,
+                add_assign, conditional_reduce, from_32x8, from_32x8_nonconst, gte_modulus,
+                is_32x9_shape, mul_assign, to_32x8, FpConstants,
             },
             bigint32_attempt2::BigInt,
             pasta::Fp9Parameters,
@@ -98,12 +98,11 @@ mod tests {
         },
         Fp,
     };
+    use std::str::FromStr;
 
     // move this into bigint crate?
     #[test]
     fn test_bigint_multiplication_and_modulo() {
-        use std::str::FromStr;
-
         // Test 1: Simple multiplication
         {
             let a = BigInt::<8>::from(123u32);
@@ -405,6 +404,100 @@ mod tests {
             mul_assign::<Fp9Parameters>(&mut b1, &b2);
             assert!(b1 == BigInt::from(12345u32).into_digits());
         }
+        // <bignum> * R / R = <bignum>
+        {
+            let mut b1 = from_32x8_nonconst(BigInt::<8>::from_str("12345").unwrap().into_digits());
+            let b1_exp = b1.clone();
+            let b2: [u32; 9] = Fp9Parameters::R;
+            mul_assign::<Fp9Parameters>(&mut b1, &b2);
+            assert!(b1 == b1_exp);
+        }
+        // 2^29 * R / R = 2^29
+        {
+            let mut b1 =
+                from_32x8_nonconst(BigInt::<8>::from_str("536870912").unwrap().into_digits());
+            let b1_exp = b1.clone();
+            let b2: [u32; 9] = Fp9Parameters::R;
+            mul_assign::<Fp9Parameters>(&mut b1, &b2);
+            assert!(b1 == b1_exp);
+        }
+        // (2^29-1) * R / R = (2^29-1)
+        {
+            let mut b1 =
+                from_32x8_nonconst(BigInt::<8>::from_str("536870911").unwrap().into_digits());
+            let b1_exp = b1.clone();
+            let b2: [u32; 9] = Fp9Parameters::R;
+            mul_assign::<Fp9Parameters>(&mut b1, &b2);
+            assert!(b1 == b1_exp);
+        }
+        // (2^29+1) * R / R = (2^29+1)
+        {
+            let mut b1 =
+                from_32x8_nonconst(BigInt::<8>::from_str("536870913").unwrap().into_digits());
+            let b1_exp = b1.clone();
+            let b2: [u32; 9] = Fp9Parameters::R;
+            mul_assign::<Fp9Parameters>(&mut b1, &b2);
+            assert!(b1 == b1_exp);
+        }
+
+        // 2^32 * R / R = 2^32
+        {
+            let mut b1 =
+                from_32x8_nonconst(BigInt::<8>::from_str("4294967296").unwrap().into_digits());
+            let b1_exp = b1.clone();
+            let b2: [u32; 9] = Fp9Parameters::R;
+            mul_assign::<Fp9Parameters>(&mut b1, &b2);
+            assert!(b1 == b1_exp);
+        }
+        // (2^32+1) * R / R = (2^32+1)
+        {
+            let mut b1 =
+                from_32x8_nonconst(BigInt::<8>::from_str("4294967297").unwrap().into_digits());
+            let b1_exp = b1.clone();
+            let b2: [u32; 9] = Fp9Parameters::R;
+            mul_assign::<Fp9Parameters>(&mut b1, &b2);
+            assert!(b1 == b1_exp);
+        }
+
+        // (2^64-1) * R / R = (2^64-1)
+        {
+            let mut b1 = from_32x8_nonconst(
+                BigInt::<8>::from_str("18446744073709551615")
+                    .unwrap()
+                    .into_digits(),
+            );
+            let b1_exp = b1.clone();
+            let b2: [u32; 9] = Fp9Parameters::R;
+            mul_assign::<Fp9Parameters>(&mut b1, &b2);
+            assert!(b1 == b1_exp);
+        }
+
+        // 2^64 * R / R = 2^64
+        {
+            let mut b1 = from_32x8(
+                BigInt::<8>::from_str("18446744073709551616")
+                    .unwrap()
+                    .into_digits(),
+            );
+            let b1_exp = b1.clone();
+            let b2: [u32; 9] = Fp9Parameters::R;
+            mul_assign::<Fp9Parameters>(&mut b1, &b2);
+            assert!(b1 == b1_exp, "expected {:?} got {:?}", b1_exp, b1);
+        }
+
+        // (2^64+1) * R / R = (2^64+1)
+        {
+            let mut b1 = from_32x8_nonconst(
+                BigInt::<8>::from_str("18446744073709551617")
+                    .unwrap()
+                    .into_digits(),
+            );
+            let b1_exp = b1.clone();
+            let b2: [u32; 9] = Fp9Parameters::R;
+            mul_assign::<Fp9Parameters>(&mut b1, &b2);
+            assert!(b1 == b1_exp, "expected {:?} got {:?}", b1_exp, b1);
+        }
+
         // 0 * R / R = 0
         {
             let mut b1: [u32; 9] = BigInt::from(0u32).into_digits();
@@ -416,9 +509,12 @@ mod tests {
         {
             let mut b1: [u32; 9] = Fp9Parameters::R;
             let b2: [u32; 9] = Fp9Parameters::R;
+            assert!(is_32x9_shape(b1));
+            assert!(is_32x9_shape(b2));
             mul_assign::<Fp9Parameters>(&mut b1, &b2);
-            println!("b1: {:?}", b1);
-            println!("R: {:?}", Fp9Parameters::R);
+            assert!(is_32x9_shape(b1));
+            println!("b1 (supposed to be R): {:?}", b1);
+            println!("R                    : {:?}", Fp9Parameters::R);
             assert!(b1 == Fp9Parameters::R);
         }
         {

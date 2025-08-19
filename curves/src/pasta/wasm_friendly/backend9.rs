@@ -51,7 +51,26 @@ pub const fn from_32x8(pa: [u32; 8]) -> [u32; 9] {
     p[1] = (pa[2] as u64) | ((pa[3] as u64) << 32);
     p[2] = (pa[4] as u64) | ((pa[5] as u64) << 32);
     p[3] = (pa[6] as u64) | ((pa[7] as u64) << 32);
-    from_64x4(p)
+    let res = from_64x4(p);
+    assert!(is_32x9_shape(res));
+    res
+}
+
+// Converts from "normal" 32 bit bignum limb format to the 32x9 with 29 bit limbs.
+pub fn from_32x8_nonconst(pa: [u32; 8]) -> [u32; 9] {
+    let mut p = [0u64; 4];
+    p[0] = (pa[0] as u64) | ((pa[1] as u64) << 32);
+    p[1] = (pa[2] as u64) | ((pa[3] as u64) << 32);
+    p[2] = (pa[4] as u64) | ((pa[5] as u64) << 32);
+    p[3] = (pa[6] as u64) | ((pa[7] as u64) << 32);
+    let res = from_64x4(p);
+    if !is_32x9_shape(res) {
+        println!("pa: {:?}", pa);
+        println!("p: {:?}", p);
+        println!("res: {:?}", res);
+        panic!();
+    }
+    res
 }
 
 // Converts from 32x9 with 29 bit limbs back to "normal" 32 bit bignum limb format.
@@ -75,15 +94,15 @@ pub fn to_32x8(limbs29: [u32; 9]) -> [u32; 8] {
 
 /// Checks if the number satisfies 32x9 shape (each limb 29 bits).
 pub const fn is_32x9_shape(pa: [u32; 9]) -> bool {
-    let b0 = (pa[0] & MASK) != 0;
-    let b1 = (pa[1] & MASK) != 0;
-    let b2 = (pa[2] & MASK) != 0;
-    let b3 = (pa[3] & MASK) != 0;
-    let b4 = (pa[4] & MASK) != 0;
-    let b5 = (pa[5] & MASK) != 0;
-    let b6 = (pa[6] & MASK) != 0;
-    let b7 = (pa[7] & MASK) != 0;
-    let b8 = (pa[8] & MASK) != 0;
+    let b0 = (pa[0] >> 29) == 0;
+    let b1 = (pa[1] >> 29) == 0;
+    let b2 = (pa[2] >> 29) == 0;
+    let b3 = (pa[3] >> 29) == 0;
+    let b4 = (pa[4] >> 29) == 0;
+    let b5 = (pa[5] >> 29) == 0;
+    let b6 = (pa[6] >> 29) == 0;
+    let b7 = (pa[7] >> 29) == 0;
+    let b8 = (pa[8] >> 29) == 0;
 
     b0 && b1 && b2 && b3 && b4 && b5 && b6 && b7 && b8
 }
@@ -105,7 +124,7 @@ pub trait FpConstants: Send + Sync + 'static + Sized {
     /// TODO: compute these
     const R: B; // R = 2^261 mod modulus
     const R2: B; // R^2 mod modulus
-    const MINV: u64; // -modulus^(-1) mod 2^29, as a u64
+    const MINV: u64; // - modulus^(-1) mod 2^29, as a u64
 }
 
 #[inline]
@@ -142,7 +161,7 @@ pub fn gte_modulus<FpC: FpConstants>(x: &B) -> bool {
 /// # Implementation Notes
 /// - First performs the addition with carry propagation
 /// - Then conditionally subtracts the modulus if the result is greater than or equal to it
-/// - Uses 30-bit limbs with SHIFT and MASK constants to handle overflow
+///
 pub fn add_assign<FpC: FpConstants>(x: &mut B, y: &B) {
     let mut tmp: u32;
     let mut carry: i32 = 0;
@@ -182,6 +201,7 @@ pub fn conditional_reduce<FpC: FpConstants>(x: &mut B) {
     }
 }
 
+// See: https://github.com/mitschabaude/montgomery/blob/4f1405073aef60b469a0fcd45ff9166f8de4a4bf/src/wasm/multiply-montgomery.ts#L58
 /// Performs Montgomery multiplication: x = (x * y * R^-1) mod p
 ///
 /// This function multiplies two field elements in Montgomery form and stores
@@ -201,7 +221,7 @@ pub fn conditional_reduce<FpC: FpConstants>(x: &mut B) {
 /// - Performs a conditional reduction at the end to ensure the result is in
 ///   the canonical range [0, p-1]
 /// - Optimized to minimize carry operations in the main loop
-pub fn mul_assign<FpC: FpConstants>(x: &mut B, y: &B) {
+pub fn mul_assign_orig<FpC: FpConstants>(x: &mut B, y: &B) {
     // load y[i] into local u64s
     // TODO make sure these are locals
     let mut y_local = [0u64; 9];
@@ -218,18 +238,23 @@ pub fn mul_assign<FpC: FpConstants>(x: &mut B, y: &B) {
     for i in 0..9 {
         let xi = x[i] as u64;
 
+        // tmp = x[i] * y[0] + z[0]     (mod u64)
+        // qi = lowest64bits(lowest29bits(x[i] * y[0] + z[0]) * MINV)
         // compute qi and carry z0 result to z1 before discarding z0
         tmp = (xi * y_local[0]) + z[0];
         let qi = ((tmp & MASK64) * FpC::MINV) & MASK64;
         z[1] += (tmp + qi * FpC::MODULUS64[0]) >> SHIFT64;
 
         // compute zi and shift in one step
-        for j in 1..8 {
-            z[j - 1] = z[j] + (xi * y_local[j]) + (qi * FpC::MODULUS64[j]);
+        for j in 0..7 {
+            z[j] = z[j + 1] + (xi * y_local[j + 1]) + (qi * FpC::MODULUS64[j + 1]);
         }
+
         // for j=8 we save an addition since z[8] is never needed
         z[7] = xi * y_local[8] + qi * FpC::MODULUS64[8];
     }
+
+    println!("before carry pass: z = {:?}", z);
 
     // final carry pass, store result back into x
     x[0] = (z[0] & MASK64) as u32;
@@ -237,6 +262,53 @@ pub fn mul_assign<FpC: FpConstants>(x: &mut B, y: &B) {
         x[i] = (((z[i - 1] >> SHIFT64) + z[i]) & MASK64) as u32;
     }
     x[8] = (z[7] >> SHIFT64) as u32;
+
+    println!("before conditional reduce: {:?}", x);
+
+    // at this point, x is guaranteed to be less than 2*MODULUS
+    // conditionally subtract the modulus to bring it back into the canonical range
+    conditional_reduce::<FpC>(x);
+}
+
+// FIXME implementation that uses 9 limbs for z, check it
+pub fn mul_assign<FpC: FpConstants>(x: &mut B, y: &B) {
+    // load y[i] into local u64s
+    let mut y_local = [0u64; 9];
+    for i in 0..9 {
+        y_local[i] = y[i] as u64;
+    }
+
+    let mut z = [0u64; 9];
+
+    // main loop
+    for i in 0..9 {
+        let xi = x[i] as u64;
+
+        // compute qi and first multiplication
+        let tmp = (xi * y_local[0]) + z[0];
+        let qi = ((tmp & MASK64) * FpC::MINV) & MASK64;
+
+        // carry from first step
+        let mut carry = (tmp + qi * FpC::MODULUS64[0]) >> SHIFT64;
+
+        // compute remaining steps with proper carry propagation
+        for j in 1..9 {
+            let t = z[j] + (xi * y_local[j]) + (qi * FpC::MODULUS64[j]) + carry;
+            z[j - 1] = t & MASK64;
+            carry = t >> SHIFT64;
+        }
+
+        // store final carry
+        z[8] = carry;
+    }
+
+    // final carry pass, store result back into x
+    let mut carry = 0u64;
+    for i in 0..9 {
+        let t = z[i] + carry;
+        x[i] = (t & MASK64) as u32;
+        carry = t >> SHIFT64;
+    }
 
     // at this point, x is guaranteed to be less than 2*MODULUS
     // conditionally subtract the modulus to bring it back into the canonical range
