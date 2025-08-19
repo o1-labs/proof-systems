@@ -1,2 +1,8 @@
 [alias]
 xtask = "run --package xtask --"
+
+# See https://zshipko.github.io/ocaml-rs/#initial-setup
+# Required to avoid undefined symbols when building dylib on MacOS
+# (e.g. required for at the time of writing).
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-args=-Wl,-undefined,dynamic_lookup"]
