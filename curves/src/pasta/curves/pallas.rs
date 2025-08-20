@@ -139,6 +139,122 @@ mod tests {
 
     #[test]
     pub fn test_wasm_curve_basic_ops() {
+        // Constants with large bit sizes
+        let large_a: u32 = 0x1FFFFFFF; // 29 bits (max for a limb)
+        let large_b: u32 = 0x3FFFFFFF; // 30 bits
+
+        // Test Fp9 operations with large numbers
+        {
+            // Test conversion between Fp and Fp9 with large numbers
+            let x: Fp = Fp::from(large_a);
+            let x_fp9: Fp9 = x.into();
+            let x_back: Fp = x_fp9.into();
+            assert_eq!(
+                x, x_back,
+                "Conversion between Fp and Fp9 with large numbers failed"
+            );
+
+            // Create Fp9 elements with large components
+            let a: Fp = Fp::from(large_a);
+            let b: Fp = Fp::from(large_b);
+            let a_fp9: Fp9 = a.into();
+            let b_fp9: Fp9 = b.into();
+
+            // Test Fp9 addition with large numbers
+            let sum_fp9 = a_fp9 + b_fp9;
+            let expected_sum_fp9: Fp9 = (a + b).into();
+            assert_eq!(
+                sum_fp9, expected_sum_fp9,
+                "Fp9 addition with large numbers failed"
+            );
+
+            // Test Fp9 multiplication with large numbers
+            let prod_fp9 = a_fp9 * b_fp9;
+            let expected_prod_fp9: Fp9 = (a * b).into();
+            assert_eq!(
+                prod_fp9, expected_prod_fp9,
+                "Fp9 multiplication with large numbers failed"
+            );
+
+            // Test Fp9 squaring with large numbers
+            let square_fp9 = a_fp9 * a_fp9;
+            let expected_square_fp9: Fp9 = (a * a).into();
+            assert_eq!(
+                square_fp9, expected_square_fp9,
+                "Fp9 squaring with large numbers failed"
+            );
+        }
+
+        // Test consistency between Fp and Fp9 operations with large numbers
+        {
+            // Create random large Fp elements
+            let x: Fp = Fp::from(large_a) * Fp::from(0x12345678u64);
+            let y: Fp = Fp::from(large_b) * Fp::from(0x87654321u64);
+
+            // Compute product in Fp
+            let z_fp: Fp = x * y;
+
+            // Compute product in Fp9 and convert back
+            let x_fp9: Fp9 = x.into();
+            let y_fp9: Fp9 = y.into();
+            let z_fp9: Fp9 = x_fp9 * y_fp9;
+            let z_fp_from_fp9: Fp = z_fp9.into();
+
+            // Results should be equal
+            assert_eq!(
+                z_fp, z_fp_from_fp9,
+                "Inconsistency between Fp and Fp9 multiplication with large numbers"
+            );
+
+            // Test multiple operations in sequence
+            let result_fp = ((x * y) + x) * y;
+            let result_fp9: Fp = (((x_fp9 * y_fp9) + x_fp9) * y_fp9).into();
+            assert_eq!(
+                result_fp, result_fp9,
+                "Complex operation sequence inconsistent between Fp and Fp9"
+            );
+        }
+
+        // Test with numbers that would span multiple limbs
+        {
+            // Create Fp9 with non-trivial structure (not just embedding of Fp)
+            // This would require knowledge of how to construct a general Fp9 element
+
+            // For now, test with large random values
+            let r1: Fp = rand::random();
+            let r2: Fp = rand::random();
+
+            // Ensure these are large values by multiplying with our large constants
+            let large_r1 = r1 * Fp::from(large_a);
+            let large_r2 = r2 * Fp::from(large_b);
+
+            // Convert to Fp9
+            let r1_fp9: Fp9 = large_r1.into();
+            let r2_fp9: Fp9 = large_r2.into();
+
+            // Test operations
+            let sum_fp9 = r1_fp9 + r2_fp9;
+            let prod_fp9 = r1_fp9 * r2_fp9;
+
+            // Verify conversion back
+            let sum_fp: Fp = sum_fp9.into();
+            let prod_fp: Fp = prod_fp9.into();
+
+            assert_eq!(
+                sum_fp,
+                large_r1 + large_r2,
+                "Sum conversion inconsistent with large numbers"
+            );
+            assert_eq!(
+                prod_fp,
+                large_r1 * large_r2,
+                "Product conversion inconsistent with large numbers"
+            );
+        }
+    }
+
+    #[test]
+    pub fn test_naive_wasm_curve_basic_ops() {
         {
             //let x: Fp = rand::random();
             let x: Fp = Fp::from(1u32);
@@ -157,8 +273,6 @@ mod tests {
             let y: Fp = rand::random();
             let z: Fp = x * y;
         }
-
-        assert!(false);
 
         {
             let x: Fp = rand::random();

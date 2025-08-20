@@ -44,13 +44,31 @@ pub const fn to_64x4(pa: [u32; 9]) -> [u64; 4] {
     p
 }
 
-// Converts from "normal" 32 bit bignum limb format to the 32x9 with 29 bit limbs.
-pub const fn from_32x8(pa: [u32; 8]) -> [u32; 9] {
+pub const fn from_64x4_to_32x8(p: [u64; 4]) -> [u32; 8] {
+    let mut pa = [0u32; 8];
+    pa[0] = p[0] as u32;
+    pa[1] = (p[0] >> 32) as u32;
+    pa[2] = p[1] as u32;
+    pa[3] = (p[1] >> 32) as u32;
+    pa[4] = p[2] as u32;
+    pa[5] = (p[2] >> 32) as u32;
+    pa[6] = p[3] as u32;
+    pa[7] = (p[3] >> 32) as u32;
+    pa
+}
+
+pub const fn from_32x8_to_64x4(pa: [u32; 8]) -> [u64; 4] {
     let mut p = [0u64; 4];
     p[0] = (pa[0] as u64) | ((pa[1] as u64) << 32);
     p[1] = (pa[2] as u64) | ((pa[3] as u64) << 32);
     p[2] = (pa[4] as u64) | ((pa[5] as u64) << 32);
     p[3] = (pa[6] as u64) | ((pa[7] as u64) << 32);
+    p
+}
+
+// Converts from "normal" 32 bit bignum limb format to the 32x9 with 29 bit limbs.
+pub const fn from_32x8(pa: [u32; 8]) -> [u32; 9] {
+    let p = from_32x8_to_64x4(pa);
     let res = from_64x4(p);
     assert!(is_32x9_shape(res));
     res
@@ -58,11 +76,7 @@ pub const fn from_32x8(pa: [u32; 8]) -> [u32; 9] {
 
 // Converts from "normal" 32 bit bignum limb format to the 32x9 with 29 bit limbs.
 pub fn from_32x8_nonconst(pa: [u32; 8]) -> [u32; 9] {
-    let mut p = [0u64; 4];
-    p[0] = (pa[0] as u64) | ((pa[1] as u64) << 32);
-    p[1] = (pa[2] as u64) | ((pa[3] as u64) << 32);
-    p[2] = (pa[4] as u64) | ((pa[5] as u64) << 32);
-    p[3] = (pa[6] as u64) | ((pa[7] as u64) << 32);
+    let p = from_32x8_to_64x4(pa);
     let res = from_64x4(p);
     if !is_32x9_shape(res) {
         println!("pa: {:?}", pa);
@@ -317,12 +331,15 @@ pub fn mul_assign<FpC: FpConstants>(x: &mut B, y: &B) {
 
 // implement FpBackend given FpConstants
 
+/// Converts a bigint of 9 limbs, of 32x8 shape, into a field element.
 pub fn from_bigint_unsafe<FpC: FpConstants>(x: BigInt<9>) -> Fp<FpC, 9> {
-    let r: [u32; 9] = Into::into(x);
-    assert!(r[8] == 0);
+    let r: [u32; 9] = x.into_digits();
+    assert!(r[8] == 0, "from_bigint_unsafe: bigint exceeds 256 bits");
     let mut r = from_32x8(r[0..8].try_into().unwrap());
+    assert!(is_32x9_shape(r));
     // convert to montgomery form
     mul_assign::<FpC>(&mut r, &FpC::R2);
+    assert!(is_32x9_shape(r));
     Fp(BigInt::from_digits(r), Default::default())
 }
 
@@ -332,11 +349,13 @@ impl<FpC: FpConstants> FpBackend<9> for FpC {
     const ONE: BigInt<9> = BigInt::from_digits(Self::R);
 
     fn add_assign(x: &mut Fp<Self, 9>, y: &Fp<Self, 9>) {
-        std::ops::AddAssign::add_assign(x, y)
+        //panic!("test1");
+        //std::ops::AddAssign::add_assign(x, y)
+        add_assign::<FpC>(x.0.as_digits_mut(), &y.0.into_digits())
     }
 
     fn mul_assign(x: &mut Fp<Self, 9>, y: &Fp<Self, 9>) {
-        std::ops::MulAssign::mul_assign(x, y)
+        mul_assign::<FpC>(x.0.as_digits_mut(), &y.0.into_digits())
     }
 
     fn from_bigint(x: BigInt<9>) -> Option<Fp<Self, 9>> {
@@ -349,7 +368,8 @@ impl<FpC: FpConstants> FpBackend<9> for FpC {
 
     /// Return a "normal" bigint
     fn to_bigint(x: Fp<Self, 9>) -> BigInt<9> {
-        let one = [1, 0, 0, 0, 0, 0, 0, 0, 0];
+        assert!(is_32x9_shape(x.0.into_digits()));
+        let one: [u32; 9] = [1, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut r = x.0.into_digits();
         // convert back from montgomery form
         mul_assign::<Self>(&mut r, &one);
@@ -361,7 +381,7 @@ impl<FpC: FpConstants> FpBackend<9> for FpC {
 
     fn pack(x: Fp<Self, 9>) -> Vec<u64> {
         let x = Self::to_bigint(x).into_digits();
-        let x64 = to_64x4(x);
+        let x64 = from_32x8_to_64x4(x[0..8].try_into().unwrap());
         let mut res = Vec::with_capacity(4);
         for limb in x64.iter() {
             res.push(*limb);

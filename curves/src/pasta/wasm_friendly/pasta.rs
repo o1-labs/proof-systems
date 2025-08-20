@@ -26,9 +26,13 @@ pub type Fp9 = wasm_fp::Fp<Fp9Parameters, 9>;
 
 impl Fp9 {
     pub fn from_fp(fp: Fp) -> Self {
-        backend9::from_bigint_unsafe(super::BigInt::from_digits(backend9::from_64x4(
-            fp.into_bigint().0,
-        )))
+        let limbs8: [u32; 8] = backend9::from_64x4_to_32x8(fp.into_bigint().0);
+        let mut limbs9 = [0u32; 9];
+        for i in 0..8 {
+            limbs9[i] = limbs8[i];
+        }
+        println!("from_fp: {:?}, limbs9 {:?}", fp, limbs9);
+        backend9::from_bigint_unsafe(super::BigInt::from_digits(limbs9))
     }
 
     pub fn into_fp(self: Fp9) -> Fp {
@@ -98,6 +102,7 @@ mod tests {
         },
         Fp,
     };
+    use ark_ff::{One, UniformRand, Zero};
     use std::str::FromStr;
 
     // move this into bigint crate?
@@ -382,6 +387,12 @@ mod tests {
             add_assign::<Fp9Parameters>(&mut b1, &b2);
             assert!(b1 == <Fp9Parameters as FpConstants>::R2)
         }
+        {
+            let mut b1: [u32; 9] = from_32x8(BigInt::from(0x1FFFFFFFu32).into_digits());
+            let b2: [u32; 9] = from_32x8(BigInt::from(0x3FFFFFFFu32).into_digits());
+            add_assign::<Fp9Parameters>(&mut b1, &b2);
+            assert!(b1 == from_32x8(BigInt::from(1610612734u32).into_digits()));
+        }
     }
 
     #[test]
@@ -586,5 +597,46 @@ mod tests {
         println!("z limbs: {:?}", FpBackend::pack(z));
         println!("x2: {:?}", x2);
         assert!(x2 == x);
+    }
+
+    #[test]
+    fn test_fp_to_fp9_roundtrip() {
+        // Test with zero
+        let zero = Fp::zero();
+        let fp9_zero = Fp9::from_fp(zero);
+        let back_to_fp = fp9_zero.into_fp();
+        assert_eq!(zero, back_to_fp);
+
+        // Test with one
+        let one = Fp::one();
+        let fp9_one = Fp9::from_fp(one);
+        let back_to_fp = fp9_one.into_fp();
+        assert_eq!(one, back_to_fp);
+
+        let v1 = Fp::from(0x1ffffffffffu64);
+        println!("{:?}", v1.0);
+        let fp9_v1 = Fp9::from_fp(v1);
+        println!("{:?}", fp9_v1.0.into_digits());
+        let back_to_fp = fp9_v1.into_fp();
+        assert_eq!(v1, back_to_fp);
+
+        // Test with random value
+        let random = Fp::rand(&mut ark_std::test_rng());
+        let fp9_random = Fp9::from_fp(random);
+        let back_to_fp = fp9_random.into_fp();
+        assert_eq!(random, back_to_fp);
+    }
+
+    #[test]
+    fn test_from_into_traits() {
+        let value = Fp::rand(&mut ark_std::test_rng());
+
+        // Test From<Fp> for Fp9
+        let fp9_value: Fp9 = value.into();
+        assert_eq!(fp9_value, Fp9::from_fp(value));
+
+        // Test Into<Fp> for Fp9
+        let fp_value: Fp = fp9_value.into();
+        assert_eq!(fp_value, value);
     }
 }

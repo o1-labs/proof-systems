@@ -1,7 +1,5 @@
 use crate::{
-    biginteger::{
-        BigInteger as _BigInteger, webnode::BigInteger256,
-    },
+    biginteger::{webnode::BigInteger256, BigInteger as _BigInteger},
     bytes::{FromBytes, ToBytes},
     fields::{FftField, Field, LegendreSymbol, PrimeField, SquareRootField},
 };
@@ -12,7 +10,8 @@ use ark_std::{
     io::{Read, Result as IoResult, Write},
     marker::PhantomData,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
-    str::FromStr, One, Zero,
+    str::FromStr,
+    One, Zero,
 };
 
 impl<C: Fp256Parameters> Into<BigInteger256> for Fp256<C> {
@@ -104,6 +103,7 @@ const fn conditional_reduce<C: Fp256Parameters>(x: &mut BigInteger256) {
 #[ark_ff_asm::unroll_for_loops]
 #[inline(always)]
 fn add_assign<C: Fp256Parameters>(x: &mut BigInteger256, y: &BigInteger256) {
+    panic!("whoopsie add_assign");
     let y = &y.0;
     let mut tmp: u32;
     let mut carry: i32 = 0;
@@ -125,7 +125,7 @@ fn add_assign<C: Fp256Parameters>(x: &mut BigInteger256, y: &BigInteger256) {
 }
 
 #[derive(Clone, Copy, Default, Eq, PartialEq, Hash)]
-pub struct Fp256<C: Fp256Parameters> (pub BigInteger256, PhantomData<C>);
+pub struct Fp256<C: Fp256Parameters>(pub BigInteger256, PhantomData<C>);
 
 /// Note that this implementation of `Ord` compares field elements viewing
 /// them as integers in the range 0, 1, ..., P::MODULUS - 1. However, other
@@ -186,7 +186,7 @@ impl<C: Fp256Parameters> Fp256<C> {
         let mut index = 0;
         let mut is_zero = true;
         while index < Self::NLIMBS {
-            is_zero &= self.0.0[index] == 0;
+            is_zero &= self.0 .0[index] == 0;
             index += 1;
         }
         is_zero
@@ -276,9 +276,14 @@ impl<C: Fp256Parameters> Fp256<C> {
     /// Implementation based on https://github.com/o1-labs/proof-systems/pull/2638
     #[ark_ff_asm::unroll_for_loops]
     #[inline(always)]
-    const fn const_mul_without_reduce(&mut self, other: &Self, _modulus: &BigInteger256, _inv: u32) {
-        let x = &mut self.0.0;
-        let y = &other.0.0;
+    const fn const_mul_without_reduce(
+        &mut self,
+        other: &Self,
+        _modulus: &BigInteger256,
+        _inv: u32,
+    ) {
+        let x = &mut self.0 .0;
+        let y = &other.0 .0;
 
         let mut y_local = [0u64; 9];
         for index in 0..9 {
@@ -330,9 +335,9 @@ impl<C: Fp256Parameters> Fp256<C> {
     const fn const_is_valid(&self, _modulus: &BigInteger256) -> bool {
         let mut i = Fp256::<C>::NLIMBS - 1;
         loop {
-            if self.0.0[i] > C::MODULUS.0[i] {
+            if self.0 .0[i] > C::MODULUS.0[i] {
                 return false;
-            } else if self.0.0[i] < C::MODULUS.0[i] {
+            } else if self.0 .0[i] < C::MODULUS.0[i] {
                 return true;
             }
             if i == 0 {
@@ -349,7 +354,7 @@ impl<C: Fp256Parameters> Fp256<C> {
     const fn const_square(&mut self) {
         let mut x = [0u64; 9];
         for i in 0..9 {
-            x[i] = self.0.0[i] as u64;
+            x[i] = self.0 .0[i] as u64;
         }
         let mut xy = [0u64; 9];
         for i in 0..9 {
@@ -370,7 +375,7 @@ impl<C: Fp256Parameters> Fp256<C> {
                 if j <= i {
                     let mut tmp = x[i] * x[j];
                     if j < i {
-                       tmp <<= 1;
+                        tmp <<= 1;
                     }
                     xy_j += tmp;
                 }
@@ -384,10 +389,10 @@ impl<C: Fp256Parameters> Fp256<C> {
             };
         }
         for j in 1..9 {
-            self.0.0[j - 1] = (xy[j - 1] as u32) & MASK;
+            self.0 .0[j - 1] = (xy[j - 1] as u32) & MASK;
             xy[j] += xy[j - 1] >> SHIFT64;
         }
-        self.0.0[9 - 1] = xy[9 - 1] as u32;
+        self.0 .0[9 - 1] = xy[9 - 1] as u32;
 
         self.const_reduce(&C::MODULUS);
     }
@@ -407,7 +412,7 @@ impl<C: Fp256Parameters> Zero for Fp256<C> {
         Self(BigInteger256([0; 9]), PhantomData)
     }
     fn is_zero(&self) -> bool {
-        self.0.0 == [0u32; 9]
+        self.0 .0 == [0u32; 9]
     }
 }
 
@@ -729,10 +734,10 @@ impl<C: Fp256Parameters> FromStr for Fp256<C> {
                     res.mul_assign(&ten);
                     let digit = Self::from(u64::from(c));
                     res.add_assign(&digit);
-                },
+                }
                 None => {
                     return Err(());
-                },
+                }
             }
         }
         if !res.is_valid() {

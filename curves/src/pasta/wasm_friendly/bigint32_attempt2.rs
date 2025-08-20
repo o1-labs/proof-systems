@@ -42,6 +42,11 @@ impl<const N: usize> BigInt<N> {
         *self.0.digits()
     }
 
+    #[inline]
+    pub fn as_digits_mut(&mut self) -> &mut [u32; N] {
+        self.0.digits_mut()
+    }
+
     #[doc(hidden)]
     pub const fn const_is_even(&self) -> bool {
         self.0.digits()[0] % 2 == 0
@@ -133,6 +138,20 @@ impl<const N: usize> AsRef<[u64]> for BigInt<N> {
             "N must be even to convert u32 array to u64 array"
         );
         unsafe { std::slice::from_raw_parts(self.0.digits().as_ptr() as *const u64, N / 2) }
+    }
+}
+
+impl<const N: usize> AsMut<[u32]> for BigInt<N> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut [u32] {
+        self.0.digits_mut()
+    }
+}
+
+impl<const N: usize> AsRef<[u32]> for BigInt<N> {
+    #[inline]
+    fn as_ref(&self) -> &[u32] {
+        self.0.digits()
     }
 }
 
