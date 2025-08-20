@@ -46,10 +46,11 @@ bs58 = "0.5.0"
 clap = "4.4.6"
 command-fds = "0.3"
 console_error_panic_hook = { version = "0.1.6" }
-criterion = { version = "0.5", features = [
-  "cargo_bench_support",
-  "html_reports",
-] }
+criterion = { version = "0.5", default-features = false }
+#criterion = { version = "0.5", features = [
+#  "cargo_bench_support",
+#  "html_reports",
+#] }
 derivative = { version = "2.0", features = ["use_core"] }
 elf = "0.7.2"
 env_logger = "0.11.1"
@@ -63,8 +64,8 @@ libflate = "2"
 log = "0.4.20"
 num-bigint = { version = "0.4.4", features = ["rand", "serde"] }
 num-integer = "0.1.45"
-ocaml = { version = "0.22.2" }
-ocaml-gen = { version = "1.0.0" }
+#ocaml = { version = "0.22.2", optional = true }
+#ocaml-gen = { version = "1.0.0", optional = true }
 once_cell = "=1.21.3"
 os_pipe = { version = "1.1.4", features = ["io_safety"] }
 paste = "1.0.15"
@@ -117,6 +118,7 @@ signer = { path = "./signer", version = "0.1.0" }
 turshi = { path = "./turshi", version = "0.1.0" }
 utils = { path = "./utils", version = "0.1.0" }
 wasm-types = { path = "./crates/wasm-types" }
+
 
 [profile.release]
 lto = true

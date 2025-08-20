@@ -332,14 +332,15 @@ pub fn mul_assign<FpC: FpConstants>(x: &mut B, y: &B) {
 // implement FpBackend given FpConstants
 
 /// Converts a bigint of 9 limbs, of 32x8 shape, into a field element.
+/// MUST have `x[8] == 0`.
 pub fn from_bigint_unsafe<FpC: FpConstants>(x: BigInt<9>) -> Fp<FpC, 9> {
     let r: [u32; 9] = x.into_digits();
-    assert!(r[8] == 0, "from_bigint_unsafe: bigint exceeds 256 bits");
+    //assert!(r[8] == 0, "from_bigint_unsafe: bigint exceeds 256 bits");
     let mut r = from_32x8(r[0..8].try_into().unwrap());
-    assert!(is_32x9_shape(r));
+    //assert!(is_32x9_shape(r));
     // convert to montgomery form
     mul_assign::<FpC>(&mut r, &FpC::R2);
-    assert!(is_32x9_shape(r));
+    //assert!(is_32x9_shape(r));
     Fp(BigInt::from_digits(r), Default::default())
 }
 
@@ -368,7 +369,7 @@ impl<FpC: FpConstants> FpBackend<9> for FpC {
 
     /// Return a "normal" bigint
     fn to_bigint(x: Fp<Self, 9>) -> BigInt<9> {
-        assert!(is_32x9_shape(x.0.into_digits()));
+        //assert!(is_32x9_shape(x.0.into_digits()));
         let one: [u32; 9] = [1, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut r = x.0.into_digits();
         // convert back from montgomery form

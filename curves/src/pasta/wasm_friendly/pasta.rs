@@ -28,10 +28,9 @@ impl Fp9 {
     pub fn from_fp(fp: Fp) -> Self {
         let limbs8: [u32; 8] = backend9::from_64x4_to_32x8(fp.into_bigint().0);
         let mut limbs9 = [0u32; 9];
-        for i in 0..8 {
-            limbs9[i] = limbs8[i];
-        }
-        println!("from_fp: {:?}, limbs9 {:?}", fp, limbs9);
+        limbs9[..8].copy_from_slice(&limbs8);
+
+        //println!("from_fp: {:?}, limbs9 {:?}", fp, limbs9);
         backend9::from_bigint_unsafe(super::BigInt::from_digits(limbs9))
     }
 
