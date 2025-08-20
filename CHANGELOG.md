@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - CI: add support for macos-latest with Rust 1.84
   ([#3131](https://github.com/o1-labs/proof-systems/pull/3131))
+- CI: add support for 1.84 for all platforms, fixing linter for Rust 1.84, and
+  add missing build section for dylib on MacOS
+  ([#3320](https://github.com/o1-labs/proof-systems/pull/3320))
 
 ### [arrabbiata](./arrabbiata)
 

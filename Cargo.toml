@@ -28,6 +28,11 @@ members = [
 ]
 resolver = "2"
 
+# Ignore non-local impl warnings from OCaml derive macros in nested contexts
+# See: https://github.com/o1-labs/proof-systems/issues/3319
+[workspace.lints.rust]
+non_local_definitions = "allow"
+
 [workspace.dependencies]
 ark-algebra-test-templates = "0.5"
 ark-bn254 = { version = "0.5" }

@@ -14,7 +14,7 @@ impl<'a> VariableCell<'a> {
     }
 }
 
-impl<'a, F: Field, const W: usize> WitnessCell<F, F, W> for VariableCell<'a> {
+impl<F: Field, const W: usize> WitnessCell<F, F, W> for VariableCell<'_> {
     fn value(&self, _witness: &mut [Vec<F>; W], variables: &Variables<F>, _index: usize) -> F {
         variables[self.name]
     }

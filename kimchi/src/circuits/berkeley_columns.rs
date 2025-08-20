@@ -63,7 +63,7 @@ impl core::fmt::Display for BerkeleyChallengeTerm {
     }
 }
 
-impl<'a> super::expr::AlphaChallengeTerm<'a> for BerkeleyChallengeTerm {
+impl super::expr::AlphaChallengeTerm<'_> for BerkeleyChallengeTerm {
     const ALPHA: Self = Self::Alpha;
 }
 

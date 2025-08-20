@@ -18,7 +18,7 @@ impl<'a> VariableBitsCell<'a> {
     }
 }
 
-impl<'a, F: Field, const W: usize> WitnessCell<F, F, W> for VariableBitsCell<'a> {
+impl<F: Field, const W: usize> WitnessCell<F, F, W> for VariableBitsCell<'_> {
     fn value(&self, _witness: &mut [Vec<F>; W], variables: &Variables<F>, _index: usize) -> F {
         let bits = if let Some(end) = self.end {
             F::from_bits(&variables[self.name].to_bits()[self.start..end])

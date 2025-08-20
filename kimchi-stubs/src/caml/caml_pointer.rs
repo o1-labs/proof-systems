@@ -23,7 +23,7 @@ macro_rules! impl_caml_pointer {
             compare: $name::caml_pointer_compare,
         });
 
-        unsafe impl<'a> ocaml::FromValue<'a> for $name {
+        unsafe impl ocaml::FromValue<'_> for $name {
             fn from_value(x: ocaml::Value) -> Self {
                 let x = ocaml::Pointer::<Self>::from_value(x);
                 $name(x.as_ref().0.clone())

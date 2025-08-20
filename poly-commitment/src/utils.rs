@@ -33,7 +33,7 @@ impl<F, P> ScaledChunkedPolynomial<F, P> {
     }
 }
 
-impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
+impl<F: Field> ScaledChunkedPolynomial<F, &[F]> {
     /// Compute the resulting scaled polynomial.
     /// Example:
     /// Given the two polynomials `1 + 2X` and `3 + 4X`, and the scaling

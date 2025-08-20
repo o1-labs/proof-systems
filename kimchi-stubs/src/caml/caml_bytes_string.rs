@@ -3,7 +3,7 @@ use ocaml_gen::{const_random, Env, OCamlDesc};
 
 pub struct CamlBytesString<'a>(pub &'a [u8]);
 
-unsafe impl<'a> IntoValue for CamlBytesString<'a> {
+unsafe impl IntoValue for CamlBytesString<'_> {
     fn into_value(self, rt: &Runtime) -> Value {
         self.0.into_value(rt)
     }
@@ -15,7 +15,7 @@ unsafe impl<'a> FromValue<'a> for CamlBytesString<'a> {
     }
 }
 
-impl<'a> OCamlDesc for CamlBytesString<'a> {
+impl OCamlDesc for CamlBytesString<'_> {
     fn ocaml_desc(_env: &Env, _generics: &[&str]) -> String {
         "string".to_string()
     }

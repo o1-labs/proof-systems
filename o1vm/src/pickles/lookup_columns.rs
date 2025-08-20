@@ -158,7 +158,7 @@ impl std::fmt::Display for LookupChallengeTerm {
     }
 }
 
-impl<'a> AlphaChallengeTerm<'a> for LookupChallengeTerm {
+impl AlphaChallengeTerm<'_> for LookupChallengeTerm {
     const ALPHA: Self = Self::Alpha;
 }
 

@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 
+[lints]
+workspace = true
+
 [dependencies]
 ocaml = { workspace = true, optional = true }
 ocaml-gen = { workspace = true, optional = true }

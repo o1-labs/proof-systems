@@ -32,7 +32,8 @@ jobs:
     outputs:
       ocaml_version: ${{ steps.ocaml.outputs.version }}
       node: ${{ steps.node.outputs.version }}
-      matrix: ${{ steps.matrix.outputs.value }}
+      rust_version: ${{ steps.rust.outputs.version }}
+      os: ${{ steps.os.outputs.version }}
       default_rust_version: ${{ steps.defaults.outputs.rust_version }}
       default_os: ${{ steps.defaults.outputs.os }}
     steps:
@@ -43,32 +44,21 @@ jobs:
         run: echo 'version=["4.14.2"]' >> "$GITHUB_OUTPUT"
       - id: node
         run: echo 'version=["20"]' >> "$GITHUB_OUTPUT"
+      - id: rust
+        run: echo 'version=["1.81", "1.82", "1.84"]' >> "$GITHUB_OUTPUT"
+      - id: os
+        run: echo 'version=["ubuntu-latest", "ubuntu-24.04-arm", "macos-latest"]' >> "$GITHUB_OUTPUT"
       - id: defaults
         run: |
           echo 'rust_version=1.81' >> "$GITHUB_OUTPUT"
           echo 'os=ubuntu-latest' >> "$GITHUB_OUTPUT"
-      - id: matrix
-        run: |
-          # NOTE: This custom matrix configuration is needed to use Rust 1.84 specifically for macOS.
-          # When https://github.com/o1-labs/proof-systems/issues/3254 is fixed,
-          # this can be simplified to use a standard matrix configuration.
-          cat > matrix.json << 'EOF'
-          {
-            "include": [
-              {"rust_toolchain_version": "1.81", "os": "ubuntu-latest"},
-              {"rust_toolchain_version": "1.82", "os": "ubuntu-latest"},
-              {"rust_toolchain_version": "1.81", "os": "ubuntu-24.04-arm"},
-              {"rust_toolchain_version": "1.82", "os": "ubuntu-24.04-arm"},
-              {"rust_toolchain_version": "1.84", "os": "macos-latest"}
-            ]
-          }
-          EOF
-          echo "value=$(cat matrix.json | jq -c .)" >> "$GITHUB_OUTPUT"
 
   refresh-cache:
     needs: ['define-matrix']
     strategy:
-      matrix: ${{ fromJSON(needs.define-matrix.outputs.matrix) }}
+      matrix:
+        rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_version) }}
+        os: ${{ fromJSON(needs.define-matrix.outputs.os) }}
     runs-on: ${{ matrix.os }}
     steps:
       # if 'workflow_run'
@@ -78,7 +68,7 @@ jobs:
       - uses: ./.github/actions/toolchain-shared
         if: ${{ github.event_name == 'workflow_run' }}
         with:
-          rust_toolchain_version: ${{ matrix.rust_and_os.rust_toolchain_version }}
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
       - name: start-fresh
         if: ${{ github.event_name == 'workflow_run' }}
         shell: bash
@@ -95,14 +85,11 @@ jobs:
     needs: ['define-matrix', 'refresh-cache']
     strategy:
       matrix:
-        rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
+        rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_version) }}
+        os: ${{ fromJSON(needs.define-matrix.outputs.os) }}
         ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
         node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
-        exclude:
-          # Skip Rust 1.84 due to linting issues - remove when
-          # https://github.com/o1-labs/proof-systems/pull/3245 is fixed
-          - rust_and_os: {rust_toolchain_version: '1.84', os: 'macos-latest'}
-    runs-on: ${{ matrix.rust_and_os.os }}
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -117,7 +104,7 @@ jobs:
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: ${{ matrix.rust_and_os.rust_toolchain_version }}
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
 
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
@@ -178,8 +165,8 @@ jobs:
         if: >-
           github.event_name == 'push' &&
           github.ref == 'refs/heads/master' &&
-          matrix.rust_and_os.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
-          matrix.rust_and_os.os == needs.define-matrix.outputs.default_os
+          matrix.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
+          matrix.os == needs.define-matrix.outputs.default_os
         run: |
           eval $(opam env)
           RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --all-features --no-deps --workspace --exclude xtask
@@ -190,8 +177,8 @@ jobs:
         if: >-
           github.event_name == 'push' &&
           github.ref == 'refs/heads/master' &&
-          matrix.rust_and_os.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
-          matrix.rust_and_os.os == needs.define-matrix.outputs.default_os
+          matrix.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
+          matrix.os == needs.define-matrix.outputs.default_os
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./book/book/html
@@ -200,14 +187,11 @@ jobs:
     needs: ['define-matrix', 'refresh-cache']
     strategy:
       matrix:
-        rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
+        rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_version) }}
+        os: ${{ fromJSON(needs.define-matrix.outputs.os) }}
         ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
         node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
-        exclude:
-          # Skip Rust 1.84 due to linting issues - remove when
-          # https://github.com/o1-labs/proof-systems/pull/3245 is fixed
-          - rust_and_os: {rust_toolchain_version: '1.84', os: 'macos-latest'}
-    runs-on: ${{ matrix.rust_and_os.os }}
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -217,7 +201,7 @@ jobs:
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: ${{ matrix.rust_and_os.rust_toolchain_version }}
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
 
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
@@ -236,10 +220,11 @@ jobs:
     needs: ['define-matrix', 'refresh-cache']
     strategy:
       matrix:
-        rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
+        rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_version) }}
+        os: ${{ fromJSON(needs.define-matrix.outputs.os) }}
         ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
         node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
-    runs-on: ${{ matrix.rust_and_os.os }}
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -249,7 +234,7 @@ jobs:
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: ${{ matrix.rust_and_os.rust_toolchain_version }}
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
 
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
@@ -268,14 +253,11 @@ jobs:
     needs: ['define-matrix', 'refresh-cache']
     strategy:
       matrix:
-        rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
+        rust_toolchain_version: ${{ fromJSON(needs.define-matrix.outputs.rust_version) }}
+        os: ${{ fromJSON(needs.define-matrix.outputs.os) }}
         ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
         node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
-        exclude:
-          # Skip Rust 1.84 due to linting issues - remove when
-          # https://github.com/o1-labs/proof-systems/pull/3245 is fixed
-          - rust_and_os: {rust_toolchain_version: '1.84', os: 'macos-latest'}
-    runs-on: ${{ matrix.rust_and_os.os }}
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -285,7 +267,7 @@ jobs:
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: ${{ matrix.rust_and_os.rust_toolchain_version }}
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
           components: llvm-tools-preview
 
       - name: Use shared OCaml setting up steps

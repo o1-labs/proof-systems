@@ -442,7 +442,7 @@ where
     }
 }
 
-impl<'a, F: PrimeField> CryptoDigest for Circuit<'a, F> {
+impl<F: PrimeField> CryptoDigest for Circuit<'_, F> {
     const PREFIX: &'static [u8; 15] = b"kimchi-circuit0";
 }
 

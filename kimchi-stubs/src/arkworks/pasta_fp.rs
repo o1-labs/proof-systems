@@ -17,7 +17,7 @@ use rand::rngs::StdRng;
 #[derive(Clone, Copy, Debug, ocaml_gen::CustomType)]
 pub struct CamlFp(pub Fp);
 
-unsafe impl<'a> ocaml::FromValue<'a> for CamlFp {
+unsafe impl ocaml::FromValue<'_> for CamlFp {
     fn from_value(value: ocaml::Value) -> Self {
         let x: ocaml::Pointer<Self> = ocaml::FromValue::from_value(value);
         *x.as_ref()
