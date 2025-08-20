@@ -264,6 +264,11 @@ jobs:
           eval $(opam env)
           make
 
+      - name: Ensure that kimchi-stubs can be built with xtask
+        run: |
+          eval $(opam env)
+          cargo run -p xtask -- build-kimchi-stubs
+
   tests:
     needs: ['define-matrix', 'refresh-cache']
     strategy:

@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
+use raw_cpuid::CpuId;
 use std::{
     env,
     ffi::OsString,
@@ -31,6 +32,16 @@ enum Commands {
         #[arg(long)]
         rust_version: Option<String>,
     },
+
+    /// Build kimchi-stubs with optional CPU optimisations
+    BuildKimchiStubs {
+        /// Target directory for cargo build artifacts
+        #[arg(long)]
+        target_dir: Option<String>,
+
+        #[arg(long, short, action, default_value_t = false)]
+        offline: bool,
+    },
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, ValueEnum)]
@@ -59,10 +70,86 @@ fn main() -> Result<()> {
             target,
             rust_version,
         } => build_wasm(out_dir, *target, rust_version.as_deref()),
+        Commands::BuildKimchiStubs {
+            target_dir,
+            offline,
+        } => build_kimchi_stubs(target_dir.as_deref(), *offline),
     }
 }
 
 type RustVersion<'a> = Option<&'a str>;
+
+fn build_kimchi_stubs(target_dir: Option<&str>, offline: bool) -> Result<()> {
+    // Optimisations are enabled by default, but can be disabled by setting the
+    // `RUST_TARGET_FEATURE_OPTIMISATIONS` environment variable to any other
+    // value than "y".
+    let optimisations_enabled = env::var("RUST_TARGET_FEATURE_OPTIMISATIONS")
+        .map(|v| ["y", "1", "true"].contains(&v.to_lowercase().as_str()))
+        .unwrap_or(true);
+
+    #[cfg(target_arch = "x86_64")]
+    let cpu_supports_adx_bmi2 = {
+        let cpuid = CpuId::new();
+        cpuid
+            .get_extended_feature_info()
+            .map_or(false, |f| f.has_adx() && f.has_bmi2())
+    };
+    // ADX and BMI2 are not applicable to other architectures.
+    #[cfg(not(target_arch = "x86_64"))]
+    let cpu_supports_adx_bmi2 = false;
+
+    // If optimisations are enabled and the CPU supports ADX and BMI2, we enable
+    // those features.
+    let rustflags = match (optimisations_enabled, cpu_supports_adx_bmi2) {
+        (true, true) => {
+            // If optimisations are enabled and the CPU supports ADX and BMI2,
+            // we enable them.
+            Some("-C target-feature=+bmi2,+adx".to_string())
+        }
+        (false, true) => {
+            // If optimisations are disabled but the CPU supports ADX and BMI2,
+            // we explicitly disable them.
+            Some("-C target-feature=-bmi2,-adx".to_string())
+        }
+        (true, false) => {
+            // If the CPU does not support ADX and BMI2, we do not set any
+            // target features. It could be handled in the `else` branch, but we
+            // want to be explicit. If the CPU does not support these features, but
+            // we still add the -bmi2 and -adx flags, it will cause a build warning
+            // we want to avoid on the user console.
+            None
+        }
+        (false, false) => None,
+    };
+
+    let target_dir = target_dir.unwrap_or("target/kimchi_stubs_build");
+
+    let mut cmd = Command::new("cargo");
+    cmd.args(&[
+        "build",
+        "--release",
+        "-p",
+        "kimchi-stubs",
+        "--target-dir",
+        target_dir,
+    ]);
+
+    if offline {
+        cmd.arg("--offline");
+    }
+
+    if let Some(rustflags) = rustflags {
+        cmd.env("RUSTFLAGS", rustflags);
+    }
+
+    let status = cmd.status().context("Failed to build kimchi-stubs")?;
+
+    if !status.success() {
+        anyhow::bail!("kimchi-stubs build failed");
+    }
+
+    Ok(())
+}
 
 fn build_wasm(out_dir: &str, target: Target, rust_version: RustVersion) -> Result<()> {
     const RUSTFLAGS: &str = "-C target-feature=+atomics,+bulk-memory,+mutable-globals -C link-arg=--max-memory=4294967296";

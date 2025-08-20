@@ -45,6 +45,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Changed
 - (No changes in current release)
 
+### [kimchi-stubs](./kimchi-stubs)
+
+#### Changed
+
+- Remove warnings `+adx/+bmi2 is not a recognised feature for this target,
+  issue [#3322](https://github.com/o1-labs/proof-systems/issues/3322)
+([#3248](https://github.com/o1-labs/proof-systems/pull/3248))
+
 ### [mina-curves](./curves)
 
 #### Changed
