@@ -461,7 +461,7 @@ The following sections specify how a prover creates a proof, and how a verifier 
 
 To create a proof, the prover expects:
 
-* A prover index, containing a representation of the circuit (and optionaly pre-computed values to be used in the proof creation).
+* A prover index, containing a representation of the circuit (and optionally pre-computed values to be used in the proof creation).
 * The (filled) registers table, representing parts of the execution trace of the circuit.
 
 ```admonish
