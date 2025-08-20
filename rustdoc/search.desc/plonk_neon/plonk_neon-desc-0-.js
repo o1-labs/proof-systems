@@ -1,1 +1,0 @@
-searchState.loadedDescShard("plonk_neon", 0, "The <code>Marlin_plonk_stubs</code> crate exports some functionalities …")

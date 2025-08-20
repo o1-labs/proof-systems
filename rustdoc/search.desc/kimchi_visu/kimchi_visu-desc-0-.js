@@ -1,1 +1,0 @@
-searchState.loadedDescShard("kimchi_visu", 0, "Implements a tool to visualize a circuit as an HTML page.\nProduces a <code>circuit.html</code> in the current folder.\nThe type that represents the execution trace. It …\nReturns the argument unchanged.\nReturns the inner witness.\nCalls <code>U::from(self)</code>.\nCreates a new witness with <code>rows</code> rows.")

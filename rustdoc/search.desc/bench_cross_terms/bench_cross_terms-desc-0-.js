@@ -1,1 +1,0 @@
-searchState.loadedDescShard("bench_cross_terms", 0, "")
