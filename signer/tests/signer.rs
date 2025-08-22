@@ -420,7 +420,6 @@ fn test_signer_from_secret_key() {
 
     assert!(testnet_ctx.verify(&testnet_sig, &kp.public, &input));
     assert!(mainnet_ctx.verify(&mainnet_sig, &kp.public, &input));
-
 }
 
 #[test]
