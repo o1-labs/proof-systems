@@ -327,14 +327,10 @@ mod tests {
             Fq::from_hex("18b7ef420128e69623c0c0dcfa28d47a029d462720deb769d7b5dd6f17444216")
                 .expect("failed to create scalar");
         let roi = ROInput::new().append_scalar(scalar);
-        assert_eq!(roi.bits.len(), 255);
+        assert_eq!(roi.fields.len(), 1);
         assert_eq!(
-            roi.bits.as_raw_slice(),
-            [
-                0x18, 0xb7, 0xef, 0x42, 0x01, 0x28, 0xe6, 0x96, 0x23, 0xc0, 0xc0, 0xdc, 0xfa, 0x28,
-                0xd4, 0x7a, 0x02, 0x9d, 0x46, 0x27, 0x20, 0xde, 0xb7, 0x69, 0xd7, 0xb5, 0xdd, 0x6f,
-                0x17, 0x44, 0x42, 0x16
-            ]
+            roi.fields[0],
+            Fp::from_biguint(&scalar.to_biguint()).expect("failed to create field element")
         );
         assert_eq!(
             roi.to_bytes(),
@@ -352,14 +348,12 @@ mod tests {
             Fq::from_hex("18b7ef420128e69623c0c0dcfa28d47a029d462720deb769d7b5dd6f17444216")
                 .expect("failed to create scalar");
         let roi = ROInput::new().append_scalar(scalar).append_bytes(&[0x01]);
-        assert!(roi.bits.len() == 263);
-        assert!(
-            roi.bits.as_raw_slice()
-                == [
-                    0x18, 0xb7, 0xef, 0x42, 0x01, 0x28, 0xe6, 0x96, 0x23, 0xc0, 0xc0, 0xdc, 0xfa,
-                    0x28, 0xd4, 0x7a, 0x02, 0x9d, 0x46, 0x27, 0x20, 0xde, 0xb7, 0x69, 0xd7, 0xb5,
-                    0xdd, 0x6f, 0x17, 0x44, 0x42, 0x96, 0x00
-                ]
+        assert_eq!(roi.bits.len(), 8);
+        assert_eq!(roi.fields.len(), 1);
+        assert_eq!(roi.bits.as_raw_slice(), [0x01]);
+        assert_eq!(
+            roi.fields[0],
+            Fp::from_biguint(&scalar.to_biguint()).expect("failed to create field element")
         );
     }
 
@@ -372,16 +366,14 @@ mod tests {
             Fq::from_hex("a1b1e948835be341277548134e0effabdbcb95b742e8c5e967e9bf13eb4ae805")
                 .expect("failed to create scalar");
         let roi = ROInput::new().append_scalar(scalar1).append_scalar(scalar2);
-        assert!(roi.bits.len() == 510);
-        assert!(
-            roi.bits.as_raw_slice()
-                == [
-                    0x18, 0xb7, 0xef, 0x42, 0x01, 0x28, 0xe6, 0x96, 0x23, 0xc0, 0xc0, 0xdc, 0xfa,
-                    0x28, 0xd4, 0x7a, 0x02, 0x9d, 0x46, 0x27, 0x20, 0xde, 0xb7, 0x69, 0xd7, 0xb5,
-                    0xdd, 0x6f, 0x17, 0x44, 0x42, 0x96, 0xd0, 0xd8, 0x74, 0xa4, 0xc1, 0xad, 0xf1,
-                    0xa0, 0x93, 0x3a, 0xa4, 0x09, 0x27, 0x87, 0xff, 0xd5, 0xed, 0xe5, 0xca, 0x5b,
-                    0x21, 0xf4, 0xe2, 0xf4, 0xb3, 0xf4, 0xdf, 0x89, 0x75, 0x25, 0xf4, 0x02
-                ]
+        assert_eq!(roi.fields.len(), 2);
+        assert_eq!(
+            roi.fields[0],
+            Fp::from_biguint(&scalar1.to_biguint()).expect("failed to create field element")
+        );
+        assert_eq!(
+            roi.fields[1],
+            Fp::from_biguint(&scalar2.to_biguint()).expect("failed to create field element")
         );
     }
 
@@ -397,16 +389,16 @@ mod tests {
             .append_scalar(scalar1)
             .append_bytes(&[0x2a])
             .append_scalar(scalar2);
-        assert!(roi.bits.len() == 518);
-        assert!(
-            roi.bits.as_raw_slice()
-                == [
-                    0x60, 0xdb, 0x6f, 0x4f, 0x5b, 0x8c, 0xe1, 0xc7, 0xcb, 0x74, 0x7f, 0xba, 0x9e,
-                    0x32, 0x4c, 0xc3, 0x26, 0x8c, 0x7a, 0x6e, 0x3f, 0x43, 0xcd, 0x82, 0xd4, 0x51,
-                    0xae, 0x99, 0xa7, 0xb2, 0xbd, 0x1f, 0x15, 0xff, 0xbb, 0xba, 0x58, 0x03, 0xde,
-                    0x75, 0xac, 0x79, 0x71, 0x1f, 0x2d, 0xa7, 0xdc, 0x4f, 0xa0, 0x25, 0x47, 0xec,
-                    0x67, 0x15, 0xff, 0x77, 0xce, 0x4e, 0x0c, 0x80, 0xf8, 0x10, 0x9c, 0xe6, 0x03
-                ]
+        assert_eq!(roi.bits.len(), 8);
+        assert_eq!(roi.fields.len(), 2);
+        assert_eq!(roi.bits.as_raw_slice(), [0x2a]);
+        assert_eq!(
+            roi.fields[0],
+            Fp::from_biguint(&scalar1.to_biguint()).expect("failed to create field element")
+        );
+        assert_eq!(
+            roi.fields[1],
+            Fp::from_biguint(&scalar2.to_biguint()).expect("failed to create field element")
         );
     }
 
@@ -453,39 +445,46 @@ mod tests {
 
     #[test]
     fn all_1() {
+        let scalar1 = Fq::from_hex("01d1755db21c8cd2a9cf5a3436178da3d70f484cd4b4c8834b799921e7d7a102")
+            .expect("failed to create scalar");
+        let scalar2 = Fq::from_hex("e70187e9b125524489d0433da76fd8287fa652eaebde147b45fa0cd86f171810")
+            .expect("failed to create scalar");
+        
         let roi = ROInput::new()
             .append_bool(true)
-            .append_scalar(
-                Fq::from_hex("01d1755db21c8cd2a9cf5a3436178da3d70f484cd4b4c8834b799921e7d7a102")
-                    .expect("failed to create scalar"),
-            )
+            .append_scalar(scalar1)
             .append_u64(18446744073709551557)
             .append_bytes(&[0xba, 0xdc, 0x0f, 0xfe])
-            .append_scalar(
-                Fq::from_hex("e70187e9b125524489d0433da76fd8287fa652eaebde147b45fa0cd86f171810")
-                    .expect("failed to create scalar"),
-            )
+            .append_scalar(scalar2)
             .append_bool(false)
             .append_u32(2147483647)
             .append_bool(true);
 
-        assert!(roi.bits.len() == 641);
-        assert!(
-            roi.bits.as_raw_slice()
-                == [
-                    0x03, 0xa2, 0xeb, 0xba, 0x64, 0x39, 0x18, 0xa5, 0x53, 0x9f, 0xb5, 0x68, 0x6c,
-                    0x2e, 0x1a, 0x47, 0xaf, 0x1f, 0x90, 0x98, 0xa8, 0x69, 0x91, 0x07, 0x97, 0xf2,
-                    0x32, 0x43, 0xce, 0xaf, 0x43, 0x05, 0xc5, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-                    0xff, 0xba, 0xdc, 0x0f, 0xfe, 0xe7, 0x01, 0x87, 0xe9, 0xb1, 0x25, 0x52, 0x44,
-                    0x89, 0xd0, 0x43, 0x3d, 0xa7, 0x6f, 0xd8, 0x28, 0x7f, 0xa6, 0x52, 0xea, 0xeb,
-                    0xde, 0x14, 0x7b, 0x45, 0xfa, 0x0c, 0xd8, 0x6f, 0x17, 0x18, 0x10, 0xff, 0xff,
-                    0xff, 0x7f, 0x01
-                ]
+        // bits: 1 (bool) + 64 (u64) + 32 (bytes) + 1 (bool) + 32 (u32) + 1 (bool) = 131 bits
+        assert_eq!(roi.bits.len(), 131);
+        assert_eq!(roi.fields.len(), 2);
+        assert_eq!(
+            roi.fields[0],
+            Fp::from_biguint(&scalar1.to_biguint()).expect("failed to create field element")
+        );
+        assert_eq!(
+            roi.fields[1],
+            Fp::from_biguint(&scalar2.to_biguint()).expect("failed to create field element")
+        );
+        assert_eq!(
+            roi.bits.as_raw_slice(),
+            [
+                0x8b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x75, 0xb9, 0x1f, 0xfc, 0xfd, 0xff,
+                0xff, 0xff, 0x05
+            ]
         );
     }
 
     #[test]
     fn transaction_bits() {
+        let scalar = Fq::from_hex("de217a3017ca0b7a278e75f63c09890e3894be532d8dbadd30a7d450055f6d2d")
+            .expect("failed to create scalar");
+        
         let roi = ROInput::new()
             .append_u64(1000000) // fee
             .append_u64(1) // fee token
@@ -501,12 +500,16 @@ mod tests {
             .append_u64(1) // token_id
             .append_u64(10000000000) // amount
             .append_bool(false) // token_locked
-            .append_scalar(
-                Fq::from_hex("de217a3017ca0b7a278e75f63c09890e3894be532d8dbadd30a7d450055f6d2d")
-                    .expect("failed to create scalar"),
-            )
+            .append_scalar(scalar)
             .append_bytes(&[0x01]);
-        assert_eq!(roi.bits.len(), 862);
+        
+        // bits: 64+64+1+32+32+272+1+1+1+1+1+64+64+1+8 = 607 bits
+        assert_eq!(roi.bits.len(), 607);
+        assert_eq!(roi.fields.len(), 1);
+        assert_eq!(
+            roi.fields[0],
+            Fp::from_biguint(&scalar.to_biguint()).expect("failed to create field element")
+        );
         assert_eq!(
             roi.bits.as_raw_slice(),
             [
@@ -515,9 +518,7 @@ mod tests {
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                 0x00, 0x00, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf9, 0x02,
-                0x95, 0x00, 0x00, 0x00, 0x00, 0xef, 0x10, 0x3d, 0x98, 0x0b, 0xe5, 0x05, 0xbd, 0x13,
-                0xc7, 0x3a, 0x7b, 0x9e, 0x84, 0x44, 0x07, 0x1c, 0x4a, 0xdf, 0xa9, 0x96, 0x46, 0xdd,
-                0x6e, 0x98, 0x53, 0x6a, 0xa8, 0x82, 0xaf, 0xb6, 0x56, 0x00
+                0x95, 0x00, 0x00, 0x00, 0x80, 0x00
             ]
         )
     }
@@ -619,46 +620,41 @@ mod tests {
 
     #[test]
     fn append_field_bit_and_scalar() {
+        let field = Fp::from_hex("d897c7a8b811d8acd3eeaa4adf42292802eed80031c2ad7c8989aea1fe94322c")
+            .expect("failed to create field");
+        let scalar = Fq::from_hex("79586cc6b8b53c8991b2abe0ca76508f056ca50f06836ce4d818c2ff73d42b28")
+            .expect("failed to create scalar");
         let roi = ROInput::new()
-            .append_field(
-                Fp::from_hex("d897c7a8b811d8acd3eeaa4adf42292802eed80031c2ad7c8989aea1fe94322c")
-                    .expect("failed to create field"),
-            )
+            .append_field(field)
             .append_bool(false)
-            .append_scalar(
-                Fq::from_hex("79586cc6b8b53c8991b2abe0ca76508f056ca50f06836ce4d818c2ff73d42b28")
-                    .expect("failed to create scalar"),
-            );
+            .append_scalar(scalar);
 
         assert_eq!(
             roi.to_bytes(),
             [
                 0xd8, 0x97, 0xc7, 0xa8, 0xb8, 0x11, 0xd8, 0xac, 0xd3, 0xee, 0xaa, 0x4a, 0xdf, 0x42,
                 0x29, 0x28, 0x02, 0xee, 0xd8, 0x00, 0x31, 0xc2, 0xad, 0x7c, 0x89, 0x89, 0xae, 0xa1,
-                0xfe, 0x94, 0x32, 0x2c, 0x79, 0x58, 0x6c, 0xc6, 0xb8, 0xb5, 0x3c, 0x89, 0x91, 0xb2,
-                0xab, 0xe0, 0xca, 0x76, 0x50, 0x8f, 0x05, 0x6c, 0xa5, 0x0f, 0x06, 0x83, 0x6c, 0xe4,
-                0xd8, 0x18, 0xc2, 0xff, 0x73, 0xd4, 0x2b, 0x28
+                0xfe, 0x94, 0x32, 0xac, 0x3c, 0x2c, 0x36, 0x63, 0xdc, 0x5a, 0x9e, 0xc4, 0x48, 0xd9,
+                0x55, 0x70, 0x65, 0x3b, 0xa8, 0xc7, 0x02, 0xb6, 0xd2, 0x07, 0x83, 0x41, 0x36, 0x72,
+                0x6c, 0x0c, 0xe1, 0xff, 0x39, 0xea, 0x15, 0x14
             ]
         );
     }
 
     #[test]
     fn to_bytes() {
+        let field1 = Fp::from_hex("a5984f2bd00906f9a86e75bfb4b2c3625f1a0d1cfacc1501e8e82ae7041efc14")
+            .expect("failed to create field");
+        let field2 = Fp::from_hex("8af0bc770d49a5b9fcabfcdd033bab470b2a211ef80b710efe71315cfa818c0a")
+            .expect("failed to create field");
+        let scalar = Fq::from_hex("c23c43a23ddc1516578b0f0d81b93cdbbc97744acc697cfc8c5dfd01cc448323")
+            .expect("failed to create scalar");
         let roi = ROInput::new()
-            .append_field(
-                Fp::from_hex("a5984f2bd00906f9a86e75bfb4b2c3625f1a0d1cfacc1501e8e82ae7041efc14")
-                    .expect("failed to create field"),
-            )
-            .append_field(
-                Fp::from_hex("8af0bc770d49a5b9fcabfcdd033bab470b2a211ef80b710efe71315cfa818c0a")
-                    .expect("failed to create field"),
-            )
+            .append_field(field1)
+            .append_field(field2)
             .append_bool(false)
             .append_u32(314u32)
-            .append_scalar(
-                Fq::from_hex("c23c43a23ddc1516578b0f0d81b93cdbbc97744acc697cfc8c5dfd01cc448323")
-                    .expect("failed to create scalar"),
-            );
+            .append_scalar(scalar);
 
         assert_eq!(
             roi.to_bytes(),
@@ -667,20 +663,19 @@ mod tests {
                 0xc3, 0x62, 0x5f, 0x1a, 0x0d, 0x1c, 0xfa, 0xcc, 0x15, 0x01, 0xe8, 0xe8, 0x2a, 0xe7,
                 0x04, 0x1e, 0xfc, 0x14, 0x45, 0x78, 0xde, 0xbb, 0x86, 0xa4, 0xd2, 0x5c, 0xfe, 0x55,
                 0xfe, 0xee, 0x81, 0x9d, 0xd5, 0xa3, 0x05, 0x95, 0x10, 0x0f, 0xfc, 0x85, 0x38, 0x07,
-                0xff, 0xb8, 0x18, 0x2e, 0xfd, 0x40, 0x46, 0x05, 0x9d, 0x00, 0x00, 0x00, 0x61, 0x9e,
-                0x21, 0xd1, 0x1e, 0xee, 0x0a, 0x8b, 0xab, 0xc5, 0x87, 0x86, 0xc0, 0x5c, 0x9e, 0x6d,
-                0xde, 0x4b, 0x3a, 0x25, 0xe6, 0x34, 0x3e, 0x7e, 0xc6, 0xae, 0xfe, 0x00, 0x66, 0xa2,
-                0xc1, 0x11
+                0xff, 0xb8, 0x18, 0x2e, 0xfd, 0x40, 0x46, 0x85, 0x30, 0xcf, 0x90, 0x68, 0x0f, 0x77,
+                0x85, 0xc5, 0xd5, 0xe2, 0x43, 0x43, 0x60, 0x2e, 0xcf, 0x36, 0xef, 0x25, 0x9d, 0x12,
+                0x73, 0x1a, 0x1f, 0x3f, 0x63, 0x57, 0x7f, 0x00, 0x33, 0xd1, 0xe0, 0x88, 0x4e, 0x00,
+                0x00, 0x00
             ]
         );
     }
 
     #[test]
     fn to_fields_1_scalar() {
-        let roi = ROInput::new().append_scalar(
-            Fq::from_hex("5d496dd8ff63f640c006887098092b16bc8c78504f84fa1ee3a0b54f85f0a625")
-                .expect("failed to create scalar"),
-        );
+        let scalar = Fq::from_hex("5d496dd8ff63f640c006887098092b16bc8c78504f84fa1ee3a0b54f85f0a625")
+            .expect("failed to create scalar");
+        let roi = ROInput::new().append_scalar(scalar);
 
         assert_eq!(
             roi.to_bytes(),
@@ -694,21 +689,17 @@ mod tests {
         assert_eq!(
             roi.to_fields(),
             [
-                Fp::from_hex("5d496dd8ff63f640c006887098092b16bc8c78504f84fa1ee3a0b54f85f0a625")
-                    .expect("failed to create field"),
-                Fp::from_hex("0000000000000000000000000000000000000000000000000000000000000000")
-                    .expect("failed to create field"),
+                Fp::from_biguint(&scalar.to_biguint()).expect("failed to create field"),
             ]
         );
     }
 
     #[test]
     fn to_fields_1_scalar_2_bits() {
+        let scalar = Fq::from_hex("e8a9961c8c417b0d0e3d7366f6b0e6ef90a6dad123070f715e8a9eaa02e47330")
+            .expect("failed to create scalar");
         let roi = ROInput::new()
-            .append_scalar(
-                Fq::from_hex("e8a9961c8c417b0d0e3d7366f6b0e6ef90a6dad123070f715e8a9eaa02e47330")
-                    .expect("failed to create scalar"),
-            )
+            .append_scalar(scalar)
             .append_bool(false)
             .append_bool(true);
 
@@ -724,9 +715,8 @@ mod tests {
         assert_eq!(
             roi.to_fields(),
             [
-                Fp::from_hex("e8a9961c8c417b0d0e3d7366f6b0e6ef90a6dad123070f715e8a9eaa02e47330")
-                    .expect("failed to create field"),
-                Fp::from_hex("0400000000000000000000000000000000000000000000000000000000000000")
+                Fp::from_biguint(&scalar.to_biguint()).expect("failed to create field"),
+                Fp::from_hex("0200000000000000000000000000000000000000000000000000000000000000")
                     .expect("failed to create field"),
             ]
         );
@@ -734,15 +724,13 @@ mod tests {
 
     #[test]
     fn to_fields_2_scalars() {
+        let scalar1 = Fq::from_hex("e05c25d2c17ec20d6bc8fd21204af52808451076cff687407164a21d352ddd22")
+            .expect("failed to create scalar");
+        let scalar2 = Fq::from_hex("c356dbb39478508818e0320dffa6c1ef512564366ec885ee2fc4d385dd36df0f")
+            .expect("failed to create scalar");
         let roi = ROInput::new()
-            .append_scalar(
-                Fq::from_hex("e05c25d2c17ec20d6bc8fd21204af52808451076cff687407164a21d352ddd22")
-                    .expect("failed to create scalar"),
-            )
-            .append_scalar(
-                Fq::from_hex("c356dbb39478508818e0320dffa6c1ef512564366ec885ee2fc4d385dd36df0f")
-                    .expect("failed to create scalar"),
-            );
+            .append_scalar(scalar1)
+            .append_scalar(scalar2);
 
         assert_eq!(
             roi.to_bytes(),
@@ -758,80 +746,69 @@ mod tests {
         assert_eq!(
             roi.to_fields(),
             [
-                Fp::from_hex("e05c25d2c17ec20d6bc8fd21204af52808451076cff687407164a21d352ddd22")
-                    .expect("failed to create field"),
-                Fp::from_hex("86adb66729f1a01031c0651afe4d83dfa34ac86cdc900bdd5f88a70bbb6dbe1f")
-                    .expect("failed to create field"),
-                Fp::from_hex("0000000000000000000000000000000000000000000000000000000000000000")
-                    .expect("failed to create field"),
+                Fp::from_biguint(&scalar1.to_biguint()).expect("failed to create field"),
+                Fp::from_biguint(&scalar2.to_biguint()).expect("failed to create field"),
             ]
         );
     }
 
     #[test]
     fn to_fields_2_bits_scalar_u32() {
+        let scalar = Fq::from_hex("689634de233b06251a80ac7df64483922727757eea1adc6f0c8f184441cfe10d")
+            .expect("failed to create scalar");
         let roi = ROInput::new()
             .append_bool(true)
             .append_bool(false)
-            .append_scalar(
-                Fq::from_hex("689634de233b06251a80ac7df64483922727757eea1adc6f0c8f184441cfe10d")
-                    .expect("failed to create scalar"),
-            )
+            .append_scalar(scalar)
             .append_u32(834803);
 
         assert_eq!(
             roi.to_bytes(),
             [
-                0xa1, 0x59, 0xd2, 0x78, 0x8f, 0xec, 0x18, 0x94, 0x68, 0x00, 0xb2, 0xf6, 0xd9, 0x13,
-                0x0d, 0x4a, 0x9e, 0x9c, 0xd4, 0xf9, 0xa9, 0x6b, 0x70, 0xbf, 0x31, 0x3c, 0x62, 0x10,
-                0x05, 0x3d, 0x87, 0x37, 0xe6, 0x79, 0x19, 0x00, 0x00
+                0x68, 0x96, 0x34, 0xde, 0x23, 0x3b, 0x06, 0x25, 0x1a, 0x80, 0xac, 0x7d, 0xf6, 0x44,
+                0x83, 0x92, 0x27, 0x27, 0x75, 0x7e, 0xea, 0x1a, 0xdc, 0x6f, 0x0c, 0x8f, 0x18, 0x44,
+                0x41, 0xcf, 0xe1, 0x8d, 0xe6, 0x79, 0x19, 0x00, 0x00
             ]
         );
 
         assert_eq!(
             roi.to_fields(),
             [
-                Fp::from_hex("a159d2788fec18946800b2f6d9130d4a9e9cd4f9a96b70bf313c6210053d8737")
-                    .expect("failed to create field"),
-                Fp::from_hex("98e7650000000000000000000000000000000000000000000000000000000000")
-                    .expect("failed to create field"),
+                Fp::from_biguint(&scalar.to_biguint()).expect("failed to create field"),
+                Fp::from(3339213u64),
             ]
         );
     }
 
     #[test]
     fn to_fields_2_bits_field_scalar() {
+        let field = Fp::from_hex("90926b620ad09ed616d5df158504faed42928719c58ae619d9eccc062f920411")
+            .expect("failed to create field");
+        let scalar = Fq::from_hex("689634de233b06251a80ac7df64483922727757eea1adc6f0c8f184441cfe10d")
+            .expect("failed to create scalar");
         let roi = ROInput::new()
             .append_bool(false)
             .append_bool(true)
-            .append_field(
-                Fp::from_hex("90926b620ad09ed616d5df158504faed42928719c58ae619d9eccc062f920411")
-                    .expect("failed to create field"),
-            )
-            .append_scalar(
-                Fq::from_hex("689634de233b06251a80ac7df64483922727757eea1adc6f0c8f184441cfe10d")
-                    .expect("failed to create scalar"),
-            );
+            .append_field(field)
+            .append_scalar(scalar);
 
         assert_eq!(
             roi.to_bytes(),
             [
                 0x90, 0x92, 0x6b, 0x62, 0x0a, 0xd0, 0x9e, 0xd6, 0x16, 0xd5, 0xdf, 0x15, 0x85, 0x04,
                 0xfa, 0xed, 0x42, 0x92, 0x87, 0x19, 0xc5, 0x8a, 0xe6, 0x19, 0xd9, 0xec, 0xcc, 0x06,
-                0x2f, 0x92, 0x04, 0x11, 0xd1, 0x2c, 0x69, 0xbc, 0x47, 0x76, 0x0c, 0x4a, 0x34, 0x00,
-                0x59, 0xfb, 0xec, 0x89, 0x06, 0x25, 0x4f, 0x4e, 0xea, 0xfc, 0xd4, 0x35, 0xb8, 0xdf,
-                0x18, 0x1e, 0x31, 0x88, 0x82, 0x9e, 0xc3, 0x1b
+                0x2f, 0x92, 0x04, 0x11, 0x34, 0x4b, 0x1a, 0xef, 0x91, 0x1d, 0x83, 0x12, 0x0d, 0x40,
+                0xd6, 0x3e, 0x7b, 0xa2, 0x41, 0xc9, 0x93, 0x93, 0x3a, 0x3f, 0x75, 0x0d, 0xee, 0x37,
+                0x86, 0x47, 0x0c, 0xa2, 0xa0, 0xe7, 0xf0, 0x86
             ]
         );
 
         assert_eq!(
             roi.to_fields(),
             [
-                Fp::from_hex("90926b620ad09ed616d5df158504faed42928719c58ae619d9eccc062f920411")
-                    .expect("failed to create field"),
-                Fp::from_hex("a259d2788fec18946800b2f6d9130d4a9e9cd4f9a96b70bf313c6210053d8737")
-                    .expect("failed to create field"),
-                Fp::from_hex("0000000000000000000000000000000000000000000000000000000000000000")
+                field,
+                Fp::from_biguint(&scalar.to_biguint()).expect("failed to create field"),
+                Fp::from_hex("0200000000000000000000000000000000000000000000000000000000000000")
                     .expect("failed to create field"),
             ]
         );
