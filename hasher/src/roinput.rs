@@ -94,7 +94,8 @@ impl ROInput {
     /// Append a scalar field element
     pub fn append_scalar(mut self, s: Fq) -> Self {
         // Convert scalar to biguint then to base field element
-        self.fields.push(Fp::from_biguint(&s.to_biguint()).expect("failed to create field element"));
+        self.fields
+            .push(Fp::from_biguint(&s.to_biguint()).expect("failed to create field element"));
         self
     }
 
@@ -440,11 +441,13 @@ mod tests {
 
     #[test]
     fn all_1() {
-        let scalar1 = Fq::from_hex("01d1755db21c8cd2a9cf5a3436178da3d70f484cd4b4c8834b799921e7d7a102")
-            .expect("failed to create scalar");
-        let scalar2 = Fq::from_hex("e70187e9b125524489d0433da76fd8287fa652eaebde147b45fa0cd86f171810")
-            .expect("failed to create scalar");
-        
+        let scalar1 =
+            Fq::from_hex("01d1755db21c8cd2a9cf5a3436178da3d70f484cd4b4c8834b799921e7d7a102")
+                .expect("failed to create scalar");
+        let scalar2 =
+            Fq::from_hex("e70187e9b125524489d0433da76fd8287fa652eaebde147b45fa0cd86f171810")
+                .expect("failed to create scalar");
+
         let roi = ROInput::new()
             .append_bool(true)
             .append_scalar(scalar1)
@@ -477,9 +480,10 @@ mod tests {
 
     #[test]
     fn transaction_bits() {
-        let scalar = Fq::from_hex("de217a3017ca0b7a278e75f63c09890e3894be532d8dbadd30a7d450055f6d2d")
-            .expect("failed to create scalar");
-        
+        let scalar =
+            Fq::from_hex("de217a3017ca0b7a278e75f63c09890e3894be532d8dbadd30a7d450055f6d2d")
+                .expect("failed to create scalar");
+
         let roi = ROInput::new()
             .append_u64(1000000) // fee
             .append_u64(1) // fee token
@@ -497,7 +501,7 @@ mod tests {
             .append_bool(false) // token_locked
             .append_scalar(scalar)
             .append_bytes(&[0x01]);
-        
+
         // bits: 64+64+1+32+32+272+1+1+1+1+1+64+64+1+8 = 607 bits
         assert_eq!(roi.bits.len(), 607);
         assert_eq!(roi.fields.len(), 1);
@@ -615,10 +619,12 @@ mod tests {
 
     #[test]
     fn append_field_bit_and_scalar() {
-        let field = Fp::from_hex("d897c7a8b811d8acd3eeaa4adf42292802eed80031c2ad7c8989aea1fe94322c")
-            .expect("failed to create field");
-        let scalar = Fq::from_hex("79586cc6b8b53c8991b2abe0ca76508f056ca50f06836ce4d818c2ff73d42b28")
-            .expect("failed to create scalar");
+        let field =
+            Fp::from_hex("d897c7a8b811d8acd3eeaa4adf42292802eed80031c2ad7c8989aea1fe94322c")
+                .expect("failed to create field");
+        let scalar =
+            Fq::from_hex("79586cc6b8b53c8991b2abe0ca76508f056ca50f06836ce4d818c2ff73d42b28")
+                .expect("failed to create scalar");
         let roi = ROInput::new()
             .append_field(field)
             .append_bool(false)
@@ -638,12 +644,15 @@ mod tests {
 
     #[test]
     fn to_bytes() {
-        let field1 = Fp::from_hex("a5984f2bd00906f9a86e75bfb4b2c3625f1a0d1cfacc1501e8e82ae7041efc14")
-            .expect("failed to create field");
-        let field2 = Fp::from_hex("8af0bc770d49a5b9fcabfcdd033bab470b2a211ef80b710efe71315cfa818c0a")
-            .expect("failed to create field");
-        let scalar = Fq::from_hex("c23c43a23ddc1516578b0f0d81b93cdbbc97744acc697cfc8c5dfd01cc448323")
-            .expect("failed to create scalar");
+        let field1 =
+            Fp::from_hex("a5984f2bd00906f9a86e75bfb4b2c3625f1a0d1cfacc1501e8e82ae7041efc14")
+                .expect("failed to create field");
+        let field2 =
+            Fp::from_hex("8af0bc770d49a5b9fcabfcdd033bab470b2a211ef80b710efe71315cfa818c0a")
+                .expect("failed to create field");
+        let scalar =
+            Fq::from_hex("c23c43a23ddc1516578b0f0d81b93cdbbc97744acc697cfc8c5dfd01cc448323")
+                .expect("failed to create scalar");
         let roi = ROInput::new()
             .append_field(field1)
             .append_field(field2)
@@ -668,8 +677,9 @@ mod tests {
 
     #[test]
     fn to_fields_1_scalar() {
-        let scalar = Fq::from_hex("5d496dd8ff63f640c006887098092b16bc8c78504f84fa1ee3a0b54f85f0a625")
-            .expect("failed to create scalar");
+        let scalar =
+            Fq::from_hex("5d496dd8ff63f640c006887098092b16bc8c78504f84fa1ee3a0b54f85f0a625")
+                .expect("failed to create scalar");
         let roi = ROInput::new().append_scalar(scalar);
 
         assert_eq!(
@@ -683,16 +693,15 @@ mod tests {
 
         assert_eq!(
             roi.to_fields(),
-            [
-                Fp::from_biguint(&scalar.to_biguint()).expect("failed to create field"),
-            ]
+            [Fp::from_biguint(&scalar.to_biguint()).expect("failed to create field"),]
         );
     }
 
     #[test]
     fn to_fields_1_scalar_2_bits() {
-        let scalar = Fq::from_hex("e8a9961c8c417b0d0e3d7366f6b0e6ef90a6dad123070f715e8a9eaa02e47330")
-            .expect("failed to create scalar");
+        let scalar =
+            Fq::from_hex("e8a9961c8c417b0d0e3d7366f6b0e6ef90a6dad123070f715e8a9eaa02e47330")
+                .expect("failed to create scalar");
         let roi = ROInput::new()
             .append_scalar(scalar)
             .append_bool(false)
@@ -719,13 +728,13 @@ mod tests {
 
     #[test]
     fn to_fields_2_scalars() {
-        let scalar1 = Fq::from_hex("e05c25d2c17ec20d6bc8fd21204af52808451076cff687407164a21d352ddd22")
-            .expect("failed to create scalar");
-        let scalar2 = Fq::from_hex("c356dbb39478508818e0320dffa6c1ef512564366ec885ee2fc4d385dd36df0f")
-            .expect("failed to create scalar");
-        let roi = ROInput::new()
-            .append_scalar(scalar1)
-            .append_scalar(scalar2);
+        let scalar1 =
+            Fq::from_hex("e05c25d2c17ec20d6bc8fd21204af52808451076cff687407164a21d352ddd22")
+                .expect("failed to create scalar");
+        let scalar2 =
+            Fq::from_hex("c356dbb39478508818e0320dffa6c1ef512564366ec885ee2fc4d385dd36df0f")
+                .expect("failed to create scalar");
+        let roi = ROInput::new().append_scalar(scalar1).append_scalar(scalar2);
 
         assert_eq!(
             roi.to_bytes(),
@@ -749,8 +758,9 @@ mod tests {
 
     #[test]
     fn to_fields_2_bits_scalar_u32() {
-        let scalar = Fq::from_hex("689634de233b06251a80ac7df64483922727757eea1adc6f0c8f184441cfe10d")
-            .expect("failed to create scalar");
+        let scalar =
+            Fq::from_hex("689634de233b06251a80ac7df64483922727757eea1adc6f0c8f184441cfe10d")
+                .expect("failed to create scalar");
         let roi = ROInput::new()
             .append_bool(true)
             .append_bool(false)
@@ -777,10 +787,12 @@ mod tests {
 
     #[test]
     fn to_fields_2_bits_field_scalar() {
-        let field = Fp::from_hex("90926b620ad09ed616d5df158504faed42928719c58ae619d9eccc062f920411")
-            .expect("failed to create field");
-        let scalar = Fq::from_hex("689634de233b06251a80ac7df64483922727757eea1adc6f0c8f184441cfe10d")
-            .expect("failed to create scalar");
+        let field =
+            Fp::from_hex("90926b620ad09ed616d5df158504faed42928719c58ae619d9eccc062f920411")
+                .expect("failed to create field");
+        let scalar =
+            Fq::from_hex("689634de233b06251a80ac7df64483922727757eea1adc6f0c8f184441cfe10d")
+                .expect("failed to create scalar");
         let roi = ROInput::new()
             .append_bool(false)
             .append_bool(true)
