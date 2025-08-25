@@ -176,6 +176,17 @@ fn prove_and_check_serialization_regression<G: KimchiCurve, EFqSponge, EFrSponge
 fn test_prove_and_verify() {
     prove_and_verify::<Vesta, VestaBaseSponge, VestaScalarSponge>(8);
     prove_and_verify::<Pallas, PallasBaseSponge, PallasScalarSponge>(8);
+
+    use mina_curves::pasta::{
+        curves::pallas::{WasmPallas, WasmPallasParameters},
+        wasm_friendly::Fq9,
+    };
+
+    prove_and_verify::<
+        WasmPallas,
+        DefaultFqSponge<WasmPallasParameters, SpongeParams>,
+        DefaultFrSponge<Fq9, SpongeParams>,
+    >(8);
 }
 
 #[test]
