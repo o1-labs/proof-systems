@@ -93,6 +93,15 @@ impl ROInput {
 
     /// Append a scalar field element
     pub fn append_scalar(mut self, s: Fq) -> Self {
+        // mina scalars are 255 bytes
+        let bytes = s.to_bytes();
+        let bits = &bytes.as_bits::<Lsb0>()[..Fq::MODULUS_BIT_SIZE as usize];
+        self.bits.extend(bits);
+        self
+    }
+
+    /// Append a scalar field element, converted to base field
+    pub fn append_scalar_compatible(mut self, s: Fq) -> Self {
         // Convert scalar to biguint then to base field element
         self.fields
             .push(Fp::from_biguint(&s.to_biguint()).expect("failed to create field element"));
