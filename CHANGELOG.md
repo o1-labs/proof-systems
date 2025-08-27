@@ -98,11 +98,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Changed
 - (No changes in current release)
 
-### [saffron](./saffron)
-
-#### Changed
-- (No changes in current release)
-
 ### [turshi](./turshi)
 
 #### Changed
