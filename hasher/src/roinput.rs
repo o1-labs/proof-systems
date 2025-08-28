@@ -12,8 +12,10 @@ use bitvec::{prelude::*, view::AsBits};
 use mina_curves::pasta::{Fp, Fq};
 use o1_utils::FieldHelpers;
 
-const SER_HEADER_SIZE: usize = 8; // total number of bytes for the header of the serialized ROInput
-const SINGLE_HEADER_SIZE: usize = 4; // number of bytes for each part of the header of the serialized ROInput
+/// Total number of bytes for the header of the serialized ROInput
+const SER_HEADER_SIZE: usize = 8;
+/// Number of bytes for each part of the header of the serialized ROInput
+const SINGLE_HEADER_SIZE: usize = 4;
 
 /// Random oracle input structure
 ///
