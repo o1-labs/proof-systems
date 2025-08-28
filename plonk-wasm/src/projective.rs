@@ -1,4 +1,4 @@
-use ark_ec::{AffineRepr, CurveGroup, Group};
+use ark_ec::{AdditiveGroup, AffineRepr, CurveGroup, PrimeGroup};
 use ark_ff::UniformRand;
 use paste::paste;
 use rand::rngs::StdRng;

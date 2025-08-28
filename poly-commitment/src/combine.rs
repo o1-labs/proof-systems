@@ -12,12 +12,12 @@
 //! parallel elliptic curve operations, it is actually cheaper to use affine coordinates.
 //!
 //! Most algorithms in this module take an argument `denominators: &mut Vec<F>` which
-//! is a scratch array used for performing inversions. It is passed around to avoid re-allocating
-//! such a scratch array within each algorithm.
+//! is a scratch array used for performing inversions. It is passed around to
+//! avoid re-allocating such a scratch array within each algorithm.
 
 use ark_ec::{
-    models::short_weierstrass::Affine as SWJAffine, short_weierstrass::SWCurveConfig, AffineRepr,
-    CurveGroup, Group,
+    models::short_weierstrass::Affine as SWJAffine, short_weierstrass::SWCurveConfig,
+    AdditiveGroup, AffineRepr, CurveGroup,
 };
 use ark_ff::{BitIteratorBE, Field, One, PrimeField, Zero};
 use itertools::Itertools;
@@ -286,8 +286,9 @@ fn batch_negate_in_place<P: SWCurveConfig>(ps: &mut [SWJAffine<P>]) {
     });
 }
 
-/// Uses a batch version of Algorithm 1 of <https://eprint.iacr.org/2019/1021.pdf> (on page 19) to
-/// compute `g1 + g2.scale(chal.to_field(endo_coeff))`
+/// Uses a batch version of Algorithm 1 of
+/// <https://eprint.iacr.org/2019/1021.pdf> (on page 19) to compute `g1 +
+/// g2.scale(chal.to_field(endo_coeff))`
 fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
     endo_coeff: P::BaseField,
     g1: &[SWJAffine<P>],
@@ -428,8 +429,8 @@ pub fn affine_window_combine<P: SWCurveConfig>(
     v.concat()
 }
 
-/// Given vectors of curve points `g1` and `g2`, compute a vector whose ith entry is
-/// `g1[i] + g2[i].scale(chal.to_field(endo_coeff))`
+/// Given vectors of curve points `g1` and `g2`, compute a vector whose ith
+/// entry is `g1[i] + g2[i].scale(chal.to_field(endo_coeff))`
 ///
 /// Internally, it uses the curve endomorphism to speed up this operation.
 pub fn affine_window_combine_one_endo<P: SWCurveConfig>(

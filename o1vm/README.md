@@ -216,3 +216,14 @@ The Makefile at the top-level of this repository will automatically detect new
 target `build-riscv32-programs` is called. Any change to the existing files will
 also be detected by the target, and you can commit the changes of the resulting
 binary.
+
+## License
+
+This project is dual-licensed under either:
+
+* MIT license (see LICENSE-MIT)
+* Apache License, Version 2.0 (see LICENSE-APACHE)
+
+at your option.
+
+Copyright (c) 2022-2025 o1Labs

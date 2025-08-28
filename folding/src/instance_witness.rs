@@ -374,7 +374,7 @@ impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
         // Computing E1 + c^3 E2
         let mut res = Self::combine(a, b, challenge);
 
-        // Now substracting the cross terms
+        // Now subtracting the cross terms
         let [e0, e1] = cross_terms;
 
         for (res, (e0, e1)) in res

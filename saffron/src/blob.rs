@@ -1,14 +1,13 @@
 use crate::{
     commitment::commit_to_field_elems,
     diff::Diff,
-    utils::{decode_into, encode_for_domain},
+    encoding::{decode_from_field_elements, encode_for_domain, encoding_size},
     Curve, ProjectiveCurve, ScalarField, SRS_SIZE,
 };
 use ark_ec::{AffineRepr, VariableBaseMSM};
-use ark_ff::{PrimeField, Zero};
+use ark_ff::Zero;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use o1_utils::FieldHelpers;
 use poly_commitment::{ipa::SRS, SRS as _};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -46,7 +45,7 @@ impl FieldBlob {
         domain: &Radix2EvaluationDomain<ScalarField>,
         diff: &Diff<ScalarField>,
     ) {
-        assert!(diff.addresses.len() == diff.new_values.len());
+        assert_eq!(diff.addresses.len(), diff.diff_values.len());
 
         let lagrange_basis = srs
             .get_lagrange_basis(*domain)
@@ -61,28 +60,13 @@ impl FieldBlob {
             .map(|idx| basis[*idx as usize])
             .collect();
 
-        // Old values at `addresses`
-        let old_values_at_addr: Vec<_> = diff
-            .addresses
-            .iter()
-            .map(|idx| self.data[diff.region as usize * SRS_SIZE + *idx as usize])
-            .collect();
-
-        for (idx, value) in diff.addresses.iter().zip(diff.new_values.iter()) {
-            self.data[SRS_SIZE * diff.region as usize + *idx as usize] = *value;
+        for (idx, value) in diff.addresses.iter().zip(diff.diff_values.iter()) {
+            self.data[SRS_SIZE * diff.region as usize + *idx as usize] += *value;
         }
 
         // Lagrange commitment to the (new values-old values) at `addresses`
-        let delta_data_commitment_at_addr = ProjectiveCurve::msm(
-            address_basis.as_slice(),
-            old_values_at_addr
-                .iter()
-                .zip(diff.new_values.iter())
-                .map(|(old, new)| new - old)
-                .collect::<Vec<_>>()
-                .as_slice(),
-        )
-        .unwrap();
+        let delta_data_commitment_at_addr =
+            ProjectiveCurve::msm(address_basis.as_slice(), diff.diff_values.as_slice()).unwrap();
 
         let new_commitment =
             (self.commitments[diff.region as usize] + delta_data_commitment_at_addr).into();
@@ -127,31 +111,15 @@ impl FieldBlob {
     /// externally to achieve the expected result.
     #[instrument(skip_all, level = "debug")]
     pub fn into_bytes(blob: FieldBlob) -> Vec<u8> {
-        // n < m
-        // How many bytes fit into the field
-        let n = (ScalarField::MODULUS_BIT_SIZE / 8) as usize;
-        // How many bytes are necessary to fit a field element
-        let m = ScalarField::size_in_bytes();
-
-        let intended_vec_len = n * blob.commitments.len() * SRS_SIZE;
-        let mut bytes = Vec::with_capacity(intended_vec_len);
-        let mut buffer = vec![0u8; m];
-
-        for x in blob.data {
-            decode_into(&mut buffer, x);
-            bytes.extend_from_slice(&buffer[(m - n)..m]);
-        }
-
+        let intended_vec_len = encoding_size::<ScalarField>() * blob.commitments.len() * SRS_SIZE;
+        let bytes = decode_from_field_elements(blob.data);
         assert!(bytes.len() == intended_vec_len);
-
         bytes
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::env;
-
     use super::*;
 
     use crate::{diff::tests::*, utils::test_utils::*, Curve, ScalarField};
@@ -161,13 +129,7 @@ mod tests {
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
 
-    static SRS: Lazy<SRS<Curve>> = Lazy::new(|| {
-        if let Ok(srs) = std::env::var("SRS_FILEPATH") {
-            env::get_srs_from_cache(srs)
-        } else {
-            SRS::create(1 << 16)
-        }
-    });
+    static SRS: Lazy<SRS<Curve>> = Lazy::new(poly_commitment::precomputed_srs::get_srs_test);
 
     static DOMAIN: Lazy<Radix2EvaluationDomain<ScalarField>> =
         Lazy::new(|| Radix2EvaluationDomain::new(SRS.size()).unwrap());

@@ -832,9 +832,7 @@ pub fn heavy_test_simple_add() {
                     Evaluations::from_vec_and_domain(evaluations_d8.clone(), domain.d8)
                         .interpolate();
                 if !interpolated.is_zero() {
-                    let (_, remainder) = interpolated
-                        .divide_by_vanishing_poly(domain.d1)
-                        .unwrap_or_else(|| panic!("Cannot divide by vanishing polynomial"));
+                    let (_, remainder) = interpolated.divide_by_vanishing_poly(domain.d1);
                     if !remainder.is_zero() {
                         panic!("Remainder is not zero for expression #{expr_i}: {}", expr,);
                     }
@@ -916,9 +914,7 @@ pub fn heavy_test_simple_add() {
             let interpolated =
                 Evaluations::from_vec_and_domain(evaluations_big, evaluation_domain).interpolate();
             if !interpolated.is_zero() {
-                let (_, remainder) = interpolated
-                    .divide_by_vanishing_poly(domain.d1)
-                    .unwrap_or_else(|| panic!("ERROR: Cannot divide by vanishing polynomial"));
+                let (_, remainder) = interpolated.divide_by_vanishing_poly(domain.d1);
                 if !remainder.is_zero() {
                     panic!(
                         "ERROR: Remainder is not zero for joint expression: {}",

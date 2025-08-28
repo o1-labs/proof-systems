@@ -3,7 +3,6 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion, SamplingMode};
 use kimchi::{circuits::domains::EvaluationDomains, groupmap::GroupMap};
-use mina_curves::pasta::Vesta;
 use poly_commitment::{commitment::CommitmentCurve, SRS as _};
 
 use saffron::{
@@ -12,7 +11,7 @@ use saffron::{
         testing::{generate_random_inst_wit_core, generate_random_inst_wit_relaxed},
         verify_relaxed,
     },
-    ScalarField,
+    Curve, ScalarField,
 };
 
 fn bench_folding(c: &mut Criterion) {
@@ -23,7 +22,7 @@ fn bench_folding(c: &mut Criterion) {
     let mut rng = o1_utils::tests::make_test_rng(None);
 
     let srs = poly_commitment::precomputed_srs::get_srs_test();
-    let group_map = <Vesta as CommitmentCurve>::Map::setup();
+    let group_map = <Curve as CommitmentCurve>::Map::setup();
 
     let domain: EvaluationDomains<ScalarField> =
         EvaluationDomains::<ScalarField>::create(srs.size()).unwrap();
@@ -31,8 +30,8 @@ fn bench_folding(c: &mut Criterion) {
     group.bench_function("folding_prover", |b| {
         b.iter_batched(
             || {
-                let relaxed = generate_random_inst_wit_relaxed(&srs, domain, &mut rng);
-                let core = generate_random_inst_wit_core(&srs, domain, &mut rng);
+                let relaxed = generate_random_inst_wit_relaxed(&srs, domain.d1, &mut rng);
+                let core = generate_random_inst_wit_core(&srs, domain.d1, &mut rng);
                 (core, relaxed)
             },
             |((core_instance, core_witness), (relaxed_instance, relaxed_witness))| {
@@ -53,9 +52,9 @@ fn bench_folding(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let (relaxed_instance, relaxed_witness) =
-                    generate_random_inst_wit_relaxed(&srs, domain, &mut rng);
+                    generate_random_inst_wit_relaxed(&srs, domain.d1, &mut rng);
                 let (core_instance, core_witness) =
-                    generate_random_inst_wit_core(&srs, domain, &mut rng);
+                    generate_random_inst_wit_core(&srs, domain.d1, &mut rng);
                 let (_, _, cross_term) = folding_prover(
                     &srs,
                     domain.d1,
@@ -79,7 +78,7 @@ fn bench_folding(c: &mut Criterion) {
 
     group.bench_function("prover_relaxed", |b| {
         b.iter_batched(
-            || generate_random_inst_wit_relaxed(&srs, domain, &mut rng),
+            || generate_random_inst_wit_relaxed(&srs, domain.d1, &mut rng),
             |(relaxed_instance, relaxed_witness)| {
                 black_box(prove_relaxed(
                     &srs,
@@ -95,7 +94,7 @@ fn bench_folding(c: &mut Criterion) {
     });
 
     let (relaxed_instance, relaxed_witness) =
-        generate_random_inst_wit_relaxed(&srs, domain, &mut rng);
+        generate_random_inst_wit_relaxed(&srs, domain.d1, &mut rng);
     let proof = prove_relaxed(
         &srs,
         domain,

@@ -21,8 +21,8 @@ pub fn test_regression_commit_non_hiding_expected_number_of_chunks<
     let srs_size = 1 << log2_srs_size;
     let srs = Srs::create(srs_size);
 
-    // If we have a polynomial of the size of the SRS (i.e. of degree `srs_size -
-    // 1`), and we request 1 chunk, we should get 1 chunk.
+    // If we have a polynomial of the size of the SRS (i.e. of degree `srs_size
+    // - 1`), and we request 1 chunk, we should get 1 chunk.
     {
         // srs_size is the number of evaluation degree
         let poly_degree = srs_size - 1;
@@ -31,8 +31,8 @@ pub fn test_regression_commit_non_hiding_expected_number_of_chunks<
         assert_eq!(commitment.len(), 1);
     }
 
-    // If we have a polynomial of the size of the SRS (i.e. of degree `srs_size -
-    // 1`), and we request k chunks (k > 1), we should get k chunk.
+    // If we have a polynomial of the size of the SRS (i.e. of degree `srs_size
+    // - 1`), and we request k chunks (k > 1), we should get k chunk.
     {
         // srs_size is the number of evaluation degree
         let poly_degree = srs_size - 1;
@@ -43,7 +43,8 @@ pub fn test_regression_commit_non_hiding_expected_number_of_chunks<
         assert_eq!(commitment.len(), k);
     }
 
-    // Same than the two previous cases, but with the special polynomial equals to zero.
+    // Same than the two previous cases, but with the special polynomial equals
+    // to zero.
     {
         let k = rng.gen_range(1..10);
         let poly = DensePolynomial::<G::ScalarField>::zero();

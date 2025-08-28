@@ -10,6 +10,7 @@ use crate::{
     quadraticization::ExtendedWitnessGenerator,
     FoldingConfig, FoldingEnv, Instance, RelaxedInstance, RelaxedWitness, ScalarField,
 };
+use ark_ec::AdditiveGroup;
 use ark_ff::{Field, One, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi::circuits::expr::Variable;
@@ -47,8 +48,8 @@ pub(crate) fn eval_sided<'a, C: FoldingConfig>(
         Atom(col) => env.col(col, side),
         Double(e) => {
             let col = eval_sided(e, env, side);
-            col.map(Field::double, |f| {
-                Field::double_in_place(f);
+            col.map(AdditiveGroup::double, |f| {
+                AdditiveGroup::double_in_place(f);
             })
         }
         Square(e) => {
@@ -111,15 +112,15 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
         Atom(col) => env.col(col, side),
         Double(e) => {
             let col = eval_exp_error(e, env, side);
-            col.map(Field::double, |f| {
-                Field::double_in_place(f);
+            col.map(AdditiveGroup::double, |f| {
+                AdditiveGroup::double_in_place(f);
             })
         }
         Square(e) => match exp.folding_degree() {
             Degree::Two => {
                 let cross = eval_exp_error(e, env, side) * eval_exp_error(e, env, side.other());
-                cross.map(Field::double, |f| {
-                    Field::double_in_place(f);
+                cross.map(AdditiveGroup::double, |f| {
+                    AdditiveGroup::double_in_place(f);
                 })
             }
             _ => {

@@ -3,24 +3,33 @@
 //! Definition of random oracle input structure and
 //! methods for serializing into bytes and field elements
 
+use core::fmt::Error;
+
 use super::Hashable;
 use alloc::{vec, vec::Vec};
-use ark_ff::PrimeField;
+use ark_ff::{BigInteger, PrimeField};
 use bitvec::{prelude::*, view::AsBits};
 use mina_curves::pasta::{Fp, Fq};
 use o1_utils::FieldHelpers;
 
+const SER_HEADER_SIZE: usize = 8; // total number of bytes for the header of the serialized ROInput
+const SINGLE_HEADER_SIZE: usize = 4; // number of bytes for each part of the header of the serialized ROInput
+
 /// Random oracle input structure
 ///
-/// The random oracle input encapsulates the serialization format and methods using during hashing.
+/// The random oracle input encapsulates the serialization format and methods
+/// using during hashing.
 ///
-/// When implementing the [`Hashable`] trait to enable hashing for a type, you must implement
-/// its `to_roinput()` serialization method using the [`ROInput`] functions below.
+/// When implementing the [`Hashable`] trait to enable hashing for a type, you
+/// must implement its `to_roinput()` serialization method using the [`ROInput`]
+/// functions below.
 ///
-/// The random oracle input structure is used (by generic code) to serialize the object into
-/// both a vector of `pasta::Fp` field elements and into a vector of bytes, depending on the situation.
+/// The random oracle input structure is used (by generic code) to serialize the
+/// object into both a vector of `pasta::Fp` field elements and into a vector of
+/// bytes, depending on the situation.
 ///
-/// Here is an example of how `ROInput` is used during the definition of the `Hashable` trait.
+/// Here is an example of how `ROInput` is used during the definition of the
+/// `Hashable` trait.
 ///
 /// ```rust
 /// use mina_hasher::{Hashable, ROInput};
@@ -48,11 +57,12 @@ use o1_utils::FieldHelpers;
 ///     }
 /// }
 /// ```
-/// **Details:** For technical reasons related to our proof system and performance,
-/// non-field-element members are serialized for signing differently than other types.
-/// Additionally, during signing all members of the random oracle input get serialized
-/// together in two different ways: both as *bytes* and as a vector of *field elements*.
-/// The random oracle input automates and encapsulates this complexity.
+/// **Details:** For technical reasons related to our proof system and
+/// performance, non-field-element members are serialized for signing
+/// differently than other types. Additionally, during signing all members of
+/// the random oracle input get serialized together in two different ways: both
+/// as *bytes* and as a vector of *field elements*. The random oracle input
+/// automates and encapsulates this complexity.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct ROInput {
     fields: Vec<Fp>,
@@ -171,6 +181,66 @@ impl ROInput {
         fields.extend(bits_as_fields);
 
         fields
+    }
+
+    /// Serialize the ROInput into bytes
+    pub fn serialize(&self) -> Vec<u8> {
+        // 4-byte LE field count, 4-byte LE bit count, then payload
+        let fields_len = self.fields.len() as u32;
+        let bits_len = self.bits.len() as u32;
+
+        let mut bytes = Vec::with_capacity(SER_HEADER_SIZE + self.to_bytes().len());
+        bytes.extend_from_slice(&fields_len.to_le_bytes());
+        bytes.extend_from_slice(&bits_len.to_le_bytes());
+        bytes.extend_from_slice(&self.to_bytes());
+        bytes
+    }
+
+    /// Deserialize a `ROInput` from bytes
+    pub fn deserialize(input: &[u8]) -> Result<Self, Error> {
+        if input.len() < SER_HEADER_SIZE {
+            return Err(Error);
+        }
+
+        // read back our two u32 little-endian lengths
+        let fields_len =
+            u32::from_le_bytes(input[0..SINGLE_HEADER_SIZE].try_into().unwrap()) as usize;
+        let bits_len = u32::from_le_bytes(
+            input[SINGLE_HEADER_SIZE..SER_HEADER_SIZE]
+                .try_into()
+                .unwrap(),
+        ) as usize;
+
+        // the rest is payload
+        let bits = input[SER_HEADER_SIZE..].view_bits::<Lsb0>();
+
+        // Check that the number of bytes is consistent with the expected lengths
+        let expected_len_bits = fields_len * Fp::MODULUS_BIT_SIZE as usize + bits_len;
+        // Round up to nearest multiple of 8
+        let expected_len = (expected_len_bits + 7) / 8 + SER_HEADER_SIZE;
+        if input.len() != expected_len {
+            return Err(Error);
+        }
+
+        // allocate space for exactly `fields_len` elements
+        let mut fields = Vec::with_capacity(fields_len);
+
+        for chunk in bits.chunks(Fp::MODULUS_BIT_SIZE as usize).take(fields_len) {
+            let bools: Vec<bool> = chunk.iter().by_vals().collect();
+            // conver little-endian bits to a big integer representation
+            let repr = <Fp as PrimeField>::BigInt::from_bits_le(&bools);
+            // convert to field element (reduces mod p)
+            let elt = Fp::from_bigint(repr).ok_or(Error)?;
+            fields.push(elt);
+        }
+
+        let remainder = &bits[fields_len * Fp::MODULUS_BIT_SIZE as usize..];
+        // Delete the final bits according to the bits length
+        let bits = remainder.iter().take(bits_len).collect::<BitVec<u8>>();
+
+        let roi = ROInput { fields, bits };
+
+        Ok(roi)
     }
 }
 
@@ -908,5 +978,199 @@ mod tests {
             c: b1.c,
         };
         assert_ne!(b1.to_roinput(), b2.to_roinput());
+    }
+
+    #[test]
+    fn serialize_empty() {
+        let roi = ROInput::new();
+
+        let serialized = roi.serialize();
+
+        assert_eq!(
+            serialized,
+            vec![0; SER_HEADER_SIZE],
+            "Serialized empty ROInput should be zero bytes"
+        );
+
+        let deserialized_roi =
+            ROInput::deserialize(&serialized).expect("Failed to deserialize ROInput");
+        assert_eq!(
+            roi, deserialized_roi,
+            "Serialized and deserialized ROInput do not match"
+        );
+    }
+
+    #[test]
+    fn serialize_single_field() {
+        let roi = ROInput::new().append_field(
+            Fp::from_hex("41203c6bbac14b357301e1f386d80f52123fd00f02197491b690bddfa742ca22")
+                .expect("failed to create field"),
+        );
+
+        let serialized = roi.serialize();
+        let expected_length = SER_HEADER_SIZE + 32; // 32 bytes for the field
+        assert_eq!(
+            serialized.len(),
+            expected_length,
+            "Serialized ROInput length mismatch"
+        );
+        assert_eq!(
+            serialized,
+            [
+                0x01, 0x00, 0x00, 0x00, // Field count
+                0x00, 0x00, 0x00, 0x00, // Bit count
+                0x41, 0x20, 0x3c, 0x6b, 0xba, 0xc1, 0x4b, 0x35, 0x73, 0x01, 0xe1, 0xf3, 0x86, 0xd8,
+                0x0f, 0x52, 0x12, 0x3f, 0xd0, 0x0f, 0x02, 0x19, 0x74, 0x91, 0xb6, 0x90, 0xbd, 0xdf,
+                0xa7, 0x42, 0xca, 0x22
+            ]
+            .to_vec(),
+            "Serialized ROInput does not match expected output"
+        );
+
+        assert_eq!(
+            roi,
+            ROInput::deserialize(&serialized).expect("Failed to deserialize ROInput"),
+            "Serialized and deserialized ROInput do not match"
+        )
+    }
+
+    #[test]
+    fn serialize_single_bool() {
+        let roi = ROInput::new().append_bool(true);
+
+        let serialized = roi.serialize();
+        let expected_length = SER_HEADER_SIZE + 1; // 1 byte for the boolean
+        assert_eq!(
+            serialized.len(),
+            expected_length,
+            "Serialized ROInput length mismatch"
+        );
+        assert_eq!(
+            serialized,
+            [
+                0x00, 0x00, 0x00, 0x00,
+                0x01, 0x00, 0x00, 0x00,
+                0x01  // Boolean value
+            ]
+            .to_vec(),
+            "Serialized ROInput does not match expected output"
+        );
+
+        assert_eq!(
+            roi,
+            ROInput::deserialize(&serialized).expect("Failed to deserialize ROInput"),
+            "Serialized and deserialized ROInput do not match"
+        );
+    }
+
+    #[test]
+    fn serialize_multiple_bools_length() {
+        for i in 0..1024 {
+            let roi = ROInput::new().append_bool(i % 2 == 0);
+            let serialized = roi.serialize();
+
+            // Deserialize and check if it matches
+            let deserialized_roi =
+                ROInput::deserialize(&serialized).expect("Failed to deserialize ROInput");
+            assert_eq!(
+                roi, deserialized_roi,
+                "Serialized and deserialized ROInput do not match for i={}",
+                i
+            );
+        }
+    }
+
+    #[test]
+    fn deserialize_invalid() {
+        let invalid_data = vec![0x01, 0x00, 0x00, 0x00]; // Invalid header, missing fields and bits
+
+        let result = ROInput::deserialize(&invalid_data);
+        assert!(
+            result.is_err(),
+            "Deserialization should fail for invalid data"
+        );
+    }
+
+    #[test]
+    fn deserialize_invalid_inconsistent_bitlen() {
+        let invalid_data = vec![
+            0x01, 0x00, 0x00, // Field count
+            0x01, 0x00, 0x00, 0x00, // Bit count
+            0x01, // Boolean value
+                  // Missing bits for the boolean
+        ];
+
+        let result = ROInput::deserialize(&invalid_data);
+        assert!(
+            result.is_err(),
+            "Deserialization should fail for inconsistent bit length"
+        );
+    }
+
+    #[test]
+    fn deserialize_invalid_message() {
+        let msg = b"Test message for Mina compatibility".to_vec();
+        let result = ROInput::deserialize(&msg);
+        assert!(
+            result.is_err(),
+            "Deserialization should fail for invalid message format"
+        );
+    }
+
+    #[test]
+    fn deserialize_invalid_fieldheader() {
+        let invalid_data = vec![
+            0x01, 0x00, 0x00, 0x00, // Field count
+            0x01, 0x00, 0x00, 0x00, // Bit count
+            // Incorrect number of bytes for field header
+            0x01, 0x02, 0x03, 0x04, 0x01, // Boolean value
+        ];
+
+        let result = ROInput::deserialize(&invalid_data);
+        assert!(
+            result.is_err(),
+            "Deserialization should fail for overflow in field header"
+        );
+    }
+
+    #[test]
+    fn serialize_tx() {
+        let tx_roi = ROInput::new()
+            .append_field(
+                Fp::from_hex("41203c6bbac14b357301e1f386d80f52123fd00f02197491b690bddfa742ca22")
+                    .expect("failed to create field"),
+            )
+            .append_field(
+                Fp::from_hex("992cdaf29ffe15b2bcea5d00e498ed4fffd117c197f0f98586e405f72ef88e00")
+                    .expect("failed to create field"),
+            ) // source
+            .append_field(
+                Fp::from_hex("3fba4fa71bce0dfdf709d827463036d6291458dfef772ff65e87bd6d1b1e062a")
+                    .expect("failed to create field"),
+            ) // receiver
+            .append_u64(1000000) // fee
+            .append_u64(1) // fee token
+            .append_bool(true) // fee payer pk odd
+            .append_u32(0) // nonce
+            .append_u32(u32::MAX) // valid_until
+            .append_bytes(&[0; 34]) // memo
+            .append_bool(false) // tags[0]
+            .append_bool(false) // tags[1]
+            .append_bool(false) // tags[2]
+            .append_bool(true) // sender pk odd
+            .append_bool(false) // receiver pk odd
+            .append_u64(1) // token_id
+            .append_u64(10000000000) // amount
+            .append_bool(false); // token_locked
+
+        let tx_bytes = tx_roi.serialize();
+
+        let deserialized_roi =
+            ROInput::deserialize(&tx_bytes).expect("Failed to deserialize ROInput");
+
+        assert_eq!(
+            tx_roi, deserialized_roi,
+            "Serialized and deserialized ROInput do not match"
+        );
     }
 }

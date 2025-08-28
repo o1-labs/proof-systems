@@ -90,7 +90,7 @@ fn benchmark_msm_vesta(c: &mut Criterion) {
 /// For even bigger MSMs (larger than 2^16), splitting in more chunks
 /// (e.g. 4) might be the best solution.
 fn benchmark_msm_parallel_vesta(c: &mut Criterion) {
-    use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
+    use ark_ec::{AffineRepr, CurveGroup, PrimeGroup, VariableBaseMSM};
     use rayon::prelude::*;
 
     let max_threads_global = rayon::max_num_threads();

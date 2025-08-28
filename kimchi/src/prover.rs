@@ -66,8 +66,7 @@ macro_rules! check_constraint {
         if cfg!(debug_assertions) {
             let (_, res) = $evaluation
                 .interpolate_by_ref()
-                .divide_by_vanishing_poly($index.cs.domain.d1)
-                .unwrap();
+                .divide_by_vanishing_poly($index.cs.domain.d1);
             if !res.is_zero() {
                 panic!("couldn't divide by vanishing polynomial: {}", $label);
             }
@@ -873,9 +872,7 @@ where
             f += &public_poly;
 
             // divide contributions with vanishing polynomial
-            let (mut quotient, res) = f
-                .divide_by_vanishing_poly(index.cs.domain.d1)
-                .ok_or(ProverError::Prover("division by vanishing polynomial"))?;
+            let (mut quotient, res) = f.divide_by_vanishing_poly(index.cs.domain.d1);
             if !res.is_zero() {
                 return Err(ProverError::Prover(
                     "rest of division by vanishing polynomial",

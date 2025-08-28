@@ -1,4 +1,4 @@
-use ark_ec::{AffineRepr, Group};
+use ark_ec::{AffineRepr, PrimeGroup};
 use ark_ff::{PrimeField, UniformRand};
 use arrabbiata::{
     curve::PlonkSpongeConstants,

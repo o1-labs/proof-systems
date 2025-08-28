@@ -1,22 +1,29 @@
 name: Bench mina circuits (set baseline master)
 
+# Runs on either pushes to master, or on manual call
+#
+# Please don't regenerate the data unless you REALLY know what you're doing, e.g. you had to regenerate
+# benchmark data and now the baselines changed.
 on:
   push:
     branches:
       - master
+  pull_request:
+    types: [labeled]
 
 env:
-  OCAML_VERSION: "4.14"
+  OCAML_VERSION: "4.14.2"
   RUST_TOOLCHAIN_VERSION: "1.81"
 
 
 jobs:
   bench-set-baseline:
+    if: github.event_name == 'push' || github.event.label.name == 'unsafe-benches-mina-reset-baseline'
     runs-on: ubuntu-latest
     name: Run benches
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
 

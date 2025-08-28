@@ -1,6 +1,6 @@
 use crate::plonkish_lang::{CombinableEvals, PlonkishChallenge, PlonkishWitnessGeneric};
 use ark_ec::AffineRepr;
-use ark_ff::Field;
+use ark_ff::{AdditiveGroup, Field};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as R2D};
 use core::ops::Index;
 use folding::{
@@ -115,8 +115,8 @@ impl<
             Atom(column) => self.process_extended_folding_column(column),
             Double(e) => {
                 let col = self.eval_naive_fexpr(e);
-                col.map(Field::double, |f| {
-                    Field::double_in_place(f);
+                col.map(AdditiveGroup::double, |f| {
+                    AdditiveGroup::double_in_place(f);
                 })
             }
             Square(e) => {
@@ -173,8 +173,8 @@ impl<
             }
             Double(e) => {
                 let col = self.eval_naive_fcompat(e);
-                col.map(Field::double, |f| {
-                    Field::double_in_place(f);
+                col.map(AdditiveGroup::double, |f| {
+                    AdditiveGroup::double_in_place(f);
                 })
             }
             Square(e) => {

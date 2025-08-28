@@ -7,4 +7,5 @@ publish = false
 [dependencies]
 anyhow = "1.0"
 clap = { version = "4.4.6", features = ["derive"] }
+raw-cpuid = "11.5.0"
 wasm-pack = "=0.12.1"

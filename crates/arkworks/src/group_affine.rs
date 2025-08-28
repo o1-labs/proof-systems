@@ -21,11 +21,27 @@ pub struct WasmGPallas {
 }
 
 #[wasm_bindgen]
+impl WasmGPallas {
+    #[wasm_bindgen]
+    pub fn wasm_clone(&self) -> Self {
+        *self
+    }
+}
+
+#[wasm_bindgen]
 #[derive(Clone, Copy, Debug)]
 pub struct WasmGVesta {
     pub x: WasmPastaFq,
     pub y: WasmPastaFq,
     pub infinity: bool,
+}
+
+#[wasm_bindgen]
+impl WasmGVesta {
+    #[wasm_bindgen]
+    pub fn wasm_clone(&self) -> Self {
+        *self
+    }
 }
 
 // Conversions from/to AffineVesta

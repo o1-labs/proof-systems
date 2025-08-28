@@ -140,9 +140,7 @@ where
         Radix2EvaluationDomain<G::ScalarField>,
     > = constraint.evaluations(&eval_env);
     let t_numerator_poly = t_numerator_evaluation.interpolate();
-    let (t, rem) = t_numerator_poly
-        .divide_by_vanishing_poly(domain.d1)
-        .unwrap();
+    let (t, rem) = t_numerator_poly.divide_by_vanishing_poly(domain.d1);
     assert!(!rem.is_zero());
     let t_commitment = srs.commit_non_hiding(
         &t, 8, //TODO: check the degree,

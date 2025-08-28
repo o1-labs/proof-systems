@@ -1,16 +1,15 @@
 use anyhow::Result;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use clap::Parser;
-use kimchi::{curve::KimchiCurve, groupmap::GroupMap, mina_poseidon::FqSponge};
-use mina_curves::pasta::{Fp, Vesta};
+use kimchi::{curve::KimchiCurve, groupmap::GroupMap};
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rand::rngs::OsRng;
 use saffron::{
     blob::FieldBlob,
     cli::{self, HexString},
-    commitment, env,
+    commitment, encoding, env,
     storage_proof::{self, StorageProof},
-    utils, Curve, CurveFqSponge, ScalarField,
+    Curve, CurveSponge, ScalarField, Sponge,
 };
 use std::{
     fs::File,
@@ -18,7 +17,7 @@ use std::{
 };
 use tracing::{debug, debug_span};
 
-fn get_srs_and_domain(cache: Option<String>) -> (SRS<Vesta>, Radix2EvaluationDomain<Fp>) {
+fn get_srs_and_domain(cache: Option<String>) -> (SRS<Curve>, Radix2EvaluationDomain<ScalarField>) {
     let res = match cache {
         Some(cache) => {
             let srs = env::get_srs_from_cache(cache);
@@ -84,9 +83,9 @@ fn encode_file(args: cli::EncodeFileArgs) -> Result<()> {
         let challenge_seed_args = args
             .challenge_seed
             .expect("if assert-commitment is requested, challenge-seed must be provided");
-        let challenge_seed: ScalarField = utils::encode(&challenge_seed_args.0);
+        let challenge_seed: ScalarField = encoding::encode(&challenge_seed_args.0);
 
-        let mut sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+        let mut sponge = CurveSponge::new(Curve::other_curve_sponge_params());
         sponge.absorb_fr(&[challenge_seed]);
         let (combined_data_commitment, _challenge) =
             commitment::combine_commitments(&mut sponge, blob.commitments.as_slice());
@@ -123,8 +122,8 @@ pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<HexString>
     };
     let blob = FieldBlob::from_bytes(&srs, domain_fp, buf.as_slice());
 
-    let challenge_seed: ScalarField = utils::encode(&args.challenge_seed.0);
-    let mut sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+    let challenge_seed: ScalarField = encoding::encode(&args.challenge_seed.0);
+    let mut sponge = CurveSponge::new(Curve::other_curve_sponge_params());
     sponge.absorb_fr(&[challenge_seed]);
     let (combined_data_commitment, _challenge) =
         commitment::combine_commitments(&mut sponge, blob.commitments.as_slice());
@@ -162,13 +161,13 @@ pub fn compute_commitment(args: cli::ComputeCommitmentArgs) -> Result<HexString>
 pub fn storage_proof(args: cli::StorageProofArgs) -> Result<HexString> {
     let file = File::open(args.input)?;
     let blob: FieldBlob = rmp_serde::decode::from_read(file)?;
-    let challenge_seed: ScalarField = utils::encode(&args.challenge_seed.0);
+    let challenge_seed: ScalarField = encoding::encode(&args.challenge_seed.0);
     let proof = {
         let (srs, _) = get_srs_and_domain(args.srs_cache);
-        let group_map = <Vesta as CommitmentCurve>::Map::setup();
+        let group_map = <Curve as CommitmentCurve>::Map::setup();
         let mut rng = OsRng;
 
-        let mut sponge = CurveFqSponge::new(Curve::other_curve_sponge_params());
+        let mut sponge = CurveSponge::new(Curve::other_curve_sponge_params());
         sponge.absorb_fr(&[challenge_seed]);
         let (_combined_data_commitment, challenge) =
             commitment::combine_commitments(&mut sponge, blob.commitments.as_slice());

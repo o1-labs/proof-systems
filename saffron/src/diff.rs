@@ -1,4 +1,4 @@
-use crate::utils::encode_for_domain;
+use crate::encoding::encode_for_domain;
 use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
 use rayon::prelude::*;
@@ -13,8 +13,8 @@ pub struct Diff<F: PrimeField> {
     pub region: u64,
     /// A list of unique addresses, each ∈ [0, SRS_SIZE]
     pub addresses: Vec<u64>,
-    /// A list of new values, each corresponding to address in `addresses`
-    pub new_values: Vec<F>,
+    /// A list of `new_value - old_values`, each corresponding to address in `addresses`
+    pub diff_values: Vec<F>,
 }
 
 #[derive(Debug, Error, Clone, PartialEq)]
@@ -44,11 +44,11 @@ impl<F: PrimeField> Diff<F> {
             .enumerate()
             .filter_map(|(region, (o, n))| {
                 let mut addresses: Vec<u64> = vec![];
-                let mut new_values: Vec<F> = vec![];
+                let mut diff_values: Vec<F> = vec![];
                 for (index, (o_elem, n_elem)) in o.iter().zip(n.iter()).enumerate() {
                     if o_elem != n_elem {
                         addresses.push(index as u64);
-                        new_values.push(*n_elem);
+                        diff_values.push(*n_elem - *o_elem);
                     }
                 }
 
@@ -56,7 +56,7 @@ impl<F: PrimeField> Diff<F> {
                     Some(Diff {
                         region: region as u64,
                         addresses,
-                        new_values,
+                        diff_values,
                     })
                 } else {
                     // do not record a diff with empty changes
@@ -82,8 +82,8 @@ impl<F: PrimeField> Diff<F> {
     /// Updates the data with the provided diff, replacing old values at
     /// specified addresses by corresponding new ones
     pub fn apply_inplace(data: &mut [Vec<F>], diff: &Diff<F>) {
-        for (addr, new_value) in diff.addresses.iter().zip(diff.new_values.iter()) {
-            data[diff.region as usize][*addr as usize] = *new_value;
+        for (addr, diff_value) in diff.addresses.iter().zip(diff.diff_values.iter()) {
+            data[diff.region as usize][*addr as usize] += *diff_value;
         }
     }
 
@@ -99,14 +99,16 @@ impl<F: PrimeField> Diff<F> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::utils::{chunk_size_in_bytes, min_encoding_chunks, test_utils::UserData};
+    use crate::{
+        utils::{chunk_size_in_bytes, min_encoding_chunks, test_utils::UserData},
+        ScalarField,
+    };
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
-    use mina_curves::pasta::Fp;
     use once_cell::sync::Lazy;
     use proptest::prelude::*;
     use rand::Rng;
 
-    static DOMAIN: Lazy<Radix2EvaluationDomain<Fp>> =
+    static DOMAIN: Lazy<Radix2EvaluationDomain<ScalarField>> =
         Lazy::new(|| Radix2EvaluationDomain::new(1 << 16).unwrap());
 
     pub fn randomize_data(threshold: f64, data: &[u8]) -> Vec<u8> {
@@ -145,7 +147,7 @@ pub mod tests {
         ) {
             let min_len = xs.len().min(ys.len());
             let (xs, ys) = (&xs[..min_len], &ys[..min_len]) ;
-            let diffs = Diff::<Fp>::create_from_bytes(&*DOMAIN, xs, ys);
+            let diffs = Diff::<ScalarField>::create_from_bytes(&*DOMAIN, xs, ys);
             prop_assert!(diffs.is_ok());
             let diffs = diffs.unwrap();
 
@@ -188,7 +190,7 @@ pub mod tests {
         ) {
             let mut ys = randomize_data(threshold, &data);
             ys.append(&mut extra);
-            let diff = Diff::<Fp>::create_from_bytes(&*DOMAIN, &data, &ys);
+            let diff = Diff::<ScalarField>::create_from_bytes(&*DOMAIN, &data, &ys);
             prop_assert!(diff.is_err());
         }
     }

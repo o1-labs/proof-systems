@@ -6,7 +6,7 @@ on:
       - labeled
 
 env:
-  OCAML_VERSION: "4.14.0"
+  OCAML_VERSION: "4.14.2"
   RUST_TOOLCHAIN_VERSION: "1.81"
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
     if: github.event.label.name == 'benchmark'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
 

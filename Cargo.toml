@@ -29,14 +29,14 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-ark-algebra-test-templates = "0.4.2"
-ark-bn254 = { version = "0.4.0" }
-ark-ec = { version = "0.4.2", features = ["parallel"] }
-ark-ff = { version = "0.4.2", features = ["parallel", "asm"] }
-ark-poly = { version = "0.4.2", features = ["parallel"] }
-ark-serialize = "0.4.2"
-ark-std = { version = "0.4.0", features = ["parallel"] }
-ark-test-curves = { version = "0.4.2", features = ["parallel", "asm"] }
+ark-algebra-test-templates = "0.5"
+ark-bn254 = { version = "0.5" }
+ark-ec = { version = "0.5", features = ["parallel"] }
+ark-ff = { version = "0.5", features = ["parallel", "asm"] }
+ark-poly = { version = "0.5", features = ["parallel"] }
+ark-serialize = "0.5"
+ark-std = { version = "0.5", features = ["parallel"] }
+ark-test-curves = { version = "0.5", features = ["parallel", "asm"] }
 base64 = "0.21.5"
 bcs = "0.1.3"
 bitvec = "1.0.0"
@@ -51,7 +51,7 @@ criterion = { version = "0.5", features = [
 ] }
 elf = "0.7.2"
 env_logger = "0.11.1"
-getrandom = { version = "=0.2.15", features = ["js"] }
+getrandom = { version = "0.2.15", features = ["js"] }
 hex = { version = "0.4", features = ["serde"] }
 iai = "0.1"
 itertools = "0.12.1"
@@ -65,19 +65,19 @@ ocaml = { version = "0.22.2" }
 ocaml-gen = { version = "1.0.0" }
 once_cell = "=1.21.3"
 os_pipe = { version = "1.1.4", features = ["io_safety"] }
-paste = "=1.0.15"
+paste = "1.0.15"
 proptest = "1.0.0"
 proptest-derive = "0.4.0"
-rand = { version = "=0.8.5", features = ["std_rng"] }
+rand = { version = "0.8.5", features = ["std_rng"] }
 rand_chacha = { version = "0.3.0" }
 rand_core = { version = "0.6.3" }
 rayon = "=1.10.0"
 regex = "1.10.2"
-rmp-serde = "=1.2.0"
+rmp-serde = "1.2.0"
 secp256k1 = "0.28.2"
-serde = { version = "=1.0.219", features = ["derive", "rc"] }
-serde-wasm-bindgen = "=0.6.5"
-serde_json = "=1.0.109"
+serde = { version = "1.0.219", features = ["derive", "rc"] }
+serde-wasm-bindgen = "0.6.5"
+serde_json = "^1.0.109"
 serde_with = "3.12"
 sha2 = "0.10.0"
 sha3 = "0.10.8"
@@ -109,7 +109,7 @@ o1vm = { path = "./o1vm", version = "0.1.0" }
 optimism = { path = "./optimism", version = "0.1.0" }
 plonk_wasm = { path = "./plonk-wasm", version = "0.1.0" }
 poly-commitment = { path = "./poly-commitment", version = "0.1.0" }
-saffron = { path = "./poly-commitment", version = "0.1.0" }
+saffron = { path = "./saffron", version = "0.1.0" }
 signer = { path = "./signer", version = "0.1.0" }
 turshi = { path = "./turshi", version = "0.1.0" }
 utils = { path = "./utils", version = "0.1.0" }

@@ -9,9 +9,6 @@ readme = "README.md"
 edition = "2021"
 license = "Apache-2.0"
 
-# [lib]
-# path = "src/lib.rs"
-
 [[bin]]
 name = "saffron"
 path = "src/main.rs"
@@ -50,6 +47,7 @@ criterion = { workspace = true, features = ["html_reports"] }
 ctor = "0.2"
 proptest.workspace = true
 once_cell.workspace = true
+tempfile = "3"
 
 [[bin]]
 name = "saffron-og-flow"

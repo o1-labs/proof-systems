@@ -1,6 +1,7 @@
 pub mod transaction;
 use ark_ff::Zero;
 use mina_signer::{self, BaseField, Keypair, NetworkId, PubKey, ScalarField, Signer};
+use o1_utils::FieldHelpers;
 pub use transaction::Transaction;
 
 enum TransactionType {
@@ -60,7 +61,7 @@ macro_rules! assert_sign_verify_tx {
 }
 
 #[test]
-fn signer_test_raw() {
+fn test_signer_test_raw() {
     let kp = Keypair::from_hex("164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718")
         .expect("failed to create keypair");
     let tx = Transaction::new_payment(
@@ -92,7 +93,7 @@ fn signer_test_raw() {
 }
 
 #[test]
-fn signer_zero_test() {
+fn test_signer_zero_test() {
     let kp = Keypair::from_hex("164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718")
         .expect("failed to create keypair");
     let tx = Transaction::new_payment(
@@ -121,7 +122,7 @@ fn signer_zero_test() {
 }
 
 #[test]
-fn sign_payment_test_1() {
+fn test_sign_payment_test_1() {
     assert_sign_verify_tx!(
         /* Transaction type   */ TransactionType::PaymentTx,
         /* sender secret key  */ "164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718",
@@ -138,7 +139,7 @@ fn sign_payment_test_1() {
 }
 
 #[test]
-fn sign_payment_test_2() {
+fn test_sign_payment_test_2() {
     assert_sign_verify_tx!(
         /* Transaction type  */ TransactionType::PaymentTx,
         /* sender secret key */ "3414fc16e86e6ac272fda03cf8dcb4d7d47af91b4b726494dab43bf773ce1779",
@@ -155,7 +156,7 @@ fn sign_payment_test_2() {
 }
 
 #[test]
-fn sign_payment_test_3() {
+fn test_sign_payment_test_3() {
     assert_sign_verify_tx!(
         /* Transaction type  */ TransactionType::PaymentTx,
         /* sender secret key */ "3414fc16e86e6ac272fda03cf8dcb4d7d47af91b4b726494dab43bf773ce1779",
@@ -172,7 +173,7 @@ fn sign_payment_test_3() {
 }
 
 #[test]
-fn sign_payment_test_4() {
+fn test_sign_payment_test_4() {
     assert_sign_verify_tx!(
         /* Transaction type  */ TransactionType::PaymentTx,
         /* sender secret key */ "1dee867358d4000f1dafa5978341fb515f89eeddbe450bd57df091f1e63d4444",
@@ -189,7 +190,7 @@ fn sign_payment_test_4() {
 }
 
 #[test]
-fn sign_delegation_test_1() {
+fn test_sign_delegation_test_1() {
     assert_sign_verify_tx!(
         /* Transaction type  */ TransactionType::DelegationTx,
         /* sender secret key */ "164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718",
@@ -206,7 +207,7 @@ fn sign_delegation_test_1() {
 }
 
 #[test]
-fn sign_delegation_test_2() {
+fn test_sign_delegation_test_2() {
     assert_sign_verify_tx!(
         /* Transaction type  */ TransactionType::DelegationTx,
         /* sender secret key */ "20f84123a26e58dd32b0ea3c80381f35cd01bc22a20346cc65b0a67ae48532ba",
@@ -223,7 +224,7 @@ fn sign_delegation_test_2() {
 }
 
 #[test]
-fn sign_delegation_test_3() {
+fn test_sign_delegation_test_3() {
     assert_sign_verify_tx!(
         /* Transaction type  */ TransactionType::DelegationTx,
         /* sender secret key */ "3414fc16e86e6ac272fda03cf8dcb4d7d47af91b4b726494dab43bf773ce1779",
@@ -240,7 +241,7 @@ fn sign_delegation_test_3() {
 }
 
 #[test]
-fn sign_delegation_test_4() {
+fn test_sign_delegation_test_4() {
     assert_sign_verify_tx!(
         /* Transaction type  */ TransactionType::DelegationTx,
         /* sender secret key */ "336eb4a19b3d8905824b0f2254fb495573be302c17582748bf7e101965aa4774",
@@ -254,4 +255,79 @@ fn sign_delegation_test_4() {
         /* testnet signature */ "26ca6b95dee29d956b813afa642a6a62cd89b1929320ed6b099fd191a217b08d2c9a54ba1c95e5000b44b93cfbd3b625e20e95636f1929311473c10858a27f09",
         /* mainnet signature */ "093f9ef0e4e051279da0a3ded85553847590ab739ee1bfd59e5bb30f98ed8a001a7a60d8506e2572164b7a525617a09f17e1756ac37555b72e01b90f37271595"
     );
+}
+
+#[test]
+fn test_poseidon_initial_state_network_legacy() {
+    // Values in little-endian format. Depending on the library, you might need
+    // to reverse the byte order.
+    let exp_values_mainnet_le = [
+        "0x9496a4a9d91dd6334b88384704786cfd52a0b0c76437d1db70470932ad22c237",
+        "0x33d39cc6551071d976ad1643e429a088f7f156f8cf2867db92de1a5d53dfb810",
+        "0xe4e6218a90a96df5f1d763eddc871eb859d53a018e371ec050c3c2aa94386100",
+    ];
+    let exp_values_testnet_le = [
+        "0x9253c8b862b9075065c6f71e3d93177dfca9a2af0789276a3d2afeb31837323e",
+        "0x994ee43d6a2c03d1548c24a0487daf64b964cb920cc5e5cca54037488b1c0a37",
+        "0x360dc14633553dfd9c832db3318ee1d7514b719e48fbaeff1a912df003331c07",
+    ];
+    // Test that the initial state of the legacy hasher is correct for the
+    // network
+    {
+        let hasher = mina_hasher::create_legacy::<Transaction>(NetworkId::MAINNET);
+        let initial_state = hasher.state;
+        // print in hexa for C code
+        let initial_state_hex: Vec<String> = initial_state
+            .iter()
+            .map(|x| format!("0x{}", x.to_hex()))
+            .collect();
+        assert_eq!(initial_state_hex, exp_values_mainnet_le);
+    }
+    {
+        let hasher = mina_hasher::create_legacy::<Transaction>(NetworkId::TESTNET);
+        let initial_state = hasher.state;
+        // print in hexa for C code
+        let initial_state_hex: Vec<String> = initial_state
+            .iter()
+            .map(|x| format!("0x{}", x.to_hex()))
+            .collect();
+        assert_eq!(initial_state_hex, exp_values_testnet_le);
+    }
+}
+
+#[test]
+fn test_poseidon_initial_state_network_kimchi() {
+    // Values in little-endian format. Depending on the library, you might need
+    // to reverse the byte order.
+    let exp_values_mainnet_le = [
+        "0x494a6a0c1b0d8ca7bc1cef37a3d69c4133b8a994e760c2ff5ba1a723a67e393f",
+        "0x4c2561efcd3dd41998ac7f4b20d12d2947bb0c4177d7f4e6a7753ccc78a4ce1c",
+        "0xfbabea66d176d79be0265717a2ee07e019a7f9fe0638b128472fe9ed93e12305",
+    ];
+    let exp_values_testnet_le = [
+        "0x486a7ac50b48d60b4e844cdeac2aa487b85c68720d93bd64043bc1f839f7790e",
+        "0xf1a03a60a27687f42330c6cf91acad27ad12b1739f229ba5c2b7f1debf171031",
+        "0x1dfa8ba1eab55bbb8c3912f2f9c5a323fc8583af0979a499d5c4dc59b3a1f521",
+    ];
+    // Test that the initial state of the legacy hasher is correct for the network
+    {
+        let hasher = mina_hasher::create_kimchi::<Transaction>(NetworkId::MAINNET);
+        let initial_state = hasher.state;
+        // print in hexa for C code
+        let initial_state_hex: Vec<String> = initial_state
+            .iter()
+            .map(|x| format!("0x{}", x.to_hex()))
+            .collect();
+        assert_eq!(initial_state_hex, exp_values_mainnet_le);
+    }
+    {
+        let hasher = mina_hasher::create_kimchi::<Transaction>(NetworkId::TESTNET);
+        let initial_state = hasher.state;
+        // print in hexa for C code
+        let initial_state_hex: Vec<String> = initial_state
+            .iter()
+            .map(|x| format!("0x{}", x.to_hex()))
+            .collect();
+        assert_eq!(initial_state_hex, exp_values_testnet_le);
+    }
 }
