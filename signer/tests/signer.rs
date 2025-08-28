@@ -409,18 +409,16 @@ fn test_scalar_to_base_field_overflow() {
     // Scalar: 28948022309329048855892746252171976963363056481941647379679742748393362948097
 
     let mut rng = o1_utils::tests::make_test_rng(None);
-    let scalar_field_modulus: BigUint = BigUint::from_bytes_le(&ScalarField::MODULUS.to_bytes_le());
 
     // Create a scalar field element close to its modulus
     // This test ensures that we can handle large scalar values, larger than the
     // base field modulus
     // Smaller than the difference between the two moduli
     let diff = rng.next_u64();
-    let scalar_field_modulus_minus_diff: BigUint =
-        scalar_field_modulus.clone() - BigUint::from(diff);
+    let scalar_field_modulus_minus_diff: ScalarField = -ScalarField::from(diff);
 
     // Create a keypair with a large scalar value to test derive_nonce_compatible
-    let large_secret = SecKey::new(scalar_field_modulus_minus_diff.into());
+    let large_secret = SecKey::new(scalar_field_modulus_minus_diff);
     let kp = Keypair::from_secret_key(large_secret).unwrap();
 
     let input = Input {
@@ -441,16 +439,14 @@ fn test_base_field_modulus_minus_one_works() {
     // Complementary test to test_scalar_to_base_field_overflow to ensure that
     // the base field modulus minus one works correctly
 
-    let base_field_modulus: BigUint = BigUint::from_bytes_le(&BaseField::MODULUS.to_bytes_le());
-
     // Create a scalar field element close to its modulus
     // This test ensures that we can handle large scalar values, larger than the
     // base field modulus
     // Smaller than the difference between the two moduli
-    let base_field_modulus_minus_one: BigUint = base_field_modulus.clone() - BigUint::one();
+    let base_field_modulus_minus_one: ScalarField = -ScalarField::one();
 
     // Create a keypair with a large scalar value to test derive_nonce_compatible
-    let large_secret = SecKey::new(base_field_modulus_minus_one.into());
+    let large_secret = SecKey::new(base_field_modulus_minus_one);
     let kp = Keypair::from_secret_key(large_secret).unwrap();
 
     let input = Input {
