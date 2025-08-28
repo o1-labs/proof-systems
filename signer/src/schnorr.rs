@@ -148,9 +148,9 @@ impl<H: 'static + Hashable> Schnorr<H> {
     ///
     /// # Test Vectors
     ///
-    /// For test vectors demonstrating this function's usage, see the `sign_fields_test`
-    /// in [`tests/signer.rs`](../../tests/signer.rs) which uses the compatible nonce
-    /// derivation mode (`packed: true`).
+    /// For test vectors demonstrating this function's usage, see the
+    /// `sign_fields_test` in [`tests/signer.rs`](../../tests/signer.rs) which
+    /// uses the compatible nonce derivation mode (`packed: true`).
     ///
     /// # Security
     ///

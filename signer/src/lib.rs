@@ -61,7 +61,8 @@ pub trait Signer<H: Hashable> {
     /// * `kp` - The keypair to use for signing
     /// * `input` - The message to sign (must implement [`Hashable`])
     /// * `packed` - Controls nonce derivation method:
-    ///   - `true`: Use OCaml/TypeScript compatible nonce derivation with field packing
+    ///   - `true`: Use OCaml/TypeScript compatible nonce derivation with field
+    ///     packing
     ///   - `false`: Use standard Rust nonce derivation
     ///
     /// # Returns
