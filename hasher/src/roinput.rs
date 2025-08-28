@@ -168,25 +168,6 @@ impl ROInput {
         self.append_bytes(&x.to_le_bytes())
     }
 
-    /// Convert the random oracle input to a vector of packed field elements
-    /// by packing the bits into field elements and appending them to the fields.
-    /// The bits are packed by taking chunks of size `Fp::MODULUS_BIT_SIZE - 1`.
-    pub fn to_packed_fields(&self) -> Vec<Fp> {
-        let packed_size: usize = (Fp::MODULUS_BIT_SIZE - 1).try_into().unwrap();
-        let packed_bits: Vec<Fp> = self
-            .bits
-            .chunks(packed_size)
-            .map(|bitstring| {
-                let bitstring: Vec<bool> = bitstring.iter().map(|b| *b).collect();
-                Fp::from_bits(bitstring.as_slice()).expect("failed to create base field element")
-            })
-            .collect();
-
-        let mut result = self.fields.clone();
-        result.extend(packed_bits);
-        result
-    }
-
     /// Serialize random oracle input to bytes
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bits: BitVec<u8> = self.fields.iter().fold(BitVec::new(), |mut acc, fe| {
@@ -202,7 +183,9 @@ impl ROInput {
         bits.into()
     }
 
-    /// Serialize random oracle input to vector of base field elements
+    /// Convert the random oracle input to a vector of packed field elements
+    /// by packing the bits into field elements and appending them to the fields.
+    /// The bits are packed by taking chunks of size `Fp::MODULUS_BIT_SIZE - 1`.
     pub fn to_fields(&self) -> Vec<Fp> {
         let mut fields: Vec<Fp> = self.fields.clone();
 
@@ -1274,34 +1257,5 @@ mod tests {
             tx_roi, deserialized_roi,
             "Serialized and deserialized ROInput do not match"
         );
-    }
-
-    #[test]
-    pub fn test_pack_to_field() {
-        let roi = ROInput::new()
-            .append_bool(true)
-            .append_bool(false)
-            .append_bool(true)
-            .append_bool(true)
-            .append_bool(false)
-            .append_bool(false)
-            .append_bool(true)
-            .append_bool(false)
-            .append_bool(true); // 9 bits
-
-        let packed_fields = roi.to_packed_fields();
-        assert_eq!(packed_fields.len(), 1);
-        assert_eq!(packed_fields[0], Fp::from(0b101001101));
-    }
-
-    #[test]
-    pub fn test_pack_to_field_more_than_255_bits() {
-        let mut roi = ROInput::new();
-        for i in 0..300 {
-            roi = roi.append_bool(i % 2 == 0);
-        }
-
-        let packed_fields = roi.to_packed_fields();
-        assert_eq!(packed_fields.len(), 2);
     }
 }
