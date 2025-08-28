@@ -32,6 +32,10 @@ impl Signature {
 }
 
 impl fmt::Display for Signature {
+    /// Formats the signature as a hexadecimal string.
+    ///
+    /// Returns the signature as concatenated hex-encoded bytes in big-endian
+    /// order: `rx || s`.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut rx_bytes = self.rx.to_bytes();
         let mut s_bytes = self.s.to_bytes();
