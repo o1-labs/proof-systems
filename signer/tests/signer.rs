@@ -1,8 +1,7 @@
 pub mod transaction;
-use ark_ff::{BigInteger, One, PrimeField, Zero};
+use ark_ff::{One, Zero};
 use mina_hasher::{Hashable, ROInput};
 use mina_signer::{self, BaseField, Keypair, NetworkId, PubKey, ScalarField, SecKey, Signer};
-use num_bigint::BigUint;
 use o1_utils::FieldHelpers;
 use rand::RngCore;
 pub use transaction::Transaction;

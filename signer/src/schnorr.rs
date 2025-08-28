@@ -6,18 +6,14 @@
 
 extern crate alloc;
 use alloc::{boxed::Box, string::String, vec};
+use num_bigint::BigUint;
 
 use crate::{BaseField, CurvePoint, Hashable, Keypair, PubKey, ScalarField, Signature, Signer};
 use ark_ec::{
     AffineRepr, // for generator()
     CurveGroup,
 };
-use ark_ff::{
-    BigInteger, // for is_even()
-    Field,      // for from_random_bytes()
-    PrimeField, // for from_repr()
-    Zero,
-};
+use ark_ff::{BigInteger, Field, PrimeField, Zero};
 use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,
@@ -126,6 +122,10 @@ impl<H: 'static + Hashable> Schnorr<H> {
     /// This implementation is compatible with the TypeScript version:
     /// <https://github.com/o1-labs/o1js/blob/main/src/mina-signer/src/signature.ts#L128>
     ///
+    /// The private key conversion replicates the "Field.project" method with unpack
+    /// from the OCaml implementation, which performs modular reduction when the
+    /// scalar field value is larger than the base field modulus.
+    ///
     /// # Algorithm
     ///
     /// The nonce derivation follows this process:
@@ -176,7 +176,22 @@ impl<H: 'static + Hashable> Schnorr<H> {
             .to_roinput()
             .append_field(kp.public.point().x)
             .append_field(kp.public.point().y)
-            .append_field(BaseField::from(kp.secret.scalar().into_bigint()))
+            .append_field({
+                // Convert scalar to base field with explicit wraparound (modular reduction)
+                // This replicates the "Field.project" method with unpack from the OCaml implementation
+
+                let secret_biguint: BigUint = kp.secret.scalar().into_bigint().into();
+                let modulus = BaseField::MODULUS.into();
+                if secret_biguint >= modulus {
+                    // Reduce modulo base field modulus
+                    let reduced_biguint: BigUint = secret_biguint - modulus;
+                    BaseField::from_biguint(&reduced_biguint)
+                        .expect("Reduced bigint should fit in base field")
+                } else {
+                    BaseField::from_biguint(&secret_biguint)
+                        .expect("Scalar bigint should fit in base field")
+                }
+            })
             .append_bytes(&[network_id_value]); // Network ID as packed 8 bits
 
         // Get packed fields
