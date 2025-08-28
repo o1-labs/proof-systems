@@ -1275,4 +1275,33 @@ mod tests {
             "Serialized and deserialized ROInput do not match"
         );
     }
+
+    #[test]
+    pub fn test_pack_to_field() {
+        let roi = ROInput::new()
+            .append_bool(true)
+            .append_bool(false)
+            .append_bool(true)
+            .append_bool(true)
+            .append_bool(false)
+            .append_bool(false)
+            .append_bool(true)
+            .append_bool(false)
+            .append_bool(true); // 9 bits
+
+        let packed_fields = roi.to_packed_fields();
+        assert_eq!(packed_fields.len(), 1);
+        assert_eq!(packed_fields[0], Fp::from(0b101001101));
+    }
+
+    #[test]
+    pub fn test_pack_to_field_more_than_255_bits() {
+        let mut roi = ROInput::new();
+        for i in 0..300 {
+            roi = roi.append_bool(i % 2 == 0);
+        }
+
+        let packed_fields = roi.to_packed_fields();
+        assert_eq!(packed_fields.len(), 2);
+    }
 }
