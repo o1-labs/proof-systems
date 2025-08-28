@@ -27,12 +27,15 @@ use o1_utils::FieldHelpers;
 /// For details about the signature algorithm please see the
 /// [`schnorr`](crate::schnorr) documentation
 pub struct Schnorr<H: Hashable> {
-    hasher: Box<dyn Hasher<Message<H>>>,
-    domain_param: H::D,
+    /// The hasher instance used to hash messages
+    pub hasher: Box<dyn Hasher<Message<H>>>,
+    /// The domain parameter used for hashing
+    pub domain_param: H::D,
 }
 
+/// The message to be signed/verified
 #[derive(Clone)]
-struct Message<H: Hashable> {
+pub struct Message<H: Hashable> {
     input: H,
     pub_key_x: BaseField,
     pub_key_y: BaseField,
