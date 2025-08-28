@@ -176,7 +176,7 @@ impl<H: 'static + Hashable> Schnorr<H> {
             .to_roinput()
             .append_field(kp.public.point().x)
             .append_field(kp.public.point().y)
-            .append_scalar(kp.secret.scalar().clone())
+            .append_field(BaseField::from(kp.secret.scalar().into_bigint()))
             .append_bytes(&[network_id_value]); // Network ID as packed 8 bits
 
         // Get packed fields
