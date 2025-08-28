@@ -195,7 +195,7 @@ impl<H: 'static + Hashable> Schnorr<H> {
             .append_bytes(&[network_id_value]); // Network ID as packed 8 bits
 
         // Get packed fields
-        let packed_fields = roi.to_packed_fields();
+        let packed_fields = roi.to_fields();
 
         // Convert each field to bits and flatten
         let mut all_bits = vec![];
