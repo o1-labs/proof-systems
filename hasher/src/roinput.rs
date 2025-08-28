@@ -98,9 +98,48 @@ impl ROInput {
         self
     }
 
-    /// Append a scalar field element
+    /// Append a scalar field element by converting it to bits.
+    ///
+    /// This method converts the scalar field element to its byte representation,
+    /// then extracts exactly [`Fq::MODULUS_BIT_SIZE`] bits (255 bits for Pallas curve)
+    /// in little-endian bit order and appends them to the bits vector.
+    ///
+    /// # Bit Representation
+    ///
+    /// - Uses little-endian bit ordering within bytes (LSB first)
+    /// - Extracts exactly 255 bits from the 32-byte scalar representation
+    /// - The scalar field modulus is 255 bits, so the MSB of the 32nd byte is unused
+    ///
+    /// # Differences from [`Self::append_field`]
+    ///
+    /// - [`Self::append_scalar`]: Converts scalar to 255 bits and adds to the `bits` vector
+    /// - [`Self::append_field`]: Adds base field element directly to the `fields` vector
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use mina_hasher::ROInput;
+    /// use mina_curves::pasta::Fq;
+    ///
+    /// // Regular scalar value
+    /// let scalar = Fq::from(42u64);
+    /// let roi = ROInput::new().append_scalar(scalar);
+    /// let bytes = roi.to_bytes();
+    /// assert_eq!(bytes.len(), 32); // 255 bits rounded up to 32 bytes
+    ///
+    /// // Maximum scalar value (modulus - 1)
+    /// let max_scalar = Fq::from(0u64) - Fq::from(1u64);
+    /// let roi = ROInput::new().append_scalar(max_scalar);
+    /// let bytes = roi.to_bytes();
+    /// assert_eq!(bytes.len(), 32); // 255 bits rounded up to 32 bytes
+    /// ```
+    ///
+    /// # Note
+    ///
+    /// All scalar field values, including the maximum value (modulus - 1),
+    /// will fit exactly in 255 bits and can be safely appended.
     pub fn append_scalar(mut self, s: Fq) -> Self {
-        // mina scalars are 255 bytes
+        // mina scalars are 255 bits
         let bytes = s.to_bytes();
         let bits = &bytes.as_bits::<Lsb0>()[..Fq::MODULUS_BIT_SIZE as usize];
         self.bits.extend(bits);
