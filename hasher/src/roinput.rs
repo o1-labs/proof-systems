@@ -169,23 +169,18 @@ impl ROInput {
     }
 
     /// Convert the random oracle input to a vector of packed field elements
+    /// by packing the bits into field elements and appending them to the fields.
+    /// The bits are packed by taking chunks of size `Fp::MODULUS_BIT_SIZE - 1`.
     pub fn to_packed_fields(&self) -> Vec<Fp> {
-        if self.bits.is_empty() {
-            return self.fields.clone();
-        }
-
-        let mut packed_bits = Vec::new();
-
-        let total_bits = self.bits.len();
-        if total_bits > 0 {
-            let mut field_value = 0u64;
-            for (i, bit) in self.bits.iter().enumerate() {
-                if *bit && i < 64 {
-                    field_value |= 1u64 << i;
-                }
-            }
-            packed_bits.push(Fp::from(field_value));
-        }
+        let packed_size: usize = (Fp::MODULUS_BIT_SIZE - 1).try_into().unwrap();
+        let packed_bits: Vec<Fp> = self
+            .bits
+            .chunks(packed_size)
+            .map(|bitstring| {
+                let bitstring: Vec<bool> = bitstring.iter().map(|b| *b).collect();
+                Fp::from_bits(bitstring.as_slice()).expect("failed to create base field element")
+            })
+            .collect();
 
         let mut result = self.fields.clone();
         result.extend(packed_bits);
