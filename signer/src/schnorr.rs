@@ -163,7 +163,7 @@ impl<H: 'static + Hashable> Schnorr<H> {
     /// - Ensures no two different messages share the same nonce (with the same
     ///   key)
     /// - Is compatible with existing Mina protocol implementations
-    fn derive_nonce_compatible(&self, kp: &Keypair, input: &H) -> ScalarField {
+    pub fn derive_nonce_compatible(&self, kp: &Keypair, input: &H) -> ScalarField {
         let mut blake_hasher = Blake2bVar::new(32).unwrap();
 
         // Create ROInput with message + [px, py, private_key_as_field] +
