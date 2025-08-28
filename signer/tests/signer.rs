@@ -400,7 +400,6 @@ fn sign_fields_test() {
 }
 
 #[test]
-#[should_panic]
 fn test_scalar_to_base_field_overflow() {
     // Test the potential issue where the secret key is larger than the base
     // field modulus could cause problems in derive_nonce_compatible when
