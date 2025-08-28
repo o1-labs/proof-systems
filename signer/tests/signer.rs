@@ -1,7 +1,10 @@
 pub mod transaction;
 use ark_ff::{One, Zero};
 use mina_hasher::{Hashable, ROInput};
-use mina_signer::{self, BaseField, Keypair, NetworkId, PubKey, ScalarField, SecKey, Signer};
+use mina_signer::{
+    self, schnorr::Message, BaseField, Keypair, NetworkId, PubKey, ScalarField, Schnorr, SecKey,
+    Signer,
+};
 use o1_utils::FieldHelpers;
 use rand::RngCore;
 pub use transaction::Transaction;
@@ -460,4 +463,173 @@ fn test_base_field_modulus_minus_one_works() {
 
     // Verify the signature is valid
     assert!(testnet_ctx.verify(&sig, &kp.public, &input));
+}
+
+// Test vectors generated with the OCaml implementation in
+// https://github.com/MinaProtocol/mina/pull/17688/
+#[test]
+pub fn test_mainnet_compatibility_derive_nonce_compatible_empty_input() {
+    let privkey1 = ScalarField::from(12345u64);
+    let kp = Keypair::from_secret_key(SecKey::new(privkey1)).unwrap();
+
+    let input = Input { fields: vec![] };
+    let domain_param = NetworkId::MAINNET;
+    let ctx = Schnorr::<Input> {
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<Input>>(
+            domain_param.clone(),
+        )),
+        domain_param,
+    };
+    let nonce = ctx.derive_nonce_compatible(&kp, &input);
+    let exp_output = "3593510266845031606199417412802645135386671476060311361956367865683456961999";
+    assert_eq!(nonce.to_string(), exp_output);
+}
+
+#[test]
+pub fn test_mainnet_compatibility_derive_nonce_compatible_single_field() {
+    let privkey = ScalarField::from(98765u64);
+    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let input = Input {
+        fields: vec![BaseField::from(42u64)],
+    };
+    let domain_param = NetworkId::MAINNET;
+    let ctx = Schnorr::<Input> {
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<Input>>(
+            domain_param.clone(),
+        )),
+        domain_param,
+    };
+    let nonce = ctx.derive_nonce_compatible(&kp, &input);
+    let exp_output = "5619064452189285627845965652490438781527755092950194256949446363932844311998";
+    assert_eq!(nonce.to_string(), exp_output);
+}
+
+#[test]
+pub fn test_mainnet_compatibility_derive_nonce_compatible_multiple_fields() {
+    let privkey = ScalarField::from(12345u64);
+    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let input = Input {
+        fields: vec![
+            BaseField::from(1u64),
+            BaseField::from(2u64),
+            BaseField::from(3u64),
+            BaseField::from(4u64),
+            BaseField::from(5u64),
+        ],
+    };
+    let domain_param = NetworkId::MAINNET;
+    let ctx = Schnorr::<Input> {
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<Input>>(
+            domain_param.clone(),
+        )),
+        domain_param,
+    };
+    let nonce = ctx.derive_nonce_compatible(&kp, &input);
+    let exp_output = "1124847115894633099179585118316876374220267648742248518331982305418971276757";
+    assert_eq!(nonce.to_string(), exp_output);
+}
+
+#[test]
+pub fn test_mainnet_compatibility_corner_case() {
+    let privkey = -ScalarField::from(1u64);
+    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let input = Input {
+        fields: vec![BaseField::from(1000u64)],
+    };
+
+    let domain_param = NetworkId::MAINNET;
+    let ctx = Schnorr::<Input> {
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<Input>>(
+            domain_param.clone(),
+        )),
+        domain_param,
+    };
+    let nonce = ctx.derive_nonce_compatible(&kp, &input);
+    let exp_output =
+        "18415544288045082845294221318898079394929596923113905209738653257828934473252";
+    assert_eq!(nonce.to_string(), exp_output);
+}
+
+#[test]
+pub fn test_testnet_compatibility_derive_nonce_compatible_empty_input() {
+    let privkey1 = ScalarField::from(12345u64);
+    let kp = Keypair::from_secret_key(SecKey::new(privkey1)).unwrap();
+
+    let input = Input { fields: vec![] };
+    let domain_param = NetworkId::TESTNET;
+    let ctx = Schnorr::<Input> {
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<Input>>(
+            domain_param.clone(),
+        )),
+        domain_param,
+    };
+    let nonce = ctx.derive_nonce_compatible(&kp, &input);
+    let exp_output =
+        "12050222805662643658060125978245066462988462138104028068015115694880454896700";
+    assert_eq!(nonce.to_string(), exp_output);
+}
+
+#[test]
+pub fn test_testnet_compatibility_derive_nonce_compatible_single_field() {
+    let privkey = ScalarField::from(98765u64);
+    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let input = Input {
+        fields: vec![BaseField::from(42u64)],
+    };
+    let domain_param = NetworkId::TESTNET;
+    let ctx = Schnorr::<Input> {
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<Input>>(
+            domain_param.clone(),
+        )),
+        domain_param,
+    };
+    let nonce = ctx.derive_nonce_compatible(&kp, &input);
+    let exp_output =
+        "27060089521084789061404877029819834217748792359356057334897351652268596433002";
+    assert_eq!(nonce.to_string(), exp_output);
+}
+
+#[test]
+pub fn test_testnet_compatibility_derive_nonce_compatible_multiple_fields() {
+    let privkey = ScalarField::from(12345u64);
+    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let input = Input {
+        fields: vec![
+            BaseField::from(1u64),
+            BaseField::from(2u64),
+            BaseField::from(3u64),
+            BaseField::from(4u64),
+            BaseField::from(5u64),
+        ],
+    };
+    let domain_param = NetworkId::TESTNET;
+    let ctx = Schnorr::<Input> {
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<Input>>(
+            domain_param.clone(),
+        )),
+        domain_param,
+    };
+    let nonce = ctx.derive_nonce_compatible(&kp, &input);
+    let exp_output =
+        "18369258700166284571888737119702768566919086299535085697762400913559910179943";
+    assert_eq!(nonce.to_string(), exp_output);
+}
+
+#[test]
+pub fn test_testnet_compatibility_corner_case() {
+    let privkey = -ScalarField::from(1u64);
+    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let input = Input {
+        fields: vec![BaseField::from(1000u64)],
+    };
+    let domain_param = NetworkId::TESTNET;
+    let ctx = Schnorr::<Input> {
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<Input>>(
+            domain_param.clone(),
+        )),
+        domain_param,
+    };
+    let nonce = ctx.derive_nonce_compatible(&kp, &input);
+    let exp_output = "5775053650311195327575287700717960521187241946253469084251372495989542569423";
+    assert_eq!(nonce.to_string(), exp_output);
 }
