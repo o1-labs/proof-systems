@@ -6,7 +6,6 @@
 [![CI nightly](https://github.com/o1-labs/proof-systems/actions/workflows/ci-nightly.yml/badge.svg?branch=master)](https://github.com/o1-labs/proof-systems/actions/workflows/ci-nightly.yml)
 [![GitHub page](https://github.com/o1-labs/proof-systems/actions/workflows/gh-page.yml/badge.svg?branch=master)](https://github.com/o1-labs/proof-systems/actions/workflows/gh-page.yml)
 [![o1vm CI](https://github.com/o1-labs/proof-systems/actions/workflows/o1vm-ci.yml/badge.svg?branch=master)](https://github.com/o1-labs/proof-systems/actions/workflows/o1vm-ci.yml)
-[![Saffron](https://github.com/o1-labs/proof-systems/actions/workflows/saffron.yml/badge.svg?branch=master)](https://github.com/o1-labs/proof-systems/actions/workflows/saffron.yml)
 
 [![dependency status](https://deps.rs/repo/github/o1-labs/proof-systems/status.svg?style=flat-square)](https://deps.rs/repo/github/o1-labs/proof-systems)
 
