@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["decode_from_field_elements","encode","encode_as_field_elements","encode_as_field_elements_full","encode_for_domain"]};

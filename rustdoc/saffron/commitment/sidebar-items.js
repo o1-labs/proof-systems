@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["combine_commitments","commit_poly","commit_sparse","commit_to_field_elems"],"struct":["Commitment"]};

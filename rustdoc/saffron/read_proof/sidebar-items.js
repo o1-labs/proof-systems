@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["prove","verify","verify_answer"],"struct":["Answer","Query","ReadProof"]};
