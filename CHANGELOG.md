@@ -86,6 +86,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Changed
 - Make CompressedPubKey orderable
   ([#3328](https://github.com/o1-labs/proof-systems/pull/3328))
+- Make the structure `Message` from `schnorr.rs` public
+  ([#3302](https://github.com/o1-labs/proof-systems/pull/3302/))
+- Make the fields of the structure `Schnorr` from `schnorr.rs` public
+  ([#3302](https://github.com/o1-labs/proof-systems/pull/3302/))
 
 ### [mvpoly](./mvpoly)
 
