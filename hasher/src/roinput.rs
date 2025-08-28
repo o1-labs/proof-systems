@@ -454,6 +454,48 @@ mod tests {
     }
 
     #[test]
+    fn test_append_scalar_max_value() {
+        // Test with the maximum scalar field value (modulus - 1)
+        let max_scalar = Fq::from(0u64) - Fq::from(1u64); // Fq modulus - 1
+        let roi = ROInput::new().append_scalar(max_scalar);
+
+        // Should add 255 bits (Fq::MODULUS_BIT_SIZE)
+        assert_eq!(roi.bits.len(), 255);
+        assert_eq!(roi.fields.len(), 0);
+
+        // Verify the bits represent the maximum scalar value
+        let reconstructed_bytes = roi.bits.as_raw_slice();
+        let expected_bytes = max_scalar.to_bytes();
+
+        // Compare the first 31 bytes (255 bits = 31 bytes + 7 bits)
+        assert_eq!(&reconstructed_bytes[..31], &expected_bytes[..31]);
+
+        // Check the last partial byte (7 bits from the 32nd byte)
+        let last_byte_mask = 0x7F; // Mask for 7 bits: 0111_1111
+        assert_eq!(
+            reconstructed_bytes[31] & last_byte_mask,
+            expected_bytes[31] & last_byte_mask
+        );
+
+        // Test serialization to bytes
+        let serialized_bytes = roi.to_bytes();
+        assert_eq!(serialized_bytes.len(), 32); // 255 bits rounded up to 32 bytes
+
+        // Test that max scalar converts to proper field elements
+        let fields = roi.to_fields();
+        assert_eq!(fields.len(), 2); // Should pack into 2 field elements
+
+        // Verify we can append multiple max scalars
+        let roi_double = ROInput::new()
+            .append_scalar(max_scalar)
+            .append_scalar(max_scalar);
+        assert_eq!(roi_double.bits.len(), 510); // 2 * 255 bits
+
+        let fields_double = roi_double.to_fields();
+        assert_eq!(fields_double.len(), 3); // Should pack into 3 field elements
+    }
+
+    #[test]
     fn append_u32() {
         let roi = ROInput::new().append_u32(1984u32);
         assert!(roi.bits.len() == 32);
