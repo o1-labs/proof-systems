@@ -12,8 +12,10 @@ use bitvec::{prelude::*, view::AsBits};
 use mina_curves::pasta::{Fp, Fq};
 use o1_utils::FieldHelpers;
 
-const SER_HEADER_SIZE: usize = 8; // total number of bytes for the header of the serialized ROInput
-const SINGLE_HEADER_SIZE: usize = 4; // number of bytes for each part of the header of the serialized ROInput
+/// Total number of bytes for the header of the serialized ROInput
+const SER_HEADER_SIZE: usize = 8;
+/// Number of bytes for each part of the header of the serialized ROInput
+const SINGLE_HEADER_SIZE: usize = 4;
 
 /// Random oracle input structure
 ///
@@ -96,9 +98,48 @@ impl ROInput {
         self
     }
 
-    /// Append a scalar field element
+    /// Append a scalar field element by converting it to bits.
+    ///
+    /// This method converts the scalar field element to its byte representation,
+    /// then extracts exactly [`Fq::MODULUS_BIT_SIZE`] bits (255 bits for Pallas curve)
+    /// in little-endian bit order and appends them to the bits vector.
+    ///
+    /// # Bit Representation
+    ///
+    /// - Uses little-endian bit ordering within bytes (LSB first)
+    /// - Extracts exactly 255 bits from the 32-byte scalar representation
+    /// - The scalar field modulus is 255 bits, so the MSB of the 32nd byte is unused
+    ///
+    /// # Differences from [`Self::append_field`]
+    ///
+    /// - [`Self::append_scalar`]: Converts scalar to 255 bits and adds to the `bits` vector
+    /// - [`Self::append_field`]: Adds base field element directly to the `fields` vector
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use mina_hasher::ROInput;
+    /// use mina_curves::pasta::Fq;
+    ///
+    /// // Regular scalar value
+    /// let scalar = Fq::from(42u64);
+    /// let roi = ROInput::new().append_scalar(scalar);
+    /// let bytes = roi.to_bytes();
+    /// assert_eq!(bytes.len(), 32); // 255 bits rounded up to 32 bytes
+    ///
+    /// // Maximum scalar value (modulus - 1)
+    /// let max_scalar = Fq::from(0u64) - Fq::from(1u64);
+    /// let roi = ROInput::new().append_scalar(max_scalar);
+    /// let bytes = roi.to_bytes();
+    /// assert_eq!(bytes.len(), 32); // 255 bits rounded up to 32 bytes
+    /// ```
+    ///
+    /// # Note
+    ///
+    /// All scalar field values, including the maximum value (modulus - 1),
+    /// will fit exactly in 255 bits and can be safely appended.
     pub fn append_scalar(mut self, s: Fq) -> Self {
-        // mina scalars are 255 bytes
+        // mina scalars are 255 bits
         let bytes = s.to_bytes();
         let bits = &bytes.as_bits::<Lsb0>()[..Fq::MODULUS_BIT_SIZE as usize];
         self.bits.extend(bits);
@@ -142,7 +183,9 @@ impl ROInput {
         bits.into()
     }
 
-    /// Serialize random oracle input to vector of base field elements
+    /// Convert the random oracle input to a vector of packed field elements
+    /// by packing the bits into field elements and appending them to the fields.
+    /// The bits are packed by taking chunks of size `Fp::MODULUS_BIT_SIZE - 1`.
     pub fn to_fields(&self) -> Vec<Fp> {
         let mut fields: Vec<Fp> = self.fields.clone();
 
@@ -386,6 +429,48 @@ mod tests {
                     0x67, 0x15, 0xff, 0x77, 0xce, 0x4e, 0x0c, 0x80, 0xf8, 0x10, 0x9c, 0xe6, 0x03
                 ]
         );
+    }
+
+    #[test]
+    fn test_append_scalar_max_value() {
+        // Test with the maximum scalar field value (modulus - 1)
+        let max_scalar = Fq::from(0u64) - Fq::from(1u64); // Fq modulus - 1
+        let roi = ROInput::new().append_scalar(max_scalar);
+
+        // Should add 255 bits (Fq::MODULUS_BIT_SIZE)
+        assert_eq!(roi.bits.len(), 255);
+        assert_eq!(roi.fields.len(), 0);
+
+        // Verify the bits represent the maximum scalar value
+        let reconstructed_bytes = roi.bits.as_raw_slice();
+        let expected_bytes = max_scalar.to_bytes();
+
+        // Compare the first 31 bytes (255 bits = 31 bytes + 7 bits)
+        assert_eq!(&reconstructed_bytes[..31], &expected_bytes[..31]);
+
+        // Check the last partial byte (7 bits from the 32nd byte)
+        let last_byte_mask = 0x7F; // Mask for 7 bits: 0111_1111
+        assert_eq!(
+            reconstructed_bytes[31] & last_byte_mask,
+            expected_bytes[31] & last_byte_mask
+        );
+
+        // Test serialization to bytes
+        let serialized_bytes = roi.to_bytes();
+        assert_eq!(serialized_bytes.len(), 32); // 255 bits rounded up to 32 bytes
+
+        // Test that max scalar converts to proper field elements
+        let fields = roi.to_fields();
+        assert_eq!(fields.len(), 2); // Should pack into 2 field elements
+
+        // Verify we can append multiple max scalars
+        let roi_double = ROInput::new()
+            .append_scalar(max_scalar)
+            .append_scalar(max_scalar);
+        assert_eq!(roi_double.bits.len(), 510); // 2 * 255 bits
+
+        let fields_double = roi_double.to_fields();
+        assert_eq!(fields_double.len(), 3); // Should pack into 3 field elements
     }
 
     #[test]

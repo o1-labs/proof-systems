@@ -4,14 +4,28 @@ This crate provides an API and framework for Mina signing. It follows the
 algorithm outlined in the [Mina Signature
 Specification](https://github.com/MinaProtocol/mina/blob/master/docs/specs/signatures/description.md).
 
+## Pallas Curve Parameters
+
+The Mina signature scheme is built on the Pallas elliptic curve with the
+following field sizes:
+
+* **Base field (Fp)**: 254 bits, modulus =
+  `28948022309329048855892746252171976963363056481941560715954676764349967630337`
+* **Scalar field (Fq)**: 254 bits, modulus =
+  `28948022309329048855892746252171976963363056481941647379679742748393362948097`
+
+The scalar field is larger than the base field by exactly
+`86663725065984043395317760`.
+
+Both fields are approximately 2^254, making signatures 64 bytes total (32 bytes
+for `rx` + 32 bytes for `s`).
+
 ## Signer interface
 
-The `mina_signer` crate currently supports creating both legacy and an
-experimental kimchi signers.
+The `mina_signer` crate currently supports creating both legacy and current signers.
 
-* [`create_legacy`] creates a legacy signer compatible with mainnet and testnet
-  transaction signatures
-* [`create_kimchi`] creates an experimental kimchi signer
+* [`create_legacy`] creates a legacy signer for pre-Berkeley hardfork transactions
+* [`create_kimchi`] creates the current signer for Mina mainnet (post-Berkeley hardfork)
 
 Here is an example of how to use the signer interface to sign and verify Mina
 transactions.
@@ -35,7 +49,7 @@ let tx = Transaction::new_payment(
             );
 
 let mut ctx = mina_signer::create_legacy::<Transaction>(NetworkId::TESTNET);
-let sig = ctx.sign(&keypair, &tx);
+let sig = ctx.sign(&keypair, &tx, false);
 assert!(ctx.verify(&sig, &keypair.public, &tx));
 ```
 
