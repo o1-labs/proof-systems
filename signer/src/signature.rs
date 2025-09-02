@@ -1,6 +1,7 @@
 //! Mina signature structure and associated helpers
 
 use crate::{BaseField, ScalarField};
+use ark_ff::One;
 use core::fmt;
 use o1_utils::FieldHelpers;
 
@@ -18,6 +19,15 @@ impl Signature {
     /// Create a new signature
     pub fn new(rx: BaseField, s: ScalarField) -> Self {
         Self { rx, s }
+    }
+
+    /// Create a dummy signature, whose components are both equal to one.
+    /// Use it with caution.
+    pub fn dummy() -> Self {
+        Self {
+            rx: BaseField::one(),
+            s: ScalarField::one(),
+        }
     }
 }
 

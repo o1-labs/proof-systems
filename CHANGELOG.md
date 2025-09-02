@@ -70,6 +70,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### [mina-signer](./signer)
 
+#### Added
+
+- Implement a method to return a dummy signature
+  ([#3327](https://github.com/o1-labs/proof-systems/pull/3327))
+
 #### Changed
 - (No changes in current release)
 
