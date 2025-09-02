@@ -76,7 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#3327](https://github.com/o1-labs/proof-systems/pull/3327))
 
 #### Changed
-- (No changes in current release)
+- Make CompressedPubKey orderable
+  ([#3328](https://github.com/o1-labs/proof-systems/pull/3328))
 
 ### [mvpoly](./mvpoly)
 
