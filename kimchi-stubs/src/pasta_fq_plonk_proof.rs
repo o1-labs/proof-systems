@@ -3,7 +3,6 @@ use crate::{
     field_vector::fq::CamlFqVector,
     pasta_fq_plonk_index::CamlPastaFqPlonkIndexPtr,
     pasta_fq_plonk_verifier_index::CamlPastaFqPlonkVerifierIndex,
-    WithLagrangeBasis,
 };
 use ark_ec::AffineRepr;
 use ark_ff::One;
@@ -30,6 +29,7 @@ use mina_poseidon::{
 use poly_commitment::{
     commitment::{CommitmentCurve, PolyComm},
     ipa::OpeningProof,
+    lagrange_basis::WithLagrangeBasis,
 };
 
 #[ocaml_gen::func]
