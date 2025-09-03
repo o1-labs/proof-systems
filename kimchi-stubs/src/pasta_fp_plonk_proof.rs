@@ -4,7 +4,6 @@ use crate::{
     pasta_fp_plonk_index::{CamlPastaFpPlonkIndex, CamlPastaFpPlonkIndexPtr},
     pasta_fp_plonk_verifier_index::CamlPastaFpPlonkVerifierIndex,
     srs::fp::CamlFpSrs,
-    WithLagrangeBasis,
 };
 use ark_ec::AffineRepr;
 use ark_ff::One;
@@ -31,6 +30,7 @@ use mina_poseidon::{
 use poly_commitment::{
     commitment::{CommitmentCurve, PolyComm},
     ipa::OpeningProof,
+    lagrange_basis::WithLagrangeBasis,
 };
 use std::convert::TryInto;
 
