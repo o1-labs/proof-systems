@@ -75,10 +75,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Implement a method to return a dummy signature
   ([#3327](https://github.com/o1-labs/proof-systems/pull/3327))
+- Implement `derive_nonce_compatible` function, a nonce derivation algorithm
+  compatible with the TypeScript and OCaml implementation
+  ([#3302](https://github.com/o1-labs/proof-systems/pull/3302/))
+- Add `packed` parameter to `Signer::sign` method to control nonce derivation method
+  - `packed: true` uses OCaml/TypeScript compatible nonce derivation
+  - `packed: false` uses standard Rust nonce derivation (will be deprecated)
+  ([#3302](https://github.com/o1-labs/proof-systems/pull/3302/))
 
 #### Changed
 - Make CompressedPubKey orderable
   ([#3328](https://github.com/o1-labs/proof-systems/pull/3328))
+- Make the structure `Message` from `schnorr.rs` public
+  ([#3302](https://github.com/o1-labs/proof-systems/pull/3302/))
+- Make the fields of the structure `Schnorr` from `schnorr.rs` public
+  ([#3302](https://github.com/o1-labs/proof-systems/pull/3302/))
 
 ### [mvpoly](./mvpoly)
 

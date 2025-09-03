@@ -2289,6 +2289,7 @@ dependencies = [
  "hex",
  "mina-curves",
  "mina-hasher",
+ "num-bigint",
  "o1-utils",
  "rand",
  "sha2",

@@ -1,7 +1,12 @@
 pub mod transaction;
-use ark_ff::Zero;
-use mina_signer::{self, BaseField, Keypair, NetworkId, PubKey, ScalarField, Signer};
+use ark_ff::{One, Zero};
+use mina_hasher::{Hashable, ROInput};
+use mina_signer::{
+    self, schnorr::Message, BaseField, Keypair, NetworkId, PubKey, ScalarField, Schnorr, SecKey,
+    Signer,
+};
 use o1_utils::FieldHelpers;
+use rand::RngCore;
 pub use transaction::Transaction;
 
 enum TransactionType {
@@ -38,8 +43,8 @@ macro_rules! assert_sign_verify_tx {
         // TODO only one context
         let mut testnet_ctx = mina_signer::create_legacy(NetworkId::TESTNET);
         let mut mainnet_ctx = mina_signer::create_legacy(NetworkId::MAINNET);
-        let testnet_sig = testnet_ctx.sign(&kp, &tx);
-        let mainnet_sig = mainnet_ctx.sign(&kp, &tx);
+        let testnet_sig = testnet_ctx.sign(&kp, &tx, false);
+        let mainnet_sig = mainnet_ctx.sign(&kp, &tx, false);
 
         // Signing checks
         assert_ne!(testnet_sig, mainnet_sig); // Testnet and mainnet sigs are not equal
@@ -86,7 +91,7 @@ fn test_signer_test_raw() {
     );
 
     let mut ctx = mina_signer::create_legacy(NetworkId::TESTNET);
-    let sig = ctx.sign(&kp, &tx);
+    let sig = ctx.sign(&kp, &tx, false);
 
     assert_eq!(sig.to_string(),
                 "11a36a8dfe5b857b95a2a7b7b17c62c3ea33411ae6f4eb3a907064aecae353c60794f1d0288322fe3f8bb69d6fabd4fd7c15f8d09f8783b2f087a80407e299af");
@@ -106,7 +111,7 @@ fn test_signer_zero_test() {
     );
 
     let mut ctx = mina_signer::create_legacy(NetworkId::TESTNET);
-    let sig = ctx.sign(&kp, &tx);
+    let sig = ctx.sign(&kp, &tx, false);
 
     assert!(ctx.verify(&sig, &kp.public, &tx));
 
@@ -295,6 +300,33 @@ fn test_poseidon_initial_state_network_legacy() {
     }
 }
 
+#[derive(Clone)]
+struct Input {
+    fields: Vec<BaseField>,
+}
+
+impl Hashable for Input {
+    type D = NetworkId;
+
+    fn to_roinput(&self) -> ROInput {
+        let mut roi = ROInput::new();
+        for field in &self.fields {
+            roi = roi.append_field(*field);
+        }
+        roi
+    }
+
+    fn domain_string(network_id: NetworkId) -> Option<String> {
+        // Domain strings must have length <= 20
+        match network_id {
+            NetworkId::MAINNET => "MinaSignatureMainnet",
+            NetworkId::TESTNET => "CodaSignature*******",
+        }
+        .to_string()
+        .into()
+    }
+}
+
 #[test]
 fn test_poseidon_initial_state_network_kimchi() {
     // Values in little-endian format. Depending on the library, you might need
@@ -330,4 +362,274 @@ fn test_poseidon_initial_state_network_kimchi() {
             .collect();
         assert_eq!(initial_state_hex, exp_values_testnet_le);
     }
+}
+
+#[test]
+fn sign_fields_test() {
+    let kp = Keypair::from_secret_key(
+        SecKey::from_base58("EKFXH5yESt7nsD1TJy5WNb4agVczkvzPRVexKQ8qYdNqauQRA8Ef")
+            .expect("failed to create secret key"),
+    )
+    .expect("failed to create keypair");
+
+    let input = Input {
+        fields: vec![BaseField::from(1), BaseField::from(2), BaseField::from(3)],
+    };
+
+    let mut testnet_ctx = mina_signer::create_kimchi::<Input>(NetworkId::TESTNET);
+    let mut mainnet_ctx = mina_signer::create_kimchi::<Input>(NetworkId::MAINNET);
+
+    let testnet_sig = testnet_ctx.sign(&kp, &input, true);
+    let mainnet_sig = mainnet_ctx.sign(&kp, &input, true);
+
+    assert_eq!(
+        testnet_sig.rx.to_string(),
+        "20765817320000234273433345899587917625188885976914380365037035465312392849949"
+    );
+    assert_eq!(
+        testnet_sig.s.to_string(),
+        "1002418623751815063744079415040141105602079382674393704838141255389705661040"
+    );
+    assert_eq!(
+        mainnet_sig.rx.to_string(),
+        "10877800556133241279092798070541266482295945495262263128372065874115589660865"
+    );
+    assert_eq!(
+        mainnet_sig.s.to_string(),
+        "7997465488592693587273287555462893250665854535708979748937792736327059812287"
+    );
+    assert!(testnet_ctx.verify(&testnet_sig, &kp.public, &input));
+    assert!(mainnet_ctx.verify(&mainnet_sig, &kp.public, &input));
+}
+
+#[test]
+fn test_scalar_to_base_field_overflow() {
+    // Test the potential issue where the secret key is larger than the base
+    // field modulus could cause problems in derive_nonce_compatible when
+    // converting scalar to base field via BaseField::from(scalar.into_bigint())
+    // There are 86663725065984043395317760 values between the two moduli.
+    // Base: 28948022309329048855892746252171976963363056481941560715954676764349967630337
+    // Scalar: 28948022309329048855892746252171976963363056481941647379679742748393362948097
+
+    let mut rng = o1_utils::tests::make_test_rng(None);
+
+    // Create a scalar field element close to its modulus
+    // This test ensures that we can handle large scalar values, larger than the
+    // base field modulus
+    // Smaller than the difference between the two moduli
+    let diff = rng.next_u64();
+    let scalar_field_modulus_minus_diff: ScalarField = -ScalarField::from(diff);
+
+    // Create a keypair with a large scalar value to test derive_nonce_compatible
+    let large_secret = SecKey::new(scalar_field_modulus_minus_diff);
+    let kp = Keypair::from_secret_key(large_secret).unwrap();
+
+    let input = Input {
+        fields: vec![BaseField::from(1), BaseField::from(2), BaseField::from(3)],
+    };
+
+    let mut testnet_ctx = mina_signer::create_kimchi::<Input>(NetworkId::TESTNET);
+
+    // This should not panic even with large scalar values
+    let sig = testnet_ctx.sign(&kp, &input, true);
+
+    // Verify the signature is valid
+    assert!(testnet_ctx.verify(&sig, &kp.public, &input));
+}
+
+#[test]
+fn test_base_field_modulus_minus_one_works() {
+    // Complementary test to test_scalar_to_base_field_overflow to ensure that
+    // the base field modulus minus one works correctly
+
+    // Create a scalar field element close to its modulus
+    // This test ensures that we can handle large scalar values, larger than the
+    // base field modulus
+    // Smaller than the difference between the two moduli
+    let base_field_modulus_minus_one: ScalarField = -ScalarField::one();
+
+    // Create a keypair with a large scalar value to test derive_nonce_compatible
+    let large_secret = SecKey::new(base_field_modulus_minus_one);
+    let kp = Keypair::from_secret_key(large_secret).unwrap();
+
+    let input = Input {
+        fields: vec![BaseField::from(1), BaseField::from(2), BaseField::from(3)],
+    };
+
+    let mut testnet_ctx = mina_signer::create_kimchi::<Input>(NetworkId::TESTNET);
+
+    // This should not panic even with large scalar values
+    let sig = testnet_ctx.sign(&kp, &input, true);
+
+    // Verify the signature is valid
+    assert!(testnet_ctx.verify(&sig, &kp.public, &input));
+}
+
+// Test vectors generated with the OCaml implementation in
+// https://github.com/MinaProtocol/mina/pull/17688/
+#[test]
+pub fn test_mainnet_compatibility_derive_nonce_compatible_empty_input() {
+    let privkey1 = ScalarField::from(12345u64);
+    let kp = Keypair::from_secret_key(SecKey::new(privkey1)).unwrap();
+
+    let input = Input { fields: vec![] };
+    let domain_param = NetworkId::MAINNET;
+    let ctx = Schnorr::<Input> {
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<Input>>(
+            domain_param.clone(),
+        )),
+        domain_param,
+    };
+    let nonce = ctx.derive_nonce_compatible(&kp, &input);
+    let exp_output = "3593510266845031606199417412802645135386671476060311361956367865683456961999";
+    assert_eq!(nonce.to_string(), exp_output);
+}
+
+#[test]
+pub fn test_mainnet_compatibility_derive_nonce_compatible_single_field() {
+    let privkey = ScalarField::from(98765u64);
+    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let input = Input {
+        fields: vec![BaseField::from(42u64)],
+    };
+    let domain_param = NetworkId::MAINNET;
+    let ctx = Schnorr::<Input> {
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<Input>>(
+            domain_param.clone(),
+        )),
+        domain_param,
+    };
+    let nonce = ctx.derive_nonce_compatible(&kp, &input);
+    let exp_output = "5619064452189285627845965652490438781527755092950194256949446363932844311998";
+    assert_eq!(nonce.to_string(), exp_output);
+}
+
+#[test]
+pub fn test_mainnet_compatibility_derive_nonce_compatible_multiple_fields() {
+    let privkey = ScalarField::from(12345u64);
+    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let input = Input {
+        fields: vec![
+            BaseField::from(1u64),
+            BaseField::from(2u64),
+            BaseField::from(3u64),
+            BaseField::from(4u64),
+            BaseField::from(5u64),
+        ],
+    };
+    let domain_param = NetworkId::MAINNET;
+    let ctx = Schnorr::<Input> {
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<Input>>(
+            domain_param.clone(),
+        )),
+        domain_param,
+    };
+    let nonce = ctx.derive_nonce_compatible(&kp, &input);
+    let exp_output = "1124847115894633099179585118316876374220267648742248518331982305418971276757";
+    assert_eq!(nonce.to_string(), exp_output);
+}
+
+#[test]
+pub fn test_mainnet_compatibility_corner_case() {
+    let privkey = -ScalarField::from(1u64);
+    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let input = Input {
+        fields: vec![BaseField::from(1000u64)],
+    };
+
+    let domain_param = NetworkId::MAINNET;
+    let ctx = Schnorr::<Input> {
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<Input>>(
+            domain_param.clone(),
+        )),
+        domain_param,
+    };
+    let nonce = ctx.derive_nonce_compatible(&kp, &input);
+    let exp_output =
+        "18415544288045082845294221318898079394929596923113905209738653257828934473252";
+    assert_eq!(nonce.to_string(), exp_output);
+}
+
+#[test]
+pub fn test_testnet_compatibility_derive_nonce_compatible_empty_input() {
+    let privkey1 = ScalarField::from(12345u64);
+    let kp = Keypair::from_secret_key(SecKey::new(privkey1)).unwrap();
+
+    let input = Input { fields: vec![] };
+    let domain_param = NetworkId::TESTNET;
+    let ctx = Schnorr::<Input> {
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<Input>>(
+            domain_param.clone(),
+        )),
+        domain_param,
+    };
+    let nonce = ctx.derive_nonce_compatible(&kp, &input);
+    let exp_output =
+        "12050222805662643658060125978245066462988462138104028068015115694880454896700";
+    assert_eq!(nonce.to_string(), exp_output);
+}
+
+#[test]
+pub fn test_testnet_compatibility_derive_nonce_compatible_single_field() {
+    let privkey = ScalarField::from(98765u64);
+    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let input = Input {
+        fields: vec![BaseField::from(42u64)],
+    };
+    let domain_param = NetworkId::TESTNET;
+    let ctx = Schnorr::<Input> {
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<Input>>(
+            domain_param.clone(),
+        )),
+        domain_param,
+    };
+    let nonce = ctx.derive_nonce_compatible(&kp, &input);
+    let exp_output =
+        "27060089521084789061404877029819834217748792359356057334897351652268596433002";
+    assert_eq!(nonce.to_string(), exp_output);
+}
+
+#[test]
+pub fn test_testnet_compatibility_derive_nonce_compatible_multiple_fields() {
+    let privkey = ScalarField::from(12345u64);
+    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let input = Input {
+        fields: vec![
+            BaseField::from(1u64),
+            BaseField::from(2u64),
+            BaseField::from(3u64),
+            BaseField::from(4u64),
+            BaseField::from(5u64),
+        ],
+    };
+    let domain_param = NetworkId::TESTNET;
+    let ctx = Schnorr::<Input> {
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<Input>>(
+            domain_param.clone(),
+        )),
+        domain_param,
+    };
+    let nonce = ctx.derive_nonce_compatible(&kp, &input);
+    let exp_output =
+        "18369258700166284571888737119702768566919086299535085697762400913559910179943";
+    assert_eq!(nonce.to_string(), exp_output);
+}
+
+#[test]
+pub fn test_testnet_compatibility_corner_case() {
+    let privkey = -ScalarField::from(1u64);
+    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let input = Input {
+        fields: vec![BaseField::from(1000u64)],
+    };
+    let domain_param = NetworkId::TESTNET;
+    let ctx = Schnorr::<Input> {
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<Input>>(
+            domain_param.clone(),
+        )),
+        domain_param,
+    };
+    let nonce = ctx.derive_nonce_compatible(&kp, &input);
+    let exp_output = "5775053650311195327575287700717960521187241946253469084251372495989542569423";
+    assert_eq!(nonce.to_string(), exp_output);
 }
