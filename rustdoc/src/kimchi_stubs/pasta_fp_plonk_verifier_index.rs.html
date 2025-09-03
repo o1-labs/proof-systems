@@ -3,26 +3,26 @@
 <a href=#3 id=3 data-nosnippet>3</a>    pasta_fp_plonk_index::CamlPastaFpPlonkIndexPtr,
 <a href=#4 id=4 data-nosnippet>4</a>    plonk_verifier_index::{CamlPlonkDomain, CamlPlonkVerificationEvals, CamlPlonkVerifierIndex},
 <a href=#5 id=5 data-nosnippet>5</a>    srs::fp::CamlFpSrs,
-<a href=#6 id=6 data-nosnippet>6</a>    WithLagrangeBasis,
-<a href=#7 id=7 data-nosnippet>7</a>};
-<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>ark_ec::AffineRepr;
-<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>ark_ff::One;
-<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>Domain};
-<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>core::convert::TryInto;
-<a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span>kimchi::{
-<a href=#13 id=13 data-nosnippet>13</a>    circuits::{
-<a href=#14 id=14 data-nosnippet>14</a>        constraints::FeatureFlags,
-<a href=#15 id=15 data-nosnippet>15</a>        lookup::lookups::{LookupFeatures, LookupPatterns},
-<a href=#16 id=16 data-nosnippet>16</a>        polynomials::permutation::{permutation_vanishing_polynomial, zk_w, Shifts},
-<a href=#17 id=17 data-nosnippet>17</a>        wires::{COLUMNS, PERMUTS},
-<a href=#18 id=18 data-nosnippet>18</a>    },
-<a href=#19 id=19 data-nosnippet>19</a>    linearization::expr_linearization,
-<a href=#20 id=20 data-nosnippet>20</a>    verifier_index::VerifierIndex,
-<a href=#21 id=21 data-nosnippet>21</a>};
-<a href=#22 id=22 data-nosnippet>22</a><span class="kw">use </span>mina_curves::pasta::{Fp, Pallas, Vesta};
-<a href=#23 id=23 data-nosnippet>23</a><span class="kw">use </span>poly_commitment::{
-<a href=#24 id=24 data-nosnippet>24</a>    commitment::{caml::CamlPolyComm, PolyComm},
-<a href=#25 id=25 data-nosnippet>25</a>    ipa::{OpeningProof, SRS},
+<a href=#6 id=6 data-nosnippet>6</a>};
+<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>ark_ec::AffineRepr;
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>ark_ff::One;
+<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>Domain};
+<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>core::convert::TryInto;
+<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>kimchi::{
+<a href=#12 id=12 data-nosnippet>12</a>    circuits::{
+<a href=#13 id=13 data-nosnippet>13</a>        constraints::FeatureFlags,
+<a href=#14 id=14 data-nosnippet>14</a>        lookup::lookups::{LookupFeatures, LookupPatterns},
+<a href=#15 id=15 data-nosnippet>15</a>        polynomials::permutation::{permutation_vanishing_polynomial, zk_w, Shifts},
+<a href=#16 id=16 data-nosnippet>16</a>        wires::{COLUMNS, PERMUTS},
+<a href=#17 id=17 data-nosnippet>17</a>    },
+<a href=#18 id=18 data-nosnippet>18</a>    linearization::expr_linearization,
+<a href=#19 id=19 data-nosnippet>19</a>    verifier_index::VerifierIndex,
+<a href=#20 id=20 data-nosnippet>20</a>};
+<a href=#21 id=21 data-nosnippet>21</a><span class="kw">use </span>mina_curves::pasta::{Fp, Pallas, Vesta};
+<a href=#22 id=22 data-nosnippet>22</a><span class="kw">use </span>poly_commitment::{
+<a href=#23 id=23 data-nosnippet>23</a>    commitment::{caml::CamlPolyComm, PolyComm},
+<a href=#24 id=24 data-nosnippet>24</a>    ipa::{OpeningProof, SRS},
+<a href=#25 id=25 data-nosnippet>25</a>    lagrange_basis::WithLagrangeBasis,
 <a href=#26 id=26 data-nosnippet>26</a>    SRS <span class="kw">as _</span>,
 <a href=#27 id=27 data-nosnippet>27</a>};
 <a href=#28 id=28 data-nosnippet>28</a><span class="kw">use </span>std::{path::Path, sync::Arc};

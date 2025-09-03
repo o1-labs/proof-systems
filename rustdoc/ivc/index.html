@@ -4,7 +4,7 @@ paper <a href="https://eprint.iacr.org/2021/370.pdf">Nova</a>. For the rest of t
 document, we do suppose that the curve is BN254.</p>
 <p>Note that in the rest of this document, we will mix the terms
 “relaxation/relaxed” with “homogeneisation/homogeneous” polynomials. The
-reason is explained in the [folding] library. The term “running relaxed
+reason is explained in the <a href="../folding/index.html" title="mod folding">folding</a> library. The term “running relaxed
 instance” can be rephrased as “an accumulator of evaluations of the
 homogeneised polynomials describing the computation and commitments to them”.</p>
 <h3 id="a-recap-of-the-nova-ivc-scheme"><a class="doc-anchor" href="#a-recap-of-the-nova-ivc-scheme">§</a>A recap of the Nova IVC scheme</h3>
@@ -19,12 +19,12 @@ codebase, we call it the “IVC circuit + APP circuit”, or also the “joint
 circuit”.</li>
 <li><code>U_i</code> is the accumulator of the function <code>F'</code> up to step <code>i</code>. For clarity,
 we will sometimes use the notation <code>acc_i</code> to denote the accumulator. The
-accumulator in the [folding] library is called the “left instance”. It is a
+accumulator in the <a href="../folding/index.html" title="mod folding">folding</a> library is called the “left instance”. It is a
 “running relaxed instance”.</li>
 <li><code>u_i</code> is the current instance of the function <code>F'</code> to be folded into the
-accumulator. In the [folding] library, it is called the “right instance”.</li>
+accumulator. In the <a href="../folding/index.html" title="mod folding">folding</a> library, it is called the “right instance”.</li>
 <li><code>U_(i + 1)</code> is the accumulator of the function <code>F'</code> up to step <code>i + 1</code>,
-i.e. the accumulation of <code>U_i</code> and <code>u_i</code>. In the [folding] library, it is
+i.e. the accumulation of <code>U_i</code> and <code>u_i</code>. In the <a href="../folding/index.html" title="mod folding">folding</a> library, it is
 called the “output instance” or the “folded output”. The “folded output” and
 the “left instance” should be seen as both accumulators, and the right
 instance should be seen as the difference between both.</li>
@@ -75,7 +75,7 @@ activated by (public) selectors that are defined at setup time.
 The number of columns of the original computation defines the shape of the
 circuit as it will define the values of the selectors.</p>
 <p>First, the folding scheme we use is described in the crate
-<a href="folding::expressions">folding</a> and is based on degree-3 polynomials.
+<a href="../folding/expressions/index.html" title="mod folding::expressions">folding</a> and is based on degree-3 polynomials.
 We do suppose that each constraint are reduced to degree 2, and the third
 degree is used to encode the aggregation of constraints.</p>
 <p>In the <a href="https://eprint.iacr.org/2021/370.pdf">Nova paper</a>, to provide
