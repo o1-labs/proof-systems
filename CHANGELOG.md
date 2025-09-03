@@ -53,6 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove warnings `+adx/+bmi2 is not a recognised feature for this target,
   issue [#3322](https://github.com/o1-labs/proof-systems/issues/3322)
 ([#3248](https://github.com/o1-labs/proof-systems/pull/3248))
+- Move lagrange_basis module from kimchi-stubs in poly-commitment
+  ([#3329](https://github.com/o1-labs/proof-systems/pull/3329))
 
 ### [mina-curves](./curves)
 
@@ -114,7 +116,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### [poly-commitment](./poly-commitment)
 
 #### Changed
-- (No changes in current release)
+
+- Move lagrange_basis module from kimchi-stubs in poly-commitment
+  ([#3329](https://github.com/o1-labs/proof-systems/pull/3329))
 
 ### [turshi](./turshi)
 
