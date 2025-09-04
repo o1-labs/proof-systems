@@ -30,11 +30,14 @@ thiserror.workspace = true
 
 groupmap.workspace = true
 mina-curves.workspace = true
-mina-poseidon.workspace = true
+mina-poseidon = { workspace = true, default-features = false }
 o1-utils.workspace = true
 
-ocaml = { workspace = true, optional = true }
-ocaml-gen = { workspace = true, optional = true }
+
+ocaml = { version = "0.22.2", optional = true }
+ocaml-gen = { version = "1.0.0", optional = true }
+#ocaml = { workspace = true, optional = true }
+#ocaml-gen = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion.workspace = true

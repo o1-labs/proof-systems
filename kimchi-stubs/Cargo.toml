@@ -18,8 +18,10 @@ crate-type = ["lib", "staticlib"]
 libc.workspace = true
 num-bigint = { workspace = true, features = ["rand", "serde"] }
 # ocaml-specific
-ocaml = { workspace = true, features = ["no-caml-startup"] }
-ocaml-gen.workspace = true
+#ocaml = { workspace = true, features = ["no-caml-startup"] }
+#ocaml-gen.workspace = true
+ocaml = { version = "0.22.2", optional = true, features = ["no-caml-startup"]  }
+ocaml-gen = { version = "1.0.0", optional = true }
 once_cell.workspace = true
 paste.workspace = true
 rand.workspace = true
