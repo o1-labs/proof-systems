@@ -55,7 +55,7 @@ jobs:
           ocaml_version: ${{ matrix.ocaml_version }}
 
       - name: Install the Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
           check-latest: true
