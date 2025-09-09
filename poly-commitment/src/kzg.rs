@@ -471,7 +471,7 @@ impl<
             .into_group();
         let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
         // We compute the result of the multiplication of two miller loop, to
-        // apply only one final exponentation
+        // apply only one final exponentiation
         let to_loop_left = [
             ark_ec::pairing::prepare_g1::<Pair>(numerator_commitment),
             // Note that we do a neagtion here, to put everything on the same
