@@ -1,0 +1,46 @@
+[package]
+name = "plonk-napi"
+version = "0.1.0"
+authors = ["opensource@o1labs.org"]
+description = "Node-API bindings for plonk proof systems"
+repository = "https://github.com/MinaProtocol/mina"
+license = "MIT/Apache-2.0"
+edition = "2021"
+
+[lib]
+name = "plonk_napi"
+crate-type = ["cdylib"] # to generate a dynamic library that is loadable by Node
+
+[dependencies]
+napi = { workspace = true, features = ["napi7"] }
+napi-derive.workspace = true
+
+# arkworks
+ark-ec.workspace = true
+ark-ff.workspace = true
+ark-poly.workspace = true
+ark-serialize.workspace = true
+arkworks.workspace = true
+
+# proof-systems
+mina-curves = { path = "../curves" }
+mina-poseidon = { path = "../poseidon" }
+o1-utils = { path = "../utils" }
+poly-commitment = { path = "../poly-commitment" }
+kimchi = { path = "../kimchi" }
+
+getrandom.workspace = true
+libc.workspace = true
+num-bigint.workspace = true
+once_cell.workspace = true
+paste.workspace = true
+rand.workspace = true
+rayon.workspace = true
+rmp-serde.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_with.workspace = true
+wasm-types.workspace = true
+
+[build-dependencies]
+napi-build.workspace = true
