@@ -9,7 +9,7 @@ edition = "2021"
 
 [lib]
 name = "plonk_neon"
-crate-type = ["cdylib"]
+crate-type = ["cdylib"] # to generate a dynamic library that is loadable by Node
 
 [dependencies]
 libc = "0.2.62"
