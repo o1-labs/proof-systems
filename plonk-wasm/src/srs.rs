@@ -345,7 +345,7 @@ pub mod fp {
     ) -> WasmVector<WasmPolyComm> {
         // Reclaim ownership and extract data
         let boxed = unsafe { Box::from_raw(ptr) };
-        *boxed  // Return owned data, automatically cleans up Box
+        *boxed // Return owned data, automatically cleans up Box
     }
 }
 
@@ -452,6 +452,6 @@ pub mod fq {
     ) -> WasmVector<WasmPolyComm> {
         // Reclaim ownership and extract data
         let boxed = unsafe { Box::from_raw(ptr) };
-        *boxed  // Return owned data, automatically cleans up Box
+        *boxed // Return owned data, automatically cleans up Box
     }
 }
