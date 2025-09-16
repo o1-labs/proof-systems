@@ -30,11 +30,11 @@ pub trait GroupMap<F> {
 
 #[derive(Clone, Copy)]
 pub struct BWParameters<G: SWCurveConfig> {
-    u: G::BaseField,
-    fu: G::BaseField,
-    sqrt_neg_three_u_squared_minus_u_over_2: G::BaseField,
-    sqrt_neg_three_u_squared: G::BaseField,
-    inv_three_u_squared: G::BaseField,
+    pub u: G::BaseField,
+    pub fu: G::BaseField,
+    pub sqrt_neg_three_u_squared_minus_u_over_2: G::BaseField,
+    pub sqrt_neg_three_u_squared: G::BaseField,
+    pub inv_three_u_squared: G::BaseField,
 }
 
 /// returns the right-hand side of the Short Weierstrass curve equation for a given x

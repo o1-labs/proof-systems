@@ -29,7 +29,7 @@ where
 }
 ```
 
-One can see a FieldVar as an AST, where two atoms exist: a `Var(usize)` which represents a private input, an a `Constant(F)` which represents a constant.
+One can see a FieldVar as an AST, where two atoms exist: a `Var(usize)` which represents a private input, and a `Constant(F)` which represents a constant.
 Anything else represents combinations of these two atoms.
 
 ### Constants

@@ -4,7 +4,7 @@ on:
   pull_request:
 
 env:
-  OCAML_VERSION: "4.14"
+  OCAML_VERSION: "4.14.2"
   RUST_TOOLCHAIN_VERSION: "1.81"
 
 jobs:
@@ -14,13 +14,13 @@ jobs:
     name: Run benches
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
 
       - name: Download artifact
         id: download-artifact
-        uses: dawidd6/action-download-artifact@v10
+        uses: dawidd6/action-download-artifact@v11
         with:
           workflow: benches-mina-prover-set-baseline.yml
           name: criterion-ps-mina-master-baseline

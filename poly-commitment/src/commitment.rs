@@ -36,8 +36,9 @@ use std::{
 ///
 /// Note that the parameter `C` is not constrained to be a curve, therefore in
 /// some places in the code, `C` can refer to a scalar field element. For
-/// instance, `PolyComm<G::ScalarField>` is used to represent the evaluation of the
-/// polynomial bound by a specific commitment, at a particular evaluation point.
+/// instance, `PolyComm<G::ScalarField>` is used to represent the evaluation of
+/// the polynomial bound by a specific commitment, at a particular evaluation
+/// point.
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(bound = "C: CanonicalDeserialize + CanonicalSerialize")]
@@ -220,8 +221,8 @@ impl<A: Copy + Clone + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
     }
 }
 
-/// Inside the circuit, we have a specialized scalar multiplication which computes
-/// either
+/// Inside the circuit, we have a specialized scalar multiplication which
+/// computes either
 ///
 /// ```ignore
 /// |g: G, x: G::ScalarField| g.scale(x + 2^n)
@@ -317,8 +318,9 @@ impl<C: AffineRepr> PolyComm<C> {
         }
     }
 
-    /// Performs a multi-scalar multiplication between scalars `elm` and commitments `com`.
-    /// If both are empty, returns a commitment of length 1 containing the point at infinity.
+    /// Performs a multi-scalar multiplication between scalars `elm` and
+    /// commitments `com`. If both are empty, returns a commitment of length 1
+    /// containing the point at infinity.
     ///
     /// ## Panics
     ///
@@ -362,8 +364,8 @@ impl<C: AffineRepr> PolyComm<C> {
     }
 }
 
-/// Returns (1 + chal[-1] x)(1 + chal[-2] x^2)(1 + chal[-3] x^4) ...
-/// It's "step 8: Define the univariate polynomial" of
+/// Returns `(1 + chal[-1] x)(1 + chal[-2] x^2)(1 + chal[-3] x^4) ...`. It's
+/// "step 8: Define the univariate polynomial" of
 /// appendix A.2 of <https://eprint.iacr.org/2020/499>
 pub fn b_poly<F: Field>(chals: &[F], x: F) -> F {
     let k = chals.len();
@@ -528,15 +530,16 @@ pub fn combined_inner_product<F: PrimeField>(
 
     for evals_tr in polys.iter().filter(|evals_tr| !evals_tr[0].is_empty()) {
         // Transpose the evaluations.
-        // evals[i] = {evals_tr[j][i]}_j now corresponds to a column in evals_tr,
-        // representing a segment.
+        // evals[i] = {evals_tr[j][i]}_j now corresponds to a column in
+        // evals_tr, representing a segment.
         let evals: Vec<_> = (0..evals_tr[0].len())
             .map(|i| evals_tr.iter().map(|v| v[i]).collect::<Vec<_>>())
             .collect();
 
         // Iterating over the polynomial segments.
-        // Each segment gets its own polyscale^i, each segment element j is multiplied by evalscale^j.
-        // Given that polyscale_i = polyscale^i0 at this point, after this loop we have:
+        // Each segment gets its own polyscale^i, each segment element j is
+        // multiplied by evalscale^j. Given that polyscale_i = polyscale^i0 at
+        // this point, after this loop we have:
         //
         //    res += Σ polyscale^{i0+i} ( Σ evals_tr[j][i] * evalscale^j )
         //           i                    j
@@ -603,7 +606,7 @@ where
 /// For instance, if we have 3 commitments, the `scalars` vector will
 /// contain the values
 /// ```text
-/// [rand_base, rand_base * polyscale, rand_base * polyscale^2]`
+/// [rand_base, rand_base * polyscale, rand_base * polyscale^2]
 /// ```
 /// and the vector `points` will contain the commitments.
 ///

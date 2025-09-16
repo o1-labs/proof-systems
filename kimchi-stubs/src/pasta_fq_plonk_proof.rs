@@ -3,7 +3,6 @@ use crate::{
     field_vector::fq::CamlFqVector,
     pasta_fq_plonk_index::CamlPastaFqPlonkIndexPtr,
     pasta_fq_plonk_verifier_index::CamlPastaFqPlonkVerifierIndex,
-    WithLagrangeBasis,
 };
 use ark_ec::AffineRepr;
 use ark_ff::One;
@@ -30,6 +29,7 @@ use mina_poseidon::{
 use poly_commitment::{
     commitment::{CommitmentCurve, PolyComm},
     ipa::OpeningProof,
+    lagrange_basis::WithLagrangeBasis,
 };
 
 #[ocaml_gen::func]
@@ -78,6 +78,10 @@ pub fn caml_pasta_fq_plonk_proof_create(
 
     // public input
     let public_input = witness[0][0..index.cs.public].to_vec();
+
+    if std::env::var("KIMCHI_PROVER_DUMP_ARGUMENTS").is_ok() {
+        kimchi::bench::bench_arguments_dump_into_file(&index.cs, &witness, &runtime_tables, &prev);
+    }
 
     // NB: This method is designed only to be used by tests. However, since
     // creating a new reference will cause `drop` to be called on it once we are

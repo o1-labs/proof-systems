@@ -10,8 +10,8 @@ edition = "2021"
 license = "Apache-2.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tikv-jemalloc-ctl = { workspace = true }
-tikv-jemallocator = { workspace = true }
+tikv-jemalloc-ctl = { workspace = true, optional = true }
+tikv-jemallocator = { workspace = true, optional = true }
 
 [dependencies]
 ark-ec.workspace = true
@@ -36,3 +36,6 @@ thiserror.workspace = true
 ark-ec.workspace = true
 mina-curves.workspace = true
 secp256k1.workspace = true
+
+[features]
+diagnostics = ["tikv-jemalloc-ctl", "tikv-jemallocator"]

@@ -3,7 +3,6 @@ use crate::{
     pasta_fp_plonk_index::CamlPastaFpPlonkIndexPtr,
     plonk_verifier_index::{CamlPlonkDomain, CamlPlonkVerificationEvals, CamlPlonkVerifierIndex},
     srs::fp::CamlFpSrs,
-    WithLagrangeBasis,
 };
 use ark_ec::AffineRepr;
 use ark_ff::One;
@@ -23,6 +22,7 @@ use mina_curves::pasta::{Fp, Pallas, Vesta};
 use poly_commitment::{
     commitment::{caml::CamlPolyComm, PolyComm},
     ipa::{OpeningProof, SRS},
+    lagrange_basis::WithLagrangeBasis,
     SRS as _,
 };
 use std::{path::Path, sync::Arc};

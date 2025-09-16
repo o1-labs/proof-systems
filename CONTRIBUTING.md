@@ -112,7 +112,7 @@ Generally, proof-systems intends to be synchronized with the mina repository (se
 - `compatible`:
   - Compatible with `rampup` in `mina`.
   - Mina's `compatible`, similarly to mina's `master`, does not have `proof-systems`.
-- `berkley`: future hardfork release, will be going out to berkeley.
+- `berkeley`: future hardfork release, will be going out to berkeley.
   - This is where hotfixes go.
 - `develop`: matches mina's `develop`, soft fork-compatibility.
   - Also used by `mina/o1js-main` and `o1js/main`.

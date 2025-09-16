@@ -49,17 +49,45 @@ impl DomainParameter for NetworkId {
 
 /// Interface for signed objects
 ///
-/// Signer interface for signing [`Hashable`] inputs and verifying [`Signatures`](Signature) using [`Keypairs`](Keypair) and [`PubKeys`](PubKey)
+/// Signer interface for signing [`Hashable`] inputs and verifying
+/// [`Signatures`](Signature) using [`Keypairs`](Keypair) and
+/// [`PubKeys`](PubKey)
 pub trait Signer<H: Hashable> {
-    /// Sign `input` (see [`Hashable`]) using keypair `kp` and return the corresponding signature.
-    fn sign(&mut self, kp: &Keypair, input: &H) -> Signature;
+    /// Sign `input` (see [`Hashable`]) using keypair `kp` and return the
+    /// corresponding signature.
+    ///
+    /// # Parameters
+    ///
+    /// * `kp` - The keypair to use for signing
+    /// * `input` - The message to sign (must implement [`Hashable`])
+    /// * `packed` - Controls nonce derivation method:
+    ///   - `true`: Use OCaml/TypeScript compatible nonce derivation with field
+    ///     packing
+    ///   - `false`: Use standard Rust nonce derivation
+    ///
+    /// # Returns
+    ///
+    /// A [`Signature`] over the input message.
+    ///
+    /// # Compatibility
+    ///
+    /// Use `packed: true` when compatibility with OCaml and TypeScript
+    /// implementations is required. Use `packed: false` for standard Rust-only
+    /// usage.
+    ///
+    /// **Note**: The standard nonce derivation (`packed: false`) will be
+    /// deprecated in future versions. Use `packed: true` for new code to ensure
+    /// forward compatibility.
+    fn sign(&mut self, kp: &Keypair, input: &H, packed: bool) -> Signature;
 
-    /// Verify that the signature `sig` on `input` (see [`Hashable`]) is signed with the secret key corresponding to `pub_key`.
+    /// Verify that the signature `sig` on `input` (see [`Hashable`]) is signed
+    /// with the secret key corresponding to `pub_key`.
     /// Return `true` if the signature is valid and `false` otherwise.
     fn verify(&mut self, sig: &Signature, pub_key: &PubKey, input: &H) -> bool;
 }
 
-/// Create a legacy signer context with domain parameters initialized with `domain_param`
+/// Create a legacy signer context with domain parameters initialized with
+/// `domain_param`
 ///
 /// **Example**
 ///
@@ -75,7 +103,8 @@ pub fn create_legacy<H: 'static + Hashable>(domain_param: H::D) -> impl Signer<H
     schnorr::create_legacy::<H>(domain_param)
 }
 
-/// Create an experimental kimchi signer context with domain parameters initialized with `domain_param`
+/// Create an experimental kimchi signer context with domain parameters
+/// initialized with `domain_param`
 ///
 /// **Example**
 ///

@@ -32,7 +32,7 @@ jobs:
         # FIXME: currently not available for 5.0.0.
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency
-        ocaml_version: ["4.14"]
+        ocaml_version: ["4.14.2"]
     services:
       o1vm-e2e-testing-cache:
         image: o1labs/proof-systems:o1vm-e2e-testing-cache
@@ -40,7 +40,7 @@ jobs:
           - /tmp:/tmp/cache
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
 
@@ -55,13 +55,13 @@ jobs:
           ocaml_version: ${{ matrix.ocaml_version }}
 
       - name: Install the Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
           check-latest: true
 
       - name: Install the Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: "1.21.0"
 

@@ -1,7 +1,7 @@
 //! Useful helper methods to extend [ark_ff::Field].
 
 use ark_ff::{BigInteger, Field, PrimeField};
-use num_bigint::{BigInt, BigUint, RandBigInt, ToBigInt};
+use num_bigint::{BigInt, BigUint, RandBigInt, Sign};
 use rand::rngs::StdRng;
 use std::ops::Neg;
 use thiserror::Error;
@@ -109,7 +109,14 @@ pub trait FieldHelpers<F> {
     where
         F: PrimeField,
     {
-        Self::to_biguint(self).to_bigint().unwrap()
+        use ark_ff::Zero;
+        let big_int = Self::to_biguint(self);
+
+        if big_int.is_zero() {
+            BigInt::zero()
+        } else {
+            BigInt::new(Sign::Plus, big_int.to_u32_digits())
+        }
     }
 
     /// Create a new field element from this field elements bits

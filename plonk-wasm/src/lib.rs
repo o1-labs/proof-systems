@@ -7,9 +7,10 @@
 //!   a math library that Marlin builds on top of.
 //!
 
-use wasm_bindgen::prelude::*;
+pub use arkworks::{WasmGPallas, WasmGVesta, WasmPastaFp, WasmPastaFq};
+pub mod wasm_vector;
 
-mod wasm_vector;
+use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 extern "C" {

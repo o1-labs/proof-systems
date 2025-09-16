@@ -1,7 +1,4 @@
-use crate::{
-    arkworks::CamlFq, gate_vector::fq::CamlPastaFqPlonkGateVectorPtr, srs::fq::CamlFqSrs,
-    WithLagrangeBasis,
-};
+use crate::{arkworks::CamlFq, gate_vector::fq::CamlPastaFqPlonkGateVectorPtr, srs::fq::CamlFqSrs};
 use ark_poly::EvaluationDomain;
 use kimchi::{
     circuits::{
@@ -17,7 +14,7 @@ use kimchi::{
 };
 use mina_curves::pasta::{Fq, Pallas, PallasParameters, Vesta};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
-use poly_commitment::{ipa::OpeningProof, SRS as _};
+use poly_commitment::{ipa::OpeningProof, lagrange_basis::WithLagrangeBasis, SRS as _};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{File, OpenOptions},

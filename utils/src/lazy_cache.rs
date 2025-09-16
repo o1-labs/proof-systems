@@ -173,7 +173,7 @@ mod test {
         thread,
     };
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(not(target_arch = "wasm32"), feature = "diagnostics"))]
     fn print_heap_usage(label: &str) {
         use tikv_jemalloc_ctl::{epoch, stats};
 
@@ -264,7 +264,7 @@ mod test {
         }
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(all(not(target_arch = "wasm32"), feature = "diagnostics"))]
     #[test]
     fn test_lazy_cache_allocation() {
         use tikv_jemallocator::Jemalloc;

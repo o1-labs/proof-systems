@@ -4,7 +4,6 @@ use crate::{
     pasta_fp_plonk_index::{CamlPastaFpPlonkIndex, CamlPastaFpPlonkIndexPtr},
     pasta_fp_plonk_verifier_index::CamlPastaFpPlonkVerifierIndex,
     srs::fp::CamlFpSrs,
-    WithLagrangeBasis,
 };
 use ark_ec::AffineRepr;
 use ark_ff::One;
@@ -31,6 +30,7 @@ use mina_poseidon::{
 use poly_commitment::{
     commitment::{CommitmentCurve, PolyComm},
     ipa::OpeningProof,
+    lagrange_basis::WithLagrangeBasis,
 };
 use std::convert::TryInto;
 
@@ -83,6 +83,10 @@ pub fn caml_pasta_fp_plonk_proof_create(
 
     // public input
     let public_input = witness[0][0..index.cs.public].to_vec();
+
+    if std::env::var("KIMCHI_PROVER_DUMP_ARGUMENTS").is_ok() {
+        kimchi::bench::bench_arguments_dump_into_file(&index.cs, &witness, &runtime_tables, &prev);
+    }
 
     // NB: This method is designed only to be used by tests. However, since creating a new reference will cause `drop` to be called on it once we are done with it. Since `drop` calls `caml_shutdown` internally, we *really, really* do not want to do this, but we have no other way to get at the active runtime.
     // TODO: There's actually a way to get a handle to the runtime as a function argument. Switch
