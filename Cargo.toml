@@ -15,6 +15,7 @@ members = [
   "mvpoly",
   "o1vm",
   "plonk-neon",
+  "plonk-napi",
   "plonk-wasm",
   "poly-commitment",
   "poseidon",
