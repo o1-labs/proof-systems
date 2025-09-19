@@ -173,7 +173,7 @@ So the new inner product should be:
 
 $$
 \begin{align}
-\vec{z'} =& \langle \vec{a'}, \vec{b'} \rangle \\
+z' =& \langle \vec{a'}, \vec{b'} \rangle \\
 =& \langle \begin{pmatrix}x^{-1} a_1 + x a_3 \\ x^{-1} a_2 + x a_4 \end{pmatrix}, \begin{pmatrix}x b_1 + x^{-1} b_3 \\ x b_2 + x^{-1} b_4 \end{pmatrix} \rangle \\
 =& (a_1b_1 + a_2b_2 + a_3b_3 + a_4b_4) + x^{-2} (a_1b_3 + a_2b_4) + x^2 (a_3b_1 + a_4b_2) \\
 =& z + x^{-2} (L_z) + x^2 (R_z)
