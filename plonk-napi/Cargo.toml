@@ -26,8 +26,6 @@ arkworks.workspace = true
 mina-curves = { path = "../curves" }
 mina-poseidon = { path = "../poseidon" }
 o1-utils = { path = "../utils" }
-poly-commitment = { path = "../poly-commitment" }
-kimchi = { path = "../kimchi" }
 
 getrandom.workspace = true
 libc.workspace = true
@@ -38,7 +36,6 @@ rand.workspace = true
 rayon.workspace = true
 rmp-serde.workspace = true
 serde.workspace = true
-serde_json.workspace = true
 serde_with.workspace = true
 wasm-types.workspace = true
 
