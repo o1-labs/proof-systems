@@ -2878,6 +2878,7 @@ dependencies = [
  "o1-utils",
  "once_cell",
  "paste",
+ "poly-commitment",
  "rand",
  "rayon",
  "rmp-serde",
