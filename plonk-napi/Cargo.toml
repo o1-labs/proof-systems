@@ -23,11 +23,9 @@ ark-serialize.workspace = true
 arkworks.workspace = true
 
 # proof-systems
-mina-curves.workspace = true
-mina-poseidon.workspace = true
-o1-utils.workspace = true
-poly-commitment.workspace = true
-kimchi = { workspace = true, features = ["napi_types"] }
+mina-curves = { path = "../curves" }
+mina-poseidon = { path = "../poseidon" }
+o1-utils = { path = "../utils" }
 
 getrandom.workspace = true
 libc.workspace = true

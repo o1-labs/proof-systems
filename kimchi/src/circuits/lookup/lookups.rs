@@ -47,7 +47,6 @@ fn max_lookups_per_row(kinds: LookupPatterns) -> usize {
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
-#[cfg_attr(feature = "napi_types", napi_derive::napi)]
 pub struct LookupPatterns {
     pub xor: bool,
     pub lookup: bool,
@@ -140,7 +139,6 @@ impl LookupPatterns {
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
-#[cfg_attr(feature = "napi_types", napi_derive::napi)]
 pub struct LookupFeatures {
     /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
     pub patterns: LookupPatterns,
@@ -167,7 +165,6 @@ impl LookupFeatures {
 /// Describes the desired lookup configuration.
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
-#[cfg_attr(feature = "napi_types", napi_derive::napi)]
 pub struct LookupInfo {
     /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
     pub max_per_row: usize,
@@ -598,58 +595,6 @@ pub mod wasm {
     #[wasm_bindgen::prelude::wasm_bindgen]
     impl LookupInfo {
         #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
-        pub fn new(
-            max_per_row: usize,
-            max_joint_size: u32,
-            features: LookupFeatures,
-        ) -> LookupInfo {
-            LookupInfo {
-                max_per_row,
-                max_joint_size,
-                features,
-            }
-        }
-    }
-}
-
-#[cfg(feature = "napi_types")]
-pub mod native {
-    use super::*;
-
-    impl LookupPatterns {
-        #[napi_derive::napi]
-        pub fn new(
-            xor: bool,
-            lookup: bool,
-            range_check: bool,
-            foreign_field_mul: bool,
-        ) -> LookupPatterns {
-            LookupPatterns {
-                xor,
-                lookup,
-                range_check,
-                foreign_field_mul,
-            }
-        }
-    }
-
-    impl LookupFeatures {
-        #[napi_derive::napi]
-        pub fn new(
-            patterns: LookupPatterns,
-            joint_lookup_used: bool,
-            uses_runtime_tables: bool,
-        ) -> LookupFeatures {
-            LookupFeatures {
-                patterns,
-                joint_lookup_used,
-                uses_runtime_tables,
-            }
-        }
-    }
-
-    impl LookupInfo {
-        #[napi_derive::napi]
         pub fn new(
             max_per_row: usize,
             max_joint_size: u32,

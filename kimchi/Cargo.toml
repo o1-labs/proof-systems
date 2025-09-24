@@ -44,8 +44,6 @@ ocaml = { workspace = true, optional = true }
 ocaml-gen = { workspace = true, optional = true }
 
 wasm-bindgen = { workspace = true, optional = true }
-napi = { workspace = true, optional = true }
-napi-derive = { workspace = true, optional = true }
 
 internal-tracing.workspace = true
 
@@ -97,6 +95,5 @@ ocaml_types = [
 ]
 bn254 = ["ark-bn254"]
 wasm_types = ["wasm-bindgen"]
-napi_types = ["napi-derive", "napi"]
 check_feature_flags = []
 diagnostics = ["tikv-jemalloc-ctl", "tikv-jemallocator"]

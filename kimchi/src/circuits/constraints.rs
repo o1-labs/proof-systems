@@ -42,7 +42,6 @@ use std::sync::Arc;
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
-#[cfg_attr(feature = "napi_types", napi_derive::napi)]
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 pub struct FeatureFlags {
     /// RangeCheck0 gate

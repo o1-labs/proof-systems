@@ -32,7 +32,6 @@ use super::{argument::ArgumentWitness, expr};
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
-#[cfg_attr(feature = "napi_types", napi_derive::napi)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum CurrOrNext {
     Curr,
@@ -65,7 +64,6 @@ impl CurrOrNext {
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
-#[cfg_attr(feature = "napi_types", napi_derive::napi)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum GateType {
     #[default]
