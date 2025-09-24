@@ -25,6 +25,9 @@ pub mod verifier_index;
 #[cfg(test)]
 mod tests;
 
+#[cfg(all(feature = "wasm_types", feature = "napi_types"))]
+compile_error!("`wasm_types` and `napi_types` cannot be enabled at the same time");
+
 /// Handy macro to return the filename and line number of a place in the code.
 #[macro_export]
 macro_rules! loc {
