@@ -1,7 +1,6 @@
 use std::{iter::FromIterator, ops::Deref};
 
-use napi::bindgen_prelude::*;
-use napi::sys;
+use napi::{bindgen_prelude::*, sys};
 use wasm_types::{FlatVector, FlatVectorElem};
 
 #[derive(Clone, Debug, Default)]
@@ -183,7 +182,7 @@ macro_rules! impl_vec_vec_fp {
 
 pub mod fp {
     use super::*;
-    use crate::field::WasmPastaFp;
+    use crate::wrappers::field::WasmPastaFp;
     use mina_curves::pasta::Fp;
     use napi_derive::napi;
 
@@ -192,7 +191,7 @@ pub mod fp {
 
 pub mod fq {
     use super::*;
-    use crate::field::WasmPastaFq;
+    use crate::wrappers::field::WasmPastaFq;
     use mina_curves::pasta::Fq;
     use napi_derive::napi;
 

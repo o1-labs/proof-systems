@@ -1,7 +1,8 @@
-pub mod field;
-pub mod group;
+pub mod gate_vector;
 pub mod poly_comm;
-mod poseidon;
+pub mod poseidon;
 pub mod wasm_vector;
+pub mod wrappers;
 
+pub use crate::wrappers::field::{WasmPastaFp, WasmPastaFq};
 pub use poseidon::{caml_pasta_fp_poseidon_block_cipher, caml_pasta_fq_poseidon_block_cipher};

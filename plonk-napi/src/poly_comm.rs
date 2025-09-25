@@ -1,10 +1,10 @@
 use crate::{
-    group::{WasmGPallas, WasmGVesta},
     wasm_vector::WasmVector,
+    wrappers::group::{WasmGPallas, WasmGVesta},
 };
 use napi_derive::napi;
 use paste::paste;
-use poly_commitment::commitment::PolyComm;
+use poly_commitment::PolyComm;
 
 macro_rules! impl_poly_comm {
     (

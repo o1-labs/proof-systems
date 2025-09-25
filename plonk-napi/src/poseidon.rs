@@ -1,4 +1,4 @@
-use crate::field::{WasmPastaFp, WasmPastaFq};
+use crate::wrappers::field::{WasmPastaFp, WasmPastaFq};
 use mina_curves::pasta::{Fp, Fq};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, permutation::poseidon_block_cipher};
 use napi::bindgen_prelude::*;

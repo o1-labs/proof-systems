@@ -1,4 +1,4 @@
-use crate::field::{WasmPastaFp, WasmPastaFq};
+use crate::wrappers::field::{WasmPastaFp, WasmPastaFq};
 use mina_curves::pasta::{
     curves::{
         pallas::{G_GENERATOR_X as GeneratorPallasX, G_GENERATOR_Y as GeneratorPallasY},
