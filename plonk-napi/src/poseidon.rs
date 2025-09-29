@@ -9,17 +9,17 @@ use wasm_types::{FlatVector, FlatVectorElem};
 
 #[napi]
 pub fn caml_pasta_fp_poseidon_block_cipher(state: Uint8Array) -> Result<Vec<u8>> {
-    let mut state: Vec<Fp> = FlatVector::<WasmPastaFp>::from_bytes(state.to_vec())
+    let mut state_vec: Vec<Fp> = FlatVector::<WasmPastaFp>::from_bytes(state.to_vec())
         .into_iter()
         .map(Into::into)
         .collect();
 
     poseidon_block_cipher::<Fp, PlonkSpongeConstantsKimchi>(
         mina_poseidon::pasta::fp_kimchi::static_params(),
-        &mut state,
+        &mut state_vec,
     );
 
-    let res = state
+    let res = state_vec
         .into_iter()
         .map(WasmPastaFp)
         .flat_map(FlatVectorElem::flatten)
@@ -32,17 +32,17 @@ pub fn caml_pasta_fp_poseidon_block_cipher(state: Uint8Array) -> Result<Vec<u8>>
 
 #[napi]
 pub fn caml_pasta_fq_poseidon_block_cipher(state: Uint8Array) -> Result<Vec<u8>> {
-    let mut state: Vec<Fq> = FlatVector::<WasmPastaFq>::from_bytes(state.to_vec())
+    let mut state_vec: Vec<Fq> = FlatVector::<WasmPastaFq>::from_bytes(state.to_vec())
         .into_iter()
         .map(Into::into)
         .collect();
 
     poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi>(
         mina_poseidon::pasta::fq_kimchi::static_params(),
-        &mut state,
+        &mut state_vec,
     );
 
-    let res = state
+    let res = state_vec
         .into_iter()
         .map(WasmPastaFq)
         .flat_map(FlatVectorElem::flatten)
