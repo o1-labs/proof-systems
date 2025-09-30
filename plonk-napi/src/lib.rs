@@ -7,4 +7,4 @@ pub use poseidon::{
 };
 
 pub use wrappers::field::{WasmPastaFp, WasmPastaFq};
-
+pub use wrappers::group::{WasmGPallas, WasmGVesta};
