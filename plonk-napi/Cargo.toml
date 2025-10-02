@@ -38,6 +38,7 @@ rand.workspace = true
 rayon.workspace = true
 rmp-serde.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 serde_with.workspace = true
 wasm-types.workspace = true
 
