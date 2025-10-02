@@ -2934,6 +2934,7 @@ dependencies = [
  "ark-serialize",
  "arkworks",
  "getrandom 0.2.15",
+ "kimchi",
  "libc",
  "mina-curves",
  "mina-poseidon",
