@@ -1,7 +1,8 @@
-pub(crate) mod poseidon;
-pub(crate) mod wrappers;
-pub(crate) mod wasm_vector;
+pub(crate) mod gate_vector;
 pub(crate) mod poly_comm;
+pub(crate) mod poseidon;
+pub(crate) mod wasm_vector;
+pub(crate) mod wrappers;
 
 pub use poseidon::{
     caml_pasta_fp_poseidon_block_cipher,
