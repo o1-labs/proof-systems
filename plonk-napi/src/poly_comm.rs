@@ -1,6 +1,6 @@
 use crate::{
-    wrappers::group::{WasmGPallas, WasmGVesta},
     wasm_vector::WasmVector,
+    wrappers::group::{WasmGPallas, WasmGVesta},
 };
 use napi_derive::napi;
 use paste::paste;
