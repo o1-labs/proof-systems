@@ -1,6 +1,7 @@
 use ark_poly::EvaluationDomain;
+use kimchi::circuits::constraints::ConstraintSystem;
 use kimchi::{linearization::expr_linearization, prover_index::ProverIndex};
-use mina_curves::pasta::{Pallas as GAffine, PallasParameters};
+use mina_curves::pasta::{Fq, Pallas as GAffine, PallasParameters, Vesta as GAffineOther};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use napi::bindgen_prelude::{Error, External, Result as NapiResult, Status, Uint8Array};
 use napi_derive::napi;
@@ -8,16 +9,23 @@ use poly_commitment::ipa::{OpeningProof, SRS as IPA_SRS};
 use poly_commitment::SRS;
 use serde::{Deserialize, Serialize};
 use std::{io::Cursor, sync::Arc};
+
+use crate::gate_vector::GateVectorHandleFq;
+use crate::tables::{
+    lookup_table_fq_from_js,
+    runtime_table_cfg_fq_from_js,
+    JsLookupTableFq,
+    JsRuntimeTableCfgFq,
+};
+use plonk_wasm::srs::fq::WasmFqSrs as WasmSrs;
 pub struct WasmPastaFqPlonkIndex(pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>);
 
-// TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
 #[derive(Serialize, Deserialize)]
 struct SerializedProverIndex {
     prover_index: Vec<u8>,
     srs: Vec<u8>,
 }
 
-// TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
 impl WasmPastaFqPlonkIndex {
     fn serialize_inner(&self) -> Result<Vec<u8>, String> {
         let prover_index = rmp_serde::to_vec(self.0.as_ref()).map_err(|e| e.to_string())?;
@@ -62,7 +70,6 @@ impl WasmPastaFqPlonkIndex {
     }
 }
 
-// TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
 #[napi]
 pub fn prover_index_fq_from_bytes(
     bytes: Uint8Array,
@@ -72,7 +79,6 @@ pub fn prover_index_fq_from_bytes(
     Ok(External::new(index))
 }
 
-// TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
 #[napi]
 pub fn prover_index_fq_to_bytes(index: External<WasmPastaFqPlonkIndex>) -> NapiResult<Uint8Array> {
     let bytes = index
@@ -105,3 +111,62 @@ pub fn caml_pasta_fq_plonk_index_domain_d4_size(index: External<WasmPastaFqPlonk
 pub fn caml_pasta_fq_plonk_index_domain_d8_size(index: External<WasmPastaFqPlonkIndex>) -> i32 {
     index.0.cs.domain.d8.size() as i32
 }
+
+#[napi]
+pub fn caml_pasta_fq_plonk_index_create(
+    gates: External<GateVectorHandleFq>,
+    public_: i32,
+    lookup_tables: Vec<JsLookupTableFq>,
+    runtime_table_cfgs: Vec<JsRuntimeTableCfgFq>,
+    prev_challenges: i32,
+    srs: External<WasmSrs>,
+    lazy_mode: bool,
+) -> Result<External<WasmPastaFqPlonkIndex>, Error> {
+    let gates: Vec<_> = gates.as_ref().inner().as_slice().to_vec();
+
+    let runtime_cfgs = runtime_table_cfgs
+        .into_iter()
+        .map(runtime_table_cfg_fq_from_js)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let lookup_tables = lookup_tables
+        .into_iter()
+        .map(lookup_table_fq_from_js)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let srs_ref = srs.as_ref();
+
+    let cs = ConstraintSystem::<Fq>::create(gates)
+        .public(public_ as usize)
+        .prev_challenges(prev_challenges as usize)
+        .lookup(lookup_tables)
+        .max_poly_size(Some(srs_ref.0.max_poly_size()))
+        .runtime(if runtime_cfgs.is_empty() {
+            None
+        } else {
+            Some(runtime_cfgs)
+        })
+        .lazy_mode(lazy_mode)
+        .build()
+        .map_err(|_| {
+            Error::new(
+                Status::InvalidArg,
+                "caml_pasta_fq_plonk_index_create: could not create constraint system",
+            )
+        })?;
+
+    let (endo_q, _endo_r) = poly_commitment::ipa::endos::<GAffineOther>();
+
+    srs_ref.0.get_lagrange_basis(cs.domain.d1);
+
+    let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::create(
+        cs,
+        endo_q,
+        srs_ref.0.clone(),
+        lazy_mode,
+    );
+    index.compute_verifier_index_digest::<DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>>();
+
+    Ok(External::new(WasmPastaFqPlonkIndex(Box::new(index))))
+}
+
