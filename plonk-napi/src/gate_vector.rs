@@ -140,63 +140,13 @@ macro_rules! impl_gate_support {
 
             #[napi]
             #[derive(Clone, Default, Debug)]
-            pub struct [<Napi $module:camel GateVector>] {
-                #[napi(skip)]
-                pub inner: Vec<CircuitGate<$field>>,
-            }
+            pub struct [<Napi $module:camel GateVector>](
+                #[napi(skip)] pub Vec<CircuitGate<$field>>);
 
-            #[napi]
-            impl [<Napi $module:camel GateVector>] {
-                #[napi(constructor)]
-                pub fn new() -> Self {
-                    Self { inner: Vec::new() }
-                }
-
-                #[napi]
-                pub fn add(&mut self, gate: [<Napi $module:camel Gate>]) -> Result<()> {
-                    self.inner.push(gate.into_inner()?);
-                    Ok(())
-                }
-
-                #[napi]
-                pub fn get(&self, index: i32) -> [<Napi $module:camel Gate>] {
-                    [<Napi $module:camel Gate>]::from_inner(&self.inner[index as usize])
-                }
-
-                #[napi]
-                pub fn len(&self) -> i32 {
-                    self.inner.len() as i32
-                }
-
-                #[napi]
-                pub fn wrap(&mut self, target: NapiWire, head: NapiWire) {
-                    let row = target.row as usize;
-                    let col = target.col as usize;
-                    self.inner[row].wires[col] = KimchiWire::from(head);
-                }
-
-                #[napi]
-                pub fn digest(&self, public_input_size: i32) -> Vec<u8> {
-                    Circuit::new(public_input_size as usize, &self.inner)
-                        .digest()
-                        .to_vec()
-                }
-
-                #[napi]
-                pub fn serialize(&self, public_input_size: i32) -> Result<String> {
-                    let circuit = Circuit::new(public_input_size as usize, &self.inner);
-                    serde_json::to_string(&circuit).map_err(|err| {
-                        Error::new(
-                            Status::GenericFailure,
-                            format!("failed to serialize circuit: {}", err),
-                        )
-                    })
-                }
-            }
 
             #[napi]
             pub fn [<caml_pasta_ $module:snake _plonk_gate_vector_create>]() -> [<Napi $module:camel GateVector>] {
-                [<Napi $module:camel GateVector>]::new()
+                [<Napi $module:camel GateVector>(Vec::new())]
             }
 
             #[napi]
@@ -204,7 +154,8 @@ macro_rules! impl_gate_support {
                 vector: &mut [<Napi $module:camel GateVector>],
                 gate: [<Napi $module:camel Gate>],
             ) -> Result<()> {
-                vector.add(gate)
+                vector.0.push(gate.into_inner()?);
+                Ok(())
             }
 
             #[napi]
@@ -212,14 +163,14 @@ macro_rules! impl_gate_support {
                 vector: &[<Napi $module:camel GateVector>],
                 index: i32,
             ) -> [<Napi $module:camel Gate>] {
-                vector.get(index)
+                [<Napi $module:camel Gate>]::from_inner(&self.0[index as usize])
             }
 
             #[napi]
             pub fn [<caml_pasta_ $module:snake _plonk_gate_vector_len>](
                 vector: &[<Napi $module:camel GateVector>],
             ) -> i32 {
-                vector.len()
+                vector.0.len() as i32
             }
 
             #[napi]
@@ -228,15 +179,19 @@ macro_rules! impl_gate_support {
                 target: NapiWire,
                 head: NapiWire,
             ) {
-                vector.wrap(target, head);
-            }
+                let row = target.row as usize;
+                let col = target.col as usize;
+                self.0[row].wires[col] = KimchiWire::from(head);
+              }
 
             #[napi]
             pub fn [<caml_pasta_ $module:snake _plonk_gate_vector_digest>](
                 public_input_size: i32,
                 vector: &[<Napi $module:camel GateVector>],
             ) -> Vec<u8> {
-                vector.digest(public_input_size)
+                Circuit::new(public_input_size as usize, &self.0)
+                    .digest()
+                    .to_vec()
             }
 
             #[napi]
@@ -244,11 +199,23 @@ macro_rules! impl_gate_support {
                 public_input_size: i32,
                 vector: &[<Napi $module:camel GateVector>],
             ) -> Result<String> {
-                vector.serialize(public_input_size)
+                let circuit = Circuit::new(public_input_size as usize, &self.inner);
+                serde_json::to_string(&circuit).map_err(|err| {
+                    Error::new(
+                        Status::GenericFailure,
+                        format!("failed to serialize circuit: {}", err),
+                    )
+                })
             }
         }
     };
 }
 
-impl_gate_support!(fp, Fp, WasmPastaFp);
-impl_gate_support!(fq, Fq, WasmPastaFq);
+pub mod fp {
+    use super::*;
+    impl_gate_support!(fp, Fp, WasmPastaFp);
+}
+pub mod fq {
+    use super::*;
+    impl_gate_support!(fq, Fq, WasmPastaFq);
+}
