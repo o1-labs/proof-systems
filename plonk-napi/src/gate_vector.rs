@@ -55,6 +55,7 @@ impl From<&GateWires> for NapiGateWires {
 }
 
 fn gate_type_from_i32(value: i32) -> Result<GateType> {
+    // Ocaml/JS int are signed, so we use i32 here
     if value < 0 {
         return Err(Error::new(
             Status::InvalidArg,
@@ -92,24 +93,25 @@ fn gate_type_from_i32(value: i32) -> Result<GateType> {
     })
 }
 
+// For convenience to not expose the GateType enum to JS
 fn gate_type_to_i32(value: GateType) -> i32 {
     value as i32
 }
 
 macro_rules! impl_gate_support {
-    ($module:ident, $field:ty, $wasm_field:ty) => {
+    ($field_name:ident, $F:ty, $WasmF:ty) => {
         paste! {
             #[napi(object)]
             #[derive(Clone, Debug, Default)]
-            pub struct [<Napi $module:camel Gate>] {
-                pub typ: i32,
+            pub struct [<Napi $field_name:camel Gate>] {
+                pub typ: i32, // for convenience, we use i32 instead of GateType
                 pub wires: NapiGateWires,
-                pub coeffs: Vec<u8>,
+                pub coeffs: Vec<u8>, // for now, serializing fields as flat bytes, but subject to changes
             }
 
-            impl [<Napi $module:camel Gate>] {
-                fn into_inner(self) -> Result<CircuitGate<$field>> {
-                    let coeffs = WasmFlatVector::<$wasm_field>::from_bytes(self.coeffs)
+            impl [<Napi $field_name:camel Gate>] {
+                fn into_inner(self) -> Result<CircuitGate<$F>> {
+                    let coeffs = WasmFlatVector::<$WasmF>::from_bytes(self.coeffs)
                         .into_iter()
                         .map(Into::into)
                         .collect();
@@ -121,12 +123,12 @@ macro_rules! impl_gate_support {
                     })
                 }
 
-                fn from_inner(value: &CircuitGate<$field>) -> Self {
+                fn from_inner(value: &CircuitGate<$F>) -> Self {
                     let coeffs = value
                         .coeffs
                         .iter()
                         .cloned()
-                        .map($wasm_field::from)
+                        .map($WasmF::from)
                         .flat_map(|elem| elem.flatten())
                         .collect();
 
@@ -140,54 +142,52 @@ macro_rules! impl_gate_support {
 
             #[napi]
             #[derive(Clone, Default, Debug)]
-            pub struct [<Napi $module:camel GateVector>](
-                #[napi(skip)] pub Vec<CircuitGate<$field>>,
+            pub struct [<Napi $field_name:camel GateVector>](
+                #[napi(skip)] pub Vec<CircuitGate<$F>>,
             );
 
             #[napi]
-            pub fn [<caml_pasta_ $module:snake _plonk_gate_vector_create>]() -> [<Napi $module:camel GateVector>] {
-                [<Napi $module:camel GateVector>](Vec::new())
+            pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_create>]() -> [<Napi $field_name:camel GateVector>] {
+                [<Napi $field_name:camel GateVector>](Vec::new())
             }
 
             #[napi]
-            pub fn [<caml_pasta_ $module:snake _plonk_gate_vector_add>](
-                vector: &mut [<Napi $module:camel GateVector>],
-                gate: [<Napi $module:camel Gate>],
+            pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_add>](
+                vector: &mut [<Napi $field_name:camel GateVector>],
+                gate: [<Napi $field_name:camel Gate>],
             ) -> Result<()> {
                 vector.0.push(gate.into_inner()?);
                 Ok(())
             }
 
             #[napi]
-            pub fn [<caml_pasta_ $module:snake _plonk_gate_vector_get>](
-                vector: &[<Napi $module:camel GateVector>],
+            pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_get>](
+                vector: &[<Napi $field_name:camel GateVector>],
                 index: i32,
-            ) -> [<Napi $module:camel Gate>] {
-                [<Napi $module:camel Gate>]::from_inner(&vector.0[index as usize])
+            ) -> [<Napi $field_name:camel Gate>] {
+                [<Napi $field_name:camel Gate>]::from_inner(&vector.0[index as usize])
             }
 
             #[napi]
-            pub fn [<caml_pasta_ $module:snake _plonk_gate_vector_len>](
-                vector: &[<Napi $module:camel GateVector>],
+            pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_len>](
+                vector: &[<Napi $field_name:camel GateVector>],
             ) -> i32 {
                 vector.0.len() as i32
             }
 
             #[napi]
-            pub fn [<caml_pasta_ $module:snake _plonk_gate_vector_wrap>](
-                vector: &mut [<Napi $module:camel GateVector>],
+            pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_wrap>](
+                vector: &mut [<Napi $field_name:camel GateVector>],
                 target: NapiWire,
                 head: NapiWire,
             ) {
-                let row = target.row as usize;
-                let col = target.col as usize;
-                vector.0[row].wires[col] = KimchiWire::from(head);
+                vector.0[target.row as usize].wires[target.col as usize] = KimchiWire::from(head);
               }
 
             #[napi]
-            pub fn [<caml_pasta_ $module:snake _plonk_gate_vector_digest>](
+            pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_digest>](
                 public_input_size: i32,
-                vector: &[<Napi $module:camel GateVector>],
+                vector: &[<Napi $field_name:camel GateVector>],
             ) -> Uint8Array {
                 let bytes = Circuit::new(public_input_size as usize, &vector.0)
                     .digest()
@@ -196,15 +196,15 @@ macro_rules! impl_gate_support {
             }
 
             #[napi]
-            pub fn [<caml_pasta_ $module:snake _plonk_circuit_serialize>](
+            pub fn [<caml_pasta_ $field_name:snake _plonk_circuit_serialize>](
                 public_input_size: i32,
-                vector: &[<Napi $module:camel GateVector>],
+                vector: &[<Napi $field_name:camel GateVector>],
             ) -> Result<String> {
                 let circuit = Circuit::new(public_input_size as usize, &vector.0);
                 serde_json::to_string(&circuit).map_err(|err| {
                     Error::new(
                         Status::GenericFailure,
-                        format!("failed to serialize circuit: {}", err),
+                        format!("couldn't serialize constraints: {}", err),
                     )
                 })
             }
