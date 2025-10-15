@@ -1,7 +1,10 @@
 use std::convert::TryFrom;
 
 use arkworks::{WasmPastaFp, WasmPastaFq};
-use kimchi::circuits::{gate::GateType, wires::Wire};
+use kimchi::circuits::{
+    gate::{CircuitGate, GateType},
+    wires::Wire,
+};
 use mina_curves::pasta::{Fp, Fq};
 use napi::bindgen_prelude::{Error, External, Status, Uint8Array};
 use napi_derive::napi;
@@ -381,4 +384,35 @@ pub fn caml_pasta_fq_plonk_circuit_serialize(
         .inner()
         .serialize(public_input_size as usize)
         .map_err(|e| Error::new(Status::GenericFailure, e.to_string()))
+}
+
+#[napi]
+pub fn caml_pasta_fp_plonk_gate_vector_to_bytes(
+    gates: External<GateVectorHandleFp>,
+) -> napi::Result<Uint8Array> {
+    let bytes = rmp_serde::to_vec(gates.as_ref().inner().as_slice())
+        .map_err(|e| Error::new(Status::GenericFailure, e.to_string()))?;
+    Ok(Uint8Array::from(bytes))
+}
+
+#[napi]
+pub fn caml_pasta_fp_plonk_gate_vector_from_bytes(
+    bytes: Uint8Array,
+) -> napi::Result<External<GateVectorHandleFp>> {
+    let gates: Vec<CircuitGate<Fp>> = rmp_serde::from_slice(bytes.as_ref())
+        .map_err(|e| Error::new(Status::InvalidArg, e.to_string()))?;
+    Ok(External::new(GateVectorHandleFp(GateVector::from_vec(
+        gates,
+    ))))
+}
+
+#[napi]
+pub fn caml_pasta_fq_plonk_gate_vector_from_bytes(
+    bytes: Uint8Array,
+) -> napi::Result<External<GateVectorHandleFq>> {
+    let gates: Vec<CircuitGate<Fq>> = rmp_serde::from_slice(bytes.as_ref())
+        .map_err(|e| Error::new(Status::InvalidArg, e.to_string()))?;
+    Ok(External::new(GateVectorHandleFq(GateVector::from_vec(
+        gates,
+    ))))
 }

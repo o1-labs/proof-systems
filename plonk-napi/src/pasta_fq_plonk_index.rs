@@ -12,10 +12,7 @@ use std::{io::Cursor, sync::Arc};
 
 use crate::gate_vector::GateVectorHandleFq;
 use crate::tables::{
-    lookup_table_fq_from_js,
-    runtime_table_cfg_fq_from_js,
-    JsLookupTableFq,
-    JsRuntimeTableCfgFq,
+    lookup_table_fq_from_js, runtime_table_cfg_fq_from_js, JsLookupTableFq, JsRuntimeTableCfgFq,
 };
 use plonk_wasm::srs::fq::WasmFqSrs as WasmSrs;
 pub struct WasmPastaFqPlonkIndex(pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>);
@@ -122,6 +119,8 @@ pub fn caml_pasta_fq_plonk_index_create(
     srs: External<WasmSrs>,
     lazy_mode: bool,
 ) -> Result<External<WasmPastaFqPlonkIndex>, Error> {
+    // TODO: check if and how we run rayon threads automatically in napi
+
     let gates: Vec<_> = gates.as_ref().inner().as_slice().to_vec();
 
     let runtime_cfgs = runtime_table_cfgs
@@ -169,4 +168,3 @@ pub fn caml_pasta_fq_plonk_index_create(
 
     Ok(External::new(WasmPastaFqPlonkIndex(Box::new(index))))
 }
-
