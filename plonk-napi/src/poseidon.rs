@@ -9,8 +9,6 @@ use wasm_types::{FlatVector, FlatVectorElem};
 
 #[napi]
 pub fn caml_pasta_fp_poseidon_block_cipher(state: Uint8Array) -> Result<Uint8Array> {
-    //println!("from native rust fp poseidon");
-
     let mut state_vec: Vec<Fp> = FlatVector::<WasmPastaFp>::from_bytes(state.to_vec())
         .into_iter()
         .map(Into::into)
@@ -34,8 +32,6 @@ pub fn caml_pasta_fp_poseidon_block_cipher(state: Uint8Array) -> Result<Uint8Arr
 
 #[napi]
 pub fn caml_pasta_fq_poseidon_block_cipher(state: Uint8Array) -> Result<Uint8Array> {
-    //println!("from native rust fq poseidon");
-
     let mut state_vec: Vec<Fq> = FlatVector::<WasmPastaFq>::from_bytes(state.to_vec())
         .into_iter()
         .map(Into::into)
