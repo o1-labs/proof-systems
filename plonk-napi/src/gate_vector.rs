@@ -141,12 +141,12 @@ macro_rules! impl_gate_support {
             #[napi]
             #[derive(Clone, Default, Debug)]
             pub struct [<Napi $module:camel GateVector>](
-                #[napi(skip)] pub Vec<CircuitGate<$field>>);
-
+                #[napi(skip)] pub Vec<CircuitGate<$field>>,
+            );
 
             #[napi]
             pub fn [<caml_pasta_ $module:snake _plonk_gate_vector_create>]() -> [<Napi $module:camel GateVector>] {
-                [<Napi $module:camel GateVector>(Vec::new())]
+                [<Napi $module:camel GateVector>](Vec::new())
             }
 
             #[napi]
@@ -188,10 +188,11 @@ macro_rules! impl_gate_support {
             pub fn [<caml_pasta_ $module:snake _plonk_gate_vector_digest>](
                 public_input_size: i32,
                 vector: &[<Napi $module:camel GateVector>],
-            ) -> Vec<u8> {
-                Circuit::new(public_input_size as usize, &vector.0)
+            ) -> Uint8Array {
+                let bytes = Circuit::new(public_input_size as usize, &vector.0)
                     .digest()
-                    .to_vec()
+                    .to_vec();
+                Uint8Array::from(bytes)
             }
 
             #[napi]
@@ -211,11 +212,5 @@ macro_rules! impl_gate_support {
     };
 }
 
-pub mod fp {
-    use super::*;
-    impl_gate_support!(fp, Fp, WasmPastaFp);
-}
-pub mod fq {
-    use super::*;
-    impl_gate_support!(fq, Fq, WasmPastaFq);
-}
+impl_gate_support!(fp, Fp, WasmPastaFp);
+impl_gate_support!(fq, Fq, WasmPastaFq);
