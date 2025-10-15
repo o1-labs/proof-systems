@@ -1,6 +1,6 @@
 use ark_poly::EvaluationDomain;
 use kimchi::{linearization::expr_linearization, prover_index::ProverIndex};
-use mina_curves::pasta::{Vesta as GAffine, VestaParameters};
+use mina_curves::pasta::{Pallas as GAffine, PallasParameters};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use napi::bindgen_prelude::{Error, External, Result as NapiResult, Status, Uint8Array};
 use napi_derive::napi;
@@ -55,7 +55,7 @@ impl WasmPastaFqPlonkIndex {
         index.powers_of_alpha = powers_of_alpha;
 
         index.compute_verifier_index_digest::<
-            DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
+            DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>,
         >();
 
         Ok(WasmPastaFqPlonkIndex(Box::new(index)))
