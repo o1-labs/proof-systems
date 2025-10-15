@@ -232,6 +232,22 @@ macro_rules! impl_gate_vector {
             pub type WasmGateVector = [<Wasm $field_name:camel GateVector>];
 
             #[wasm_bindgen]
+            impl [<Wasm $field_name:camel GateVector>] {
+                #[wasm_bindgen(js_name = "serialize")]
+                pub fn serialize(&self) -> Result<Vec<u8>, JsError> {
+                    rmp_serde::to_vec(self.0.as_slice())
+                        .map_err(|e| JsError::new(&format!("gate vector serialize failed: {e}")))
+                }
+
+                #[wasm_bindgen(js_name = "deserialize")]
+                pub fn deserialize(bytes: &[u8]) -> Result<WasmGateVector, JsError> {
+                    let gates: Vec<CircuitGate<$F>> = rmp_serde::from_slice(bytes)
+                        .map_err(|e| JsError::new(&format!("gate vector deserialize failed: {e}")))?;
+                    Ok([<Wasm $field_name:camel GateVector>](CoreGateVector::from_vec(gates)))
+                }
+            }
+
+            #[wasm_bindgen]
             pub struct [<Wasm $field_name:camel Gate>] {
                 pub typ: GateType,
                 pub wires: WasmGateWires,
