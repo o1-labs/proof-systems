@@ -5,7 +5,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use serde::Serialize;
 
-use crate::types::WasmPastaFpPlonkIndex;
+use crate::pasta_fp_plonk_index::WasmPastaFpPlonkIndex;
 
 #[derive(Serialize)]
 struct Circuit<F>
