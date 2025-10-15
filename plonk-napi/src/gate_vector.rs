@@ -163,7 +163,7 @@ macro_rules! impl_gate_support {
                 vector: &[<Napi $module:camel GateVector>],
                 index: i32,
             ) -> [<Napi $module:camel Gate>] {
-                [<Napi $module:camel Gate>]::from_inner(&self.0[index as usize])
+                [<Napi $module:camel Gate>]::from_inner(&vector.0[index as usize])
             }
 
             #[napi]
@@ -181,7 +181,7 @@ macro_rules! impl_gate_support {
             ) {
                 let row = target.row as usize;
                 let col = target.col as usize;
-                self.0[row].wires[col] = KimchiWire::from(head);
+                vector.0[row].wires[col] = KimchiWire::from(head);
               }
 
             #[napi]
@@ -189,7 +189,7 @@ macro_rules! impl_gate_support {
                 public_input_size: i32,
                 vector: &[<Napi $module:camel GateVector>],
             ) -> Vec<u8> {
-                Circuit::new(public_input_size as usize, &self.0)
+                Circuit::new(public_input_size as usize, &vector.0)
                     .digest()
                     .to_vec()
             }
@@ -199,7 +199,7 @@ macro_rules! impl_gate_support {
                 public_input_size: i32,
                 vector: &[<Napi $module:camel GateVector>],
             ) -> Result<String> {
-                let circuit = Circuit::new(public_input_size as usize, &self.inner);
+                let circuit = Circuit::new(public_input_size as usize, &vector.0);
                 serde_json::to_string(&circuit).map_err(|err| {
                     Error::new(
                         Status::GenericFailure,
