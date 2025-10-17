@@ -128,7 +128,7 @@ impl BenchmarkCtx {
     }
 }
 
-/// This function can be called before any call to a kimchi verfier,
+/// This function can be called before any call to a kimchi verifier,
 /// in which case it will serialise kimchi inputs so that they can be
 /// reused later for re-testing this particular prover. Used for
 /// serialising real mina circuits from ocaml and bindings side.

@@ -388,7 +388,7 @@ where
         self.h
     }
 
-    /// Turns a non-hiding polynomial commitment into a hidding polynomial
+    /// Turns a non-hiding polynomial commitment into a hiding polynomial
     /// commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with
     /// a random `w` per commitment.
     fn mask(
