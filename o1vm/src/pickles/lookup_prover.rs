@@ -4,7 +4,7 @@ use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_spo
 use mina_poseidon::FqSponge;
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{commitment::absorb_commitment, ipa::SRS, OpenProof, SRS as _};
-//TODO Parralelize
+//TODO Parallelize
 //use rayon::prelude::*;
 use super::lookup_columns::{ELookup, LookupChallenges, LookupEvalEnvironment};
 use crate::pickles::lookup_columns::*;
@@ -54,7 +54,7 @@ where
     };
 
     // Compute the 1/beta+sum_i gamma^i value_i for each lookup term
-    // The inversions is commputed in batch in the end
+    // The inversions is computed in batch in the end
     let mut inverses: Vec<Vec<G::ScalarField>> = wires
         .iter()
         .zip(arity)
@@ -101,7 +101,7 @@ where
         .interpolate()
     };
     let columns_poly = columns.my_map(interpolate_col);
-    // Commiting
+    // Committing
     // TODO avoid cloning
     let columns_com = columns_poly
         .clone()
@@ -113,7 +113,7 @@ where
     let columns_eval_d8 = columns_poly
         .clone()
         .my_map(|poly| poly.evaluate_over_domain_by_ref(domain.d8));
-    // abosrbing commit
+    // absorbing commit
     // TODO don't absorb the wires which already have been
     // TODO avoid cloning
     columns_com
