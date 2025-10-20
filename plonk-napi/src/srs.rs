@@ -44,39 +44,40 @@ use wasm_types::FlatVector as WasmFlatVector;
 use crate::{
     poly_comm::{pallas::WasmFqPolyComm, vesta::WasmFpPolyComm},
     wasm_vector::WasmVector,
-    wrappers::field::{WasmPastaFp, WasmPastaFq},
-    wrappers::group::{WasmGPallas, WasmGVesta},
+    wrappers::{
+        field::{WasmPastaFp, WasmPastaFq},
+        group::{WasmGPallas, WasmGVesta},
+    },
 };
 
-macro_rules! impl_srs_module {
+macro_rules! impl_srs {
     (
-        $mod_name:ident,
+        $name:ident,
         $field_ty:ty,
-        $wasm_field:ty,
+        $wasmF:ty,
         $group_ty:ty,
         $group_wrapper:ty,
         $poly_comm_wrapper:ty,
-        $struct_ident:ident
+        $field_name:ident
     ) => {
-        pub mod $mod_name {
+        pub mod $name {
             use super::*;
 
             #[napi]
             #[derive(Clone)]
-            pub struct $struct_ident {
-                #[napi(skip)]
-                pub inner: Arc<SRS<$group_ty>>,
-            }
+            pub struct [Napi $field_name:camel Srs] (
+                 #[napi(skip)] pub Arc<SRS<$group_ty>>
+            );
 
-            impl $struct_ident {
+            impl [Napi $field_name:camel Srs] {
                 fn new(inner: SRS<$group_ty>) -> Self {
-                    Self {
-                        inner: Arc::new(inner),
-                    }
+                    Self (
+                        Arc::new(inner),
+                    )
                 }
 
                 fn from_arc(inner: Arc<SRS<$group_ty>>) -> Self {
-                    Self { inner }
+                    Self (inner)
                 }
             }
 
@@ -218,7 +219,7 @@ macro_rules! impl_srs_module {
                     domain_size: i32,
                     evaluations: Uint8Array,
                 ) -> Result<$poly_comm_wrapper> {
-                    let elems: Vec<$field_ty> = WasmFlatVector::<$wasm_field>::from_bytes(
+                    let elems: Vec<$field_ty> = WasmFlatVector::<$wasmF>::from_bytes(
                         evaluations.as_ref().to_vec(),
                     )
                     .into_iter()
@@ -233,7 +234,7 @@ macro_rules! impl_srs_module {
 
                 #[napi]
                 pub fn b_poly_commitment(&self, chals: Uint8Array) -> Result<$poly_comm_wrapper> {
-                    let elements: Vec<$field_ty> = WasmFlatVector::<$wasm_field>::from_bytes(
+                    let elements: Vec<$field_ty> = WasmFlatVector::<$wasmF>::from_bytes(
                         chals.as_ref().to_vec(),
                     )
                     .into_iter()
@@ -251,7 +252,7 @@ macro_rules! impl_srs_module {
                     chals: Uint8Array,
                 ) -> Result<bool> {
                     let comms: Vec<$group_ty> = commitments.into_iter().map(Into::into).collect();
-                    let chals: Vec<$field_ty> = WasmFlatVector::<$wasm_field>::from_bytes(
+                    let chals: Vec<$field_ty> = WasmFlatVector::<$wasmF>::from_bytes(
                         chals.as_ref().to_vec(),
                     )
                     .into_iter()
@@ -270,7 +271,7 @@ macro_rules! impl_srs_module {
                     count: i32,
                     chals: Uint8Array,
                 ) -> Result<WasmVector<$group_wrapper>> {
-                    let chals: Vec<$field_ty> = WasmFlatVector::<$wasm_field>::from_bytes(
+                    let chals: Vec<$field_ty> = WasmFlatVector::<$wasmF>::from_bytes(
                         chals.as_ref().to_vec(),
                     )
                     .into_iter()
@@ -293,22 +294,28 @@ macro_rules! impl_srs_module {
     };
 }
 
-impl_srs_module!(
-    fp,
-    mina_curves::pasta::Fp,
-    WasmPastaFp,
-    mina_curves::pasta::Vesta,
-    WasmGVesta,
-    WasmFpPolyComm,
-    WasmFpSrs
-);
+pub mod fp {
+    use super::*;
+    impl_srs!(
+        fp,
+        mina_curves::pasta::Fp,
+        WasmPastaFp,
+        mina_curves::pasta::Vesta,
+        WasmGVesta,
+        WasmFpPolyComm,
+        Fp
+    );
+}
 
-impl_srs_module!(
-    fq,
-    mina_curves::pasta::Fq,
-    WasmPastaFq,
-    mina_curves::pasta::Pallas,
-    WasmGPallas,
-    WasmFqPolyComm,
-    WasmFqSrs
-);
+pub mod fq {
+    use super::*;
+    impl_srs!(
+        fq,
+        mina_curves::pasta::Fq,
+        WasmPastaFq,
+        mina_curves::pasta::Pallas,
+        WasmGPallas,
+        WasmFqPolyComm,
+        Fq
+    );
+}
