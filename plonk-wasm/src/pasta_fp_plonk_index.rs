@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::{
     fs::{File, OpenOptions},
-    io::{BufReader, BufWriter, Seek, SeekFrom::Start},
+    io::{BufReader, BufWriter, Read, Seek, SeekFrom::Start},
     sync::Arc,
 };
 use wasm_bindgen::prelude::*;
@@ -147,6 +147,22 @@ fn customize_serialized_index(_index: &mut SerializablePastaFpProverIndex) {}
 // Hook for updating the in-memory index right after deserialization.
 fn customize_deserialized_index(_index: &mut PastaFpProverIndex) {}
 
+fn deserialize_pasta_fp_prover_index(bytes: &[u8]) -> Result<PastaFpProverIndex, String> {
+    match rmp_serde::from_slice::<SerializablePastaFpProverIndex>(bytes) {
+        Ok(serialized) => Ok(from_serializable_index(serialized)),
+        Err(manual_err) => {
+            let mut deserializer = rmp_serde::Deserializer::new(bytes);
+            ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer).map_err(
+                |fallback_err| {
+                    format!(
+                        "manual decode failed ({manual_err}); fallback decode failed ({fallback_err})"
+                    )
+                },
+            )
+        }
+    }
+}
+
 // CamlPastaFpPlonkIndex methods
 //
 
@@ -253,11 +269,8 @@ pub fn caml_pasta_fp_plonk_index_decode(
     bytes: &[u8],
     srs: &WasmSrs,
 ) -> Result<WasmPastaFpPlonkIndex, JsError> {
-    let mut deserializer = rmp_serde::Deserializer::new(bytes);
-    let serialized = SerializablePastaFpProverIndex::deserialize(&mut deserializer)
-        .map_err(|e| JsError::new(&format!("caml_pasta_fp_plonk_index_decode: {}", e)))?;
-
-    let mut index = from_serializable_index(serialized);
+    let mut index = deserialize_pasta_fp_prover_index(bytes)
+        .map_err(|err| JsError::new(&format!("caml_pasta_fp_plonk_index_decode: {}", err)))?;
     index.srs = srs.0.clone();
     customize_deserialized_index(&mut index);
 
@@ -267,7 +280,7 @@ pub fn caml_pasta_fp_plonk_index_decode(
 #[wasm_bindgen]
 pub fn caml_pasta_fp_plonk_index_encode(index: &WasmPastaFpPlonkIndex) -> Result<Vec<u8>, JsError> {
     let mut buffer = Vec::new();
-    let mut serializer = rmp_serde::Serializer::new(&mut buffer);
+    let mut serializer = rmp_serde::Serializer::new(&mut buffer).with_struct_map();
     let data = to_serializable_index(&index.0);
     data.serialize(&mut serializer)
         .map_err(|e| JsError::new(&format!("caml_pasta_fp_plonk_index_encode: {}", e)))?;
@@ -280,9 +293,14 @@ pub fn caml_pasta_fp_plonk_index_read(
     srs: &WasmSrs,
     path: String,
 ) -> Result<WasmPastaFpPlonkIndex, JsValue> {
+    let path_for_err = path.clone();
     // read from file
-    let file = match File::open(path) {
-        Err(_) => return Err(JsValue::from_str("caml_pasta_fp_plonk_index_read")),
+    let file = match File::open(&path) {
+        Err(_) => {
+            return Err(JsValue::from_str(&format!(
+                "caml_pasta_fp_plonk_index_read({path_for_err}): could not open file"
+            )))
+        }
         Ok(file) => file,
     };
     let mut r = BufReader::new(file);
@@ -290,14 +308,21 @@ pub fn caml_pasta_fp_plonk_index_read(
     // optional offset in file
     if let Some(offset) = offset {
         r.seek(Start(offset as u64))
-            .map_err(|err| JsValue::from_str(&format!("caml_pasta_fp_plonk_index_read: {err}")))?;
+            .map_err(|err| JsValue::from_str(&format!(
+                "caml_pasta_fp_plonk_index_read({path_for_err}): {err}"
+            )))?;
     }
 
     // deserialize the index
-    let serialized =
-        SerializablePastaFpProverIndex::deserialize(&mut rmp_serde::Deserializer::new(r))
-            .map_err(|err| JsValue::from_str(&format!("caml_pasta_fp_plonk_index_read: {err}")))?;
-    let mut t = from_serializable_index(serialized);
+    let mut data = Vec::new();
+    r.read_to_end(&mut data)
+        .map_err(|err| JsValue::from_str(&format!(
+            "caml_pasta_fp_plonk_index_read({path_for_err}): {err}"
+        )))?;
+    let mut t = deserialize_pasta_fp_prover_index(&data)
+        .map_err(|err| JsValue::from_str(&format!(
+            "caml_pasta_fp_plonk_index_read({path_for_err}): {err}"
+        )))?;
     t.srs = srs.0.clone();
     customize_deserialized_index(&mut t);
 
@@ -317,7 +342,7 @@ pub fn caml_pasta_fp_plonk_index_write(
         .map_err(|_| JsValue::from_str("caml_pasta_fp_plonk_index_write"))?;
     let w = BufWriter::new(file);
     let data = to_serializable_index(&index.0);
-    data.serialize(&mut rmp_serde::Serializer::new(w))
+    data.serialize(&mut rmp_serde::Serializer::new(w).with_struct_map())
         .map_err(|e| JsValue::from_str(&format!("caml_pasta_fp_plonk_index_write: {e}")))
 }
 
@@ -326,7 +351,7 @@ pub fn caml_pasta_fp_plonk_index_write(
 pub fn caml_pasta_fp_plonk_index_serialize(index: &WasmPastaFpPlonkIndex) -> String {
     let mut buffer = Vec::new();
     {
-        let mut serializer = rmp_serde::Serializer::new(&mut buffer);
+        let mut serializer = rmp_serde::Serializer::new(&mut buffer).with_struct_map();
         let data = to_serializable_index(&index.0);
         data.serialize(&mut serializer).unwrap();
     }
