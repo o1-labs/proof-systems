@@ -3,9 +3,9 @@ use crate::{
     srs::fp::WasmFpSrs as WasmSrs,
     wasm_vector::{fp::*, WasmVector},
 };
+use ark_ec::AffineRepr;
 use ark_poly::EvaluationDomain;
 use arkworks::WasmPastaFp;
-use ark_ec::AffineRepr;
 use kimchi::{
     circuits::{
         constraints::{ColumnEvaluations, ConstraintSystem},
@@ -121,13 +121,12 @@ fn to_serializable_index(index: &PastaFpProverIndex) -> SerializablePastaFpProve
         column_evaluations: Arc::clone(&index.column_evaluations),
         verifier_index_digest: index.verifier_index_digest.clone(),
     };
-    customize_serialized_index(&mut serializable);
     serializable
 }
 
 fn from_serializable_index(serialized: SerializablePastaFpProverIndex) -> PastaFpProverIndex {
     let (linearization, powers_of_alpha) =
-        expr_linearization(Some(&serialized.cs.feature_flags), true);
+        expr_linearization(Some(&serialized.cs.feature_flags), true); // TODO is this ok?
 
     PastaFpProverIndex {
         cs: serialized.cs,
@@ -140,12 +139,6 @@ fn from_serializable_index(serialized: SerializablePastaFpProverIndex) -> PastaF
         verifier_index_digest: serialized.verifier_index_digest,
     }
 }
-
-// Hook for adjusting serialized fields before they are written out.
-fn customize_serialized_index(_index: &mut SerializablePastaFpProverIndex) {}
-
-// Hook for updating the in-memory index right after deserialization.
-fn customize_deserialized_index(_index: &mut PastaFpProverIndex) {}
 
 fn deserialize_pasta_fp_prover_index(bytes: &[u8]) -> Result<PastaFpProverIndex, String> {
     match rmp_serde::from_slice::<SerializablePastaFpProverIndex>(bytes) {
@@ -272,7 +265,6 @@ pub fn caml_pasta_fp_plonk_index_decode(
     let mut index = deserialize_pasta_fp_prover_index(bytes)
         .map_err(|err| JsError::new(&format!("caml_pasta_fp_plonk_index_decode: {}", err)))?;
     index.srs = srs.0.clone();
-    customize_deserialized_index(&mut index);
 
     Ok(WasmPastaFpPlonkIndex(Box::new(index)))
 }
@@ -307,24 +299,26 @@ pub fn caml_pasta_fp_plonk_index_read(
 
     // optional offset in file
     if let Some(offset) = offset {
-        r.seek(Start(offset as u64))
-            .map_err(|err| JsValue::from_str(&format!(
+        r.seek(Start(offset as u64)).map_err(|err| {
+            JsValue::from_str(&format!(
                 "caml_pasta_fp_plonk_index_read({path_for_err}): {err}"
-            )))?;
+            ))
+        })?;
     }
 
     // deserialize the index
     let mut data = Vec::new();
-    r.read_to_end(&mut data)
-        .map_err(|err| JsValue::from_str(&format!(
+    r.read_to_end(&mut data).map_err(|err| {
+        JsValue::from_str(&format!(
             "caml_pasta_fp_plonk_index_read({path_for_err}): {err}"
-        )))?;
-    let mut t = deserialize_pasta_fp_prover_index(&data)
-        .map_err(|err| JsValue::from_str(&format!(
+        ))
+    })?;
+    let mut t = deserialize_pasta_fp_prover_index(&data).map_err(|err| {
+        JsValue::from_str(&format!(
             "caml_pasta_fp_plonk_index_read({path_for_err}): {err}"
-        )))?;
+        ))
+    })?;
     t.srs = srs.0.clone();
-    customize_deserialized_index(&mut t);
 
     //
     Ok(WasmPastaFpPlonkIndex(Box::new(t)))

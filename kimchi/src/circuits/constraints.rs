@@ -234,6 +234,7 @@ where
             gates: Arc<Vec<CircuitGate<F>>>,
             zk_rows: u64,
             feature_flags: FeatureFlags,
+            #[serde(default)]
             lazy_mode: bool,
             #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
             sid: Vec<F>,

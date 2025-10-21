@@ -3,24 +3,28 @@ use crate::{
     srs::fq::WasmFqSrs as WasmSrs,
     wasm_vector::{fq::*, WasmVector},
 };
+use ark_ec::AffineRepr;
 use ark_poly::EvaluationDomain;
 use arkworks::WasmPastaFq;
 use kimchi::{
     circuits::{
-        constraints::ConstraintSystem,
+        constraints::{ColumnEvaluations, ConstraintSystem},
         gate::CircuitGate,
         lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     },
     linearization::expr_linearization,
+    o1_utils::lazy_cache::LazyCache,
     poly_commitment::{ipa::OpeningProof, SRS as _},
     prover_index::ProverIndex,
 };
 use mina_curves::pasta::{Fq, Pallas as GAffine, PallasParameters, Vesta as GAffineOther};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::{
     fs::{File, OpenOptions},
-    io::{BufReader, BufWriter, Seek, SeekFrom::Start},
+    io::{BufReader, BufWriter, Read, Seek, SeekFrom::Start},
+    sync::Arc,
 };
 use wasm_bindgen::prelude::*;
 use wasm_types::FlatVector as WasmFlatVector;
@@ -80,6 +84,62 @@ impl From<WasmPastaFqRuntimeTableCfg> for RuntimeTableCfg<Fq> {
                 .into_iter()
                 .map(Into::into)
                 .collect(),
+        }
+    }
+}
+
+type PastaFqProverIndex = ProverIndex<GAffine, OpeningProof<GAffine>>;
+type PastaFqBaseField = <GAffine as AffineRepr>::BaseField;
+
+#[serde_as]
+#[derive(Serialize, Deserialize)]
+struct SerializablePastaFqProverIndex {
+    cs: Arc<ConstraintSystem<Fq>>,
+    max_poly_size: usize,
+    column_evaluations: Arc<LazyCache<ColumnEvaluations<Fq>>>,
+    #[serde(default)]
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    verifier_index_digest: Option<PastaFqBaseField>,
+}
+
+fn to_serializable_index(index: &PastaFqProverIndex) -> SerializablePastaFqProverIndex {
+    let mut serializable = SerializablePastaFqProverIndex {
+        cs: Arc::clone(&index.cs),
+        max_poly_size: index.max_poly_size,
+        column_evaluations: Arc::clone(&index.column_evaluations),
+        verifier_index_digest: index.verifier_index_digest.clone(),
+    };
+    serializable
+}
+
+fn from_serializable_index(serialized: SerializablePastaFqProverIndex) -> PastaFqProverIndex {
+    let (linearization, powers_of_alpha) =
+        expr_linearization(Some(&serialized.cs.feature_flags), true);
+
+    PastaFqProverIndex {
+        cs: serialized.cs,
+        linearization,
+        powers_of_alpha,
+        srs: Arc::new(Default::default()),
+        max_poly_size: serialized.max_poly_size,
+        column_evaluations: serialized.column_evaluations,
+        verifier_index: None,
+        verifier_index_digest: serialized.verifier_index_digest,
+    }
+}
+
+fn deserialize_pasta_fq_prover_index(bytes: &[u8]) -> Result<PastaFqProverIndex, String> {
+    match rmp_serde::from_slice::<SerializablePastaFqProverIndex>(bytes) {
+        Ok(serialized) => Ok(from_serializable_index(serialized)),
+        Err(manual_err) => {
+            let mut deserializer = rmp_serde::Deserializer::new(bytes);
+            ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer).map_err(
+                |fallback_err| {
+                    format!(
+                        "manual decode failed ({manual_err}); fallback decode failed ({fallback_err})"
+                    )
+                },
+            )
         }
     }
 }
@@ -200,15 +260,10 @@ pub fn caml_pasta_fq_plonk_index_decode(
     bytes: &[u8],
     srs: &WasmSrs,
 ) -> Result<WasmPastaFqPlonkIndex, JsError> {
-    let mut deserializer = rmp_serde::Deserializer::new(bytes);
-    let mut index =
-        ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
-            .map_err(|e| JsError::new(&format!("caml_pasta_fq_plonk_index_decode: {}", e)))?;
+    let mut index = deserialize_pasta_fq_prover_index(bytes)
+        .map_err(|err| JsError::new(&format!("caml_pasta_fq_plonk_index_decode: {}", err)))?;
 
     index.srs = srs.0.clone();
-    let (linearization, powers_of_alpha) = expr_linearization(Some(&index.cs.feature_flags), true);
-    index.linearization = linearization;
-    index.powers_of_alpha = powers_of_alpha;
 
     Ok(WasmPastaFqPlonkIndex(Box::new(index)))
 }
@@ -216,10 +271,9 @@ pub fn caml_pasta_fq_plonk_index_decode(
 #[wasm_bindgen]
 pub fn caml_pasta_fq_plonk_index_encode(index: &WasmPastaFqPlonkIndex) -> Result<Vec<u8>, JsError> {
     let mut buffer = Vec::new();
-    let mut serializer = rmp_serde::Serializer::new(&mut buffer);
-    index
-        .0
-        .serialize(&mut serializer)
+    let mut serializer = rmp_serde::Serializer::new(&mut buffer).with_struct_map();
+    let data = to_serializable_index(&index.0);
+    data.serialize(&mut serializer)
         .map_err(|e| JsError::new(&format!("caml_pasta_fq_plonk_index_encode: {}", e)))?;
     Ok(buffer)
 }
@@ -230,28 +284,40 @@ pub fn caml_pasta_fq_plonk_index_read(
     srs: &WasmSrs,
     path: String,
 ) -> Result<WasmPastaFqPlonkIndex, JsValue> {
+    let path_for_err = path.clone();
     // read from file
-    let file = match File::open(path) {
-        Err(_) => return Err(JsValue::from_str("caml_pasta_fq_plonk_index_read")),
+    let file = match File::open(&path) {
+        Err(_) => {
+            return Err(JsValue::from_str(&format!(
+                "caml_pasta_fq_plonk_index_read({path_for_err}): could not open file"
+            )))
+        }
         Ok(file) => file,
     };
     let mut r = BufReader::new(file);
 
     // optional offset in file
     if let Some(offset) = offset {
-        r.seek(Start(offset as u64))
-            .map_err(|err| JsValue::from_str(&format!("caml_pasta_fq_plonk_index_read: {err}")))?;
+        r.seek(Start(offset as u64)).map_err(|err| {
+            JsValue::from_str(&format!(
+                "caml_pasta_fq_plonk_index_read({path_for_err}): {err}"
+            ))
+        })?;
     }
 
     // deserialize the index
-    let mut t = ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(
-        &mut rmp_serde::Deserializer::new(r),
-    )
-    .map_err(|err| JsValue::from_str(&format!("caml_pasta_fq_plonk_index_read: {err}")))?;
+    let mut data = Vec::new();
+    r.read_to_end(&mut data).map_err(|err| {
+        JsValue::from_str(&format!(
+            "caml_pasta_fq_plonk_index_read({path_for_err}): {err}"
+        ))
+    })?;
+    let mut t = deserialize_pasta_fq_prover_index(&data).map_err(|err| {
+        JsValue::from_str(&format!(
+            "caml_pasta_fq_plonk_index_read({path_for_err}): {err}"
+        ))
+    })?;
     t.srs = srs.0.clone();
-    let (linearization, powers_of_alpha) = expr_linearization(Some(&t.cs.feature_flags), true);
-    t.linearization = linearization;
-    t.powers_of_alpha = powers_of_alpha;
 
     //
     Ok(WasmPastaFqPlonkIndex(Box::new(t)))
@@ -268,16 +334,20 @@ pub fn caml_pasta_fq_plonk_index_write(
         .open(path)
         .map_err(|_| JsValue::from_str("caml_pasta_fq_plonk_index_write"))?;
     let w = BufWriter::new(file);
-    index
-        .0
-        .serialize(&mut rmp_serde::Serializer::new(w))
-        .map_err(|e| JsValue::from_str(&format!("caml_pasta_fq_plonk_index_read: {e}")))
+    let data = to_serializable_index(&index.0);
+    data.serialize(&mut rmp_serde::Serializer::new(w).with_struct_map())
+        .map_err(|e| JsValue::from_str(&format!("caml_pasta_fq_plonk_index_write: {e}")))
 }
 
 #[allow(deprecated)]
 #[wasm_bindgen]
 pub fn caml_pasta_fq_plonk_index_serialize(index: &WasmPastaFqPlonkIndex) -> String {
-    let serialized = rmp_serde::to_vec(&index.0).unwrap();
+    let mut buffer = Vec::new();
+    {
+        let mut serializer = rmp_serde::Serializer::new(&mut buffer).with_struct_map();
+        let data = to_serializable_index(&index.0);
+        data.serialize(&mut serializer).unwrap();
+    }
     // Deprecated used on purpose: updating this leads to a bug in o1js
-    base64::encode(serialized)
+    base64::encode(buffer)
 }
