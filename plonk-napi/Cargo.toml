@@ -12,7 +12,7 @@ name = "plonk_napi"
 crate-type = ["cdylib"] # to generate a dynamic library that is loadable by Node
 
 [dependencies]
-napi = { workspace = true, features = ["napi7"] }
+napi.workspace = true
 napi-derive.workspace = true
 
 # arkworks
