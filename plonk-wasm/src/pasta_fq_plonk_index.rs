@@ -216,7 +216,7 @@ pub fn caml_pasta_fq_plonk_index_decode(
 #[wasm_bindgen]
 pub fn caml_pasta_fq_plonk_index_encode(index: &WasmPastaFqPlonkIndex) -> Result<Vec<u8>, JsError> {
     let mut buffer = Vec::new();
-    let mut serializer = rmp_serde::Serializer::new(&mut buffer);
+    let mut serializer = rmp_serde::Serializer::new(&mut buffer).with_struct_map();
     index
         .0
         .serialize(&mut serializer)
