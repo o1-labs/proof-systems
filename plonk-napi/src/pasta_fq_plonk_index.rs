@@ -8,8 +8,8 @@ use napi_derive::napi;
 use poly_commitment::ipa::{OpeningProof, SRS as IPA_SRS};
 use poly_commitment::SRS;
 use serde::{Deserialize, Serialize};
-use std::fs::OpenOptions;
-use std::io::BufWriter;
+use std::fs::{File, OpenOptions};
+use std::io::{BufReader, BufWriter, Seek, SeekFrom::Start};
 use std::{io::Cursor, sync::Arc};
 
 use crate::gate_vector::GateVectorHandleFq;
@@ -224,4 +224,51 @@ pub fn caml_pasta_fq_plonk_index_write(
                 &format!("caml_pasta_fq_plonk_index_write: {e}"),
             )
         })
+}
+
+#[napi]
+pub fn caml_pasta_fq_plonk_index_read(
+    offset: Option<i32>,
+    srs: External<WasmSrs>,
+    path: String,
+) -> Result<External<WasmPastaFqPlonkIndex>, Error> {
+    // read from file
+    let file = match File::open(path) {
+        Err(_) => {
+            return Err(Error::new(
+                Status::InvalidArg,
+                "caml_pasta_fq_plonk_index_read",
+            ))
+        }
+        Ok(file) => file,
+    };
+    let mut r = BufReader::new(file);
+
+    // optional offset in file
+    if let Some(offset) = offset {
+        r.seek(Start(offset as u64)).map_err(|err| {
+            Error::new(
+                Status::InvalidArg,
+                &format!("caml_pasta_fq_plonk_index_read: {err}"),
+            )
+        })?;
+    }
+
+    // deserialize the index
+    let mut t = ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(
+        &mut rmp_serde::Deserializer::new(r),
+    )
+    .map_err(|err| {
+        Error::new(
+            Status::InvalidArg,
+            &format!("caml_pasta_fp_plonk_index_read: {err}"),
+        )
+    })?;
+    t.srs = srs.0.clone();
+    let (linearization, powers_of_alpha) = expr_linearization(Some(&t.cs.feature_flags), true);
+    t.linearization = linearization;
+    t.powers_of_alpha = powers_of_alpha;
+
+    //
+    Ok(External::new(WasmPastaFqPlonkIndex(Box::new(t))))
 }
