@@ -5,8 +5,10 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-ocaml = { workspace = true, optional = true }
-ocaml-gen = { workspace = true, optional = true }
+ocaml = { version = "0.22.2", optional = true }
+ocaml-gen = { version = "1.0.0", optional = true }
+#ocaml = { workspace = true, optional = true }
+#ocaml-gen = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 serde_json = { workspace = true, optional = true }
 
