@@ -29,7 +29,6 @@ o1-utils = { path = "../utils" }
 kimchi = { path = "../kimchi" }
 poly-commitment = { path = "../poly-commitment" }
 plonk_wasm.workspace = true
-kimchi = { path = "../kimchi" }
 
 getrandom.workspace = true
 libc.workspace = true
