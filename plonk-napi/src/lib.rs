@@ -2,7 +2,6 @@ mod circuit;
 mod gate_vector;
 mod pasta_fp_plonk_index;
 mod pasta_fq_plonk_index;
-mod poseidon;
 mod srs;
 mod tables;
 
@@ -16,7 +15,8 @@ pub use gate_vector::{
     caml_pasta_fq_plonk_gate_vector_digest, caml_pasta_fq_plonk_gate_vector_from_bytes,
     caml_pasta_fq_plonk_gate_vector_get, caml_pasta_fq_plonk_gate_vector_len,
     caml_pasta_fq_plonk_gate_vector_wrap, GateVectorHandleFp, GateVectorHandleFq, JsGateFp,
-    JsGateFq, JsGateWires, JsWire,
+    JsGateFq, JsGateWires, JsWire, NapiFpGate as WasmFpGate, NapiFpGateVector as WasmFpGateVector,
+    NapiFqGate as WasmFqGate, NapiFqGateVector as WasmFqGateVector,
 };
 
 pub use tables::{JsLookupTableFp, JsLookupTableFq, JsRuntimeTableCfgFp, JsRuntimeTableCfgFq};
@@ -33,3 +33,11 @@ pub use pasta_fp_plonk_index::{
 pub use pasta_fq_plonk_index::{
     prover_index_fq_from_bytes, prover_index_fq_to_bytes, WasmPastaFqPlonkIndex,
 };
+pub(crate) mod poly_comm;
+pub(crate) mod poseidon;
+pub(crate) mod wasm_vector;
+pub(crate) mod wrappers;
+
+pub use poly_comm::{pallas::WasmFqPolyComm, vesta::WasmFpPolyComm};
+pub use wasm_vector::{fp::WasmVecVecFp, fq::WasmVecVecFq};
+pub use wrappers::group::{WasmGPallas, WasmGVesta};

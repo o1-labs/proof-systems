@@ -23,12 +23,12 @@ ark-serialize.workspace = true
 arkworks.workspace = true
 
 # proof-systems
-kimchi.workspace = true
 mina-curves = { path = "../curves" }
 mina-poseidon = { path = "../poseidon" }
 o1-utils = { path = "../utils" }
 poly-commitment = { path = "../poly-commitment" }
 plonk_wasm.workspace = true
+kimchi = { path = "../kimchi" }
 
 getrandom.workspace = true
 libc.workspace = true
