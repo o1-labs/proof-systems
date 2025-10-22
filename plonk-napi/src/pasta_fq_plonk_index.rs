@@ -5,6 +5,7 @@ use mina_curves::pasta::{Fq, Pallas as GAffine, PallasParameters, Vesta as GAffi
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use napi::bindgen_prelude::{Error, External, Result as NapiResult, Status, Uint8Array};
 use napi_derive::napi;
+use plonk_wasm::gate_vector::shared::GateVector;
 use poly_commitment::ipa::{OpeningProof, SRS as IPA_SRS};
 use poly_commitment::SRS;
 use serde::{Deserialize, Serialize};
@@ -12,7 +13,6 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufReader, BufWriter, Seek, SeekFrom::Start};
 use std::{io::Cursor, sync::Arc};
 
-use crate::gate_vector::GateVectorHandleFq;
 use crate::tables::{
     lookup_table_fq_from_js, runtime_table_cfg_fq_from_js, JsLookupTableFq, JsRuntimeTableCfgFq,
 };
@@ -113,7 +113,7 @@ pub fn caml_pasta_fq_plonk_index_domain_d8_size(index: External<WasmPastaFqPlonk
 
 #[napi]
 pub fn caml_pasta_fq_plonk_index_create(
-    gates: External<GateVectorHandleFq>,
+    gates: External<GateVector<Fq>>,
     public_: i32,
     lookup_tables: Vec<JsLookupTableFq>,
     runtime_table_cfgs: Vec<JsRuntimeTableCfgFq>,
@@ -123,7 +123,7 @@ pub fn caml_pasta_fq_plonk_index_create(
 ) -> Result<External<WasmPastaFqPlonkIndex>, Error> {
     // TODO: check if and how we run rayon threads automatically in napi
 
-    let gates: Vec<_> = gates.as_ref().inner().as_slice().to_vec();
+    let gates: Vec<_> = gates.as_ref().as_slice().to_vec();
 
     let runtime_cfgs = runtime_table_cfgs
         .into_iter()

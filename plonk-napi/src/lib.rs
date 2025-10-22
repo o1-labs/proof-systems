@@ -1,5 +1,4 @@
 mod circuit;
-mod gate_vector;
 mod pasta_fp_plonk_index;
 mod pasta_fq_plonk_index;
 mod poly_comm;
@@ -11,18 +10,6 @@ mod wrappers;
 mod wasm_vector;
 
 pub use circuit::prover_to_json;
-pub use gate_vector::{
-    caml_pasta_fp_plonk_circuit_serialize, caml_pasta_fp_plonk_gate_vector_add,
-    caml_pasta_fp_plonk_gate_vector_create, caml_pasta_fp_plonk_gate_vector_digest,
-    caml_pasta_fp_plonk_gate_vector_from_bytes, caml_pasta_fp_plonk_gate_vector_get,
-    caml_pasta_fp_plonk_gate_vector_len, caml_pasta_fp_plonk_gate_vector_to_bytes,
-    caml_pasta_fp_plonk_gate_vector_wrap, caml_pasta_fq_plonk_circuit_serialize,
-    caml_pasta_fq_plonk_gate_vector_add, caml_pasta_fq_plonk_gate_vector_create,
-    caml_pasta_fq_plonk_gate_vector_digest, caml_pasta_fq_plonk_gate_vector_from_bytes,
-    caml_pasta_fq_plonk_gate_vector_get, caml_pasta_fq_plonk_gate_vector_len,
-    caml_pasta_fq_plonk_gate_vector_wrap, GateVectorHandleFp, GateVectorHandleFq, JsGateFp,
-    JsGateFq, JsGateWires, JsWire,
-};
 pub use pasta_fp_plonk_index::{
     prover_index_fp_from_bytes, prover_index_fp_to_bytes, WasmPastaFpPlonkIndex,
 };
