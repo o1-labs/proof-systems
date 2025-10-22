@@ -10,6 +10,8 @@ use napi_derive::napi;
 use poly_commitment::ipa::{OpeningProof, SRS as IPA_SRS};
 use poly_commitment::SRS;
 use serde::{Deserialize, Serialize};
+use std::fs::OpenOptions;
+use std::io::BufWriter;
 use std::{io::Cursor, sync::Arc};
 
 use crate::gate_vector::GateVectorHandleFp;
@@ -167,4 +169,59 @@ pub fn caml_pasta_fp_plonk_index_create(
     index.compute_verifier_index_digest::<DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>();
 
     Ok(External::new(WasmPastaFpPlonkIndex(Box::new(index))))
+}
+
+#[napi]
+pub fn caml_pasta_fp_plonk_index_decode(
+    bytes: &[u8],
+    srs: External<WasmSrs>,
+) -> Result<External<WasmPastaFpPlonkIndex>, Error> {
+    let mut deserializer = rmp_serde::Deserializer::new(bytes);
+    let mut index =
+        ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
+            .map_err(|e| Error::new(Status::InvalidArg, "caml_pasta_fp_plonk_index_decode"))?;
+
+    index.srs = srs.0.clone();
+    let (linearization, powers_of_alpha) = expr_linearization(Some(&index.cs.feature_flags), true);
+    index.linearization = linearization;
+    index.powers_of_alpha = powers_of_alpha;
+
+    Ok(External::new(WasmPastaFpPlonkIndex(Box::new(index))))
+}
+
+#[napi]
+pub fn caml_pasta_fp_plonk_index_encode(
+    index: External<WasmPastaFpPlonkIndex>,
+) -> Result<Vec<u8>, Error> {
+    let mut buffer = Vec::new();
+    let mut serializer = rmp_serde::Serializer::new(&mut buffer);
+    index.0.serialize(&mut serializer).map_err(|e| {
+        Error::new(
+            Status::InvalidArg,
+            &format!("caml_pasta_fp_plonk_index_encode: {}", e),
+        )
+    })?;
+    Ok(buffer)
+}
+
+#[napi]
+pub fn caml_pasta_fp_plonk_index_write(
+    append: Option<bool>,
+    index: External<WasmPastaFpPlonkIndex>,
+    path: String,
+) -> Result<(), Error> {
+    let file = OpenOptions::new()
+        .append(append.unwrap_or(true))
+        .open(path)
+        .map_err(|_| Error::new(Status::InvalidArg, "caml_pasta_fp_plonk_index_write"))?;
+    let w = BufWriter::new(file);
+    index
+        .0
+        .serialize(&mut rmp_serde::Serializer::new(w))
+        .map_err(|e| {
+            Error::new(
+                Status::InvalidArg,
+                &format!("caml_pasta_fp_plonk_index_write: {e}"),
+            )
+        })
 }
