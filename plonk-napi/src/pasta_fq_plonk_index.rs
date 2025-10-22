@@ -177,10 +177,13 @@ pub fn caml_pasta_fq_plonk_index_decode(
     srs: External<WasmSrs>,
 ) -> Result<External<WasmPastaFqPlonkIndex>, Error> {
     let mut deserializer = rmp_serde::Deserializer::new(bytes);
-    let mut index =
-        ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
-            .map_err(|e| Error::new(Status::InvalidArg, "caml_pasta_fq_plonk_index_decode"))?;
-
+    let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
+        .map_err(|e| {
+        Error::new(
+            Status::InvalidArg,
+            format!("caml_pasta_fq_plonk_index_decode: {}", e),
+        )
+    })?;
     index.srs = srs.0.clone();
     let (linearization, powers_of_alpha) = expr_linearization(Some(&index.cs.feature_flags), true);
     index.linearization = linearization;
