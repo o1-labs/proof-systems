@@ -22,7 +22,7 @@ mod kimchi {
         sponge::{DefaultFqSponge, DefaultFrSponge},
     };
     use once_cell::sync::OnceCell;
-    use poly_commitment::{commitment::CommitmentCurve, ipa::OpeningProof, SRS};
+    use poly_commitment::{commitment::CommitmentCurve, ipa::OpeningProof};
     use rmp_serde::{Deserializer, Serializer};
     use serde::{de::Error as SerdeDeError, Deserialize, Serialize};
 
