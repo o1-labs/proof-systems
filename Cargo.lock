@@ -2532,6 +2532,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "o1js"
+version = "0.1.0"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-poly",
+ "ark-serialize",
+ "arkworks",
+ "base64 0.21.7",
+ "getrandom 0.2.15",
+ "groupmap",
+ "kimchi",
+ "kimchi-stubs",
+ "libc",
+ "mina-curves",
+ "mina-poseidon",
+ "neon",
+ "num-bigint",
+ "o1-utils",
+ "once_cell",
+ "paste",
+ "poly-commitment",
+ "rand",
+ "rayon",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "wasm-bindgen",
+ "wasm-types",
+]
+
+[[package]]
 name = "o1vm"
 version = "0.1.0"
 dependencies = [
