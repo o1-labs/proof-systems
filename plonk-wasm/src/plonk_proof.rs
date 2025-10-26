@@ -620,6 +620,15 @@ macro_rules! impl_proof {
                     // Deprecated used on purpose: updating this leads to a bug in o1js
                     base64::encode(serialized)
                 }
+
+                #[wasm_bindgen]
+                #[allow(deprecated)]
+                pub fn deserialize(s: &str) -> WasmProverProof {
+                    let bytes = base64::decode(s).unwrap();
+                    let proof: ProverProof<$G, OpeningProof<$G>> = rmp_serde::from_slice(&bytes).unwrap();
+                    // Deprecated used on purpose: updating this leads to a bug in o1js
+                    WasmProverProof::from((proof, Vec::new()))
+                }
             }
 
             #[wasm_bindgen]
