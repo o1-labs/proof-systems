@@ -20,8 +20,7 @@ use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSpon
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{File, OpenOptions},
-    io::{BufReader, BufWriter, Cursor, Seek, SeekFrom::Start},
-    sync::Arc,
+    io::{BufReader, BufWriter, Seek, SeekFrom::Start},
 };
 use wasm_bindgen::prelude::*;
 use wasm_types::FlatVector as WasmFlatVector;
@@ -35,71 +34,6 @@ use wasm_types::FlatVector as WasmFlatVector;
 pub struct WasmPastaFpPlonkIndex(
     #[wasm_bindgen(skip)] pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>,
 );
-
-// TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
-#[derive(Serialize, Deserialize)]
-struct SerializedProverIndex {
-    prover_index: Vec<u8>,
-    srs: Vec<u8>,
-}
-
-// TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
-#[wasm_bindgen]
-impl WasmPastaFpPlonkIndex {
-    #[wasm_bindgen(js_name = "serialize")]
-    pub fn serialize(&self) -> Result<Vec<u8>, JsError> {
-        serialize_prover_index(self.0.as_ref())
-            .map_err(|e| JsError::new(&format!("WasmPastaFpPlonkIndex::serialize: {e}")))
-    }
-
-    #[wasm_bindgen(js_name = "deserialize")]
-    pub fn deserialize(bytes: &[u8]) -> Result<WasmPastaFpPlonkIndex, JsError> {
-        deserialize_prover_index(bytes)
-            .map(WasmPastaFpPlonkIndex)
-            .map_err(|e| JsError::new(&format!("WasmPastaFpPlonkIndex::deserialize: {e}")))
-    }
-}
-
-fn serialize_prover_index(
-    index: &ProverIndex<GAffine, OpeningProof<GAffine>>,
-) -> Result<Vec<u8>, String> {
-    let prover_index = rmp_serde::to_vec(index).map_err(|e| e.to_string())?;
-
-    let mut srs = Vec::new();
-    index
-        .srs
-        .serialize(&mut rmp_serde::Serializer::new(&mut srs))
-        .map_err(|e| e.to_string())?;
-
-    let serialized = SerializedProverIndex { prover_index, srs };
-
-    rmp_serde::to_vec(&serialized).map_err(|e| e.to_string())
-}
-
-fn deserialize_prover_index(
-    bytes: &[u8],
-) -> Result<Box<ProverIndex<GAffine, OpeningProof<GAffine>>>, String> {
-    let serialized: SerializedProverIndex =
-        rmp_serde::from_slice(bytes).map_err(|e| e.to_string())?;
-
-    let mut index: ProverIndex<GAffine, OpeningProof<GAffine>> = ProverIndex::deserialize(
-        &mut rmp_serde::Deserializer::new(Cursor::new(serialized.prover_index)),
-    )
-    .map_err(|e| e.to_string())?;
-
-    let srs = poly_commitment::ipa::SRS::<GAffine>::deserialize(&mut rmp_serde::Deserializer::new(
-        Cursor::new(serialized.srs),
-    ))
-    .map_err(|e| e.to_string())?;
-
-    index.srs = Arc::new(srs);
-
-    let (linearization, powers_of_alpha) = expr_linearization(Some(&index.cs.feature_flags), true);
-    index.linearization = linearization;
-    index.powers_of_alpha = powers_of_alpha;
-
-    Ok(Box::new(index))
-}
 
 // This should mimic LookupTable structure
 #[wasm_bindgen]
