@@ -4,24 +4,18 @@ use std::{
     sync::Arc,
 };
 
-use groupmap::GroupMap;
+use base64::{engine::general_purpose, Engine as _};
 use kimchi::{
     circuits::{
         constraints::FeatureFlags,
         lookup::lookups::{LookupFeatures, LookupPatterns},
         polynomials::permutation::{permutation_vanishing_polynomial, zk_w},
     },
-    proof::ProverProof,
-    verifier::{batch_verify, verify, Context},
     verifier_index::VerifierIndex,
 };
-use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
+use mina_curves::pasta::{Fp, Pallas, Vesta};
 use once_cell::sync::OnceCell;
-use poly_commitment::{commitment::CommitmentCurve, ipa::OpeningProof};
+use poly_commitment::ipa::OpeningProof;
 use rmp_serde::{Deserializer, Serializer};
 use serde::{de::Error as SerdeDeError, Deserialize, Serialize};
 
@@ -93,7 +87,10 @@ pub fn verification_key_from_o1js_base64(
     index: String,
     srs: Arc<poly_commitment::ipa::SRS<Vesta>>,
 ) -> Result<VerifierIndex<Vesta, OpeningProof<Vesta>>, serde_json::Error> {
-    let decoded_bytes = base64::decode(index).map_err(|e| json_error(e.to_string()))?;
+    let decoded_bytes = general_purpose::STANDARD
+        .decode(index)
+        .map_err(|err| err.to_string())
+        .unwrap();
     let decoded_str = String::from_utf8(decoded_bytes).map_err(|e| json_error(e.to_string()))?;
 
     let vi: Result<VerifierIndex<Vesta, OpeningProof<Vesta>>, serde_json::Error> =
@@ -151,7 +148,10 @@ pub fn verification_key_from_o1js_json(
 
 #[cfg(test)]
 mod tests {
-    use ark_ff::Fp;
+    use std::sync::Arc;
+
+    use mina_curves::pasta::Vesta;
+    use poly_commitment::ipa::SRS;
 
     const VERIFICATION_KEY: &str = include_str!("./verification_key.vk");
     const VERIFICATION_KEY_BASE64: &str = include_str!("./verification_key.base64");
@@ -160,9 +160,8 @@ mod tests {
 
     #[test]
     fn test_verifier_index_deserialize() {
-        let srs = super::Arc::new(poly_commitment::ipa::SRS::<super::Vesta>::create_parallel(
-            MAX_POLY_SIZE,
-        ));
+        let srs = Arc::new(SRS::<Vesta>::create_parallel(MAX_POLY_SIZE));
+
         let vi = super::verification_key_from_o1js_json(VERIFICATION_KEY.to_string(), srs);
         assert!(vi.is_ok(), "Failed to deserialize verifier index from JSON");
     }
@@ -170,9 +169,7 @@ mod tests {
     #[test]
     fn test_verifier_index_deserialize_invalid() {
         let json = r#"{"invalid_key":"invalid_value"}"#;
-        let srs = super::Arc::new(poly_commitment::ipa::SRS::<super::Vesta>::create_parallel(
-            MAX_POLY_SIZE,
-        ));
+        let srs = Arc::new(SRS::<Vesta>::create_parallel(MAX_POLY_SIZE));
         let vi = super::verification_key_from_o1js_json(json.to_string(), srs);
         assert!(
             vi.is_err(),
@@ -182,9 +179,7 @@ mod tests {
 
     #[test]
     fn test_verification_key_from_o1js_base64() {
-        let srs = super::Arc::new(poly_commitment::ipa::SRS::<super::Vesta>::create_parallel(
-            MAX_POLY_SIZE,
-        ));
+        let srs = Arc::new(SRS::<Vesta>::create_parallel(MAX_POLY_SIZE));
         let vi = super::verification_key_from_o1js_base64(VERIFICATION_KEY_BASE64.to_string(), srs);
         assert!(
             vi.is_ok(),
@@ -195,9 +190,7 @@ mod tests {
     #[test]
     fn test_verification_key_from_o1js_base64_invalid() {
         let base64_str = "eyJkb21haW4iOiIwMDIwMDAwMDAwM==";
-        let srs = super::Arc::new(poly_commitment::ipa::SRS::<super::Vesta>::create_parallel(
-            MAX_POLY_SIZE,
-        ));
+        let srs = Arc::new(SRS::<Vesta>::create_parallel(MAX_POLY_SIZE));
         let vi = super::verification_key_from_o1js_base64(base64_str.to_string(), srs);
         assert!(
             vi.is_err(),
