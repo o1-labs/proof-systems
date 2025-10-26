@@ -12,15 +12,15 @@ use serde::Deserialize;
 use std::str::FromStr;
 
 #[derive(Debug, Deserialize)]
-struct JsonProof {
+pub struct JsonProof {
     proof: String,
     #[serde(rename = "publicInputFields")]
     public_inputs: Vec<String>,
 }
 
-struct O1jsProof {
-    proof: ProverProof<Vesta, OpeningProof<Vesta>>,
-    public_inputs: Vec<Fp>,
+pub struct O1jsProof {
+    pub proof: ProverProof<Vesta, OpeningProof<Vesta>>,
+    pub public_inputs: Vec<Fp>,
 }
 
 pub fn json_proof_to_o1js_proof(json_proof: JsonProof) -> Result<O1jsProof, String> {
