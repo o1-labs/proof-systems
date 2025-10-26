@@ -25,7 +25,7 @@ members = [
   "turshi",
   "utils",
   "xtask",
-  "o1js"
+  "o1js-utils"
 ]
 resolver = "2"
 
