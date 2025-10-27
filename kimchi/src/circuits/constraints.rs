@@ -24,17 +24,11 @@ use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
 };
-use core::{array, default::Default, marker::PhantomData};
+use core::{array, default::Default};
 use o1_utils::ExtendedEvaluations;
 use poly_commitment::OpenProof;
 use rayon::prelude::*;
-use serde::{
-    de::{
-        value::MapAccessDeserializer, value::SeqAccessDeserializer, DeserializeOwned, MapAccess,
-        SeqAccess, Visitor,
-    },
-    Deserialize, Serialize,
-};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
 
@@ -230,32 +224,8 @@ where
         D: serde::Deserializer<'de>,
     {
         #[serde_as]
-        #[derive(Clone, Deserialize, Debug)]
-        struct ConstraintSystemMap<F: PrimeField> {
-            public: usize,
-            prev_challenges: usize,
-            #[serde(bound = "EvaluationDomains<F>: Serialize + DeserializeOwned")]
-            domain: EvaluationDomains<F>,
-            #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
-            gates: Arc<Vec<CircuitGate<F>>>,
-            zk_rows: u64,
-            feature_flags: FeatureFlags,
-            #[serde(default)]
-            _lazy_mode: bool,
-            #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-            sid: Vec<F>,
-            #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-            shift: [F; PERMUTS],
-            #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-            endo: F,
-            #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
-            lookup_constraint_system: Arc<LookupConstraintSystemCache<F>>,
-            disable_gates_checks: bool,
-        }
-
-        #[serde_as]
-        #[derive(Clone, Deserialize, Debug)]
-        struct ConstraintSystemLegacy<F: PrimeField> {
+        #[derive(Clone, Serialize, Deserialize, Debug)]
+        struct ConstraintSystemSerde<F: PrimeField> {
             public: usize,
             prev_challenges: usize,
             #[serde(bound = "EvaluationDomains<F>: Serialize + DeserializeOwned")]
@@ -275,111 +245,28 @@ where
             disable_gates_checks: bool,
         }
 
-        struct ConstraintSystemVisitor<F: PrimeField> {
-            _marker: PhantomData<F>,
-        }
+        // This is to avoid implementing a default value for LazyCache
+        let cs = ConstraintSystemSerde::<F>::deserialize(deserializer)?;
 
-        impl<'de, F> Visitor<'de> for ConstraintSystemVisitor<F>
-        where
-            F: PrimeField,
-            EvaluationDomains<F>: Serialize + DeserializeOwned,
-            CircuitGate<F>: Serialize + DeserializeOwned,
-            LookupConstraintSystem<F>: Serialize + DeserializeOwned,
-        {
-            type Value = ConstraintSystem<F>;
+        let precomputations = Arc::new({
+            LazyCache::new(move || {
+                Arc::new(DomainConstantEvaluations::create(cs.domain, cs.zk_rows).unwrap())
+            })
+        });
 
-            fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
-                formatter.write_str("constraint system encoded as map or legacy tuple")
-            }
-
-            fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
-            where
-                A: MapAccess<'de>,
-            {
-                let cs = ConstraintSystemMap::<F>::deserialize(MapAccessDeserializer::new(map))?;
-                Ok(from_parts(
-                    cs.public,
-                    cs.prev_challenges,
-                    cs.domain,
-                    cs.gates,
-                    cs.zk_rows,
-                    cs.feature_flags,
-                    cs.sid,
-                    cs.shift,
-                    cs.endo,
-                    cs.lookup_constraint_system,
-                    cs.disable_gates_checks,
-                ))
-            }
-
-            fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: SeqAccess<'de>,
-            {
-                let legacy =
-                    ConstraintSystemLegacy::<F>::deserialize(SeqAccessDeserializer::new(seq))?;
-                Ok(from_parts(
-                    legacy.public,
-                    legacy.prev_challenges,
-                    legacy.domain,
-                    legacy.gates,
-                    legacy.zk_rows,
-                    legacy.feature_flags,
-                    legacy.sid,
-                    legacy.shift,
-                    legacy.endo,
-                    legacy.lookup_constraint_system,
-                    legacy.disable_gates_checks,
-                ))
-            }
-        }
-
-        fn from_parts<F: PrimeField>(
-            public: usize,
-            prev_challenges: usize,
-            domain: EvaluationDomains<F>,
-            gates: Arc<Vec<CircuitGate<F>>>,
-            zk_rows: u64,
-            feature_flags: FeatureFlags,
-            sid: Vec<F>,
-            shift: [F; PERMUTS],
-            endo: F,
-            lookup_constraint_system: Arc<LookupConstraintSystemCache<F>>,
-            disable_gates_checks: bool,
-        ) -> ConstraintSystem<F>
-        where
-            EvaluationDomains<F>: Serialize + DeserializeOwned,
-            CircuitGate<F>: Serialize + DeserializeOwned,
-            LookupConstraintSystem<F>: Serialize + DeserializeOwned,
-        {
-            let domain_for_cache = domain.clone();
-            let precomputations = Arc::new({
-                LazyCache::new(move || {
-                    Arc::new(
-                        DomainConstantEvaluations::create(domain_for_cache.clone(), zk_rows)
-                            .unwrap(),
-                    )
-                })
-            });
-
-            ConstraintSystem {
-                public,
-                prev_challenges,
-                domain,
-                gates,
-                zk_rows,
-                feature_flags,
-                sid,
-                shift,
-                endo,
-                lookup_constraint_system,
-                disable_gates_checks,
-                precomputations,
-            }
-        }
-
-        deserializer.deserialize_any(ConstraintSystemVisitor::<F> {
-            _marker: PhantomData,
+        Ok(ConstraintSystem {
+            public: cs.public,
+            prev_challenges: cs.prev_challenges,
+            domain: cs.domain,
+            gates: cs.gates,
+            zk_rows: cs.zk_rows,
+            feature_flags: cs.feature_flags,
+            sid: cs.sid,
+            shift: cs.shift,
+            endo: cs.endo,
+            lookup_constraint_system: cs.lookup_constraint_system,
+            disable_gates_checks: cs.disable_gates_checks,
+            precomputations,
         })
     }
 }
