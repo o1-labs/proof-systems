@@ -110,8 +110,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### [plonk_wasm](./plonk-wasm)
 
-#### Changed
-- (No changes in current release)
+
+- Add function to `deserialize` a `WasmProverProof`
+  ([#3354](https://github.com/o1-labs/proof-systems/pull/3354))
 
 ### [poly-commitment](./poly-commitment)
 
