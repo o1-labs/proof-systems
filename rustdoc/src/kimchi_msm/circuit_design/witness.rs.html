@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `msm/src/circuit_design/witness.rs`."><title>witness.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi_msm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.92.0-nightly (695857bc3 2025-10-21)" data-channel="nightly" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi_msm/circuit_design/</div>witness.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use crate</span>::{
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `msm/src/circuit_design/witness.rs`."><title>witness.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi_msm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (f37aa9955 2025-10-26)" data-channel="nightly" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi_msm/circuit_design/</div>witness.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use crate</span>::{
 <a href=#2 id=2 data-nosnippet>2</a>    circuit_design::capabilities::{
 <a href=#3 id=3 data-nosnippet>3</a>        ColAccessCap, ColWriteCap, DirectWitnessCap, HybridCopyCap, LookupCap, MultiRowReadCap,
 <a href=#4 id=4 data-nosnippet>4</a>    },
@@ -214,7 +214,7 @@
 <a href=#214 id=214 data-nosnippet>214</a>                // different number of lookups on different rows.
 <a href=#215 id=215 data-nosnippet>215</a>                //
 <a href=#216 id=216 data-nosnippet>216</a>                // See https://github.com/o1-labs/proof-systems/issues/2440
-<a href=#217 id=217 data-nosnippet>217</a>                </span><span class="kw">if </span>curr_row != <span class="number">0 </span>{
+<a href=#217 id=217 data-nosnippet>217</a>                </span><span class="kw">if </span><span class="macro">curr_row !</span>= <span class="number">0 </span>{
 <a href=#218 id=218 data-nosnippet>218</a>                    <span class="macro">eprintln!</span>(
 <a href=#219 id=219 data-nosnippet>219</a>                        <span class="string">"ERROR: Number of writes in row {curr_row:?} is different from row 0"</span>,
 <a href=#220 id=220 data-nosnippet>220</a>                    );
@@ -238,7 +238,7 @@
 <a href=#238 id=238 data-nosnippet>238</a>            // still collect multiplicities as if runtime table vector
 <a href=#239 id=239 data-nosnippet>239</a>            // is not height-bounded, but we will split it into chunks
 <a href=#240 id=240 data-nosnippet>240</a>            // later.
-<a href=#241 id=241 data-nosnippet>241</a>            </span><span class="kw">if </span>!table_id.is_fixed() &amp;&amp; value_ix &gt; multiplicities.len() {
+<a href=#241 id=241 data-nosnippet>241</a>            </span><span class="macro">if !</span>table_id.is_fixed() &amp;&amp; value_ix &gt; multiplicities.len() {
 <a href=#242 id=242 data-nosnippet>242</a>                multiplicities.resize(value_ix, <span class="number">0u64</span>);
 <a href=#243 id=243 data-nosnippet>243</a>            }
 <a href=#244 id=244 data-nosnippet>244</a>            multiplicities[value_ix] += <span class="number">1</span>;
@@ -552,7 +552,7 @@
 <a href=#552 id=552 data-nosnippet>552</a>    ) -&gt; BTreeMap&lt;LT, LogupWitness&lt;F, LT&gt;&gt; {
 <a href=#553 id=553 data-nosnippet>553</a>        <span class="comment">// Building lookup values
 <a href=#554 id=554 data-nosnippet>554</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_tables: BTreeMap&lt;LT, Vec&lt;Vec&lt;Logup&lt;F, LT&gt;&gt;&gt;&gt; = BTreeMap::new();
-<a href=#555 id=555 data-nosnippet>555</a>        <span class="kw">if </span>!lookup_tables_data.is_empty() {
+<a href=#555 id=555 data-nosnippet>555</a>        <span class="macro">if !</span>lookup_tables_data.is_empty() {
 <a href=#556 id=556 data-nosnippet>556</a>            <span class="kw">for </span>table_id <span class="kw">in </span>LT::all_variants().into_iter() {
 <a href=#557 id=557 data-nosnippet>557</a>                <span class="comment">// Find how many lookups are done per table.
 <a href=#558 id=558 data-nosnippet>558</a>                </span><span class="kw">let </span>number_of_lookup_reads = <span class="self">self</span>.lookup_reads.get(<span class="kw-2">&amp;</span>table_id).unwrap().len();
@@ -633,7 +633,7 @@
 <a href=#633 id=633 data-nosnippet>633</a>        }
 <a href=#634 id=634 data-nosnippet>634</a>
 <a href=#635 id=635 data-nosnippet>635</a>        <span class="kw">for </span>(table_id, m) <span class="kw">in </span>lookup_multiplicities.iter() {
-<a href=#636 id=636 data-nosnippet>636</a>            <span class="kw">if </span>!table_id.is_fixed() {
+<a href=#636 id=636 data-nosnippet>636</a>            <span class="macro">if !</span>table_id.is_fixed() {
 <a href=#637 id=637 data-nosnippet>637</a>                <span class="comment">// Temporary assertion; to be removed when we support bigger
 <a href=#638 id=638 data-nosnippet>638</a>                // runtime table/RAMlookups functionality.
 <a href=#639 id=639 data-nosnippet>639</a>                </span><span class="macro">assert!</span>(m.len() &lt;= domain_size,
@@ -645,7 +645,7 @@
 <a href=#645 id=645 data-nosnippet>645</a>            .iter()
 <a href=#646 id=646 data-nosnippet>646</a>            .filter_map(|(table_id, table)| {
 <a href=#647 id=647 data-nosnippet>647</a>                <span class="comment">// Only add a table if it's used. Otherwise lookups fail.
-<a href=#648 id=648 data-nosnippet>648</a>                </span><span class="kw">if </span>!table.is_empty() &amp;&amp; !table[<span class="number">0</span>].is_empty() {
+<a href=#648 id=648 data-nosnippet>648</a>                </span><span class="macro">if !</span>table.is_empty() &amp;&amp; !table[<span class="number">0</span>].is_empty() {
 <a href=#649 id=649 data-nosnippet>649</a>                    <span class="prelude-val">Some</span>((
 <a href=#650 id=650 data-nosnippet>650</a>                        <span class="kw-2">*</span>table_id,
 <a href=#651 id=651 data-nosnippet>651</a>                        LogupWitness {
@@ -674,4 +674,5 @@
 <a href=#674 id=674 data-nosnippet>674</a>            logups,
 <a href=#675 id=675 data-nosnippet>675</a>        }
 <a href=#676 id=676 data-nosnippet>676</a>    }
-<a href=#677 id=677 data-nosnippet>677</a>}</code></pre></div></section></main></body></html>
+<a href=#677 id=677 data-nosnippet>677</a>}
+</code></pre></div></section></main></body></html>

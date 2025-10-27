@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/expr.rs`."><title>expr.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.92.0-nightly (695857bc3 2025-10-21)" data-channel="nightly" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi/circuits/</div>expr.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use crate</span>::{
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/expr.rs`."><title>expr.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (f37aa9955 2025-10-26)" data-channel="nightly" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi/circuits/</div>expr.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use crate</span>::{
 <a href=#2 id=2 data-nosnippet>2</a>    circuits::{
 <a href=#3 id=3 data-nosnippet>3</a>        berkeley_columns,
 <a href=#4 id=4 data-nosnippet>4</a>        berkeley_columns::BerkeleyChallengeTerm,
@@ -772,7 +772,7 @@
 <a href=#772 id=772 data-nosnippet>772</a>                        Xor =&gt; features.xor,
 <a href=#773 id=773 data-nosnippet>773</a>                        Rot =&gt; features.rot,
 <a href=#774 id=774 data-nosnippet>774</a>                        LookupTables =&gt; {
-<a href=#775 id=775 data-nosnippet>775</a>                            features.lookup_features.patterns != LookupPatterns::default()
+<a href=#775 id=775 data-nosnippet>775</a>                            features.lookup_features.<span class="macro">patterns !</span>= LookupPatterns::default()
 <a href=#776 id=776 data-nosnippet>776</a>                        }
 <a href=#777 id=777 data-nosnippet>777</a>                        RuntimeLookupTables =&gt; features.lookup_features.uses_runtime_tables,
 <a href=#778 id=778 data-nosnippet>778</a>                        LookupPattern(pattern) =&gt; features.lookup_features.patterns[<span class="kw-2">*</span>pattern],
@@ -920,7 +920,7 @@
 <a href=#920 id=920 data-nosnippet>920</a>                    }
 <a href=#921 id=921 data-nosnippet>921</a>                }
 <a href=#922 id=922 data-nosnippet>922</a>                SkipIfNot(feature, count) =&gt; {
-<a href=#923 id=923 data-nosnippet>923</a>                    <span class="kw">if </span>!feature.is_enabled() {
+<a href=#923 id=923 data-nosnippet>923</a>                    <span class="macro">if !</span>feature.is_enabled() {
 <a href=#924 id=924 data-nosnippet>924</a>                        skip_count = <span class="kw-2">*</span>count;
 <a href=#925 id=925 data-nosnippet>925</a>                        stack.push(F::zero());
 <a href=#926 id=926 data-nosnippet>926</a>                    }
@@ -1181,7 +1181,7 @@
 <a href=#1181 id=1181 data-nosnippet>1181</a>                <span class="kw">let </span>n = res_domain.<span class="number">1</span>.size();
 <a href=#1182 id=1182 data-nosnippet>1182</a>                <span class="kw">let </span>scale = (domain <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
 <a href=#1183 id=1183 data-nosnippet>1183</a>                <span class="macro">assert!</span>(
-<a href=#1184 id=1184 data-nosnippet>1184</a>                    scale != <span class="number">0</span>,
+<a href=#1184 id=1184 data-nosnippet>1184</a>                    <span class="macro">scale !</span>= <span class="number">0</span>,
 <a href=#1185 id=1185 data-nosnippet>1185</a>                    <span class="string">"Check that the implementation of
 <a href=#1186 id=1186 data-nosnippet>1186</a>                column_domain and the evaluation domain of the
 <a href=#1187 id=1187 data-nosnippet>1187</a>                witnesses are the same"
@@ -1238,7 +1238,7 @@
 <a href=#1238 id=1238 data-nosnippet>1238</a>            ) =&gt; {
 <a href=#1239 id=1239 data-nosnippet>1239</a>                <span class="kw">let </span>scale = (d_sub <span class="kw">as </span>usize) / (d <span class="kw">as </span>usize);
 <a href=#1240 id=1240 data-nosnippet>1240</a>                <span class="macro">assert!</span>(
-<a href=#1241 id=1241 data-nosnippet>1241</a>                    scale != <span class="number">0</span>,
+<a href=#1241 id=1241 data-nosnippet>1241</a>                    <span class="macro">scale !</span>= <span class="number">0</span>,
 <a href=#1242 id=1242 data-nosnippet>1242</a>                    <span class="string">"Check that the implementation of
 <a href=#1243 id=1243 data-nosnippet>1243</a>                column_domain and the evaluation domain of the
 <a href=#1244 id=1244 data-nosnippet>1244</a>                witnesses are the same"
@@ -1262,14 +1262,14 @@
 <a href=#1262 id=1262 data-nosnippet>1262</a>            ) =&gt; {
 <a href=#1263 id=1263 data-nosnippet>1263</a>                <span class="kw">let </span>scale1 = (d1 <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
 <a href=#1264 id=1264 data-nosnippet>1264</a>                <span class="macro">assert!</span>(
-<a href=#1265 id=1265 data-nosnippet>1265</a>                    scale1 != <span class="number">0</span>,
+<a href=#1265 id=1265 data-nosnippet>1265</a>                    <span class="macro">scale1 !</span>= <span class="number">0</span>,
 <a href=#1266 id=1266 data-nosnippet>1266</a>                    <span class="string">"Check that the implementation of
 <a href=#1267 id=1267 data-nosnippet>1267</a>                column_domain and the evaluation domain of the
 <a href=#1268 id=1268 data-nosnippet>1268</a>                witnesses are the same"
 <a href=#1269 id=1269 data-nosnippet>1269</a>                </span>);
 <a href=#1270 id=1270 data-nosnippet>1270</a>                <span class="kw">let </span>scale2 = (d2 <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
 <a href=#1271 id=1271 data-nosnippet>1271</a>                <span class="macro">assert!</span>(
-<a href=#1272 id=1272 data-nosnippet>1272</a>                    scale2 != <span class="number">0</span>,
+<a href=#1272 id=1272 data-nosnippet>1272</a>                    <span class="macro">scale2 !</span>= <span class="number">0</span>,
 <a href=#1273 id=1273 data-nosnippet>1273</a>                    <span class="string">"Check that the implementation of
 <a href=#1274 id=1274 data-nosnippet>1274</a>                column_domain and the evaluation domain of the
 <a href=#1275 id=1275 data-nosnippet>1275</a>                witnesses are the same"
@@ -1313,7 +1313,7 @@
 <a href=#1313 id=1313 data-nosnippet>1313</a>            ) =&gt; {
 <a href=#1314 id=1314 data-nosnippet>1314</a>                <span class="kw">let </span>scale = (d <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
 <a href=#1315 id=1315 data-nosnippet>1315</a>                <span class="macro">assert!</span>(
-<a href=#1316 id=1316 data-nosnippet>1316</a>                    scale != <span class="number">0</span>,
+<a href=#1316 id=1316 data-nosnippet>1316</a>                    <span class="macro">scale !</span>= <span class="number">0</span>,
 <a href=#1317 id=1317 data-nosnippet>1317</a>                    <span class="string">"Check that the implementation of
 <a href=#1318 id=1318 data-nosnippet>1318</a>                column_domain and the evaluation domain of the
 <a href=#1319 id=1319 data-nosnippet>1319</a>                witnesses are the same"
@@ -1332,7 +1332,7 @@
 <a href=#1332 id=1332 data-nosnippet>1332</a>            ) =&gt; {
 <a href=#1333 id=1333 data-nosnippet>1333</a>                <span class="kw">let </span>scale = (d <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
 <a href=#1334 id=1334 data-nosnippet>1334</a>                <span class="macro">assert!</span>(
-<a href=#1335 id=1335 data-nosnippet>1335</a>                    scale != <span class="number">0</span>,
+<a href=#1335 id=1335 data-nosnippet>1335</a>                    <span class="macro">scale !</span>= <span class="number">0</span>,
 <a href=#1336 id=1336 data-nosnippet>1336</a>                    <span class="string">"Check that the implementation of
 <a href=#1337 id=1337 data-nosnippet>1337</a>                column_domain and the evaluation domain of the
 <a href=#1338 id=1338 data-nosnippet>1338</a>                witnesses are the same"
@@ -1372,7 +1372,7 @@
 <a href=#1372 id=1372 data-nosnippet>1372</a>            ) =&gt; {
 <a href=#1373 id=1373 data-nosnippet>1373</a>                <span class="kw">let </span>scale = (d_sub <span class="kw">as </span>usize) / (d <span class="kw">as </span>usize);
 <a href=#1374 id=1374 data-nosnippet>1374</a>                <span class="macro">assert!</span>(
-<a href=#1375 id=1375 data-nosnippet>1375</a>                    scale != <span class="number">0</span>,
+<a href=#1375 id=1375 data-nosnippet>1375</a>                    <span class="macro">scale !</span>= <span class="number">0</span>,
 <a href=#1376 id=1376 data-nosnippet>1376</a>                    <span class="string">"Check that the implementation of
 <a href=#1377 id=1377 data-nosnippet>1377</a>                column_domain and the evaluation domain of the
 <a href=#1378 id=1378 data-nosnippet>1378</a>                witnesses are the same"
@@ -1396,7 +1396,7 @@
 <a href=#1396 id=1396 data-nosnippet>1396</a>            ) =&gt; {
 <a href=#1397 id=1397 data-nosnippet>1397</a>                <span class="kw">let </span>scale = (d_sub <span class="kw">as </span>usize) / (d <span class="kw">as </span>usize);
 <a href=#1398 id=1398 data-nosnippet>1398</a>                <span class="macro">assert!</span>(
-<a href=#1399 id=1399 data-nosnippet>1399</a>                    scale != <span class="number">0</span>,
+<a href=#1399 id=1399 data-nosnippet>1399</a>                    <span class="macro">scale !</span>= <span class="number">0</span>,
 <a href=#1400 id=1400 data-nosnippet>1400</a>                    <span class="string">"Check that the implementation of
 <a href=#1401 id=1401 data-nosnippet>1401</a>                column_domain and the evaluation domain of the
 <a href=#1402 id=1402 data-nosnippet>1402</a>                witnesses are the same"
@@ -1420,14 +1420,14 @@
 <a href=#1420 id=1420 data-nosnippet>1420</a>            ) =&gt; {
 <a href=#1421 id=1421 data-nosnippet>1421</a>                <span class="kw">let </span>scale1 = (d1 <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
 <a href=#1422 id=1422 data-nosnippet>1422</a>                <span class="macro">assert!</span>(
-<a href=#1423 id=1423 data-nosnippet>1423</a>                    scale1 != <span class="number">0</span>,
+<a href=#1423 id=1423 data-nosnippet>1423</a>                    <span class="macro">scale1 !</span>= <span class="number">0</span>,
 <a href=#1424 id=1424 data-nosnippet>1424</a>                    <span class="string">"Check that the implementation of
 <a href=#1425 id=1425 data-nosnippet>1425</a>                column_domain and the evaluation domain of the
 <a href=#1426 id=1426 data-nosnippet>1426</a>                witnesses are the same"
 <a href=#1427 id=1427 data-nosnippet>1427</a>                </span>);
 <a href=#1428 id=1428 data-nosnippet>1428</a>                <span class="kw">let </span>scale2 = (d2 <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
 <a href=#1429 id=1429 data-nosnippet>1429</a>                <span class="macro">assert!</span>(
-<a href=#1430 id=1430 data-nosnippet>1430</a>                    scale2 != <span class="number">0</span>,
+<a href=#1430 id=1430 data-nosnippet>1430</a>                    <span class="macro">scale2 !</span>= <span class="number">0</span>,
 <a href=#1431 id=1431 data-nosnippet>1431</a>                    <span class="string">"Check that the implementation of
 <a href=#1432 id=1432 data-nosnippet>1432</a>                column_domain and the evaluation domain of the
 <a href=#1433 id=1433 data-nosnippet>1433</a>                witnesses are the same"
@@ -1471,7 +1471,7 @@
 <a href=#1471 id=1471 data-nosnippet>1471</a>            } =&gt; {
 <a href=#1472 id=1472 data-nosnippet>1472</a>                <span class="kw">let </span>scale = (d <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
 <a href=#1473 id=1473 data-nosnippet>1473</a>                <span class="macro">assert!</span>(
-<a href=#1474 id=1474 data-nosnippet>1474</a>                    scale != <span class="number">0</span>,
+<a href=#1474 id=1474 data-nosnippet>1474</a>                    <span class="macro">scale !</span>= <span class="number">0</span>,
 <a href=#1475 id=1475 data-nosnippet>1475</a>                    <span class="string">"Check that the implementation of
 <a href=#1476 id=1476 data-nosnippet>1476</a>                column_domain and the evaluation domain of the
 <a href=#1477 id=1477 data-nosnippet>1477</a>                witnesses are the same"
@@ -1510,7 +1510,7 @@
 <a href=#1510 id=1510 data-nosnippet>1510</a>            ) =&gt; {
 <a href=#1511 id=1511 data-nosnippet>1511</a>                <span class="kw">let </span>scale = (d <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
 <a href=#1512 id=1512 data-nosnippet>1512</a>                <span class="macro">assert!</span>(
-<a href=#1513 id=1513 data-nosnippet>1513</a>                    scale != <span class="number">0</span>,
+<a href=#1513 id=1513 data-nosnippet>1513</a>                    <span class="macro">scale !</span>= <span class="number">0</span>,
 <a href=#1514 id=1514 data-nosnippet>1514</a>                    <span class="string">"Check that the implementation of
 <a href=#1515 id=1515 data-nosnippet>1515</a>                column_domain and the evaluation domain of the
 <a href=#1516 id=1516 data-nosnippet>1516</a>                witnesses are the same"
@@ -1560,7 +1560,7 @@
 <a href=#1560 id=1560 data-nosnippet>1560</a>            ) =&gt; {
 <a href=#1561 id=1561 data-nosnippet>1561</a>                <span class="kw">let </span>scale = (d_sub <span class="kw">as </span>usize) / (d <span class="kw">as </span>usize);
 <a href=#1562 id=1562 data-nosnippet>1562</a>                <span class="macro">assert!</span>(
-<a href=#1563 id=1563 data-nosnippet>1563</a>                    scale != <span class="number">0</span>,
+<a href=#1563 id=1563 data-nosnippet>1563</a>                    <span class="macro">scale !</span>= <span class="number">0</span>,
 <a href=#1564 id=1564 data-nosnippet>1564</a>                    <span class="string">"Check that the implementation of
 <a href=#1565 id=1565 data-nosnippet>1565</a>                column_domainand the evaluation domain of the
 <a href=#1566 id=1566 data-nosnippet>1566</a>                witnesses are the same"
@@ -1585,7 +1585,7 @@
 <a href=#1585 id=1585 data-nosnippet>1585</a>            ) =&gt; {
 <a href=#1586 id=1586 data-nosnippet>1586</a>                <span class="kw">let </span>scale1 = (d1 <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
 <a href=#1587 id=1587 data-nosnippet>1587</a>                <span class="macro">assert!</span>(
-<a href=#1588 id=1588 data-nosnippet>1588</a>                    scale1 != <span class="number">0</span>,
+<a href=#1588 id=1588 data-nosnippet>1588</a>                    <span class="macro">scale1 !</span>= <span class="number">0</span>,
 <a href=#1589 id=1589 data-nosnippet>1589</a>                    <span class="string">"Check that the implementation of
 <a href=#1590 id=1590 data-nosnippet>1590</a>                column_domain and the evaluation domain of the
 <a href=#1591 id=1591 data-nosnippet>1591</a>                witnesses are the same"
@@ -1593,7 +1593,7 @@
 <a href=#1593 id=1593 data-nosnippet>1593</a>                <span class="kw">let </span>scale2 = (d2 <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
 <a href=#1594 id=1594 data-nosnippet>1594</a>
 <a href=#1595 id=1595 data-nosnippet>1595</a>                <span class="macro">assert!</span>(
-<a href=#1596 id=1596 data-nosnippet>1596</a>                    scale2 != <span class="number">0</span>,
+<a href=#1596 id=1596 data-nosnippet>1596</a>                    <span class="macro">scale2 !</span>= <span class="number">0</span>,
 <a href=#1597 id=1597 data-nosnippet>1597</a>                    <span class="string">"Check that the implementation of
 <a href=#1598 id=1598 data-nosnippet>1598</a>                column_domain and the evaluation domain of the
 <a href=#1599 id=1599 data-nosnippet>1599</a>                witnesses are the same"
@@ -1965,7 +1965,7 @@
 <a href=#1965 id=1965 data-nosnippet>1965</a>                <span class="kw">let </span>res_domain = env.get_domain(d);
 <a href=#1966 id=1966 data-nosnippet>1966</a>                <span class="kw">let </span>scale = (d_sub <span class="kw">as </span>usize) / (d <span class="kw">as </span>usize);
 <a href=#1967 id=1967 data-nosnippet>1967</a>                <span class="macro">assert!</span>(
-<a href=#1968 id=1968 data-nosnippet>1968</a>                    scale != <span class="number">0</span>,
+<a href=#1968 id=1968 data-nosnippet>1968</a>                    <span class="macro">scale !</span>= <span class="number">0</span>,
 <a href=#1969 id=1969 data-nosnippet>1969</a>                    <span class="string">"Check that the implementation of
 <a href=#1970 id=1970 data-nosnippet>1970</a>                column_domain and the evaluation domain of the
 <a href=#1971 id=1971 data-nosnippet>1971</a>                witnesses are the same"
@@ -2354,7 +2354,7 @@
 <a href=#2354 id=2354 data-nosnippet>2354</a>                <span class="kw">let </span>x = x.monomials(ev);
 <a href=#2355 id=2355 data-nosnippet>2355</a>
 <a href=#2356 id=2356 data-nosnippet>2356</a>                <span class="kw">for </span>i <span class="kw">in </span>(<span class="number">0</span>..u64::BITS).rev() {
-<a href=#2357 id=2357 data-nosnippet>2357</a>                    <span class="kw">if </span>!acc_is_one {
+<a href=#2357 id=2357 data-nosnippet>2357</a>                    <span class="macro">if !</span>acc_is_one {
 <a href=#2358 id=2358 data-nosnippet>2358</a>                        <span class="kw">let </span>acc2 = mul_monomials(<span class="kw-2">&amp;</span>acc, <span class="kw-2">&amp;</span>acc);
 <a href=#2359 id=2359 data-nosnippet>2359</a>                        acc = acc2;
 <a href=#2360 id=2360 data-nosnippet>2360</a>                    }
@@ -2638,7 +2638,7 @@
 <a href=#2638 id=2638 data-nosnippet>2638</a>    <span class="kw">fn </span>add_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="self">Self</span>) {
 <a href=#2639 id=2639 data-nosnippet>2639</a>        <span class="kw">if </span><span class="self">self</span>.is_zero() {
 <a href=#2640 id=2640 data-nosnippet>2640</a>            <span class="kw-2">*</span><span class="self">self </span>= other;
-<a href=#2641 id=2641 data-nosnippet>2641</a>        } <span class="kw">else if </span>!other.is_zero() {
+<a href=#2641 id=2641 data-nosnippet>2641</a>        } <span class="kw">else </span><span class="macro">if !</span>other.is_zero() {
 <a href=#2642 id=2642 data-nosnippet>2642</a>            <span class="kw-2">*</span><span class="self">self </span>= Expr::Add(Box::new(<span class="self">self</span>.clone()), Box::new(other));
 <a href=#2643 id=2643 data-nosnippet>2643</a>        }
 <a href=#2644 id=2644 data-nosnippet>2644</a>    }
@@ -2656,7 +2656,7 @@
 <a href=#2656 id=2656 data-nosnippet>2656</a>            <span class="kw-2">*</span><span class="self">self </span>= <span class="self">Self</span>::zero();
 <a href=#2657 id=2657 data-nosnippet>2657</a>        } <span class="kw">else if </span><span class="self">self</span>.is_one() {
 <a href=#2658 id=2658 data-nosnippet>2658</a>            <span class="kw-2">*</span><span class="self">self </span>= other;
-<a href=#2659 id=2659 data-nosnippet>2659</a>        } <span class="kw">else if </span>!other.is_one() {
+<a href=#2659 id=2659 data-nosnippet>2659</a>        } <span class="kw">else </span><span class="macro">if !</span>other.is_one() {
 <a href=#2660 id=2660 data-nosnippet>2660</a>            <span class="kw-2">*</span><span class="self">self </span>= Expr::Mul(Box::new(<span class="self">self</span>.clone()), Box::new(other));
 <a href=#2661 id=2661 data-nosnippet>2661</a>        }
 <a href=#2662 id=2662 data-nosnippet>2662</a>    }
@@ -3440,4 +3440,5 @@
 <a href=#3440 id=3440 data-nosnippet>3440</a>        berkeley_columns::{coeff, constant, index, witness, witness_curr, witness_next, E},
 <a href=#3441 id=3441 data-nosnippet>3441</a>        FeatureFlag,
 <a href=#3442 id=3442 data-nosnippet>3442</a>    };
-<a href=#3443 id=3443 data-nosnippet>3443</a>}</code></pre></div></section></main></body></html>
+<a href=#3443 id=3443 data-nosnippet>3443</a>}
+</code></pre></div></section></main></body></html>
