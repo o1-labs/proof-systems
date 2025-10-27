@@ -272,7 +272,7 @@ pub fn caml_pasta_fp_plonk_index_write(
     let w = BufWriter::new(file);
     index
         .0
-        .serialize(&mut rmp_serde::Serializer::new(w))
+        .serialize(&mut rmp_serde::Serializer::new(w).with_struct_map())
         .map_err(|e| JsValue::from_str(&format!("caml_pasta_fp_plonk_index_read: {e}")))
 }
 
