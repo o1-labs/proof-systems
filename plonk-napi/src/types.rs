@@ -1,8 +1,7 @@
 use kimchi::{linearization::expr_linearization, prover_index::ProverIndex};
 use mina_curves::pasta::{Vesta as GAffine, VestaParameters};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
-use napi::bindgen_prelude::{Error, External, Result as NapiResult, Status, Uint8Array};
-use napi_derive::napi;
+
 use poly_commitment::ipa::{OpeningProof, SRS};
 use serde::{Deserialize, Serialize};
 use std::{io::Cursor, sync::Arc};
@@ -18,7 +17,7 @@ struct SerializedProverIndex {
 
 // TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
 impl WasmPastaFpPlonkIndex {
-    fn serialize_inner(&self) -> Result<Vec<u8>, String> {
+    pub fn serialize_inner(&self) -> Result<Vec<u8>, String> {
         let prover_index = rmp_serde::to_vec(self.0.as_ref()).map_err(|e| e.to_string())?;
 
         let mut srs = Vec::new();
@@ -32,7 +31,7 @@ impl WasmPastaFpPlonkIndex {
         rmp_serde::to_vec(&serialized).map_err(|e| e.to_string())
     }
 
-    fn deserialize_inner(bytes: &[u8]) -> Result<Self, String> {
+    pub fn deserialize_inner(bytes: &[u8]) -> Result<Self, String> {
         let serialized: SerializedProverIndex =
             rmp_serde::from_slice(bytes).map_err(|e| e.to_string())?;
 
@@ -59,21 +58,4 @@ impl WasmPastaFpPlonkIndex {
 
         Ok(WasmPastaFpPlonkIndex(Box::new(index)))
     }
-}
-
-// TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
-#[napi]
-pub fn prover_index_from_bytes(bytes: Uint8Array) -> NapiResult<External<WasmPastaFpPlonkIndex>> {
-    let index = WasmPastaFpPlonkIndex::deserialize_inner(bytes.as_ref())
-        .map_err(|e| Error::new(Status::InvalidArg, e))?;
-    Ok(External::new(index))
-}
-
-// TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
-#[napi]
-pub fn prover_index_to_bytes(index: External<WasmPastaFpPlonkIndex>) -> NapiResult<Uint8Array> {
-    let bytes = index
-        .serialize_inner()
-        .map_err(|e| Error::new(Status::GenericFailure, e))?;
-    Ok(Uint8Array::from(bytes))
 }

@@ -30,7 +30,7 @@ where
 }
 
 #[napi]
-pub fn prover_to_json(prover_index: External<WasmPastaFpPlonkIndex>) -> String {
+pub fn prover_to_json(prover_index: &External<WasmPastaFpPlonkIndex>) -> String {
     let circuit: Circuit<Fp> = prover_index.0.cs.as_ref().into();
     serde_json::to_string(&circuit).expect("couldn't serialize constraints")
 }
