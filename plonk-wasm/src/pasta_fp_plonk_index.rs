@@ -3,13 +3,21 @@ use crate::{
     srs::fp::WasmFpSrs as WasmSrs,
     wasm_vector::{fp::*, WasmVector},
 };
+use ark_ec::AffineRepr;
+use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
 use arkworks::WasmPastaFp;
 use kimchi::{
     circuits::{
-        constraints::ConstraintSystem,
+        constraints::{ColumnEvaluations, ConstraintSystem, FeatureFlags},
+        domains::EvaluationDomains,
         gate::CircuitGate,
-        lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
+        lookup::{
+            index::{LookupConstraintSystem, LookupError},
+            runtime_tables::RuntimeTableCfg,
+            tables::LookupTable,
+        },
+        wires::PERMUTS,
     },
     linearization::expr_linearization,
     poly_commitment::{ipa::OpeningProof, SRS as _},
@@ -17,10 +25,13 @@ use kimchi::{
 };
 use mina_curves::pasta::{Fp, Pallas as GAffineOther, Vesta as GAffine, VestaParameters};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
-use serde::{Deserialize, Serialize};
+use o1_utils::lazy_cache::LazyCache;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_with::serde_as;
 use std::{
     fs::{File, OpenOptions},
-    io::{BufReader, BufWriter, Seek, SeekFrom::Start},
+    io::{BufReader, BufWriter, Read, Seek, SeekFrom::Start},
+    sync::Arc,
 };
 use wasm_bindgen::prelude::*;
 use wasm_types::FlatVector as WasmFlatVector;
@@ -202,10 +213,7 @@ pub fn caml_pasta_fp_plonk_index_decode(
     bytes: &[u8],
     srs: &WasmSrs,
 ) -> Result<WasmPastaFpPlonkIndex, JsError> {
-    let mut deserializer = rmp_serde::Deserializer::new(bytes);
-    let mut index =
-        ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
-            .map_err(|e| JsError::new(&format!("caml_pasta_fp_plonk_index_decode: {}", e)))?;
+    let mut index = deserialize_index_with_fallback(bytes, "caml_pasta_fp_plonk_index_decode")?;
 
     index.srs = srs.0.clone();
     let (linearization, powers_of_alpha) = expr_linearization(Some(&index.cs.feature_flags), true);
@@ -213,6 +221,126 @@ pub fn caml_pasta_fp_plonk_index_decode(
     index.powers_of_alpha = powers_of_alpha;
 
     Ok(WasmPastaFpPlonkIndex(Box::new(index)))
+}
+
+#[serde_as]
+#[derive(Clone, Deserialize, Debug)]
+#[serde(bound(deserialize = ""))]
+struct LegacyConstraintSystem<F: PrimeField> {
+    public: usize,
+    prev_challenges: usize,
+    #[serde(bound = "EvaluationDomains<F>: Serialize + DeserializeOwned")]
+    domain: EvaluationDomains<F>,
+    #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
+    gates: Arc<Vec<CircuitGate<F>>>,
+    zk_rows: u64,
+    feature_flags: FeatureFlags,
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    sid: Vec<F>,
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
+    shift: [F; PERMUTS],
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    endo: F,
+    #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
+    lookup_constraint_system:
+        Arc<LazyCache<Result<Option<LookupConstraintSystem<F>>, LookupError>>>,
+    disable_gates_checks: bool,
+}
+
+impl<F> LegacyConstraintSystem<F>
+where
+    F: PrimeField,
+    EvaluationDomains<F>: Serialize + DeserializeOwned,
+    CircuitGate<F>: Serialize + DeserializeOwned,
+    LookupConstraintSystem<F>: Serialize + DeserializeOwned,
+{
+    fn into_modern(self) -> Result<ConstraintSystem<F>, String> {
+        let serializable: ConstraintSystemWithLazy<F> = self.into();
+        let mut buffer = Vec::new();
+        serializable
+            .serialize(&mut rmp_serde::Serializer::new(&mut buffer).with_struct_map())
+            .map_err(|e| e.to_string())?;
+
+        let mut deserializer = rmp_serde::Deserializer::new(&buffer[..]);
+        ConstraintSystem::<F>::deserialize(&mut deserializer).map_err(|e| e.to_string())
+    }
+}
+
+#[serde_as]
+#[derive(Serialize)]
+#[serde(bound(serialize = ""))]
+struct ConstraintSystemWithLazy<F: PrimeField> {
+    public: usize,
+    prev_challenges: usize,
+    #[serde(bound(serialize = "EvaluationDomains<F>: Serialize"))]
+    domain: EvaluationDomains<F>,
+    #[serde(bound(serialize = "CircuitGate<F>: Serialize"))]
+    gates: Arc<Vec<CircuitGate<F>>>,
+    zk_rows: u64,
+    feature_flags: FeatureFlags,
+    lazy_mode: bool,
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    sid: Vec<F>,
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
+    shift: [F; PERMUTS],
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    endo: F,
+    #[serde(bound(serialize = "LookupConstraintSystem<F>: Serialize"))]
+    lookup_constraint_system:
+        Arc<LazyCache<Result<Option<LookupConstraintSystem<F>>, LookupError>>>,
+    disable_gates_checks: bool,
+}
+
+impl<F> From<LegacyConstraintSystem<F>> for ConstraintSystemWithLazy<F>
+where
+    F: PrimeField,
+    EvaluationDomains<F>: Serialize + DeserializeOwned,
+    CircuitGate<F>: Serialize + DeserializeOwned,
+    LookupConstraintSystem<F>: Serialize + DeserializeOwned,
+{
+    fn from(cs: LegacyConstraintSystem<F>) -> Self {
+        Self {
+            public: cs.public,
+            prev_challenges: cs.prev_challenges,
+            domain: cs.domain,
+            gates: cs.gates,
+            zk_rows: cs.zk_rows,
+            feature_flags: cs.feature_flags,
+            lazy_mode: false,
+            sid: cs.sid,
+            shift: cs.shift,
+            endo: cs.endo,
+            lookup_constraint_system: cs.lookup_constraint_system,
+            disable_gates_checks: cs.disable_gates_checks,
+        }
+    }
+}
+
+#[serde_as]
+#[derive(Deserialize)]
+#[serde(bound(deserialize = ""))]
+struct LegacyProverIndexFp {
+    cs: LegacyConstraintSystem<Fp>,
+    max_poly_size: usize,
+    column_evaluations: Arc<LazyCache<ColumnEvaluations<Fp>>>,
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    verifier_index_digest: Option<<GAffine as AffineRepr>::BaseField>,
+}
+
+impl LegacyProverIndexFp {
+    fn upgrade(self) -> Result<ProverIndex<GAffine, OpeningProof<GAffine>>, String> {
+        let cs = Arc::new(self.cs.into_modern()?);
+        Ok(ProverIndex {
+            cs,
+            linearization: Default::default(),
+            powers_of_alpha: Default::default(),
+            srs: Default::default(),
+            max_poly_size: self.max_poly_size,
+            column_evaluations: self.column_evaluations,
+            verifier_index: None,
+            verifier_index_digest: self.verifier_index_digest,
+        })
+    }
 }
 
 #[wasm_bindgen]
@@ -245,11 +373,13 @@ pub fn caml_pasta_fp_plonk_index_read(
             .map_err(|err| JsValue::from_str(&format!("caml_pasta_fp_plonk_index_read: {err}")))?;
     }
 
+    let mut bytes = Vec::new();
+    r.read_to_end(&mut bytes)
+        .map_err(|err| JsValue::from_str(&format!("caml_pasta_fp_plonk_index_read: {err}")))?;
+
     // deserialize the index
-    let mut t = ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(
-        &mut rmp_serde::Deserializer::new(r),
-    )
-    .map_err(|err| JsValue::from_str(&format!("caml_pasta_fp_plonk_index_read: {err}")))?;
+    let mut t = deserialize_index_with_fallback(&bytes, "caml_pasta_fp_plonk_index_read")
+        .map_err(JsValue::from)?;
     t.srs = srs.0.clone();
     let (linearization, powers_of_alpha) = expr_linearization(Some(&t.cs.feature_flags), true);
     t.linearization = linearization;
@@ -257,6 +387,28 @@ pub fn caml_pasta_fp_plonk_index_read(
 
     //
     Ok(WasmPastaFpPlonkIndex(Box::new(t)))
+}
+
+fn deserialize_index_with_fallback(
+    bytes: &[u8],
+    context: &str,
+) -> Result<ProverIndex<GAffine, OpeningProof<GAffine>>, JsError> {
+    let mut primary = rmp_serde::Deserializer::new(bytes);
+    match ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut primary) {
+        Ok(index) => Ok(index),
+        Err(primary_err) => {
+            let mut fallback = rmp_serde::Deserializer::new(bytes);
+            let legacy = LegacyProverIndexFp::deserialize(&mut fallback).map_err(|legacy_err| {
+                JsError::new(&format!(
+                    "{context}: {primary_err}; legacy decode failed: {legacy_err}"
+                ))
+            })?;
+            let upgraded = legacy
+                .upgrade()
+                .map_err(|err| JsError::new(&format!("{context}: {err}")))?;
+            Ok(upgraded)
+        }
+    }
 }
 
 #[wasm_bindgen]
