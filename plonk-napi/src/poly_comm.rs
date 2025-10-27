@@ -1,4 +1,5 @@
 use crate::wasm_vector::WasmVector;
+use napi::bindgen_prelude::{ClassInstance, FromNapiValue};
 use napi_derive::napi;
 use paste::paste;
 use poly_commitment::commitment::PolyComm;
@@ -91,6 +92,16 @@ macro_rules! impl_poly_comm {
                             .map(Into::into)
                             .collect(),
                     }
+                }
+            }
+
+            impl FromNapiValue for [<Wasm $field_name:camel PolyComm>] {
+                unsafe fn from_napi_value(
+                    env: napi::sys::napi_env,
+                    napi_val: napi::sys::napi_value,
+                ) -> napi::Result<Self> {
+                    let instance = <ClassInstance<[<Wasm $field_name:camel PolyComm>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
+                    Ok((*instance).clone())
                 }
             }
         }
