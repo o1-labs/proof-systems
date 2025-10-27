@@ -1,8 +1,5 @@
 use arkworks::{WasmPastaFp, WasmPastaFq};
-use kimchi::circuits::lookup::{
-    runtime_tables::RuntimeTableCfg,
-    tables::LookupTable,
-};
+use kimchi::circuits::lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable};
 use mina_curves::pasta::{Fp, Fq};
 use napi::bindgen_prelude::Uint8Array;
 use napi_derive::napi;
@@ -66,18 +63,14 @@ pub fn lookup_table_fq_from_js(js: JsLookupTableFq) -> napi::Result<LookupTable<
     Ok(LookupTable { id: js.id, data })
 }
 
-pub fn runtime_table_cfg_fp_from_js(
-    js: JsRuntimeTableCfgFp,
-) -> napi::Result<RuntimeTableCfg<Fp>> {
+pub fn runtime_table_cfg_fp_from_js(js: JsRuntimeTableCfgFp) -> napi::Result<RuntimeTableCfg<Fp>> {
     Ok(RuntimeTableCfg {
         id: js.id,
         first_column: bytes_to_fp_vec(typed_array_to_vec(&js.first_column)),
     })
 }
 
-pub fn runtime_table_cfg_fq_from_js(
-    js: JsRuntimeTableCfgFq,
-) -> napi::Result<RuntimeTableCfg<Fq>> {
+pub fn runtime_table_cfg_fq_from_js(js: JsRuntimeTableCfgFq) -> napi::Result<RuntimeTableCfg<Fq>> {
     Ok(RuntimeTableCfg {
         id: js.id,
         first_column: bytes_to_fq_vec(typed_array_to_vec(&js.first_column)),
