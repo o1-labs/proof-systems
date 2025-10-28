@@ -12,13 +12,12 @@ use kimchi::{
     prover_index::ProverIndex,
 };
 use o1_utils::lazy_cache::LazyCache;
+use poly_commitment::ipa::OpeningProof;
 use poly_commitment::OpenProof;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
 use wasm_bindgen::JsError;
-
-type IpaOpeningProof<C> = poly_commitment::ipa::OpeningProof<C>;
 
 #[serde_as]
 #[derive(Clone, Deserialize, Debug)]
@@ -132,12 +131,12 @@ where
     F: PrimeField,
     C: AffineRepr<ScalarField = F> + KimchiCurve<ScalarField = F>,
     C::BaseField: PrimeField,
-    <IpaOpeningProof<C> as OpenProof<C>>::SRS: Default,
+    <OpeningProof<C> as OpenProof<C>>::SRS: Default,
     EvaluationDomains<F>: Serialize + DeserializeOwned,
     CircuitGate<F>: Serialize + DeserializeOwned,
     LookupConstraintSystem<F>: Serialize + DeserializeOwned,
 {
-    fn upgrade(self) -> Result<ProverIndex<C, IpaOpeningProof<C>>, String> {
+    fn upgrade(self) -> Result<ProverIndex<C, OpeningProof<C>>, String> {
         let cs = Arc::new(self.cs.into_modern()?);
         Ok(ProverIndex {
             cs,
@@ -155,19 +154,19 @@ where
 pub(crate) fn decode_with_legacy<F, C>(
     bytes: &[u8],
     context: &str,
-) -> Result<ProverIndex<C, IpaOpeningProof<C>>, JsError>
+) -> Result<ProverIndex<C, OpeningProof<C>>, JsError>
 where
     F: PrimeField,
     C: AffineRepr<ScalarField = F> + KimchiCurve<ScalarField = F>,
     C::BaseField: PrimeField,
-    IpaOpeningProof<C>: OpenProof<C>,
-    <IpaOpeningProof<C> as OpenProof<C>>::SRS: Default,
+    OpeningProof<C>: OpenProof<C>,
+    <OpeningProof<C> as OpenProof<C>>::SRS: Default,
     EvaluationDomains<F>: Serialize + DeserializeOwned,
     CircuitGate<F>: Serialize + DeserializeOwned,
     LookupConstraintSystem<F>: Serialize + DeserializeOwned,
 {
     let mut primary = rmp_serde::Deserializer::new(bytes);
-    match ProverIndex::<C, IpaOpeningProof<C>>::deserialize(&mut primary) {
+    match ProverIndex::<C, OpeningProof<C>>::deserialize(&mut primary) {
         Ok(index) => Ok(index),
         Err(primary_err) => {
             let mut fallback = rmp_serde::Deserializer::new(bytes);
