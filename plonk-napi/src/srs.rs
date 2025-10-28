@@ -108,14 +108,7 @@ macro_rules! impl_srs {
                 }
 
                 #[napi]
-                pub fn [<caml_ $name:snake _get>](srs: &[<Napi $name:camel Srs>]) -> Vec<$WasmG> {
-                    let mut h_and_gs: Vec<$WasmG> = vec![srs.0.h.into()];
-                    h_and_gs.extend(srs.0.g.iter().cloned().map(Into::into));
-                    h_and_gs
-                }
-
-                #[napi]
-                pub fn [<caml_ $name:snake _add_lagrange_basis>](srs: &[<Napi $name:camel Srs>], log2_size: i32) -> Result<()> {
+                pub fn [<caml_ $name:snake _srs_add_lagrange_basis>](srs: &[<Napi $name:camel Srs>], log2_size: i32) -> Result<()> {
                     let size = 1usize << (log2_size as usize);
                     let domain = EvaluationDomain::<$F>::new(size).ok_or_else(invalid_domain_error)?;
                     srs.get_lagrange_basis(domain);
