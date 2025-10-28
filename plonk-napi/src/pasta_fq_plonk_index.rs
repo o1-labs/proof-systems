@@ -1,17 +1,23 @@
 use ark_poly::EvaluationDomain;
-use kimchi::circuits::constraints::ConstraintSystem;
-use kimchi::{linearization::expr_linearization, prover_index::ProverIndex};
+use kimchi::{
+    circuits::constraints::ConstraintSystem, linearization::expr_linearization,
+    prover_index::ProverIndex,
+};
 use mina_curves::pasta::{Fq, Pallas as GAffine, PallasParameters, Vesta as GAffineOther};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
-use napi::bindgen_prelude::{Error, External, Result as NapiResult, Status, Uint8Array};
+use napi::bindgen_prelude::{Error, External, Status, Uint8Array};
 use napi_derive::napi;
 use plonk_wasm::gate_vector::shared::GateVector;
-use poly_commitment::ipa::{OpeningProof, SRS as IPA_SRS};
-use poly_commitment::SRS;
+use poly_commitment::{
+    ipa::{OpeningProof, SRS as IPA_SRS},
+    SRS,
+};
 use serde::{Deserialize, Serialize};
-use std::fs::{File, OpenOptions};
-use std::io::{BufReader, BufWriter, Seek, SeekFrom::Start};
-use std::{io::Cursor, sync::Arc};
+use std::{
+    fs::{File, OpenOptions},
+    io::{BufReader, BufWriter, Cursor, Seek, SeekFrom::Start},
+    sync::Arc,
+};
 
 use crate::tables::{
     lookup_table_fq_from_js, runtime_table_cfg_fq_from_js, JsLookupTableFq, JsRuntimeTableCfgFq,
@@ -72,14 +78,16 @@ impl WasmPastaFqPlonkIndex {
 #[napi]
 pub fn prover_index_fq_from_bytes(
     bytes: Uint8Array,
-) -> NapiResult<External<WasmPastaFqPlonkIndex>> {
+) -> napi::bindgen_prelude::Result<External<WasmPastaFqPlonkIndex>> {
     let index = WasmPastaFqPlonkIndex::deserialize_inner(bytes.as_ref())
         .map_err(|e| Error::new(Status::InvalidArg, e))?;
     Ok(External::new(index))
 }
 
 #[napi]
-pub fn prover_index_fq_to_bytes(index: External<WasmPastaFqPlonkIndex>) -> NapiResult<Uint8Array> {
+pub fn prover_index_fq_to_bytes(
+    index: External<WasmPastaFqPlonkIndex>,
+) -> napi::bindgen_prelude::Result<Uint8Array> {
     let bytes = index
         .serialize_inner()
         .map_err(|e| Error::new(Status::GenericFailure, e))?;
