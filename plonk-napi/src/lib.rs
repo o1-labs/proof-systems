@@ -16,7 +16,7 @@ pub use pasta_fq_plonk_index::{
 };
 pub use poly_comm::{pallas::WasmFqPolyComm, vesta::WasmFpPolyComm};
 pub use poseidon::{caml_pasta_fp_poseidon_block_cipher, caml_pasta_fq_poseidon_block_cipher};
-pub use srs::*;
+pub use srs::{fp::NapiFpSrs as WasmFpSrs, fq::NapiFqSrs as WasmFqSrs};
 pub use tables::{JsLookupTableFp, JsLookupTableFq, JsRuntimeTableCfgFp, JsRuntimeTableCfgFq};
 pub use wasm_vector::{fp::WasmVecVecFp, fq::WasmVecVecFq};
 pub use wrappers::{
