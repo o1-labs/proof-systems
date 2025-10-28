@@ -15,13 +15,14 @@ use o1_utils::lazy_cache::LazyCache;
 use poly_commitment::ipa::OpeningProof;
 use poly_commitment::OpenProof;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_json::Value;
 use serde_with::serde_as;
 use std::sync::Arc;
 use wasm_bindgen::JsError;
 
 #[serde_as]
-#[derive(Clone, Deserialize, Debug)]
-#[serde(bound(deserialize = ""))]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(bound(deserialize = ""), bound(serialize = ""))]
 struct LegacyConstraintSystem<F: PrimeField> {
     public: usize,
     prev_challenges: usize,
@@ -51,64 +52,14 @@ where
     LookupConstraintSystem<F>: Serialize + DeserializeOwned,
 {
     fn into_modern(self) -> Result<ConstraintSystem<F>, String> {
-        let serializable: ConstraintSystemWithLazy<F> = self.into();
-        let mut buffer = Vec::new();
-        serializable
-            .serialize(&mut rmp_serde::Serializer::new(&mut buffer).with_struct_map())
-            .map_err(|e| e.to_string())?;
+        let mut value = serde_json::to_value(self).map_err(|err| err.to_string())?;
+        let map = value
+            .as_object_mut()
+            .ok_or_else(|| "legacy constraint system did not serialize as a map".to_string())?;
+        map.entry("lazy_mode".to_owned())
+            .or_insert(Value::Bool(false));
 
-        let mut deserializer = rmp_serde::Deserializer::new(&buffer[..]);
-        ConstraintSystem::<F>::deserialize(&mut deserializer).map_err(|e| e.to_string())
-    }
-}
-
-#[serde_as]
-#[derive(Serialize)]
-#[serde(bound(serialize = ""))]
-struct ConstraintSystemWithLazy<F: PrimeField> {
-    public: usize,
-    prev_challenges: usize,
-    #[serde(bound(serialize = "EvaluationDomains<F>: Serialize"))]
-    domain: EvaluationDomains<F>,
-    #[serde(bound(serialize = "CircuitGate<F>: Serialize"))]
-    gates: Arc<Vec<CircuitGate<F>>>,
-    zk_rows: u64,
-    feature_flags: FeatureFlags,
-    lazy_mode: bool,
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    sid: Vec<F>,
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    shift: [F; PERMUTS],
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    endo: F,
-    #[serde(bound(serialize = "LookupConstraintSystem<F>: Serialize"))]
-    lookup_constraint_system:
-        Arc<LazyCache<Result<Option<LookupConstraintSystem<F>>, LookupError>>>,
-    disable_gates_checks: bool,
-}
-
-impl<F> From<LegacyConstraintSystem<F>> for ConstraintSystemWithLazy<F>
-where
-    F: PrimeField,
-    EvaluationDomains<F>: Serialize + DeserializeOwned,
-    CircuitGate<F>: Serialize + DeserializeOwned,
-    LookupConstraintSystem<F>: Serialize + DeserializeOwned,
-{
-    fn from(cs: LegacyConstraintSystem<F>) -> Self {
-        Self {
-            public: cs.public,
-            prev_challenges: cs.prev_challenges,
-            domain: cs.domain,
-            gates: cs.gates,
-            zk_rows: cs.zk_rows,
-            feature_flags: cs.feature_flags,
-            lazy_mode: false,
-            sid: cs.sid,
-            shift: cs.shift,
-            endo: cs.endo,
-            lookup_constraint_system: cs.lookup_constraint_system,
-            disable_gates_checks: cs.disable_gates_checks,
-        }
+        serde_json::from_value(value).map_err(|err| err.to_string())
     }
 }
 
