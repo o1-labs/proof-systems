@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
+#[cfg(not(target_arch = "wasm32"))]
 use raw_cpuid::CpuId;
 use std::{
     env,
