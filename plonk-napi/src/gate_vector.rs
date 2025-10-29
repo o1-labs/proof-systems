@@ -148,7 +148,6 @@ macro_rules! impl_gate_support {
 
             #[napi]
             pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_create>]() -> [<Napi $field_name:camel GateVector>] {
-                println!("from native rust creating gate vector");
                 [<Napi $field_name:camel GateVector>](Vec::new())
             }
 
@@ -157,7 +156,6 @@ macro_rules! impl_gate_support {
                 vector: &mut [<Napi $field_name:camel GateVector>],
                 gate: [<Napi $field_name:camel Gate>],
             ) -> Result<()> {
-                println!("from native rust adding gate to vector");
                 vector.0.push(gate.into_inner()?);
                 Ok(())
             }
@@ -167,7 +165,6 @@ macro_rules! impl_gate_support {
                 vector: &[<Napi $field_name:camel GateVector>],
                 index: i32,
             ) -> [<Napi $field_name:camel Gate>] {
-                println!("from native rust getting gate from vector");
                 [<Napi $field_name:camel Gate>]::from_inner(&vector.0[index as usize])
             }
 
@@ -175,7 +172,6 @@ macro_rules! impl_gate_support {
             pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_len>](
                 vector: &[<Napi $field_name:camel GateVector>],
             ) -> i32 {
-                println!("from native rust getting gate vector length");
                 vector.0.len() as i32
             }
 
@@ -185,7 +181,6 @@ macro_rules! impl_gate_support {
                 target: NapiWire,
                 head: NapiWire,
             ) {
-                println!("from native rust wrapping wire in gate vector");
                 vector.0[target.row as usize].wires[target.col as usize] = KimchiWire::from(head);
               }
 
@@ -194,7 +189,6 @@ macro_rules! impl_gate_support {
                 public_input_size: i32,
                 vector: &[<Napi $field_name:camel GateVector>],
             ) -> Uint8Array {
-                println!("from native rust computing gate vector digest");
                 let bytes = Circuit::new(public_input_size as usize, &vector.0)
                     .digest()
                     .to_vec();
@@ -206,7 +200,6 @@ macro_rules! impl_gate_support {
                 public_input_size: i32,
                 vector: &[<Napi $field_name:camel GateVector>],
             ) -> Result<String> {
-                println!("from native rust serializing gate vector to json");
                 let circuit = Circuit::new(public_input_size as usize, &vector.0);
                 serde_json::to_string(&circuit).map_err(|err| {
                     Error::new(
