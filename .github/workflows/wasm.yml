@@ -37,12 +37,12 @@ jobs:
         run: |
           TOOLCHAIN_PATH=$(rustup run ${{ matrix.rust_toolchain_version }} rustc --print sysroot)
           HOST_TRIPLE=$(rustc -vV | sed -n 's/host: //p')
-          export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_LINKER="${TOOLCHAIN_PATH}/lib/rustlib/${HOST_TRIPLE}/bin/gcc-ld/wasm-ld"
+          export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_LINKER="${TOOLCHAIN_PATH}/lib/rustlib/${HOST_TRIPLE}/bin/rust-lld"
           make build-web
 
       - name: Build the WebAssembly for NodeJS
         run: |
           TOOLCHAIN_PATH=$(rustup run ${{ matrix.rust_toolchain_version }} rustc --print sysroot)
           HOST_TRIPLE=$(rustc -vV | sed -n 's/host: //p')
-          export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_LINKER="${TOOLCHAIN_PATH}/lib/rustlib/${HOST_TRIPLE}/bin/gcc-ld/wasm-ld"
+          export CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_LINKER="${TOOLCHAIN_PATH}/lib/rustlib/${HOST_TRIPLE}/bin/rust-lld"
           make build-nodejs
