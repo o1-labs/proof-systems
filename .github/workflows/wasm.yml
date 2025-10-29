@@ -11,11 +11,12 @@ jobs:
   build-wasm:
     name: Build WebAssembly code
 
-    runs-on: ["ubuntu-latest"]
-
     strategy:
       matrix:
         rust_toolchain_version: ["nightly-2024-09-05"]
+        os: ["ubuntu-latest", "macos-latest"]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout repository
