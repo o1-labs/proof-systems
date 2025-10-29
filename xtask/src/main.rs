@@ -172,6 +172,7 @@ fn build_wasm(out_dir: &str, target: Target, rust_version: RustVersion) -> Resul
 
     let status = cmd
         .args(args)
+        .env("RUSTFLAGS", RUSTFLAGS)
         .env("CARGO_TARGET_DIR", &cargo_target_dir)
         .status()
         .context("Failed to build wasm-pack")?;
