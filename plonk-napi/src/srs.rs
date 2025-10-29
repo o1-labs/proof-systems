@@ -97,11 +97,13 @@ macro_rules! impl_srs {
 
                 #[napi(factory)]
                 pub fn [<caml_ $name:snake _srs_create>](depth: i32) -> Result<Self> {
+                    println!("Creating SRS with napi");
                     Ok(Arc::new(SRS::<$G>::create(depth as usize)).into())
                 }
 
                 #[napi(factory)]
                 pub fn [<caml_ $name:snake _srs_create_parallel>](depth: i32) -> Result<Self> {
+                    println!("Creating SRS in parallel with napi");
                     Ok(Arc::new(SRS::<$G>::create_parallel(
                         depth as usize,
                     )).into())
@@ -109,6 +111,7 @@ macro_rules! impl_srs {
 
                 #[napi]
                 pub fn [<caml_ $name:snake _srs_add_lagrange_basis>](srs: &[<Napi $name:camel Srs>], log2_size: i32) -> Result<()> {
+                    println!("Adding lagrange basis with napi");
                     let size = 1usize << (log2_size as usize);
                     let domain = EvaluationDomain::<$F>::new(size).ok_or_else(invalid_domain_error)?;
                     srs.get_lagrange_basis(domain);
@@ -117,6 +120,7 @@ macro_rules! impl_srs {
 
                 #[napi]
                 pub fn [<caml_ $name:snake _srs_write>](append: Option<bool>, srs: &[<Napi $name:camel Srs>], path: String) -> Result<()> {
+                    println!("Writing SRS to file with napi");
                     let function_name = format!("caml_{0}_srs_write", stringify!($name).to_lowercase());
                     let file = OpenOptions::new()
                         .append(append.unwrap_or(true))
@@ -129,6 +133,7 @@ macro_rules! impl_srs {
 
                 #[napi]
                 pub fn [<caml_ $name:snake _srs_read>](offset: Option<i32>, path: String) -> Result<Option<Self>> {
+                    println!("Reading SRS from file with napi");
                     let function_name = format!("caml_{0}_srs_read", stringify!($name).to_lowercase());
                     let file = match File::open(&path) {
                         Ok(file) => file,
@@ -150,6 +155,7 @@ macro_rules! impl_srs {
 
                 #[napi]
                 pub fn [<caml_ $name:snake _srs_get>](srs: &[<Napi $name:camel Srs>]) -> Vec<$WasmG> {
+                    println!("Getting SRS with napi");
                     let mut h_and_gs: Vec<$WasmG> = vec![srs.0.h.into()];
                     h_and_gs.extend(srs.0.g.iter().cloned().map(Into::into));
                     h_and_gs
@@ -157,6 +163,7 @@ macro_rules! impl_srs {
 
                 #[napi]
                 pub fn [<caml_ $name:snake _srs_set>](h_and_gs: Vec<$WasmG>) -> Result<Self> {
+                    println!("Setting SRS with napi");
                     let mut h_and_gs: Vec<$G> = h_and_gs.into_iter().map(Into::into).collect();
                     if h_and_gs.is_empty() {
                         return Err(Error::new(
@@ -176,6 +183,7 @@ macro_rules! impl_srs {
                     domain_size: i32,
                     i: i32,
                 ) -> Option<$WasmPolyComm> {
+                    println!("Getting maybe lagrange commitment with napi");
                     if !srs
                         .0
                         .lagrange_bases
@@ -193,6 +201,7 @@ macro_rules! impl_srs {
                     domain_size: i32,
                     input_bases: WasmVector<$WasmPolyComm>,
                 ) {
+                    println!("Setting lagrange basis with napi");
                     srs.0.lagrange_bases
                         .get_or_generate(domain_size as usize, || { input_bases.into_iter().map(Into::into).collect()});
                 }
@@ -201,6 +210,7 @@ macro_rules! impl_srs {
                 pub fn [<caml_ $name:snake _srs_get_lagrange_basis>](srs: &[<Napi $name:camel Srs>],
                     domain_size: i32,
                 ) -> Result<WasmVector<$WasmPolyComm>> {
+                    println!("Getting lagrange basis with napi");
                     let domain = EvaluationDomain::<$F>::new(domain_size as usize)
                         .ok_or_else(invalid_domain_error)?;
                     let basis = srs.0.get_lagrange_basis(domain);
@@ -212,6 +222,7 @@ macro_rules! impl_srs {
                     domain_size: i32,
                     evals: Uint8Array,
                 ) -> Result<$WasmPolyComm> {
+                    println!("Committing evaluations with napi");
                     let elems: Vec<$F> = WasmFlatVector::<$WasmF>::from_bytes(
                         evals.as_ref().to_vec(),
                     )
@@ -227,6 +238,7 @@ macro_rules! impl_srs {
 
                 #[napi]
                 pub fn [<caml_ $name:snake _srs_b_poly_commitment>](srs: &[<Napi $name:camel Srs>], chals: Uint8Array) -> Result<$WasmPolyComm> {
+                    println!("Computing b poly commitment with napi");
                     let elements: Vec<$F> = WasmFlatVector::<$WasmF>::from_bytes(
                         chals.as_ref().to_vec(),
                     )
@@ -244,6 +256,7 @@ macro_rules! impl_srs {
                     comms: WasmVector<$WasmG>,
                     chals: Uint8Array,
                 ) -> Result<bool> {
+                    println!("Performing batch accumulator check with napi");
                     let comms: Vec<$G> = comms.into_iter().map(Into::into).collect();
                     let chals: Vec<$F> = WasmFlatVector::<$WasmF>::from_bytes(
                         chals.as_ref().to_vec(),
@@ -264,6 +277,7 @@ macro_rules! impl_srs {
                     comms: i32,
                     chals: Uint8Array,
                 ) -> Result<WasmVector<$WasmG>> {
+                    println!("Generating batch accumulator with napi");
                     let chals: Vec<$F> = WasmFlatVector::<$WasmF>::from_bytes(
                         chals.as_ref().to_vec(),
                     )
@@ -280,6 +294,7 @@ macro_rules! impl_srs {
 
                 #[napi]
                 pub fn h(srs: &[<Napi $name:camel Srs>]) -> $WasmG {
+                    println!("Getting h point with napi");
                     srs.h.into()
                 }
             }
