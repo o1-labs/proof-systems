@@ -110,9 +110,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### [plonk_wasm](./plonk-wasm)
 
-
 - Add function to `deserialize` a `WasmProverProof`
   ([#3354](https://github.com/o1-labs/proof-systems/pull/3354))
+- CI: add `macos-latest` as a supported platform
+  ([#3359](https://github.com/o1-labs/proof-systems/pull/3359))
 
 ### [poly-commitment](./poly-commitment)
 
