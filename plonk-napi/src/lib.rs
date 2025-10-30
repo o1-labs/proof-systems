@@ -1,4 +1,5 @@
 mod circuit;
+mod plonk_verifier_index;
 mod poseidon;
 mod types;
 
