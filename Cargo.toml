@@ -62,8 +62,8 @@ libflate = "2"
 log = "0.4.20"
 num-bigint = { version = "0.4.4", features = ["rand", "serde"] }
 num-integer = "0.1.45"
-napi = { version = "2.16.8", default-features = false, features = ["napi7"] }
-napi-derive = "2.16.8"
+napi = { version = "3.3.0", default-features = false, features = ["napi7"] }
+napi-derive = { version = "3.3.0", features = ["type-def"] }
 napi-build = "2.1.0"
 ocaml = { version = "0.22.2" }
 ocaml-gen = { version = "1.0.0" }
