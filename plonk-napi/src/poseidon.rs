@@ -7,7 +7,7 @@ use wasm_types::{FlatVector, FlatVectorElem};
 
 // fp
 
-#[napi]
+#[napi(js_name = "caml_pasta_fp_poseidon_block_cipher")]
 pub fn caml_pasta_fp_poseidon_block_cipher(state: Uint8Array) -> Result<Uint8Array> {
     println!("from native rust");
 
@@ -32,7 +32,7 @@ pub fn caml_pasta_fp_poseidon_block_cipher(state: Uint8Array) -> Result<Uint8Arr
 
 // fq
 
-#[napi]
+#[napi(js_name = "caml_pasta_fq_poseidon_block_cipher")]
 pub fn caml_pasta_fq_poseidon_block_cipher(state: Uint8Array) -> Result<Uint8Array> {
     println!("from native rust");
 
