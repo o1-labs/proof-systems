@@ -93,19 +93,6 @@ pub fn caml_pasta_fq_plonk_verifier_index_shifts(log2_size: i32) -> NapiResult<W
         "from napi! caml_pasta_fp_plonk_verifier_index_shifts with log2_size {}",
         log2_size
     );
-    if log2_size < 0 {
-        return Err(Error::new(
-            Status::InvalidArg,
-            "log2_size must be non-negative",
-        ));
-    }
-
-    if log2_size as u32 >= usize::BITS {
-        return Err(Error::new(
-            Status::InvalidArg,
-            "log2_size is too large for usize",
-        ));
-    }
 
     let size = 1usize << (log2_size as u32);
     let domain = Domain::<Fq>::new(size)
