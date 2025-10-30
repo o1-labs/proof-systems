@@ -17,7 +17,7 @@ struct SerializedProverIndex {
 
 // TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
 impl WasmPastaFpPlonkIndex {
-    pub fn serialize_inner(&self) -> Result<Vec<u8>, String> {
+    pub(crate) fn serialize_inner(&self) -> Result<Vec<u8>, String> {
         let prover_index = rmp_serde::to_vec(self.0.as_ref()).map_err(|e| e.to_string())?;
 
         let mut srs = Vec::new();
@@ -31,7 +31,7 @@ impl WasmPastaFpPlonkIndex {
         rmp_serde::to_vec(&serialized).map_err(|e| e.to_string())
     }
 
-    pub fn deserialize_inner(bytes: &[u8]) -> Result<Self, String> {
+    pub(crate) fn deserialize_inner(bytes: &[u8]) -> Result<Self, String> {
         let serialized: SerializedProverIndex =
             rmp_serde::from_slice(bytes).map_err(|e| e.to_string())?;
 
