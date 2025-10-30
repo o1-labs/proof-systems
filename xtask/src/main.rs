@@ -152,8 +152,6 @@ fn build_kimchi_stubs(target_dir: Option<&str>, offline: bool) -> Result<()> {
 }
 
 fn build_wasm(out_dir: &str, target: Target, rust_version: RustVersion) -> Result<()> {
-    const RUSTFLAGS: &str = "-C target-feature=+atomics,+bulk-memory,+mutable-globals -C link-arg=--max-memory=4294967296";
-
     let cargo_target_dir = env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_string());
     let artifact_dir = PathBuf::from(format!("{cargo_target_dir}/bin"));
 
@@ -204,7 +202,6 @@ fn build_wasm(out_dir: &str, target: Target, rust_version: RustVersion) -> Resul
     let status = cmd
         .args(args)
         .args(target_args)
-        .env("RUSTFLAGS", RUSTFLAGS)
         .status()
         .context("Failed to execute wasm-pack")?;
 
