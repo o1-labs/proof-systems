@@ -68,7 +68,7 @@ jobs:
         uses: ./.github/actions/coverage-summary-shared
 
       - name: Upload the HTML test coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         continue-on-error: true
         if: always()
         with:
