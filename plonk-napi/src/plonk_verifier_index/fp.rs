@@ -1,22 +1,28 @@
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
+use ark_serialize::CanonicalSerialize;
+use kimchi::circuits::polynomials::permutation::Shifts as KimchiShifts;
+use mina_curves::pasta::Fp;
+use napi::bindgen_prelude::{Error, Result as NapiResult, Status};
+use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 
 use super::WasmLookupInfo;
 
-#[napi_derive::napi(object)]
+#[napi(object)]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct WasmFpDomain {
     pub log_size_of_group: i32,
     pub group_gen: Vec<u8>,
 }
 
-#[napi_derive::napi(object)]
+#[napi(object)]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct WasmFpPolyComm {
     pub unshifted: Vec<Vec<u8>>,
     pub shifted: Option<Vec<u8>>,
 }
 
-#[napi_derive::napi(object)]
+#[napi(object)]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct WasmFpShifts {
     pub s0: Vec<u8>,
@@ -28,7 +34,7 @@ pub struct WasmFpShifts {
     pub s6: Vec<u8>,
 }
 
-#[napi_derive::napi(object)]
+#[napi(object)]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct WasmFpLookupSelectors {
     pub xor: Option<WasmFpPolyComm>,
@@ -37,7 +43,7 @@ pub struct WasmFpLookupSelectors {
     pub ffmul: Option<WasmFpPolyComm>,
 }
 
-#[napi_derive::napi(object)]
+#[napi(object)]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct WasmFpLookupVerifierIndex {
     pub joint_lookup_used: bool,
@@ -48,7 +54,7 @@ pub struct WasmFpLookupVerifierIndex {
     pub runtime_tables_selector: Option<WasmFpPolyComm>,
 }
 
-#[napi_derive::napi(object)]
+#[napi(object)]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct WasmFpPlonkVerificationEvals {
     pub sigma_comm: Vec<WasmFpPolyComm>,
@@ -67,7 +73,7 @@ pub struct WasmFpPlonkVerificationEvals {
     pub rot_comm: Option<WasmFpPolyComm>,
 }
 
-#[napi_derive::napi(object)]
+#[napi(object)]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct WasmFpPlonkVerifierIndex {
     pub domain: WasmFpDomain,
@@ -79,4 +85,50 @@ pub struct WasmFpPlonkVerifierIndex {
     pub shifts: WasmFpShifts,
     pub lookup_index: Option<WasmFpLookupVerifierIndex>,
     pub zk_rows: i32,
+}
+
+#[napi]
+pub fn caml_pasta_fp_plonk_verifier_index_shifts(log2_size: i32) -> NapiResult<WasmFpShifts> {
+    println!(
+        "from napi! caml_pasta_fp_plonk_verifier_index_shifts with log2_size {}",
+        log2_size
+    );
+    if log2_size < 0 {
+        return Err(Error::new(
+            Status::InvalidArg,
+            "log2_size must be non-negative",
+        ));
+    }
+
+    if log2_size as u32 >= usize::BITS {
+        return Err(Error::new(
+            Status::InvalidArg,
+            "log2_size is too large for usize",
+        ));
+    }
+
+    let size = 1usize << (log2_size as u32);
+    let domain = Domain::<Fp>::new(size)
+        .ok_or_else(|| Error::new(Status::InvalidArg, "failed to create evaluation domain"))?;
+
+    let shifts = KimchiShifts::new(&domain);
+    let s = shifts.shifts();
+
+    Ok(WasmFpShifts {
+        s0: serialize_fp(&s[0])?,
+        s1: serialize_fp(&s[1])?,
+        s2: serialize_fp(&s[2])?,
+        s3: serialize_fp(&s[3])?,
+        s4: serialize_fp(&s[4])?,
+        s5: serialize_fp(&s[5])?,
+        s6: serialize_fp(&s[6])?,
+    })
+}
+
+fn serialize_fp(value: &Fp) -> NapiResult<Vec<u8>> {
+    let mut bytes = Vec::new();
+    value
+        .serialize_compressed(&mut bytes)
+        .map_err(|err| Error::new(Status::GenericFailure, format!("serialize_fp: {err}")))?;
+    Ok(bytes)
 }
