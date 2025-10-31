@@ -5,7 +5,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use serde::Serialize;
 
-use crate::types::WasmPastaFpPlonkIndex;
+use crate::{build_info::report_native_call, types::WasmPastaFpPlonkIndex};
 
 #[derive(Serialize)]
 struct Circuit<F>
@@ -29,8 +29,10 @@ where
     }
 }
 
-#[napi]
+#[napi(js_name = "prover_to_json")]
 pub fn prover_to_json(prover_index: &External<WasmPastaFpPlonkIndex>) -> String {
+    report_native_call();
+
     let circuit: Circuit<Fp> = prover_index.0.cs.as_ref().into();
     serde_json::to_string(&circuit).expect("couldn't serialize constraints")
 }
