@@ -7,7 +7,7 @@ use mina_curves::pasta::{Fp, Pallas as GAffineOther, Vesta as GAffine, VestaPara
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use napi::bindgen_prelude::{Error, External, Result as NapiResult, Status, Uint8Array};
 use napi_derive::napi;
-use plonk_wasm::gate_vector::shared::GateVector;
+use crate::gate_vector::NapiFpGateVector;
 use poly_commitment::ipa::{OpeningProof, SRS as IPA_SRS};
 use poly_commitment::SRS;
 use serde::{Deserialize, Serialize};
@@ -119,7 +119,7 @@ pub fn caml_pasta_fp_plonk_index_domain_d8_size(index: External<WasmPastaFpPlonk
 
 #[napi]
 pub fn caml_pasta_fp_plonk_index_create(
-    gates: External<GateVector<Fp>>,
+    gates: &NapiFpGateVector,
     public_: i32,
     lookup_tables: Vec<JsLookupTableFp>,
     runtime_table_cfgs: Vec<JsRuntimeTableCfgFp>,
@@ -127,7 +127,7 @@ pub fn caml_pasta_fp_plonk_index_create(
     srs: External<WasmSrs>,
     lazy_mode: bool,
 ) -> Result<External<WasmPastaFpPlonkIndex>, Error> {
-    let gates: Vec<_> = gates.as_ref().as_slice().to_vec();
+    let gates: Vec<_> = gates.to_vec();
 
     let runtime_cfgs: Vec<RuntimeTableCfg<Fp>> = runtime_table_cfgs
         .into_iter()

@@ -1,12 +1,14 @@
+use ark_ff::PrimeField;
 use kimchi::circuits::{
     gate::{Circuit, CircuitGate, GateType},
-    wires::{GateWires, Wire as KimchiWire},
+    wires::Wire,
 };
 use mina_curves::pasta::{Fp, Fq};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use o1_utils::hasher::CryptoDigest;
 use paste::paste;
+use std::ops::Deref;
 use wasm_types::{FlatVector as WasmFlatVector, FlatVectorElem};
 
 use crate::wrappers::{
@@ -14,8 +16,198 @@ use crate::wrappers::{
     wires::NapiWire,
 };
 
+pub mod shared {
+    use super::*;
+
+    /// Number of wires stored per gate.
+    pub const WIRE_COUNT: usize = 7;
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct GateWires(pub [Wire; WIRE_COUNT]);
+
+    impl GateWires {
+        pub fn new(wires: [Wire; WIRE_COUNT]) -> Self {
+            Self(wires)
+        }
+
+        pub fn as_array(&self) -> &[Wire; WIRE_COUNT] {
+            &self.0
+        }
+
+        pub fn into_array(self) -> [Wire; WIRE_COUNT] {
+            self.0
+        }
+    }
+
+    impl From<[Wire; WIRE_COUNT]> for GateWires {
+        fn from(wires: [Wire; WIRE_COUNT]) -> Self {
+            GateWires::new(wires)
+        }
+    }
+
+    impl From<GateWires> for [Wire; WIRE_COUNT] {
+        fn from(gw: GateWires) -> Self {
+            gw.into_array()
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    pub struct Gate<F: PrimeField> {
+        pub typ: GateType,
+        pub wires: GateWires,
+        pub coeffs: Vec<F>,
+    }
+
+    impl<F> From<CircuitGate<F>> for Gate<F>
+    where
+        F: PrimeField,
+    {
+        fn from(cg: CircuitGate<F>) -> Self {
+            Gate {
+                typ: cg.typ,
+                wires: GateWires::new([
+                    cg.wires[0],
+                    cg.wires[1],
+                    cg.wires[2],
+                    cg.wires[3],
+                    cg.wires[4],
+                    cg.wires[5],
+                    cg.wires[6],
+                ]),
+                coeffs: cg.coeffs,
+            }
+        }
+    }
+
+    impl<F> From<&CircuitGate<F>> for Gate<F>
+    where
+        F: PrimeField,
+    {
+        fn from(cg: &CircuitGate<F>) -> Self {
+            Gate {
+                typ: cg.typ,
+                wires: GateWires::new([
+                    cg.wires[0],
+                    cg.wires[1],
+                    cg.wires[2],
+                    cg.wires[3],
+                    cg.wires[4],
+                    cg.wires[5],
+                    cg.wires[6],
+                ]),
+                coeffs: cg.coeffs.clone(),
+            }
+        }
+    }
+
+    impl<F> From<Gate<F>> for CircuitGate<F>
+    where
+        F: PrimeField,
+    {
+        fn from(gate: Gate<F>) -> Self {
+            CircuitGate {
+                typ: gate.typ,
+                wires: gate.wires.into_array(),
+                coeffs: gate.coeffs,
+            }
+        }
+    }
+
+    #[derive(Clone, Debug, Default)]
+    pub struct GateVector<F: PrimeField> {
+        gates: Vec<CircuitGate<F>>,
+    }
+
+    impl<F> GateVector<F>
+    where
+        F: PrimeField,
+    {
+        pub fn new() -> Self {
+            Self { gates: Vec::new() }
+        }
+
+        pub fn from_vec(gates: Vec<CircuitGate<F>>) -> Self {
+            Self { gates }
+        }
+
+        pub fn into_inner(self) -> Vec<CircuitGate<F>> {
+            self.gates
+        }
+
+        pub fn as_slice(&self) -> &[CircuitGate<F>] {
+            &self.gates
+        }
+
+        pub fn iter(&self) -> core::slice::Iter<'_, CircuitGate<F>> {
+            self.gates.iter()
+        }
+
+        pub fn iter_mut(&mut self) -> core::slice::IterMut<'_, CircuitGate<F>> {
+            self.gates.iter_mut()
+        }
+
+        pub fn push_gate(&mut self, gate: CircuitGate<F>) {
+            self.gates.push(gate);
+        }
+
+        pub fn len(&self) -> usize {
+            self.gates.len()
+        }
+
+        pub fn get_gate(&self, index: usize) -> Option<Gate<F>> {
+            self.gates.get(index).map(Gate::from)
+        }
+
+        pub fn wrap_wire(&mut self, target: Wire, replacement: Wire) {
+            if let Some(gate) = self.gates.get_mut(target.row) {
+                if target.col < gate.wires.len() {
+                    gate.wires[target.col] = replacement;
+                }
+            }
+        }
+
+        pub fn digest(&self, public_input_size: usize) -> Vec<u8> {
+            Circuit::new(public_input_size, self.as_slice())
+                .digest()
+                .to_vec()
+        }
+
+        pub fn serialize(
+            &self,
+            public_input_size: usize,
+        ) -> std::result::Result<String, serde_json::Error> {
+            let circuit = Circuit::new(public_input_size, self.as_slice());
+            serde_json::to_string(&circuit)
+        }
+    }
+
+    impl<F> From<Vec<CircuitGate<F>>> for GateVector<F>
+    where
+        F: PrimeField,
+    {
+        fn from(gates: Vec<CircuitGate<F>>) -> Self {
+            GateVector::from_vec(gates)
+        }
+    }
+
+    impl<F> From<GateVector<F>> for Vec<CircuitGate<F>>
+    where
+        F: PrimeField,
+    {
+        fn from(vec: GateVector<F>) -> Self {
+            vec.into_inner()
+        }
+    }
+}
+
+pub use self::shared::{GateVector as CoreGateVector, GateWires as CoreGateWires};
+
+fn gate_vector_error(context: &str, err: impl std::fmt::Display) -> Error {
+    Error::new(Status::GenericFailure, format!("{}: {}", context, err))
+}
+
 #[napi(object)]
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct NapiGateWires {
     pub w0: NapiWire,
     pub w1: NapiWire,
@@ -26,31 +218,38 @@ pub struct NapiGateWires {
     pub w6: NapiWire,
 }
 
-impl NapiGateWires {
-    fn into_inner(self) -> GateWires {
-        [
-            KimchiWire::from(self.w0),
-            KimchiWire::from(self.w1),
-            KimchiWire::from(self.w2),
-            KimchiWire::from(self.w3),
-            KimchiWire::from(self.w4),
-            KimchiWire::from(self.w5),
-            KimchiWire::from(self.w6),
-        ]
+impl From<CoreGateWires> for NapiGateWires {
+    fn from(wires: CoreGateWires) -> Self {
+        let array = wires.into_array();
+        NapiGateWires {
+            w0: array[0].into(),
+            w1: array[1].into(),
+            w2: array[2].into(),
+            w3: array[3].into(),
+            w4: array[4].into(),
+            w5: array[5].into(),
+            w6: array[6].into(),
+        }
     }
 }
 
-impl From<&GateWires> for NapiGateWires {
-    fn from(value: &GateWires) -> Self {
-        Self {
-            w0: value[0].into(),
-            w1: value[1].into(),
-            w2: value[2].into(),
-            w3: value[3].into(),
-            w4: value[4].into(),
-            w5: value[5].into(),
-            w6: value[6].into(),
-        }
+impl From<NapiGateWires> for CoreGateWires {
+    fn from(wires: NapiGateWires) -> Self {
+        CoreGateWires::new(wires.into_inner())
+    }
+}
+
+impl NapiGateWires {
+    fn into_inner(self) -> [Wire; shared::WIRE_COUNT] {
+        [
+            self.w0.into(),
+            self.w1.into(),
+            self.w2.into(),
+            self.w3.into(),
+            self.w4.into(),
+            self.w5.into(),
+            self.w6.into(),
+        ]
     }
 }
 
@@ -132,23 +331,91 @@ macro_rules! impl_gate_support {
                         .flat_map(|elem| elem.flatten())
                         .collect();
 
+                    let wires = CoreGateWires::new([
+                        value.wires[0],
+                        value.wires[1],
+                        value.wires[2],
+                        value.wires[3],
+                        value.wires[4],
+                        value.wires[5],
+                        value.wires[6],
+                    ]);
+
                     Self {
                         typ: gate_type_to_i32(value.typ),
-                        wires: (&value.wires).into(),
+                        wires: wires.into(),
                         coeffs,
                     }
                 }
             }
 
             #[napi]
-            #[derive(Clone, Default, Debug)]
+            #[derive(Clone, Debug, Default)]
             pub struct [<Napi $field_name:camel GateVector>](
-                #[napi(skip)] pub Vec<CircuitGate<$F>>,
+                #[napi(skip)] pub CoreGateVector<$F>,
             );
+
+            impl Deref for [<Napi $field_name:camel GateVector>] {
+                type Target = CoreGateVector<$F>;
+
+                fn deref(&self) -> &Self::Target {
+                    &self.0
+                }
+            }
+
+            impl From<CoreGateVector<$F>> for [<Napi $field_name:camel GateVector>] {
+                fn from(inner: CoreGateVector<$F>) -> Self {
+                    Self(inner)
+                }
+            }
+
+            impl From<[<Napi $field_name:camel GateVector>]> for CoreGateVector<$F> {
+                fn from(vector: [<Napi $field_name:camel GateVector>]) -> Self {
+                    vector.0
+                }
+            }
+
+            #[napi]
+            impl [<Napi $field_name:camel GateVector>] {
+                #[napi(constructor)]
+                pub fn new() -> Self {
+                    CoreGateVector::new().into()
+                }
+
+                #[napi(js_name = "serialize")]
+                pub fn serialize(&self) -> Result<Uint8Array> {
+                    let bytes = rmp_serde::to_vec(self.0.as_slice())
+                        .map_err(|e| gate_vector_error("gate vector serialize failed", e))?;
+                    Ok(Uint8Array::from(bytes))
+                }
+
+                #[napi(factory, js_name = "deserialize")]
+                pub fn deserialize(bytes: Uint8Array) -> Result<Self> {
+                    let gates: Vec<CircuitGate<$F>> = rmp_serde::from_slice(bytes.as_ref())
+                        .map_err(|e| gate_vector_error("gate vector deserialize failed", e))?;
+                    Ok(CoreGateVector::from_vec(gates).into())
+                }
+
+                pub(crate) fn inner(&self) -> &CoreGateVector<$F> {
+                    &self.0
+                }
+
+                pub(crate) fn inner_mut(&mut self) -> &mut CoreGateVector<$F> {
+                    &mut self.0
+                }
+
+                pub(crate) fn as_slice(&self) -> &[CircuitGate<$F>] {
+                    self.0.as_slice()
+                }
+
+                pub(crate) fn to_vec(&self) -> Vec<CircuitGate<$F>> {
+                    self.0.as_slice().to_vec()
+                }
+            }
 
             #[napi]
             pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_create>]() -> [<Napi $field_name:camel GateVector>] {
-                [<Napi $field_name:camel GateVector>](Vec::new())
+                [<Napi $field_name:camel GateVector>]::new()
             }
 
             #[napi]
@@ -156,7 +423,8 @@ macro_rules! impl_gate_support {
                 vector: &mut [<Napi $field_name:camel GateVector>],
                 gate: [<Napi $field_name:camel Gate>],
             ) -> Result<()> {
-                vector.0.push(gate.into_inner()?);
+                let gate = gate.into_inner()?;
+                vector.inner_mut().push_gate(gate);
                 Ok(())
             }
 
@@ -165,14 +433,18 @@ macro_rules! impl_gate_support {
                 vector: &[<Napi $field_name:camel GateVector>],
                 index: i32,
             ) -> [<Napi $field_name:camel Gate>] {
-                [<Napi $field_name:camel Gate>]::from_inner(&vector.0[index as usize])
+                let gate = vector
+                    .as_slice()
+                    .get(index as usize)
+                    .expect("index out of bounds");
+                [<Napi $field_name:camel Gate>]::from_inner(gate)
             }
 
             #[napi]
             pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_len>](
                 vector: &[<Napi $field_name:camel GateVector>],
             ) -> i32 {
-                vector.0.len() as i32
+                vector.as_slice().len() as i32
             }
 
             #[napi]
@@ -181,17 +453,17 @@ macro_rules! impl_gate_support {
                 target: NapiWire,
                 head: NapiWire,
             ) {
-                vector.0[target.row as usize].wires[target.col as usize] = KimchiWire::from(head);
-              }
+                let target: Wire = target.into();
+                let head: Wire = head.into();
+                vector.inner_mut().wrap_wire(target, head);
+            }
 
             #[napi]
             pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_digest>](
                 public_input_size: i32,
                 vector: &[<Napi $field_name:camel GateVector>],
             ) -> Uint8Array {
-                let bytes = Circuit::new(public_input_size as usize, &vector.0)
-                    .digest()
-                    .to_vec();
+                let bytes = vector.inner().digest(public_input_size as usize);
                 Uint8Array::from(bytes)
             }
 
@@ -200,13 +472,29 @@ macro_rules! impl_gate_support {
                 public_input_size: i32,
                 vector: &[<Napi $field_name:camel GateVector>],
             ) -> Result<String> {
-                let circuit = Circuit::new(public_input_size as usize, &vector.0);
-                serde_json::to_string(&circuit).map_err(|err| {
-                    Error::new(
-                        Status::GenericFailure,
-                        format!("couldn't serialize constraints: {}", err),
-                    )
-                })
+                vector
+                    .inner()
+                    .serialize(public_input_size as usize)
+                    .map_err(|err| {
+                        Error::new(
+                            Status::GenericFailure,
+                            format!("couldn't serialize constraints: {}", err),
+                        )
+                    })
+            }
+
+            #[napi]
+            pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_to_bytes>](
+                vector: &[<Napi $field_name:camel GateVector>],
+            ) -> Result<Uint8Array> {
+                vector.serialize()
+            }
+
+            #[napi]
+            pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_from_bytes>](
+                bytes: Uint8Array,
+            ) -> Result<[<Napi $field_name:camel GateVector>]> {
+                [<Napi $field_name:camel GateVector>]::deserialize(bytes)
             }
         }
     };
