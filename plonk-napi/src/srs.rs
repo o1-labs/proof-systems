@@ -218,6 +218,16 @@ macro_rules! impl_srs {
                 }
 
                 #[napi]
+                pub fn [<caml_ $name:snake _srs_to_bytes>](srs: &[<Napi $name:camel Srs>]) -> Result<Uint8Array> {
+                    srs.serialize()
+                }
+
+                #[napi]
+                pub fn [<caml_ $name:snake _srs_from_bytes>](bytes: Uint8Array) -> Result<Self> {
+                    Self::deserialize(bytes)
+                }
+
+                #[napi]
                 pub fn [<caml_ $name:snake _srs_commit_evaluations>](srs: &[<Napi $name:camel Srs>],
                     domain_size: i32,
                     evals: Uint8Array,
@@ -300,6 +310,26 @@ macro_rules! impl_srs {
             }
         }
     }
+}
+
+#[napi]
+pub fn caml_fp_srs_to_bytes(srs: &fp::NapiFpSrs) -> Result<Uint8Array> {
+    srs.serialize()
+}
+
+#[napi]
+pub fn caml_fp_srs_from_bytes(bytes: Uint8Array) -> Result<fp::NapiFpSrs> {
+    fp::NapiFpSrs::deserialize(bytes)
+}
+
+#[napi]
+pub fn caml_fq_srs_to_bytes(srs: &fq::NapiFqSrs) -> Result<Uint8Array> {
+    srs.serialize()
+}
+
+#[napi]
+pub fn caml_fq_srs_from_bytes(bytes: Uint8Array) -> Result<fq::NapiFqSrs> {
+    fq::NapiFqSrs::deserialize(bytes)
 }
 
 pub mod fp {
