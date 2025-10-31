@@ -1,6 +1,5 @@
 mod build_info;
 mod circuit;
-mod pasta_plonk_proof;
 mod poseidon;
 mod prover_index;
 mod types;
@@ -10,5 +9,3 @@ pub use poseidon::{caml_pasta_fp_poseidon_block_cipher, caml_pasta_fq_poseidon_b
 pub use circuit::prover_to_json;
 pub use prover_index::{prover_index_from_bytes, prover_index_to_bytes};
 pub use types::WasmPastaFpPlonkIndex;
-
-pub use pasta_plonk_proof::caml_pasta_fq_plonk_proof_create;
