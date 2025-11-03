@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicU64, Ordering};
+
 use napi_derive::napi;
 
 #[cfg(target_os = "windows")]
@@ -23,3 +25,17 @@ pub const ARCH_NAME: &str = "ARM";
 #[cfg(target_arch = "aarch64")]
 #[napi]
 pub const ARCH_NAME: &str = "AArch64";
+
+#[napi]
+pub const BACKING: &str = "native";
+
+static NATIVE_CALLS: AtomicU64 = AtomicU64::new(0);
+
+#[napi]
+pub fn get_native_calls() -> u64 {
+    NATIVE_CALLS.load(Ordering::Relaxed)
+}
+
+pub(crate) fn report_native_call() {
+    NATIVE_CALLS.fetch_add(1, Ordering::Relaxed);
+}

@@ -1,8 +1,8 @@
+mod build_info;
 mod circuit;
 mod poseidon;
-mod types;
 mod prover_index;
-mod build_info;
+mod types;
 
 pub use poseidon::{caml_pasta_fp_poseidon_block_cipher, caml_pasta_fq_poseidon_block_cipher};
 

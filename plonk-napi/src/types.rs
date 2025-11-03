@@ -8,14 +8,14 @@ use std::{io::Cursor, sync::Arc};
 
 pub struct WasmPastaFpPlonkIndex(pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>);
 
-// TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
+// TODO: remove incl all dependencies when no longer needed and we only pass napi objects around
 #[derive(Serialize, Deserialize)]
 struct SerializedProverIndex {
     prover_index: Vec<u8>,
     srs: Vec<u8>,
 }
 
-// TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
+// TODO: remove incl all dependencies when no longer needed and we only pass napi objects around
 impl WasmPastaFpPlonkIndex {
     pub(crate) fn serialize_inner(&self) -> Result<Vec<u8>, String> {
         let prover_index = rmp_serde::to_vec(self.0.as_ref()).map_err(|e| e.to_string())?;
