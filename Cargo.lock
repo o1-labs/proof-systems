@@ -1036,29 +1036,13 @@ dependencies = [
 
 [[package]]
 name = "ctor"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67773048316103656a637612c4a62477603b777d91d9c62ff2290f9cde178fdb"
-dependencies = [
- "ctor-proc-macro 0.0.6",
- "dtor",
-]
-
-[[package]]
-name = "ctor"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59c9b8bdf64ee849747c1b12eb861d21aa47fa161564f48332f1afe2373bf899"
 dependencies = [
- "ctor-proc-macro 0.0.7",
+ "ctor-proc-macro",
  "dtor",
 ]
-
-[[package]]
-name = "ctor-proc-macro"
-version = "0.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2931af7e13dc045d8e9d26afccc6fa115d64e115c9c84b1166288b46f6782c2"
 
 [[package]]
 name = "ctor-proc-macro"
@@ -2444,13 +2428,12 @@ dependencies = [
 
 [[package]]
 name = "napi"
-version = "3.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1b74e3dce5230795bb4d2821b941706dee733c7308752507254b0497f39cad7"
+version = "3.4.0"
+source = "git+https://github.com/o1-labs/napi-rs.git?rev=023d1d4f31bd75e8ab55c95b5077a319b5208cdf#023d1d4f31bd75e8ab55c95b5077a319b5208cdf"
 dependencies = [
  "bitflags 2.4.2",
- "ctor 0.5.0",
- "napi-build",
+ "ctor 0.6.0",
+ "napi-build 2.2.4",
  "napi-sys",
  "nohash-hasher",
  "rustc-hash",
@@ -2463,10 +2446,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcae8ad5609d14afb3a3b91dee88c757016261b151e9dcecabf1b2a31a6cab14"
 
 [[package]]
+name = "napi-build"
+version = "2.2.4"
+source = "git+https://github.com/o1-labs/napi-rs.git?rev=023d1d4f31bd75e8ab55c95b5077a319b5208cdf#023d1d4f31bd75e8ab55c95b5077a319b5208cdf"
+
+[[package]]
 name = "napi-derive"
 version = "3.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78665d6bdf10e9a4e6b38123efb0f66962e6197c1aea2f07cff3f159a374696d"
+source = "git+https://github.com/o1-labs/napi-rs.git?rev=023d1d4f31bd75e8ab55c95b5077a319b5208cdf#023d1d4f31bd75e8ab55c95b5077a319b5208cdf"
 dependencies = [
  "convert_case 0.8.0",
  "ctor 0.6.0",
@@ -2479,8 +2466,7 @@ dependencies = [
 [[package]]
 name = "napi-derive-backend"
 version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42d55d01423e7264de3acc13b258fa48ca7cf38a4d25db848908ec3c1304a85a"
+source = "git+https://github.com/o1-labs/napi-rs.git?rev=023d1d4f31bd75e8ab55c95b5077a319b5208cdf#023d1d4f31bd75e8ab55c95b5077a319b5208cdf"
 dependencies = [
  "convert_case 0.8.0",
  "proc-macro2",
@@ -2492,8 +2478,7 @@ dependencies = [
 [[package]]
 name = "napi-sys"
 version = "3.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ed8f0e23a62a3ce0fbb6527cdc056e9282ddd9916b068c46f8923e18eed5ee6"
+source = "git+https://github.com/o1-labs/napi-rs.git?rev=023d1d4f31bd75e8ab55c95b5077a319b5208cdf#023d1d4f31bd75e8ab55c95b5077a319b5208cdf"
 dependencies = [
  "libloading",
 ]
@@ -3000,7 +2985,7 @@ dependencies = [
  "mina-curves",
  "mina-poseidon",
  "napi",
- "napi-build",
+ "napi-build 2.2.3",
  "napi-derive",
  "num-bigint",
  "o1-utils",
