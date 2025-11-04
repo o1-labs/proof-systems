@@ -6,6 +6,7 @@ mod pasta_fq_plonk_index;
 mod plonk_verifier_index;
 mod poly_comm;
 mod poseidon;
+mod proof;
 mod srs;
 mod tables;
 mod vector;
@@ -40,6 +41,7 @@ pub use poly_comm::{
     pallas::NapiFqPolyComm as WasmFqPolyComm, vesta::NapiFpPolyComm as WasmFpPolyComm,
 };
 pub use poseidon::{caml_pasta_fp_poseidon_block_cipher, caml_pasta_fq_poseidon_block_cipher};
+pub use proof::caml_pasta_fp_plonk_proof_create;
 pub use srs::{
     caml_fp_srs_from_bytes, caml_fp_srs_to_bytes, caml_fq_srs_from_bytes,
     fp::NapiFpSrs as WasmFpSrs, fq::NapiFqSrs as WasmFqSrs,
