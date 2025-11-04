@@ -1,4 +1,4 @@
-use crate::wrappers::field::{WasmPastaFp, WasmPastaFq};
+use crate::wrappers::field::{NapiPastaFp, NapiPastaFq};
 use mina_curves::pasta::{
     curves::{
         pallas::{G_GENERATOR_X as GeneratorPallasX, G_GENERATOR_Y as GeneratorPallasY},
@@ -7,24 +7,25 @@ use mina_curves::pasta::{
     Pallas as AffinePallas, Vesta as AffineVesta,
 };
 use napi_derive::napi;
+use serde::{Deserialize, Serialize};
 
 #[napi(object)]
-#[derive(Clone, Debug)]
-pub struct WasmGPallas {
-    pub x: WasmPastaFp,
-    pub y: WasmPastaFp,
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct NapiGPallas {
+    pub x: NapiPastaFp,
+    pub y: NapiPastaFp,
     pub infinity: bool,
 }
 
 #[napi(object)]
-#[derive(Clone, Debug)]
-pub struct WasmGVesta {
-    pub x: WasmPastaFq,
-    pub y: WasmPastaFq,
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct NapiGVesta {
+    pub x: NapiPastaFq,
+    pub y: NapiPastaFq,
     pub infinity: bool,
 }
 
-impl From<AffinePallas> for WasmGPallas {
+impl From<AffinePallas> for NapiGPallas {
     fn from(point: AffinePallas) -> Self {
         Self {
             x: point.x.into(),
@@ -34,7 +35,7 @@ impl From<AffinePallas> for WasmGPallas {
     }
 }
 
-impl From<&AffinePallas> for WasmGPallas {
+impl From<&AffinePallas> for NapiGPallas {
     fn from(point: &AffinePallas) -> Self {
         Self {
             x: point.x.into(),
@@ -44,8 +45,8 @@ impl From<&AffinePallas> for WasmGPallas {
     }
 }
 
-impl From<WasmGPallas> for AffinePallas {
-    fn from(point: WasmGPallas) -> Self {
+impl From<NapiGPallas> for AffinePallas {
+    fn from(point: NapiGPallas) -> Self {
         AffinePallas {
             x: point.x.into(),
             y: point.y.into(),
@@ -54,8 +55,8 @@ impl From<WasmGPallas> for AffinePallas {
     }
 }
 
-impl From<&WasmGPallas> for AffinePallas {
-    fn from(point: &WasmGPallas) -> Self {
+impl From<&NapiGPallas> for AffinePallas {
+    fn from(point: &NapiGPallas) -> Self {
         AffinePallas {
             x: point.x.into(),
             y: point.y.into(),
@@ -64,7 +65,7 @@ impl From<&WasmGPallas> for AffinePallas {
     }
 }
 
-impl From<AffineVesta> for WasmGVesta {
+impl From<AffineVesta> for NapiGVesta {
     fn from(point: AffineVesta) -> Self {
         Self {
             x: point.x.into(),
@@ -74,7 +75,7 @@ impl From<AffineVesta> for WasmGVesta {
     }
 }
 
-impl From<&AffineVesta> for WasmGVesta {
+impl From<&AffineVesta> for NapiGVesta {
     fn from(point: &AffineVesta) -> Self {
         Self {
             x: point.x.into(),
@@ -84,8 +85,8 @@ impl From<&AffineVesta> for WasmGVesta {
     }
 }
 
-impl From<WasmGVesta> for AffineVesta {
-    fn from(point: WasmGVesta) -> Self {
+impl From<NapiGVesta> for AffineVesta {
+    fn from(point: NapiGVesta) -> Self {
         AffineVesta {
             x: point.x.into(),
             y: point.y.into(),
@@ -94,8 +95,8 @@ impl From<WasmGVesta> for AffineVesta {
     }
 }
 
-impl From<&WasmGVesta> for AffineVesta {
-    fn from(point: &WasmGVesta) -> Self {
+impl From<&NapiGVesta> for AffineVesta {
+    fn from(point: &NapiGVesta) -> Self {
         AffineVesta {
             x: point.x.into(),
             y: point.y.into(),
@@ -105,19 +106,19 @@ impl From<&WasmGVesta> for AffineVesta {
 }
 
 #[napi]
-pub fn caml_pallas_affine_one() -> WasmGPallas {
-    WasmGPallas {
-        x: WasmPastaFp::from(GeneratorPallasX),
-        y: WasmPastaFp::from(GeneratorPallasY),
+pub fn caml_pallas_affine_one() -> NapiGPallas {
+    NapiGPallas {
+        x: NapiPastaFp::from(GeneratorPallasX),
+        y: NapiPastaFp::from(GeneratorPallasY),
         infinity: false,
     }
 }
 
 #[napi]
-pub fn caml_vesta_affine_one() -> WasmGVesta {
-    WasmGVesta {
-        x: WasmPastaFq::from(GeneratorVestaX),
-        y: WasmPastaFq::from(GeneratorVestaY),
+pub fn caml_vesta_affine_one() -> NapiGVesta {
+    NapiGVesta {
+        x: NapiPastaFq::from(GeneratorVestaX),
+        y: NapiPastaFq::from(GeneratorVestaY),
         infinity: false,
     }
 }

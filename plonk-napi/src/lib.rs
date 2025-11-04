@@ -1,10 +1,13 @@
+mod build_info;
 mod circuit;
 mod gate_vector;
-mod poseidon;
-mod types;
-mod wrappers;
-mod wasm_vector;
+mod plonk_verifier_index;
 mod poly_comm;
+mod poseidon;
+mod prover_index;
+mod types;
+mod vector;
+mod wrappers;
 
 pub use circuit::prover_to_json;
 pub use gate_vector::{
@@ -18,8 +21,18 @@ pub use gate_vector::{
     NapiFpGate as WasmFpGate, NapiFpGateVector as WasmFpGateVector, NapiFqGate as WasmFqGate,
     NapiFqGateVector as WasmFqGateVector,
 };
-pub use poly_comm::{pallas::WasmFqPolyComm, vesta::WasmFpPolyComm};
+pub use plonk_verifier_index::{
+    caml_pasta_fp_plonk_verifier_index_shifts, caml_pasta_fq_plonk_verifier_index_shifts,
+};
+pub use poly_comm::{
+    pallas::{NapiFqPolyComm as WasmFqPolyComm, WasmFqPolyComm},
+    vesta::{NapiFpPolyComm as WasmFpPolyComm, WasmFpPolyComm},
+};
 pub use poseidon::{caml_pasta_fp_poseidon_block_cipher, caml_pasta_fq_poseidon_block_cipher};
-pub use types::{prover_index_from_bytes, prover_index_to_bytes, WasmPastaFpPlonkIndex};
-pub use wasm_vector::{fp::WasmVecVecFp, fq::WasmVecVecFq};
-pub use wrappers::{field::{WasmPastaFp, WasmPastaFq}, group::{WasmGPallas, WasmGVesta}};
+pub use prover_index::{prover_index_from_bytes, prover_index_to_bytes};
+pub use types::WasmPastaFpPlonkIndex;
+pub use vector::{fp::NapiVecVecFp as WasmVecVecFp, fq::NapiVecVecFq as WasmVecVecFq};
+pub use wrappers::{
+    field::{NapiPastaFp as WasmPastaFp, NapiPastaFq as WasmPastaFq, WasmPastaFp, WasmPastaFq},
+    group::{NapiGPallas as WasmGPallas, NapiGVesta as WasmGVesta, WasmGPallas, WasmGVesta},
+};
