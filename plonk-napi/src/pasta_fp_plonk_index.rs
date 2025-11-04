@@ -1,3 +1,5 @@
+use crate::gate_vector::NapiFpGateVector;
+use crate::WasmFpSrs;
 use ark_poly::EvaluationDomain;
 use kimchi::circuits::constraints::ConstraintSystem;
 use kimchi::circuits::lookup::runtime_tables::RuntimeTableCfg;
@@ -7,7 +9,6 @@ use mina_curves::pasta::{Fp, Pallas as GAffineOther, Vesta as GAffine, VestaPara
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use napi::bindgen_prelude::{Error, External, Result as NapiResult, Status, Uint8Array};
 use napi_derive::napi;
-use crate::gate_vector::NapiFpGateVector;
 use poly_commitment::ipa::{OpeningProof, SRS as IPA_SRS};
 use poly_commitment::SRS;
 use serde::{Deserialize, Serialize};
@@ -22,7 +23,6 @@ use std::{
 use crate::tables::{
     lookup_table_fp_from_js, runtime_table_cfg_fp_from_js, JsLookupTableFp, JsRuntimeTableCfgFp,
 };
-use plonk_wasm::srs::fp::WasmFpSrs as WasmSrs;
 pub struct WasmPastaFpPlonkIndex(pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>);
 
 #[derive(Serialize, Deserialize)]
@@ -124,7 +124,7 @@ pub fn caml_pasta_fp_plonk_index_create(
     lookup_tables: Vec<JsLookupTableFp>,
     runtime_table_cfgs: Vec<JsRuntimeTableCfgFp>,
     prev_challenges: i32,
-    srs: External<WasmSrs>,
+    srs: External<WasmFpSrs>,
     lazy_mode: bool,
 ) -> Result<External<WasmPastaFpPlonkIndex>, Error> {
     let gates: Vec<_> = gates.to_vec();
@@ -178,7 +178,7 @@ pub fn caml_pasta_fp_plonk_index_create(
 #[napi]
 pub fn caml_pasta_fp_plonk_index_decode(
     bytes: &[u8],
-    srs: External<WasmSrs>,
+    srs: External<WasmFpSrs>,
 ) -> Result<External<WasmPastaFpPlonkIndex>, Error> {
     let mut deserializer = rmp_serde::Deserializer::new(bytes);
     let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
@@ -237,7 +237,7 @@ pub fn caml_pasta_fp_plonk_index_write(
 #[napi]
 pub fn caml_pasta_fp_plonk_index_read(
     offset: Option<i32>,
-    srs: External<WasmSrs>,
+    srs: External<WasmFpSrs>,
     path: String,
 ) -> Result<External<WasmPastaFpPlonkIndex>, Error> {
     // read from file

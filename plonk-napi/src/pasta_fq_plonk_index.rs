@@ -1,3 +1,5 @@
+use crate::gate_vector::NapiFqGateVector;
+use crate::WasmFqSrs;
 use ark_poly::EvaluationDomain;
 use kimchi::circuits::constraints::ConstraintSystem;
 use kimchi::{linearization::expr_linearization, prover_index::ProverIndex};
@@ -5,7 +7,6 @@ use mina_curves::pasta::{Fq, Pallas as GAffine, PallasParameters, Vesta as GAffi
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use napi::bindgen_prelude::{Error, External, Result as NapiResult, Status, Uint8Array};
 use napi_derive::napi;
-use crate::gate_vector::NapiFqGateVector;
 use poly_commitment::ipa::{OpeningProof, SRS as IPA_SRS};
 use poly_commitment::SRS;
 use serde::{Deserialize, Serialize};
@@ -16,7 +17,6 @@ use std::{io::Cursor, sync::Arc};
 use crate::tables::{
     lookup_table_fq_from_js, runtime_table_cfg_fq_from_js, JsLookupTableFq, JsRuntimeTableCfgFq,
 };
-use plonk_wasm::srs::fq::WasmFqSrs as WasmSrs;
 pub struct WasmPastaFqPlonkIndex(pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>);
 
 #[derive(Serialize, Deserialize)]
@@ -118,7 +118,7 @@ pub fn caml_pasta_fq_plonk_index_create(
     lookup_tables: Vec<JsLookupTableFq>,
     runtime_table_cfgs: Vec<JsRuntimeTableCfgFq>,
     prev_challenges: i32,
-    srs: External<WasmSrs>,
+    srs: External<WasmFqSrs>,
     lazy_mode: bool,
 ) -> Result<External<WasmPastaFqPlonkIndex>, Error> {
     // TODO: check if and how we run rayon threads automatically in napi
@@ -174,7 +174,7 @@ pub fn caml_pasta_fq_plonk_index_create(
 #[napi]
 pub fn caml_pasta_fq_plonk_index_decode(
     bytes: &[u8],
-    srs: External<WasmSrs>,
+    srs: External<WasmFqSrs>,
 ) -> Result<External<WasmPastaFqPlonkIndex>, Error> {
     let mut deserializer = rmp_serde::Deserializer::new(bytes);
     let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
@@ -232,7 +232,7 @@ pub fn caml_pasta_fq_plonk_index_write(
 #[napi]
 pub fn caml_pasta_fq_plonk_index_read(
     offset: Option<i32>,
-    srs: External<WasmSrs>,
+    srs: External<WasmFqSrs>,
     path: String,
 ) -> Result<External<WasmPastaFqPlonkIndex>, Error> {
     // read from file

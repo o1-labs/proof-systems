@@ -3,6 +3,125 @@ use std::{iter::FromIterator, ops::Deref};
 use napi::{bindgen_prelude::*, sys};
 use wasm_types::{FlatVector, FlatVectorElem};
 
+#[derive(Clone, Debug)]
+pub struct WasmFlatVector<T>(Vec<T>);
+
+impl<T> WasmFlatVector<T> {
+    pub fn into_inner(self) -> Vec<T> {
+        self.0
+    }
+}
+
+impl<T: FlatVectorElem> WasmFlatVector<T> {
+    pub fn from_bytes(bytes: Vec<u8>) -> Self {
+        FlatVector::<T>::from_bytes(bytes).into()
+    }
+
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.0
+            .into_iter()
+            .flat_map(FlatVectorElem::flatten)
+            .collect()
+    }
+}
+
+impl<T> Deref for WasmFlatVector<T> {
+    type Target = Vec<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> From<Vec<T>> for WasmFlatVector<T> {
+    fn from(value: Vec<T>) -> Self {
+        WasmFlatVector(value)
+    }
+}
+
+impl<T> From<FlatVector<T>> for WasmFlatVector<T> {
+    fn from(value: FlatVector<T>) -> Self {
+        WasmFlatVector(value.into())
+    }
+}
+
+impl<T> From<WasmFlatVector<T>> for Vec<T> {
+    fn from(value: WasmFlatVector<T>) -> Self {
+        value.0
+    }
+}
+
+impl<T> IntoIterator for WasmFlatVector<T> {
+    type Item = T;
+    type IntoIter = <Vec<T> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a WasmFlatVector<T> {
+    type Item = &'a T;
+    type IntoIter = <&'a Vec<T> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
+impl<T> FromIterator<T> for WasmFlatVector<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        WasmFlatVector(Vec::from_iter(iter))
+    }
+}
+
+impl<T> Extend<T> for WasmFlatVector<T> {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        self.0.extend(iter);
+    }
+}
+
+impl<T> TypeName for WasmFlatVector<T>
+where
+    Vec<u8>: TypeName,
+{
+    fn type_name() -> &'static str {
+        <Vec<u8> as TypeName>::type_name()
+    }
+
+    fn value_type() -> ValueType {
+        <Vec<u8> as TypeName>::value_type()
+    }
+}
+
+impl<T> ValidateNapiValue for WasmFlatVector<T>
+where
+    Vec<u8>: ValidateNapiValue,
+{
+    unsafe fn validate(env: sys::napi_env, napi_val: sys::napi_value) -> Result<sys::napi_value> {
+        <Vec<u8> as ValidateNapiValue>::validate(env, napi_val)
+    }
+}
+
+impl<T> FromNapiValue for WasmFlatVector<T>
+where
+    T: FlatVectorElem,
+{
+    unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> Result<Self> {
+        let bytes = <Vec<u8> as FromNapiValue>::from_napi_value(env, napi_val)?;
+        Ok(Self::from_bytes(bytes))
+    }
+}
+
+impl<T> ToNapiValue for WasmFlatVector<T>
+where
+    T: FlatVectorElem,
+{
+    unsafe fn to_napi_value(env: sys::napi_env, val: Self) -> Result<sys::napi_value> {
+        <Vec<u8> as ToNapiValue>::to_napi_value(env, val.into_bytes())
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct WasmVector<T>(pub Vec<T>);
 
@@ -175,6 +294,17 @@ macro_rules! impl_vec_vec_fp {
         impl From<$name> for Vec<Vec<$field>> {
             fn from(value: $name) -> Self {
                 value.0
+            }
+        }
+
+        impl FromNapiValue for $name {
+            unsafe fn from_napi_value(
+                env: sys::napi_env,
+                napi_val: sys::napi_value,
+            ) -> Result<Self> {
+                let instance =
+                    <ClassInstance<$name> as FromNapiValue>::from_napi_value(env, napi_val)?;
+                Ok((*instance).clone())
             }
         }
     };

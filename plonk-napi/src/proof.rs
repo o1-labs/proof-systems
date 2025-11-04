@@ -1,34 +1,41 @@
 use crate::{
     tables::JsRuntimeTableFp,
-    wasm_vector::{fp::WasmVecVecFp, WasmVector},
+    wasm_vector::{fp::WasmVecVecFp, WasmFlatVector, WasmVector},
+    wrappers::{field::WasmPastaFp, group::WasmGVesta},
 };
-use arkworks::{WasmGVesta, WasmPastaFp};
-use kimchi::error::ProverError;
 use kimchi::{
     circuits::{lookup::runtime_tables::RuntimeTable, wires::COLUMNS},
     groupmap::GroupMap,
     proof::{ProverProof, RecursionChallenge},
     prover_index::ProverIndex,
 };
-use mina_curves::pasta::{Fp, Vesta as GAffine};
+use mina_curves::pasta::{Fp, Pallas as GAffineOther, Vesta as GAffine};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use napi::bindgen_prelude::External;
+use napi::bindgen_prelude::{External, Result};
+use napi::{Error as NapiError, Status};
 use napi_derive::napi;
-use plonk_wasm::{pasta_fp_plonk_index::WasmPastaFpPlonkIndex, plonk_proof};
+use plonk_wasm::{
+    pasta_fp_plonk_index::WasmPastaFpPlonkIndex,
+    plonk_proof::{self, fp::WasmFpProverProof},
+};
 use poly_commitment::{ipa::OpeningProof, PolyComm, SRS};
-use wasm_types::FlatVector as WasmFlatVector;
+
+pub struct Proof {
+    pub proof: ProverProof<GAffine, OpeningProof<GAffine>>,
+    pub public_input: Vec<Fp>,
+}
 
 #[napi]
 pub fn caml_pasta_fp_plonk_proof_create(
     index: External<WasmPastaFpPlonkIndex>,
     witness: WasmVecVecFp,
     runtime_tables: WasmVector<JsRuntimeTableFp>,
-    prev_challenges: WasmFlatVector<Fp>,
+    prev_challenges: WasmFlatVector<WasmPastaFp>,
     prev_sgs: WasmVector<WasmGVesta>,
-) -> Result<plonk_proof::fp::WasmFpProverProof, ProverError> {
+) -> Result<External<Proof>> {
     let (maybe_proof, public_input) = {
         index
             .0
@@ -48,7 +55,8 @@ pub fn caml_pasta_fp_plonk_proof_create(
                         let chals = prev_challenges
                             [(i * challenges_per_sg)..(i + 1) * challenges_per_sg]
                             .iter()
-                            .map(|a| a.clone().into())
+                            .cloned()
+                            .map(Into::into)
                             .collect();
                         let comm = PolyComm::<GAffine> { chunks: vec![sg] };
                         RecursionChallenge { chals, comm }
@@ -99,8 +107,11 @@ pub fn caml_pasta_fp_plonk_proof_create(
         (maybe_proof, public_input)
     };
 
-    return match maybe_proof {
-        Ok(proof) => Ok((proof, public_input).into()),
-        Err(err) => Err(err),
-    };
+    match maybe_proof {
+        Ok(proof) => Ok(External::new(Proof {
+            proof,
+            public_input,
+        })),
+        Err(err) => Err(NapiError::new(Status::GenericFailure, err.to_string())),
+    }
 }

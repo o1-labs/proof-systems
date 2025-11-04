@@ -496,6 +496,13 @@ macro_rules! impl_gate_support {
             ) -> Result<[<Napi $field_name:camel GateVector>]> {
                 [<Napi $field_name:camel GateVector>]::deserialize(bytes)
             }
+
+            #[napi]
+            pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_from_bytes_external>](
+                bytes: Uint8Array,
+            ) -> External<[<Napi $field_name:camel GateVector>]> {
+                External::new([<Napi $field_name:camel GateVector>]::deserialize(bytes).unwrap())
+            }
         }
     };
 }

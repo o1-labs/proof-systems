@@ -1,7 +1,7 @@
 use crate::wasm_vector::WasmVector;
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
 use core::ops::Deref;
-use napi::bindgen_prelude::{Error, Result, Status, Uint8Array};
+use napi::bindgen_prelude::{Error, External, Result, Status, Uint8Array};
 use napi_derive::napi;
 use paste::paste;
 use poly_commitment::{
@@ -246,9 +246,11 @@ macro_rules! impl_srs {
                     Ok(srs.commit_non_hiding(&p, 1).into())
                 }
 
+                #[allow(dead_code)]
                 #[napi]
                 pub fn [<caml_ $name:snake _srs_b_poly_commitment>](srs: &[<Napi $name:camel Srs>], chals: Uint8Array) -> Result<$WasmPolyComm> {
                     println!("Computing b poly commitment with napi");
+                    panic!("caml_fq_srs_b_poly_commitment is experimental and not yet ready");
                     let elements: Vec<$F> = WasmFlatVector::<$WasmF>::from_bytes(
                         chals.as_ref().to_vec(),
                     )
@@ -323,13 +325,20 @@ pub fn caml_fp_srs_from_bytes(bytes: Uint8Array) -> Result<fp::NapiFpSrs> {
 }
 
 #[napi]
-pub fn caml_fq_srs_to_bytes(srs: &fq::NapiFqSrs) -> Result<Uint8Array> {
-    srs.serialize()
+pub fn caml_fp_srs_from_bytes_external(bytes: Uint8Array) -> External<fp::NapiFpSrs> {
+    let srs = caml_fp_srs_from_bytes(bytes).unwrap();
+    External::new(srs)
 }
 
 #[napi]
 pub fn caml_fq_srs_from_bytes(bytes: Uint8Array) -> Result<fq::NapiFqSrs> {
     fq::NapiFqSrs::deserialize(bytes)
+}
+
+#[napi]
+pub fn caml_fq_srs_from_bytes_external(bytes: Uint8Array) -> External<fq::NapiFqSrs> {
+    let srs = caml_fq_srs_from_bytes(bytes).unwrap();
+    External::new(srs)
 }
 
 pub mod fp {
