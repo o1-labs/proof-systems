@@ -1,11 +1,5 @@
-use crate::{
-    build_info::report_native_call,
-    gate_vector::NapiFpGateVector,
-    srs::fp::NapiFpSrs,
-    tables::{
-        lookup_table_fp_from_js, runtime_table_cfg_fp_from_js, JsLookupTableFp, JsRuntimeTableCfgFp,
-    },
-};
+use crate::gate_vector::NapiFpGateVector;
+use crate::WasmFpSrs;
 use ark_poly::EvaluationDomain;
 use kimchi::{
     circuits::{
@@ -19,17 +13,19 @@ use mina_curves::pasta::{Fp, Pallas as GAffineOther, Vesta as GAffine, VestaPara
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use napi::bindgen_prelude::{Error, External, Status, Uint8Array};
 use napi_derive::napi;
-use poly_commitment::{
-    ipa::{OpeningProof, SRS as IPA_SRS},
-    SRS,
-};
+use poly_commitment::ipa::{OpeningProof, SRS as IPA_SRS};
+use poly_commitment::SRS;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter, Cursor, Seek, SeekFrom::Start},
     sync::Arc,
 };
-pub struct NapiPastaFpPlonkIndex(pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>);
+
+use crate::tables::{
+    lookup_table_fp_from_js, runtime_table_cfg_fp_from_js, JsLookupTableFp, JsRuntimeTableCfgFp,
+};
+pub struct WasmPastaFpPlonkIndex(pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>);
 
 #[derive(Serialize, Deserialize)]
 struct SerializedProverIndex {
@@ -138,7 +134,7 @@ pub fn caml_pasta_fp_plonk_index_create(
     lookup_tables: Vec<JsLookupTableFp>,
     runtime_table_cfgs: Vec<JsRuntimeTableCfgFp>,
     prev_challenges: i32,
-    srs: &External<NapiFpSrs>,
+    srs: External<WasmFpSrs>,
     lazy_mode: bool,
 ) -> Result<External<NapiPastaFpPlonkIndex>, Error> {
     let gates: Vec<_> = gates.to_vec();
@@ -192,8 +188,8 @@ pub fn caml_pasta_fp_plonk_index_create(
 #[napi(js_name = "pasta_fp_plonk_index_decode")]
 pub fn caml_pasta_fp_plonk_index_decode(
     bytes: &[u8],
-    srs: &External<NapiFpSrs>,
-) -> Result<External<NapiPastaFpPlonkIndex>, Error> {
+    srs: External<WasmFpSrs>,
+) -> Result<External<WasmPastaFpPlonkIndex>, Error> {
     let mut deserializer = rmp_serde::Deserializer::new(bytes);
     let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
         .map_err(|e| {
@@ -251,7 +247,7 @@ pub fn caml_pasta_fp_plonk_index_write(
 #[napi(js_name = "pasta_fp_plonk_index_read")]
 pub fn caml_pasta_fp_plonk_index_read(
     offset: Option<i32>,
-    srs: &External<NapiFpSrs>,
+    srs: External<WasmFpSrs>,
     path: String,
 ) -> Result<External<NapiPastaFpPlonkIndex>, Error> {
     // read from file

@@ -1,11 +1,5 @@
-use crate::{
-    build_info::report_native_call,
-    gate_vector::NapiFqGateVector,
-    srs::fq::NapiFqSrs,
-    tables::{
-        lookup_table_fq_from_js, runtime_table_cfg_fq_from_js, JsLookupTableFq, JsRuntimeTableCfgFq,
-    },
-};
+use crate::gate_vector::NapiFqGateVector;
+use crate::WasmFqSrs;
 use ark_poly::EvaluationDomain;
 use kimchi::{
     circuits::constraints::ConstraintSystem, linearization::expr_linearization,
@@ -15,17 +9,17 @@ use mina_curves::pasta::{Fq, Pallas as GAffine, PallasParameters, Vesta as GAffi
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use napi::bindgen_prelude::{Error, External, Status, Uint8Array};
 use napi_derive::napi;
-use poly_commitment::{
-    ipa::{OpeningProof, SRS as IPA_SRS},
-    SRS,
-};
+use poly_commitment::ipa::{OpeningProof, SRS as IPA_SRS};
+use poly_commitment::SRS;
 use serde::{Deserialize, Serialize};
-use std::{
-    fs::{File, OpenOptions},
-    io::{BufReader, BufWriter, Cursor, Seek, SeekFrom::Start},
-    sync::Arc,
+use std::fs::{File, OpenOptions};
+use std::io::{BufReader, BufWriter, Seek, SeekFrom::Start};
+use std::{io::Cursor, sync::Arc};
+
+use crate::tables::{
+    lookup_table_fq_from_js, runtime_table_cfg_fq_from_js, JsLookupTableFq, JsRuntimeTableCfgFq,
 };
-pub struct NapiPastaFqPlonkIndex(pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>);
+pub struct WasmPastaFqPlonkIndex(pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>);
 
 #[derive(Serialize, Deserialize)]
 struct SerializedProverIndex {
@@ -134,7 +128,7 @@ pub fn caml_pasta_fq_plonk_index_create(
     lookup_tables: Vec<JsLookupTableFq>,
     runtime_table_cfgs: Vec<JsRuntimeTableCfgFq>,
     prev_challenges: i32,
-    srs: &External<NapiFqSrs>,
+    srs: External<WasmFqSrs>,
     lazy_mode: bool,
 ) -> Result<External<NapiPastaFqPlonkIndex>, Error> {
     // TODO: check if and how we run rayon threads automatically in napi
@@ -190,8 +184,8 @@ pub fn caml_pasta_fq_plonk_index_create(
 #[napi(js_name = "pasta_fq_plonk_index_decode")]
 pub fn caml_pasta_fq_plonk_index_decode(
     bytes: &[u8],
-    srs: &External<NapiFqSrs>,
-) -> Result<External<NapiPastaFqPlonkIndex>, Error> {
+    srs: External<WasmFqSrs>,
+) -> Result<External<WasmPastaFqPlonkIndex>, Error> {
     let mut deserializer = rmp_serde::Deserializer::new(bytes);
     let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
         .map_err(|e| {
@@ -248,7 +242,7 @@ pub fn caml_pasta_fq_plonk_index_write(
 #[napi(js_name = "pasta_fq_plonk_index_read")]
 pub fn caml_pasta_fq_plonk_index_read(
     offset: Option<i32>,
-    srs: &External<NapiFqSrs>,
+    srs: External<WasmFqSrs>,
     path: String,
 ) -> Result<External<NapiPastaFqPlonkIndex>, Error> {
     // read from file
