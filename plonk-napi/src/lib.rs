@@ -1,5 +1,6 @@
 mod build_info;
 mod circuit;
+pub mod plonk_verifier_index;
 mod poseidon;
 mod prover_index;
 mod types;
