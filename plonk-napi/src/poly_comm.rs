@@ -1,27 +1,30 @@
-use crate::wasm_vector::WasmVector;
+use crate::vector::NapiVector;
+use napi::bindgen_prelude::{ClassInstance, FromNapiValue};
 use napi_derive::napi;
 use paste::paste;
 use poly_commitment::commitment::PolyComm;
+use serde::{Deserialize, Serialize};
 
 macro_rules! impl_poly_comm {
     (
-        $WasmG:ty,
+        $NapiG:ty,
         $g:ty,
         $field_name:ident
     ) => {
         paste! {
             #[napi]
-            #[derive(Clone)]
-            pub struct [<Wasm $field_name:camel PolyComm>] {
+            #[derive(Clone, Debug, Serialize, Deserialize, Default)]
+            pub struct [<Napi $field_name:camel PolyComm>] {
                 #[napi(skip)]
-                pub unshifted: WasmVector<$WasmG>,
-                pub shifted: Option<$WasmG>,
+                pub unshifted: NapiVector<$NapiG>,
+                #[napi(skip)]
+                pub shifted: Option<$NapiG>,
             }
 
             #[napi]
-            impl [<Wasm $field_name:camel PolyComm>] {
+            impl [<Napi $field_name:camel PolyComm>] {
                 #[napi(constructor)]
-                pub fn new(unshifted: WasmVector<$WasmG>, shifted: Option<$WasmG>) -> Self {
+                pub fn new(unshifted: NapiVector<$NapiG>, shifted: Option<$NapiG>) -> Self {
                     assert!(
                         shifted.is_none(),
                         "mina#14628: Shifted commitments are deprecated and must not be used",
@@ -30,20 +33,30 @@ macro_rules! impl_poly_comm {
                 }
 
                 #[napi(getter)]
-                pub fn unshifted(&self) -> WasmVector<$WasmG> {
+                pub fn unshifted(&self) -> NapiVector<$NapiG> {
                     self.unshifted.clone()
                 }
 
                 #[napi(setter)]
-                pub fn set_unshifted(&mut self, x: WasmVector<$WasmG>) {
+                pub fn set_unshifted(&mut self, x: NapiVector<$NapiG>) {
                     self.unshifted = x;
                 }
+
+                #[napi(getter)]
+                pub fn shifted(&self) -> Option<$NapiG> {
+                    self.shifted.clone()
+                }
+
+                #[napi(setter)]
+                pub fn set_shifted(&mut self, value: Option<$NapiG>) {
+                    self.shifted = value;
+                }
             }
 
-            impl From<PolyComm<$g>> for [<Wasm $field_name:camel PolyComm>] {
+            impl From<PolyComm<$g>> for [<Napi $field_name:camel PolyComm>] {
                 fn from(x: PolyComm<$g>) -> Self {
                     let PolyComm { chunks } = x;
-                    let unshifted: Vec<$WasmG> = chunks.into_iter().map(Into::into).collect();
+                    let unshifted: Vec<$NapiG> = chunks.into_iter().map(Into::into).collect();
                     Self {
                         unshifted: unshifted.into(),
                         shifted: None,
@@ -51,9 +64,9 @@ macro_rules! impl_poly_comm {
                 }
             }
 
-            impl From<&PolyComm<$g>> for [<Wasm $field_name:camel PolyComm>] {
+            impl From<&PolyComm<$g>> for [<Napi $field_name:camel PolyComm>] {
                 fn from(x: &PolyComm<$g>) -> Self {
-                    let unshifted: Vec<$WasmG> = x.chunks.iter().map(|chunk| (*chunk).into()).collect();
+                    let unshifted: Vec<$NapiG> = x.chunks.iter().map(|chunk| (*chunk).into()).collect();
                     Self {
                         unshifted: unshifted.into(),
                         shifted: None,
@@ -61,15 +74,15 @@ macro_rules! impl_poly_comm {
                 }
             }
 
-            impl From<[<Wasm $field_name:camel PolyComm>]> for PolyComm<$g> {
-                fn from(x: [<Wasm $field_name:camel PolyComm>]) -> Self {
-                    let [<Wasm $field_name:camel PolyComm>] { unshifted, shifted } = x;
+            impl From<[<Napi $field_name:camel PolyComm>]> for PolyComm<$g> {
+                fn from(x: [<Napi $field_name:camel PolyComm>]) -> Self {
+                    let [<Napi $field_name:camel PolyComm>] { unshifted, shifted } = x;
                     assert!(
                         shifted.is_none(),
                         "mina#14628: Shifted commitments are deprecated and must not be used",
                     );
                     PolyComm {
-                        chunks: Vec::<$WasmG>::from(unshifted)
+                        chunks: Vec::<$NapiG>::from(unshifted)
                             .into_iter()
                             .map(Into::into)
                             .collect(),
@@ -77,8 +90,8 @@ macro_rules! impl_poly_comm {
                 }
             }
 
-            impl From<&[<Wasm $field_name:camel PolyComm>]> for PolyComm<$g> {
-                fn from(x: &[<Wasm $field_name:camel PolyComm>]) -> Self {
+            impl From<&[<Napi $field_name:camel PolyComm>]> for PolyComm<$g> {
+                fn from(x: &[<Napi $field_name:camel PolyComm>]) -> Self {
                     assert!(
                         x.shifted.is_none(),
                         "mina#14628: Shifted commitments are deprecated and must not be used",
@@ -93,22 +106,33 @@ macro_rules! impl_poly_comm {
                     }
                 }
             }
+
+            impl FromNapiValue for [<Napi $field_name:camel PolyComm>] {
+                unsafe fn from_napi_value(
+                    env: napi::sys::napi_env,
+                    napi_val: napi::sys::napi_value,
+                ) -> napi::Result<Self> {
+                    let instance = <ClassInstance<[<Napi $field_name:camel PolyComm>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
+                    Ok((*instance).clone())
+                }
+            }
+
         }
     };
 }
 
 pub mod pallas {
     use super::*;
-    use crate::wrappers::group::WasmGPallas;
-    use mina_curves::pasta::Pallas as GAffine;
+    use crate::wrappers::group::NapiGPallas;
+    use mina_curves::pasta::Pallas;
 
-    impl_poly_comm!(WasmGPallas, GAffine, Fq);
+    impl_poly_comm!(NapiGPallas, Pallas, Fq);
 }
 
 pub mod vesta {
     use super::*;
-    use crate::wrappers::group::WasmGVesta;
-    use mina_curves::pasta::Vesta as GAffine;
+    use crate::wrappers::group::NapiGVesta;
+    use mina_curves::pasta::Vesta;
 
-    impl_poly_comm!(WasmGVesta, GAffine, Fp);
+    impl_poly_comm!(NapiGVesta, Vesta, Fp);
 }

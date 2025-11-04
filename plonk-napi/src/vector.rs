@@ -1,18 +1,18 @@
-use std::{iter::FromIterator, ops::Deref};
-
 use napi::{bindgen_prelude::*, sys};
+use serde::{Deserialize, Serialize};
+use std::{iter::FromIterator, ops::Deref};
 use wasm_types::{FlatVector, FlatVectorElem};
 
-#[derive(Clone, Debug, Default)]
-pub struct WasmVector<T>(pub Vec<T>);
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct NapiVector<T>(pub Vec<T>);
 
-impl<T> WasmVector<T> {
+impl<T> NapiVector<T> {
     pub fn into_inner(self) -> Vec<T> {
         self.0
     }
 }
 
-impl<T> Deref for WasmVector<T> {
+impl<T> Deref for NapiVector<T> {
     type Target = Vec<T>;
 
     fn deref(&self) -> &Self::Target {
@@ -20,25 +20,25 @@ impl<T> Deref for WasmVector<T> {
     }
 }
 
-impl<T> From<Vec<T>> for WasmVector<T> {
+impl<T> From<Vec<T>> for NapiVector<T> {
     fn from(value: Vec<T>) -> Self {
-        WasmVector(value)
+        NapiVector(value)
     }
 }
 
-impl<T> From<WasmVector<T>> for Vec<T> {
-    fn from(value: WasmVector<T>) -> Self {
+impl<T> From<NapiVector<T>> for Vec<T> {
+    fn from(value: NapiVector<T>) -> Self {
         value.0
     }
 }
 
-impl<'a, T> From<&'a WasmVector<T>> for &'a Vec<T> {
-    fn from(value: &'a WasmVector<T>) -> Self {
+impl<'a, T> From<&'a NapiVector<T>> for &'a Vec<T> {
+    fn from(value: &'a NapiVector<T>) -> Self {
         &value.0
     }
 }
 
-impl<T> IntoIterator for WasmVector<T> {
+impl<T> IntoIterator for NapiVector<T> {
     type Item = T;
     type IntoIter = <Vec<T> as IntoIterator>::IntoIter;
 
@@ -47,7 +47,7 @@ impl<T> IntoIterator for WasmVector<T> {
     }
 }
 
-impl<'a, T> IntoIterator for &'a WasmVector<T> {
+impl<'a, T> IntoIterator for &'a NapiVector<T> {
     type Item = &'a T;
     type IntoIter = <&'a Vec<T> as IntoIterator>::IntoIter;
 
@@ -56,19 +56,19 @@ impl<'a, T> IntoIterator for &'a WasmVector<T> {
     }
 }
 
-impl<T> FromIterator<T> for WasmVector<T> {
+impl<T> FromIterator<T> for NapiVector<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        WasmVector(Vec::from_iter(iter))
+        NapiVector(Vec::from_iter(iter))
     }
 }
 
-impl<T> Extend<T> for WasmVector<T> {
+impl<T> Extend<T> for NapiVector<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         self.0.extend(iter);
     }
 }
 
-impl<T> TypeName for WasmVector<T>
+impl<T> TypeName for NapiVector<T>
 where
     Vec<T>: TypeName,
 {
@@ -81,7 +81,7 @@ where
     }
 }
 
-impl<T> ValidateNapiValue for WasmVector<T>
+impl<T> ValidateNapiValue for NapiVector<T>
 where
     Vec<T>: ValidateNapiValue,
     T: FromNapiValue,
@@ -91,23 +91,45 @@ where
     }
 }
 
-impl<T> FromNapiValue for WasmVector<T>
+impl<T> FromNapiValue for NapiVector<T>
 where
     Vec<T>: FromNapiValue,
 {
     unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> Result<Self> {
-        Ok(WasmVector(<Vec<T> as FromNapiValue>::from_napi_value(
+        Ok(NapiVector(<Vec<T> as FromNapiValue>::from_napi_value(
             env, napi_val,
         )?))
     }
 }
 
-impl<T> ToNapiValue for WasmVector<T>
+impl<T> ToNapiValue for NapiVector<T>
 where
     Vec<T>: ToNapiValue,
 {
     unsafe fn to_napi_value(env: sys::napi_env, val: Self) -> Result<sys::napi_value> {
         <Vec<T> as ToNapiValue>::to_napi_value(env, val.0)
+    }
+}
+
+impl<'a, T> ToNapiValue for &'a NapiVector<T>
+where
+    Vec<T>: ToNapiValue,
+    T: Clone,
+{
+    unsafe fn to_napi_value(env: sys::napi_env, val: Self) -> Result<sys::napi_value> {
+        let cloned: Vec<T> = val.0.clone();
+        <Vec<T> as ToNapiValue>::to_napi_value(env, cloned)
+    }
+}
+
+impl<'a, T> ToNapiValue for &'a mut NapiVector<T>
+where
+    Vec<T>: ToNapiValue,
+    T: Clone,
+{
+    unsafe fn to_napi_value(env: sys::napi_env, val: Self) -> Result<sys::napi_value> {
+        let cloned: Vec<T> = val.0.clone();
+        <Vec<T> as ToNapiValue>::to_napi_value(env, cloned)
     }
 }
 
@@ -182,18 +204,18 @@ macro_rules! impl_vec_vec_fp {
 
 pub mod fp {
     use super::*;
-    use crate::wrappers::field::WasmPastaFp;
+    use crate::wrappers::field::NapiPastaFp;
     use mina_curves::pasta::Fp;
     use napi_derive::napi;
 
-    impl_vec_vec_fp!(WasmVecVecFp, Fp, WasmPastaFp);
+    impl_vec_vec_fp!(NapiVecVecFp, Fp, NapiPastaFp);
 }
 
 pub mod fq {
     use super::*;
-    use crate::wrappers::field::WasmPastaFq;
+    use crate::wrappers::field::NapiPastaFq;
     use mina_curves::pasta::Fq;
     use napi_derive::napi;
 
-    impl_vec_vec_fp!(WasmVecVecFq, Fq, WasmPastaFq);
+    impl_vec_vec_fp!(NapiVecVecFq, Fq, NapiPastaFq);
 }

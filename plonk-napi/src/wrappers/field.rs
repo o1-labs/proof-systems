@@ -1,29 +1,50 @@
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use mina_curves::pasta::{Fp, Fq};
 use napi::bindgen_prelude::*;
+use serde::{Deserialize, Serialize};
 use wasm_types::FlatVectorElem;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct WasmPastaFp(pub Fp);
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
+pub struct NapiPastaFp(pub Fp);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct WasmPastaFq(pub Fq);
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
+pub struct NapiPastaFq(pub Fq);
 
 macro_rules! impl_field_wrapper {
     ($name:ident, $field:ty) => {
         impl $name {
-            fn serialize(&self) -> Vec<u8> {
+            fn from_bytes(bytes: &[u8]) -> Self {
+                let value =
+                    <$field>::deserialize_compressed(bytes).expect("deserialization failure");
+                Self(value)
+            }
+
+            fn to_bytes(&self) -> Vec<u8> {
                 let mut bytes = Vec::with_capacity(core::mem::size_of::<$field>());
                 self.0
                     .serialize_compressed(&mut bytes)
                     .expect("serialization failure");
                 bytes
             }
+        }
 
-            fn deserialize(bytes: &[u8]) -> Self {
-                let value =
-                    <$field>::deserialize_compressed(bytes).expect("deserialization failure");
-                Self(value)
+        impl Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                serializer.serialize_bytes(&self.to_bytes())
+            }
+        }
+        impl<'de> Deserialize<'de> for $name {
+            fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                let bytes: Vec<u8> = Vec::<u8>::deserialize(deserializer)?;
+                <$field>::deserialize_compressed(bytes.as_slice())
+                    .map(Self)
+                    .map_err(serde::de::Error::custom)
             }
         }
 
@@ -49,11 +70,11 @@ macro_rules! impl_field_wrapper {
             const FLATTENED_SIZE: usize = core::mem::size_of::<$field>();
 
             fn flatten(self) -> Vec<u8> {
-                self.serialize()
+                self.to_bytes()
             }
 
             fn unflatten(flat: Vec<u8>) -> Self {
-                Self::deserialize(&flat)
+                Self::from_bytes(&flat)
             }
         }
 
@@ -82,18 +103,18 @@ macro_rules! impl_field_wrapper {
                 napi_val: sys::napi_value,
             ) -> Result<Self> {
                 let buffer = <Buffer as FromNapiValue>::from_napi_value(env, napi_val)?;
-                Ok(Self::deserialize(buffer.as_ref()))
+                Ok(Self::from_bytes(buffer.as_ref()))
             }
         }
 
         impl ToNapiValue for $name {
             unsafe fn to_napi_value(env: sys::napi_env, val: Self) -> Result<sys::napi_value> {
-                let buffer = Buffer::from(val.serialize());
+                let buffer = Buffer::from(val.to_bytes());
                 <Buffer as ToNapiValue>::to_napi_value(env, buffer)
             }
         }
     };
 }
 
-impl_field_wrapper!(WasmPastaFp, Fp);
-impl_field_wrapper!(WasmPastaFq, Fq);
+impl_field_wrapper!(NapiPastaFp, Fp);
+impl_field_wrapper!(NapiPastaFq, Fq);
