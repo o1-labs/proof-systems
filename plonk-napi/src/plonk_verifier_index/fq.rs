@@ -1,3 +1,4 @@
+use crate::wrappers::lookups::NapiLookupInfo;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 use ark_serialize::CanonicalSerialize;
 use kimchi::circuits::polynomials::permutation::Shifts as KimchiShifts;
@@ -5,8 +6,6 @@ use mina_curves::pasta::Fq;
 use napi::bindgen_prelude::{Error, Result as NapiResult, Status};
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
-
-use super::WasmLookupInfo;
 
 #[napi(object)]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
@@ -50,7 +49,7 @@ pub struct WasmFqLookupVerifierIndex {
     pub lookup_table: Vec<WasmFqPolyComm>,
     pub lookup_selectors: WasmFqLookupSelectors,
     pub table_ids: Option<WasmFqPolyComm>,
-    pub lookup_info: WasmLookupInfo,
+    pub lookup_info: NapiLookupInfo,
     pub runtime_tables_selector: Option<WasmFqPolyComm>,
 }
 

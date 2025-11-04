@@ -6,7 +6,7 @@ use napi::bindgen_prelude::{Error, Result as NapiResult, Status};
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 
-use super::WasmLookupInfo;
+use crate::wrappers::lookups::NapiLookupInfo;
 
 #[napi(object)]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
@@ -50,7 +50,7 @@ pub struct WasmFpLookupVerifierIndex {
     pub lookup_table: Vec<WasmFpPolyComm>,
     pub lookup_selectors: WasmFpLookupSelectors,
     pub table_ids: Option<WasmFpPolyComm>,
-    pub lookup_info: WasmLookupInfo,
+    pub lookup_info: NapiLookupInfo,
     pub runtime_tables_selector: Option<WasmFpPolyComm>,
 }
 

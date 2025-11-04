@@ -10,7 +10,7 @@ use paste::paste;
 use wasm_types::{FlatVector as WasmFlatVector, FlatVectorElem};
 
 use crate::wrappers::{
-    field::{WasmPastaFp, WasmPastaFq},
+    field::{NapiPastaFp, NapiPastaFq},
     wires::NapiWire,
 };
 
@@ -219,5 +219,5 @@ macro_rules! impl_gate_support {
     };
 }
 
-impl_gate_support!(fp, Fp, WasmPastaFp);
-impl_gate_support!(fq, Fq, WasmPastaFq);
+impl_gate_support!(fp, Fp, NapiPastaFp);
+impl_gate_support!(fq, Fq, NapiPastaFq);

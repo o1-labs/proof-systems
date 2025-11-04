@@ -23,14 +23,13 @@ ark-serialize.workspace = true
 arkworks.workspace = true
 
 # proof-systems
-kimchi.workspace = true
 mina-curves = { path = "../curves" }
 mina-poseidon = { path = "../poseidon" }
 o1-utils = { path = "../utils" }
-kimchi = { path = "../kimchi" }
 poly-commitment = { path = "../poly-commitment" }
 
 getrandom.workspace = true
+kimchi.workspace = true
 libc.workspace = true
 num-bigint.workspace = true
 once_cell.workspace = true
