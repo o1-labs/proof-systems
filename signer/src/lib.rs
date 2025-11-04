@@ -13,6 +13,7 @@ pub use schnorr::Schnorr;
 pub use seckey::SecKey;
 pub use signature::Signature;
 
+pub mod bip39;
 pub mod keypair;
 pub mod pubkey;
 pub mod schnorr;
