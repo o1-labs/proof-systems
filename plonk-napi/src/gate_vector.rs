@@ -382,14 +382,14 @@ macro_rules! impl_gate_support {
                     CoreGateVector::new().into()
                 }
 
-                #[napi(js_name = "serialize")]
+                #[napi]
                 pub fn serialize(&self) -> Result<Uint8Array> {
                     let bytes = rmp_serde::to_vec(self.0.as_slice())
                         .map_err(|e| gate_vector_error("gate vector serialize failed", e))?;
                     Ok(Uint8Array::from(bytes))
                 }
 
-                #[napi(factory, js_name = "deserialize")]
+                #[napi(factory)]
                 pub fn deserialize(bytes: Uint8Array) -> Result<Self> {
                     let gates: Vec<CircuitGate<$F>> = rmp_serde::from_slice(bytes.as_ref())
                         .map_err(|e| gate_vector_error("gate vector deserialize failed", e))?;
