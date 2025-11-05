@@ -1,4 +1,4 @@
-use arkworks::{WasmPastaFp, WasmPastaFq};
+use crate::wrappers::field::{NapiPastaFp, NapiPastaFq};
 use mina_curves::pasta::{Fp, Fq};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, permutation::poseidon_block_cipher};
 use napi::bindgen_prelude::*;
@@ -15,7 +15,7 @@ pub fn caml_pasta_fp_poseidon_block_cipher(state: Uint8Array) -> Result<Uint8Arr
 
     println!("from native rust");
 
-    let mut state_vec: Vec<Fp> = FlatVector::<WasmPastaFp>::from_bytes(state.to_vec())
+    let mut state_vec: Vec<Fp> = FlatVector::<NapiPastaFp>::from_bytes(state.to_vec())
         .into_iter()
         .map(Into::into)
         .collect();
@@ -27,7 +27,7 @@ pub fn caml_pasta_fp_poseidon_block_cipher(state: Uint8Array) -> Result<Uint8Arr
 
     let res: Vec<u8> = state_vec
         .into_iter()
-        .map(WasmPastaFp)
+        .map(NapiPastaFp)
         .flat_map(FlatVectorElem::flatten)
         .collect();
 
@@ -42,7 +42,7 @@ pub fn caml_pasta_fq_poseidon_block_cipher(state: Uint8Array) -> Result<Uint8Arr
 
     println!("from native rust");
 
-    let mut state_vec: Vec<Fq> = FlatVector::<WasmPastaFq>::from_bytes(state.to_vec())
+    let mut state_vec: Vec<Fq> = FlatVector::<NapiPastaFq>::from_bytes(state.to_vec())
         .into_iter()
         .map(Into::into)
         .collect();
@@ -54,7 +54,7 @@ pub fn caml_pasta_fq_poseidon_block_cipher(state: Uint8Array) -> Result<Uint8Arr
 
     let res: Vec<u8> = state_vec
         .into_iter()
-        .map(WasmPastaFq)
+        .map(NapiPastaFq)
         .flat_map(FlatVectorElem::flatten)
         .collect();
 
