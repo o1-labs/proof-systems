@@ -8,7 +8,7 @@ use poly_commitment::{
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{File, OpenOptions},
-    io::{BufReader, BufWriter, Cursor, Seek, SeekFrom::Start},
+    io::{BufReader, BufWriter, Seek, SeekFrom::Start},
     sync::Arc,
 };
 use wasm_bindgen::prelude::*;
@@ -28,25 +28,6 @@ macro_rules! impl_srs {
             pub struct [<Wasm $field_name:camel Srs>](
                 #[wasm_bindgen(skip)]
                 pub Arc<SRS<$G>>);
-
-            #[wasm_bindgen]
-            impl [<Wasm $field_name:camel Srs>] {
-                #[wasm_bindgen(js_name = "serialize")]
-                pub fn serialize(&self) -> Result<Vec<u8>, JsValue> {
-                    let mut buffer = Vec::new();
-                    self.0
-                        .serialize(&mut rmp_serde::Serializer::new(&mut buffer))
-                        .map_err(|e| JsValue::from_str(&format!("srs serialize failed: {e}")))?;
-                    Ok(buffer)
-                }
-
-                #[wasm_bindgen(js_name = "deserialize")]
-                pub fn deserialize(bytes: &[u8]) -> Result<[<Wasm $field_name:camel Srs>], JsValue> {
-                    let srs = SRS::<$G>::deserialize(&mut rmp_serde::Deserializer::new(Cursor::new(bytes)))
-                        .map_err(|e| JsValue::from_str(&format!("srs deserialize failed: {e}")))?;
-                    Ok(Arc::new(srs).into())
-                }
-            }
 
             impl Deref for [<Wasm $field_name:camel Srs>] {
                 type Target = Arc<SRS<$G>>;

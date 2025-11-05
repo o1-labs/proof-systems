@@ -2991,7 +2991,6 @@ dependencies = [
  "o1-utils",
  "once_cell",
  "paste",
- "plonk_wasm",
  "poly-commitment",
  "rand",
  "rayon",
