@@ -7,14 +7,14 @@ use napi::bindgen_prelude::{Error, Status};
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 
-#[napi(object)]
+#[napi(object, js_name = "WasmFpDomain")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct WasmFpDomain {
+pub struct NapiFpDomain {
     pub log_size_of_group: i32,
     pub group_gen: Vec<u8>,
 }
 
-#[napi(object)]
+#[napi(object, js_name = "WasmFpShifts")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct NapiFpShifts {
     pub s0: Vec<u8>,
@@ -26,7 +26,7 @@ pub struct NapiFpShifts {
     pub s6: Vec<u8>,
 }
 
-#[napi(object)]
+#[napi(object, js_name = "WasmFpLookupSelectors")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct NapiFpLookupSelectors {
     pub xor: Option<NapiFpPolyComm>,
@@ -35,7 +35,7 @@ pub struct NapiFpLookupSelectors {
     pub ffmul: Option<NapiFpPolyComm>,
 }
 
-#[napi(object)]
+#[napi(object, js_name = "WasmFpLookupVerifierIndex")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct NapiFpLookupVerifierIndex {
     pub joint_lookup_used: bool,
@@ -46,7 +46,7 @@ pub struct NapiFpLookupVerifierIndex {
     pub runtime_tables_selector: Option<NapiFpPolyComm>,
 }
 
-#[napi(object)]
+#[napi(object, js_name = "WasmFpPlonkVerificationEvals")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct NapiFpPlonkVerificationEvals {
     pub sigma_comm: Vec<NapiFpPolyComm>,
@@ -65,10 +65,10 @@ pub struct NapiFpPlonkVerificationEvals {
     pub rot_comm: Option<NapiFpPolyComm>,
 }
 
-#[napi(object)]
+#[napi(object, js_name = "WasmFpPlonkVerifierIndex")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct NapiFpPlonkVerifierIndex {
-    pub domain: WasmFpDomain,
+    pub domain: NapiFpDomain,
     pub max_poly_size: i32,
     pub public_: i32,
     pub prev_challenges: i32,
@@ -79,7 +79,7 @@ pub struct NapiFpPlonkVerifierIndex {
     pub zk_rows: i32,
 }
 
-#[napi]
+#[napi(js_name = "pasta_fp_plonk_verifier_index_shifts")]
 pub fn caml_pasta_fp_plonk_verifier_index_shifts(
     log2_size: i32,
 ) -> napi::bindgen_prelude::Result<NapiFpShifts> {

@@ -7,14 +7,14 @@ use napi::bindgen_prelude::{Error, Status};
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 
-#[napi(object)]
+#[napi(object, js_name = "WasmFqDomain")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct NapiFqDomain {
     pub log_size_of_group: i32,
     pub group_gen: Vec<u8>,
 }
 
-#[napi(object)]
+#[napi(object, js_name = "WasmFqShifts")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct NapiFqShifts {
     pub s0: Vec<u8>,
@@ -26,7 +26,7 @@ pub struct NapiFqShifts {
     pub s6: Vec<u8>,
 }
 
-#[napi(object)]
+#[napi(object, js_name = "WasmFqLookupSelectors")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct NapiFqLookupSelectors {
     pub xor: Option<NapiFqPolyComm>,
@@ -35,7 +35,7 @@ pub struct NapiFqLookupSelectors {
     pub ffmul: Option<NapiFqPolyComm>,
 }
 
-#[napi(object)]
+#[napi(object, js_name = "WasmFqLookupVerifierIndex")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct NapiFqLookupVerifierIndex {
     pub joint_lookup_used: bool,
@@ -46,7 +46,7 @@ pub struct NapiFqLookupVerifierIndex {
     pub runtime_tables_selector: Option<NapiFqPolyComm>,
 }
 
-#[napi(object)]
+#[napi(object, js_name = "WasmFqPlonkVerificationEvals")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct NapiFqPlonkVerificationEvals {
     pub sigma_comm: Vec<NapiFqPolyComm>,
@@ -65,7 +65,7 @@ pub struct NapiFqPlonkVerificationEvals {
     pub rot_comm: Option<NapiFqPolyComm>,
 }
 
-#[napi(object)]
+#[napi(object, js_name = "WasmFqPlonkVerifierIndex")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct NapiFqPlonkVerifierIndex {
     pub domain: NapiFqDomain,
@@ -79,12 +79,12 @@ pub struct NapiFqPlonkVerifierIndex {
     pub zk_rows: i32,
 }
 
-#[napi]
+#[napi(js_name = "pasta_fq_plonk_verifier_index_shifts")]
 pub fn caml_pasta_fq_plonk_verifier_index_shifts(
     log2_size: i32,
 ) -> napi::bindgen_prelude::Result<NapiFqShifts> {
     println!(
-        "from napi! caml_pasta_fp_plonk_verifier_index_shifts with log2_size {}",
+        "from napi! caml_pasta_fq_plonk_verifier_index_shifts with log2_size {}",
         log2_size
     );
 
