@@ -60,7 +60,12 @@ pub mod shared {
             Gate {
                 typ: cg.typ,
                 wires: GateWires::new([
-                    cg.wires[0], cg.wires[1], cg.wires[2], cg.wires[3], cg.wires[4], cg.wires[5],
+                    cg.wires[0],
+                    cg.wires[1],
+                    cg.wires[2],
+                    cg.wires[3],
+                    cg.wires[4],
+                    cg.wires[5],
                     cg.wires[6],
                 ]),
                 coeffs: cg.coeffs,
@@ -76,7 +81,12 @@ pub mod shared {
             Gate {
                 typ: cg.typ,
                 wires: GateWires::new([
-                    cg.wires[0], cg.wires[1], cg.wires[2], cg.wires[3], cg.wires[4], cg.wires[5],
+                    cg.wires[0],
+                    cg.wires[1],
+                    cg.wires[2],
+                    cg.wires[3],
+                    cg.wires[4],
+                    cg.wires[5],
                     cg.wires[6],
                 ]),
                 coeffs: cg.coeffs.clone(),
@@ -181,7 +191,9 @@ pub mod shared {
     }
 }
 
-pub use self::shared::{Gate as CoreGate, GateVector as CoreGateVector, GateWires as CoreGateWires};
+pub use self::shared::{
+    Gate as CoreGate, GateVector as CoreGateVector, GateWires as CoreGateWires,
+};
 
 #[wasm_bindgen]
 #[derive(Clone, Copy, Debug)]
