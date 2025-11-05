@@ -1,4 +1,4 @@
-use crate::wasm_vector::WasmVector;
+use crate::vector::NapiVector;
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
 use core::ops::Deref;
 use napi::bindgen_prelude::{Error, Result, Status, Uint8Array};
@@ -18,11 +18,11 @@ use wasm_types::FlatVector as WasmFlatVector;
 macro_rules! impl_srs {
     (
         $name:ident,
-        $WasmF:ty,
-        $WasmG:ty,
+        $NapiF:ty,
+        $NapiG:ty,
         $F:ty,
         $G:ty,
-        $WasmPolyComm:ty,
+        $NapiPolyComm:ty,
     ) => {
         paste! {
 
@@ -154,15 +154,15 @@ macro_rules! impl_srs {
                 }
 
                 #[napi]
-                pub fn [<caml_ $name:snake _srs_get>](srs: &[<Napi $name:camel Srs>]) -> Vec<$WasmG> {
+                pub fn [<caml_ $name:snake _srs_get>](srs: &[<Napi $name:camel Srs>]) -> Vec<$NapiG> {
                     println!("Getting SRS with napi");
-                    let mut h_and_gs: Vec<$WasmG> = vec![srs.0.h.into()];
+                    let mut h_and_gs: Vec<$NapiG> = vec![srs.0.h.into()];
                     h_and_gs.extend(srs.0.g.iter().cloned().map(Into::into));
                     h_and_gs
                 }
 
                 #[napi]
-                pub fn [<caml_ $name:snake _srs_set>](h_and_gs: Vec<$WasmG>) -> Result<Self> {
+                pub fn [<caml_ $name:snake _srs_set>](h_and_gs: Vec<$NapiG>) -> Result<Self> {
                     println!("Setting SRS with napi");
                     let mut h_and_gs: Vec<$G> = h_and_gs.into_iter().map(Into::into).collect();
                     if h_and_gs.is_empty() {
@@ -182,7 +182,7 @@ macro_rules! impl_srs {
                     srs: &[<Napi $name:camel Srs>],
                     domain_size: i32,
                     i: i32,
-                ) -> Option<$WasmPolyComm> {
+                ) -> Option<$NapiPolyComm> {
                     println!("Getting maybe lagrange commitment with napi");
                     if !srs
                         .0
@@ -199,7 +199,7 @@ macro_rules! impl_srs {
                 #[napi]
                 pub fn [<caml_ $name:snake _srs_set_lagrange_basis>](srs: &[<Napi $name:camel Srs>],
                     domain_size: i32,
-                    input_bases: WasmVector<$WasmPolyComm>,
+                    input_bases: NapiVector<$NapiPolyComm>,
                 ) {
                     println!("Setting lagrange basis with napi");
                     srs.0.lagrange_bases
@@ -209,7 +209,7 @@ macro_rules! impl_srs {
                 #[napi]
                 pub fn [<caml_ $name:snake _srs_get_lagrange_basis>](srs: &[<Napi $name:camel Srs>],
                     domain_size: i32,
-                ) -> Result<WasmVector<$WasmPolyComm>> {
+                ) -> Result<NapiVector<$NapiPolyComm>> {
                     println!("Getting lagrange basis with napi");
                     let domain = EvaluationDomain::<$F>::new(domain_size as usize)
                         .ok_or_else(invalid_domain_error)?;
@@ -231,9 +231,9 @@ macro_rules! impl_srs {
                 pub fn [<caml_ $name:snake _srs_commit_evaluations>](srs: &[<Napi $name:camel Srs>],
                     domain_size: i32,
                     evals: Uint8Array,
-                ) -> Result<$WasmPolyComm> {
+                ) -> Result<$NapiPolyComm> {
                     println!("Committing evaluations with napi");
-                    let elems: Vec<$F> = WasmFlatVector::<$WasmF>::from_bytes(
+                    let elems: Vec<$F> = WasmFlatVector::<$NapiF>::from_bytes(
                         evals.as_ref().to_vec(),
                     )
                     .into_iter()
@@ -247,9 +247,9 @@ macro_rules! impl_srs {
                 }
 
                 #[napi]
-                pub fn [<caml_ $name:snake _srs_b_poly_commitment>](srs: &[<Napi $name:camel Srs>], chals: Uint8Array) -> Result<$WasmPolyComm> {
+                pub fn [<caml_ $name:snake _srs_b_poly_commitment>](srs: &[<Napi $name:camel Srs>], chals: Uint8Array) -> Result<$NapiPolyComm> {
                     println!("Computing b poly commitment with napi");
-                    let elements: Vec<$F> = WasmFlatVector::<$WasmF>::from_bytes(
+                    let elements: Vec<$F> = WasmFlatVector::<$NapiF>::from_bytes(
                         chals.as_ref().to_vec(),
                     )
                     .into_iter()
@@ -263,12 +263,12 @@ macro_rules! impl_srs {
                 #[napi]
                 pub fn [<caml_ $name:snake _srs_batch_accumulator_check>](
                     srs: &[<Napi $name:camel Srs>],
-                    comms: WasmVector<$WasmG>,
+                    comms: NapiVector<$NapiG>,
                     chals: Uint8Array,
                 ) -> Result<bool> {
                     println!("Performing batch accumulator check with napi");
                     let comms: Vec<$G> = comms.into_iter().map(Into::into).collect();
-                    let chals: Vec<$F> = WasmFlatVector::<$WasmF>::from_bytes(
+                    let chals: Vec<$F> = WasmFlatVector::<$NapiF>::from_bytes(
                         chals.as_ref().to_vec(),
                     )
                     .into_iter()
@@ -286,9 +286,9 @@ macro_rules! impl_srs {
                     srs: &[<Napi $name:camel Srs>],
                     comms: i32,
                     chals: Uint8Array,
-                ) -> Result<WasmVector<$WasmG>> {
+                ) -> Result<NapiVector<$NapiG>> {
                     println!("Generating batch accumulator with napi");
-                    let chals: Vec<$F> = WasmFlatVector::<$WasmF>::from_bytes(
+                    let chals: Vec<$F> = WasmFlatVector::<$NapiF>::from_bytes(
                         chals.as_ref().to_vec(),
                     )
                     .into_iter()
@@ -303,7 +303,7 @@ macro_rules! impl_srs {
                 }
 
                 #[napi]
-                pub fn h(srs: &[<Napi $name:camel Srs>]) -> $WasmG {
+                pub fn h(srs: &[<Napi $name:camel Srs>]) -> $NapiG {
                     println!("Getting h point with napi");
                     srs.h.into()
                 }
@@ -335,31 +335,31 @@ pub fn caml_fq_srs_from_bytes(bytes: Uint8Array) -> Result<fq::NapiFqSrs> {
 pub mod fp {
     use super::*;
     use crate::{
-        poly_comm::vesta::WasmFpPolyComm,
-        wrappers::{field::WasmPastaFp, group::WasmGVesta},
+        poly_comm::vesta::NapiFpPolyComm,
+        wrappers::{field::NapiPastaFp, group::NapiGVesta},
     };
     impl_srs!(
         fp,                        // field name
-        WasmPastaFp,               // Napi field wrapper
-        WasmGVesta,                // Napi group wrapper
+        NapiPastaFp,               // Napi field wrapper
+        NapiGVesta,                // Napi group wrapper
         mina_curves::pasta::Fp,    // Actual Kimchi field
         mina_curves::pasta::Vesta, // Actual kimchi group
-        WasmFpPolyComm,            // Napi poly commitment type
+        NapiFpPolyComm,            // Napi poly commitment type
     );
 }
 
 pub mod fq {
     use super::*;
     use crate::{
-        poly_comm::pallas::WasmFqPolyComm,
-        wrappers::{field::WasmPastaFq, group::WasmGPallas},
+        poly_comm::pallas::NapiFqPolyComm,
+        wrappers::{field::NapiPastaFq, group::NapiGPallas},
     };
     impl_srs!(
         fq,                         // Field name
-        WasmPastaFq,                // Napi field wrapper
-        WasmGPallas,                // Napi group wrapper
+        NapiPastaFq,                // Napi field wrapper
+        NapiGPallas,                // Napi group wrapper
         mina_curves::pasta::Fq,     // Actual Kimchi field
         mina_curves::pasta::Pallas, // Actual kimchi group
-        WasmFqPolyComm,             // Napi poly commitment type
+        NapiFqPolyComm,             // Napi poly commitment type
     );
 }

@@ -1,4 +1,4 @@
-use crate::{build_info::report_native_call, pasta_fp_plonk_index::WasmPastaFpPlonkIndex};
+use crate::{build_info::report_native_call, pasta_fp_plonk_index::NapiPastaFpPlonkIndex};
 use ark_ff::PrimeField;
 use kimchi::circuits::{constraints::ConstraintSystem, gate::CircuitGate};
 use mina_curves::pasta::Fp;
@@ -29,7 +29,7 @@ where
 }
 
 #[napi(js_name = "prover_to_json")]
-pub fn prover_to_json(prover_index: &External<WasmPastaFpPlonkIndex>) -> String {
+pub fn prover_to_json(prover_index: &External<NapiPastaFpPlonkIndex>) -> String {
     report_native_call();
 
     let circuit: Circuit<Fp> = prover_index.0.cs.as_ref().into();

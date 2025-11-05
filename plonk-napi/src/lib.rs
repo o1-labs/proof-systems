@@ -26,10 +26,12 @@ pub use gate_vector::{
     NapiFqGateVector as WasmFqGateVector,
 };
 pub use pasta_fp_plonk_index::{
-    prover_index_fp_from_bytes, prover_index_fp_to_bytes, WasmPastaFpPlonkIndex,
+    prover_index_fp_from_bytes, prover_index_fp_to_bytes,
+    NapiPastaFpPlonkIndex as WasmPastaFpPlonkIndex,
 };
 pub use pasta_fq_plonk_index::{
-    prover_index_fq_from_bytes, prover_index_fq_to_bytes, WasmPastaFqPlonkIndex,
+    prover_index_fq_from_bytes, prover_index_fq_to_bytes,
+    NapiPastaFqPlonkIndex as WasmPastaFqPlonkIndex,
 };
 pub use plonk_verifier_index::{
     caml_pasta_fp_plonk_verifier_index_shifts, caml_pasta_fq_plonk_verifier_index_shifts,

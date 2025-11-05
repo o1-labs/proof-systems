@@ -1,6 +1,7 @@
 use crate::{
     build_info::report_native_call,
     gate_vector::NapiFqGateVector,
+    srs::fq::NapiFqSrs,
     tables::{
         lookup_table_fq_from_js, runtime_table_cfg_fq_from_js, JsLookupTableFq, JsRuntimeTableCfgFq,
     },
@@ -12,9 +13,8 @@ use kimchi::{
 };
 use mina_curves::pasta::{Fq, Pallas as GAffine, PallasParameters, Vesta as GAffineOther};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
-use napi::bindgen_prelude::{Error, External, Result as NapiResult, Status, Uint8Array};
+use napi::bindgen_prelude::{Error, External, Status, Uint8Array};
 use napi_derive::napi;
-use plonk_wasm::srs::fq::WasmFqSrs as WasmSrs;
 use poly_commitment::{
     ipa::{OpeningProof, SRS as IPA_SRS},
     SRS,
@@ -25,7 +25,7 @@ use std::{
     io::{BufReader, BufWriter, Cursor, Seek, SeekFrom::Start},
     sync::Arc,
 };
-pub struct WasmPastaFqPlonkIndex(pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>);
+pub struct NapiPastaFqPlonkIndex(pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>);
 
 #[derive(Serialize, Deserialize)]
 struct SerializedProverIndex {
@@ -33,7 +33,7 @@ struct SerializedProverIndex {
     srs: Vec<u8>,
 }
 
-impl WasmPastaFqPlonkIndex {
+impl NapiPastaFqPlonkIndex {
     fn serialize_inner(&self) -> Result<Vec<u8>, String> {
         let prover_index = rmp_serde::to_vec(self.0.as_ref()).map_err(|e| e.to_string())?;
 
@@ -73,7 +73,7 @@ impl WasmPastaFqPlonkIndex {
             DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>,
         >();
 
-        Ok(WasmPastaFqPlonkIndex(Box::new(index)))
+        Ok(NapiPastaFqPlonkIndex(Box::new(index)))
     }
 }
 
@@ -81,17 +81,19 @@ impl WasmPastaFqPlonkIndex {
 #[napi(js_name = "prover_index_fq_from_bytes")]
 pub fn prover_index_fq_from_bytes(
     bytes: Uint8Array,
-) -> NapiResult<External<WasmPastaFqPlonkIndex>> {
+) -> napi::bindgen_prelude::Result<External<NapiPastaFqPlonkIndex>> {
     report_native_call();
 
-    let index = WasmPastaFqPlonkIndex::deserialize_inner(bytes.as_ref())
+    let index = NapiPastaFqPlonkIndex::deserialize_inner(bytes.as_ref())
         .map_err(|e| Error::new(Status::InvalidArg, e))?;
     Ok(External::new(index))
 }
 
 // TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
 #[napi(js_name = "prover_index_fq_to_bytes")]
-pub fn prover_index_fq_to_bytes(index: External<WasmPastaFqPlonkIndex>) -> NapiResult<Uint8Array> {
+pub fn prover_index_fq_to_bytes(
+    index: &External<NapiPastaFqPlonkIndex>,
+) -> napi::bindgen_prelude::Result<Uint8Array> {
     report_native_call();
 
     let bytes = index
@@ -101,27 +103,27 @@ pub fn prover_index_fq_to_bytes(index: External<WasmPastaFqPlonkIndex>) -> NapiR
 }
 
 #[napi]
-pub fn caml_pasta_fq_plonk_index_max_degree(index: External<WasmPastaFqPlonkIndex>) -> i32 {
+pub fn caml_pasta_fq_plonk_index_max_degree(index: &External<NapiPastaFqPlonkIndex>) -> i32 {
     index.0.srs.max_poly_size() as i32
 }
 
 #[napi]
-pub fn caml_pasta_fq_plonk_index_public_inputs(index: External<WasmPastaFqPlonkIndex>) -> i32 {
+pub fn caml_pasta_fq_plonk_index_public_inputs(index: &External<NapiPastaFqPlonkIndex>) -> i32 {
     index.0.cs.public as i32
 }
 
 #[napi]
-pub fn caml_pasta_fq_plonk_index_domain_d1_size(index: External<WasmPastaFqPlonkIndex>) -> i32 {
+pub fn caml_pasta_fq_plonk_index_domain_d1_size(index: &External<NapiPastaFqPlonkIndex>) -> i32 {
     index.0.cs.domain.d1.size() as i32
 }
 
 #[napi]
-pub fn caml_pasta_fq_plonk_index_domain_d4_size(index: External<WasmPastaFqPlonkIndex>) -> i32 {
+pub fn caml_pasta_fq_plonk_index_domain_d4_size(index: &External<NapiPastaFqPlonkIndex>) -> i32 {
     index.0.cs.domain.d4.size() as i32
 }
 
 #[napi]
-pub fn caml_pasta_fq_plonk_index_domain_d8_size(index: External<WasmPastaFqPlonkIndex>) -> i32 {
+pub fn caml_pasta_fq_plonk_index_domain_d8_size(index: &External<NapiPastaFqPlonkIndex>) -> i32 {
     index.0.cs.domain.d8.size() as i32
 }
 
@@ -132,9 +134,9 @@ pub fn caml_pasta_fq_plonk_index_create(
     lookup_tables: Vec<JsLookupTableFq>,
     runtime_table_cfgs: Vec<JsRuntimeTableCfgFq>,
     prev_challenges: i32,
-    srs: External<WasmSrs>,
+    srs: &External<NapiFqSrs>,
     lazy_mode: bool,
-) -> Result<External<WasmPastaFqPlonkIndex>, Error> {
+) -> Result<External<NapiPastaFqPlonkIndex>, Error> {
     // TODO: check if and how we run rayon threads automatically in napi
 
     let gates: Vec<_> = gates.to_vec();
@@ -182,14 +184,14 @@ pub fn caml_pasta_fq_plonk_index_create(
     );
     index.compute_verifier_index_digest::<DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>>();
 
-    Ok(External::new(WasmPastaFqPlonkIndex(Box::new(index))))
+    Ok(External::new(NapiPastaFqPlonkIndex(Box::new(index))))
 }
 
 #[napi]
 pub fn caml_pasta_fq_plonk_index_decode(
     bytes: &[u8],
-    srs: External<WasmSrs>,
-) -> Result<External<WasmPastaFqPlonkIndex>, Error> {
+    srs: &External<NapiFqSrs>,
+) -> Result<External<NapiPastaFqPlonkIndex>, Error> {
     let mut deserializer = rmp_serde::Deserializer::new(bytes);
     let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
         .map_err(|e| {
@@ -203,12 +205,12 @@ pub fn caml_pasta_fq_plonk_index_decode(
     index.linearization = linearization;
     index.powers_of_alpha = powers_of_alpha;
 
-    Ok(External::new(WasmPastaFqPlonkIndex(Box::new(index))))
+    Ok(External::new(NapiPastaFqPlonkIndex(Box::new(index))))
 }
 
 #[napi]
 pub fn caml_pasta_fq_plonk_index_encode(
-    index: External<WasmPastaFqPlonkIndex>,
+    index: &External<NapiPastaFqPlonkIndex>,
 ) -> Result<Vec<u8>, Error> {
     let mut buffer = Vec::new();
     let mut serializer = rmp_serde::Serializer::new(&mut buffer);
@@ -224,7 +226,7 @@ pub fn caml_pasta_fq_plonk_index_encode(
 #[napi]
 pub fn caml_pasta_fq_plonk_index_write(
     append: Option<bool>,
-    index: External<WasmPastaFqPlonkIndex>,
+    index: &External<NapiPastaFqPlonkIndex>,
     path: String,
 ) -> Result<(), Error> {
     let file = OpenOptions::new()
@@ -246,9 +248,9 @@ pub fn caml_pasta_fq_plonk_index_write(
 #[napi]
 pub fn caml_pasta_fq_plonk_index_read(
     offset: Option<i32>,
-    srs: External<WasmSrs>,
+    srs: &External<NapiFqSrs>,
     path: String,
-) -> Result<External<WasmPastaFqPlonkIndex>, Error> {
+) -> Result<External<NapiPastaFqPlonkIndex>, Error> {
     // read from file
     let file = match File::open(path) {
         Err(_) => {
@@ -287,5 +289,5 @@ pub fn caml_pasta_fq_plonk_index_read(
     t.powers_of_alpha = powers_of_alpha;
 
     //
-    Ok(External::new(WasmPastaFqPlonkIndex(Box::new(t))))
+    Ok(External::new(NapiPastaFqPlonkIndex(Box::new(t))))
 }
