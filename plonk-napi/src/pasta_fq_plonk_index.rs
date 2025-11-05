@@ -102,32 +102,32 @@ pub fn prover_index_fq_to_bytes(
     Ok(Uint8Array::from(bytes))
 }
 
-#[napi]
+#[napi(js_name = "pasta_fq_plonk_index_max_degree")]
 pub fn caml_pasta_fq_plonk_index_max_degree(index: &External<NapiPastaFqPlonkIndex>) -> i32 {
     index.0.srs.max_poly_size() as i32
 }
 
-#[napi]
+#[napi(js_name = "pasta_fq_plonk_index_public_inputs")]
 pub fn caml_pasta_fq_plonk_index_public_inputs(index: &External<NapiPastaFqPlonkIndex>) -> i32 {
     index.0.cs.public as i32
 }
 
-#[napi]
+#[napi(js_name = "pasta_fq_plonk_index_domain_d1_size")]
 pub fn caml_pasta_fq_plonk_index_domain_d1_size(index: &External<NapiPastaFqPlonkIndex>) -> i32 {
     index.0.cs.domain.d1.size() as i32
 }
 
-#[napi]
+#[napi(js_name = "pasta_fq_plonk_index_domain_d4_size")]
 pub fn caml_pasta_fq_plonk_index_domain_d4_size(index: &External<NapiPastaFqPlonkIndex>) -> i32 {
     index.0.cs.domain.d4.size() as i32
 }
 
-#[napi]
+#[napi(js_name = "pasta_fq_plonk_index_domain_d8_size")]
 pub fn caml_pasta_fq_plonk_index_domain_d8_size(index: &External<NapiPastaFqPlonkIndex>) -> i32 {
     index.0.cs.domain.d8.size() as i32
 }
 
-#[napi]
+#[napi(js_name = "pasta_fq_plonk_index_create")]
 pub fn caml_pasta_fq_plonk_index_create(
     gates: &NapiFqGateVector,
     public_: i32,
@@ -187,7 +187,7 @@ pub fn caml_pasta_fq_plonk_index_create(
     Ok(External::new(NapiPastaFqPlonkIndex(Box::new(index))))
 }
 
-#[napi]
+#[napi(js_name = "pasta_fq_plonk_index_decode")]
 pub fn caml_pasta_fq_plonk_index_decode(
     bytes: &[u8],
     srs: &External<NapiFqSrs>,
@@ -208,7 +208,7 @@ pub fn caml_pasta_fq_plonk_index_decode(
     Ok(External::new(NapiPastaFqPlonkIndex(Box::new(index))))
 }
 
-#[napi]
+#[napi(js_name = "pasta_fq_plonk_index_encode")]
 pub fn caml_pasta_fq_plonk_index_encode(
     index: &External<NapiPastaFqPlonkIndex>,
 ) -> Result<Vec<u8>, Error> {
@@ -223,7 +223,7 @@ pub fn caml_pasta_fq_plonk_index_encode(
     Ok(buffer)
 }
 
-#[napi]
+#[napi(js_name = "pasta_fq_plonk_index_write")]
 pub fn caml_pasta_fq_plonk_index_write(
     append: Option<bool>,
     index: &External<NapiPastaFqPlonkIndex>,
@@ -245,7 +245,7 @@ pub fn caml_pasta_fq_plonk_index_write(
         })
 }
 
-#[napi]
+#[napi(js_name = "pasta_fq_plonk_index_read")]
 pub fn caml_pasta_fq_plonk_index_read(
     offset: Option<i32>,
     srs: &External<NapiFqSrs>,
