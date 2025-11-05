@@ -1,10 +1,10 @@
 use kimchi::circuits::{
-    constraints::FeatureFlags as KimchiFeatureFlags,
+    constraints::FeatureFlags,
     lookup::lookups::{LookupFeatures, LookupPatterns},
 };
 use napi_derive::napi;
 
-#[napi(object)]
+#[napi(object, js_name = "WasmFeatureFlags")]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct NapiFeatureFlags {
     pub range_check0: bool,
@@ -17,8 +17,8 @@ pub struct NapiFeatureFlags {
     pub runtime_tables: bool,
 }
 
-impl From<KimchiFeatureFlags> for NapiFeatureFlags {
-    fn from(value: KimchiFeatureFlags) -> Self {
+impl From<FeatureFlags> for NapiFeatureFlags {
+    fn from(value: FeatureFlags) -> Self {
         let LookupPatterns {
             xor,
             lookup,
@@ -39,9 +39,9 @@ impl From<KimchiFeatureFlags> for NapiFeatureFlags {
     }
 }
 
-impl From<NapiFeatureFlags> for KimchiFeatureFlags {
+impl From<NapiFeatureFlags> for FeatureFlags {
     fn from(value: NapiFeatureFlags) -> Self {
-        KimchiFeatureFlags {
+        FeatureFlags {
             range_check0: value.range_check0,
             range_check1: value.range_check1,
             foreign_field_add: value.foreign_field_add,
