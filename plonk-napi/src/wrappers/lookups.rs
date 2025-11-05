@@ -1,30 +1,25 @@
+use crate::{
+    vector::{fp::NapiVecVecFp, fq::NapiVecVecFq},
+    wrappers::field::{NapiPastaFp, NapiPastaFq},
+};
 use kimchi::circuits::lookup::{
-    lookups::{
-        LookupFeatures as KimchiLookupFeatures, LookupInfo as KimchiLookupInfo,
-        LookupPatterns as KimchiLookupPatterns,
-    },
-    runtime_tables::{
-        RuntimeTable as KimchiRuntimeTable, RuntimeTableCfg as KimchiRuntimeTableCfg,
-    },
-    tables::LookupTable as KimchiLookupTable,
+    lookups::{LookupFeatures, LookupInfo, LookupPatterns},
+    runtime_tables::{RuntimeTable, RuntimeTableCfg},
+    tables::LookupTable,
 };
 use mina_curves::pasta::{Fp, Fq};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use paste::paste;
+use serde::{Deserialize, Serialize};
 use wasm_types::{FlatVector, FlatVectorElem};
-
-use crate::{
-    wasm_vector::{fp::WasmVecVecFp, fq::WasmVecVecFq},
-    wrappers::field::{WasmPastaFp, WasmPastaFq},
-};
 
 // -----------------
 // Lookup pattern and info wrappers
 // -----------------
 
 #[napi(object)]
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Default)]
 pub struct NapiLookupPatterns {
     pub xor: bool,
     pub lookup: bool,
@@ -32,8 +27,8 @@ pub struct NapiLookupPatterns {
     pub foreign_field_mul: bool,
 }
 
-impl From<KimchiLookupPatterns> for NapiLookupPatterns {
-    fn from(value: KimchiLookupPatterns) -> Self {
+impl From<LookupPatterns> for NapiLookupPatterns {
+    fn from(value: LookupPatterns) -> Self {
         Self {
             xor: value.xor,
             lookup: value.lookup,
@@ -43,9 +38,9 @@ impl From<KimchiLookupPatterns> for NapiLookupPatterns {
     }
 }
 
-impl From<NapiLookupPatterns> for KimchiLookupPatterns {
+impl From<NapiLookupPatterns> for LookupPatterns {
     fn from(value: NapiLookupPatterns) -> Self {
-        KimchiLookupPatterns {
+        LookupPatterns {
             xor: value.xor,
             lookup: value.lookup,
             range_check: value.range_check,
@@ -55,15 +50,15 @@ impl From<NapiLookupPatterns> for KimchiLookupPatterns {
 }
 
 #[napi(object)]
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct NapiLookupFeatures {
     pub patterns: NapiLookupPatterns,
     pub joint_lookup_used: bool,
     pub uses_runtime_tables: bool,
 }
 
-impl From<KimchiLookupFeatures> for NapiLookupFeatures {
-    fn from(value: KimchiLookupFeatures) -> Self {
+impl From<LookupFeatures> for NapiLookupFeatures {
+    fn from(value: LookupFeatures) -> Self {
         Self {
             patterns: value.patterns.into(),
             joint_lookup_used: value.joint_lookup_used,
@@ -72,9 +67,9 @@ impl From<KimchiLookupFeatures> for NapiLookupFeatures {
     }
 }
 
-impl From<NapiLookupFeatures> for KimchiLookupFeatures {
+impl From<NapiLookupFeatures> for LookupFeatures {
     fn from(value: NapiLookupFeatures) -> Self {
-        KimchiLookupFeatures {
+        LookupFeatures {
             patterns: value.patterns.into(),
             joint_lookup_used: value.joint_lookup_used,
             uses_runtime_tables: value.uses_runtime_tables,
@@ -83,28 +78,28 @@ impl From<NapiLookupFeatures> for KimchiLookupFeatures {
 }
 
 #[napi(object)]
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct NapiLookupInfo {
-    pub max_per_row: u32,
-    pub max_joint_size: u32,
+    pub max_per_row: i32,
+    pub max_joint_size: i32,
     pub features: NapiLookupFeatures,
 }
 
-impl From<KimchiLookupInfo> for NapiLookupInfo {
-    fn from(value: KimchiLookupInfo) -> Self {
+impl From<LookupInfo> for NapiLookupInfo {
+    fn from(value: LookupInfo) -> Self {
         Self {
-            max_per_row: value.max_per_row as u32,
-            max_joint_size: value.max_joint_size as u32,
+            max_per_row: value.max_per_row as i32,
+            max_joint_size: value.max_joint_size as i32,
             features: value.features.into(),
         }
     }
 }
 
-impl From<NapiLookupInfo> for KimchiLookupInfo {
+impl From<NapiLookupInfo> for LookupInfo {
     fn from(value: NapiLookupInfo) -> Self {
-        KimchiLookupInfo {
+        LookupInfo {
             max_per_row: value.max_per_row as usize,
-            max_joint_size: value.max_joint_size,
+            max_joint_size: value.max_joint_size as u32,
             features: value.features.into(),
         }
     }
@@ -115,7 +110,7 @@ impl From<NapiLookupInfo> for KimchiLookupInfo {
 // -----------------
 
 macro_rules! impl_lookup_wrappers {
-    ($name:ident, $field:ty, $wasm_field:ty, $vec_vec:ty) => {
+    ($name:ident, $field:ty, $NapiF:ty, $vec_vec:ty) => {
         paste! {
             #[napi]
             #[derive(Clone)]
@@ -127,10 +122,10 @@ macro_rules! impl_lookup_wrappers {
             #[napi]
             impl [<NapiLookupTable $name:camel>] {
                 #[napi(constructor)]
-                pub fn new(id: i32, data: External<$vec_vec>) -> Self {
+                pub fn new(id: i32, data: $vec_vec) -> Self {
                     Self {
                         id,
-                        data: data.as_ref().clone(),
+                        data: data.clone(),
                     }
                 }
 
@@ -145,18 +140,18 @@ macro_rules! impl_lookup_wrappers {
                 }
 
                 #[napi(getter)]
-                pub fn data(&self) -> External<$vec_vec> {
-                    External::new(self.data.clone())
+                pub fn data(&self) -> $vec_vec {
+                    self.data.clone()
                 }
 
                 #[napi(setter)]
-                pub fn set_data(&mut self, data: External<$vec_vec>) {
-                    self.data = data.as_ref().clone();
+                pub fn set_data(&mut self, data: $vec_vec) {
+                    self.data = data.clone();
                 }
             }
 
-            impl From<KimchiLookupTable<$field>> for [<NapiLookupTable $name:camel>] {
-                fn from(value: KimchiLookupTable<$field>) -> Self {
+            impl From<LookupTable<$field>> for [<NapiLookupTable $name:camel>] {
+                fn from(value: LookupTable<$field>) -> Self {
                     Self {
                         id: value.id,
                         data: value.data.into(),
@@ -164,7 +159,7 @@ macro_rules! impl_lookup_wrappers {
                 }
             }
 
-            impl From<[<NapiLookupTable $name:camel>]> for KimchiLookupTable<$field> {
+            impl From<[<NapiLookupTable $name:camel>]> for LookupTable<$field> {
                 fn from(value: [<NapiLookupTable $name:camel>]) -> Self {
                     Self {
                         id: value.id,
@@ -185,7 +180,7 @@ macro_rules! impl_lookup_wrappers {
                 #[napi(constructor)]
                 pub fn new(id: i32, first_column: Uint8Array) -> Result<Self> {
                     let bytes = first_column.as_ref().to_vec();
-                    let elements: Vec<$field> = FlatVector::<$wasm_field>::from_bytes(bytes)
+                    let elements: Vec<$field> = FlatVector::<$NapiF>::from_bytes(bytes)
                         .into_iter()
                         .map(Into::into)
                         .collect();
@@ -204,17 +199,17 @@ macro_rules! impl_lookup_wrappers {
 
                 #[napi(getter)]
                 pub fn first_column(&self) -> Result<Uint8Array> {
-                    let mut bytes = Vec::with_capacity(self.first_column.len() * <$wasm_field>::FLATTENED_SIZE);
+                    let mut bytes = Vec::with_capacity(self.first_column.len() * <$NapiF>::FLATTENED_SIZE);
                     for value in &self.first_column {
-                        let element = <$wasm_field>::from(*value);
+                        let element = <$NapiF>::from(*value);
                         bytes.extend(element.flatten());
                     }
                     Ok(Uint8Array::from(bytes))
                 }
             }
 
-            impl From<KimchiRuntimeTableCfg<$field>> for [<NapiRuntimeTableCfg $name:camel>] {
-                fn from(value: KimchiRuntimeTableCfg<$field>) -> Self {
+            impl From<RuntimeTableCfg<$field>> for [<NapiRuntimeTableCfg $name:camel>] {
+                fn from(value: RuntimeTableCfg<$field>) -> Self {
                     Self {
                         id: value.id,
                         first_column: value.first_column,
@@ -222,7 +217,7 @@ macro_rules! impl_lookup_wrappers {
                 }
             }
 
-            impl From<[<NapiRuntimeTableCfg $name:camel>]> for KimchiRuntimeTableCfg<$field> {
+            impl From<[<NapiRuntimeTableCfg $name:camel>]> for RuntimeTableCfg<$field> {
                 fn from(value: [<NapiRuntimeTableCfg $name:camel>]) -> Self {
                     Self {
                         id: value.id,
@@ -243,7 +238,7 @@ macro_rules! impl_lookup_wrappers {
                 #[napi(constructor)]
                 pub fn new(id: i32, data: Uint8Array) -> Result<Self> {
                     let bytes = data.as_ref().to_vec();
-                    let elements: Vec<$field> = FlatVector::<$wasm_field>::from_bytes(bytes)
+                    let elements: Vec<$field> = FlatVector::<$NapiF>::from_bytes(bytes)
                         .into_iter()
                         .map(Into::into)
                         .collect();
@@ -262,17 +257,17 @@ macro_rules! impl_lookup_wrappers {
 
                 #[napi(getter)]
                 pub fn data(&self) -> Result<Uint8Array> {
-                    let mut bytes = Vec::with_capacity(self.data.len() * <$wasm_field>::FLATTENED_SIZE);
+                    let mut bytes = Vec::with_capacity(self.data.len() * <$NapiF>::FLATTENED_SIZE);
                     for value in &self.data {
-                        let element = <$wasm_field>::from(*value);
+                        let element = <$NapiF>::from(*value);
                         bytes.extend(element.flatten());
                     }
                     Ok(Uint8Array::from(bytes))
                 }
             }
 
-            impl From<KimchiRuntimeTable<$field>> for [<NapiRuntimeTable $name:camel>] {
-                fn from(value: KimchiRuntimeTable<$field>) -> Self {
+            impl From<RuntimeTable<$field>> for [<NapiRuntimeTable $name:camel>] {
+                fn from(value: RuntimeTable<$field>) -> Self {
                     Self {
                         id: value.id,
                         data: value.data,
@@ -280,7 +275,7 @@ macro_rules! impl_lookup_wrappers {
                 }
             }
 
-            impl From<[<NapiRuntimeTable $name:camel>]> for KimchiRuntimeTable<$field> {
+            impl From<[<NapiRuntimeTable $name:camel>]> for RuntimeTable<$field> {
                 fn from(value: [<NapiRuntimeTable $name:camel>]) -> Self {
                     Self {
                         id: value.id,
@@ -292,5 +287,5 @@ macro_rules! impl_lookup_wrappers {
     };
 }
 
-impl_lookup_wrappers!(Fp, Fp, WasmPastaFp, WasmVecVecFp);
-impl_lookup_wrappers!(Fq, Fq, WasmPastaFq, WasmVecVecFq);
+impl_lookup_wrappers!(Fp, Fp, NapiPastaFp, NapiVecVecFp);
+impl_lookup_wrappers!(Fq, Fq, NapiPastaFq, NapiVecVecFq);
