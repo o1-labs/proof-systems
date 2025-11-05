@@ -206,7 +206,7 @@ fn gate_vector_error(context: &str, err: impl std::fmt::Display) -> Error {
     Error::new(Status::GenericFailure, format!("{}: {}", context, err))
 }
 
-#[napi(object)]
+#[napi(object, js_name = "WasmGateWires")]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct NapiGateWires {
     pub w0: NapiWire,
@@ -300,7 +300,7 @@ fn gate_type_to_i32(value: GateType) -> i32 {
 macro_rules! impl_gate_support {
     ($field_name:ident, $F:ty, $WasmF:ty) => {
         paste! {
-            #[napi(object)]
+            #[napi(object, js_name = [<"Wasm" $field_name:camel "Gate">])]
             #[derive(Clone, Debug, Default)]
             pub struct [<Napi $field_name:camel Gate>] {
                 pub typ: i32, // for convenience, we use i32 instead of GateType
@@ -349,7 +349,7 @@ macro_rules! impl_gate_support {
                 }
             }
 
-            #[napi]
+            #[napi(js_name = [<"Wasm" $field_name:camel "GateVector">])]
             #[derive(Clone, Debug, Default)]
             pub struct [<Napi $field_name:camel GateVector>](
                 #[napi(skip)] pub CoreGateVector<$F>,
@@ -413,12 +413,12 @@ macro_rules! impl_gate_support {
                 }
             }
 
-            #[napi]
+            #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_gate_vector_create">])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_create>]() -> [<Napi $field_name:camel GateVector>] {
                 [<Napi $field_name:camel GateVector>]::new()
             }
 
-            #[napi]
+            #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_gate_vector_add">])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_add>](
                 vector: &mut [<Napi $field_name:camel GateVector>],
                 gate: [<Napi $field_name:camel Gate>],
@@ -428,7 +428,7 @@ macro_rules! impl_gate_support {
                 Ok(())
             }
 
-            #[napi]
+            #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_gate_vector_get">])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_get>](
                 vector: &[<Napi $field_name:camel GateVector>],
                 index: i32,
@@ -440,14 +440,14 @@ macro_rules! impl_gate_support {
                 [<Napi $field_name:camel Gate>]::from_inner(gate)
             }
 
-            #[napi]
+            #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_gate_vector_len">])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_len>](
                 vector: &[<Napi $field_name:camel GateVector>],
             ) -> i32 {
                 vector.as_slice().len() as i32
             }
 
-            #[napi]
+            #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_gate_vector_wrap">])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_wrap>](
                 vector: &mut [<Napi $field_name:camel GateVector>],
                 target: NapiWire,
@@ -458,7 +458,7 @@ macro_rules! impl_gate_support {
                 vector.inner_mut().wrap_wire(target, head);
             }
 
-            #[napi]
+            #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_gate_vector_digest">])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_digest>](
                 public_input_size: i32,
                 vector: &[<Napi $field_name:camel GateVector>],
@@ -467,7 +467,7 @@ macro_rules! impl_gate_support {
                 Uint8Array::from(bytes)
             }
 
-            #[napi]
+            #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_circuit_serialize">])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_circuit_serialize>](
                 public_input_size: i32,
                 vector: &[<Napi $field_name:camel GateVector>],
@@ -483,14 +483,14 @@ macro_rules! impl_gate_support {
                     })
             }
 
-            #[napi]
+            #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_gate_vector_to_bytes">])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_to_bytes>](
                 vector: &[<Napi $field_name:camel GateVector>],
             ) -> Result<Uint8Array> {
                 vector.serialize()
             }
 
-            #[napi]
+            #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_gate_vector_from_bytes">])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_from_bytes>](
                 bytes: Uint8Array,
             ) -> Result<[<Napi $field_name:camel GateVector>]> {
