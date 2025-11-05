@@ -1,11 +1,10 @@
+use crate::{build_info::report_native_call, pasta_fp_plonk_index::WasmPastaFpPlonkIndex};
 use ark_ff::PrimeField;
 use kimchi::circuits::{constraints::ConstraintSystem, gate::CircuitGate};
 use mina_curves::pasta::Fp;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use serde::Serialize;
-
-use crate::pasta_fp_plonk_index::WasmPastaFpPlonkIndex;
 
 #[derive(Serialize)]
 struct Circuit<F>
@@ -29,8 +28,10 @@ where
     }
 }
 
-#[napi]
-pub fn prover_to_json(prover_index: External<WasmPastaFpPlonkIndex>) -> String {
+#[napi(js_name = "prover_to_json")]
+pub fn prover_to_json(prover_index: &External<WasmPastaFpPlonkIndex>) -> String {
+    report_native_call();
+
     let circuit: Circuit<Fp> = prover_index.0.cs.as_ref().into();
     serde_json::to_string(&circuit).expect("couldn't serialize constraints")
 }

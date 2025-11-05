@@ -1,28 +1,34 @@
+use crate::{
+    build_info::report_native_call,
+    gate_vector::NapiFpGateVector,
+    tables::{
+        lookup_table_fp_from_js, runtime_table_cfg_fp_from_js, JsLookupTableFp, JsRuntimeTableCfgFp,
+    },
+};
 use ark_poly::EvaluationDomain;
-use kimchi::circuits::constraints::ConstraintSystem;
-use kimchi::circuits::lookup::runtime_tables::RuntimeTableCfg;
-use kimchi::circuits::lookup::tables::LookupTable;
-use kimchi::{linearization::expr_linearization, prover_index::ProverIndex};
+use kimchi::{
+    circuits::{
+        constraints::ConstraintSystem,
+        lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
+    },
+    linearization::expr_linearization,
+    prover_index::ProverIndex,
+};
 use mina_curves::pasta::{Fp, Pallas as GAffineOther, Vesta as GAffine, VestaParameters};
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use napi::bindgen_prelude::{Error, External, Result as NapiResult, Status, Uint8Array};
 use napi_derive::napi;
-use crate::gate_vector::NapiFpGateVector;
-use poly_commitment::ipa::{OpeningProof, SRS as IPA_SRS};
-use poly_commitment::SRS;
+use plonk_wasm::srs::fp::WasmFpSrs as WasmSrs;
+use poly_commitment::{
+    ipa::{OpeningProof, SRS as IPA_SRS},
+    SRS,
+};
 use serde::{Deserialize, Serialize};
-use std::fs::{File, OpenOptions};
-use std::io::{BufReader, BufWriter};
 use std::{
-    io::Cursor,
-    io::{Seek, SeekFrom::Start},
+    fs::{File, OpenOptions},
+    io::{BufReader, BufWriter, Cursor, Seek, SeekFrom::Start},
     sync::Arc,
 };
-
-use crate::tables::{
-    lookup_table_fp_from_js, runtime_table_cfg_fp_from_js, JsLookupTableFp, JsRuntimeTableCfgFp,
-};
-use plonk_wasm::srs::fp::WasmFpSrs as WasmSrs;
 pub struct WasmPastaFpPlonkIndex(pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>);
 
 #[derive(Serialize, Deserialize)]
@@ -75,17 +81,23 @@ impl WasmPastaFpPlonkIndex {
     }
 }
 
-#[napi]
+// TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
+#[napi(js_name = "prover_index_fp_from_bytes")]
 pub fn prover_index_fp_from_bytes(
     bytes: Uint8Array,
 ) -> NapiResult<External<WasmPastaFpPlonkIndex>> {
+    report_native_call();
+
     let index = WasmPastaFpPlonkIndex::deserialize_inner(bytes.as_ref())
         .map_err(|e| Error::new(Status::InvalidArg, e))?;
     Ok(External::new(index))
 }
 
-#[napi]
+// TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
+#[napi(js_name = "prover_index_fp_to_bytes")]
 pub fn prover_index_fp_to_bytes(index: External<WasmPastaFpPlonkIndex>) -> NapiResult<Uint8Array> {
+    report_native_call();
+
     let bytes = index
         .serialize_inner()
         .map_err(|e| Error::new(Status::GenericFailure, e))?;
