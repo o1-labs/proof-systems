@@ -9,7 +9,7 @@ use mina_curves::pasta::{
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 
-#[napi(object)]
+#[napi(object, js_name = "WasmGPallas")]
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct NapiGPallas {
     pub x: NapiPastaFp,
@@ -17,7 +17,7 @@ pub struct NapiGPallas {
     pub infinity: bool,
 }
 
-#[napi(object)]
+#[napi(object, js_name = "WasmGVesta")]
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct NapiGVesta {
     pub x: NapiPastaFq,
@@ -105,7 +105,7 @@ impl From<&NapiGVesta> for AffineVesta {
     }
 }
 
-#[napi]
+#[napi(js_name = "caml_pallas_affine_one")]
 pub fn caml_pallas_affine_one() -> NapiGPallas {
     NapiGPallas {
         x: NapiPastaFp::from(GeneratorPallasX),
@@ -114,7 +114,7 @@ pub fn caml_pallas_affine_one() -> NapiGPallas {
     }
 }
 
-#[napi]
+#[napi(js_name = "caml_vesta_affine_one")]
 pub fn caml_vesta_affine_one() -> NapiGVesta {
     NapiGVesta {
         x: NapiPastaFq::from(GeneratorVestaX),

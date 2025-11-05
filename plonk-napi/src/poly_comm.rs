@@ -12,7 +12,7 @@ macro_rules! impl_poly_comm {
         $field_name:ident
     ) => {
         paste! {
-            #[napi]
+            #[napi(js_name = [<"Wasm" $field_name "PolyComm">])]
             #[derive(Clone, Debug, Serialize, Deserialize, Default)]
             pub struct [<Napi $field_name:camel PolyComm>] {
                 #[napi(skip)]
@@ -37,7 +37,7 @@ macro_rules! impl_poly_comm {
                     self.unshifted.clone()
                 }
 
-                #[napi(setter)]
+                #[napi(setter, js_name = "set_unshifted")]
                 pub fn set_unshifted(&mut self, x: NapiVector<$NapiG>) {
                     self.unshifted = x;
                 }
@@ -47,7 +47,7 @@ macro_rules! impl_poly_comm {
                     self.shifted.clone()
                 }
 
-                #[napi(setter)]
+                #[napi(setter, js_name = "set_shifted")]
                 pub fn set_shifted(&mut self, value: Option<$NapiG>) {
                     self.shifted = value;
                 }
