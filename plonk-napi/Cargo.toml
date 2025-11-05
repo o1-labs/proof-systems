@@ -27,6 +27,7 @@ mina-curves = { path = "../curves" }
 mina-poseidon = { path = "../poseidon" }
 o1-utils = { path = "../utils" }
 poly-commitment = { path = "../poly-commitment" }
+plonk_wasm.workspace = true
 
 getrandom.workspace = true
 kimchi.workspace = true
