@@ -11,6 +11,8 @@ mod tables;
 mod vector;
 mod wrappers;
 
+pub use build_info::{get_native_calls, ARCH_NAME, BACKING, OS_NAME};
+
 pub use circuit::prover_to_json;
 pub use gate_vector::{
     caml_pasta_fp_plonk_circuit_serialize, caml_pasta_fp_plonk_gate_vector_add,
@@ -40,8 +42,9 @@ pub use poly_comm::{
     pallas::NapiFqPolyComm as WasmFqPolyComm, vesta::NapiFpPolyComm as WasmFpPolyComm,
 };
 pub use poseidon::{caml_pasta_fp_poseidon_block_cipher, caml_pasta_fq_poseidon_block_cipher};
+pub use srs::*;
 pub use srs::{
-    caml_fp_srs_from_bytes, caml_fp_srs_to_bytes, caml_fq_srs_from_bytes,
+    caml_fp_srs_from_bytes, caml_fp_srs_to_bytes, caml_fq_srs_from_bytes, caml_fq_srs_to_bytes,
     fp::NapiFpSrs as WasmFpSrs, fq::NapiFqSrs as WasmFqSrs,
 };
 pub use tables::{JsLookupTableFp, JsLookupTableFq, JsRuntimeTableCfgFp, JsRuntimeTableCfgFq};
@@ -50,3 +53,6 @@ pub use wrappers::{
     field::{NapiPastaFp as WasmPastaFp, NapiPastaFq as WasmPastaFq},
     group::{NapiGPallas as WasmGPallas, NapiGVesta as WasmGVesta},
 };
+
+pub use plonk_verifier_index::fp::*;
+pub use plonk_verifier_index::fq::*;
