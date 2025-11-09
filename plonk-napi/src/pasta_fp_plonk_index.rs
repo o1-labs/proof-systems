@@ -1,5 +1,5 @@
-use crate::gate_vector::NapiFpGateVector;
 use crate::WasmFpSrs;
+use crate::{build_info::report_native_call, gate_vector::NapiFpGateVector};
 use ark_poly::EvaluationDomain;
 use kimchi::{
     circuits::{
@@ -33,7 +33,7 @@ struct SerializedProverIndex {
     srs: Vec<u8>,
 }
 
-impl NapiPastaFpPlonkIndex {
+impl WasmPastaFpPlonkIndex {
     fn serialize_inner(&self) -> Result<Vec<u8>, String> {
         let prover_index = rmp_serde::to_vec(self.0.as_ref()).map_err(|e| e.to_string())?;
 
@@ -73,7 +73,7 @@ impl NapiPastaFpPlonkIndex {
             DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
         >();
 
-        Ok(NapiPastaFpPlonkIndex(Box::new(index)))
+        Ok(WasmPastaFpPlonkIndex(Box::new(index)))
     }
 }
 
@@ -81,10 +81,10 @@ impl NapiPastaFpPlonkIndex {
 #[napi(js_name = "prover_index_fp_from_bytes")]
 pub fn prover_index_fp_from_bytes(
     bytes: Uint8Array,
-) -> napi::bindgen_prelude::Result<External<NapiPastaFpPlonkIndex>> {
+) -> napi::bindgen_prelude::Result<External<WasmPastaFpPlonkIndex>> {
     report_native_call();
 
-    let index = NapiPastaFpPlonkIndex::deserialize_inner(bytes.as_ref())
+    let index = WasmPastaFpPlonkIndex::deserialize_inner(bytes.as_ref())
         .map_err(|e| Error::new(Status::InvalidArg, e))?;
     Ok(External::new(index))
 }
@@ -92,7 +92,7 @@ pub fn prover_index_fp_from_bytes(
 // TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
 #[napi(js_name = "prover_index_fp_to_bytes")]
 pub fn prover_index_fp_to_bytes(
-    index: &External<NapiPastaFpPlonkIndex>,
+    index: &External<WasmPastaFpPlonkIndex>,
 ) -> napi::bindgen_prelude::Result<Uint8Array> {
     report_native_call();
 
@@ -103,27 +103,27 @@ pub fn prover_index_fp_to_bytes(
 }
 
 #[napi(js_name = "pasta_fp_plonk_index_max_degree")]
-pub fn caml_pasta_fp_plonk_index_max_degree(index: &External<NapiPastaFpPlonkIndex>) -> i32 {
+pub fn caml_pasta_fp_plonk_index_max_degree(index: &External<WasmPastaFpPlonkIndex>) -> i32 {
     index.0.srs.max_poly_size() as i32
 }
 
 #[napi(js_name = "pasta_fp_plonk_index_public_inputs")]
-pub fn caml_pasta_fp_plonk_index_public_inputs(index: &External<NapiPastaFpPlonkIndex>) -> i32 {
+pub fn caml_pasta_fp_plonk_index_public_inputs(index: &External<WasmPastaFpPlonkIndex>) -> i32 {
     index.0.cs.public as i32
 }
 
 #[napi(js_name = "pasta_fp_plonk_index_domain_d1_size")]
-pub fn caml_pasta_fp_plonk_index_domain_d1_size(index: &External<NapiPastaFpPlonkIndex>) -> i32 {
+pub fn caml_pasta_fp_plonk_index_domain_d1_size(index: &External<WasmPastaFpPlonkIndex>) -> i32 {
     index.0.cs.domain.d1.size() as i32
 }
 
 #[napi(js_name = "pasta_fp_plonk_index_domain_d4_size")]
-pub fn caml_pasta_fp_plonk_index_domain_d4_size(index: &External<NapiPastaFpPlonkIndex>) -> i32 {
+pub fn caml_pasta_fp_plonk_index_domain_d4_size(index: &External<WasmPastaFpPlonkIndex>) -> i32 {
     index.0.cs.domain.d4.size() as i32
 }
 
 #[napi(js_name = "pasta_fp_plonk_index_domain_d8_size")]
-pub fn caml_pasta_fp_plonk_index_domain_d8_size(index: &External<NapiPastaFpPlonkIndex>) -> i32 {
+pub fn caml_pasta_fp_plonk_index_domain_d8_size(index: &External<WasmPastaFpPlonkIndex>) -> i32 {
     index.0.cs.domain.d8.size() as i32
 }
 
@@ -134,9 +134,9 @@ pub fn caml_pasta_fp_plonk_index_create(
     lookup_tables: Vec<JsLookupTableFp>,
     runtime_table_cfgs: Vec<JsRuntimeTableCfgFp>,
     prev_challenges: i32,
-    srs: External<WasmFpSrs>,
+    srs: &External<WasmFpSrs>,
     lazy_mode: bool,
-) -> Result<External<NapiPastaFpPlonkIndex>, Error> {
+) -> Result<External<WasmPastaFpPlonkIndex>, Error> {
     let gates: Vec<_> = gates.to_vec();
 
     let runtime_cfgs: Vec<RuntimeTableCfg<Fp>> = runtime_table_cfgs
@@ -182,13 +182,13 @@ pub fn caml_pasta_fp_plonk_index_create(
     );
     index.compute_verifier_index_digest::<DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>();
 
-    Ok(External::new(NapiPastaFpPlonkIndex(Box::new(index))))
+    Ok(External::new(WasmPastaFpPlonkIndex(Box::new(index))))
 }
 
 #[napi(js_name = "pasta_fp_plonk_index_decode")]
 pub fn caml_pasta_fp_plonk_index_decode(
     bytes: &[u8],
-    srs: External<WasmFpSrs>,
+    srs: &External<WasmFpSrs>,
 ) -> Result<External<WasmPastaFpPlonkIndex>, Error> {
     let mut deserializer = rmp_serde::Deserializer::new(bytes);
     let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
@@ -204,12 +204,12 @@ pub fn caml_pasta_fp_plonk_index_decode(
     index.linearization = linearization;
     index.powers_of_alpha = powers_of_alpha;
 
-    Ok(External::new(NapiPastaFpPlonkIndex(Box::new(index))))
+    Ok(External::new(WasmPastaFpPlonkIndex(Box::new(index))))
 }
 
 #[napi(js_name = "pasta_fp_plonk_index_encode")]
 pub fn caml_pasta_fp_plonk_index_encode(
-    index: &External<NapiPastaFpPlonkIndex>,
+    index: &External<WasmPastaFpPlonkIndex>,
 ) -> Result<Vec<u8>, Error> {
     let mut buffer = Vec::new();
     let mut serializer = rmp_serde::Serializer::new(&mut buffer);
@@ -225,7 +225,7 @@ pub fn caml_pasta_fp_plonk_index_encode(
 #[napi(js_name = "pasta_fp_plonk_index_write")]
 pub fn caml_pasta_fp_plonk_index_write(
     append: Option<bool>,
-    index: &External<NapiPastaFpPlonkIndex>,
+    index: &External<WasmPastaFpPlonkIndex>,
     path: String,
 ) -> Result<(), Error> {
     let file = OpenOptions::new()
@@ -247,9 +247,9 @@ pub fn caml_pasta_fp_plonk_index_write(
 #[napi(js_name = "pasta_fp_plonk_index_read")]
 pub fn caml_pasta_fp_plonk_index_read(
     offset: Option<i32>,
-    srs: External<WasmFpSrs>,
+    srs: &External<WasmFpSrs>,
     path: String,
-) -> Result<External<NapiPastaFpPlonkIndex>, Error> {
+) -> Result<External<WasmPastaFpPlonkIndex>, Error> {
     // read from file
     let file = match File::open(path) {
         Err(_) => {
@@ -288,5 +288,5 @@ pub fn caml_pasta_fp_plonk_index_read(
     t.powers_of_alpha = powers_of_alpha;
 
     //
-    Ok(External::new(NapiPastaFpPlonkIndex(Box::new(t))))
+    Ok(External::new(WasmPastaFpPlonkIndex(Box::new(t))))
 }

@@ -1,7 +1,8 @@
 use crate::{
     tables::JsRuntimeTableFp,
-    wasm_vector::{fp::WasmVecVecFp, WasmFlatVector, WasmVector},
-    wrappers::{field::WasmPastaFp, group::WasmGVesta},
+    vector::NapiVector,
+    wrappers::{field::NapiPastaFp, group::NapiGVesta},
+    WasmVecVecFp,
 };
 use kimchi::{
     circuits::{lookup::runtime_tables::RuntimeTable, wires::COLUMNS},
@@ -20,8 +21,10 @@ use napi_derive::napi;
 use plonk_wasm::{
     pasta_fp_plonk_index::WasmPastaFpPlonkIndex,
     plonk_proof::{self, fp::WasmFpProverProof},
+    wasm_vector::WasmVector,
 };
 use poly_commitment::{ipa::OpeningProof, PolyComm, SRS};
+use wasm_types::FlatVector;
 
 pub struct Proof {
     pub proof: ProverProof<GAffine, OpeningProof<GAffine>>,
@@ -30,11 +33,11 @@ pub struct Proof {
 
 #[napi]
 pub fn caml_pasta_fp_plonk_proof_create(
-    index: External<WasmPastaFpPlonkIndex>,
+    index: &External<WasmPastaFpPlonkIndex>,
     witness: WasmVecVecFp,
-    runtime_tables: WasmVector<JsRuntimeTableFp>,
-    prev_challenges: WasmFlatVector<WasmPastaFp>,
-    prev_sgs: WasmVector<WasmGVesta>,
+    runtime_tables: NapiVector<JsRuntimeTableFp>,
+    prev_challenges: FlatVector<NapiPastaFp>,
+    prev_sgs: NapiVector<NapiGVesta>,
 ) -> Result<External<Proof>> {
     let (maybe_proof, public_input) = {
         index
