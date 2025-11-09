@@ -210,7 +210,7 @@ macro_rules! impl_vec_vec_fp {
                 value.0
             }
         }
-'
+        /*
         impl FromNapiValue for $name {
             unsafe fn from_napi_value(
                 env: sys::napi_env,
@@ -220,7 +220,8 @@ macro_rules! impl_vec_vec_fp {
                     <ClassInstance<$name> as FromNapiValue>::from_napi_value(env, napi_val)?;
                 Ok((*instance).clone())
             }
-        }'
+        }
+        */
     };
 }
 
