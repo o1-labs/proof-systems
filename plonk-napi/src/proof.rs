@@ -2,7 +2,7 @@ use crate::{
     tables::JsRuntimeTableFp,
     vector::NapiVector,
     wrappers::{field::NapiPastaFp, group::NapiGVesta},
-    WasmVecVecFp,
+    NapiFlatVector, WasmVecVecFp,
 };
 use kimchi::{
     circuits::{lookup::runtime_tables::RuntimeTable, wires::COLUMNS},
@@ -10,13 +10,15 @@ use kimchi::{
     proof::{ProverProof, RecursionChallenge},
     prover_index::ProverIndex,
 };
-use mina_curves::pasta::{Fp, Pallas as GAffineOther, Vesta as GAffine};
+use mina_curves::pasta::{Fp, Vesta as GAffine};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use napi::bindgen_prelude::{External, Result};
-use napi::{Error as NapiError, Status};
+use napi::{
+    bindgen_prelude::{External, Result},
+    Error as NapiError, Status,
+};
 use napi_derive::napi;
 use plonk_wasm::{
     pasta_fp_plonk_index::WasmPastaFpPlonkIndex,
@@ -36,7 +38,7 @@ pub fn caml_pasta_fp_plonk_proof_create(
     index: &External<WasmPastaFpPlonkIndex>,
     witness: WasmVecVecFp,
     runtime_tables: NapiVector<JsRuntimeTableFp>,
-    prev_challenges: FlatVector<NapiPastaFp>,
+    prev_challenges: NapiFlatVector<NapiPastaFp>,
     prev_sgs: NapiVector<NapiGVesta>,
 ) -> Result<External<Proof>> {
     let (maybe_proof, public_input) = {
@@ -74,7 +76,7 @@ pub fn caml_pasta_fp_plonk_proof_create(
             .flat_map(|table| {
                 let JsRuntimeTableFp { id, data } = table;
                 data.into_iter().map(move |column| {
-                    let values = WasmFlatVector::<WasmPastaFp>::from_bytes(column.to_vec())
+                    let values = NapiFlatVector::<NapiPastaFp>::from_bytes(column.to_vec())
                         .into_iter()
                         .map(Into::into)
                         .collect();

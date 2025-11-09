@@ -1,5 +1,4 @@
-use crate::WasmFpSrs;
-use crate::{build_info::report_native_call, gate_vector::NapiFpGateVector};
+use crate::{build_info::report_native_call, gate_vector::NapiFpGateVector, WasmFpSrs};
 use ark_poly::EvaluationDomain;
 use kimchi::{
     circuits::{
@@ -13,8 +12,10 @@ use mina_curves::pasta::{Fp, Pallas as GAffineOther, Vesta as GAffine, VestaPara
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use napi::bindgen_prelude::{Error, External, Status, Uint8Array};
 use napi_derive::napi;
-use poly_commitment::ipa::{OpeningProof, SRS as IPA_SRS};
-use poly_commitment::SRS;
+use poly_commitment::{
+    ipa::{OpeningProof, SRS as IPA_SRS},
+    SRS,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{File, OpenOptions},

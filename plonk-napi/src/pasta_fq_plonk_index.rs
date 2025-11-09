@@ -1,6 +1,4 @@
-use crate::build_info::report_native_call;
-use crate::gate_vector::NapiFqGateVector;
-use crate::WasmFqSrs;
+use crate::{build_info::report_native_call, gate_vector::NapiFqGateVector, WasmFqSrs};
 use ark_poly::EvaluationDomain;
 use kimchi::{
     circuits::constraints::ConstraintSystem, linearization::expr_linearization,
@@ -10,12 +8,16 @@ use mina_curves::pasta::{Fq, Pallas as GAffine, PallasParameters, Vesta as GAffi
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use napi::bindgen_prelude::{Error, External, Status, Uint8Array};
 use napi_derive::napi;
-use poly_commitment::ipa::{OpeningProof, SRS as IPA_SRS};
-use poly_commitment::SRS;
+use poly_commitment::{
+    ipa::{OpeningProof, SRS as IPA_SRS},
+    SRS,
+};
 use serde::{Deserialize, Serialize};
-use std::fs::{File, OpenOptions};
-use std::io::{BufReader, BufWriter, Seek, SeekFrom::Start};
-use std::{io::Cursor, sync::Arc};
+use std::{
+    fs::{File, OpenOptions},
+    io::{BufReader, BufWriter, Cursor, Seek, SeekFrom::Start},
+    sync::Arc,
+};
 
 use crate::tables::{
     lookup_table_fq_from_js, runtime_table_cfg_fq_from_js, JsLookupTableFq, JsRuntimeTableCfgFq,
