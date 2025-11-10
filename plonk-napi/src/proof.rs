@@ -20,13 +20,8 @@ use napi::{
     Error as NapiError, Status,
 };
 use napi_derive::napi;
-use plonk_wasm::{
-    pasta_fp_plonk_index::WasmPastaFpPlonkIndex,
-    plonk_proof::{self, fp::WasmFpProverProof},
-    wasm_vector::WasmVector,
-};
+use plonk_wasm::pasta_fp_plonk_index::WasmPastaFpPlonkIndex;
 use poly_commitment::{ipa::OpeningProof, PolyComm, SRS};
-use wasm_types::FlatVector;
 
 pub struct Proof {
     pub proof: ProverProof<GAffine, OpeningProof<GAffine>>,

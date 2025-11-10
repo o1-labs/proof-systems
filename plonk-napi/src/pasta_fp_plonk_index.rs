@@ -103,22 +103,22 @@ pub fn prover_index_fp_to_bytes(
     Ok(Uint8Array::from(bytes))
 }
 
-#[napi(js_name = "pasta_fp_plonk_index_max_degree")]
+#[napi(js_name = "caml_pasta_fp_plonk_index_max_degree")]
 pub fn caml_pasta_fp_plonk_index_max_degree(index: &External<WasmPastaFpPlonkIndex>) -> i32 {
     index.0.srs.max_poly_size() as i32
 }
 
-#[napi(js_name = "pasta_fp_plonk_index_public_inputs")]
+#[napi(js_name = "caml_pasta_fp_plonk_index_public_inputs")]
 pub fn caml_pasta_fp_plonk_index_public_inputs(index: &External<WasmPastaFpPlonkIndex>) -> i32 {
     index.0.cs.public as i32
 }
 
-#[napi(js_name = "pasta_fp_plonk_index_domain_d1_size")]
+#[napi(js_name = "caml_pasta_fp_plonk_index_domain_d1_size")]
 pub fn caml_pasta_fp_plonk_index_domain_d1_size(index: &External<WasmPastaFpPlonkIndex>) -> i32 {
     index.0.cs.domain.d1.size() as i32
 }
 
-#[napi(js_name = "pasta_fp_plonk_index_domain_d4_size")]
+#[napi(js_name = "caml_pasta_fp_plonk_index_domain_d4_size")]
 pub fn caml_pasta_fp_plonk_index_domain_d4_size(index: &External<WasmPastaFpPlonkIndex>) -> i32 {
     index.0.cs.domain.d4.size() as i32
 }
@@ -128,7 +128,7 @@ pub fn caml_pasta_fp_plonk_index_domain_d8_size(index: &External<WasmPastaFpPlon
     index.0.cs.domain.d8.size() as i32
 }
 
-#[napi(js_name = "pasta_fp_plonk_index_create")]
+#[napi(js_name = "caml_pasta_fp_plonk_index_create")]
 pub fn caml_pasta_fp_plonk_index_create(
     gates: &NapiFpGateVector,
     public_: i32,
@@ -186,7 +186,7 @@ pub fn caml_pasta_fp_plonk_index_create(
     Ok(External::new(WasmPastaFpPlonkIndex(Box::new(index))))
 }
 
-#[napi(js_name = "pasta_fp_plonk_index_decode")]
+#[napi(js_name = "caml_pasta_fp_plonk_index_decode")]
 pub fn caml_pasta_fp_plonk_index_decode(
     bytes: &[u8],
     srs: &External<WasmFpSrs>,
@@ -208,7 +208,7 @@ pub fn caml_pasta_fp_plonk_index_decode(
     Ok(External::new(WasmPastaFpPlonkIndex(Box::new(index))))
 }
 
-#[napi(js_name = "pasta_fp_plonk_index_encode")]
+#[napi(js_name = "caml_pasta_fp_plonk_index_encode")]
 pub fn caml_pasta_fp_plonk_index_encode(
     index: &External<WasmPastaFpPlonkIndex>,
 ) -> Result<Vec<u8>, Error> {
@@ -223,7 +223,7 @@ pub fn caml_pasta_fp_plonk_index_encode(
     Ok(buffer)
 }
 
-#[napi(js_name = "pasta_fp_plonk_index_write")]
+#[napi(js_name = "caml_pasta_fp_plonk_index_write")]
 pub fn caml_pasta_fp_plonk_index_write(
     append: Option<bool>,
     index: &External<WasmPastaFpPlonkIndex>,
@@ -245,7 +245,7 @@ pub fn caml_pasta_fp_plonk_index_write(
         })
 }
 
-#[napi(js_name = "pasta_fp_plonk_index_read")]
+#[napi(js_name = "caml_pasta_fp_plonk_index_read")]
 pub fn caml_pasta_fp_plonk_index_read(
     offset: Option<i32>,
     srs: &External<WasmFpSrs>,
