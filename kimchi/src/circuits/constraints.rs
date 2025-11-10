@@ -234,7 +234,6 @@ where
             gates: Arc<Vec<CircuitGate<F>>>,
             zk_rows: u64,
             feature_flags: FeatureFlags,
-            lazy_mode: bool,
             #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
             sid: Vec<F>,
             #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
