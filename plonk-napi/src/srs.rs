@@ -322,7 +322,7 @@ pub fn caml_fp_srs_from_bytes(bytes: Uint8Array) -> Result<fp::NapiFpSrs> {
     fp::NapiFpSrs::deserialize(bytes)
 }
 
-#[napi]
+#[napi(js_name = "caml_fp_srs_from_bytes_external")]
 pub fn caml_fp_srs_from_bytes_external(bytes: Uint8Array) -> External<fp::NapiFpSrs> {
     let srs = caml_fp_srs_from_bytes(bytes).unwrap();
     External::new(srs)
