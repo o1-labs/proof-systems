@@ -94,230 +94,230 @@ macro_rules! impl_srs {
                         .map_err(|e| map_error("srs_deserialize", e))?;
                     Ok(Arc::new(srs).into())
                 }
+              }
 
-                #[napi(factory, js_name = [<"caml_" $name:snake "_srs_create">])]
-                pub fn [<caml_ $name:snake _srs_create>](depth: i32) -> Result<Self> {
-                    println!("Creating SRS with napi");
-                    Ok(Arc::new(SRS::<$G>::create(depth as usize)).into())
-                }
+              #[napi(js_name = [<"caml_" $name:snake "_srs_create">])]
+              pub fn [<caml_ $name:snake _srs_create>](depth: i32) -> Result<[<Napi $name:camel Srs>]> {
+                  println!("Creating SRS with napi");
+                  Ok(Arc::new(SRS::<$G>::create(depth as usize)).into())
+              }
 
-                #[napi(factory, js_name = [<"caml_" $name:snake "_srs_create_parallel">])]
-                pub fn [<caml_ $name:snake _srs_create_parallel>](depth: i32) -> Result<Self> {
-                    println!("Creating SRS in parallel with napi");
-                    Ok(Arc::new(SRS::<$G>::create_parallel(
-                        depth as usize,
-                    )).into())
-                }
+              #[napi(js_name = [<"caml_" $name:snake "_srs_create_parallel">])]
+              pub fn [<caml_ $name:snake _srs_create_parallel>](depth: i32) -> Result<[<Napi $name:camel Srs>]> {
+                  println!("Creating SRS in parallel with napi");
+                  Ok(Arc::new(SRS::<$G>::create_parallel(
+                      depth as usize,
+                  )).into())
+              }
 
-                #[napi(js_name = [<"caml_" $name:snake "_srs_add_lagrange_basis">])]
-                pub fn [<caml_ $name:snake _srs_add_lagrange_basis>](srs: &[<Napi $name:camel Srs>], log2_size: i32) -> Result<()> {
-                    println!("Adding lagrange basis with napi");
-                    let size = 1usize << (log2_size as usize);
-                    let domain = EvaluationDomain::<$F>::new(size).ok_or_else(invalid_domain_error)?;
-                    srs.get_lagrange_basis(domain);
-                    Ok(())
-                }
+              #[napi(js_name = [<"caml_" $name:snake "_srs_add_lagrange_basis">])]
+              pub fn [<caml_ $name:snake _srs_add_lagrange_basis>](srs: &[<Napi $name:camel Srs>], log2_size: i32) -> Result<()> {
+                  println!("Adding lagrange basis with napi");
+                  let size = 1usize << (log2_size as usize);
+                  let domain = EvaluationDomain::<$F>::new(size).ok_or_else(invalid_domain_error)?;
+                  srs.get_lagrange_basis(domain);
+                  Ok(())
+              }
 
-                #[napi(js_name = [<"caml_" $name:snake "_srs_write">])]
-                pub fn [<caml_ $name:snake _srs_write>](append: Option<bool>, srs: &[<Napi $name:camel Srs>], path: String) -> Result<()> {
-                    println!("Writing SRS to file with napi");
-                    let function_name = format!("caml_{0}_srs_write", stringify!($name).to_lowercase());
-                    let file = OpenOptions::new()
-                        .append(append.unwrap_or(true))
-                        .open(&path)
-                        .map_err(|err| map_error(&function_name, err))?;
-                    let file = BufWriter::new(file);
-                    srs.0.serialize(&mut rmp_serde::Serializer::new(file))
-                        .map_err(|err| map_error(&function_name, err))
-                }
+              #[napi(js_name = [<"caml_" $name:snake "_srs_write">])]
+              pub fn [<caml_ $name:snake _srs_write>](append: Option<bool>, srs: &[<Napi $name:camel Srs>], path: String) -> Result<()> {
+                  println!("Writing SRS to file with napi");
+                  let function_name = format!("caml_{0}_srs_write", stringify!($name).to_lowercase());
+                  let file = OpenOptions::new()
+                      .append(append.unwrap_or(true))
+                      .open(&path)
+                      .map_err(|err| map_error(&function_name, err))?;
+                  let file = BufWriter::new(file);
+                  srs.0.serialize(&mut rmp_serde::Serializer::new(file))
+                      .map_err(|err| map_error(&function_name, err))
+              }
 
-                #[napi(js_name = [<"caml_" $name:snake "_srs_read">])]
-                pub fn [<caml_ $name:snake _srs_read>](offset: Option<i32>, path: String) -> Result<Option<Self>> {
-                    println!("Reading SRS from file with napi");
-                    let function_name = format!("caml_{0}_srs_read", stringify!($name).to_lowercase());
-                    let file = match File::open(&path) {
-                        Ok(file) => file,
-                        Err(err) => return Err(map_error(&function_name, err)),
-                    };
-                    let mut reader = BufReader::new(file);
+              #[napi(js_name = [<"caml_" $name:snake "_srs_read">])]
+              pub fn [<caml_ $name:snake _srs_read>](offset: Option<i32>, path: String) -> Result<Option<[<Napi $name:camel Srs>]>> {
+                  println!("Reading SRS from file with napi");
+                  let function_name = format!("caml_{0}_srs_read", stringify!($name).to_lowercase());
+                  let file = match File::open(&path) {
+                      Ok(file) => file,
+                      Err(err) => return Err(map_error(&function_name, err)),
+                  };
+                  let mut reader = BufReader::new(file);
 
-                    if let Some(off) = offset {
-                        reader
-                            .seek(SeekFrom::Start(off as u64))
-                            .map_err(|err| map_error(&function_name, err))?;
-                    }
+                  if let Some(off) = offset {
+                      reader
+                          .seek(SeekFrom::Start(off as u64))
+                          .map_err(|err| map_error(&function_name, err))?;
+                  }
 
-                    match SRS::<$G>::deserialize(&mut rmp_serde::Deserializer::new(reader)) {
-                        Ok(srs) => Ok(Some(Arc::new(srs).into())),
-                        Err(_) => Ok(None),
-                    }
-                }
+                  match SRS::<$G>::deserialize(&mut rmp_serde::Deserializer::new(reader)) {
+                      Ok(srs) => Ok(Some(Arc::new(srs).into())),
+                      Err(_) => Ok(None),
+                  }
+              }
 
-                #[napi(js_name = [<"caml_" $name:snake "_srs_get">])]
-                pub fn [<caml_ $name:snake _srs_get>](srs: &[<Napi $name:camel Srs>]) -> Vec<$NapiG> {
-                    println!("Getting SRS with napi");
-                    let mut h_and_gs: Vec<$NapiG> = vec![srs.0.h.into()];
-                    h_and_gs.extend(srs.0.g.iter().cloned().map(Into::into));
-                    h_and_gs
-                }
+              #[napi(js_name = [<"caml_" $name:snake "_srs_get">])]
+              pub fn [<caml_ $name:snake _srs_get>](srs: &[<Napi $name:camel Srs>]) -> Vec<$NapiG> {
+                  println!("Getting SRS with napi");
+                  let mut h_and_gs: Vec<$NapiG> = vec![srs.0.h.into()];
+                  h_and_gs.extend(srs.0.g.iter().cloned().map(Into::into));
+                  h_and_gs
+              }
 
-                #[napi(js_name = [<"caml_" $name:snake "_srs_set">])]
-                pub fn [<caml_ $name:snake _srs_set>](h_and_gs: Vec<$NapiG>) -> Result<Self> {
-                    println!("Setting SRS with napi");
-                    let mut h_and_gs: Vec<$G> = h_and_gs.into_iter().map(Into::into).collect();
-                    if h_and_gs.is_empty() {
-                        return Err(Error::new(
-                            Status::InvalidArg,
-                            "expected at least one element for SRS",
-                        ));
-                    }
-                    let h = h_and_gs.remove(0);
-                    let g = h_and_gs;
-                    let srs = SRS::<$G> { h, g, lagrange_bases: HashMapCache::new() };
-                    Ok(Arc::new(srs).into())
-                }
+              #[napi(js_name = [<"caml_" $name:snake "_srs_set">])]
+              pub fn [<caml_ $name:snake _srs_set>](h_and_gs: Vec<$NapiG>) -> Result<[<Napi $name:camel Srs>]> {
+                  println!("Setting SRS with napi");
+                  let mut h_and_gs: Vec<$G> = h_and_gs.into_iter().map(Into::into).collect();
+                  if h_and_gs.is_empty() {
+                      return Err(Error::new(
+                          Status::InvalidArg,
+                          "expected at least one element for SRS",
+                      ));
+                  }
+                  let h = h_and_gs.remove(0);
+                  let g = h_and_gs;
+                  let srs = SRS::<$G> { h, g, lagrange_bases: HashMapCache::new() };
+                  Ok(Arc::new(srs).into())
+              }
 
-                #[napi(js_name = [<"caml_" $name:snake "_srs_maybe_lagrange_commitment">])]
-                pub fn [<caml_ $name:snake _srs_maybe_lagrange_commitment>](
-                    srs: &[<Napi $name:camel Srs>],
-                    domain_size: i32,
-                    i: i32,
-                ) -> Option<$NapiPolyComm> {
-                    println!("Getting maybe lagrange commitment with napi");
-                    if !srs
-                        .0
-                        .lagrange_bases
-                        .contains_key(&(domain_size as usize))
-                    {
-                        return None;
-                    }
-                    let basis = srs
-                        .get_lagrange_basis_from_domain_size(domain_size as usize);
-                    Some(basis[i as usize].clone().into())
-                }
+              #[napi(js_name = [<"caml_" $name:snake "_srs_maybe_lagrange_commitment">])]
+              pub fn [<caml_ $name:snake _srs_maybe_lagrange_commitment>](
+                  srs: &[<Napi $name:camel Srs>],
+                  domain_size: i32,
+                  i: i32,
+              ) -> Option<$NapiPolyComm> {
+                  println!("Getting maybe lagrange commitment with napi");
+                  if !srs
+                      .0
+                      .lagrange_bases
+                      .contains_key(&(domain_size as usize))
+                  {
+                      return None;
+                  }
+                  let basis = srs
+                      .get_lagrange_basis_from_domain_size(domain_size as usize);
+                  Some(basis[i as usize].clone().into())
+              }
 
-                #[napi(js_name = [<"caml_" $name:snake "_srs_set_lagrange_basis">])]
-                pub fn [<caml_ $name:snake _srs_set_lagrange_basis>](srs: &[<Napi $name:camel Srs>],
-                    domain_size: i32,
-                    input_bases: NapiVector<$NapiPolyComm>,
-                ) {
-                    println!("Setting lagrange basis with napi");
-                    srs.0.lagrange_bases
-                        .get_or_generate(domain_size as usize, || { input_bases.into_iter().map(Into::into).collect()});
-                }
+              #[napi(js_name = [<"caml_" $name:snake "_srs_set_lagrange_basis">])]
+              pub fn [<caml_ $name:snake _srs_set_lagrange_basis>](srs: &[<Napi $name:camel Srs>],
+                  domain_size: i32,
+                  input_bases: NapiVector<$NapiPolyComm>,
+              ) {
+                  println!("Setting lagrange basis with napi");
+                  srs.0.lagrange_bases
+                      .get_or_generate(domain_size as usize, || { input_bases.into_iter().map(Into::into).collect()});
+              }
 
-                #[napi(js_name = [<"caml_" $name:snake "_srs_get_lagrange_basis">])]
-                pub fn [<caml_ $name:snake _srs_get_lagrange_basis>](srs: &[<Napi $name:camel Srs>],
-                    domain_size: i32,
-                ) -> Result<NapiVector<$NapiPolyComm>> {
-                    println!("Getting lagrange basis with napi");
-                    let domain = EvaluationDomain::<$F>::new(domain_size as usize)
-                        .ok_or_else(invalid_domain_error)?;
-                    let basis = srs.0.get_lagrange_basis(domain);
-                    Ok(basis.iter().cloned().map(Into::into).collect())
-                }
+              #[napi(js_name = [<"caml_" $name:snake "_srs_get_lagrange_basis">])]
+              pub fn [<caml_ $name:snake _srs_get_lagrange_basis>](srs: &[<Napi $name:camel Srs>],
+                  domain_size: i32,
+              ) -> Result<NapiVector<$NapiPolyComm>> {
+                  println!("Getting lagrange basis with napi");
+                  let domain = EvaluationDomain::<$F>::new(domain_size as usize)
+                      .ok_or_else(invalid_domain_error)?;
+                  let basis = srs.0.get_lagrange_basis(domain);
+                  Ok(basis.iter().cloned().map(Into::into).collect())
+              }
 
-                #[napi(js_name = [<"caml_" $name:snake "_srs_to_bytes">])]
-                pub fn [<caml_ $name:snake _srs_to_bytes>](srs: &[<Napi $name:camel Srs>]) -> Result<Uint8Array> {
-                    srs.serialize()
-                }
+              #[napi(js_name = [<"caml_" $name:snake "_srs_to_bytes">])]
+              pub fn [<caml_ $name:snake _srs_to_bytes>](srs: &[<Napi $name:camel Srs>]) -> Result<Uint8Array> {
+                  srs.serialize()
+              }
 
-                #[napi(js_name = [<"caml_" $name:snake "_srs_from_bytes">])]
-                pub fn [<caml_ $name:snake _srs_from_bytes>](bytes: Uint8Array) -> Result<Self> {
-                    Self::deserialize(bytes)
-                }
+              #[napi(js_name = [<"caml_" $name:snake "_srs_from_bytes">])]
+              pub fn [<caml_ $name:snake _srs_from_bytes>](bytes: Uint8Array) -> Result<[<Napi $name:camel Srs>]> {
+                  [<Napi $name:camel Srs>]::deserialize(bytes)
+              }
 
-                #[napi(js_name = [<"caml_" $name:snake "_srs_commit_evaluations">])]
-                pub fn [<caml_ $name:snake _srs_commit_evaluations>](srs: &[<Napi $name:camel Srs>],
-                    domain_size: i32,
-                    evals: Uint8Array,
-                ) -> Result<$NapiPolyComm> {
-                    println!("Committing evaluations with napi");
-                    let elems: Vec<$F> = WasmFlatVector::<$NapiF>::from_bytes(
-                        evals.as_ref().to_vec(),
-                    )
-                    .into_iter()
-                    .map(Into::into)
-                    .collect();
-                    let x_domain = EvaluationDomain::<$F>::new(domain_size as usize)
-                        .ok_or_else(invalid_domain_error)?;
-                    let evals = elems.into_iter().map(Into::into).collect();
-                    let p = Evaluations::<$F>::from_vec_and_domain(evals, x_domain).interpolate();
-                    Ok(srs.commit_non_hiding(&p, 1).into())
-                }
+              #[napi(js_name = [<"caml_" $name:snake "_srs_commit_evaluations">])]
+              pub fn [<caml_ $name:snake _srs_commit_evaluations>](srs: &[<Napi $name:camel Srs>],
+                  domain_size: i32,
+                  evals: Uint8Array,
+              ) -> Result<$NapiPolyComm> {
+                  println!("Committing evaluations with napi");
+                  let elems: Vec<$F> = WasmFlatVector::<$NapiF>::from_bytes(
+                      evals.as_ref().to_vec(),
+                  )
+                  .into_iter()
+                  .map(Into::into)
+                  .collect();
+                  let x_domain = EvaluationDomain::<$F>::new(domain_size as usize)
+                      .ok_or_else(invalid_domain_error)?;
+                  let evals = elems.into_iter().map(Into::into).collect();
+                  let p = Evaluations::<$F>::from_vec_and_domain(evals, x_domain).interpolate();
+                  Ok(srs.commit_non_hiding(&p, 1).into())
+              }
 
-                #[napi(js_name = [<"caml_" $name:snake "_srs_b_poly_commitment">])]
-                pub fn [<caml_ $name:snake _srs_b_poly_commitment>](srs: &[<Napi $name:camel Srs>], chals: Uint8Array) -> Result<$NapiPolyComm> {
-                    println!("Computing b poly commitment with napi");
-                    let elements: Vec<$F> = WasmFlatVector::<$NapiF>::from_bytes(
-                        chals.as_ref().to_vec(),
-                    )
-                    .into_iter()
-                    .map(Into::into)
-                    .collect();
-                    let coeffs = b_poly_coefficients(&elements);
-                    let p = DensePolynomial::<$F>::from_coefficients_vec(coeffs);
-                    Ok(srs.commit_non_hiding(&p, 1).into())
-                }
+              #[napi(js_name = [<"caml_" $name:snake "_srs_b_poly_commitment">])]
+              pub fn [<caml_ $name:snake _srs_b_poly_commitment>](srs: &[<Napi $name:camel Srs>], chals: Uint8Array) -> Result<$NapiPolyComm> {
+                  println!("Computing b poly commitment with napi");
+                  let elements: Vec<$F> = WasmFlatVector::<$NapiF>::from_bytes(
+                      chals.as_ref().to_vec(),
+                  )
+                  .into_iter()
+                  .map(Into::into)
+                  .collect();
+                  let coeffs = b_poly_coefficients(&elements);
+                  let p = DensePolynomial::<$F>::from_coefficients_vec(coeffs);
+                  Ok(srs.commit_non_hiding(&p, 1).into())
+              }
 
-                #[napi(js_name = [<"caml_" $name:snake "_srs_batch_accumulator_check">])]
-                pub fn [<caml_ $name:snake _srs_batch_accumulator_check>](
-                    srs: &[<Napi $name:camel Srs>],
-                    comms: NapiVector<$NapiG>,
-                    chals: Uint8Array,
-                ) -> Result<bool> {
-                    println!("Performing batch accumulator check with napi");
-                    let comms: Vec<$G> = comms.into_iter().map(Into::into).collect();
-                    let chals: Vec<$F> = WasmFlatVector::<$NapiF>::from_bytes(
-                        chals.as_ref().to_vec(),
-                    )
-                    .into_iter()
-                    .map(Into::into)
-                    .collect();
-                    Ok(poly_commitment::utils::batch_dlog_accumulator_check(
-                        &srs,
-                        &comms,
-                        &chals,
-                    ))
-                }
+              #[napi(js_name = [<"caml_" $name:snake "_srs_batch_accumulator_check">])]
+              pub fn [<caml_ $name:snake _srs_batch_accumulator_check>](
+                  srs: &[<Napi $name:camel Srs>],
+                  comms: NapiVector<$NapiG>,
+                  chals: Uint8Array,
+              ) -> Result<bool> {
+                  println!("Performing batch accumulator check with napi");
+                  let comms: Vec<$G> = comms.into_iter().map(Into::into).collect();
+                  let chals: Vec<$F> = WasmFlatVector::<$NapiF>::from_bytes(
+                      chals.as_ref().to_vec(),
+                  )
+                  .into_iter()
+                  .map(Into::into)
+                  .collect();
+                  Ok(poly_commitment::utils::batch_dlog_accumulator_check(
+                      &srs,
+                      &comms,
+                      &chals,
+                  ))
+              }
 
-                #[napi(js_name = [<"caml_" $name:snake "_srs_batch_accumulator_generate">])]
-                pub fn [<caml_ $name:snake _srs_batch_accumulator_generate>](
-                    srs: &[<Napi $name:camel Srs>],
-                    comms: i32,
-                    chals: Uint8Array,
-                ) -> Result<NapiVector<$NapiG>> {
-                    println!("Generating batch accumulator with napi");
-                    let chals: Vec<$F> = WasmFlatVector::<$NapiF>::from_bytes(
-                        chals.as_ref().to_vec(),
-                    )
-                    .into_iter()
-                    .map(Into::into)
-                    .collect();
-                    let points = poly_commitment::utils::batch_dlog_accumulator_generate::<$G>(
-                        &srs,
-                        comms as usize,
-                        &chals,
-                    );
-                    Ok(points.into_iter().map(Into::into).collect())
-                }
+              #[napi(js_name = [<"caml_" $name:snake "_srs_batch_accumulator_generate">])]
+              pub fn [<caml_ $name:snake _srs_batch_accumulator_generate>](
+                  srs: &[<Napi $name:camel Srs>],
+                  comms: i32,
+                  chals: Uint8Array,
+              ) -> Result<NapiVector<$NapiG>> {
+                  println!("Generating batch accumulator with napi");
+                  let chals: Vec<$F> = WasmFlatVector::<$NapiF>::from_bytes(
+                      chals.as_ref().to_vec(),
+                  )
+                  .into_iter()
+                  .map(Into::into)
+                  .collect();
+                  let points = poly_commitment::utils::batch_dlog_accumulator_generate::<$G>(
+                      &srs,
+                      comms as usize,
+                      &chals,
+                  );
+                  Ok(points.into_iter().map(Into::into).collect())
+              }
 
-                #[napi(js_name = [<"caml_" $name:snake "_srs_get_h">])]
-                pub fn h(srs: &[<Napi $name:camel Srs>]) -> $NapiG {
-                    println!("Getting h point with napi");
-                    srs.h.into()
-                }
-            }
+              #[napi(js_name = [<"caml_" $name:snake "_srs_get_h">])]
+              pub fn h(srs: &[<Napi $name:camel Srs>]) -> $NapiG {
+                  println!("Getting h point with napi");
+                  srs.h.into()
+              }
         }
     }
 }
 
-#[napi]
+#[napi(js_name = "caml_fp_srs_to_bytes")]
 pub fn caml_fp_srs_to_bytes(srs: &fp::NapiFpSrs) -> Result<Uint8Array> {
     srs.serialize()
 }
 
-#[napi]
+#[napi(js_name = "caml_fp_srs_from_bytes")]
 pub fn caml_fp_srs_from_bytes(bytes: Uint8Array) -> Result<fp::NapiFpSrs> {
     fp::NapiFpSrs::deserialize(bytes)
 }
@@ -328,12 +328,17 @@ pub fn caml_fp_srs_from_bytes_external(bytes: Uint8Array) -> External<fp::NapiFp
     External::new(srs)
 }
 
-#[napi]
+#[napi(js_name = "caml_fq_srs_to_bytes")]
+pub fn caml_fq_srs_to_bytes(srs: &fq::NapiFqSrs) -> Result<Uint8Array> {
+    srs.serialize()
+}
+
+#[napi(js_name = "caml_fq_srs_from_bytes")]
 pub fn caml_fq_srs_from_bytes(bytes: Uint8Array) -> Result<fq::NapiFqSrs> {
     fq::NapiFqSrs::deserialize(bytes)
 }
 
-#[napi]
+#[napi(js_name = "caml_fq_srs_from_bytes_external")]
 pub fn caml_fq_srs_from_bytes_external(bytes: Uint8Array) -> External<fq::NapiFqSrs> {
     let srs = caml_fq_srs_from_bytes(bytes).unwrap();
     External::new(srs)
