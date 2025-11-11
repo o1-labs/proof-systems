@@ -35,6 +35,7 @@ macro_rules! impl_proof {
      $field_name: ident
      ) => {
         paste! {
+            #[derive(Clone)]
             pub struct [<NapiProof $field_name:camel>] {
                 pub proof: ProverProof<$G, OpeningProof<$G>>,
                 pub public_input: Vec<$F>,
@@ -190,6 +191,13 @@ macro_rules! impl_proof {
                     OpeningProof<$G>
                 >(&group_map, &contexts)
                 .is_ok()
+            }
+
+            #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_deep_copy">])]
+            pub fn [<caml_pasta_ $field_name:snake "_plonk_proof_deep_copy">](
+                x: &External<NapiProofF>
+            ) -> External<NapiProofF> {
+                External::new(x.as_ref().clone())
             }
         }
     };

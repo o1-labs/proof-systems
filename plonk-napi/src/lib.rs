@@ -46,11 +46,11 @@ pub use poseidon::{caml_pasta_fp_poseidon_block_cipher, caml_pasta_fq_poseidon_b
 pub use proof::{
     fp::{
         caml_pasta_fp_plonk_proof_batch_verify, caml_pasta_fp_plonk_proof_create,
-        caml_pasta_fp_plonk_proof_verify,
+        caml_pasta_fp_plonk_proof_deep_copy, caml_pasta_fp_plonk_proof_verify,
     },
     fq::{
         caml_pasta_fq_plonk_proof_batch_verify, caml_pasta_fq_plonk_proof_create,
-        caml_pasta_fq_plonk_proof_verify,
+        caml_pasta_fq_plonk_proof_deep_copy, caml_pasta_fq_plonk_proof_verify,
     },
 };
 pub use srs::{
