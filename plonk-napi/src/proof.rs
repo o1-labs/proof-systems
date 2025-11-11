@@ -2,10 +2,15 @@ use crate::{
     tables::{JsRuntimeTableFp, JsRuntimeTableFq},
     vector::{fp::NapiVecVecFp, fq::NapiVecVecFq, NapiFlatVector, NapiVector},
 };
+use ark_ec::AffineRepr;
+use ark_ff::One;
+use core::array;
 use kimchi::{
     circuits::{lookup::runtime_tables::RuntimeTable, wires::COLUMNS},
     groupmap::GroupMap,
-    proof::{PointEvaluations, ProofEvaluations, ProverProof, RecursionChallenge},
+    proof::{
+        PointEvaluations, ProofEvaluations, ProverCommitments, ProverProof, RecursionChallenge,
+    },
     prover_index::ProverIndex,
     verifier::{batch_verify, Context},
 };
@@ -191,6 +196,79 @@ macro_rules! impl_proof {
                     OpeningProof<$G>
                 >(&group_map, &contexts)
                 .is_ok()
+            }
+
+            #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_dummy">])]
+            pub fn [<caml_pasta_ $field_name:snake _plonk_proof_dummy>]() -> External<NapiProofF> {
+                fn comm() -> PolyComm<$G> {
+                    let g = $G::generator();
+                    PolyComm {
+                        chunks: vec![g, g, g],
+                    }
+                }
+
+                let prev = RecursionChallenge {
+                    chals: vec![$F::one(), $F::one()],
+                    comm: comm(),
+                };
+                let prev_challenges = vec![prev.clone(), prev.clone(), prev.clone()];
+
+                let g = $G::generator();
+                let proof = OpeningProof {
+                    lr: vec![(g, g), (g, g), (g, g)],
+                    z1: $F::one(),
+                    z2: $F::one(),
+                    delta: g,
+                    sg: g,
+                };
+                let eval = || PointEvaluations {
+                    zeta: vec![$F::one()],
+                    zeta_omega: vec![$F::one()],
+                };
+                let evals = ProofEvaluations {
+                    w: core::array::from_fn(|_| eval()),
+                    coefficients: core::array::from_fn(|_| eval()),
+                    z: eval(),
+                    s: core::array::from_fn(|_| eval()),
+                    generic_selector: eval(),
+                    poseidon_selector: eval(),
+                    complete_add_selector: eval(),
+                    mul_selector: eval(),
+                    emul_selector: eval(),
+                    endomul_scalar_selector: eval(),
+                    range_check0_selector: None,
+                    range_check1_selector: None,
+                    foreign_field_add_selector: None,
+                    foreign_field_mul_selector: None,
+                    xor_selector: None,
+                    rot_selector: None,
+                    lookup_aggregation: None,
+                    lookup_table: None,
+                    lookup_sorted: array::from_fn(|_| None),
+                    runtime_lookup_table: None,
+                    runtime_lookup_table_selector: None,
+                    xor_lookup_selector: None,
+                    lookup_gate_lookup_selector: None,
+                    range_check_lookup_selector: None,
+                    foreign_field_mul_lookup_selector: None,
+                    public: None,
+                };
+
+                let dlogproof = ProverProof {
+                    commitments: ProverCommitments {
+                        w_comm: core::array::from_fn(|_| comm()),
+                        z_comm: comm(),
+                        t_comm: comm(),
+                        lookup: None,
+                    },
+                    proof,
+                    evals,
+                    ft_eval1: $F::one(),
+                    prev_challenges,
+                };
+
+                let public = vec![$F::one(), $F::one()];
+                External::new(NapiProofF{proof: dlogproof, public_input: public})
             }
 
             #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_deep_copy">])]
