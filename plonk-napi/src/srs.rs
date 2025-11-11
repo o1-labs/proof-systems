@@ -1,7 +1,9 @@
 use crate::vector::NapiVector;
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
 use core::ops::Deref;
-use napi::bindgen_prelude::{Error, Result, Status, Uint8Array};
+use napi::bindgen_prelude::{
+    sys, ClassInstance, Error, External, FromNapiValue, Result, Status, Uint8Array,
+};
 use napi_derive::napi;
 use paste::paste;
 use poly_commitment::{
@@ -27,10 +29,20 @@ macro_rules! impl_srs {
         paste! {
 
             #[napi(js_name = [<"Wasm" $name:camel "Srs">])]
-            #[derive(Clone)]
+            #[derive(Clone, Debug, Default)]
             pub struct [<Napi $name:camel Srs>] (
                  #[napi(skip)] pub Arc<SRS<$G>>
             );
+
+            impl FromNapiValue for [<Napi $name:camel Srs>] {
+                unsafe fn from_napi_value(
+                    env: sys::napi_env,
+                    napi_val: sys::napi_value,
+                ) -> Result<Self> {
+                    let instance = <ClassInstance<[<Napi $name:camel Srs>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
+                    Ok((*instance).clone())
+                }
+            }
 
             impl Deref for [<Napi $name:camel Srs>] {
                 type Target = Arc<SRS<$G>>;
