@@ -157,6 +157,40 @@ macro_rules! impl_proof {
                         &[Context { verifier_index, proof, public_input }]
                     ).is_ok()
             }
+
+
+        #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_batch_verify">])]
+        pub fn [<caml_pasta_ $field_name:snake _plonk_proof_batch_verify>](
+                indexes: NapiVector<$NapiVerifierIndex>,
+                proofs: &External<Vec<NapiProofF>>,
+            ) -> bool {
+                let indexes: Vec<_> = indexes.into_iter().map(Into::into).collect();
+                let proofs_ref = proofs.as_ref();
+
+                if indexes.len() != proofs_ref.len() {
+                    return false;
+                }
+
+                let contexts: Vec<_> = indexes
+                    .iter()
+                    .zip(proofs_ref.iter())
+                    .map(|(index, proof)| Context {
+                        verifier_index: index,
+                        proof: &proof.proof,
+                        public_input: &proof.public_input,
+                    })
+                    .collect();
+
+                let group_map = GroupMap::<_>::setup();
+
+                batch_verify::<
+                    $G,
+                    DefaultFqSponge<_, PlonkSpongeConstantsKimchi>,
+                    DefaultFrSponge<_, PlonkSpongeConstantsKimchi>,
+                    OpeningProof<$G>
+                >(&group_map, &contexts)
+                .is_ok()
+            }
         }
     };
 }
