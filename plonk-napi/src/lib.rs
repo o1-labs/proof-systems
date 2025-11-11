@@ -43,7 +43,10 @@ pub use poly_comm::{
     pallas::NapiFqPolyComm as WasmFqPolyComm, vesta::NapiFpPolyComm as WasmFpPolyComm,
 };
 pub use poseidon::{caml_pasta_fp_poseidon_block_cipher, caml_pasta_fq_poseidon_block_cipher};
-pub use proof::caml_pasta_fp_plonk_proof_create;
+pub use proof::{
+    fp::{caml_pasta_fp_plonk_proof_create, caml_pasta_fp_plonk_proof_verify},
+    fq::{caml_pasta_fq_plonk_proof_create, caml_pasta_fq_plonk_proof_verify},
+};
 pub use srs::{
     caml_fp_srs_from_bytes, caml_fp_srs_from_bytes_external, caml_fp_srs_to_bytes,
     caml_fq_srs_from_bytes, caml_fq_srs_from_bytes_external, caml_fq_srs_to_bytes,
