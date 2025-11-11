@@ -225,88 +225,79 @@ pub fn caml_pasta_fq_plonk_verifier_index_shifts(
 
 impl From<NapiFqPlonkVerifierIndex> for DlogVerifierIndex<GAffine, OpeningProof<GAffine>> {
     fn from(index: NapiFqPlonkVerifierIndex) -> Self {
-        of_napi(index).0
+        let max_poly_size = index.max_poly_size;
+        let public_ = index.public_;
+        let prev_challenges = index.prev_challenges;
+        let log_size_of_group = index.domain.log_size_of_group;
+        let srs = &index.srs;
+        let evals = &index.evals;
+        let shifts = &index.shifts;
+
+        let (endo_q, _endo_r) = poly_commitment::ipa::endos::<GAffineOther>();
+        let domain = Domain::<Fq>::new(1 << log_size_of_group).unwrap();
+
+        let feature_flags = compute_feature_flags(&index);
+        let (linearization, powers_of_alpha) = expr_linearization(Some(&feature_flags), true);
+
+        let index = {
+            let zk_rows = index.zk_rows as u64;
+
+            DlogVerifierIndex {
+                domain,
+
+                sigma_comm: core::array::from_fn(|i| (&evals.sigma_comm[i]).into()),
+                generic_comm: (&evals.generic_comm).into(),
+                coefficients_comm: core::array::from_fn(|i| (&evals.coefficients_comm[i]).into()),
+
+                psm_comm: (&evals.psm_comm).into(),
+
+                complete_add_comm: (&evals.complete_add_comm).into(),
+                mul_comm: (&evals.mul_comm).into(),
+                emul_comm: (&evals.emul_comm).into(),
+
+                endomul_scalar_comm: (&evals.endomul_scalar_comm).into(),
+                xor_comm: (&evals.xor_comm).as_ref().map(Into::into),
+                range_check0_comm: (&evals.range_check0_comm).as_ref().map(Into::into),
+                range_check1_comm: (&evals.range_check1_comm).as_ref().map(Into::into),
+                foreign_field_add_comm: (&evals.foreign_field_add_comm).as_ref().map(Into::into),
+                foreign_field_mul_comm: (&evals.foreign_field_mul_comm).as_ref().map(Into::into),
+                rot_comm: (&evals.rot_comm).as_ref().map(Into::into),
+
+                w: {
+                    let res = once_cell::sync::OnceCell::new();
+                    res.set(zk_w(domain, zk_rows)).unwrap();
+                    res
+                },
+                endo: endo_q,
+                max_poly_size: max_poly_size as usize,
+                public: public_ as usize,
+                prev_challenges: prev_challenges as usize,
+                permutation_vanishing_polynomial_m: {
+                    let res = once_cell::sync::OnceCell::new();
+                    res.set(permutation_vanishing_polynomial(domain, zk_rows))
+                        .unwrap();
+                    res
+                },
+                shift: [
+                    shifts.s0.into(),
+                    shifts.s1.into(),
+                    shifts.s2.into(),
+                    shifts.s3.into(),
+                    shifts.s4.into(),
+                    shifts.s5.into(),
+                    shifts.s6.into(),
+                ],
+                srs: { Arc::clone(&srs.0) },
+
+                zk_rows,
+
+                linearization,
+                powers_of_alpha,
+                lookup_index: index.lookup_index.map(Into::into),
+            }
+        };
+        (index, srs.0.clone()).0
     }
-}
-
-pub fn of_napi(
-    index: NapiFqPlonkVerifierIndex,
-) -> (
-    DlogVerifierIndex<GAffine, OpeningProof<GAffine>>,
-    Arc<SRS<GAffine>>,
-) {
-    let max_poly_size = index.max_poly_size;
-    let public_ = index.public_;
-    let prev_challenges = index.prev_challenges;
-    let log_size_of_group = index.domain.log_size_of_group;
-    let srs = &index.srs;
-    let evals = &index.evals;
-    let shifts = &index.shifts;
-
-    let (endo_q, _endo_r) = poly_commitment::ipa::endos::<GAffineOther>();
-    let domain = Domain::<Fq>::new(1 << log_size_of_group).unwrap();
-
-    let feature_flags = compute_feature_flags(&index);
-    let (linearization, powers_of_alpha) = expr_linearization(Some(&feature_flags), true);
-
-    let index = {
-        let zk_rows = index.zk_rows as u64;
-
-        DlogVerifierIndex {
-            domain,
-
-            sigma_comm: core::array::from_fn(|i| (&evals.sigma_comm[i]).into()),
-            generic_comm: (&evals.generic_comm).into(),
-            coefficients_comm: core::array::from_fn(|i| (&evals.coefficients_comm[i]).into()),
-
-            psm_comm: (&evals.psm_comm).into(),
-
-            complete_add_comm: (&evals.complete_add_comm).into(),
-            mul_comm: (&evals.mul_comm).into(),
-            emul_comm: (&evals.emul_comm).into(),
-
-            endomul_scalar_comm: (&evals.endomul_scalar_comm).into(),
-            xor_comm: (&evals.xor_comm).as_ref().map(Into::into),
-            range_check0_comm: (&evals.range_check0_comm).as_ref().map(Into::into),
-            range_check1_comm: (&evals.range_check1_comm).as_ref().map(Into::into),
-            foreign_field_add_comm: (&evals.foreign_field_add_comm).as_ref().map(Into::into),
-            foreign_field_mul_comm: (&evals.foreign_field_mul_comm).as_ref().map(Into::into),
-            rot_comm: (&evals.rot_comm).as_ref().map(Into::into),
-
-            w: {
-                let res = once_cell::sync::OnceCell::new();
-                res.set(zk_w(domain, zk_rows)).unwrap();
-                res
-            },
-            endo: endo_q,
-            max_poly_size: max_poly_size as usize,
-            public: public_ as usize,
-            prev_challenges: prev_challenges as usize,
-            permutation_vanishing_polynomial_m: {
-                let res = once_cell::sync::OnceCell::new();
-                res.set(permutation_vanishing_polynomial(domain, zk_rows))
-                    .unwrap();
-                res
-            },
-            shift: [
-                shifts.s0.into(),
-                shifts.s1.into(),
-                shifts.s2.into(),
-                shifts.s3.into(),
-                shifts.s4.into(),
-                shifts.s5.into(),
-                shifts.s6.into(),
-            ],
-            srs: { Arc::clone(&srs.0) },
-
-            zk_rows,
-
-            linearization,
-            powers_of_alpha,
-            lookup_index: index.lookup_index.map(Into::into),
-        }
-    };
-    (index, srs.0.clone())
 }
 
 fn compute_feature_flags(index: &NapiFqPlonkVerifierIndex) -> FeatureFlags {
