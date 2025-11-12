@@ -623,7 +623,7 @@ macro_rules! impl_proof {
 
                 #[wasm_bindgen]
                 #[allow(deprecated)]
-                pub fn deserialize(s: &str) -> WasmProverProof {
+                pub fn deserialize(s: &str) -> Self {
                     let bytes = base64::decode(s).unwrap();
                     let proof: ProverProof<$G, OpeningProof<$G>> = rmp_serde::from_slice(&bytes).unwrap();
                     // Deprecated used on purpose: updating this leads to a bug in o1js
