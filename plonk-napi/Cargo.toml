@@ -26,9 +26,10 @@ arkworks.workspace = true
 mina-curves = { path = "../curves" }
 mina-poseidon = { path = "../poseidon" }
 o1-utils = { path = "../utils" }
-poly-commitment = { path = "../poly-commitment" }
 plonk_wasm.workspace = true
+poly-commitment = { path = "../poly-commitment" }
 
+base64.workspace = true
 getrandom.workspace = true
 kimchi.workspace = true
 libc.workspace = true
