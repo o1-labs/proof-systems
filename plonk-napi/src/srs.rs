@@ -109,17 +109,15 @@ macro_rules! impl_srs {
               }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_create">])]
-              pub fn [<caml_ $name:snake _srs_create>](depth: i32) -> Result<[<Napi $name:camel Srs>]> {
+              pub fn [<caml_ $name:snake _srs_create>](depth: i32) -> External<[<Napi $name:camel Srs>]>  {
                   println!("Creating SRS with napi");
-                  Ok(Arc::new(SRS::<$G>::create(depth as usize)).into())
+                  External::new(Arc::new(SRS::<$G>::create(depth as usize)).into())
               }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_create_parallel">])]
-              pub fn [<caml_ $name:snake _srs_create_parallel>](depth: i32) -> Result<[<Napi $name:camel Srs>]> {
+              pub fn [<caml_ $name:snake _srs_create_parallel>](depth: i32) -> External<[<Napi $name:camel Srs>]> {
                   println!("Creating SRS in parallel with napi");
-                  Ok(Arc::new(SRS::<$G>::create_parallel(
-                      depth as usize,
-                  )).into())
+                  External::new(Arc::new(SRS::<$G>::create_parallel(depth as usize)).into())
               }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_add_lagrange_basis">])]
@@ -167,7 +165,7 @@ macro_rules! impl_srs {
               }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_get">])]
-              pub fn [<caml_ $name:snake _srs_get>](srs: &[<Napi $name:camel Srs>]) -> Vec<$NapiG> {
+              pub fn [<caml_ $name:snake _srs_get>](srs: &External<[<Napi $name:camel Srs>]>) -> Vec<$NapiG> {
                   println!("Getting SRS with napi");
                   let mut h_and_gs: Vec<$NapiG> = vec![srs.0.h.into()];
                   h_and_gs.extend(srs.0.g.iter().cloned().map(Into::into));
@@ -175,19 +173,14 @@ macro_rules! impl_srs {
               }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_set">])]
-              pub fn [<caml_ $name:snake _srs_set>](h_and_gs: Vec<$NapiG>) -> Result<[<Napi $name:camel Srs>]> {
+              pub fn [<caml_ $name:snake _srs_set>](h_and_gs: Vec<$NapiG>) -> External<[<Napi $name:camel Srs>]> {
                   println!("Setting SRS with napi");
                   let mut h_and_gs: Vec<$G> = h_and_gs.into_iter().map(Into::into).collect();
-                  if h_and_gs.is_empty() {
-                      return Err(Error::new(
-                          Status::InvalidArg,
-                          "expected at least one element for SRS",
-                      ));
-                  }
+
                   let h = h_and_gs.remove(0);
                   let g = h_and_gs;
                   let srs = SRS::<$G> { h, g, lagrange_bases: HashMapCache::new() };
-                  Ok(Arc::new(srs).into())
+                  External::new(Arc::new(srs).into())
               }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_maybe_lagrange_commitment">])]
