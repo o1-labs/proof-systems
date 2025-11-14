@@ -196,7 +196,7 @@ pub struct NapiFqPlonkVerifierIndex {
     pub zk_rows: i32,
 }
 
-#[napi(js_name = "pasta_fq_plonk_verifier_index_shifts")]
+#[napi(js_name = "caml_pasta_fq_plonk_verifier_index_shifts")]
 pub fn caml_pasta_fq_plonk_verifier_index_shifts(
     log2_size: i32,
 ) -> napi::bindgen_prelude::Result<NapiFqShifts> {
