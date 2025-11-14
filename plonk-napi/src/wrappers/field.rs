@@ -113,6 +113,13 @@ macro_rules! impl_field_wrapper {
                 <Buffer as ToNapiValue>::to_napi_value(env, buffer)
             }
         }
+
+        impl<'a> ToNapiValue for &'a mut $name {
+            unsafe fn to_napi_value(env: sys::napi_env, val: Self) -> Result<sys::napi_value> {
+                let buffer = Buffer::from(val.to_bytes());
+                <Buffer as ToNapiValue>::to_napi_value(env, buffer)
+            }
+        }
     };
 }
 

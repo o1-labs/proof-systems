@@ -47,12 +47,12 @@ pub use proof::{
     fp::{
         caml_pasta_fp_plonk_proof_batch_verify, caml_pasta_fp_plonk_proof_create,
         caml_pasta_fp_plonk_proof_deep_copy, caml_pasta_fp_plonk_proof_dummy,
-        caml_pasta_fp_plonk_proof_verify,
+        caml_pasta_fp_plonk_proof_verify, NapiFpProverProof,
     },
     fq::{
         caml_pasta_fq_plonk_proof_batch_verify, caml_pasta_fq_plonk_proof_create,
         caml_pasta_fq_plonk_proof_deep_copy, caml_pasta_fq_plonk_proof_dummy,
-        caml_pasta_fq_plonk_proof_verify,
+        caml_pasta_fq_plonk_proof_verify, NapiFqProverProof,
     },
 };
 pub use srs::{
