@@ -327,6 +327,12 @@ pub fn caml_fp_srs_from_bytes(bytes: Uint8Array) -> Result<fp::NapiFpSrs> {
     fp::NapiFpSrs::deserialize(bytes)
 }
 
+#[napi(js_name = "caml_fp_srs_from_bytes_external")]
+pub fn caml_fp_srs_from_bytes_external(bytes: Uint8Array) -> External<fp::NapiFpSrs> {
+    let srs = caml_fp_srs_from_bytes(bytes).unwrap();
+    External::new(srs)
+}
+
 #[napi(js_name = "caml_fq_srs_to_bytes")]
 pub fn caml_fq_srs_to_bytes(srs: &fq::NapiFqSrs) -> Result<Uint8Array> {
     srs.serialize()
@@ -335,6 +341,12 @@ pub fn caml_fq_srs_to_bytes(srs: &fq::NapiFqSrs) -> Result<Uint8Array> {
 #[napi(js_name = "caml_fq_srs_from_bytes")]
 pub fn caml_fq_srs_from_bytes(bytes: Uint8Array) -> Result<fq::NapiFqSrs> {
     fq::NapiFqSrs::deserialize(bytes)
+}
+
+#[napi(js_name = "caml_fq_srs_from_bytes_external")]
+pub fn caml_fq_srs_from_bytes_external(bytes: Uint8Array) -> External<fq::NapiFqSrs> {
+    let srs = caml_fq_srs_from_bytes(bytes).unwrap();
+    External::new(srs)
 }
 
 pub mod fp {
