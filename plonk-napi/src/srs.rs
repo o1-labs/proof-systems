@@ -164,6 +164,32 @@ macro_rules! impl_srs {
                   }
               }
 
+            #[napi(js_name = [<"caml_" $name:snake "_srs_lagrange_commitment">])]
+            pub fn [<caml_ $name:snake _srs_lagrange_commitment>](
+                srs: &External<[<Napi $name:camel Srs>]>,
+                domain_size: i32,
+                i: i32,
+            ) -> Result<[<$NapiPolyComm>]> {
+                let x_domain = EvaluationDomain::<$F>::new(domain_size as usize)
+                    .ok_or_else(invalid_domain_error)?;
+                let basis = srs.get_lagrange_basis(x_domain);
+                Ok(basis[i as usize].clone().into())
+            }
+
+            // Fake overwrite of the plonk_wasm equivalent, but without pointers.
+            // In the srs bindings, the same symbol will be used to either provide
+            // the pointer for wasm, or the actual data for napi
+            #[napi(js_name = [<"caml_" $name:snake "_srs_lagrange_commitments_whole_domain_ptr">])]
+            pub fn [<caml_ $name:snake _srs_lagrange_commitments_whole_domain_ptr>](
+                srs: &External<[<Napi $name:camel Srs>]>,
+                domain_size: i32,
+            ) -> Result<NapiVector<$NapiPolyComm>> {
+                let domain = EvaluationDomain::<$F>::new(domain_size as usize)
+                    .ok_or_else(invalid_domain_error)?;
+                let basis = srs.0.get_lagrange_basis(domain);
+                Ok(basis.iter().cloned().map(Into::into).collect())
+            }
+
               #[napi(js_name = [<"caml_" $name:snake "_srs_get">])]
               pub fn [<caml_ $name:snake _srs_get>](srs: &External<[<Napi $name:camel Srs>]>) -> Vec<$NapiG> {
                   println!("Getting SRS with napi");
@@ -322,6 +348,11 @@ pub fn caml_fp_srs_to_bytes(srs: &fp::NapiFpSrs) -> Result<Uint8Array> {
     srs.serialize()
 }
 
+#[napi(js_name = "caml_fp_srs_to_bytes_external")]
+pub fn caml_fp_srs_to_bytes_external(srs: &External<fp::NapiFpSrs>) -> Uint8Array {
+    caml_fp_srs_to_bytes(srs).expect("failed to serialize external fp srs")
+}
+
 #[napi(js_name = "caml_fp_srs_from_bytes")]
 pub fn caml_fp_srs_from_bytes(bytes: Uint8Array) -> Result<fp::NapiFpSrs> {
     fp::NapiFpSrs::deserialize(bytes)
@@ -336,6 +367,11 @@ pub fn caml_fp_srs_from_bytes_external(bytes: Uint8Array) -> External<fp::NapiFp
 #[napi(js_name = "caml_fq_srs_to_bytes")]
 pub fn caml_fq_srs_to_bytes(srs: &fq::NapiFqSrs) -> Result<Uint8Array> {
     srs.serialize()
+}
+
+#[napi(js_name = "caml_fq_srs_to_bytes_external")]
+pub fn caml_fq_srs_to_bytes_external(srs: &External<fq::NapiFqSrs>) -> Uint8Array {
+    caml_fq_srs_to_bytes(srs).expect("failed to serialize external fq srs")
 }
 
 #[napi(js_name = "caml_fq_srs_from_bytes")]
