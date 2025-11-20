@@ -22,7 +22,7 @@ pub fn lookup_verify<
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 >(
-    // input dependant of main proto
+    // input dependent of main proto
     beta_challenge: G::ScalarField,
     gamma_challenge: G::ScalarField,
     constraint: ELookup<G::ScalarField>,
