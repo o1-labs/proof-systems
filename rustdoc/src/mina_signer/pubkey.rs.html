@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `signer/src/pubkey.rs`."><title>pubkey.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="mina_signer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (292be5c7c 2025-10-29)" data-channel="nightly" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">mina_signer/</div>pubkey.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Public key structures and algorithms
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `signer/src/pubkey.rs`."><title>pubkey.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="mina_signer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (07bdbaedc 2025-11-19)" data-channel="nightly" data-search-js="search-680b2199.js" data-stringdex-js="stringdex-a3946164.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-a410ff4d.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">mina_signer/</div>pubkey.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Public key structures and algorithms
 <a href=#2 id=2 data-nosnippet>2</a>//!
 <a href=#3 id=3 data-nosnippet>3</a>//! Definition of public key structure and helpers
 <a href=#4 id=4 data-nosnippet>4</a>
@@ -100,7 +100,7 @@
 <a href=#100 id=100 data-nosnippet>100</a>            y,
 <a href=#101 id=101 data-nosnippet>101</a>            infinity: pt.infinity,
 <a href=#102 id=102 data-nosnippet>102</a>        };
-<a href=#103 id=103 data-nosnippet>103</a>        <span class="macro">if !</span>public.is_on_curve() {
+<a href=#103 id=103 data-nosnippet>103</a>        <span class="kw">if </span>!public.is_on_curve() {
 <a href=#104 id=104 data-nosnippet>104</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(PubKeyError::NonCurvePoint);
 <a href=#105 id=105 data-nosnippet>105</a>        }
 <a href=#106 id=106 data-nosnippet>106</a>
@@ -126,7 +126,7 @@
 <a href=#126 id=126 data-nosnippet>126</a>        <span class="kw">let </span>pt = CurvePoint::generator()
 <a href=#127 id=127 data-nosnippet>127</a>            .mul(secret_key.into_scalar())
 <a href=#128 id=128 data-nosnippet>128</a>            .into_affine();
-<a href=#129 id=129 data-nosnippet>129</a>        <span class="macro">if !</span>pt.is_on_curve() {
+<a href=#129 id=129 data-nosnippet>129</a>        <span class="kw">if </span>!pt.is_on_curve() {
 <a href=#130 id=130 data-nosnippet>130</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(PubKeyError::NonCurvePoint);
 <a href=#131 id=131 data-nosnippet>131</a>        }
 <a href=#132 id=132 data-nosnippet>132</a>        <span class="prelude-val">Ok</span>(PubKey::from_point_unsafe(pt))
@@ -173,7 +173,7 @@
 <a href=#173 id=173 data-nosnippet>173</a>            pt.y = pt.y.neg();
 <a href=#174 id=174 data-nosnippet>174</a>        }
 <a href=#175 id=175 data-nosnippet>175</a>
-<a href=#176 id=176 data-nosnippet>176</a>        <span class="macro">if !</span>pt.is_on_curve() {
+<a href=#176 id=176 data-nosnippet>176</a>        <span class="kw">if </span>!pt.is_on_curve() {
 <a href=#177 id=177 data-nosnippet>177</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(PubKeyError::NonCurvePoint);
 <a href=#178 id=178 data-nosnippet>178</a>        }
 <a href=#179 id=179 data-nosnippet>179</a>
@@ -282,7 +282,7 @@
 <a href=#282 id=282 data-nosnippet>282</a>        };
 <a href=#283 id=283 data-nosnippet>283</a>        <span class="kw">let </span>public =
 <a href=#284 id=284 data-nosnippet>284</a>            CurvePoint::get_point_from_x_unchecked(x, is_odd).ok_or(PubKeyError::XCoordinate)<span class="question-mark">?</span>;
-<a href=#285 id=285 data-nosnippet>285</a>        <span class="macro">if !</span>public.is_on_curve() {
+<a href=#285 id=285 data-nosnippet>285</a>        <span class="kw">if </span>!public.is_on_curve() {
 <a href=#286 id=286 data-nosnippet>286</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(PubKeyError::NonCurvePoint);
 <a href=#287 id=287 data-nosnippet>287</a>        }
 <a href=#288 id=288 data-nosnippet>288</a>

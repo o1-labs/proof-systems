@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/keccak/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (292be5c7c 2025-10-29)" data-channel="nightly" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../../src-files.js"></script><script defer src="../../../../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi/circuits/polynomials/keccak/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Keccak hash module
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/keccak/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.93.0-nightly (07bdbaedc 2025-11-19)" data-channel="nightly" data-search-js="search-680b2199.js" data-stringdex-js="stringdex-a3946164.js" data-settings-js="settings-c38705f0.js" ><script src="../../../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../../src-files.js"></script><script defer src="../../../../../static.files/main-a410ff4d.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi/circuits/polynomials/keccak/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Keccak hash module
 <a href=#2 id=2 data-nosnippet>2</a></span><span class="kw">pub mod </span>constants;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">pub mod </span>witness;
 <a href=#4 id=4 data-nosnippet>4</a>
@@ -260,7 +260,7 @@
 <a href=#260 id=260 data-nosnippet>260</a>    <span class="attr">#[test]
 <a href=#261 id=261 data-nosnippet>261</a>    </span><span class="comment">// Tests that the shifts are computed correctly
 <a href=#262 id=262 data-nosnippet>262</a>    </span><span class="kw">fn </span>test_shifts() {
-<a href=#263 id=263 data-nosnippet>263</a>        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
+<a href=#263 id=263 data-nosnippet>263</a>        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().<span class="kw">gen</span>();
 <a href=#264 id=264 data-nosnippet>264</a>        <span class="macro">eprintln!</span>(<span class="string">"Seed: {:?}"</span>, seed);
 <a href=#265 id=265 data-nosnippet>265</a>        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_seed(seed);
 <a href=#266 id=266 data-nosnippet>266</a>        <span class="kw">let </span>word: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
@@ -277,7 +277,7 @@
 <a href=#277 id=277 data-nosnippet>277</a>    <span class="attr">#[test]
 <a href=#278 id=278 data-nosnippet>278</a>    </span><span class="comment">// Checks that reset function returns shift0, as the first positions of the shifts vector
 <a href=#279 id=279 data-nosnippet>279</a>    </span><span class="kw">fn </span>test_reset() {
-<a href=#280 id=280 data-nosnippet>280</a>        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
+<a href=#280 id=280 data-nosnippet>280</a>        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().<span class="kw">gen</span>();
 <a href=#281 id=281 data-nosnippet>281</a>        <span class="macro">eprintln!</span>(<span class="string">"Seed: {:?}"</span>, seed);
 <a href=#282 id=282 data-nosnippet>282</a>        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_seed(seed);
 <a href=#283 id=283 data-nosnippet>283</a>        <span class="kw">let </span>word: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
@@ -293,7 +293,7 @@
 <a href=#293 id=293 data-nosnippet>293</a>    <span class="attr">#[test]
 <a href=#294 id=294 data-nosnippet>294</a>    </span><span class="comment">// Checks that one can obtain the original word from the resets of the expanded word
 <a href=#295 id=295 data-nosnippet>295</a>    </span><span class="kw">fn </span>test_collapse() {
-<a href=#296 id=296 data-nosnippet>296</a>        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
+<a href=#296 id=296 data-nosnippet>296</a>        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().<span class="kw">gen</span>();
 <a href=#297 id=297 data-nosnippet>297</a>        <span class="macro">eprintln!</span>(<span class="string">"Seed: {:?}"</span>, seed);
 <a href=#298 id=298 data-nosnippet>298</a>        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_seed(seed);
 <a href=#299 id=299 data-nosnippet>299</a>        <span class="kw">let </span>word: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
@@ -307,7 +307,7 @@
 <a href=#307 id=307 data-nosnippet>307</a>    </span><span class="comment">// Checks that concatenating the maximum number of carries (15 per bit) result
 <a href=#308 id=308 data-nosnippet>308</a>    // in the same original dense word, and just one more carry results in a different word
 <a href=#309 id=309 data-nosnippet>309</a>    </span><span class="kw">fn </span>test_max_carries() {
-<a href=#310 id=310 data-nosnippet>310</a>        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
+<a href=#310 id=310 data-nosnippet>310</a>        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().<span class="kw">gen</span>();
 <a href=#311 id=311 data-nosnippet>311</a>        <span class="macro">eprintln!</span>(<span class="string">"Seed: {:?}"</span>, seed);
 <a href=#312 id=312 data-nosnippet>312</a>        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_seed(seed);
 <a href=#313 id=313 data-nosnippet>313</a>        <span class="kw">let </span>word: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
@@ -330,7 +330,7 @@
 <a href=#330 id=330 data-nosnippet>330</a>    </span><span class="comment">// Tests that the XOR can be represented in the 4i-th
 <a href=#331 id=331 data-nosnippet>331</a>    // positions of the addition of sparse representations
 <a href=#332 id=332 data-nosnippet>332</a>    </span><span class="kw">fn </span>test_sparse_xor() {
-<a href=#333 id=333 data-nosnippet>333</a>        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
+<a href=#333 id=333 data-nosnippet>333</a>        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().<span class="kw">gen</span>();
 <a href=#334 id=334 data-nosnippet>334</a>        <span class="macro">eprintln!</span>(<span class="string">"Seed: {:?}"</span>, seed);
 <a href=#335 id=335 data-nosnippet>335</a>        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_seed(seed);
 <a href=#336 id=336 data-nosnippet>336</a>        <span class="kw">let </span>a: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
@@ -355,7 +355,7 @@
 <a href=#355 id=355 data-nosnippet>355</a>    </span><span class="comment">// Tests that the AND can be represented in the (4i+1)-th positions of the
 <a href=#356 id=356 data-nosnippet>356</a>    // addition of canonical sparse representations
 <a href=#357 id=357 data-nosnippet>357</a>    </span><span class="kw">fn </span>test_sparse_and() {
-<a href=#358 id=358 data-nosnippet>358</a>        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
+<a href=#358 id=358 data-nosnippet>358</a>        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().<span class="kw">gen</span>();
 <a href=#359 id=359 data-nosnippet>359</a>        <span class="macro">eprintln!</span>(<span class="string">"Seed: {:?}"</span>, seed);
 <a href=#360 id=360 data-nosnippet>360</a>        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_seed(seed);
 <a href=#361 id=361 data-nosnippet>361</a>        <span class="kw">let </span>a: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
@@ -380,7 +380,7 @@
 <a href=#380 id=380 data-nosnippet>380</a>    </span><span class="comment">// Tests that the NOT can be represented as subtraction with the expansion of
 <a href=#381 id=381 data-nosnippet>381</a>    // the 16-bit dense quarter.
 <a href=#382 id=382 data-nosnippet>382</a>    </span><span class="kw">fn </span>test_sparse_not() {
-<a href=#383 id=383 data-nosnippet>383</a>        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
+<a href=#383 id=383 data-nosnippet>383</a>        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().<span class="kw">gen</span>();
 <a href=#384 id=384 data-nosnippet>384</a>        <span class="macro">eprintln!</span>(<span class="string">"Seed: {:?}"</span>, seed);
 <a href=#385 id=385 data-nosnippet>385</a>        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_seed(seed);
 <a href=#386 id=386 data-nosnippet>386</a>        <span class="kw">let </span>word = rng.gen_range(<span class="number">0</span>..<span class="number">2u64</span>.pow(<span class="number">16</span>));
