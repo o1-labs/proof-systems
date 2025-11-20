@@ -52,18 +52,21 @@ pub use proof::{
     fp::{
         caml_pasta_fp_plonk_proof_batch_verify, caml_pasta_fp_plonk_proof_create,
         caml_pasta_fp_plonk_proof_deep_copy, caml_pasta_fp_plonk_proof_dummy,
-        caml_pasta_fp_plonk_proof_verify, NapiFpProverProof,
+        caml_pasta_fp_plonk_proof_verify, NapiFpLookupCommitments, NapiFpOpeningProof,
+        NapiFpProofEvaluations, NapiFpProverCommitments, NapiFpProverProof,
     },
     fq::{
         caml_pasta_fq_plonk_proof_batch_verify, caml_pasta_fq_plonk_proof_create,
         caml_pasta_fq_plonk_proof_deep_copy, caml_pasta_fq_plonk_proof_dummy,
-        caml_pasta_fq_plonk_proof_verify, NapiFqProverProof,
+        caml_pasta_fq_plonk_proof_verify, NapiFqLookupCommitments, NapiFqOpeningProof,
+        NapiFqProofEvaluations, NapiFqProverCommitments, NapiFqProverProof,
     },
 };
 pub use srs::{
     caml_fp_srs_from_bytes, caml_fp_srs_from_bytes_external, caml_fp_srs_to_bytes,
-    caml_fq_srs_from_bytes, caml_fq_srs_from_bytes_external, caml_fq_srs_to_bytes,
-    fp::NapiFpSrs as WasmFpSrs, fq::NapiFqSrs as WasmFqSrs, *,
+    caml_fp_srs_to_bytes_external, caml_fq_srs_from_bytes, caml_fq_srs_from_bytes_external,
+    caml_fq_srs_to_bytes, caml_fq_srs_to_bytes_external, fp::NapiFpSrs as WasmFpSrs,
+    fq::NapiFqSrs as WasmFqSrs, *,
 };
 pub use tables::{JsLookupTableFp, JsLookupTableFq, JsRuntimeTableCfgFp, JsRuntimeTableCfgFq};
 pub use vector::{
