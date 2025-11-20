@@ -45,7 +45,7 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
         blinders: &PolyComm<G::ScalarField>,
     ) -> Result<BlindedCommitment<G>, CommitmentError>;
 
-    /// Turns a non-hiding polynomial commitment into a hidding polynomial
+    /// Turns a non-hiding polynomial commitment into a hiding polynomial
     /// commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with
     /// a random `w` per commitment.
     /// A [BlindedCommitment] object is returned instead of a PolyComm object to

@@ -2156,7 +2156,7 @@ The prover then follows the following steps to create the proof:
    Note: unlike the original PLONK protocol,
    the prover also provides evaluations of the public polynomial to help the verifier circuit.
    This is why we need to absorb the commitment to the public polynomial at this point.
-1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
+1. Commit to the witness columns by creating `COLUMNS` hiding commitments.
 
    Note: since the witness is in evaluation form,
    we can use the `commit_evaluation` optimization.
@@ -2193,7 +2193,7 @@ The prover then follows the following steps to create the proof:
 	* Commit to the aggregation polynomial.
 	* Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
 1. Compute the permutation aggregation polynomial $z$.
-1. Commit (hidding) to the permutation aggregation polynomial $z$.
+1. Commit (hiding) to the permutation aggregation polynomial $z$.
 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
 1. Sample $\alpha'$ with the Fq-Sponge.
 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
