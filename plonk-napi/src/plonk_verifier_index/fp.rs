@@ -16,15 +16,12 @@ use kimchi::{
         },
     },
     linearization::expr_linearization,
-    verifier_index::{LookupVerifierIndex, VerifierIndex as DlogVerifierIndex},
+    verifier_index::{LookupVerifierIndex, VerifierIndex},
 };
 use mina_curves::pasta::{Fp, Pallas as GAffineOther, Vesta as GAffine};
 use napi::bindgen_prelude::{Error, Status};
 use napi_derive::napi;
-use poly_commitment::{
-    commitment::PolyComm,
-    ipa::{OpeningProof, SRS},
-};
+use poly_commitment::{commitment::PolyComm, ipa::OpeningProof};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -33,6 +30,13 @@ use std::sync::Arc;
 pub struct NapiFpDomain {
     pub log_size_of_group: i32,
     pub group_gen: NapiPastaFp,
+}
+
+impl From<NapiFpDomain> for Domain<Fp> {
+    fn from(domain: NapiFpDomain) -> Self {
+        let size = 1 << domain.log_size_of_group;
+        Domain::<Fp>::new(size).expect("Failed to create evaluation domain")
+    }
 }
 
 #[napi(object, js_name = "WasmFpShifts")]
@@ -223,7 +227,7 @@ pub fn caml_pasta_fp_plonk_verifier_index_shifts(
     })
 }
 
-impl From<NapiFpPlonkVerifierIndex> for DlogVerifierIndex<GAffine, OpeningProof<GAffine>> {
+impl From<NapiFpPlonkVerifierIndex> for VerifierIndex<GAffine, OpeningProof<GAffine>> {
     fn from(index: NapiFpPlonkVerifierIndex) -> Self {
         let max_poly_size = index.max_poly_size;
         let public_ = index.public_;
@@ -242,7 +246,7 @@ impl From<NapiFpPlonkVerifierIndex> for DlogVerifierIndex<GAffine, OpeningProof<
         let index = {
             let zk_rows = index.zk_rows as u64;
 
-            DlogVerifierIndex {
+            VerifierIndex {
                 domain,
 
                 sigma_comm: core::array::from_fn(|i| (&evals.sigma_comm[i]).into()),

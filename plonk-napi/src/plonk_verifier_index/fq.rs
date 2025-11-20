@@ -16,15 +16,12 @@ use kimchi::{
         },
     },
     linearization::expr_linearization,
-    verifier_index::{LookupVerifierIndex, VerifierIndex as DlogVerifierIndex},
+    verifier_index::{LookupVerifierIndex, VerifierIndex},
 };
 use mina_curves::pasta::{Fq, Pallas as GAffine, Vesta as GAffineOther};
 use napi::bindgen_prelude::{Error, Status};
 use napi_derive::napi;
-use poly_commitment::{
-    commitment::PolyComm,
-    ipa::{OpeningProof, SRS},
-};
+use poly_commitment::{commitment::PolyComm, ipa::OpeningProof};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -223,7 +220,7 @@ pub fn caml_pasta_fq_plonk_verifier_index_shifts(
     })
 }
 
-impl From<NapiFqPlonkVerifierIndex> for DlogVerifierIndex<GAffine, OpeningProof<GAffine>> {
+impl From<NapiFqPlonkVerifierIndex> for VerifierIndex<GAffine, OpeningProof<GAffine>> {
     fn from(index: NapiFqPlonkVerifierIndex) -> Self {
         let max_poly_size = index.max_poly_size;
         let public_ = index.public_;
@@ -242,7 +239,7 @@ impl From<NapiFqPlonkVerifierIndex> for DlogVerifierIndex<GAffine, OpeningProof<
         let index = {
             let zk_rows = index.zk_rows as u64;
 
-            DlogVerifierIndex {
+            VerifierIndex {
                 domain,
 
                 sigma_comm: core::array::from_fn(|i| (&evals.sigma_comm[i]).into()),
