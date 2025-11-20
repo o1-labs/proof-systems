@@ -1,6 +1,7 @@
 mod build_info;
 mod circuit;
 mod gate_vector;
+mod oracles;
 mod pasta_fp_plonk_index;
 mod pasta_fq_plonk_index;
 mod plonk_verifier_index;
@@ -29,6 +30,10 @@ pub use gate_vector::{
     caml_pasta_fq_plonk_gate_vector_wrap, NapiFpGate as WasmFpGate,
     NapiFpGateVector as WasmFpGateVector, NapiFqGate as WasmFqGate,
     NapiFqGateVector as WasmFqGateVector,
+};
+pub use oracles::{
+    fp::{fp_oracles_create, fp_oracles_deep_copy, fp_oracles_dummy},
+    fq::{fq_oracles_create, fq_oracles_deep_copy, fq_oracles_dummy},
 };
 pub use pasta_fp_plonk_index::{
     prover_index_fp_from_bytes, prover_index_fp_to_bytes, WasmPastaFpPlonkIndex,
