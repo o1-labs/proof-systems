@@ -110,6 +110,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### [plonk_wasm](./plonk-wasm)
 
+#### Changed
+
+- `WasmProverProof.deserialize` to accept `&[u8]` instead of `&str` ([[#3369]](https://github.com/o1-labs/proof-systems/pull/3369))
+
+#### Added
 
 - Add function to `deserialize` a `WasmProverProof`
   ([#3354](https://github.com/o1-labs/proof-systems/pull/3354))
