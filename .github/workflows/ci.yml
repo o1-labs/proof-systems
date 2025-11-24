@@ -73,7 +73,7 @@ jobs:
     steps:
       # if 'workflow_run'
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         if: ${{ github.event_name == 'workflow_run' }}
       - uses: ./.github/actions/toolchain-shared
         if: ${{ github.event_name == 'workflow_run' }}
@@ -105,7 +105,7 @@ jobs:
     runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -210,7 +210,7 @@ jobs:
     runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -242,7 +242,7 @@ jobs:
     runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -283,7 +283,7 @@ jobs:
     runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
