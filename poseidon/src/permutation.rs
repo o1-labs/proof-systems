@@ -103,6 +103,33 @@ pub fn half_rounds<F: Field, SC: SpongeConstants>(
     }
 }
 
+/// Apply the whole permutation on the state given in parameters.
+///
+/// # Security
+///
+/// **WARNING:** This function pads inputs with trailing zeros to reach the full state size.
+/// This causes collisions: inputs differing only in trailing zeros produce identical outputs.
+/// Therefore, **use only with fixed-length inputs**.
+///
+/// Here is an example for a state of size `3`:
+/// ```rust
+/// use ark_ff::{One, Zero};
+/// use mina_curves::pasta::Fq;
+/// use mina_poseidon::pasta::fq_kimchi;
+/// use mina_poseidon::constants::PlonkSpongeConstantsKimchi;
+/// use mina_poseidon::permutation::poseidon_block_cipher;
+/// pub fn main() {
+///   let mut state: Vec<Fq> = Vec::new();
+///   state.push(Fq::one());
+///   state.push(Fq::one());
+///   let mut state_padded = state.clone();
+///
+///   state_padded.push(Fq::zero());
+///   poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi>(fq_kimchi::static_params(), &mut state);
+///   poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi>(fq_kimchi::static_params(), &mut state_padded);
+///   assert_eq!(state, state_padded);
+/// }
+/// ```
 pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
     state: &mut Vec<F>,
