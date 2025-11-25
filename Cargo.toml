@@ -8,7 +8,6 @@ members = [
   "groupmap",
   "hasher",
   "internal-tracing",
-  "ivc",
   "kimchi",
   "kimchi-stubs",
   "msm",

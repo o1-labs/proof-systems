@@ -1866,31 +1866,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1a46d1a171d865aa5f83f92695765caa047a9b4cbae2cbf37dbd613a793fd4c"
 
 [[package]]
-name = "ivc"
-version = "0.1.0"
-dependencies = [
- "ark-bn254",
- "ark-ec",
- "ark-ff",
- "ark-poly",
- "folding",
- "itertools 0.12.1",
- "kimchi",
- "kimchi-msm",
- "mina-poseidon",
- "num-bigint",
- "num-integer",
- "o1-utils",
- "once_cell",
- "poly-commitment",
- "rand",
- "rayon",
- "strum",
- "strum_macros",
- "thiserror 2.0.12",
-]
-
-[[package]]
 name = "jobserver"
 version = "0.1.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
