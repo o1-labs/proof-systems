@@ -1,7 +1,8 @@
 use crate::{
-    poly_comm::pallas::NapiFqPolyComm,
-    srs::fq::NapiFqSrs,
-    wrappers::{field::NapiPastaFq, lookups::NapiLookupInfo},
+    poly_comm::vesta::NapiFpPolyComm,
+    srs::fp::NapiFpSrs,
+    wrappers::{field::NapiPastaFp, lookups::NapiLookupInfo},
+    WasmPastaFpPlonkIndex,
 };
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 use kimchi::{
@@ -18,42 +19,72 @@ use kimchi::{
     linearization::expr_linearization,
     verifier_index::{LookupVerifierIndex, VerifierIndex},
 };
-use mina_curves::pasta::{Fq, Pallas as GAffine, Vesta as GAffineOther};
-use napi::bindgen_prelude::{Error, Status};
+use mina_curves::pasta::{Fp, Pallas as GAffineOther, Vesta as GAffine};
+use napi::bindgen_prelude::{Error, External, Status};
 use napi_derive::napi;
-use poly_commitment::{commitment::PolyComm, ipa::OpeningProof};
+use poly_commitment::{commitment::PolyComm, ipa::OpeningProof, SRS};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-#[napi(object, js_name = "WasmFqDomain")]
+#[napi(object, js_name = "WasmFpDomain")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct NapiFqDomain {
+pub struct NapiFpDomain {
     pub log_size_of_group: i32,
-    pub group_gen: NapiPastaFq,
+    pub group_gen: NapiPastaFp,
 }
 
-#[napi(object, js_name = "WasmFqShifts")]
+impl From<NapiFpDomain> for Domain<Fp> {
+    fn from(domain: NapiFpDomain) -> Self {
+        let size = 1 << domain.log_size_of_group;
+        Domain::<Fp>::new(size).expect("Failed to create evaluation domain")
+    }
+}
+
+impl From<&Domain<Fp>> for NapiFpDomain {
+    fn from(domain: &Domain<Fp>) -> Self {
+        Self {
+            log_size_of_group: domain.log_size_of_group as i32,
+            group_gen: domain.group_gen.into(),
+        }
+    }
+}
+
+#[napi(object, js_name = "WasmFpShifts")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct NapiFqShifts {
-    pub s0: NapiPastaFq,
-    pub s1: NapiPastaFq,
-    pub s2: NapiPastaFq,
-    pub s3: NapiPastaFq,
-    pub s4: NapiPastaFq,
-    pub s5: NapiPastaFq,
-    pub s6: NapiPastaFq,
+pub struct NapiFpShifts {
+    pub s0: NapiPastaFp,
+    pub s1: NapiPastaFp,
+    pub s2: NapiPastaFp,
+    pub s3: NapiPastaFp,
+    pub s4: NapiPastaFp,
+    pub s5: NapiPastaFp,
+    pub s6: NapiPastaFp,
 }
 
-#[napi(object, js_name = "WasmFqLookupSelectors")]
+impl From<&[Fp; 7]> for NapiFpShifts {
+    fn from(shifts: &[Fp; 7]) -> Self {
+        Self {
+            s0: shifts[0].into(),
+            s1: shifts[1].into(),
+            s2: shifts[2].into(),
+            s3: shifts[3].into(),
+            s4: shifts[4].into(),
+            s5: shifts[5].into(),
+            s6: shifts[6].into(),
+        }
+    }
+}
+
+#[napi(object, js_name = "WasmFpLookupSelectors")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct NapiFqLookupSelectors {
-    pub xor: Option<NapiFqPolyComm>,
-    pub lookup: Option<NapiFqPolyComm>,
-    pub range_check: Option<NapiFqPolyComm>,
-    pub ffmul: Option<NapiFqPolyComm>,
+pub struct NapiFpLookupSelectors {
+    pub xor: Option<NapiFpPolyComm>,
+    pub lookup: Option<NapiFpPolyComm>,
+    pub range_check: Option<NapiFpPolyComm>,
+    pub ffmul: Option<NapiFpPolyComm>,
 }
 
-impl From<LookupSelectors<PolyComm<GAffine>>> for NapiFqLookupSelectors {
+impl From<LookupSelectors<PolyComm<GAffine>>> for NapiFpLookupSelectors {
     fn from(x: LookupSelectors<PolyComm<GAffine>>) -> Self {
         Self {
             xor: x.xor.clone().map(Into::into),
@@ -64,7 +95,7 @@ impl From<LookupSelectors<PolyComm<GAffine>>> for NapiFqLookupSelectors {
     }
 }
 
-impl From<&LookupSelectors<PolyComm<GAffine>>> for NapiFqLookupSelectors {
+impl From<&LookupSelectors<PolyComm<GAffine>>> for NapiFpLookupSelectors {
     fn from(x: &LookupSelectors<PolyComm<GAffine>>) -> Self {
         Self {
             xor: x.xor.clone().map(Into::into),
@@ -75,8 +106,8 @@ impl From<&LookupSelectors<PolyComm<GAffine>>> for NapiFqLookupSelectors {
     }
 }
 
-impl From<NapiFqLookupSelectors> for LookupSelectors<PolyComm<GAffine>> {
-    fn from(x: NapiFqLookupSelectors) -> Self {
+impl From<NapiFpLookupSelectors> for LookupSelectors<PolyComm<GAffine>> {
+    fn from(x: NapiFpLookupSelectors) -> Self {
         Self {
             xor: x.xor.map(Into::into),
             lookup: x.lookup.map(Into::into),
@@ -86,8 +117,8 @@ impl From<NapiFqLookupSelectors> for LookupSelectors<PolyComm<GAffine>> {
     }
 }
 
-impl From<&NapiFqLookupSelectors> for LookupSelectors<PolyComm<GAffine>> {
-    fn from(x: &NapiFqLookupSelectors) -> Self {
+impl From<&NapiFpLookupSelectors> for LookupSelectors<PolyComm<GAffine>> {
+    fn from(x: &NapiFpLookupSelectors) -> Self {
         Self {
             xor: x.xor.clone().map(Into::into),
             lookup: x.lookup.clone().map(Into::into),
@@ -97,18 +128,18 @@ impl From<&NapiFqLookupSelectors> for LookupSelectors<PolyComm<GAffine>> {
     }
 }
 
-#[napi(object, js_name = "WasmFqLookupVerifierIndex")]
+#[napi(object, js_name = "WasmFpLookupVerifierIndex")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct NapiFqLookupVerifierIndex {
+pub struct NapiFpLookupVerifierIndex {
     pub joint_lookup_used: bool,
-    pub lookup_table: Vec<NapiFqPolyComm>,
-    pub lookup_selectors: NapiFqLookupSelectors,
-    pub table_ids: Option<NapiFqPolyComm>,
+    pub lookup_table: Vec<NapiFpPolyComm>,
+    pub lookup_selectors: NapiFpLookupSelectors,
+    pub table_ids: Option<NapiFpPolyComm>,
     pub lookup_info: NapiLookupInfo,
-    pub runtime_tables_selector: Option<NapiFqPolyComm>,
+    pub runtime_tables_selector: Option<NapiFpPolyComm>,
 }
 
-impl From<LookupVerifierIndex<GAffine>> for NapiFqLookupVerifierIndex {
+impl From<LookupVerifierIndex<GAffine>> for NapiFpLookupVerifierIndex {
     fn from(x: LookupVerifierIndex<GAffine>) -> Self {
         Self {
             joint_lookup_used: x.joint_lookup_used.into(),
@@ -121,7 +152,7 @@ impl From<LookupVerifierIndex<GAffine>> for NapiFqLookupVerifierIndex {
     }
 }
 
-impl From<&LookupVerifierIndex<GAffine>> for NapiFqLookupVerifierIndex {
+impl From<&LookupVerifierIndex<GAffine>> for NapiFpLookupVerifierIndex {
     fn from(x: &LookupVerifierIndex<GAffine>) -> Self {
         Self {
             joint_lookup_used: x.joint_lookup_used.into(),
@@ -134,8 +165,8 @@ impl From<&LookupVerifierIndex<GAffine>> for NapiFqLookupVerifierIndex {
     }
 }
 
-impl From<&NapiFqLookupVerifierIndex> for LookupVerifierIndex<GAffine> {
-    fn from(x: &NapiFqLookupVerifierIndex) -> Self {
+impl From<&NapiFpLookupVerifierIndex> for LookupVerifierIndex<GAffine> {
+    fn from(x: &NapiFpLookupVerifierIndex) -> Self {
         Self {
             joint_lookup_used: x.joint_lookup_used.into(),
             lookup_table: x.lookup_table.clone().iter().map(Into::into).collect(),
@@ -147,8 +178,8 @@ impl From<&NapiFqLookupVerifierIndex> for LookupVerifierIndex<GAffine> {
     }
 }
 
-impl From<NapiFqLookupVerifierIndex> for LookupVerifierIndex<GAffine> {
-    fn from(x: NapiFqLookupVerifierIndex) -> Self {
+impl From<NapiFpLookupVerifierIndex> for LookupVerifierIndex<GAffine> {
+    fn from(x: NapiFpLookupVerifierIndex) -> Self {
         Self {
             joint_lookup_used: x.joint_lookup_used.into(),
             lookup_table: x.lookup_table.iter().map(Into::into).collect(),
@@ -160,56 +191,99 @@ impl From<NapiFqLookupVerifierIndex> for LookupVerifierIndex<GAffine> {
     }
 }
 
-#[napi(object, js_name = "WasmFqPlonkVerificationEvals")]
+#[napi(object, js_name = "WasmFpPlonkVerificationEvals")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct NapiFqPlonkVerificationEvals {
-    pub sigma_comm: Vec<NapiFqPolyComm>,
-    pub coefficients_comm: Vec<NapiFqPolyComm>,
-    pub generic_comm: NapiFqPolyComm,
-    pub psm_comm: NapiFqPolyComm,
-    pub complete_add_comm: NapiFqPolyComm,
-    pub mul_comm: NapiFqPolyComm,
-    pub emul_comm: NapiFqPolyComm,
-    pub endomul_scalar_comm: NapiFqPolyComm,
-    pub xor_comm: Option<NapiFqPolyComm>,
-    pub range_check0_comm: Option<NapiFqPolyComm>,
-    pub range_check1_comm: Option<NapiFqPolyComm>,
-    pub foreign_field_add_comm: Option<NapiFqPolyComm>,
-    pub foreign_field_mul_comm: Option<NapiFqPolyComm>,
-    pub rot_comm: Option<NapiFqPolyComm>,
+pub struct NapiFpPlonkVerificationEvals {
+    pub sigma_comm: Vec<NapiFpPolyComm>,
+    pub coefficients_comm: Vec<NapiFpPolyComm>,
+    pub generic_comm: NapiFpPolyComm,
+    pub psm_comm: NapiFpPolyComm,
+    pub complete_add_comm: NapiFpPolyComm,
+    pub mul_comm: NapiFpPolyComm,
+    pub emul_comm: NapiFpPolyComm,
+    pub endomul_scalar_comm: NapiFpPolyComm,
+    pub xor_comm: Option<NapiFpPolyComm>,
+    pub range_check0_comm: Option<NapiFpPolyComm>,
+    pub range_check1_comm: Option<NapiFpPolyComm>,
+    pub foreign_field_add_comm: Option<NapiFpPolyComm>,
+    pub foreign_field_mul_comm: Option<NapiFpPolyComm>,
+    pub rot_comm: Option<NapiFpPolyComm>,
 }
 
-#[napi(object, js_name = "WasmFqPlonkVerifierIndex")]
+impl From<&VerifierIndex<GAffine, OpeningProof<GAffine>>> for NapiFpPlonkVerificationEvals {
+    fn from(index: &VerifierIndex<GAffine, OpeningProof<GAffine>>) -> Self {
+        Self {
+            sigma_comm: index.sigma_comm.iter().map(Into::into).collect(),
+            coefficients_comm: index.coefficients_comm.iter().map(Into::into).collect(),
+            generic_comm: index.generic_comm.clone().into(),
+            psm_comm: index.psm_comm.clone().into(),
+            complete_add_comm: index.complete_add_comm.clone().into(),
+            mul_comm: index.mul_comm.clone().into(),
+            emul_comm: index.emul_comm.clone().into(),
+            endomul_scalar_comm: index.endomul_scalar_comm.clone().into(),
+            xor_comm: index.xor_comm.clone().map(Into::into),
+            range_check0_comm: index.range_check0_comm.clone().map(Into::into),
+            range_check1_comm: index.range_check1_comm.clone().map(Into::into),
+            foreign_field_add_comm: index.foreign_field_add_comm.clone().map(Into::into),
+            foreign_field_mul_comm: index.foreign_field_mul_comm.clone().map(Into::into),
+            rot_comm: index.rot_comm.clone().map(Into::into),
+        }
+    }
+}
+
+#[napi(object, js_name = "WasmFpPlonkVerifierIndex")]
 #[derive(Clone, Debug, Default)]
-pub struct NapiFqPlonkVerifierIndex {
-    pub domain: NapiFqDomain,
+pub struct NapiFpPlonkVerifierIndex {
+    pub domain: NapiFpDomain,
     pub max_poly_size: i32,
     pub public_: i32,
     pub prev_challenges: i32,
-    pub srs: NapiFqSrs,
-    pub evals: NapiFqPlonkVerificationEvals,
-    pub shifts: NapiFqShifts,
-    pub lookup_index: Option<NapiFqLookupVerifierIndex>,
+    pub srs: NapiFpSrs,
+    pub evals: NapiFpPlonkVerificationEvals,
+    pub shifts: NapiFpShifts,
+    pub lookup_index: Option<NapiFpLookupVerifierIndex>,
     pub zk_rows: i32,
 }
 
-#[napi(js_name = "caml_pasta_fq_plonk_verifier_index_shifts")]
-pub fn caml_pasta_fq_plonk_verifier_index_shifts(
+#[napi(js_name = "caml_pasta_fp_plonk_verifier_index_create")]
+pub fn caml_pasta_fp_plonk_verifier_index_create(
+    index: &External<WasmPastaFpPlonkIndex>,
+) -> NapiFpPlonkVerifierIndex {
+    index
+        .0
+        .srs
+        .get_lagrange_basis(index.0.as_ref().cs.domain.d1);
+    let verifier_index = index.0.as_ref().verifier_index();
+    NapiFpPlonkVerifierIndex::from(&verifier_index)
+}
+
+#[napi(js_name = "caml_pasta_fp_plonk_verifier_index_read")]
+pub fn caml_pasta_fp_plonk_verifier_index_read(
+    offset: Option<i32>,
+    srs: &External<NapiFpSrs>,
+    path: String,
+) -> NapiFpPlonkVerifierIndex {
+    let vi = read_raw(offset, srs, path)?;
+    Ok(to_wasm(srs, vi.into()))
+}
+
+#[napi(js_name = "caml_pasta_fp_plonk_verifier_index_shifts")]
+pub fn caml_pasta_fp_plonk_verifier_index_shifts(
     log2_size: i32,
-) -> napi::bindgen_prelude::Result<NapiFqShifts> {
+) -> napi::bindgen_prelude::Result<NapiFpShifts> {
     println!(
-        "from napi! caml_pasta_fq_plonk_verifier_index_shifts with log2_size {}",
+        "from napi! caml_pasta_fp_plonk_verifier_index_shifts with log2_size {}",
         log2_size
     );
 
     let size = 1usize << (log2_size as u32);
-    let domain = Domain::<Fq>::new(size)
+    let domain = Domain::<Fp>::new(size)
         .ok_or_else(|| Error::new(Status::InvalidArg, "failed to create evaluation domain"))?;
 
     let shifts = KimchiShifts::new(&domain);
     let s = shifts.shifts();
 
-    Ok(NapiFqShifts {
+    Ok(NapiFpShifts {
         s0: s[0].clone().into(),
         s1: s[1].clone().into(),
         s2: s[2].clone().into(),
@@ -220,8 +294,8 @@ pub fn caml_pasta_fq_plonk_verifier_index_shifts(
     })
 }
 
-impl From<NapiFqPlonkVerifierIndex> for VerifierIndex<GAffine, OpeningProof<GAffine>> {
-    fn from(index: NapiFqPlonkVerifierIndex) -> Self {
+impl From<NapiFpPlonkVerifierIndex> for VerifierIndex<GAffine, OpeningProof<GAffine>> {
+    fn from(index: NapiFpPlonkVerifierIndex) -> Self {
         let max_poly_size = index.max_poly_size;
         let public_ = index.public_;
         let prev_challenges = index.prev_challenges;
@@ -231,7 +305,7 @@ impl From<NapiFqPlonkVerifierIndex> for VerifierIndex<GAffine, OpeningProof<GAff
         let shifts = &index.shifts;
 
         let (endo_q, _endo_r) = poly_commitment::ipa::endos::<GAffineOther>();
-        let domain = Domain::<Fq>::new(1 << log_size_of_group).unwrap();
+        let domain = Domain::<Fp>::new(1 << log_size_of_group).unwrap();
 
         let feature_flags = compute_feature_flags(&index);
         let (linearization, powers_of_alpha) = expr_linearization(Some(&feature_flags), true);
@@ -297,7 +371,23 @@ impl From<NapiFqPlonkVerifierIndex> for VerifierIndex<GAffine, OpeningProof<GAff
     }
 }
 
-fn compute_feature_flags(index: &NapiFqPlonkVerifierIndex) -> FeatureFlags {
+impl From<&VerifierIndex<GAffine, OpeningProof<GAffine>>> for NapiFpPlonkVerifierIndex {
+    fn from(index: &VerifierIndex<GAffine, OpeningProof<GAffine>>) -> Self {
+        Self {
+            domain: (&index.domain).into(),
+            max_poly_size: index.max_poly_size as i32,
+            public_: index.public as i32,
+            prev_challenges: index.prev_challenges as i32,
+            srs: (&index.srs).into(),
+            evals: index.into(),
+            shifts: (&index.shift).into(),
+            lookup_index: index.lookup_index.as_ref().map(Into::into),
+            zk_rows: index.zk_rows as i32,
+        }
+    }
+}
+
+fn compute_feature_flags(index: &NapiFpPlonkVerifierIndex) -> FeatureFlags {
     let xor = index.evals.xor_comm.is_some();
     let range_check0 = index.evals.range_check0_comm.is_some();
     let range_check1 = index.evals.range_check1_comm.is_some();

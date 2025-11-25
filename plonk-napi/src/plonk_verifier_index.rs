@@ -7,15 +7,15 @@ use kimchi::{
         constraints::FeatureFlags,
         lookup::{
             index::LookupSelectors,
-            lookups::{LookupFeatures, LookupInfo, LookupPatterns},
+            lookups::{LookupFeatures, LookupPatterns},
         },
         polynomials::permutation::{
-            permutation_vanishing_polynomial, zk_w, Shifts, Shifts as KimchiShifts,
+            permutation_vanishing_polynomial, zk_w, Shifts as KimchiShifts,
         },
         wires::{COLUMNS, PERMUTS},
     },
     linearization::expr_linearization,
-    verifier_index::{LookupVerifierIndex, VerifierIndex as DlogVerifierIndex, VerifierIndex},
+    verifier_index::{LookupVerifierIndex, VerifierIndex},
 };
 use napi::bindgen_prelude::{Error, External, Status};
 use napi_derive::napi;
@@ -122,186 +122,6 @@ macro_rules! impl_verification_key {
                 }
             }
 
-            #[napi]
-            impl [<Napi $field_name:camel PlonkVerificationEvals>] {
-                #[allow(clippy::too_many_arguments)]
-                #[napi(constructor)]
-                pub fn new(
-                    sigma_comm: Vec<$NapiPolyComm>,
-                    coefficients_comm: Vec<$NapiPolyComm>,
-                    generic_comm: &$NapiPolyComm,
-                    psm_comm: &$NapiPolyComm,
-                    complete_add_comm: &$NapiPolyComm,
-                    mul_comm: &$NapiPolyComm,
-                    emul_comm: &$NapiPolyComm,
-                    endomul_scalar_comm: &$NapiPolyComm,
-                    xor_comm: Option<$NapiPolyComm>,
-                    range_check0_comm: Option<$NapiPolyComm>,
-                    range_check1_comm: Option<$NapiPolyComm>,
-                    foreign_field_add_comm: Option<$NapiPolyComm>,
-                    foreign_field_mul_comm: Option<$NapiPolyComm>,
-                    rot_comm: Option<$NapiPolyComm>,
-                    ) -> Self {
-                    NapiPlonkVerificationEvals {
-                        sigma_comm: sigma_comm.clone(),
-                        coefficients_comm: coefficients_comm.clone(),
-                        generic_comm: generic_comm.clone(),
-                        psm_comm: psm_comm.clone(),
-                        complete_add_comm: complete_add_comm.clone(),
-                        mul_comm: mul_comm.clone(),
-                        emul_comm: emul_comm.clone(),
-                        endomul_scalar_comm: endomul_scalar_comm.clone(),
-                        xor_comm: xor_comm.clone(),
-                        range_check0_comm: range_check0_comm.clone(),
-                        range_check1_comm: range_check1_comm.clone(),
-                        foreign_field_mul_comm: foreign_field_mul_comm.clone(),
-                        foreign_field_add_comm: foreign_field_add_comm.clone(),
-                        rot_comm: rot_comm.clone(),
-                    }
-                }
-
-                #[napi(getter)]
-                pub fn sigma_comm(&self) -> Vec<$NapiPolyComm> {
-                    self.sigma_comm.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_sigma_comm(&mut self, x: Vec<$NapiPolyComm>) {
-                    self.sigma_comm = x;
-                }
-
-                #[napi(getter)]
-                pub fn coefficients_comm(&self) -> Vec<$NapiPolyComm> {
-                    self.coefficients_comm.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_coefficients_comm(&mut self, x: Vec<$NapiPolyComm>) {
-                    self.coefficients_comm = x;
-                }
-
-                #[napi(getter)]
-                pub fn generic_comm(&self) -> $NapiPolyComm {
-                    self.generic_comm.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_generic_comm(&mut self, x: $NapiPolyComm) {
-                    self.generic_comm = x;
-                }
-
-                #[napi(getter)]
-                pub fn psm_comm(&self) -> $NapiPolyComm {
-                    self.psm_comm.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_psm_comm(&mut self, x: $NapiPolyComm) {
-                    self.psm_comm = x;
-                }
-
-                #[napi(getter)]
-                pub fn complete_add_comm(&self) -> $NapiPolyComm {
-                    self.complete_add_comm.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_complete_add_comm(&mut self, x: $NapiPolyComm) {
-                    self.complete_add_comm = x;
-                }
-
-                #[napi(getter)]
-                pub fn mul_comm(&self) -> $NapiPolyComm {
-                    self.mul_comm.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_mul_comm(&mut self, x: $NapiPolyComm) {
-                    self.mul_comm = x;
-                }
-
-                #[napi(getter)]
-                pub fn emul_comm(&self) -> $NapiPolyComm {
-                    self.emul_comm.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_emul_comm(&mut self, x: $NapiPolyComm) {
-                    self.emul_comm = x;
-                }
-
-                #[napi(getter)]
-                pub fn endomul_scalar_comm(&self) -> $NapiPolyComm {
-                    self.endomul_scalar_comm.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_endomul_scalar_comm(&mut self, x: $NapiPolyComm) {
-                    self.endomul_scalar_comm = x;
-                }
-
-                #[napi(getter)]
-                pub fn xor_comm(&self) -> Option<$NapiPolyComm> {
-                    self.xor_comm.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_xor_comm(&mut self, x: Option<$NapiPolyComm>) {
-                    self.xor_comm = x;
-                }
-
-                #[napi(getter)]
-                pub fn rot_comm(&self) -> Option<$NapiPolyComm> {
-                    self.rot_comm.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_rot_comm(&mut self, x: Option<$NapiPolyComm>) {
-                    self.rot_comm = x;
-                }
-
-                #[napi(getter)]
-                pub fn range_check0_comm(&self) -> Option<$NapiPolyComm> {
-                    self.range_check0_comm.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_range_check0_comm(&mut self, x: Option<$NapiPolyComm>) {
-                    self.range_check0_comm = x;
-                }
-
-                #[napi(getter)]
-                pub fn range_check1_comm(&self) -> Option<$NapiPolyComm> {
-                    self.range_check1_comm.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_range_check1_comm(&mut self, x: Option<$NapiPolyComm>) {
-                    self.range_check1_comm = x;
-                }
-
-                #[napi(getter)]
-                pub fn foreign_field_add_comm(&self) -> Option<$NapiPolyComm> {
-                    self.foreign_field_add_comm.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_foreign_field_add_comm(&mut self, x: Option<$NapiPolyComm>) {
-                    self.foreign_field_add_comm = x;
-                }
-
-                #[napi(getter)]
-                pub fn foreign_field_mul_comm(&self) -> Option<$NapiPolyComm> {
-                    self.foreign_field_mul_comm.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_foreign_field_mul_comm(&mut self, x: Option<$NapiPolyComm>) {
-                    self.foreign_field_mul_comm = x;
-                }
-
-            }
-
             #[derive(Clone, Debug, Serialize, Deserialize, Default)]
             #[napi(object, js_name = [<Wasm $field_name:camel Shifts>])]
             pub struct [<Napi $field_name:camel Shifts>] {
@@ -326,22 +146,6 @@ macro_rules! impl_verification_key {
                         s5: shifts[5].into(),
                         s6: shifts[6].into(),
                     }
-                }
-            }
-
-            #[napi]
-            impl [<Napi $field_name:camel Shifts>] {
-                #[napi(constructor)]
-                pub fn new(
-                    s0: $NapiF,
-                    s1: $NapiF,
-                    s2: $NapiF,
-                    s3: $NapiF,
-                    s4: $NapiF,
-                    s5: $NapiF,
-                    s6: $NapiF,
-                ) -> Self {
-                    Self { s0, s1, s2, s3, s4, s5, s6}
                 }
             }
 
@@ -400,64 +204,6 @@ macro_rules! impl_verification_key {
                         range_check: x.range_check.clone().map(Into::into),
                         ffmul: x.ffmul.clone().map(Into::into),
                     }
-                }
-            }
-
-            #[napi]
-            impl [<Napi $field_name:camel LookupSelectors>] {
-                #[napi(constructor)]
-                pub fn new(
-                    xor: Option<$NapiPolyComm>,
-                    lookup: Option<$NapiPolyComm>,
-                    range_check: Option<$NapiPolyComm>,
-                    ffmul: Option<$NapiPolyComm>
-                ) -> Self {
-                    Self {
-                        xor,
-                        lookup,
-                        range_check,
-                        ffmul
-                    }
-                }
-
-                #[napi(getter)]
-                pub fn xor(&self) -> Option<$NapiPolyComm> {
-                    self.xor.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_xor(&mut self, x: Option<$NapiPolyComm>) {
-                    self.xor = x
-                }
-
-                #[napi(getter)]
-                pub fn lookup(&self) -> Option<$NapiPolyComm> {
-                    self.lookup.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_lookup(&mut self, x: Option<$NapiPolyComm>) {
-                    self.lookup = x
-                }
-
-                #[napi(getter)]
-                pub fn ffmul(&self) -> Option<$NapiPolyComm> {
-                    self.ffmul.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_ffmul(&mut self, x: Option<$NapiPolyComm>) {
-                    self.ffmul = x
-                }
-
-                #[napi(getter)]
-                pub fn range_check(&self) -> Option<$NapiPolyComm> {
-                    self.range_check.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_range_check(&mut self, x: Option<$NapiPolyComm>) {
-                    self.range_check = x
                 }
             }
 
@@ -536,78 +282,6 @@ macro_rules! impl_verification_key {
                 }
             }
 
-            #[napi]
-            impl [<Napi $field_name:camel LookupVerifierIndex>] {
-                #[napi(constructor)]
-                pub fn new(
-                    joint_lookup_used: bool,
-                    lookup_table: Vec<$NapiPolyComm>,
-                    lookup_selectors: NapiLookupSelectors,
-                    table_ids: Option<$NapiPolyComm>,
-                    lookup_info: NapiLookupInfo,
-                    runtime_tables_selector: Option<$NapiPolyComm>
-                ) -> NapiLookupVerifierIndex {
-                    NapiLookupVerifierIndex {
-                        joint_lookup_used,
-                        lookup_table,
-                        lookup_selectors,
-                        table_ids,
-                        lookup_info: lookup_info.clone(),
-                        runtime_tables_selector
-                    }
-                }
-
-                #[napi(getter)]
-                pub fn lookup_table(&self) -> Vec<$NapiPolyComm> {
-                    self.lookup_table.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_lookup_table(&mut self, x: Vec<$NapiPolyComm>) {
-                    self.lookup_table = x
-                }
-
-                #[napi(getter)]
-                pub fn lookup_selectors(&self) -> NapiLookupSelectors {
-                    self.lookup_selectors.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_lookup_selectors(&mut self, x: NapiLookupSelectors) {
-                    self.lookup_selectors = x
-                }
-
-                #[napi(getter)]
-                pub fn table_ids(&self) -> Option<$NapiPolyComm>{
-                    self.table_ids.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_table_ids(&mut self, x: Option<$NapiPolyComm>) {
-                    self.table_ids = x
-                }
-
-                #[napi(getter)]
-                pub fn lookup_info(&self) -> NapiLookupInfo {
-                    self.lookup_info.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_lookup_info(&mut self, x: NapiLookupInfo) {
-                    self.lookup_info = x
-                }
-
-                #[napi(getter)]
-                pub fn runtime_tables_selector(&self) -> Option<$NapiPolyComm> {
-                    self.runtime_tables_selector.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_runtime_tables_selector(&mut self, x: Option<$NapiPolyComm>) {
-                    self.runtime_tables_selector = x
-                }
-            }
-
             #[napi(object, js_name = [<Wasm $field_name:camel PlonkVerifierIndex>])]
             #[derive(Clone, Debug, Default)]
             pub struct [<Napi $field_name:camel PlonkVerifierIndex>] {
@@ -625,65 +299,6 @@ macro_rules! impl_verification_key {
                 pub zk_rows: i32,
             }
             type NapiPlonkVerifierIndex = [<Napi $field_name:camel PlonkVerifierIndex>];
-
-            #[napi]
-            impl [<Napi $field_name:camel PlonkVerifierIndex>] {
-                #[napi(constructor)]
-                #[allow(clippy::too_many_arguments)]
-                pub fn new(
-                    domain: NapiDomain,
-                    max_poly_size: i32,
-                    public_: i32,
-                    prev_challenges: i32,
-                    srs: &$NapiSrs,
-                    evals: NapiPlonkVerificationEvals,
-                    shifts: NapiShifts,
-                    lookup_index: Option<NapiLookupVerifierIndex>,
-                    zk_rows: i32,
-                ) -> Self {
-                    NapiPlonkVerifierIndex {
-                        domain: domain.clone(),
-                        max_poly_size,
-                        public_,
-                        prev_challenges,
-                        srs: srs.clone(),
-                        evals: evals.clone(),
-                        shifts: shifts.clone(),
-                    lookup_index: lookup_index.cloned(),
-                    zk_rows,
-                }
-            }
-
-                #[napi(getter)]
-                pub fn srs(&self) -> $NapiSrs {
-                    self.srs.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_srs(&mut self, x: $NapiSrs) {
-                    self.srs = x
-                }
-
-                #[napi(getter)]
-                pub fn evals(&self) -> NapiPlonkVerificationEvals {
-                    self.evals.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_evals(&mut self, x: NapiPlonkVerificationEvals) {
-                    self.evals = x
-                }
-
-                #[napi(getter)]
-                pub fn lookup_index(&self) -> Option<NapiLookupVerifierIndex> {
-                    self.lookup_index.clone()
-                }
-
-                #[napi(setter)]
-                pub fn set_lookup_index(&mut self, li: Option<NapiLookupVerifierIndex>) {
-                    self.lookup_index = li
-                }
-            }
 
             fn compute_feature_flags(index: &NapiPlonkVerifierIndex) -> FeatureFlags {
                 let xor = index.evals.xor_comm.is_some();
@@ -725,83 +340,94 @@ macro_rules! impl_verification_key {
 
             impl From<NapiPlonkVerifierIndex> for VerifierIndex<$G, OpeningProof<$G>> {
                 fn from(index: NapiPlonkVerifierIndex) -> Self {
-                    let of_napi =
-                    {
-                        let max_poly_size = index.max_poly_size;
-                let public_ = index.public_;
-                let prev_challenges = index.prev_challenges;
-                let log_size_of_group = index.domain.log_size_of_group;
-                let srs = &index.srs;
-                let evals = &index.evals;
-                let shifts = &index.shifts;
+                    let max_poly_size = index.max_poly_size;
+                    let public_ = index.public_;
+                    let prev_challenges = index.prev_challenges;
+                    let log_size_of_group = index.domain.log_size_of_group;
+                    let srs = &index.srs;
+                    let evals = &index.evals;
+                    let shifts = &index.shifts;
 
-                let (endo_q, _endo_r) = poly_commitment::ipa::endos::<$GOther>();
-                let domain = Domain::<$F>::new(1 << log_size_of_group).unwrap();
+                    let (endo_q, _endo_r) = poly_commitment::ipa::endos::<GAffineOther>();
+                    let domain = Domain::<$F>::new(1 << log_size_of_group).unwrap();
 
-                let feature_flags = compute_feature_flags(&index);
-                let (linearization, powers_of_alpha) = expr_linearization(Some(&feature_flags), true);
+                    let feature_flags = compute_feature_flags(&index);
+                    let (linearization, powers_of_alpha) = expr_linearization(Some(&feature_flags), true);
 
-                let index = {
-                    let zk_rows = index.zk_rows as u64;
+                    let index = {
+                        let zk_rows = index.zk_rows as u64;
 
-                    VerifierIndex {
-                        domain,
+                        VerifierIndex {
+                            domain,
 
-                        sigma_comm: core::array::from_fn(|i| (&evals.sigma_comm[i]).into()),
-                        generic_comm: (&evals.generic_comm).into(),
-                        coefficients_comm: core::array::from_fn(|i| (&evals.coefficients_comm[i]).into()),
+                            sigma_comm: core::array::from_fn(|i| (&evals.sigma_comm[i]).into()),
+                            generic_comm: (&evals.generic_comm).into(),
+                            coefficients_comm: core::array::from_fn(|i| (&evals.coefficients_comm[i]).into()),
 
-                        psm_comm: (&evals.psm_comm).into(),
+                            psm_comm: (&evals.psm_comm).into(),
 
-                        complete_add_comm: (&evals.complete_add_comm).into(),
-                        mul_comm: (&evals.mul_comm).into(),
-                        emul_comm: (&evals.emul_comm).into(),
+                            complete_add_comm: (&evals.complete_add_comm).into(),
+                            mul_comm: (&evals.mul_comm).into(),
+                            emul_comm: (&evals.emul_comm).into(),
 
-                        endomul_scalar_comm: (&evals.endomul_scalar_comm).into(),
-                        xor_comm: (&evals.xor_comm).as_ref().map(Into::into),
-                        range_check0_comm: (&evals.range_check0_comm).as_ref().map(Into::into),
-                        range_check1_comm: (&evals.range_check1_comm).as_ref().map(Into::into),
-                        foreign_field_add_comm: (&evals.foreign_field_add_comm).as_ref().map(Into::into),
-                        foreign_field_mul_comm: (&evals.foreign_field_mul_comm).as_ref().map(Into::into),
-                        rot_comm: (&evals.rot_comm).as_ref().map(Into::into),
+                            endomul_scalar_comm: (&evals.endomul_scalar_comm).into(),
+                            xor_comm: (&evals.xor_comm).as_ref().map(Into::into),
+                            range_check0_comm: (&evals.range_check0_comm).as_ref().map(Into::into),
+                            range_check1_comm: (&evals.range_check1_comm).as_ref().map(Into::into),
+                            foreign_field_add_comm: (&evals.foreign_field_add_comm).as_ref().map(Into::into),
+                            foreign_field_mul_comm: (&evals.foreign_field_mul_comm).as_ref().map(Into::into),
+                            rot_comm: (&evals.rot_comm).as_ref().map(Into::into),
 
-                        w: {
-                            let res = once_cell::sync::OnceCell::new();
-                            res.set(zk_w(domain, zk_rows)).unwrap();
-                            res
-                        },
-                        endo: endo_q,
-                        max_poly_size: max_poly_size as usize,
-                        public: public_ as usize,
-                        prev_challenges: prev_challenges as usize,
-                        permutation_vanishing_polynomial_m: {
-                            let res = once_cell::sync::OnceCell::new();
-                            res.set(permutation_vanishing_polynomial(domain, zk_rows)).unwrap();
-                            res
-                        },
-                        shift: [
-                            shifts.s0.into(),
-                            shifts.s1.into(),
-                            shifts.s2.into(),
-                            shifts.s3.into(),
-                            shifts.s4.into(),
-                            shifts.s5.into(),
-                            shifts.s6.into()
-                        ],
-                        srs: {
-                          Arc::clone(&srs.0)
-                        },
+                            w: {
+                                let res = once_cell::sync::OnceCell::new();
+                                res.set(zk_w(domain, zk_rows)).unwrap();
+                                res
+                            },
+                            endo: endo_q,
+                            max_poly_size: max_poly_size as usize,
+                            public: public_ as usize,
+                            prev_challenges: prev_challenges as usize,
+                            permutation_vanishing_polynomial_m: {
+                                let res = once_cell::sync::OnceCell::new();
+                                res.set(permutation_vanishing_polynomial(domain, zk_rows))
+                                    .unwrap();
+                                res
+                            },
+                            shift: [
+                                shifts.s0.into(),
+                                shifts.s1.into(),
+                                shifts.s2.into(),
+                                shifts.s3.into(),
+                                shifts.s4.into(),
+                                shifts.s5.into(),
+                                shifts.s6.into(),
+                            ],
+                            srs: { Arc::clone(&srs.0) },
 
-                        zk_rows,
+                            zk_rows,
 
-                        linearization,
-                        powers_of_alpha,
-                        lookup_index: index.lookup_index.map(Into::into),
+                            linearization,
+                            powers_of_alpha,
+                            lookup_index: index.lookup_index.map(Into::into),
+                        }
+                    };
+                    (index, srs.0.clone()).0
+                }
+            }
+
+            impl From<&VerifierIndex<$G, OpeningProof<$G>>> for NapiPlonkVerifierIndex {
+                fn from(index: &VerifierIndex<$G, OpeningProof<$G>>) -> Self {
+                    Self {
+                        domain: (&index.domain).into(),
+                        max_poly_size: index.max_poly_size as i32,
+                        public_: index.public as i32,
+                        prev_challenges: index.prev_challenges as i32,
+                        srs: (&index.srs).into(),
+                        evals: index.into(),
+                        shifts: (&index.shift).into(),
+                        lookup_index: index.lookup_index.as_ref().map(Into::into),
+                        zk_rows: index.zk_rows as i32,
                     }
-                };
-                (index, srs.0.clone())
-            };
-                return of_napi.0;
                 }
             }
 
@@ -809,7 +435,7 @@ macro_rules! impl_verification_key {
                 offset: Option<i32>,
                 srs: &$NapiSrs,
                 path: String,
-            ) -> Result<VerifierIndex<$G, OpeningProof<$G>>, String> {
+            ) -> napi::Result<VerifierIndex<$G, OpeningProof<$G>>> {
                 let path = Path::new(&path);
                 let (endo_q, _endo_r) = poly_commitment::ipa::endos::<$GOther>();
                 VerifierIndex::<$G, OpeningProof<$G>>::from_file(
@@ -817,7 +443,7 @@ macro_rules! impl_verification_key {
                     path,
                     offset.map(|x| x as u64),
                     endo_q,
-                ).map_err(|e| format!("read_raw: {}", e).as_str())
+                ).map_err(|e| Error::new(Status::GenericFailure, format!("read_raw: {}", e)))
             }
 
             #[napi(js_name = [<caml_pasta_ $field_name:snake _plonk_verifier_index_read>])]
@@ -825,9 +451,9 @@ macro_rules! impl_verification_key {
                 offset: Option<i32>,
                 srs: &$NapiSrs,
                 path: String,
-            ) -> napi::bindgen_prelude::Result<NapiPlonkVerifierIndex> {
+            ) -> napi::Result<NapiPlonkVerifierIndex> {
                 let vi = read_raw(offset, srs, path)?;
-                Ok(NapiPlonkVerifierIndex::from(vi))
+                Ok(NapiPlonkVerifierIndex::from(&vi))
             }
 
             #[napi(js_name = [<caml_pasta_ $field_name:snake _plonk_verifier_index_write>])]
@@ -835,13 +461,12 @@ macro_rules! impl_verification_key {
                 append: Option<bool>,
                 index: NapiPlonkVerifierIndex,
                 path: String,
-            ) -> napi::bindgen_prelude::Result<(), String> {
+            ) -> napi::Result<()> {
                 let index: VerifierIndex<$G, OpeningProof<$G>> = index.into();
                 let path = Path::new(&path);
-                index.to_file(path, append).map_err(|e| {
-                    println!("{}", e);
-                    "caml_pasta_plonk_verifier_index_write"
-                })
+                index
+                    .to_file(path, append)
+                    .map_err(|e| Error::new(Status::GenericFailure, format!("plonk_verifier_index_write: {}", e)))
             }
 
             #[napi(js_name = [<caml_pasta_ $field_name:snake _plonk_verifier_index_serialize>])]
@@ -854,13 +479,13 @@ macro_rules! impl_verification_key {
 
             #[napi(js_name = [<caml_pasta_ $field_name:snake _plonk_verifier_index_deserialize>])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_verifier_index_deserialize>](
-                srs: &$NapiSrs,
+                _srs: &$NapiSrs,
                 index: String,
-            ) -> napi::bindgen_prelude::Result<NapiPlonkVerifierIndex, String> {
+            ) -> napi::Result<NapiPlonkVerifierIndex> {
                 let vi: Result<VerifierIndex<$G, OpeningProof<$G>>, serde_json::Error> = serde_json::from_str(&index);
                 match vi {
-                    Ok(vi) => Ok(to_napi(srs, vi)),
-                    Err(e) => Err(e.to_string()),
+                    Ok(vi) => Ok(NapiPlonkVerifierIndex::from(&vi)),
+                    Err(e) => Err(Error::new(Status::GenericFailure, format!("deserialize: {}", e))),
                 }
             }
 
@@ -953,7 +578,7 @@ macro_rules! impl_verification_key {
 
             #[napi(js_name = [<caml_pasta_ $field_name:snake _plonk_verifier_index_deep_copy>])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_verifier_index_deep_copy>](
-                x: &NapiPlonkVerifierIndex,
+                x: NapiPlonkVerifierIndex,
             ) -> NapiPlonkVerifierIndex {
                 x.clone()
             }

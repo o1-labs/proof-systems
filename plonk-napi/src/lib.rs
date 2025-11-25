@@ -41,8 +41,20 @@ pub use pasta_fp_plonk_index::{
 pub use pasta_fq_plonk_index::{
     prover_index_fq_from_bytes, prover_index_fq_to_bytes, WasmPastaFqPlonkIndex,
 };
+// pub use plonk_verifier_index::{fp::*, fq::*};
 pub use plonk_verifier_index::{
-    caml_pasta_fp_plonk_verifier_index_shifts, caml_pasta_fq_plonk_verifier_index_shifts,
+    fp::{
+        caml_pasta_fp_plonk_verifier_index_create, caml_pasta_fp_plonk_verifier_index_deep_copy,
+        caml_pasta_fp_plonk_verifier_index_deserialize, caml_pasta_fp_plonk_verifier_index_dummy,
+        caml_pasta_fp_plonk_verifier_index_read, caml_pasta_fp_plonk_verifier_index_serialize,
+        caml_pasta_fp_plonk_verifier_index_shifts, caml_pasta_fp_plonk_verifier_index_write,
+    },
+    fq::{
+        caml_pasta_fq_plonk_verifier_index_create, caml_pasta_fq_plonk_verifier_index_deep_copy,
+        caml_pasta_fq_plonk_verifier_index_deserialize, caml_pasta_fq_plonk_verifier_index_dummy,
+        caml_pasta_fq_plonk_verifier_index_read, caml_pasta_fq_plonk_verifier_index_serialize,
+        caml_pasta_fq_plonk_verifier_index_shifts, caml_pasta_fq_plonk_verifier_index_write,
+    },
 };
 pub use poly_comm::{
     pallas::NapiFqPolyComm as WasmFqPolyComm, vesta::NapiFpPolyComm as WasmFpPolyComm,
@@ -76,5 +88,3 @@ pub use wrappers::{
     field::{NapiPastaFp as WasmPastaFp, NapiPastaFq as WasmPastaFq},
     group::{NapiGPallas as WasmGPallas, NapiGVesta as WasmGVesta},
 };
-
-pub use plonk_verifier_index::{fp::*, fq::*};
