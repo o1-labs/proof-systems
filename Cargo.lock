@@ -1073,17 +1073,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "derivative"
-version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "dialoguer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1303,37 +1292,6 @@ name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
-
-[[package]]
-name = "folding"
-version = "0.1.0"
-dependencies = [
- "ark-bn254",
- "ark-ec",
- "ark-ff",
- "ark-poly",
- "ark-serialize",
- "derivative",
- "groupmap",
- "itertools 0.12.1",
- "kimchi",
- "log",
- "mina-curves",
- "mina-poseidon",
- "num-bigint",
- "num-integer",
- "o1-utils",
- "poly-commitment",
- "rand",
- "rayon",
- "rmp-serde",
- "serde",
- "serde_json",
- "serde_with",
- "strum",
- "strum_macros",
- "thiserror 2.0.12",
-]
 
 [[package]]
 name = "form_urlencoded"
@@ -1957,7 +1915,6 @@ dependencies = [
  "ark-poly",
  "ark-serialize",
  "ark-std",
- "folding",
  "groupmap",
  "itertools 0.12.1",
  "kimchi",
@@ -2496,7 +2453,6 @@ dependencies = [
  "command-fds",
  "elf",
  "env_logger 0.11.1",
- "folding",
  "groupmap",
  "hex",
  "itertools 0.12.1",

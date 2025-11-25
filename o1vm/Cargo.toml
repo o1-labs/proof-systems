@@ -20,11 +20,7 @@ path = "src/pickles/main.rs"
 open_mips = []
 
 [dependencies]
-# FIXME: Only activate this when legacy_o1vm is built
 ark-bn254.workspace = true
-# FIXME: Only activate this when legacy_o1vm is built
-folding.workspace = true
-# FIXME: Only activate this when legacy_o1vm is built
 ark-ec.workspace = true
 ark-ff.workspace = true
 ark-poly.workspace = true

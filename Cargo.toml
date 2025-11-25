@@ -4,7 +4,6 @@ members = [
   "book",
   "crates/*",
   "curves",
-  "folding",
   "groupmap",
   "hasher",
   "internal-tracing",
@@ -91,7 +90,6 @@ wasm-bindgen-test = ">=0.3.0"
 
 arkworks = { path = "crates/arkworks" }
 arrabbiata = { path = "./arrabbiata", version = "0.1.0" }
-folding = { path = "./folding", version = "0.1.0" }
 groupmap = { path = "./groupmap", version = "0.1.0" }
 internal-tracing = { path = "./internal-tracing", version = "0.1.0" }
 kimchi = { path = "./kimchi", version = "0.1.0", features = ["bn254"] }
