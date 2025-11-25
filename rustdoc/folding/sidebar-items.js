@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Alphas","Side"],"mod":["checker","columns","decomposable_folding","eval_leaf","expressions","instance_witness","quadraticization","standard_config"],"struct":["FoldingOutput","FoldingScheme"],"trait":["FoldingConfig","FoldingEnv"]};
