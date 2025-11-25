@@ -34,7 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### [ivc](./ivc)
 
 #### Changed
-- (No changes in current release)
+- Remove crate as it will never be used
+  ([#3373](https://github.com/o1-labs/proof-systems/pull/3373))
 
 ### [kimchi](./kimchi)
 
