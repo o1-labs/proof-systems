@@ -1,5 +1,5 @@
 use ark_ec::AffineRepr;
-use ark_ff::{Field, UniformRand};
+use ark_ff::{Field, One, UniformRand, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, PlonkSpongeConstantsLegacy},
@@ -208,4 +208,21 @@ fn test_poseidon_challenge_multiple_times_without_absorption() {
         );
         challenges.push(chal);
     }
+}
+
+#[test]
+fn test_poseidon_challenge_padding() {
+    let mut state: Vec<Fq> = Vec::new();
+    state.push(Fq::one());
+    state.push(Fq::one());
+    let mut state_padded = state.clone();
+    state_padded.push(Fq::zero());
+
+    poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi>(fq_kimchi::static_params(), &mut state);
+    poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi>(
+        fq_kimchi::static_params(),
+        &mut state_padded,
+    );
+
+    assert_eq!(state, state_padded);
 }
