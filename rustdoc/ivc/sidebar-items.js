@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["expr_eval","ivc","plonkish_lang","poseidon_55_0_7_3_2","poseidon_55_0_7_3_7","poseidon_8_56_5_3_2","poseidon_params_55_0_7_3","prover","verifier"]};

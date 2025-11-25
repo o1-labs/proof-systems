@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["apply_permutation","poseidon_circuit"],"trait":["PoseidonParams"]};

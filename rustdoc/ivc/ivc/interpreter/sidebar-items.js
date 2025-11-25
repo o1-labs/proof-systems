@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["build_fixed_selectors","ivc_circuit","ivc_circuit_base_case","process_challenges","process_ecadds","process_hashes","process_inputs","process_scalars","process_u","write_inputs_row","write_scalars_row"],"struct":["ScalarLimbs"]};
