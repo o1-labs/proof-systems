@@ -292,7 +292,7 @@ where
         //~    This is why we need to absorb the commitment to the public polynomial at this point.
         absorb_commitment(&mut fq_sponge, &public_comm);
 
-        //~ 1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
+        //~ 1. Commit to the witness columns by creating `COLUMNS` hiding commitments.
         //~
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
@@ -642,7 +642,7 @@ where
         internal_tracing::checkpoint!(internal_traces; z_permutation_aggregation_polynomial);
         let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
 
-        //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
+        //~ 1. Commit (hiding) to the permutation aggregation polynomial $z$.
         let z_comm = index.srs.commit(&z_poly, num_chunks, rng);
 
         //~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
