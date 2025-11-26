@@ -6,7 +6,87 @@ Each change must be linked to a pull request or commit.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## Unreleased
+
+### CI
+
+### [arrabbiata](./arrabbiata)
+
+#### Changed
+- (No changes in current release)
+
+
+### [groupmap](./groupmap)
+
+#### Changed
+- (No changes in current release)
+
+### [kimchi](./kimchi)
+
+#### Changed
+- (No changes in current release)
+
+### [kimchi-msm](./msm)
+
+#### Changed
+- (No changes in current release)
+
+### [kimchi-stubs](./kimchi-stubs)
+
+#### Changed
+- (No changes in current release)
+
+### [mina-curves](./curves)
+
+#### Changed
+- (No changes in current release)
+
+### [mina-hasher](./hasher)
+
+#### Changed
+- (No changes in current release)
+
+### [mina-poseidon](./poseidon)
+
+#### Changed
+- (No changes in current release)
+
+### [mina-signer](./signer)
+
+#### Changed
+- (No changes in current release)
+
+### [mvpoly](./mvpoly)
+
+#### Changed
+- (No changes in current release)
+
+### [o1-utils](./utils)
+
+#### Changed
+- (No changes in current release)
+
+### [o1vm](./o1vm)
+
+#### Changed
+- (No changes in current release)
+
+### [plonk_wasm](./plonk-wasm)
+
+#### Changed
+- (No changes in current release)
+
+### [poly-commitment](./poly-commitment)
+
+#### Changed
+- (No changes in current release)
+
+### [turshi](./turshi)
+
+#### Changed
+- (No changes in current release)
+
+## 0.2.0 (2025-11-26)
 
 ### CI
 
