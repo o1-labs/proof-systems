@@ -26,7 +26,7 @@ use rayon::prelude::*;
 use std::ops::AddAssign;
 
 fn add_pairs_in_place<P: SWCurveConfig>(pairs: &mut Vec<SWJAffine<P>>) {
-    let len = if pairs.len() % 2 == 0 {
+    let len = if pairs.len().is_multiple_of(2) {
         pairs.len()
     } else {
         pairs.len() - 1

@@ -96,7 +96,7 @@ fn test_offset_chunked_lagrange_commitments() {
     srs.get_lagrange_basis(domain);
 
     // Is this even taken into account?...
-    let num_chunks = (domain.size() + srs.g.len() - 1) / srs.g.len();
+    let num_chunks = domain.size().div_ceil(srs.g.len());
     assert!(num_chunks == 2);
 
     let expected_lagrange_commitments: Vec<_> = (0..n)
