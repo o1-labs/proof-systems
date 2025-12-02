@@ -1,3 +1,4 @@
+#![allow(clippy::doc_overindented_list_items)]
 //! This module contains the implementation of the IVC scheme in addition to
 //! running an arbitrary function that can use up to [crate::NUMBER_OF_COLUMNS]
 //! columns.

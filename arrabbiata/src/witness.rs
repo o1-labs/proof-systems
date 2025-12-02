@@ -466,7 +466,7 @@ where
         let Column::X(idx) = col else {
             unimplemented!("Only works for private inputs")
         };
-        let (modulus, srs_size): (BigInt, usize) = if self.current_iteration % 2 == 0 {
+        let (modulus, srs_size): (BigInt, usize) = if self.current_iteration.is_multiple_of(2) {
             (
                 E1::ScalarField::modulus_biguint().into(),
                 self.indexed_relation.get_srs_size(),
@@ -491,7 +491,7 @@ where
     }
 
     fn constrain_boolean(&mut self, x: Self::Variable) {
-        let modulus: BigInt = if self.current_iteration % 2 == 0 {
+        let modulus: BigInt = if self.current_iteration.is_multiple_of(2) {
             E1::ScalarField::modulus_biguint().into()
         } else {
             E2::ScalarField::modulus_biguint().into()
@@ -575,7 +575,7 @@ where
 
     /// FIXME: check if we need to pick the left or right sponge
     fn coin_folding_combiner(&mut self, pos: Self::Position) -> Self::Variable {
-        let r = if self.current_iteration % 2 == 0 {
+        let r = if self.current_iteration.is_multiple_of(2) {
             self.sponge_e1[0].clone()
         } else {
             self.sponge_e2[0].clone()
@@ -590,7 +590,7 @@ where
     }
 
     fn load_poseidon_state(&mut self, pos: Self::Position, i: usize) -> Self::Variable {
-        let state = if self.current_iteration % 2 == 0 {
+        let state = if self.current_iteration.is_multiple_of(2) {
             self.sponge_e1[i].clone()
         } else {
             self.sponge_e2[i].clone()
@@ -599,7 +599,7 @@ where
     }
 
     fn get_poseidon_round_constant(&self, round: usize, i: usize) -> Self::Variable {
-        if self.current_iteration % 2 == 0 {
+        if self.current_iteration.is_multiple_of(2) {
             E1::sponge_params().round_constants[round][i]
                 .to_biguint()
                 .into()
@@ -611,7 +611,7 @@ where
     }
 
     fn get_poseidon_mds_matrix(&mut self, i: usize, j: usize) -> Self::Variable {
-        if self.current_iteration % 2 == 0 {
+        if self.current_iteration.is_multiple_of(2) {
             E1::sponge_params().mds[i][j].to_biguint().into()
         } else {
             E2::sponge_params().mds[i][j].to_biguint().into()
@@ -619,7 +619,7 @@ where
     }
 
     unsafe fn save_poseidon_state(&mut self, x: Self::Variable, i: usize) {
-        if self.current_iteration % 2 == 0 {
+        if self.current_iteration.is_multiple_of(2) {
             let modulus: BigInt = E1::ScalarField::modulus_biguint().into();
             self.sponge_e1[i] = x.mod_floor(&modulus)
         } else {
@@ -644,12 +644,12 @@ where
         let res = if idx < 2 * NUMBER_OF_COLUMNS {
             let idx_col = idx / 2;
             debug!("Absorbing the accumulator for the column index {idx_col}. After this, there will still be {} elements to absorb", NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO - idx - 1);
-            if self.current_iteration % 2 == 0 {
+            if self.current_iteration.is_multiple_of(2) {
                 let (pt_x, pt_y) = self.program_e2.accumulated_committed_state[idx_col]
                     .get_first_chunk()
                     .to_coordinates()
                     .unwrap();
-                if idx % 2 == 0 {
+                if idx.is_multiple_of(2) {
                     self.write_column(pos, pt_x.to_biguint().into())
                 } else {
                     self.write_column(pos, pt_y.to_biguint().into())
@@ -659,7 +659,7 @@ where
                     .get_first_chunk()
                     .to_coordinates()
                     .unwrap();
-                if idx % 2 == 0 {
+                if idx.is_multiple_of(2) {
                     self.write_column(pos, pt_x.to_biguint().into())
                 } else {
                     self.write_column(pos, pt_y.to_biguint().into())
@@ -685,7 +685,7 @@ where
                 // In the left accumulator, we keep track of the value we keep doubling.
                 // In the right accumulator, we keep the result.
                 if bit == 0 {
-                    if self.current_iteration % 2 == 0 {
+                    if self.current_iteration.is_multiple_of(2) {
                         match side {
                             Side::Left => {
                                 let pt = self.program_e2.previous_committed_state[i_comm].get_first_chunk();
@@ -747,7 +747,7 @@ where
                 // FIXME: we must get the scaled commitment, not simply the commitment
                 let (pt_x, pt_y): (BigInt, BigInt) = match side {
                     Side::Left => {
-                        if self.current_iteration % 2 == 0 {
+                        if self.current_iteration.is_multiple_of(2) {
                             let pt = self.program_e2.accumulated_committed_state[i_comm].get_first_chunk();
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
@@ -758,7 +758,7 @@ where
                         }
                     }
                     Side::Right => {
-                        if self.current_iteration % 2 == 0 {
+                        if self.current_iteration.is_multiple_of(2) {
                             let pt = self.program_e2.previous_committed_state[i_comm].get_first_chunk();
                             let (x, y) = pt.to_coordinates().unwrap();
                             (x.to_biguint().into(), y.to_biguint().into())
@@ -824,7 +824,7 @@ where
     ///
     /// Zero is not allowed as an input.
     unsafe fn inverse(&mut self, pos: Self::Position, x: Self::Variable) -> Self::Variable {
-        let res = if self.current_iteration % 2 == 0 {
+        let res = if self.current_iteration.is_multiple_of(2) {
             E1::ScalarField::from_biguint(&x.to_biguint().unwrap())
                 .unwrap()
                 .inverse()
@@ -851,7 +851,7 @@ where
         x2: Self::Variable,
         y2: Self::Variable,
     ) -> Self::Variable {
-        let modulus: BigInt = if self.current_iteration % 2 == 0 {
+        let modulus: BigInt = if self.current_iteration.is_multiple_of(2) {
             E1::ScalarField::modulus_biguint().into()
         } else {
             E2::ScalarField::modulus_biguint().into()
@@ -875,7 +875,7 @@ where
                 unsafe { self.inverse(pos, double_y1) }
             };
             let num = {
-                let a: BigInt = if self.current_iteration % 2 == 0 {
+                let a: BigInt = if self.current_iteration.is_multiple_of(2) {
                     let a: E2::BaseField = E2::get_curve_params().0;
                     a.to_biguint().into()
                 } else {
@@ -901,7 +901,7 @@ where
         x1: Self::Variable,
         y1: Self::Variable,
     ) -> (Self::Variable, Self::Variable) {
-        let modulus: BigInt = if self.current_iteration % 2 == 0 {
+        let modulus: BigInt = if self.current_iteration.is_multiple_of(2) {
             E1::ScalarField::modulus_biguint().into()
         } else {
             E2::ScalarField::modulus_biguint().into()
@@ -917,7 +917,7 @@ where
             unsafe { self.inverse(lambda_pos, double_y1) }
         };
         let num = {
-            let a: BigInt = if self.current_iteration % 2 == 0 {
+            let a: BigInt = if self.current_iteration.is_multiple_of(2) {
                 let a: E2::BaseField = E2::get_curve_params().0;
                 a.to_biguint().into()
             } else {
@@ -1060,7 +1060,7 @@ where
     /// This method is supposed to be called after a new iteration of the
     /// program has been executed.
     pub fn commit_state(&mut self) {
-        if self.current_iteration % 2 == 0 {
+        if self.current_iteration.is_multiple_of(2) {
             assert_eq!(
                 self.current_row as u64,
                 self.indexed_relation.domain_fp.d1.size,
@@ -1095,7 +1095,7 @@ where
     /// the expected instantiation, refer to the section "Message Passing" in
     /// [crate::interpreter].
     pub fn absorb_state(&mut self) {
-        let state = if self.current_iteration % 2 == 0 {
+        let state = if self.current_iteration.is_multiple_of(2) {
             // Use program_e1's absorb_state method
             let state = self
                 .program_e1
@@ -1147,7 +1147,7 @@ where
     pub fn coin_challenge(&mut self, chal: ChallengeTerm) {
         let sponge_state_vec: Vec<BigInt> = self.prover_sponge_state.to_vec();
 
-        let (verifier_answer, new_state) = if self.current_iteration % 2 == 0 {
+        let (verifier_answer, new_state) = if self.current_iteration.is_multiple_of(2) {
             self.program_e1.coin_challenge(sponge_state_vec)
         } else {
             self.program_e2.coin_challenge(sponge_state_vec)
@@ -1182,7 +1182,7 @@ where
     pub fn accumulate_program_state(&mut self) {
         let chal = self.challenges[ChallengeTerm::RelationCombiner].clone();
 
-        if self.current_iteration % 2 == 0 {
+        if self.current_iteration.is_multiple_of(2) {
             self.program_e1
                 .accumulate_program_state(chal, &self.witness);
         } else {
@@ -1212,7 +1212,7 @@ where
     pub fn accumulate_committed_state(&mut self) {
         let chal = self.challenges[ChallengeTerm::RelationCombiner].clone();
 
-        if self.current_iteration % 2 == 0 {
+        if self.current_iteration.is_multiple_of(2) {
             self.program_e2.accumulate_committed_state(chal);
         } else {
             self.program_e1.accumulate_committed_state(chal);
