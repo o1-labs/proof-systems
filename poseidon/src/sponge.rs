@@ -262,6 +262,7 @@ where
 //
 
 #[cfg(feature = "ocaml_types")]
+#[allow(non_local_definitions)]
 pub mod caml {
     use super::*;
 
