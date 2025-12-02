@@ -1,3 +1,5 @@
+#![allow(clippy::doc_overindented_list_items)]
+
 use crate::{
     circuit_design::{
         capabilities::{read_column_array, write_column_array_const, write_column_const},

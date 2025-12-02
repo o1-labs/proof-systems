@@ -330,7 +330,7 @@ pub fn combine_limbs_m_to_n<
     from_field: Func,
     x: [V; M],
 ) -> [V; N] {
-    assert!(BITSIZE_N % BITSIZE_M == 0);
+    assert!(BITSIZE_N.is_multiple_of(BITSIZE_M));
     let k = BITSIZE_N / BITSIZE_M;
     let constant_bui = |x: BigUint| from_field(F::from(x));
     let disparity: usize = M % k;
