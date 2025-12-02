@@ -45,21 +45,16 @@ jobs:
         run: echo 'version=["20"]' >> "$GITHUB_OUTPUT"
       - id: defaults
         run: |
-          echo 'rust_version=1.81' >> "$GITHUB_OUTPUT"
+          echo 'rust_version=1.91' >> "$GITHUB_OUTPUT"
           echo 'os=ubuntu-latest' >> "$GITHUB_OUTPUT"
       - id: matrix
         run: |
-          # NOTE: This custom matrix configuration is needed to use Rust 1.84 specifically for macOS.
-          # When https://github.com/o1-labs/proof-systems/issues/3254 is fixed,
-          # this can be simplified to use a standard matrix configuration.
           cat > matrix.json << 'EOF'
           {
             "include": [
-              {"rust_toolchain_version": "1.81", "os": "ubuntu-latest"},
-              {"rust_toolchain_version": "1.82", "os": "ubuntu-latest"},
-              {"rust_toolchain_version": "1.81", "os": "ubuntu-24.04-arm"},
-              {"rust_toolchain_version": "1.82", "os": "ubuntu-24.04-arm"},
-              {"rust_toolchain_version": "1.84", "os": "macos-latest"}
+              {"rust_toolchain_version": "1.91", "os": "ubuntu-latest"},
+              {"rust_toolchain_version": "1.91", "os": "ubuntu-24.04-arm"},
+              {"rust_toolchain_version": "1.91", "os": "macos-latest"}
             ]
           }
           EOF
@@ -98,10 +93,6 @@ jobs:
         rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
         ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
         node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
-        exclude:
-          # Skip Rust 1.84 due to linting issues - remove when
-          # https://github.com/o1-labs/proof-systems/pull/3245 is fixed
-          - rust_and_os: {rust_toolchain_version: '1.84', os: 'macos-latest'}
     runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository
@@ -203,10 +194,6 @@ jobs:
         rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
         ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
         node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
-        exclude:
-          # Skip Rust 1.84 due to linting issues - remove when
-          # https://github.com/o1-labs/proof-systems/pull/3245 is fixed
-          - rust_and_os: {rust_toolchain_version: '1.84', os: 'macos-latest'}
     runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository
@@ -276,10 +263,6 @@ jobs:
         rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
         ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
         node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
-        exclude:
-          # Skip Rust 1.84 due to linting issues - remove when
-          # https://github.com/o1-labs/proof-systems/pull/3245 is fixed
-          - rust_and_os: {rust_toolchain_version: '1.84', os: 'macos-latest'}
     runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository

@@ -13,7 +13,6 @@ use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
 };
-use core::iter;
 use itertools::repeat_n;
 use o1_utils::field_helpers::i32_to_field;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -287,12 +286,12 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
 
                             // it's 1 everywhere, except at the entries where
                             // the runtime table applies
-                            evals.extend(iter::repeat(F::one()).take(runtime_table_offset));
-                            evals.extend(iter::repeat(F::zero()).take(runtime_len));
-                            evals.extend(
-                                iter::repeat(F::one())
-                                    .take(d1_size - runtime_table_offset - runtime_len),
-                            );
+                            evals.extend(std::iter::repeat_n(F::one(), runtime_table_offset));
+                            evals.extend(std::iter::repeat_n(F::zero(), runtime_len));
+                            evals.extend(std::iter::repeat_n(
+                                F::one(),
+                                d1_size - runtime_table_offset - runtime_len,
+                            ));
 
                             // although the last zk_rows are fine
                             for e in evals.iter_mut().rev().take(zk_rows) {

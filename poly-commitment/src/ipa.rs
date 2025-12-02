@@ -891,7 +891,7 @@ impl<G: CommitmentCurve> SRS<G> {
         // polynomial commitments, we obtain a chunked commitment to the L_i
         // polynomials.
         let srs_size = self.g.len();
-        let num_elems = (n + srs_size - 1) / srs_size;
+        let num_elems = n.div_ceil(srs_size);
         let mut chunks = Vec::with_capacity(num_elems);
 
         // For each chunk
@@ -1027,6 +1027,7 @@ impl<G: AffineRepr> OpeningProof<G> {
 }
 
 #[cfg(feature = "ocaml_types")]
+#[allow(non_local_definitions)]
 pub mod caml {
     use super::OpeningProof;
     use ark_ec::AffineRepr;

@@ -1,3 +1,5 @@
+// We can't use is_multiple_of as it's not available in the older nightly used for WASM builds
+#![allow(clippy::manual_is_multiple_of)]
 //! Describes helpers for foreign field arithmetics
 //! Generic parameters are as follows:
 //! - `B` is a bit length of one limb

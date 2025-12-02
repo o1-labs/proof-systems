@@ -1,3 +1,5 @@
+// We can't use is_multiple_of as it's not available in the older nightly used for WASM builds
+#![allow(clippy::manual_is_multiple_of)]
 //! Batch elliptic curve algorithms based on the batch-affine principle.
 //!
 //! The principle is the following:

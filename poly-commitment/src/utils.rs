@@ -33,7 +33,7 @@ impl<F, P> ScaledChunkedPolynomial<F, P> {
     }
 }
 
-impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
+impl<F: Field> ScaledChunkedPolynomial<F, &[F]> {
     /// Compute the resulting scaled polynomial.
     /// Example:
     /// Given the two polynomials `1 + 2X` and `3 + 4X`, and the scaling
@@ -74,9 +74,9 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
 ///
 /// Parameters:
 /// - `plnms`: vector of polynomials, either in evaluations or coefficients form, together with
-///    a set of scalars representing their blinders.
+///   a set of scalars representing their blinders.
 /// - `polyscale`: scalar to combine the polynomials, which will be scaled based on the number of
-///    polynomials to combine.
+///   polynomials to combine.
 ///
 /// Output:
 /// - `combined_poly`: combined polynomial. The order of the output follows the order of `plnms`.

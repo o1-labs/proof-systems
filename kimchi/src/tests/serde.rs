@@ -49,7 +49,7 @@ mod tests {
             rmp_serde::from_slice(&ser_pf).unwrap();
 
         // verify the deserialized proof (must accept the proof)
-        ctx.batch_verification(&vec![(de_pf, public_input)]);
+        ctx.batch_verification(&[(de_pf, public_input)]);
     }
 
     #[test]

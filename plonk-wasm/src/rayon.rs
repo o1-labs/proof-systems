@@ -25,6 +25,7 @@ where
     OP: FnOnce() -> R + Send,
     R: Send,
 {
+    #[allow(static_mut_refs)]
     let pool = unsafe { THREAD_POOL.as_ref().unwrap() };
     pool.install(op)
 }

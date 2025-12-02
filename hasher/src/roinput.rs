@@ -260,7 +260,7 @@ impl ROInput {
         // Check that the number of bytes is consistent with the expected lengths
         let expected_len_bits = fields_len * Fp::MODULUS_BIT_SIZE as usize + bits_len;
         // Round up to nearest multiple of 8
-        let expected_len = (expected_len_bits + 7) / 8 + SER_HEADER_SIZE;
+        let expected_len = expected_len_bits.div_ceil(8) + SER_HEADER_SIZE;
         if input.len() != expected_len {
             return Err(Error);
         }

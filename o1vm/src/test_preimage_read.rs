@@ -1,3 +1,5 @@
+#![allow(clippy::zombie_processes)]
+
 use crate::{
     cannon::{PreimageKey, VmConfiguration},
     cli,

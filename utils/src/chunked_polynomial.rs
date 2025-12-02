@@ -42,7 +42,7 @@ impl<F: Field> ChunkedPolynomial<F> {
             scale *= zeta_n;
         }
 
-        while coeffs.last().map_or(false, |c| c.is_zero()) {
+        while coeffs.last().is_some_and(|c| c.is_zero()) {
             coeffs.pop();
         }
 

@@ -78,7 +78,7 @@ impl AggregatedEvaluationProof {
     /// verify API understands
     pub fn verify_type(
         &self,
-    ) -> BatchEvaluationProof<Vesta, DefaultFqSponge<VestaParameters, SC>, OpeningProof<Vesta>>
+    ) -> BatchEvaluationProof<'_, Vesta, DefaultFqSponge<VestaParameters, SC>, OpeningProof<Vesta>>
     {
         let mut coms = vec![];
         for eval_com in &self.eval_commitments {

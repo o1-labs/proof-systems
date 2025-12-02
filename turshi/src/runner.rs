@@ -261,7 +261,7 @@ pub struct CairoStep<'a, F> {
 
 impl<'a, F: Field> CairoStep<'a, F> {
     /// Creates a new Cairo execution step from a step index, a Cairo word, and current pointers
-    pub fn new(mem: &mut CairoMemory<F>, ptrs: CairoState<F>) -> CairoStep<F> {
+    pub fn new(mem: &mut CairoMemory<F>, ptrs: CairoState<F>) -> CairoStep<'_, F> {
         CairoStep {
             mem,
             curr: ptrs,
@@ -503,7 +503,7 @@ pub struct CairoProgram<'a, F> {
 
 impl<'a, F: Field> CairoProgram<'a, F> {
     /// Creates a Cairo execution from the public information (memory and initial pointers)
-    pub fn new(mem: &mut CairoMemory<F>, pc: u64) -> CairoProgram<F> {
+    pub fn new(mem: &mut CairoMemory<F>, pc: u64) -> CairoProgram<'_, F> {
         let ap = mem.len();
         let mut prog = CairoProgram {
             steps: F::zero(),
