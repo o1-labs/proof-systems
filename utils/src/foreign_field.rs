@@ -1,3 +1,5 @@
+// We can't use is_multiple_of as it's not available in the older nightly used for WASM builds
+#![allow(clippy::manual_is_multiple_of)]
 //! Describes helpers for foreign field arithmetics
 //! Generic parameters are as follows:
 //! - `B` is a bit length of one limb
@@ -77,7 +79,7 @@ impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
     /// Obtains the big integer representation of the foreign field element
     pub fn to_biguint(&self) -> BigUint {
         let mut bytes = vec![];
-        if B.is_multiple_of(8) {
+        if B % 8 == 0 {
             // limbs are stored in little endian
             for limb in self.limbs {
                 let crumb = &limb.to_bytes()[0..B / 8];
@@ -91,7 +93,7 @@ impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
                 bits.extend(&f_bits_lower);
             }
 
-            let bytes_len = if (B * N).is_multiple_of(8) {
+            let bytes_len = if (B * N) % 8 == 0 {
                 (B * N) / 8
             } else {
                 ((B * N) / 8) + 1
@@ -108,7 +110,7 @@ impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
     /// elements of type `F` in little-endian. Right now it is written
     /// so that it gives `N` (limb count) limbs, even if it fits in less bits.
     fn big_to_vec(fe: BigUint) -> Vec<F> {
-        if B.is_multiple_of(8) {
+        if B % 8 == 0 {
             let bytes = fe.to_bytes_le();
             let chunks: Vec<&[u8]> = bytes.chunks(B / 8).collect();
             chunks

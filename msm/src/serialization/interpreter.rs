@@ -1,3 +1,6 @@
+// We can't use is_multiple_of as it's not available in the older nightly used for WASM builds
+#![allow(clippy::manual_is_multiple_of)]
+
 use ark_ff::{PrimeField, Zero};
 use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_integer::Integer;
@@ -330,7 +333,7 @@ pub fn combine_limbs_m_to_n<
     from_field: Func,
     x: [V; M],
 ) -> [V; N] {
-    assert!(BITSIZE_N.is_multiple_of(BITSIZE_M));
+    assert!(BITSIZE_N % BITSIZE_M == 0);
     let k = BITSIZE_N / BITSIZE_M;
     let constant_bui = |x: BigUint| from_field(F::from(x));
     let disparity: usize = M % k;

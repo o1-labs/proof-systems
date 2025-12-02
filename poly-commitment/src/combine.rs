@@ -1,3 +1,5 @@
+// We can't use is_multiple_of as it's not available in the older nightly used for WASM builds
+#![allow(clippy::manual_is_multiple_of)]
 //! Batch elliptic curve algorithms based on the batch-affine principle.
 //!
 //! The principle is the following:
@@ -26,7 +28,7 @@ use rayon::prelude::*;
 use std::ops::AddAssign;
 
 fn add_pairs_in_place<P: SWCurveConfig>(pairs: &mut Vec<SWJAffine<P>>) {
-    let len = if pairs.len().is_multiple_of(2) {
+    let len = if pairs.len() % 2 == 0 {
         pairs.len()
     } else {
         pairs.len() - 1

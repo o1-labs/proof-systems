@@ -1,3 +1,6 @@
+// We can't use is_multiple_of as it's not available in the older nightly used for WASM builds
+#![allow(clippy::manual_is_multiple_of)]
+
 use super::column::{N_MIPS_SEL_COLS, SCRATCH_SIZE, SCRATCH_SIZE_INVERSE};
 use crate::{
     cannon::{
@@ -1294,7 +1297,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             StepFrequency::Never => false,
             StepFrequency::Always => true,
             StepFrequency::Exactly(n) => *n == m,
-            StepFrequency::Every(n) => m.is_multiple_of(*n),
+            StepFrequency::Every(n) => m % *n == 0,
             StepFrequency::Range(lo, hi_opt) => {
                 m >= *lo && (hi_opt.is_none() || m < hi_opt.unwrap())
             }
