@@ -7,6 +7,9 @@
 //!   a math library that Proof-systems builds on top of.
 //!
 
+#![allow(non_local_definitions)]
+#![allow(unexpected_cfgs)]
+
 extern crate libc;
 
 /// Caml helpers
