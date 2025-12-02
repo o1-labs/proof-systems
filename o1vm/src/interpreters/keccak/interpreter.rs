@@ -652,7 +652,7 @@ where
     }
 
     ///////////////////////////
-    /// SELECTOR OPERATIONS ///
+    // SELECTOR OPERATIONS //
     ///////////////////////////
 
     /// Returns a degree-2 variable that encodes whether the current step is a
@@ -751,7 +751,7 @@ where
     }
 
     /////////////////////////
-    /// COLUMN OPERATIONS ///
+    // COLUMN OPERATIONS //
     /////////////////////////
 
     /// This function returns the composed sparse variable from shifts of any

@@ -1,3 +1,5 @@
+#![allow(clippy::zombie_processes)]
+
 use ark_ff::{UniformRand, Zero};
 use clap::Parser;
 use kimchi::circuits::domains::EvaluationDomains;

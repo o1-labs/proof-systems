@@ -1294,7 +1294,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> Env<Fp, PreImageOracle> {
             StepFrequency::Never => false,
             StepFrequency::Always => true,
             StepFrequency::Exactly(n) => *n == m,
-            StepFrequency::Every(n) => m % *n == 0,
+            StepFrequency::Every(n) => m.is_multiple_of(*n),
             StepFrequency::Range(lo, hi_opt) => {
                 m >= *lo && (hi_opt.is_none() || m < hi_opt.unwrap())
             }
