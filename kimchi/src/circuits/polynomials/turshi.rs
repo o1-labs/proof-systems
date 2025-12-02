@@ -1,3 +1,4 @@
+#![allow(clippy::doc_overindented_list_items)]
 //! This implements the constraints of the Cairo gates
 //!
 //! Cairo programs can have the following assembly-like instructions:

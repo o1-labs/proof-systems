@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![allow(non_local_definitions)]
 
 pub use groupmap;
 pub use mina_curves;

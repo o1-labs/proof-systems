@@ -25,7 +25,7 @@ pub fn bench_proof_creation_mina(c: &mut Criterion) {
     // Parse filename "kimchi_inputs_CURVENAME_SEED.ser" into two parameters
     let (curve_name, seed): (&str, &str) = filename
         .split('/')
-        .last()
+        .next_back()
         .unwrap()
         .strip_prefix("kimchi_inputs_")
         .unwrap()

@@ -241,7 +241,7 @@ where
             }
 
             // padding
-            w.extend(core::iter::repeat(G::ScalarField::zero()).take(length_padding));
+            w.extend(std::iter::repeat_n(G::ScalarField::zero(), length_padding));
 
             // zk-rows
             for row in w.iter_mut().rev().take(index.cs.zk_rows as usize) {

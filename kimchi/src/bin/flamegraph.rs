@@ -27,7 +27,7 @@ fn main() {
             let ctx = BenchmarkCtx::new(4);
             let proof_and_public = ctx.create_proof();
             loop {
-                ctx.batch_verification(black_box(&vec![proof_and_public.clone()]));
+                ctx.batch_verification(black_box(std::slice::from_ref(&proof_and_public)));
             }
         }
         _ => panic!("you must provide an argument (prove or verify)"),
