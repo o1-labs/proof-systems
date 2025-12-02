@@ -9,6 +9,9 @@ readme = "../README.md"
 edition = "2021"
 license = "Apache-2.0"
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(feature, values(\"asm\"))"] }
+
 [dependencies]
 ark-bn254.workspace = true
 ark-ec.workspace = true
