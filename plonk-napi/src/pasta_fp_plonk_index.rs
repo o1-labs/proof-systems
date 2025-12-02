@@ -26,7 +26,7 @@ use std::{
 use crate::tables::{
     lookup_table_fp_from_js, runtime_table_cfg_fp_from_js, JsLookupTableFp, JsRuntimeTableCfgFp,
 };
-pub struct WasmPastaFpPlonkIndex(pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>);
+pub struct WasmPastaFpPlonkIndex(pub External<ProverIndex<GAffine, OpeningProof<GAffine>>>);
 
 #[derive(Serialize, Deserialize)]
 struct SerializedProverIndex {
@@ -74,7 +74,7 @@ impl WasmPastaFpPlonkIndex {
             DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>,
         >();
 
-        Ok(WasmPastaFpPlonkIndex(Box::new(index)))
+        Ok(WasmPastaFpPlonkIndex(External::new(index)))
     }
 }
 
@@ -183,7 +183,7 @@ pub fn caml_pasta_fp_plonk_index_create(
     );
     index.compute_verifier_index_digest::<DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>();
 
-    Ok(External::new(WasmPastaFpPlonkIndex(Box::new(index))))
+    Ok(External::new(WasmPastaFpPlonkIndex(External::new(index))))
 }
 
 #[napi(js_name = "caml_pasta_fp_plonk_index_decode")]
@@ -205,7 +205,7 @@ pub fn caml_pasta_fp_plonk_index_decode(
     index.linearization = linearization;
     index.powers_of_alpha = powers_of_alpha;
 
-    Ok(External::new(WasmPastaFpPlonkIndex(Box::new(index))))
+    Ok(External::new(WasmPastaFpPlonkIndex(External::new(index))))
 }
 
 #[napi(js_name = "caml_pasta_fp_plonk_index_encode")]
@@ -288,6 +288,5 @@ pub fn caml_pasta_fp_plonk_index_read(
     t.linearization = linearization;
     t.powers_of_alpha = powers_of_alpha;
 
-    //
-    Ok(External::new(WasmPastaFpPlonkIndex(Box::new(t))))
+    Ok(External::new(WasmPastaFpPlonkIndex(External::new(t))))
 }
