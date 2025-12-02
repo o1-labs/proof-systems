@@ -107,6 +107,8 @@ macro_rules! decl_traces {
             }
 
             #[cfg(feature = "ocaml_types")]
+            #[allow(non_local_definitions)]
+            #[allow(dead_code)]
             pub mod caml {
                 use super::*;
 
