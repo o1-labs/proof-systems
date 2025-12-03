@@ -46,11 +46,13 @@ pub use plonk_verifier_index::{
         caml_pasta_fp_plonk_verifier_index_create, caml_pasta_fp_plonk_verifier_index_deep_copy,
         caml_pasta_fp_plonk_verifier_index_dummy, caml_pasta_fp_plonk_verifier_index_read,
         caml_pasta_fp_plonk_verifier_index_shifts, caml_pasta_fp_plonk_verifier_index_write,
+        NapiFpDomain as WasmFpDomain,
     },
     fq::{
         caml_pasta_fq_plonk_verifier_index_create, caml_pasta_fq_plonk_verifier_index_deep_copy,
         caml_pasta_fq_plonk_verifier_index_dummy, caml_pasta_fq_plonk_verifier_index_read,
         caml_pasta_fq_plonk_verifier_index_shifts, caml_pasta_fq_plonk_verifier_index_write,
+        NapiFqDomain as WasmFqDomain,
     },
 };
 
