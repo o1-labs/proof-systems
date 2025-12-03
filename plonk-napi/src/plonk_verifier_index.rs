@@ -46,7 +46,9 @@ macro_rules! impl_verification_key {
             #[napi(object, js_name = [<Wasm $field_name:camel Domain>])]
             #[derive(Clone, Debug, Serialize, Deserialize, Default)]
             pub struct [<Napi $field_name:camel Domain>] {
+                #[napi(js_name = "log_size_of_group")]
                 pub log_size_of_group: i32,
+                #[napi(js_name = "group_gen")]
                 pub group_gen: $NapiF,
             }
             type NapiDomain = [<Napi $field_name:camel Domain>];
@@ -70,33 +72,33 @@ macro_rules! impl_verification_key {
             #[napi(object, js_name = [<Wasm $field_name:camel PlonkVerificationEvals>])]
             #[derive(Clone, Debug, Serialize, Deserialize, Default)]
             pub struct [<Napi $field_name:camel PlonkVerificationEvals>] {
-                #[napi(skip)]
+                #[napi(skip, js_name = "sigma_comm")]
                 pub sigma_comm: Vec<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(skip, js_name = "coefficients_comm")]
                 pub coefficients_comm: Vec<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(skip, js_name = "generic_comm")]
                 pub generic_comm: $NapiPolyComm,
-                #[napi(skip)]
+                #[napi(skip, js_name = "psm_comm")]
                 pub psm_comm: $NapiPolyComm,
-                #[napi(skip)]
+                #[napi(skip, js_name = "complete_add_comm")]
                 pub complete_add_comm: $NapiPolyComm,
-                #[napi(skip)]
+                #[napi(skip, js_name = "mul_comm")]
                 pub mul_comm: $NapiPolyComm,
-                #[napi(skip)]
+                #[napi(skip, js_name = "emul_comm")]
                 pub emul_comm: $NapiPolyComm,
-                #[napi(skip)]
+                #[napi(skip, js_name = "endomul_scalar_comm")]
                 pub endomul_scalar_comm: $NapiPolyComm,
-                #[napi(skip)]
+                #[napi(skip, js_name = "xor_comm")]
                 pub xor_comm: Option<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(skip, js_name = "range_check0_comm")]
                 pub range_check0_comm: Option<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(skip, js_name = "range_check1_comm")]
                 pub range_check1_comm: Option<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(skip, js_name = "foreign_field_add_comm")]
                 pub foreign_field_add_comm: Option<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(skip, js_name = "foreign_field_mul_comm")]
                 pub foreign_field_mul_comm: Option<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(skip, js_name = "rot_comm")]
                 pub rot_comm: Option<$NapiPolyComm>,
             }
             type NapiPlonkVerificationEvals = [<Napi $field_name:camel PlonkVerificationEvals>];
@@ -156,7 +158,7 @@ macro_rules! impl_verification_key {
                 pub xor: Option<$NapiPolyComm>,
                 #[napi(skip)]
                 pub lookup: Option<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(skip, js_name = "range_check")]
                 pub range_check: Option<$NapiPolyComm>,
                 #[napi(skip)]
                 pub ffmul: Option<$NapiPolyComm>,
@@ -286,6 +288,7 @@ macro_rules! impl_verification_key {
             #[derive(Clone, Debug, Default)]
             pub struct [<Napi $field_name:camel PlonkVerifierIndex>] {
                 pub domain: NapiDomain,
+                #[napi(js_name = "max_poly_size")]
                 pub max_poly_size: i32,
                 pub public_: i32,
                 pub prev_challenges: i32,
