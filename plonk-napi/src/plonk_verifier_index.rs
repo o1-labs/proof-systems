@@ -958,11 +958,22 @@ macro_rules! impl_verification_key {
             }
 
             #[napi(js_name = [<$name:snake _shifts>])]
-            pub fn [<$name:snake _shifts>](log2_size: i32) -> NapiShifts {
-                let domain = Domain::<$F>::new(1 << log2_size).unwrap();
+            pub fn [<$name:snake _shifts>](
+                log2_size: i32,
+            ) -> napi::bindgen_prelude::Result<NapiShifts> {
+                println!(
+                    "from napi! caml_pasta_fp_plonk_verifier_index_shifts with log2_size {}",
+                    log2_size
+                );
+
+                let size = 1usize << (log2_size as u32);
+                let domain = Domain::<$F>::new(size)
+                    .ok_or_else(|| Error::new(Status::InvalidArg, "failed to create evaluation domain"))?;
+
                 let shifts = Shifts::new(&domain);
                 let s = shifts.shifts();
-                NapiShifts {
+
+                Ok(NapiShifts {
                     s0: s[0].clone().into(),
                     s1: s[1].clone().into(),
                     s2: s[2].clone().into(),
@@ -970,8 +981,22 @@ macro_rules! impl_verification_key {
                     s4: s[4].clone().into(),
                     s5: s[5].clone().into(),
                     s6: s[6].clone().into(),
-                }
+                })
             }
+            // pub fn [<$name:snake _shifts>](log2_size: i32) -> NapiShifts {
+            //     let domain = Domain::<$F>::new(1 << log2_size).unwrap();
+            //     let shifts = Shifts::new(&domain);
+            //     let s = shifts.shifts();
+            //     NapiShifts {
+            //         s0: s[0].clone().into(),
+            //         s1: s[1].clone().into(),
+            //         s2: s[2].clone().into(),
+            //         s3: s[3].clone().into(),
+            //         s4: s[4].clone().into(),
+            //         s5: s[5].clone().into(),
+            //         s6: s[6].clone().into(),
+            //     }
+            // }
 
             #[napi(js_name = [<$name:snake _dummy>])]
             pub fn [<$name:snake _dummy>]() -> NapiPlonkVerifierIndex {
