@@ -45,7 +45,9 @@ macro_rules! impl_verification_key {
             #[napi(js_name = [<Wasm $field_name:camel Domain>])]
             #[derive(Clone, Copy)]
             pub struct [<Napi $field_name:camel Domain>] {
+                #[napi(js_name = "log_size_of_group")]
                 pub log_size_of_group: i32,
+                #[napi(js_name = "group_gen")]
                 pub group_gen: $NapiF,
             }
             type NapiDomain = [<Napi $field_name:camel Domain>];
