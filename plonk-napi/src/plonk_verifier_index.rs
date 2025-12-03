@@ -953,7 +953,7 @@ macro_rules! impl_verification_key {
                 index: &External<$NapiIndex>,
             ) -> NapiPlonkVerifierIndex {
                 index.0.srs.get_lagrange_basis(index.0.as_ref().cs.domain.d1);
-                let verifier_index = index.0.as_ref().verifier_index();
+                let verifier_index = index.0.verifier_index();
                 to_napi(&index.0.as_ref().srs, verifier_index)
             }
 
