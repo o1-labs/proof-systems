@@ -58,6 +58,13 @@ macro_rules! impl_verification_key {
                 }
             }
 
+            impl From<NapiDomain> for Domain<$F> {
+                fn from(domain: NapiDomain) -> Self {
+                    let size = 1 << domain.log_size_of_group;
+                    Domain::<$F>::new(size).expect("Failed to create evaluation domain")
+                }
+            }
+
             impl FromNapiValue for [<Napi $field_name:camel Domain>] {
                 unsafe fn from_napi_value(
                     env: sys::napi_env,
