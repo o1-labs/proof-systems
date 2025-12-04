@@ -44,15 +44,15 @@ pub use pasta_fq_plonk_index::{
 pub use plonk_verifier_index::{
     fp::{
         caml_pasta_fp_plonk_verifier_index_create, caml_pasta_fp_plonk_verifier_index_deep_copy,
-        caml_pasta_fp_plonk_verifier_index_dummy, caml_pasta_fp_plonk_verifier_index_read,
+        caml_pasta_fp_plonk_verifier_index_deserialize, caml_pasta_fp_plonk_verifier_index_dummy,
+        caml_pasta_fp_plonk_verifier_index_read, caml_pasta_fp_plonk_verifier_index_serialize,
         caml_pasta_fp_plonk_verifier_index_shifts, caml_pasta_fp_plonk_verifier_index_write,
-        NapiFpDomain as WasmFpDomain, NapiFpPlonkVerifierIndex as WasmFpPlonkVerifierIndex,
     },
     fq::{
         caml_pasta_fq_plonk_verifier_index_create, caml_pasta_fq_plonk_verifier_index_deep_copy,
-        caml_pasta_fq_plonk_verifier_index_dummy, caml_pasta_fq_plonk_verifier_index_read,
+        caml_pasta_fq_plonk_verifier_index_deserialize, caml_pasta_fq_plonk_verifier_index_dummy,
+        caml_pasta_fq_plonk_verifier_index_read, caml_pasta_fq_plonk_verifier_index_serialize,
         caml_pasta_fq_plonk_verifier_index_shifts, caml_pasta_fq_plonk_verifier_index_write,
-        NapiFqDomain as WasmFqDomain, NapiFqPlonkVerifierIndex as WasmFqPlonkVerifierIndex,
     },
 };
 

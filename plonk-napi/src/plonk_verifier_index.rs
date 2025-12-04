@@ -946,17 +946,17 @@ macro_rules! impl_verification_key {
                 serde_json::to_string(&index).unwrap()
             }
 
-            // #[napi(js_name = [<$name:snake _deserialize>])]
-            // pub fn [<$name:snake _deserialize>](
-            //     srs: &$NapiSrs,
-            //     index: String,
-            // ) -> Result<NapiPlonkVerifierIndex, JsError> {
-            //     let vi: Result<DlogVerifierIndex<$G, OpeningProof<$G>>, serde_json::Error> = serde_json::from_str(&index);
-            //     match vi {
-            //         Ok(vi) => Ok(to_napi(srs, vi)),
-            //         Err(e) => Err(JsError::new(&(e.to_string()))),
-            //     }
-            // }
+            #[napi(js_name = [<$name:snake _deserialize>])]
+            pub fn [<$name:snake _deserialize>](
+                srs: &$NapiSrs,
+                index: String,
+            ) -> napi::Result<NapiPlonkVerifierIndex> {
+                let vi = serde_json::from_str::<DlogVerifierIndex<$G, OpeningProof<$G>>>(&index);
+                match vi {
+                    Ok(vi) => Ok(to_napi(srs, vi)),
+                    Err(e) => Err(NapiError::new(Status::GenericFailure, format!("deserialize: {}", e))),
+                }
+            }
 
             #[napi(js_name = [<$name:snake _create>])]
             pub fn [<$name:snake _create>](
