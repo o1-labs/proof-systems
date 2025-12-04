@@ -488,7 +488,7 @@ macro_rules! impl_verification_key {
                 }
             }
 
-            #[napi(js_name = [<Wasm $field_name:camel LookupVerifierIndex>])]
+            #[napi(object, js_name = [<Wasm $field_name:camel LookupVerifierIndex>])]
             #[derive(Clone, Debug, Serialize, Deserialize, Default)]
             pub struct [<Napi $field_name:camel LookupVerifierIndex>] {
                 #[napi(js_name = "joint_lookup_used")]
@@ -564,92 +564,93 @@ macro_rules! impl_verification_key {
                 }
             }
 
-            impl FromNapiValue for [<Napi $field_name:camel LookupVerifierIndex>] {
-                unsafe fn from_napi_value(
-                    env: sys::napi_env,
-                    napi_val: sys::napi_value,
-                ) -> Result<Self> {
-                    let instance = <ClassInstance<[<Napi $field_name:camel LookupVerifierIndex>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
-                    Ok((*instance).clone())
-                }
-            }
+            // impl FromNapiValue for [<Napi $field_name:camel LookupVerifierIndex>] {
+            //     unsafe fn from_napi_value(
+            //         env: sys::napi_env,
+            //         napi_val: sys::napi_value,
+            //     ) -> Result<Self> {
+            //         let instance = <ClassInstance<[<Napi $field_name:camel LookupVerifierIndex>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
+            //         Ok((*instance).clone())
+            //     }
+            // }
 
-            #[napi]
-            impl [<Napi $field_name:camel LookupVerifierIndex>] {
-                #[napi(constructor)]
-                pub fn new(
-                    joint_lookup_used: bool,
-                    lookup_table: NapiVector<$NapiPolyComm>,
-                    lookup_selectors: NapiLookupSelectors,
-                    table_ids: Option<$NapiPolyComm>,
-                    lookup_info: NapiLookupInfo,
-                    runtime_tables_selector: Option<$NapiPolyComm>
-                ) -> NapiLookupVerifierIndex {
-                    NapiLookupVerifierIndex {
-                        joint_lookup_used,
-                        lookup_table,
-                        lookup_selectors,
-                        table_ids,
-                        lookup_info: lookup_info.clone(),
-                        runtime_tables_selector
-                    }
-                }
+            // #[napi]
+            // impl [<Napi $field_name:camel LookupVerifierIndex>] {
+            //     #[napi(constructor)]
+            //     pub fn new(
+            //         joint_lookup_used: bool,
+            //         lookup_table: NapiVector<$NapiPolyComm>,
+            //         lookup_selectors: NapiLookupSelectors,
+            //         table_ids: Option<$NapiPolyComm>,
+            //         lookup_info: NapiLookupInfo,
+            //         runtime_tables_selector: Option<$NapiPolyComm>
+            //     ) -> NapiLookupVerifierIndex {
+            //         NapiLookupVerifierIndex {
+            //             joint_lookup_used,
+            //             lookup_table,
+            //             lookup_selectors,
+            //             table_ids,
+            //             lookup_info: lookup_info.clone(),
+            //             runtime_tables_selector
+            //         }
+            //     }
 
-                #[napi(getter, js_name = "lookup_table")]
-                pub fn lookup_table(&self) -> NapiVector<$NapiPolyComm> {
-                    self.lookup_table.clone()
-                }
+            //     #[napi(getter, js_name = "lookup_table")]
+            //     pub fn lookup_table(&self) -> NapiVector<$NapiPolyComm> {
+            //         self.lookup_table.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_lookup_table")]
-                pub fn set_lookup_table(&mut self, x: NapiVector<$NapiPolyComm>) {
-                    self.lookup_table = x
-                }
+            //     #[napi(setter, js_name = "set_lookup_table")]
+            //     pub fn set_lookup_table(&mut self, x: NapiVector<$NapiPolyComm>) {
+            //         self.lookup_table = x
+            //     }
 
-                #[napi(getter, js_name = "lookup_selectors")]
-                pub fn lookup_selectors(&self) -> NapiLookupSelectors {
-                    self.lookup_selectors.clone()
-                }
+            //     #[napi(getter, js_name = "lookup_selectors")]
+            //     pub fn lookup_selectors(&self) -> NapiLookupSelectors {
+            //         self.lookup_selectors.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_lookup_selectors")]
-                pub fn set_lookup_selectors(&mut self, x: NapiLookupSelectors) {
-                    self.lookup_selectors = x
-                }
+            //     #[napi(setter, js_name = "set_lookup_selectors")]
+            //     pub fn set_lookup_selectors(&mut self, x: NapiLookupSelectors) {
+            //         self.lookup_selectors = x
+            //     }
 
-                #[napi(getter, js_name = "table_ids")]
-                pub fn table_ids(&self) -> Option<$NapiPolyComm>{
-                    self.table_ids.clone()
-                }
+            //     #[napi(getter, js_name = "table_ids")]
+            //     pub fn table_ids(&self) -> Option<$NapiPolyComm>{
+            //         self.table_ids.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_table_ids")]
-                pub fn set_table_ids(&mut self, x: Option<$NapiPolyComm>) {
-                    self.table_ids = x
-                }
+            //     #[napi(setter, js_name = "set_table_ids")]
+            //     pub fn set_table_ids(&mut self, x: Option<$NapiPolyComm>) {
+            //         self.table_ids = x
+            //     }
 
-                #[napi(getter, js_name = "lookup_info")]
-                pub fn lookup_info(&self) -> NapiLookupInfo {
-                    self.lookup_info.clone()
-                }
+            //     #[napi(getter, js_name = "lookup_info")]
+            //     pub fn lookup_info(&self) -> NapiLookupInfo {
+            //         self.lookup_info.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_lookup_info")]
-                pub fn set_lookup_info(&mut self, x: NapiLookupInfo) {
-                    self.lookup_info = x
-                }
+            //     #[napi(setter, js_name = "set_lookup_info")]
+            //     pub fn set_lookup_info(&mut self, x: NapiLookupInfo) {
+            //         self.lookup_info = x
+            //     }
 
-                #[napi(getter, js_name = "runtime_tables_selector")]
-                pub fn runtime_tables_selector(&self) -> Option<$NapiPolyComm> {
-                    self.runtime_tables_selector.clone()
-                }
+            //     #[napi(getter, js_name = "runtime_tables_selector")]
+            //     pub fn runtime_tables_selector(&self) -> Option<$NapiPolyComm> {
+            //         self.runtime_tables_selector.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_runtime_tables_selector")]
-                pub fn set_runtime_tables_selector(&mut self, x: Option<$NapiPolyComm>) {
-                    self.runtime_tables_selector = x
-                }
-            }
+            //     #[napi(setter, js_name = "set_runtime_tables_selector")]
+            //     pub fn set_runtime_tables_selector(&mut self, x: Option<$NapiPolyComm>) {
+            //         self.runtime_tables_selector = x
+            //     }
+            // }
 
-            #[napi(js_name = [<Wasm $field_name:camel PlonkVerifierIndex>])]
+            #[napi(object, js_name = [<Wasm $field_name:camel PlonkVerifierIndex>])]
             #[derive(Clone)]
             pub struct [<Napi $field_name:camel PlonkVerifierIndex>] {
                 pub domain: NapiDomain,
+                #[napi(js_name = "max_poly_size")]
                 pub max_poly_size: i32,
                 pub public_: i32,
                 pub prev_challenges: i32,
@@ -665,74 +666,74 @@ macro_rules! impl_verification_key {
 
             type NapiPlonkVerifierIndex = [<Napi $field_name:camel PlonkVerifierIndex>];
 
-            impl FromNapiValue for [<Napi $field_name:camel PlonkVerifierIndex>] {
-                unsafe fn from_napi_value(
-                    env: sys::napi_env,
-                    napi_val: sys::napi_value,
-                ) -> Result<Self> {
-                    let instance = <ClassInstance<[<Napi $field_name:camel PlonkVerifierIndex>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
-                    Ok((*instance).clone())
-                }
-            }
+            // impl FromNapiValue for [<Napi $field_name:camel PlonkVerifierIndex>] {
+            //     unsafe fn from_napi_value(
+            //         env: sys::napi_env,
+            //         napi_val: sys::napi_value,
+            //     ) -> Result<Self> {
+            //         let instance = <ClassInstance<[<Napi $field_name:camel PlonkVerifierIndex>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
+            //         Ok((*instance).clone())
+            //     }
+            // }
 
-            #[napi]
-            impl [<Napi $field_name:camel PlonkVerifierIndex>] {
-                #[napi(constructor)]
-                #[allow(clippy::too_many_arguments)]
-                pub fn new(
-                    domain: &NapiDomain,
-                    max_poly_size: i32,
-                    public_: i32,
-                    prev_challenges: i32,
-                    srs: &$NapiSrs,
-                    evals: &NapiPlonkVerificationEvals,
-                    shifts: &NapiShifts,
-                    lookup_index: Option<NapiLookupVerifierIndex>,
-                    zk_rows: i32,
-                ) -> Self {
-                    NapiPlonkVerifierIndex {
-                        domain: domain.clone(),
-                        max_poly_size,
-                        public_,
-                        prev_challenges,
-                        srs: srs.clone(),
-                        evals: evals.clone(),
-                        shifts: shifts.clone(),
-                        lookup_index: lookup_index.clone(),
-                        zk_rows,
-                    }
-                }
+            // #[napi]
+            // impl [<Napi $field_name:camel PlonkVerifierIndex>] {
+            //     #[napi(constructor)]
+            //     #[allow(clippy::too_many_arguments)]
+            //     pub fn new(
+            //         domain: &NapiDomain,
+            //         max_poly_size: i32,
+            //         public_: i32,
+            //         prev_challenges: i32,
+            //         srs: &$NapiSrs,
+            //         evals: &NapiPlonkVerificationEvals,
+            //         shifts: &NapiShifts,
+            //         lookup_index: Option<NapiLookupVerifierIndex>,
+            //         zk_rows: i32,
+            //     ) -> Self {
+            //         NapiPlonkVerifierIndex {
+            //             domain: domain.clone(),
+            //             max_poly_size,
+            //             public_,
+            //             prev_challenges,
+            //             srs: srs.clone(),
+            //             evals: evals.clone(),
+            //             shifts: shifts.clone(),
+            //             lookup_index: lookup_index.clone(),
+            //             zk_rows,
+            //         }
+            //     }
 
-                #[napi(getter)]
-                pub fn srs(&self) -> $NapiSrs {
-                    self.srs.clone()
-                }
+            //     #[napi(getter)]
+            //     pub fn srs(&self) -> $NapiSrs {
+            //         self.srs.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_srs")]
-                pub fn set_srs(&mut self, x: $NapiSrs) {
-                    self.srs = x
-                }
+            //     #[napi(setter, js_name = "set_srs")]
+            //     pub fn set_srs(&mut self, x: $NapiSrs) {
+            //         self.srs = x
+            //     }
 
-                #[napi(getter)]
-                pub fn evals(&self) -> NapiPlonkVerificationEvals {
-                    self.evals.clone()
-                }
+            //     #[napi(getter)]
+            //     pub fn evals(&self) -> NapiPlonkVerificationEvals {
+            //         self.evals.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_evals")]
-                pub fn set_evals(&mut self, x: NapiPlonkVerificationEvals) {
-                    self.evals = x
-                }
+            //     #[napi(setter, js_name = "set_evals")]
+            //     pub fn set_evals(&mut self, x: NapiPlonkVerificationEvals) {
+            //         self.evals = x
+            //     }
 
-                #[napi(getter, js_name = "lookup_index")]
-                pub fn lookup_index(&self) -> Option<NapiLookupVerifierIndex> {
-                    self.lookup_index.clone()
-                }
+            //     #[napi(getter, js_name = "lookup_index")]
+            //     pub fn lookup_index(&self) -> Option<NapiLookupVerifierIndex> {
+            //         self.lookup_index.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_lookup_index")]
-                pub fn set_lookup_index(&mut self, li: Option<NapiLookupVerifierIndex>) {
-                    self.lookup_index = li
-                }
-            }
+            //     #[napi(setter, js_name = "set_lookup_index")]
+            //     pub fn set_lookup_index(&mut self, li: Option<NapiLookupVerifierIndex>) {
+            //         self.lookup_index = li
+            //     }
+            // }
 
             pub fn to_napi(
                 srs: &Arc<SRS<$G>>,
@@ -1064,7 +1065,7 @@ macro_rules! impl_verification_key {
 
             #[napi(js_name = [<$name:snake _deep_copy>])]
             pub fn [<$name:snake _deep_copy>](
-                x: &NapiPlonkVerifierIndex,
+                x: NapiPlonkVerifierIndex,
             ) -> NapiPlonkVerifierIndex {
                 x.clone()
             }
