@@ -755,9 +755,9 @@ pub mod fp {
     use super::*;
     use crate::{
         pasta_fp_plonk_index::WasmPastaFpPlonkIndex as NapiPastaFpPlonkIndex,
+        plonk_verifier_index::fp::NapiFpPlonkVerifierIndex,
         poly_comm::vesta::NapiFpPolyComm,
         wrappers::{field::NapiPastaFp, group::NapiGVesta},
-        NapiFpPlonkVerifierIndex,
     };
     use mina_curves::pasta::{Fp, Vesta};
 
@@ -778,9 +778,9 @@ pub mod fq {
     use super::*;
     use crate::{
         pasta_fq_plonk_index::WasmPastaFqPlonkIndex as NapiPastaFqPlonkIndex,
+        plonk_verifier_index::fq::NapiFqPlonkVerifierIndex,
         poly_comm::pallas::NapiFqPolyComm,
         wrappers::{field::NapiPastaFq, group::NapiGPallas},
-        NapiFqPlonkVerifierIndex,
     };
     use mina_curves::pasta::{Fq, Pallas};
 
