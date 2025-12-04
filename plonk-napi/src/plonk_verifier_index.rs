@@ -659,7 +659,7 @@ macro_rules! impl_verification_key {
                 #[napi(skip)]
                 pub evals: NapiPlonkVerificationEvals,
                 pub shifts: NapiShifts,
-                #[napi(skip, js_name = "lookup_index")]
+                #[napi(js_name = "lookup_index")]
                 pub lookup_index: Option<NapiLookupVerifierIndex>,
                 pub zk_rows: i32,
             }
