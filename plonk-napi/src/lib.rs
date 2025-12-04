@@ -36,10 +36,10 @@ pub use oracles::{
     fq::{fq_oracles_create, fq_oracles_deep_copy, fq_oracles_dummy},
 };
 pub use pasta_fp_plonk_index::{
-    prover_index_fp_from_bytes, prover_index_fp_to_bytes, WasmPastaFpPlonkIndex,
+    prover_index_fp_deserialize, prover_index_fp_serialize, WasmPastaFpPlonkIndex,
 };
 pub use pasta_fq_plonk_index::{
-    prover_index_fq_from_bytes, prover_index_fq_to_bytes, WasmPastaFqPlonkIndex,
+    prover_index_fq_deserialize, prover_index_fq_serialize, WasmPastaFqPlonkIndex,
 };
 pub use plonk_verifier_index::{
     fp::{
