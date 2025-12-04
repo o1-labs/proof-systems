@@ -36,10 +36,20 @@ pub use oracles::{
     fq::{fq_oracles_create, fq_oracles_deep_copy, fq_oracles_dummy},
 };
 pub use pasta_fp_plonk_index::{
-    prover_index_fp_deserialize, prover_index_fp_serialize, WasmPastaFpPlonkIndex,
+    caml_pasta_fp_plonk_index_create, caml_pasta_fp_plonk_index_decode,
+    caml_pasta_fp_plonk_index_domain_d1_size, caml_pasta_fp_plonk_index_domain_d4_size,
+    caml_pasta_fp_plonk_index_domain_d8_size, caml_pasta_fp_plonk_index_encode,
+    caml_pasta_fp_plonk_index_max_degree, caml_pasta_fp_plonk_index_public_inputs,
+    caml_pasta_fp_plonk_index_read, caml_pasta_fp_plonk_index_write, prover_index_fp_deserialize,
+    prover_index_fp_serialize, WasmPastaFpPlonkIndex,
 };
 pub use pasta_fq_plonk_index::{
-    prover_index_fq_deserialize, prover_index_fq_serialize, WasmPastaFqPlonkIndex,
+    caml_pasta_fq_plonk_index_create, caml_pasta_fq_plonk_index_decode,
+    caml_pasta_fq_plonk_index_domain_d1_size, caml_pasta_fq_plonk_index_domain_d4_size,
+    caml_pasta_fq_plonk_index_domain_d8_size, caml_pasta_fq_plonk_index_encode,
+    caml_pasta_fq_plonk_index_max_degree, caml_pasta_fq_plonk_index_public_inputs,
+    caml_pasta_fq_plonk_index_read, caml_pasta_fq_plonk_index_write, prover_index_fq_deserialize,
+    prover_index_fq_serialize, WasmPastaFqPlonkIndex,
 };
 pub use plonk_verifier_index::{
     fp::{
