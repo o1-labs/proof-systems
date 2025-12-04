@@ -57,12 +57,14 @@ pub use plonk_verifier_index::{
         caml_pasta_fp_plonk_verifier_index_deserialize, caml_pasta_fp_plonk_verifier_index_dummy,
         caml_pasta_fp_plonk_verifier_index_read, caml_pasta_fp_plonk_verifier_index_serialize,
         caml_pasta_fp_plonk_verifier_index_shifts, caml_pasta_fp_plonk_verifier_index_write,
+        NapiFpLookupVerifierIndex, NapiFpPlonkVerifierIndex,
     },
     fq::{
         caml_pasta_fq_plonk_verifier_index_create, caml_pasta_fq_plonk_verifier_index_deep_copy,
         caml_pasta_fq_plonk_verifier_index_deserialize, caml_pasta_fq_plonk_verifier_index_dummy,
         caml_pasta_fq_plonk_verifier_index_read, caml_pasta_fq_plonk_verifier_index_serialize,
         caml_pasta_fq_plonk_verifier_index_shifts, caml_pasta_fq_plonk_verifier_index_write,
+        NapiFqLookupVerifierIndex, NapiFqPlonkVerifierIndex,
     },
 };
 
