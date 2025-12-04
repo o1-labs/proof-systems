@@ -24,6 +24,7 @@ use poly_commitment::{
     ipa::{OpeningProof, SRS},
     SRS as _,
 };
+use serde::{Deserialize, Serialize};
 use std::{path::Path, sync::Arc};
 
 macro_rules! impl_verification_key {
@@ -361,7 +362,7 @@ macro_rules! impl_verification_key {
             }
 
             #[napi]
-            #[derive(Clone)]
+            #[derive(Clone, Debug, Serialize, Deserialize, Default)]
             pub struct [<Napi $field_name:camel LookupSelectors>] {
                 #[napi(skip)]
                 pub xor: Option<$NapiPolyComm>,
@@ -488,7 +489,7 @@ macro_rules! impl_verification_key {
             }
 
             #[napi(js_name = [<Wasm $field_name:camel LookupVerifierIndex>])]
-            #[derive(Clone)]
+            #[derive(Clone, Debug, Serialize, Deserialize, Default)]
             pub struct [<Napi $field_name:camel LookupVerifierIndex>] {
                 #[napi(js_name = "joint_lookup_used")]
                 pub joint_lookup_used: bool,
@@ -657,7 +658,7 @@ macro_rules! impl_verification_key {
                 #[napi(skip)]
                 pub evals: NapiPlonkVerificationEvals,
                 pub shifts: NapiShifts,
-                #[napi(skip)]
+                #[napi(skip, js_name = "lookup_index")]
                 pub lookup_index: Option<NapiLookupVerifierIndex>,
                 pub zk_rows: i32,
             }
