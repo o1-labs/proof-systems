@@ -43,7 +43,7 @@ macro_rules! impl_verification_key {
      $field_name: ident
      ) => {
         paste! {
-            #[napi(js_name = [<Wasm $field_name:camel Domain>])]
+            #[napi(object, js_name = [<Wasm $field_name:camel Domain>])]
             #[derive(Clone, Copy)]
             pub struct [<Napi $field_name:camel Domain>] {
                 #[napi(js_name = "log_size_of_group")]
@@ -53,13 +53,13 @@ macro_rules! impl_verification_key {
             }
             type NapiDomain = [<Napi $field_name:camel Domain>];
 
-            #[napi]
-            impl [<Napi $field_name:camel Domain>] {
-                #[napi(constructor)]
-                pub fn new(log_size_of_group: i32, group_gen: $NapiF) -> Self {
-                    NapiDomain {log_size_of_group, group_gen}
-                }
-            }
+            // #[napi]
+            // impl [<Napi $field_name:camel Domain>] {
+            //     #[napi(constructor)]
+            //     pub fn new(log_size_of_group: i32, group_gen: $NapiF) -> Self {
+            //         NapiDomain {log_size_of_group, group_gen}
+            //     }
+            // }
 
             impl From<NapiDomain> for Domain<$F> {
                 fn from(domain: NapiDomain) -> Self {
@@ -68,252 +68,252 @@ macro_rules! impl_verification_key {
                 }
             }
 
-            impl FromNapiValue for [<Napi $field_name:camel Domain>] {
-                unsafe fn from_napi_value(
-                    env: sys::napi_env,
-                    napi_val: sys::napi_value,
-                ) -> Result<Self> {
-                    let instance = <ClassInstance<[<Napi $field_name:camel Domain>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
-                    Ok((*instance).clone())
-                }
-            }
+            // impl FromNapiValue for [<Napi $field_name:camel Domain>] {
+            //     unsafe fn from_napi_value(
+            //         env: sys::napi_env,
+            //         napi_val: sys::napi_value,
+            //     ) -> Result<Self> {
+            //         let instance = <ClassInstance<[<Napi $field_name:camel Domain>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
+            //         Ok((*instance).clone())
+            //     }
+            // }
 
-            impl<'a> ToNapiValue for &'a mut [<Napi $field_name:camel Domain>] {
-                unsafe fn to_napi_value(
-                    env: sys::napi_env,
-                    val: Self,
-                ) -> Result<sys::napi_value> {
-                    <[<Napi $field_name:camel Domain>] as ToNapiValue>::to_napi_value(env, val.clone())
-                }
-            }
+            // impl<'a> ToNapiValue for &'a mut [<Napi $field_name:camel Domain>] {
+            //     unsafe fn to_napi_value(
+            //         env: sys::napi_env,
+            //         val: Self,
+            //     ) -> Result<sys::napi_value> {
+            //         <[<Napi $field_name:camel Domain>] as ToNapiValue>::to_napi_value(env, val.clone())
+            //     }
+            // }
 
-            #[napi(js_name = [<Wasm $field_name:camel PlonkVerificationEvals>])]
+            #[napi(object, js_name = [<Wasm $field_name:camel PlonkVerificationEvals>])]
             #[derive(Clone)]
             pub struct [<Napi $field_name:camel PlonkVerificationEvals>] {
-                #[napi(skip)]
+                #[napi(skip, js_name = "sigma_comm")]
                 pub sigma_comm: NapiVector<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(skip, js_name = "coefficients_comm")]
                 pub coefficients_comm: NapiVector<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(skip, js_name = "generic_comm")]
                 pub generic_comm: $NapiPolyComm,
-                #[napi(skip)]
+                #[napi(skip, js_name = "psm_comm")]
                 pub psm_comm: $NapiPolyComm,
-                #[napi(skip)]
+                #[napi(skip, js_name = "complete_add_comm")]
                 pub complete_add_comm: $NapiPolyComm,
-                #[napi(skip)]
+                #[napi(skip, js_name = "mul_comm")]
                 pub mul_comm: $NapiPolyComm,
-                #[napi(skip)]
+                #[napi(skip, js_name = "emul_comm")]
                 pub emul_comm: $NapiPolyComm,
-                #[napi(skip)]
+                #[napi(skip, js_name = "endomul_scalar_comm")]
                 pub endomul_scalar_comm: $NapiPolyComm,
-                #[napi(skip)]
+                #[napi(skip, js_name = "xor_comm")]
                 pub xor_comm: Option<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(skip, js_name = "range_check0_comm")]
                 pub range_check0_comm: Option<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(skip, js_name = "range_check1_comm")]
                 pub range_check1_comm: Option<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(skip, js_name = "foreign_field_add_comm")]
                 pub foreign_field_add_comm: Option<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(skip, js_name = "foreign_field_mul_comm")]
                 pub foreign_field_mul_comm: Option<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(skip, js_name = "rot_comm")]
                 pub rot_comm: Option<$NapiPolyComm>
             }
 
             type NapiPlonkVerificationEvals = [<Napi $field_name:camel PlonkVerificationEvals>];
 
-            impl FromNapiValue for [<Napi $field_name:camel PlonkVerificationEvals>] {
-                unsafe fn from_napi_value(
-                    env: sys::napi_env,
-                    napi_val: sys::napi_value,
-                ) -> Result<Self> {
-                    let instance = <ClassInstance<[<Napi $field_name:camel PlonkVerificationEvals>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
-                    Ok((*instance).clone())
-                }
-            }
+            // impl FromNapiValue for [<Napi $field_name:camel PlonkVerificationEvals>] {
+            //     unsafe fn from_napi_value(
+            //         env: sys::napi_env,
+            //         napi_val: sys::napi_value,
+            //     ) -> Result<Self> {
+            //         let instance = <ClassInstance<[<Napi $field_name:camel PlonkVerificationEvals>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
+            //         Ok((*instance).clone())
+            //     }
+            // }
 
-            #[napi]
-            impl [<Napi $field_name:camel PlonkVerificationEvals>] {
-                #[allow(clippy::too_many_arguments)]
-                #[napi(constructor)]
-                pub fn new(
-                    sigma_comm: NapiVector<$NapiPolyComm>,
-                    coefficients_comm: NapiVector<$NapiPolyComm>,
-                    generic_comm: &$NapiPolyComm,
-                    psm_comm: &$NapiPolyComm,
-                    complete_add_comm: &$NapiPolyComm,
-                    mul_comm: &$NapiPolyComm,
-                    emul_comm: &$NapiPolyComm,
-                    endomul_scalar_comm: &$NapiPolyComm,
-                    xor_comm: Option<$NapiPolyComm>,
-                    range_check0_comm: Option<$NapiPolyComm>,
-                    range_check1_comm: Option<$NapiPolyComm>,
-                    foreign_field_add_comm: Option<$NapiPolyComm>,
-                    foreign_field_mul_comm: Option<$NapiPolyComm>,
-                    rot_comm: Option<$NapiPolyComm>,
-                    ) -> Self {
-                    NapiPlonkVerificationEvals {
-                        sigma_comm: sigma_comm.clone(),
-                        coefficients_comm: coefficients_comm.clone(),
-                        generic_comm: generic_comm.clone(),
-                        psm_comm: psm_comm.clone(),
-                        complete_add_comm: complete_add_comm.clone(),
-                        mul_comm: mul_comm.clone(),
-                        emul_comm: emul_comm.clone(),
-                        endomul_scalar_comm: endomul_scalar_comm.clone(),
-                        xor_comm: xor_comm.clone(),
-                        range_check0_comm: range_check0_comm.clone(),
-                        range_check1_comm: range_check1_comm.clone(),
-                        foreign_field_mul_comm: foreign_field_mul_comm.clone(),
-                        foreign_field_add_comm: foreign_field_add_comm.clone(),
-                        rot_comm: rot_comm.clone(),
-                    }
-                }
+            // #[napi]
+            // impl [<Napi $field_name:camel PlonkVerificationEvals>] {
+            //     #[allow(clippy::too_many_arguments)]
+            //     #[napi(constructor)]
+            //     pub fn new(
+            //         sigma_comm: NapiVector<$NapiPolyComm>,
+            //         coefficients_comm: NapiVector<$NapiPolyComm>,
+            //         generic_comm: &$NapiPolyComm,
+            //         psm_comm: &$NapiPolyComm,
+            //         complete_add_comm: &$NapiPolyComm,
+            //         mul_comm: &$NapiPolyComm,
+            //         emul_comm: &$NapiPolyComm,
+            //         endomul_scalar_comm: &$NapiPolyComm,
+            //         xor_comm: Option<$NapiPolyComm>,
+            //         range_check0_comm: Option<$NapiPolyComm>,
+            //         range_check1_comm: Option<$NapiPolyComm>,
+            //         foreign_field_add_comm: Option<$NapiPolyComm>,
+            //         foreign_field_mul_comm: Option<$NapiPolyComm>,
+            //         rot_comm: Option<$NapiPolyComm>,
+            //         ) -> Self {
+            //         NapiPlonkVerificationEvals {
+            //             sigma_comm: sigma_comm.clone(),
+            //             coefficients_comm: coefficients_comm.clone(),
+            //             generic_comm: generic_comm.clone(),
+            //             psm_comm: psm_comm.clone(),
+            //             complete_add_comm: complete_add_comm.clone(),
+            //             mul_comm: mul_comm.clone(),
+            //             emul_comm: emul_comm.clone(),
+            //             endomul_scalar_comm: endomul_scalar_comm.clone(),
+            //             xor_comm: xor_comm.clone(),
+            //             range_check0_comm: range_check0_comm.clone(),
+            //             range_check1_comm: range_check1_comm.clone(),
+            //             foreign_field_mul_comm: foreign_field_mul_comm.clone(),
+            //             foreign_field_add_comm: foreign_field_add_comm.clone(),
+            //             rot_comm: rot_comm.clone(),
+            //         }
+            //     }
 
-                #[napi(getter, js_name = "sigma_comm")]
-                pub fn sigma_comm(&self) -> NapiVector<$NapiPolyComm> {
-                    self.sigma_comm.clone()
-                }
+            //     #[napi(getter, js_name = "sigma_comm")]
+            //     pub fn sigma_comm(&self) -> NapiVector<$NapiPolyComm> {
+            //         self.sigma_comm.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_sigma_comm")]
-                pub fn set_sigma_comm(&mut self, x: NapiVector<$NapiPolyComm>) {
-                    self.sigma_comm = x;
-                }
+            //     #[napi(setter, js_name = "set_sigma_comm")]
+            //     pub fn set_sigma_comm(&mut self, x: NapiVector<$NapiPolyComm>) {
+            //         self.sigma_comm = x;
+            //     }
 
-                #[napi(getter, js_name = "coefficients_comm")]
-                pub fn coefficients_comm(&self) -> NapiVector<$NapiPolyComm> {
-                    self.coefficients_comm.clone()
-                }
+            //     #[napi(getter, js_name = "coefficients_comm")]
+            //     pub fn coefficients_comm(&self) -> NapiVector<$NapiPolyComm> {
+            //         self.coefficients_comm.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_coefficients_comm")]
-                pub fn set_coefficients_comm(&mut self, x: NapiVector<$NapiPolyComm>) {
-                    self.coefficients_comm = x;
-                }
+            //     #[napi(setter, js_name = "set_coefficients_comm")]
+            //     pub fn set_coefficients_comm(&mut self, x: NapiVector<$NapiPolyComm>) {
+            //         self.coefficients_comm = x;
+            //     }
 
-                #[napi(getter, js_name = "generic_comm")]
-                pub fn generic_comm(&self) -> $NapiPolyComm {
-                    self.generic_comm.clone()
-                }
+            //     #[napi(getter, js_name = "generic_comm")]
+            //     pub fn generic_comm(&self) -> $NapiPolyComm {
+            //         self.generic_comm.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_generic_comm")]
-                pub fn set_generic_comm(&mut self, x: $NapiPolyComm) {
-                    self.generic_comm = x;
-                }
+            //     #[napi(setter, js_name = "set_generic_comm")]
+            //     pub fn set_generic_comm(&mut self, x: $NapiPolyComm) {
+            //         self.generic_comm = x;
+            //     }
 
-                #[napi(getter, js_name = "psm_comm")]
-                pub fn psm_comm(&self) -> $NapiPolyComm {
-                    self.psm_comm.clone()
-                }
+            //     #[napi(getter, js_name = "psm_comm")]
+            //     pub fn psm_comm(&self) -> $NapiPolyComm {
+            //         self.psm_comm.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_psm_comm")]
-                pub fn set_psm_comm(&mut self, x: $NapiPolyComm) {
-                    self.psm_comm = x;
-                }
+            //     #[napi(setter, js_name = "set_psm_comm")]
+            //     pub fn set_psm_comm(&mut self, x: $NapiPolyComm) {
+            //         self.psm_comm = x;
+            //     }
 
-                #[napi(getter, js_name = "complete_add_comm")]
-                pub fn complete_add_comm(&self) -> $NapiPolyComm {
-                    self.complete_add_comm.clone()
-                }
+            //     #[napi(getter, js_name = "complete_add_comm")]
+            //     pub fn complete_add_comm(&self) -> $NapiPolyComm {
+            //         self.complete_add_comm.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_complete_add_comm")]
-                pub fn set_complete_add_comm(&mut self, x: $NapiPolyComm) {
-                    self.complete_add_comm = x;
-                }
+            //     #[napi(setter, js_name = "set_complete_add_comm")]
+            //     pub fn set_complete_add_comm(&mut self, x: $NapiPolyComm) {
+            //         self.complete_add_comm = x;
+            //     }
 
-                #[napi(getter, js_name = "mul_comm")]
-                pub fn mul_comm(&self) -> $NapiPolyComm {
-                    self.mul_comm.clone()
-                }
+            //     #[napi(getter, js_name = "mul_comm")]
+            //     pub fn mul_comm(&self) -> $NapiPolyComm {
+            //         self.mul_comm.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_mul_comm")]
-                pub fn set_mul_comm(&mut self, x: $NapiPolyComm) {
-                    self.mul_comm = x;
-                }
+            //     #[napi(setter, js_name = "set_mul_comm")]
+            //     pub fn set_mul_comm(&mut self, x: $NapiPolyComm) {
+            //         self.mul_comm = x;
+            //     }
 
-                #[napi(getter, js_name = "emul_comm")]
-                pub fn emul_comm(&self) -> $NapiPolyComm {
-                    self.emul_comm.clone()
-                }
+            //     #[napi(getter, js_name = "emul_comm")]
+            //     pub fn emul_comm(&self) -> $NapiPolyComm {
+            //         self.emul_comm.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_emul_comm")]
-                pub fn set_emul_comm(&mut self, x: $NapiPolyComm) {
-                    self.emul_comm = x;
-                }
+            //     #[napi(setter, js_name = "set_emul_comm")]
+            //     pub fn set_emul_comm(&mut self, x: $NapiPolyComm) {
+            //         self.emul_comm = x;
+            //     }
 
-                #[napi(getter, js_name = "endomul_scalar_comm")]
-                pub fn endomul_scalar_comm(&self) -> $NapiPolyComm {
-                    self.endomul_scalar_comm.clone()
-                }
+            //     #[napi(getter, js_name = "endomul_scalar_comm")]
+            //     pub fn endomul_scalar_comm(&self) -> $NapiPolyComm {
+            //         self.endomul_scalar_comm.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_endomul_scalar_comm")]
-                pub fn set_endomul_scalar_comm(&mut self, x: $NapiPolyComm) {
-                    self.endomul_scalar_comm = x;
-                }
+            //     #[napi(setter, js_name = "set_endomul_scalar_comm")]
+            //     pub fn set_endomul_scalar_comm(&mut self, x: $NapiPolyComm) {
+            //         self.endomul_scalar_comm = x;
+            //     }
 
-                #[napi(getter, js_name = "xor_comm")]
-                pub fn xor_comm(&self) -> Option<$NapiPolyComm> {
-                    self.xor_comm.clone()
-                }
+            //     #[napi(getter, js_name = "xor_comm")]
+            //     pub fn xor_comm(&self) -> Option<$NapiPolyComm> {
+            //         self.xor_comm.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_xor_comm")]
-                pub fn set_xor_comm(&mut self, x: Option<$NapiPolyComm>) {
-                    self.xor_comm = x;
-                }
+            //     #[napi(setter, js_name = "set_xor_comm")]
+            //     pub fn set_xor_comm(&mut self, x: Option<$NapiPolyComm>) {
+            //         self.xor_comm = x;
+            //     }
 
-                #[napi(getter, js_name = "rot_comm")]
-                pub fn rot_comm(&self) -> Option<$NapiPolyComm> {
-                    self.rot_comm.clone()
-                }
+            //     #[napi(getter, js_name = "rot_comm")]
+            //     pub fn rot_comm(&self) -> Option<$NapiPolyComm> {
+            //         self.rot_comm.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_rot_comm")]
-                pub fn set_rot_comm(&mut self, x: Option<$NapiPolyComm>) {
-                    self.rot_comm = x;
-                }
+            //     #[napi(setter, js_name = "set_rot_comm")]
+            //     pub fn set_rot_comm(&mut self, x: Option<$NapiPolyComm>) {
+            //         self.rot_comm = x;
+            //     }
 
-                #[napi(getter, js_name = "range_check0_comm")]
-                pub fn range_check0_comm(&self) -> Option<$NapiPolyComm> {
-                    self.range_check0_comm.clone()
-                }
+            //     #[napi(getter, js_name = "range_check0_comm")]
+            //     pub fn range_check0_comm(&self) -> Option<$NapiPolyComm> {
+            //         self.range_check0_comm.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_range_check0_comm")]
-                pub fn set_range_check0_comm(&mut self, x: Option<$NapiPolyComm>) {
-                    self.range_check0_comm = x;
-                }
+            //     #[napi(setter, js_name = "set_range_check0_comm")]
+            //     pub fn set_range_check0_comm(&mut self, x: Option<$NapiPolyComm>) {
+            //         self.range_check0_comm = x;
+            //     }
 
-                #[napi(getter, js_name = "range_check1_comm")]
-                pub fn range_check1_comm(&self) -> Option<$NapiPolyComm> {
-                    self.range_check1_comm.clone()
-                }
+            //     #[napi(getter, js_name = "range_check1_comm")]
+            //     pub fn range_check1_comm(&self) -> Option<$NapiPolyComm> {
+            //         self.range_check1_comm.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_range_check1_comm")]
-                pub fn set_range_check1_comm(&mut self, x: Option<$NapiPolyComm>) {
-                    self.range_check1_comm = x;
-                }
+            //     #[napi(setter, js_name = "set_range_check1_comm")]
+            //     pub fn set_range_check1_comm(&mut self, x: Option<$NapiPolyComm>) {
+            //         self.range_check1_comm = x;
+            //     }
 
-                #[napi(getter, js_name = "foreign_field_add_comm")]
-                pub fn foreign_field_add_comm(&self) -> Option<$NapiPolyComm> {
-                    self.foreign_field_add_comm.clone()
-                }
+            //     #[napi(getter, js_name = "foreign_field_add_comm")]
+            //     pub fn foreign_field_add_comm(&self) -> Option<$NapiPolyComm> {
+            //         self.foreign_field_add_comm.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_foreign_field_add_comm")]
-                pub fn set_foreign_field_add_comm(&mut self, x: Option<$NapiPolyComm>) {
-                    self.foreign_field_add_comm = x;
-                }
+            //     #[napi(setter, js_name = "set_foreign_field_add_comm")]
+            //     pub fn set_foreign_field_add_comm(&mut self, x: Option<$NapiPolyComm>) {
+            //         self.foreign_field_add_comm = x;
+            //     }
 
-                #[napi(getter, js_name = "foreign_field_mul_comm")]
-                pub fn foreign_field_mul_comm(&self) -> Option<$NapiPolyComm> {
-                    self.foreign_field_mul_comm.clone()
-                }
+            //     #[napi(getter, js_name = "foreign_field_mul_comm")]
+            //     pub fn foreign_field_mul_comm(&self) -> Option<$NapiPolyComm> {
+            //         self.foreign_field_mul_comm.clone()
+            //     }
 
-                #[napi(setter, js_name = "set_foreign_field_mul_comm")]
-                pub fn set_foreign_field_mul_comm(&mut self, x: Option<$NapiPolyComm>) {
-                    self.foreign_field_mul_comm = x;
-                }
+            //     #[napi(setter, js_name = "set_foreign_field_mul_comm")]
+            //     pub fn set_foreign_field_mul_comm(&mut self, x: Option<$NapiPolyComm>) {
+            //         self.foreign_field_mul_comm = x;
+            //     }
 
-            }
+            // }
 
             #[derive(Clone, Copy)]
-            #[napi(js_name = [<Wasm $field_name:camel Shifts>])]
+            #[napi(object, js_name = [<Wasm $field_name:camel Shifts>])]
             pub struct [<Napi $field_name:camel Shifts>] {
                 pub s0: $NapiF,
                 pub s1: $NapiF,
@@ -326,42 +326,42 @@ macro_rules! impl_verification_key {
 
             type NapiShifts = [<Napi $field_name:camel Shifts>];
 
-            impl FromNapiValue for [<Napi $field_name:camel Shifts>] {
-                unsafe fn from_napi_value(
-                    env: sys::napi_env,
-                    napi_val: sys::napi_value,
-                ) -> Result<Self> {
-                    let instance = <ClassInstance<[<Napi $field_name:camel Shifts>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
-                    Ok((*instance).clone())
-                }
-            }
+            // impl FromNapiValue for [<Napi $field_name:camel Shifts>] {
+            //     unsafe fn from_napi_value(
+            //         env: sys::napi_env,
+            //         napi_val: sys::napi_value,
+            //     ) -> Result<Self> {
+            //         let instance = <ClassInstance<[<Napi $field_name:camel Shifts>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
+            //         Ok((*instance).clone())
+            //     }
+            // }
 
-            impl<'a> ToNapiValue for &'a mut [<Napi $field_name:camel Shifts>] {
-                unsafe fn to_napi_value(
-                    env: sys::napi_env,
-                    val: Self,
-                ) -> Result<sys::napi_value> {
-                    <[<Napi $field_name:camel Shifts>] as ToNapiValue>::to_napi_value(env, val.clone())
-                }
-            }
+            // impl<'a> ToNapiValue for &'a mut [<Napi $field_name:camel Shifts>] {
+            //     unsafe fn to_napi_value(
+            //         env: sys::napi_env,
+            //         val: Self,
+            //     ) -> Result<sys::napi_value> {
+            //         <[<Napi $field_name:camel Shifts>] as ToNapiValue>::to_napi_value(env, val.clone())
+            //     }
+            // }
 
-            #[napi]
-            impl [<Napi $field_name:camel Shifts>] {
-                #[napi(constructor)]
-                pub fn new(
-                    s0: $NapiF,
-                    s1: $NapiF,
-                    s2: $NapiF,
-                    s3: $NapiF,
-                    s4: $NapiF,
-                    s5: $NapiF,
-                    s6: $NapiF
-                ) -> Self {
-                    Self { s0, s1, s2, s3, s4, s5, s6 }
-                }
-            }
+            // #[napi]
+            // impl [<Napi $field_name:camel Shifts>] {
+            //     #[napi(constructor)]
+            //     pub fn new(
+            //         s0: $NapiF,
+            //         s1: $NapiF,
+            //         s2: $NapiF,
+            //         s3: $NapiF,
+            //         s4: $NapiF,
+            //         s5: $NapiF,
+            //         s6: $NapiF
+            //     ) -> Self {
+            //         Self { s0, s1, s2, s3, s4, s5, s6 }
+            //     }
+            // }
 
-            #[napi]
+            #[napi(js_name = [<Wasm $field_name:camel LookupSelectors>])]
             #[derive(Clone, Debug, Serialize, Deserialize, Default)]
             pub struct [<Napi $field_name:camel LookupSelectors>] {
                 #[napi(skip)]
