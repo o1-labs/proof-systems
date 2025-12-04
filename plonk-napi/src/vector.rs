@@ -296,9 +296,9 @@ where
     }
 }
 
-macro_rules! impl_vec_vec_fp {
-    ($name:ident, $field:ty, $wasm_field:ty) => {
-        #[napi]
+macro_rules! impl_vec_vec {
+    ($name:ident, $field:ty, $napi_field:ty, $wasm_vec_vec:literal) => {
+        #[napi(js_name = $wasm_vec_vec)]
         #[derive(Clone, Debug, Default)]
         pub struct $name(#[napi(skip)] pub Vec<Vec<$field>>);
 
@@ -312,7 +312,7 @@ macro_rules! impl_vec_vec_fp {
             #[napi]
             pub fn push(&mut self, vector: Uint8Array) -> Result<()> {
                 let flattened = vector.as_ref().to_vec();
-                let values = FlatVector::<$wasm_field>::from_bytes(flattened)
+                let values = FlatVector::<$napi_field>::from_bytes(flattened)
                     .into_iter()
                     .map(Into::into)
                     .collect();
@@ -329,7 +329,7 @@ macro_rules! impl_vec_vec_fp {
                 let bytes = slice
                     .iter()
                     .cloned()
-                    .map(<$wasm_field>::from)
+                    .map(<$napi_field>::from)
                     .flat_map(FlatVectorElem::flatten)
                     .collect::<Vec<u8>>();
 
@@ -343,7 +343,7 @@ macro_rules! impl_vec_vec_fp {
                 })?;
 
                 let flattened = vector.as_ref().to_vec();
-                *entry = FlatVector::<$wasm_field>::from_bytes(flattened)
+                *entry = FlatVector::<$napi_field>::from_bytes(flattened)
                     .into_iter()
                     .map(Into::into)
                     .collect();
@@ -394,7 +394,7 @@ pub mod fp {
     use mina_curves::pasta::Fp;
     use napi_derive::napi;
 
-    impl_vec_vec_fp!(NapiVecVecFp, Fp, NapiPastaFp);
+    impl_vec_vec!(NapiVecVecFp, Fp, NapiPastaFp, "WasmVecVecFp");
 }
 
 pub mod fq {
@@ -403,5 +403,5 @@ pub mod fq {
     use mina_curves::pasta::Fq;
     use napi_derive::napi;
 
-    impl_vec_vec_fp!(NapiVecVecFq, Fq, NapiPastaFq);
+    impl_vec_vec!(NapiVecVecFq, Fq, NapiPastaFq, "WasmVecVecFq");
 }
