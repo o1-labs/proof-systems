@@ -490,12 +490,13 @@ macro_rules! impl_verification_key {
             #[napi(js_name = [<Wasm $field_name:camel LookupVerifierIndex>])]
             #[derive(Clone)]
             pub struct [<Napi $field_name:camel LookupVerifierIndex>] {
+                #[napi(js_name = "joint_lookup_used")]
                 pub joint_lookup_used: bool,
 
                 #[napi(skip)]
                 pub lookup_table: NapiVector<$NapiPolyComm>,
 
-                #[napi(skip)]
+                #[napi(skip, js_name = "lookup_selectors")]
                 pub lookup_selectors: NapiLookupSelectors,
 
                 #[napi(skip)]
