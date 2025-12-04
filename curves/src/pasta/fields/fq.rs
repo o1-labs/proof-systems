@@ -1,5 +1,5 @@
 use super::fft::{FftParameters, Fp256Parameters, FpParameters};
-use ark_ff::{biginteger::BigInteger256 as BigInteger, Fp256};
+use ark_ff::{biginteger::BigInteger256 as BigInteger, Fp256, Field};
 
 pub struct FqParameters;
 
@@ -77,4 +77,10 @@ impl FpParameters for FqParameters {
 
     // -(MODULUS^{-1} mod 2^64) mod 2^64
     const INV: u64 = 10108024940646105087;
+}
+
+impl crate::pasta::wasm_friendly::MinimalField for Fq {
+    fn square_in_place(&mut self) -> &mut Self {
+        <Fq as Field>::square_in_place(self)
+    }
 }

@@ -91,7 +91,7 @@ cleanup_old_wasm_files
 
 # Build the WASM benchmark with cargo-wasi
 echo "Building benchmark '$BENCH_NAME' with cargo-wasi..."
-cargo wasi build --bench="$BENCH_NAME" --release
+cargo wasi build --bench="$BENCH_NAME" --release -p mina-poseidon
 
 # Function to find the correct WASM file
 find_wasm_file() {

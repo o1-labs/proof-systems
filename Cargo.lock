@@ -547,6 +547,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "bnum"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "119771309b95163ec7aaf79810da82f7cd0599c19722d48b9c03894dca833966"
+
+[[package]]
 name = "bs58"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2170,8 +2176,13 @@ dependencies = [
  "ark-serialize",
  "ark-std",
  "ark-test-curves",
+ "bnum",
+ "derivative",
  "num-bigint",
+ "num-integer",
  "rand",
+ "wasm-bindgen",
+ "zeroize",
 ]
 
 [[package]]
