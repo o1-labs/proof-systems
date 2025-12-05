@@ -528,14 +528,49 @@ macro_rules! impl_proof {
                 pub public_input: Vec<$F>,
             }
 
+            #[napi(js_name = [<Wasm $field_name:camel RuntimeTable>])]
+            #[derive(Clone)]
+            pub struct [<Napi $field_name:camel RuntimeTable>] {
+                id: i32,
+                data: NapiFlatVector<$NapiF>
+            }
+            type NapiRuntimeTable = [<Napi $field_name:camel RuntimeTable>];
+
+            #[napi]
+            impl [<Napi $field_name:camel RuntimeTable>] {
+                #[napi(constructor)]
+                pub fn new(id: i32, data: NapiFlatVector<$NapiF>) -> NapiRuntimeTable {
+                    NapiRuntimeTable {id, data}
+                }
+            }
+
+            impl From<[<Napi $field_name:camel RuntimeTable>]> for RuntimeTable<$F> {
+                fn from(wasm_rt: NapiRuntimeTable) -> RuntimeTable<$F> {
+                    RuntimeTable {
+                        id: wasm_rt.id.into(),
+                        data: wasm_rt.data.into_iter().map(Into::into).collect()
+                    }
+                }
+            }
+
+            impl FromNapiValue for [<Napi $field_name:camel RuntimeTable>] {
+                unsafe fn from_napi_value(
+                    env: sys::napi_env,
+                    napi_val: sys::napi_value,
+                ) -> Result<Self> {
+                    let instance = <ClassInstance<[<Napi $field_name:camel RuntimeTable>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
+                    Ok((*instance).clone())
+                }
+            }
+
             type NapiProofF = [<NapiProof $field_name:camel>];
-            type JsRuntimeTableF = [<JsRuntimeTable $field_name:camel>];
+            // type JsRuntimeTableF = [<JsRuntimeTable $field_name:camel>];
 
             #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_create">])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_proof_create>](
                 index: &External<$NapiIndex>,
                 witness: $NapiVecVec,
-                runtime_tables: NapiVector<JsRuntimeTableF>,
+                runtime_tables: NapiVector<NapiRuntimeTable>,
                 prev_challenges: NapiFlatVector<$NapiF>,
                 prev_sgs: NapiVector<$NapiG>,
             ) -> Result<External<NapiProofF>> {
@@ -568,20 +603,21 @@ macro_rules! impl_proof {
                             d
                         }
                     };
+                    let rust_runtime_tables: Vec<RuntimeTable<$F>> = runtime_tables.into_iter().map(Into::into).collect();
 
-                    let rust_runtime_tables: Vec<RuntimeTable<$F>> = runtime_tables
-                        .into_iter()
-                        .flat_map(|table| {
-                            let JsRuntimeTableF { id, data } = table;
-                            data.into_iter().map(move |column| {
-                                let values = NapiFlatVector::<$NapiF>::from_bytes(column.to_vec())
-                                    .into_iter()
-                                    .map(Into::into)
-                                    .collect();
-                                RuntimeTable { id, data: values }
-                            })
-                        })
-                        .collect();
+                    // let rust_runtime_tables: Vec<RuntimeTable<$F>> = runtime_tables
+                    //     .into_iter()
+                    //     .flat_map(|table| {
+                    //         let NapiRuntimeTable { id, data } = table;
+                    //         data.into_iter().map(move |column| {
+                    //             let values = NapiFlatVector::<$NapiF>::from_bytes(column.to_vec())
+                    //                 .into_iter()
+                    //                 .map(Into::into)
+                    //                 .collect();
+                    //             RuntimeTable { id, data: values }
+                    //         })
+                    //     })
+                    //     .collect();
 
                     let witness: [Vec<_>; COLUMNS] = witness
                         .0
