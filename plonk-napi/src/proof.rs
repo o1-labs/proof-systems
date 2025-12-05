@@ -1,6 +1,9 @@
 use crate::{
     tables::{JsRuntimeTableFp, JsRuntimeTableFq},
-    vector::{fp::NapiVecVecFp, fq::NapiVecVecFq, NapiFlatVector, NapiVector},
+    vector::{
+        fp::WasmVecVecFp as NapiVecVecFp, fq::WasmVecVecFq as NapiVecVecFq, NapiFlatVector,
+        NapiVector,
+    },
 };
 use ark_ec::AffineRepr;
 use ark_ff::One;

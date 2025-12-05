@@ -1,5 +1,5 @@
 use crate::{
-    vector::{fp::NapiVecVecFp, fq::NapiVecVecFq},
+    vector::{fp::WasmVecVecFp as NapiVecVecFp, fq::WasmVecVecFq as NapiVecVecFq},
     wrappers::field::{NapiPastaFp, NapiPastaFq},
 };
 use kimchi::circuits::lookup::{

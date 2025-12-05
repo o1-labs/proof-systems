@@ -394,7 +394,7 @@ pub mod fp {
     use mina_curves::pasta::Fp;
     use napi_derive::napi;
 
-    impl_vec_vec_fp!(NapiVecVecFp, Fp, NapiPastaFp);
+    impl_vec_vec_fp!(WasmVecVecFp, Fp, NapiPastaFp);
 }
 
 pub mod fq {
@@ -403,5 +403,5 @@ pub mod fq {
     use mina_curves::pasta::Fq;
     use napi_derive::napi;
 
-    impl_vec_vec_fp!(NapiVecVecFq, Fq, NapiPastaFq);
+    impl_vec_vec_fp!(WasmVecVecFq, Fq, NapiPastaFq);
 }
