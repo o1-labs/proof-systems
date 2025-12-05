@@ -305,7 +305,7 @@ macro_rules! impl_vec_vec_fp {
         #[napi]
         impl $name {
             #[napi(constructor)]
-            pub fn create(capacity: i32) -> Self {
+            pub fn new(capacity: i32) -> Self {
                 println!("Creating napi VecVec");
                 $name(Vec::with_capacity(capacity as usize))
             }
