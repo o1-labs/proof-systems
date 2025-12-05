@@ -41,10 +41,11 @@ macro_rules! impl_proof {
      $NapiSrs: ty,
      $NapiIndex: ty,
      $NapiVerifierIndex: ty,
+     $NapiVecVec: ty,
      $field_name: ident
      ) => {
         paste! {
-            type NapiVecVecF = [<NapiVecVec $field_name:camel>];
+            // type NapiVecVecF = [<NapiVecVec $field_name:camel>];
 
             #[napi(js_name = [<Wasm $field_name:camel ProofEvaluations>])]
             #[derive(Clone)]
@@ -448,7 +449,7 @@ macro_rules! impl_proof {
                     evals: NapiProofEvaluations, // maybe remove FromNapiValue trait implementation and wrap it in External instead
                     ft_eval1: $NapiF,
                     public_: NapiFlatVector<$NapiF>,
-                    prev_challenges_scalars: NapiVecVecF,
+                    prev_challenges_scalars: $NapiVecVec,
                     prev_challenges_comms: NapiVector<$NapiPolyComm>) -> Self {
                     NapiProverProof {
                         commitments,
@@ -478,7 +479,7 @@ macro_rules! impl_proof {
                     self.public.clone()
                 }
                 #[napi(getter, js_name="prev_challenges_scalars")]
-                pub fn prev_challenges_scalars(&self) -> NapiVecVecF {
+                pub fn prev_challenges_scalars(&self) -> $NapiVecVec {
                     [<NapiVecVec $field_name:camel>](self.prev_challenges_scalars.clone())
                 }
                 #[napi(getter, js_name="prev_challenges_comms")]
@@ -503,7 +504,7 @@ macro_rules! impl_proof {
                     self.public = public_
                 }
                 #[napi(setter, js_name="set_prev_challenges_scalars")]
-                pub fn set_prev_challenges_scalars(&mut self, prev_challenges_scalars: NapiVecVecF) {
+                pub fn set_prev_challenges_scalars(&mut self, prev_challenges_scalars: $NapiVecVec) {
                     self.prev_challenges_scalars = prev_challenges_scalars.0
                 }
                 #[napi(setter, js_name="set_prev_challenges_comms")]
@@ -533,7 +534,7 @@ macro_rules! impl_proof {
             #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_create">])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_proof_create>](
                 index: &External<$NapiIndex>,
-                witness: NapiVecVecF,
+                witness: $NapiVecVec,
                 runtime_tables: NapiVector<JsRuntimeTableF>,
                 prev_challenges: NapiFlatVector<$NapiF>,
                 prev_sgs: NapiVector<$NapiG>,
@@ -773,6 +774,7 @@ pub mod fp {
         NapiSrs,
         NapiPastaFpPlonkIndex,
         NapiFpPlonkVerifierIndex,
+        NapiVecVecFp,
         Fp
     );
 }
@@ -796,6 +798,7 @@ pub mod fq {
         NapiSrs,
         NapiPastaFqPlonkIndex,
         NapiFqPlonkVerifierIndex,
+        NapiVecVecFq,
         Fq
     );
 }
