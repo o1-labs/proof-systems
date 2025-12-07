@@ -1,9 +1,5 @@
-use crate::{
-    tables::{JsRuntimeTableFp, JsRuntimeTableFq},
-    vector::{
-        fp::WasmVecVecFp as NapiVecVecFp, fq::WasmVecVecFq as NapiVecVecFq, NapiFlatVector,
-        NapiVector,
-    },
+use crate::vector::{
+    fp::WasmVecVecFp as NapiVecVecFp, fq::WasmVecVecFq as NapiVecVecFq, NapiFlatVector, NapiVector,
 };
 use ark_ec::AffineRepr;
 use ark_ff::One;
@@ -528,21 +524,21 @@ macro_rules! impl_proof {
                 pub public_input: Vec<$F>,
             }
 
-            #[napi(js_name = [<Wasm $field_name:camel RuntimeTable>])]
+            #[napi(object, js_name = [<Wasm $field_name:camel RuntimeTable>])]
             #[derive(Clone)]
             pub struct [<Napi $field_name:camel RuntimeTable>] {
-                id: i32,
-                data: NapiFlatVector<$NapiF>
+                pub id: i32,
+                pub data: NapiFlatVector<$NapiF>
             }
             type NapiRuntimeTable = [<Napi $field_name:camel RuntimeTable>];
 
-            #[napi]
-            impl [<Napi $field_name:camel RuntimeTable>] {
-                #[napi(constructor)]
-                pub fn new(id: i32, data: NapiFlatVector<$NapiF>) -> NapiRuntimeTable {
-                    NapiRuntimeTable {id, data}
-                }
-            }
+            // #[napi]
+            // impl [<Napi $field_name:camel RuntimeTable>] {
+            //     #[napi(constructor)]
+            //     pub fn new(id: i32, data: NapiFlatVector<$NapiF>) -> NapiRuntimeTable {
+            //         NapiRuntimeTable {id, data}
+            //     }
+            // }
 
             impl From<[<Napi $field_name:camel RuntimeTable>]> for RuntimeTable<$F> {
                 fn from(wasm_rt: NapiRuntimeTable) -> RuntimeTable<$F> {
@@ -553,15 +549,15 @@ macro_rules! impl_proof {
                 }
             }
 
-            impl FromNapiValue for [<Napi $field_name:camel RuntimeTable>] {
-                unsafe fn from_napi_value(
-                    env: sys::napi_env,
-                    napi_val: sys::napi_value,
-                ) -> Result<Self> {
-                    let instance = <ClassInstance<[<Napi $field_name:camel RuntimeTable>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
-                    Ok((*instance).clone())
-                }
-            }
+            // impl FromNapiValue for [<Napi $field_name:camel RuntimeTable>] {
+            //     unsafe fn from_napi_value(
+            //         env: sys::napi_env,
+            //         napi_val: sys::napi_value,
+            //     ) -> Result<Self> {
+            //         let instance = <ClassInstance<[<Napi $field_name:camel RuntimeTable>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
+            //         Ok((*instance).clone())
+            //     }
+            // }
 
             type NapiProofF = [<NapiProof $field_name:camel>];
             // type JsRuntimeTableF = [<JsRuntimeTable $field_name:camel>];
