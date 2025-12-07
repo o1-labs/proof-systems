@@ -98,5 +98,3 @@ pub use wrappers::{
     field::{NapiPastaFp as WasmPastaFp, NapiPastaFq as WasmPastaFq},
     group::{NapiGPallas as WasmGPallas, NapiGVesta as WasmGVesta},
 };
-
-pub use plonk_verifier_index::{fp::*, fq::*};

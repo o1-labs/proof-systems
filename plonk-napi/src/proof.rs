@@ -601,20 +601,6 @@ macro_rules! impl_proof {
                     };
                     let rust_runtime_tables: Vec<RuntimeTable<$F>> = runtime_tables.into_iter().map(Into::into).collect();
 
-                    // let rust_runtime_tables: Vec<RuntimeTable<$F>> = runtime_tables
-                    //     .into_iter()
-                    //     .flat_map(|table| {
-                    //         let NapiRuntimeTable { id, data } = table;
-                    //         data.into_iter().map(move |column| {
-                    //             let values = NapiFlatVector::<$NapiF>::from_bytes(column.to_vec())
-                    //                 .into_iter()
-                    //                 .map(Into::into)
-                    //                 .collect();
-                    //             RuntimeTable { id, data: values }
-                    //         })
-                    //     })
-                    //     .collect();
-
                     let witness: [Vec<_>; COLUMNS] = witness
                         .0
                         .try_into()
