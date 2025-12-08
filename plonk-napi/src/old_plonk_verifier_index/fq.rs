@@ -2,6 +2,7 @@ use crate::{
     poly_comm::pallas::NapiFqPolyComm,
     srs::fq::NapiFqSrs,
     wrappers::{field::NapiPastaFq, lookups::NapiLookupInfo},
+    WasmPastaFqPlonkIndex,
 };
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 use kimchi::{
@@ -19,9 +20,9 @@ use kimchi::{
     verifier_index::{LookupVerifierIndex, VerifierIndex},
 };
 use mina_curves::pasta::{Fq, Pallas as GAffine, Vesta as GAffineOther};
-use napi::bindgen_prelude::{Error, Status};
+use napi::bindgen_prelude::{Error, External, Status};
 use napi_derive::napi;
-use poly_commitment::{commitment::PolyComm, ipa::OpeningProof};
+use poly_commitment::{commitment::PolyComm, ipa::OpeningProof, SRS};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -30,6 +31,22 @@ use std::sync::Arc;
 pub struct NapiFqDomain {
     pub log_size_of_group: i32,
     pub group_gen: NapiPastaFq,
+}
+
+impl From<NapiFqDomain> for Domain<Fq> {
+    fn from(domain: NapiFqDomain) -> Self {
+        let size = 1 << domain.log_size_of_group;
+        Domain::<Fq>::new(size).expect("Failed to create evaluation domain")
+    }
+}
+
+impl From<&Domain<Fq>> for NapiFqDomain {
+    fn from(domain: &Domain<Fq>) -> Self {
+        Self {
+            log_size_of_group: domain.log_size_of_group as i32,
+            group_gen: domain.group_gen.into(),
+        }
+    }
 }
 
 #[napi(object, js_name = "WasmFqShifts")]
@@ -42,6 +59,20 @@ pub struct NapiFqShifts {
     pub s4: NapiPastaFq,
     pub s5: NapiPastaFq,
     pub s6: NapiPastaFq,
+}
+
+impl From<&[Fq; 7]> for NapiFqShifts {
+    fn from(shifts: &[Fq; 7]) -> Self {
+        Self {
+            s0: shifts[0].into(),
+            s1: shifts[1].into(),
+            s2: shifts[2].into(),
+            s3: shifts[3].into(),
+            s4: shifts[4].into(),
+            s5: shifts[5].into(),
+            s6: shifts[6].into(),
+        }
+    }
 }
 
 #[napi(object, js_name = "WasmFqLookupSelectors")]
@@ -179,6 +210,27 @@ pub struct NapiFqPlonkVerificationEvals {
     pub rot_comm: Option<NapiFqPolyComm>,
 }
 
+impl From<&VerifierIndex<GAffine, OpeningProof<GAffine>>> for NapiFqPlonkVerificationEvals {
+    fn from(index: &VerifierIndex<GAffine, OpeningProof<GAffine>>) -> Self {
+        Self {
+            sigma_comm: index.sigma_comm.iter().map(Into::into).collect(),
+            coefficients_comm: index.coefficients_comm.iter().map(Into::into).collect(),
+            generic_comm: index.generic_comm.clone().into(),
+            psm_comm: index.psm_comm.clone().into(),
+            complete_add_comm: index.complete_add_comm.clone().into(),
+            mul_comm: index.mul_comm.clone().into(),
+            emul_comm: index.emul_comm.clone().into(),
+            endomul_scalar_comm: index.endomul_scalar_comm.clone().into(),
+            xor_comm: index.xor_comm.clone().map(Into::into),
+            range_check0_comm: index.range_check0_comm.clone().map(Into::into),
+            range_check1_comm: index.range_check1_comm.clone().map(Into::into),
+            foreign_field_add_comm: index.foreign_field_add_comm.clone().map(Into::into),
+            foreign_field_mul_comm: index.foreign_field_mul_comm.clone().map(Into::into),
+            rot_comm: index.rot_comm.clone().map(Into::into),
+        }
+    }
+}
+
 #[napi(object, js_name = "WasmFqPlonkVerifierIndex")]
 #[derive(Clone, Debug, Default)]
 pub struct NapiFqPlonkVerifierIndex {
@@ -191,6 +243,18 @@ pub struct NapiFqPlonkVerifierIndex {
     pub shifts: NapiFqShifts,
     pub lookup_index: Option<NapiFqLookupVerifierIndex>,
     pub zk_rows: i32,
+}
+
+#[napi(js_name = "caml_pasta_fq_plonk_verifier_index_create")]
+pub fn caml_pasta_fq_plonk_verifier_index_create(
+    index: &External<WasmPastaFqPlonkIndex>,
+) -> NapiFqPlonkVerifierIndex {
+    index
+        .0
+        .srs
+        .get_lagrange_basis(index.0.as_ref().cs.domain.d1);
+    let verifier_index = index.0.as_ref().verifier_index();
+    NapiFqPlonkVerifierIndex::from(&verifier_index)
 }
 
 #[napi(js_name = "caml_pasta_fq_plonk_verifier_index_shifts")]
@@ -294,6 +358,22 @@ impl From<NapiFqPlonkVerifierIndex> for VerifierIndex<GAffine, OpeningProof<GAff
             }
         };
         (index, srs.0.clone()).0
+    }
+}
+
+impl From<&VerifierIndex<GAffine, OpeningProof<GAffine>>> for NapiFqPlonkVerifierIndex {
+    fn from(index: &VerifierIndex<GAffine, OpeningProof<GAffine>>) -> Self {
+        Self {
+            domain: (&index.domain).into(),
+            max_poly_size: index.max_poly_size as i32,
+            public_: index.public as i32,
+            prev_challenges: index.prev_challenges as i32,
+            srs: (&index.srs).into(),
+            evals: index.into(),
+            shifts: (&index.shift).into(),
+            lookup_index: index.lookup_index.as_ref().map(Into::into),
+            zk_rows: index.zk_rows as i32,
+        }
     }
 }
 

@@ -2,6 +2,7 @@ use crate::{
     poly_comm::vesta::NapiFpPolyComm,
     srs::fp::NapiFpSrs,
     wrappers::{field::NapiPastaFp, lookups::NapiLookupInfo},
+    WasmPastaFpPlonkIndex,
 };
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 use kimchi::{
@@ -19,9 +20,9 @@ use kimchi::{
     verifier_index::{LookupVerifierIndex, VerifierIndex},
 };
 use mina_curves::pasta::{Fp, Pallas as GAffineOther, Vesta as GAffine};
-use napi::bindgen_prelude::{Error, Status};
+use napi::bindgen_prelude::{Error, External, Status};
 use napi_derive::napi;
-use poly_commitment::{commitment::PolyComm, ipa::OpeningProof};
+use poly_commitment::{commitment::PolyComm, ipa::OpeningProof, SRS};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -39,6 +40,15 @@ impl From<NapiFpDomain> for Domain<Fp> {
     }
 }
 
+impl From<&Domain<Fp>> for NapiFpDomain {
+    fn from(domain: &Domain<Fp>) -> Self {
+        Self {
+            log_size_of_group: domain.log_size_of_group as i32,
+            group_gen: domain.group_gen.into(),
+        }
+    }
+}
+
 #[napi(object, js_name = "WasmFpShifts")]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct NapiFpShifts {
@@ -49,6 +59,20 @@ pub struct NapiFpShifts {
     pub s4: NapiPastaFp,
     pub s5: NapiPastaFp,
     pub s6: NapiPastaFp,
+}
+
+impl From<&[Fp; 7]> for NapiFpShifts {
+    fn from(shifts: &[Fp; 7]) -> Self {
+        Self {
+            s0: shifts[0].into(),
+            s1: shifts[1].into(),
+            s2: shifts[2].into(),
+            s3: shifts[3].into(),
+            s4: shifts[4].into(),
+            s5: shifts[5].into(),
+            s6: shifts[6].into(),
+        }
+    }
 }
 
 #[napi(object, js_name = "WasmFpLookupSelectors")]
@@ -186,6 +210,27 @@ pub struct NapiFpPlonkVerificationEvals {
     pub rot_comm: Option<NapiFpPolyComm>,
 }
 
+impl From<&VerifierIndex<GAffine, OpeningProof<GAffine>>> for NapiFpPlonkVerificationEvals {
+    fn from(index: &VerifierIndex<GAffine, OpeningProof<GAffine>>) -> Self {
+        Self {
+            sigma_comm: index.sigma_comm.iter().map(Into::into).collect(),
+            coefficients_comm: index.coefficients_comm.iter().map(Into::into).collect(),
+            generic_comm: index.generic_comm.clone().into(),
+            psm_comm: index.psm_comm.clone().into(),
+            complete_add_comm: index.complete_add_comm.clone().into(),
+            mul_comm: index.mul_comm.clone().into(),
+            emul_comm: index.emul_comm.clone().into(),
+            endomul_scalar_comm: index.endomul_scalar_comm.clone().into(),
+            xor_comm: index.xor_comm.clone().map(Into::into),
+            range_check0_comm: index.range_check0_comm.clone().map(Into::into),
+            range_check1_comm: index.range_check1_comm.clone().map(Into::into),
+            foreign_field_add_comm: index.foreign_field_add_comm.clone().map(Into::into),
+            foreign_field_mul_comm: index.foreign_field_mul_comm.clone().map(Into::into),
+            rot_comm: index.rot_comm.clone().map(Into::into),
+        }
+    }
+}
+
 #[napi(object, js_name = "WasmFpPlonkVerifierIndex")]
 #[derive(Clone, Debug, Default)]
 pub struct NapiFpPlonkVerifierIndex {
@@ -198,6 +243,28 @@ pub struct NapiFpPlonkVerifierIndex {
     pub shifts: NapiFpShifts,
     pub lookup_index: Option<NapiFpLookupVerifierIndex>,
     pub zk_rows: i32,
+}
+
+#[napi(js_name = "caml_pasta_fp_plonk_verifier_index_create")]
+pub fn caml_pasta_fp_plonk_verifier_index_create(
+    index: &External<WasmPastaFpPlonkIndex>,
+) -> NapiFpPlonkVerifierIndex {
+    index
+        .0
+        .srs
+        .get_lagrange_basis(index.0.as_ref().cs.domain.d1);
+    let verifier_index = index.0.as_ref().verifier_index();
+    NapiFpPlonkVerifierIndex::from(&verifier_index)
+}
+
+#[napi(js_name = "caml_pasta_fp_plonk_verifier_index_read")]
+pub fn caml_pasta_fp_plonk_verifier_index_read(
+    offset: Option<i32>,
+    srs: &External<NapiFpSrs>,
+    path: String,
+) -> NapiFpPlonkVerifierIndex {
+    let vi = read_raw(offset, srs, path)?;
+    Ok(to_wasm(srs, vi.into()))
 }
 
 #[napi(js_name = "caml_pasta_fp_plonk_verifier_index_shifts")]
@@ -301,6 +368,22 @@ impl From<NapiFpPlonkVerifierIndex> for VerifierIndex<GAffine, OpeningProof<GAff
             }
         };
         (index, srs.0.clone()).0
+    }
+}
+
+impl From<&VerifierIndex<GAffine, OpeningProof<GAffine>>> for NapiFpPlonkVerifierIndex {
+    fn from(index: &VerifierIndex<GAffine, OpeningProof<GAffine>>) -> Self {
+        Self {
+            domain: (&index.domain).into(),
+            max_poly_size: index.max_poly_size as i32,
+            public_: index.public as i32,
+            prev_challenges: index.prev_challenges as i32,
+            srs: (&index.srs).into(),
+            evals: index.into(),
+            shifts: (&index.shift).into(),
+            lookup_index: index.lookup_index.as_ref().map(Into::into),
+            zk_rows: index.zk_rows as i32,
+        }
     }
 }
 
