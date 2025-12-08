@@ -1,5 +1,5 @@
 use crate::{
-    vector::{fp::WasmVecVecFp as NapiVecVecFp, fq::WasmVecVecFq as NapiVecVecFq},
+    vector::{fp::WasmVecVecFp as NapiVecVecFp, fq::WasmVecVecFq as NapiVecVecFq, NapiFlatVector},
     wrappers::field::{NapiPastaFp, NapiPastaFq},
 };
 use kimchi::circuits::lookup::{
@@ -110,17 +110,17 @@ impl From<NapiLookupInfo> for LookupInfo {
 // -----------------
 
 macro_rules! impl_lookup_wrappers {
-    ($name:ident, $field:ty, $NapiF:ty, $vec_vec:ty) => {
+    ($field_name:ident, $field:ty, $NapiF:ty, $vec_vec:ty) => {
         paste! {
-            #[napi(js_name = [<"WasmPasta" $name:camel "LookupTable">])]
+            #[napi(js_name = [<"WasmPasta" $field_name:camel "LookupTable">])]
             #[derive(Clone)]
-            pub struct [<NapiPasta $name:camel LookupTable>] {
+            pub struct [<NapiPasta $field_name:camel LookupTable>] {
                 id: i32,
                 data: $vec_vec,
             }
 
             #[napi]
-            impl [<NapiPasta $name:camel LookupTable>] {
+            impl [<NapiPasta $field_name:camel LookupTable>] {
                 #[napi(constructor)]
                 pub fn new(id: i32, data: $vec_vec) -> Self {
                     Self {
@@ -150,7 +150,7 @@ macro_rules! impl_lookup_wrappers {
                 }
             }
 
-            impl From<LookupTable<$field>> for [<NapiPasta $name:camel LookupTable>] {
+            impl From<LookupTable<$field>> for [<NapiPasta $field_name:camel LookupTable>] {
                 fn from(value: LookupTable<$field>) -> Self {
                     Self {
                         id: value.id,
@@ -159,8 +159,8 @@ macro_rules! impl_lookup_wrappers {
                 }
             }
 
-            impl From<[<NapiPasta $name:camel LookupTable>]> for LookupTable<$field> {
-                fn from(value: [<NapiPasta $name:camel LookupTable>]) -> Self {
+            impl From<[<NapiPasta $field_name:camel LookupTable>]> for LookupTable<$field> {
+                fn from(value: [<NapiPasta $field_name:camel LookupTable>]) -> Self {
                     Self {
                         id: value.id,
                         data: value.data.into(),
@@ -168,15 +168,15 @@ macro_rules! impl_lookup_wrappers {
                 }
             }
 
-            #[napi(js_name = [<"WasmPasta"  $name:camel "RuntimeTableCfg">])]
+            #[napi(js_name = [<"WasmPasta"  $field_name:camel "RuntimeTableCfg">])]
             #[derive(Clone)]
-            pub struct [<NapiPasta $name:camel RuntimeTableCfg>] {
+            pub struct [<NapiPasta $field_name:camel RuntimeTableCfg>] {
                 id: i32,
                 first_column: Vec<$field>,
             }
 
             #[napi]
-            impl [<NapiPasta $name:camel RuntimeTableCfg>] {
+            impl [<NapiPasta $field_name:camel RuntimeTableCfg>] {
                 #[napi(constructor)]
                 pub fn new(id: i32, first_column: Uint8Array) -> Result<Self> {
                     let bytes = first_column.as_ref().to_vec();
@@ -208,7 +208,7 @@ macro_rules! impl_lookup_wrappers {
                 }
             }
 
-            impl From<RuntimeTableCfg<$field>> for [<NapiPasta $name:camel RuntimeTableCfg>] {
+            impl From<RuntimeTableCfg<$field>> for [<NapiPasta $field_name:camel RuntimeTableCfg>] {
                 fn from(value: RuntimeTableCfg<$field>) -> Self {
                     Self {
                         id: value.id,
@@ -217,8 +217,8 @@ macro_rules! impl_lookup_wrappers {
                 }
             }
 
-            impl From<[<NapiPasta $name:camel RuntimeTableCfg>]> for RuntimeTableCfg<$field> {
-                fn from(value: [<NapiPasta $name:camel RuntimeTableCfg>]) -> Self {
+            impl From<[<NapiPasta $field_name:camel RuntimeTableCfg>]> for RuntimeTableCfg<$field> {
+                fn from(value: [<NapiPasta $field_name:camel RuntimeTableCfg>]) -> Self {
                     Self {
                         id: value.id,
                         first_column: value.first_column,
@@ -226,60 +226,27 @@ macro_rules! impl_lookup_wrappers {
                 }
             }
 
-            #[napi(js_name = [<"Wasm" $name:camel "RuntimeTable">])]
+            #[napi(object, js_name = [<"Wasm" $field_name:camel "RuntimeTable">])]
             #[derive(Clone)]
-            pub struct [<Napi $name:camel RuntimeTable>] {
-                id: i32,
-                data: Vec<$field>,
+            pub struct [<Napi $field_name:camel RuntimeTable>] {
+                pub id: i32,
+                pub data: NapiFlatVector<$NapiF>,
             }
 
-            #[napi]
-            impl [<Napi $name:camel RuntimeTable>] {
-                #[napi(constructor)]
-                pub fn new(id: i32, data: Uint8Array) -> Result<Self> {
-                    let bytes = data.as_ref().to_vec();
-                    let elements: Vec<$field> = FlatVector::<$NapiF>::from_bytes(bytes)
-                        .into_iter()
-                        .map(Into::into)
-                        .collect();
-                    Ok(Self { id, data: elements })
-                }
-
-                #[napi(getter)]
-                pub fn id(&self) -> i32 {
-                    self.id
-                }
-
-                #[napi(setter)]
-                pub fn set_id(&mut self, id: i32) {
-                    self.id = id;
-                }
-
-                #[napi(getter)]
-                pub fn data(&self) -> Result<Uint8Array> {
-                    let mut bytes = Vec::with_capacity(self.data.len() * <$NapiF>::FLATTENED_SIZE);
-                    for value in &self.data {
-                        let element = <$NapiF>::from(*value);
-                        bytes.extend(element.flatten());
-                    }
-                    Ok(Uint8Array::from(bytes))
-                }
-            }
-
-            impl From<RuntimeTable<$field>> for [<Napi $name:camel RuntimeTable>] {
+            impl From<RuntimeTable<$field>> for [<Napi $field_name:camel RuntimeTable>] {
                 fn from(value: RuntimeTable<$field>) -> Self {
                     Self {
                         id: value.id,
-                        data: value.data,
+                        data: value.data.into_iter().map(Into::into).collect(),
                     }
                 }
             }
 
-            impl From<[<Napi $name:camel RuntimeTable>]> for RuntimeTable<$field> {
-                fn from(value: [<Napi $name:camel RuntimeTable>]) -> Self {
+            impl From<[<Napi $field_name:camel RuntimeTable>]> for RuntimeTable<$field> {
+                fn from(value: [<Napi $field_name:camel RuntimeTable>]) -> Self {
                     Self {
                         id: value.id,
-                        data: value.data,
+                        data: value.data.into_iter().map(Into::into).collect(),
                     }
                 }
             }

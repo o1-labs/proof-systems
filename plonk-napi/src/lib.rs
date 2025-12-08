@@ -77,13 +77,13 @@ pub use proof::{
         caml_pasta_fp_plonk_proof_batch_verify, caml_pasta_fp_plonk_proof_create,
         caml_pasta_fp_plonk_proof_deep_copy, caml_pasta_fp_plonk_proof_dummy,
         caml_pasta_fp_plonk_proof_verify, NapiFpLookupCommitments, NapiFpOpeningProof,
-        NapiFpProofEvaluations, NapiFpProverCommitments, NapiFpProverProof, NapiFpRuntimeTable,
+        NapiFpProofEvaluations, NapiFpProverCommitments, NapiFpProverProof,
     },
     fq::{
         caml_pasta_fq_plonk_proof_batch_verify, caml_pasta_fq_plonk_proof_create,
         caml_pasta_fq_plonk_proof_deep_copy, caml_pasta_fq_plonk_proof_dummy,
         caml_pasta_fq_plonk_proof_verify, NapiFqLookupCommitments, NapiFqOpeningProof,
-        NapiFqProofEvaluations, NapiFqProverCommitments, NapiFqProverProof, NapiFqRuntimeTable,
+        NapiFqProofEvaluations, NapiFqProverCommitments, NapiFqProverProof,
     },
 };
 pub use srs::{
@@ -97,4 +97,5 @@ pub use vector::{fp::WasmVecVecFp, fq::WasmVecVecFq, NapiFlatVector};
 pub use wrappers::{
     field::{NapiPastaFp as WasmPastaFp, NapiPastaFq as WasmPastaFq},
     group::{NapiGPallas as WasmGPallas, NapiGVesta as WasmGVesta},
+    lookups::{NapiFpRuntimeTable, NapiFqRuntimeTable},
 };

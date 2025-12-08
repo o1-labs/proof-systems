@@ -38,7 +38,8 @@ macro_rules! impl_proof {
      $NapiIndex: ty,
      $NapiVerifierIndex: ty,
      $NapiVecVec: ty,
-     $field_name: ident
+     $field_name: ident,
+     $NapiRuntimeTable: ty,
      ) => {
         paste! {
             // type NapiVecVecF = [<NapiVecVec $field_name:camel>];
@@ -524,41 +525,6 @@ macro_rules! impl_proof {
                 pub public_input: Vec<$F>,
             }
 
-            #[napi(object, js_name = [<Wasm $field_name:camel RuntimeTable>])]
-            #[derive(Clone)]
-            pub struct [<Napi $field_name:camel RuntimeTable>] {
-                pub id: i32,
-                pub data: NapiFlatVector<$NapiF>
-            }
-            type NapiRuntimeTable = [<Napi $field_name:camel RuntimeTable>];
-
-            // #[napi]
-            // impl [<Napi $field_name:camel RuntimeTable>] {
-            //     #[napi(constructor)]
-            //     pub fn new(id: i32, data: NapiFlatVector<$NapiF>) -> NapiRuntimeTable {
-            //         NapiRuntimeTable {id, data}
-            //     }
-            // }
-
-            impl From<[<Napi $field_name:camel RuntimeTable>]> for RuntimeTable<$F> {
-                fn from(wasm_rt: NapiRuntimeTable) -> RuntimeTable<$F> {
-                    RuntimeTable {
-                        id: wasm_rt.id.into(),
-                        data: wasm_rt.data.into_iter().map(Into::into).collect()
-                    }
-                }
-            }
-
-            // impl FromNapiValue for [<Napi $field_name:camel RuntimeTable>] {
-            //     unsafe fn from_napi_value(
-            //         env: sys::napi_env,
-            //         napi_val: sys::napi_value,
-            //     ) -> Result<Self> {
-            //         let instance = <ClassInstance<[<Napi $field_name:camel RuntimeTable>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
-            //         Ok((*instance).clone())
-            //     }
-            // }
-
             type NapiProofF = [<NapiProof $field_name:camel>];
             // type JsRuntimeTableF = [<JsRuntimeTable $field_name:camel>];
 
@@ -566,7 +532,7 @@ macro_rules! impl_proof {
             pub fn [<caml_pasta_ $field_name:snake _plonk_proof_create>](
                 index: &External<$NapiIndex>,
                 witness: $NapiVecVec,
-                runtime_tables: NapiVector<NapiRuntimeTable>,
+                runtime_tables: NapiVector<$NapiRuntimeTable>,
                 prev_challenges: NapiFlatVector<$NapiF>,
                 prev_sgs: NapiVector<$NapiG>,
             ) -> Result<External<NapiProofF>> {
@@ -779,7 +745,7 @@ pub mod fp {
         pasta_fp_plonk_index::WasmPastaFpPlonkIndex as NapiPastaFpPlonkIndex,
         plonk_verifier_index::fp::NapiFpPlonkVerifierIndex,
         poly_comm::vesta::NapiFpPolyComm,
-        wrappers::{field::NapiPastaFp, group::NapiGVesta},
+        wrappers::{field::NapiPastaFp, group::NapiGVesta, lookups::NapiFpRuntimeTable},
     };
     use mina_curves::pasta::{Fp, Vesta};
 
@@ -793,7 +759,8 @@ pub mod fp {
         NapiPastaFpPlonkIndex,
         NapiFpPlonkVerifierIndex,
         NapiVecVecFp,
-        Fp
+        Fp,
+        NapiFpRuntimeTable,
     );
 }
 
@@ -803,7 +770,7 @@ pub mod fq {
         pasta_fq_plonk_index::WasmPastaFqPlonkIndex as NapiPastaFqPlonkIndex,
         plonk_verifier_index::fq::NapiFqPlonkVerifierIndex,
         poly_comm::pallas::NapiFqPolyComm,
-        wrappers::{field::NapiPastaFq, group::NapiGPallas},
+        wrappers::{field::NapiPastaFq, group::NapiGPallas, lookups::NapiFqRuntimeTable},
     };
     use mina_curves::pasta::{Fq, Pallas};
 
@@ -817,6 +784,7 @@ pub mod fq {
         NapiPastaFqPlonkIndex,
         NapiFqPlonkVerifierIndex,
         NapiVecVecFq,
-        Fq
+        Fq,
+        NapiFqRuntimeTable,
     );
 }
