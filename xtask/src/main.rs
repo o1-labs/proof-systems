@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
+#[cfg(target_arch = "x86_64")]
 use raw_cpuid::CpuId;
 use std::{
     env,
