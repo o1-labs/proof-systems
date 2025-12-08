@@ -576,7 +576,7 @@ macro_rules! impl_verification_key {
             }
 
             #[napi(js_name = [<caml_pasta_ $field_name:snake _plonk_verifier_index_deep_copy>])]
-            pub fn [<"caml_pasta_" $field_name:snake "_plonk_verifier_index_deep_copy">](
+            pub fn [<caml_pasta_ $field_name:snake _plonk_verifier_index_deep_copy>](
                 x: NapiPlonkVerifierIndex,
             ) -> NapiPlonkVerifierIndex {
                 x.clone()
