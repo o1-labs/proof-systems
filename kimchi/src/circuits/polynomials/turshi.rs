@@ -177,7 +177,7 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Panics
     ///
     /// Will panic if `constraint linearization` fails.
-    pub fn verify_cairo_gate<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_cairo_gate<const ROUNDS: usize, G: KimchiCurve<ROUNDS, ScalarField = F>>(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],

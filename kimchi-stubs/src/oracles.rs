@@ -37,7 +37,7 @@ macro_rules! impl_oracles {
                 index: $index,
                 proof: CamlProofWithPublic<$CamlG, $CamlF>,
             ) -> Result<CamlOracles<$CamlF>, ocaml::Error> {
-                let index: VerifierIndex<$G, OpeningProof<$G>> = index.into();
+                let index: VerifierIndex<55, $G, <OpeningProof<$G, 55> as poly_commitment::OpenProof<$G, 55>>::SRS> = index.into();
 
                 let lgr_comm: Vec<PolyComm<$G>> = lgr_comm
                     .into_iter()
@@ -68,12 +68,13 @@ macro_rules! impl_oracles {
                         .commitment
                 };
 
-                let (proof, public_input): (ProverProof<$G, OpeningProof<$G>>, Vec<$F>) = proof.into();
+                let (proof, public_input): (ProverProof<$G, OpeningProof<$G, 55>, 55>, Vec<$F>) = proof.into();
 
                 let oracles_result =
                     proof.oracles::<
-                        DefaultFqSponge<$curve_params, PlonkSpongeConstantsKimchi>,
-                        DefaultFrSponge<$F, PlonkSpongeConstantsKimchi>,
+                        DefaultFqSponge<$curve_params, PlonkSpongeConstantsKimchi, 55>,
+                        DefaultFrSponge<$F, PlonkSpongeConstantsKimchi, 55>,
+                        <OpeningProof<$G, 55> as poly_commitment::OpenProof<$G, 55>>::SRS,
                     >(&index, &p_comm, Some(&public_input))?;
 
                 let (mut sponge, combined_inner_product, p_eval, digest, oracles) = (
@@ -113,7 +114,7 @@ macro_rules! impl_oracles {
                     public_evals: None,
                 };
 
-                let index: VerifierIndex<$G, OpeningProof<$G>> = index.into();
+                let index: VerifierIndex<55, $G, <OpeningProof<$G,55> as poly_commitment::OpenProof<$G, 55>>::SRS> = index.into();
 
                 let lgr_comm: Vec<PolyComm<$G>> = lgr_comm
                     .into_iter()
@@ -144,12 +145,13 @@ macro_rules! impl_oracles {
                         .commitment
                 };
 
-                let (proof, public_input): (ProverProof<$G, OpeningProof<$G>>, Vec<$F>) = proof.into();
+                let (proof, public_input): (ProverProof<$G, OpeningProof<$G, 55>, 55>, Vec<$F>) = proof.into();
 
                 let oracles_result =
                     proof.oracles::<
-                        DefaultFqSponge<$curve_params, PlonkSpongeConstantsKimchi>,
-                        DefaultFrSponge<$F, PlonkSpongeConstantsKimchi>,
+                        DefaultFqSponge<$curve_params, PlonkSpongeConstantsKimchi, 55>,
+                        DefaultFrSponge<$F, PlonkSpongeConstantsKimchi, 55>,
+                        _,
                     >(&index, &p_comm, Some(&public_input))?;
 
                 let (mut sponge, combined_inner_product, p_eval, digest, oracles) = (

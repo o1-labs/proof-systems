@@ -22,18 +22,18 @@ use super::{domain_prefix_to_field, Hashable, Hasher};
 //  so we only want to do this once and then re-use the Poseidon context
 //  for many hashes. Also, following approach of the mina code we store
 //  a backup of the initialized sponge state for efficient reuse.
-pub struct Poseidon<SC: SpongeConstants, H: Hashable> {
-    sponge: ArithmeticSponge<Fp, SC>,
+pub struct Poseidon<SC: SpongeConstants, H: Hashable, const ROUNDS: usize> {
+    sponge: ArithmeticSponge<Fp, SC, ROUNDS>,
     sponge_state: SpongeState,
     /// The state of the sponge
     pub state: Vec<Fp>,
     phantom: PhantomData<H>,
 }
 
-impl<SC: SpongeConstants, H: Hashable> Poseidon<SC, H> {
-    fn new(domain_param: H::D, sponge_params: &'static ArithmeticSpongeParams<Fp>) -> Self {
-        let mut poseidon = Poseidon::<SC, H> {
-            sponge: ArithmeticSponge::<Fp, SC>::new(sponge_params),
+impl<SC: SpongeConstants, H: Hashable, const ROUNDS: usize> Poseidon<SC, H, ROUNDS> {
+    fn new(domain_param: H::D, sponge_params: &'static ArithmeticSpongeParams<Fp, ROUNDS>) -> Self {
+        let mut poseidon = Self {
+            sponge: ArithmeticSponge::<Fp, SC, ROUNDS>::new(sponge_params),
             sponge_state: SpongeState::Absorbed(0),
             state: vec![],
             phantom: PhantomData,
@@ -46,22 +46,28 @@ impl<SC: SpongeConstants, H: Hashable> Poseidon<SC, H> {
 }
 
 /// Poseidon hasher type with legacy plonk sponge constants
-pub type PoseidonHasherLegacy<H> = Poseidon<PlonkSpongeConstantsLegacy, H>;
+pub type PoseidonHasherLegacy<H> = Poseidon<PlonkSpongeConstantsLegacy, H, 100>;
 
 /// Create a legacy hasher context
 pub(crate) fn new_legacy<H: Hashable>(domain_param: H::D) -> PoseidonHasherLegacy<H> {
-    Poseidon::<PlonkSpongeConstantsLegacy, H>::new(domain_param, pasta::fp_legacy::static_params())
+    Poseidon::<PlonkSpongeConstantsLegacy, H, 100>::new(
+        domain_param,
+        pasta::fp_legacy::static_params(),
+    )
 }
 
 /// Poseidon hasher type with experimental kimchi plonk sponge constants
-pub type PoseidonHasherKimchi<H> = Poseidon<PlonkSpongeConstantsKimchi, H>;
+pub type PoseidonHasherKimchi<H> = Poseidon<PlonkSpongeConstantsKimchi, H, 55>;
 
 /// Create an experimental kimchi hasher context
 pub(crate) fn new_kimchi<H: Hashable>(domain_param: H::D) -> PoseidonHasherKimchi<H> {
-    Poseidon::<PlonkSpongeConstantsKimchi, H>::new(domain_param, pasta::fp_kimchi::static_params())
+    Poseidon::<PlonkSpongeConstantsKimchi, H, 55>::new(
+        domain_param,
+        pasta::fp_kimchi::static_params(),
+    )
 }
 
-impl<SC: SpongeConstants, H: Hashable> Hasher<H> for Poseidon<SC, H>
+impl<SC: SpongeConstants, H: Hashable, const ROUNDS: usize> Hasher<H> for Poseidon<SC, H, ROUNDS>
 where
     H::D: DomainParameter,
 {

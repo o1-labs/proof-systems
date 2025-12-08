@@ -16,8 +16,8 @@ use mina_poseidon::{
 use std::{array, ops::Mul, time::Instant};
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
+type ScalarSponge = DefaultFrSponge<F, SpongeParams, 55>;
 
 #[test]
 fn varbase_mul_test() {
@@ -84,7 +84,7 @@ fn varbase_mul_test() {
     }
     println!("Witness generation time: {:?}", start.elapsed());
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<55, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()

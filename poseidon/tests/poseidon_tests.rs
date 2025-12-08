@@ -63,7 +63,8 @@ where
 #[test]
 fn poseidon_test_vectors_legacy() {
     fn hash(input: &[Fp]) -> Fp {
-        let mut hash = Poseidon::<Fp, PlonkSpongeConstantsLegacy>::new(fp_legacy::static_params());
+        let mut hash =
+            Poseidon::<Fp, PlonkSpongeConstantsLegacy, 100>::new(fp_legacy::static_params());
         hash.absorb(input);
         hash.squeeze()
     }
@@ -73,7 +74,8 @@ fn poseidon_test_vectors_legacy() {
 #[test]
 fn poseidon_test_vectors_kimchi() {
     fn hash(input: &[Fp]) -> Fp {
-        let mut hash = Poseidon::<Fp, PlonkSpongeConstantsKimchi>::new(fp_kimchi::static_params());
+        let mut hash =
+            Poseidon::<Fp, PlonkSpongeConstantsKimchi, 55>::new(fp_kimchi::static_params());
         hash.absorb(input);
         hash.squeeze()
     }
@@ -82,7 +84,7 @@ fn poseidon_test_vectors_kimchi() {
 
 #[test]
 fn test_regression_challenge_empty_vesta_kimchi() {
-    let mut sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+    let mut sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, 55>::new(
         fq_kimchi::static_params(),
     );
     let output = sponge.challenge();
@@ -93,7 +95,7 @@ fn test_regression_challenge_empty_vesta_kimchi() {
 
 #[test]
 fn test_regression_challenge_empty_pallas_kimchi() {
-    let mut sponge = DefaultFqSponge::<PallasParameters, PlonkSpongeConstantsKimchi>::new(
+    let mut sponge = DefaultFqSponge::<PallasParameters, PlonkSpongeConstantsKimchi, 55>::new(
         fp_kimchi::static_params(),
     );
     let output = sponge.challenge();
@@ -106,7 +108,7 @@ fn test_regression_challenge_empty_pallas_kimchi() {
 fn test_poseidon_vesta_kimchi_challenge_is_squeezed_to_128_bits() {
     // Test that the challenge is less than 2^128, i.e. the sponge state is
     // squeezed to 128 bits
-    let mut sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+    let mut sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, 55>::new(
         fq_kimchi::static_params(),
     );
     let mut rng = o1_utils::tests::make_test_rng(None);
@@ -124,7 +126,7 @@ fn test_poseidon_vesta_kimchi_challenge_is_squeezed_to_128_bits() {
 fn test_poseidon_pallas_kimchi_challenge_is_squeezed_to_128_bits() {
     // Test that the challenge is less than 2^128, i.e. the sponge state is
     // squeezed to 128 bits
-    let mut sponge = DefaultFqSponge::<PallasParameters, PlonkSpongeConstantsKimchi>::new(
+    let mut sponge = DefaultFqSponge::<PallasParameters, PlonkSpongeConstantsKimchi, 55>::new(
         fp_kimchi::static_params(),
     );
     let mut rng = o1_utils::tests::make_test_rng(None);
@@ -140,7 +142,7 @@ fn test_poseidon_pallas_kimchi_challenge_is_squeezed_to_128_bits() {
 
 #[test]
 fn test_poseidon_pallas_absorb_point_to_infinity() {
-    let mut sponge = DefaultFqSponge::<PallasParameters, PlonkSpongeConstantsKimchi>::new(
+    let mut sponge = DefaultFqSponge::<PallasParameters, PlonkSpongeConstantsKimchi, 55>::new(
         fp_kimchi::static_params(),
     );
     let point = Pallas::zero();
@@ -151,7 +153,7 @@ fn test_poseidon_pallas_absorb_point_to_infinity() {
 
 #[test]
 fn test_poseidon_vesta_absorb_point_to_infinity() {
-    let mut sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+    let mut sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, 55>::new(
         fq_kimchi::static_params(),
     );
     let point = Vesta::zero();
@@ -162,7 +164,7 @@ fn test_poseidon_vesta_absorb_point_to_infinity() {
 
 #[test]
 fn test_poseidon_challenge_multiple_times_without_absorption() {
-    let mut sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+    let mut sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, 55>::new(
         fq_kimchi::static_params(),
     );
     let mut rng = o1_utils::tests::make_test_rng(None);

@@ -20,7 +20,7 @@ use mina_poseidon::FqSponge;
 use once_cell::sync::OnceCell;
 use poly_commitment::{
     commitment::{absorb_commitment, CommitmentCurve, PolyComm},
-    OpenProof, SRS as _,
+    SRS,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -56,7 +56,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
+pub struct VerifierIndex<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, Srs> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -66,8 +66,7 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub zk_rows: u64,
     /// polynomial commitment keys
     #[serde(skip)]
-    #[serde(bound(deserialize = "OpeningProof::SRS: Default"))]
-    pub srs: Arc<OpeningProof::SRS>,
+    pub srs: Arc<Srs>,
     /// number of public inputs
     pub public: usize,
     /// number of previous evaluation challenges, for recursive proving
@@ -153,7 +152,7 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
 }
 //~spec:endcode
 
-impl<G: KimchiCurve, OpeningProof: OpenProof<G>> ProverIndex<G, OpeningProof>
+impl<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, Srs: SRS<G>> ProverIndex<ROUNDS, G, Srs>
 where
     G::BaseField: PrimeField,
 {
@@ -162,9 +161,9 @@ where
     /// # Panics
     ///
     /// Will panic if `srs` cannot be in `cell`.
-    pub fn verifier_index(&self) -> VerifierIndex<G, OpeningProof>
+    pub fn verifier_index(&self) -> VerifierIndex<ROUNDS, G, Srs>
     where
-        VerifierIndex<G, OpeningProof>: Clone,
+        VerifierIndex<ROUNDS, G, Srs>: Clone,
     {
         if let Some(verifier_index) = &self.verifier_index {
             return verifier_index.clone();
@@ -314,11 +313,12 @@ where
     }
 }
 
-impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> {
+impl<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, Srs> VerifierIndex<ROUNDS, G, Srs> {
     /// Gets srs from [`VerifierIndex`] lazily
-    pub fn srs(&self) -> &Arc<OpeningProof::SRS>
+    pub fn srs(&self) -> &Arc<Srs>
     where
         G::BaseField: PrimeField,
+        Srs: SRS<G>,
     {
         &self.srs
     }
@@ -340,14 +340,14 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> 
     ///
     /// Will give error if it fails to deserialize from file or unable to set `srs` in `verifier_index`.
     pub fn from_file(
-        srs: Arc<OpeningProof::SRS>,
+        srs: Arc<Srs>,
         path: &Path,
         offset: Option<u64>,
         // TODO: we shouldn't have to pass these
         endo: G::ScalarField,
     ) -> Result<Self, String>
     where
-        OpeningProof::SRS: Default,
+        Srs: Default,
     {
         // open file
         let file = File::open(path).map_err(|e| e.to_string())?;
@@ -393,7 +393,7 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> 
 
     /// Compute the digest of the [`VerifierIndex`], which can be used for the Fiat-Shamir
     /// transformation while proving / verifying.
-    pub fn digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
+    pub fn digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>>(
         &self,
     ) -> G::BaseField {
         let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());

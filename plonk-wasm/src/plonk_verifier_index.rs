@@ -645,7 +645,7 @@ macro_rules! impl_verification_key {
 
             pub fn to_wasm(
                 srs: &Arc<SRS<$G>>,
-                vi: DlogVerifierIndex<$G, OpeningProof<$G>>,
+                vi: DlogVerifierIndex<55, $G, <OpeningProof<$G, 55> as poly_commitment::OpenProof<$G, 55>>::SRS>,
             ) -> WasmPlonkVerifierIndex {
                 WasmPlonkVerifierIndex {
                     domain: WasmDomain {
@@ -727,7 +727,7 @@ macro_rules! impl_verification_key {
 
             pub fn of_wasm(
                 index: WasmPlonkVerifierIndex,
-            ) -> (DlogVerifierIndex<GAffine, OpeningProof<GAffine>>, Arc<SRS<GAffine>>) {
+            ) -> (DlogVerifierIndex<55, GAffine, <OpeningProof<GAffine, 55> as poly_commitment::OpenProof<GAffine, 55>>::SRS>, Arc<SRS<GAffine>>) {
                 let max_poly_size = index.max_poly_size;
                 let public_ = index.public_;
                 let prev_challenges = index.prev_challenges;
@@ -803,7 +803,7 @@ macro_rules! impl_verification_key {
                 (index, srs.0.clone())
             }
 
-            impl From<WasmPlonkVerifierIndex> for DlogVerifierIndex<$G, OpeningProof<$G>> {
+            impl From<WasmPlonkVerifierIndex> for DlogVerifierIndex<55, $G, <OpeningProof<$G, 55> as poly_commitment::OpenProof<$G, 55>>::SRS> {
                 fn from(index: WasmPlonkVerifierIndex) -> Self {
                     of_wasm(index).0
                 }
@@ -813,10 +813,10 @@ macro_rules! impl_verification_key {
                 offset: Option<i32>,
                 srs: &$WasmSrs,
                 path: String,
-            ) -> Result<DlogVerifierIndex<$G, OpeningProof<$G>>, JsValue> {
+            ) -> Result<DlogVerifierIndex<55, $G, <OpeningProof<$G, 55> as poly_commitment::OpenProof<$G, 55>>::SRS>, JsValue> {
                 let path = Path::new(&path);
                 let (endo_q, _endo_r) = poly_commitment::ipa::endos::<GAffineOther>();
-                DlogVerifierIndex::<$G, OpeningProof<$G>>::from_file(
+                DlogVerifierIndex::<55, $G, <OpeningProof<$G, 55> as poly_commitment::OpenProof<$G, 55>>::SRS>::from_file(
                     srs.0.clone(),
                     path,
                     offset.map(|x| x as u64),
@@ -840,7 +840,7 @@ macro_rules! impl_verification_key {
                 index: WasmPlonkVerifierIndex,
                 path: String,
             ) -> Result<(), JsValue> {
-                let index: DlogVerifierIndex<$G, OpeningProof<$G>> = index.into();
+                let index: DlogVerifierIndex<55, $G, <OpeningProof<$G, 55> as poly_commitment::OpenProof<$G, 55>>::SRS> = index.into();
                 let path = Path::new(&path);
                 index.to_file(path, append).map_err(|e| {
                     println!("{}", e);
@@ -852,7 +852,7 @@ macro_rules! impl_verification_key {
             pub fn [<$name:snake _serialize>](
                 index: WasmPlonkVerifierIndex,
             ) -> String {
-                let index: DlogVerifierIndex<$G, OpeningProof<$G>> = index.into();
+                let index: DlogVerifierIndex<55, $G, <OpeningProof<$G, 55> as poly_commitment::OpenProof<$G, 55>>::SRS> = index.into();
                 serde_json::to_string(&index).unwrap()
             }
 
@@ -861,7 +861,7 @@ macro_rules! impl_verification_key {
                 srs: &$WasmSrs,
                 index: String,
             ) -> Result<WasmPlonkVerifierIndex, JsError> {
-                let vi: Result<DlogVerifierIndex<$G, OpeningProof<$G>>, serde_json::Error> = serde_json::from_str(&index);
+                let vi: Result<DlogVerifierIndex<55, $G, <OpeningProof<$G, 55> as poly_commitment::OpenProof<$G, 55>>::SRS>, serde_json::Error> = serde_json::from_str(&index);
                 match vi {
                     Ok(vi) => Ok(to_wasm(srs, vi)),
                     Err(e) => Err(JsError::new(&(e.to_string()))),

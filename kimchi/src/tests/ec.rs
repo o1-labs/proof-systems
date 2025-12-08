@@ -13,8 +13,8 @@ use mina_poseidon::{
 };
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
+type ScalarSponge = DefaultFrSponge<F, SpongeParams, 55>;
 
 // Tests add and double gates
 #[test]
@@ -143,7 +143,7 @@ fn ec_test() {
         witness[14].push(F::zero());
     }
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<55, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()

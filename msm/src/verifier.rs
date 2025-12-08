@@ -1,15 +1,12 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::boxed_local)]
 
-use crate::logup::LookupTableID;
+use crate::{expr::E, logup::LookupTableID, proof::Proof, witness::Witness};
 use ark_ff::{Field, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as R2D,
 };
-use rand::thread_rng;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
-
 use kimchi::{
     circuits::{
         berkeley_columns::BerkeleyChallenges,
@@ -21,27 +18,27 @@ use kimchi::{
     plonk_sponge::FrSponge,
     proof::PointEvaluations,
 };
-use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use mina_poseidon::{poseidon::ArithmeticSpongeParams, sponge::ScalarChallenge, FqSponge};
 use poly_commitment::{
     commitment::{
         absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
     },
     OpenProof, SRS,
 };
-
-use crate::{expr::E, proof::Proof, witness::Witness};
+use rand::thread_rng;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 pub fn verify<
-    G: KimchiCurve,
-    OpeningProof: OpenProof<G>,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
+    G,
+    OpeningProof,
+    EFqSponge,
+    EFrSponge,
     const N_WIT: usize,
     const N_REL: usize,
     const N_DSEL: usize,
     const N_FSEL: usize,
     const NPUB: usize,
-    ID: LookupTableID,
+    ID,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
@@ -51,6 +48,12 @@ pub fn verify<
     public_inputs: Witness<NPUB, Vec<G::ScalarField>>,
 ) -> bool
 where
+    G: KimchiCurve<55>,
+    OpeningProof: OpenProof<G, 55>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, 55>,
+    EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, 55>>,
+    ID: LookupTableID,
     OpeningProof::SRS: Sync,
 {
     let Proof {
@@ -236,7 +239,7 @@ where
 
     // -- Absorb all coms_and_evaluations
     let fq_sponge_before_coms_and_evaluations = fq_sponge.clone();
-    let mut fr_sponge = EFrSponge::new(G::sponge_params());
+    let mut fr_sponge = EFrSponge::from(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
     for PointEvaluations { zeta, zeta_omega } in (&proof_evals.witness_evals).into_iter() {

@@ -147,7 +147,7 @@ impl<
 }
 
 #[derive(Debug, Clone)]
-pub struct ProofCommitments<const N_WIT: usize, G: KimchiCurve, ID: LookupTableID> {
+pub struct ProofCommitments<const N_WIT: usize, G: KimchiCurve<55>, ID: LookupTableID> {
     /// Commitments to the N columns of the circuits, also called the 'witnesses'.
     /// If some columns are considered as public inputs, it is counted in the witness.
     pub(crate) witness_comms: Witness<N_WIT, PolyComm<G>>,
@@ -165,8 +165,8 @@ pub struct Proof<
     const N_REL: usize,
     const N_DSEL: usize,
     const N_FSEL: usize,
-    G: KimchiCurve,
-    OpeningProof: OpenProof<G>,
+    G: KimchiCurve<55>,
+    OpeningProof: OpenProof<G, 55>,
     ID: LookupTableID,
 > {
     pub(crate) proof_comms: ProofCommitments<N_WIT, G, ID>,

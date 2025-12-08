@@ -14,8 +14,8 @@ use mina_poseidon::{
 };
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
 
 fn test_generic_gate_with_srs_override(
     circuit_size_log_2: usize,
@@ -76,7 +76,7 @@ fn test_generic_gate_with_srs_override(
     }
 
     // create and verify proof based on the witness
-    let framework = TestFramework::<Vesta>::default()
+    let framework = TestFramework::<55, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(public);

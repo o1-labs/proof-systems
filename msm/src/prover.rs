@@ -26,7 +26,7 @@ use kimchi::{
     plonk_sponge::FrSponge,
     proof::PointEvaluations,
 };
-use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use mina_poseidon::{poseidon::ArithmeticSpongeParams, sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
     commitment::{absorb_commitment, PolyComm},
@@ -51,16 +51,16 @@ pub enum ProverError {
 }
 
 pub fn prove<
-    G: KimchiCurve,
-    OpeningProof: OpenProof<G>,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
+    G,
+    OpeningProof,
+    EFqSponge,
+    EFrSponge,
     RNG,
     const N_WIT: usize,
     const N_REL: usize,
     const N_DSEL: usize,
     const N_FSEL: usize,
-    ID: LookupTableID,
+    ID,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
@@ -70,6 +70,12 @@ pub fn prove<
     rng: &mut RNG,
 ) -> Result<Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, OpeningProof, ID>, ProverError>
 where
+    G: KimchiCurve<55>,
+    OpeningProof: OpenProof<G, 55>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, 55>,
+    EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, 55>>,
+    ID: LookupTableID,
     OpeningProof::SRS: Sync,
     RNG: RngCore + CryptoRng,
 {
@@ -428,7 +434,7 @@ where
 
     // Fiat Shamir - absorbing evaluations
     let fq_sponge_before_evaluations = fq_sponge.clone();
-    let mut fr_sponge = EFrSponge::new(G::sponge_params());
+    let mut fr_sponge = EFrSponge::from(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
     for PointEvaluations { zeta, zeta_omega } in (&witness_evals).into_iter() {

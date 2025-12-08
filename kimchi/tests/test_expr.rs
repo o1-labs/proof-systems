@@ -18,7 +18,7 @@ use kimchi::{
 };
 use mina_curves::pasta::{Fp, Pallas, Vesta};
 use poly_commitment::{
-    ipa::{endos, OpeningProof, SRS},
+    ipa::{endos, SRS},
     SRS as _,
 };
 use rand::{prelude::StdRng, SeedableRng};
@@ -72,7 +72,7 @@ fn test_degree_tracking() {
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(constraint_system, endo_q, srs, false)
+        ProverIndex::create(constraint_system, endo_q, srs, false)
     };
 
     let witness_cols: [_; COLUMNS] = array::from_fn(|_| DensePolynomial::zero());

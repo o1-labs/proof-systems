@@ -16,8 +16,8 @@ use mina_poseidon::{
 use poly_commitment::ipa::endos;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
+type ScalarSponge = DefaultFrSponge<F, SpongeParams, 55>;
 
 #[test]
 fn endomul_scalar_test() {
@@ -63,7 +63,7 @@ fn endomul_scalar_test() {
         );
     }
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<55, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()

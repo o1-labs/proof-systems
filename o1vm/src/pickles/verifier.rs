@@ -14,7 +14,7 @@ use kimchi::{
     plonk_sponge::FrSponge,
     proof::PointEvaluations,
 };
-use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use mina_poseidon::{poseidon::ArithmeticSpongeParams, sponge::ScalarChallenge, FqSponge};
 use poly_commitment::{
     commitment::{
         absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
@@ -62,17 +62,17 @@ impl<G: AffineRepr> ColumnEvaluations<G::ScalarField> for ColumnEval<'_, G> {
     }
 }
 
-pub fn verify<
-    G: KimchiCurve,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
->(
+pub fn verify<const ROUNDS: usize, G, EFqSponge, EFrSponge>(
     domain: EvaluationDomains<G::ScalarField>,
-    srs: &<OpeningProof<G> as OpenProof<G>>::SRS,
+    srs: &<OpeningProof<G, ROUNDS> as OpenProof<G, ROUNDS>>::SRS,
     constraints: &[E<G::ScalarField>],
-    proof: &Proof<G>,
+    proof: &Proof<ROUNDS, G>,
 ) -> bool
 where
+    G: KimchiCurve<ROUNDS>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+    EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
     <G as AffineRepr>::BaseField: PrimeField,
 {
     let Proof {
@@ -132,7 +132,7 @@ where
 
     // -- Absorb all commitments_and_evaluations
     let fq_sponge_before_commitments_and_evaluations = fq_sponge.clone();
-    let mut fr_sponge = EFrSponge::new(G::sponge_params());
+    let mut fr_sponge = EFrSponge::from(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations

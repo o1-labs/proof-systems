@@ -59,7 +59,7 @@ fn main() {
     };
 
     // create the index
-    let index = new_index_for_test::<Vesta>(gates, public);
+    let index = new_index_for_test::<55, Vesta>(gates, public);
 
     // create the witness
     let mut witness = Witness::new(row + 1).inner();
