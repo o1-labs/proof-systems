@@ -4,7 +4,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi, permutation::poseidon_block_cipher,
     poseidon::ArithmeticSpongeParams,
 };
-pub struct CamlPastaFqPoseidonParams(ArithmeticSpongeParams<Fq>);
+pub struct CamlPastaFqPoseidonParams(ArithmeticSpongeParams<Fq, 55>);
 pub type CamlPastaFqPoseidonParamsPtr<'a> = ocaml::Pointer<'a, CamlPastaFqPoseidonParams>;
 
 extern "C" fn caml_pasta_fq_poseidon_params_finalize(v: ocaml::Raw) {
@@ -28,5 +28,5 @@ pub fn caml_pasta_fq_poseidon_block_cipher(
     params: CamlPastaFqPoseidonParamsPtr,
     mut state: CamlFqVector,
 ) {
-    poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi>(&params.as_ref().0, state.as_mut())
+    poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi, 55>(&params.as_ref().0, state.as_mut())
 }

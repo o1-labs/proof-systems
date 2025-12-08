@@ -68,9 +68,9 @@ pub struct AggregatedEvaluationProof {
     /// the random value used to separate evaluations
     evalmask: Fp,
     /// an Fq-sponge
-    fq_sponge: DefaultFqSponge<VestaParameters, SC>,
+    fq_sponge: DefaultFqSponge<VestaParameters, SC, 55>,
     /// the actual evaluation proof
-    pub proof: OpeningProof<Vesta>,
+    pub proof: OpeningProof<Vesta, 55>,
 }
 
 impl AggregatedEvaluationProof {
@@ -78,8 +78,13 @@ impl AggregatedEvaluationProof {
     /// verify API understands
     pub fn verify_type(
         &self,
-    ) -> BatchEvaluationProof<'_, Vesta, DefaultFqSponge<VestaParameters, SC>, OpeningProof<Vesta>>
-    {
+    ) -> BatchEvaluationProof<
+        '_,
+        Vesta,
+        DefaultFqSponge<VestaParameters, SC, 55>,
+        OpeningProof<Vesta, 55>,
+        55,
+    > {
         let mut coms = vec![];
         for eval_com in &self.eval_commitments {
             assert_eq!(self.eval_points.len(), eval_com.chunked_evals.len());
@@ -116,7 +121,7 @@ pub fn generate_random_opening_proof<RNG: Rng + CryptoRng>(
 ) -> (Vec<AggregatedEvaluationProof>, Duration, Duration) {
     let num_chunks = 1;
 
-    let fq_sponge = DefaultFqSponge::<VestaParameters, SC>::new(
+    let fq_sponge = DefaultFqSponge::<VestaParameters, SC, 55>::new(
         mina_poseidon::pasta::fq_kimchi::static_params(),
     );
 
@@ -196,7 +201,7 @@ pub fn generate_random_opening_proof<RNG: Rng + CryptoRng>(
         let evalmask = Fp::rand(&mut rng);
 
         let timer = Instant::now();
-        let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _, _>(
+        let proof = srs.open::<DefaultFqSponge<VestaParameters, SC, 55>, _, _, 55>(
             group_map,
             &polynomials,
             &eval_points.clone(),
@@ -239,7 +244,11 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
 
     // batch verify all the proofs
     let mut batch: Vec<_> = proofs.iter().map(|p| p.verify_type()).collect();
-    assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut batch, &mut rng));
+    let result = srs
+        .verify::<DefaultFqSponge<VestaParameters, SC, { mina_poseidon::pasta::ROUNDS }>, _, { mina_poseidon::pasta::ROUNDS }>(
+            &group_map, &mut batch, &mut rng,
+        );
+    assert!(result);
 
     // TODO: move to bench
     println!("batch verification time: {:?}", timer.elapsed());
@@ -383,10 +392,10 @@ pub fn ser_regression_canonical_opening_proof() {
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
     let srs = SRS::<Vesta>::create(1 << 7);
 
-    let data_expected: OpeningProof<Vesta> = generate_random_opening_proof(rng, &group_map, &srs).0
-        [0]
-    .proof
-    .clone();
+    let data_expected: OpeningProof<Vesta, 55> =
+        generate_random_opening_proof(rng, &group_map, &srs).0[0]
+            .proof
+            .clone();
 
     // Generated with commit 1494cf973d40fb276465929eb7db1952c5de7bdc
     let buf_expected: Vec<u8> = vec![

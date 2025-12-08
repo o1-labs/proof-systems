@@ -56,6 +56,6 @@ pub type Ff1 = mina_curves::pasta::Fp;
 pub type Ff2 = mina_curves::pasta::Fq;
 
 pub type SpongeParams = PlonkSpongeConstantsKimchi;
-pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams>;
-pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams, 55>;
+pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
 pub type OpeningProof = KZGProof<BN254>;

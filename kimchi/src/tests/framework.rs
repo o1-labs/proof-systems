@@ -25,7 +25,7 @@ use ark_ff::PrimeField;
 use ark_poly::Radix2EvaluationDomain as D;
 use core::fmt::Write;
 use groupmap::GroupMap;
-use mina_poseidon::sponge::FqSponge;
+use mina_poseidon::{poseidon::ArithmeticSpongeParams, sponge::FqSponge};
 use num_bigint::BigUint;
 use poly_commitment::{
     commitment::CommitmentCurve, ipa::OpeningProof as DlogOpeningProof, OpenProof,
@@ -50,11 +50,14 @@ fn heap_allocated() -> usize {
 // aliases
 
 #[derive(Default, Clone)]
-pub(crate) struct TestFramework<G: KimchiCurve, OpeningProof: OpenProof<G> = DlogOpeningProof<G>>
-where
+pub(crate) struct TestFramework<
+    const ROUNDS: usize,
+    G: KimchiCurve<ROUNDS>,
+    OpeningProof = DlogOpeningProof<G, ROUNDS>,
+> where
     G::BaseField: PrimeField,
-    OpeningProof::SRS: Clone,
-    VerifierIndex<G, OpeningProof>: Clone,
+    OpeningProof: OpenProof<G, ROUNDS>,
+    VerifierIndex<ROUNDS, G, OpeningProof::SRS>: Clone,
 {
     gates: Option<Vec<CircuitGate<G::ScalarField>>>,
     witness: Option<[Vec<G::ScalarField>; COLUMNS]>,
@@ -68,26 +71,29 @@ where
     override_srs_size: Option<usize>,
     lazy_mode: bool,
 
-    prover_index: Option<ProverIndex<G, OpeningProof>>,
-    verifier_index: Option<VerifierIndex<G, OpeningProof>>,
+    prover_index: Option<ProverIndex<ROUNDS, G, OpeningProof::SRS>>,
+    verifier_index: Option<VerifierIndex<ROUNDS, G, OpeningProof::SRS>>,
 
     with_logs: bool,
 }
 
 #[derive(Clone)]
-pub(crate) struct TestRunner<G: KimchiCurve, OpeningProof: OpenProof<G> = DlogOpeningProof<G>>(
-    TestFramework<G, OpeningProof>,
-)
+pub(crate) struct TestRunner<
+    const ROUNDS: usize,
+    G: KimchiCurve<ROUNDS>,
+    OpeningProof = DlogOpeningProof<G, ROUNDS>,
+>(TestFramework<ROUNDS, G, OpeningProof>)
 where
     G::BaseField: PrimeField,
-    OpeningProof::SRS: Clone,
-    VerifierIndex<G, OpeningProof>: Clone;
+    OpeningProof: OpenProof<G, ROUNDS>,
+    VerifierIndex<ROUNDS, G, OpeningProof::SRS>: Clone;
 
-impl<G: KimchiCurve, OpeningProof: OpenProof<G>> TestFramework<G, OpeningProof>
+impl<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, OpeningProof>
+    TestFramework<ROUNDS, G, OpeningProof>
 where
     G::BaseField: PrimeField,
-    OpeningProof::SRS: Clone,
-    VerifierIndex<G, OpeningProof>: Clone,
+    OpeningProof: OpenProof<G, ROUNDS>,
+    VerifierIndex<ROUNDS, G, OpeningProof::SRS>: Clone,
 {
     #[must_use]
     pub(crate) fn gates(mut self, gates: Vec<CircuitGate<G::ScalarField>>) -> Self {
@@ -158,7 +164,7 @@ where
     pub(crate) fn setup_with_custom_srs<F: FnMut(D<G::ScalarField>, usize) -> OpeningProof::SRS>(
         mut self,
         get_srs: F,
-    ) -> TestRunner<G, OpeningProof> {
+    ) -> TestRunner<ROUNDS, G, OpeningProof> {
         let start = Instant::now();
 
         let lookup_tables = core::mem::take(&mut self.lookup_tables);
@@ -194,19 +200,19 @@ where
     }
 }
 
-impl<G: KimchiCurve> TestFramework<G>
+impl<const ROUNDS: usize, G: KimchiCurve<ROUNDS>> TestFramework<ROUNDS, G>
 where
     G::BaseField: PrimeField,
 {
     /// creates the indexes
     #[must_use]
-    pub(crate) fn setup(mut self) -> TestRunner<G> {
+    pub(crate) fn setup(mut self) -> TestRunner<ROUNDS, G> {
         let start = Instant::now();
 
         let lookup_tables = core::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = self.runtime_tables_setup.take();
 
-        let index = new_index_for_test_with_lookups::<G>(
+        let index = new_index_for_test_with_lookups::<ROUNDS, G>(
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             self.num_prev_challenges,
@@ -236,12 +242,12 @@ where
     }
 }
 
-impl<G: KimchiCurve, OpeningProof: OpenProof<G>> TestRunner<G, OpeningProof>
+impl<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, OpeningProof> TestRunner<ROUNDS, G, OpeningProof>
 where
     G::ScalarField: PrimeField + Clone,
     G::BaseField: PrimeField + Clone,
-    OpeningProof::SRS: Clone,
-    VerifierIndex<G, OpeningProof>: Clone,
+    OpeningProof: OpenProof<G, ROUNDS>,
+    VerifierIndex<ROUNDS, G, OpeningProof::SRS>: Clone,
 {
     #[must_use]
     pub(crate) fn runtime_tables(
@@ -264,7 +270,7 @@ where
         self
     }
 
-    pub(crate) fn prover_index(&self) -> &ProverIndex<G, OpeningProof> {
+    pub(crate) fn prover_index(&self) -> &ProverIndex<ROUNDS, G, OpeningProof::SRS> {
         self.0.prover_index.as_ref().unwrap()
     }
 
@@ -272,8 +278,9 @@ where
     /// raises an exception
     pub(crate) fn prove<EFqSponge, EFrSponge>(self) -> Result<(), String>
     where
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
         EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
     {
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
@@ -288,7 +295,7 @@ where
 
         let group_map = <G as CommitmentCurve>::Map::setup();
 
-        ProverProof::create_recursive::<EFqSponge, EFrSponge, _>(
+        ProverProof::<G, OpeningProof, ROUNDS>::create_recursive::<EFqSponge, EFrSponge, _>(
             &group_map,
             witness,
             &self.0.runtime_tables,
@@ -304,8 +311,9 @@ where
     /// Create and verify a proof
     pub(crate) fn prove_and_verify<EFqSponge, EFrSponge>(self) -> Result<(), String>
     where
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+        EFrSponge: FrSponge<G::ScalarField>
+            + From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
     {
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
@@ -353,7 +361,7 @@ where
 
         // verify the proof (propagate any errors)
         let start = Instant::now();
-        verify::<G, EFqSponge, EFrSponge, OpeningProof>(
+        verify::<ROUNDS, G, EFqSponge, EFrSponge, OpeningProof>(
             &group_map,
             &self.0.verifier_index.unwrap(),
             &proof,
@@ -373,18 +381,18 @@ where
     }
 }
 
-impl<G: KimchiCurve, OpeningProof> TestRunner<G, OpeningProof>
+impl<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, OpeningProof> TestRunner<ROUNDS, G, OpeningProof>
 where
     G::ScalarField: PrimeField + Clone,
     G::BaseField: PrimeField + Clone,
-    OpeningProof: OpenProof<G>
+    OpeningProof: OpenProof<G, ROUNDS>
         + Clone
         + PartialEq
         + core::fmt::Debug
         + serde::Serialize
         + for<'a> serde::Deserialize<'a>,
     OpeningProof::SRS: Clone,
-    VerifierIndex<G, OpeningProof>: Clone,
+    VerifierIndex<ROUNDS, G, OpeningProof>: Clone,
 {
     /// Regression test: Create a proof and check that is equal to
     /// the given serialized implementation (and that deserializes
@@ -399,8 +407,9 @@ where
         rng: &mut RNG,
     ) -> Result<(), String>
     where
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
         EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
     {
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
@@ -415,16 +424,17 @@ where
 
         let group_map = <G as CommitmentCurve>::Map::setup();
 
-        let proof = ProverProof::create_recursive::<EFqSponge, EFrSponge, _>(
-            &group_map,
-            witness,
-            &self.0.runtime_tables,
-            &prover,
-            self.0.recursion,
-            None,
-            rng,
-        )
-        .map_err(|e| e.to_string())?;
+        let proof =
+            ProverProof::<G, OpeningProof, ROUNDS>::create_recursive::<EFqSponge, EFrSponge, _>(
+                &group_map,
+                witness,
+                &self.0.runtime_tables,
+                &prover,
+                self.0.recursion,
+                None,
+                rng,
+            )
+            .map_err(|e| e.to_string())?;
 
         o1_utils::serialization::test_generic_serialization_regression_serde(proof, buf_expected);
 

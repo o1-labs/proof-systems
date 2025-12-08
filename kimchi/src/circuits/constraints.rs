@@ -26,7 +26,7 @@ use ark_poly::{
 };
 use core::{array, default::Default};
 use o1_utils::ExtendedEvaluations;
-use poly_commitment::OpenProof;
+use poly_commitment::SRS;
 use rayon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -374,8 +374,11 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
-    ProverIndex<G, OpeningProof>
+impl<const ROUNDS: usize, F, G, Srs> ProverIndex<ROUNDS, G, Srs>
+where
+    F: PrimeField,
+    G: KimchiCurve<ROUNDS, ScalarField = F>,
+    Srs: SRS<G>,
 {
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints

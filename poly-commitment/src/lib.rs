@@ -184,7 +184,7 @@ type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarF
     PolyComm<G::ScalarField>,
 )];
 
-pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
+pub trait OpenProof<G: CommitmentCurve, const ROUNDS: usize>: Sized + Clone {
     type SRS: SRS<G> + std::fmt::Debug;
 
     /// Create an opening proof for a batch of polynomials. The parameters are
@@ -213,18 +213,18 @@ pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
         rng: &mut RNG,
     ) -> Self
     where
-        EFqSponge:
-            Clone + FqSponge<<G as AffineRepr>::BaseField, G, <G as AffineRepr>::ScalarField>,
+        EFqSponge: Clone
+            + FqSponge<<G as AffineRepr>::BaseField, G, <G as AffineRepr>::ScalarField, ROUNDS>,
         RNG: RngCore + CryptoRng;
 
     /// Verify the opening proof
     fn verify<EFqSponge, RNG>(
         srs: &Self::SRS,
         group_map: &G::Map,
-        batch: &mut [BatchEvaluationProof<G, EFqSponge, Self>],
+        batch: &mut [BatchEvaluationProof<G, EFqSponge, Self, ROUNDS>],
         rng: &mut RNG,
     ) -> bool
     where
-        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
+        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
         RNG: RngCore + CryptoRng;
 }

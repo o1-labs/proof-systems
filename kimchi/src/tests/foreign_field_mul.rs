@@ -19,6 +19,7 @@ use ark_ff::{Field, One, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    poseidon::ArithmeticSpongeParams,
     sponge::{DefaultFqSponge, DefaultFrSponge},
     FqSponge,
 };
@@ -30,10 +31,10 @@ type PallasField = <Pallas as AffineRepr>::BaseField;
 type VestaField = <Vesta as AffineRepr>::BaseField;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
-type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
+type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
+type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
+type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams, 55>;
+type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams, 55>;
 
 // The secp256k1 base field modulus
 fn secp256k1_modulus() -> BigUint {
@@ -61,7 +62,7 @@ fn pallas_sqrt() -> BigUint {
 }
 
 // Boilerplate for tests
-fn run_test<G: KimchiCurve, EFqSponge, EFrSponge>(
+fn run_test<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSponge, EFrSponge>(
     full: bool,
     external_gates: bool,
     disable_gates_checks: bool,
@@ -72,8 +73,9 @@ fn run_test<G: KimchiCurve, EFqSponge, EFrSponge>(
 ) -> (CircuitGateResult<()>, [Vec<G::ScalarField>; COLUMNS])
 where
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
 {
     // Create foreign field multiplication gates
     let (mut next_row, mut gates) =
@@ -185,7 +187,7 @@ where
     let runner = if full {
         // Create prover index with test framework
         Some(
-            TestFramework::<G>::default()
+            TestFramework::<ROUNDS, G>::default()
                 .disable_gates_checks(disable_gates_checks)
                 .gates(gates.clone())
                 .setup(),
@@ -203,7 +205,8 @@ where
 
     // Perform witness verification that everything is ok before invalidation (quick checks)
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
-        let result = gate.verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]);
+        let result =
+            gate.verify_witness::<ROUNDS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
         if result.is_err() {
             return (result, witness);
         }
@@ -238,7 +241,7 @@ where
             // failures, so we want to suppress these witness verification checks when doing plookup tests.
             for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
                 let result =
-                    gate.verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]);
+                    gate.verify_witness::<ROUNDS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
                 if result.is_err() {
                     return (result, witness);
                 }
@@ -278,11 +281,13 @@ where
 }
 
 // Test targeting each custom constraint (positive and negative tests for each)
-fn test_custom_constraints<G: KimchiCurve, EFqSponge, EFrSponge>(foreign_field_modulus: &BigUint)
-where
+fn test_custom_constraints<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSponge, EFrSponge>(
+    foreign_field_modulus: &BigUint,
+) where
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
 {
     let rng = &mut o1_utils::tests::make_test_rng(None);
 
@@ -291,7 +296,7 @@ where
         let right_input = rng.gen_biguint_range(&BigUint::zero(), foreign_field_modulus);
 
         // Test constraint (C1): invalidate product1_hi_1 is in [0, 2^2)
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -310,7 +315,7 @@ where
         );
 
         // Test constraint (C2): invalidate carry0 in [0, 2^2)
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -329,7 +334,7 @@ where
         );
 
         // Test constraint (C3): invalidate middle intermediate product p1 decomposition
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -348,7 +353,7 @@ where
         );
 
         // Test constraint (C4): invalidate carry0
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -371,7 +376,7 @@ where
         //     the test_native_modulus_constraint() test below
 
         // Test constraint (C6): invalidate carry1_crumb0
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -389,7 +394,7 @@ where
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6)),
         );
         // Test constraint (C7): invalidate carry1_crumb1
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -407,7 +412,7 @@ where
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 7)),
         );
         // Test constraint (C8): invalidate carry1_crumb2
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -426,7 +431,7 @@ where
         );
 
         // Test constraint (C9): invalidate carry1_bit
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -445,7 +450,7 @@ where
         );
 
         // Test constraint (C10): invalidate zero check
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -464,7 +469,7 @@ where
         );
 
         // Test constraint (C11): invalidate quotient high bound
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -488,7 +493,7 @@ where
 // Test the multiplication of two zeros.
 // This checks that small amounts get packed into limbs
 fn test_zero_mul() {
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         true,
         true,
         false,
@@ -512,7 +517,7 @@ fn test_zero_mul() {
 #[test]
 // Test the multiplication of largest foreign element and 1
 fn test_one_mul() {
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         true,
         true,
         false,
@@ -538,7 +543,7 @@ fn test_one_mul() {
 // Test the maximum value m whose square fits in the native field
 //    m^2 = q * f + r -> q should be 0 and r should be m^2 < n < f
 fn test_max_native_square() {
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         true,
         true,
         false,
@@ -566,7 +571,7 @@ fn test_max_native_square() {
 // Test the maximum value g whose square fits in the foreign field
 //     g^2 = q * f + r -> q should be 0 and r should be g^2 < f
 fn test_max_foreign_square() {
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         true,
         true,
         false,
@@ -594,7 +599,7 @@ fn test_max_foreign_square() {
 // Test squaring the maximum native field elements
 //     (n - 1) * (n - 1) = q * f + r
 fn test_max_native_multiplicands() {
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         true,
         true,
         false,
@@ -614,7 +619,7 @@ fn test_max_native_multiplicands() {
 // Test squaring the maximum foreign field elements
 //     (f - 1) * (f - 1) = f^2 - 2f + 1 = f * (f - 2) + 1
 fn test_max_foreign_multiplicands() {
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         true,
         true,
         false,
@@ -648,7 +653,7 @@ fn test_nonzero_carry0() {
         assert!(b < secp256k1_modulus());
 
         // Valid witness test
-        let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             true,
             false,
@@ -665,7 +670,7 @@ fn test_nonzero_carry0() {
         );
 
         // Invalid carry0 witness test
-        let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             true,
             false,
@@ -702,7 +707,7 @@ fn test_nonzero_carry10() {
     let b = ((&q * &foreign_field_modulus) / &a) % &foreign_field_modulus;
 
     // Valid witness test
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         true,
         false,
@@ -728,7 +733,7 @@ fn test_nonzero_carry10() {
     );
 
     // Invalid carry0 witness test
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         false, // Disable copy constraints so we can catch carry10 custom constraint failure
         false,
@@ -758,7 +763,7 @@ fn test_nonzero_carry1_hi() {
     let a = &foreign_field_modulus - BigUint::one();
 
     // Valid witness test
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         true,
         false,
@@ -776,7 +781,7 @@ fn test_nonzero_carry1_hi() {
     );
 
     // Invalid carry1_hi witness test
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         false, // Disable copy constraints so we can catch carry1_hi custom constraint failure
         false,
@@ -807,7 +812,7 @@ fn test_nonzero_second_bit_carry1_hi() {
     let b = secp256k1_max();
 
     // Valid witness test
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         true,
         false,
@@ -825,7 +830,7 @@ fn test_nonzero_second_bit_carry1_hi() {
     );
 
     // Invalid carry1_hi witness test
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         false, // Disable copy constraints so we can catch carry1_hi custom constraint failure
         false,
@@ -852,7 +857,7 @@ fn test_invalid_carry1_bit() {
     let b = BigUint::zero();
 
     // Invalid carry1_hi witness test
-    let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, _) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         true,
         false, // Disable external checks so we can catch carry1_hi plookup failure
         false,
@@ -905,7 +910,7 @@ fn test_invalid_wraparound_carry1_hi() {
     let carry1_crumb2 = value % BigUint::from(4u32);
 
     // Invalid carry1_hi witness that causes wrap around to something less than 3-bits
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         true,
         false, // Disable external checks so we can catch carry1_hi plookup failure
         false,
@@ -936,7 +941,7 @@ fn test_invalid_wraparound_carry1_hi() {
 #[test]
 // Test witness with invalid quotient fails verification
 fn test_zero_mul_invalid_quotient() {
-    let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, _) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         true,
         false,
@@ -950,7 +955,7 @@ fn test_zero_mul_invalid_quotient() {
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4)),
     );
 
-    let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, _) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         true,
         false,
@@ -964,7 +969,7 @@ fn test_zero_mul_invalid_quotient() {
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 3)),
     );
 
-    let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, _) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         true,
         false,
@@ -978,7 +983,7 @@ fn test_zero_mul_invalid_quotient() {
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5))
     );
 
-    let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, _) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         true,
         false,
@@ -992,7 +997,7 @@ fn test_zero_mul_invalid_quotient() {
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4))
     );
 
-    let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, _) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         true,
         false,
@@ -1006,7 +1011,7 @@ fn test_zero_mul_invalid_quotient() {
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 3))
     );
 
-    let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, _) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         true,
         false,
@@ -1024,7 +1029,7 @@ fn test_zero_mul_invalid_quotient() {
 #[test]
 // Test witness with invalid remainder fails
 fn test_mul_invalid_remainder() {
-    let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, _) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         false,
         false,
@@ -1038,7 +1043,7 @@ fn test_mul_invalid_remainder() {
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4))
     );
 
-    let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, _) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         false,
         false,
@@ -1062,7 +1067,7 @@ fn test_random_multiplicands_carry1_lo() {
         let left_input = rng.gen_biguint_range(&BigUint::zero(), &secp256k1_max());
         let right_input = rng.gen_biguint_range(&BigUint::zero(), &secp256k1_max());
 
-        let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             false,
             false,
@@ -1079,7 +1084,7 @@ fn test_random_multiplicands_carry1_lo() {
             result,
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
         );
-        let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             false,
             false,
@@ -1096,7 +1101,7 @@ fn test_random_multiplicands_carry1_lo() {
             result,
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
         );
-        let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             false,
             false,
@@ -1113,7 +1118,7 @@ fn test_random_multiplicands_carry1_lo() {
             result,
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
         );
-        let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             false,
             false,
@@ -1130,7 +1135,7 @@ fn test_random_multiplicands_carry1_lo() {
             result,
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
         );
-        let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             false,
             false,
@@ -1147,7 +1152,7 @@ fn test_random_multiplicands_carry1_lo() {
             result,
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
         );
-        let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             false,
             false,
@@ -1164,7 +1169,7 @@ fn test_random_multiplicands_carry1_lo() {
             result,
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
         );
-        let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             false,
             false,
@@ -1181,7 +1186,7 @@ fn test_random_multiplicands_carry1_lo() {
             result,
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
         );
-        let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             false,
             false,
@@ -1198,7 +1203,7 @@ fn test_random_multiplicands_carry1_lo() {
             result,
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
         );
-        let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             false,
             false,
@@ -1227,7 +1232,7 @@ fn test_random_multiplicands_valid() {
         let left_input = rng.gen_biguint_range(&BigUint::zero(), &secp256k1_max());
         let right_input = rng.gen_biguint_range(&BigUint::zero(), &secp256k1_max());
 
-        let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             true,
             false,
@@ -1255,7 +1260,7 @@ fn test_smaller_foreign_field_modulus() {
         let left_input = rng.gen_biguint_range(&BigUint::zero(), &foreign_field_modulus);
         let right_input = rng.gen_biguint_range(&BigUint::zero(), &foreign_field_modulus);
 
-        let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             true,
             false,
@@ -1276,20 +1281,22 @@ fn test_smaller_foreign_field_modulus() {
 // Tests targeting each custom constraint with secp256k1 (foreign field modulus)
 // on Vesta (native field modulus)
 fn test_custom_constraints_secp256k1_on_vesta() {
-    test_custom_constraints::<Vesta, VestaBaseSponge, VestaScalarSponge>(&secp256k1_modulus());
+    test_custom_constraints::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(&secp256k1_modulus());
 }
 
 #[test]
 // Tests targeting each custom constraint with secp256k1 (foreign field modulus)
 // on Pallas (native field modulus)
 fn test_custom_constraints_secp256k1_on_pallas() {
-    test_custom_constraints::<Pallas, PallasBaseSponge, PallasScalarSponge>(&secp256k1_modulus());
+    test_custom_constraints::<55, Pallas, PallasBaseSponge, PallasScalarSponge>(
+        &secp256k1_modulus(),
+    );
 }
 
 #[test]
 // Tests targeting each custom constraint with Vesta (foreign field modulus) on Pallas (native field modulus)
 fn test_custom_constraints_vesta_on_pallas() {
-    test_custom_constraints::<Pallas, PallasBaseSponge, PallasScalarSponge>(
+    test_custom_constraints::<55, Pallas, PallasBaseSponge, PallasScalarSponge>(
         &VestaField::modulus_biguint(),
     );
 }
@@ -1297,7 +1304,7 @@ fn test_custom_constraints_vesta_on_pallas() {
 #[test]
 // Tests targeting each custom constraint with Pallas (foreign field modulus) on Vesta (native field modulus)
 fn test_custom_constraints_pallas_on_vesta() {
-    test_custom_constraints::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    test_custom_constraints::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         &PallasField::modulus_biguint(),
     );
 }
@@ -1305,7 +1312,7 @@ fn test_custom_constraints_pallas_on_vesta() {
 #[test]
 // Tests targeting each custom constraint with Vesta (foreign field modulus) on Vesta (native field modulus)
 fn test_custom_constraints_vesta_on_vesta() {
-    test_custom_constraints::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    test_custom_constraints::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         &VestaField::modulus_biguint(),
     );
 }
@@ -1313,7 +1320,7 @@ fn test_custom_constraints_vesta_on_vesta() {
 #[test]
 // Tests targeting each custom constraint with Pallas (foreign field modulus) on Pallas (native field modulus)
 fn test_custom_constraints_pallas_on_pallas() {
-    test_custom_constraints::<Pallas, PallasBaseSponge, PallasScalarSponge>(
+    test_custom_constraints::<55, Pallas, PallasBaseSponge, PallasScalarSponge>(
         &PallasField::modulus_biguint(),
     );
 }
@@ -1321,7 +1328,7 @@ fn test_custom_constraints_pallas_on_pallas() {
 #[test]
 // Tests targeting each custom constraint (foreign modulus smaller than native vesta)
 fn test_custom_constraints_small_foreign_field_modulus_on_vesta() {
-    test_custom_constraints::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    test_custom_constraints::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         &(BigUint::two().pow(252u32) - BigUint::one()),
     );
 }
@@ -1329,7 +1336,7 @@ fn test_custom_constraints_small_foreign_field_modulus_on_vesta() {
 #[test]
 // Tests targeting each custom constraint (foreign modulus smaller than native pallas)
 fn test_custom_constraints_small_foreign_field_modulus_on_pallas() {
-    test_custom_constraints::<Pallas, PallasBaseSponge, PallasScalarSponge>(
+    test_custom_constraints::<55, Pallas, PallasBaseSponge, PallasScalarSponge>(
         &(BigUint::two().pow(252u32) - BigUint::one()),
     );
 }
@@ -1346,7 +1353,7 @@ fn test_native_modulus_constraint() {
         &secp256k1_modulus(),
     );
 
-    let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, _) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         false,
         false,
@@ -1396,7 +1403,7 @@ fn test_q2_exactly_f2() {
     let left_input = secp256k1_max() - BigUint::from(4u32);
     let right_input = secp256k1_max() - BigUint::from(1u32);
 
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         true,
         false,
@@ -1426,7 +1433,7 @@ fn test_carry_plookups() {
     // carry1_48 = 0xFFF
     // carry1_60 = 0xFFF
     // carry1_72 = 0xFF
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         false,
         false,
@@ -1441,7 +1448,7 @@ fn test_carry_plookups() {
     );
     assert_eq!(result, Ok(()),);
     // Adds 1 bit to carry1_36 (obtaining 0x1FFF) and removing 1 from carry1_48 (obtaining 0xFFE)
-    let (result, _witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, _witness) = run_test::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         true,
         false,
         false,

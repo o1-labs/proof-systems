@@ -12,6 +12,7 @@ use mina_curves::{
     named::NamedCurve,
     pasta::{Pallas, Vesta},
 };
+use poly_commitment::ipa::OpeningProof;
 
 pub fn bench_proof_creation_mina(c: &mut Criterion) {
     let mut group = c.benchmark_group("proof_creation_mina");
@@ -38,53 +39,60 @@ pub fn bench_proof_creation_mina(c: &mut Criterion) {
         // Vesta
         let srs = poly_commitment::precomputed_srs::get_srs_test();
         let (index, witness, runtime_tables, prev) =
-            bench_arguments_from_file::<Vesta, BaseSpongeVesta>(srs.clone(), filename.clone());
+            bench_arguments_from_file::<55, Vesta, BaseSpongeVesta>(srs.clone(), filename.clone());
 
         let group_map = GroupMap::<_>::setup();
         group.bench_function(
             format!("proof creation (mina, vesta, circuit seed {})", seed),
             |b| {
                 b.iter(|| {
-                    black_box(ProverProof::create_recursive::<
-                        BaseSpongeVesta,
-                        ScalarSpongeVesta,
-                        _,
-                    >(
-                        &group_map,
-                        witness.clone(),
-                        &runtime_tables,
-                        &index,
-                        prev.clone(),
-                        None,
-                        &mut rand::rngs::OsRng,
-                    ))
+                    black_box(
+                        ProverProof::<Vesta, OpeningProof<Vesta, 55>, 55>::create_recursive::<
+                            BaseSpongeVesta,
+                            ScalarSpongeVesta,
+                            _,
+                        >(
+                            &group_map,
+                            witness.clone(),
+                            &runtime_tables,
+                            &index,
+                            prev.clone(),
+                            None,
+                            &mut rand::rngs::OsRng,
+                        ),
+                    )
                 })
             },
         );
     } else if curve_name == Pallas::NAME {
         // Pallas
         let srs = poly_commitment::precomputed_srs::get_srs_test();
-        let (index, witness, runtime_tables, prev) =
-            bench_arguments_from_file::<Pallas, BaseSpongePallas>(srs.clone(), filename.clone());
+        let (index, witness, runtime_tables, prev) = bench_arguments_from_file::<
+            55,
+            Pallas,
+            BaseSpongePallas,
+        >(srs.clone(), filename.clone());
 
         let group_map = GroupMap::<_>::setup();
         group.bench_function(
             format!("proof creation (mina, pallas, circuit seed {})", seed),
             |b| {
                 b.iter(|| {
-                    black_box(ProverProof::create_recursive::<
-                        BaseSpongePallas,
-                        ScalarSpongePallas,
-                        _,
-                    >(
-                        &group_map,
-                        witness.clone(),
-                        &runtime_tables,
-                        &index,
-                        prev.clone(),
-                        None,
-                        &mut rand::rngs::OsRng,
-                    ))
+                    black_box(
+                        ProverProof::<Pallas, OpeningProof<Pallas, 55>, 55>::create_recursive::<
+                            BaseSpongePallas,
+                            ScalarSpongePallas,
+                            _,
+                        >(
+                            &group_map,
+                            witness.clone(),
+                            &runtime_tables,
+                            &index,
+                            prev.clone(),
+                            None,
+                            &mut rand::rngs::OsRng,
+                        ),
+                    )
                 })
             },
         );

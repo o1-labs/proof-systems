@@ -18,8 +18,8 @@ use rand::Rng;
 use tikv_jemallocator::Jemalloc;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
 
 // Unit tests for LazyCache
 
@@ -63,7 +63,7 @@ fn heavy_test_lazy_mode_benchmark() {
     {
         // LAZY CACHE FALSE
         eprintln!("LAZY MODE: false (default)");
-        TestFramework::<Vesta>::default()
+        TestFramework::<55, Vesta>::default()
             .gates(gates.clone())
             .witness(witness.clone())
             .public_inputs(public.clone())
@@ -76,7 +76,7 @@ fn heavy_test_lazy_mode_benchmark() {
     {
         // LAZY CACHE TRUE
         eprintln!("LAZY MODE: true");
-        TestFramework::<Vesta>::default()
+        TestFramework::<55, Vesta>::default()
             .gates(gates)
             .witness(witness)
             .public_inputs(public)

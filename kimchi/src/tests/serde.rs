@@ -26,8 +26,8 @@ use poly_commitment::{
 use std::time::Instant;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
 
 #[cfg(test)]
 mod tests {
@@ -45,7 +45,7 @@ mod tests {
         println!("proof size: {} bytes", ser_pf.len());
 
         // deserialize the proof
-        let de_pf: ProverProof<Vesta, OpeningProof<Vesta>> =
+        let de_pf: ProverProof<Vesta, OpeningProof<Vesta, 55>, 55> =
             rmp_serde::from_slice(&ser_pf).unwrap();
 
         // verify the deserialized proof (must accept the proof)
@@ -82,7 +82,7 @@ mod tests {
         .unwrap();
 
         // deserialize the verifier index
-        let mut verifier_index_deserialize: VerifierIndex<Affine<VestaParameters>, _> =
+        let mut verifier_index_deserialize: VerifierIndex<55, Affine<VestaParameters>, _> =
             serde_json::from_str(&verifier_index_serialize).unwrap();
 
         // add srs with lagrange bases
@@ -94,7 +94,7 @@ mod tests {
 
         // verify the proof
         let start = Instant::now();
-        verify::<Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>>(
+        verify::<55, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta, 55>>(
             &group_map,
             &verifier_index_deserialize,
             &proof,

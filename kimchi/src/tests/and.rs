@@ -15,6 +15,7 @@ use ark_ff::{One, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    poseidon::ArithmeticSpongeParams,
     sponge::{DefaultFqSponge, DefaultFrSponge},
     FqSponge,
 };
@@ -26,13 +27,14 @@ use super::framework::TestFramework;
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type VestaField = <Vesta as AffineRepr>::BaseField;
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
-type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
+type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
+type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
+type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams, 55>;
+type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams, 55>;
 
-fn create_test_gates_and<G: KimchiCurve>(bytes: usize) -> Vec<CircuitGate<G::ScalarField>>
+fn create_test_gates_and<const ROUNDS: usize, G>(bytes: usize) -> Vec<CircuitGate<G::ScalarField>>
 where
+    G: KimchiCurve<ROUNDS>,
     G::BaseField: PrimeField,
 {
     let mut gates = vec![];
@@ -42,12 +44,14 @@ where
 }
 
 // Manually checks the AND of the witness
-fn check_and<G: KimchiCurve>(
+fn check_and<const ROUNDS: usize, G>(
     witness: &[Vec<G::ScalarField>; COLUMNS],
     bytes: usize,
     input1: G::ScalarField,
     input2: G::ScalarField,
-) {
+) where
+    G: KimchiCurve<ROUNDS>,
+{
     let and_row = xor::num_xors(bytes * 8) + 1;
     let big_in1 = input1.to_biguint();
     let big_in2 = input2.to_biguint();
@@ -62,7 +66,7 @@ fn check_and<G: KimchiCurve>(
     );
 }
 
-fn setup_and<G: KimchiCurve>(
+fn setup_and<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
     input1: Option<G::ScalarField>,
     input2: Option<G::ScalarField>,
     bytes: usize,
@@ -75,7 +79,7 @@ where
 {
     let rng = &mut o1_utils::tests::make_test_rng(None);
 
-    let gates = create_test_gates_and::<G>(bytes);
+    let gates = create_test_gates_and::<ROUNDS, G>(bytes);
     let cs = ConstraintSystem::create(gates).build().unwrap();
 
     // Initialize inputs
@@ -84,12 +88,12 @@ where
 
     let witness = and::create_and_witness(input1, input2, bytes);
 
-    check_and::<G>(&witness, bytes, input1, input2);
+    check_and::<ROUNDS, G>(&witness, bytes, input1, input2);
 
     (cs, witness)
 }
 
-fn test_and<G: KimchiCurve>(
+fn test_and<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
     input1: Option<G::ScalarField>,
     input2: Option<G::ScalarField>,
     bytes: usize,
@@ -97,11 +101,16 @@ fn test_and<G: KimchiCurve>(
 where
     G::BaseField: PrimeField,
 {
-    let (cs, witness) = setup_and::<G>(input1, input2, bytes);
+    let (cs, witness) = setup_and::<ROUNDS, G>(input1, input2, bytes);
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[row].verify_witness::<ROUNDS, G>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public]
+            ),
             Ok(())
         );
     }
@@ -110,11 +119,12 @@ where
 }
 
 // Function to create a prover and verifier to test the AND circuit
-fn prove_and_verify<G: KimchiCurve, EFqSponge, EFrSponge>(bytes: usize)
+fn prove_and_verify<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSponge, EFrSponge>(bytes: usize)
 where
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
 {
     let rng = &mut o1_utils::tests::make_test_rng(None);
 
@@ -129,7 +139,7 @@ where
     // Create witness
     let witness = and::create_and_witness(input1, input2, bytes);
 
-    TestFramework::<G>::default()
+    TestFramework::<ROUNDS, G>::default()
         .gates(gates)
         .witness(witness)
         .setup()
@@ -138,13 +148,15 @@ where
 }
 
 /// Generic test for checking serialization & regression of AND circuit.
-fn prove_and_check_serialization_regression<G: KimchiCurve, EFqSponge, EFrSponge>(
+fn prove_and_check_serialization_regression<const ROUNDS: usize, G, EFqSponge, EFrSponge>(
     bytes: usize,
     buf_expected: Vec<u8>,
 ) where
+    G: KimchiCurve<ROUNDS>,
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
 {
     const RNG_SEED: [u8; 32] = [
         255, 27, 111, 55, 22, 200, 10, 1, 0, 136, 56, 16, 2, 30, 31, 77, 18, 11, 40, 53, 5, 8, 189,
@@ -163,7 +175,7 @@ fn prove_and_check_serialization_regression<G: KimchiCurve, EFqSponge, EFrSponge
     // Create witness
     let witness = and::create_and_witness(input1, input2, bytes);
 
-    TestFramework::<G>::default()
+    TestFramework::<ROUNDS, G>::default()
         .gates(gates)
         .witness(witness)
         .setup()
@@ -174,8 +186,8 @@ fn prove_and_check_serialization_regression<G: KimchiCurve, EFqSponge, EFrSponge
 #[test]
 // End-to-end test
 fn test_prove_and_verify() {
-    prove_and_verify::<Vesta, VestaBaseSponge, VestaScalarSponge>(8);
-    prove_and_verify::<Pallas, PallasBaseSponge, PallasScalarSponge>(8);
+    prove_and_verify::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(8);
+    prove_and_verify::<55, Pallas, PallasBaseSponge, PallasScalarSponge>(8);
 }
 
 #[test]
@@ -183,10 +195,10 @@ fn test_prove_and_verify() {
 fn test_and64_alternating() {
     let input1 = PallasField::from(0x5A5A5A5A5A5A5A5Au64);
     let input2 = PallasField::from(0xA5A5A5A5A5A5A5A5u64);
-    test_and::<Vesta>(Some(input1), Some(input2), 8);
+    test_and::<55, Vesta>(Some(input1), Some(input2), 8);
     let input1 = VestaField::from(0x5A5A5A5A5A5A5A5Au64);
     let input2 = VestaField::from(0xA5A5A5A5A5A5A5A5u64);
-    test_and::<Pallas>(Some(input1), Some(input2), 8);
+    test_and::<55, Pallas>(Some(input1), Some(input2), 8);
 }
 
 #[test]
@@ -194,43 +206,43 @@ fn test_and64_alternating() {
 fn test_and64_zeros() {
     let zero_pallas = PallasField::from(0u8);
     let zero_vesta = VestaField::from(0u8);
-    test_and::<Vesta>(Some(zero_pallas), Some(zero_pallas), 8);
-    test_and::<Pallas>(Some(zero_vesta), Some(zero_vesta), 8);
+    test_and::<55, Vesta>(Some(zero_pallas), Some(zero_pallas), 8);
+    test_and::<55, Pallas>(Some(zero_vesta), Some(zero_vesta), 8);
 }
 
 #[test]
 // Tests a AND of 8 bits for a random input
 fn test_and8_random() {
-    test_and::<Vesta>(None, None, 1);
-    test_and::<Pallas>(None, None, 1);
+    test_and::<55, Vesta>(None, None, 1);
+    test_and::<55, Pallas>(None, None, 1);
 }
 
 #[test]
 // Tests a XOR of 16 bits for a random input
 fn test_and16_random() {
-    test_and::<Vesta>(None, None, 2);
-    test_and::<Pallas>(None, None, 2);
+    test_and::<55, Vesta>(None, None, 2);
+    test_and::<55, Pallas>(None, None, 2);
 }
 
 #[test]
 // Tests a AND of 32 bits for a random input
 fn test_and32_random() {
-    test_and::<Vesta>(None, None, 4);
-    test_and::<Pallas>(None, None, 4);
+    test_and::<55, Vesta>(None, None, 4);
+    test_and::<55, Pallas>(None, None, 4);
 }
 
 #[test]
 // Tests a AND of 64 bits for a random input
 fn test_and64_random() {
-    test_and::<Vesta>(None, None, 8);
-    test_and::<Pallas>(None, None, 8);
+    test_and::<55, Vesta>(None, None, 8);
+    test_and::<55, Pallas>(None, None, 8);
 }
 
 #[test]
 // Test a random AND of 128 bits
 fn test_and128_random() {
-    test_and::<Vesta>(None, None, 16);
-    test_and::<Pallas>(None, None, 16);
+    test_and::<55, Vesta>(None, None, 16);
+    test_and::<55, Pallas>(None, None, 16);
 }
 
 #[test]
@@ -239,10 +251,10 @@ fn test_and_overflow() {
     let bytes = 256 / 8;
     let input_pallas =
         PallasField::from_biguint(&(PallasField::modulus_biguint() - BigUint::one())).unwrap();
-    test_and::<Vesta>(Some(input_pallas), Some(input_pallas), bytes);
+    test_and::<55, Vesta>(Some(input_pallas), Some(input_pallas), bytes);
     let input_vesta =
         VestaField::from_biguint(&(VestaField::modulus_biguint() - BigUint::one())).unwrap();
-    test_and::<Pallas>(Some(input_vesta), Some(input_vesta), bytes);
+    test_and::<55, Pallas>(Some(input_vesta), Some(input_vesta), bytes);
 }
 
 #[test]
@@ -251,13 +263,13 @@ fn test_and_overflow_one() {
     let bytes = 256 / 8;
     let input =
         PallasField::from_biguint(&(PallasField::modulus_biguint() - BigUint::one())).unwrap();
-    test_and::<Vesta>(Some(input), Some(PallasField::from(1u8)), bytes);
+    test_and::<55, Vesta>(Some(input), Some(PallasField::from(1u8)), bytes);
     let input =
         VestaField::from_biguint(&(VestaField::modulus_biguint() - BigUint::one())).unwrap();
-    test_and::<Pallas>(Some(input), Some(VestaField::from(1u8)), bytes);
+    test_and::<55, Pallas>(Some(input), Some(VestaField::from(1u8)), bytes);
 }
 
-fn verify_bad_and_decomposition<G: KimchiCurve>(
+fn verify_bad_and_decomposition<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
     witness: &mut [Vec<G::ScalarField>; COLUMNS],
     cs: ConstraintSystem<G::ScalarField>,
 ) where
@@ -274,7 +286,7 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
         // Update copy constraints of generic gate
         if col < 2 {
             assert_eq!(
-                cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
+                cs.gates[0].verify_witness::<ROUNDS, G>(0, witness, &cs, &witness[0][0..cs.public]),
                 Err(CircuitGateError::CopyConstraint {
                     typ: GateType::Xor16,
                     src: Wire { row: xor_row, col },
@@ -285,7 +297,7 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
         }
         if col == 2 {
             assert_eq!(
-                cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
+                cs.gates[0].verify_witness::<ROUNDS, G>(0, witness, &cs, &witness[0][0..cs.public]),
                 Err(CircuitGateError::CopyConstraint {
                     typ: GateType::Xor16,
                     src: Wire { row: xor_row, col },
@@ -298,7 +310,7 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
             witness[4][and_row] += G::ScalarField::one();
         }
         assert_eq!(
-            cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[0].verify_witness::<ROUNDS, G>(0, witness, &cs, &witness[0][0..cs.public]),
             Err(CircuitGateError::Constraint(GateType::Xor16, bad))
         );
         witness[col][xor_row] -= G::ScalarField::one();
@@ -311,7 +323,7 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
     }
     // undo changes
     assert_eq!(
-        cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[0].verify_witness::<ROUNDS, G>(0, witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }
@@ -319,8 +331,8 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
 #[test]
 // Test AND when the decomposition of the inner XOR is incorrect
 fn test_and_bad_decomposition() {
-    let (cs, mut witness) = setup_and::<Vesta>(None, None, 2);
-    verify_bad_and_decomposition::<Vesta>(&mut witness, cs);
+    let (cs, mut witness) = setup_and::<55, Vesta>(None, None, 2);
+    verify_bad_and_decomposition::<55, Vesta>(&mut witness, cs);
 }
 
 #[test]
@@ -329,7 +341,7 @@ fn test_bad_and() {
     let rng = &mut o1_utils::tests::make_test_rng(None);
 
     let bytes = 2;
-    let gates = create_test_gates_and::<Vesta>(bytes);
+    let gates = create_test_gates_and::<55, Vesta>(bytes);
 
     // Initialize inputs
     let input1 = rng.gen(None, Some(bytes * 8));
@@ -346,7 +358,7 @@ fn test_bad_and() {
     witness[4][2] = PallasField::zero();
 
     assert_eq!(
-        TestFramework::<Vesta>::default()
+        TestFramework::<55, Vesta>::default()
             .gates(gates)
             .witness(witness)
             .setup()
@@ -657,7 +669,7 @@ fn test_serialization_regression() {
         251, 186, 229, 239, 230, 182, 195, 40, 232, 118, 45, 205, 78, 253, 203, 141, 81, 175, 186,
         185, 116, 235, 41, 158, 240, 90, 22, 144,
     ];
-    prove_and_check_serialization_regression::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    prove_and_check_serialization_regression::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
         8,
         buf_expected,
     );

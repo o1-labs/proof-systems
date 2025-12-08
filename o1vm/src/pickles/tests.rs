@@ -29,7 +29,7 @@ fn zero_to_n_minus_one(n: usize) -> Vec<Fq> {
 fn test_small_circuit() {
     let domain = EvaluationDomains::<Fq>::create(8).unwrap();
     let srs = SRS::create(8);
-    let proof_input = ProofInputs::<Pallas> {
+    let proof_input = ProofInputs::<55, Pallas> {
         evaluations: WitnessColumns {
             scratch: std::array::from_fn(|_| zero_to_n_minus_one(8)),
             scratch_inverse: std::array::from_fn(|_| (0..8).map(|_| Fq::zero()).collect()),
@@ -67,10 +67,10 @@ fn test_small_circuit() {
     );
     let mut rng = make_test_rng(None);
 
-    type BaseSponge = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>;
-    type ScalarSponge = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>;
+    type BaseSponge = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi, 55>;
+    type ScalarSponge = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi, 55>;
 
-    let proof = prove::<Pallas, BaseSponge, ScalarSponge, _>(
+    let proof = prove::<55, Pallas, BaseSponge, ScalarSponge, _>(
         domain,
         &srs,
         proof_input,
@@ -80,7 +80,8 @@ fn test_small_circuit() {
     .unwrap();
 
     let instant_before_verification = Instant::now();
-    let verif = verify::<Pallas, BaseSponge, ScalarSponge>(domain, &srs, &[expr.clone()], &proof);
+    let verif =
+        verify::<55, Pallas, BaseSponge, ScalarSponge>(domain, &srs, &[expr.clone()], &proof);
     let instant_after_verification = Instant::now();
     debug!(
         "Verification took: {} ms",

@@ -14,7 +14,7 @@ use kimchi::{
     proof::PointEvaluations,
 };
 use log::debug;
-use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use mina_poseidon::{poseidon::ArithmeticSpongeParams, sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
     commitment::{absorb_commitment, PolyComm},
@@ -52,19 +52,18 @@ pub enum ProverError {
 ///
 /// The final proof consists of the opening proof, the commitments and the
 /// evaluations at ζ and ζω.
-pub fn prove<
-    G: KimchiCurve,
-    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone,
-    EFrSponge: FrSponge<G::ScalarField>,
-    RNG,
->(
+pub fn prove<const ROUNDS: usize, G, EFqSponge, EFrSponge, RNG>(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &SRS<G>,
-    inputs: ProofInputs<G>,
+    inputs: ProofInputs<ROUNDS, G>,
     constraints: &[E<G::ScalarField>],
     rng: &mut RNG,
-) -> Result<Proof<G>, ProverError>
+) -> Result<Proof<ROUNDS, G>, ProverError>
 where
+    G: KimchiCurve<ROUNDS>,
+    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField, ROUNDS> + Clone,
+    EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
     G::BaseField: PrimeField,
     RNG: RngCore + CryptoRng,
 {
@@ -374,7 +373,7 @@ where
     // Absorbing evaluations with a sponge for the other field
     // We initialize the state with the previous state of the fq_sponge
     let fq_sponge_before_evaluations = fq_sponge.clone();
-    let mut fr_sponge = EFrSponge::new(G::sponge_params());
+    let mut fr_sponge = EFrSponge::from(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations

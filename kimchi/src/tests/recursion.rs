@@ -18,8 +18,8 @@ use o1_utils::math;
 use poly_commitment::{commitment::b_poly_coefficients, SRS as _};
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
 
 #[test]
 fn test_recursion() {
@@ -30,7 +30,7 @@ fn test_recursion() {
     fill_in_witness(0, &mut witness, &[]);
 
     // setup
-    let test_runner = TestFramework::<Vesta>::default()
+    let test_runner = TestFramework::<55, Vesta>::default()
         .num_prev_challenges(1)
         .gates(gates)
         .witness(witness)

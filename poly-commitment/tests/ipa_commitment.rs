@@ -135,7 +135,8 @@ fn test_opening_proof() {
     // create an aggregated opening proof
     let (u, v) = (Fp::rand(rng), Fp::rand(rng));
     let group_map = <VestaG as CommitmentCurve>::Map::setup();
-    let sponge = DefaultFqSponge::<_, SC>::new(mina_poseidon::pasta::fq_kimchi::static_params());
+    let sponge =
+        DefaultFqSponge::<_, SC, 55>::new(mina_poseidon::pasta::fq_kimchi::static_params());
 
     let polys: Vec<(
         DensePolynomialOrEvaluations<_, Radix2EvaluationDomain<_>>,
@@ -239,7 +240,7 @@ fn test_dlog_commitment() {
 
     let group_map = <VestaG as CommitmentCurve>::Map::setup();
 
-    let sponge = DefaultFqSponge::<VestaParameters, SC>::new(
+    let sponge = DefaultFqSponge::<VestaParameters, SC, 55>::new(
         mina_poseidon::pasta::fq_kimchi::static_params(),
     );
 
@@ -320,7 +321,7 @@ fn test_dlog_commitment() {
                     )
                 })
                 .collect();
-            let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _, _>(
+            let proof = srs.open::<DefaultFqSponge<VestaParameters, SC, 55>, _, _, 55>(
                 &group_map,
                 &polys,
                 &x,
@@ -375,6 +376,8 @@ fn test_dlog_commitment() {
     println!("open time: {:?}", open);
 
     let start = Instant::now();
-    assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut proofs, rng));
+    assert!(
+        srs.verify::<DefaultFqSponge<VestaParameters, SC, 55>, _, 55>(&group_map, &mut proofs, rng)
+    );
     println!("verification time: {:?}", start.elapsed());
 }

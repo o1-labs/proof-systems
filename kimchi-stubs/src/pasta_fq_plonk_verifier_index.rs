@@ -30,8 +30,10 @@ use std::{path::Path, sync::Arc};
 pub type CamlPastaFqPlonkVerifierIndex =
     CamlPlonkVerifierIndex<CamlFq, CamlFqSrs, CamlPolyComm<CamlGPallas>>;
 
-impl From<VerifierIndex<Pallas, OpeningProof<Pallas>>> for CamlPastaFqPlonkVerifierIndex {
-    fn from(vi: VerifierIndex<Pallas, OpeningProof<Pallas>>) -> Self {
+type Srs = <OpeningProof<Pallas, 55> as poly_commitment::OpenProof<Pallas, 55>>::SRS;
+
+impl From<VerifierIndex<55, Pallas, Srs>> for CamlPastaFqPlonkVerifierIndex {
+    fn from(vi: VerifierIndex<55, Pallas, Srs>) -> Self {
         Self {
             domain: CamlPlonkDomain {
                 log_size_of_group: vi.domain.log_size_of_group as isize,
@@ -71,7 +73,7 @@ impl From<VerifierIndex<Pallas, OpeningProof<Pallas>>> for CamlPastaFqPlonkVerif
 }
 
 // TODO: This should really be a TryFrom or TryInto
-impl From<CamlPastaFqPlonkVerifierIndex> for VerifierIndex<Pallas, OpeningProof<Pallas>> {
+impl From<CamlPastaFqPlonkVerifierIndex> for VerifierIndex<55, Pallas, Srs> {
     fn from(index: CamlPastaFqPlonkVerifierIndex) -> Self {
         let evals = index.evals;
         let shifts = index.shifts;
@@ -119,7 +121,7 @@ impl From<CamlPastaFqPlonkVerifierIndex> for VerifierIndex<Pallas, OpeningProof<
         // TODO dummy_lookup_value ?
         let (linearization, powers_of_alpha) = expr_linearization(Some(&feature_flags), true);
 
-        VerifierIndex::<Pallas, OpeningProof<Pallas>> {
+        VerifierIndex::<55, Pallas, Srs> {
             domain,
             max_poly_size: index.max_poly_size as usize,
             public: index.public as usize,
@@ -174,20 +176,15 @@ pub fn read_raw(
     offset: Option<ocaml::Int>,
     srs: CamlFqSrs,
     path: String,
-) -> Result<VerifierIndex<Pallas, OpeningProof<Pallas>>, ocaml::Error> {
+) -> Result<VerifierIndex<55, Pallas, Srs>, ocaml::Error> {
     let path = Path::new(&path);
     let (endo_q, _endo_r) = poly_commitment::ipa::endos::<Vesta>();
-    VerifierIndex::<Pallas, OpeningProof<Pallas>>::from_file(
-        srs.0,
-        path,
-        offset.map(|x| x as u64),
-        endo_q,
-    )
-    .map_err(|_e| {
-        ocaml::Error::invalid_argument("caml_pasta_fq_plonk_verifier_index_raw_read")
-            .err()
-            .unwrap()
-    })
+    VerifierIndex::<55, Pallas, Srs>::from_file(srs.0, path, offset.map(|x| x as u64), endo_q)
+        .map_err(|_e| {
+            ocaml::Error::invalid_argument("caml_pasta_fq_plonk_verifier_index_raw_read")
+                .err()
+                .unwrap()
+        })
 }
 
 //
@@ -212,7 +209,7 @@ pub fn caml_pasta_fq_plonk_verifier_index_write(
     index: CamlPastaFqPlonkVerifierIndex,
     path: String,
 ) -> Result<(), ocaml::Error> {
-    let index: VerifierIndex<Pallas, OpeningProof<Pallas>> = index.into();
+    let index: VerifierIndex<55, Pallas, Srs> = index.into();
     let path = Path::new(&path);
     index.to_file(path, append).map_err(|_e| {
         ocaml::Error::invalid_argument("caml_pasta_fq_plonk_verifier_index_raw_read")

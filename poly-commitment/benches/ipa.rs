@@ -141,7 +141,7 @@ fn benchmark_ipa_open_vesta(c: &mut Criterion) {
     for log_n in [5, 10].into_iter() {
         let n = 1 << log_n;
         let srs = SRS::<Vesta>::create(n);
-        let sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
+        let sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, 55>::new(
             mina_poseidon::pasta::fq_kimchi::static_params(),
         );
         let poly_coefficients: Vec<Fp> = (0..n).map(|_| Fp::rand(&mut rng)).collect();

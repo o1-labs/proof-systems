@@ -18,7 +18,7 @@ pub fn caml_pasta_fp_poseidon_block_cipher(mut cx: FunctionContext) -> JsResult<
         .map(Into::into)
         .collect();
 
-    poseidon_block_cipher::<Fp, PlonkSpongeConstantsKimchi>(
+    poseidon_block_cipher::<Fp, PlonkSpongeConstantsKimchi, 55>(
         mina_poseidon::pasta::fp_kimchi::static_params(),
         &mut state,
     );
@@ -42,7 +42,7 @@ pub fn caml_pasta_fq_poseidon_block_cipher(mut cx: FunctionContext) -> JsResult<
         .map(Into::into)
         .collect();
 
-    poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi>(
+    poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi, 55>(
         mina_poseidon::pasta::fq_kimchi::static_params(),
         &mut state,
     );

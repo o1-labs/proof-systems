@@ -38,8 +38,11 @@ pub struct TestVector {
 
 /// Computes the poseidon hash of several field elements.
 /// Uses the 'basic' configuration with N states and M rounds.
-fn poseidon<SC: SpongeConstants>(input: &[Fp], params: &'static ArithmeticSpongeParams<Fp>) -> Fp {
-    let mut s = Poseidon::<Fp, SC>::new(params);
+fn poseidon<SC: SpongeConstants, const ROUNDS: usize>(
+    input: &[Fp],
+    params: &'static ArithmeticSpongeParams<Fp, ROUNDS>,
+) -> Fp {
+    let mut s = Poseidon::<Fp, SC, ROUNDS>::new(params);
     s.absorb(input);
     s.squeeze()
 }
@@ -69,11 +72,11 @@ pub fn generate(mode: Mode, param_type: ParamType, seed: Option<[u8; 32]>) -> Te
         // generate input & hash
         let input = rand_fields(rng, length);
         let output = match param_type {
-            ParamType::Legacy => poseidon::<constants::PlonkSpongeConstantsLegacy>(
+            ParamType::Legacy => poseidon::<constants::PlonkSpongeConstantsLegacy, 100>(
                 &input,
                 pasta::fp_legacy::static_params(),
             ),
-            ParamType::Kimchi => poseidon::<constants::PlonkSpongeConstantsKimchi>(
+            ParamType::Kimchi => poseidon::<constants::PlonkSpongeConstantsKimchi, 55>(
                 &input,
                 pasta::fp_kimchi::static_params(),
             ),
@@ -306,11 +309,11 @@ mod tests {
                 // generate input & hash
                 let input = rand_fields(rng, length);
                 let output = match param_type {
-                    ParamType::Legacy => poseidon::<constants::PlonkSpongeConstantsLegacy>(
+                    ParamType::Legacy => poseidon::<constants::PlonkSpongeConstantsLegacy, 100>(
                         &input,
                         pasta::fp_legacy::static_params(),
                     ),
-                    ParamType::Kimchi => poseidon::<constants::PlonkSpongeConstantsKimchi>(
+                    ParamType::Kimchi => poseidon::<constants::PlonkSpongeConstantsKimchi, 55>(
                         &input,
                         pasta::fp_kimchi::static_params(),
                     ),
