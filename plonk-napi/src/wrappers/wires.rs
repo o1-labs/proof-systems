@@ -1,4 +1,4 @@
-use kimchi::circuits::wires::Wire as KimchiWire;
+use kimchi::circuits::wires::Wire;
 use napi_derive::napi;
 
 #[napi(object)]
@@ -8,17 +8,17 @@ pub struct NapiWire {
     pub col: u32,
 }
 
-impl From<NapiWire> for KimchiWire {
+impl From<NapiWire> for Wire {
     fn from(value: NapiWire) -> Self {
-        KimchiWire {
+        Wire {
             row: value.row as usize,
             col: value.col as usize,
         }
     }
 }
 
-impl From<KimchiWire> for NapiWire {
-    fn from(value: KimchiWire) -> Self {
+impl From<Wire> for NapiWire {
+    fn from(value: Wire) -> Self {
         Self {
             row: value.row as u32,
             col: value.col as u32,

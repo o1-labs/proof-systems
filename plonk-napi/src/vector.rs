@@ -305,8 +305,9 @@ macro_rules! impl_vec_vec_fp {
         #[napi]
         impl $name {
             #[napi(constructor)]
-            pub fn create(capacity: i32) -> Self {
-                Self(Vec::with_capacity(capacity as usize))
+            pub fn new(capacity: i32) -> Self {
+                println!("Creating napi VecVec");
+                $name(Vec::with_capacity(capacity as usize))
             }
 
             #[napi]
@@ -373,18 +374,6 @@ macro_rules! impl_vec_vec_fp {
                 value.0
             }
         }
-        /*
-        impl FromNapiValue for $name {
-            unsafe fn from_napi_value(
-                env: sys::napi_env,
-                napi_val: sys::napi_value,
-            ) -> Result<Self> {
-                let instance =
-                    <ClassInstance<$name> as FromNapiValue>::from_napi_value(env, napi_val)?;
-                Ok((*instance).clone())
-            }
-        }
-        */
     };
 }
 
@@ -394,7 +383,7 @@ pub mod fp {
     use mina_curves::pasta::Fp;
     use napi_derive::napi;
 
-    impl_vec_vec_fp!(NapiVecVecFp, Fp, NapiPastaFp);
+    impl_vec_vec_fp!(WasmVecVecFp, Fp, NapiPastaFp);
 }
 
 pub mod fq {
@@ -403,5 +392,5 @@ pub mod fq {
     use mina_curves::pasta::Fq;
     use napi_derive::napi;
 
-    impl_vec_vec_fp!(NapiVecVecFq, Fq, NapiPastaFq);
+    impl_vec_vec_fp!(WasmVecVecFq, Fq, NapiPastaFq);
 }

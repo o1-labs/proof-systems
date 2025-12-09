@@ -109,15 +109,15 @@ macro_rules! impl_srs {
               }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_create">])]
-              pub fn [<caml_ $name:snake _srs_create>](depth: i32) -> External<[<Napi $name:camel Srs>]>  {
+              pub fn [<caml_ $name:snake _srs_create>](depth: i32) -> [<Napi $name:camel Srs>]  {
                   println!("Creating SRS with napi");
-                  External::new(Arc::new(SRS::<$G>::create(depth as usize)).into())
+                  Arc::new(SRS::<$G>::create(depth as usize)).into()
               }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_create_parallel">])]
-              pub fn [<caml_ $name:snake _srs_create_parallel>](depth: i32) -> External<[<Napi $name:camel Srs>]> {
+              pub fn [<caml_ $name:snake _srs_create_parallel>](depth: i32) -> [<Napi $name:camel Srs>] {
                   println!("Creating SRS in parallel with napi");
-                  External::new(Arc::new(SRS::<$G>::create_parallel(depth as usize)).into())
+                  Arc::new(SRS::<$G>::create_parallel(depth as usize)).into()
               }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_add_lagrange_basis">])]
@@ -164,6 +164,32 @@ macro_rules! impl_srs {
                   }
               }
 
+            #[napi(js_name = [<"caml_" $name:snake "_srs_lagrange_commitment">])]
+            pub fn [<caml_ $name:snake _srs_lagrange_commitment>](
+                srs: &[<Napi $name:camel Srs>],
+                domain_size: i32,
+                i: i32,
+            ) -> Result<[<$NapiPolyComm>]> {
+                let x_domain = EvaluationDomain::<$F>::new(domain_size as usize)
+                    .ok_or_else(invalid_domain_error)?;
+                let basis = srs.get_lagrange_basis(x_domain);
+                Ok(basis[i as usize].clone().into())
+            }
+
+            // Fake overwrite of the plonk_wasm equivalent, but without pointers.
+            // In the srs bindings, the same symbol will be used to either provide
+            // the pointer for wasm, or the actual data for napi
+            #[napi(js_name = [<"caml_" $name:snake "_srs_lagrange_commitments_whole_domain_ptr">])]
+            pub fn [<caml_ $name:snake _srs_lagrange_commitments_whole_domain_ptr>](
+                srs: &External<[<Napi $name:camel Srs>]>,
+                domain_size: i32,
+            ) -> Result<NapiVector<$NapiPolyComm>> {
+                let domain = EvaluationDomain::<$F>::new(domain_size as usize)
+                    .ok_or_else(invalid_domain_error)?;
+                let basis = srs.0.get_lagrange_basis(domain);
+                Ok(basis.iter().cloned().map(Into::into).collect())
+            }
+
               #[napi(js_name = [<"caml_" $name:snake "_srs_get">])]
               pub fn [<caml_ $name:snake _srs_get>](srs: &External<[<Napi $name:camel Srs>]>) -> Vec<$NapiG> {
                   println!("Getting SRS with napi");
@@ -173,14 +199,14 @@ macro_rules! impl_srs {
               }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_set">])]
-              pub fn [<caml_ $name:snake _srs_set>](h_and_gs: Vec<$NapiG>) -> External<[<Napi $name:camel Srs>]> {
+              pub fn [<caml_ $name:snake _srs_set>](h_and_gs: Vec<$NapiG>) -> [<Napi $name:camel Srs>] {
                   println!("Setting SRS with napi");
                   let mut h_and_gs: Vec<$G> = h_and_gs.into_iter().map(Into::into).collect();
 
                   let h = h_and_gs.remove(0);
                   let g = h_and_gs;
                   let srs = SRS::<$G> { h, g, lagrange_bases: HashMapCache::new() };
-                  External::new(Arc::new(srs).into())
+                  Arc::new(srs).into()
               }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_maybe_lagrange_commitment">])]
@@ -189,7 +215,7 @@ macro_rules! impl_srs {
                   domain_size: i32,
                   i: i32,
               ) -> Option<$NapiPolyComm> {
-                  println!("Getting maybe lagrange commitment with napi");
+                  println!("Getting maybe lagrange commitment with napi rust");
                   if !srs
                       .0
                       .lagrange_bases
@@ -197,9 +223,10 @@ macro_rules! impl_srs {
                   {
                       return None;
                   }
+                  println!("Lagrange basis found in cache");
                   let basis = srs
                       .get_lagrange_basis_from_domain_size(domain_size as usize);
-                  Some(basis[i as usize].clone().into())
+                    basis.get(i as usize).map(Into::into)
               }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_set_lagrange_basis">])]
@@ -223,15 +250,6 @@ macro_rules! impl_srs {
                   Ok(basis.iter().cloned().map(Into::into).collect())
               }
 
-              #[napi(js_name = [<"caml_" $name:snake "_srs_to_bytes">])]
-              pub fn [<caml_ $name:snake _srs_to_bytes>](srs: &[<Napi $name:camel Srs>]) -> Result<Uint8Array> {
-                  srs.serialize()
-              }
-
-              #[napi(js_name = [<"caml_" $name:snake "_srs_from_bytes">])]
-              pub fn [<caml_ $name:snake _srs_from_bytes>](bytes: Uint8Array) -> Result<[<Napi $name:camel Srs>]> {
-                  [<Napi $name:camel Srs>]::deserialize(bytes)
-              }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_commit_evaluations">])]
               pub fn [<caml_ $name:snake _srs_commit_evaluations>](srs: &[<Napi $name:camel Srs>],
@@ -308,8 +326,8 @@ macro_rules! impl_srs {
                   Ok(points.into_iter().map(Into::into).collect())
               }
 
-              #[napi(js_name = [<"caml_" $name:snake "_srs_get_h">])]
-              pub fn h(srs: &[<Napi $name:camel Srs>]) -> $NapiG {
+              #[napi(js_name = [<"caml_" $name:snake "_srs_h">])]
+              pub fn [<caml_ $name:snake _srs_h>](srs: &[<Napi $name:camel Srs>]) -> $NapiG {
                   println!("Getting h point with napi");
                   srs.h.into()
               }
@@ -320,6 +338,11 @@ macro_rules! impl_srs {
 #[napi(js_name = "caml_fp_srs_to_bytes")]
 pub fn caml_fp_srs_to_bytes(srs: &fp::NapiFpSrs) -> Result<Uint8Array> {
     srs.serialize()
+}
+
+#[napi(js_name = "caml_fp_srs_to_bytes_external")]
+pub fn caml_fp_srs_to_bytes_external(srs: &External<fp::NapiFpSrs>) -> Uint8Array {
+    caml_fp_srs_to_bytes(srs).expect("failed to serialize external fp srs")
 }
 
 #[napi(js_name = "caml_fp_srs_from_bytes")]
@@ -336,6 +359,11 @@ pub fn caml_fp_srs_from_bytes_external(bytes: Uint8Array) -> External<fp::NapiFp
 #[napi(js_name = "caml_fq_srs_to_bytes")]
 pub fn caml_fq_srs_to_bytes(srs: &fq::NapiFqSrs) -> Result<Uint8Array> {
     srs.serialize()
+}
+
+#[napi(js_name = "caml_fq_srs_to_bytes_external")]
+pub fn caml_fq_srs_to_bytes_external(srs: &External<fq::NapiFqSrs>) -> Uint8Array {
+    caml_fq_srs_to_bytes(srs).expect("failed to serialize external fq srs")
 }
 
 #[napi(js_name = "caml_fq_srs_from_bytes")]
