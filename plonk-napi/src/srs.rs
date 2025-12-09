@@ -215,7 +215,7 @@ macro_rules! impl_srs {
                   domain_size: i32,
                   i: i32,
               ) -> Option<$NapiPolyComm> {
-                  println!("Getting maybe lagrange commitment with napi");
+                  println!("Getting maybe lagrange commitment with napi rust");
                   if !srs
                       .0
                       .lagrange_bases
@@ -223,9 +223,10 @@ macro_rules! impl_srs {
                   {
                       return None;
                   }
+                  println!("Lagrange basis found in cache");
                   let basis = srs
                       .get_lagrange_basis_from_domain_size(domain_size as usize);
-                  Some(basis[i as usize].clone().into())
+                    basis.get(i as usize).map(Into::into)
               }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_set_lagrange_basis">])]
@@ -325,8 +326,8 @@ macro_rules! impl_srs {
                   Ok(points.into_iter().map(Into::into).collect())
               }
 
-              #[napi(js_name = [<"caml_" $name:snake "_srs_get_h">])]
-              pub fn h(srs: &[<Napi $name:camel Srs>]) -> $NapiG {
+              #[napi(js_name = [<"caml_" $name:snake "_srs_h">])]
+              pub fn [<caml_ $name:snake _srs_h>](srs: &[<Napi $name:camel Srs>]) -> $NapiG {
                   println!("Getting h point with napi");
                   srs.h.into()
               }

@@ -1,6 +1,5 @@
-use crate::{
-    tables::{JsRuntimeTableFp, JsRuntimeTableFq},
-    vector::{fp::NapiVecVecFp, fq::NapiVecVecFq, NapiFlatVector, NapiVector},
+use crate::vector::{
+    fp::WasmVecVecFp as NapiVecVecFp, fq::WasmVecVecFq as NapiVecVecFq, NapiFlatVector, NapiVector,
 };
 use ark_ec::AffineRepr;
 use ark_ff::One;
@@ -38,10 +37,12 @@ macro_rules! impl_proof {
      $NapiSrs: ty,
      $NapiIndex: ty,
      $NapiVerifierIndex: ty,
-     $field_name: ident
+     $NapiVecVec: ty,
+     $field_name: ident,
+     $NapiRuntimeTable: ty,
      ) => {
         paste! {
-            type NapiVecVecF = [<NapiVecVec $field_name:camel>];
+            // type NapiVecVecF = [<NapiVecVec $field_name:camel>];
 
             #[napi(js_name = [<Wasm $field_name:camel ProofEvaluations>])]
             #[derive(Clone)]
@@ -445,7 +446,7 @@ macro_rules! impl_proof {
                     evals: NapiProofEvaluations, // maybe remove FromNapiValue trait implementation and wrap it in External instead
                     ft_eval1: $NapiF,
                     public_: NapiFlatVector<$NapiF>,
-                    prev_challenges_scalars: NapiVecVecF,
+                    prev_challenges_scalars: $NapiVecVec,
                     prev_challenges_comms: NapiVector<$NapiPolyComm>) -> Self {
                     NapiProverProof {
                         commitments,
@@ -475,7 +476,7 @@ macro_rules! impl_proof {
                     self.public.clone()
                 }
                 #[napi(getter, js_name="prev_challenges_scalars")]
-                pub fn prev_challenges_scalars(&self) -> NapiVecVecF {
+                pub fn prev_challenges_scalars(&self) -> $NapiVecVec {
                     [<NapiVecVec $field_name:camel>](self.prev_challenges_scalars.clone())
                 }
                 #[napi(getter, js_name="prev_challenges_comms")]
@@ -500,7 +501,7 @@ macro_rules! impl_proof {
                     self.public = public_
                 }
                 #[napi(setter, js_name="set_prev_challenges_scalars")]
-                pub fn set_prev_challenges_scalars(&mut self, prev_challenges_scalars: NapiVecVecF) {
+                pub fn set_prev_challenges_scalars(&mut self, prev_challenges_scalars: $NapiVecVec) {
                     self.prev_challenges_scalars = prev_challenges_scalars.0
                 }
                 #[napi(setter, js_name="set_prev_challenges_comms")]
@@ -525,13 +526,13 @@ macro_rules! impl_proof {
             }
 
             type NapiProofF = [<NapiProof $field_name:camel>];
-            type JsRuntimeTableF = [<JsRuntimeTable $field_name:camel>];
+            // type JsRuntimeTableF = [<JsRuntimeTable $field_name:camel>];
 
             #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_create">])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_proof_create>](
                 index: &External<$NapiIndex>,
-                witness: NapiVecVecF,
-                runtime_tables: NapiVector<JsRuntimeTableF>,
+                witness: $NapiVecVec,
+                runtime_tables: NapiVector<$NapiRuntimeTable>,
                 prev_challenges: NapiFlatVector<$NapiF>,
                 prev_sgs: NapiVector<$NapiG>,
             ) -> Result<External<NapiProofF>> {
@@ -564,20 +565,7 @@ macro_rules! impl_proof {
                             d
                         }
                     };
-
-                    let rust_runtime_tables: Vec<RuntimeTable<$F>> = runtime_tables
-                        .into_iter()
-                        .flat_map(|table| {
-                            let JsRuntimeTableF { id, data } = table;
-                            data.into_iter().map(move |column| {
-                                let values = NapiFlatVector::<$NapiF>::from_bytes(column.to_vec())
-                                    .into_iter()
-                                    .map(Into::into)
-                                    .collect();
-                                RuntimeTable { id, data: values }
-                            })
-                        })
-                        .collect();
+                    let rust_runtime_tables: Vec<RuntimeTable<$F>> = runtime_tables.into_iter().map(Into::into).collect();
 
                     let witness: [Vec<_>; COLUMNS] = witness
                         .0
@@ -755,9 +743,9 @@ pub mod fp {
     use super::*;
     use crate::{
         pasta_fp_plonk_index::WasmPastaFpPlonkIndex as NapiPastaFpPlonkIndex,
+        plonk_verifier_index::fp::NapiFpPlonkVerifierIndex,
         poly_comm::vesta::NapiFpPolyComm,
-        wrappers::{field::NapiPastaFp, group::NapiGVesta},
-        NapiFpPlonkVerifierIndex,
+        wrappers::{field::NapiPastaFp, group::NapiGVesta, lookups::NapiFpRuntimeTable},
     };
     use mina_curves::pasta::{Fp, Vesta};
 
@@ -770,7 +758,9 @@ pub mod fp {
         NapiSrs,
         NapiPastaFpPlonkIndex,
         NapiFpPlonkVerifierIndex,
-        Fp
+        NapiVecVecFp,
+        Fp,
+        NapiFpRuntimeTable,
     );
 }
 
@@ -778,9 +768,9 @@ pub mod fq {
     use super::*;
     use crate::{
         pasta_fq_plonk_index::WasmPastaFqPlonkIndex as NapiPastaFqPlonkIndex,
+        plonk_verifier_index::fq::NapiFqPlonkVerifierIndex,
         poly_comm::pallas::NapiFqPolyComm,
-        wrappers::{field::NapiPastaFq, group::NapiGPallas},
-        NapiFqPlonkVerifierIndex,
+        wrappers::{field::NapiPastaFq, group::NapiGPallas, lookups::NapiFqRuntimeTable},
     };
     use mina_curves::pasta::{Fq, Pallas};
 
@@ -793,6 +783,8 @@ pub mod fq {
         NapiSrs,
         NapiPastaFqPlonkIndex,
         NapiFqPlonkVerifierIndex,
-        Fq
+        NapiVecVecFq,
+        Fq,
+        NapiFqRuntimeTable,
     );
 }

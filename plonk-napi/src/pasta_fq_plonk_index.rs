@@ -22,7 +22,10 @@ use std::{
 use crate::tables::{
     lookup_table_fq_from_js, runtime_table_cfg_fq_from_js, JsLookupTableFq, JsRuntimeTableCfgFq,
 };
-pub struct WasmPastaFqPlonkIndex(pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>);
+#[napi(js_name = "WasmPastaFqPlonkIndex")]
+pub struct WasmPastaFqPlonkIndex(
+    #[napi(skip)] pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>,
+);
 
 #[derive(Serialize, Deserialize)]
 struct SerializedProverIndex {
@@ -74,21 +77,9 @@ impl WasmPastaFqPlonkIndex {
     }
 }
 
-// TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
-#[napi(js_name = "prover_index_fq_from_bytes")]
-pub fn prover_index_fq_from_bytes(
-    bytes: Uint8Array,
-) -> napi::bindgen_prelude::Result<External<WasmPastaFqPlonkIndex>> {
-    report_native_call();
-
-    let index = WasmPastaFqPlonkIndex::deserialize_inner(bytes.as_ref())
-        .map_err(|e| Error::new(Status::InvalidArg, e))?;
-    Ok(External::new(index))
-}
-
-// TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
-#[napi(js_name = "prover_index_fq_to_bytes")]
-pub fn prover_index_fq_to_bytes(
+// TODO: remove incl all dependencies when no longer needed and we only pass napi objects around
+#[napi(js_name = "prover_index_fq_serialize")]
+pub fn prover_index_fq_serialize(
     index: &External<WasmPastaFqPlonkIndex>,
 ) -> napi::bindgen_prelude::Result<Uint8Array> {
     report_native_call();
@@ -97,6 +88,18 @@ pub fn prover_index_fq_to_bytes(
         .serialize_inner()
         .map_err(|e| Error::new(Status::GenericFailure, e))?;
     Ok(Uint8Array::from(bytes))
+}
+
+// TODO: remove incl all dependencies when no longer needed and we only pass napi objects around
+#[napi(js_name = "prover_index_fq_deserialize")]
+pub fn prover_index_fq_deserialize(
+    bytes: Uint8Array,
+) -> napi::bindgen_prelude::Result<External<WasmPastaFqPlonkIndex>> {
+    report_native_call();
+
+    let index = WasmPastaFqPlonkIndex::deserialize_inner(bytes.as_ref())
+        .map_err(|e| Error::new(Status::InvalidArg, e))?;
+    Ok(External::new(index))
 }
 
 #[napi(js_name = "caml_pasta_fq_plonk_index_max_degree")]
