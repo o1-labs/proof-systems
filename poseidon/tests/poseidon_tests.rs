@@ -214,7 +214,8 @@ fn test_poseidon_challenge_multiple_times_without_absorption() {
 fn test_poseidon_challenge_padding() {
     let mut state: Vec<Fq> = Vec::new();
     state.push(Fq::one());
-    state.push(Fq::one());
+    state.push(Fq::from(2u32));
+    state.push(Fq::from(3u32));
     let mut state_padded = state.clone();
     state_padded.push(Fq::zero());
 
@@ -223,6 +224,5 @@ fn test_poseidon_challenge_padding() {
         fq_kimchi::static_params(),
         &mut state_padded,
     );
-
     assert_eq!(state, state_padded);
 }

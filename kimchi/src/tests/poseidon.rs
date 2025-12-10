@@ -2,14 +2,18 @@ use crate::{
     circuits::{
         gate::CircuitGate,
         polynomials,
-        polynomials::poseidon::ROUNDS_PER_ROW,
+        polynomials::poseidon::{ROUNDS_PER_ROW, SPONGE_WIDTH},
         wires::{Wire, COLUMNS},
     },
     curve::KimchiCurve,
+    proof::ProverProof,
+    prover_index::testing::new_index_for_test,
     tests::framework::TestFramework,
+    verifier::verify,
 };
 use ark_ff::Zero;
 use core::array;
+use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
@@ -17,6 +21,8 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1_utils::math;
+use poly_commitment::commitment::CommitmentCurve;
+use rand::rngs::OsRng;
 
 // aliases
 
@@ -88,4 +94,102 @@ fn test_poseidon() {
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
         .unwrap();
+}
+
+fn build_poseidon_instance(
+    inputs: Vec<[Fp; SPONGE_WIDTH]>,
+) -> (Vec<CircuitGate<Fp>>, [Vec<Fp>; COLUMNS]) {
+    let rounds = &*Vesta::sponge_params().round_constants;
+    let rows_per = POS_ROWS_PER_HASH + 1;
+    let mut gates = Vec::with_capacity(inputs.len() * rows_per);
+    let mut abs_row = 0;
+
+    for _ in &inputs {
+        let first_wire = Wire::for_row(abs_row);
+        let last_wire = Wire::for_row(abs_row + POS_ROWS_PER_HASH);
+        let (poseidon, _) =
+            CircuitGate::<Fp>::create_poseidon_gadget(abs_row, [first_wire, last_wire], rounds);
+        gates.extend(poseidon);
+        abs_row += rows_per;
+    }
+
+    let mut witness: [Vec<Fp>; COLUMNS] =
+        array::from_fn(|_| vec![Fp::zero(); inputs.len() * rows_per]);
+    for (i, input) in inputs.into_iter().enumerate() {
+        let first_row = i * rows_per;
+        polynomials::poseidon::generate_witness(
+            first_row,
+            Vesta::sponge_params(),
+            &mut witness,
+            input,
+        );
+    }
+
+    (gates, witness)
+}
+
+// Test that Poseidon in circuit on Kimchi expects unique inputs as a list of
+// triples so that padding with zeros changes the output and the circuit
+// structure itself.
+#[test]
+fn test_poseidon_in_circuit_padding() {
+    // len-3 vs len-4 (padded) circuits
+    let (gates3, witness3) =
+        build_poseidon_instance(vec![[Fp::from(1u32), Fp::from(2u32), Fp::from(3u32)]]);
+    let (gates4, witness4) = build_poseidon_instance(vec![
+        [Fp::from(1u32), Fp::from(2u32), Fp::from(3u32)],
+        [Fp::zero(), Fp::zero(), Fp::zero()],
+    ]);
+
+    assert!(gates4.len() > gates3.len());
+
+    let index3 = new_index_for_test::<Vesta>(gates3, 0);
+    let index4 = new_index_for_test::<Vesta>(gates4, 0);
+
+    let group_map = <Vesta as CommitmentCurve>::Map::setup();
+
+    let proof3 = ProverProof::create::<BaseSponge, ScalarSponge, _>(
+        &group_map,
+        witness3,
+        &[],
+        &index3,
+        &mut OsRng,
+    )
+    .unwrap();
+
+    verify::<Vesta, BaseSponge, ScalarSponge, _>(
+        &group_map,
+        &index3.verifier_index(),
+        &proof3,
+        &[],
+    )
+    .expect("odd length input circuit proof should verify with its vk");
+
+    let proof4 = ProverProof::create::<BaseSponge, ScalarSponge, _>(
+        &group_map,
+        witness4,
+        &[],
+        &index4,
+        &mut OsRng,
+    )
+    .unwrap();
+
+    verify::<Vesta, BaseSponge, ScalarSponge, _>(
+        &group_map,
+        &index4.verifier_index(),
+        &proof4,
+        &[],
+    )
+    .expect("even input length circuit proof should verify with its vk");
+
+    let bad = verify::<Vesta, BaseSponge, ScalarSponge, _>(
+        &group_map,
+        &index3.verifier_index(),
+        &proof4,
+        &[],
+    );
+    assert!(
+        bad.is_err(),
+        "leven input length proof must not verify with odd input length vk"
+    );
 }

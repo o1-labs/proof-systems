@@ -1,7 +1,7 @@
 //! This module implements the Poseidon constraint polynomials.
 
 //~ The poseidon gate encodes 5 rounds of the poseidon permutation.
-//~ A state is represents by 3 field elements. For example,
+//~ A state is represented by 3 field elements. For example,
 //~ the first state is represented by `(s0, s0, s0)`,
 //~ and the next state, after permutation, is represented by `(s1, s1, s1)`.
 //~
