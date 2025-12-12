@@ -1,4 +1,4 @@
-use crate::wrappers::lookups::NapiLookupInfo;
+use crate::{vector::NapiVector, wrappers::lookups::NapiLookupInfo};
 use ark_ec::AffineRepr;
 use ark_ff::One;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
@@ -9,15 +9,13 @@ use kimchi::{
             index::LookupSelectors,
             lookups::{LookupFeatures, LookupPatterns},
         },
-        polynomials::permutation::{
-            permutation_vanishing_polynomial, zk_w, Shifts as KimchiShifts,
-        },
+        polynomials::permutation::{permutation_vanishing_polynomial, zk_w, Shifts},
         wires::{COLUMNS, PERMUTS},
     },
     linearization::expr_linearization,
     verifier_index::{LookupVerifierIndex, VerifierIndex},
 };
-use napi::bindgen_prelude::{Error, External, Status};
+use napi::{bindgen_prelude::*, Error, Status};
 use napi_derive::napi;
 use paste::paste;
 use poly_commitment::{
@@ -73,9 +71,9 @@ macro_rules! impl_verification_key {
             #[derive(Clone, Debug, Serialize, Deserialize, Default)]
             pub struct [<Napi $field_name:camel PlonkVerificationEvals>] {
                 #[napi(skip, js_name = "sigma_comm")]
-                pub sigma_comm: Vec<$NapiPolyComm>,
+                pub sigma_comm: NapiVector<$NapiPolyComm>,
                 #[napi(skip, js_name = "coefficients_comm")]
-                pub coefficients_comm: Vec<$NapiPolyComm>,
+                pub coefficients_comm: NapiVector<$NapiPolyComm>,
                 #[napi(skip, js_name = "generic_comm")]
                 pub generic_comm: $NapiPolyComm,
                 #[napi(skip, js_name = "psm_comm")]
@@ -215,9 +213,9 @@ macro_rules! impl_verification_key {
                 pub joint_lookup_used: bool,
 
                 #[napi(skip)]
-                pub lookup_table: Vec<$NapiPolyComm>,
+                pub lookup_table: NapiVector<$NapiPolyComm>,
 
-                #[napi(skip)]
+                #[napi(skip, js_name = "lookup_selectors")]
                 pub lookup_selectors: NapiLookupSelectors,
 
                 #[napi(skip)]
@@ -238,7 +236,7 @@ macro_rules! impl_verification_key {
                         lookup_table: x.lookup_table.clone().iter().map(Into::into).collect(),
                         lookup_selectors: x.lookup_selectors.clone().into(),
                         table_ids: x.table_ids.clone().map(Into::into),
-                        lookup_info: x.lookup_info.clone().into(),
+                        lookup_info: x.lookup_info.into(),
                         runtime_tables_selector: x.runtime_tables_selector.clone().map(Into::into)
                     }
                 }
@@ -256,7 +254,6 @@ macro_rules! impl_verification_key {
                     }
                 }
             }
-
 
             impl From<&NapiLookupVerifierIndex> for LookupVerifierIndex<$G> {
                 fn from(x: &NapiLookupVerifierIndex) -> Self {
@@ -278,7 +275,7 @@ macro_rules! impl_verification_key {
                         lookup_table: x.lookup_table.iter().map(Into::into).collect(),
                         lookup_selectors: x.lookup_selectors.into(),
                         table_ids: x.table_ids.map(Into::into),
-                        lookup_info: x.lookup_info.clone().into(),
+                        lookup_info: x.lookup_info.into(),
                         runtime_tables_selector: x.runtime_tables_selector.map(Into::into)
                     }
                 }
@@ -485,10 +482,9 @@ macro_rules! impl_verification_key {
                 _srs: &$NapiSrs,
                 index: String,
             ) -> napi::Result<NapiPlonkVerifierIndex> {
-                let vi: Result<VerifierIndex<$G, OpeningProof<$G>>, serde_json::Error> = serde_json::from_str(&index);
-                match vi {
+                match serde_json::from_str::<VerifierIndex<$G, OpeningProof<$G>>>(&index) {
                     Ok(vi) => Ok(NapiPlonkVerifierIndex::from(&vi)),
-                    Err(e) => Err(Error::new(Status::GenericFailure, format!("deserialize: {}", e))),
+                    Err(e) => Err(Error::new(Status::GenericFailure, e.to_string())),
                 }
             }
 
@@ -512,7 +508,7 @@ macro_rules! impl_verification_key {
                 let domain = Domain::<$F>::new(size)
                     .ok_or_else(|| Error::new(Status::InvalidArg, "failed to create evaluation domain"))?;
 
-                let shifts = KimchiShifts::new(&domain);
+                let shifts = Shifts::new(&domain);
                 let s = shifts.shifts();
 
                 Ok(NapiShifts {
@@ -535,7 +531,7 @@ macro_rules! impl_verification_key {
                         unshifted: vec![g].into(),
                     }
                 }
-                fn vec_comm(num: usize) -> Vec<$NapiPolyComm> {
+                fn vec_comm(num: usize) -> NapiVector<$NapiPolyComm> {
                     (0..num).map(|_| comm()).collect()
                 }
 
