@@ -425,6 +425,48 @@ macro_rules! impl_proof {
                 }
             }
 
+            // Map native proof + public input into a NapiProverProof wrapper so it can
+            // be returned directly to JS without an External.
+            impl From<(&ProverProof<$G, OpeningProof<$G>>, &Vec<$F>)> for NapiProverProof {
+                fn from((proof, public): (&ProverProof<$G, OpeningProof<$G>>, &Vec<$F>)) -> Self {
+                    let (scalars, comms): (Vec<Vec<$F>>, Vec<$NapiPolyComm>) = proof
+                        .prev_challenges
+                        .iter()
+                        .map(|RecursionChallenge { chals, comm }| (chals.clone(), comm.clone().into()))
+                        .unzip();
+
+                    NapiProverProof {
+                        commitments: proof.commitments.clone().into(),
+                        proof: proof.proof.clone().into(),
+                        evals: proof.evals.clone().into(),
+                        ft_eval1: proof.ft_eval1.clone().into(),
+                        public: public.clone().into_iter().map(Into::into).collect(),
+                        prev_challenges_scalars: scalars,
+                        prev_challenges_comms: comms.into(), // NapiVector<$NapiPolyComm>
+                    }
+                }
+            }
+
+            impl From<(ProverProof<$G, OpeningProof<$G>>, Vec<$F>)> for NapiProverProof {
+                fn from((proof, public): (ProverProof<$G, OpeningProof<$G>>, Vec<$F>)) -> Self {
+                    let (scalars, comms): (Vec<Vec<$F>>, Vec<$NapiPolyComm>) = proof
+                        .prev_challenges
+                        .into_iter()
+                        .map(|RecursionChallenge { chals, comm }| (chals, comm.into()))
+                        .unzip();
+
+                    NapiProverProof {
+                        commitments: proof.commitments.into(),
+                        proof: proof.proof.into(),
+                        evals: proof.evals.into(),
+                        ft_eval1: proof.ft_eval1.into(),
+                        public: public.into_iter().map(Into::into).collect(),
+                        prev_challenges_scalars: scalars,
+                        prev_challenges_comms: comms.into(),
+                    }
+                }
+            }
+
             impl FromNapiValue for [<Napi $field_name:camel OpeningProof>] {
                 unsafe fn from_napi_value(
                     env: sys::napi_env,
@@ -517,14 +559,8 @@ macro_rules! impl_proof {
                 }
             }
 
-            #[derive(Clone)]
-            pub struct [<NapiProof $field_name:camel>] {
-                pub proof: ProverProof<$G, OpeningProof<$G>>,
-                pub public_input: Vec<$F>,
-            }
-
-            type NapiProofF = [<NapiProof $field_name:camel>];
-            // type JsRuntimeTableF = [<JsRuntimeTable $field_name:camel>];
+            // Re-use the prover proof wrapper as the returned type (matching wasm binding).
+            type NapiProofF = NapiProverProof;
 
             #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_create">])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_proof_create>](
@@ -533,7 +569,29 @@ macro_rules! impl_proof {
                 runtime_tables: NapiVector<$NapiRuntimeTable>,
                 prev_challenges: NapiFlatVector<$NapiF>,
                 prev_sgs: NapiVector<$NapiG>,
-            ) -> Result<External<NapiProofF>> {
+            ) -> Result<NapiProofF> {
+                println!("Entering proof create NAPI function");
+                println!("NAPI proof_create:");
+                println!("  witness len: {}", witness.0.len());
+                println!(
+                    "  runtime_tables len: {}",
+                    runtime_tables.len()
+                );
+                println!(
+                    "  prev_challenges len (bytes): {}",
+                    prev_challenges.len()
+                );
+                println!(
+                    "  prev_sgs len: {}",
+                    prev_sgs.len()
+                );
+                println!(
+                    "  index domain d1 size: {:?}",
+                    index.0.as_ref().cs.domain.d1
+                );
+                if let Some(first) = witness.0.get(0) {
+                    println!("  witness[0] len: {}", first.len());
+                }
                 let (maybe_proof, public_input) = {
                     index
                         .0
@@ -593,10 +651,7 @@ macro_rules! impl_proof {
                 };
 
                 match maybe_proof {
-                    Ok(proof) => Ok(External::new([<NapiProof $field_name:camel>] {
-                        proof,
-                        public_input,
-                    })),
+                    Ok(proof) => Ok((proof, public_input).into()),
                     Err(err) => Err(NapiError::new(Status::GenericFailure, err.to_string())),
                 }
             }
@@ -604,11 +659,13 @@ macro_rules! impl_proof {
             #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_verify">])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_proof_verify>](
                 index: $NapiVerifierIndex,
-                proof: &External<NapiProofF>,
+                proof: NapiProofF,
             ) -> bool {
                     let group_map = <$G as CommitmentCurve>::Map::setup();
                     let verifier_index = &index.into();
-                    let (proof, public_input) = (&proof.as_ref().proof, &proof.as_ref().public_input);
+                    let proof_with_public: (ProverProof<$G, OpeningProof<$G>>, Vec<$F>) =
+                        proof.into();
+                    let (proof, public_input) = (&proof_with_public.0, &proof_with_public.1);
                     batch_verify::<
                         $G,
                         DefaultFqSponge<_, PlonkSpongeConstantsKimchi>,
@@ -624,22 +681,23 @@ macro_rules! impl_proof {
         #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_batch_verify">])]
         pub fn [<caml_pasta_ $field_name:snake _plonk_proof_batch_verify>](
                 indexes: NapiVector<$NapiVerifierIndex>,
-                proofs: &External<Vec<NapiProofF>>,
+                proofs: NapiVector<NapiProofF>,
             ) -> bool {
                 let indexes: Vec<_> = indexes.into_iter().map(Into::into).collect();
-                let proofs_ref = proofs.as_ref();
+                let proofs_native: Vec<(ProverProof<$G, OpeningProof<$G>>, Vec<$F>)> =
+                    proofs.into_iter().map(Into::into).collect();
 
-                if indexes.len() != proofs_ref.len() {
+                if indexes.len() != proofs_native.len() {
                     return false;
                 }
 
                 let contexts: Vec<_> = indexes
                     .iter()
-                    .zip(proofs_ref.iter())
-                    .map(|(index, proof)| Context {
+                    .zip(proofs_native.iter())
+                    .map(|(index, proof_with_public)| Context {
                         verifier_index: index,
-                        proof: &proof.proof,
-                        public_input: &proof.public_input,
+                        proof: &proof_with_public.0,
+                        public_input: &proof_with_public.1,
                     })
                     .collect();
 
@@ -655,7 +713,7 @@ macro_rules! impl_proof {
             }
 
             #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_dummy">])]
-            pub fn [<caml_pasta_ $field_name:snake _plonk_proof_dummy>]() -> External<NapiProofF> {
+            pub fn [<caml_pasta_ $field_name:snake _plonk_proof_dummy>]() -> NapiProofF {
                 fn comm() -> PolyComm<$G> {
                     let g = $G::generator();
                     PolyComm {
@@ -724,14 +782,14 @@ macro_rules! impl_proof {
                 };
 
                 let public = vec![$F::one(), $F::one()];
-                External::new(NapiProofF{proof: dlogproof, public_input: public})
+                (dlogproof, public).into()
             }
 
             #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_deep_copy">])]
             pub fn [<caml_pasta_ $field_name:snake "_plonk_proof_deep_copy">](
-                x: &External<NapiProofF>
-            ) -> External<NapiProofF> {
-                External::new(x.as_ref().clone())
+                x: NapiProofF
+            ) -> NapiProofF {
+                x.clone()
             }
         }
     };
