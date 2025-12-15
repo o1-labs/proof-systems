@@ -39,3 +39,7 @@ ocaml_types = ["ocaml", "ocaml-gen"]
 [[bench]]
 name = "poseidon_bench"
 harness = false
+
+[[bench]]
+name = "poseidon"
+harness = false
