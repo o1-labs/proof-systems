@@ -53,6 +53,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Changed
 - (No changes in current release)
 
+### [mina-bip32](./bip32)
+
+#### Added
+- Initial release of mina-bip32 crate for BIP32 hierarchical deterministic key derivation
+- Master key derivation using HMAC-SHA512 with "Bitcoin seed"
+- Child key derivation with secp256k1 curve order (matching Ledger hardware wallets)
+- Mina BIP44 path derivation: m/44'/12586'/account'/0/0
+- Bit masking for valid Pallas scalar field elements
+
 ### [mina-signer](./signer)
 
 #### Changed
