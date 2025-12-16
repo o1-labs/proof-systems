@@ -1,0 +1,34 @@
+[package]
+name = "ledger-test-vectors"
+version = "0.1.0"
+description = "Generate test vectors for Mina Ledger hardware wallet signing"
+repository = "https://github.com/o1-labs/proof-systems"
+homepage = "https://o1-labs.github.io/proof-systems/"
+documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+readme = "README.md"
+edition = "2021"
+license = "Apache-2.0"
+
+[[bin]]
+name = "generate-ledger-test-vectors"
+path = "src/main.rs"
+
+[dependencies]
+ark-ec.workspace = true
+ark-ff.workspace = true
+ark-serialize.workspace = true
+blake2.workspace = true
+bs58.workspace = true
+clap = { workspace = true, features = ["derive"] }
+hex.workspace = true
+mina-bip32.workspace = true
+mina-curves.workspace = true
+mina-hasher.workspace = true
+mina-signer = { path = ".." }
+num-bigint.workspace = true
+o1-utils.workspace = true
+rand.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_with.workspace = true
+sha2.workspace = true

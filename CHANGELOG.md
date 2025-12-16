@@ -64,8 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### [mina-signer](./signer)
 
-#### Changed
-- (No changes in current release)
+#### Added
+- Add ledger-test-vectors tool for generating JSON test vectors for Mina Ledger hardware wallet validation
 
 ### [mvpoly](./mvpoly)
 

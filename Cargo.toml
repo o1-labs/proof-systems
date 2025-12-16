@@ -19,6 +19,7 @@ members = [
   "poseidon",
   "poseidon/export_test_vectors",
   "signer",
+  "signer/ledger-test-vectors",
   "tools/kimchi-visu",
   "turshi",
   "utils",
