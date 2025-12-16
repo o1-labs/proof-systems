@@ -146,10 +146,10 @@ pub struct ProverCommitments<G: AffineRepr> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverProof<G, OpeningProof, const ROUNDS: usize>
+pub struct ProverProof<G, OpeningProof, const FULL_ROUNDS: usize>
 where
     G: CommitmentCurve,
-    OpeningProof: OpenProof<G, ROUNDS>,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
 {
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,

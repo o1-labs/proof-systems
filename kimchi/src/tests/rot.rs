@@ -44,7 +44,7 @@ type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams, 55>;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
 
-fn create_rot_gadget<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn create_rot_gadget<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     rot: u32,
     side: RotMode,
 ) -> Vec<CircuitGate<G::ScalarField>>
@@ -61,7 +61,7 @@ where
     gates
 }
 
-fn create_rot_witness<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn create_rot_witness<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     word: u64,
     rot: u32,
     side: RotMode,
@@ -76,7 +76,7 @@ where
     witness
 }
 
-fn create_test_constraint_system<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn create_test_constraint_system<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     rot: u32,
     side: RotMode,
 ) -> ConstraintSystem<G::ScalarField>
@@ -84,31 +84,31 @@ where
     G::BaseField: PrimeField,
 {
     // gate for the zero value
-    let gates = create_rot_gadget::<ROUNDS, G>(rot, side);
+    let gates = create_rot_gadget::<FULL_ROUNDS, G>(rot, side);
 
     ConstraintSystem::create(gates).build().unwrap()
 }
 
 // Function to create a prover and verifier to test the ROT circuit
-fn prove_and_verify<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSponge, EFrSponge>()
+fn prove_and_verify<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, EFqSponge, EFrSponge>()
 where
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
-    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
 {
     let rng = &mut o1_utils::tests::make_test_rng(None);
     let rot = rng.gen_range(1..64);
     // Create
-    let gates = create_rot_gadget::<ROUNDS, G>(rot, RotMode::Left);
+    let gates = create_rot_gadget::<FULL_ROUNDS, G>(rot, RotMode::Left);
 
     // Create input
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
 
     // Create witness
-    let witness = create_rot_witness::<ROUNDS, G>(word, rot, RotMode::Left);
+    let witness = create_rot_witness::<FULL_ROUNDS, G>(word, rot, RotMode::Left);
 
-    TestFramework::<ROUNDS, G>::default()
+    TestFramework::<FULL_ROUNDS, G>::default()
         .gates(gates)
         .witness(witness)
         .setup()
@@ -123,15 +123,15 @@ fn test_prove_and_verify() {
     prove_and_verify::<55, Pallas, PallasBaseSponge, PallasScalarSponge>();
 }
 
-fn test_rot<const ROUNDS: usize, G>(word: u64, rot: u32, side: RotMode)
+fn test_rot<const FULL_ROUNDS: usize, G>(word: u64, rot: u32, side: RotMode)
 where
-    G: KimchiCurve<ROUNDS>,
+    G: KimchiCurve<FULL_ROUNDS>,
     G::BaseField: PrimeField,
 {
-    let (witness, cs) = setup_rot::<ROUNDS, G>(word, rot, side);
+    let (witness, cs) = setup_rot::<FULL_ROUNDS, G>(word, rot, side);
     for row in 0..=2 {
         assert_eq!(
-            cs.gates[row].verify_witness::<ROUNDS, G>(
+            cs.gates[row].verify_witness::<FULL_ROUNDS, G>(
                 row,
                 &witness,
                 &cs,
@@ -143,7 +143,7 @@ where
 }
 
 // Creates constraint system and witness for rotation
-fn setup_rot<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn setup_rot<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     word: u64,
     rot: u32,
     side: RotMode,
@@ -154,9 +154,9 @@ fn setup_rot<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
 where
     G::BaseField: PrimeField,
 {
-    let cs = create_test_constraint_system::<ROUNDS, G>(rot, side);
+    let cs = create_test_constraint_system::<FULL_ROUNDS, G>(rot, side);
 
-    let witness = create_rot_witness::<ROUNDS, G>(word, rot, side);
+    let witness = create_rot_witness::<FULL_ROUNDS, G>(word, rot, side);
 
     if side == RotMode::Left {
         assert_eq!(G::ScalarField::from(word.rotate_left(rot)), witness[1][1]);

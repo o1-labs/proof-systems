@@ -51,13 +51,13 @@ fn heap_allocated() -> usize {
 
 #[derive(Default, Clone)]
 pub(crate) struct TestFramework<
-    const ROUNDS: usize,
-    G: KimchiCurve<ROUNDS>,
-    OpeningProof = DlogOpeningProof<G, ROUNDS>,
+    const FULL_ROUNDS: usize,
+    G: KimchiCurve<FULL_ROUNDS>,
+    OpeningProof = DlogOpeningProof<G, FULL_ROUNDS>,
 > where
     G::BaseField: PrimeField,
-    OpeningProof: OpenProof<G, ROUNDS>,
-    VerifierIndex<ROUNDS, G, OpeningProof::SRS>: Clone,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
 {
     gates: Option<Vec<CircuitGate<G::ScalarField>>>,
     witness: Option<[Vec<G::ScalarField>; COLUMNS]>,
@@ -71,29 +71,29 @@ pub(crate) struct TestFramework<
     override_srs_size: Option<usize>,
     lazy_mode: bool,
 
-    prover_index: Option<ProverIndex<ROUNDS, G, OpeningProof::SRS>>,
-    verifier_index: Option<VerifierIndex<ROUNDS, G, OpeningProof::SRS>>,
+    prover_index: Option<ProverIndex<FULL_ROUNDS, G, OpeningProof::SRS>>,
+    verifier_index: Option<VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>>,
 
     with_logs: bool,
 }
 
 #[derive(Clone)]
 pub(crate) struct TestRunner<
-    const ROUNDS: usize,
-    G: KimchiCurve<ROUNDS>,
-    OpeningProof = DlogOpeningProof<G, ROUNDS>,
->(TestFramework<ROUNDS, G, OpeningProof>)
+    const FULL_ROUNDS: usize,
+    G: KimchiCurve<FULL_ROUNDS>,
+    OpeningProof = DlogOpeningProof<G, FULL_ROUNDS>,
+>(TestFramework<FULL_ROUNDS, G, OpeningProof>)
 where
     G::BaseField: PrimeField,
-    OpeningProof: OpenProof<G, ROUNDS>,
-    VerifierIndex<ROUNDS, G, OpeningProof::SRS>: Clone;
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone;
 
-impl<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, OpeningProof>
-    TestFramework<ROUNDS, G, OpeningProof>
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, OpeningProof>
+    TestFramework<FULL_ROUNDS, G, OpeningProof>
 where
     G::BaseField: PrimeField,
-    OpeningProof: OpenProof<G, ROUNDS>,
-    VerifierIndex<ROUNDS, G, OpeningProof::SRS>: Clone,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
 {
     #[must_use]
     pub(crate) fn gates(mut self, gates: Vec<CircuitGate<G::ScalarField>>) -> Self {
@@ -164,7 +164,7 @@ where
     pub(crate) fn setup_with_custom_srs<F: FnMut(D<G::ScalarField>, usize) -> OpeningProof::SRS>(
         mut self,
         get_srs: F,
-    ) -> TestRunner<ROUNDS, G, OpeningProof> {
+    ) -> TestRunner<FULL_ROUNDS, G, OpeningProof> {
         let start = Instant::now();
 
         let lookup_tables = core::mem::take(&mut self.lookup_tables);
@@ -200,19 +200,19 @@ where
     }
 }
 
-impl<const ROUNDS: usize, G: KimchiCurve<ROUNDS>> TestFramework<ROUNDS, G>
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>> TestFramework<FULL_ROUNDS, G>
 where
     G::BaseField: PrimeField,
 {
     /// creates the indexes
     #[must_use]
-    pub(crate) fn setup(mut self) -> TestRunner<ROUNDS, G> {
+    pub(crate) fn setup(mut self) -> TestRunner<FULL_ROUNDS, G> {
         let start = Instant::now();
 
         let lookup_tables = core::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = self.runtime_tables_setup.take();
 
-        let index = new_index_for_test_with_lookups::<ROUNDS, G>(
+        let index = new_index_for_test_with_lookups::<FULL_ROUNDS, G>(
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             self.num_prev_challenges,
@@ -242,12 +242,13 @@ where
     }
 }
 
-impl<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, OpeningProof> TestRunner<ROUNDS, G, OpeningProof>
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, OpeningProof>
+    TestRunner<FULL_ROUNDS, G, OpeningProof>
 where
     G::ScalarField: PrimeField + Clone,
     G::BaseField: PrimeField + Clone,
-    OpeningProof: OpenProof<G, ROUNDS>,
-    VerifierIndex<ROUNDS, G, OpeningProof::SRS>: Clone,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
 {
     #[must_use]
     pub(crate) fn runtime_tables(
@@ -270,7 +271,7 @@ where
         self
     }
 
-    pub(crate) fn prover_index(&self) -> &ProverIndex<ROUNDS, G, OpeningProof::SRS> {
+    pub(crate) fn prover_index(&self) -> &ProverIndex<FULL_ROUNDS, G, OpeningProof::SRS> {
         self.0.prover_index.as_ref().unwrap()
     }
 
@@ -278,9 +279,9 @@ where
     /// raises an exception
     pub(crate) fn prove<EFqSponge, EFrSponge>(self) -> Result<(), String>
     where
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         EFrSponge: FrSponge<G::ScalarField>,
-        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
     {
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
@@ -295,7 +296,7 @@ where
 
         let group_map = <G as CommitmentCurve>::Map::setup();
 
-        ProverProof::<G, OpeningProof, ROUNDS>::create_recursive::<EFqSponge, EFrSponge, _>(
+        ProverProof::<G, OpeningProof, FULL_ROUNDS>::create_recursive::<EFqSponge, EFrSponge, _>(
             &group_map,
             witness,
             &self.0.runtime_tables,
@@ -311,9 +312,9 @@ where
     /// Create and verify a proof
     pub(crate) fn prove_and_verify<EFqSponge, EFrSponge>(self) -> Result<(), String>
     where
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         EFrSponge: FrSponge<G::ScalarField>
-            + From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+            + From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
     {
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
@@ -361,7 +362,7 @@ where
 
         // verify the proof (propagate any errors)
         let start = Instant::now();
-        verify::<ROUNDS, G, EFqSponge, EFrSponge, OpeningProof>(
+        verify::<FULL_ROUNDS, G, EFqSponge, EFrSponge, OpeningProof>(
             &group_map,
             &self.0.verifier_index.unwrap(),
             &proof,
@@ -381,18 +382,19 @@ where
     }
 }
 
-impl<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, OpeningProof> TestRunner<ROUNDS, G, OpeningProof>
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, OpeningProof>
+    TestRunner<FULL_ROUNDS, G, OpeningProof>
 where
     G::ScalarField: PrimeField + Clone,
     G::BaseField: PrimeField + Clone,
-    OpeningProof: OpenProof<G, ROUNDS>
+    OpeningProof: OpenProof<G, FULL_ROUNDS>
         + Clone
         + PartialEq
         + core::fmt::Debug
         + serde::Serialize
         + for<'a> serde::Deserialize<'a>,
     OpeningProof::SRS: Clone,
-    VerifierIndex<ROUNDS, G, OpeningProof>: Clone,
+    VerifierIndex<FULL_ROUNDS, G, OpeningProof>: Clone,
 {
     /// Regression test: Create a proof and check that is equal to
     /// the given serialized implementation (and that deserializes
@@ -407,9 +409,9 @@ where
         rng: &mut RNG,
     ) -> Result<(), String>
     where
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         EFrSponge: FrSponge<G::ScalarField>,
-        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
     {
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
@@ -424,17 +426,20 @@ where
 
         let group_map = <G as CommitmentCurve>::Map::setup();
 
-        let proof =
-            ProverProof::<G, OpeningProof, ROUNDS>::create_recursive::<EFqSponge, EFrSponge, _>(
-                &group_map,
-                witness,
-                &self.0.runtime_tables,
-                &prover,
-                self.0.recursion,
-                None,
-                rng,
-            )
-            .map_err(|e| e.to_string())?;
+        let proof = ProverProof::<G, OpeningProof, FULL_ROUNDS>::create_recursive::<
+            EFqSponge,
+            EFrSponge,
+            _,
+        >(
+            &group_map,
+            witness,
+            &self.0.runtime_tables,
+            &prover,
+            self.0.recursion,
+            None,
+            rng,
+        )
+        .map_err(|e| e.to_string())?;
 
         o1_utils::serialization::test_generic_serialization_regression_serde(proof, buf_expected);
 

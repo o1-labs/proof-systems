@@ -142,7 +142,10 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `Poseidon` gate, or `state` does not match after `permutation`.
-    pub fn verify_poseidon<const ROUNDS: usize, G: KimchiCurve<ROUNDS, ScalarField = F>>(
+    pub fn verify_poseidon<
+        const FULL_ROUNDS: usize,
+        G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    >(
         &self,
         row: usize,
         // TODO(mimoo): we should just pass two rows instead of the whole witness
@@ -228,9 +231,9 @@ impl<F: PrimeField> CircuitGate<F> {
 ///
 /// Will panic if the `circuit` has `INITIAL_ARK`.
 #[allow(clippy::assertions_on_constants)]
-pub fn generate_witness<const ROUNDS: usize, F: Field>(
+pub fn generate_witness<const FULL_ROUNDS: usize, F: Field>(
     row: usize,
-    params: &'static ArithmeticSpongeParams<F, ROUNDS>,
+    params: &'static ArithmeticSpongeParams<F, FULL_ROUNDS>,
     witness_cols: &mut [Vec<F>; COLUMNS],
     input: [F; SPONGE_WIDTH],
 ) {
@@ -240,7 +243,7 @@ pub fn generate_witness<const ROUNDS: usize, F: Field>(
     witness_cols[2][row] = input[2];
 
     // set the sponge state
-    let mut sponge = ArithmeticSponge::<F, PlonkSpongeConstantsKimchi, ROUNDS>::new(params);
+    let mut sponge = ArithmeticSponge::<F, PlonkSpongeConstantsKimchi, FULL_ROUNDS>::new(params);
     sponge.state = input.into();
 
     // for the poseidon rows

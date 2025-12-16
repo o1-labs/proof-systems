@@ -17,7 +17,7 @@ use poly_commitment::{
 };
 use rand::thread_rng;
 
-pub fn lookup_verify<const ROUNDS: usize, G, EFqSponge, EFrSponge>(
+pub fn lookup_verify<const FULL_ROUNDS: usize, G, EFqSponge, EFrSponge>(
     // input dependent of main proto
     beta_challenge: G::ScalarField,
     gamma_challenge: G::ScalarField,
@@ -26,15 +26,15 @@ pub fn lookup_verify<const ROUNDS: usize, G, EFqSponge, EFrSponge>(
     // fixed input
     // TODO: we don't need the whole domain
     domain: EvaluationDomains<G::ScalarField>,
-    srs: &<OpeningProof<G, ROUNDS> as OpenProof<G, ROUNDS>>::SRS,
+    srs: &<OpeningProof<G, FULL_ROUNDS> as OpenProof<G, FULL_ROUNDS>>::SRS,
     // proof
-    proof: &Proof<ROUNDS, G>,
+    proof: &Proof<FULL_ROUNDS, G>,
 ) -> bool
 where
-    G: KimchiCurve<ROUNDS>,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+    G: KimchiCurve<FULL_ROUNDS>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
-    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
     G::BaseField: PrimeField,
 {
     let Proof {

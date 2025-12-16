@@ -51,8 +51,8 @@ fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
 /// - Add the round constants to the state.
 ///
 /// The function has side-effect and the parameter state is modified.
-pub(crate) fn full_round<F: Field, SC: SpongeConstants, const ROUNDS: usize>(
-    params: &ArithmeticSpongeParams<F, ROUNDS>,
+pub(crate) fn full_round<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize>(
+    params: &ArithmeticSpongeParams<F, FULL_ROUNDS>,
     state: &mut [F],
     r: usize,
 ) {
@@ -68,8 +68,8 @@ pub(crate) fn full_round<F: Field, SC: SpongeConstants, const ROUNDS: usize>(
     }
 }
 
-pub fn half_rounds<F: Field, SC: SpongeConstants, const ROUNDS: usize>(
-    params: &ArithmeticSpongeParams<F, ROUNDS>,
+pub fn half_rounds<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize>(
+    params: &ArithmeticSpongeParams<F, FULL_ROUNDS>,
     state: &mut [F],
 ) {
     for r in 0..SC::PERM_HALF_ROUNDS_FULL {
@@ -113,8 +113,8 @@ pub fn half_rounds<F: Field, SC: SpongeConstants, const ROUNDS: usize>(
     }
 }
 
-pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants, const ROUNDS: usize>(
-    params: &ArithmeticSpongeParams<F, ROUNDS>,
+pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize>(
+    params: &ArithmeticSpongeParams<F, FULL_ROUNDS>,
     state: &mut [F],
 ) {
     if SC::PERM_HALF_ROUNDS_FULL == 0 {
@@ -130,14 +130,14 @@ pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants, const ROUNDS: usize>
                 });
 
             for r in 0..SC::PERM_ROUNDS_FULL {
-                full_round::<_, SC, ROUNDS>(params, state, r + 1);
+                full_round::<_, SC, FULL_ROUNDS>(params, state, r + 1);
             }
         } else {
             for r in 0..SC::PERM_ROUNDS_FULL {
-                full_round::<_, SC, ROUNDS>(params, state, r);
+                full_round::<_, SC, FULL_ROUNDS>(params, state, r);
             }
         }
     } else {
-        half_rounds::<_, SC, ROUNDS>(params, state);
+        half_rounds::<_, SC, FULL_ROUNDS>(params, state);
     }
 }

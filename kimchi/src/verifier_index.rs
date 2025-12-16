@@ -56,7 +56,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct VerifierIndex<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, Srs> {
+pub struct VerifierIndex<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, Srs> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -152,7 +152,8 @@ pub struct VerifierIndex<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, Srs> {
 }
 //~spec:endcode
 
-impl<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, Srs: SRS<G>> ProverIndex<ROUNDS, G, Srs>
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, Srs: SRS<G>>
+    ProverIndex<FULL_ROUNDS, G, Srs>
 where
     G::BaseField: PrimeField,
 {
@@ -161,9 +162,9 @@ where
     /// # Panics
     ///
     /// Will panic if `srs` cannot be in `cell`.
-    pub fn verifier_index(&self) -> VerifierIndex<ROUNDS, G, Srs>
+    pub fn verifier_index(&self) -> VerifierIndex<FULL_ROUNDS, G, Srs>
     where
-        VerifierIndex<ROUNDS, G, Srs>: Clone,
+        VerifierIndex<FULL_ROUNDS, G, Srs>: Clone,
     {
         if let Some(verifier_index) = &self.verifier_index {
             return verifier_index.clone();
@@ -313,7 +314,9 @@ where
     }
 }
 
-impl<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, Srs> VerifierIndex<ROUNDS, G, Srs> {
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, Srs>
+    VerifierIndex<FULL_ROUNDS, G, Srs>
+{
     /// Gets srs from [`VerifierIndex`] lazily
     pub fn srs(&self) -> &Arc<Srs>
     where
@@ -393,7 +396,7 @@ impl<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, Srs> VerifierIndex<ROUNDS, G, 
 
     /// Compute the digest of the [`VerifierIndex`], which can be used for the Fiat-Shamir
     /// transformation while proving / verifying.
-    pub fn digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>>(
+    pub fn digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>>(
         &self,
     ) -> G::BaseField {
         let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());

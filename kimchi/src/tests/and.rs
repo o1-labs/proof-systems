@@ -32,9 +32,11 @@ type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
 type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams, 55>;
 type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams, 55>;
 
-fn create_test_gates_and<const ROUNDS: usize, G>(bytes: usize) -> Vec<CircuitGate<G::ScalarField>>
+fn create_test_gates_and<const FULL_ROUNDS: usize, G>(
+    bytes: usize,
+) -> Vec<CircuitGate<G::ScalarField>>
 where
-    G: KimchiCurve<ROUNDS>,
+    G: KimchiCurve<FULL_ROUNDS>,
     G::BaseField: PrimeField,
 {
     let mut gates = vec![];
@@ -44,13 +46,13 @@ where
 }
 
 // Manually checks the AND of the witness
-fn check_and<const ROUNDS: usize, G>(
+fn check_and<const FULL_ROUNDS: usize, G>(
     witness: &[Vec<G::ScalarField>; COLUMNS],
     bytes: usize,
     input1: G::ScalarField,
     input2: G::ScalarField,
 ) where
-    G: KimchiCurve<ROUNDS>,
+    G: KimchiCurve<FULL_ROUNDS>,
 {
     let and_row = xor::num_xors(bytes * 8) + 1;
     let big_in1 = input1.to_biguint();
@@ -66,7 +68,7 @@ fn check_and<const ROUNDS: usize, G>(
     );
 }
 
-fn setup_and<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn setup_and<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     input1: Option<G::ScalarField>,
     input2: Option<G::ScalarField>,
     bytes: usize,
@@ -79,7 +81,7 @@ where
 {
     let rng = &mut o1_utils::tests::make_test_rng(None);
 
-    let gates = create_test_gates_and::<ROUNDS, G>(bytes);
+    let gates = create_test_gates_and::<FULL_ROUNDS, G>(bytes);
     let cs = ConstraintSystem::create(gates).build().unwrap();
 
     // Initialize inputs
@@ -88,12 +90,12 @@ where
 
     let witness = and::create_and_witness(input1, input2, bytes);
 
-    check_and::<ROUNDS, G>(&witness, bytes, input1, input2);
+    check_and::<FULL_ROUNDS, G>(&witness, bytes, input1, input2);
 
     (cs, witness)
 }
 
-fn test_and<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn test_and<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     input1: Option<G::ScalarField>,
     input2: Option<G::ScalarField>,
     bytes: usize,
@@ -101,11 +103,11 @@ fn test_and<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
 where
     G::BaseField: PrimeField,
 {
-    let (cs, witness) = setup_and::<ROUNDS, G>(input1, input2, bytes);
+    let (cs, witness) = setup_and::<FULL_ROUNDS, G>(input1, input2, bytes);
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<ROUNDS, G>(
+            cs.gates[row].verify_witness::<FULL_ROUNDS, G>(
                 row,
                 &witness,
                 &cs,
@@ -119,12 +121,13 @@ where
 }
 
 // Function to create a prover and verifier to test the AND circuit
-fn prove_and_verify<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSponge, EFrSponge>(bytes: usize)
-where
+fn prove_and_verify<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, EFqSponge, EFrSponge>(
+    bytes: usize,
+) where
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
-    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
 {
     let rng = &mut o1_utils::tests::make_test_rng(None);
 
@@ -139,7 +142,7 @@ where
     // Create witness
     let witness = and::create_and_witness(input1, input2, bytes);
 
-    TestFramework::<ROUNDS, G>::default()
+    TestFramework::<FULL_ROUNDS, G>::default()
         .gates(gates)
         .witness(witness)
         .setup()
@@ -148,15 +151,15 @@ where
 }
 
 /// Generic test for checking serialization & regression of AND circuit.
-fn prove_and_check_serialization_regression<const ROUNDS: usize, G, EFqSponge, EFrSponge>(
+fn prove_and_check_serialization_regression<const FULL_ROUNDS: usize, G, EFqSponge, EFrSponge>(
     bytes: usize,
     buf_expected: Vec<u8>,
 ) where
-    G: KimchiCurve<ROUNDS>,
+    G: KimchiCurve<FULL_ROUNDS>,
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
-    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
 {
     const RNG_SEED: [u8; 32] = [
         255, 27, 111, 55, 22, 200, 10, 1, 0, 136, 56, 16, 2, 30, 31, 77, 18, 11, 40, 53, 5, 8, 189,
@@ -175,7 +178,7 @@ fn prove_and_check_serialization_regression<const ROUNDS: usize, G, EFqSponge, E
     // Create witness
     let witness = and::create_and_witness(input1, input2, bytes);
 
-    TestFramework::<ROUNDS, G>::default()
+    TestFramework::<FULL_ROUNDS, G>::default()
         .gates(gates)
         .witness(witness)
         .setup()
@@ -269,7 +272,7 @@ fn test_and_overflow_one() {
     test_and::<55, Pallas>(Some(input), Some(VestaField::from(1u8)), bytes);
 }
 
-fn verify_bad_and_decomposition<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn verify_bad_and_decomposition<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     witness: &mut [Vec<G::ScalarField>; COLUMNS],
     cs: ConstraintSystem<G::ScalarField>,
 ) where
@@ -286,7 +289,12 @@ fn verify_bad_and_decomposition<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
         // Update copy constraints of generic gate
         if col < 2 {
             assert_eq!(
-                cs.gates[0].verify_witness::<ROUNDS, G>(0, witness, &cs, &witness[0][0..cs.public]),
+                cs.gates[0].verify_witness::<FULL_ROUNDS, G>(
+                    0,
+                    witness,
+                    &cs,
+                    &witness[0][0..cs.public]
+                ),
                 Err(CircuitGateError::CopyConstraint {
                     typ: GateType::Xor16,
                     src: Wire { row: xor_row, col },
@@ -297,7 +305,12 @@ fn verify_bad_and_decomposition<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
         }
         if col == 2 {
             assert_eq!(
-                cs.gates[0].verify_witness::<ROUNDS, G>(0, witness, &cs, &witness[0][0..cs.public]),
+                cs.gates[0].verify_witness::<FULL_ROUNDS, G>(
+                    0,
+                    witness,
+                    &cs,
+                    &witness[0][0..cs.public]
+                ),
                 Err(CircuitGateError::CopyConstraint {
                     typ: GateType::Xor16,
                     src: Wire { row: xor_row, col },
@@ -310,7 +323,12 @@ fn verify_bad_and_decomposition<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
             witness[4][and_row] += G::ScalarField::one();
         }
         assert_eq!(
-            cs.gates[0].verify_witness::<ROUNDS, G>(0, witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[0].verify_witness::<FULL_ROUNDS, G>(
+                0,
+                witness,
+                &cs,
+                &witness[0][0..cs.public]
+            ),
             Err(CircuitGateError::Constraint(GateType::Xor16, bad))
         );
         witness[col][xor_row] -= G::ScalarField::one();
@@ -323,7 +341,7 @@ fn verify_bad_and_decomposition<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
     }
     // undo changes
     assert_eq!(
-        cs.gates[0].verify_witness::<ROUNDS, G>(0, witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[0].verify_witness::<FULL_ROUNDS, G>(0, witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }

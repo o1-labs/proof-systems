@@ -74,12 +74,12 @@ where
 /// # Panics
 ///
 /// Will panic if `TinyTemplate::render()` returns `Error` or `std::fs::File::create()` returns `Error`.
-pub fn visu<const ROUNDS: usize, G, Srs>(
-    index: &ProverIndex<ROUNDS, G, Srs>,
+pub fn visu<const FULL_ROUNDS: usize, G, Srs>(
+    index: &ProverIndex<FULL_ROUNDS, G, Srs>,
     witness: Option<Witness<G::ScalarField>>,
 ) where
     Srs: SRS<G>,
-    G: KimchiCurve<ROUNDS>,
+    G: KimchiCurve<FULL_ROUNDS>,
     G::BaseField: PrimeField,
 {
     // serialize index

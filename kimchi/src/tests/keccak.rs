@@ -11,7 +11,7 @@ use mina_curves::pasta::Pallas;
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, FieldHelpers};
 
-fn create_keccak_witness<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn create_keccak_witness<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     message: BigUint,
 ) -> [Vec<G::ScalarField>; KECCAK_COLS]
 where
@@ -65,11 +65,13 @@ fn eprint_witness<F: Field>(witness: &[Vec<F>; KECCAK_COLS], round: usize) {
 }
 
 // Sets up test for a given message and desired input bytelength
-fn setup_keccak_test<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(message: BigUint) -> BigUint
+fn setup_keccak_test<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
+    message: BigUint,
+) -> BigUint
 where
     G::BaseField: PrimeField,
 {
-    let witness = create_keccak_witness::<ROUNDS, G>(message);
+    let witness = create_keccak_witness::<FULL_ROUNDS, G>(message);
 
     for r in 1..=24 {
         eprint_witness::<G::ScalarField>(&witness, r);

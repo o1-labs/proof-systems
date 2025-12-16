@@ -62,17 +62,17 @@ impl<G: AffineRepr> ColumnEvaluations<G::ScalarField> for ColumnEval<'_, G> {
     }
 }
 
-pub fn verify<const ROUNDS: usize, G, EFqSponge, EFrSponge>(
+pub fn verify<const FULL_ROUNDS: usize, G, EFqSponge, EFrSponge>(
     domain: EvaluationDomains<G::ScalarField>,
-    srs: &<OpeningProof<G, ROUNDS> as OpenProof<G, ROUNDS>>::SRS,
+    srs: &<OpeningProof<G, FULL_ROUNDS> as OpenProof<G, FULL_ROUNDS>>::SRS,
     constraints: &[E<G::ScalarField>],
-    proof: &Proof<ROUNDS, G>,
+    proof: &Proof<FULL_ROUNDS, G>,
 ) -> bool
 where
-    G: KimchiCurve<ROUNDS>,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+    G: KimchiCurve<FULL_ROUNDS>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
-    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
     <G as AffineRepr>::BaseField: PrimeField,
 {
     let Proof {

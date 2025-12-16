@@ -12,11 +12,11 @@ pub struct WitnessColumns<G, S> {
     pub selector: S,
 }
 
-pub struct ProofInputs<const ROUNDS: usize, G: KimchiCurve<ROUNDS>> {
+pub struct ProofInputs<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>> {
     pub evaluations: WitnessColumns<Vec<G::ScalarField>, Vec<G::ScalarField>>,
 }
 
-impl<const ROUNDS: usize, G: KimchiCurve<ROUNDS>> ProofInputs<ROUNDS, G> {
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>> ProofInputs<FULL_ROUNDS, G> {
     pub fn new(domain_size: usize) -> Self {
         ProofInputs {
             evaluations: WitnessColumns {
@@ -32,12 +32,12 @@ impl<const ROUNDS: usize, G: KimchiCurve<ROUNDS>> ProofInputs<ROUNDS, G> {
 }
 
 // FIXME: should we blind the commitment?
-pub struct Proof<const ROUNDS: usize, G: KimchiCurve<ROUNDS>> {
+pub struct Proof<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>> {
     pub commitments: WitnessColumns<PolyComm<G>, [PolyComm<G>; N_MIPS_SEL_COLS]>,
     pub zeta_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]>,
     pub zeta_omega_evaluations: WitnessColumns<G::ScalarField, [G::ScalarField; N_MIPS_SEL_COLS]>,
     pub quotient_commitment: PolyComm<G>,
     pub quotient_evaluations: PointEvaluations<Vec<G::ScalarField>>,
     /// IPA opening proof
-    pub opening_proof: OpeningProof<G, ROUNDS>,
+    pub opening_proof: OpeningProof<G, FULL_ROUNDS>,
 }

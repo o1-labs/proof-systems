@@ -38,11 +38,11 @@ pub struct TestVector {
 
 /// Computes the poseidon hash of several field elements.
 /// Uses the 'basic' configuration with N states and M rounds.
-fn poseidon<SC: SpongeConstants, const ROUNDS: usize>(
+fn poseidon<SC: SpongeConstants, const FULL_ROUNDS: usize>(
     input: &[Fp],
-    params: &'static ArithmeticSpongeParams<Fp, ROUNDS>,
+    params: &'static ArithmeticSpongeParams<Fp, FULL_ROUNDS>,
 ) -> Fp {
-    let mut s = Poseidon::<Fp, SC, ROUNDS>::new(params);
+    let mut s = Poseidon::<Fp, SC, FULL_ROUNDS>::new(params);
     s.absorb(input);
     s.squeeze()
 }

@@ -126,7 +126,10 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `GateType::EndoMul`, or `constraint evaluation` fails.
-    pub fn verify_endomul<const ROUNDS: usize, G: KimchiCurve<ROUNDS, ScalarField = F>>(
+    pub fn verify_endomul<
+        const FULL_ROUNDS: usize,
+        G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    >(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],

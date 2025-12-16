@@ -192,10 +192,10 @@ where
     }
 }
 
-impl<const ROUNDS: usize, F, G, Srs> ProverIndex<ROUNDS, G, Srs>
+impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
 where
     F: PrimeField,
-    G: KimchiCurve<ROUNDS, ScalarField = F>,
+    G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
     Srs: poly_commitment::SRS<G>,
 {
     /// permutation quotient poly contribution computation
@@ -418,10 +418,10 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-impl<const ROUNDS: usize, F, G, Srs> ProverIndex<ROUNDS, G, Srs>
+impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
 where
     F: PrimeField,
-    G: KimchiCurve<ROUNDS, ScalarField = F>,
+    G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
     Srs: poly_commitment::SRS<G>,
 {
     /// permutation aggregation polynomial computation

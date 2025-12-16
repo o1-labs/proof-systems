@@ -30,7 +30,9 @@ pub trait FrSponge<Fr: Field> {
     fn absorb_evaluations(&mut self, e: &ProofEvaluations<PointEvaluations<Vec<Fr>>>);
 }
 
-impl<const ROUNDS: usize, Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC, ROUNDS> {
+impl<const FULL_ROUNDS: usize, Fr: PrimeField> FrSponge<Fr>
+    for DefaultFrSponge<Fr, SC, FULL_ROUNDS>
+{
     fn absorb(&mut self, x: &Fr) {
         self.last_squeezed = vec![];
         self.sponge.absorb(&[*x]);

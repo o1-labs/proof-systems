@@ -40,23 +40,28 @@ pub type Result<T> = core::result::Result<T, VerifyError>;
 #[derive(Debug)]
 pub struct Context<
     'a,
-    const ROUNDS: usize,
-    G: KimchiCurve<ROUNDS>,
-    OpeningProof: OpenProof<G, ROUNDS>,
+    const FULL_ROUNDS: usize,
+    G: KimchiCurve<FULL_ROUNDS>,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
     SRS,
 > {
     /// The [VerifierIndex] associated to the proof
-    pub verifier_index: &'a VerifierIndex<ROUNDS, G, SRS>,
+    pub verifier_index: &'a VerifierIndex<FULL_ROUNDS, G, SRS>,
 
     /// The proof to verify
-    pub proof: &'a ProverProof<G, OpeningProof, ROUNDS>,
+    pub proof: &'a ProverProof<G, OpeningProof, FULL_ROUNDS>,
 
     /// The public input used in the creation of the proof
     pub public_input: &'a [G::ScalarField],
 }
 
-impl<'a, const ROUNDS: usize, G: KimchiCurve<ROUNDS>, OpeningProof: OpenProof<G, ROUNDS>, SRS>
-    Context<'a, ROUNDS, G, OpeningProof, SRS>
+impl<
+        'a,
+        const FULL_ROUNDS: usize,
+        G: KimchiCurve<FULL_ROUNDS>,
+        OpeningProof: OpenProof<G, FULL_ROUNDS>,
+        SRS,
+    > Context<'a, FULL_ROUNDS, G, OpeningProof, SRS>
 {
     pub fn get_column(&self, col: Column) -> Option<&'a PolyComm<G>> {
         use Column::*;
@@ -103,10 +108,10 @@ impl<'a, const ROUNDS: usize, G: KimchiCurve<ROUNDS>, OpeningProof: OpenProof<G,
     }
 }
 
-impl<const ROUNDS: usize, G, OpeningProof> ProverProof<G, OpeningProof, ROUNDS>
+impl<const FULL_ROUNDS: usize, G, OpeningProof> ProverProof<G, OpeningProof, FULL_ROUNDS>
 where
-    G: KimchiCurve<ROUNDS>,
-    OpeningProof: OpenProof<G, ROUNDS>,
+    G: KimchiCurve<FULL_ROUNDS>,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
     G::BaseField: PrimeField,
 {
     /// This function runs the random oracle argument
@@ -120,14 +125,14 @@ where
     /// Will panic if `PolishToken` evaluation is invalid.
     pub fn oracles<EFqSponge, EFrSponge, Srs>(
         &self,
-        index: &VerifierIndex<ROUNDS, G, Srs>,
+        index: &VerifierIndex<FULL_ROUNDS, G, Srs>,
         public_comm: &PolyComm<G>,
         public_input: Option<&[G::ScalarField]>,
-    ) -> Result<OraclesResult<ROUNDS, G, EFqSponge>>
+    ) -> Result<OraclesResult<FULL_ROUNDS, G, EFqSponge>>
     where
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         EFrSponge: FrSponge<G::ScalarField>,
-        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
     {
         //~
         //~ #### Fiat-Shamir argument
@@ -632,13 +637,13 @@ where
 /// Enforce the length of evaluations inside [`ProverProof`].
 /// Atm, the length of evaluations(both `zeta` and `zeta_omega`) SHOULD be 1.
 /// The length value is prone to future change.
-fn check_proof_evals_len<const ROUNDS: usize, G, OpeningProof>(
-    proof: &ProverProof<G, OpeningProof, ROUNDS>,
+fn check_proof_evals_len<const FULL_ROUNDS: usize, G, OpeningProof>(
+    proof: &ProverProof<G, OpeningProof, FULL_ROUNDS>,
     expected_size: usize,
 ) -> Result<()>
 where
-    OpeningProof: OpenProof<G, ROUNDS>,
-    G: KimchiCurve<ROUNDS>,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    G: KimchiCurve<FULL_ROUNDS>,
     G::BaseField: PrimeField,
 {
     let ProofEvaluations {
@@ -773,17 +778,24 @@ where
     Ok(())
 }
 
-fn to_batch<'b, const ROUNDS: usize, G, EFqSponge, EFrSponge, OpeningProof: OpenProof<G, ROUNDS>>(
-    verifier_index: &VerifierIndex<ROUNDS, G, OpeningProof::SRS>,
-    proof: &'b ProverProof<G, OpeningProof, ROUNDS>,
+fn to_batch<
+    'b,
+    const FULL_ROUNDS: usize,
+    G,
+    EFqSponge,
+    EFrSponge,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+>(
+    verifier_index: &VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>,
+    proof: &'b ProverProof<G, OpeningProof, FULL_ROUNDS>,
     public_input: &[<G as AffineRepr>::ScalarField],
-) -> Result<BatchEvaluationProof<'b, G, EFqSponge, OpeningProof, ROUNDS>>
+) -> Result<BatchEvaluationProof<'b, G, EFqSponge, OpeningProof, FULL_ROUNDS>>
 where
-    G: KimchiCurve<ROUNDS>,
+    G: KimchiCurve<FULL_ROUNDS>,
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
-    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
 {
     //~
     //~ #### Partial verification
@@ -1186,25 +1198,31 @@ where
 /// # Errors
 ///
 /// Will give error if `proof(s)` are not verified as valid.
-pub fn verify<const ROUNDS: usize, G, EFqSponge, EFrSponge, OpeningProof: OpenProof<G, ROUNDS>>(
+pub fn verify<
+    const FULL_ROUNDS: usize,
+    G,
+    EFqSponge,
+    EFrSponge,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+>(
     group_map: &G::Map,
-    verifier_index: &VerifierIndex<ROUNDS, G, OpeningProof::SRS>,
-    proof: &ProverProof<G, OpeningProof, ROUNDS>,
+    verifier_index: &VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>,
+    proof: &ProverProof<G, OpeningProof, FULL_ROUNDS>,
     public_input: &[G::ScalarField],
 ) -> Result<()>
 where
-    G: KimchiCurve<ROUNDS>,
+    G: KimchiCurve<FULL_ROUNDS>,
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
-    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
 {
     let proofs = [Context {
         verifier_index,
         proof,
         public_input,
     }];
-    batch_verify::<ROUNDS, G, EFqSponge, EFrSponge, OpeningProof>(group_map, &proofs)
+    batch_verify::<FULL_ROUNDS, G, EFqSponge, EFrSponge, OpeningProof>(group_map, &proofs)
 }
 
 /// This function verifies the batch of zk-proofs
@@ -1215,21 +1233,21 @@ where
 ///
 /// Will give error if `srs` of `proof` is invalid or `verify` process fails.
 pub fn batch_verify<
-    const ROUNDS: usize,
+    const FULL_ROUNDS: usize,
     G,
     EFqSponge,
     EFrSponge,
-    OpeningProof: OpenProof<G, ROUNDS>,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
 >(
     group_map: &G::Map,
-    proofs: &[Context<ROUNDS, G, OpeningProof, OpeningProof::SRS>],
+    proofs: &[Context<FULL_ROUNDS, G, OpeningProof, OpeningProof::SRS>],
 ) -> Result<()>
 where
-    G: KimchiCurve<ROUNDS>,
+    G: KimchiCurve<FULL_ROUNDS>,
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
-    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
 {
     //~ #### Batch verification of proofs
     //~
@@ -1261,11 +1279,13 @@ where
             public_input,
         } = context;
 
-        batch.push(to_batch::<ROUNDS, G, EFqSponge, EFrSponge, OpeningProof>(
-            verifier_index,
-            proof,
-            public_input,
-        )?);
+        batch.push(to_batch::<
+            FULL_ROUNDS,
+            G,
+            EFqSponge,
+            EFrSponge,
+            OpeningProof,
+        >(verifier_index, proof, public_input)?);
     }
 
     //~ 1. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.

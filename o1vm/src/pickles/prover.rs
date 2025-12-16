@@ -52,18 +52,18 @@ pub enum ProverError {
 ///
 /// The final proof consists of the opening proof, the commitments and the
 /// evaluations at ζ and ζω.
-pub fn prove<const ROUNDS: usize, G, EFqSponge, EFrSponge, RNG>(
+pub fn prove<const FULL_ROUNDS: usize, G, EFqSponge, EFrSponge, RNG>(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &SRS<G>,
-    inputs: ProofInputs<ROUNDS, G>,
+    inputs: ProofInputs<FULL_ROUNDS, G>,
     constraints: &[E<G::ScalarField>],
     rng: &mut RNG,
-) -> Result<Proof<ROUNDS, G>, ProverError>
+) -> Result<Proof<FULL_ROUNDS, G>, ProverError>
 where
-    G: KimchiCurve<ROUNDS>,
-    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField, ROUNDS> + Clone,
+    G: KimchiCurve<FULL_ROUNDS>,
+    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS> + Clone,
     EFrSponge: FrSponge<G::ScalarField>,
-    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
     G::BaseField: PrimeField,
     RNG: RngCore + CryptoRng,
 {

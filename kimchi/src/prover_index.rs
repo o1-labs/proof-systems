@@ -23,7 +23,7 @@ use std::sync::Arc;
 #[serde_as]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 //~spec:startcode
-pub struct ProverIndex<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, Srs> {
+pub struct ProverIndex<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, Srs> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: Arc<ConstraintSystem<G::ScalarField>>,
@@ -49,7 +49,7 @@ pub struct ProverIndex<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, Srs> {
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
-    pub verifier_index: Option<VerifierIndex<ROUNDS, G, Srs>>,
+    pub verifier_index: Option<VerifierIndex<FULL_ROUNDS, G, Srs>>,
 
     /// The verifier index digest corresponding to this prover index
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -57,7 +57,8 @@ pub struct ProverIndex<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, Srs> {
 }
 //~spec:endcode
 
-impl<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, Srs: SRS<G>> ProverIndex<ROUNDS, G, Srs>
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, Srs: SRS<G>>
+    ProverIndex<FULL_ROUNDS, G, Srs>
 where
     G::BaseField: PrimeField,
 {
@@ -100,12 +101,12 @@ where
     /// Retrieve or compute the digest for the corresponding verifier index.
     /// If the digest is not already cached inside the index, store it.
     pub fn compute_verifier_index_digest<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     >(
         &mut self,
     ) -> G::BaseField
     where
-        VerifierIndex<ROUNDS, G, Srs>: Clone,
+        VerifierIndex<FULL_ROUNDS, G, Srs>: Clone,
     {
         if let Some(verifier_index_digest) = self.verifier_index_digest {
             return verifier_index_digest;
@@ -122,12 +123,12 @@ where
 
     /// Retrieve or compute the digest for the corresponding verifier index.
     pub fn verifier_index_digest<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     >(
         &self,
     ) -> G::BaseField
     where
-        VerifierIndex<ROUNDS, G, Srs>: Clone,
+        VerifierIndex<FULL_ROUNDS, G, Srs>: Clone,
     {
         if let Some(verifier_index_digest) = self.verifier_index_digest {
             return verifier_index_digest;
@@ -154,7 +155,7 @@ pub mod testing {
     use poly_commitment::{ipa::OpeningProof, precomputed_srs, OpenProof, SRS};
 
     #[allow(clippy::too_many_arguments)]
-    pub fn new_index_for_test_with_lookups_and_custom_srs<const ROUNDS: usize, G, Srs, F>(
+    pub fn new_index_for_test_with_lookups_and_custom_srs<const FULL_ROUNDS: usize, G, Srs, F>(
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
         prev_challenges: usize,
@@ -164,9 +165,9 @@ pub mod testing {
         override_srs_size: Option<usize>,
         mut get_srs: F,
         lazy_mode: bool,
-    ) -> ProverIndex<ROUNDS, G, Srs>
+    ) -> ProverIndex<FULL_ROUNDS, G, Srs>
     where
-        G: KimchiCurve<ROUNDS>,
+        G: KimchiCurve<FULL_ROUNDS>,
         Srs: SRS<G>,
         F: FnMut(D<G::ScalarField>, usize) -> Srs,
         G::BaseField: PrimeField,
@@ -197,7 +198,7 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `constraint system` is not built with `gates` input.
-    pub fn new_index_for_test_with_lookups<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+    pub fn new_index_for_test_with_lookups<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
         prev_challenges: usize,
@@ -206,12 +207,12 @@ pub mod testing {
         disable_gates_checks: bool,
         override_srs_size: Option<usize>,
         lazy_mode: bool,
-    ) -> ProverIndex<ROUNDS, G, <OpeningProof<G, ROUNDS> as OpenProof<G, ROUNDS>>::SRS>
+    ) -> ProverIndex<FULL_ROUNDS, G, <OpeningProof<G, FULL_ROUNDS> as OpenProof<G, FULL_ROUNDS>>::SRS>
     where
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField,
     {
-        new_index_for_test_with_lookups_and_custom_srs::<ROUNDS, _, _, _>(
+        new_index_for_test_with_lookups_and_custom_srs::<FULL_ROUNDS, _, _, _>(
             gates,
             public,
             prev_challenges,
@@ -236,15 +237,15 @@ pub mod testing {
         )
     }
 
-    pub fn new_index_for_test<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+    pub fn new_index_for_test<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
-    ) -> ProverIndex<ROUNDS, G, poly_commitment::ipa::SRS<G>>
+    ) -> ProverIndex<FULL_ROUNDS, G, poly_commitment::ipa::SRS<G>>
     where
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField,
     {
-        new_index_for_test_with_lookups::<ROUNDS, G>(
+        new_index_for_test_with_lookups::<FULL_ROUNDS, G>(
             gates,
             public,
             0,
