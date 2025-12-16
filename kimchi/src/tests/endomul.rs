@@ -12,13 +12,14 @@ use core::{array, ops::Mul};
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
 use poly_commitment::ipa::endos;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
-type ScalarSponge = DefaultFrSponge<F, SpongeParams, 55>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type ScalarSponge = DefaultFrSponge<F, SpongeParams, FULL_ROUNDS>;
 
 #[test]
 fn endomul_test() {
@@ -109,7 +110,7 @@ fn endomul_test() {
         assert_eq!(x.into_bigint(), res.n.into_bigint());
     }
 
-    TestFramework::<55, Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()

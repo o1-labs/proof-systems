@@ -17,6 +17,7 @@ use core::{array, cmp::max};
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use num_bigint::BigUint;
@@ -29,11 +30,11 @@ use std::sync::Arc;
 
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
-type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
+type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
 const XOR: bool = true;
 
@@ -166,7 +167,7 @@ fn test_prove_and_verify_xor() {
     // Create witness and random inputs
     let witness = xor::create_xor_witness(input1, input2, bits);
 
-    TestFramework::<55, Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
@@ -179,7 +180,7 @@ fn test_prove_and_verify_xor() {
 fn test_xor64_alternating() {
     let input1 = PallasField::from(0x5A5A5A5A5A5A5A5Au64);
     let input2 = PallasField::from(0xA5A5A5A5A5A5A5A5u64);
-    let witness = test_xor::<55, Vesta>(Some(input1), Some(input2), Some(64));
+    let witness = test_xor::<FULL_ROUNDS, Vesta>(Some(input1), Some(input2), Some(64));
     assert_eq!(witness[2][0], PallasField::from(2u128.pow(64) - 1));
     assert_eq!(witness[2][1], PallasField::from(2u64.pow(48) - 1));
     assert_eq!(witness[2][2], PallasField::from(2u64.pow(32) - 1));
@@ -192,7 +193,7 @@ fn test_xor64_alternating() {
 fn test_xor64_zeros() {
     // forces zero to fit in 64 bits even if it only needs 1 bit
     let zero = PallasField::zero();
-    let witness = test_xor::<55, Vesta>(Some(zero), Some(zero), Some(64));
+    let witness = test_xor::<FULL_ROUNDS, Vesta>(Some(zero), Some(zero), Some(64));
     assert_eq!(witness[2][0], zero);
 }
 
@@ -200,44 +201,44 @@ fn test_xor64_zeros() {
 // Test a XOR of 64bit whose inputs are all zero and all one. Checks it works fine with non-dense values.
 fn test_xor64_zero_one() {
     let zero = PallasField::zero();
-    let all_ones = all_ones::<55, Vesta>(64);
-    let witness = test_xor::<55, Vesta>(Some(zero), Some(all_ones), None);
+    let all_ones = all_ones::<FULL_ROUNDS, Vesta>(64);
+    let witness = test_xor::<FULL_ROUNDS, Vesta>(Some(zero), Some(all_ones), None);
     assert_eq!(witness[2][0], all_ones);
 }
 
 #[test]
 // Tests a XOR of 8 bits for a random input
 fn test_xor8_random() {
-    test_xor::<55, Vesta>(None, None, Some(8));
-    test_xor::<55, Pallas>(None, None, Some(8));
+    test_xor::<FULL_ROUNDS, Vesta>(None, None, Some(8));
+    test_xor::<FULL_ROUNDS, Pallas>(None, None, Some(8));
 }
 
 #[test]
 // Tests a XOR of 16 bits for a random input
 fn test_xor16_random() {
-    test_xor::<55, Vesta>(None, None, Some(16));
-    test_xor::<55, Pallas>(None, None, Some(16));
+    test_xor::<FULL_ROUNDS, Vesta>(None, None, Some(16));
+    test_xor::<FULL_ROUNDS, Pallas>(None, None, Some(16));
 }
 
 #[test]
 // Tests a XOR of 32 bits for a random input
 fn test_xor32_random() {
-    test_xor::<55, Vesta>(None, None, Some(32));
-    test_xor::<55, Pallas>(None, None, Some(32));
+    test_xor::<FULL_ROUNDS, Vesta>(None, None, Some(32));
+    test_xor::<FULL_ROUNDS, Pallas>(None, None, Some(32));
 }
 
 #[test]
 // Tests a XOR of 64 bits for a random input
 fn test_xor64_random() {
-    test_xor::<55, Vesta>(None, None, Some(64));
-    test_xor::<55, Pallas>(None, None, Some(64));
+    test_xor::<FULL_ROUNDS, Vesta>(None, None, Some(64));
+    test_xor::<FULL_ROUNDS, Pallas>(None, None, Some(64));
 }
 
 #[test]
 // Test a random XOR of 128 bits
 fn test_xor128_random() {
-    test_xor::<55, Vesta>(None, None, Some(128));
-    test_xor::<55, Pallas>(None, None, Some(128));
+    test_xor::<FULL_ROUNDS, Vesta>(None, None, Some(128));
+    test_xor::<FULL_ROUNDS, Pallas>(None, None, Some(128));
 }
 
 fn verify_bad_xor_decomposition<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
@@ -273,8 +274,8 @@ fn verify_bad_xor_decomposition<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_RO
 #[test]
 // Test that a random XOR of 16 bits fails if the inputs do not decompose correctly
 fn test_bad_xor_decompsition() {
-    let (cs, mut witness) = setup_xor::<55, Vesta>(None, None, Some(16));
-    verify_bad_xor_decomposition::<55, Vesta>(&mut witness, cs);
+    let (cs, mut witness) = setup_xor::<FULL_ROUNDS, Vesta>(None, None, Some(16));
+    verify_bad_xor_decomposition::<FULL_ROUNDS, Vesta>(&mut witness, cs);
 }
 
 #[test]
@@ -314,7 +315,7 @@ fn test_extend_xor() {
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<55, Vesta>(
+            cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
                 row,
                 &witness,
                 &cs,
@@ -351,7 +352,7 @@ fn test_bad_xor() {
     }
 
     assert_eq!(
-        TestFramework::<55, Vesta>::default()
+        TestFramework::<FULL_ROUNDS, Vesta>::default()
             .gates(gates)
             .witness(witness)
             .setup()
@@ -415,7 +416,7 @@ fn test_xor_finalization() {
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            index.cs.gates[row].verify_witness::<55, Vesta>(
+            index.cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
                 row,
                 &witness,
                 &index.cs,
@@ -425,7 +426,7 @@ fn test_xor_finalization() {
         );
     }
 
-    TestFramework::<55, Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness.clone())
         .public_inputs(vec![witness[0][0], witness[0][1]])

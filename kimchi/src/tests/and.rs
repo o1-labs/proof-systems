@@ -15,6 +15,7 @@ use ark_ff::{One, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     poseidon::ArithmeticSpongeParams,
     sponge::{DefaultFqSponge, DefaultFrSponge},
     FqSponge,
@@ -27,10 +28,10 @@ use super::framework::TestFramework;
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type VestaField = <Vesta as AffineRepr>::BaseField;
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
-type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
-type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams, 55>;
-type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams, 55>;
+type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
+type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams, FULL_ROUNDS>;
+type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams, FULL_ROUNDS>;
 
 fn create_test_gates_and<const FULL_ROUNDS: usize, G>(
     bytes: usize,
@@ -189,8 +190,8 @@ fn prove_and_check_serialization_regression<const FULL_ROUNDS: usize, G, EFqSpon
 #[test]
 // End-to-end test
 fn test_prove_and_verify() {
-    prove_and_verify::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(8);
-    prove_and_verify::<55, Pallas, PallasBaseSponge, PallasScalarSponge>(8);
+    prove_and_verify::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(8);
+    prove_and_verify::<FULL_ROUNDS, Pallas, PallasBaseSponge, PallasScalarSponge>(8);
 }
 
 #[test]
@@ -198,10 +199,10 @@ fn test_prove_and_verify() {
 fn test_and64_alternating() {
     let input1 = PallasField::from(0x5A5A5A5A5A5A5A5Au64);
     let input2 = PallasField::from(0xA5A5A5A5A5A5A5A5u64);
-    test_and::<55, Vesta>(Some(input1), Some(input2), 8);
+    test_and::<FULL_ROUNDS, Vesta>(Some(input1), Some(input2), 8);
     let input1 = VestaField::from(0x5A5A5A5A5A5A5A5Au64);
     let input2 = VestaField::from(0xA5A5A5A5A5A5A5A5u64);
-    test_and::<55, Pallas>(Some(input1), Some(input2), 8);
+    test_and::<FULL_ROUNDS, Pallas>(Some(input1), Some(input2), 8);
 }
 
 #[test]
@@ -209,43 +210,43 @@ fn test_and64_alternating() {
 fn test_and64_zeros() {
     let zero_pallas = PallasField::from(0u8);
     let zero_vesta = VestaField::from(0u8);
-    test_and::<55, Vesta>(Some(zero_pallas), Some(zero_pallas), 8);
-    test_and::<55, Pallas>(Some(zero_vesta), Some(zero_vesta), 8);
+    test_and::<FULL_ROUNDS, Vesta>(Some(zero_pallas), Some(zero_pallas), 8);
+    test_and::<FULL_ROUNDS, Pallas>(Some(zero_vesta), Some(zero_vesta), 8);
 }
 
 #[test]
 // Tests a AND of 8 bits for a random input
 fn test_and8_random() {
-    test_and::<55, Vesta>(None, None, 1);
-    test_and::<55, Pallas>(None, None, 1);
+    test_and::<FULL_ROUNDS, Vesta>(None, None, 1);
+    test_and::<FULL_ROUNDS, Pallas>(None, None, 1);
 }
 
 #[test]
 // Tests a XOR of 16 bits for a random input
 fn test_and16_random() {
-    test_and::<55, Vesta>(None, None, 2);
-    test_and::<55, Pallas>(None, None, 2);
+    test_and::<FULL_ROUNDS, Vesta>(None, None, 2);
+    test_and::<FULL_ROUNDS, Pallas>(None, None, 2);
 }
 
 #[test]
 // Tests a AND of 32 bits for a random input
 fn test_and32_random() {
-    test_and::<55, Vesta>(None, None, 4);
-    test_and::<55, Pallas>(None, None, 4);
+    test_and::<FULL_ROUNDS, Vesta>(None, None, 4);
+    test_and::<FULL_ROUNDS, Pallas>(None, None, 4);
 }
 
 #[test]
 // Tests a AND of 64 bits for a random input
 fn test_and64_random() {
-    test_and::<55, Vesta>(None, None, 8);
-    test_and::<55, Pallas>(None, None, 8);
+    test_and::<FULL_ROUNDS, Vesta>(None, None, 8);
+    test_and::<FULL_ROUNDS, Pallas>(None, None, 8);
 }
 
 #[test]
 // Test a random AND of 128 bits
 fn test_and128_random() {
-    test_and::<55, Vesta>(None, None, 16);
-    test_and::<55, Pallas>(None, None, 16);
+    test_and::<FULL_ROUNDS, Vesta>(None, None, 16);
+    test_and::<FULL_ROUNDS, Pallas>(None, None, 16);
 }
 
 #[test]
@@ -254,10 +255,10 @@ fn test_and_overflow() {
     let bytes = 256 / 8;
     let input_pallas =
         PallasField::from_biguint(&(PallasField::modulus_biguint() - BigUint::one())).unwrap();
-    test_and::<55, Vesta>(Some(input_pallas), Some(input_pallas), bytes);
+    test_and::<FULL_ROUNDS, Vesta>(Some(input_pallas), Some(input_pallas), bytes);
     let input_vesta =
         VestaField::from_biguint(&(VestaField::modulus_biguint() - BigUint::one())).unwrap();
-    test_and::<55, Pallas>(Some(input_vesta), Some(input_vesta), bytes);
+    test_and::<FULL_ROUNDS, Pallas>(Some(input_vesta), Some(input_vesta), bytes);
 }
 
 #[test]
@@ -266,10 +267,10 @@ fn test_and_overflow_one() {
     let bytes = 256 / 8;
     let input =
         PallasField::from_biguint(&(PallasField::modulus_biguint() - BigUint::one())).unwrap();
-    test_and::<55, Vesta>(Some(input), Some(PallasField::from(1u8)), bytes);
+    test_and::<FULL_ROUNDS, Vesta>(Some(input), Some(PallasField::from(1u8)), bytes);
     let input =
         VestaField::from_biguint(&(VestaField::modulus_biguint() - BigUint::one())).unwrap();
-    test_and::<55, Pallas>(Some(input), Some(VestaField::from(1u8)), bytes);
+    test_and::<FULL_ROUNDS, Pallas>(Some(input), Some(VestaField::from(1u8)), bytes);
 }
 
 fn verify_bad_and_decomposition<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
@@ -349,8 +350,8 @@ fn verify_bad_and_decomposition<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_RO
 #[test]
 // Test AND when the decomposition of the inner XOR is incorrect
 fn test_and_bad_decomposition() {
-    let (cs, mut witness) = setup_and::<55, Vesta>(None, None, 2);
-    verify_bad_and_decomposition::<55, Vesta>(&mut witness, cs);
+    let (cs, mut witness) = setup_and::<FULL_ROUNDS, Vesta>(None, None, 2);
+    verify_bad_and_decomposition::<FULL_ROUNDS, Vesta>(&mut witness, cs);
 }
 
 #[test]
@@ -359,7 +360,7 @@ fn test_bad_and() {
     let rng = &mut o1_utils::tests::make_test_rng(None);
 
     let bytes = 2;
-    let gates = create_test_gates_and::<55, Vesta>(bytes);
+    let gates = create_test_gates_and::<FULL_ROUNDS, Vesta>(bytes);
 
     // Initialize inputs
     let input1 = rng.gen(None, Some(bytes * 8));
@@ -376,7 +377,7 @@ fn test_bad_and() {
     witness[4][2] = PallasField::zero();
 
     assert_eq!(
-        TestFramework::<55, Vesta>::default()
+        TestFramework::<FULL_ROUNDS, Vesta>::default()
             .gates(gates)
             .witness(witness)
             .setup()
@@ -687,8 +688,10 @@ fn test_serialization_regression() {
         251, 186, 229, 239, 230, 182, 195, 40, 232, 118, 45, 205, 78, 253, 203, 141, 81, 175, 186,
         185, 116, 235, 41, 158, 240, 90, 22, 144,
     ];
-    prove_and_check_serialization_regression::<55, Vesta, VestaBaseSponge, VestaScalarSponge>(
-        8,
-        buf_expected,
-    );
+    prove_and_check_serialization_regression::<
+        FULL_ROUNDS,
+        Vesta,
+        VestaBaseSponge,
+        VestaScalarSponge,
+    >(8, buf_expected);
 }

@@ -10,7 +10,7 @@ use crate::DomainParameter;
 use mina_curves::pasta::Fp;
 use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, PlonkSpongeConstantsLegacy, SpongeConstants},
-    pasta,
+    pasta::{self, FULL_ROUNDS},
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, SpongeState},
 };
 
@@ -60,11 +60,11 @@ pub(crate) fn new_legacy<H: Hashable>(domain_param: H::D) -> PoseidonHasherLegac
 }
 
 /// Poseidon hasher type with experimental kimchi plonk sponge constants
-pub type PoseidonHasherKimchi<H> = Poseidon<PlonkSpongeConstantsKimchi, H, 55>;
+pub type PoseidonHasherKimchi<H> = Poseidon<PlonkSpongeConstantsKimchi, H, FULL_ROUNDS>;
 
 /// Create an experimental kimchi hasher context
 pub(crate) fn new_kimchi<H: Hashable>(domain_param: H::D) -> PoseidonHasherKimchi<H> {
-    Poseidon::<PlonkSpongeConstantsKimchi, H, 55>::new(
+    Poseidon::<PlonkSpongeConstantsKimchi, H, FULL_ROUNDS>::new(
         domain_param,
         pasta::fp_kimchi::static_params(),
     )

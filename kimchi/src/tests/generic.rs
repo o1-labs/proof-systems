@@ -8,6 +8,7 @@ use core::array;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 #[cfg(feature = "bn254")]
@@ -23,8 +24,8 @@ mod kzg {
 use kzg::*;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge<P> = DefaultFqSponge<P, SpongeParams, 55>;
-type ScalarSponge<Fr> = DefaultFrSponge<Fr, SpongeParams, 55>;
+type BaseSponge<P> = DefaultFqSponge<P, SpongeParams, FULL_ROUNDS>;
+type ScalarSponge<Fr> = DefaultFrSponge<Fr, SpongeParams, FULL_ROUNDS>;
 
 #[test]
 fn test_generic_gate() {
@@ -35,7 +36,7 @@ fn test_generic_gate() {
     fill_in_witness(0, &mut witness, &[]);
 
     // create and verify proof based on the witness
-    TestFramework::<55, Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
@@ -53,7 +54,7 @@ fn test_generic_gate_pub() {
     fill_in_witness(0, &mut witness, &public);
 
     // create and verify proof based on the witness
-    TestFramework::<55, Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(public)
@@ -72,7 +73,7 @@ fn test_generic_gate_pub_all_zeros() {
     fill_in_witness(0, &mut witness, &public);
 
     // create and verify proof based on the witness
-    TestFramework::<55, Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(public)
@@ -91,7 +92,7 @@ fn test_generic_gate_pub_empty() {
     fill_in_witness(0, &mut witness, &public);
 
     // create and verify proof based on the witness
-    TestFramework::<55, Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(public)
@@ -111,7 +112,7 @@ fn test_generic_gate_kzg() {
     fill_in_witness(0, &mut witness, &public);
 
     // create and verify proof based on the witness
-    <TestFramework<55, _, KZGProof<Bn<ark_bn254::Config>>> as Default>::default()
+    <TestFramework<FULL_ROUNDS, _, KZGProof<Bn<ark_bn254::Config>>> as Default>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(public)

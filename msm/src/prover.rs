@@ -26,7 +26,9 @@ use kimchi::{
     plonk_sponge::FrSponge,
     proof::PointEvaluations,
 };
-use mina_poseidon::{poseidon::ArithmeticSpongeParams, sponge::ScalarChallenge, FqSponge};
+use mina_poseidon::{
+    pasta::FULL_ROUNDS, poseidon::ArithmeticSpongeParams, sponge::ScalarChallenge, FqSponge,
+};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
     commitment::{absorb_commitment, PolyComm},
@@ -70,11 +72,11 @@ pub fn prove<
     rng: &mut RNG,
 ) -> Result<Proof<N_WIT, N_REL, N_DSEL, N_FSEL, G, OpeningProof, ID>, ProverError>
 where
-    G: KimchiCurve<55>,
-    OpeningProof: OpenProof<G, 55>,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, 55>,
+    G: KimchiCurve<FULL_ROUNDS>,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
-    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, 55>>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
     ID: LookupTableID,
     OpeningProof::SRS: Sync,
     RNG: RngCore + CryptoRng,

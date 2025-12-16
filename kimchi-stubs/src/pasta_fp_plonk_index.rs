@@ -13,7 +13,9 @@ use kimchi::{
     prover_index::ProverIndex,
 };
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi, pasta::FULL_ROUNDS, sponge::DefaultFqSponge,
+};
 use poly_commitment::{ipa::OpeningProof, lagrange_basis::WithLagrangeBasis, SRS as _};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -21,11 +23,12 @@ use std::{
     io::{BufReader, BufWriter, Seek, SeekFrom::Start},
 };
 
-type Srs = <OpeningProof<Vesta, 55> as poly_commitment::OpenProof<Vesta, 55>>::SRS;
+type Srs =
+    <OpeningProof<Vesta, FULL_ROUNDS> as poly_commitment::OpenProof<Vesta, FULL_ROUNDS>>::SRS;
 
 /// Boxed so that we don't store large proving indexes in the OCaml heap.
 #[derive(ocaml_gen::CustomType)]
-pub struct CamlPastaFpPlonkIndex(pub Box<ProverIndex<55, Vesta, Srs>>);
+pub struct CamlPastaFpPlonkIndex(pub Box<ProverIndex<FULL_ROUNDS, Vesta, Srs>>);
 pub type CamlPastaFpPlonkIndexPtr<'a> = ocaml::Pointer<'a, CamlPastaFpPlonkIndex>;
 
 extern "C" fn caml_pasta_fp_plonk_index_finalize(v: ocaml::Raw) {
@@ -96,7 +99,11 @@ pub fn caml_pasta_fp_plonk_index_create(
     // create index
     let mut index = ProverIndex::create(cs, endo_q, srs.clone(), lazy_mode);
     // Compute and cache the verifier index digest
-    index.compute_verifier_index_digest::<DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi, 55>>();
+    index.compute_verifier_index_digest::<DefaultFqSponge<
+        VestaParameters,
+        PlonkSpongeConstantsKimchi,
+        FULL_ROUNDS,
+    >>();
 
     Ok(CamlPastaFpPlonkIndex(Box::new(index)))
 }
@@ -157,7 +164,8 @@ pub fn caml_pasta_fp_plonk_index_read(
     }
 
     // deserialize the index
-    let mut t = ProverIndex::<55, Vesta, Srs>::deserialize(&mut rmp_serde::Deserializer::new(r))?;
+    let mut t =
+        ProverIndex::<FULL_ROUNDS, Vesta, Srs>::deserialize(&mut rmp_serde::Deserializer::new(r))?;
     t.srs = srs.clone();
 
     let (linearization, powers_of_alpha) = expr_linearization(Some(&t.cs.feature_flags), true);

@@ -239,11 +239,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, path::Path};
-
     use super::*;
     use crate::circuits::gate::GateType;
     use mina_curves::pasta::{Fp, Vesta};
+    use mina_poseidon::pasta::FULL_ROUNDS;
+    use std::{fs, path::Path};
 
     // testing [Builder]
 
@@ -322,7 +322,7 @@ mod tests {
     #[test]
     fn get_alphas_for_spec() {
         let gates = vec![CircuitGate::<Fp>::zero(Wire::for_row(0)); 2];
-        let index = new_index_for_test::<55, Vesta>(gates, 0);
+        let index = new_index_for_test::<FULL_ROUNDS, Vesta>(gates, 0);
         let (_linearization, powers_of_alpha) =
             expr_linearization::<Fp>(Some(&index.cs.feature_flags), true);
         // make sure this is present in the specification

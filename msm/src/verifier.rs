@@ -18,7 +18,9 @@ use kimchi::{
     plonk_sponge::FrSponge,
     proof::PointEvaluations,
 };
-use mina_poseidon::{poseidon::ArithmeticSpongeParams, sponge::ScalarChallenge, FqSponge};
+use mina_poseidon::{
+    pasta::FULL_ROUNDS, poseidon::ArithmeticSpongeParams, sponge::ScalarChallenge, FqSponge,
+};
 use poly_commitment::{
     commitment::{
         absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
@@ -48,11 +50,11 @@ pub fn verify<
     public_inputs: Witness<NPUB, Vec<G::ScalarField>>,
 ) -> bool
 where
-    G: KimchiCurve<55>,
-    OpeningProof: OpenProof<G, 55>,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, 55>,
+    G: KimchiCurve<FULL_ROUNDS>,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
-    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, 55>>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
     ID: LookupTableID,
     OpeningProof::SRS: Sync,
 {

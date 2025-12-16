@@ -11,13 +11,14 @@ use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zer
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use std::{array, ops::Mul, time::Instant};
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
-type ScalarSponge = DefaultFrSponge<F, SpongeParams, 55>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type ScalarSponge = DefaultFrSponge<F, SpongeParams, FULL_ROUNDS>;
 
 #[test]
 fn varbase_mul_test() {
@@ -84,7 +85,7 @@ fn varbase_mul_test() {
     }
     println!("Witness generation time: {:?}", start.elapsed());
 
-    TestFramework::<55, Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()

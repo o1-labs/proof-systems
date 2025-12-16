@@ -13,6 +13,7 @@ use kimchi::{
     curve::KimchiCurve,
     proof::PointEvaluations,
 };
+use mina_poseidon::pasta::FULL_ROUNDS;
 use poly_commitment::{commitment::PolyComm, OpenProof};
 use rand::thread_rng;
 use std::collections::BTreeMap;
@@ -147,7 +148,7 @@ impl<
 }
 
 #[derive(Debug, Clone)]
-pub struct ProofCommitments<const N_WIT: usize, G: KimchiCurve<55>, ID: LookupTableID> {
+pub struct ProofCommitments<const N_WIT: usize, G: KimchiCurve<FULL_ROUNDS>, ID: LookupTableID> {
     /// Commitments to the N columns of the circuits, also called the 'witnesses'.
     /// If some columns are considered as public inputs, it is counted in the witness.
     pub(crate) witness_comms: Witness<N_WIT, PolyComm<G>>,
@@ -165,8 +166,8 @@ pub struct Proof<
     const N_REL: usize,
     const N_DSEL: usize,
     const N_FSEL: usize,
-    G: KimchiCurve<55>,
-    OpeningProof: OpenProof<G, 55>,
+    G: KimchiCurve<FULL_ROUNDS>,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
     ID: LookupTableID,
 > {
     pub(crate) proof_comms: ProofCommitments<N_WIT, G, ID>,

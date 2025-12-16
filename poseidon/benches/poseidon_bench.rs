@@ -2,7 +2,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use mina_curves::pasta::Fp;
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
-    pasta::fp_kimchi as SpongeParametersKimchi,
+    pasta::{fp_kimchi as SpongeParametersKimchi, FULL_ROUNDS},
     poseidon::{ArithmeticSponge as Poseidon, Sponge},
 };
 
@@ -13,7 +13,7 @@ pub fn bench_poseidon_kimchi(c: &mut Criterion) {
     // Chain of hashes, starting from a random value
     group.bench_function("poseidon_hash_kimchi", |b| {
         let mut hash: Fp = rand::random();
-        let mut poseidon = Poseidon::<Fp, PlonkSpongeConstantsKimchi, 55>::new(
+        let mut poseidon = Poseidon::<Fp, PlonkSpongeConstantsKimchi, FULL_ROUNDS>::new(
             SpongeParametersKimchi::static_params(),
         );
 
