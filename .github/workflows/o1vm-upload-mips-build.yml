@@ -22,7 +22,7 @@ jobs:
           tar -czf mips-binaries.tar.gz bin/
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: mips-binaries
           path: o1vm/resources/programs/mips/mips-binaries.tar.gz
