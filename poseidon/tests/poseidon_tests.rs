@@ -3,7 +3,7 @@ use ark_ff::{Field, UniformRand};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, PlonkSpongeConstantsLegacy},
-    pasta::{fp_kimchi, fp_legacy, fq_kimchi},
+    pasta::{fp_kimchi, fp_legacy, fq_kimchi, FULL_ROUNDS},
     poseidon::{ArithmeticSponge as Poseidon, Sponge as _},
     sponge::DefaultFqSponge,
     FqSponge as _,
@@ -74,8 +74,9 @@ fn poseidon_test_vectors_legacy() {
 #[test]
 fn poseidon_test_vectors_kimchi() {
     fn hash(input: &[Fp]) -> Fp {
-        let mut hash =
-            Poseidon::<Fp, PlonkSpongeConstantsKimchi, 55>::new(fp_kimchi::static_params());
+        let mut hash = Poseidon::<Fp, PlonkSpongeConstantsKimchi, FULL_ROUNDS>::new(
+            fp_kimchi::static_params(),
+        );
         hash.absorb(input);
         hash.squeeze()
     }
@@ -84,9 +85,10 @@ fn poseidon_test_vectors_kimchi() {
 
 #[test]
 fn test_regression_challenge_empty_vesta_kimchi() {
-    let mut sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, 55>::new(
-        fq_kimchi::static_params(),
-    );
+    let mut sponge =
+        DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>::new(
+            fq_kimchi::static_params(),
+        );
     let output = sponge.challenge();
     let exp_output =
         Fp::from_hex("c1e504c0184cce70a605d2f942d579c500000000000000000000000000000000").unwrap();
@@ -95,9 +97,10 @@ fn test_regression_challenge_empty_vesta_kimchi() {
 
 #[test]
 fn test_regression_challenge_empty_pallas_kimchi() {
-    let mut sponge = DefaultFqSponge::<PallasParameters, PlonkSpongeConstantsKimchi, 55>::new(
-        fp_kimchi::static_params(),
-    );
+    let mut sponge =
+        DefaultFqSponge::<PallasParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>::new(
+            fp_kimchi::static_params(),
+        );
     let output = sponge.challenge();
     let exp_output =
         Fq::from_hex("a8eb9ee0f30046308abbfa5d20af73c800000000000000000000000000000000").unwrap();
@@ -108,9 +111,10 @@ fn test_regression_challenge_empty_pallas_kimchi() {
 fn test_poseidon_vesta_kimchi_challenge_is_squeezed_to_128_bits() {
     // Test that the challenge is less than 2^128, i.e. the sponge state is
     // squeezed to 128 bits
-    let mut sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, 55>::new(
-        fq_kimchi::static_params(),
-    );
+    let mut sponge =
+        DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>::new(
+            fq_kimchi::static_params(),
+        );
     let mut rng = o1_utils::tests::make_test_rng(None);
     let random_n = rng.gen_range(1..50);
     let random_fq_vec = (0..random_n)
@@ -126,9 +130,10 @@ fn test_poseidon_vesta_kimchi_challenge_is_squeezed_to_128_bits() {
 fn test_poseidon_pallas_kimchi_challenge_is_squeezed_to_128_bits() {
     // Test that the challenge is less than 2^128, i.e. the sponge state is
     // squeezed to 128 bits
-    let mut sponge = DefaultFqSponge::<PallasParameters, PlonkSpongeConstantsKimchi, 55>::new(
-        fp_kimchi::static_params(),
-    );
+    let mut sponge =
+        DefaultFqSponge::<PallasParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>::new(
+            fp_kimchi::static_params(),
+        );
     let mut rng = o1_utils::tests::make_test_rng(None);
     let random_n = rng.gen_range(1..50);
     let random_fp_vec = (0..random_n)
@@ -142,9 +147,10 @@ fn test_poseidon_pallas_kimchi_challenge_is_squeezed_to_128_bits() {
 
 #[test]
 fn test_poseidon_pallas_absorb_point_to_infinity() {
-    let mut sponge = DefaultFqSponge::<PallasParameters, PlonkSpongeConstantsKimchi, 55>::new(
-        fp_kimchi::static_params(),
-    );
+    let mut sponge =
+        DefaultFqSponge::<PallasParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>::new(
+            fp_kimchi::static_params(),
+        );
     let point = Pallas::zero();
     sponge.absorb_g(&[point]);
     let exp_output = [Fp::from(0); 3];
@@ -153,9 +159,10 @@ fn test_poseidon_pallas_absorb_point_to_infinity() {
 
 #[test]
 fn test_poseidon_vesta_absorb_point_to_infinity() {
-    let mut sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, 55>::new(
-        fq_kimchi::static_params(),
-    );
+    let mut sponge =
+        DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>::new(
+            fq_kimchi::static_params(),
+        );
     let point = Vesta::zero();
     sponge.absorb_g(&[point]);
     let exp_output = [Fq::from(0); 3];
@@ -164,9 +171,10 @@ fn test_poseidon_vesta_absorb_point_to_infinity() {
 
 #[test]
 fn test_poseidon_challenge_multiple_times_without_absorption() {
-    let mut sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, 55>::new(
-        fq_kimchi::static_params(),
-    );
+    let mut sponge =
+        DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>::new(
+            fq_kimchi::static_params(),
+        );
     let mut rng = o1_utils::tests::make_test_rng(None);
     let random_n = rng.gen_range(10..50);
 

@@ -1,6 +1,8 @@
 use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, PlonkSpongeConstantsLegacy},
-    pasta::{fp_kimchi as SpongeParametersKimchi, fp_legacy as SpongeParametersLegacy},
+    pasta::{
+        fp_kimchi as SpongeParametersKimchi, fp_legacy as SpongeParametersLegacy, FULL_ROUNDS,
+    },
     permutation::poseidon_block_cipher,
 };
 use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
@@ -21,7 +23,9 @@ pub fn bench_poseidon_absorb_permutation_pasta_fp(c: &mut Criterion) {
     let params = SpongeParametersKimchi::static_params();
     c.bench_function("poseidon_absorb_permutation kimchi", |b| {
         b.iter(|| {
-            poseidon_block_cipher::<Fp, PlonkSpongeConstantsKimchi, 55>(params, &mut input);
+            poseidon_block_cipher::<Fp, PlonkSpongeConstantsKimchi, FULL_ROUNDS>(
+                params, &mut input,
+            );
         })
     });
 

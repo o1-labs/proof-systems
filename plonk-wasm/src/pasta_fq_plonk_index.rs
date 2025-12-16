@@ -16,7 +16,9 @@ use kimchi::{
     prover_index::ProverIndex,
 };
 use mina_curves::pasta::{Fq, Pallas as GAffine, PallasParameters, Vesta as GAffineOther};
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi, pasta::FULL_ROUNDS, sponge::DefaultFqSponge,
+};
 use poly_commitment::OpenProof;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -34,7 +36,13 @@ use wasm_types::FlatVector as WasmFlatVector;
 #[wasm_bindgen]
 pub struct WasmPastaFqPlonkIndex(
     #[wasm_bindgen(skip)]
-    pub  Box<ProverIndex<55, GAffine, <OpeningProof<GAffine, 55> as OpenProof<GAffine, 55>>::SRS>>,
+    pub  Box<
+        ProverIndex<
+            FULL_ROUNDS,
+            GAffine,
+            <OpeningProof<GAffine, FULL_ROUNDS> as OpenProof<GAffine, FULL_ROUNDS>>::SRS,
+        >,
+    >,
 );
 
 #[wasm_bindgen]
@@ -155,7 +163,7 @@ pub fn caml_pasta_fq_plonk_index_create(
 
         let mut index = ProverIndex::create(cs, endo_q, srs.0.clone(), lazy_mode);
         // Compute and cache the verifier index digest
-        index.compute_verifier_index_digest::<DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi, 55>>();
+        index.compute_verifier_index_digest::<DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>>();
 
         Ok(index)
     });

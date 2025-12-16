@@ -13,7 +13,9 @@ use kimchi::{
     prover_index::ProverIndex,
 };
 use mina_curves::pasta::{Fq, Pallas, PallasParameters, Vesta};
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi, pasta::FULL_ROUNDS, sponge::DefaultFqSponge,
+};
 use poly_commitment::{ipa::OpeningProof, lagrange_basis::WithLagrangeBasis, SRS as _};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -21,11 +23,12 @@ use std::{
     io::{BufReader, BufWriter, Seek, SeekFrom::Start},
 };
 
-type Srs = <OpeningProof<Pallas, 55> as poly_commitment::OpenProof<Pallas, 55>>::SRS;
+type Srs =
+    <OpeningProof<Pallas, FULL_ROUNDS> as poly_commitment::OpenProof<Pallas, FULL_ROUNDS>>::SRS;
 
 /// Boxed so that we don't store large proving indexes in the OCaml heap.
 #[derive(ocaml_gen::CustomType)]
-pub struct CamlPastaFqPlonkIndex(pub Box<ProverIndex<55, Pallas, Srs>>);
+pub struct CamlPastaFqPlonkIndex(pub Box<ProverIndex<FULL_ROUNDS, Pallas, Srs>>);
 pub type CamlPastaFqPlonkIndexPtr<'a> = ocaml::Pointer<'a, CamlPastaFqPlonkIndex>;
 
 extern "C" fn caml_pasta_fq_plonk_index_finalize(v: ocaml::Raw) {
@@ -93,9 +96,14 @@ pub fn caml_pasta_fq_plonk_index_create(
     srs.0.with_lagrange_basis(cs.domain.d1);
 
     // create index
-    let mut index = ProverIndex::<55, Pallas, Srs>::create(cs, endo_q, srs.clone(), lazy_mode);
+    let mut index =
+        ProverIndex::<FULL_ROUNDS, Pallas, Srs>::create(cs, endo_q, srs.clone(), lazy_mode);
     // Compute and cache the verifier index digest
-    index.compute_verifier_index_digest::<DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi, 55>>();
+    index.compute_verifier_index_digest::<DefaultFqSponge<
+        PallasParameters,
+        PlonkSpongeConstantsKimchi,
+        FULL_ROUNDS,
+    >>();
 
     Ok(CamlPastaFqPlonkIndex(Box::new(index)))
 }
@@ -156,7 +164,8 @@ pub fn caml_pasta_fq_plonk_index_read(
     }
 
     // deserialize the index
-    let mut t = ProverIndex::<55, Pallas, Srs>::deserialize(&mut rmp_serde::Deserializer::new(r))?;
+    let mut t =
+        ProverIndex::<FULL_ROUNDS, Pallas, Srs>::deserialize(&mut rmp_serde::Deserializer::new(r))?;
     t.srs = srs.clone();
 
     let (linearization, powers_of_alpha) = expr_linearization(Some(&t.cs.feature_flags), true);

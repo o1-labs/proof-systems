@@ -22,6 +22,7 @@ use core::array;
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     poseidon::ArithmeticSpongeParams,
     sponge::{DefaultFqSponge, DefaultFrSponge},
     FqSponge,
@@ -36,13 +37,13 @@ use std::sync::Arc;
 
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
-type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
-type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams, 55>;
-type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams, 55>;
+type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
+type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams, FULL_ROUNDS>;
+type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams, FULL_ROUNDS>;
 
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
 fn create_rot_gadget<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     rot: u32,
@@ -119,8 +120,8 @@ where
 #[test]
 // End-to-end test
 fn test_prove_and_verify() {
-    prove_and_verify::<55, Vesta, VestaBaseSponge, VestaScalarSponge>();
-    prove_and_verify::<55, Pallas, PallasBaseSponge, PallasScalarSponge>();
+    prove_and_verify::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>();
+    prove_and_verify::<FULL_ROUNDS, Pallas, PallasBaseSponge, PallasScalarSponge>();
 }
 
 fn test_rot<const FULL_ROUNDS: usize, G>(word: u64, rot: u32, side: RotMode)
@@ -173,10 +174,10 @@ fn test_rot_random() {
     let rng = &mut o1_utils::tests::make_test_rng(None);
     let rot = rng.gen_range(1..=63);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
-    test_rot::<55, Vesta>(word, rot, RotMode::Left);
-    test_rot::<55, Vesta>(word, rot, RotMode::Right);
-    test_rot::<55, Pallas>(word, rot, RotMode::Left);
-    test_rot::<55, Pallas>(word, rot, RotMode::Right);
+    test_rot::<FULL_ROUNDS, Vesta>(word, rot, RotMode::Left);
+    test_rot::<FULL_ROUNDS, Vesta>(word, rot, RotMode::Right);
+    test_rot::<FULL_ROUNDS, Pallas>(word, rot, RotMode::Left);
+    test_rot::<FULL_ROUNDS, Pallas>(word, rot, RotMode::Right);
 }
 
 #[test]
@@ -184,7 +185,7 @@ fn test_rot_random() {
 fn test_zero_rot() {
     let rng = &mut o1_utils::tests::make_test_rng(None);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
-    test_rot::<55, Pallas>(word, 0, RotMode::Left);
+    test_rot::<FULL_ROUNDS, Pallas>(word, 0, RotMode::Left);
 }
 
 #[test]
@@ -192,7 +193,7 @@ fn test_zero_rot() {
 fn test_large_rot() {
     let rng = &mut o1_utils::tests::make_test_rng(None);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
-    test_rot::<55, Pallas>(word, 64, RotMode::Left);
+    test_rot::<FULL_ROUNDS, Pallas>(word, 64, RotMode::Left);
 }
 
 #[test]
@@ -201,7 +202,7 @@ fn test_bad_constraints() {
     let rng = &mut o1_utils::tests::make_test_rng(None);
     let rot = rng.gen_range(1..=63);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
-    let (mut witness, cs) = setup_rot::<55, Vesta>(word, rot, RotMode::Left);
+    let (mut witness, cs) = setup_rot::<FULL_ROUNDS, Vesta>(word, rot, RotMode::Left);
 
     // Check constraints C1..C8
     for i in 0..8 {
@@ -209,7 +210,12 @@ fn test_bad_constraints() {
         witness[i + 7][1] += PallasField::from(4u32);
         // Decomposition constraint fails
         assert_eq!(
-            cs.gates[1].verify_witness::<55, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[1].verify_witness::<FULL_ROUNDS, Vesta>(
+                1,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public]
+            ),
             Err(CircuitGateError::Constraint(GateType::Rot64, i + 1))
         );
         // undo
@@ -221,7 +227,12 @@ fn test_bad_constraints() {
     witness[0][1] += PallasField::one();
     // Decomposition constraint fails
     assert_eq!(
-        cs.gates[1].verify_witness::<55, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[1].verify_witness::<FULL_ROUNDS, Vesta>(
+            1,
+            &witness,
+            &cs,
+            &witness[0][0..cs.public]
+        ),
         Err(CircuitGateError::Constraint(GateType::Rot64, 9))
     );
     // undo
@@ -232,7 +243,12 @@ fn test_bad_constraints() {
     witness[1][1] += PallasField::one();
     // Rotated word is wrong
     assert_eq!(
-        cs.gates[1].verify_witness::<55, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[1].verify_witness::<FULL_ROUNDS, Vesta>(
+            1,
+            &witness,
+            &cs,
+            &witness[0][0..cs.public]
+        ),
         Err(CircuitGateError::Constraint(GateType::Rot64, 10))
     );
     // undo
@@ -245,7 +261,12 @@ fn test_bad_constraints() {
         witness[i + 3][1] += PallasField::one();
         // Bound constraint fails
         assert_eq!(
-            cs.gates[1].verify_witness::<55, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[1].verify_witness::<FULL_ROUNDS, Vesta>(
+                1,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public]
+            ),
             Err(CircuitGateError::Constraint(GateType::Rot64, 11))
         );
         // undo
@@ -256,11 +277,21 @@ fn test_bad_constraints() {
     witness[2][1] += PallasField::one();
     witness[0][3] += PallasField::one();
     assert_eq!(
-        cs.gates[1].verify_witness::<55, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[1].verify_witness::<FULL_ROUNDS, Vesta>(
+            1,
+            &witness,
+            &cs,
+            &witness[0][0..cs.public]
+        ),
         Err(CircuitGateError::Constraint(GateType::Rot64, 9))
     );
     assert_eq!(
-        cs.gates[3].verify_witness::<55, Vesta>(3, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[3].verify_witness::<FULL_ROUNDS, Vesta>(
+            3,
+            &witness,
+            &cs,
+            &witness[0][0..cs.public]
+        ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
     );
     witness[2][1] -= PallasField::one();
@@ -269,11 +300,21 @@ fn test_bad_constraints() {
     // modify shifted
     witness[0][2] += PallasField::one();
     assert_eq!(
-        cs.gates[1].verify_witness::<55, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[1].verify_witness::<FULL_ROUNDS, Vesta>(
+            1,
+            &witness,
+            &cs,
+            &witness[0][0..cs.public]
+        ),
         Err(CircuitGateError::Constraint(GateType::Rot64, 9))
     );
     assert_eq!(
-        cs.gates[2].verify_witness::<55, Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[2].verify_witness::<FULL_ROUNDS, Vesta>(
+            2,
+            &witness,
+            &cs,
+            &witness[0][0..cs.public]
+        ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
     );
     witness[0][2] -= PallasField::one();
@@ -281,14 +322,24 @@ fn test_bad_constraints() {
     // modify value of shifted to be more than 64 bits
     witness[0][2] += PallasField::two_pow(64);
     assert_eq!(
-        cs.gates[2].verify_witness::<55, Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[2].verify_witness::<FULL_ROUNDS, Vesta>(
+            2,
+            &witness,
+            &cs,
+            &witness[0][0..cs.public]
+        ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
     );
     // Update decomposition
     witness[2][2] += PallasField::one();
     // Make sure the 64-bit check fails
     assert_eq!(
-        cs.gates[2].verify_witness::<55, Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[2].verify_witness::<FULL_ROUNDS, Vesta>(
+            2,
+            &witness,
+            &cs,
+            &witness[0][0..cs.public]
+        ),
         Err(CircuitGateError::CopyConstraint {
             typ: GateType::RangeCheck0,
             src: Wire { row: 2, col: 2 },
@@ -302,14 +353,24 @@ fn test_bad_constraints() {
     witness[0][3] += PallasField::two_pow(64);
     witness[2][1] += PallasField::two_pow(64);
     assert_eq!(
-        cs.gates[3].verify_witness::<55, Vesta>(3, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[3].verify_witness::<FULL_ROUNDS, Vesta>(
+            3,
+            &witness,
+            &cs,
+            &witness[0][0..cs.public]
+        ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
     );
     // Update decomposition
     witness[2][3] += PallasField::one();
     // Make sure the 64-bit check fails
     assert_eq!(
-        cs.gates[3].verify_witness::<55, Vesta>(3, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[3].verify_witness::<FULL_ROUNDS, Vesta>(
+            3,
+            &witness,
+            &cs,
+            &witness[0][0..cs.public]
+        ),
         Err(CircuitGateError::CopyConstraint {
             typ: GateType::RangeCheck0,
             src: Wire { row: 3, col: 2 },
@@ -373,7 +434,7 @@ fn test_rot_finalization() {
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            index.cs.gates[row].verify_witness::<55, Vesta>(
+            index.cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
                 row,
                 &witness,
                 &index.cs,
@@ -383,7 +444,7 @@ fn test_rot_finalization() {
         );
     }
 
-    TestFramework::<55, Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness.clone())
         .public_inputs(vec![witness[0][0], witness[0][1]])
@@ -433,7 +494,7 @@ fn test_keccak_table() {
 
     for row in 0..=48 {
         assert_eq!(
-            cs.gates[row].verify_witness::<55, Vesta>(
+            cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
                 row,
                 &witness,
                 &cs,

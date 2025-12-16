@@ -5,6 +5,7 @@ use log::debug;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1vm::{
@@ -108,7 +109,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     let constraints = mips_constraints::get_all_constraints::<Fp>();
     let domain_size = domain_fp.d1.size as usize;
 
-    let mut curr_proof_inputs: ProofInputs<55, Vesta> = ProofInputs::new(domain_size);
+    let mut curr_proof_inputs: ProofInputs<FULL_ROUNDS, Vesta> = ProofInputs::new(domain_size);
     while !mips_wit_env.halt {
         let _instr: Instruction = mips_wit_env.step(&configuration, meta, &start);
         for (scratch, scratch_chunk) in mips_wit_env
@@ -177,15 +178,15 @@ fn prove_and_verify(
     domain_fp: EvaluationDomains<Fp>,
     srs: &SRS<Vesta>,
     constraints: &[E<Fp>],
-    curr_proof_inputs: ProofInputs<55, Vesta>,
+    curr_proof_inputs: ProofInputs<FULL_ROUNDS, Vesta>,
     rng: &mut ThreadRng,
 ) {
     let start_iteration = Instant::now();
     let proof = prover::prove::<
-        55,
+        FULL_ROUNDS,
         Vesta,
-        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi, 55>,
-        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi, 55>,
+        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
         _,
     >(domain_fp, srs, curr_proof_inputs, constraints, rng)
     .unwrap();
@@ -195,10 +196,10 @@ fn prove_and_verify(
     );
     let start_iteration = Instant::now();
     let verif = verifier::verify::<
-        55,
+        FULL_ROUNDS,
         Vesta,
-        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi, 55>,
-        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi, 55>,
+        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
     >(domain_fp, srs, constraints, &proof);
     debug!(
         "Verification done in {elapsed} μs",
@@ -209,7 +210,7 @@ fn prove_and_verify(
 
 fn pad(
     witness_env: &mips_witness::Env<Fp, Box<dyn PreImageOracleT>>,
-    curr_proof_inputs: &mut ProofInputs<55, Vesta>,
+    curr_proof_inputs: &mut ProofInputs<FULL_ROUNDS, Vesta>,
     rng: &mut ThreadRng,
 ) {
     let zero = Fp::zero();

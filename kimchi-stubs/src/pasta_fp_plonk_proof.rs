@@ -25,6 +25,7 @@ use kimchi::{
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use poly_commitment::{
@@ -34,9 +35,10 @@ use poly_commitment::{
 };
 use std::convert::TryInto;
 
-type Srs = <OpeningProof<Vesta, 55> as poly_commitment::OpenProof<Vesta, 55>>::SRS;
-type EFqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi, 55>;
-type EFrSponge = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi, 55>;
+type Srs =
+    <OpeningProof<Vesta, FULL_ROUNDS> as poly_commitment::OpenProof<Vesta, FULL_ROUNDS>>::SRS;
+type EFqSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>;
+type EFrSponge = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi, FULL_ROUNDS>;
 
 #[ocaml_gen::func]
 #[ocaml::func]
@@ -78,7 +80,7 @@ pub fn caml_pasta_fp_plonk_proof_create(
     let witness: [Vec<_>; COLUMNS] = witness
         .try_into()
         .map_err(|_| ocaml::Error::Message("the witness should be a column of 15 vectors"))?;
-    let index: &ProverIndex<55, Vesta, Srs> = &index.as_ref().0;
+    let index: &ProverIndex<FULL_ROUNDS, Vesta, Srs> = &index.as_ref().0;
     let runtime_tables: Vec<RuntimeTable<Fp>> =
         runtime_tables.into_iter().map(Into::into).collect();
 
@@ -150,7 +152,7 @@ pub fn caml_pasta_fp_plonk_proof_create_and_verify(
     let witness: [Vec<_>; COLUMNS] = witness
         .try_into()
         .map_err(|_| ocaml::Error::Message("the witness should be a column of 15 vectors"))?;
-    let index: &ProverIndex<55, Vesta, Srs> = &index.as_ref().0;
+    let index: &ProverIndex<FULL_ROUNDS, Vesta, Srs> = &index.as_ref().0;
     let runtime_tables: Vec<RuntimeTable<Fp>> =
         runtime_tables.into_iter().map(Into::into).collect();
 
@@ -179,7 +181,7 @@ pub fn caml_pasta_fp_plonk_proof_create_and_verify(
         let verifier_index = index.verifier_index();
 
         // Verify proof
-        verify::<55, Vesta, EFqSponge, EFrSponge, OpeningProof<Vesta, 55>>(
+        verify::<FULL_ROUNDS, Vesta, EFqSponge, EFrSponge, OpeningProof<Vesta, FULL_ROUNDS>>(
             &group_map,
             &verifier_index,
             &proof,
@@ -961,11 +963,11 @@ pub fn caml_pasta_fp_plonk_proof_verify(
     };
 
     batch_verify::<
-        55,
+        FULL_ROUNDS,
         Vesta,
-        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi, 55>,
-        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi, 55>,
-        OpeningProof<Vesta, 55>,
+        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+        OpeningProof<Vesta, FULL_ROUNDS>,
     >(&group_map, &[context])
     .is_ok()
 }
@@ -980,13 +982,15 @@ pub fn caml_pasta_fp_plonk_proof_batch_verify(
         .into_iter()
         .zip(proofs.into_iter())
         .map(|(caml_index, caml_proof)| {
-            let verifier_index: VerifierIndex<55, Vesta, Srs> = caml_index.into();
-            let (proof, public_input): (ProverProof<Vesta, OpeningProof<Vesta, 55>, 55>, Vec<_>) =
-                caml_proof.into();
+            let verifier_index: VerifierIndex<FULL_ROUNDS, Vesta, Srs> = caml_index.into();
+            let (proof, public_input): (
+                ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS>,
+                Vec<_>,
+            ) = caml_proof.into();
             (verifier_index, proof, public_input)
         })
         .collect();
-    let ts_ref: Vec<Context<55, Vesta, OpeningProof<Vesta, 55>, Srs>> = ts
+    let ts_ref: Vec<Context<FULL_ROUNDS, Vesta, OpeningProof<Vesta, FULL_ROUNDS>, Srs>> = ts
         .iter()
         .map(|(verifier_index, proof, public_input)| Context {
             verifier_index,
@@ -997,11 +1001,11 @@ pub fn caml_pasta_fp_plonk_proof_batch_verify(
     let group_map = GroupMap::<Fq>::setup();
 
     batch_verify::<
-        55,
+        FULL_ROUNDS,
         Vesta,
-        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi, 55>,
-        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi, 55>,
-        OpeningProof<Vesta, 55>,
+        DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+        DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+        OpeningProof<Vesta, FULL_ROUNDS>,
     >(&group_map, &ts_ref)
     .is_ok()
 }
@@ -1023,7 +1027,7 @@ pub fn caml_pasta_fp_plonk_proof_dummy() -> CamlProofWithPublic<CamlGVesta, Caml
     let prev_challenges = vec![prev.clone(), prev.clone(), prev];
 
     let g = Vesta::generator();
-    let proof: OpeningProof<_, 55> = OpeningProof {
+    let proof: OpeningProof<_, FULL_ROUNDS> = OpeningProof {
         lr: vec![(g, g), (g, g), (g, g)],
         z1: Fp::one(),
         z2: Fp::one(),

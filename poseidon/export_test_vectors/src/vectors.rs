@@ -5,6 +5,7 @@ use mina_curves::pasta::Fp;
 use mina_poseidon::{
     constants::{self, SpongeConstants},
     pasta,
+    pasta::FULL_ROUNDS,
     poseidon::{ArithmeticSponge as Poseidon, ArithmeticSpongeParams, Sponge as _},
 };
 use num_bigint::BigUint;
@@ -76,7 +77,7 @@ pub fn generate(mode: Mode, param_type: ParamType, seed: Option<[u8; 32]>) -> Te
                 &input,
                 pasta::fp_legacy::static_params(),
             ),
-            ParamType::Kimchi => poseidon::<constants::PlonkSpongeConstantsKimchi, 55>(
+            ParamType::Kimchi => poseidon::<constants::PlonkSpongeConstantsKimchi, FULL_ROUNDS>(
                 &input,
                 pasta::fp_kimchi::static_params(),
             ),
@@ -313,10 +314,12 @@ mod tests {
                         &input,
                         pasta::fp_legacy::static_params(),
                     ),
-                    ParamType::Kimchi => poseidon::<constants::PlonkSpongeConstantsKimchi, 55>(
-                        &input,
-                        pasta::fp_kimchi::static_params(),
-                    ),
+                    ParamType::Kimchi => {
+                        poseidon::<constants::PlonkSpongeConstantsKimchi, FULL_ROUNDS>(
+                            &input,
+                            pasta::fp_kimchi::static_params(),
+                        )
+                    }
                 };
 
                 let mut output_bytes = vec![];

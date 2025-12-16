@@ -1,5 +1,6 @@
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use poly_commitment::kzg::KZGProof;
@@ -56,6 +57,6 @@ pub type Ff1 = mina_curves::pasta::Fp;
 pub type Ff2 = mina_curves::pasta::Fq;
 
 pub type SpongeParams = PlonkSpongeConstantsKimchi;
-pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams, 55>;
-pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
+pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams, FULL_ROUNDS>;
+pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 pub type OpeningProof = KZGProof<BN254>;

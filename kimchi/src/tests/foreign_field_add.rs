@@ -24,6 +24,7 @@ use core::array;
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use num_bigint::{BigUint, RandBigInt};
@@ -40,8 +41,8 @@ type VestaField = <Vesta as AffineRepr>::BaseField;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, 55>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
 // The secp256k1 base field modulus
 fn secp256k1_modulus() -> BigUint {
@@ -312,7 +313,11 @@ fn create_test_constraint_system_ffadd(
     opcodes: &[FFOps],
     foreign_field_modulus: BigUint,
     full: bool,
-) -> ProverIndex<55, Vesta, <OpeningProof<Vesta, 55> as OpenProof<Vesta, 55>>::SRS> {
+) -> ProverIndex<
+    FULL_ROUNDS,
+    Vesta,
+    <OpeningProof<Vesta, FULL_ROUNDS> as OpenProof<Vesta, FULL_ROUNDS>>::SRS,
+> {
     let (_next_row, gates) = if full {
         full_circuit(opcodes, &foreign_field_modulus)
     } else {
@@ -336,7 +341,7 @@ fn test_ffadd(
     full: bool,
 ) -> (
     [Vec<PallasField>; COLUMNS],
-    ProverIndex<55, Vesta, poly_commitment::ipa::SRS<Vesta>>,
+    ProverIndex<FULL_ROUNDS, Vesta, poly_commitment::ipa::SRS<Vesta>>,
 ) {
     let index = create_test_constraint_system_ffadd(opcodes, foreign_field_modulus.clone(), full);
 
@@ -350,7 +355,7 @@ fn test_ffadd(
 
     for row in 0..all_rows {
         assert_eq!(
-            index.cs.gates[row].verify_witness::<55, Vesta>(
+            index.cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
                 row,
                 &witness,
                 &index.cs,
@@ -759,7 +764,7 @@ fn test_wrong_sum() {
     witness[0][12] = all_ones_limb;
 
     assert_eq!(
-        index.cs.gates[1].verify_witness::<55, Vesta>(
+        index.cs.gates[1].verify_witness::<FULL_ROUNDS, Vesta>(
             1,
             &witness,
             &index.cs,
@@ -783,7 +788,7 @@ fn test_wrong_dif() {
     witness[0][12] = PallasField::zero();
 
     assert_eq!(
-        index.cs.gates[1].verify_witness::<55, Vesta>(
+        index.cs.gates[1].verify_witness::<FULL_ROUNDS, Vesta>(
             1,
             &witness,
             &index.cs,
@@ -1085,7 +1090,12 @@ fn test_bad_bound() {
     witness[6][2] = -PallasField::one();
     cs.gates = Arc::new(gates);
     assert_eq!(
-        cs.gates[2].verify_witness::<55, Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[2].verify_witness::<FULL_ROUNDS, Vesta>(
+            2,
+            &witness,
+            &cs,
+            &witness[0][0..cs.public]
+        ),
         Err(CircuitGateError::CopyConstraint {
             typ: GateType::ForeignFieldAdd,
             src: Wire { row: 2, col: 6 },
@@ -1094,13 +1104,23 @@ fn test_bad_bound() {
     );
     witness[0][0] = -PallasField::one();
     assert_eq!(
-        cs.gates[2].verify_witness::<55, Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[2].verify_witness::<FULL_ROUNDS, Vesta>(
+            2,
+            &witness,
+            &cs,
+            &witness[0][0..cs.public]
+        ),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 1)),
     );
     witness[6][2] = PallasField::one();
     witness[0][0] = PallasField::one();
     assert_eq!(
-        cs.gates[2].verify_witness::<55, Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[2].verify_witness::<FULL_ROUNDS, Vesta>(
+            2,
+            &witness,
+            &cs,
+            &witness[0][0..cs.public]
+        ),
         Ok(()),
     );
 }
@@ -1124,7 +1144,7 @@ fn test_random_bad_input() {
     // First modify left input only to cause an invalid copy constraint
     witness[0][1] += PallasField::one();
     assert_eq!(
-        index.cs.gates[1].verify_witness::<55, Vesta>(
+        index.cs.gates[1].verify_witness::<FULL_ROUNDS, Vesta>(
             1,
             &witness,
             &index.cs,
@@ -1139,7 +1159,7 @@ fn test_random_bad_input() {
     // then modify the value in the range check to cause an invalid FFAdd constraint
     witness[0][4] += PallasField::one();
     assert_eq!(
-        index.cs.gates[1].verify_witness::<55, Vesta>(
+        index.cs.gates[1].verify_witness::<FULL_ROUNDS, Vesta>(
             1,
             &witness,
             &index.cs,
@@ -1175,14 +1195,14 @@ fn test_random_bad_parameters() {
     // Modify bot carry
     witness[7][1] += PallasField::one();
     assert_eq!(
-        gates[1].verify_witness::<55, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
+        gates[1].verify_witness::<FULL_ROUNDS, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 3)),
     );
     witness[7][1] -= PallasField::one();
     // Modify overflow
     witness[6][1] += PallasField::one();
     assert_eq!(
-        gates[1].verify_witness::<55, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
+        gates[1].verify_witness::<FULL_ROUNDS, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 3)),
     );
     witness[6][1] -= PallasField::one();
@@ -1190,7 +1210,7 @@ fn test_random_bad_parameters() {
     gates[1].coeffs[3] = PallasField::zero() - gates[1].coeffs[3];
     cs.gates = Arc::new(gates.clone());
     assert_eq!(
-        gates[1].verify_witness::<55, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
+        gates[1].verify_witness::<FULL_ROUNDS, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 3)),
     );
 
@@ -1198,7 +1218,7 @@ fn test_random_bad_parameters() {
     cs.gates = Arc::new(gates.clone());
     // Check back to normal
     assert_eq!(
-        gates[1].verify_witness::<55, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
+        gates[1].verify_witness::<FULL_ROUNDS, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Ok(()),
     );
 }
@@ -1260,7 +1280,7 @@ fn prove_and_verify(operation_count: usize) {
     // Create witness
     let witness = short_witness(&inputs, &operations, foreign_field_modulus);
 
-    TestFramework::<55, Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(vec![PallasField::one()])
@@ -1332,7 +1352,7 @@ fn test_ffadd_no_rc() {
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<55, Vesta>(
+            cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
                 row,
                 &witness,
                 &cs,
@@ -1348,28 +1368,28 @@ fn test_ffadd_no_rc() {
 #[test]
 // Tests targeting each custom constraint with Vesta (foreign field modulus) on Pallas (native field modulus)
 fn test_vesta_on_pallas() {
-    let test = run_test::<55, Pallas>(&VestaField::modulus_biguint());
+    let test = run_test::<FULL_ROUNDS, Pallas>(&VestaField::modulus_biguint());
     assert_eq!(test.0, Ok(()));
 }
 
 #[test]
 // Tests targeting each custom constraint with Pallas (foreign field modulus) on Vesta (native field modulus)
 fn test_pallas_on_vesta() {
-    let test = run_test::<55, Vesta>(&PallasField::modulus_biguint());
+    let test = run_test::<FULL_ROUNDS, Vesta>(&PallasField::modulus_biguint());
     assert_eq!(test.0, Ok(()));
 }
 
 #[test]
 // Tests targeting each custom constraint with Vesta (foreign field modulus) on Vesta (native field modulus)
 fn test_vesta_on_vesta() {
-    let test = run_test::<55, Vesta>(&VestaField::modulus_biguint());
+    let test = run_test::<FULL_ROUNDS, Vesta>(&VestaField::modulus_biguint());
     assert_eq!(test.0, Ok(()));
 }
 
 #[test]
 // Tests targeting each custom constraint with Pallas (foreign field modulus) on Pallas (native field modulus)
 fn test_pallas_on_pallas() {
-    let test = run_test::<55, Pallas>(&PallasField::modulus_biguint());
+    let test = run_test::<FULL_ROUNDS, Pallas>(&PallasField::modulus_biguint());
     assert_eq!(test.0, Ok(()));
 }
 
@@ -1499,7 +1519,7 @@ fn test_ffadd_finalization() {
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            index.cs.gates[row].verify_witness::<55, Vesta>(
+            index.cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
                 row,
                 &witness,
                 &index.cs,
@@ -1509,7 +1529,7 @@ fn test_ffadd_finalization() {
         );
     }
 
-    TestFramework::<55, Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness.clone())
         .public_inputs(vec![witness[0][0]])

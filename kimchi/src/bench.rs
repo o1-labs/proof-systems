@@ -6,6 +6,7 @@ use groupmap::{BWParameters, GroupMap};
 use mina_curves::pasta::{Fp, Fq, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge, FqSponge},
 };
 use o1_utils::math;
@@ -31,15 +32,21 @@ use crate::{
     verifier::{batch_verify, Context},
 };
 
-pub type BaseSpongeVesta = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi, 55>;
-pub type ScalarSpongeVesta = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi, 55>;
-pub type BaseSpongePallas = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi, 55>;
-pub type ScalarSpongePallas = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi, 55>;
+pub type BaseSpongeVesta =
+    DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>;
+pub type ScalarSpongeVesta = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi, FULL_ROUNDS>;
+pub type BaseSpongePallas =
+    DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>;
+pub type ScalarSpongePallas = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi, FULL_ROUNDS>;
 
 pub struct BenchmarkCtx {
     pub num_gates: usize,
     group_map: BWParameters<VestaParameters>,
-    index: ProverIndex<55, Vesta, <OpeningProof<Vesta, 55> as OpenProof<Vesta, 55>>::SRS>,
+    index: ProverIndex<
+        FULL_ROUNDS,
+        Vesta,
+        <OpeningProof<Vesta, FULL_ROUNDS> as OpenProof<Vesta, FULL_ROUNDS>>::SRS,
+    >,
 }
 
 impl BenchmarkCtx {
@@ -89,7 +96,12 @@ impl BenchmarkCtx {
     }
 
     /// Produces a proof
-    pub fn create_proof(&self) -> (ProverProof<Vesta, OpeningProof<Vesta, 55>, 55>, Vec<Fp>) {
+    pub fn create_proof(
+        &self,
+    ) -> (
+        ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS>,
+        Vec<Fp>,
+    ) {
         // create witness
         let witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![1u32.into(); self.num_gates]);
 
@@ -112,7 +124,10 @@ impl BenchmarkCtx {
     #[allow(clippy::type_complexity)]
     pub fn batch_verification(
         &self,
-        batch: &[(ProverProof<Vesta, OpeningProof<Vesta, 55>, 55>, Vec<Fp>)],
+        batch: &[(
+            ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS>,
+            Vec<Fp>,
+        )],
     ) {
         // verify the proof
         let batch: Vec<_> = batch
@@ -123,10 +138,13 @@ impl BenchmarkCtx {
                 public_input: public,
             })
             .collect();
-        batch_verify::<55, Vesta, BaseSpongeVesta, ScalarSpongeVesta, OpeningProof<Vesta, 55>>(
-            &self.group_map,
-            &batch,
-        )
+        batch_verify::<
+            55,
+            Vesta,
+            BaseSpongeVesta,
+            ScalarSpongeVesta,
+            OpeningProof<Vesta, FULL_ROUNDS>,
+        >(&self.group_map, &batch)
         .unwrap();
     }
 }

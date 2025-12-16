@@ -3,7 +3,8 @@ use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Radix2EvaluationD
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi as SC, sponge::DefaultFqSponge, FqSponge as _,
+    constants::PlonkSpongeConstantsKimchi as SC, pasta::FULL_ROUNDS, sponge::DefaultFqSponge,
+    FqSponge as _,
 };
 use o1_utils::{
     serialization::test_generic_serialization_regression_serde, ExtendedDensePolynomial as _,
@@ -68,9 +69,9 @@ pub struct AggregatedEvaluationProof {
     /// the random value used to separate evaluations
     evalmask: Fp,
     /// an Fq-sponge
-    fq_sponge: DefaultFqSponge<VestaParameters, SC, 55>,
+    fq_sponge: DefaultFqSponge<VestaParameters, SC, FULL_ROUNDS>,
     /// the actual evaluation proof
-    pub proof: OpeningProof<Vesta, 55>,
+    pub proof: OpeningProof<Vesta, FULL_ROUNDS>,
 }
 
 impl AggregatedEvaluationProof {
@@ -81,9 +82,9 @@ impl AggregatedEvaluationProof {
     ) -> BatchEvaluationProof<
         '_,
         Vesta,
-        DefaultFqSponge<VestaParameters, SC, 55>,
-        OpeningProof<Vesta, 55>,
-        55,
+        DefaultFqSponge<VestaParameters, SC, FULL_ROUNDS>,
+        OpeningProof<Vesta, FULL_ROUNDS>,
+        FULL_ROUNDS,
     > {
         let mut coms = vec![];
         for eval_com in &self.eval_commitments {
@@ -121,7 +122,7 @@ pub fn generate_random_opening_proof<RNG: Rng + CryptoRng>(
 ) -> (Vec<AggregatedEvaluationProof>, Duration, Duration) {
     let num_chunks = 1;
 
-    let fq_sponge = DefaultFqSponge::<VestaParameters, SC, 55>::new(
+    let fq_sponge = DefaultFqSponge::<VestaParameters, SC, FULL_ROUNDS>::new(
         mina_poseidon::pasta::fq_kimchi::static_params(),
     );
 
@@ -201,15 +202,16 @@ pub fn generate_random_opening_proof<RNG: Rng + CryptoRng>(
         let evalmask = Fp::rand(&mut rng);
 
         let timer = Instant::now();
-        let proof = srs.open::<DefaultFqSponge<VestaParameters, SC, 55>, _, _, 55>(
-            group_map,
-            &polynomials,
-            &eval_points.clone(),
-            polymask,
-            evalmask,
-            fq_sponge.clone(),
-            &mut rng,
-        );
+        let proof = srs
+            .open::<DefaultFqSponge<VestaParameters, SC, FULL_ROUNDS>, _, _, FULL_ROUNDS>(
+                group_map,
+                &polynomials,
+                &eval_points.clone(),
+                polymask,
+                evalmask,
+                fq_sponge.clone(),
+                &mut rng,
+            );
         time_open += timer.elapsed();
 
         // prepare for batch verification
@@ -244,10 +246,9 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
 
     // batch verify all the proofs
     let mut batch: Vec<_> = proofs.iter().map(|p| p.verify_type()).collect();
-    let result = srs
-        .verify::<DefaultFqSponge<VestaParameters, SC, { mina_poseidon::pasta::FULL_ROUNDS }>, _, { mina_poseidon::pasta::FULL_ROUNDS }>(
-            &group_map, &mut batch, &mut rng,
-        );
+    let result = srs.verify::<DefaultFqSponge<VestaParameters, SC, FULL_ROUNDS>, _, FULL_ROUNDS>(
+        &group_map, &mut batch, &mut rng,
+    );
     assert!(result);
 
     // TODO: move to bench
@@ -392,7 +393,7 @@ pub fn ser_regression_canonical_opening_proof() {
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
     let srs = SRS::<Vesta>::create(1 << 7);
 
-    let data_expected: OpeningProof<Vesta, 55> =
+    let data_expected: OpeningProof<Vesta, FULL_ROUNDS> =
         generate_random_opening_proof(rng, &group_map, &srs).0[0]
             .proof
             .clone();

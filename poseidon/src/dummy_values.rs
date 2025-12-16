@@ -1,9 +1,9 @@
 extern crate alloc;
-use crate::poseidon::ArithmeticSpongeParams;
+use crate::{pasta::FULL_ROUNDS, poseidon::ArithmeticSpongeParams};
 use ark_ff::Field;
 use core::{fmt::Debug, str::FromStr};
 
-type Params<FieldType> = ArithmeticSpongeParams<FieldType, 55>;
+type Params<FieldType> = ArithmeticSpongeParams<FieldType, FULL_ROUNDS>;
 
 /// Placeholder dummy value for the kimchi configuration, suitable for fields of bitlength 254 and
 /// above.
