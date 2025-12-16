@@ -1,0 +1,93 @@
+# Lint workflow for Rust stable
+#
+# This workflow runs clippy on the latest stable Rust toolchain.
+# Initially, all crates are excluded. As each crate is fixed to support
+# stable Rust, it should be removed from the exclude list.
+#
+# Tracking issue: https://github.com/o1-labs/mina-rust/issues/1926
+# Sub-issues for each crate: #1927-#1949
+# This workflow issue: https://github.com/o1-labs/mina-rust/issues/1950
+
+name: Lint (Stable Rust)
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - master
+
+env:
+  CARGO_TERM_COLOR: always
+  # Override rust-toolchain.toml to use stable
+  RUSTUP_TOOLCHAIN: stable
+
+jobs:
+  clippy-stable:
+    name: Clippy (Stable)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run clippy on stable
+        run: |
+          # List of crates to exclude (not yet fixed for stable Rust)
+          # Remove crates from this list as they are fixed.
+          # See https://github.com/o1-labs/mina-rust/issues/1926 for tracking.
+          EXCLUDED_CRATES=(
+            arrabbiata
+            arkworks
+            export_test_vectors
+            groupmap
+            internal-tracing
+            kimchi
+            kimchi-msm
+            kimchi-stubs
+            kimchi-visu
+            mina-book
+            mina-curves
+            mina-hasher
+            mina-poseidon
+            mina-signer
+            mvpoly
+            o1-utils
+            o1vm
+            plonk_neon
+            plonk_wasm
+            poly-commitment
+            turshi
+            wasm-types
+            xtask
+          )
+
+          # Count workspace members
+          WORKSPACE_MEMBERS=$(cargo metadata --no-deps --format-version 1 | jq '.packages | length')
+          EXCLUDED_COUNT=${#EXCLUDED_CRATES[@]}
+
+          echo "Workspace has $WORKSPACE_MEMBERS crates, excluding $EXCLUDED_COUNT"
+
+          if [ "$WORKSPACE_MEMBERS" -eq "$EXCLUDED_COUNT" ]; then
+            echo "All crates are excluded, nothing to lint. This is expected initially."
+            echo "Remove crates from EXCLUDED_CRATES as they are fixed for stable Rust."
+            exit 0
+          fi
+
+          # Build the exclude arguments
+          EXCLUDE_ARGS=""
+          for crate in "${EXCLUDED_CRATES[@]}"; do
+            EXCLUDE_ARGS="$EXCLUDE_ARGS --exclude $crate"
+          done
+
+          # Run clippy with exclusions
+          cargo clippy --workspace $EXCLUDE_ARGS --all-features --all-targets -- -W clippy::all -D warnings
