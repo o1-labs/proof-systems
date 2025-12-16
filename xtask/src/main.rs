@@ -126,7 +126,7 @@ fn build_kimchi_stubs(target_dir: Option<&str>, offline: bool) -> Result<()> {
     let target_dir = target_dir.unwrap_or("target/kimchi_stubs_build");
 
     let mut cmd = Command::new("cargo");
-    cmd.args(&[
+    cmd.args([
         "build",
         "--release",
         "-p",

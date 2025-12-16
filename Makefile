@@ -159,7 +159,7 @@ format: ## Format the code
 		taplo fmt
 
 lint: ## Lint the code
-		cargo clippy --all --all-features --all-targets --tests --exclude xtask $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
+		cargo clippy --all --all-features --all-targets --tests $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
 
 generate-test-coverage-report: ## Generate the code coverage report
 		@echo ""
