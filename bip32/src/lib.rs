@@ -81,8 +81,6 @@
 //! println!("Address: {}", keypair.get_address());
 //! ```
 
-#![deny(missing_docs)]
-
 use ark_ff::PrimeField;
 use hmac::{Hmac, Mac};
 use mina_signer::ScalarField;
