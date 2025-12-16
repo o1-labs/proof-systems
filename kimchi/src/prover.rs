@@ -123,11 +123,11 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G, OpeningProof, const ROUNDS: usize> ProverProof<G, OpeningProof, ROUNDS>
+impl<G, OpeningProof, const FULL_ROUNDS: usize> ProverProof<G, OpeningProof, FULL_ROUNDS>
 where
-    G: KimchiCurve<ROUNDS>,
+    G: KimchiCurve<FULL_ROUNDS>,
     G::BaseField: PrimeField,
-    OpeningProof: OpenProof<G, ROUNDS>,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
 {
     /// This function constructs prover's zk-proof from the witness & the `ProverIndex` against SRS instance
     ///
@@ -138,15 +138,15 @@ where
         groupmap: &G::Map,
         witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<ROUNDS, G, OpeningProof::SRS>,
+        index: &ProverIndex<FULL_ROUNDS, G, OpeningProof::SRS>,
         rng: &mut RNG,
     ) -> Result<Self>
     where
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         EFrSponge: FrSponge<G::ScalarField>,
-        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
         RNG: RngCore + CryptoRng,
-        VerifierIndex<ROUNDS, G, OpeningProof::SRS>: Clone,
+        VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
     {
         Self::create_recursive::<EFqSponge, EFrSponge, RNG>(
             groupmap,
@@ -174,17 +174,17 @@ where
         group_map: &G::Map,
         mut witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<ROUNDS, G, OpeningProof::SRS>,
+        index: &ProverIndex<FULL_ROUNDS, G, OpeningProof::SRS>,
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
         rng: &mut RNG,
     ) -> Result<Self>
     where
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         EFrSponge: FrSponge<G::ScalarField>,
-        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
         RNG: RngCore + CryptoRng,
-        VerifierIndex<ROUNDS, G, OpeningProof::SRS>: Clone,
+        VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
     {
         internal_tracing::checkpoint!(internal_traces; create_recursive);
         let d1_size = index.cs.domain.d1.size();
@@ -1708,12 +1708,12 @@ pub mod caml {
     // this is just used to simplify the type signatures below
     // the bound does not need to be enforced
     #[allow(type_alias_bounds)]
-    type ProofTuple<const ROUNDS: usize, G: AffineRepr> = (
-        ProverProof<G, OpeningProof<G, ROUNDS>, ROUNDS>,
+    type ProofTuple<const FULL_ROUNDS: usize, G: AffineRepr> = (
+        ProverProof<G, OpeningProof<G, FULL_ROUNDS>, FULL_ROUNDS>,
         Vec<<G as AffineRepr>::ScalarField>,
     );
 
-    impl<const ROUNDS: usize, G, CamlG, CamlF> From<ProofTuple<ROUNDS, G>>
+    impl<const FULL_ROUNDS: usize, G, CamlG, CamlF> From<ProofTuple<FULL_ROUNDS, G>>
         for CamlProofWithPublic<CamlG, CamlF>
     where
         G: AffineRepr,
@@ -1722,7 +1722,7 @@ pub mod caml {
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
-        fn from(pp: ProofTuple<ROUNDS, G>) -> Self {
+        fn from(pp: ProofTuple<FULL_ROUNDS, G>) -> Self {
             let (public_evals, evals) = pp.0.evals.into();
             CamlProofWithPublic {
                 public_evals,
@@ -1738,8 +1738,8 @@ pub mod caml {
         }
     }
 
-    impl<const ROUNDS: usize, G, CamlG, CamlF> From<CamlProofWithPublic<CamlG, CamlF>>
-        for ProofTuple<ROUNDS, G>
+    impl<const FULL_ROUNDS: usize, G, CamlG, CamlF> From<CamlProofWithPublic<CamlG, CamlF>>
+        for ProofTuple<FULL_ROUNDS, G>
     where
         CamlF: Clone,
         G: AffineRepr + From<CamlG>,

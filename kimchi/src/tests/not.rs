@@ -67,7 +67,7 @@ fn create_not_witness_checked_length<F: PrimeField>(
 }
 
 // Constraint system for Not gadget using Xor16
-fn create_test_constraint_system_not_xor<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn create_test_constraint_system_not_xor<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     bits: usize,
 ) -> ConstraintSystem<G::ScalarField>
 where
@@ -88,7 +88,7 @@ where
 }
 
 // Constraint system for Not gadget using generic gates
-fn create_test_constraint_system_not_gnrc<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn create_test_constraint_system_not_gnrc<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     num_nots: usize,
 ) -> ConstraintSystem<G::ScalarField>
 where
@@ -106,7 +106,7 @@ where
 }
 
 // Creates the witness and circuit for NOT gadget using XOR
-fn setup_not_xor<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn setup_not_xor<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     input: Option<G::ScalarField>,
     bits: Option<usize>,
 ) -> (
@@ -124,28 +124,28 @@ where
     // Otherwise, use the length of the input
     let bits_real = max(input.to_biguint().bitlen(), bits.unwrap_or(0));
 
-    let cs = create_test_constraint_system_not_xor::<ROUNDS, G>(bits_real);
+    let cs = create_test_constraint_system_not_xor::<FULL_ROUNDS, G>(bits_real);
 
     let witness = create_not_witness_checked_length::<G::ScalarField>(input, bits);
 
-    check_not_xor::<ROUNDS, G>(&witness, input, bits);
+    check_not_xor::<FULL_ROUNDS, G>(&witness, input, bits);
 
     (witness, cs)
 }
 
 // Tester for not gate
-fn test_not_xor<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn test_not_xor<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     input: Option<G::ScalarField>,
     bits: Option<usize>,
 ) -> [Vec<G::ScalarField>; COLUMNS]
 where
     G::BaseField: PrimeField,
 {
-    let (witness, cs) = setup_not_xor::<ROUNDS, G>(input, bits);
+    let (witness, cs) = setup_not_xor::<FULL_ROUNDS, G>(input, bits);
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<ROUNDS, G>(
+            cs.gates[row].verify_witness::<FULL_ROUNDS, G>(
                 row,
                 &witness,
                 &cs,
@@ -159,7 +159,7 @@ where
 }
 
 // Creates the witness and circuit for NOT gadget using generic
-fn setup_not_gnrc<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn setup_not_gnrc<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     inputs: Option<Vec<G::ScalarField>>,
     bits: usize,
     len: Option<usize>,
@@ -183,17 +183,17 @@ where
             .collect::<Vec<G::ScalarField>>()
     };
 
-    let cs = create_test_constraint_system_not_gnrc::<ROUNDS, G>(inputs.len());
+    let cs = create_test_constraint_system_not_gnrc::<FULL_ROUNDS, G>(inputs.len());
 
     let witness = create_not_witness_unchecked_length::<G::ScalarField>(&inputs, bits);
 
-    check_not_gnrc::<ROUNDS, G>(&witness, &inputs, bits);
+    check_not_gnrc::<FULL_ROUNDS, G>(&witness, &inputs, bits);
 
     (witness, cs)
 }
 
 // Tester for not gate generic
-fn test_not_gnrc<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn test_not_gnrc<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     inputs: Option<Vec<G::ScalarField>>,
     bits: usize,
     len: Option<usize>,
@@ -201,12 +201,12 @@ fn test_not_gnrc<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
 where
     G::BaseField: PrimeField,
 {
-    let (witness, cs) = setup_not_gnrc::<ROUNDS, G>(inputs, bits, len);
+    let (witness, cs) = setup_not_gnrc::<FULL_ROUNDS, G>(inputs, bits, len);
 
     // test public input and not generic gate
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<ROUNDS, G>(
+            cs.gates[row].verify_witness::<FULL_ROUNDS, G>(
                 row,
                 &witness,
                 &cs,
@@ -220,14 +220,14 @@ where
 }
 
 // Manually checks the NOT of each crumb in the witness
-fn check_not_xor<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn check_not_xor<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     witness: &[Vec<G::ScalarField>; COLUMNS],
     input: G::ScalarField,
     bits: Option<usize>,
 ) {
     let input_big = input.to_biguint();
     let bits = max(input_big.bitlen(), bits.unwrap_or(0));
-    check_xor::<ROUNDS, G>(witness, bits, input, all_ones::<ROUNDS, G>(bits), NOT);
+    check_xor::<FULL_ROUNDS, G>(witness, bits, input, all_ones::<FULL_ROUNDS, G>(bits), NOT);
     assert_eq!(
         witness[2][1],
         BigUint::bitwise_not(&input_big, Some(bits)).into()
@@ -235,7 +235,7 @@ fn check_not_xor<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
 }
 
 // Manually checks the NOTs of a vector of inputs in generic gates
-fn check_not_gnrc<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn check_not_gnrc<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     witness: &[Vec<G::ScalarField>; COLUMNS],
     inputs: &[G::ScalarField],
     bits: usize,

@@ -90,7 +90,7 @@ def permutation(state):
         state[2] += constant[2]
         round_offset = 1
 
-    for round in range(round_offset, ROUNDS + round_offset):
+    for round in range(round_offset, FULL_ROUNDS + round_offset):
         apply_round(round, state)
 ```
 

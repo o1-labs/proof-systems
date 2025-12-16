@@ -1374,7 +1374,7 @@ fn test_pallas_on_pallas() {
 }
 
 // Boilerplate for tests
-fn run_test<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn run_test<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     foreign_field_modulus: &BigUint,
 ) -> (CircuitGateResult<()>, [Vec<G::ScalarField>; COLUMNS])
 where
@@ -1405,7 +1405,7 @@ where
     // Perform witness verification that everything is ok before invalidation (quick checks)
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
         let result =
-            gate.verify_witness::<ROUNDS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
+            gate.verify_witness::<FULL_ROUNDS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
         if result.is_err() {
             return (result, witness);
         }

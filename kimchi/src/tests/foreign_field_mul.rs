@@ -62,7 +62,7 @@ fn pallas_sqrt() -> BigUint {
 }
 
 // Boilerplate for tests
-fn run_test<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSponge, EFrSponge>(
+fn run_test<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, EFqSponge, EFrSponge>(
     full: bool,
     external_gates: bool,
     disable_gates_checks: bool,
@@ -73,9 +73,9 @@ fn run_test<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSponge, EFrSponge>(
 ) -> (CircuitGateResult<()>, [Vec<G::ScalarField>; COLUMNS])
 where
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
-    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
 {
     // Create foreign field multiplication gates
     let (mut next_row, mut gates) =
@@ -187,7 +187,7 @@ where
     let runner = if full {
         // Create prover index with test framework
         Some(
-            TestFramework::<ROUNDS, G>::default()
+            TestFramework::<FULL_ROUNDS, G>::default()
                 .disable_gates_checks(disable_gates_checks)
                 .gates(gates.clone())
                 .setup(),
@@ -206,7 +206,7 @@ where
     // Perform witness verification that everything is ok before invalidation (quick checks)
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
         let result =
-            gate.verify_witness::<ROUNDS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
+            gate.verify_witness::<FULL_ROUNDS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
         if result.is_err() {
             return (result, witness);
         }
@@ -240,8 +240,12 @@ where
             // When targeting the plookup constraints the invalidated values would cause custom constraint
             // failures, so we want to suppress these witness verification checks when doing plookup tests.
             for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
-                let result =
-                    gate.verify_witness::<ROUNDS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
+                let result = gate.verify_witness::<FULL_ROUNDS, G>(
+                    row,
+                    &witness,
+                    &cs,
+                    &witness[0][0..cs.public],
+                );
                 if result.is_err() {
                     return (result, witness);
                 }
@@ -281,13 +285,18 @@ where
 }
 
 // Test targeting each custom constraint (positive and negative tests for each)
-fn test_custom_constraints<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSponge, EFrSponge>(
+fn test_custom_constraints<
+    const FULL_ROUNDS: usize,
+    G: KimchiCurve<FULL_ROUNDS>,
+    EFqSponge,
+    EFrSponge,
+>(
     foreign_field_modulus: &BigUint,
 ) where
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
-    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
 {
     let rng = &mut o1_utils::tests::make_test_rng(None);
 
@@ -296,7 +305,7 @@ fn test_custom_constraints<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSpong
         let right_input = rng.gen_biguint_range(&BigUint::zero(), foreign_field_modulus);
 
         // Test constraint (C1): invalidate product1_hi_1 is in [0, 2^2)
-        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<FULL_ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -315,7 +324,7 @@ fn test_custom_constraints<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSpong
         );
 
         // Test constraint (C2): invalidate carry0 in [0, 2^2)
-        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<FULL_ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -334,7 +343,7 @@ fn test_custom_constraints<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSpong
         );
 
         // Test constraint (C3): invalidate middle intermediate product p1 decomposition
-        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<FULL_ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -353,7 +362,7 @@ fn test_custom_constraints<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSpong
         );
 
         // Test constraint (C4): invalidate carry0
-        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<FULL_ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -376,7 +385,7 @@ fn test_custom_constraints<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSpong
         //     the test_native_modulus_constraint() test below
 
         // Test constraint (C6): invalidate carry1_crumb0
-        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<FULL_ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -394,7 +403,7 @@ fn test_custom_constraints<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSpong
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6)),
         );
         // Test constraint (C7): invalidate carry1_crumb1
-        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<FULL_ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -412,7 +421,7 @@ fn test_custom_constraints<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSpong
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 7)),
         );
         // Test constraint (C8): invalidate carry1_crumb2
-        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<FULL_ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -431,7 +440,7 @@ fn test_custom_constraints<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSpong
         );
 
         // Test constraint (C9): invalidate carry1_bit
-        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<FULL_ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -450,7 +459,7 @@ fn test_custom_constraints<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSpong
         );
 
         // Test constraint (C10): invalidate zero check
-        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<FULL_ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,
@@ -469,7 +478,7 @@ fn test_custom_constraints<const ROUNDS: usize, G: KimchiCurve<ROUNDS>, EFqSpong
         );
 
         // Test constraint (C11): invalidate quotient high bound
-        let (result, witness) = run_test::<ROUNDS, G, EFqSponge, EFrSponge>(
+        let (result, witness) = run_test::<FULL_ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
             false,

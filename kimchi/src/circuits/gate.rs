@@ -160,51 +160,54 @@ impl<F: PrimeField> CircuitGate<F> {
     ///
     /// Will give error if verify process returns error.
     pub fn verify<
-        const ROUNDS: usize,
-        G: KimchiCurve<ROUNDS, ScalarField = F>,
+        const FULL_ROUNDS: usize,
+        G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
         Srs: poly_commitment::SRS<G>,
     >(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        index: &ProverIndex<ROUNDS, G, Srs>,
+        index: &ProverIndex<FULL_ROUNDS, G, Srs>,
         public: &[F],
     ) -> Result<(), String> {
         use GateType::*;
         match self.typ {
             Zero => Ok(()),
             Generic => self.verify_generic(row, witness, public),
-            Poseidon => self.verify_poseidon::<ROUNDS, G>(row, witness),
+            Poseidon => self.verify_poseidon::<FULL_ROUNDS, G>(row, witness),
             CompleteAdd => self.verify_complete_add(row, witness),
             VarBaseMul => self.verify_vbmul(row, witness),
-            EndoMul => self.verify_endomul::<ROUNDS, G>(row, witness, &index.cs),
-            EndoMulScalar => self.verify_endomul_scalar::<ROUNDS, G>(row, witness, &index.cs),
+            EndoMul => self.verify_endomul::<FULL_ROUNDS, G>(row, witness, &index.cs),
+            EndoMulScalar => self.verify_endomul_scalar::<FULL_ROUNDS, G>(row, witness, &index.cs),
             // TODO: implement the verification for the lookup gate
             // See https://github.com/MinaProtocol/mina/issues/14011
             Lookup => Ok(()),
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
-                self.verify_cairo_gate::<ROUNDS, G>(row, witness, &index.cs)
+                self.verify_cairo_gate::<FULL_ROUNDS, G>(row, witness, &index.cs)
             }
             RangeCheck0 | RangeCheck1 => self
-                .verify_witness::<ROUNDS, G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldAdd => self
-                .verify_witness::<ROUNDS, G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldMul => self
-                .verify_witness::<ROUNDS, G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             Xor16 => self
-                .verify_witness::<ROUNDS, G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             Rot64 => self
-                .verify_witness::<ROUNDS, G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
         }
     }
 
     /// Verify the witness against the constraints
-    pub fn verify_witness<const ROUNDS: usize, G: KimchiCurve<ROUNDS, ScalarField = F>>(
+    pub fn verify_witness<
+        const FULL_ROUNDS: usize,
+        G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    >(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],

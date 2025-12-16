@@ -37,7 +37,7 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, 55>;
 
 const XOR: bool = true;
 
-fn create_test_constraint_system_xor<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn create_test_constraint_system_xor<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     bits: usize,
 ) -> ConstraintSystem<G::ScalarField>
 where
@@ -50,7 +50,9 @@ where
 }
 
 // Returns the all ones BigUint of bits length
-pub(crate) fn all_ones<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(bits: usize) -> G::ScalarField {
+pub(crate) fn all_ones<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
+    bits: usize,
+) -> G::ScalarField {
     G::ScalarField::from(2u128).pow([bits as u64]) - G::ScalarField::one()
 }
 
@@ -60,7 +62,7 @@ pub(crate) fn xor_nybble(word: BigUint, nybble: usize) -> BigUint {
 }
 
 // Manually checks the XOR of each nybble in the witness
-pub(crate) fn check_xor<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+pub(crate) fn check_xor<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     witness: &[Vec<G::ScalarField>; COLUMNS],
     bits: usize,
     input1: G::ScalarField,
@@ -92,7 +94,7 @@ pub(crate) fn check_xor<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
 
 // Creates the constraint system and witness for xor, and checks the witness values without
 // calling the constraints verification
-fn setup_xor<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn setup_xor<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     in1: Option<G::ScalarField>,
     in2: Option<G::ScalarField>,
     bits: Option<usize>,
@@ -116,16 +118,16 @@ where
     let bits = bits.map_or(0, |b| b); // 0 or bits
     let bits = max(bits, max(bits1, bits2));
 
-    let cs = create_test_constraint_system_xor::<ROUNDS, G>(bits);
+    let cs = create_test_constraint_system_xor::<FULL_ROUNDS, G>(bits);
     let witness = xor::create_xor_witness(input1, input2, bits);
 
-    check_xor::<ROUNDS, G>(&witness, bits, input1, input2, XOR);
+    check_xor::<FULL_ROUNDS, G>(&witness, bits, input1, input2, XOR);
 
     (cs, witness)
 }
 
 // General test for Xor, first sets up the xor, and then uses the verification of the constraints
-fn test_xor<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn test_xor<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     in1: Option<G::ScalarField>,
     in2: Option<G::ScalarField>,
     bits: Option<usize>,
@@ -133,10 +135,10 @@ fn test_xor<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
 where
     G::BaseField: PrimeField,
 {
-    let (cs, witness) = setup_xor::<ROUNDS, G>(in1, in2, bits);
+    let (cs, witness) = setup_xor::<FULL_ROUNDS, G>(in1, in2, bits);
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<ROUNDS, G>(
+            cs.gates[row].verify_witness::<FULL_ROUNDS, G>(
                 row,
                 &witness,
                 &cs,
@@ -238,7 +240,7 @@ fn test_xor128_random() {
     test_xor::<55, Pallas>(None, None, Some(128));
 }
 
-fn verify_bad_xor_decomposition<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+fn verify_bad_xor_decomposition<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     witness: &mut [Vec<G::ScalarField>; COLUMNS],
     cs: ConstraintSystem<G::ScalarField>,
 ) where
@@ -251,14 +253,19 @@ fn verify_bad_xor_decomposition<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
         let bad = if col < 3 { col + 1 } else { (col - 3) / 4 + 1 };
         witness[col][0] += G::ScalarField::one();
         assert_eq!(
-            cs.gates[0].verify_witness::<ROUNDS, G>(0, witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[0].verify_witness::<FULL_ROUNDS, G>(
+                0,
+                witness,
+                &cs,
+                &witness[0][0..cs.public]
+            ),
             Err(CircuitGateError::Constraint(GateType::Xor16, bad))
         );
         witness[col][0] -= G::ScalarField::one();
     }
     // undo changes
     assert_eq!(
-        cs.gates[0].verify_witness::<ROUNDS, G>(0, witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[0].verify_witness::<FULL_ROUNDS, G>(0, witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }

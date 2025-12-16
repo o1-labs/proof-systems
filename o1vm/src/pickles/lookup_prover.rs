@@ -15,7 +15,7 @@ use rand::{CryptoRng, RngCore};
 /// This prover takes one Public Input and one Public Output.
 /// It then proves that the sum 1/(beta + table) = PI - PO
 /// where the table term are term from fixed lookup or RAMLookup
-pub fn lookup_prove<const ROUNDS: usize, G, EFqSponge, EFrSponge, RNG>(
+pub fn lookup_prove<const FULL_ROUNDS: usize, G, EFqSponge, EFrSponge, RNG>(
     input: LookupProofInput<G::ScalarField>,
     acc_init: G::ScalarField,
     srs: &SRS<G>,
@@ -23,12 +23,12 @@ pub fn lookup_prove<const ROUNDS: usize, G, EFqSponge, EFrSponge, RNG>(
     mut fq_sponge: EFqSponge,
     constraint: &ELookup<G::ScalarField>,
     rng: &mut RNG,
-) -> (Proof<ROUNDS, G>, G::ScalarField)
+) -> (Proof<FULL_ROUNDS, G>, G::ScalarField)
 where
-    G: KimchiCurve<ROUNDS>,
-    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField, ROUNDS> + Clone,
+    G: KimchiCurve<FULL_ROUNDS>,
+    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS> + Clone,
     EFrSponge: FrSponge<G::ScalarField>,
-    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
     G::BaseField: PrimeField,
     RNG: RngCore + CryptoRng,
 {

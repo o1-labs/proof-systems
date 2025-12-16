@@ -112,10 +112,10 @@ impl<F: PrimeField> IntoIterator for Eval<F> {
     }
 }
 
-pub struct Proof<const ROUNDS: usize, G: KimchiCurve<ROUNDS>> {
+pub struct Proof<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>> {
     pub commitments: AllColumns<G>,
     pub evaluations: Eval<G::ScalarField>,
-    pub ipa_proof: OpeningProof<G, ROUNDS>,
+    pub ipa_proof: OpeningProof<G, FULL_ROUNDS>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

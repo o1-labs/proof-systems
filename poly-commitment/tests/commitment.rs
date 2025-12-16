@@ -245,7 +245,7 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
     // batch verify all the proofs
     let mut batch: Vec<_> = proofs.iter().map(|p| p.verify_type()).collect();
     let result = srs
-        .verify::<DefaultFqSponge<VestaParameters, SC, { mina_poseidon::pasta::ROUNDS }>, _, { mina_poseidon::pasta::ROUNDS }>(
+        .verify::<DefaultFqSponge<VestaParameters, SC, { mina_poseidon::pasta::FULL_ROUNDS }>, _, { mina_poseidon::pasta::FULL_ROUNDS }>(
             &group_map, &mut batch, &mut rng,
         );
     assert!(result);

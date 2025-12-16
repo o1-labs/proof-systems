@@ -17,7 +17,7 @@
 //! use mina_poseidon::constants::PlonkSpongeConstantsKimchi;
 //! use mina_poseidon::pasta::fq_kimchi;
 //!
-//! let mut sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, { mina_poseidon::pasta::ROUNDS }>::new(
+//! let mut sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, { mina_poseidon::pasta::FULL_ROUNDS }>::new(
 //!   fq_kimchi::static_params(),
 //! );
 //! let challenge = sponge.challenge();

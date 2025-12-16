@@ -374,10 +374,10 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-impl<const ROUNDS: usize, F, G, Srs> ProverIndex<ROUNDS, G, Srs>
+impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
 where
     F: PrimeField,
-    G: KimchiCurve<ROUNDS, ScalarField = F>,
+    G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
     Srs: SRS<G>,
 {
     /// This function verifies the consistency of the wire

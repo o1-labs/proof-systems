@@ -11,9 +11,9 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 /// Cryptographic sponge interface - for hashing an arbitrary amount of
 /// data into one or more field elements
-pub trait Sponge<Input: Field, Digest, const ROUNDS: usize> {
+pub trait Sponge<Input: Field, Digest, const FULL_ROUNDS: usize> {
     /// Create a new cryptographic sponge using arithmetic sponge `params`
-    fn new(params: &'static ArithmeticSpongeParams<Input, ROUNDS>) -> Self;
+    fn new(params: &'static ArithmeticSpongeParams<Input, FULL_ROUNDS>) -> Self;
 
     /// Absorb an array of field elements `x`
     fn absorb(&mut self, x: &[Input]);
@@ -49,36 +49,36 @@ pub enum SpongeState {
 #[derive(Clone, Debug)]
 pub struct ArithmeticSpongeParams<
     F: Field + CanonicalSerialize + CanonicalDeserialize,
-    const ROUNDS: usize,
+    const FULL_ROUNDS: usize,
 > {
-    pub round_constants: [[F; 3]; ROUNDS],
+    pub round_constants: [[F; 3]; FULL_ROUNDS],
     pub mds: [[F; 3]; 3],
 }
 
 #[derive(Clone)]
-pub struct ArithmeticSponge<F: Field, SC: SpongeConstants, const ROUNDS: usize> {
+pub struct ArithmeticSponge<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize> {
     pub sponge_state: SpongeState,
     rate: usize,
     // TODO(mimoo: an array enforcing the width is better no? or at least an assert somewhere)
     pub state: Vec<F>,
-    params: &'static ArithmeticSpongeParams<F, ROUNDS>,
+    params: &'static ArithmeticSpongeParams<F, FULL_ROUNDS>,
     pub constants: core::marker::PhantomData<SC>,
 }
 
-impl<F: Field, SC: SpongeConstants, const ROUNDS: usize> ArithmeticSponge<F, SC, ROUNDS> {
+impl<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize> ArithmeticSponge<F, SC, FULL_ROUNDS> {
     pub fn full_round(&mut self, r: usize) {
-        full_round::<F, SC, ROUNDS>(self.params, &mut self.state, r);
+        full_round::<F, SC, FULL_ROUNDS>(self.params, &mut self.state, r);
     }
 
     pub fn poseidon_block_cipher(&mut self) {
-        poseidon_block_cipher::<F, SC, ROUNDS>(self.params, &mut self.state);
+        poseidon_block_cipher::<F, SC, FULL_ROUNDS>(self.params, &mut self.state);
     }
 }
 
-impl<F: Field, SC: SpongeConstants, const ROUNDS: usize> Sponge<F, F, ROUNDS>
-    for ArithmeticSponge<F, SC, ROUNDS>
+impl<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize> Sponge<F, F, FULL_ROUNDS>
+    for ArithmeticSponge<F, SC, FULL_ROUNDS>
 {
-    fn new(params: &'static ArithmeticSpongeParams<F, ROUNDS>) -> Self {
+    fn new(params: &'static ArithmeticSpongeParams<F, FULL_ROUNDS>) -> Self {
         let capacity = SC::SPONGE_CAPACITY;
         let rate = SC::SPONGE_RATE;
 

@@ -7,10 +7,10 @@ use mina_poseidon::FqSponge;
 use poly_commitment::commitment::{CommitmentCurve, PolyComm};
 
 /// The result of running the oracle protocol
-pub struct OraclesResult<const ROUNDS: usize, G, EFqSponge>
+pub struct OraclesResult<const FULL_ROUNDS: usize, G, EFqSponge>
 where
     G: CommitmentCurve,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
 {
     /// A sponge that acts on the base field of a curve
     pub fq_sponge: EFqSponge,
@@ -56,20 +56,27 @@ pub mod caml {
         pub digest_before_evaluations: CamlF,
     }
 
-    pub fn create_caml_oracles<const ROUNDS: usize, G, CamlF, EFqSponge, EFrSponge, CurveParams>(
+    pub fn create_caml_oracles<
+        const FULL_ROUNDS: usize,
+        G,
+        CamlF,
+        EFqSponge,
+        EFrSponge,
+        CurveParams,
+    >(
         lgr_comm: Vec<PolyComm<G>>,
-        index: VerifierIndex<ROUNDS, G, CurveParams>,
-        proof: ProverProof<G, OpeningProof<G, ROUNDS>, ROUNDS>,
+        index: VerifierIndex<FULL_ROUNDS, G, CurveParams>,
+        proof: ProverProof<G, OpeningProof<G, FULL_ROUNDS>, FULL_ROUNDS>,
         public_input: &[G::ScalarField],
     ) -> Result<CamlOracles<CamlF>, VerifyError>
     where
-        G: KimchiCurve<ROUNDS>,
+        G: KimchiCurve<FULL_ROUNDS>,
         G::BaseField: PrimeField,
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         EFrSponge: FrSponge<G::ScalarField>,
-        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, ROUNDS>>,
+        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
         CamlF: From<G::ScalarField>,
-        CurveParams: poly_commitment::OpenProof<G, ROUNDS>,
+        CurveParams: poly_commitment::OpenProof<G, FULL_ROUNDS>,
     {
         let lgr_comm: Vec<PolyComm<G>> = lgr_comm.into_iter().take(public_input.len()).collect();
         let lgr_comm_refs: Vec<_> = lgr_comm.iter().collect();

@@ -25,7 +25,7 @@ cryptographic implementations.
 ### Usage
 
 ```bash
-./params.sage [language] [width] [name] [--rounds ROUNDS]
+./params.sage [language] [width] [name] [--rounds FULL_ROUNDS]
 ```
 
 #### Parameters

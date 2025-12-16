@@ -171,8 +171,8 @@ impl<
         G: CommitmentCurve<ScalarField = F>,
         G2: CommitmentCurve<ScalarField = F>,
         Pair: Pairing<G1Affine = G, G2Affine = G2>,
-        const ROUNDS: usize,
-    > crate::OpenProof<G, ROUNDS> for KZGProof<Pair>
+        const FULL_ROUNDS: usize,
+    > crate::OpenProof<G, FULL_ROUNDS> for KZGProof<Pair>
 {
     type SRS = PairingSRS<Pair>;
 
@@ -195,7 +195,7 @@ impl<
         _rng: &mut RNG,
     ) -> Self
     where
-        EFqSponge: Clone + FqSponge<<G as AffineRepr>::BaseField, G, F, ROUNDS>,
+        EFqSponge: Clone + FqSponge<<G as AffineRepr>::BaseField, G, F, FULL_ROUNDS>,
         RNG: RngCore + CryptoRng,
     {
         KZGProof::create(srs, plnms, elm, polyscale).unwrap()
@@ -204,11 +204,11 @@ impl<
     fn verify<EFqSponge, RNG>(
         srs: &Self::SRS,
         _group_map: &G::Map,
-        batch: &mut [BatchEvaluationProof<G, EFqSponge, Self, ROUNDS>],
+        batch: &mut [BatchEvaluationProof<G, EFqSponge, Self, FULL_ROUNDS>],
         _rng: &mut RNG,
     ) -> bool
     where
-        EFqSponge: FqSponge<G::BaseField, G, F, ROUNDS>,
+        EFqSponge: FqSponge<G::BaseField, G, F, FULL_ROUNDS>,
         RNG: RngCore + CryptoRng,
     {
         for BatchEvaluationProof {

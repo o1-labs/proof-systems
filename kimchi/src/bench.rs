@@ -135,7 +135,7 @@ impl BenchmarkCtx {
 /// in which case it will serialise kimchi inputs so that they can be
 /// reused later for re-testing this particular prover. Used for
 /// serialising real mina circuits from ocaml and bindings side.
-pub fn bench_arguments_dump_into_file<const ROUNDS: usize, G: KimchiCurve<ROUNDS>>(
+pub fn bench_arguments_dump_into_file<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     cs: &ConstraintSystem<G::ScalarField>,
     witness: &[Vec<G::ScalarField>; COLUMNS],
     runtime_tables: &[RuntimeTable<G::ScalarField>],
@@ -191,14 +191,14 @@ pub fn bench_arguments_dump_into_file<const ROUNDS: usize, G: KimchiCurve<ROUNDS
 /// Given a filename with encoded (witness, runtime table, prev rec
 /// challenges, constrain system), returns arguments necessary to run a prover.
 pub fn bench_arguments_from_file<
-    const ROUNDS: usize,
-    G: KimchiCurve<ROUNDS>,
-    BaseSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, ROUNDS>,
+    const FULL_ROUNDS: usize,
+    G: KimchiCurve<FULL_ROUNDS>,
+    BaseSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
 >(
     srs: poly_commitment::ipa::SRS<G>,
     filename: String,
 ) -> (
-    ProverIndex<ROUNDS, G, <OpeningProof<G, ROUNDS> as OpenProof<G, ROUNDS>>::SRS>,
+    ProverIndex<FULL_ROUNDS, G, <OpeningProof<G, FULL_ROUNDS> as OpenProof<G, FULL_ROUNDS>>::SRS>,
     [Vec<G::ScalarField>; COLUMNS],
     Vec<RuntimeTable<G::ScalarField>>,
     Vec<RecursionChallenge<G>>,
