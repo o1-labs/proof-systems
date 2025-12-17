@@ -45,6 +45,9 @@ impl<F: Field> ChunkedPolynomial<F> {
             scale *= zeta_n;
         }
 
+        // TODO: Use is_some_and() when updating to Rust 1.85+.
+        // See <https://github.com/o1-labs/mina-rust/issues/1951>
+        #[allow(clippy::unnecessary_map_or)]
         while coeffs.last().map_or(false, |c| c.is_zero()) {
             coeffs.pop();
         }
