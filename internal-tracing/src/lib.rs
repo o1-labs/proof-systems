@@ -107,6 +107,7 @@ macro_rules! decl_traces {
             }
 
             #[cfg(feature = "ocaml_types")]
+            #[allow(dead_code, non_local_definitions)]
             pub mod caml {
                 use super::*;
 
@@ -159,8 +160,6 @@ macro_rules! checkpoint {
 #[cfg(feature = "enabled")]
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     decl_traces!(test_fn; c1, c2, c3, c4);
 
     #[test]
