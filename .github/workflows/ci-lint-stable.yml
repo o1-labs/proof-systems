@@ -58,7 +58,6 @@ jobs:
           EXCLUDED_CRATES=(
             arrabbiata
             kimchi-msm
-            kimchi-stubs
             kimchi-visu
             mina-book
             mvpoly
