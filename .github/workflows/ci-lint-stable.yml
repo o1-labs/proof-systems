@@ -57,7 +57,6 @@ jobs:
           # See https://github.com/o1-labs/mina-rust/issues/1926 for tracking.
           EXCLUDED_CRATES=(
             arrabbiata
-            export_test_vectors
             kimchi
             kimchi-msm
             kimchi-stubs
@@ -67,7 +66,6 @@ jobs:
             o1vm
             plonk_neon
             plonk_wasm
-            poly-commitment
             turshi
             xtask
           )
