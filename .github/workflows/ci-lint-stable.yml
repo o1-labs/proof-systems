@@ -12,6 +12,7 @@ name: Lint (Stable Rust)
 
 on:
   workflow_dispatch:
+  # Run on all pull requests, regardless of target branch
   pull_request:
   push:
     branches:
