@@ -80,6 +80,9 @@ impl<F: Field> CairoMemory<F> {
     }
 
     /// Resizes memory with enough additional None slots if necessary before writing or reading
+    // TODO: Use repeat_n() when CI is on Rust 1.82+.
+    // See <https://github.com/o1-labs/mina-rust/issues/1951>
+    #[rustversion::attr(since(1.82), allow(clippy::manual_repeat_n))]
     fn resize(&mut self, addr: u64) {
         // if you want to access an index of the memory but its size is less or equal than this
         // you will need to extend the vector with enough spaces (taking into account that
