@@ -47,7 +47,6 @@ jobs:
           # See https://github.com/o1-labs/mina-rust/issues/1926 for tracking.
           EXCLUDED_CRATES=(
             arrabbiata
-            arkworks
             export_test_vectors
             groupmap
             internal-tracing
@@ -56,7 +55,6 @@ jobs:
             kimchi-stubs
             kimchi-visu
             mina-book
-            mina-curves
             mina-hasher
             mina-poseidon
             mina-signer

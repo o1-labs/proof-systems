@@ -9,6 +9,14 @@ readme = "../README.md"
 edition = "2021"
 license = "Apache-2.0"
 
+[features]
+default = ["asm"]
+# The MontConfig derive macro from ark_ff generates code with cfg(feature = "asm").
+# This feature enables assembly optimizations in ark_ff.
+asm = []
+# Disable the compile-time check that ensures asm is enabled.
+no-asm-check = []
+
 [dependencies]
 ark-bn254.workspace = true
 ark-ec.workspace = true
