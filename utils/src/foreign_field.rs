@@ -3,7 +3,10 @@
 //! - `B` is a bit length of one limb
 //! - `N` is a number of limbs that is used to represent one foreign field element
 
-use crate::field_helpers::FieldHelpers;
+use crate::{
+    field_helpers::FieldHelpers,
+    math::{div_ceil, is_multiple_of},
+};
 use ark_ff::{Field, PrimeField};
 use num_bigint::BigUint;
 use std::{
@@ -77,7 +80,7 @@ impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
     /// Obtains the big integer representation of the foreign field element
     pub fn to_biguint(&self) -> BigUint {
         let mut bytes = vec![];
-        if B % 8 == 0 {
+        if is_multiple_of(B, 8) {
             // limbs are stored in little endian
             for limb in self.limbs {
                 let crumb = &limb.to_bytes()[0..B / 8];
@@ -91,11 +94,7 @@ impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
                 bits.extend(&f_bits_lower);
             }
 
-            let bytes_len = if (B * N) % 8 == 0 {
-                (B * N) / 8
-            } else {
-                ((B * N) / 8) + 1
-            };
+            let bytes_len = div_ceil(B * N, 8);
             bytes = vec![0u8; bytes_len];
             for i in 0..bits.len() {
                 bytes[i / 8] |= u8::from(bits[i]) << (i % 8);
@@ -108,7 +107,7 @@ impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
     /// elements of type `F` in little-endian. Right now it is written
     /// so that it gives `N` (limb count) limbs, even if it fits in less bits.
     fn big_to_vec(fe: BigUint) -> Vec<F> {
-        if B % 8 == 0 {
+        if is_multiple_of(B, 8) {
             let bytes = fe.to_bytes_le();
             let chunks: Vec<&[u8]> = bytes.chunks(B / 8).collect();
             chunks

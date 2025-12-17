@@ -63,11 +63,7 @@ jobs:
             kimchi-stubs
             kimchi-visu
             mina-book
-            mina-hasher
-            mina-poseidon
-            mina-signer
             mvpoly
-            o1-utils
             o1vm
             plonk_neon
             plonk_wasm

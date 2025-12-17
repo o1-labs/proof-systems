@@ -10,7 +10,7 @@ use alloc::{vec, vec::Vec};
 use ark_ff::{BigInteger, PrimeField};
 use bitvec::{prelude::*, view::AsBits};
 use mina_curves::pasta::{Fp, Fq};
-use o1_utils::FieldHelpers;
+use o1_utils::{math::div_ceil, FieldHelpers};
 
 /// Total number of bytes for the header of the serialized ROInput
 const SER_HEADER_SIZE: usize = 8;
@@ -260,7 +260,7 @@ impl ROInput {
         // Check that the number of bytes is consistent with the expected lengths
         let expected_len_bits = fields_len * Fp::MODULUS_BIT_SIZE as usize + bits_len;
         // Round up to nearest multiple of 8
-        let expected_len = (expected_len_bits + 7) / 8 + SER_HEADER_SIZE;
+        let expected_len = div_ceil(expected_len_bits, 8) + SER_HEADER_SIZE;
         if input.len() != expected_len {
             return Err(Error);
         }
