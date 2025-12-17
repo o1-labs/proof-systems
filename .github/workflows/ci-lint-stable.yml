@@ -67,7 +67,6 @@ jobs:
             plonk_wasm
             poly-commitment
             turshi
-            wasm-types
             xtask
           )
 
