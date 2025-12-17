@@ -61,7 +61,6 @@ jobs:
             o1vm
             plonk_neon
             plonk_wasm
-            turshi
             xtask
           )
 
