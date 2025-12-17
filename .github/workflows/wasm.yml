@@ -12,8 +12,8 @@ jobs:
     name: Build WebAssembly code
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-15]
-        rust_toolchain_version: ['nightly-2024-09-05']
+        os: [ubuntu-latest, macos-latest]
+        rust_toolchain_version: ['nightly-2024-09-05', 'nightly']
 
     runs-on: ${{ matrix.os }}
 
@@ -34,6 +34,10 @@ jobs:
 
       - name: Build the WebAssembly for the web
         run: make build-web
+        env:
+          NIGHTLY_RUST_VERSION: ${{ matrix.rust_toolchain_version }}
 
       - name: Build the WebAssembly for NodeJS
         run: make build-nodejs
+        env:
+          NIGHTLY_RUST_VERSION: ${{ matrix.rust_toolchain_version }}
