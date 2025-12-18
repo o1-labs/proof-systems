@@ -1,0 +1,42 @@
+name: Cargo Audit
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run cargo audit
+        run: cargo audit --json > audit.json || true
+
+      - name: Check for critical vulnerabilities
+        run: |
+          CRITICAL_COUNT=$(jq '[.vulnerabilities.list[] | select(.advisory.severity == "critical")] | length' audit.json)
+          echo "Found $CRITICAL_COUNT critical vulnerabilities"
+          if [ "$CRITICAL_COUNT" -gt 0 ]; then
+            echo "Critical vulnerabilities detected!"
+            exit 1
+          fi
+
+      - name: Upload audit report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-audit-report
+          path: audit-results/audit.json
