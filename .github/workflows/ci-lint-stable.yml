@@ -22,6 +22,7 @@ env:
   CARGO_TERM_COLOR: always
   # Override rust-toolchain.toml to use stable
   RUSTUP_TOOLCHAIN: stable
+  OCAML_VERSION: "4.14.2"
 
 jobs:
   clippy-stable:
@@ -33,6 +34,11 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ env.OCAML_VERSION }}
+
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -43,6 +49,9 @@ jobs:
 
       - name: Run clippy on stable
         run: |
+          # Load OCaml environment
+          eval $(opam env)
+
           # List of crates to exclude (not yet fixed for stable Rust)
           # Remove crates from this list as they are fixed.
           # See https://github.com/o1-labs/mina-rust/issues/1926 for tracking.
@@ -50,7 +59,6 @@ jobs:
             arrabbiata
             export_test_vectors
             groupmap
-            internal-tracing
             kimchi
             kimchi-msm
             kimchi-stubs
