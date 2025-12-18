@@ -44,7 +44,6 @@ jobs:
       - name: Run criterion bench
         run: |
           set -x
-          eval $(opam env)
           cargo criterion -p kimchi --bench proof_criterion --color never > criterion_bench 2>&1
           cat criterion_bench
 

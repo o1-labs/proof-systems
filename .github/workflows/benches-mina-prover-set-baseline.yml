@@ -40,7 +40,6 @@ jobs:
       - name: Run criterion bench
         run: |
           set -x
-          eval $(opam env)
           SAVE_BASELINE_NAME=master-baseline-data bash scripts/bench-criterion-mina-circuits.sh cargo bench -p kimchi --bench proof_criterion
 
       - name: Copy previous baseline to target folder
