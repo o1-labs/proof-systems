@@ -13,8 +13,7 @@ use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
 };
-use o1_utils::repeat_n;
-use o1_utils::field_helpers::i32_to_field;
+use o1_utils::{field_helpers::i32_to_field, repeat_n};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use thiserror::Error;

@@ -12,10 +12,9 @@ use kimchi::{circuits::expr::l0_1, groupmap::GroupMap};
 use poly_commitment::{ipa::OpeningProof, utils::DensePolynomialOrEvaluations, PolyComm};
 use rand::{CryptoRng, RngCore};
 
-/// This prover takes one Public Input and one Public Output
+/// This prover takes one Public Input and one Public Output.
 /// It then proves that the sum 1/(beta + table) = PI - PO
-/// where the table term are term from fixed lookup or RAMLookup
-
+/// where the table term are term from fixed lookup or RAMLookup.
 pub fn lookup_prove<
     G: KimchiCurve,
     EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone,

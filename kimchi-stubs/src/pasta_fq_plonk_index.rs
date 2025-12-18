@@ -73,7 +73,7 @@ pub fn caml_pasta_fq_plonk_index_create(
     let lookup_tables: Vec<LookupTable<Fq>> = lookup_tables.into_iter().map(Into::into).collect();
 
     // create constraint system
-    let cs = match ConstraintSystem::<Fq>::create(gates)
+    let cs = ConstraintSystem::<Fq>::create(gates)
         .public(public as usize)
         .prev_challenges(prev_challenges as usize)
         .lookup(lookup_tables)
@@ -83,11 +83,7 @@ pub fn caml_pasta_fq_plonk_index_create(
             Some(runtime_tables)
         })
         .lazy_mode(lazy_mode)
-        .build()
-    {
-        Err(e) => return Err(e.into()),
-        Ok(cs) => cs,
-    };
+        .build()?;
 
     // endo
     let (endo_q, _endo_r) = poly_commitment::ipa::endos::<Vesta>();

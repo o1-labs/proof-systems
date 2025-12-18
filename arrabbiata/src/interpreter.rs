@@ -353,14 +353,14 @@
 //! - `W_(p, n)` for the aggregated witness.
 //! - `C_(p, n)` for the commitment to the witness `w_(p, n)`.
 //! - `acc_(p, n)` for the accumulated commitments to the aggregated witness
-//!    `W_(p, n)`.
+//!   `W_(p, n)`.
 //! - `α_(p, n)` for the challenge used to combine constraints.
 //! - `β_(p, n)` and `γ_(p, n)` for the challenge used to for the
 //!   permutation argument.
 //! - `r_(p, n)` for the challenge used for the accumulation of the
 //! - `t_(p, n, i)` for the evaluations of the cross-terms of degree `i`.
 //! - `Ct_(p, n, i)` for the commitments to the cross-terms of degree `i`.
-//!    witness/commitments.
+//!   witness/commitments.
 //! - `u_(p, n)` for the challenge used to homogenize the constraints.
 //! - `o_(p, n)` for the final digest of the sponge state.
 //!

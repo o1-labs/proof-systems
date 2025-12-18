@@ -14,7 +14,10 @@ use crate::{
 use ark_ff::PrimeField;
 use core::array;
 use num_bigint::BigUint;
-use o1_utils::{foreign_field::{ForeignElement, ForeignFieldHelpers}, repeat_n};
+use o1_utils::{
+    foreign_field::{ForeignElement, ForeignFieldHelpers},
+    repeat_n,
+};
 
 /// All foreign field operations allowed
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
