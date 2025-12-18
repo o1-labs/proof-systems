@@ -38,8 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### [mina-curves](./curves)
 
-#### Changed
-- (No changes in current release)
+#### Added
+
+- Add `asm` feature (enabled by default) for assembly optimizations from ark_ff.
+  The MontConfig derive macro generates code with `cfg(feature = "asm")`.
 
 ### [mina-hasher](./hasher)
 

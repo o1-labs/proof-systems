@@ -96,7 +96,7 @@ kimchi = { path = "./kimchi", version = "0.1.0", features = ["bn254"] }
 kimchi-msm = { path = "./msm", version = "0.1.0" }
 kimchi-stubs = { path = "./kimchi-stubs", version = "0.1.0" }
 kimchi-visu = { path = "./tools/kimchi-visu", version = "0.1.0" }
-mina-curves = { path = "./curves", version = "0.1.0" }
+mina-curves = { path = "./curves", version = "0.1.0", features = ["asm"] }
 mina-hasher = { path = "./hasher", version = "0.1.0" }
 mina-poseidon = { path = "./poseidon", version = "0.1.0" }
 mvpoly = { path = "./mvpoly", version = "0.1.0" }
