@@ -93,7 +93,7 @@ fn build_kimchi_stubs(target_dir: Option<&str>, offline: bool) -> Result<()> {
         let cpuid = CpuId::new();
         cpuid
             .get_extended_feature_info()
-            .map_or(false, |f| f.has_adx() && f.has_bmi2())
+            .is_some_and(|f| f.has_adx() && f.has_bmi2())
     };
     // ADX and BMI2 are not applicable to other architectures.
     #[cfg(not(target_arch = "x86_64"))]
