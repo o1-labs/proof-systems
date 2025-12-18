@@ -8,7 +8,7 @@ use std::{
 
 use crate::{helper::*, word::CairoWord};
 use ark_ff::Field;
-use core::iter::repeat;
+use o1_utils::repeat_n;
 
 /// This data structure stores the memory of the program
 pub struct CairoMemory<F> {
@@ -80,15 +80,12 @@ impl<F: Field> CairoMemory<F> {
     }
 
     /// Resizes memory with enough additional None slots if necessary before writing or reading
-    // TODO: Use repeat_n() when CI is on Rust 1.82+.
-    // See <https://github.com/o1-labs/mina-rust/issues/1951>
-    #[rustversion::attr(since(1.82), allow(clippy::manual_repeat_n))]
     fn resize(&mut self, addr: u64) {
         // if you want to access an index of the memory but its size is less or equal than this
         // you will need to extend the vector with enough spaces (taking into account that
         // vectors start by index 0, the 0 address is dummy, and size starts in 1)
         if let Some(additional) = addr.checked_sub(self.len() - 1) {
-            self.data.extend(repeat(None).take(additional as usize));
+            self.data.extend(repeat_n(None, additional as usize));
         }
     }
 

@@ -23,6 +23,7 @@ use crate::{
     },
 };
 use ark_ff::PrimeField;
+use o1_utils::repeat_n;
 
 impl<F> Constraint<F>
 where
@@ -599,7 +600,7 @@ where
         }
 
         // pad with zeros for the public output part
-        public_input.extend(core::iter::repeat(F::zero()).take(self.public_output.len()));
+        public_input.extend(repeat_n(F::zero(), self.public_output.len()));
 
         // re-initialize `next_var` (which will grow every time we compile or generate a witness)
         self.next_var = self.num_public_inputs;

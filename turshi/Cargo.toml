@@ -15,8 +15,6 @@ path = "src/lib.rs"
 [dependencies]
 ark-ff.workspace = true
 hex.workspace = true
-rustversion.workspace = true
-
 o1-utils.workspace = true
 
 [dev-dependencies]
