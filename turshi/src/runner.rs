@@ -456,7 +456,12 @@ impl<'a, F: Field> CairoStep<'a, F> {
                     // dst = res , but in order for this to be true, one sometimes needs to write
                     // the res in mem(adr_dst) and sometimes write dst in mem(res_dir). The only
                     // case where res can be None is when res = op1 and thus res_dir = adr_op1
-                    if self.vars.res.is_none() {
+                    if let Some(res_value) = self.vars.res {
+                        // dst = res
+                        self.mem.write(self.vars.adr_dst, res_value);
+                        // update the value of the variable as well
+                        self.vars.dst = self.mem.read(self.vars.adr_dst);
+                    } else {
                         // res = dst
                         self.mem.write(
                             self.vars.adr_op1,
@@ -465,14 +470,6 @@ impl<'a, F: Field> CairoStep<'a, F> {
                         // update the value of the variable as well
                         self.vars.op1 = self.mem.read(self.vars.adr_op1);
                         self.vars.res = self.mem.read(self.vars.adr_op1);
-                    } else {
-                        // dst = res
-                        self.mem.write(
-                            self.vars.adr_dst,
-                            self.vars.res.expect("None res after OPC_AEQ"),
-                        );
-                        // update the value of the variable as well
-                        self.vars.dst = self.mem.read(self.vars.adr_dst);
                     }
                     next_fp = Some(self.curr.fp); // no modification on fp
                 }

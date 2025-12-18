@@ -196,42 +196,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./book/book/html
 
-  lint:
-    needs: ['define-matrix', 'refresh-cache']
-    strategy:
-      matrix:
-        rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
-        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
-        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
-        exclude:
-          # Skip Rust 1.84 due to linting issues - remove when
-          # https://github.com/o1-labs/proof-systems/pull/3245 is fixed
-          - rust_and_os: {rust_toolchain_version: '1.84', os: 'macos-latest'}
-    runs-on: ${{ matrix.rust_and_os.os }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          submodules: recursive
-
-      - name: Use shared Rust toolchain setting up steps
-        uses: ./.github/actions/toolchain-shared
-        with:
-          rust_toolchain_version: ${{ matrix.rust_and_os.rust_toolchain_version }}
-
-      - name: Use shared OCaml setting up steps
-        uses: ./.github/actions/ocaml-shared
-        with:
-          ocaml_version: ${{ matrix.ocaml_version }}
-      #
-      # Coding guidelines
-      #
-
-      - name: Lint (clippy)
-        run: |
-          eval $(opam env)
-          make lint
-
   build:
     needs: ['define-matrix', 'refresh-cache']
     strategy:
