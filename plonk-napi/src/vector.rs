@@ -110,8 +110,14 @@ where
 impl<T> ValidateNapiValue for NapiFlatVector<T>
 where
     Vec<u8>: ValidateNapiValue,
+    Uint8Array: ValidateNapiValue,
 {
     unsafe fn validate(env: sys::napi_env, napi_val: sys::napi_value) -> Result<sys::napi_value> {
+        // Accept both `Uint8Array`/`Buffer` and `number[]` so JS callers can pass either
+        // a typed array (preferred) or an array of bytes.
+        if <Uint8Array as ValidateNapiValue>::validate(env, napi_val).is_ok() {
+            return Ok(napi_val);
+        }
         <Vec<u8> as ValidateNapiValue>::validate(env, napi_val)
     }
 }
@@ -121,7 +127,13 @@ where
     T: FlatVectorElem,
 {
     unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> Result<Self> {
-        let bytes = <Vec<u8> as FromNapiValue>::from_napi_value(env, napi_val)?;
+        // Prefer `Uint8Array`/`Buffer` inputs for performance.
+        let bytes = if let Ok(arr) = <Uint8Array as FromNapiValue>::from_napi_value(env, napi_val)
+        {
+            arr.as_ref().to_vec()
+        } else {
+            <Vec<u8> as FromNapiValue>::from_napi_value(env, napi_val)?
+        };
         Ok(NapiFlatVector::from_bytes(bytes))
     }
 }
