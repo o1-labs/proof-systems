@@ -29,8 +29,9 @@ jobs:
           rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
           targets: wasm32-unknown-unknown
 
-      - shell: bash
-        run: rustup component add rust-src
+      - name: Add rust-src component
+        shell: bash
+        run: rustup component add rust-src --toolchain ${{ matrix.rust_toolchain_version }}
 
       - name: Build the WebAssembly for the web
         run: make build-web
