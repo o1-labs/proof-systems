@@ -8,7 +8,7 @@ use mina_curves::pasta::{Fp, Pallas, Vesta as VestaG, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi as SC, sponge::DefaultFqSponge, FqSponge,
 };
-use o1_utils::ExtendedDensePolynomial;
+use o1_utils::{math::div_ceil, ExtendedDensePolynomial};
 use poly_commitment::{
     commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
     ipa::SRS,
@@ -96,7 +96,7 @@ fn test_offset_chunked_lagrange_commitments() {
     srs.get_lagrange_basis(domain);
 
     // Is this even taken into account?...
-    let num_chunks = (domain.size() + srs.g.len() - 1) / srs.g.len();
+    let num_chunks = div_ceil(domain.size(), srs.g.len());
     assert!(num_chunks == 2);
 
     let expected_lagrange_commitments: Vec<_> = (0..n)

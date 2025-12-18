@@ -22,11 +22,12 @@ use ark_ec::{
 use ark_ff::{BitIteratorBE, Field, One, PrimeField, Zero};
 use itertools::Itertools;
 use mina_poseidon::sponge::ScalarChallenge;
+use o1_utils::math::is_multiple_of;
 use rayon::prelude::*;
 use std::ops::AddAssign;
 
 fn add_pairs_in_place<P: SWCurveConfig>(pairs: &mut Vec<SWJAffine<P>>) {
-    let len = if pairs.len() % 2 == 0 {
+    let len = if is_multiple_of(pairs.len(), 2) {
         pairs.len()
     } else {
         pairs.len() - 1

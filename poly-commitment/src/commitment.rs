@@ -269,7 +269,7 @@ where
     }
 }
 
-impl<'a, 'b, C: AffineRepr> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
+impl<'a, C: AffineRepr> Add<&'a PolyComm<C>> for &PolyComm<C> {
     type Output = PolyComm<C>;
 
     fn add(self, other: &'a PolyComm<C>) -> PolyComm<C> {
@@ -290,7 +290,7 @@ impl<'a, 'b, C: AffineRepr> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
     }
 }
 
-impl<'a, 'b, C: AffineRepr + Sub<Output = C::Group>> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
+impl<'a, C: AffineRepr + Sub<Output = C::Group>> Sub<&'a PolyComm<C>> for &PolyComm<C> {
     type Output = PolyComm<C>;
 
     fn sub(self, other: &'a PolyComm<C>) -> PolyComm<C> {
@@ -376,7 +376,7 @@ pub fn b_poly<F: Field>(chals: &[F], x: F) -> F {
         pow_twos.push(pow_twos[i - 1].square());
     }
 
-    product((0..k).map(|i| (F::one() + (chals[i] * pow_twos[k - 1 - i]))))
+    product((0..k).map(|i| F::one() + (chals[i] * pow_twos[k - 1 - i])))
 }
 
 pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
@@ -638,6 +638,7 @@ pub fn combine_commitments<G: CommitmentCurve>(
 }
 
 #[cfg(feature = "ocaml_types")]
+#[allow(non_local_definitions)]
 pub mod caml {
     // polynomial commitment
     use super::PolyComm;
