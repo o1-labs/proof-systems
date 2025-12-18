@@ -4,7 +4,7 @@
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>ark_ff::{FftField, PrimeField};
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>rand::{seq::SliceRandom, thread_rng, Rng};
-<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>std::{cmp::Ord, iter};
+<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>std::cmp::Ord;
 <a href=#8 id=8 data-nosnippet>8</a>
 <a href=#9 id=9 data-nosnippet>9</a><span class="doccomment">/// Dummy lookup table. For the cases when you don't need one -- a single dummy element 0.
 <a href=#10 id=10 data-nosnippet>10</a></span><span class="attr">#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
@@ -143,58 +143,54 @@
 <a href=#143 id=143 data-nosnippet>143</a>            f
 <a href=#144 id=144 data-nosnippet>144</a>        };
 <a href=#145 id=145 data-nosnippet>145</a>        <span class="kw">let </span>dummy_value = F::rand(<span class="kw-2">&amp;mut </span>rng);
-<a href=#146 id=146 data-nosnippet>146</a>        <span class="kw">let </span>repeated_dummy_value: Vec&lt;F&gt; = {
-<a href=#147 id=147 data-nosnippet>147</a>            <span class="kw">let </span>r: Vec&lt;F&gt; = iter::repeat(dummy_value)
-<a href=#148 id=148 data-nosnippet>148</a>                .take((domain.d1.size - table_size) <span class="kw">as </span>usize)
-<a href=#149 id=149 data-nosnippet>149</a>                .collect();
-<a href=#150 id=150 data-nosnippet>150</a>            r
-<a href=#151 id=151 data-nosnippet>151</a>        };
-<a href=#152 id=152 data-nosnippet>152</a>        <span class="kw">let </span>t_evals = {
-<a href=#153 id=153 data-nosnippet>153</a>            <span class="kw">let </span><span class="kw-2">mut </span>table = Vec::with_capacity(domain.d1.size <span class="kw">as </span>usize);
-<a href=#154 id=154 data-nosnippet>154</a>            table.extend(t.iter().map(|v| Lookup {
-<a href=#155 id=155 data-nosnippet>155</a>                table_id: LookupTableIDs::Custom(table_id),
-<a href=#156 id=156 data-nosnippet>156</a>                numerator: -F::one(),
-<a href=#157 id=157 data-nosnippet>157</a>                value: <span class="macro">vec!</span>[F::from(<span class="kw-2">*</span>v)],
-<a href=#158 id=158 data-nosnippet>158</a>            }));
-<a href=#159 id=159 data-nosnippet>159</a>            table.extend(
-<a href=#160 id=160 data-nosnippet>160</a>                repeated_dummy_value
-<a href=#161 id=161 data-nosnippet>161</a>                    .iter()
-<a href=#162 id=162 data-nosnippet>162</a>                    .map(|v| Lookup {
-<a href=#163 id=163 data-nosnippet>163</a>                        table_id: LookupTableIDs::Custom(table_id),
-<a href=#164 id=164 data-nosnippet>164</a>                        numerator: -F::one(),
-<a href=#165 id=165 data-nosnippet>165</a>                        value: <span class="macro">vec!</span>[<span class="kw-2">*</span>v],
-<a href=#166 id=166 data-nosnippet>166</a>                    })
-<a href=#167 id=167 data-nosnippet>167</a>                    .collect::&lt;Vec&lt;Lookup&lt;F&gt;&gt;&gt;(),
-<a href=#168 id=168 data-nosnippet>168</a>            );
-<a href=#169 id=169 data-nosnippet>169</a>            table
-<a href=#170 id=170 data-nosnippet>170</a>        };
-<a href=#171 id=171 data-nosnippet>171</a>        <span class="kw">let </span>f_evals: Vec&lt;Lookup&lt;F&gt;&gt; = {
-<a href=#172 id=172 data-nosnippet>172</a>            <span class="kw">let </span><span class="kw-2">mut </span>table = Vec::with_capacity(domain.d1.size <span class="kw">as </span>usize);
-<a href=#173 id=173 data-nosnippet>173</a>            table.extend(f.iter().map(|v| Lookup {
-<a href=#174 id=174 data-nosnippet>174</a>                table_id: LookupTableIDs::Custom(table_id),
-<a href=#175 id=175 data-nosnippet>175</a>                numerator: F::one(),
-<a href=#176 id=176 data-nosnippet>176</a>                value: <span class="macro">vec!</span>[F::from(<span class="kw-2">*</span>v)],
-<a href=#177 id=177 data-nosnippet>177</a>            }));
-<a href=#178 id=178 data-nosnippet>178</a>            table.extend(
-<a href=#179 id=179 data-nosnippet>179</a>                repeated_dummy_value
-<a href=#180 id=180 data-nosnippet>180</a>                    .iter()
-<a href=#181 id=181 data-nosnippet>181</a>                    .map(|v| Lookup {
-<a href=#182 id=182 data-nosnippet>182</a>                        table_id: LookupTableIDs::Custom(table_id),
-<a href=#183 id=183 data-nosnippet>183</a>                        numerator: F::one(),
-<a href=#184 id=184 data-nosnippet>184</a>                        value: <span class="macro">vec!</span>[<span class="kw-2">*</span>v],
-<a href=#185 id=185 data-nosnippet>185</a>                    })
-<a href=#186 id=186 data-nosnippet>186</a>                    .collect::&lt;Vec&lt;Lookup&lt;F&gt;&gt;&gt;(),
-<a href=#187 id=187 data-nosnippet>187</a>            );
-<a href=#188 id=188 data-nosnippet>188</a>            table
-<a href=#189 id=189 data-nosnippet>189</a>        };
-<a href=#190 id=190 data-nosnippet>190</a>        <span class="kw">let </span>m = (<span class="number">0</span>..domain.d1.size).map(|<span class="kw">_</span>| F::one()).collect();
-<a href=#191 id=191 data-nosnippet>191</a>        (
-<a href=#192 id=192 data-nosnippet>192</a>            LookupTableIDs::Custom(table_id),
-<a href=#193 id=193 data-nosnippet>193</a>            LookupWitness {
-<a href=#194 id=194 data-nosnippet>194</a>                f: <span class="macro">vec!</span>[f_evals, t_evals],
-<a href=#195 id=195 data-nosnippet>195</a>                m: <span class="macro">vec!</span>[m],
-<a href=#196 id=196 data-nosnippet>196</a>            },
-<a href=#197 id=197 data-nosnippet>197</a>        )
-<a href=#198 id=198 data-nosnippet>198</a>    }
-<a href=#199 id=199 data-nosnippet>199</a>}
+<a href=#146 id=146 data-nosnippet>146</a>        <span class="kw">let </span>repeated_dummy_value: Vec&lt;F&gt; =
+<a href=#147 id=147 data-nosnippet>147</a>            o1_utils::repeat_n(dummy_value, (domain.d1.size - table_size) <span class="kw">as </span>usize).collect();
+<a href=#148 id=148 data-nosnippet>148</a>        <span class="kw">let </span>t_evals = {
+<a href=#149 id=149 data-nosnippet>149</a>            <span class="kw">let </span><span class="kw-2">mut </span>table = Vec::with_capacity(domain.d1.size <span class="kw">as </span>usize);
+<a href=#150 id=150 data-nosnippet>150</a>            table.extend(t.iter().map(|v| Lookup {
+<a href=#151 id=151 data-nosnippet>151</a>                table_id: LookupTableIDs::Custom(table_id),
+<a href=#152 id=152 data-nosnippet>152</a>                numerator: -F::one(),
+<a href=#153 id=153 data-nosnippet>153</a>                value: <span class="macro">vec!</span>[F::from(<span class="kw-2">*</span>v)],
+<a href=#154 id=154 data-nosnippet>154</a>            }));
+<a href=#155 id=155 data-nosnippet>155</a>            table.extend(
+<a href=#156 id=156 data-nosnippet>156</a>                repeated_dummy_value
+<a href=#157 id=157 data-nosnippet>157</a>                    .iter()
+<a href=#158 id=158 data-nosnippet>158</a>                    .map(|v| Lookup {
+<a href=#159 id=159 data-nosnippet>159</a>                        table_id: LookupTableIDs::Custom(table_id),
+<a href=#160 id=160 data-nosnippet>160</a>                        numerator: -F::one(),
+<a href=#161 id=161 data-nosnippet>161</a>                        value: <span class="macro">vec!</span>[<span class="kw-2">*</span>v],
+<a href=#162 id=162 data-nosnippet>162</a>                    })
+<a href=#163 id=163 data-nosnippet>163</a>                    .collect::&lt;Vec&lt;Lookup&lt;F&gt;&gt;&gt;(),
+<a href=#164 id=164 data-nosnippet>164</a>            );
+<a href=#165 id=165 data-nosnippet>165</a>            table
+<a href=#166 id=166 data-nosnippet>166</a>        };
+<a href=#167 id=167 data-nosnippet>167</a>        <span class="kw">let </span>f_evals: Vec&lt;Lookup&lt;F&gt;&gt; = {
+<a href=#168 id=168 data-nosnippet>168</a>            <span class="kw">let </span><span class="kw-2">mut </span>table = Vec::with_capacity(domain.d1.size <span class="kw">as </span>usize);
+<a href=#169 id=169 data-nosnippet>169</a>            table.extend(f.iter().map(|v| Lookup {
+<a href=#170 id=170 data-nosnippet>170</a>                table_id: LookupTableIDs::Custom(table_id),
+<a href=#171 id=171 data-nosnippet>171</a>                numerator: F::one(),
+<a href=#172 id=172 data-nosnippet>172</a>                value: <span class="macro">vec!</span>[F::from(<span class="kw-2">*</span>v)],
+<a href=#173 id=173 data-nosnippet>173</a>            }));
+<a href=#174 id=174 data-nosnippet>174</a>            table.extend(
+<a href=#175 id=175 data-nosnippet>175</a>                repeated_dummy_value
+<a href=#176 id=176 data-nosnippet>176</a>                    .iter()
+<a href=#177 id=177 data-nosnippet>177</a>                    .map(|v| Lookup {
+<a href=#178 id=178 data-nosnippet>178</a>                        table_id: LookupTableIDs::Custom(table_id),
+<a href=#179 id=179 data-nosnippet>179</a>                        numerator: F::one(),
+<a href=#180 id=180 data-nosnippet>180</a>                        value: <span class="macro">vec!</span>[<span class="kw-2">*</span>v],
+<a href=#181 id=181 data-nosnippet>181</a>                    })
+<a href=#182 id=182 data-nosnippet>182</a>                    .collect::&lt;Vec&lt;Lookup&lt;F&gt;&gt;&gt;(),
+<a href=#183 id=183 data-nosnippet>183</a>            );
+<a href=#184 id=184 data-nosnippet>184</a>            table
+<a href=#185 id=185 data-nosnippet>185</a>        };
+<a href=#186 id=186 data-nosnippet>186</a>        <span class="kw">let </span>m = (<span class="number">0</span>..domain.d1.size).map(|<span class="kw">_</span>| F::one()).collect();
+<a href=#187 id=187 data-nosnippet>187</a>        (
+<a href=#188 id=188 data-nosnippet>188</a>            LookupTableIDs::Custom(table_id),
+<a href=#189 id=189 data-nosnippet>189</a>            LookupWitness {
+<a href=#190 id=190 data-nosnippet>190</a>                f: <span class="macro">vec!</span>[f_evals, t_evals],
+<a href=#191 id=191 data-nosnippet>191</a>                m: <span class="macro">vec!</span>[m],
+<a href=#192 id=192 data-nosnippet>192</a>            },
+<a href=#193 id=193 data-nosnippet>193</a>        )
+<a href=#194 id=194 data-nosnippet>194</a>    }
+<a href=#195 id=195 data-nosnippet>195</a>}
 </code></pre></div></section></main></body></html>

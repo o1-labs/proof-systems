@@ -891,7 +891,7 @@
 <a href=#891 id=891 data-nosnippet>891</a>        // polynomial commitments, we obtain a chunked commitment to the L_i
 <a href=#892 id=892 data-nosnippet>892</a>        // polynomials.
 <a href=#893 id=893 data-nosnippet>893</a>        </span><span class="kw">let </span>srs_size = <span class="self">self</span>.g.len();
-<a href=#894 id=894 data-nosnippet>894</a>        <span class="kw">let </span>num_elems = (n + srs_size - <span class="number">1</span>) / srs_size;
+<a href=#894 id=894 data-nosnippet>894</a>        <span class="kw">let </span>num_elems = math::div_ceil(n, srs_size);
 <a href=#895 id=895 data-nosnippet>895</a>        <span class="kw">let </span><span class="kw-2">mut </span>chunks = Vec::with_capacity(num_elems);
 <a href=#896 id=896 data-nosnippet>896</a>
 <a href=#897 id=897 data-nosnippet>897</a>        <span class="comment">// For each chunk
@@ -1027,61 +1027,62 @@
 <a href=#1027 id=1027 data-nosnippet>1027</a>}
 <a href=#1028 id=1028 data-nosnippet>1028</a>
 <a href=#1029 id=1029 data-nosnippet>1029</a><span class="attr">#[cfg(feature = <span class="string">"ocaml_types"</span>)]
-<a href=#1030 id=1030 data-nosnippet>1030</a></span><span class="kw">pub mod </span>caml {
-<a href=#1031 id=1031 data-nosnippet>1031</a>    <span class="kw">use </span><span class="kw">super</span>::OpeningProof;
-<a href=#1032 id=1032 data-nosnippet>1032</a>    <span class="kw">use </span>ark_ec::AffineRepr;
-<a href=#1033 id=1033 data-nosnippet>1033</a>    <span class="kw">use </span>ocaml;
-<a href=#1034 id=1034 data-nosnippet>1034</a>
-<a href=#1035 id=1035 data-nosnippet>1035</a>    <span class="attr">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-<a href=#1036 id=1036 data-nosnippet>1036</a>    </span><span class="kw">pub struct </span>CamlOpeningProof&lt;G, F&gt; {
-<a href=#1037 id=1037 data-nosnippet>1037</a>        <span class="doccomment">/// vector of rounds of L &amp; R commitments
-<a href=#1038 id=1038 data-nosnippet>1038</a>        </span><span class="kw">pub </span>lr: Vec&lt;(G, G)&gt;,
-<a href=#1039 id=1039 data-nosnippet>1039</a>        <span class="kw">pub </span>delta: G,
-<a href=#1040 id=1040 data-nosnippet>1040</a>        <span class="kw">pub </span>z1: F,
-<a href=#1041 id=1041 data-nosnippet>1041</a>        <span class="kw">pub </span>z2: F,
-<a href=#1042 id=1042 data-nosnippet>1042</a>        <span class="kw">pub </span>sg: G,
-<a href=#1043 id=1043 data-nosnippet>1043</a>    }
-<a href=#1044 id=1044 data-nosnippet>1044</a>
-<a href=#1045 id=1045 data-nosnippet>1045</a>    <span class="kw">impl</span>&lt;G, CamlF, CamlG&gt; From&lt;OpeningProof&lt;G&gt;&gt; <span class="kw">for </span>CamlOpeningProof&lt;CamlG, CamlF&gt;
-<a href=#1046 id=1046 data-nosnippet>1046</a>    <span class="kw">where
-<a href=#1047 id=1047 data-nosnippet>1047</a>        </span>G: AffineRepr,
-<a href=#1048 id=1048 data-nosnippet>1048</a>        CamlG: From&lt;G&gt;,
-<a href=#1049 id=1049 data-nosnippet>1049</a>        CamlF: From&lt;G::ScalarField&gt;,
-<a href=#1050 id=1050 data-nosnippet>1050</a>    {
-<a href=#1051 id=1051 data-nosnippet>1051</a>        <span class="kw">fn </span>from(opening_proof: OpeningProof&lt;G&gt;) -&gt; <span class="self">Self </span>{
-<a href=#1052 id=1052 data-nosnippet>1052</a>            <span class="self">Self </span>{
-<a href=#1053 id=1053 data-nosnippet>1053</a>                lr: opening_proof
-<a href=#1054 id=1054 data-nosnippet>1054</a>                    .lr
-<a href=#1055 id=1055 data-nosnippet>1055</a>                    .into_iter()
-<a href=#1056 id=1056 data-nosnippet>1056</a>                    .map(|(g1, g2)| (CamlG::from(g1), CamlG::from(g2)))
-<a href=#1057 id=1057 data-nosnippet>1057</a>                    .collect(),
-<a href=#1058 id=1058 data-nosnippet>1058</a>                delta: CamlG::from(opening_proof.delta),
-<a href=#1059 id=1059 data-nosnippet>1059</a>                z1: opening_proof.z1.into(),
-<a href=#1060 id=1060 data-nosnippet>1060</a>                z2: opening_proof.z2.into(),
-<a href=#1061 id=1061 data-nosnippet>1061</a>                sg: CamlG::from(opening_proof.sg),
-<a href=#1062 id=1062 data-nosnippet>1062</a>            }
-<a href=#1063 id=1063 data-nosnippet>1063</a>        }
-<a href=#1064 id=1064 data-nosnippet>1064</a>    }
-<a href=#1065 id=1065 data-nosnippet>1065</a>
-<a href=#1066 id=1066 data-nosnippet>1066</a>    <span class="kw">impl</span>&lt;G, CamlF, CamlG&gt; From&lt;CamlOpeningProof&lt;CamlG, CamlF&gt;&gt; <span class="kw">for </span>OpeningProof&lt;G&gt;
-<a href=#1067 id=1067 data-nosnippet>1067</a>    <span class="kw">where
-<a href=#1068 id=1068 data-nosnippet>1068</a>        </span>G: AffineRepr,
-<a href=#1069 id=1069 data-nosnippet>1069</a>        CamlG: Into&lt;G&gt;,
-<a href=#1070 id=1070 data-nosnippet>1070</a>        CamlF: Into&lt;G::ScalarField&gt;,
-<a href=#1071 id=1071 data-nosnippet>1071</a>    {
-<a href=#1072 id=1072 data-nosnippet>1072</a>        <span class="kw">fn </span>from(caml: CamlOpeningProof&lt;CamlG, CamlF&gt;) -&gt; <span class="self">Self </span>{
-<a href=#1073 id=1073 data-nosnippet>1073</a>            <span class="self">Self </span>{
-<a href=#1074 id=1074 data-nosnippet>1074</a>                lr: caml
-<a href=#1075 id=1075 data-nosnippet>1075</a>                    .lr
-<a href=#1076 id=1076 data-nosnippet>1076</a>                    .into_iter()
-<a href=#1077 id=1077 data-nosnippet>1077</a>                    .map(|(g1, g2)| (g1.into(), g2.into()))
-<a href=#1078 id=1078 data-nosnippet>1078</a>                    .collect(),
-<a href=#1079 id=1079 data-nosnippet>1079</a>                delta: caml.delta.into(),
-<a href=#1080 id=1080 data-nosnippet>1080</a>                z1: caml.z1.into(),
-<a href=#1081 id=1081 data-nosnippet>1081</a>                z2: caml.z2.into(),
-<a href=#1082 id=1082 data-nosnippet>1082</a>                sg: caml.sg.into(),
-<a href=#1083 id=1083 data-nosnippet>1083</a>            }
-<a href=#1084 id=1084 data-nosnippet>1084</a>        }
-<a href=#1085 id=1085 data-nosnippet>1085</a>    }
-<a href=#1086 id=1086 data-nosnippet>1086</a>}
+<a href=#1030 id=1030 data-nosnippet>1030</a>#[allow(non_local_definitions)]
+<a href=#1031 id=1031 data-nosnippet>1031</a></span><span class="kw">pub mod </span>caml {
+<a href=#1032 id=1032 data-nosnippet>1032</a>    <span class="kw">use </span><span class="kw">super</span>::OpeningProof;
+<a href=#1033 id=1033 data-nosnippet>1033</a>    <span class="kw">use </span>ark_ec::AffineRepr;
+<a href=#1034 id=1034 data-nosnippet>1034</a>    <span class="kw">use </span>ocaml;
+<a href=#1035 id=1035 data-nosnippet>1035</a>
+<a href=#1036 id=1036 data-nosnippet>1036</a>    <span class="attr">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+<a href=#1037 id=1037 data-nosnippet>1037</a>    </span><span class="kw">pub struct </span>CamlOpeningProof&lt;G, F&gt; {
+<a href=#1038 id=1038 data-nosnippet>1038</a>        <span class="doccomment">/// vector of rounds of L &amp; R commitments
+<a href=#1039 id=1039 data-nosnippet>1039</a>        </span><span class="kw">pub </span>lr: Vec&lt;(G, G)&gt;,
+<a href=#1040 id=1040 data-nosnippet>1040</a>        <span class="kw">pub </span>delta: G,
+<a href=#1041 id=1041 data-nosnippet>1041</a>        <span class="kw">pub </span>z1: F,
+<a href=#1042 id=1042 data-nosnippet>1042</a>        <span class="kw">pub </span>z2: F,
+<a href=#1043 id=1043 data-nosnippet>1043</a>        <span class="kw">pub </span>sg: G,
+<a href=#1044 id=1044 data-nosnippet>1044</a>    }
+<a href=#1045 id=1045 data-nosnippet>1045</a>
+<a href=#1046 id=1046 data-nosnippet>1046</a>    <span class="kw">impl</span>&lt;G, CamlF, CamlG&gt; From&lt;OpeningProof&lt;G&gt;&gt; <span class="kw">for </span>CamlOpeningProof&lt;CamlG, CamlF&gt;
+<a href=#1047 id=1047 data-nosnippet>1047</a>    <span class="kw">where
+<a href=#1048 id=1048 data-nosnippet>1048</a>        </span>G: AffineRepr,
+<a href=#1049 id=1049 data-nosnippet>1049</a>        CamlG: From&lt;G&gt;,
+<a href=#1050 id=1050 data-nosnippet>1050</a>        CamlF: From&lt;G::ScalarField&gt;,
+<a href=#1051 id=1051 data-nosnippet>1051</a>    {
+<a href=#1052 id=1052 data-nosnippet>1052</a>        <span class="kw">fn </span>from(opening_proof: OpeningProof&lt;G&gt;) -&gt; <span class="self">Self </span>{
+<a href=#1053 id=1053 data-nosnippet>1053</a>            <span class="self">Self </span>{
+<a href=#1054 id=1054 data-nosnippet>1054</a>                lr: opening_proof
+<a href=#1055 id=1055 data-nosnippet>1055</a>                    .lr
+<a href=#1056 id=1056 data-nosnippet>1056</a>                    .into_iter()
+<a href=#1057 id=1057 data-nosnippet>1057</a>                    .map(|(g1, g2)| (CamlG::from(g1), CamlG::from(g2)))
+<a href=#1058 id=1058 data-nosnippet>1058</a>                    .collect(),
+<a href=#1059 id=1059 data-nosnippet>1059</a>                delta: CamlG::from(opening_proof.delta),
+<a href=#1060 id=1060 data-nosnippet>1060</a>                z1: opening_proof.z1.into(),
+<a href=#1061 id=1061 data-nosnippet>1061</a>                z2: opening_proof.z2.into(),
+<a href=#1062 id=1062 data-nosnippet>1062</a>                sg: CamlG::from(opening_proof.sg),
+<a href=#1063 id=1063 data-nosnippet>1063</a>            }
+<a href=#1064 id=1064 data-nosnippet>1064</a>        }
+<a href=#1065 id=1065 data-nosnippet>1065</a>    }
+<a href=#1066 id=1066 data-nosnippet>1066</a>
+<a href=#1067 id=1067 data-nosnippet>1067</a>    <span class="kw">impl</span>&lt;G, CamlF, CamlG&gt; From&lt;CamlOpeningProof&lt;CamlG, CamlF&gt;&gt; <span class="kw">for </span>OpeningProof&lt;G&gt;
+<a href=#1068 id=1068 data-nosnippet>1068</a>    <span class="kw">where
+<a href=#1069 id=1069 data-nosnippet>1069</a>        </span>G: AffineRepr,
+<a href=#1070 id=1070 data-nosnippet>1070</a>        CamlG: Into&lt;G&gt;,
+<a href=#1071 id=1071 data-nosnippet>1071</a>        CamlF: Into&lt;G::ScalarField&gt;,
+<a href=#1072 id=1072 data-nosnippet>1072</a>    {
+<a href=#1073 id=1073 data-nosnippet>1073</a>        <span class="kw">fn </span>from(caml: CamlOpeningProof&lt;CamlG, CamlF&gt;) -&gt; <span class="self">Self </span>{
+<a href=#1074 id=1074 data-nosnippet>1074</a>            <span class="self">Self </span>{
+<a href=#1075 id=1075 data-nosnippet>1075</a>                lr: caml
+<a href=#1076 id=1076 data-nosnippet>1076</a>                    .lr
+<a href=#1077 id=1077 data-nosnippet>1077</a>                    .into_iter()
+<a href=#1078 id=1078 data-nosnippet>1078</a>                    .map(|(g1, g2)| (g1.into(), g2.into()))
+<a href=#1079 id=1079 data-nosnippet>1079</a>                    .collect(),
+<a href=#1080 id=1080 data-nosnippet>1080</a>                delta: caml.delta.into(),
+<a href=#1081 id=1081 data-nosnippet>1081</a>                z1: caml.z1.into(),
+<a href=#1082 id=1082 data-nosnippet>1082</a>                z2: caml.z2.into(),
+<a href=#1083 id=1083 data-nosnippet>1083</a>                sg: caml.sg.into(),
+<a href=#1084 id=1084 data-nosnippet>1084</a>            }
+<a href=#1085 id=1085 data-nosnippet>1085</a>        }
+<a href=#1086 id=1086 data-nosnippet>1086</a>    }
+<a href=#1087 id=1087 data-nosnippet>1087</a>}
 </code></pre></div></section></main></body></html>

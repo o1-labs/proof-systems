@@ -262,38 +262,39 @@
 <a href=#262 id=262 data-nosnippet>262</a>//
 <a href=#263 id=263 data-nosnippet>263</a>
 <a href=#264 id=264 data-nosnippet>264</a></span><span class="attr">#[cfg(feature = <span class="string">"ocaml_types"</span>)]
-<a href=#265 id=265 data-nosnippet>265</a></span><span class="kw">pub mod </span>caml {
-<a href=#266 id=266 data-nosnippet>266</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-<a href=#267 id=267 data-nosnippet>267</a>
-<a href=#268 id=268 data-nosnippet>268</a>    <span class="kw">extern crate </span>alloc;
-<a href=#269 id=269 data-nosnippet>269</a>    <span class="kw">use </span>alloc::{
-<a href=#270 id=270 data-nosnippet>270</a>        format,
-<a href=#271 id=271 data-nosnippet>271</a>        string::{String, ToString},
-<a href=#272 id=272 data-nosnippet>272</a>    };
-<a href=#273 id=273 data-nosnippet>273</a>
-<a href=#274 id=274 data-nosnippet>274</a>    <span class="comment">//
-<a href=#275 id=275 data-nosnippet>275</a>    // ScalarChallenge&lt;F&gt; &lt;-&gt; CamlScalarChallenge&lt;CamlF&gt;
-<a href=#276 id=276 data-nosnippet>276</a>    //
-<a href=#277 id=277 data-nosnippet>277</a>
-<a href=#278 id=278 data-nosnippet>278</a>    </span><span class="attr">#[derive(Debug, Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-<a href=#279 id=279 data-nosnippet>279</a>    </span><span class="kw">pub struct </span>CamlScalarChallenge&lt;CamlF&gt;(<span class="kw">pub </span>CamlF);
-<a href=#280 id=280 data-nosnippet>280</a>
-<a href=#281 id=281 data-nosnippet>281</a>    <span class="kw">impl</span>&lt;F, CamlF&gt; From&lt;ScalarChallenge&lt;F&gt;&gt; <span class="kw">for </span>CamlScalarChallenge&lt;CamlF&gt;
-<a href=#282 id=282 data-nosnippet>282</a>    <span class="kw">where
-<a href=#283 id=283 data-nosnippet>283</a>        </span>CamlF: From&lt;F&gt;,
-<a href=#284 id=284 data-nosnippet>284</a>    {
-<a href=#285 id=285 data-nosnippet>285</a>        <span class="kw">fn </span>from(sc: ScalarChallenge&lt;F&gt;) -&gt; <span class="self">Self </span>{
-<a href=#286 id=286 data-nosnippet>286</a>            <span class="self">Self</span>(sc.<span class="number">0</span>.into())
-<a href=#287 id=287 data-nosnippet>287</a>        }
-<a href=#288 id=288 data-nosnippet>288</a>    }
-<a href=#289 id=289 data-nosnippet>289</a>
-<a href=#290 id=290 data-nosnippet>290</a>    <span class="kw">impl</span>&lt;F, CamlF&gt; From&lt;CamlScalarChallenge&lt;CamlF&gt;&gt; <span class="kw">for </span>ScalarChallenge&lt;F&gt;
-<a href=#291 id=291 data-nosnippet>291</a>    <span class="kw">where
-<a href=#292 id=292 data-nosnippet>292</a>        </span>CamlF: Into&lt;F&gt;,
-<a href=#293 id=293 data-nosnippet>293</a>    {
-<a href=#294 id=294 data-nosnippet>294</a>        <span class="kw">fn </span>from(caml_sc: CamlScalarChallenge&lt;CamlF&gt;) -&gt; <span class="self">Self </span>{
-<a href=#295 id=295 data-nosnippet>295</a>            <span class="self">Self</span>(caml_sc.<span class="number">0</span>.into())
-<a href=#296 id=296 data-nosnippet>296</a>        }
-<a href=#297 id=297 data-nosnippet>297</a>    }
-<a href=#298 id=298 data-nosnippet>298</a>}
+<a href=#265 id=265 data-nosnippet>265</a>#[allow(non_local_definitions)]
+<a href=#266 id=266 data-nosnippet>266</a></span><span class="kw">pub mod </span>caml {
+<a href=#267 id=267 data-nosnippet>267</a>    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+<a href=#268 id=268 data-nosnippet>268</a>
+<a href=#269 id=269 data-nosnippet>269</a>    <span class="kw">extern crate </span>alloc;
+<a href=#270 id=270 data-nosnippet>270</a>    <span class="kw">use </span>alloc::{
+<a href=#271 id=271 data-nosnippet>271</a>        format,
+<a href=#272 id=272 data-nosnippet>272</a>        string::{String, ToString},
+<a href=#273 id=273 data-nosnippet>273</a>    };
+<a href=#274 id=274 data-nosnippet>274</a>
+<a href=#275 id=275 data-nosnippet>275</a>    <span class="comment">//
+<a href=#276 id=276 data-nosnippet>276</a>    // ScalarChallenge&lt;F&gt; &lt;-&gt; CamlScalarChallenge&lt;CamlF&gt;
+<a href=#277 id=277 data-nosnippet>277</a>    //
+<a href=#278 id=278 data-nosnippet>278</a>
+<a href=#279 id=279 data-nosnippet>279</a>    </span><span class="attr">#[derive(Debug, Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+<a href=#280 id=280 data-nosnippet>280</a>    </span><span class="kw">pub struct </span>CamlScalarChallenge&lt;CamlF&gt;(<span class="kw">pub </span>CamlF);
+<a href=#281 id=281 data-nosnippet>281</a>
+<a href=#282 id=282 data-nosnippet>282</a>    <span class="kw">impl</span>&lt;F, CamlF&gt; From&lt;ScalarChallenge&lt;F&gt;&gt; <span class="kw">for </span>CamlScalarChallenge&lt;CamlF&gt;
+<a href=#283 id=283 data-nosnippet>283</a>    <span class="kw">where
+<a href=#284 id=284 data-nosnippet>284</a>        </span>CamlF: From&lt;F&gt;,
+<a href=#285 id=285 data-nosnippet>285</a>    {
+<a href=#286 id=286 data-nosnippet>286</a>        <span class="kw">fn </span>from(sc: ScalarChallenge&lt;F&gt;) -&gt; <span class="self">Self </span>{
+<a href=#287 id=287 data-nosnippet>287</a>            <span class="self">Self</span>(sc.<span class="number">0</span>.into())
+<a href=#288 id=288 data-nosnippet>288</a>        }
+<a href=#289 id=289 data-nosnippet>289</a>    }
+<a href=#290 id=290 data-nosnippet>290</a>
+<a href=#291 id=291 data-nosnippet>291</a>    <span class="kw">impl</span>&lt;F, CamlF&gt; From&lt;CamlScalarChallenge&lt;CamlF&gt;&gt; <span class="kw">for </span>ScalarChallenge&lt;F&gt;
+<a href=#292 id=292 data-nosnippet>292</a>    <span class="kw">where
+<a href=#293 id=293 data-nosnippet>293</a>        </span>CamlF: Into&lt;F&gt;,
+<a href=#294 id=294 data-nosnippet>294</a>    {
+<a href=#295 id=295 data-nosnippet>295</a>        <span class="kw">fn </span>from(caml_sc: CamlScalarChallenge&lt;CamlF&gt;) -&gt; <span class="self">Self </span>{
+<a href=#296 id=296 data-nosnippet>296</a>            <span class="self">Self</span>(caml_sc.<span class="number">0</span>.into())
+<a href=#297 id=297 data-nosnippet>297</a>        }
+<a href=#298 id=298 data-nosnippet>298</a>    }
+<a href=#299 id=299 data-nosnippet>299</a>}
 </code></pre></div></section></main></body></html>

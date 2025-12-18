@@ -130,7 +130,7 @@
 <a href=#130 id=130 data-nosnippet>130</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
 <a href=#131 id=131 data-nosnippet>131</a>        ty: ArgumentType,
 <a href=#132 id=132 data-nosnippet>132</a>        num: u32,
-<a href=#133 id=133 data-nosnippet>133</a>    ) -&gt; MustConsumeIterator&lt;Cloned&lt;Take&lt;Skip&lt;Iter&lt;F&gt;&gt;&gt;&gt;, F&gt; {
+<a href=#133 id=133 data-nosnippet>133</a>    ) -&gt; MustConsumeIterator&lt;Cloned&lt;Take&lt;Skip&lt;Iter&lt;<span class="lifetime">'_</span>, F&gt;&gt;&gt;&gt;, F&gt; {
 <a href=#134 id=134 data-nosnippet>134</a>        <span class="kw">let </span>ty = <span class="kw">if </span><span class="macro">matches!</span>(ty, ArgumentType::Gate(<span class="kw">_</span>)) {
 <a href=#135 id=135 data-nosnippet>135</a>            ArgumentType::Gate(GateType::Zero)
 <a href=#136 id=136 data-nosnippet>136</a>        } <span class="kw">else </span>{

@@ -330,7 +330,7 @@
 <a href=#330 id=330 data-nosnippet>330</a>    from_field: Func,
 <a href=#331 id=331 data-nosnippet>331</a>    x: [V; M],
 <a href=#332 id=332 data-nosnippet>332</a>) -&gt; [V; N] {
-<a href=#333 id=333 data-nosnippet>333</a>    <span class="macro">assert!</span>(BITSIZE_N % BITSIZE_M == <span class="number">0</span>);
+<a href=#333 id=333 data-nosnippet>333</a>    <span class="macro">assert!</span>(o1_utils::is_multiple_of(BITSIZE_N, BITSIZE_M));
 <a href=#334 id=334 data-nosnippet>334</a>    <span class="kw">let </span>k = BITSIZE_N / BITSIZE_M;
 <a href=#335 id=335 data-nosnippet>335</a>    <span class="kw">let </span>constant_bui = |x: BigUint| from_field(F::from(x));
 <a href=#336 id=336 data-nosnippet>336</a>    <span class="kw">let </span>disparity: usize = M % k;

@@ -8,7 +8,7 @@
 <a href=#8 id=8 data-nosnippet>8</a>
 <a href=#9 id=9 data-nosnippet>9</a><span class="kw">use crate</span>::{helper::<span class="kw-2">*</span>, word::CairoWord};
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>ark_ff::Field;
-<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>core::iter::repeat;
+<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>o1_utils::repeat_n;
 <a href=#12 id=12 data-nosnippet>12</a>
 <a href=#13 id=13 data-nosnippet>13</a><span class="doccomment">/// This data structure stores the memory of the program
 <a href=#14 id=14 data-nosnippet>14</a></span><span class="kw">pub struct </span>CairoMemory&lt;F&gt; {
@@ -85,7 +85,7 @@
 <a href=#85 id=85 data-nosnippet>85</a>        // you will need to extend the vector with enough spaces (taking into account that
 <a href=#86 id=86 data-nosnippet>86</a>        // vectors start by index 0, the 0 address is dummy, and size starts in 1)
 <a href=#87 id=87 data-nosnippet>87</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(additional) = addr.checked_sub(<span class="self">self</span>.len() - <span class="number">1</span>) {
-<a href=#88 id=88 data-nosnippet>88</a>            <span class="self">self</span>.data.extend(repeat(<span class="prelude-val">None</span>).take(additional <span class="kw">as </span>usize));
+<a href=#88 id=88 data-nosnippet>88</a>            <span class="self">self</span>.data.extend(repeat_n(<span class="prelude-val">None</span>, additional <span class="kw">as </span>usize));
 <a href=#89 id=89 data-nosnippet>89</a>        }
 <a href=#90 id=90 data-nosnippet>90</a>    }
 <a href=#91 id=91 data-nosnippet>91</a>

@@ -10,7 +10,7 @@
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>ark_ff::{BigInteger, PrimeField};
 <a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>bitvec::{prelude::<span class="kw-2">*</span>, view::AsBits};
 <a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span>mina_curves::pasta::{Fp, Fq};
-<a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span>o1_utils::FieldHelpers;
+<a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span>o1_utils::{math::div_ceil, FieldHelpers};
 <a href=#14 id=14 data-nosnippet>14</a>
 <a href=#15 id=15 data-nosnippet>15</a><span class="doccomment">/// Total number of bytes for the header of the serialized ROInput
 <a href=#16 id=16 data-nosnippet>16</a></span><span class="kw">const </span>SER_HEADER_SIZE: usize = <span class="number">8</span>;
@@ -260,7 +260,7 @@
 <a href=#260 id=260 data-nosnippet>260</a>        <span class="comment">// Check that the number of bytes is consistent with the expected lengths
 <a href=#261 id=261 data-nosnippet>261</a>        </span><span class="kw">let </span>expected_len_bits = fields_len * Fp::MODULUS_BIT_SIZE <span class="kw">as </span>usize + bits_len;
 <a href=#262 id=262 data-nosnippet>262</a>        <span class="comment">// Round up to nearest multiple of 8
-<a href=#263 id=263 data-nosnippet>263</a>        </span><span class="kw">let </span>expected_len = (expected_len_bits + <span class="number">7</span>) / <span class="number">8 </span>+ SER_HEADER_SIZE;
+<a href=#263 id=263 data-nosnippet>263</a>        </span><span class="kw">let </span>expected_len = div_ceil(expected_len_bits, <span class="number">8</span>) + SER_HEADER_SIZE;
 <a href=#264 id=264 data-nosnippet>264</a>        <span class="kw">if </span>input.len() != expected_len {
 <a href=#265 id=265 data-nosnippet>265</a>            <span class="kw">return </span><span class="prelude-val">Err</span>(Error);
 <a href=#266 id=266 data-nosnippet>266</a>        }

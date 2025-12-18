@@ -33,7 +33,7 @@
 <a href=#33 id=33 data-nosnippet>33</a>    }
 <a href=#34 id=34 data-nosnippet>34</a>}
 <a href=#35 id=35 data-nosnippet>35</a>
-<a href=#36 id=36 data-nosnippet>36</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, F: Field&gt; ScaledChunkedPolynomial&lt;F, <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[F]&gt; {
+<a href=#36 id=36 data-nosnippet>36</a><span class="kw">impl</span>&lt;F: Field&gt; ScaledChunkedPolynomial&lt;F, <span class="kw-2">&amp;</span>[F]&gt; {
 <a href=#37 id=37 data-nosnippet>37</a>    <span class="doccomment">/// Compute the resulting scaled polynomial.
 <a href=#38 id=38 data-nosnippet>38</a>    /// Example:
 <a href=#39 id=39 data-nosnippet>39</a>    /// Given the two polynomials `1 + 2X` and `3 + 4X`, and the scaling
@@ -74,9 +74,9 @@
 <a href=#74 id=74 data-nosnippet>74</a>///
 <a href=#75 id=75 data-nosnippet>75</a>/// Parameters:
 <a href=#76 id=76 data-nosnippet>76</a>/// - `plnms`: vector of polynomials, either in evaluations or coefficients form, together with
-<a href=#77 id=77 data-nosnippet>77</a>///    a set of scalars representing their blinders.
+<a href=#77 id=77 data-nosnippet>77</a>///   a set of scalars representing their blinders.
 <a href=#78 id=78 data-nosnippet>78</a>/// - `polyscale`: scalar to combine the polynomials, which will be scaled based on the number of
-<a href=#79 id=79 data-nosnippet>79</a>///    polynomials to combine.
+<a href=#79 id=79 data-nosnippet>79</a>///   polynomials to combine.
 <a href=#80 id=80 data-nosnippet>80</a>///
 <a href=#81 id=81 data-nosnippet>81</a>/// Output:
 <a href=#82 id=82 data-nosnippet>82</a>/// - `combined_poly`: combined polynomial. The order of the output follows the order of `plnms`.

@@ -20,7 +20,7 @@
 <a href=#20 id=20 data-nosnippet>20</a><span class="kw">use </span>core::{array, ops::Div};
 <a href=#21 id=21 data-nosnippet>21</a><span class="kw">use </span>num_bigint::BigUint;
 <a href=#22 id=22 data-nosnippet>22</a><span class="kw">use </span>num_integer::Integer;
-<a href=#23 id=23 data-nosnippet>23</a><span class="kw">use </span>o1_utils::foreign_field::ForeignFieldHelpers;
+<a href=#23 id=23 data-nosnippet>23</a><span class="kw">use </span>o1_utils::{foreign_field::ForeignFieldHelpers, repeat_n};
 <a href=#24 id=24 data-nosnippet>24</a>
 <a href=#25 id=25 data-nosnippet>25</a><span class="kw">use </span><span class="kw">super</span>::circuitgates;
 <a href=#26 id=26 data-nosnippet>26</a>
@@ -198,7 +198,7 @@
 <a href=#198 id=198 data-nosnippet>198</a>
 <a href=#199 id=199 data-nosnippet>199</a>    // Extend the witness by two rows for foreign field multiplication
 <a href=#200 id=200 data-nosnippet>200</a>    </span><span class="kw">for </span>w <span class="kw">in </span><span class="kw-2">&amp;mut </span>witness {
-<a href=#201 id=201 data-nosnippet>201</a>        w.extend(core::iter::repeat(F::zero()).take(<span class="number">2</span>));
+<a href=#201 id=201 data-nosnippet>201</a>        w.extend(repeat_n(F::zero(), <span class="number">2</span>));
 <a href=#202 id=202 data-nosnippet>202</a>    }
 <a href=#203 id=203 data-nosnippet>203</a>
 <a href=#204 id=204 data-nosnippet>204</a>    <span class="comment">// Create the foreign field multiplication witness rows
@@ -329,7 +329,7 @@
 <a href=#329 id=329 data-nosnippet>329</a>        <span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.high_bounds.clone().chunks(<span class="number">2</span>) {
 <a href=#330 id=330 data-nosnippet>330</a>            <span class="comment">// Extend the witness for the generic gate
 <a href=#331 id=331 data-nosnippet>331</a>            </span><span class="kw">for </span>col <span class="kw">in </span>witness.iter_mut().take(COLUMNS) {
-<a href=#332 id=332 data-nosnippet>332</a>                col.extend(core::iter::repeat(F::zero()).take(<span class="number">1</span>))
+<a href=#332 id=332 data-nosnippet>332</a>                col.extend(repeat_n(F::zero(), <span class="number">1</span>))
 <a href=#333 id=333 data-nosnippet>333</a>            }
 <a href=#334 id=334 data-nosnippet>334</a>            <span class="kw">let </span>last_row = witness[<span class="number">0</span>].len() - <span class="number">1</span>;
 <a href=#335 id=335 data-nosnippet>335</a>            <span class="comment">// Fill in with dummy if it is an odd number of bounds

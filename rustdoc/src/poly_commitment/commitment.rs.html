@@ -269,7 +269,7 @@
 <a href=#269 id=269 data-nosnippet>269</a>    }
 <a href=#270 id=270 data-nosnippet>270</a>}
 <a href=#271 id=271 data-nosnippet>271</a>
-<a href=#272 id=272 data-nosnippet>272</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>, C: AffineRepr&gt; Add&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;C&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">'b </span>PolyComm&lt;C&gt; {
+<a href=#272 id=272 data-nosnippet>272</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, C: AffineRepr&gt; Add&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;C&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span>PolyComm&lt;C&gt; {
 <a href=#273 id=273 data-nosnippet>273</a>    <span class="kw">type </span>Output = PolyComm&lt;C&gt;;
 <a href=#274 id=274 data-nosnippet>274</a>
 <a href=#275 id=275 data-nosnippet>275</a>    <span class="kw">fn </span>add(<span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;C&gt;) -&gt; PolyComm&lt;C&gt; {
@@ -290,7 +290,7 @@
 <a href=#290 id=290 data-nosnippet>290</a>    }
 <a href=#291 id=291 data-nosnippet>291</a>}
 <a href=#292 id=292 data-nosnippet>292</a>
-<a href=#293 id=293 data-nosnippet>293</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>, C: AffineRepr + Sub&lt;Output = C::Group&gt;&gt; Sub&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;C&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">'b </span>PolyComm&lt;C&gt; {
+<a href=#293 id=293 data-nosnippet>293</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, C: AffineRepr + Sub&lt;Output = C::Group&gt;&gt; Sub&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;C&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span>PolyComm&lt;C&gt; {
 <a href=#294 id=294 data-nosnippet>294</a>    <span class="kw">type </span>Output = PolyComm&lt;C&gt;;
 <a href=#295 id=295 data-nosnippet>295</a>
 <a href=#296 id=296 data-nosnippet>296</a>    <span class="kw">fn </span>sub(<span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;C&gt;) -&gt; PolyComm&lt;C&gt; {
@@ -376,7 +376,7 @@
 <a href=#376 id=376 data-nosnippet>376</a>        pow_twos.push(pow_twos[i - <span class="number">1</span>].square());
 <a href=#377 id=377 data-nosnippet>377</a>    }
 <a href=#378 id=378 data-nosnippet>378</a>
-<a href=#379 id=379 data-nosnippet>379</a>    product((<span class="number">0</span>..k).map(|i| (F::one() + (chals[i] * pow_twos[k - <span class="number">1 </span>- i]))))
+<a href=#379 id=379 data-nosnippet>379</a>    product((<span class="number">0</span>..k).map(|i| F::one() + (chals[i] * pow_twos[k - <span class="number">1 </span>- i])))
 <a href=#380 id=380 data-nosnippet>380</a>}
 <a href=#381 id=381 data-nosnippet>381</a>
 <a href=#382 id=382 data-nosnippet>382</a><span class="kw">pub fn </span>b_poly_coefficients&lt;F: Field&gt;(chals: <span class="kw-2">&amp;</span>[F]) -&gt; Vec&lt;F&gt; {
@@ -638,78 +638,79 @@
 <a href=#638 id=638 data-nosnippet>638</a>}
 <a href=#639 id=639 data-nosnippet>639</a>
 <a href=#640 id=640 data-nosnippet>640</a><span class="attr">#[cfg(feature = <span class="string">"ocaml_types"</span>)]
-<a href=#641 id=641 data-nosnippet>641</a></span><span class="kw">pub mod </span>caml {
-<a href=#642 id=642 data-nosnippet>642</a>    <span class="comment">// polynomial commitment
-<a href=#643 id=643 data-nosnippet>643</a>    </span><span class="kw">use </span><span class="kw">super</span>::PolyComm;
-<a href=#644 id=644 data-nosnippet>644</a>    <span class="kw">use </span>ark_ec::AffineRepr;
-<a href=#645 id=645 data-nosnippet>645</a>
-<a href=#646 id=646 data-nosnippet>646</a>    <span class="attr">#[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-<a href=#647 id=647 data-nosnippet>647</a>    </span><span class="kw">pub struct </span>CamlPolyComm&lt;CamlG&gt; {
-<a href=#648 id=648 data-nosnippet>648</a>        <span class="kw">pub </span>unshifted: Vec&lt;CamlG&gt;,
-<a href=#649 id=649 data-nosnippet>649</a>        <span class="kw">pub </span>shifted: <span class="prelude-ty">Option</span>&lt;CamlG&gt;,
-<a href=#650 id=650 data-nosnippet>650</a>    }
-<a href=#651 id=651 data-nosnippet>651</a>
-<a href=#652 id=652 data-nosnippet>652</a>    <span class="comment">// handy conversions
-<a href=#653 id=653 data-nosnippet>653</a>
-<a href=#654 id=654 data-nosnippet>654</a>    </span><span class="kw">impl</span>&lt;G, CamlG&gt; From&lt;PolyComm&lt;G&gt;&gt; <span class="kw">for </span>CamlPolyComm&lt;CamlG&gt;
-<a href=#655 id=655 data-nosnippet>655</a>    <span class="kw">where
-<a href=#656 id=656 data-nosnippet>656</a>        </span>G: AffineRepr,
-<a href=#657 id=657 data-nosnippet>657</a>        CamlG: From&lt;G&gt;,
-<a href=#658 id=658 data-nosnippet>658</a>    {
-<a href=#659 id=659 data-nosnippet>659</a>        <span class="kw">fn </span>from(polycomm: PolyComm&lt;G&gt;) -&gt; <span class="self">Self </span>{
-<a href=#660 id=660 data-nosnippet>660</a>            <span class="self">Self </span>{
-<a href=#661 id=661 data-nosnippet>661</a>                unshifted: polycomm.chunks.into_iter().map(CamlG::from).collect(),
-<a href=#662 id=662 data-nosnippet>662</a>                shifted: <span class="prelude-val">None</span>,
-<a href=#663 id=663 data-nosnippet>663</a>            }
-<a href=#664 id=664 data-nosnippet>664</a>        }
-<a href=#665 id=665 data-nosnippet>665</a>    }
-<a href=#666 id=666 data-nosnippet>666</a>
-<a href=#667 id=667 data-nosnippet>667</a>    <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, G, CamlG&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;G&gt;&gt; <span class="kw">for </span>CamlPolyComm&lt;CamlG&gt;
-<a href=#668 id=668 data-nosnippet>668</a>    <span class="kw">where
-<a href=#669 id=669 data-nosnippet>669</a>        </span>G: AffineRepr,
-<a href=#670 id=670 data-nosnippet>670</a>        CamlG: From&lt;G&gt; + From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>G&gt;,
-<a href=#671 id=671 data-nosnippet>671</a>    {
-<a href=#672 id=672 data-nosnippet>672</a>        <span class="kw">fn </span>from(polycomm: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;G&gt;) -&gt; <span class="self">Self </span>{
-<a href=#673 id=673 data-nosnippet>673</a>            <span class="self">Self </span>{
-<a href=#674 id=674 data-nosnippet>674</a>                unshifted: polycomm.chunks.iter().map(Into::&lt;CamlG&gt;::into).collect(),
-<a href=#675 id=675 data-nosnippet>675</a>                shifted: <span class="prelude-val">None</span>,
-<a href=#676 id=676 data-nosnippet>676</a>            }
-<a href=#677 id=677 data-nosnippet>677</a>        }
-<a href=#678 id=678 data-nosnippet>678</a>    }
-<a href=#679 id=679 data-nosnippet>679</a>
-<a href=#680 id=680 data-nosnippet>680</a>    <span class="kw">impl</span>&lt;G, CamlG&gt; From&lt;CamlPolyComm&lt;CamlG&gt;&gt; <span class="kw">for </span>PolyComm&lt;G&gt;
-<a href=#681 id=681 data-nosnippet>681</a>    <span class="kw">where
-<a href=#682 id=682 data-nosnippet>682</a>        </span>G: AffineRepr + From&lt;CamlG&gt;,
-<a href=#683 id=683 data-nosnippet>683</a>    {
-<a href=#684 id=684 data-nosnippet>684</a>        <span class="kw">fn </span>from(camlpolycomm: CamlPolyComm&lt;CamlG&gt;) -&gt; PolyComm&lt;G&gt; {
-<a href=#685 id=685 data-nosnippet>685</a>            <span class="macro">assert!</span>(
-<a href=#686 id=686 data-nosnippet>686</a>                camlpolycomm.shifted.is_none(),
-<a href=#687 id=687 data-nosnippet>687</a>                <span class="string">"mina#14628: Shifted commitments are deprecated and must not be used"
-<a href=#688 id=688 data-nosnippet>688</a>            </span>);
-<a href=#689 id=689 data-nosnippet>689</a>            PolyComm {
-<a href=#690 id=690 data-nosnippet>690</a>                chunks: camlpolycomm
-<a href=#691 id=691 data-nosnippet>691</a>                    .unshifted
-<a href=#692 id=692 data-nosnippet>692</a>                    .into_iter()
-<a href=#693 id=693 data-nosnippet>693</a>                    .map(Into::&lt;G&gt;::into)
-<a href=#694 id=694 data-nosnippet>694</a>                    .collect(),
-<a href=#695 id=695 data-nosnippet>695</a>            }
-<a href=#696 id=696 data-nosnippet>696</a>        }
-<a href=#697 id=697 data-nosnippet>697</a>    }
-<a href=#698 id=698 data-nosnippet>698</a>
-<a href=#699 id=699 data-nosnippet>699</a>    <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, G, CamlG&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>CamlPolyComm&lt;CamlG&gt;&gt; <span class="kw">for </span>PolyComm&lt;G&gt;
-<a href=#700 id=700 data-nosnippet>700</a>    <span class="kw">where
-<a href=#701 id=701 data-nosnippet>701</a>        </span>G: AffineRepr + From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>CamlG&gt; + From&lt;CamlG&gt;,
-<a href=#702 id=702 data-nosnippet>702</a>    {
-<a href=#703 id=703 data-nosnippet>703</a>        <span class="kw">fn </span>from(camlpolycomm: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>CamlPolyComm&lt;CamlG&gt;) -&gt; PolyComm&lt;G&gt; {
-<a href=#704 id=704 data-nosnippet>704</a>            <span class="macro">assert!</span>(
-<a href=#705 id=705 data-nosnippet>705</a>                camlpolycomm.shifted.is_none(),
-<a href=#706 id=706 data-nosnippet>706</a>                <span class="string">"mina#14628: Shifted commitments are deprecated and must not be used"
-<a href=#707 id=707 data-nosnippet>707</a>            </span>);
-<a href=#708 id=708 data-nosnippet>708</a>            PolyComm {
-<a href=#709 id=709 data-nosnippet>709</a>                <span class="comment">//FIXME something with as_ref()
-<a href=#710 id=710 data-nosnippet>710</a>                </span>chunks: camlpolycomm.unshifted.iter().map(Into::into).collect(),
-<a href=#711 id=711 data-nosnippet>711</a>            }
-<a href=#712 id=712 data-nosnippet>712</a>        }
-<a href=#713 id=713 data-nosnippet>713</a>    }
-<a href=#714 id=714 data-nosnippet>714</a>}
+<a href=#641 id=641 data-nosnippet>641</a>#[allow(non_local_definitions)]
+<a href=#642 id=642 data-nosnippet>642</a></span><span class="kw">pub mod </span>caml {
+<a href=#643 id=643 data-nosnippet>643</a>    <span class="comment">// polynomial commitment
+<a href=#644 id=644 data-nosnippet>644</a>    </span><span class="kw">use </span><span class="kw">super</span>::PolyComm;
+<a href=#645 id=645 data-nosnippet>645</a>    <span class="kw">use </span>ark_ec::AffineRepr;
+<a href=#646 id=646 data-nosnippet>646</a>
+<a href=#647 id=647 data-nosnippet>647</a>    <span class="attr">#[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+<a href=#648 id=648 data-nosnippet>648</a>    </span><span class="kw">pub struct </span>CamlPolyComm&lt;CamlG&gt; {
+<a href=#649 id=649 data-nosnippet>649</a>        <span class="kw">pub </span>unshifted: Vec&lt;CamlG&gt;,
+<a href=#650 id=650 data-nosnippet>650</a>        <span class="kw">pub </span>shifted: <span class="prelude-ty">Option</span>&lt;CamlG&gt;,
+<a href=#651 id=651 data-nosnippet>651</a>    }
+<a href=#652 id=652 data-nosnippet>652</a>
+<a href=#653 id=653 data-nosnippet>653</a>    <span class="comment">// handy conversions
+<a href=#654 id=654 data-nosnippet>654</a>
+<a href=#655 id=655 data-nosnippet>655</a>    </span><span class="kw">impl</span>&lt;G, CamlG&gt; From&lt;PolyComm&lt;G&gt;&gt; <span class="kw">for </span>CamlPolyComm&lt;CamlG&gt;
+<a href=#656 id=656 data-nosnippet>656</a>    <span class="kw">where
+<a href=#657 id=657 data-nosnippet>657</a>        </span>G: AffineRepr,
+<a href=#658 id=658 data-nosnippet>658</a>        CamlG: From&lt;G&gt;,
+<a href=#659 id=659 data-nosnippet>659</a>    {
+<a href=#660 id=660 data-nosnippet>660</a>        <span class="kw">fn </span>from(polycomm: PolyComm&lt;G&gt;) -&gt; <span class="self">Self </span>{
+<a href=#661 id=661 data-nosnippet>661</a>            <span class="self">Self </span>{
+<a href=#662 id=662 data-nosnippet>662</a>                unshifted: polycomm.chunks.into_iter().map(CamlG::from).collect(),
+<a href=#663 id=663 data-nosnippet>663</a>                shifted: <span class="prelude-val">None</span>,
+<a href=#664 id=664 data-nosnippet>664</a>            }
+<a href=#665 id=665 data-nosnippet>665</a>        }
+<a href=#666 id=666 data-nosnippet>666</a>    }
+<a href=#667 id=667 data-nosnippet>667</a>
+<a href=#668 id=668 data-nosnippet>668</a>    <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, G, CamlG&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;G&gt;&gt; <span class="kw">for </span>CamlPolyComm&lt;CamlG&gt;
+<a href=#669 id=669 data-nosnippet>669</a>    <span class="kw">where
+<a href=#670 id=670 data-nosnippet>670</a>        </span>G: AffineRepr,
+<a href=#671 id=671 data-nosnippet>671</a>        CamlG: From&lt;G&gt; + From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>G&gt;,
+<a href=#672 id=672 data-nosnippet>672</a>    {
+<a href=#673 id=673 data-nosnippet>673</a>        <span class="kw">fn </span>from(polycomm: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;G&gt;) -&gt; <span class="self">Self </span>{
+<a href=#674 id=674 data-nosnippet>674</a>            <span class="self">Self </span>{
+<a href=#675 id=675 data-nosnippet>675</a>                unshifted: polycomm.chunks.iter().map(Into::&lt;CamlG&gt;::into).collect(),
+<a href=#676 id=676 data-nosnippet>676</a>                shifted: <span class="prelude-val">None</span>,
+<a href=#677 id=677 data-nosnippet>677</a>            }
+<a href=#678 id=678 data-nosnippet>678</a>        }
+<a href=#679 id=679 data-nosnippet>679</a>    }
+<a href=#680 id=680 data-nosnippet>680</a>
+<a href=#681 id=681 data-nosnippet>681</a>    <span class="kw">impl</span>&lt;G, CamlG&gt; From&lt;CamlPolyComm&lt;CamlG&gt;&gt; <span class="kw">for </span>PolyComm&lt;G&gt;
+<a href=#682 id=682 data-nosnippet>682</a>    <span class="kw">where
+<a href=#683 id=683 data-nosnippet>683</a>        </span>G: AffineRepr + From&lt;CamlG&gt;,
+<a href=#684 id=684 data-nosnippet>684</a>    {
+<a href=#685 id=685 data-nosnippet>685</a>        <span class="kw">fn </span>from(camlpolycomm: CamlPolyComm&lt;CamlG&gt;) -&gt; PolyComm&lt;G&gt; {
+<a href=#686 id=686 data-nosnippet>686</a>            <span class="macro">assert!</span>(
+<a href=#687 id=687 data-nosnippet>687</a>                camlpolycomm.shifted.is_none(),
+<a href=#688 id=688 data-nosnippet>688</a>                <span class="string">"mina#14628: Shifted commitments are deprecated and must not be used"
+<a href=#689 id=689 data-nosnippet>689</a>            </span>);
+<a href=#690 id=690 data-nosnippet>690</a>            PolyComm {
+<a href=#691 id=691 data-nosnippet>691</a>                chunks: camlpolycomm
+<a href=#692 id=692 data-nosnippet>692</a>                    .unshifted
+<a href=#693 id=693 data-nosnippet>693</a>                    .into_iter()
+<a href=#694 id=694 data-nosnippet>694</a>                    .map(Into::&lt;G&gt;::into)
+<a href=#695 id=695 data-nosnippet>695</a>                    .collect(),
+<a href=#696 id=696 data-nosnippet>696</a>            }
+<a href=#697 id=697 data-nosnippet>697</a>        }
+<a href=#698 id=698 data-nosnippet>698</a>    }
+<a href=#699 id=699 data-nosnippet>699</a>
+<a href=#700 id=700 data-nosnippet>700</a>    <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, G, CamlG&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>CamlPolyComm&lt;CamlG&gt;&gt; <span class="kw">for </span>PolyComm&lt;G&gt;
+<a href=#701 id=701 data-nosnippet>701</a>    <span class="kw">where
+<a href=#702 id=702 data-nosnippet>702</a>        </span>G: AffineRepr + From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>CamlG&gt; + From&lt;CamlG&gt;,
+<a href=#703 id=703 data-nosnippet>703</a>    {
+<a href=#704 id=704 data-nosnippet>704</a>        <span class="kw">fn </span>from(camlpolycomm: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>CamlPolyComm&lt;CamlG&gt;) -&gt; PolyComm&lt;G&gt; {
+<a href=#705 id=705 data-nosnippet>705</a>            <span class="macro">assert!</span>(
+<a href=#706 id=706 data-nosnippet>706</a>                camlpolycomm.shifted.is_none(),
+<a href=#707 id=707 data-nosnippet>707</a>                <span class="string">"mina#14628: Shifted commitments are deprecated and must not be used"
+<a href=#708 id=708 data-nosnippet>708</a>            </span>);
+<a href=#709 id=709 data-nosnippet>709</a>            PolyComm {
+<a href=#710 id=710 data-nosnippet>710</a>                <span class="comment">//FIXME something with as_ref()
+<a href=#711 id=711 data-nosnippet>711</a>                </span>chunks: camlpolycomm.unshifted.iter().map(Into::into).collect(),
+<a href=#712 id=712 data-nosnippet>712</a>            }
+<a href=#713 id=713 data-nosnippet>713</a>        }
+<a href=#714 id=714 data-nosnippet>714</a>    }
+<a href=#715 id=715 data-nosnippet>715</a>}
 </code></pre></div></section></main></body></html>

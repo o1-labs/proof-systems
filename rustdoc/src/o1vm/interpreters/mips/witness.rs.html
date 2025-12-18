@@ -1294,7 +1294,7 @@
 <a href=#1294 id=1294 data-nosnippet>1294</a>            StepFrequency::Never =&gt; <span class="bool-val">false</span>,
 <a href=#1295 id=1295 data-nosnippet>1295</a>            StepFrequency::Always =&gt; <span class="bool-val">true</span>,
 <a href=#1296 id=1296 data-nosnippet>1296</a>            StepFrequency::Exactly(n) =&gt; <span class="kw-2">*</span>n == m,
-<a href=#1297 id=1297 data-nosnippet>1297</a>            StepFrequency::Every(n) =&gt; m % <span class="kw-2">*</span>n == <span class="number">0</span>,
+<a href=#1297 id=1297 data-nosnippet>1297</a>            StepFrequency::Every(n) =&gt; o1_utils::is_multiple_of(m, <span class="kw-2">*</span>n),
 <a href=#1298 id=1298 data-nosnippet>1298</a>            StepFrequency::Range(lo, hi_opt) =&gt; {
 <a href=#1299 id=1299 data-nosnippet>1299</a>                m &gt;= <span class="kw-2">*</span>lo &amp;&amp; (hi_opt.is_none() || m &lt; hi_opt.unwrap())
 <a href=#1300 id=1300 data-nosnippet>1300</a>            }
