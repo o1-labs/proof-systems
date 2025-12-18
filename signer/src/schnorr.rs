@@ -7,6 +7,7 @@
 extern crate alloc;
 use alloc::{boxed::Box, string::String, vec};
 use num_bigint::BigUint;
+use o1_utils::math::div_ceil;
 
 use crate::{BaseField, CurvePoint, Hashable, Keypair, PubKey, ScalarField, Signature, Signer};
 use ark_ec::{
@@ -217,7 +218,7 @@ impl<H: 'static + Hashable> Schnorr<H> {
         }
 
         // Convert bits to bytes for BLAKE2b
-        let mut input_bytes = vec![0u8; (all_bits.len() + 7) / 8];
+        let mut input_bytes = vec![0u8; div_ceil(all_bits.len(), 8)];
         for (i, &bit) in all_bits.iter().enumerate() {
             if bit {
                 input_bytes[i / 8] |= 1 << (i % 8);
