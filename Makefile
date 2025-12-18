@@ -34,7 +34,9 @@ MIPS_LD ?= mips-linux-gnu-ld
 # in rust-toolchain.toml.
 # In addition to that, the version in the CI (see file
 # .github/workflows/wasm.yml) should be changed accordingly.
-NIGHTLY_RUST_VERSION = "nightly-2024-09-05"
+# Can be overridden via environment variable, e.g.:
+#   NIGHTLY_RUST_VERSION=nightly make build-web
+NIGHTLY_RUST_VERSION ?= nightly-2024-09-05
 PLONK_WASM_NODEJS_OUTDIR ?= target/nodejs
 PLONK_WASM_WEB_OUTDIR ?= target/web
 
@@ -241,16 +243,16 @@ fclean: clean ## Clean the tooling artefacts in addition to running clean
 
 .PHONY: build-nodejs
 build-nodejs: ## Compile the Kimchi library into WebAssembly to be used in NodeJS
-		cargo +nightly run --package xtask -- build-wasm \
+		cargo +$(NIGHTLY_RUST_VERSION) run --package xtask -- build-wasm \
 		--target nodejs \
 		--out-dir ${PLONK_WASM_NODEJS_OUTDIR} \
-		--rust-version ${NIGHTLY_RUST_VERSION}
+		--rust-version $(NIGHTLY_RUST_VERSION)
 
 .PHONY: build-web
 build-web: ## Compile the Kimchi library into WebAssembly to be used in the browser
-		cargo +nightly run --package xtask -- build-wasm \
+		cargo +$(NIGHTLY_RUST_VERSION) run --package xtask -- build-wasm \
 		--target web \
 		--out-dir ${PLONK_WASM_WEB_OUTDIR} \
-		--rust-version ${NIGHTLY_RUST_VERSION}
+		--rust-version $(NIGHTLY_RUST_VERSION)
 
 .PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs check-format
