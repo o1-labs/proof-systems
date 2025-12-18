@@ -58,7 +58,6 @@ jobs:
           EXCLUDED_CRATES=(
             arrabbiata
             export_test_vectors
-            groupmap
             kimchi
             kimchi-msm
             kimchi-stubs
