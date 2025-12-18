@@ -33,7 +33,9 @@ jobs:
       matrix:
         # Add or remove Rust versions as needed.
         # Supported values: "stable", "beta", "nightly", or specific versions like "1.81"
-        rust_toolchain: ["1.81", stable, beta]
+        # We keep 1.81 because MinaProtocol/Mina uses 1.81 for now.
+        # We keep 1.92 to match mina-rust.
+        rust_toolchain: ["1.81", "1.92", stable, beta]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
