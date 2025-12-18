@@ -9,7 +9,7 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use log::debug;
-use std::{collections::BTreeMap, iter, marker::PhantomData};
+use std::{collections::BTreeMap, marker::PhantomData};
 
 /// Witness builder environment. Operates on multiple rows at the same
 /// time. `CIx::N_COL` must be equal to `N_WIT + N_FSEL`; passing these two
@@ -345,9 +345,8 @@ impl<
             );
             if table_id.length() < domain_size {
                 let n_repeated_dummy_value: usize = domain_size - table_id.length() - 1;
-                let repeated_dummy_value: Vec<F> = iter::repeat(-F::one())
-                    .take(n_repeated_dummy_value)
-                    .collect();
+                let repeated_dummy_value: Vec<F> =
+                    o1_utils::repeat_n(-F::one(), n_repeated_dummy_value).collect();
                 m.extend(repeated_dummy_value);
                 m.push(F::from(n_repeated_dummy_value as u64));
             }

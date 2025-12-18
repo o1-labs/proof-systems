@@ -20,6 +20,7 @@ pub fn main(args: cli::cannon::RunArgs) -> ExitCode {
     if let Some(preimage_key_dir) = preimage_db_dir {
         let host_program = configuration.host.expect("No host program specified");
         let mut po = PreImageOracle::create(host_program);
+        #[allow(unknown_lints, clippy::zombie_processes)]
         let _child = po.start();
         debug!("Let server start");
         std::thread::sleep(std::time::Duration::from_secs(5));

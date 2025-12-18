@@ -7,6 +7,11 @@
 //!   a math library that Proof-systems builds on top of.
 //!
 
+// Allow lints from ocaml derive macros until upstream crates are updated.
+// See https://github.com/o1-labs/mina-rust/issues/1954
+#![allow(non_local_definitions)]
+#![allow(unexpected_cfgs)]
+
 extern crate libc;
 
 /// Caml helpers

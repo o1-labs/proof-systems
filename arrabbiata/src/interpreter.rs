@@ -1070,7 +1070,7 @@ pub fn run_ivc<E: InterpreterEnv>(env: &mut E, instr: Instruction) {
                 PlonkSpongeConstants::PERM_ROUNDS_FULL
             );
             assert!(
-                starting_round % 5 == 0,
+                o1_utils::is_multiple_of(starting_round, 5),
                 "Invalid round index. Only values that are multiple of 5 are allowed."
             );
             debug!(

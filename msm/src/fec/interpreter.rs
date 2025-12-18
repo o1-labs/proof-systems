@@ -165,7 +165,7 @@ pub fn limbs_to_bigints<F: PrimeField, const N: usize>(input: [F; N]) -> Vec<Big
 ///
 /// Eq2.
 /// - i ∈ [0,n-1]:  c2_i ∈ [-((i+1)*2^(b+1) - 2*i - 4),
-///  if i == 0 2^b else (i+1)*2^b - i]
+///   if i == 0 2^b else (i+1)*2^b - i]
 /// - i ∈ [n,2n-2]: c2_i ∈ [-((2*n-i-1)*2^(b+1) - 2*(2*n-i) + 3),
 ///   (2*n-i-1)*2^(b+1) - 2*(2*n-i) + 3 - (if i == n { n-1 } else 0) ]
 ///

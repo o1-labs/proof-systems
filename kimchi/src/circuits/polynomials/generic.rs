@@ -214,7 +214,6 @@ impl<F: PrimeField> CircuitGate<F> {
                 coeffs[9] = -cst;
             }
             Some(GenericGateSpec::Pub) => {
-                coeffs[5] = F::one();
                 unimplemented!();
             }
             Some(GenericGateSpec::Plus(cst)) => {
