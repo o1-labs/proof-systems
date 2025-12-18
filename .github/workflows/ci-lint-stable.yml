@@ -56,7 +56,6 @@ jobs:
           # Remove crates from this list as they are fixed.
           # See https://github.com/o1-labs/mina-rust/issues/1926 for tracking.
           EXCLUDED_CRATES=(
-            arrabbiata
             mina-book
             o1vm
             plonk_neon
