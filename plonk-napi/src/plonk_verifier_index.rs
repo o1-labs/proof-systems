@@ -70,33 +70,33 @@ macro_rules! impl_verification_key {
             #[napi(object, js_name = [<Wasm $field_name:camel PlonkVerificationEvals>])]
             #[derive(Clone, Debug, Serialize, Deserialize, Default)]
             pub struct [<Napi $field_name:camel PlonkVerificationEvals>] {
-                #[napi(skip, js_name = "sigma_comm")]
+                #[napi(js_name = "sigma_comm")]
                 pub sigma_comm: NapiVector<$NapiPolyComm>,
-                #[napi(skip, js_name = "coefficients_comm")]
+                #[napi(js_name = "coefficients_comm")]
                 pub coefficients_comm: NapiVector<$NapiPolyComm>,
-                #[napi(skip, js_name = "generic_comm")]
+                #[napi(js_name = "generic_comm")]
                 pub generic_comm: $NapiPolyComm,
-                #[napi(skip, js_name = "psm_comm")]
+                #[napi(js_name = "psm_comm")]
                 pub psm_comm: $NapiPolyComm,
-                #[napi(skip, js_name = "complete_add_comm")]
+                #[napi(js_name = "complete_add_comm")]
                 pub complete_add_comm: $NapiPolyComm,
-                #[napi(skip, js_name = "mul_comm")]
+                #[napi(js_name = "mul_comm")]
                 pub mul_comm: $NapiPolyComm,
-                #[napi(skip, js_name = "emul_comm")]
+                #[napi(js_name = "emul_comm")]
                 pub emul_comm: $NapiPolyComm,
-                #[napi(skip, js_name = "endomul_scalar_comm")]
+                #[napi(js_name = "endomul_scalar_comm")]
                 pub endomul_scalar_comm: $NapiPolyComm,
-                #[napi(skip, js_name = "xor_comm")]
+                #[napi(js_name = "xor_comm")]
                 pub xor_comm: Option<$NapiPolyComm>,
-                #[napi(skip, js_name = "range_check0_comm")]
+                #[napi(js_name = "range_check0_comm")]
                 pub range_check0_comm: Option<$NapiPolyComm>,
-                #[napi(skip, js_name = "range_check1_comm")]
+                #[napi(js_name = "range_check1_comm")]
                 pub range_check1_comm: Option<$NapiPolyComm>,
-                #[napi(skip, js_name = "foreign_field_add_comm")]
+                #[napi(js_name = "foreign_field_add_comm")]
                 pub foreign_field_add_comm: Option<$NapiPolyComm>,
-                #[napi(skip, js_name = "foreign_field_mul_comm")]
+                #[napi(js_name = "foreign_field_mul_comm")]
                 pub foreign_field_mul_comm: Option<$NapiPolyComm>,
-                #[napi(skip, js_name = "rot_comm")]
+                #[napi(js_name = "rot_comm")]
                 pub rot_comm: Option<$NapiPolyComm>,
             }
             type NapiPlonkVerificationEvals = [<Napi $field_name:camel PlonkVerificationEvals>];
@@ -152,13 +152,13 @@ macro_rules! impl_verification_key {
             #[derive(Clone, Debug, Serialize, Deserialize, Default)]
             #[napi(object, js_name = [<Wasm $field_name:camel LookupSelectors>])]
             pub struct [<Napi $field_name:camel LookupSelectors>] {
-                #[napi(skip)]
+                #[napi(js_name = "xor")]
                 pub xor: Option<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(js_name = "lookup")]
                 pub lookup: Option<$NapiPolyComm>,
-                #[napi(skip, js_name = "range_check")]
+                #[napi(js_name = "range_check")]
                 pub range_check: Option<$NapiPolyComm>,
-                #[napi(skip)]
+                #[napi(js_name = "ffmul")]
                 pub ffmul: Option<$NapiPolyComm>,
             }
             type NapiLookupSelectors = [<Napi $field_name:camel LookupSelectors>];
@@ -212,19 +212,19 @@ macro_rules! impl_verification_key {
             pub struct [<Napi $field_name:camel LookupVerifierIndex>] {
                 pub joint_lookup_used: bool,
 
-                #[napi(skip)]
+                #[napi(js_name = "lookup_table")]
                 pub lookup_table: NapiVector<$NapiPolyComm>,
 
-                #[napi(skip, js_name = "lookup_selectors")]
+                #[napi(js_name = "lookup_selectors")]
                 pub lookup_selectors: NapiLookupSelectors,
 
-                #[napi(skip)]
+                #[napi(js_name = "table_ids")]
                 pub table_ids: Option<$NapiPolyComm>,
 
-                #[napi(skip)]
+                #[napi(js_name = "lookup_info")]
                 pub lookup_info: NapiLookupInfo,
 
-                #[napi(skip)]
+                #[napi(js_name = "runtime_tables_selector")]
                 pub runtime_tables_selector: Option<$NapiPolyComm>,
             }
             type NapiLookupVerifierIndex = [<Napi $field_name:camel LookupVerifierIndex>];
@@ -289,12 +289,10 @@ macro_rules! impl_verification_key {
                 pub max_poly_size: i32,
                 pub public_: i32,
                 pub prev_challenges: i32,
-                #[napi(skip)]
                 pub srs: $NapiSrs,
-                #[napi(skip)]
                 pub evals: NapiPlonkVerificationEvals,
                 pub shifts: NapiShifts,
-                #[napi(skip)]
+                #[napi(js_name = "lookup_index")]
                 pub lookup_index: Option<NapiLookupVerifierIndex>,
                 pub zk_rows: i32,
             }
@@ -494,7 +492,13 @@ macro_rules! impl_verification_key {
             ) -> NapiPlonkVerifierIndex {
                 index.0.srs.get_lagrange_basis(index.0.as_ref().cs.domain.d1);
                 let verifier_index = index.0.as_ref().verifier_index();
-                NapiPlonkVerifierIndex::from(&verifier_index)
+                // `VerifierIndex::verifier_index()` may not carry the full SRS `g` points
+                // (it can be trimmed for verifier-only usage). We need the full SRS here
+                // because OCaml calls `SRS.lagrange_commitments_whole_domain vk.srs ...`,
+                // which computes Lagrange commitments from `srs.g`.
+                let mut napi_index = NapiPlonkVerifierIndex::from(&verifier_index);
+                napi_index.srs = (&index.0.srs).into();
+                napi_index
             }
 
             #[napi(js_name = [<caml_pasta_ $field_name:snake _plonk_verifier_index_shifts>])]
