@@ -3,7 +3,10 @@ use ark_ec::AffineRepr;
 use ark_ff::One;
 use core::array;
 use kimchi::{
-    circuits::{lookup::runtime_tables::RuntimeTable, wires::COLUMNS},
+    circuits::{
+        lookup::runtime_tables::RuntimeTable,
+        wires::{COLUMNS, PERMUTS},
+    },
     groupmap::GroupMap,
     proof::{
         LookupCommitments, PointEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
@@ -42,33 +45,204 @@ macro_rules! impl_proof {
         paste! {
             // type NapiVecVecF = [<NapiVecVec $field_name:camel>];
 
-            #[napi(js_name = [<Wasm $field_name:camel ProofEvaluations>])]
+            #[napi(object, js_name = [<Wasm $field_name:camel PointEvaluations>])]
             #[derive(Clone)]
-            pub struct [<Napi $field_name:camel ProofEvaluations>](
-                ProofEvaluations<PointEvaluations<Vec<$F>>>
-            );
+            pub struct [<Napi $field_name:camel PointEvaluations>] {
+                pub zeta: NapiVector<$NapiF>,
+                pub zeta_omega: NapiVector<$NapiF>,
+            }
 
+            type NapiPointEvaluations = [<Napi $field_name:camel PointEvaluations>];
+
+            impl From<&PointEvaluations<Vec<$F>>> for NapiPointEvaluations {
+                fn from(x: &PointEvaluations<Vec<$F>>) -> Self {
+                    let zeta: Vec<$NapiF> = x.zeta.iter().cloned().map(Into::into).collect();
+                    let zeta_omega: Vec<$NapiF> = x
+                        .zeta_omega
+                        .iter()
+                        .cloned()
+                        .map(Into::into)
+                        .collect();
+                    Self {
+                        zeta: zeta.into(),
+                        zeta_omega: zeta_omega.into(),
+                    }
+                }
+            }
+
+            #[napi(object, js_name = [<Wasm $field_name:camel ProofEvaluationsObject>])]
+            #[derive(Clone)]
+            pub struct [<Napi $field_name:camel ProofEvaluationsObject>] {
+                pub public: Option<NapiPointEvaluations>,
+                pub w: NapiVector<NapiPointEvaluations>,
+                pub z: NapiPointEvaluations,
+                pub s: NapiVector<NapiPointEvaluations>,
+                pub coefficients: NapiVector<NapiPointEvaluations>,
+                pub generic_selector: NapiPointEvaluations,
+                pub poseidon_selector: NapiPointEvaluations,
+                pub complete_add_selector: NapiPointEvaluations,
+                pub mul_selector: NapiPointEvaluations,
+                pub emul_selector: NapiPointEvaluations,
+                pub endomul_scalar_selector: NapiPointEvaluations,
+                pub range_check0_selector: Option<NapiPointEvaluations>,
+                pub range_check1_selector: Option<NapiPointEvaluations>,
+                pub foreign_field_add_selector: Option<NapiPointEvaluations>,
+                pub foreign_field_mul_selector: Option<NapiPointEvaluations>,
+                pub xor_selector: Option<NapiPointEvaluations>,
+                pub rot_selector: Option<NapiPointEvaluations>,
+                pub lookup_aggregation: Option<NapiPointEvaluations>,
+                pub lookup_table: Option<NapiPointEvaluations>,
+                pub lookup_sorted: NapiVector<Option<NapiPointEvaluations>>,
+                pub runtime_lookup_table: Option<NapiPointEvaluations>,
+                pub runtime_lookup_table_selector: Option<NapiPointEvaluations>,
+                pub xor_lookup_selector: Option<NapiPointEvaluations>,
+                pub lookup_gate_lookup_selector: Option<NapiPointEvaluations>,
+                pub range_check_lookup_selector: Option<NapiPointEvaluations>,
+                pub foreign_field_mul_lookup_selector: Option<NapiPointEvaluations>,
+            }
+
+            // Use the object representation as the JS-exposed type.
+            pub type [<Napi $field_name:camel ProofEvaluations>] = [<Napi $field_name:camel ProofEvaluationsObject>];
             type NapiProofEvaluations = [<Napi $field_name:camel ProofEvaluations>];
+
+            // Field-specific helpers to avoid name clashes between fp/fq instantiations.
+            fn [<point_evals_from_napi_ $field_name:snake>](
+                evals: NapiPointEvaluations,
+            ) -> PointEvaluations<Vec<$F>> {
+                PointEvaluations {
+                    zeta: evals.zeta.into_iter().map(Into::into).collect(),
+                    zeta_omega: evals.zeta_omega.into_iter().map(Into::into).collect(),
+                }
+            }
+
+            fn [<point_evals_into_napi_ $field_name:snake>](
+                evals: &PointEvaluations<Vec<$F>>,
+            ) -> NapiPointEvaluations {
+                evals.into()
+            }
+
+            fn [<proof_evals_from_napi_object_ $field_name:snake>](
+                x: NapiProofEvaluations,
+            ) -> std::result::Result<ProofEvaluations<PointEvaluations<Vec<$F>>>, NapiError> {
+                fn invalid_len(name: &str, expected: usize, got: usize) -> NapiError {
+                    NapiError::new(
+                        Status::InvalidArg,
+                        format!("{name}: expected length {expected}, got {got}"),
+                    )
+                }
+
+                let w_vec: Vec<_> = x
+                    .w
+                    .into_iter()
+                    .map([<point_evals_from_napi_ $field_name:snake>])
+                    .collect();
+                let w_len = w_vec.len();
+                let w: [PointEvaluations<Vec<$F>>; COLUMNS] = w_vec
+                    .try_into()
+                    .map_err(|_| invalid_len("evals.w", COLUMNS, w_len))?;
+
+                let s_expected = PERMUTS - 1;
+                let s_vec: Vec<_> = x
+                    .s
+                    .into_iter()
+                    .map([<point_evals_from_napi_ $field_name:snake>])
+                    .collect();
+                let s_len = s_vec.len();
+                let s: [PointEvaluations<Vec<$F>>; PERMUTS - 1] = s_vec
+                    .try_into()
+                    .map_err(|_| invalid_len("evals.s", s_expected, s_len))?;
+
+                let coeffs_vec: Vec<_> = x
+                    .coefficients
+                    .into_iter()
+                    .map([<point_evals_from_napi_ $field_name:snake>])
+                    .collect();
+                let coeffs_len = coeffs_vec.len();
+                let coefficients: [PointEvaluations<Vec<$F>>; COLUMNS] = coeffs_vec
+                    .try_into()
+                    .map_err(|_| invalid_len("evals.coefficients", COLUMNS, coeffs_len))?;
+
+                let lookup_sorted_vec: Vec<_> = x
+                    .lookup_sorted
+                    .into_iter()
+                    .map(|v| v.map([<point_evals_from_napi_ $field_name:snake>]))
+                    .collect();
+                let lookup_sorted_len = lookup_sorted_vec.len();
+                let lookup_sorted: [Option<PointEvaluations<Vec<$F>>>; 5] = lookup_sorted_vec
+                    .try_into()
+                    .map_err(|_| invalid_len("evals.lookup_sorted", 5, lookup_sorted_len))?;
+
+                Ok(ProofEvaluations {
+                    public: x.public.map([<point_evals_from_napi_ $field_name:snake>]),
+                    w,
+                    z: [<point_evals_from_napi_ $field_name:snake>](x.z),
+                    s,
+                    coefficients,
+                    generic_selector: [<point_evals_from_napi_ $field_name:snake>](x.generic_selector),
+                    poseidon_selector: [<point_evals_from_napi_ $field_name:snake>](x.poseidon_selector),
+                    complete_add_selector: [<point_evals_from_napi_ $field_name:snake>](x.complete_add_selector),
+                    mul_selector: [<point_evals_from_napi_ $field_name:snake>](x.mul_selector),
+                    emul_selector: [<point_evals_from_napi_ $field_name:snake>](x.emul_selector),
+                    endomul_scalar_selector: [<point_evals_from_napi_ $field_name:snake>](x.endomul_scalar_selector),
+                    range_check0_selector: x.range_check0_selector.map([<point_evals_from_napi_ $field_name:snake>]),
+                    range_check1_selector: x.range_check1_selector.map([<point_evals_from_napi_ $field_name:snake>]),
+                    foreign_field_add_selector: x.foreign_field_add_selector.map([<point_evals_from_napi_ $field_name:snake>]),
+                    foreign_field_mul_selector: x.foreign_field_mul_selector.map([<point_evals_from_napi_ $field_name:snake>]),
+                    xor_selector: x.xor_selector.map([<point_evals_from_napi_ $field_name:snake>]),
+                    rot_selector: x.rot_selector.map([<point_evals_from_napi_ $field_name:snake>]),
+                    lookup_aggregation: x.lookup_aggregation.map([<point_evals_from_napi_ $field_name:snake>]),
+                    lookup_table: x.lookup_table.map([<point_evals_from_napi_ $field_name:snake>]),
+                    lookup_sorted,
+                    runtime_lookup_table: x.runtime_lookup_table.map([<point_evals_from_napi_ $field_name:snake>]),
+                    runtime_lookup_table_selector: x.runtime_lookup_table_selector.map([<point_evals_from_napi_ $field_name:snake>]),
+                    xor_lookup_selector: x.xor_lookup_selector.map([<point_evals_from_napi_ $field_name:snake>]),
+                    lookup_gate_lookup_selector: x.lookup_gate_lookup_selector.map([<point_evals_from_napi_ $field_name:snake>]),
+                    range_check_lookup_selector: x.range_check_lookup_selector.map([<point_evals_from_napi_ $field_name:snake>]),
+                    foreign_field_mul_lookup_selector: x.foreign_field_mul_lookup_selector.map([<point_evals_from_napi_ $field_name:snake>]),
+                })
+            }
 
             impl From<NapiProofEvaluations> for ProofEvaluations<PointEvaluations<Vec<$F>>> {
                 fn from(x: NapiProofEvaluations) -> Self {
-                    x.0
+                    [<proof_evals_from_napi_object_ $field_name:snake>](x)
+                        .expect("invalid proof evaluations shape")
                 }
             }
 
             impl From<ProofEvaluations<PointEvaluations<Vec<$F>>>> for NapiProofEvaluations {
                 fn from(x: ProofEvaluations<PointEvaluations<Vec<$F>>>) -> Self {
-                    Self(x)
-                }
-            }
-
-            impl FromNapiValue for [<Napi $field_name:camel ProofEvaluations>] {
-                unsafe fn from_napi_value(
-                    env: sys::napi_env,
-                    napi_val: sys::napi_value,
-                ) -> Result<Self> {
-                    let instance = <ClassInstance<[<Napi $field_name:camel ProofEvaluations>]> as FromNapiValue>::from_napi_value(env, napi_val)?;
-                    Ok((*instance).clone())
+                    [<Napi $field_name:camel ProofEvaluationsObject>] {
+                        public: x.public.as_ref().map([<point_evals_into_napi_ $field_name:snake>]),
+                        w: x.w.iter().map([<point_evals_into_napi_ $field_name:snake>]).collect(),
+                        z: (&x.z).into(),
+                        s: x.s.iter().map([<point_evals_into_napi_ $field_name:snake>]).collect(),
+                        coefficients: x.coefficients.iter().map([<point_evals_into_napi_ $field_name:snake>]).collect(),
+                        generic_selector: (&x.generic_selector).into(),
+                        poseidon_selector: (&x.poseidon_selector).into(),
+                        complete_add_selector: (&x.complete_add_selector).into(),
+                        mul_selector: (&x.mul_selector).into(),
+                        emul_selector: (&x.emul_selector).into(),
+                        endomul_scalar_selector: (&x.endomul_scalar_selector).into(),
+                        range_check0_selector: x.range_check0_selector.as_ref().map([<point_evals_into_napi_ $field_name:snake>]),
+                        range_check1_selector: x.range_check1_selector.as_ref().map([<point_evals_into_napi_ $field_name:snake>]),
+                        foreign_field_add_selector: x.foreign_field_add_selector.as_ref().map([<point_evals_into_napi_ $field_name:snake>]),
+                        foreign_field_mul_selector: x.foreign_field_mul_selector.as_ref().map([<point_evals_into_napi_ $field_name:snake>]),
+                        xor_selector: x.xor_selector.as_ref().map([<point_evals_into_napi_ $field_name:snake>]),
+                        rot_selector: x.rot_selector.as_ref().map([<point_evals_into_napi_ $field_name:snake>]),
+                        lookup_aggregation: x.lookup_aggregation.as_ref().map([<point_evals_into_napi_ $field_name:snake>]),
+                        lookup_table: x.lookup_table.as_ref().map([<point_evals_into_napi_ $field_name:snake>]),
+                        lookup_sorted: x
+                            .lookup_sorted
+                            .iter()
+                            .map(|v| v.as_ref().map([<point_evals_into_napi_ $field_name:snake>]))
+                            .collect(),
+                        runtime_lookup_table: x.runtime_lookup_table.as_ref().map([<point_evals_into_napi_ $field_name:snake>]),
+                        runtime_lookup_table_selector: x.runtime_lookup_table_selector.as_ref().map([<point_evals_into_napi_ $field_name:snake>]),
+                        xor_lookup_selector: x.xor_lookup_selector.as_ref().map([<point_evals_into_napi_ $field_name:snake>]),
+                        lookup_gate_lookup_selector: x.lookup_gate_lookup_selector.as_ref().map([<point_evals_into_napi_ $field_name:snake>]),
+                        range_check_lookup_selector: x.range_check_lookup_selector.as_ref().map([<point_evals_into_napi_ $field_name:snake>]),
+                        foreign_field_mul_lookup_selector: x.foreign_field_mul_lookup_selector.as_ref().map([<point_evals_into_napi_ $field_name:snake>]),
+                    }
                 }
             }
 
@@ -366,13 +540,14 @@ macro_rules! impl_proof {
                 // OCaml doesn't have sized arrays, so we have to convert to a tuple..
                 #[napi(skip)]
                 pub evals: NapiProofEvaluations,
+                #[napi(skip)]
                 pub ft_eval1: $NapiF,
                 #[napi(skip)]
                 pub public: NapiFlatVector<$NapiF>,
                 #[napi(skip)]
-                pub prev_challenges_scalars: Vec<Vec<$F>>,
+                pub prev_challenges_scalars: $NapiVecVec,
                 #[napi(skip)]
-                pub prev_challenges_comms:NapiVector<$NapiPolyComm>,
+                pub prev_challenges_comms: NapiVector<$NapiPolyComm>,
             }
 
             type NapiProverProof = [<Napi $field_name:camel ProverProof>];
@@ -383,17 +558,11 @@ macro_rules! impl_proof {
                         commitments: x.commitments.clone().into(),
                         proof: x.proof.clone().into(),
                         evals: x.evals.clone().into(),
-                        prev_challenges:
-                            (&x.prev_challenges_scalars)
-                                .into_iter()
-                                .zip((&x.prev_challenges_comms).into_iter())
-                                .map(|(chals, comm)| {
-                                    RecursionChallenge {
-                                        chals: chals.clone(),
-                                        comm: comm.into(),
-                                    }
-                                })
-                                .collect(),
+                        prev_challenges: x.prev_challenges_scalars.0
+                            .iter().cloned()
+                            .zip(x.prev_challenges_comms.clone().into_iter())
+                            .map(|(chals, comm)| RecursionChallenge { chals, comm: comm.into() })
+                            .collect(),
                         ft_eval1: x.ft_eval1.clone().into()
                     };
                     let public = x.public.clone().into_iter().map(Into::into).collect();
@@ -408,12 +577,12 @@ macro_rules! impl_proof {
                         proof: x.proof.into(),
                         evals: x.evals.into(),
                         prev_challenges:
-                            (x.prev_challenges_scalars)
-                                .into_iter()
-                                .zip((x.prev_challenges_comms).into_iter())
+                            x.prev_challenges_scalars.0
+                                .iter()
+                                .zip((x.prev_challenges_comms).clone().into_iter())
                                 .map(|(chals, comm)| {
                                     RecursionChallenge {
-                                        chals: chals.into(),
+                                        chals: chals.clone(),
                                         comm: comm.into(),
                                     }
                                 })
@@ -441,7 +610,7 @@ macro_rules! impl_proof {
                         evals: proof.evals.clone().into(),
                         ft_eval1: proof.ft_eval1.clone().into(),
                         public: public.clone().into_iter().map(Into::into).collect(),
-                        prev_challenges_scalars: scalars,
+                        prev_challenges_scalars: scalars.into(),
                         prev_challenges_comms: comms.into(), // NapiVector<$NapiPolyComm>
                     }
                 }
@@ -461,7 +630,7 @@ macro_rules! impl_proof {
                         evals: proof.evals.into(),
                         ft_eval1: proof.ft_eval1.into(),
                         public: public.into_iter().map(Into::into).collect(),
-                        prev_challenges_scalars: scalars,
+                        prev_challenges_scalars: scalars.into(),
                         prev_challenges_comms: comms.into(),
                     }
                 }
@@ -494,7 +663,7 @@ macro_rules! impl_proof {
                         evals,
                         ft_eval1,
                         public: public_,
-                        prev_challenges_scalars: prev_challenges_scalars.0,
+                        prev_challenges_scalars,
                         prev_challenges_comms,
                     }
                 }
@@ -511,13 +680,17 @@ macro_rules! impl_proof {
                 pub fn evals(&self) -> NapiProofEvaluations {
                     self.evals.clone()
                 }
+                #[napi(getter, js_name = "ft_eval1")]
+                pub fn ft_eval1(&self) -> $NapiF {
+                    self.ft_eval1.clone()
+                }
                 #[napi(getter, js_name="public_")]
                 pub fn public_(&self) -> NapiFlatVector<$NapiF> {
                     self.public.clone()
                 }
                 #[napi(getter, js_name="prev_challenges_scalars")]
                 pub fn prev_challenges_scalars(&self) -> $NapiVecVec {
-                    [<NapiVecVec $field_name:camel>](self.prev_challenges_scalars.clone())
+                    self.prev_challenges_scalars.clone()
                 }
                 #[napi(getter, js_name="prev_challenges_comms")]
                 pub fn prev_challenges_comms(&self) -> NapiVector<$NapiPolyComm> {
@@ -536,13 +709,17 @@ macro_rules! impl_proof {
                 pub fn set_evals(&mut self, evals: NapiProofEvaluations) {
                     self.evals = evals
                 }
+                #[napi(setter, js_name = "set_ft_eval1")]
+                pub fn set_ft_eval1(&mut self, ft_eval1: $NapiF) {
+                    self.ft_eval1 = ft_eval1
+                }
                 #[napi(setter, js_name="set_public_")]
                 pub fn set_public_(&mut self, public_: NapiFlatVector<$NapiF>) {
                     self.public = public_
                 }
                 #[napi(setter, js_name="set_prev_challenges_scalars")]
                 pub fn set_prev_challenges_scalars(&mut self, prev_challenges_scalars: $NapiVecVec) {
-                    self.prev_challenges_scalars = prev_challenges_scalars.0
+                    self.prev_challenges_scalars = prev_challenges_scalars;
                 }
                 #[napi(setter, js_name="set_prev_challenges_comms")]
                 pub fn set_prev_challenges_comms(&mut self, prev_challenges_comms: NapiVector<$NapiPolyComm>) {
