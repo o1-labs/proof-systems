@@ -42,7 +42,7 @@ use ark_poly::{
 use core::array;
 use itertools::Itertools;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use o1_utils::ExtendedDensePolynomial as _;
+use o1_utils::{repeat_n, ExtendedDensePolynomial as _};
 use poly_commitment::{
     commitment::{
         absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
@@ -241,7 +241,7 @@ where
             }
 
             // padding
-            w.extend(core::iter::repeat(G::ScalarField::zero()).take(length_padding));
+            w.extend(repeat_n(G::ScalarField::zero(), length_padding));
 
             // zk-rows
             for row in w.iter_mut().rev().take(index.cs.zk_rows as usize) {

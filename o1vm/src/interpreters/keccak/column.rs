@@ -356,7 +356,7 @@ impl From<ColumnAlias> for usize {
 ///
 pub type KeccakWitness<T> = Witness<N_ZKVM_KECCAK_REL_COLS, T>;
 
-/// IMPLEMENTATIONS FOR COLUMN ALIAS
+// IMPLEMENTATIONS FOR COLUMN ALIAS
 
 impl<T: Clone> Index<ColumnAlias> for KeccakWitness<T> {
     type Output = T;

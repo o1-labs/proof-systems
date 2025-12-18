@@ -4,7 +4,7 @@ use crate::logup::{Logup, LogupWitness, LookupTableID};
 use ark_ff::{FftField, PrimeField};
 use kimchi::circuits::domains::EvaluationDomains;
 use rand::{seq::SliceRandom, thread_rng, Rng};
-use std::{cmp::Ord, iter};
+use std::cmp::Ord;
 
 /// Dummy lookup table. For the cases when you don't need one -- a single dummy element 0.
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
@@ -143,12 +143,8 @@ impl<F: FftField> LookupWitness<F> {
             f
         };
         let dummy_value = F::rand(&mut rng);
-        let repeated_dummy_value: Vec<F> = {
-            let r: Vec<F> = iter::repeat(dummy_value)
-                .take((domain.d1.size - table_size) as usize)
-                .collect();
-            r
-        };
+        let repeated_dummy_value: Vec<F> =
+            o1_utils::repeat_n(dummy_value, (domain.d1.size - table_size) as usize).collect();
         let t_evals = {
             let mut table = Vec::with_capacity(domain.d1.size as usize);
             table.extend(t.iter().map(|v| Lookup {

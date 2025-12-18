@@ -1,4 +1,4 @@
-/// Tests for the proof system itself, targeting prover and verifier.
+//! Tests for the proof system itself, targeting prover and verifier.
 
 #[cfg(test)]
 mod tests {

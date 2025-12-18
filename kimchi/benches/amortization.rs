@@ -1,5 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use kimchi::bench::BenchmarkCtx;
+use o1_utils::repeat_n;
 
 const PROOFS: usize = 10;
 
@@ -8,9 +9,7 @@ pub fn amortization(c: &mut Criterion) {
 
     let ctx = BenchmarkCtx::new(16);
     let proof_and_public = ctx.create_proof();
-    let proofs: Vec<_> = core::iter::repeat(proof_and_public)
-        .take(1 << PROOFS)
-        .collect();
+    let proofs: Vec<_> = repeat_n(proof_and_public, 1 << PROOFS).collect();
 
     group.sample_size(10);
     for size in 0..=PROOFS {

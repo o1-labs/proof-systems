@@ -130,7 +130,7 @@ impl<F: Field> Alphas<F> {
         &self,
         ty: ArgumentType,
         num: u32,
-    ) -> MustConsumeIterator<Cloned<Take<Skip<Iter<F>>>>, F> {
+    ) -> MustConsumeIterator<Cloned<Take<Skip<Iter<'_, F>>>>, F> {
         let ty = if matches!(ty, ArgumentType::Gate(_)) {
             ArgumentType::Gate(GateType::Zero)
         } else {

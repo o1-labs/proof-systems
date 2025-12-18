@@ -7,6 +7,9 @@
 //!   a math library that Marlin builds on top of.
 //!
 
+// Allow static_mut_refs until code is refactored
+#![allow(static_mut_refs)]
+
 pub use arkworks::{WasmGPallas, WasmGVesta, WasmPastaFp, WasmPastaFq};
 pub mod wasm_vector;
 

@@ -50,9 +50,9 @@
 //!   - `op0_reg` \[1\] = fOP0_REG : indicates what pointer `off_op0` refers to ( 0 => ap , 1 => fp )
 //!   - `op1_src` \[2..4\] : encodes the type of second operand
 //!     · 0: indicates `off_op1` is b in the double indexing \[\[ point + a \] + b \]
-//!       · 1: indicates `off_op1` is an immediate value = `fOP1_VAL` = 1
-//!       · 2: indicates offset `off_op1` relative to fp = `fOP1_FP` = 1
-//!       · 4: indicates offset `off_op1` relative to ap = `fOP1_AP` = 1
+//!     · 1: indicates `off_op1` is an immediate value = `fOP1_VAL` = 1
+//!     · 2: indicates offset `off_op1` relative to fp = `fOP1_FP` = 1
+//!     · 4: indicates offset `off_op1` relative to ap = `fOP1_AP` = 1
 //!   - `res_logic` \[5..6\]: defines (if any) arithmetic operation in right part
 //!     · 0: right part is single operand
 //!     · 1: right part is addition = `fRES_ADD` = 1

@@ -73,7 +73,7 @@ pub fn caml_pasta_fp_plonk_index_create(
     let lookup_tables: Vec<LookupTable<Fp>> = lookup_tables.into_iter().map(Into::into).collect();
 
     // create constraint system
-    let cs = match ConstraintSystem::<Fp>::create(gates)
+    let cs = ConstraintSystem::<Fp>::create(gates)
         .public(public as usize)
         .prev_challenges(prev_challenges as usize)
         .max_poly_size(Some(srs.0.max_poly_size()))
@@ -84,11 +84,7 @@ pub fn caml_pasta_fp_plonk_index_create(
             Some(runtime_tables)
         })
         .lazy_mode(lazy_mode)
-        .build()
-    {
-        Err(e) => return Err(e.into()),
-        Ok(cs) => cs,
-    };
+        .build()?;
 
     // endo
     let (endo_q, _endo_r) = poly_commitment::ipa::endos::<Pallas>();

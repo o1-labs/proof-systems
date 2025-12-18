@@ -86,6 +86,7 @@ pub fn cannon_main(args: cli::cannon::RunArgs) {
     let mut mips_wit_env = match configuration.host.clone() {
         Some(host) => {
             let mut po = PreImageOracle::create(host);
+            #[allow(unknown_lints, clippy::zombie_processes)]
             let _child = po.start();
             mips_witness::Env::<Fp, Box<dyn PreImageOracleT>>::create(
                 cannon::PAGE_SIZE as usize,

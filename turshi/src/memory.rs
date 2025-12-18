@@ -8,7 +8,7 @@ use std::{
 
 use crate::{helper::*, word::CairoWord};
 use ark_ff::Field;
-use core::iter::repeat;
+use o1_utils::repeat_n;
 
 /// This data structure stores the memory of the program
 pub struct CairoMemory<F> {
@@ -85,7 +85,7 @@ impl<F: Field> CairoMemory<F> {
         // you will need to extend the vector with enough spaces (taking into account that
         // vectors start by index 0, the 0 address is dummy, and size starts in 1)
         if let Some(additional) = addr.checked_sub(self.len() - 1) {
-            self.data.extend(repeat(None).take(additional as usize));
+            self.data.extend(repeat_n(None, additional as usize));
         }
     }
 

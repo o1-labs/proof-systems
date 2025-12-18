@@ -16,12 +16,12 @@ pub fn is_prime(n: usize) -> bool {
     if n == 2 {
         return true;
     }
-    if n < 2 || n % 2 == 0 {
+    if n < 2 || o1_utils::is_multiple_of(n, 2) {
         return false;
     }
     let mut i = 3;
     while i * i <= n {
-        if n % i == 0 {
+        if o1_utils::is_multiple_of(n, i) {
             return false;
         }
         i += 2;
@@ -48,7 +48,7 @@ pub fn naive_prime_factors(n: usize, prime_gen: &mut PrimeNumberGenerator) -> Ve
         let mut i = 1;
         let mut p = prime_gen.get_nth_prime(i);
         while n != 1 {
-            if n % p == 0 {
+            if o1_utils::is_multiple_of(n, p) {
                 hash_factors.entry(p).and_modify(|e| *e += 1).or_insert(1);
                 n /= p;
             } else {
@@ -113,7 +113,7 @@ impl PrimeNumberGenerator {
             let mut i = 1;
             let mut p = self.get_nth_prime(i);
             while p * p <= n {
-                if n % p == 0 {
+                if o1_utils::is_multiple_of(n, p) {
                     return false;
                 }
                 i += 1;
@@ -196,7 +196,7 @@ pub fn compute_all_two_factors_decomposition(
             let mut i = 1;
             let mut p = prime_numbers.get_nth_prime(i);
             while p * p <= n {
-                if n % p == 0 {
+                if o1_utils::is_multiple_of(n, p) {
                     let res = n / p;
                     let res_factors =
                         compute_all_two_factors_decomposition(res, cache, prime_numbers);
