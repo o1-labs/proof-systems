@@ -1,18 +1,20 @@
-# Lint workflow for Rust stable
+# Lint workflow for multiple Rust toolchains
 #
-# This workflow runs clippy on the latest stable Rust toolchain.
-# Initially, all crates are excluded. As each crate is fixed to support
-# stable Rust, it should be removed from the exclude list.
+# This workflow runs clippy on multiple Rust toolchains (stable, beta, and
+# optionally other versions). It uses a matrix strategy to run all versions
+# in parallel.
+#
+# To add a new Rust version, simply add it to the rust_toolchain matrix.
+# Examples: "stable", "beta", "nightly", "1.81", "1.82"
 #
 # Tracking issue: https://github.com/o1-labs/mina-rust/issues/1926
 # Sub-issues for each crate: #1927-#1949
 # This workflow issue: https://github.com/o1-labs/mina-rust/issues/1950
 
-name: Lint (Stable Rust)
+name: Lint
 
 on:
   workflow_dispatch:
-  # Run on all pull requests, regardless of target branch
   pull_request:
   push:
     branches:
@@ -20,14 +22,18 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  # Override rust-toolchain.toml to use stable
-  RUSTUP_TOOLCHAIN: stable
   OCAML_VERSION: "4.14.2"
 
 jobs:
-  clippy-stable:
-    name: Clippy (Stable)
+  clippy:
+    name: Clippy (${{ matrix.rust_toolchain }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Add or remove Rust versions as needed.
+        # Supported values: "stable", "beta", "nightly", or specific versions like "1.81"
+        rust_toolchain: ["1.81", stable, beta]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -39,20 +45,25 @@ jobs:
         with:
           ocaml_version: ${{ env.OCAML_VERSION }}
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust ${{ matrix.rust_toolchain }}
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ matrix.rust_toolchain }}
           components: clippy
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.rust_toolchain }}
 
-      - name: Run clippy on stable
+      - name: Run clippy on ${{ matrix.rust_toolchain }}
+        env:
+          RUSTUP_TOOLCHAIN: ${{ matrix.rust_toolchain }}
         run: |
           # Load OCaml environment
           eval $(opam env)
 
-          # List of crates to exclude (not yet fixed for stable Rust)
+          # List of crates to exclude (not yet fixed for this Rust version)
           # Remove crates from this list as they are fixed.
           # See https://github.com/o1-labs/mina-rust/issues/1926 for tracking.
           EXCLUDED_CRATES=(
@@ -62,11 +73,11 @@ jobs:
           WORKSPACE_MEMBERS=$(cargo metadata --no-deps --format-version 1 | jq '.packages | length')
           EXCLUDED_COUNT=${#EXCLUDED_CRATES[@]}
 
+          echo "Rust toolchain: ${{ matrix.rust_toolchain }}"
           echo "Workspace has $WORKSPACE_MEMBERS crates, excluding $EXCLUDED_COUNT"
 
           if [ "$WORKSPACE_MEMBERS" -eq "$EXCLUDED_COUNT" ]; then
-            echo "All crates are excluded, nothing to lint. This is expected initially."
-            echo "Remove crates from EXCLUDED_CRATES as they are fixed for stable Rust."
+            echo "All crates are excluded, nothing to lint."
             exit 0
           fi
 
