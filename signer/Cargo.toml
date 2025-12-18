@@ -15,10 +15,12 @@ path = "src/lib.rs"
 [dependencies]
 ark-ec.workspace = true
 ark-ff.workspace = true
+bip39.workspace = true
 bitvec.workspace = true
 blake2.workspace = true
 bs58.workspace = true
 hex.workspace = true
+hmac.workspace = true
 mina-curves.workspace = true
 mina-hasher.workspace = true
 num-bigint.workspace = true
