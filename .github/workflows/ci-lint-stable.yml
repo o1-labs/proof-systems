@@ -58,7 +58,6 @@ jobs:
           EXCLUDED_CRATES=(
             arrabbiata
             mina-book
-            mvpoly
             o1vm
             plonk_neon
             plonk_wasm
