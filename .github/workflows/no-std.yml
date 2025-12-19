@@ -1,0 +1,49 @@
+name: No-Std Compatibility Check
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+concurrency:
+  group: no-std-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  no-std-check:
+    name: "no_std: ${{ matrix.crate.name }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        crate:
+          # Crates with no-std feature
+          - { name: "mina-hasher", path: "hasher" }
+          - { name: "mina-poseidon", path: "poseidon" }
+          - { name: "mina-signer", path: "signer" }
+          # TODO: Add no-std feature to these crates
+          # - { name: "wasm-types", path: "crates/wasm-types" }
+          # - { name: "groupmap", path: "groupmap" }
+          # - { name: "turshi", path: "turshi" }
+          # - { name: "mina-curves", path: "curves" }
+          # - { name: "o1-utils", path: "utils" }
+          # - { name: "internal-tracing", path: "internal-tracing" }
+          # - { name: "poly-commitment", path: "poly-commitment" }
+          # - { name: "kimchi", path: "kimchi" }
+          # - { name: "kimchi-msm", path: "msm" }
+          # - { name: "mvpoly", path: "mvpoly" }
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: stable
+
+      - name: Check ${{ matrix.crate.name }} (no_std)
+        run: |
+          cd ${{ matrix.crate.path }}
+          cargo check --features no-std --no-default-features
