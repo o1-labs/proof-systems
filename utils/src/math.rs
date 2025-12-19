@@ -16,21 +16,3 @@ pub fn ceil_log2(d: usize) -> usize {
     }
     ceil_log2
 }
-
-/// Integer division rounding up.
-/// This function is now stable in Rust 1.73+. See <https://github.com/rust-lang/rust/issues/88581>
-/// We keep a manual implementation for compatibility with older Rust versions.
-/// TODO: Remove when updating to Rust 1.85+. See <https://github.com/o1-labs/mina-rust/issues/1951>
-#[rustversion::attr(since(1.85), allow(clippy::manual_div_ceil))]
-pub const fn div_ceil(a: usize, b: usize) -> usize {
-    (a + b - 1) / b
-}
-
-/// Check if `a` is a multiple of `b`.
-/// This function is stable in Rust 1.85+.
-/// We keep a manual implementation for compatibility with older Rust versions.
-/// TODO: Remove when updating to Rust 1.85+. See <https://github.com/o1-labs/mina-rust/issues/1951>
-#[rustversion::attr(since(1.85), allow(clippy::manual_is_multiple_of))]
-pub const fn is_multiple_of(a: usize, b: usize) -> bool {
-    a % b == 0
-}

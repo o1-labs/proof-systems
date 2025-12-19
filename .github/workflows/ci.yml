@@ -45,20 +45,19 @@ jobs:
         run: echo 'version=["20"]' >> "$GITHUB_OUTPUT"
       - id: defaults
         run: |
-          echo 'rust_version=1.81' >> "$GITHUB_OUTPUT"
+          echo 'rust_version=1.92' >> "$GITHUB_OUTPUT"
           echo 'os=ubuntu-latest' >> "$GITHUB_OUTPUT"
       - id: matrix
         run: |
-          # Build matrix: 1.81/1.92/stable/beta for Ubuntu, stable/beta for macOS
-          # We keep 1.81 because MinaProtocol/Mina uses 1.81 for now.
-          # We keep 1.92 to match mina-rust.
+          # Build matrix: 1.92/stable/beta for Ubuntu, stable/beta for macOS
+          # We keep 1.92 to match mina-rust and MinaProtocol/mina.
           cat > matrix.json << 'EOF'
           {
             "include": [
-              {"rust_toolchain_version": "1.81", "os": "ubuntu-latest"},
               {"rust_toolchain_version": "1.92", "os": "ubuntu-latest"},
               {"rust_toolchain_version": "stable", "os": "ubuntu-latest"},
               {"rust_toolchain_version": "beta", "os": "ubuntu-latest"},
+              {"rust_toolchain_version": "1.92", "os": "macos-latest"},
               {"rust_toolchain_version": "stable", "os": "macos-latest"},
               {"rust_toolchain_version": "beta", "os": "macos-latest"}
             ]
