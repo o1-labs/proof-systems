@@ -2,6 +2,7 @@
 //! used in Poseidon.
 
 extern crate alloc;
+
 use crate::{
     constants::SpongeConstants,
     poseidon::{sbox, ArithmeticSpongeParams},

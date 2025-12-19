@@ -3,6 +3,7 @@
 #![no_std]
 
 extern crate alloc;
+
 use alloc::{format, string::String, vec, vec::Vec};
 
 pub mod poseidon;

@@ -1,4 +1,5 @@
 extern crate alloc;
+
 use crate::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},

@@ -14,7 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Skip macOS tests and docs jobs on PRs to improve CI velocity; macOS runs on master only
   ([#3429](https://github.com/o1-labs/proof-systems/pull/3429),
   [o1-labs/mina-rust#2024](https://github.com/o1-labs/mina-rust/issues/2024))
-- Flag `test_lazy_mode_benchmark` as a heavy test to skip on regular CI runs ([#3430](https://github.com/o1-labs/proof-systems/pull/3430))
+- Flag `test_lazy_mode_benchmark` as a heavy test to skip on regular CI runs
+  ([#3430](https://github.com/o1-labs/proof-systems/pull/3430))
+- Add no-std compatibility check workflow that verifies crates compile with `--no-default-features`
+  ([#3414](https://github.com/o1-labs/proof-systems/pull/3414))
 
 ### [arrabbiata](./arrabbiata)
 

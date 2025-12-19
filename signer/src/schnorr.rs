@@ -5,6 +5,7 @@
 //! Details: <https://github.com/MinaProtocol/mina/blob/develop/docs/specs/signatures/description.md>
 
 extern crate alloc;
+
 use alloc::{boxed::Box, string::String, vec};
 use num_bigint::BigUint;
 

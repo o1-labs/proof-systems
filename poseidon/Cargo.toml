@@ -33,7 +33,6 @@ hex.workspace = true
 serde_json.workspace = true
 
 [features]
-default = []
 ocaml_types = ["ocaml", "ocaml-gen"]
 
 [[bench]]

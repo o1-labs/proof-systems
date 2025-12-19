@@ -1,6 +1,7 @@
 //! This module implements Poseidon Hash Function primitive
 
 extern crate alloc;
+
 use crate::{
     constants::SpongeConstants,
     permutation::{full_round, poseidon_block_cipher},

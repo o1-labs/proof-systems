@@ -40,6 +40,26 @@ NIGHTLY_RUST_VERSION ?= nightly-2024-09-05
 PLONK_WASM_NODEJS_OUTDIR ?= target/nodejs
 PLONK_WASM_WEB_OUTDIR ?= target/web
 
+# Feature flags for building with all features except no-std.
+# The no-std feature conflicts with std-dependent code.
+# See https://github.com/o1-labs/mina-rust/issues/1984
+WORKSPACE_FEATURES = \
+	arkworks/std,\
+	arkworks/wasm,\
+	internal-tracing/enabled,\
+	internal-tracing/ocaml_types,\
+	kimchi/bn254,\
+	kimchi/check_feature_flags,\
+	kimchi/diagnostics,\
+	kimchi/internal_tracing,\
+	kimchi/ocaml_types,\
+	kimchi/wasm_types,\
+	mina-curves/asm,\
+	mina-poseidon/ocaml_types,\
+	o1-utils/diagnostics,\
+	o1vm/open_mips,\
+	poly-commitment/ocaml_types
+
 # Default target
 all: release
 
@@ -96,7 +116,7 @@ clean: ## Clean the project
 build: ## Build the project
 		cargo build \
 			--all-targets \
-			--all-features \
+			--features "$(WORKSPACE_FEATURES)" \
 			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--workspace
@@ -105,7 +125,7 @@ build: ## Build the project
 release: ## Build the project in release mode
 		cargo build \
 			--all-targets \
-			--all-features \
+			--features "$(WORKSPACE_FEATURES)" \
 			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--release \
@@ -113,12 +133,13 @@ release: ## Build the project in release mode
 
 
 test-doc: ## Test the project's docs comments
-	cargo test --all-features \
-		--doc \
-		--exclude plonk_neon \
-		--exclude plonk_wasm \
-		--release \
-		--workspace
+		cargo test \
+			--features "$(WORKSPACE_FEATURES)" \
+			--doc \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--release \
+			--workspace
 
 test-doc-with-coverage:
 		$(COVERAGE_ENV) $(MAKE) test-doc
@@ -126,7 +147,7 @@ test-doc-with-coverage:
 
 test: ## Test the project with non-heavy tests and using native cargo test runner
 		cargo test \
-			--all-features \
+			--features "$(WORKSPACE_FEATURES)" \
 			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--release $(CARGO_EXTRA_ARGS) \
@@ -139,7 +160,7 @@ test-with-coverage:
 
 test-heavy: ## Test the project with heavy tests and using native cargo test runner
 		cargo test \
-			--all-features \
+			--features "$(WORKSPACE_FEATURES)" \
 			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--release $(CARGO_EXTRA_ARGS) \
@@ -151,7 +172,7 @@ test-heavy-with-coverage:
 
 test-all: ## Test the project with all tests and using native cargo test runner
 		cargo test \
-			--all-features \
+			--features "$(WORKSPACE_FEATURES)" \
 			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--release $(CARGO_EXTRA_ARGS) \
@@ -164,7 +185,7 @@ test-all-with-coverage:
 nextest: ## Test the project with non-heavy tests and using nextest test runner
 		cargo nextest run \
 			--all \
-			--all-features \
+			--features "$(WORKSPACE_FEATURES)" \
 			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--release $(CARGO_EXTRA_ARGS) \
@@ -177,7 +198,7 @@ nextest-with-coverage:
 
 nextest-heavy: ## Test the project with heavy tests and using nextest test runner
 		cargo nextest run \
-			--all-features \
+			--features "$(WORKSPACE_FEATURES)" \
 			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--release $(CARGO_EXTRA_ARGS) \
@@ -190,7 +211,7 @@ nextest-heavy-with-coverage:
 
 nextest-all: ## Test the project with all tests and using nextest test runner
 		cargo nextest run \
-			--all-features \
+			--features "$(WORKSPACE_FEATURES)" \
 			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--release $(CARGO_EXTRA_ARGS) \
@@ -209,7 +230,8 @@ format: ## Format the code
 		taplo fmt
 
 lint: ## Lint the code
-		cargo clippy --all --all-features --all-targets --tests $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
+		cargo clippy --all --features "$(WORKSPACE_FEATURES)" --all-targets --tests \
+			$(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
 
 generate-test-coverage-report: ## Generate the code coverage report
 		@echo ""
@@ -230,16 +252,17 @@ generate-doc: ## Generate the Rust documentation
 		@echo "Generating the documentation."
 		@echo ""
 		RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc \
-			--all-features \
-			--no-deps \
 			--document-private-items \
-			--workspace \
+			--features "$(WORKSPACE_FEATURES)" \
+			--no-deps \
 			--exclude plonk_neon \
-			--exclude plonk_wasm
+			--exclude plonk_wasm \
+			--workspace
 		@echo ""
 		@echo "The documentation is available at: ./target/doc"
 		@echo ""
 
+.PHONY: help
 help: ## Ask for help!
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
@@ -309,4 +332,4 @@ build-web: ## Compile the Kimchi library into WebAssembly to be used in the brow
 		--out-dir ${PLONK_WASM_WEB_OUTDIR} \
 		--rust-version $(NIGHTLY_RUST_VERSION)
 
-.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs check-format
+.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc generate-doc-index setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs check-format

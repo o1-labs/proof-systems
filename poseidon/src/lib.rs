@@ -25,6 +25,8 @@
 
 #![no_std]
 
+extern crate alloc;
+
 pub mod constants;
 pub mod dummy_values;
 pub mod pasta;
