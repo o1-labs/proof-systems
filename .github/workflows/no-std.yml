@@ -52,17 +52,6 @@ jobs:
           components: rust-src
 
       - name: Check ${{ matrix.crate.name }} (no_std)
-        id: check
-        continue-on-error: true
         run: |
           cd ${{ matrix.crate.path }}
           cargo check --target ${{ env.NO_STD_TARGET }} --no-default-features
-
-      - name: Report status
-        if: always()
-        run: |
-          if [ "${{ steps.check.outcome }}" == "success" ]; then
-            echo "::notice::${{ matrix.crate.name }} is no_std compatible!"
-          else
-            echo "::warning::${{ matrix.crate.name }} is NOT yet no_std compatible"
-          fi
