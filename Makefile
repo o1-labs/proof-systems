@@ -61,10 +61,13 @@ WORKSPACE_FEATURES = \
 	poly-commitment/ocaml_types
 
 # Default target
+.PHONY: all
 all: release
 
+.PHONY: setup
 setup: setup-git setup-wasm-toolchain
 
+.PHONY: setup-git
 setup-git:
 		@echo ""
 		@echo "Syncing the Git submodules."
@@ -74,6 +77,7 @@ setup-git:
 		@echo ""
 		@echo "Git submodules synced."
 
+.PHONY: setup-wasm-toolchain
 setup-wasm-toolchain:
 		@ARCH=$$(uname -m); \
 		OS=$$(uname -s | tr A-Z a-z); \
@@ -95,6 +99,7 @@ setup-wasm-toolchain:
 # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
 # FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
 # FIXME: latest 0.8.19+ requires rustc 1.74+
+.PHONY: install-test-deps
 install-test-deps: ## Install test dependencies
 		@echo ""
 		@echo "Installing the test dependencies."
@@ -106,13 +111,13 @@ install-test-deps: ## Install test dependencies
 		@echo "Test dependencies installed."
 		@echo ""
 
-
+.PHONY: clean
 clean: ## Clean the project
 		@cargo clean
 		@rm -rf $(O1VM_RISCV32IM_BIN_FILES)
 		@rm -rf $(O1VM_MIPS_BIN_DIR)
 
-
+.PHONY: build
 build: ## Build the project
 		cargo build \
 			--all-targets \
@@ -121,7 +126,7 @@ build: ## Build the project
 			--exclude plonk_wasm \
 			--workspace
 
-
+.PHONY: release
 release: ## Build the project in release mode
 		cargo build \
 			--all-targets \
@@ -131,7 +136,7 @@ release: ## Build the project in release mode
 			--release \
 			--workspace
 
-
+.PHONY: test-doc
 test-doc: ## Test the project's docs comments
 		cargo test \
 			--features "$(WORKSPACE_FEATURES)" \
@@ -141,10 +146,11 @@ test-doc: ## Test the project's docs comments
 			--release \
 			--workspace
 
+.PHONY: test-doc-with-coverage
 test-doc-with-coverage:
 		$(COVERAGE_ENV) $(MAKE) test-doc
 
-
+.PHONY: test
 test: ## Test the project with non-heavy tests and using native cargo test runner
 		cargo test \
 			--features "$(WORKSPACE_FEATURES)" \
@@ -154,10 +160,11 @@ test: ## Test the project with non-heavy tests and using native cargo test runne
 			-- --nocapture \
 			--skip heavy $(BIN_EXTRA_ARGS)
 
+.PHONY: test-with-coverage
 test-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test
 
-
+.PHONY: test-heavy
 test-heavy: ## Test the project with heavy tests and using native cargo test runner
 		cargo test \
 			--features "$(WORKSPACE_FEATURES)" \
@@ -166,10 +173,11 @@ test-heavy: ## Test the project with heavy tests and using native cargo test run
 			--release $(CARGO_EXTRA_ARGS) \
 			-- --nocapture heavy $(BIN_EXTRA_ARGS)
 
+.PHONY: test-heavy-with-coverage
 test-heavy-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test-heavy
 
-
+.PHONY: test-all
 test-all: ## Test the project with all tests and using native cargo test runner
 		cargo test \
 			--features "$(WORKSPACE_FEATURES)" \
@@ -178,10 +186,11 @@ test-all: ## Test the project with all tests and using native cargo test runner
 			--release $(CARGO_EXTRA_ARGS) \
 			-- --nocapture $(BIN_EXTRA_ARGS)
 
+.PHONY: test-all-with-coverage
 test-all-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test-all
 
-
+.PHONY: nextest
 nextest: ## Test the project with non-heavy tests and using nextest test runner
 		cargo nextest run \
 			--all \
@@ -192,10 +201,11 @@ nextest: ## Test the project with non-heavy tests and using nextest test runner
 			--profile ci \
 			-E "not test(heavy)" $(BIN_EXTRA_ARGS)
 
+.PHONY: nextest-with-coverage
 nextest-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest
 
-
+.PHONY: nextest-heavy
 nextest-heavy: ## Test the project with heavy tests and using nextest test runner
 		cargo nextest run \
 			--features "$(WORKSPACE_FEATURES)" \
@@ -205,10 +215,11 @@ nextest-heavy: ## Test the project with heavy tests and using nextest test runne
 			--profile ci \
 			-E "test(heavy)" $(BIN_EXTRA_ARGS)
 
+.PHONY: nextest-heavy-with-coverage
 nextest-heavy-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-heavy
 
-
+.PHONY: nextest-all
 nextest-all: ## Test the project with all tests and using nextest test runner
 		cargo nextest run \
 			--features "$(WORKSPACE_FEATURES)" \
@@ -217,22 +228,26 @@ nextest-all: ## Test the project with all tests and using nextest test runner
 			--release $(CARGO_EXTRA_ARGS) \
 			--profile ci $(BIN_EXTRA_ARGS)
 
+.PHONY: nextest-all-with-coverage
 nextest-all-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-all
 
-
+.PHONY: check-format
 check-format: ## Check the code formatting
 		cargo +nightly fmt -- --check
 		taplo fmt --check
 
+.PHONY: format
 format: ## Format the code
 		cargo +nightly fmt
 		taplo fmt
 
+.PHONY: lint
 lint: ## Lint the code
 		cargo clippy --all --features "$(WORKSPACE_FEATURES)" --all-targets --tests \
 			$(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
 
+.PHONY: generate-test-coverage-report
 generate-test-coverage-report: ## Generate the code coverage report
 		@echo ""
 		@echo "Generating the test coverage report."
@@ -247,6 +262,7 @@ generate-test-coverage-report: ## Generate the code coverage report
 		@echo "The test coverage report is available at: ./target/coverage"
 		@echo ""
 
+.PHONY: generate-doc
 generate-doc: ## Generate the Rust documentation
 		@echo ""
 		@echo "Generating the documentation."
@@ -266,7 +282,7 @@ generate-doc: ## Generate the Rust documentation
 help: ## Ask for help!
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-
+.PHONY: setup-riscv32-toolchain
 setup-riscv32-toolchain: ## Download and compile the RISC-V 32bits toolchain
 		@echo ""
 		@echo "Setting up the RISC-V 32-bit toolchain"
@@ -280,6 +296,7 @@ setup-riscv32-toolchain: ## Download and compile the RISC-V 32bits toolchain
 		@echo "RISC-V 32-bits toolchain is ready in ${RISCV32_TOOLCHAIN_PATH}/build"
 		@echo ""
 
+.PHONY: build-riscv32-programs
 build-riscv32-programs: setup-riscv32-toolchain ${O1VM_RISCV32IM_BIN_FILES} ## Build all RISC-V 32 bits programs written for the o1vm
 
 ${O1VM_RISCV32IM_BIN_DIR}/%.o: ${O1VM_RISCV32IM_SOURCE_DIR}/%.S
@@ -291,6 +308,7 @@ ${O1VM_RISCV32IM_BIN_DIR}/%.o: ${O1VM_RISCV32IM_SOURCE_DIR}/%.S
 		${RISCV32_TOOLCHAIN_PATH}/build/bin/riscv32-unknown-elf-ld -s -o $(basename $@) $@
 		@echo ""
 
+.PHONY: build-mips-programs
 build-mips-programs: ${O1VM_MIPS_SOURCE_FILES} ${O1VM_MIPS_BIN_FILES} ## Build all MIPS programs written for the o1vm
 
 ${O1VM_MIPS_SOURCE_DIR}/%.asm: ${OPTIMISM_MIPS_SOURCE_DIR}/%.asm
@@ -315,6 +333,7 @@ ${O1VM_MIPS_BIN_DIR}/%.o: ${O1VM_MIPS_SOURCE_DIR}/%.asm
 		@${MIPS_AS} -defsym big_endian=1 -march=mips32r2 -o $@ $<
 		@${MIPS_LD} -s -o $(basename $@) $@
 
+.PHONY: fclean
 fclean: clean ## Clean the tooling artefacts in addition to running clean
 		rm -rf ${RISCV32_TOOLCHAIN_PATH}
 
@@ -331,5 +350,3 @@ build-web: ## Compile the Kimchi library into WebAssembly to be used in the brow
 		--target web \
 		--out-dir ${PLONK_WASM_WEB_OUTDIR} \
 		--rust-version $(NIGHTLY_RUST_VERSION)
-
-.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc generate-doc-index setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs check-format
