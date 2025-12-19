@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### CI
 
+#### Added
+
+- Add no-std compatibility check workflow that verifies crates compile with `--features no-std --no-default-features`
+  ([#3414](https://github.com/o1-labs/proof-systems/pull/3414))
+
 ### [arrabbiata](./arrabbiata)
 
 #### Changed
@@ -45,18 +50,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### [mina-hasher](./hasher)
 
-#### Changed
-- (No changes in current release)
+#### Added
+
+- Add `no-std` feature for no_std compatibility
+  ([#3414](https://github.com/o1-labs/proof-systems/pull/3414))
 
 ### [mina-poseidon](./poseidon)
 
-#### Changed
-- (No changes in current release)
+#### Added
+
+- Add `no-std` feature for no_std compatibility
+  ([#3414](https://github.com/o1-labs/proof-systems/pull/3414))
 
 ### [mina-signer](./signer)
 
-#### Changed
-- (No changes in current release)
+#### Added
+
+- Add `no-std` feature for no_std compatibility
+  ([#3414](https://github.com/o1-labs/proof-systems/pull/3414))
 
 ### [mvpoly](./mvpoly)
 
