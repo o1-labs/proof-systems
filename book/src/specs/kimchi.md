@@ -1203,7 +1203,7 @@ One could lay this out as a double-width gate for chained foreign additions and 
 We reuse the foreign field addition gate for the final bound check since this is an addition with a
 specific parameter structure. Checking that the correct right input, overflow, and overflow are used shall
 be done by copy constraining these values with a public input value. One could have a specific gate
-for just this check requiring less constrains, but the cost of adding one more selector gate outweights
+for just this check requiring less constrains, but the cost of adding one more selector gate outweighs
 the savings of one row and a few constraints of difference.
 
 ##### Integration
@@ -1696,7 +1696,7 @@ To create the index, follow these steps:
    with the table ID of the table.
 	* Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
 	* Fill in any unused columns with 0 (to match the dummy value)
-6. Pad the end of the concatened table with the dummy value.
+6. Pad the end of the concatenated table with the dummy value.
 7. Pad the end of the table id vector with 0s.
 8. pre-compute polynomial and evaluation form for the look up tables
 9. pre-compute polynomial and evaluation form for the table IDs,
@@ -2119,7 +2119,7 @@ The following sections specify how a prover creates a proof, and how a verifier 
 
 To create a proof, the prover expects:
 
-* A prover index, containing a representation of the circuit (and optionaly pre-computed values to be used in the proof creation).
+* A prover index, containing a representation of the circuit (and optionally pre-computed values to be used in the proof creation).
 * The (filled) registers table, representing parts of the execution trace of the circuit.
 
 ```admonish
