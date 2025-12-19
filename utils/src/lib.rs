@@ -1,6 +1,10 @@
 //! A collection of utility functions and constants that can be reused from
 //! multiple projects
 
+// Enable unstable `is_multiple_of` on nightly for Wasm builds until nightly is updated
+// See: https://github.com/o1-labs/mina-rust/issues/1997
+#![cfg_attr(target_arch = "wasm32", feature(unsigned_is_multiple_of))]
+
 pub mod adjacent_pairs;
 pub mod array;
 pub mod biguint_helpers;

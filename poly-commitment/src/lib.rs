@@ -1,3 +1,7 @@
+// Enable unstable `is_multiple_of` on nightly for Wasm builds until nightly is updated
+// See: https://github.com/o1-labs/mina-rust/issues/1997
+#![cfg_attr(target_arch = "wasm32", feature(unsigned_is_multiple_of))]
+
 mod combine;
 pub mod commitment;
 pub mod error;
