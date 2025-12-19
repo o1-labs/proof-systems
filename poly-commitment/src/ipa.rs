@@ -891,7 +891,7 @@ impl<G: CommitmentCurve> SRS<G> {
         // polynomial commitments, we obtain a chunked commitment to the L_i
         // polynomials.
         let srs_size = self.g.len();
-        let num_elems = math::div_ceil(n, srs_size);
+        let num_elems = n.div_ceil(srs_size);
         let mut chunks = Vec::with_capacity(num_elems);
 
         // For each chunk

@@ -104,7 +104,8 @@ release: ## Build the project in release mode
 
 
 test-doc: ## Test the project's docs comments
-		cargo test --all-features --release --doc
+		cargo test --all-features --release --workspace --doc \
+			--exclude plonk_neon --exclude plonk_wasm --exclude kimchi-stubs
 
 test-doc-with-coverage:
 		$(COVERAGE_ENV) $(MAKE) test-doc

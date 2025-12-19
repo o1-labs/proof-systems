@@ -144,7 +144,7 @@ impl<F: FftField> LookupWitness<F> {
         };
         let dummy_value = F::rand(&mut rng);
         let repeated_dummy_value: Vec<F> =
-            o1_utils::repeat_n(dummy_value, (domain.d1.size - table_size) as usize).collect();
+            std::iter::repeat_n(dummy_value, (domain.d1.size - table_size) as usize).collect();
         let t_evals = {
             let mut table = Vec::with_capacity(domain.d1.size as usize);
             table.extend(t.iter().map(|v| Lookup {
