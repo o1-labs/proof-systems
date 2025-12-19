@@ -156,7 +156,8 @@ jobs:
         run: |
           eval $(opam env)
           make test-doc
-      - name: generate docs
+
+      - name: Generate docs
         run: |
           eval $(opam env)
           make generate-doc
@@ -183,7 +184,32 @@ jobs:
           matrix.rust_and_os.os == needs.define-matrix.outputs.default_os
         run: |
           eval $(opam env)
-          RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --all-features --no-deps --workspace --exclude xtask
+          # Note: We explicitly list features instead of using --all-features
+          # to avoid including no-std features which conflict with std-dependent
+          # code. See https://github.com/o1-labs/mina-rust/issues/1984
+          FEATURES="
+            arkworks/std,
+            arkworks/wasm,
+            internal-tracing/enabled,
+            internal-tracing/ocaml_types,
+            kimchi/bn254,
+            kimchi/check_feature_flags,
+            kimchi/diagnostics,
+            kimchi/internal_tracing,
+            kimchi/ocaml_types,
+            kimchi/wasm_types,
+            mina-curves/asm,
+            mina-poseidon/ocaml_types,
+            o1-utils/diagnostics,
+            o1vm/open_mips,
+            plonk_wasm/nodejs,
+            poly-commitment/ocaml_types
+          "
+          # Remove whitespace from FEATURES
+          FEATURES=$(echo "$FEATURES" | tr -d '[:space:]')
+          RUSTDOCFLAGS="--enable-index-page -Zunstable-options" \
+            cargo +nightly doc --features "$FEATURES" \
+            --no-deps --workspace --exclude xtask
           cp -r ./target/doc ./book/book/html/rustdoc
 
       - name: Deploy

@@ -40,6 +40,27 @@ NIGHTLY_RUST_VERSION ?= nightly-2024-09-05
 PLONK_WASM_NODEJS_OUTDIR ?= target/nodejs
 PLONK_WASM_WEB_OUTDIR ?= target/web
 
+# Feature flags for building with all features except no-std.
+# The no-std feature conflicts with std-dependent code.
+# See https://github.com/o1-labs/mina-rust/issues/1984
+WORKSPACE_FEATURES = \
+	arkworks/std,\
+	arkworks/wasm,\
+	internal-tracing/enabled,\
+	internal-tracing/ocaml_types,\
+	kimchi/bn254,\
+	kimchi/check_feature_flags,\
+	kimchi/diagnostics,\
+	kimchi/internal_tracing,\
+	kimchi/ocaml_types,\
+	kimchi/wasm_types,\
+	mina-curves/asm,\
+	mina-poseidon/ocaml_types,\
+	o1-utils/diagnostics,\
+	o1vm/open_mips,\
+	plonk_wasm/nodejs,\
+	poly-commitment/ocaml_types
+
 # Default target
 all: release
 
@@ -94,59 +115,65 @@ clean: ## Clean the project
 
 
 build: ## Build the project
-		cargo build --all-targets --all-features --workspace \
+		cargo build --all-targets --features "$(WORKSPACE_FEATURES)" --workspace \
 			--exclude plonk_wasm --exclude plonk_wasm --exclude xtask
 
 
 release: ## Build the project in release mode
-		cargo build --release --all-targets --all-features --workspace \
-			--exclude plonk_neon --exclude plonk_wasm --exclude xtask
+		cargo build --release --all-targets --features "$(WORKSPACE_FEATURES)" \
+			--workspace --exclude plonk_neon --exclude plonk_wasm --exclude xtask
 
 
 test-doc: ## Test the project's docs comments
-		cargo test --all-features --release --doc
+		cargo test --features "$(WORKSPACE_FEATURES)" --release --doc
 
 test-doc-with-coverage:
 		$(COVERAGE_ENV) $(MAKE) test-doc
 
 
 test: ## Test the project with non-heavy tests and using native cargo test runner
-		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture --skip heavy $(BIN_EXTRA_ARGS)
+		cargo test --features "$(WORKSPACE_FEATURES)" --release $(CARGO_EXTRA_ARGS) \
+			-- --nocapture --skip heavy $(BIN_EXTRA_ARGS)
 
 test-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test
 
 
 test-heavy: ## Test the project with heavy tests and using native cargo test runner
-		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture heavy $(BIN_EXTRA_ARGS)
+		cargo test --features "$(WORKSPACE_FEATURES)" --release $(CARGO_EXTRA_ARGS) \
+			-- --nocapture heavy $(BIN_EXTRA_ARGS)
 
 test-heavy-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test-heavy
 
 
 test-all: ## Test the project with all tests and using native cargo test runner
-		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture $(BIN_EXTRA_ARGS)
+		cargo test --features "$(WORKSPACE_FEATURES)" --release $(CARGO_EXTRA_ARGS) \
+			-- --nocapture $(BIN_EXTRA_ARGS)
 
 test-all-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test-all
 
 
 nextest: ## Test the project with non-heavy tests and using nextest test runner
-		cargo nextest run --all --all-features --exclude xtask --release $(CARGO_EXTRA_ARGS) --profile ci -E "not test(heavy)" $(BIN_EXTRA_ARGS)
+		cargo nextest run --all --features "$(WORKSPACE_FEATURES)" --exclude xtask \
+			--release $(CARGO_EXTRA_ARGS) --profile ci -E "not test(heavy)" $(BIN_EXTRA_ARGS)
 
 nextest-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest
 
 
 nextest-heavy: ## Test the project with heavy tests and using nextest test runner
-		cargo nextest run --all-features --release $(CARGO_EXTRA_ARGS) --profile ci -E "test(heavy)" $(BIN_EXTRA_ARGS)
+		cargo nextest run --features "$(WORKSPACE_FEATURES)" --release $(CARGO_EXTRA_ARGS) \
+			--profile ci -E "test(heavy)" $(BIN_EXTRA_ARGS)
 
 nextest-heavy-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-heavy
 
 
 nextest-all: ## Test the project with all tests and using nextest test runner
-		cargo nextest run --all-features --release $(CARGO_EXTRA_ARGS) --profile ci $(BIN_EXTRA_ARGS)
+		cargo nextest run --features "$(WORKSPACE_FEATURES)" --release $(CARGO_EXTRA_ARGS) \
+			--profile ci $(BIN_EXTRA_ARGS)
 
 nextest-all-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-all
@@ -161,7 +188,8 @@ format: ## Format the code
 		taplo fmt
 
 lint: ## Lint the code
-		cargo clippy --all --all-features --all-targets --tests $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
+		cargo clippy --all --features "$(WORKSPACE_FEATURES)" --all-targets --tests \
+			$(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
 
 generate-test-coverage-report: ## Generate the code coverage report
 		@echo ""
@@ -181,7 +209,8 @@ generate-doc: ## Generate the Rust documentation
 		@echo ""
 		@echo "Generating the documentation."
 		@echo ""
-		RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps --document-private-items --workspace --exclude xtask
+		RUSTDOCFLAGS="-D warnings" cargo doc --features "$(WORKSPACE_FEATURES)" \
+			--no-deps --document-private-items --workspace --exclude xtask
 		@echo ""
 		@echo "The documentation is available at: ./target/doc"
 		@echo ""
