@@ -1,0 +1,68 @@
+name: No-Std Compatibility Check
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+concurrency:
+  group: no-std-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Target for no_std verification (ARM Cortex-M4 without FPU)
+  NO_STD_TARGET: thumbv7em-none-eabi
+
+jobs:
+  no-std-check:
+    name: "no_std: ${{ matrix.crate.name }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        crate:
+          # Already verified no_std
+          - { name: "mina-hasher", path: "hasher" }
+          - { name: "mina-poseidon", path: "poseidon" }
+          - { name: "mina-signer", path: "signer" }
+          - { name: "wasm-types", path: "crates/wasm-types" }
+          # Leaf crates
+          - { name: "groupmap", path: "groupmap" }
+          - { name: "turshi", path: "turshi" }
+          - { name: "mina-curves", path: "curves" }
+          # Utility crates
+          - { name: "o1-utils", path: "utils" }
+          - { name: "internal-tracing", path: "internal-tracing" }
+          # Polynomial commitment
+          - { name: "poly-commitment", path: "poly-commitment" }
+          # Kimchi
+          - { name: "kimchi", path: "kimchi" }
+          # Dependent crates
+          - { name: "kimchi-msm", path: "msm" }
+          - { name: "mvpoly", path: "mvpoly" }
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: stable
+          targets: ${{ env.NO_STD_TARGET }}
+          components: rust-src
+
+      - name: Check ${{ matrix.crate.name }} (no_std)
+        id: check
+        continue-on-error: true
+        run: |
+          cd ${{ matrix.crate.path }}
+          cargo check --target ${{ env.NO_STD_TARGET }} --no-default-features
+
+      - name: Report status
+        if: always()
+        run: |
+          if [ "${{ steps.check.outcome }}" == "success" ]; then
+            echo "::notice::${{ matrix.crate.name }} is no_std compatible!"
+          else
+            echo "::warning::${{ matrix.crate.name }} is NOT yet no_std compatible"
+          fi
