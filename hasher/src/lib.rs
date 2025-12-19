@@ -1,8 +1,11 @@
 #![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
-#![no_std]
+#![cfg_attr(feature = "no-std", no_std)]
 
+#[cfg(feature = "no-std")]
 extern crate alloc;
+
+#[cfg(feature = "no-std")]
 use alloc::{format, string::String, vec, vec::Vec};
 
 pub mod poseidon;

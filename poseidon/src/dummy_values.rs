@@ -1,5 +1,8 @@
+#[cfg(feature = "no-std")]
 extern crate alloc;
+
 use crate::poseidon::ArithmeticSpongeParams;
+#[cfg(feature = "no-std")]
 use alloc::vec;
 use ark_ff::Field;
 use core::{fmt::Debug, str::FromStr};

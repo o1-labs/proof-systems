@@ -4,7 +4,10 @@
 //!
 //! Details: <https://github.com/MinaProtocol/mina/blob/develop/docs/specs/signatures/description.md>
 
+#[cfg(feature = "no-std")]
 extern crate alloc;
+
+#[cfg(feature = "no-std")]
 use alloc::{boxed::Box, string::String, vec};
 use num_bigint::BigUint;
 use o1_utils::math::div_ceil;

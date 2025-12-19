@@ -146,6 +146,7 @@ impl fmt::Display for Signature {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "no-std")]
     use alloc::{format, string::ToString};
 
     #[test]

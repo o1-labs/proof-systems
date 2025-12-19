@@ -2,8 +2,11 @@
 //!
 //! Definition of public key structure and helpers
 
+#[cfg(feature = "no-std")]
 extern crate alloc;
+
 use crate::{BaseField, CurvePoint, ScalarField, SecKey};
+#[cfg(feature = "no-std")]
 use alloc::{string::String, vec, vec::Vec};
 use ark_ec::{short_weierstrass::Affine, AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, PrimeField, Zero};

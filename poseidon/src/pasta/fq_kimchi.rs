@@ -1,5 +1,8 @@
+#[cfg(feature = "no-std")]
 extern crate alloc;
+
 use crate::poseidon::ArithmeticSpongeParams;
+#[cfg(feature = "no-std")]
 use alloc::vec;
 use core::str::FromStr;
 use mina_curves::pasta::Fq;

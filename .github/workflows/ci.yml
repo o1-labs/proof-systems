@@ -156,7 +156,8 @@ jobs:
         run: |
           eval $(opam env)
           make test-doc
-      - name: generate docs
+
+      - name: Generate docs
         run: |
           eval $(opam env)
           make generate-doc
@@ -183,7 +184,7 @@ jobs:
           matrix.rust_and_os.os == needs.define-matrix.outputs.default_os
         run: |
           eval $(opam env)
-          RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --all-features --no-deps --workspace --exclude xtask
+          make generate-doc-index
           cp -r ./target/doc ./book/book/html/rustdoc
 
       - name: Deploy
