@@ -215,6 +215,17 @@ generate-doc: ## Generate the Rust documentation
 		@echo "The documentation is available at: ./target/doc"
 		@echo ""
 
+generate-doc-index: ## Generate Rust docs with index page (requires nightly)
+		@echo ""
+		@echo "Generating the documentation with index page."
+		@echo ""
+		RUSTDOCFLAGS="--enable-index-page -Zunstable-options" \
+			cargo +nightly doc --features "$(WORKSPACE_FEATURES)" \
+			--no-deps --workspace --exclude xtask
+		@echo ""
+		@echo "The documentation is available at: ./target/doc"
+		@echo ""
+
 help: ## Ask for help!
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
@@ -284,4 +295,4 @@ build-web: ## Compile the Kimchi library into WebAssembly to be used in the brow
 		--out-dir ${PLONK_WASM_WEB_OUTDIR} \
 		--rust-version $(NIGHTLY_RUST_VERSION)
 
-.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs check-format
+.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc generate-doc-index setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs check-format
