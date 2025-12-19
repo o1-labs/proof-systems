@@ -1,9 +1,12 @@
 //! Useful helper methods to extend [ark_ff::Field].
 
+#[cfg(feature = "no-std")]
+use alloc::{string::String, vec, vec::Vec};
+use core::ops::Neg;
+
 use ark_ff::{BigInteger, Field, PrimeField};
 use num_bigint::{BigInt, BigUint, RandBigInt, Sign};
 use rand::rngs::StdRng;
-use std::ops::Neg;
 use thiserror::Error;
 
 /// Field helpers error
@@ -21,7 +24,7 @@ pub enum FieldHelpersError {
 }
 
 /// Result alias using [FieldHelpersError]
-pub type Result<T> = std::result::Result<T, FieldHelpersError>;
+pub type Result<T> = core::result::Result<T, FieldHelpersError>;
 
 /// Helper to generate random field elements
 pub trait RandomField<F> {

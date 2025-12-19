@@ -39,4 +39,7 @@ mina-curves.workspace = true
 secp256k1.workspace = true
 
 [features]
+default = ["std"]
+std = []
+no-std = []
 diagnostics = ["tikv-jemalloc-ctl", "tikv-jemallocator"]

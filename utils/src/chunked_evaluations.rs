@@ -1,5 +1,8 @@
 //! This module contains a type [ChunkedEvaluations],
 
+#[cfg(feature = "no-std")]
+use alloc::vec::Vec;
+
 use ark_ff::PrimeField;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;

@@ -2,6 +2,9 @@
 //! and a number of helper methods to deal with chunked polynomials.
 //! Polynomials that cut in several polynomials of the same length.
 
+#[cfg(feature = "no-std")]
+use alloc::{vec, vec::Vec};
+
 use ark_ff::Field;
 use ark_poly::polynomial::{univariate::DensePolynomial, Polynomial};
 

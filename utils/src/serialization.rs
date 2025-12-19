@@ -1,8 +1,14 @@
 //! This adds a few utility functions for serializing and deserializing
 //! [arkworks](http://arkworks.rs/) types that implement [CanonicalSerialize] and [CanonicalDeserialize].
 
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Write};
+#[cfg(feature = "no-std")]
+use alloc::{vec, vec::Vec};
+
+#[cfg(not(feature = "no-std"))]
+use ark_serialize::Write;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use serde_with::Bytes;
+#[cfg(not(feature = "no-std"))]
 use std::io::BufReader;
 
 //
@@ -131,8 +137,9 @@ where
 
 /// A generic regression serialization test for serialization via
 /// `CanonicalSerialize` and `CanonicalDeserialize`.
+#[cfg(not(feature = "no-std"))]
 pub fn test_generic_serialization_regression_canonical<
-    T: CanonicalSerialize + CanonicalDeserialize + std::cmp::PartialEq + std::fmt::Debug,
+    T: CanonicalSerialize + CanonicalDeserialize + core::cmp::PartialEq + core::fmt::Debug,
 >(
     data_expected: T,
     buf_expected: Vec<u8>,
@@ -164,8 +171,9 @@ pub fn test_generic_serialization_regression_canonical<
 }
 
 /// A generic regression serialization test for serialization via `serde`.
+#[cfg(not(feature = "no-std"))]
 pub fn test_generic_serialization_regression_serde<
-    T: serde::Serialize + for<'a> serde::Deserialize<'a> + std::cmp::PartialEq + std::fmt::Debug,
+    T: serde::Serialize + for<'a> serde::Deserialize<'a> + core::cmp::PartialEq + core::fmt::Debug,
 >(
     data_expected: T,
     buf_expected: Vec<u8>,
