@@ -23,7 +23,7 @@
 //! let challenge = sponge.challenge();
 //! ```
 
-#![no_std]
+#![cfg_attr(feature = "no-std", no_std)]
 
 pub mod constants;
 pub mod dummy_values;

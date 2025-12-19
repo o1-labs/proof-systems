@@ -1,11 +1,14 @@
 //! The permutation module contains the function implementing the permutation
 //! used in Poseidon.
 
+#[cfg(feature = "no-std")]
 extern crate alloc;
+
 use crate::{
     constants::SpongeConstants,
     poseidon::{sbox, ArithmeticSpongeParams},
 };
+#[cfg(feature = "no-std")]
 use alloc::{vec, vec::Vec};
 use ark_ff::Field;
 

@@ -1,8 +1,11 @@
+#[cfg(feature = "no-std")]
 extern crate alloc;
+
 use crate::{
     constants::SpongeConstants,
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
+#[cfg(feature = "no-std")]
 use alloc::{vec, vec::Vec};
 use ark_ec::models::short_weierstrass::{Affine, SWCurveConfig};
 use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
@@ -266,7 +269,9 @@ where
 pub mod caml {
     use super::*;
 
+    #[cfg(feature = "no-std")]
     extern crate alloc;
+    #[cfg(feature = "no-std")]
     use alloc::{
         format,
         string::{String, ToString},

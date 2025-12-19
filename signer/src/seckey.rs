@@ -1,7 +1,10 @@
 //! Secret key structures and helpers
 
+#[cfg(feature = "no-std")]
 extern crate alloc;
+
 use crate::ScalarField;
+#[cfg(feature = "no-std")]
 use alloc::{string::String, vec, vec::Vec};
 use ark_ff::UniformRand;
 use o1_utils::FieldHelpers;

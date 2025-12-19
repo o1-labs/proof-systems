@@ -6,6 +6,7 @@
 use core::fmt::Error;
 
 use super::Hashable;
+#[cfg(feature = "no-std")]
 use alloc::{vec, vec::Vec};
 use ark_ff::{BigInteger, PrimeField};
 use bitvec::{prelude::*, view::AsBits};

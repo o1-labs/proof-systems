@@ -2,8 +2,11 @@
 //!
 //! Definition of secret key, keypairs and related helpers
 
+#[cfg(feature = "no-std")]
 extern crate alloc;
+
 use crate::{pubkey::PubKeyError, seckey::SecKeyError, CurvePoint, PubKey, ScalarField, SecKey};
+#[cfg(feature = "no-std")]
 use alloc::{string::String, vec::Vec};
 use core::fmt;
 use rand::{self, CryptoRng, RngCore};

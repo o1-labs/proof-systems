@@ -2,6 +2,7 @@
 //!
 //! An implementation of Mina's hasher based on the poseidon arithmetic sponge
 
+#[cfg(feature = "no-std")]
 use alloc::{vec, vec::Vec};
 
 use core::marker::PhantomData;

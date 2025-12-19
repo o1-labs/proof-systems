@@ -1,10 +1,13 @@
 //! This module implements Poseidon Hash Function primitive
 
+#[cfg(feature = "no-std")]
 extern crate alloc;
+
 use crate::{
     constants::SpongeConstants,
     permutation::{full_round, poseidon_block_cipher},
 };
+#[cfg(feature = "no-std")]
 use alloc::{vec, vec::Vec};
 use ark_ff::Field;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
