@@ -13,6 +13,8 @@ use crate::{
     utils::combine_polys,
     BlindedCommitment, PolyComm, PolynomialsToCombine, SRS as SRSTrait,
 };
+#[cfg(feature = "no-std")]
+use alloc::{vec, vec::Vec};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::{BigInteger, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
@@ -20,6 +22,7 @@ use ark_poly::{
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use blake2::{Blake2b512, Digest};
+use core::{cmp::min, iter::Iterator, ops::AddAssign};
 use groupmap::GroupMap;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::{
@@ -30,7 +33,6 @@ use rand::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{cmp::min, iter::Iterator, ops::AddAssign};
 
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

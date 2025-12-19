@@ -6,9 +6,14 @@
 //!    scaling factor scalar producing the batched opening proof
 //! 3. Verify batch of batched opening proofs
 
+#[cfg(feature = "no-std")]
+use alloc::{vec, vec::Vec};
+
+#[cfg(not(feature = "no-std"))]
+use ark_ec::VariableBaseMSM;
 use ark_ec::{
     models::short_weierstrass::Affine as SWJAffine, short_weierstrass::SWCurveConfig, AffineRepr,
-    CurveGroup, VariableBaseMSM,
+    CurveGroup,
 };
 use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 use ark_poly::univariate::DensePolynomial;
@@ -16,12 +21,14 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use groupmap::{BWParameters, GroupMap};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::{field_helpers::product, ExtendedDensePolynomial as _};
+#[cfg(not(feature = "no-std"))]
 use rayon::prelude::*;
 use serde::{de::Visitor, Deserialize, Serialize};
 use serde_with::{
     de::DeserializeAsWrap, ser::SerializeAsWrap, serde_as, DeserializeAs, SerializeAs,
 };
-use std::{
+
+use core::{
     iter::Iterator,
     marker::PhantomData,
     ops::{Add, AddAssign, Sub},
@@ -88,7 +95,7 @@ where
 
 impl<'a, G> IntoIterator for &'a PolyComm<G> {
     type Item = &'a G;
-    type IntoIter = std::slice::Iter<'a, G>;
+    type IntoIter = core::slice::Iter<'a, G>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.chunks.iter()
@@ -276,7 +283,7 @@ impl<'a, C: AffineRepr> Add<&'a PolyComm<C>> for &PolyComm<C> {
         let mut chunks = vec![];
         let n1 = self.chunks.len();
         let n2 = other.chunks.len();
-        for i in 0..std::cmp::max(n1, n2) {
+        for i in 0..core::cmp::max(n1, n2) {
             let pt = if i < n1 && i < n2 {
                 (self.chunks[i] + other.chunks[i]).into_affine()
             } else if i < n1 {
@@ -297,7 +304,7 @@ impl<'a, C: AffineRepr + Sub<Output = C::Group>> Sub<&'a PolyComm<C>> for &PolyC
         let mut chunks = vec![];
         let n1 = self.chunks.len();
         let n2 = other.chunks.len();
-        for i in 0..std::cmp::max(n1, n2) {
+        for i in 0..core::cmp::max(n1, n2) {
             let pt = if i < n1 && i < n2 {
                 (self.chunks[i] - other.chunks[i]).into_affine()
             } else if i < n1 {
@@ -325,6 +332,7 @@ impl<C: AffineRepr> PolyComm<C> {
     /// ## Panics
     ///
     /// Panics if `com` and `elm` are not of the same size.
+    #[cfg(not(feature = "no-std"))]
     pub fn multi_scalar_mul(com: &[&PolyComm<C>], elm: &[C::ScalarField]) -> Self {
         assert_eq!(com.len(), elm.len());
 
@@ -349,7 +357,7 @@ impl<C: AffineRepr> PolyComm<C> {
                 // practice elems_size is almost always 1
                 //
                 // (see the comment to the `benchmark_msm_parallel_vesta` MSM benchmark)
-                let subchunk_size = std::cmp::max(points.len() / 2, 1);
+                let subchunk_size = core::cmp::max(points.len() / 2, 1);
 
                 points
                     .into_par_iter()
@@ -427,6 +435,7 @@ pub trait CommitmentCurve: AffineRepr + Sub<Output = Self::Group> {
 /// A trait extending CommitmentCurve for endomorphisms.
 /// Unfortunately, we can't specify that `AffineRepr<BaseField : PrimeField>`,
 /// so usage of this traits must manually bind `G::BaseField: PrimeField`.
+#[cfg(not(feature = "no-std"))]
 pub trait EndoCurve: CommitmentCurve {
     /// Combine where x1 = one
     fn combine_one(g1: &[Self], g2: &[Self], x2: Self::ScalarField) -> Vec<Self> {
@@ -471,6 +480,7 @@ impl<P: SWCurveConfig + Clone> CommitmentCurve for SWJAffine<P> {
     }
 }
 
+#[cfg(not(feature = "no-std"))]
 impl<P: SWCurveConfig + Clone> EndoCurve for SWJAffine<P> {
     fn combine_one(g1: &[Self], g2: &[Self], x2: Self::ScalarField) -> Vec<Self> {
         crate::combine::affine_window_combine_one(g1, g2, x2)

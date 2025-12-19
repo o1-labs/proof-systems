@@ -42,6 +42,9 @@ rand_chacha.workspace = true
 ark-bn254.workspace = true
 
 [features]
+default = ["std"]
+std = []
+no-std = []
 ocaml_types = ["ocaml", "ocaml-gen"]
 
 [[bench]]

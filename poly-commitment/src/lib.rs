@@ -1,32 +1,53 @@
+#![cfg_attr(feature = "no-std", no_std)]
+
+#[cfg(feature = "no-std")]
+extern crate alloc;
+
+#[cfg(not(feature = "no-std"))]
 mod combine;
 pub mod commitment;
 pub mod error;
+#[cfg(not(feature = "no-std"))]
 pub mod hash_map_cache;
+#[cfg(not(feature = "no-std"))]
 pub mod ipa;
+#[cfg(not(feature = "no-std"))]
 pub mod kzg;
+#[cfg(not(feature = "no-std"))]
 pub mod lagrange_basis;
+#[cfg(not(feature = "no-std"))]
 pub mod precomputed_srs;
+#[cfg(not(feature = "no-std"))]
 pub mod utils;
 
 // Exposing property based tests for the SRS trait
+#[cfg(not(feature = "no-std"))]
 pub mod pbt_srs;
 
 pub use commitment::PolyComm;
 
+use crate::commitment::{BatchEvaluationProof, CommitmentCurve};
+#[cfg(not(feature = "no-std"))]
 use crate::{
-    commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve},
-    error::CommitmentError,
-    utils::DensePolynomialOrEvaluations,
+    commitment::BlindedCommitment, error::CommitmentError, utils::DensePolynomialOrEvaluations,
 };
+#[cfg(not(feature = "no-std"))]
 use ark_ec::AffineRepr;
+#[cfg(not(feature = "no-std"))]
 use ark_ff::UniformRand;
-use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
-};
+#[cfg(not(feature = "no-std"))]
+use ark_poly::EvaluationDomain;
+#[cfg(not(feature = "no-std"))]
+use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use mina_poseidon::FqSponge;
 use rand_core::{CryptoRng, RngCore};
 
-pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
+/// SRS trait for polynomial commitment schemes.
+///
+/// In no-std mode, only verification-related methods are available.
+/// Prover methods (commit, mask, etc.) require std.
+#[cfg_attr(feature = "no-std", allow(dead_code))]
+pub trait SRS<G: CommitmentCurve>: Clone + Sized {
     /// The maximum polynomial degree that can be committed to
     fn max_poly_size(&self) -> usize;
 
@@ -39,6 +60,7 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     /// commitment is saved in the commitment field of the output.
     /// The output is wrapped into a [Result] to handle the case the blinders
     /// are not the same length than the number of chunks commitments have.
+    #[cfg(not(feature = "no-std"))]
     fn mask_custom(
         &self,
         com: PolyComm<G>,
@@ -51,6 +73,7 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     /// A [BlindedCommitment] object is returned instead of a PolyComm object to
     /// keep the blinding factors and the commitment together. The blinded
     /// commitment is saved in the commitment field of the output.
+    #[cfg(not(feature = "no-std"))]
     fn mask(
         &self,
         comm: PolyComm<G>,
@@ -79,6 +102,7 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     /// See the test
     /// [crate::pbt_srs::test_regression_commit_non_hiding_expected_number_of_chunks]
     /// for an example of the number of chunks returned.
+    #[cfg(not(feature = "no-std"))]
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
@@ -91,6 +115,7 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     /// A [BlindedCommitment] object is returned instead of a PolyComm object to
     /// keep the blinding factors and the commitment together. The blinded
     /// commitment is saved in the commitment field of the output.
+    #[cfg(not(feature = "no-std"))]
     fn commit(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
@@ -106,6 +131,7 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     /// commitment is saved in the commitment field of the output.
     /// The output is wrapped into a [Result] to handle the case the blinders
     /// are not the same length than the number of chunks commitments have.
+    #[cfg(not(feature = "no-std"))]
     fn commit_custom(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
@@ -115,6 +141,7 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
 
     /// Commit to evaluations, without blinding factors.
     /// It is analogous to [SRS::commit_non_hiding] but for evaluations.
+    #[cfg(not(feature = "no-std"))]
     fn commit_evaluations_non_hiding(
         &self,
         domain: D<G::ScalarField>,
@@ -127,6 +154,7 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     /// A [BlindedCommitment] object is returned instead of a PolyComm object to
     /// keep the blinding factors and the commitment together. The blinded
     /// commitment is saved in the commitment field of the output.
+    #[cfg(not(feature = "no-std"))]
     fn commit_evaluations(
         &self,
         domain: D<G::ScalarField>,
@@ -142,6 +170,7 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     /// commitment is saved in the commitment field of the output.
     /// The output is wrapped into a [Result] to handle the case the blinders
     /// are not the same length than the number of chunks commitments have.
+    #[cfg(not(feature = "no-std"))]
     fn commit_evaluations_custom(
         &self,
         domain: D<G::ScalarField>,
@@ -158,30 +187,39 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     /// However, we do accept this behavior for the sake of simplicity in the
     /// interface, and this method will only be supposed to be used in tests in
     /// this case.
+    #[cfg(not(feature = "no-std"))]
     fn create(depth: usize) -> Self;
 
     /// Compute commitments to the lagrange basis corresponding to the given domain and
     /// cache them in the SRS
+    #[cfg(not(feature = "no-std"))]
     fn get_lagrange_basis(&self, domain: D<G::ScalarField>) -> &Vec<PolyComm<G>>;
 
     /// Same as `get_lagrange_basis` but only using the domain size.
+    #[cfg(not(feature = "no-std"))]
     fn get_lagrange_basis_from_domain_size(&self, domain_size: usize) -> &Vec<PolyComm<G>>;
 
     fn size(&self) -> usize;
 }
 
+#[cfg(not(feature = "no-std"))]
 #[allow(type_alias_bounds)]
 /// An alias to represent a polynomial (in either coefficient or
 /// evaluation form), with a set of *scalar field* elements that
 /// represent the exponent of its blinder.
 // TODO: add a string to name the polynomial
-type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>> = &'a [(
-    DensePolynomialOrEvaluations<'a, G::ScalarField, D>,
-    PolyComm<G::ScalarField>,
-)];
+pub type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>> =
+    &'a [(
+        DensePolynomialOrEvaluations<'a, G::ScalarField, D>,
+        PolyComm<G::ScalarField>,
+    )];
 
+/// Trait for opening proofs in polynomial commitment schemes.
+///
+/// In no-std mode, only the `verify` method is available.
+/// The `open` method (prover) requires std.
 pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
-    type SRS: SRS<G> + std::fmt::Debug;
+    type SRS: SRS<G> + core::fmt::Debug;
 
     /// Create an opening proof for a batch of polynomials. The parameters are
     /// the following:
@@ -197,6 +235,7 @@ pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
     /// - `sponge`: Sponge used to coin and absorb values and simulate
     ///   non-interactivity using the Fiat-Shamir transformation.
     /// - `rng`: a pseudo random number generator used for zero-knowledge
+    #[cfg(not(feature = "no-std"))]
     #[allow(clippy::too_many_arguments)]
     fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineRepr>::ScalarField>>(
         srs: &Self::SRS,
