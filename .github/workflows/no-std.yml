@@ -25,11 +25,11 @@ jobs:
           - { name: "mina-poseidon", path: "poseidon" } # https://github.com/o1-labs/mina-rust/issues/1996
           - { name: "mina-signer", path: "signer" } # https://github.com/o1-labs/mina-rust/issues/1995
           - { name: "groupmap", path: "groupmap" } # https://github.com/o1-labs/mina-rust/issues/1985
+          - { name: "o1-utils", path: "utils" } # https://github.com/o1-labs/mina-rust/issues/1988
           # TODO: Add no-std feature to these crates
           # - { name: "wasm-types", path: "crates/wasm-types" }
           # - { name: "turshi", path: "turshi" } # https://github.com/o1-labs/mina-rust/issues/1986
           # - { name: "mina-curves", path: "curves" } # https://github.com/o1-labs/mina-rust/issues/1987
-          # - { name: "o1-utils", path: "utils" } # https://github.com/o1-labs/mina-rust/issues/1988
           # - { name: "internal-tracing", path: "internal-tracing" } # https://github.com/o1-labs/mina-rust/issues/1989
           # - { name: "poly-commitment", path: "poly-commitment" } # https://github.com/o1-labs/mina-rust/issues/1990
           # - { name: "kimchi", path: "kimchi" } # https://github.com/o1-labs/mina-rust/issues/1991

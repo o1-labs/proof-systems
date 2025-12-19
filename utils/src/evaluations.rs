@@ -1,5 +1,8 @@
 //! This adds a few utility functions for the [Evaluations] arkworks type.
 
+#[cfg(feature = "no-std")]
+use alloc::vec::Vec;
+
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use rayon::prelude::*;

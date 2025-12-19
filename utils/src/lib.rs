@@ -1,6 +1,11 @@
 //! A collection of utility functions and constants that can be reused from
 //! multiple projects
 
+#![cfg_attr(feature = "no-std", no_std)]
+
+#[cfg(feature = "no-std")]
+extern crate alloc;
+
 pub mod adjacent_pairs;
 pub mod array;
 pub mod biguint_helpers;
@@ -12,6 +17,7 @@ pub mod evaluations;
 pub mod field_helpers;
 pub mod foreign_field;
 pub mod hasher;
+#[cfg(not(feature = "no-std"))]
 pub mod lazy_cache;
 pub mod math;
 pub mod serialization;
@@ -46,6 +52,7 @@ where
 }
 
 /// Utils only for testing
+#[cfg(not(feature = "no-std"))]
 pub mod tests {
     use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 

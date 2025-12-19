@@ -6,6 +6,9 @@
 //! better performance, either optimise this code, or use
 //! (non-fixed-sized) vectors.
 
+#[cfg(feature = "no-std")]
+use alloc::{boxed::Box, vec, vec::Vec};
+
 // Use a generic function so that the pointer cast remains type-safe
 /// Converts a vector of elements to a boxed one. Semantically
 /// equivalent to `vector.into_boxed_slice().try_into().unwrap()`.
@@ -26,7 +29,7 @@ pub fn vec_to_boxed_array2<T: Clone, const N: usize, const M: usize>(
         let z: Box<[T; N]> = y
             .try_into()
             .unwrap_or_else(|_| panic!("vec_to_boxed_array2: length mismatch inner array"));
-        let zz: &[[T; N]] = std::slice::from_ref(z.as_ref());
+        let zz: &[[T; N]] = core::slice::from_ref(z.as_ref());
         vec_of_slices2.extend_from_slice(zz);
     });
 
@@ -43,7 +46,7 @@ pub fn vec_to_boxed_array3<T: Clone, const N: usize, const M: usize, const K: us
     let mut vec_of_slices2: Vec<[[T; N]; M]> = vec![];
     vec.into_iter().for_each(|x| {
         let r: Box<[[T; N]; M]> = vec_to_boxed_array2(x);
-        let zz: &[[[T; N]; M]] = std::slice::from_ref(r.as_ref());
+        let zz: &[[[T; N]; M]] = core::slice::from_ref(r.as_ref());
         vec_of_slices2.extend_from_slice(zz);
     });
 
@@ -96,7 +99,7 @@ macro_rules! box_array2 {
                 let z: Box<[T; N]> = y
                     .try_into()
                     .unwrap_or_else(|_| panic!("vec_to_boxed_array2: length mismatch inner array"));
-                let zz: &[[T; N]] = std::slice::from_ref(z.as_ref());
+                let zz: &[[T; N]] = core::slice::from_ref(z.as_ref());
                 vec_of_slices2.extend_from_slice(zz);
             });
 

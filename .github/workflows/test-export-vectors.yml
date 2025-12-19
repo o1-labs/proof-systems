@@ -39,7 +39,7 @@ jobs:
       - name: Build export_test_vectors binary
         run: |
           eval $(opam env)
-          cargo build --bin export_test_vectors --all-features
+          cargo build --bin export_test_vectors
 
       - name: Test export_test_vectors commands
         run: |
@@ -55,16 +55,16 @@ jobs:
               for output_format in $OUTPUT_FORMATS; do
                 echo "Testing $format $mode --format $output_format..."
                 if [ "$output_format" = "json" ]; then
-                  cargo run --bin export_test_vectors --all-features -- $format $mode /tmp/test_${format}_${mode}.json --format $output_format
+                  cargo run --bin export_test_vectors -- $format $mode /tmp/test_${format}_${mode}.json --format $output_format
                 else
-                  cargo run --bin export_test_vectors --all-features -- $format $mode /tmp/test_${format}_${mode}.js --format $output_format
+                  cargo run --bin export_test_vectors -- $format $mode /tmp/test_${format}_${mode}.js --format $output_format
                 fi
               done
             done
           done
 
           echo "Testing stdout output..."
-          cargo run --bin export_test_vectors --all-features -- b10 legacy - > /tmp/test_stdout.json
+          cargo run --bin export_test_vectors -- b10 legacy - > /tmp/test_stdout.json
 
       - name: Verify output files
         run: |

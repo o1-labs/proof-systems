@@ -1,3 +1,4 @@
+#![cfg(not(feature = "no-std"))]
 //! This is a polyfill of the `LazyLock` type in the std library as of Rust 1.80.
 //! The current file should be deleted soon, as we now support Rust 1.81 and
 //! use the official `LazyLock`, and `LazyCache` as a wrapper around `LazyLock`

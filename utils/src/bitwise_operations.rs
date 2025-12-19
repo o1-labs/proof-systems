@@ -1,7 +1,12 @@
 //! This module provides a set of functions to perform bit operations on big integers.
 //! In particular, it gives XOR and NOT for BigUint.
+#[cfg(feature = "no-std")]
+use alloc::vec;
+#[cfg(feature = "no-std")]
+use alloc::vec::Vec;
+
+use core::cmp::{max, Ordering};
 use num_bigint::BigUint;
-use std::cmp::{max, Ordering};
 
 use crate::BigUintHelpers;
 

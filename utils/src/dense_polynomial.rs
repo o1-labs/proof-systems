@@ -1,5 +1,8 @@
 //! This adds a few utility functions for the [DensePolynomial] arkworks type.
 
+#[cfg(feature = "no-std")]
+use alloc::{vec, vec::Vec};
+
 use ark_ff::Field;
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Polynomial};
 use rayon::prelude::*;
