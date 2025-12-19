@@ -346,7 +346,7 @@ impl<
             if table_id.length() < domain_size {
                 let n_repeated_dummy_value: usize = domain_size - table_id.length() - 1;
                 let repeated_dummy_value: Vec<F> =
-                    o1_utils::repeat_n(-F::one(), n_repeated_dummy_value).collect();
+                    std::iter::repeat_n(-F::one(), n_repeated_dummy_value).collect();
                 m.extend(repeated_dummy_value);
                 m.push(F::from(n_repeated_dummy_value as u64));
             }

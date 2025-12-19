@@ -30,9 +30,6 @@ impl<F: Field> ChunkedPolynomial<F> {
     /// For example, if a polynomial can be written `f = f0 + x^n f1 + x^2n f2`
     /// (where f0, f1, f2 are of degree n-1), then this function returns the new semi-evaluated
     /// `f'(x) = f0(x) + zeta^n f1(x) + zeta^2n f2(x)`.
-    // TODO: Use is_some_and() when updating to Rust 1.85+.
-    // See <https://github.com/o1-labs/mina-rust/issues/1951>
-    #[rustversion::attr(since(1.83), allow(clippy::unnecessary_map_or))]
     pub fn linearize(&self, zeta_n: F) -> DensePolynomial<F> {
         let mut scale = F::one();
         let mut coeffs = vec![F::zero(); self.size];
@@ -45,7 +42,7 @@ impl<F: Field> ChunkedPolynomial<F> {
             scale *= zeta_n;
         }
 
-        while coeffs.last().map_or(false, |c| c.is_zero()) {
+        while coeffs.last().is_some_and(|c| c.is_zero()) {
             coeffs.pop();
         }
 

@@ -24,27 +24,6 @@ pub use evaluations::ExtendedEvaluations;
 pub use field_helpers::{BigUintFieldHelpers, FieldHelpers, RandomField, Two};
 pub use foreign_field::ForeignElement;
 
-/// Creates an iterator that repeats an element `n` times.
-/// This function is stable in Rust 1.82+ (lint exists since Rust 1.83+).
-/// We keep a manual implementation for compatibility with older Rust versions.
-/// TODO: Remove when updating to Rust 1.85+. See <https://github.com/o1-labs/mina-rust/issues/1951>
-#[rustversion::attr(since(1.83), allow(clippy::manual_repeat_n))]
-pub fn repeat_n<T: Clone>(element: T, count: usize) -> impl Iterator<Item = T> {
-    core::iter::repeat(element).take(count)
-}
-
-/// Check if `a` is a multiple of `b`.
-/// This method is stable in Rust 1.85+.
-/// We keep a manual implementation for compatibility with older Rust versions.
-/// TODO: Remove when updating to Rust 1.85+. See <https://github.com/o1-labs/mina-rust/issues/1951>
-#[rustversion::attr(since(1.85), allow(clippy::manual_is_multiple_of))]
-pub fn is_multiple_of<T>(a: T, b: T) -> bool
-where
-    T: core::ops::Rem<Output = T> + PartialEq + From<u8>,
-{
-    a % b == T::from(0u8)
-}
-
 /// Utils only for testing
 pub mod tests {
     use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
