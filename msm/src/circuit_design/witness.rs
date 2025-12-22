@@ -4,7 +4,6 @@ use crate::{
     },
     columns::{Column, ColumnIndexer},
     logup::{Logup, LogupWitness, LookupTableID},
-    proof::ProofInputs,
     witness::Witness,
 };
 use ark_ff::PrimeField;
@@ -657,20 +656,5 @@ impl<
                 }
             })
             .collect()
-    }
-
-    /// Generates proof inputs, repacking/collecting internal witness builder state.
-    pub fn get_proof_inputs(
-        &self,
-        domain_size: usize,
-        lookup_tables_data: BTreeMap<LT, Vec<Vec<Vec<F>>>>,
-    ) -> ProofInputs<N_WIT, F, LT> {
-        let evaluations = self.get_relation_witness(domain_size);
-        let logups = self.get_logup_witness(domain_size, lookup_tables_data);
-
-        ProofInputs {
-            evaluations,
-            logups,
-        }
     }
 }
