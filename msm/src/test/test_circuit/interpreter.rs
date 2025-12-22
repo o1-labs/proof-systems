@@ -1,6 +1,5 @@
 use crate::{
     circuit_design::{ColAccessCap, ColWriteCap, DirectWitnessCap, LookupCap},
-    serialization::interpreter::limb_decompose_ff,
     test::test_circuit::{
         columns::{TestColumn, N_FSEL_TEST},
         lookups::LookupTable,
@@ -8,6 +7,25 @@ use crate::{
     LIMB_BITSIZE, N_LIMBS,
 };
 use ark_ff::{Field, PrimeField, Zero};
+use num_bigint::BigUint;
+
+/// Decomposes a field element into limbs of the given bitsize.
+/// This is a simplified version of the function that was in the serialization module.
+fn limb_decompose_ff<F: PrimeField, Ff: PrimeField, const B: usize, const N: usize>(
+    input: &Ff,
+) -> [F; N] {
+    let input_bi: BigUint = (*input).into();
+    let ff_modulus: BigUint = Ff::MODULUS.into();
+    assert!(
+        input_bi < ff_modulus,
+        "Input must be smaller than the field modulus"
+    );
+    let limb_mask = (BigUint::from(1u64) << B) - 1u64;
+    core::array::from_fn(|i| {
+        let limb = (&input_bi >> (i * B)) & &limb_mask;
+        F::from(limb)
+    })
+}
 
 fn fill_limbs_a_b<
     F: PrimeField,
