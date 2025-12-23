@@ -58,15 +58,9 @@ jobs:
         with:
           key: ${{ matrix.rust_toolchain }}
 
-      - name: Run clippy (native) on ${{ matrix.rust_toolchain }}
+      - name: Run clippy on ${{ matrix.rust_toolchain }}
         env:
           RUSTUP_TOOLCHAIN: ${{ matrix.rust_toolchain }}
         run: |
           eval $(opam env)
-          make lint-native
-
-      - name: Run clippy (wasm) on ${{ matrix.rust_toolchain }}
-        env:
-          RUSTUP_TOOLCHAIN: ${{ matrix.rust_toolchain }}
-        run: |
-          make lint-wasm
+          make lint

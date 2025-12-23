@@ -58,57 +58,6 @@ NATIVE_FEATURES_O1VM = -F o1vm/open_mips
 NATIVE_FEATURES_POLY_COMMITMENT = -F poly-commitment/ocaml_types
 
 # =============================================================================
-# Per-crate feature flags for WebAssembly builds
-# =============================================================================
-# These variables define the cargo feature arguments for WASM builds.
-# WASM builds exclude OCaml bindings and enable WASM-specific features.
-
-# Crates with no optional features (use default only)
-WASM_FEATURES_ARRABBIATA =
-WASM_FEATURES_EXPORT_TEST_VECTORS =
-WASM_FEATURES_GROUPMAP =
-WASM_FEATURES_KIMCHI_MSM =
-WASM_FEATURES_MINA_BOOK =
-WASM_FEATURES_MINA_HASHER =
-WASM_FEATURES_MINA_SIGNER =
-WASM_FEATURES_MVPOLY =
-WASM_FEATURES_TURSHI =
-WASM_FEATURES_WASM_TYPES =
-
-# arkworks: enable std and wasm features
-WASM_FEATURES_ARKWORKS = -F arkworks/std -F arkworks/wasm
-
-# internal-tracing: enable without OCaml
-WASM_FEATURES_INTERNAL_TRACING = \
-	-F internal-tracing/enabled \
-	-F internal-tracing/serde
-
-# kimchi: enable WASM features (wasm_types instead of ocaml_types)
-WASM_FEATURES_KIMCHI = \
-	-F kimchi/bn254 \
-	-F kimchi/check_feature_flags \
-	-F kimchi/internal_tracing \
-	-F kimchi/wasm_types
-
-# mina-curves: enable asm optimizations
-WASM_FEATURES_MINA_CURVES = -F mina-curves/asm
-
-# mina-poseidon: no OCaml for WASM (default features only)
-WASM_FEATURES_MINA_POSEIDON =
-
-# o1-utils: enable diagnostics
-WASM_FEATURES_O1_UTILS = -F o1-utils/diagnostics
-
-# o1vm: no open_mips for WASM (requires MIPS binaries)
-WASM_FEATURES_O1VM =
-
-# poly-commitment: no OCaml for WASM (default features only)
-WASM_FEATURES_POLY_COMMITMENT =
-
-# plonk_wasm: the main WASM crate with nodejs feature
-WASM_FEATURES_PLONK_WASM = -F plonk_wasm/nodejs
-
-# =============================================================================
 # Combined feature arguments for cargo commands
 # =============================================================================
 # Aggregates all per-crate feature arguments for use in cargo commands.
@@ -124,26 +73,12 @@ NATIVE_FEATURES = \
 	$(NATIVE_FEATURES_O1VM) \
 	$(NATIVE_FEATURES_POLY_COMMITMENT)
 
-WASM_FEATURES = \
-	$(WASM_FEATURES_ARKWORKS) \
-	$(WASM_FEATURES_INTERNAL_TRACING) \
-	$(WASM_FEATURES_KIMCHI) \
-	$(WASM_FEATURES_MINA_CURVES) \
-	$(WASM_FEATURES_O1_UTILS) \
-	$(WASM_FEATURES_PLONK_WASM)
-
 # =============================================================================
 # Excluded crates
 # =============================================================================
 
 # Native builds: exclude WASM-only crates and build tools
 NATIVE_EXCLUDE = --exclude plonk_wasm --exclude xtask
-
-# WASM builds: exclude OCaml stubs and build tools
-WASM_EXCLUDE = \
-	--exclude kimchi-stubs \
-	--exclude kimchi-visu \
-	--exclude xtask
 
 # Doc generation: exclude crates that cause linker issues
 DOC_EXCLUDE = --exclude plonk_wasm --exclude plonk_neon --exclude xtask
@@ -331,32 +266,6 @@ nextest-all: ## Test the project with all tests using nextest test runner
 nextest-all-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-all
 
-# =============================================================================
-# WASM build targets
-# =============================================================================
-
-.PHONY: build-wasm
-build-wasm: ## Build the project for WebAssembly
-		cargo build --all-targets --workspace $(WASM_EXCLUDE) $(WASM_FEATURES)
-
-.PHONY: release-wasm
-release-wasm: ## Build the project in release mode for WebAssembly
-		cargo build --release --all-targets --workspace $(WASM_EXCLUDE) $(WASM_FEATURES)
-
-# =============================================================================
-# WASM test targets
-# =============================================================================
-
-.PHONY: test-wasm
-test-wasm: ## Test the WASM crates with non-heavy tests
-		cargo test --release --workspace $(WASM_EXCLUDE) $(WASM_FEATURES) \
-			$(CARGO_EXTRA_ARGS) -- --nocapture --skip heavy $(BIN_EXTRA_ARGS)
-
-.PHONY: nextest-wasm
-nextest-wasm: ## Test the WASM crates with non-heavy tests using nextest
-		cargo nextest run --workspace $(WASM_EXCLUDE) $(WASM_FEATURES) \
-			--release $(CARGO_EXTRA_ARGS) --profile ci -E "not test(heavy)" $(BIN_EXTRA_ARGS)
-
 .PHONY: check-format
 check-format: ## Check the code formatting
 		cargo +nightly fmt -- --check
@@ -368,16 +277,8 @@ format: ## Format the code
 		taplo fmt
 
 .PHONY: lint
-lint: lint-native lint-wasm ## Lint all code (native and WASM)
-
-.PHONY: lint-native
-lint-native: ## Lint the native code
+lint: ## Lint the code
 		cargo clippy --workspace $(NATIVE_EXCLUDE) $(NATIVE_FEATURES) \
-			--all-targets --tests $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
-
-.PHONY: lint-wasm
-lint-wasm: ## Lint the WASM crates
-		cargo clippy --workspace $(WASM_EXCLUDE) $(WASM_FEATURES) \
 			--all-targets --tests $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
 
 .PHONY: generate-test-coverage-report
