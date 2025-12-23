@@ -24,7 +24,6 @@ env:
   CARGO_TERM_COLOR: always
   # 30 MB of stack for Keccak tests
   RUST_MIN_STACK: 31457280
-  CARGO_EXTRA_ARGS: '--workspace'
 
 jobs:
   define-matrix:
@@ -183,7 +182,7 @@ jobs:
           matrix.rust_and_os.os == needs.define-matrix.outputs.default_os
         run: |
           eval $(opam env)
-          RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --all-features --no-deps --workspace --exclude xtask
+          make generate-doc
           cp -r ./target/doc ./book/book/html/rustdoc
 
       - name: Deploy
