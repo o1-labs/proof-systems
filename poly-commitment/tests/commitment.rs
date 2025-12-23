@@ -80,6 +80,7 @@ impl AggregatedEvaluationProof {
     pub fn verify_type(
         &self,
     ) -> BatchEvaluationProof<
+        '_,
         Vesta,
         DefaultFqSponge<VestaParameters, SC, FULL_ROUNDS>,
         OpeningProof<Vesta, FULL_ROUNDS>,
