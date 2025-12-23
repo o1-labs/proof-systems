@@ -287,13 +287,16 @@ macro_rules! impl_verification_key {
                 pub domain: NapiDomain,
                 #[napi(js_name = "max_poly_size")]
                 pub max_poly_size: i32,
+                #[napi(js_name = "public_")]
                 pub public_: i32,
+                #[napi(js_name = "prev_challenges")]
                 pub prev_challenges: i32,
                 pub srs: $NapiSrs,
                 pub evals: NapiPlonkVerificationEvals,
                 pub shifts: NapiShifts,
                 #[napi(js_name = "lookup_index")]
                 pub lookup_index: Option<NapiLookupVerifierIndex>,
+                #[napi(js_name = "zk_rows")]
                 pub zk_rows: i32,
             }
             type NapiPlonkVerifierIndex = [<Napi $field_name:camel PlonkVerifierIndex>];
