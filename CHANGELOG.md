@@ -28,8 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### [kimchi-msm](./msm)
 
-#### Changed
-- (No changes in current release)
+#### Removed
+- remove some unused code like the generic prover and the verifier
+  ([#3422](https://github.com/o1-labs/proof-systems/pull/3422))
 
 ### [kimchi-stubs](./kimchi-stubs)
 
@@ -65,8 +66,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### [o1-utils](./utils)
 
-#### Changed
-- (No changes in current release)
+#### Removed
+- Remove module `array` as it was only used by some modules from kimchi-msm
+  that are now removed.
+  ([#3422](https://github.com/o1-labs/proof-systems/pull/3422))
 
 ### [o1vm](./o1vm)
 
