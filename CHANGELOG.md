@@ -56,7 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### [mina-signer](./signer)
 
 #### Changed
-- (No changes in current release)
+- Implement (de)serialize + comparison for NetworkId, fix
+  [#3411](https://github.com/o1-labs/proof-systems/issues/3411)
+  ([#3423](https://github.com/o1-labs/proof-systems/pull/3423))
 
 ### [mvpoly](./mvpoly)
 
