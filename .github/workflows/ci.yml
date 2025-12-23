@@ -223,10 +223,14 @@ jobs:
       # Build
       #
 
-      - name: Ensure that everything builds
+      - name: Ensure that everything builds (native)
         run: |
           eval $(opam env)
-          make
+          make build
+
+      - name: Ensure that everything builds (WASM features)
+        run: |
+          make build-wasm
 
       - name: Ensure that kimchi-stubs can be built with xtask
         run: |
@@ -268,7 +272,11 @@ jobs:
       - name: Build the MIPS binaries
         uses: ./.github/actions/build-mips
 
-      - name: Run non-heavy tests without the code coverage
+      - name: Run non-heavy tests (native)
         run: |
           eval $(opam env)
           make nextest
+
+      - name: Run non-heavy tests (WASM features)
+        run: |
+          make nextest-wasm
