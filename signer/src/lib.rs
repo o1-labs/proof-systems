@@ -5,12 +5,14 @@
 extern crate alloc;
 use alloc::{vec, vec::Vec};
 use ark_ec::AffineRepr;
+use core::cmp::{Eq, PartialEq};
 pub use keypair::Keypair;
 pub use mina_curves::pasta::Pallas as CurvePoint;
 use mina_hasher::{DomainParameter, Hashable};
 pub use pubkey::{CompressedPubKey, PubKey};
 pub use schnorr::Schnorr;
 pub use seckey::SecKey;
+use serde::{Deserialize, Serialize};
 pub use signature::Signature;
 
 pub mod keypair;
@@ -26,7 +28,7 @@ pub type BaseField = <CurvePoint as AffineRepr>::BaseField;
 pub type ScalarField = <CurvePoint as AffineRepr>::ScalarField;
 
 /// Mina network (or blockchain) identifier
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum NetworkId {
     /// Id for all testnets
     TESTNET = 0x00,
