@@ -57,7 +57,6 @@ use ark_poly::{
 use blake2::{Blake2b512, Digest};
 use core::array;
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
-use poly_commitment::OpenProof;
 use rand::{CryptoRng, RngCore};
 use rayon::prelude::*;
 
@@ -193,8 +192,11 @@ where
     }
 }
 
-impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
-    ProverIndex<G, OpeningProof>
+impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
+where
+    F: PrimeField,
+    G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    Srs: poly_commitment::SRS<G>,
 {
     /// permutation quotient poly contribution computation
     ///
@@ -416,8 +418,11 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
-    ProverIndex<G, OpeningProof>
+impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
+where
+    F: PrimeField,
+    G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    Srs: poly_commitment::SRS<G>,
 {
     /// permutation aggregation polynomial computation
     ///

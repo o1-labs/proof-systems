@@ -5,6 +5,7 @@ use mina_curves::pasta::Fp;
 use mina_poseidon::{
     constants::{self, SpongeConstants},
     pasta,
+    pasta::FULL_ROUNDS,
     poseidon::{ArithmeticSponge as Poseidon, ArithmeticSpongeParams, Sponge as _},
 };
 use num_bigint::BigUint;
@@ -38,8 +39,11 @@ pub struct TestVector {
 
 /// Computes the poseidon hash of several field elements.
 /// Uses the 'basic' configuration with N states and M rounds.
-fn poseidon<SC: SpongeConstants>(input: &[Fp], params: &'static ArithmeticSpongeParams<Fp>) -> Fp {
-    let mut s = Poseidon::<Fp, SC>::new(params);
+fn poseidon<SC: SpongeConstants, const FULL_ROUNDS: usize>(
+    input: &[Fp],
+    params: &'static ArithmeticSpongeParams<Fp, FULL_ROUNDS>,
+) -> Fp {
+    let mut s = Poseidon::<Fp, SC, FULL_ROUNDS>::new(params);
     s.absorb(input);
     s.squeeze()
 }
@@ -69,11 +73,11 @@ pub fn generate(mode: Mode, param_type: ParamType, seed: Option<[u8; 32]>) -> Te
         // generate input & hash
         let input = rand_fields(rng, length);
         let output = match param_type {
-            ParamType::Legacy => poseidon::<constants::PlonkSpongeConstantsLegacy>(
+            ParamType::Legacy => poseidon::<constants::PlonkSpongeConstantsLegacy, 100>(
                 &input,
                 pasta::fp_legacy::static_params(),
             ),
-            ParamType::Kimchi => poseidon::<constants::PlonkSpongeConstantsKimchi>(
+            ParamType::Kimchi => poseidon::<constants::PlonkSpongeConstantsKimchi, FULL_ROUNDS>(
                 &input,
                 pasta::fp_kimchi::static_params(),
             ),
@@ -306,14 +310,16 @@ mod tests {
                 // generate input & hash
                 let input = rand_fields(rng, length);
                 let output = match param_type {
-                    ParamType::Legacy => poseidon::<constants::PlonkSpongeConstantsLegacy>(
+                    ParamType::Legacy => poseidon::<constants::PlonkSpongeConstantsLegacy, 100>(
                         &input,
                         pasta::fp_legacy::static_params(),
                     ),
-                    ParamType::Kimchi => poseidon::<constants::PlonkSpongeConstantsKimchi>(
-                        &input,
-                        pasta::fp_kimchi::static_params(),
-                    ),
+                    ParamType::Kimchi => {
+                        poseidon::<constants::PlonkSpongeConstantsKimchi, FULL_ROUNDS>(
+                            &input,
+                            pasta::fp_kimchi::static_params(),
+                        )
+                    }
                 };
 
                 let mut output_bytes = vec![];

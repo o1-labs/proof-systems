@@ -1,6 +1,6 @@
 extern crate alloc;
 use crate::{
-    constants::SpongeConstants,
+    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
 use alloc::{vec, vec::Vec};
@@ -10,9 +10,9 @@ use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 /// Abstracts a sponge operating on a base field `Fq` of the curve
 /// `G`. The parameter `Fr` is modelling the scalar field of the
 /// curve.
-pub trait FqSponge<Fq: Field, G, Fr> {
+pub trait FqSponge<Fq: Field, G, Fr, const FULL_ROUNDS: usize> {
     /// Creates a new sponge.
-    fn new(p: &'static ArithmeticSpongeParams<Fq>) -> Self;
+    fn new(p: &'static ArithmeticSpongeParams<Fq, FULL_ROUNDS>) -> Self;
 
     /// Absorbs a base field element. This operation is the most
     /// straightforward and calls the underlying sponge directly.
@@ -98,14 +98,27 @@ impl<F: PrimeField> ScalarChallenge<F> {
 }
 
 #[derive(Clone)]
-pub struct DefaultFqSponge<P: SWCurveConfig, SC: SpongeConstants> {
-    pub sponge: ArithmeticSponge<P::BaseField, SC>,
+pub struct DefaultFqSponge<P: SWCurveConfig, SC: SpongeConstants, const FULL_ROUNDS: usize> {
+    pub sponge: ArithmeticSponge<P::BaseField, SC, FULL_ROUNDS>,
     pub last_squeezed: Vec<u64>,
 }
 
-pub struct DefaultFrSponge<Fr: Field, SC: SpongeConstants> {
-    pub sponge: ArithmeticSponge<Fr, SC>,
+pub struct DefaultFrSponge<Fr: Field, SC: SpongeConstants, const FULL_ROUNDS: usize> {
+    pub sponge: ArithmeticSponge<Fr, SC, FULL_ROUNDS>,
     pub last_squeezed: Vec<u64>,
+}
+
+impl<const FULL_ROUNDS: usize, Fr> From<&'static ArithmeticSpongeParams<Fr, FULL_ROUNDS>>
+    for DefaultFrSponge<Fr, PlonkSpongeConstantsKimchi, FULL_ROUNDS>
+where
+    Fr: PrimeField,
+{
+    fn from(p: &'static ArithmeticSpongeParams<Fr, FULL_ROUNDS>) -> Self {
+        DefaultFrSponge {
+            sponge: ArithmeticSponge::new(p),
+            last_squeezed: vec![],
+        }
+    }
 }
 
 fn pack<B: BigInteger>(limbs_lsb: &[u64]) -> B {
@@ -117,7 +130,9 @@ fn pack<B: BigInteger>(limbs_lsb: &[u64]) -> B {
     res
 }
 
-impl<Fr: PrimeField, SC: SpongeConstants> DefaultFrSponge<Fr, SC> {
+impl<Fr: PrimeField, SC: SpongeConstants, const FULL_ROUNDS: usize>
+    DefaultFrSponge<Fr, SC, FULL_ROUNDS>
+{
     pub fn squeeze(&mut self, num_limbs: usize) -> Fr {
         if self.last_squeezed.len() >= num_limbs {
             let last_squeezed = self.last_squeezed.clone();
@@ -133,7 +148,8 @@ impl<Fr: PrimeField, SC: SpongeConstants> DefaultFrSponge<Fr, SC> {
     }
 }
 
-impl<P: SWCurveConfig, SC: SpongeConstants> DefaultFqSponge<P, SC>
+impl<P: SWCurveConfig, SC: SpongeConstants, const FULL_ROUNDS: usize>
+    DefaultFqSponge<P, SC, FULL_ROUNDS>
 where
     P::BaseField: PrimeField,
     <P::BaseField as PrimeField>::BigInt: Into<<P::ScalarField as PrimeField>::BigInt>,
@@ -163,13 +179,14 @@ where
     }
 }
 
-impl<P: SWCurveConfig, SC: SpongeConstants> FqSponge<P::BaseField, Affine<P>, P::ScalarField>
-    for DefaultFqSponge<P, SC>
+impl<P: SWCurveConfig, SC: SpongeConstants, const FULL_ROUNDS: usize>
+    FqSponge<P::BaseField, Affine<P>, P::ScalarField, FULL_ROUNDS>
+    for DefaultFqSponge<P, SC, FULL_ROUNDS>
 where
     P::BaseField: PrimeField,
     <P::BaseField as PrimeField>::BigInt: Into<<P::ScalarField as PrimeField>::BigInt>,
 {
-    fn new(params: &'static ArithmeticSpongeParams<P::BaseField>) -> DefaultFqSponge<P, SC> {
+    fn new(params: &'static ArithmeticSpongeParams<P::BaseField, FULL_ROUNDS>) -> Self {
         let sponge = ArithmeticSponge::new(params);
         DefaultFqSponge {
             sponge,

@@ -14,6 +14,7 @@ use kimchi::{
 };
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use paste::paste;
@@ -379,7 +380,7 @@ macro_rules! impl_proof {
                 }
             }
 
-            impl From<&WasmOpeningProof> for OpeningProof<$G> {
+            impl From<&WasmOpeningProof> for OpeningProof<$G, FULL_ROUNDS> {
                 fn from(x: &WasmOpeningProof) -> Self {
                     OpeningProof {
                         lr: x.lr_0.clone().into_iter().zip(x.lr_1.clone().into_iter()).map(|(x, y)| (x.into(), y.into())).collect(),
@@ -391,7 +392,7 @@ macro_rules! impl_proof {
                 }
             }
 
-            impl From<WasmOpeningProof> for OpeningProof<$G> {
+            impl From<WasmOpeningProof> for OpeningProof<$G, FULL_ROUNDS> {
                 fn from(x: WasmOpeningProof) -> Self {
                     let WasmOpeningProof {lr_0, lr_1, delta, z1, z2, sg} = x;
                     OpeningProof {
@@ -404,8 +405,8 @@ macro_rules! impl_proof {
                 }
             }
 
-            impl From<&OpeningProof<$G>> for WasmOpeningProof {
-                fn from(x: &OpeningProof<$G>) -> Self {
+            impl From<&OpeningProof<$G, FULL_ROUNDS>> for WasmOpeningProof {
+                fn from(x: &OpeningProof<$G, FULL_ROUNDS>) -> Self {
                     let (lr_0, lr_1) = x.lr.clone().into_iter().map(|(x, y)| (x.into(), y.into())).unzip();
                     WasmOpeningProof {
                         lr_0,
@@ -418,8 +419,8 @@ macro_rules! impl_proof {
                 }
             }
 
-            impl From<OpeningProof<$G>> for WasmOpeningProof {
-                fn from(x: OpeningProof<$G>) -> Self {
+            impl From<OpeningProof<$G, FULL_ROUNDS>> for WasmOpeningProof {
+                fn from(x: OpeningProof<$G, FULL_ROUNDS>) -> Self {
                     let (lr_0, lr_1) = x.lr.clone().into_iter().map(|(x, y)| (x.into(), y.into())).unzip();
                     WasmOpeningProof {
                         lr_0,
@@ -451,8 +452,8 @@ macro_rules! impl_proof {
             }
             type WasmProverProof = [<Wasm $field_name:camel ProverProof>];
 
-            impl From<(&ProverProof<$G, OpeningProof<$G>>, &Vec<$F>)> for WasmProverProof {
-                fn from((x, public): (&ProverProof<$G, OpeningProof<$G>>, &Vec<$F>)) -> Self {
+            impl From<(&ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS>, &Vec<$F>)> for WasmProverProof {
+                fn from((x, public): (&ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS>, &Vec<$F>)) -> Self {
                     let (scalars, comms) =
                         x.prev_challenges
                             .iter()
@@ -472,8 +473,8 @@ macro_rules! impl_proof {
                 }
             }
 
-            impl From<(ProverProof<$G, OpeningProof<$G>>, Vec<$F>)> for WasmProverProof {
-                fn from((x, public): (ProverProof<$G, OpeningProof<$G>>, Vec<$F>)) -> Self {
+            impl From<(ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS>, Vec<$F>)> for WasmProverProof {
+                fn from((x, public): (ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS>, Vec<$F>)) -> Self {
                     let ProverProof {ft_eval1, commitments, proof, evals , prev_challenges} = x;
                     let (scalars, comms) =
                         prev_challenges
@@ -492,7 +493,7 @@ macro_rules! impl_proof {
                 }
             }
 
-            impl From<&WasmProverProof> for (ProverProof<$G, OpeningProof<$G>>, Vec<$F>) {
+            impl From<&WasmProverProof> for (ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS>, Vec<$F>) {
                 fn from(x: &WasmProverProof) -> Self {
                     let proof = ProverProof {
                         commitments: x.commitments.clone().into(),
@@ -516,7 +517,7 @@ macro_rules! impl_proof {
                 }
             }
 
-            impl From<WasmProverProof> for (ProverProof<$G, OpeningProof<$G>>, Vec<$F>) {
+            impl From<WasmProverProof> for (ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS>, Vec<$F>) {
                 fn from(x: WasmProverProof) -> Self {
                     let proof =ProverProof {
                         commitments: x.commitments.into(),
@@ -623,7 +624,7 @@ macro_rules! impl_proof {
 
                 #[wasm_bindgen]
                 pub fn deserialize(bytes: &[u8]) -> Self {
-                    let proof: ProverProof<$G, OpeningProof<$G>> = rmp_serde::from_slice(&bytes).unwrap();
+                    let proof: ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS> = rmp_serde::from_slice(&bytes).unwrap();
                     WasmProverProof::from((proof, Vec::new()))
                 }
             }
@@ -693,15 +694,15 @@ macro_rules! impl_proof {
                         .try_into()
                         .expect("the witness should be a column of 15 vectors");
 
-                    let index: &ProverIndex<$G, OpeningProof<$G>> = &index.0.as_ref();
+                    let index: &ProverIndex<FULL_ROUNDS, $G, <OpeningProof<$G, FULL_ROUNDS> as poly_commitment::OpenProof<$G, FULL_ROUNDS>>::SRS> = &index.0.as_ref();
 
                     let public_input = witness[0][0..index.cs.public].to_vec();
 
                     // Release the runtime lock so that other threads can run using it while we generate the proof.
                     let group_map = GroupMap::<_>::setup();
                     let maybe_proof = ProverProof::create_recursive::<
-                        DefaultFqSponge<_, PlonkSpongeConstantsKimchi>,
-                        DefaultFrSponge<_, PlonkSpongeConstantsKimchi>,
+                        DefaultFqSponge<_, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+                        DefaultFrSponge<_, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
                         _>(&group_map, witness, &rust_runtime_tables, index, prev, None,
                            &mut rand::rngs::OsRng
                     );
@@ -724,10 +725,11 @@ macro_rules! impl_proof {
                     let verifier_index = &index.into();
                     let (proof, public_input) = &proof.into();
                     batch_verify::<
+                        FULL_ROUNDS,
                         $G,
-                        DefaultFqSponge<_, PlonkSpongeConstantsKimchi>,
-                        DefaultFrSponge<_, PlonkSpongeConstantsKimchi>,
-                        OpeningProof<$G>
+                        DefaultFqSponge<_, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+                        DefaultFrSponge<_, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+                        OpeningProof<$G, FULL_ROUNDS>
                     >(
                         &group_map,
                         &[Context { verifier_index, proof, public_input }]
@@ -766,10 +768,11 @@ macro_rules! impl_proof {
                     let group_map = GroupMap::<_>::setup();
 
                     batch_verify::<
+                        FULL_ROUNDS,
                         $G,
-                        DefaultFqSponge<_, PlonkSpongeConstantsKimchi>,
-                        DefaultFrSponge<_, PlonkSpongeConstantsKimchi>,
-                        OpeningProof<$G>
+                        DefaultFqSponge<_, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+                        DefaultFrSponge<_, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+                        OpeningProof<$G, FULL_ROUNDS>
                     >(&group_map, &ts)
                     .is_ok()
                 })

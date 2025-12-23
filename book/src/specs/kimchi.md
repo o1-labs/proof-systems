@@ -1709,7 +1709,7 @@ Both the prover and the verifier index, besides the common parts described above
 These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.
 
 ```rs
-pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
+pub struct ProverIndex<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, Srs> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: Arc<ConstraintSystem<G::ScalarField>>,
@@ -1725,8 +1725,7 @@ pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
 
     /// polynomial commitment keys
     #[serde(skip)]
-    #[serde(bound(deserialize = "OpeningProof::SRS: Default"))]
-    pub srs: Arc<OpeningProof::SRS>,
+    pub srs: Arc<Srs>,
 
     /// maximal size of polynomial section
     pub max_poly_size: usize,
@@ -1736,7 +1735,7 @@ pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
-    pub verifier_index: Option<VerifierIndex<G, OpeningProof>>,
+    pub verifier_index: Option<VerifierIndex<FULL_ROUNDS, G, Srs>>,
 
     /// The verifier index digest corresponding to this prover index
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -1774,7 +1773,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
+pub struct VerifierIndex<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, Srs> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -1784,8 +1783,7 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub zk_rows: u64,
     /// polynomial commitment keys
     #[serde(skip)]
-    #[serde(bound(deserialize = "OpeningProof::SRS: Default"))]
-    pub srs: Arc<OpeningProof::SRS>,
+    pub srs: Arc<Srs>,
     /// number of public inputs
     pub public: usize,
     /// number of previous evaluation challenges, for recursive proving
@@ -2072,7 +2070,11 @@ pub struct ProverCommitments<G: AffineRepr> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverProof<G: AffineRepr, OpeningProof> {
+pub struct ProverProof<G, OpeningProof, const FULL_ROUNDS: usize>
+where
+    G: CommitmentCurve,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+{
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,
 

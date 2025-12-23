@@ -1,7 +1,7 @@
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain};
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_sponge::FrSponge};
-use mina_poseidon::FqSponge;
+use mina_poseidon::{poseidon::ArithmeticSpongeParams, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{commitment::absorb_commitment, ipa::SRS, OpenProof, SRS as _};
 //TODO Parallelize
@@ -14,13 +14,8 @@ use rand::{CryptoRng, RngCore};
 
 /// This prover takes one Public Input and one Public Output.
 /// It then proves that the sum 1/(beta + table) = PI - PO
-/// where the table term are term from fixed lookup or RAMLookup.
-pub fn lookup_prove<
-    G: KimchiCurve,
-    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone,
-    EFrSponge: FrSponge<G::ScalarField>,
-    RNG,
->(
+/// where the table term are term from fixed lookup or RAMLookup
+pub fn lookup_prove<const FULL_ROUNDS: usize, G, EFqSponge, EFrSponge, RNG>(
     input: LookupProofInput<G::ScalarField>,
     acc_init: G::ScalarField,
     srs: &SRS<G>,
@@ -28,8 +23,12 @@ pub fn lookup_prove<
     mut fq_sponge: EFqSponge,
     constraint: &ELookup<G::ScalarField>,
     rng: &mut RNG,
-) -> (Proof<G>, G::ScalarField)
+) -> (Proof<FULL_ROUNDS, G>, G::ScalarField)
 where
+    G: KimchiCurve<FULL_ROUNDS>,
+    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS> + Clone,
+    EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
     G::BaseField: PrimeField,
     RNG: RngCore + CryptoRng,
 {
@@ -174,7 +173,7 @@ where
     };
     let fq_sponge_before_evaluations = fq_sponge.clone();
     // Creating fr_sponge, absorbing eval to create challenges for IPA
-    let mut fr_sponge = EFrSponge::new(G::sponge_params());
+    let mut fr_sponge = EFrSponge::from(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
     // TODO avoid cloning
     evaluations
