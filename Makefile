@@ -94,17 +94,34 @@ clean: ## Clean the project
 
 
 build: ## Build the project
-		cargo build --all-targets --all-features --workspace \
-			--exclude plonk_wasm --exclude plonk_wasm --exclude xtask
+		cargo build \
+			--all-targets \
+			--all-features \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--exclude xtask \
+			--workspace
 
 
 release: ## Build the project in release mode
-		cargo build --release --all-targets --all-features --workspace \
-			--exclude plonk_neon --exclude plonk_wasm --exclude xtask
+		cargo build \
+			--all-targets \
+			--all-features \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--exclude xtask \
+			--release \
+			--workspace \
 
 
 test-doc: ## Test the project's docs comments
-		cargo test --all-features --release --doc
+	cargo test --all-features \
+		--doc \
+		--exclude plonk_neon \
+		--exclude plonk_wasm \
+		--exclude xtask \
+		--release \
+		--workspace
 
 test-doc-with-coverage:
 		$(COVERAGE_ENV) $(MAKE) test-doc
@@ -181,7 +198,14 @@ generate-doc: ## Generate the Rust documentation
 		@echo ""
 		@echo "Generating the documentation."
 		@echo ""
-		RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps --document-private-items --workspace --exclude xtask
+		RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc \
+			--all-features \
+			--no-deps \
+			--document-private-items \
+			--workspace \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--exclude xtask
 		@echo ""
 		@echo "The documentation is available at: ./target/doc"
 		@echo ""
