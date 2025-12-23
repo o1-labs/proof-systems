@@ -1,4 +1,91 @@
 # Variables
+
+# =============================================================================
+# Per-crate feature flags for native builds
+# =============================================================================
+# These variables define the cargo feature arguments for each crate.
+# This allows fine-grained control instead of using --all-features,
+# which can enable incompatible feature combinations (e.g., OCaml features
+# for WASM crates).
+#
+# Format: -F <crate-name>/<feature> ...
+# Empty value means the crate uses only default features.
+
+# Crates with no optional features (use default only)
+NATIVE_FEATURES_ARRABBIATA =
+NATIVE_FEATURES_EXPORT_TEST_VECTORS =
+NATIVE_FEATURES_GROUPMAP =
+NATIVE_FEATURES_KIMCHI_MSM =
+NATIVE_FEATURES_KIMCHI_STUBS =
+NATIVE_FEATURES_KIMCHI_VISU =
+NATIVE_FEATURES_MINA_BOOK =
+NATIVE_FEATURES_MINA_HASHER =
+NATIVE_FEATURES_MINA_SIGNER =
+NATIVE_FEATURES_MVPOLY =
+NATIVE_FEATURES_PLONK_NEON =
+NATIVE_FEATURES_TURSHI =
+NATIVE_FEATURES_WASM_TYPES =
+
+# arkworks: enable std (wasm feature is for WASM builds only)
+NATIVE_FEATURES_ARKWORKS = -F arkworks/std
+
+# internal-tracing: enable all features for native builds
+NATIVE_FEATURES_INTERNAL_TRACING = \
+	-F internal-tracing/enabled \
+	-F internal-tracing/ocaml_types \
+	-F internal-tracing/serde
+
+# kimchi: enable native features (ocaml_types, not wasm_types)
+NATIVE_FEATURES_KIMCHI = \
+	-F kimchi/bn254 \
+	-F kimchi/check_feature_flags \
+	-F kimchi/internal_tracing \
+	-F kimchi/ocaml_types
+
+# mina-curves: enable asm optimizations
+NATIVE_FEATURES_MINA_CURVES = -F mina-curves/asm
+
+# mina-poseidon: enable OCaml bindings
+NATIVE_FEATURES_MINA_POSEIDON = -F mina-poseidon/ocaml_types
+
+# o1-utils: enable diagnostics
+NATIVE_FEATURES_O1_UTILS = -F o1-utils/diagnostics
+
+# o1vm: enable open_mips for MIPS support
+NATIVE_FEATURES_O1VM = -F o1vm/open_mips
+
+# poly-commitment: enable OCaml bindings
+NATIVE_FEATURES_POLY_COMMITMENT = -F poly-commitment/ocaml_types
+
+# =============================================================================
+# Combined feature arguments for cargo commands
+# =============================================================================
+# Aggregates all per-crate feature arguments for use in cargo commands.
+# Use with: cargo <cmd> --workspace $(NATIVE_EXCLUDE) $(NATIVE_FEATURES)
+
+NATIVE_FEATURES = \
+	$(NATIVE_FEATURES_ARKWORKS) \
+	$(NATIVE_FEATURES_INTERNAL_TRACING) \
+	$(NATIVE_FEATURES_KIMCHI) \
+	$(NATIVE_FEATURES_MINA_CURVES) \
+	$(NATIVE_FEATURES_MINA_POSEIDON) \
+	$(NATIVE_FEATURES_O1_UTILS) \
+	$(NATIVE_FEATURES_O1VM) \
+	$(NATIVE_FEATURES_POLY_COMMITMENT)
+
+# =============================================================================
+# Excluded crates
+# =============================================================================
+
+# Native builds: exclude WASM-only crates and build tools
+NATIVE_EXCLUDE = --exclude plonk_wasm --exclude xtask
+
+# Doc generation: exclude crates that cause linker issues
+DOC_EXCLUDE = --exclude plonk_wasm --exclude plonk_neon --exclude xtask
+
+# =============================================================================
+# Coverage and other existing variables
+# =============================================================================
 # Known coverage limitations and issues:
 # - https://github.com/rust-lang/rust/issues/79417
 # - https://github.com/nextest-rs/nextest/issues/16
@@ -40,11 +127,17 @@ NIGHTLY_RUST_VERSION ?= nightly-2024-09-05
 PLONK_WASM_NODEJS_OUTDIR ?= target/nodejs
 PLONK_WASM_WEB_OUTDIR ?= target/web
 
-# Default target
+# =============================================================================
+# Default and setup targets
+# =============================================================================
+
+.PHONY: all
 all: release
 
+.PHONY: setup
 setup: setup-git setup-wasm-toolchain
 
+.PHONY: setup-git
 setup-git:
 		@echo ""
 		@echo "Syncing the Git submodules."
@@ -54,6 +147,7 @@ setup-git:
 		@echo ""
 		@echo "Git submodules synced."
 
+.PHONY: setup-wasm-toolchain
 setup-wasm-toolchain:
 		@ARCH=$$(uname -m); \
 		OS=$$(uname -s | tr A-Z a-z); \
@@ -75,6 +169,7 @@ setup-wasm-toolchain:
 # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
 # FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
 # FIXME: latest 0.8.19+ requires rustc 1.74+
+.PHONY: install-test-deps
 install-test-deps: ## Install test dependencies
 		@echo ""
 		@echo "Installing the test dependencies."
@@ -86,83 +181,107 @@ install-test-deps: ## Install test dependencies
 		@echo "Test dependencies installed."
 		@echo ""
 
-
+.PHONY: clean
 clean: ## Clean the project
 		@cargo clean
 		@rm -rf $(O1VM_RISCV32IM_BIN_FILES)
 		@rm -rf $(O1VM_MIPS_BIN_DIR)
 
 
-build: ## Build the project
-		cargo build --all-targets --all-features --workspace \
-			--exclude plonk_wasm --exclude plonk_wasm --exclude xtask
+# =============================================================================
+# Native build targets
+# =============================================================================
 
+.PHONY: build
+build: ## Build the project (native)
+		cargo build --all-targets --workspace $(NATIVE_EXCLUDE) $(NATIVE_FEATURES)
 
-release: ## Build the project in release mode
-		cargo build --release --all-targets --all-features --workspace \
-			--exclude plonk_neon --exclude plonk_wasm --exclude xtask
+.PHONY: release
+release: ## Build the project in release mode (native)
+		cargo build --release --all-targets --workspace $(NATIVE_EXCLUDE) $(NATIVE_FEATURES)
 
+# =============================================================================
+# Native test targets
+# =============================================================================
 
-test-doc: ## Test the project's docs comments
-		cargo test --all-features --release --doc
+.PHONY: test-doc
+test-doc: ## Test the project's docs comments (native)
+		cargo test --release --doc --workspace $(DOC_EXCLUDE) $(NATIVE_FEATURES)
 
+.PHONY: test-doc-with-coverage
 test-doc-with-coverage:
 		$(COVERAGE_ENV) $(MAKE) test-doc
 
+.PHONY: test
+test: ## Test the project with non-heavy tests using native cargo test runner
+		cargo test --release --workspace $(NATIVE_EXCLUDE) $(NATIVE_FEATURES) \
+			$(CARGO_EXTRA_ARGS) -- --nocapture --skip heavy $(BIN_EXTRA_ARGS)
 
-test: ## Test the project with non-heavy tests and using native cargo test runner
-		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture --skip heavy $(BIN_EXTRA_ARGS)
-
+.PHONY: test-with-coverage
 test-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test
 
+.PHONY: test-heavy
+test-heavy: ## Test the project with heavy tests using native cargo test runner
+		cargo test --release --workspace $(NATIVE_EXCLUDE) $(NATIVE_FEATURES) \
+			$(CARGO_EXTRA_ARGS) -- --nocapture heavy $(BIN_EXTRA_ARGS)
 
-test-heavy: ## Test the project with heavy tests and using native cargo test runner
-		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture heavy $(BIN_EXTRA_ARGS)
-
+.PHONY: test-heavy-with-coverage
 test-heavy-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test-heavy
 
+.PHONY: test-all
+test-all: ## Test the project with all tests using native cargo test runner
+		cargo test --release --workspace $(NATIVE_EXCLUDE) $(NATIVE_FEATURES) \
+			$(CARGO_EXTRA_ARGS) -- --nocapture $(BIN_EXTRA_ARGS)
 
-test-all: ## Test the project with all tests and using native cargo test runner
-		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture $(BIN_EXTRA_ARGS)
-
+.PHONY: test-all-with-coverage
 test-all-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test-all
 
+.PHONY: nextest
+nextest: ## Test the project with non-heavy tests using nextest test runner
+		cargo nextest run --workspace $(NATIVE_EXCLUDE) $(NATIVE_FEATURES) \
+			--release $(CARGO_EXTRA_ARGS) --profile ci -E "not test(heavy)" $(BIN_EXTRA_ARGS)
 
-nextest: ## Test the project with non-heavy tests and using nextest test runner
-		cargo nextest run --all --all-features --exclude xtask --release $(CARGO_EXTRA_ARGS) --profile ci -E "not test(heavy)" $(BIN_EXTRA_ARGS)
-
+.PHONY: nextest-with-coverage
 nextest-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest
 
+.PHONY: nextest-heavy
+nextest-heavy: ## Test the project with heavy tests using nextest test runner
+		cargo nextest run --workspace $(NATIVE_EXCLUDE) $(NATIVE_FEATURES) \
+			--release $(CARGO_EXTRA_ARGS) --profile ci -E "test(heavy)" $(BIN_EXTRA_ARGS)
 
-nextest-heavy: ## Test the project with heavy tests and using nextest test runner
-		cargo nextest run --all-features --release $(CARGO_EXTRA_ARGS) --profile ci -E "test(heavy)" $(BIN_EXTRA_ARGS)
-
+.PHONY: nextest-heavy-with-coverage
 nextest-heavy-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-heavy
 
+.PHONY: nextest-all
+nextest-all: ## Test the project with all tests using nextest test runner
+		cargo nextest run --workspace $(NATIVE_EXCLUDE) $(NATIVE_FEATURES) \
+			--release $(CARGO_EXTRA_ARGS) --profile ci $(BIN_EXTRA_ARGS)
 
-nextest-all: ## Test the project with all tests and using nextest test runner
-		cargo nextest run --all-features --release $(CARGO_EXTRA_ARGS) --profile ci $(BIN_EXTRA_ARGS)
-
+.PHONY: nextest-all-with-coverage
 nextest-all-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-all
 
-
+.PHONY: check-format
 check-format: ## Check the code formatting
 		cargo +nightly fmt -- --check
 		taplo fmt --check
 
+.PHONY: format
 format: ## Format the code
 		cargo +nightly fmt
 		taplo fmt
 
+.PHONY: lint
 lint: ## Lint the code
-		cargo clippy --all --all-features --all-targets --tests $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
+		cargo clippy --workspace $(NATIVE_EXCLUDE) $(NATIVE_FEATURES) \
+			--all-targets --tests $(CARGO_EXTRA_ARGS) -- -W clippy::all -D warnings
 
+.PHONY: generate-test-coverage-report
 generate-test-coverage-report: ## Generate the code coverage report
 		@echo ""
 		@echo "Generating the test coverage report."
@@ -177,19 +296,22 @@ generate-test-coverage-report: ## Generate the code coverage report
 		@echo "The test coverage report is available at: ./target/coverage"
 		@echo ""
 
-generate-doc: ## Generate the Rust documentation
+.PHONY: generate-doc
+generate-doc: ## Generate the Rust documentation (native)
 		@echo ""
 		@echo "Generating the documentation."
 		@echo ""
-		RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps --document-private-items --workspace --exclude xtask
+		RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc \
+			--no-deps --workspace $(DOC_EXCLUDE) $(NATIVE_FEATURES)
 		@echo ""
 		@echo "The documentation is available at: ./target/doc"
 		@echo ""
 
+.PHONY: help
 help: ## Ask for help!
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-
+.PHONY: setup-riscv32-toolchain
 setup-riscv32-toolchain: ## Download and compile the RISC-V 32bits toolchain
 		@echo ""
 		@echo "Setting up the RISC-V 32-bit toolchain"
@@ -203,6 +325,7 @@ setup-riscv32-toolchain: ## Download and compile the RISC-V 32bits toolchain
 		@echo "RISC-V 32-bits toolchain is ready in ${RISCV32_TOOLCHAIN_PATH}/build"
 		@echo ""
 
+.PHONY: build-riscv32-programs
 build-riscv32-programs: setup-riscv32-toolchain ${O1VM_RISCV32IM_BIN_FILES} ## Build all RISC-V 32 bits programs written for the o1vm
 
 ${O1VM_RISCV32IM_BIN_DIR}/%.o: ${O1VM_RISCV32IM_SOURCE_DIR}/%.S
@@ -214,6 +337,7 @@ ${O1VM_RISCV32IM_BIN_DIR}/%.o: ${O1VM_RISCV32IM_SOURCE_DIR}/%.S
 		${RISCV32_TOOLCHAIN_PATH}/build/bin/riscv32-unknown-elf-ld -s -o $(basename $@) $@
 		@echo ""
 
+.PHONY: build-mips-programs
 build-mips-programs: ${O1VM_MIPS_SOURCE_FILES} ${O1VM_MIPS_BIN_FILES} ## Build all MIPS programs written for the o1vm
 
 ${O1VM_MIPS_SOURCE_DIR}/%.asm: ${OPTIMISM_MIPS_SOURCE_DIR}/%.asm
@@ -238,6 +362,7 @@ ${O1VM_MIPS_BIN_DIR}/%.o: ${O1VM_MIPS_SOURCE_DIR}/%.asm
 		@${MIPS_AS} -defsym big_endian=1 -march=mips32r2 -o $@ $<
 		@${MIPS_LD} -s -o $(basename $@) $@
 
+.PHONY: fclean
 fclean: clean ## Clean the tooling artefacts in addition to running clean
 		rm -rf ${RISCV32_TOOLCHAIN_PATH}
 
@@ -254,5 +379,3 @@ build-web: ## Compile the Kimchi library into WebAssembly to be used in the brow
 		--target web \
 		--out-dir ${PLONK_WASM_WEB_OUTDIR} \
 		--rust-version $(NIGHTLY_RUST_VERSION)
-
-.PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs check-format

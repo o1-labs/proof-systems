@@ -62,32 +62,5 @@ jobs:
         env:
           RUSTUP_TOOLCHAIN: ${{ matrix.rust_toolchain }}
         run: |
-          # Load OCaml environment
           eval $(opam env)
-
-          # List of crates to exclude (not yet fixed for this Rust version)
-          # Remove crates from this list as they are fixed.
-          # See https://github.com/o1-labs/mina-rust/issues/1926 for tracking.
-          EXCLUDED_CRATES=(
-          )
-
-          # Count workspace members
-          WORKSPACE_MEMBERS=$(cargo metadata --no-deps --format-version 1 | jq '.packages | length')
-          EXCLUDED_COUNT=${#EXCLUDED_CRATES[@]}
-
-          echo "Rust toolchain: ${{ matrix.rust_toolchain }}"
-          echo "Workspace has $WORKSPACE_MEMBERS crates, excluding $EXCLUDED_COUNT"
-
-          if [ "$WORKSPACE_MEMBERS" -eq "$EXCLUDED_COUNT" ]; then
-            echo "All crates are excluded, nothing to lint."
-            exit 0
-          fi
-
-          # Build the exclude arguments
-          EXCLUDE_ARGS=""
-          for crate in "${EXCLUDED_CRATES[@]}"; do
-            EXCLUDE_ARGS="$EXCLUDE_ARGS --exclude $crate"
-          done
-
-          # Run clippy with exclusions
-          cargo clippy --workspace $EXCLUDE_ARGS --all-features --all-targets -- -W clippy::all -D warnings
+          make lint
