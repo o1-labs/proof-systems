@@ -99,8 +99,8 @@ WASM_FEATURES_MINA_POSEIDON =
 # o1-utils: enable diagnostics
 WASM_FEATURES_O1_UTILS = -F o1-utils/diagnostics
 
-# o1vm: enable open_mips
-WASM_FEATURES_O1VM = -F o1vm/open_mips
+# o1vm: no open_mips for WASM (requires MIPS binaries)
+WASM_FEATURES_O1VM =
 
 # poly-commitment: no OCaml for WASM (default features only)
 WASM_FEATURES_POLY_COMMITMENT =
@@ -130,7 +130,6 @@ WASM_FEATURES = \
 	$(WASM_FEATURES_KIMCHI) \
 	$(WASM_FEATURES_MINA_CURVES) \
 	$(WASM_FEATURES_O1_UTILS) \
-	$(WASM_FEATURES_O1VM) \
 	$(WASM_FEATURES_PLONK_WASM)
 
 # =============================================================================
