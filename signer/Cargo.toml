@@ -24,5 +24,6 @@ mina-hasher.workspace = true
 num-bigint.workspace = true
 o1-utils.workspace = true
 rand.workspace = true
+serde.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
