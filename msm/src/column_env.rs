@@ -123,40 +123,6 @@ impl<
         }
     }
 
-    fn column_domain(&self, col: &Self::Column) -> Domain {
-        match *col {
-            Self::Column::Relation(_)
-            | Self::Column::DynamicSelector(_)
-            | Self::Column::FixedSelector(_) => {
-                let domain_size = match *col {
-                    Self::Column::Relation(i) => self.witness[i].domain().size,
-                    Self::Column::DynamicSelector(i) => self.witness[N_REL + i].domain().size,
-                    Self::Column::FixedSelector(i) => self.fixed_selectors[i].domain().size,
-                    _ => panic!("Impossible"),
-                };
-                if self.domain.d1.size == domain_size {
-                    Domain::D1
-                } else if self.domain.d2.size == domain_size {
-                    Domain::D2
-                } else if self.domain.d4.size == domain_size {
-                    Domain::D4
-                } else if self.domain.d8.size == domain_size {
-                    Domain::D8
-                } else {
-                    panic!("Domain not supported. We do support the following multiple of the domain registered in the environment: 1, 2, 4, 8")
-                }
-            }
-            Self::Column::LookupAggregation
-            | Self::Column::LookupFixedTable(_)
-            | Self::Column::LookupMultiplicity(_)
-            | Self::Column::LookupPartialSum(_) => {
-                // When there is a lookup, we do suppose the domain is always D8
-                // and we have at leat 6 lookups per row.
-                Domain::D8
-            }
-        }
-    }
-
     fn get_constants(&self) -> &Constants<F> {
         &self.constants
     }
