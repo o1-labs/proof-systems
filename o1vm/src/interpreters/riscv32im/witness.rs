@@ -290,7 +290,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let pos = self.alloc_scratch();
         let res = if *x == 0 { 1 } else { 0 };
         self.write_column(pos, res);
-        // write the non deterministic advice inv_or_zero
+        // write the non-deterministic advice inv_or_zero
         let pos = self.alloc_scratch_inverse();
         if *x == 0 {
             self.write_field_column(pos, Fp::zero());
