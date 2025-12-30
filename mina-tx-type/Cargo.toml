@@ -1,0 +1,21 @@
+[package]
+name = "mina-tx-type"
+version = "0.1.0"
+description = "Mina Protocol transaction types for external use"
+repository = "https://github.com/o1-labs/proof-systems"
+homepage = "https://o1-labs.github.io/proof-systems/"
+documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+readme = "README.md"
+edition = "2021"
+license = "Apache-2.0"
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = []
+std = []
+
+[dependencies]
+mina-signer.workspace = true
+serde = { workspace = true, optional = true }
