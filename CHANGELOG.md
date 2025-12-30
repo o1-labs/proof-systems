@@ -85,6 +85,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `into_domain_string()` method to `NetworkId` for domain string conversion
   ([#3428](https://github.com/o1-labs/proof-systems/pull/3428))
 
+### [mina-tx-type](./mina-tx-type)
+
+#### Added
+- New crate providing `no_std` compatible Mina transaction types for external use
+  (hardware wallets, WASM). Implements [o1-labs/mina-rust#1665](https://github.com/o1-labs/mina-rust/issues/1665).
+- Currency types: `Amount`, `Fee`, `Signed<T>`, `Sgn`, `Magnitude` trait, `MinMax` trait
+- Transaction types: `Coinbase`, `CoinbaseFeeTransfer`
+
 ### [mvpoly](./mvpoly)
 
 #### Changed
