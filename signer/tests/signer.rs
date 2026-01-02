@@ -633,3 +633,16 @@ pub fn test_testnet_compatibility_corner_case() {
     let exp_output = "5775053650311195327575287700717960521187241946253469084251372495989542569423";
     assert_eq!(nonce.to_string(), exp_output);
 }
+
+#[test]
+fn test_network_id_serialization() {
+    use mina_hasher::DomainParameter;
+
+    // Test u8 conversion via From trait
+    assert_eq!(u8::from(NetworkId::TESTNET), 0);
+    assert_eq!(u8::from(NetworkId::MAINNET), 1);
+
+    // Test DomainParameter::into_bytes serialization
+    assert_eq!(NetworkId::TESTNET.into_bytes(), vec![0]);
+    assert_eq!(NetworkId::MAINNET.into_bytes(), vec![1]);
+}
