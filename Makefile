@@ -125,42 +125,76 @@ test-doc-with-coverage:
 
 
 test: ## Test the project with non-heavy tests and using native cargo test runner
-		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture --skip heavy $(BIN_EXTRA_ARGS)
+		cargo test \
+			--all-features \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--release $(CARGO_EXTRA_ARGS) \
+			-- --nocapture \
+			--skip heavy $(BIN_EXTRA_ARGS)
 
 test-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test
 
 
 test-heavy: ## Test the project with heavy tests and using native cargo test runner
-		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture heavy $(BIN_EXTRA_ARGS)
+		cargo test \
+			--all-features \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--release $(CARGO_EXTRA_ARGS) \
+			-- --nocapture heavy $(BIN_EXTRA_ARGS)
 
 test-heavy-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test-heavy
 
 
 test-all: ## Test the project with all tests and using native cargo test runner
-		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture $(BIN_EXTRA_ARGS)
+		cargo test \
+			--all-features \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--release $(CARGO_EXTRA_ARGS) \
+			-- --nocapture $(BIN_EXTRA_ARGS)
 
 test-all-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test-all
 
 
 nextest: ## Test the project with non-heavy tests and using nextest test runner
-		cargo nextest run --all --all-features --exclude xtask --release $(CARGO_EXTRA_ARGS) --profile ci -E "not test(heavy)" $(BIN_EXTRA_ARGS)
+		cargo nextest run \
+			--all \
+			--all-features \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--release $(CARGO_EXTRA_ARGS) \
+			--profile ci \
+			-E "not test(heavy)" $(BIN_EXTRA_ARGS)
 
 nextest-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest
 
 
 nextest-heavy: ## Test the project with heavy tests and using nextest test runner
-		cargo nextest run --all-features --release $(CARGO_EXTRA_ARGS) --profile ci -E "test(heavy)" $(BIN_EXTRA_ARGS)
+		cargo nextest run \
+			--all-features \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--release $(CARGO_EXTRA_ARGS) \
+			--profile ci \
+			-E "test(heavy)" $(BIN_EXTRA_ARGS)
 
 nextest-heavy-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-heavy
 
 
 nextest-all: ## Test the project with all tests and using nextest test runner
-		cargo nextest run --all-features --release $(CARGO_EXTRA_ARGS) --profile ci $(BIN_EXTRA_ARGS)
+		cargo nextest run \
+			--all-features \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--release $(CARGO_EXTRA_ARGS) \
+			--profile ci $(BIN_EXTRA_ARGS)
 
 nextest-all-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-all
