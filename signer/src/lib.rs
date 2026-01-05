@@ -3,7 +3,12 @@
 #![no_std]
 
 extern crate alloc;
-use alloc::{vec, vec::Vec};
+
+use alloc::{
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 use ark_ec::AffineRepr;
 use core::cmp::{Eq, PartialEq};
 pub use keypair::Keypair;
@@ -40,6 +45,24 @@ pub enum NetworkId {
 impl From<NetworkId> for u8 {
     fn from(id: NetworkId) -> u8 {
         id as u8
+    }
+}
+
+impl NetworkId {
+    /// Convert the network ID to its domain string representation for
+    /// cryptographic hashing.
+    ///
+    /// This is used in the `Hashable` trait's `domain_string` method to provide
+    /// domain separation for signature hashing.
+    ///
+    /// Returns:
+    /// - `"MinaSignatureMainnet"` for `NetworkId::MAINNET`
+    /// - `"CodaSignature"` for `NetworkId::TESTNET`
+    pub fn into_domain_string(self) -> String {
+        match self {
+            NetworkId::MAINNET => "MinaSignatureMainnet".to_string(),
+            NetworkId::TESTNET => "CodaSignature".to_string(),
+        }
     }
 }
 
@@ -105,8 +128,8 @@ pub fn create_legacy<H: 'static + Hashable>(domain_param: H::D) -> impl Signer<H
     schnorr::create_legacy::<H>(domain_param)
 }
 
-/// Create an experimental kimchi signer context with domain parameters
-/// initialized with `domain_param`
+/// Create a kimchi signer context for ZkApp signing (Berkeley upgrade)
+/// with domain parameters initialized with `domain_param`
 ///
 /// **Example**
 ///
