@@ -54,8 +54,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### [mina-hasher](./hasher)
 
+#### Added
+- Add unit tests for `domain_prefix_to_field` padding behavior
+  ([#3428](https://github.com/o1-labs/proof-systems/pull/3428))
+
 #### Changed
-- (No changes in current release)
+- Document asterisk padding behavior in `domain_prefix_to_field`
+  ([#3428](https://github.com/o1-labs/proof-systems/pull/3428))
+- Move `MAX_DOMAIN_STRING_LEN` to module-level constant
+  ([#3428](https://github.com/o1-labs/proof-systems/pull/3428))
 
 ### [mina-poseidon](./poseidon)
 
@@ -70,6 +77,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement (de)serialize + comparison for NetworkId, fix
   [#3411](https://github.com/o1-labs/proof-systems/issues/3411)
   ([#3423](https://github.com/o1-labs/proof-systems/pull/3423))
+
+#### Added
+- Add `into_domain_string()` method to `NetworkId` for domain string conversion
+  ([#3428](https://github.com/o1-labs/proof-systems/pull/3428))
 
 ### [mvpoly](./mvpoly)
 
