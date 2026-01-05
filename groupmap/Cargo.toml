@@ -1,17 +1,17 @@
 [package]
 name = "groupmap"
-version = "0.1.0"
-description = "A group map implementation"
-repository = "https://github.com/o1-labs/proof-systems"
-homepage = "https://o1-labs.github.io/proof-systems/"
-documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
-readme = "../README.md"
 authors = [
   "Rebekah Mercer <github@rbkhmrcr.com>",
   "Izaak Meckler <izaak@o1labs.org>",
 ]
-edition = "2021"
-license = "Apache-2.0"
+description = "A group map implementation"
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme = "../README.md"
+repository.workspace = true
+version.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
