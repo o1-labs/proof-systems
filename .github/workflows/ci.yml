@@ -267,6 +267,7 @@ jobs:
           tool: nextest@0.9.67, grcov@0.8.13
 
       - name: Build the MIPS binaries
+        if: runner.os == 'Linux'
         uses: ./.github/actions/build-mips
 
       - name: Run non-heavy tests without the code coverage

@@ -94,7 +94,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[cfg_attr(not(feature = "open_mips"), ignore)]
+    #[cfg_attr(any(not(feature = "open_mips"), target_os = "macos"), ignore)]
     fn open_mips_tests() {
         let test_dir = "resources/programs/mips/bin";
         let test_files: Vec<MipsTest> = fs::read_dir(test_dir)
