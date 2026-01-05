@@ -59,10 +59,6 @@ jobs:
               {"rust_toolchain_version": "1.92", "os": "ubuntu-latest"},
               {"rust_toolchain_version": "stable", "os": "ubuntu-latest"},
               {"rust_toolchain_version": "beta", "os": "ubuntu-latest"},
-              {"rust_toolchain_version": "1.81", "os": "ubuntu-24.04-arm"},
-              {"rust_toolchain_version": "1.92", "os": "ubuntu-24.04-arm"},
-              {"rust_toolchain_version": "stable", "os": "ubuntu-24.04-arm"},
-              {"rust_toolchain_version": "beta", "os": "ubuntu-24.04-arm"},
               {"rust_toolchain_version": "stable", "os": "macos-latest"},
               {"rust_toolchain_version": "beta", "os": "macos-latest"}
             ]
@@ -183,7 +179,7 @@ jobs:
           matrix.rust_and_os.os == needs.define-matrix.outputs.default_os
         run: |
           eval $(opam env)
-          RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --all-features --no-deps --workspace --exclude xtask
+          make generate-doc
           cp -r ./target/doc ./book/book/html/rustdoc
 
       - name: Deploy
@@ -267,6 +263,7 @@ jobs:
           tool: nextest@0.9.67, grcov@0.8.13
 
       - name: Build the MIPS binaries
+        if: runner.os == 'Linux'
         uses: ./.github/actions/build-mips
 
       - name: Run non-heavy tests without the code coverage

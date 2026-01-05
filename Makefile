@@ -94,59 +94,107 @@ clean: ## Clean the project
 
 
 build: ## Build the project
-		cargo build --all-targets --all-features --workspace \
-			--exclude plonk_wasm --exclude plonk_wasm --exclude xtask
+		cargo build \
+			--all-targets \
+			--all-features \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--workspace
 
 
 release: ## Build the project in release mode
-		cargo build --release --all-targets --all-features --workspace \
-			--exclude plonk_neon --exclude plonk_wasm --exclude xtask
+		cargo build \
+			--all-targets \
+			--all-features \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--release \
+			--workspace
 
 
 test-doc: ## Test the project's docs comments
-		cargo test --all-features --release --doc
+	cargo test --all-features \
+		--doc \
+		--exclude plonk_neon \
+		--exclude plonk_wasm \
+		--release \
+		--workspace
 
 test-doc-with-coverage:
 		$(COVERAGE_ENV) $(MAKE) test-doc
 
 
 test: ## Test the project with non-heavy tests and using native cargo test runner
-		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture --skip heavy $(BIN_EXTRA_ARGS)
+		cargo test \
+			--all-features \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--release $(CARGO_EXTRA_ARGS) \
+			-- --nocapture \
+			--skip heavy $(BIN_EXTRA_ARGS)
 
 test-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test
 
 
 test-heavy: ## Test the project with heavy tests and using native cargo test runner
-		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture heavy $(BIN_EXTRA_ARGS)
+		cargo test \
+			--all-features \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--release $(CARGO_EXTRA_ARGS) \
+			-- --nocapture heavy $(BIN_EXTRA_ARGS)
 
 test-heavy-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test-heavy
 
 
 test-all: ## Test the project with all tests and using native cargo test runner
-		cargo test --all-features --release $(CARGO_EXTRA_ARGS) -- --nocapture $(BIN_EXTRA_ARGS)
+		cargo test \
+			--all-features \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--release $(CARGO_EXTRA_ARGS) \
+			-- --nocapture $(BIN_EXTRA_ARGS)
 
 test-all-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) test-all
 
 
 nextest: ## Test the project with non-heavy tests and using nextest test runner
-		cargo nextest run --all --all-features --exclude xtask --release $(CARGO_EXTRA_ARGS) --profile ci -E "not test(heavy)" $(BIN_EXTRA_ARGS)
+		cargo nextest run \
+			--all \
+			--all-features \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--release $(CARGO_EXTRA_ARGS) \
+			--profile ci \
+			-E "not test(heavy)" $(BIN_EXTRA_ARGS)
 
 nextest-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest
 
 
 nextest-heavy: ## Test the project with heavy tests and using nextest test runner
-		cargo nextest run --all-features --release $(CARGO_EXTRA_ARGS) --profile ci -E "test(heavy)" $(BIN_EXTRA_ARGS)
+		cargo nextest run \
+			--all-features \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--release $(CARGO_EXTRA_ARGS) \
+			--profile ci \
+			-E "test(heavy)" $(BIN_EXTRA_ARGS)
 
 nextest-heavy-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-heavy
 
 
 nextest-all: ## Test the project with all tests and using nextest test runner
-		cargo nextest run --all-features --release $(CARGO_EXTRA_ARGS) --profile ci $(BIN_EXTRA_ARGS)
+		cargo nextest run \
+			--all-features \
+			--exclude plonk_neon \
+			--exclude plonk_wasm \
+			--release $(CARGO_EXTRA_ARGS) \
+			--profile ci $(BIN_EXTRA_ARGS)
 
 nextest-all-with-coverage:
 		$(COVERAGE_ENV) CARGO_EXTRA_ARGS="$(CARGO_EXTRA_ARGS)" BIN_EXTRA_ARGS="$(BIN_EXTRA_ARGS)" $(MAKE) nextest-all
@@ -181,7 +229,13 @@ generate-doc: ## Generate the Rust documentation
 		@echo ""
 		@echo "Generating the documentation."
 		@echo ""
-		RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps --document-private-items --workspace --exclude xtask
+		RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc \
+			--all-features \
+			--no-deps \
+			--document-private-items \
+			--workspace \
+			--exclude plonk_neon \
+			--exclude plonk_wasm
 		@echo ""
 		@echo "The documentation is available at: ./target/doc"
 		@echo ""
