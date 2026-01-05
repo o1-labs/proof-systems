@@ -59,10 +59,6 @@ jobs:
               {"rust_toolchain_version": "1.92", "os": "ubuntu-latest"},
               {"rust_toolchain_version": "stable", "os": "ubuntu-latest"},
               {"rust_toolchain_version": "beta", "os": "ubuntu-latest"},
-              {"rust_toolchain_version": "1.81", "os": "ubuntu-24.04-arm"},
-              {"rust_toolchain_version": "1.92", "os": "ubuntu-24.04-arm"},
-              {"rust_toolchain_version": "stable", "os": "ubuntu-24.04-arm"},
-              {"rust_toolchain_version": "beta", "os": "ubuntu-24.04-arm"},
               {"rust_toolchain_version": "stable", "os": "macos-latest"},
               {"rust_toolchain_version": "beta", "os": "macos-latest"}
             ]
