@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["LookupError"],"struct":["LookupConstraintSystem","LookupSelectors"]};
+window.SIDEBAR_ITEMS = {"enum":["LookupError"],"struct":["LookupConstraintSystem","LookupSelectors","LookupSelectorsSerdeAs"]};

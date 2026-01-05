@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["CamlTraces"]};
+window.SIDEBAR_ITEMS = {"constant":["_DERIVE_ocaml_FromValue_from_value_lifetime_FOR_CamlTraces","_DERIVE_ocaml_IntoValue_FOR_CamlTraces"],"struct":["CamlTraces"]};

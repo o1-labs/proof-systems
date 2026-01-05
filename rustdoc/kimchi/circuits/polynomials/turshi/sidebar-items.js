@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["CIRCUIT_GATE_COUNT"],"fn":["circuit_gate_combined_constraints"],"mod":["testing","witness"],"struct":["Claim","Flags","Instruction","Transition"]};
+window.SIDEBAR_ITEMS = {"constant":["CIRCUIT_GATE_COUNT","NUM_FLAGS"],"fn":["circuit_gate_combined_constraints","two"],"mod":["testing","witness"],"struct":["Claim","Flags","Instruction","Transition"]};

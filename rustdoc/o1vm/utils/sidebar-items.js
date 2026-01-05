@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["memory_size"]};
+window.SIDEBAR_ITEMS = {"constant":["KUNIT","PREFIXES"],"fn":["memory_size"]};

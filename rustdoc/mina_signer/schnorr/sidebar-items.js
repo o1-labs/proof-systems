@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Message","Schnorr"]};
+window.SIDEBAR_ITEMS = {"fn":["create_kimchi","create_legacy"],"struct":["Message","Schnorr"]};

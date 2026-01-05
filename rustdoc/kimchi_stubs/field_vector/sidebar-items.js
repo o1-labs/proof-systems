@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["fp","fq"]};
+window.SIDEBAR_ITEMS = {"macro":["impl_vector","impl_vector_old"],"mod":["fp","fq"]};

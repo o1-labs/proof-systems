@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ROInput"]};
+window.SIDEBAR_ITEMS = {"constant":["SER_HEADER_SIZE","SINGLE_HEADER_SIZE"],"struct":["ROInput"]};

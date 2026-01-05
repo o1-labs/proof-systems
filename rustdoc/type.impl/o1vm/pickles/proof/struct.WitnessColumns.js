@@ -1,0 +1,9 @@
+(function() {
+    var type_impls = Object.fromEntries([["o1vm",[["<details class=\"toggle implementors-toggle\" open><summary><section id=\"impl-WitnessColumns%3CG,+%5BG;+N_MIPS_SEL_COLS%5D%3E\" class=\"impl\"><a class=\"src rightside\" href=\"src/o1vm/pickles/column_env.rs.html#68-96\">Source</a><a href=\"#impl-WitnessColumns%3CG,+%5BG;+N_MIPS_SEL_COLS%5D%3E\" class=\"anchor\">§</a><h3 class=\"code-header\">impl&lt;G&gt; <a class=\"struct\" href=\"o1vm/pickles/proof/struct.WitnessColumns.html\" title=\"struct o1vm::pickles::proof::WitnessColumns\">WitnessColumns</a>&lt;G, <a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.array.html\">[G; 72]</a>&gt;</h3></section></summary><div class=\"impl-items\"><section id=\"method.get_column\" class=\"method\"><a class=\"src rightside\" href=\"src/o1vm/pickles/column_env.rs.html#69-95\">Source</a><h4 class=\"code-header\">pub fn <a href=\"#method.get_column\" class=\"fn\">get_column</a>(&amp;self, col: &amp;Column&lt;<a class=\"enum\" href=\"o1vm/pickles/column_env/enum.RelationColumnType.html\" title=\"enum o1vm::pickles::column_env::RelationColumnType\">RelationColumnType</a>&gt;) -&gt; <a class=\"enum\" href=\"https://doc.rust-lang.org/nightly/core/option/enum.Option.html\" title=\"enum core::option::Option\">Option</a>&lt;<a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.reference.html\">&amp;G</a>&gt;</h4></section></div></details>",0,"o1vm::pickles::verifier::CommitmentColumns","o1vm::pickles::verifier::EvaluationColumns"]]]]);
+    if (window.register_type_impls) {
+        window.register_type_impls(type_impls);
+    } else {
+        window.pending_type_impls = type_impls;
+    }
+})()
+//{"start":55,"fragment_lengths":[1496]}

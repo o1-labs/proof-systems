@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["caml","internal_traces"]};
+window.SIDEBAR_ITEMS = {"macro":["check_constraint"],"mod":["caml","internal_traces"],"struct":["LookupContext"],"type":["Result"]};

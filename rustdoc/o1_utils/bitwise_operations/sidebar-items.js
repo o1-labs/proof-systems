@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":["BitwiseOps"]};
+window.SIDEBAR_ITEMS = {"fn":["bit_at","pad","to_padded_bytes"],"trait":["BitwiseOps","ToBigUint"]};

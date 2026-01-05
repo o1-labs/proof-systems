@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["CircuitGateError","CurrOrNext","GateType"],"mod":["caml"],"struct":["Circuit","CircuitGate"],"trait":["Connect"],"type":["CircuitGateResult"]};
+window.SIDEBAR_ITEMS = {"constant":["_DERIVE_ocaml_FromValue_from_value_lifetime_FOR_CurrOrNext","_DERIVE_ocaml_FromValue_from_value_lifetime_FOR_GateType","_DERIVE_ocaml_IntoValue_FOR_CurrOrNext","_DERIVE_ocaml_IntoValue_FOR_GateType"],"enum":["CircuitGateError","CurrOrNext","GateType"],"mod":["caml"],"struct":["Circuit","CircuitGate"],"trait":["Connect"],"type":["CircuitGateResult"]};

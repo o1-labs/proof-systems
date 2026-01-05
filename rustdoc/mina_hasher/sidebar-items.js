@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["create_kimchi","create_legacy"],"mod":["poseidon","roinput"],"trait":["DomainParameter","Hashable","Hasher"],"type":["Fp"]};
+window.SIDEBAR_ITEMS = {"fn":["create_kimchi","create_legacy","domain_prefix_to_field"],"mod":["poseidon","roinput"],"trait":["DomainParameter","Hashable","Hasher"],"type":["Fp"]};

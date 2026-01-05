@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["cairo_witness"]};
+window.SIDEBAR_ITEMS = {"fn":["auxiliary_witness","cairo_witness","claim_witness","flag_witness","instruction_witness","transition_witness"]};

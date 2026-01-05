@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["gen_witness"],"struct":["EndomulScalar"]};
+window.SIDEBAR_ITEMS = {"fn":["c_func","d_func","gen_witness","polynomial"],"struct":["EndomulScalar"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["RelationColumnType"],"fn":["get_all_columns"],"struct":["ColumnEnvironment"]};
+window.SIDEBAR_ITEMS = {"enum":["RelationColumnType"],"fn":["get_all_columns"],"struct":["ColumnEnvironment"],"type":["Evals"]};

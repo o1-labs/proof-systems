@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["compute_bound","compute_high_bound","create"],"struct":["ExternalChecks"]};
+window.SIDEBAR_ITEMS = {"fn":["compute_bound","compute_high_bound","compute_witness_variables","create","create_layout"],"struct":["ExternalChecks"]};

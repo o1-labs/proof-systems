@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ForeignFieldAdd"]};
+window.SIDEBAR_ITEMS = {"fn":["is_carry"],"struct":["ForeignFieldAdd"]};

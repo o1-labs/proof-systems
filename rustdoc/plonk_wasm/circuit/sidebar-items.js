@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["prover_to_json"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["CamlRuntimeTable","CamlRuntimeTableCfg","CamlRuntimeTableSpec"]};
+window.SIDEBAR_ITEMS = {"constant":["_DERIVE_ocaml_FromValue_from_value_lifetime_FOR_CamlRuntimeTable","_DERIVE_ocaml_FromValue_from_value_lifetime_FOR_CamlRuntimeTableCfg","_DERIVE_ocaml_FromValue_from_value_lifetime_FOR_CamlRuntimeTableSpec","_DERIVE_ocaml_IntoValue_FOR_CamlRuntimeTable","_DERIVE_ocaml_IntoValue_FOR_CamlRuntimeTableCfg","_DERIVE_ocaml_IntoValue_FOR_CamlRuntimeTableSpec"],"struct":["CamlRuntimeTable","CamlRuntimeTableCfg","CamlRuntimeTableSpec"]};

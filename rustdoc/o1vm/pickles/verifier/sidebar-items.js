@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["verify"]};
+window.SIDEBAR_ITEMS = {"fn":["verify"],"struct":["ColumnEval"],"type":["CommitmentColumns","EvaluationColumns"]};

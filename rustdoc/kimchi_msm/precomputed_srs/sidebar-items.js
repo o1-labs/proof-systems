@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["create_and_store_srs","get_bn254_srs","get_bn254_srs_path"],"struct":["TestPairingSRS"]};
+window.SIDEBAR_ITEMS = {"fn":["create_and_store_srs","create_and_store_srs_with_path","get_bn254_srs","get_bn254_srs_path","read_bn254_srs_from_disk"],"struct":["TestPairingSRS"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["create_bidirectional_channel"],"struct":["NullPreImageOracle","PreImageOracle","RW","ReadWrite"],"trait":["PreImageOracleT"]};
+window.SIDEBAR_ITEMS = {"fn":["create_bidirectional_channel","create_pipe"],"struct":["NullPreImageOracle","PreImageOracle","RW","ReadWrite"],"trait":["PreImageOracleT"]};

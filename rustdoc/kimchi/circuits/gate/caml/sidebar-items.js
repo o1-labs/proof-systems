@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["CamlCircuitGate"]};
+window.SIDEBAR_ITEMS = {"constant":["_DERIVE_ocaml_FromValue_from_value_lifetime_FOR_CamlCircuitGate","_DERIVE_ocaml_IntoValue_FOR_CamlCircuitGate"],"fn":["array_to_tuple","tuple_to_array"],"struct":["CamlCircuitGate"]};

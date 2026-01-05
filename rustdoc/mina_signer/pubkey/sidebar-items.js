@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["MINA_ADDRESS_LEN"],"enum":["PubKeyError"],"struct":["CompressedPubKey","PubKey"],"type":["Result"]};
+window.SIDEBAR_ITEMS = {"constant":["MINA_ADDRESS_LEN","MINA_ADDRESS_RAW_LEN"],"enum":["PubKeyError"],"fn":["into_address"],"struct":["CompressedPubKey","PubKey"],"type":["Result"]};

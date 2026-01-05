@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["latex_constraints","visu"],"mod":["witness"]};
+window.SIDEBAR_ITEMS = {"fn":["latex_constraints","visu"],"mod":["witness"],"struct":["Context"],"trait":["LaTeX"]};

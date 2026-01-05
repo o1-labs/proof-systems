@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["endos"],"mod":["caml"],"struct":["Challenges","OpeningProof","SRS"]};
+window.SIDEBAR_ITEMS = {"fn":["endos","point_of_random_bytes"],"mod":["caml"],"struct":["Challenges","OpeningProof","SRS"]};

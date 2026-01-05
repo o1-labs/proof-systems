@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["caml_pasta_fq_plonk_circuit_serialize","caml_pasta_fq_plonk_gate_vector_add","caml_pasta_fq_plonk_gate_vector_create","caml_pasta_fq_plonk_gate_vector_digest","caml_pasta_fq_plonk_gate_vector_get","caml_pasta_fq_plonk_gate_vector_len","caml_pasta_fq_plonk_gate_vector_wrap"],"struct":["WasmFqGate","WasmFqGateVector"],"type":["WasmGateVector"]};

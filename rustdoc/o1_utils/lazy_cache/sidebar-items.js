@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["LazyCacheError","LazyCacheErrorOr"],"struct":["LazyCache"]};
+window.SIDEBAR_ITEMS = {"enum":["LazyCacheError","LazyCacheErrorOr"],"struct":["LazyCache"],"type":["LazyFn"]};

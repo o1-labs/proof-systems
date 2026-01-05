@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["FlatVector"],"trait":["FlatVectorElem"]};
+window.SIDEBAR_ITEMS = {"mod":["flat_vector"],"struct":["FlatVector"],"trait":["FlatVectorElem"]};

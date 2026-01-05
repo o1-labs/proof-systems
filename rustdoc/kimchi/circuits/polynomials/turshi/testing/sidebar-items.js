@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["ensure_cairo_gate"]};
+window.SIDEBAR_ITEMS = {"fn":["ensure_cairo_gate","ensure_claim","ensure_flags","ensure_instruction","ensure_transition"]};

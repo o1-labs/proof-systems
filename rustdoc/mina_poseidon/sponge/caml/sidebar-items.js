@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["CamlScalarChallenge"]};
+window.SIDEBAR_ITEMS = {"constant":["_DERIVE_ocaml_FromValue_from_value_lifetime_FOR_CamlScalarChallenge","_DERIVE_ocaml_IntoValue_FOR_CamlScalarChallenge"],"struct":["CamlScalarChallenge"]};

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["caml_vesta_add","caml_vesta_affine_deep_copy","caml_vesta_double","caml_vesta_endo_base","caml_vesta_endo_scalar","caml_vesta_negate","caml_vesta_of_affine","caml_vesta_of_affine_coordinates","caml_vesta_one","caml_vesta_random","caml_vesta_rng","caml_vesta_scale","caml_vesta_sub","caml_vesta_to_affine"]};

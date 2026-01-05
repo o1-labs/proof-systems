@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["CompleteAdd"]};
+window.SIDEBAR_ITEMS = {"fn":["zero_check"],"struct":["CompleteAdd"]};

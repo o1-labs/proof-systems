@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["full_round","half_rounds","poseidon_block_cipher"]};
+window.SIDEBAR_ITEMS = {"fn":["apply_mds_matrix","full_round","half_rounds","poseidon_block_cipher"]};

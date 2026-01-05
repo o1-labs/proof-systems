@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["CamlProofEvaluations","CamlRecursionChallenge"]};
+window.SIDEBAR_ITEMS = {"constant":["_DERIVE_ocaml_FromValue_from_value_lifetime_FOR_CamlProofEvaluations","_DERIVE_ocaml_FromValue_from_value_lifetime_FOR_CamlRecursionChallenge","_DERIVE_ocaml_IntoValue_FOR_CamlProofEvaluations","_DERIVE_ocaml_IntoValue_FOR_CamlRecursionChallenge"],"struct":["CamlProofEvaluations","CamlRecursionChallenge"]};

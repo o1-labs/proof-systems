@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["LookupTableIDs"]};
+window.SIDEBAR_ITEMS = {"enum":["LookupTableIDs"],"trait":["FixedLookupTables"],"type":["Lookup","LookupTable","LookupWitness"]};

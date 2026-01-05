@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["get_pallas_file_cache","get_vesta_file_cache"],"static":["PALLAS_FILE_CACHE","VESTA_FILE_CACHE"],"struct":["FileCache"],"trait":["LagrangeCache"]};

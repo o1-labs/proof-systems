@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":["WithLagrangeBasis"]};
+window.SIDEBAR_ITEMS = {"fn":["add_lagrange_basis_with_cache"],"mod":["cache"],"trait":["WithLagrangeBasis"]};

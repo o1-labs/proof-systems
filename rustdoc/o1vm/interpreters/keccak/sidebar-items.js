@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Constraint","Error"],"fn":["pad_blocks","standardize"],"mod":["column","constraints","environment","helpers","interpreter","witness"]};
+window.SIDEBAR_ITEMS = {"constant":["HASH_BITLENGTH","HASH_BYTELENGTH","WORDS_IN_HASH","WORD_LENGTH_IN_BITS","ZKVM_KECCAK_COLS_CURR","ZKVM_KECCAK_COLS_NEXT"],"enum":["Constraint","Error"],"fn":["grid_index","pad_blocks","standardize"],"mod":["column","constraints","environment","helpers","interpreter","witness"]};

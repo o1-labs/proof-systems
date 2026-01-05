@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["batch_verify","verify"],"struct":["Context"],"type":["Result"]};
+window.SIDEBAR_ITEMS = {"fn":["batch_verify","check_proof_evals_len","to_batch","verify"],"struct":["Context"],"type":["Result"]};

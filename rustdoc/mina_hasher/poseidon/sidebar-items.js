@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Poseidon"],"type":["PoseidonHasherKimchi","PoseidonHasherLegacy"]};
+window.SIDEBAR_ITEMS = {"fn":["new_kimchi","new_legacy"],"struct":["Poseidon"],"type":["PoseidonHasherKimchi","PoseidonHasherLegacy"]};

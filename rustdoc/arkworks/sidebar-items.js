@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["WasmBigInteger256","WasmGPallas","WasmGVesta","WasmPallasGProjective","WasmPastaFp","WasmPastaFq","WasmVestaGProjective"]};
+window.SIDEBAR_ITEMS = {"mod":["bigint_256","group_affine","group_projective","pasta_fp","pasta_fq"],"struct":["WasmBigInteger256","WasmGPallas","WasmGVesta","WasmPallasGProjective","WasmPastaFp","WasmPastaFq","WasmVestaGProjective"]};

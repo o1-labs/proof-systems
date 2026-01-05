@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["extend_keccak_witness"],"struct":["Chi","Iota","PiRho","Rotation","Theta"]};
+window.SIDEBAR_ITEMS = {"constant":["SPARSE_RC"],"fn":["extend_keccak_witness","field","layout_round","layout_sponge"],"struct":["Chi","Iota","PiRho","Rotation","Theta"],"type":["Layout"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["get_y"],"struct":["BWParameters"],"trait":["GroupMap"]};
+window.SIDEBAR_ITEMS = {"fn":["curve_eqn","find_first","get_xy","get_y","potential_xs","potential_xs_helper"],"struct":["BWParameters"],"trait":["GroupMap"]};

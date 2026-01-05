@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["caml_pallas_add","caml_pallas_affine_deep_copy","caml_pallas_double","caml_pallas_endo_base","caml_pallas_endo_scalar","caml_pallas_negate","caml_pallas_of_affine","caml_pallas_of_affine_coordinates","caml_pallas_one","caml_pallas_random","caml_pallas_rng","caml_pallas_scale","caml_pallas_sub","caml_pallas_to_affine"]};

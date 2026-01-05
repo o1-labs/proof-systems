@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["fp","fq"],"struct":["CamlOracles"]};
+window.SIDEBAR_ITEMS = {"constant":["_DERIVE_ocaml_FromValue_from_value_lifetime_FOR_CamlOracles","_DERIVE_ocaml_IntoValue_FOR_CamlOracles"],"macro":["impl_oracles"],"mod":["fp","fq"],"struct":["CamlOracles"]};

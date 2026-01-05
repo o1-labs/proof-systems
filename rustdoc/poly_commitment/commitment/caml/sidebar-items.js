@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["CamlPolyComm"]};
+window.SIDEBAR_ITEMS = {"constant":["_DERIVE_ocaml_FromValue_from_value_lifetime_FOR_CamlPolyComm","_DERIVE_ocaml_IntoValue_FOR_CamlPolyComm"],"struct":["CamlPolyComm"]};

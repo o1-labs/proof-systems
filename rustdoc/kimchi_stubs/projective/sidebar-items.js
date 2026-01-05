@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["pallas","vesta"]};
+window.SIDEBAR_ITEMS = {"macro":["impl_projective"],"mod":["pallas","vesta"]};

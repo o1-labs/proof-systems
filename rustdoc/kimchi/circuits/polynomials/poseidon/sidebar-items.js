@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["POS_ROWS_PER_HASH","ROUNDS_PER_HASH","ROUNDS_PER_ROW","SPONGE_WIDTH","STATE_ORDER"],"fn":["generate_witness","round_to_cols"],"struct":["Poseidon"]};
+window.SIDEBAR_ITEMS = {"constant":["POS_ROWS_PER_HASH","ROUNDS_PER_HASH","ROUNDS_PER_ROW","ROUND_EQUATIONS","SPONGE_WIDTH","STATE_ORDER"],"fn":["generate_witness","round_to_cols"],"struct":["Poseidon","RoundEquation"]};

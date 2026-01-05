@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["CHALLENGE_LENGTH_IN_LIMBS"],"fn":["endo_coefficient"],"mod":["caml"],"struct":["DefaultFqSponge","DefaultFrSponge","ScalarChallenge"],"trait":["FqSponge"]};
+window.SIDEBAR_ITEMS = {"constant":["CHALLENGE_LENGTH_IN_LIMBS","HIGH_ENTROPY_LIMBS"],"fn":["endo_coefficient","get_bit","pack"],"mod":["caml"],"struct":["DefaultFqSponge","DefaultFrSponge","ScalarChallenge"],"trait":["FqSponge"]};

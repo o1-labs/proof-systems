@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["fp_oracles_create","fp_oracles_deep_copy","fp_oracles_dummy"],"struct":["WasmFpOracles","WasmFpRandomOracles"]};

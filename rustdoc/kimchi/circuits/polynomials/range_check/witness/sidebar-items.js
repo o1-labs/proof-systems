@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["create","create_multi","create_multi_compact","create_multi_compact_limbs","create_multi_limbs","extend","extend_multi","extend_multi_compact","extend_multi_compact_limbs","extend_multi_from_fe","extend_multi_limbs","extend_single","range_check_0_row"]};
+window.SIDEBAR_ITEMS = {"fn":["create","create_multi","create_multi_compact","create_multi_compact_limbs","create_multi_limbs","extend","extend_multi","extend_multi_compact","extend_multi_compact_limbs","extend_multi_from_fe","extend_multi_limbs","extend_single","layout","range_check_0_row"]};

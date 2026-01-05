@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Commands","Target"],"fn":["build_kimchi_stubs","build_wasm","main"],"struct":["Cli","RustVersionCommand"],"type":["RustVersion"]};

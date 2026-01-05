@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["RotMode"],"fn":["extend_rot","lookup_table"],"struct":["Rot64"]};
+window.SIDEBAR_ITEMS = {"enum":["RotMode"],"fn":["extend_rot","init_rot64","layout_rot64","lookup_table","rot_row"],"struct":["Rot64"]};

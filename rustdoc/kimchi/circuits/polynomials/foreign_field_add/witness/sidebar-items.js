@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["FFOps"],"fn":["create_chain","extend_witness_bound_addition"]};
+window.SIDEBAR_ITEMS = {"enum":["FFOps"],"fn":["compute_ffadd_values","create_chain","extend_witness_bound_addition","init_bound_rows","init_ffadd_row"]};

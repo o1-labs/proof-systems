@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["de","ser"],"struct":["Error"],"type":["Result"]};

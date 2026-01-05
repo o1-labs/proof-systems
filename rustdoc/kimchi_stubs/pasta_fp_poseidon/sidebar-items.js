@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["caml_pasta_fp_poseidon_block_cipher","caml_pasta_fp_poseidon_params_create"],"struct":["CamlPastaFpPoseidonParams"],"type":["CamlPastaFpPoseidonParamsPtr"]};
+window.SIDEBAR_ITEMS = {"fn":["caml_pasta_fp_poseidon_block_cipher","caml_pasta_fp_poseidon_params_create","caml_pasta_fp_poseidon_params_finalize"],"struct":["CamlPastaFpPoseidonParams"],"type":["CamlPastaFpPoseidonParamsPtr"]};

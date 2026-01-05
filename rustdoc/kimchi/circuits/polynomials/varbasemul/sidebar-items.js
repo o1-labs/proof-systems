@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["witness"],"struct":["Layout","VarbaseMul","VarbaseMulResult"]};
+window.SIDEBAR_ITEMS = {"fn":["set","single_bit","single_bit_witness","v","witness"],"struct":["Layout","Point","VarbaseMul","VarbaseMulResult"],"trait":["FromWitness"],"type":["Variable"]};

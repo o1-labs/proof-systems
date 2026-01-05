@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["commitment","error","hash_map_cache","ipa","kzg","lagrange_basis","pbt_srs","precomputed_srs","utils"],"trait":["OpenProof","SRS"]};
+window.SIDEBAR_ITEMS = {"mod":["combine","commitment","error","hash_map_cache","ipa","kzg","lagrange_basis","pbt_srs","precomputed_srs","utils"],"trait":["OpenProof","SRS"],"type":["PolynomialsToCombine"]};

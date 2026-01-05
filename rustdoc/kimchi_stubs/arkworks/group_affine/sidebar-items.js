@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["CamlGroupAffine"],"type":["CamlGPallas","CamlGVesta"]};
+window.SIDEBAR_ITEMS = {"constant":["_DERIVE_ocaml_FromValue_from_value_lifetime_FOR_CamlGroupAffine","_DERIVE_ocaml_IntoValue_FOR_CamlGroupAffine"],"enum":["CamlGroupAffine"],"type":["CamlGPallas","CamlGVesta"]};
