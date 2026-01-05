@@ -99,7 +99,6 @@ build: ## Build the project
 			--all-features \
 			--exclude plonk_neon \
 			--exclude plonk_wasm \
-			--exclude xtask \
 			--workspace
 
 
@@ -109,9 +108,8 @@ release: ## Build the project in release mode
 			--all-features \
 			--exclude plonk_neon \
 			--exclude plonk_wasm \
-			--exclude xtask \
 			--release \
-			--workspace \
+			--workspace
 
 
 test-doc: ## Test the project's docs comments
@@ -119,7 +117,6 @@ test-doc: ## Test the project's docs comments
 		--doc \
 		--exclude plonk_neon \
 		--exclude plonk_wasm \
-		--exclude xtask \
 		--release \
 		--workspace
 
@@ -204,8 +201,7 @@ generate-doc: ## Generate the Rust documentation
 			--document-private-items \
 			--workspace \
 			--exclude plonk_neon \
-			--exclude plonk_wasm \
-			--exclude xtask
+			--exclude plonk_wasm
 		@echo ""
 		@echo "The documentation is available at: ./target/doc"
 		@echo ""
