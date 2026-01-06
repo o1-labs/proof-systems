@@ -24,7 +24,7 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 // Unit tests for LazyCache
 
 #[test]
-fn test_lazy_mode_benchmark() {
+fn heavy_test_lazy_mode_benchmark() {
     #[cfg(all(not(target_arch = "wasm32"), feature = "diagnostics"))]
     #[global_allocator]
     static GLOBAL: Jemalloc = Jemalloc;
