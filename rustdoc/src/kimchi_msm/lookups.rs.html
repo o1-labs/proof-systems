@@ -144,7 +144,7 @@
 <a href=#144 id=144 data-nosnippet>144</a>        };
 <a href=#145 id=145 data-nosnippet>145</a>        <span class="kw">let </span>dummy_value = F::rand(<span class="kw-2">&amp;mut </span>rng);
 <a href=#146 id=146 data-nosnippet>146</a>        <span class="kw">let </span>repeated_dummy_value: Vec&lt;F&gt; =
-<a href=#147 id=147 data-nosnippet>147</a>            o1_utils::repeat_n(dummy_value, (domain.d1.size - table_size) <span class="kw">as </span>usize).collect();
+<a href=#147 id=147 data-nosnippet>147</a>            std::iter::repeat_n(dummy_value, (domain.d1.size - table_size) <span class="kw">as </span>usize).collect();
 <a href=#148 id=148 data-nosnippet>148</a>        <span class="kw">let </span>t_evals = {
 <a href=#149 id=149 data-nosnippet>149</a>            <span class="kw">let </span><span class="kw-2">mut </span>table = Vec::with_capacity(domain.d1.size <span class="kw">as </span>usize);
 <a href=#150 id=150 data-nosnippet>150</a>            table.extend(t.iter().map(|v| Lookup {

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["ceil_log2","div_ceil","is_multiple_of"]};
+window.SIDEBAR_ITEMS = {"fn":["ceil_log2"]};

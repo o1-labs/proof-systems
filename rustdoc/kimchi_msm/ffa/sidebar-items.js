@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["columns","interpreter","lookups"]};
+window.SIDEBAR_ITEMS = {};

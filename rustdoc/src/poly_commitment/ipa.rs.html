@@ -891,7 +891,7 @@
 <a href=#891 id=891 data-nosnippet>891</a>        // polynomial commitments, we obtain a chunked commitment to the L_i
 <a href=#892 id=892 data-nosnippet>892</a>        // polynomials.
 <a href=#893 id=893 data-nosnippet>893</a>        </span><span class="kw">let </span>srs_size = <span class="self">self</span>.g.len();
-<a href=#894 id=894 data-nosnippet>894</a>        <span class="kw">let </span>num_elems = math::div_ceil(n, srs_size);
+<a href=#894 id=894 data-nosnippet>894</a>        <span class="kw">let </span>num_elems = n.div_ceil(srs_size);
 <a href=#895 id=895 data-nosnippet>895</a>        <span class="kw">let </span><span class="kw-2">mut </span>chunks = Vec::with_capacity(num_elems);
 <a href=#896 id=896 data-nosnippet>896</a>
 <a href=#897 id=897 data-nosnippet>897</a>        <span class="comment">// For each chunk

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["ProverError"],"fn":["prove"]};
+window.SIDEBAR_ITEMS = {};

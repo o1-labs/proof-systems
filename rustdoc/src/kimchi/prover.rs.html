@@ -42,7 +42,7 @@
 <a href=#42 id=42 data-nosnippet>42</a><span class="kw">use </span>core::array;
 <a href=#43 id=43 data-nosnippet>43</a><span class="kw">use </span>itertools::Itertools;
 <a href=#44 id=44 data-nosnippet>44</a><span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-<a href=#45 id=45 data-nosnippet>45</a><span class="kw">use </span>o1_utils::{repeat_n, ExtendedDensePolynomial <span class="kw">as _</span>};
+<a href=#45 id=45 data-nosnippet>45</a><span class="kw">use </span>o1_utils::ExtendedDensePolynomial <span class="kw">as _</span>;
 <a href=#46 id=46 data-nosnippet>46</a><span class="kw">use </span>poly_commitment::{
 <a href=#47 id=47 data-nosnippet>47</a>    commitment::{
 <a href=#48 id=48 data-nosnippet>48</a>        absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
@@ -241,7 +241,7 @@
 <a href=#241 id=241 data-nosnippet>241</a>            }
 <a href=#242 id=242 data-nosnippet>242</a>
 <a href=#243 id=243 data-nosnippet>243</a>            <span class="comment">// padding
-<a href=#244 id=244 data-nosnippet>244</a>            </span>w.extend(repeat_n(G::ScalarField::zero(), length_padding));
+<a href=#244 id=244 data-nosnippet>244</a>            </span>w.extend(std::iter::repeat_n(G::ScalarField::zero(), length_padding));
 <a href=#245 id=245 data-nosnippet>245</a>
 <a href=#246 id=246 data-nosnippet>246</a>            <span class="comment">// zk-rows
 <a href=#247 id=247 data-nosnippet>247</a>            </span><span class="kw">for </span>row <span class="kw">in </span>w.iter_mut().rev().take(index.cs.zk_rows <span class="kw">as </span>usize) {
