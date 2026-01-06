@@ -2224,6 +2224,7 @@ dependencies = [
  "num-bigint",
  "o1-utils",
  "rand",
+ "serde",
  "sha2",
  "thiserror 2.0.12",
 ]
