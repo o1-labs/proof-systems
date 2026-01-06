@@ -1,11 +1,11 @@
 [package]
 name = "plonk_neon"
-version = "0.1.0"
 authors = ["opensource@o1labs.org"]
 description = "Neon module for plonk proof systems"
-repository = "https://github.com/MinaProtocol/mina"
+edition.workspace = true
 license = "MIT/Apache-2.0"
-edition = "2021"
+repository = "https://github.com/MinaProtocol/mina"
+version.workspace = true
 
 [lib]
 name = "plonk_neon"

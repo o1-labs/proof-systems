@@ -1,13 +1,13 @@
 [package]
 name = "mina-poseidon"
-version = "0.1.0"
 description = "An instantiation of the Poseidon hash function for the pasta fields"
-repository = "https://github.com/o1-labs/proof-systems"
-homepage = "https://o1-labs.github.io/proof-systems/"
-documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
 readme = "README.md"
-edition = "2021"
-license = "Apache-2.0"
+repository.workspace = true
+version.workspace = true
 
 [lib]
 path = "src/lib.rs"
