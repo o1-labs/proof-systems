@@ -48,10 +48,16 @@ jobs:
           echo 'rust_version=1.92' >> "$GITHUB_OUTPUT"
           echo 'os=ubuntu-latest' >> "$GITHUB_OUTPUT"
       - id: matrix
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
         run: |
           # Build matrix: 1.92/stable/beta for Ubuntu, stable/beta for macOS
           # We keep 1.92 to match mina-rust and MinaProtocol/mina.
-          cat > matrix.json << 'EOF'
+          # Skip macOS on PRs to improve CI velocity (macOS runners are limited)
+          # macOS runs on master pushes only
+          if [[ "$EVENT_NAME" == "push" && "$REF" == "refs/heads/master" ]]; then
+            cat > matrix.json << 'EOF'
           {
             "include": [
               {"rust_toolchain_version": "1.92", "os": "ubuntu-latest"},
@@ -63,6 +69,17 @@ jobs:
             ]
           }
           EOF
+          else
+            cat > matrix.json << 'EOF'
+          {
+            "include": [
+              {"rust_toolchain_version": "1.92", "os": "ubuntu-latest"},
+              {"rust_toolchain_version": "stable", "os": "ubuntu-latest"},
+              {"rust_toolchain_version": "beta", "os": "ubuntu-latest"}
+            ]
+          }
+          EOF
+          fi
           echo "value=$(cat matrix.json | jq -c .)" >> "$GITHUB_OUTPUT"
 
   refresh-cache:

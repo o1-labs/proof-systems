@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### CI
 
 - Remove Rust 1.81 from CI matrix, update MSRV to 1.92 to match mina-rust and MinaProtocol/mina ([#3419](https://github.com/o1-labs/proof-systems/pull/3419))
+- Skip macOS tests and docs jobs on PRs to improve CI velocity; macOS runs on master only
+  ([#3429](https://github.com/o1-labs/proof-systems/pull/3429),
+  [o1-labs/mina-rust#2024](https://github.com/o1-labs/mina-rust/issues/2024))
 
 ### [arrabbiata](./arrabbiata)
 
