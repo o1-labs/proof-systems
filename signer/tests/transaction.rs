@@ -51,13 +51,7 @@ impl Hashable for Transaction {
     }
 
     fn domain_string(network_id: NetworkId) -> Option<String> {
-        // Domain strings must have length <= 20
-        match network_id {
-            NetworkId::MAINNET => "MinaSignatureMainnet",
-            NetworkId::TESTNET => "CodaSignature",
-        }
-        .to_string()
-        .into()
+        Some(network_id.into_domain_string())
     }
 }
 
