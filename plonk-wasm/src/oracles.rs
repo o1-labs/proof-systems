@@ -7,6 +7,7 @@ use kimchi::{
 use mina_poseidon::{
     self,
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
     FqSponge,
 };
@@ -176,7 +177,7 @@ macro_rules! impl_oracles {
             ) -> Result<[<Wasm $field_name:camel Oracles>], JsError> {
                 // conversions
                 let result = crate::rayon::run_in_pool(|| {
-                    let index: DlogVerifierIndex<$G, OpeningProof<$G>> = index.into();
+                    let index: DlogVerifierIndex<FULL_ROUNDS, $G, <OpeningProof<$G, FULL_ROUNDS> as poly_commitment::OpenProof<$G, FULL_ROUNDS>>::SRS> = index.into();
 
                     let lgr_comm: Vec<PolyComm<$G>> = lgr_comm
                         .into_iter()
@@ -205,12 +206,13 @@ macro_rules! impl_oracles {
                             .commitment
                     };
 
-                    let (proof, public_input): (ProverProof<$G, OpeningProof<$G>>, Vec<$F>) = proof.into();
+                    let (proof, public_input): (ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS>, Vec<$F>) = proof.into();
 
                     let oracles_result =
                         proof.oracles::<
-                            DefaultFqSponge<$curve_params, PlonkSpongeConstantsKimchi>,
-                            DefaultFrSponge<$F, PlonkSpongeConstantsKimchi>
+                            DefaultFqSponge<$curve_params, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+                            DefaultFrSponge<$F, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+                            <OpeningProof<$G, FULL_ROUNDS> as poly_commitment::OpenProof<$G, FULL_ROUNDS>>::SRS,
                         >(&index, &p_comm, Some(&public_input));
                     let oracles_result = match oracles_result {
                         Err(e) => {

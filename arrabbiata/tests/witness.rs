@@ -41,7 +41,7 @@ fn test_unit_witness_poseidon_permutation_gadget_one_full_hash() {
             .iter()
             .map(|x| Fp::from_biguint(&x.to_biguint().unwrap()).unwrap())
             .collect::<Vec<_>>();
-        poseidon_block_cipher::<Fp, PlonkSpongeConstants>(
+        poseidon_block_cipher::<Fp, PlonkSpongeConstants, 60>(
             poseidon_3_60_0_5_5_fp::static_params(),
             &mut state,
         );
@@ -93,7 +93,7 @@ fn test_unit_witness_poseidon_with_absorb_one_full_hash() {
         state[1] += pt_x;
         state[2] += pt_y;
 
-        poseidon_block_cipher::<Fp, PlonkSpongeConstants>(
+        poseidon_block_cipher::<Fp, PlonkSpongeConstants, 60>(
             poseidon_3_60_0_5_5_fp::static_params(),
             &mut state,
         );

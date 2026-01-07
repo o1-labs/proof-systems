@@ -6,7 +6,8 @@ use ark_poly::{
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Pallas, Vesta as VestaG, VestaParameters};
 use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi as SC, sponge::DefaultFqSponge, FqSponge,
+    constants::PlonkSpongeConstantsKimchi as SC, pasta::FULL_ROUNDS, sponge::DefaultFqSponge,
+    FqSponge,
 };
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
@@ -135,7 +136,9 @@ fn test_opening_proof() {
     // create an aggregated opening proof
     let (u, v) = (Fp::rand(rng), Fp::rand(rng));
     let group_map = <VestaG as CommitmentCurve>::Map::setup();
-    let sponge = DefaultFqSponge::<_, SC>::new(mina_poseidon::pasta::fq_kimchi::static_params());
+    let sponge = DefaultFqSponge::<_, SC, FULL_ROUNDS>::new(
+        mina_poseidon::pasta::fq_kimchi::static_params(),
+    );
 
     let polys: Vec<(
         DensePolynomialOrEvaluations<_, Radix2EvaluationDomain<_>>,
@@ -239,7 +242,7 @@ fn test_dlog_commitment() {
 
     let group_map = <VestaG as CommitmentCurve>::Map::setup();
 
-    let sponge = DefaultFqSponge::<VestaParameters, SC>::new(
+    let sponge = DefaultFqSponge::<VestaParameters, SC, FULL_ROUNDS>::new(
         mina_poseidon::pasta::fq_kimchi::static_params(),
     );
 
@@ -320,15 +323,16 @@ fn test_dlog_commitment() {
                     )
                 })
                 .collect();
-            let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _, _>(
-                &group_map,
-                &polys,
-                &x,
-                polymask,
-                evalmask,
-                sponge.clone(),
-                rng,
-            );
+            let proof = srs
+                .open::<DefaultFqSponge<VestaParameters, SC, FULL_ROUNDS>, _, _, FULL_ROUNDS>(
+                    &group_map,
+                    &polys,
+                    &x,
+                    polymask,
+                    evalmask,
+                    sponge.clone(),
+                    rng,
+                );
             open += start.elapsed();
 
             let combined_inner_product = {
@@ -375,6 +379,11 @@ fn test_dlog_commitment() {
     println!("open time: {:?}", open);
 
     let start = Instant::now();
-    assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut proofs, rng));
+    let result = srs.verify::<DefaultFqSponge<VestaParameters, SC, FULL_ROUNDS>, _, FULL_ROUNDS>(
+        &group_map,
+        &mut proofs,
+        rng,
+    );
+    assert!(result);
     println!("verification time: {:?}", start.elapsed());
 }

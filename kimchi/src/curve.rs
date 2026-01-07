@@ -9,7 +9,7 @@ use mina_curves::{
         vesta::{LegacyVestaParameters, VestaParameters},
     },
 };
-use mina_poseidon::poseidon::ArithmeticSpongeParams;
+use mina_poseidon::{pasta::FULL_ROUNDS, poseidon::ArithmeticSpongeParams};
 use once_cell::sync::Lazy;
 use poly_commitment::{
     commitment::{CommitmentCurve, EndoCurve},
@@ -18,12 +18,12 @@ use poly_commitment::{
 
 /// Represents additional information that a curve needs in order to be used
 /// with Kimchi
-pub trait KimchiCurve: CommitmentCurve + EndoCurve + NamedCurve {
+pub trait KimchiCurve<const FULL_ROUNDS: usize>: EndoCurve + NamedCurve {
     /// Provides the sponge params to be used with this curve.
-    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField>;
+    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField, FULL_ROUNDS>;
 
     /// Provides the sponge params to be used with the other curve.
-    fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField>;
+    fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField, FULL_ROUNDS>;
 
     /// Provides the coefficients for the curve endomorphism, called (q,r) in
     /// some places.
@@ -60,12 +60,13 @@ pub fn pallas_endos() -> &'static (
     &PALLAS_ENDOS
 }
 
-impl KimchiCurve for Affine<VestaParameters> {
-    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
+impl KimchiCurve<FULL_ROUNDS> for Affine<VestaParameters> {
+    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField, FULL_ROUNDS> {
         mina_poseidon::pasta::fp_kimchi::static_params()
     }
 
-    fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField> {
+    fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField, FULL_ROUNDS>
+    {
         mina_poseidon::pasta::fq_kimchi::static_params()
     }
 
@@ -84,12 +85,13 @@ impl KimchiCurve for Affine<VestaParameters> {
     }
 }
 
-impl KimchiCurve for Affine<PallasParameters> {
-    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
+impl KimchiCurve<FULL_ROUNDS> for Affine<PallasParameters> {
+    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField, FULL_ROUNDS> {
         mina_poseidon::pasta::fq_kimchi::static_params()
     }
 
-    fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField> {
+    fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField, FULL_ROUNDS>
+    {
         mina_poseidon::pasta::fp_kimchi::static_params()
     }
 
@@ -112,12 +114,16 @@ impl KimchiCurve for Affine<PallasParameters> {
 // Legacy curves
 //
 
-impl KimchiCurve for Affine<LegacyVestaParameters> {
-    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
+impl KimchiCurve<{ mina_poseidon::pasta::LEGACY_ROUNDS }> for Affine<LegacyVestaParameters> {
+    fn sponge_params(
+    ) -> &'static ArithmeticSpongeParams<Self::ScalarField, { mina_poseidon::pasta::LEGACY_ROUNDS }>
+    {
         mina_poseidon::pasta::fp_legacy::static_params()
     }
 
-    fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField> {
+    fn other_curve_sponge_params(
+    ) -> &'static ArithmeticSpongeParams<Self::BaseField, { mina_poseidon::pasta::LEGACY_ROUNDS }>
+    {
         mina_poseidon::pasta::fq_legacy::static_params()
     }
 
@@ -136,12 +142,16 @@ impl KimchiCurve for Affine<LegacyVestaParameters> {
     }
 }
 
-impl KimchiCurve for Affine<LegacyPallasParameters> {
-    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
+impl KimchiCurve<{ mina_poseidon::pasta::LEGACY_ROUNDS }> for Affine<LegacyPallasParameters> {
+    fn sponge_params(
+    ) -> &'static ArithmeticSpongeParams<Self::ScalarField, { mina_poseidon::pasta::LEGACY_ROUNDS }>
+    {
         mina_poseidon::pasta::fq_legacy::static_params()
     }
 
-    fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField> {
+    fn other_curve_sponge_params(
+    ) -> &'static ArithmeticSpongeParams<Self::BaseField, { mina_poseidon::pasta::LEGACY_ROUNDS }>
+    {
         mina_poseidon::pasta::fp_legacy::static_params()
     }
 
@@ -164,16 +174,19 @@ impl KimchiCurve for Affine<LegacyPallasParameters> {
 use mina_poseidon::dummy_values::kimchi_dummy;
 
 #[cfg(feature = "bn254")]
-impl KimchiCurve for Affine<ark_bn254::g1::Config> {
-    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
+impl KimchiCurve<FULL_ROUNDS> for Affine<ark_bn254::g1::Config> {
+    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField, FULL_ROUNDS> {
         // TODO: Generate some params
-        static PARAMS: Lazy<ArithmeticSpongeParams<ark_bn254::Fr>> = Lazy::new(kimchi_dummy);
+        static PARAMS: Lazy<ArithmeticSpongeParams<ark_bn254::Fr, FULL_ROUNDS>> =
+            Lazy::new(kimchi_dummy);
         &PARAMS
     }
 
-    fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField> {
+    fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField, FULL_ROUNDS>
+    {
         // TODO: Generate some params
-        static PARAMS: Lazy<ArithmeticSpongeParams<ark_bn254::Fq>> = Lazy::new(kimchi_dummy);
+        static PARAMS: Lazy<ArithmeticSpongeParams<ark_bn254::Fq, FULL_ROUNDS>> =
+            Lazy::new(kimchi_dummy);
         &PARAMS
     }
 

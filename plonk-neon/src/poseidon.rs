@@ -1,6 +1,8 @@
 use arkworks::{WasmPastaFp, WasmPastaFq};
 use mina_curves::pasta::{Fp, Fq};
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, permutation::poseidon_block_cipher};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi, pasta::FULL_ROUNDS, permutation::poseidon_block_cipher,
+};
 use neon::{
     context::FunctionContext,
     result::JsResult,
@@ -18,7 +20,7 @@ pub fn caml_pasta_fp_poseidon_block_cipher(mut cx: FunctionContext) -> JsResult<
         .map(Into::into)
         .collect();
 
-    poseidon_block_cipher::<Fp, PlonkSpongeConstantsKimchi>(
+    poseidon_block_cipher::<Fp, PlonkSpongeConstantsKimchi, FULL_ROUNDS>(
         mina_poseidon::pasta::fp_kimchi::static_params(),
         &mut state,
     );
@@ -42,7 +44,7 @@ pub fn caml_pasta_fq_poseidon_block_cipher(mut cx: FunctionContext) -> JsResult<
         .map(Into::into)
         .collect();
 
-    poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi>(
+    poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi, FULL_ROUNDS>(
         mina_poseidon::pasta::fq_kimchi::static_params(),
         &mut state,
     );

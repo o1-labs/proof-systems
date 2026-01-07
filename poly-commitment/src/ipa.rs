@@ -116,14 +116,19 @@ where
 impl<G: CommitmentCurve> SRS<G> {
     /// This function verifies a batch of polynomial commitment opening proofs.
     /// Return `true` if the verification is successful, `false` otherwise.
-    pub fn verify<EFqSponge, RNG>(
+    pub fn verify<EFqSponge, RNG, const FULL_ROUNDS: usize>(
         &self,
         group_map: &G::Map,
-        batch: &mut [BatchEvaluationProof<G, EFqSponge, OpeningProof<G>>],
+        batch: &mut [BatchEvaluationProof<
+            G,
+            EFqSponge,
+            OpeningProof<G, FULL_ROUNDS>,
+            FULL_ROUNDS,
+        >],
         rng: &mut RNG,
     ) -> bool
     where
-        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
+        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         RNG: RngCore + CryptoRng,
         G::BaseField: PrimeField,
     {
@@ -574,7 +579,7 @@ impl<G: CommitmentCurve> SRS<G> {
     // NB: a slight modification to the original protocol is done when absorbing
     // the first prover message to improve the efficiency in a recursive
     // setting.
-    pub fn open<EFqSponge, RNG, D: EvaluationDomain<G::ScalarField>>(
+    pub fn open<EFqSponge, RNG, D: EvaluationDomain<G::ScalarField>, const FULL_ROUNDS: usize>(
         &self,
         group_map: &G::Map,
         plnms: PolynomialsToCombine<G, D>,
@@ -583,9 +588,9 @@ impl<G: CommitmentCurve> SRS<G> {
         evalscale: G::ScalarField,
         mut sponge: EFqSponge,
         rng: &mut RNG,
-    ) -> OpeningProof<G>
+    ) -> OpeningProof<G, FULL_ROUNDS>
     where
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         RNG: RngCore + CryptoRng,
         G::BaseField: PrimeField,
         G: EndoCurve,
@@ -923,7 +928,7 @@ impl<G: CommitmentCurve> SRS<G> {
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct OpeningProof<G: AffineRepr> {
+pub struct OpeningProof<G: AffineRepr, const FULL_ROUNDS: usize> {
     /// Vector of rounds of L & R commitments
     #[serde_as(as = "Vec<(o1_utils::serialization::SerdeAs, o1_utils::serialization::SerdeAs)>")]
     pub lr: Vec<(G, G)>,
@@ -938,8 +943,11 @@ pub struct OpeningProof<G: AffineRepr> {
     pub sg: G,
 }
 
-impl<BaseField: PrimeField, G: AffineRepr<BaseField = BaseField> + CommitmentCurve + EndoCurve>
-    crate::OpenProof<G> for OpeningProof<G>
+impl<
+        BaseField: PrimeField,
+        G: AffineRepr<BaseField = BaseField> + CommitmentCurve + EndoCurve,
+        const FULL_ROUNDS: usize,
+    > crate::OpenProof<G, FULL_ROUNDS> for OpeningProof<G, FULL_ROUNDS>
 {
     type SRS = SRS<G>;
 
@@ -954,8 +962,8 @@ impl<BaseField: PrimeField, G: AffineRepr<BaseField = BaseField> + CommitmentCur
         rng: &mut RNG,
     ) -> Self
     where
-        EFqSponge:
-            Clone + FqSponge<<G as AffineRepr>::BaseField, G, <G as AffineRepr>::ScalarField>,
+        EFqSponge: Clone
+            + FqSponge<<G as AffineRepr>::BaseField, G, <G as AffineRepr>::ScalarField, FULL_ROUNDS>,
         RNG: RngCore + CryptoRng,
     {
         srs.open(group_map, plnms, elm, polyscale, evalscale, sponge, rng)
@@ -964,11 +972,12 @@ impl<BaseField: PrimeField, G: AffineRepr<BaseField = BaseField> + CommitmentCur
     fn verify<EFqSponge, RNG>(
         srs: &Self::SRS,
         group_map: &G::Map,
-        batch: &mut [BatchEvaluationProof<G, EFqSponge, Self>],
+        batch: &mut [BatchEvaluationProof<G, EFqSponge, Self, FULL_ROUNDS>],
         rng: &mut RNG,
     ) -> bool
     where
-        EFqSponge: FqSponge<<G as AffineRepr>::BaseField, G, <G as AffineRepr>::ScalarField>,
+        EFqSponge:
+            FqSponge<<G as AffineRepr>::BaseField, G, <G as AffineRepr>::ScalarField, FULL_ROUNDS>,
         RNG: RngCore + CryptoRng,
     {
         srs.verify(group_map, batch, rng)
@@ -981,10 +990,10 @@ pub struct Challenges<F> {
     pub chal_inv: Vec<F>,
 }
 
-impl<G: AffineRepr> OpeningProof<G> {
+impl<G: AffineRepr, const FULL_ROUNDS: usize> OpeningProof<G, FULL_ROUNDS> {
     /// Computes a log-sized vector of scalar challenges for
     /// recombining elements inside the IPA.
-    pub fn prechallenges<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
+    pub fn prechallenges<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>>(
         &self,
         sponge: &mut EFqSponge,
     ) -> Vec<ScalarChallenge<G::ScalarField>> {
@@ -1001,7 +1010,7 @@ impl<G: AffineRepr> OpeningProof<G> {
 
     /// Same as `prechallenges`, but maps scalar challenges using the provided
     /// endomorphism, and computes their inverses.
-    pub fn challenges<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
+    pub fn challenges<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>>(
         &self,
         endo_r: &G::ScalarField,
         sponge: &mut EFqSponge,
@@ -1043,13 +1052,14 @@ pub mod caml {
         pub sg: G,
     }
 
-    impl<G, CamlF, CamlG> From<OpeningProof<G>> for CamlOpeningProof<CamlG, CamlF>
+    impl<G, CamlF, CamlG, const FULL_ROUNDS: usize> From<OpeningProof<G, FULL_ROUNDS>>
+        for CamlOpeningProof<CamlG, CamlF>
     where
         G: AffineRepr,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
-        fn from(opening_proof: OpeningProof<G>) -> Self {
+        fn from(opening_proof: OpeningProof<G, FULL_ROUNDS>) -> Self {
             Self {
                 lr: opening_proof
                     .lr
@@ -1064,7 +1074,8 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlF, CamlG> From<CamlOpeningProof<CamlG, CamlF>> for OpeningProof<G>
+    impl<G, CamlF, CamlG, const FULL_ROUNDS: usize> From<CamlOpeningProof<CamlG, CamlF>>
+        for OpeningProof<G, FULL_ROUNDS>
     where
         G: AffineRepr,
         CamlG: Into<G>,

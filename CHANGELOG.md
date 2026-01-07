@@ -30,7 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### [kimchi](./kimchi)
 
 #### Changed
-- (No changes in current release)
+- Update `KimchiCurve` trait to be generic over `const FULL_ROUNDS: usize`.
+- Update `verify_poseidon`, `generate_witness` and other sponge-dependent functions to be generic over the number of full rounds.
+  ([#3386](https://github.com/o1-labs/proof-systems/pull/3386))
 
 ### [kimchi-msm](./msm)
 
@@ -58,7 +60,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### [mina-poseidon](./poseidon)
 
 #### Changed
-- (No changes in current release)
+- Update `ArithmeticSpongeParams` to be generic over `const FULL_ROUNDS: usize`, replacing `Vec` fields with fixed-size arrays.
+- Update `Sponge` trait and `ArithmeticSponge` struct to be generic over the number of full rounds.
+  ([#3386](https://github.com/o1-labs/proof-systems/pull/3386))
 
 ### [mina-signer](./signer)
 

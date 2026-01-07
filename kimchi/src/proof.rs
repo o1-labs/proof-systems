@@ -11,7 +11,10 @@ use ark_ff::{FftField, One, Zero};
 use ark_poly::univariate::DensePolynomial;
 use core::array;
 use o1_utils::ExtendedDensePolynomial;
-use poly_commitment::commitment::{b_poly, b_poly_coefficients, PolyComm};
+use poly_commitment::{
+    commitment::{b_poly, b_poly_coefficients, CommitmentCurve, PolyComm},
+    OpenProof,
+};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -143,7 +146,11 @@ pub struct ProverCommitments<G: AffineRepr> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverProof<G: AffineRepr, OpeningProof> {
+pub struct ProverProof<G, OpeningProof, const FULL_ROUNDS: usize>
+where
+    G: CommitmentCurve,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+{
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,
 

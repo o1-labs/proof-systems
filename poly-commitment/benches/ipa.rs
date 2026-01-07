@@ -8,7 +8,9 @@ use ark_poly::{
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge, FqSponge};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi, pasta::FULL_ROUNDS, sponge::DefaultFqSponge, FqSponge,
+};
 use num_bigint::BigUint;
 use o1_utils::{BigUintFieldHelpers, FieldHelpers};
 use poly_commitment::{
@@ -141,9 +143,10 @@ fn benchmark_ipa_open_vesta(c: &mut Criterion) {
     for log_n in [5, 10].into_iter() {
         let n = 1 << log_n;
         let srs = SRS::<Vesta>::create(n);
-        let sponge = DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi>::new(
-            mina_poseidon::pasta::fq_kimchi::static_params(),
-        );
+        let sponge =
+            DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>::new(
+                mina_poseidon::pasta::fq_kimchi::static_params(),
+            );
         let poly_coefficients: Vec<Fp> = (0..n).map(|_| Fp::rand(&mut rng)).collect();
         let poly = DensePolynomial::<Fp>::from_coefficients_vec(poly_coefficients);
         let poly_commit = srs.commit(&poly.clone(), 1, &mut rng);

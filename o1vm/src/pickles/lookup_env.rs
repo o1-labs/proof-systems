@@ -10,7 +10,7 @@ use poly_commitment::{commitment::BlindedCommitment, ipa::SRS, PolyComm, SRS as 
 /// This is what the prover needs to remember
 /// while doing individual proofs, in order
 /// to prove the lookup protocol we do in the end
-pub struct LookupEnvironment<G: KimchiCurve> {
+pub struct LookupEnvironment<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>> {
     /// fixed tables pre-existing the protocol
     pub tables_poly: Vec<Vec<DensePolynomial<G::ScalarField>>>,
     pub tables_comm: Vec<Vec<BlindedCommitment<G>>>,
@@ -21,7 +21,7 @@ pub struct LookupEnvironment<G: KimchiCurve> {
 /// Create a new prover environment, which interpolates the fixed tables
 /// and commit to them.
 /// Fills the multiplicities with zeroes
-impl<G: KimchiCurve> LookupEnvironment<G> {
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>> LookupEnvironment<FULL_ROUNDS, G> {
     pub fn new(srs: &SRS<G>, domain: EvaluationDomains<G::ScalarField>) -> Self {
         let tables: Vec<LookupTable<G::ScalarField>> =
             LookupTable::<G::ScalarField>::get_all_tables();

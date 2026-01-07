@@ -59,7 +59,7 @@ def caml_matrix_str(of_string_wrap, rows):
   return '[|' + ';'.join('[|' + ';'.join(of_string_wrap('"{}"'.format(str(x))) for x in row) + '|]' for row in rows) + '|]'
 
 def rust_matrix_str(of_string_wrap, rows):
-  return 'vec![' + ','.join('vec![' + ','.join(of_string_wrap('"{}"'.format(str(x))) for x in row) + ']' for row in rows) + ']'
+  return '[' + ','.join('[' + ','.join(of_string_wrap('"{}"'.format(str(x))) for x in row) + ']' for row in rows) + ']'
 
 def mds(prefix, F):
   prefix = _prefix + ('' if _legacy else prefix) + 'MDS'
@@ -97,7 +97,7 @@ def caml_rc_str(of_string_wrap, rows):
   return '[|' + ';'.join('[|' + ';'.join(of_string_wrap('"{}"'.format(str(x))) for x in row) + '|]' for row in rows) + '|]'
 
 def rust_rc_str(of_string_wrap, rows):
-  return 'vec![' + ','.join('vec![' + ','.join(of_string_wrap('"{}"'.format(str(x))) for x in row) + ']' for row in rows) + ']'
+  return '[' + ','.join('[' + ','.join(of_string_wrap('"{}"'.format(str(x))) for x in row) + ']' for row in rows) + ']'
 
 if args.language == 'ocaml':
   print ("type 'a t = { mds: 'a array array; round_constants: 'a array array }")

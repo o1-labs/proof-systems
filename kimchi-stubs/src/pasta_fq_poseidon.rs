@@ -1,10 +1,10 @@
 use crate::field_vector::fq::CamlFqVector;
 use mina_curves::pasta::Fq;
 use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi, permutation::poseidon_block_cipher,
+    constants::PlonkSpongeConstantsKimchi, pasta::FULL_ROUNDS, permutation::poseidon_block_cipher,
     poseidon::ArithmeticSpongeParams,
 };
-pub struct CamlPastaFqPoseidonParams(ArithmeticSpongeParams<Fq>);
+pub struct CamlPastaFqPoseidonParams(ArithmeticSpongeParams<Fq, FULL_ROUNDS>);
 pub type CamlPastaFqPoseidonParamsPtr<'a> = ocaml::Pointer<'a, CamlPastaFqPoseidonParams>;
 
 extern "C" fn caml_pasta_fq_poseidon_params_finalize(v: ocaml::Raw) {
@@ -28,5 +28,8 @@ pub fn caml_pasta_fq_poseidon_block_cipher(
     params: CamlPastaFqPoseidonParamsPtr,
     mut state: CamlFqVector,
 ) {
-    poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi>(&params.as_ref().0, state.as_mut())
+    poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi, FULL_ROUNDS>(
+        &params.as_ref().0,
+        state.as_mut(),
+    )
 }

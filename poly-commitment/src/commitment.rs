@@ -393,20 +393,38 @@ pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
     s
 }
 
-pub fn squeeze_prechallenge<Fq: Field, G, Fr: Field, EFqSponge: FqSponge<Fq, G, Fr>>(
+pub fn squeeze_prechallenge<
+    const FULL_ROUNDS: usize,
+    Fq: Field,
+    G,
+    Fr: Field,
+    EFqSponge: FqSponge<Fq, G, Fr, FULL_ROUNDS>,
+>(
     sponge: &mut EFqSponge,
 ) -> ScalarChallenge<Fr> {
     ScalarChallenge(sponge.challenge())
 }
 
-pub fn squeeze_challenge<Fq: Field, G, Fr: PrimeField, EFqSponge: FqSponge<Fq, G, Fr>>(
+pub fn squeeze_challenge<
+    const FULL_ROUNDS: usize,
+    Fq: Field,
+    G,
+    Fr: PrimeField,
+    EFqSponge: FqSponge<Fq, G, Fr, FULL_ROUNDS>,
+>(
     endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
     squeeze_prechallenge(sponge).to_field(endo_r)
 }
 
-pub fn absorb_commitment<Fq: Field, G: Clone, Fr: PrimeField, EFqSponge: FqSponge<Fq, G, Fr>>(
+pub fn absorb_commitment<
+    const FULL_ROUNDS: usize,
+    Fq: Field,
+    G: Clone,
+    Fr: PrimeField,
+    EFqSponge: FqSponge<Fq, G, Fr, FULL_ROUNDS>,
+>(
     sponge: &mut EFqSponge,
     commitment: &PolyComm<G>,
 ) {
@@ -574,10 +592,10 @@ where
 }
 
 /// Contains the batch evaluation
-pub struct BatchEvaluationProof<'a, G, EFqSponge, OpeningProof>
+pub struct BatchEvaluationProof<'a, G, EFqSponge, OpeningProof, const FULL_ROUNDS: usize>
 where
     G: AffineRepr,
-    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
+    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
 {
     /// Sponge used to coin and absorb values and simulate
     /// non-interactivity using the Fiat-Shamir transformation.

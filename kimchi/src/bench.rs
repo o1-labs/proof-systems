@@ -6,13 +6,14 @@ use groupmap::{BWParameters, GroupMap};
 use mina_curves::pasta::{Fp, Fq, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge, FqSponge},
 };
 use o1_utils::math;
 use poly_commitment::{
     commitment::{CommitmentCurve, PolyComm},
     ipa::OpeningProof,
-    SRS,
+    OpenProof, SRS,
 };
 use rand::Rng;
 use std::{array, path::PathBuf};
@@ -31,15 +32,21 @@ use crate::{
     verifier::{batch_verify, Context},
 };
 
-pub type BaseSpongeVesta = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
-pub type ScalarSpongeVesta = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
-pub type BaseSpongePallas = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>;
-pub type ScalarSpongePallas = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>;
+pub type BaseSpongeVesta =
+    DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>;
+pub type ScalarSpongeVesta = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi, FULL_ROUNDS>;
+pub type BaseSpongePallas =
+    DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>;
+pub type ScalarSpongePallas = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi, FULL_ROUNDS>;
 
 pub struct BenchmarkCtx {
     pub num_gates: usize,
     group_map: BWParameters<VestaParameters>,
-    index: ProverIndex<Vesta, OpeningProof<Vesta>>,
+    index: ProverIndex<
+        FULL_ROUNDS,
+        Vesta,
+        <OpeningProof<Vesta, FULL_ROUNDS> as OpenProof<Vesta, FULL_ROUNDS>>::SRS,
+    >,
 }
 
 impl BenchmarkCtx {
@@ -89,7 +96,12 @@ impl BenchmarkCtx {
     }
 
     /// Produces a proof
-    pub fn create_proof(&self) -> (ProverProof<Vesta, OpeningProof<Vesta>>, Vec<Fp>) {
+    pub fn create_proof(
+        &self,
+    ) -> (
+        ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS>,
+        Vec<Fp>,
+    ) {
         // create witness
         let witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![1u32.into(); self.num_gates]);
 
@@ -110,7 +122,13 @@ impl BenchmarkCtx {
     }
 
     #[allow(clippy::type_complexity)]
-    pub fn batch_verification(&self, batch: &[(ProverProof<Vesta, OpeningProof<Vesta>>, Vec<Fp>)]) {
+    pub fn batch_verification(
+        &self,
+        batch: &[(
+            ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS>,
+            Vec<Fp>,
+        )],
+    ) {
         // verify the proof
         let batch: Vec<_> = batch
             .iter()
@@ -120,10 +138,13 @@ impl BenchmarkCtx {
                 public_input: public,
             })
             .collect();
-        batch_verify::<Vesta, BaseSpongeVesta, ScalarSpongeVesta, OpeningProof<Vesta>>(
-            &self.group_map,
-            &batch,
-        )
+        batch_verify::<
+            55,
+            Vesta,
+            BaseSpongeVesta,
+            ScalarSpongeVesta,
+            OpeningProof<Vesta, FULL_ROUNDS>,
+        >(&self.group_map, &batch)
         .unwrap();
     }
 }
@@ -132,7 +153,7 @@ impl BenchmarkCtx {
 /// in which case it will serialise kimchi inputs so that they can be
 /// reused later for re-testing this particular prover. Used for
 /// serialising real mina circuits from ocaml and bindings side.
-pub fn bench_arguments_dump_into_file<G: KimchiCurve>(
+pub fn bench_arguments_dump_into_file<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     cs: &ConstraintSystem<G::ScalarField>,
     witness: &[Vec<G::ScalarField>; COLUMNS],
     runtime_tables: &[RuntimeTable<G::ScalarField>],
@@ -188,13 +209,14 @@ pub fn bench_arguments_dump_into_file<G: KimchiCurve>(
 /// Given a filename with encoded (witness, runtime table, prev rec
 /// challenges, constrain system), returns arguments necessary to run a prover.
 pub fn bench_arguments_from_file<
-    G: KimchiCurve,
-    BaseSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    const FULL_ROUNDS: usize,
+    G: KimchiCurve<FULL_ROUNDS>,
+    BaseSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
 >(
     srs: poly_commitment::ipa::SRS<G>,
     filename: String,
 ) -> (
-    ProverIndex<G, OpeningProof<G>>,
+    ProverIndex<FULL_ROUNDS, G, <OpeningProof<G, FULL_ROUNDS> as OpenProof<G, FULL_ROUNDS>>::SRS>,
     [Vec<G::ScalarField>; COLUMNS],
     Vec<RuntimeTable<G::ScalarField>>,
     Vec<RecursionChallenge<G>>,
@@ -231,8 +253,7 @@ where
     let cs: ConstraintSystem<G::ScalarField> = rmp_serde::from_read(bytes_cs.as_slice()).unwrap();
 
     let endo = cs.endo;
-    let mut index: ProverIndex<G, OpeningProof<G>> =
-        ProverIndex::create(cs, endo, srs.into(), false);
+    let mut index = ProverIndex::create(cs, endo, srs.into(), false);
     index.compute_verifier_index_digest::<BaseSponge>();
 
     (index, witness, runtime_tables, prev)

@@ -24,6 +24,7 @@ use kimchi::{
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use poly_commitment::{
@@ -31,6 +32,9 @@ use poly_commitment::{
     ipa::OpeningProof,
     lagrange_basis::WithLagrangeBasis,
 };
+
+type Srs =
+    <OpeningProof<Pallas, FULL_ROUNDS> as poly_commitment::OpenProof<Pallas, FULL_ROUNDS>>::SRS;
 
 #[ocaml_gen::func]
 #[ocaml::func]
@@ -71,7 +75,7 @@ pub fn caml_pasta_fq_plonk_proof_create(
     let witness: [Vec<_>; COLUMNS] = witness
         .try_into()
         .expect("the witness should be a column of 15 vectors");
-    let index: &ProverIndex<Pallas, OpeningProof<Pallas>> = &index.as_ref().0;
+    let index: &ProverIndex<FULL_ROUNDS, Pallas, Srs> = &index.as_ref().0;
 
     let runtime_tables: Vec<RuntimeTable<Fq>> =
         runtime_tables.into_iter().map(Into::into).collect();
@@ -97,8 +101,8 @@ pub fn caml_pasta_fq_plonk_proof_create(
     runtime.releasing_runtime(|| {
         let group_map = GroupMap::<Fp>::setup();
         let proof = ProverProof::create_recursive::<
-            DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>,
-            DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>,
+            DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+            DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
             _,
         >(
             &group_map,
@@ -131,10 +135,11 @@ pub fn caml_pasta_fq_plonk_proof_verify(
     };
 
     batch_verify::<
+        FULL_ROUNDS,
         Pallas,
-        DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>,
-        DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>,
-        OpeningProof<Pallas>,
+        DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+        DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+        OpeningProof<Pallas, FULL_ROUNDS>,
     >(&group_map, &[context])
     .is_ok()
 }
@@ -149,13 +154,15 @@ pub fn caml_pasta_fq_plonk_proof_batch_verify(
         .into_iter()
         .zip(proofs.into_iter())
         .map(|(caml_index, caml_proof)| {
-            let verifier_index: VerifierIndex<Pallas, OpeningProof<Pallas>> = caml_index.into();
-            let (proof, public_input): (ProverProof<Pallas, OpeningProof<Pallas>>, Vec<_>) =
-                caml_proof.into();
+            let verifier_index: VerifierIndex<FULL_ROUNDS, Pallas, Srs> = caml_index.into();
+            let (proof, public_input): (
+                ProverProof<Pallas, OpeningProof<Pallas, FULL_ROUNDS>, FULL_ROUNDS>,
+                Vec<_>,
+            ) = caml_proof.into();
             (verifier_index, proof, public_input)
         })
         .collect();
-    let ts_ref: Vec<Context<Pallas, OpeningProof<Pallas>>> = ts
+    let ts_ref: Vec<Context<FULL_ROUNDS, Pallas, OpeningProof<Pallas, FULL_ROUNDS>, Srs>> = ts
         .iter()
         .map(|(verifier_index, proof, public_input)| Context {
             verifier_index,
@@ -166,10 +173,11 @@ pub fn caml_pasta_fq_plonk_proof_batch_verify(
     let group_map = GroupMap::<Fp>::setup();
 
     batch_verify::<
+        55,
         Pallas,
-        DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>,
-        DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>,
-        OpeningProof<Pallas>,
+        DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+        DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+        OpeningProof<Pallas, FULL_ROUNDS>,
     >(&group_map, &ts_ref)
     .is_ok()
 }
@@ -191,7 +199,7 @@ pub fn caml_pasta_fq_plonk_proof_dummy() -> CamlProofWithPublic<CamlGPallas, Cam
     let prev_challenges = vec![prev.clone(), prev.clone(), prev];
 
     let g = Pallas::generator();
-    let proof = OpeningProof {
+    let proof: OpeningProof<_, FULL_ROUNDS> = OpeningProof {
         lr: vec![(g, g), (g, g), (g, g)],
         z1: Fq::one(),
         z2: Fq::one(),

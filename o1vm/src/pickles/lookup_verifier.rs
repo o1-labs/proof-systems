@@ -9,7 +9,7 @@ use kimchi::{
     groupmap::GroupMap,
     plonk_sponge::FrSponge,
 };
-use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use mina_poseidon::{poseidon::ArithmeticSpongeParams, sponge::ScalarChallenge, FqSponge};
 use poly_commitment::{
     commitment::{absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation},
     ipa::OpeningProof,
@@ -17,11 +17,7 @@ use poly_commitment::{
 };
 use rand::thread_rng;
 
-pub fn lookup_verify<
-    G: KimchiCurve,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
->(
+pub fn lookup_verify<const FULL_ROUNDS: usize, G, EFqSponge, EFrSponge>(
     // input dependent of main proto
     beta_challenge: G::ScalarField,
     gamma_challenge: G::ScalarField,
@@ -30,11 +26,15 @@ pub fn lookup_verify<
     // fixed input
     // TODO: we don't need the whole domain
     domain: EvaluationDomains<G::ScalarField>,
-    srs: &<OpeningProof<G> as OpenProof<G>>::SRS,
+    srs: &<OpeningProof<G, FULL_ROUNDS> as OpenProof<G, FULL_ROUNDS>>::SRS,
     // proof
-    proof: &Proof<G>,
+    proof: &Proof<FULL_ROUNDS, G>,
 ) -> bool
 where
+    G: KimchiCurve<FULL_ROUNDS>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
+    EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
     G::BaseField: PrimeField,
 {
     let Proof {
@@ -85,7 +85,7 @@ where
     let fq_sponge_before_evaluations = fq_sponge.clone();
 
     // Creating fr_sponge, absorbing eval to create challenges for IPA
-    let mut fr_sponge = EFrSponge::new(G::sponge_params());
+    let mut fr_sponge = EFrSponge::from(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
     // TODO avoid cloning
