@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["kimchi_dummy"]};
+window.SIDEBAR_ITEMS = {"fn":["kimchi_dummy"],"type":["Params"]};

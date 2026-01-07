@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/generic.rs`."><title>generic.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-2eb46af5.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (4fa80a5e7 2026-01-05)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-c38705f0.js" ><script src="../../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-7bab91a1.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi/circuits/polynomials/</div>generic.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module implements the double generic gate.
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/generic.rs`."><title>generic.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-2eb46af5.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (0aced202c 2026-01-06)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-c38705f0.js" ><script src="../../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-7bab91a1.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi/circuits/polynomials/</div>generic.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module implements the double generic gate.
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a></span><span class="comment">//~ The double generic gate contains two generic gates.
 <a href=#4 id=4 data-nosnippet>4</a>//~
@@ -48,420 +48,422 @@
 <a href=#48 id=48 data-nosnippet>48</a><span class="kw">use </span>ark_ff::{FftField, PrimeField, Zero};
 <a href=#49 id=49 data-nosnippet>49</a><span class="kw">use </span>ark_poly::univariate::DensePolynomial;
 <a href=#50 id=50 data-nosnippet>50</a><span class="kw">use </span>core::{array, marker::PhantomData};
-<a href=#51 id=51 data-nosnippet>51</a><span class="kw">use </span>poly_commitment::OpenProof;
-<a href=#52 id=52 data-nosnippet>52</a>
-<a href=#53 id=53 data-nosnippet>53</a><span class="doccomment">/// Number of constraints produced by the gate.
-<a href=#54 id=54 data-nosnippet>54</a></span><span class="kw">pub const </span>CONSTRAINTS: u32 = <span class="number">2</span>;
-<a href=#55 id=55 data-nosnippet>55</a>
-<a href=#56 id=56 data-nosnippet>56</a><span class="doccomment">/// Number of generic of registers by a single generic gate
-<a href=#57 id=57 data-nosnippet>57</a></span><span class="kw">pub const </span>GENERIC_REGISTERS: usize = <span class="number">3</span>;
-<a href=#58 id=58 data-nosnippet>58</a>
-<a href=#59 id=59 data-nosnippet>59</a><span class="doccomment">/// Number of coefficients used by a single generic gate
-<a href=#60 id=60 data-nosnippet>60</a>/// Three are used for the registers, one for the multiplication,
-<a href=#61 id=61 data-nosnippet>61</a>/// and one for the constant.
-<a href=#62 id=62 data-nosnippet>62</a></span><span class="kw">pub const </span>GENERIC_COEFFS: usize = GENERIC_REGISTERS + <span class="number">1 </span><span class="comment">/* mul */ </span>+ <span class="number">1 </span><span class="comment">/* cst */</span>;
-<a href=#63 id=63 data-nosnippet>63</a>
-<a href=#64 id=64 data-nosnippet>64</a><span class="doccomment">/// The double generic gate actually contains two generic gates.
-<a href=#65 id=65 data-nosnippet>65</a></span><span class="kw">pub const </span>DOUBLE_GENERIC_COEFFS: usize = GENERIC_COEFFS * <span class="number">2</span>;
-<a href=#66 id=66 data-nosnippet>66</a>
-<a href=#67 id=67 data-nosnippet>67</a><span class="doccomment">/// Number of generic of registers by a double generic gate.
-<a href=#68 id=68 data-nosnippet>68</a></span><span class="kw">pub const </span>DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * <span class="number">2</span>;
-<a href=#69 id=69 data-nosnippet>69</a>
-<a href=#70 id=70 data-nosnippet>70</a><span class="doccomment">/// Implementation of the `Generic` gate
-<a href=#71 id=71 data-nosnippet>71</a></span><span class="attr">#[derive(Default)]
-<a href=#72 id=72 data-nosnippet>72</a></span><span class="kw">pub struct </span>Generic&lt;F&gt;(PhantomData&lt;F&gt;);
-<a href=#73 id=73 data-nosnippet>73</a>
-<a href=#74 id=74 data-nosnippet>74</a><span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>Generic&lt;F&gt;
-<a href=#75 id=75 data-nosnippet>75</a><span class="kw">where
-<a href=#76 id=76 data-nosnippet>76</a>    </span>F: PrimeField,
-<a href=#77 id=77 data-nosnippet>77</a>{
-<a href=#78 id=78 data-nosnippet>78</a>    <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Generic);
-<a href=#79 id=79 data-nosnippet>79</a>    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">2</span>;
-<a href=#80 id=80 data-nosnippet>80</a>
-<a href=#81 id=81 data-nosnippet>81</a>    <span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(
-<a href=#82 id=82 data-nosnippet>82</a>        env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;,
-<a href=#83 id=83 data-nosnippet>83</a>        _cache: <span class="kw-2">&amp;mut </span>Cache,
-<a href=#84 id=84 data-nosnippet>84</a>    ) -&gt; Vec&lt;T&gt; {
-<a href=#85 id=85 data-nosnippet>85</a>        <span class="comment">// First generic gate
-<a href=#86 id=86 data-nosnippet>86</a>        </span><span class="kw">let </span>left_coeff1 = env.coeff(<span class="number">0</span>);
-<a href=#87 id=87 data-nosnippet>87</a>        <span class="kw">let </span>right_coeff1 = env.coeff(<span class="number">1</span>);
-<a href=#88 id=88 data-nosnippet>88</a>        <span class="kw">let </span>out_coeff1 = env.coeff(<span class="number">2</span>);
-<a href=#89 id=89 data-nosnippet>89</a>        <span class="kw">let </span>mul_coeff1 = env.coeff(<span class="number">3</span>);
-<a href=#90 id=90 data-nosnippet>90</a>        <span class="kw">let </span>constant1 = env.coeff(<span class="number">4</span>);
-<a href=#91 id=91 data-nosnippet>91</a>        <span class="kw">let </span>left1 = env.witness_curr(<span class="number">0</span>);
-<a href=#92 id=92 data-nosnippet>92</a>        <span class="kw">let </span>right1 = env.witness_curr(<span class="number">1</span>);
-<a href=#93 id=93 data-nosnippet>93</a>        <span class="kw">let </span>out1 = env.witness_curr(<span class="number">2</span>);
-<a href=#94 id=94 data-nosnippet>94</a>
-<a href=#95 id=95 data-nosnippet>95</a>        <span class="kw">let </span>constraint1 = left_coeff1 * left1.clone()
-<a href=#96 id=96 data-nosnippet>96</a>            + right_coeff1 * right1.clone()
-<a href=#97 id=97 data-nosnippet>97</a>            + out_coeff1 * out1
-<a href=#98 id=98 data-nosnippet>98</a>            + mul_coeff1 * left1 * right1
-<a href=#99 id=99 data-nosnippet>99</a>            + constant1;
-<a href=#100 id=100 data-nosnippet>100</a>
-<a href=#101 id=101 data-nosnippet>101</a>        <span class="comment">// Second generic gate
-<a href=#102 id=102 data-nosnippet>102</a>        </span><span class="kw">let </span>left_coeff2 = env.coeff(<span class="number">5</span>);
-<a href=#103 id=103 data-nosnippet>103</a>        <span class="kw">let </span>right_coeff2 = env.coeff(<span class="number">6</span>);
-<a href=#104 id=104 data-nosnippet>104</a>        <span class="kw">let </span>out_coeff2 = env.coeff(<span class="number">7</span>);
-<a href=#105 id=105 data-nosnippet>105</a>        <span class="kw">let </span>mul_coeff2 = env.coeff(<span class="number">8</span>);
-<a href=#106 id=106 data-nosnippet>106</a>        <span class="kw">let </span>constant2 = env.coeff(<span class="number">9</span>);
-<a href=#107 id=107 data-nosnippet>107</a>        <span class="kw">let </span>left2 = env.witness_curr(<span class="number">3</span>);
-<a href=#108 id=108 data-nosnippet>108</a>        <span class="kw">let </span>right2 = env.witness_curr(<span class="number">4</span>);
-<a href=#109 id=109 data-nosnippet>109</a>        <span class="kw">let </span>out2 = env.witness_curr(<span class="number">5</span>);
-<a href=#110 id=110 data-nosnippet>110</a>
-<a href=#111 id=111 data-nosnippet>111</a>        <span class="kw">let </span>constraint2 = left_coeff2 * left2.clone()
-<a href=#112 id=112 data-nosnippet>112</a>            + right_coeff2 * right2.clone()
-<a href=#113 id=113 data-nosnippet>113</a>            + out_coeff2 * out2
-<a href=#114 id=114 data-nosnippet>114</a>            + mul_coeff2 * left2 * right2
-<a href=#115 id=115 data-nosnippet>115</a>            + constant2;
-<a href=#116 id=116 data-nosnippet>116</a>
-<a href=#117 id=117 data-nosnippet>117</a>        <span class="macro">vec!</span>[constraint1, constraint2]
-<a href=#118 id=118 data-nosnippet>118</a>    }
-<a href=#119 id=119 data-nosnippet>119</a>}
-<a href=#120 id=120 data-nosnippet>120</a>
-<a href=#121 id=121 data-nosnippet>121</a><span class="doccomment">/// The different type of computation that are possible with a generic gate.
-<a href=#122 id=122 data-nosnippet>122</a>/// This type is useful to create a generic gate via the [`CircuitGate::create_generic_gadget`] function.
-<a href=#123 id=123 data-nosnippet>123</a></span><span class="attr">#[derive(Clone)]
-<a href=#124 id=124 data-nosnippet>124</a></span><span class="kw">pub enum </span>GenericGateSpec&lt;F&gt; {
-<a href=#125 id=125 data-nosnippet>125</a>    <span class="doccomment">/// Add two values.
-<a href=#126 id=126 data-nosnippet>126</a>    </span>Add {
-<a href=#127 id=127 data-nosnippet>127</a>        <span class="doccomment">/// Optional coefficient that can be multiplied with the left operand.
-<a href=#128 id=128 data-nosnippet>128</a>        </span>left_coeff: <span class="prelude-ty">Option</span>&lt;F&gt;,
-<a href=#129 id=129 data-nosnippet>129</a>        <span class="doccomment">/// Optional coefficient that can be multiplied with the right operand.
-<a href=#130 id=130 data-nosnippet>130</a>        </span>right_coeff: <span class="prelude-ty">Option</span>&lt;F&gt;,
-<a href=#131 id=131 data-nosnippet>131</a>        <span class="doccomment">/// Optional coefficient that can be multiplied with the output.
-<a href=#132 id=132 data-nosnippet>132</a>        </span>output_coeff: <span class="prelude-ty">Option</span>&lt;F&gt;,
-<a href=#133 id=133 data-nosnippet>133</a>    },
-<a href=#134 id=134 data-nosnippet>134</a>    <span class="doccomment">/// Multiplication of two values
-<a href=#135 id=135 data-nosnippet>135</a>    </span>Mul {
-<a href=#136 id=136 data-nosnippet>136</a>        <span class="doccomment">/// Optional coefficient that can be multiplied with the output.
-<a href=#137 id=137 data-nosnippet>137</a>        </span>output_coeff: <span class="prelude-ty">Option</span>&lt;F&gt;,
-<a href=#138 id=138 data-nosnippet>138</a>        <span class="doccomment">/// Optional coefficient that can be multiplied with the multiplication result.
-<a href=#139 id=139 data-nosnippet>139</a>        </span>mul_coeff: <span class="prelude-ty">Option</span>&lt;F&gt;,
-<a href=#140 id=140 data-nosnippet>140</a>    },
-<a href=#141 id=141 data-nosnippet>141</a>    <span class="doccomment">/// A constant, the constructor contains the constant itself
-<a href=#142 id=142 data-nosnippet>142</a>    </span>Const(F),
-<a href=#143 id=143 data-nosnippet>143</a>    <span class="doccomment">/// A public gate
-<a href=#144 id=144 data-nosnippet>144</a>    </span>Pub,
-<a href=#145 id=145 data-nosnippet>145</a>    <span class="doccomment">/// Sum a value to a constant
-<a href=#146 id=146 data-nosnippet>146</a>    </span>Plus(F),
-<a href=#147 id=147 data-nosnippet>147</a>}
-<a href=#148 id=148 data-nosnippet>148</a>
-<a href=#149 id=149 data-nosnippet>149</a><span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
-<a href=#150 id=150 data-nosnippet>150</a>    <span class="doccomment">/// This allows you to create two generic gates that will fit in one row, check [`Self::create_generic_gadget`] for a better to way to create these gates.
-<a href=#151 id=151 data-nosnippet>151</a>    </span><span class="kw">pub fn </span>create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * <span class="number">2</span>]) -&gt; <span class="self">Self </span>{
-<a href=#152 id=152 data-nosnippet>152</a>        CircuitGate::new(GateType::Generic, wires, c.to_vec())
-<a href=#153 id=153 data-nosnippet>153</a>    }
-<a href=#154 id=154 data-nosnippet>154</a>
-<a href=#155 id=155 data-nosnippet>155</a>    <span class="doccomment">/// This allows you to create two generic gates by passing the desired
-<a href=#156 id=156 data-nosnippet>156</a>    /// `gate1` and `gate2` as two [`GenericGateSpec`].
-<a href=#157 id=157 data-nosnippet>157</a>    </span><span class="kw">pub fn </span>create_generic_gadget(
-<a href=#158 id=158 data-nosnippet>158</a>        wires: GateWires,
-<a href=#159 id=159 data-nosnippet>159</a>        gate1: GenericGateSpec&lt;F&gt;,
-<a href=#160 id=160 data-nosnippet>160</a>        gate2: <span class="prelude-ty">Option</span>&lt;GenericGateSpec&lt;F&gt;&gt;,
-<a href=#161 id=161 data-nosnippet>161</a>    ) -&gt; <span class="self">Self </span>{
-<a href=#162 id=162 data-nosnippet>162</a>        <span class="kw">let </span><span class="kw-2">mut </span>coeffs = [F::zero(); GENERIC_COEFFS * <span class="number">2</span>];
-<a href=#163 id=163 data-nosnippet>163</a>        <span class="kw">match </span>gate1 {
-<a href=#164 id=164 data-nosnippet>164</a>            GenericGateSpec::Add {
-<a href=#165 id=165 data-nosnippet>165</a>                left_coeff,
-<a href=#166 id=166 data-nosnippet>166</a>                right_coeff,
-<a href=#167 id=167 data-nosnippet>167</a>                output_coeff,
-<a href=#168 id=168 data-nosnippet>168</a>            } =&gt; {
-<a href=#169 id=169 data-nosnippet>169</a>                coeffs[<span class="number">0</span>] = left_coeff.unwrap_or_else(F::one);
-<a href=#170 id=170 data-nosnippet>170</a>                coeffs[<span class="number">1</span>] = right_coeff.unwrap_or_else(F::one);
-<a href=#171 id=171 data-nosnippet>171</a>                coeffs[<span class="number">2</span>] = output_coeff.unwrap_or_else(|| -F::one());
-<a href=#172 id=172 data-nosnippet>172</a>            }
-<a href=#173 id=173 data-nosnippet>173</a>            GenericGateSpec::Mul {
-<a href=#174 id=174 data-nosnippet>174</a>                output_coeff,
-<a href=#175 id=175 data-nosnippet>175</a>                mul_coeff,
-<a href=#176 id=176 data-nosnippet>176</a>            } =&gt; {
-<a href=#177 id=177 data-nosnippet>177</a>                coeffs[<span class="number">2</span>] = output_coeff.unwrap_or_else(|| -F::one());
-<a href=#178 id=178 data-nosnippet>178</a>                coeffs[<span class="number">3</span>] = mul_coeff.unwrap_or_else(F::one);
-<a href=#179 id=179 data-nosnippet>179</a>            }
-<a href=#180 id=180 data-nosnippet>180</a>            GenericGateSpec::Const(cst) =&gt; {
-<a href=#181 id=181 data-nosnippet>181</a>                coeffs[<span class="number">0</span>] = F::one();
-<a href=#182 id=182 data-nosnippet>182</a>                coeffs[<span class="number">4</span>] = -cst;
-<a href=#183 id=183 data-nosnippet>183</a>            }
-<a href=#184 id=184 data-nosnippet>184</a>            GenericGateSpec::Pub =&gt; {
-<a href=#185 id=185 data-nosnippet>185</a>                coeffs[<span class="number">0</span>] = F::one();
-<a href=#186 id=186 data-nosnippet>186</a>            }
-<a href=#187 id=187 data-nosnippet>187</a>            GenericGateSpec::Plus(cst) =&gt; {
-<a href=#188 id=188 data-nosnippet>188</a>                coeffs[<span class="number">0</span>] = F::one();
-<a href=#189 id=189 data-nosnippet>189</a>                coeffs[<span class="number">1</span>] = F::zero();
-<a href=#190 id=190 data-nosnippet>190</a>                coeffs[<span class="number">2</span>] = -F::one();
-<a href=#191 id=191 data-nosnippet>191</a>                coeffs[<span class="number">3</span>] = F::zero();
-<a href=#192 id=192 data-nosnippet>192</a>                coeffs[<span class="number">4</span>] = cst;
-<a href=#193 id=193 data-nosnippet>193</a>            }
-<a href=#194 id=194 data-nosnippet>194</a>        };
-<a href=#195 id=195 data-nosnippet>195</a>        <span class="kw">match </span>gate2 {
-<a href=#196 id=196 data-nosnippet>196</a>            <span class="prelude-val">Some</span>(GenericGateSpec::Add {
-<a href=#197 id=197 data-nosnippet>197</a>                left_coeff,
-<a href=#198 id=198 data-nosnippet>198</a>                right_coeff,
-<a href=#199 id=199 data-nosnippet>199</a>                output_coeff,
-<a href=#200 id=200 data-nosnippet>200</a>            }) =&gt; {
-<a href=#201 id=201 data-nosnippet>201</a>                coeffs[<span class="number">5</span>] = left_coeff.unwrap_or_else(F::one);
-<a href=#202 id=202 data-nosnippet>202</a>                coeffs[<span class="number">6</span>] = right_coeff.unwrap_or_else(F::one);
-<a href=#203 id=203 data-nosnippet>203</a>                coeffs[<span class="number">7</span>] = output_coeff.unwrap_or_else(|| -F::one());
-<a href=#204 id=204 data-nosnippet>204</a>            }
-<a href=#205 id=205 data-nosnippet>205</a>            <span class="prelude-val">Some</span>(GenericGateSpec::Mul {
-<a href=#206 id=206 data-nosnippet>206</a>                output_coeff,
-<a href=#207 id=207 data-nosnippet>207</a>                mul_coeff,
-<a href=#208 id=208 data-nosnippet>208</a>            }) =&gt; {
-<a href=#209 id=209 data-nosnippet>209</a>                coeffs[<span class="number">7</span>] = output_coeff.unwrap_or_else(|| -F::one());
-<a href=#210 id=210 data-nosnippet>210</a>                coeffs[<span class="number">8</span>] = mul_coeff.unwrap_or_else(F::one);
-<a href=#211 id=211 data-nosnippet>211</a>            }
-<a href=#212 id=212 data-nosnippet>212</a>            <span class="prelude-val">Some</span>(GenericGateSpec::Const(cst)) =&gt; {
-<a href=#213 id=213 data-nosnippet>213</a>                coeffs[<span class="number">5</span>] = F::one();
-<a href=#214 id=214 data-nosnippet>214</a>                coeffs[<span class="number">9</span>] = -cst;
-<a href=#215 id=215 data-nosnippet>215</a>            }
-<a href=#216 id=216 data-nosnippet>216</a>            <span class="prelude-val">Some</span>(GenericGateSpec::Pub) =&gt; {
-<a href=#217 id=217 data-nosnippet>217</a>                <span class="macro">unimplemented!</span>();
-<a href=#218 id=218 data-nosnippet>218</a>            }
-<a href=#219 id=219 data-nosnippet>219</a>            <span class="prelude-val">Some</span>(GenericGateSpec::Plus(cst)) =&gt; {
-<a href=#220 id=220 data-nosnippet>220</a>                coeffs[<span class="number">5</span>] = F::one();
-<a href=#221 id=221 data-nosnippet>221</a>                coeffs[<span class="number">6</span>] = F::zero();
-<a href=#222 id=222 data-nosnippet>222</a>                coeffs[<span class="number">7</span>] = -F::one();
-<a href=#223 id=223 data-nosnippet>223</a>                coeffs[<span class="number">8</span>] = F::zero();
-<a href=#224 id=224 data-nosnippet>224</a>                coeffs[<span class="number">9</span>] = cst;
-<a href=#225 id=225 data-nosnippet>225</a>            }
-<a href=#226 id=226 data-nosnippet>226</a>            <span class="prelude-val">None </span>=&gt; (),
-<a href=#227 id=227 data-nosnippet>227</a>        };
-<a href=#228 id=228 data-nosnippet>228</a>        <span class="self">Self</span>::create_generic(wires, coeffs)
-<a href=#229 id=229 data-nosnippet>229</a>    }
-<a href=#230 id=230 data-nosnippet>230</a>
-<a href=#231 id=231 data-nosnippet>231</a>    <span class="kw">pub fn </span>extend_generic(
-<a href=#232 id=232 data-nosnippet>232</a>        gates: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="self">Self</span>&gt;,
-<a href=#233 id=233 data-nosnippet>233</a>        curr_row: <span class="kw-2">&amp;mut </span>usize,
-<a href=#234 id=234 data-nosnippet>234</a>        wires: GateWires,
-<a href=#235 id=235 data-nosnippet>235</a>        gate1: GenericGateSpec&lt;F&gt;,
-<a href=#236 id=236 data-nosnippet>236</a>        gate2: <span class="prelude-ty">Option</span>&lt;GenericGateSpec&lt;F&gt;&gt;,
-<a href=#237 id=237 data-nosnippet>237</a>    ) {
-<a href=#238 id=238 data-nosnippet>238</a>        <span class="kw">let </span>gate = <span class="self">Self</span>::create_generic_gadget(wires, gate1, gate2);
-<a href=#239 id=239 data-nosnippet>239</a>        <span class="kw-2">*</span>curr_row += <span class="number">1</span>;
-<a href=#240 id=240 data-nosnippet>240</a>        gates.extend_from_slice(<span class="kw-2">&amp;</span>[gate]);
-<a href=#241 id=241 data-nosnippet>241</a>    }
-<a href=#242 id=242 data-nosnippet>242</a>}
-<a href=#243 id=243 data-nosnippet>243</a>
-<a href=#244 id=244 data-nosnippet>244</a><span class="comment">// -------------------------------------------------
-<a href=#245 id=245 data-nosnippet>245</a>
-<a href=#246 id=246 data-nosnippet>246</a>//~ The constraints:
-<a href=#247 id=247 data-nosnippet>247</a>//~
-<a href=#248 id=248 data-nosnippet>248</a>//~ * $w_0 \cdot c_0 + w_1 \cdot c_1 + w_2 \cdot c_2 + w_0 \cdot w_1 \cdot c_3 + c_4$
-<a href=#249 id=249 data-nosnippet>249</a>//~ * $w_3 \cdot c_5 + w_4 \cdot c_6 + w_5 \cdot c_7 + w_3 w_4 c_8 + c_9$
-<a href=#250 id=250 data-nosnippet>250</a>//~
-<a href=#251 id=251 data-nosnippet>251</a>//~ where the $c_i$ are the `coefficients`.
-<a href=#252 id=252 data-nosnippet>252</a>
-<a href=#253 id=253 data-nosnippet>253</a>// -------------------------------------------------
-<a href=#254 id=254 data-nosnippet>254</a>
-<a href=#255 id=255 data-nosnippet>255</a></span><span class="kw">pub mod </span>testing {
-<a href=#256 id=256 data-nosnippet>256</a>    <span class="kw">use </span>super::<span class="kw-2">*</span>;
-<a href=#257 id=257 data-nosnippet>257</a>    <span class="kw">use </span><span class="kw">crate</span>::circuits::wires::Wire;
-<a href=#258 id=258 data-nosnippet>258</a>    <span class="kw">use </span>itertools::iterate;
-<a href=#259 id=259 data-nosnippet>259</a>
-<a href=#260 id=260 data-nosnippet>260</a>    <span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
-<a href=#261 id=261 data-nosnippet>261</a>        <span class="doccomment">/// verifies that the generic gate constraints are solved by the witness
-<a href=#262 id=262 data-nosnippet>262</a>        ///
-<a href=#263 id=263 data-nosnippet>263</a>        /// # Errors
-<a href=#264 id=264 data-nosnippet>264</a>        ///
-<a href=#265 id=265 data-nosnippet>265</a>        /// Will give error if `self.typ` is not `GateType::Generic`.
-<a href=#266 id=266 data-nosnippet>266</a>        </span><span class="kw">pub fn </span>verify_generic(
-<a href=#267 id=267 data-nosnippet>267</a>            <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#268 id=268 data-nosnippet>268</a>            row: usize,
-<a href=#269 id=269 data-nosnippet>269</a>            witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
-<a href=#270 id=270 data-nosnippet>270</a>            public: <span class="kw-2">&amp;</span>[F],
-<a href=#271 id=271 data-nosnippet>271</a>        ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
-<a href=#272 id=272 data-nosnippet>272</a>            <span class="comment">// assignments
-<a href=#273 id=273 data-nosnippet>273</a>            </span><span class="kw">let </span>this: [F; COLUMNS] = array::from_fn(|i| witness[i][row]);
-<a href=#274 id=274 data-nosnippet>274</a>
-<a href=#275 id=275 data-nosnippet>275</a>            <span class="comment">// constants
-<a href=#276 id=276 data-nosnippet>276</a>            </span><span class="kw">let </span>zero = F::zero();
-<a href=#277 id=277 data-nosnippet>277</a>
-<a href=#278 id=278 data-nosnippet>278</a>            <span class="comment">// check if it's the correct gate
-<a href=#279 id=279 data-nosnippet>279</a>            </span><span class="macro">ensure_eq!</span>(<span class="self">self</span>.typ, GateType::Generic, <span class="string">"generic: incorrect gate"</span>);
-<a href=#280 id=280 data-nosnippet>280</a>
-<a href=#281 id=281 data-nosnippet>281</a>            <span class="kw">let </span>check_single = |coeffs_offset, register_offset| {
-<a href=#282 id=282 data-nosnippet>282</a>                <span class="kw">let </span>get = |offset| {
-<a href=#283 id=283 data-nosnippet>283</a>                    <span class="self">self</span>.coeffs
-<a href=#284 id=284 data-nosnippet>284</a>                        .get(offset)
-<a href=#285 id=285 data-nosnippet>285</a>                        .copied()
-<a href=#286 id=286 data-nosnippet>286</a>                        .unwrap_or_else(|| F::zero())
-<a href=#287 id=287 data-nosnippet>287</a>                };
-<a href=#288 id=288 data-nosnippet>288</a>                <span class="kw">let </span>l_coeff = get(coeffs_offset);
-<a href=#289 id=289 data-nosnippet>289</a>                <span class="kw">let </span>r_coeff = get(coeffs_offset + <span class="number">1</span>);
-<a href=#290 id=290 data-nosnippet>290</a>                <span class="kw">let </span>o_coeff = get(coeffs_offset + <span class="number">2</span>);
-<a href=#291 id=291 data-nosnippet>291</a>                <span class="kw">let </span>m_coeff = get(coeffs_offset + <span class="number">3</span>);
-<a href=#292 id=292 data-nosnippet>292</a>                <span class="kw">let </span>c_coeff = get(coeffs_offset + <span class="number">4</span>);
-<a href=#293 id=293 data-nosnippet>293</a>
-<a href=#294 id=294 data-nosnippet>294</a>                <span class="kw">let </span>sum = l_coeff * this[register_offset]
-<a href=#295 id=295 data-nosnippet>295</a>                    + r_coeff * this[register_offset + <span class="number">1</span>]
-<a href=#296 id=296 data-nosnippet>296</a>                    + o_coeff * this[register_offset + <span class="number">2</span>];
-<a href=#297 id=297 data-nosnippet>297</a>                <span class="kw">let </span>mul = m_coeff * this[register_offset] * this[register_offset + <span class="number">1</span>];
-<a href=#298 id=298 data-nosnippet>298</a>                <span class="kw">let </span>public = <span class="kw">if </span>coeffs_offset == <span class="number">0 </span>{
-<a href=#299 id=299 data-nosnippet>299</a>                    public.get(row).copied().unwrap_or_else(F::zero)
-<a href=#300 id=300 data-nosnippet>300</a>                } <span class="kw">else </span>{
-<a href=#301 id=301 data-nosnippet>301</a>                    F::zero()
-<a href=#302 id=302 data-nosnippet>302</a>                };
-<a href=#303 id=303 data-nosnippet>303</a>                <span class="macro">ensure_eq!</span>(
-<a href=#304 id=304 data-nosnippet>304</a>                    zero,
-<a href=#305 id=305 data-nosnippet>305</a>                    sum + mul + c_coeff - public,
-<a href=#306 id=306 data-nosnippet>306</a>                    <span class="string">"generic: incorrect gate"
-<a href=#307 id=307 data-nosnippet>307</a>                </span>);
-<a href=#308 id=308 data-nosnippet>308</a>                <span class="prelude-val">Ok</span>(())
-<a href=#309 id=309 data-nosnippet>309</a>            };
-<a href=#310 id=310 data-nosnippet>310</a>
-<a href=#311 id=311 data-nosnippet>311</a>            check_single(<span class="number">0</span>, <span class="number">0</span>)<span class="question-mark">?</span>;
-<a href=#312 id=312 data-nosnippet>312</a>            check_single(GENERIC_COEFFS, GENERIC_REGISTERS)
-<a href=#313 id=313 data-nosnippet>313</a>        }
-<a href=#314 id=314 data-nosnippet>314</a>    }
-<a href=#315 id=315 data-nosnippet>315</a>
-<a href=#316 id=316 data-nosnippet>316</a>    <span class="kw">impl</span>&lt;F: PrimeField, G: KimchiCurve&lt;ScalarField = F&gt;, OpeningProof: OpenProof&lt;G&gt;&gt;
-<a href=#317 id=317 data-nosnippet>317</a>        ProverIndex&lt;G, OpeningProof&gt;
-<a href=#318 id=318 data-nosnippet>318</a>    {
-<a href=#319 id=319 data-nosnippet>319</a>        <span class="doccomment">/// Function to verify the generic polynomials with a witness.
-<a href=#320 id=320 data-nosnippet>320</a>        </span><span class="kw">pub fn </span>verify_generic(
-<a href=#321 id=321 data-nosnippet>321</a>            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#322 id=322 data-nosnippet>322</a>            witness: <span class="kw-2">&amp;</span>[DensePolynomial&lt;F&gt;; COLUMNS],
-<a href=#323 id=323 data-nosnippet>323</a>            public: <span class="kw-2">&amp;</span>DensePolynomial&lt;F&gt;,
-<a href=#324 id=324 data-nosnippet>324</a>        ) -&gt; bool {
-<a href=#325 id=325 data-nosnippet>325</a>            <span class="kw">let </span>coefficientsm: [<span class="kw">_</span>; COLUMNS] = array::from_fn(|i| {
-<a href=#326 id=326 data-nosnippet>326</a>                <span class="self">self</span>.column_evaluations.get().coefficients8[i]
-<a href=#327 id=327 data-nosnippet>327</a>                    .clone()
-<a href=#328 id=328 data-nosnippet>328</a>                    .interpolate()
-<a href=#329 id=329 data-nosnippet>329</a>            });
-<a href=#330 id=330 data-nosnippet>330</a>
-<a href=#331 id=331 data-nosnippet>331</a>            <span class="kw">let </span>generic_gate = |coeff_offset, register_offset| {
-<a href=#332 id=332 data-nosnippet>332</a>                <span class="comment">// addition (of left, right, output wires)
-<a href=#333 id=333 data-nosnippet>333</a>                </span><span class="kw">let </span><span class="kw-2">mut </span>ff = <span class="kw-2">&amp;</span>coefficientsm[coeff_offset] * <span class="kw-2">&amp;</span>witness[register_offset];
-<a href=#334 id=334 data-nosnippet>334</a>                ff += <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>coefficientsm[coeff_offset + <span class="number">1</span>] * <span class="kw-2">&amp;</span>witness[register_offset + <span class="number">1</span>]);
-<a href=#335 id=335 data-nosnippet>335</a>                ff += <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>coefficientsm[coeff_offset + <span class="number">2</span>] * <span class="kw-2">&amp;</span>witness[register_offset + <span class="number">2</span>]);
-<a href=#336 id=336 data-nosnippet>336</a>
-<a href=#337 id=337 data-nosnippet>337</a>                <span class="comment">// multiplication
-<a href=#338 id=338 data-nosnippet>338</a>                </span>ff += <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>witness[register_offset] * <span class="kw-2">&amp;</span>witness[register_offset + <span class="number">1</span>])
-<a href=#339 id=339 data-nosnippet>339</a>                    * <span class="kw-2">&amp;</span>coefficientsm[coeff_offset + <span class="number">3</span>]);
-<a href=#340 id=340 data-nosnippet>340</a>
-<a href=#341 id=341 data-nosnippet>341</a>                <span class="comment">// constant
-<a href=#342 id=342 data-nosnippet>342</a>                </span><span class="kw-2">&amp;</span>ff + <span class="kw-2">&amp;</span>coefficientsm[coeff_offset + <span class="number">4</span>]
-<a href=#343 id=343 data-nosnippet>343</a>
-<a href=#344 id=344 data-nosnippet>344</a>                <span class="comment">// note: skip alpha power, as we're testing for completeness
-<a href=#345 id=345 data-nosnippet>345</a>            </span>};
-<a href=#346 id=346 data-nosnippet>346</a>
-<a href=#347 id=347 data-nosnippet>347</a>            <span class="kw">let </span><span class="kw-2">mut </span>res = generic_gate(<span class="number">0</span>, <span class="number">0</span>);
-<a href=#348 id=348 data-nosnippet>348</a>            res += <span class="kw-2">&amp;</span>generic_gate(GENERIC_COEFFS, GENERIC_REGISTERS);
-<a href=#349 id=349 data-nosnippet>349</a>
-<a href=#350 id=350 data-nosnippet>350</a>            <span class="comment">// public inputs
-<a href=#351 id=351 data-nosnippet>351</a>            </span>res += public;
-<a href=#352 id=352 data-nosnippet>352</a>
-<a href=#353 id=353 data-nosnippet>353</a>            <span class="comment">// selector poly
-<a href=#354 id=354 data-nosnippet>354</a>            </span>res = <span class="kw-2">&amp;</span>res
-<a href=#355 id=355 data-nosnippet>355</a>                * <span class="kw-2">&amp;</span><span class="self">self
-<a href=#356 id=356 data-nosnippet>356</a>                    </span>.column_evaluations
-<a href=#357 id=357 data-nosnippet>357</a>                    .get()
-<a href=#358 id=358 data-nosnippet>358</a>                    .generic_selector4
-<a href=#359 id=359 data-nosnippet>359</a>                    .interpolate_by_ref();
-<a href=#360 id=360 data-nosnippet>360</a>            <span class="comment">// Interpolation above is inefficient, as is the rest of the function,
-<a href=#361 id=361 data-nosnippet>361</a>            // would be better just to check the equation on all the rows.
-<a href=#362 id=362 data-nosnippet>362</a>
-<a href=#363 id=363 data-nosnippet>363</a>            // verify that it is divisible by Z_H
-<a href=#364 id=364 data-nosnippet>364</a>            </span><span class="kw">let </span>(_quotient, rest) = res.divide_by_vanishing_poly(<span class="self">self</span>.cs.domain.d1);
-<a href=#365 id=365 data-nosnippet>365</a>            rest.is_zero()
-<a href=#366 id=366 data-nosnippet>366</a>        }
-<a href=#367 id=367 data-nosnippet>367</a>    }
-<a href=#368 id=368 data-nosnippet>368</a>
-<a href=#369 id=369 data-nosnippet>369</a>    <span class="doccomment">/// Create a generic circuit
-<a href=#370 id=370 data-nosnippet>370</a>    ///
-<a href=#371 id=371 data-nosnippet>371</a>    /// # Panics
+<a href=#51 id=51 data-nosnippet>51</a>
+<a href=#52 id=52 data-nosnippet>52</a><span class="doccomment">/// Number of constraints produced by the gate.
+<a href=#53 id=53 data-nosnippet>53</a></span><span class="kw">pub const </span>CONSTRAINTS: u32 = <span class="number">2</span>;
+<a href=#54 id=54 data-nosnippet>54</a>
+<a href=#55 id=55 data-nosnippet>55</a><span class="doccomment">/// Number of generic of registers by a single generic gate
+<a href=#56 id=56 data-nosnippet>56</a></span><span class="kw">pub const </span>GENERIC_REGISTERS: usize = <span class="number">3</span>;
+<a href=#57 id=57 data-nosnippet>57</a>
+<a href=#58 id=58 data-nosnippet>58</a><span class="doccomment">/// Number of coefficients used by a single generic gate
+<a href=#59 id=59 data-nosnippet>59</a>/// Three are used for the registers, one for the multiplication,
+<a href=#60 id=60 data-nosnippet>60</a>/// and one for the constant.
+<a href=#61 id=61 data-nosnippet>61</a></span><span class="kw">pub const </span>GENERIC_COEFFS: usize = GENERIC_REGISTERS + <span class="number">1 </span><span class="comment">/* mul */ </span>+ <span class="number">1 </span><span class="comment">/* cst */</span>;
+<a href=#62 id=62 data-nosnippet>62</a>
+<a href=#63 id=63 data-nosnippet>63</a><span class="doccomment">/// The double generic gate actually contains two generic gates.
+<a href=#64 id=64 data-nosnippet>64</a></span><span class="kw">pub const </span>DOUBLE_GENERIC_COEFFS: usize = GENERIC_COEFFS * <span class="number">2</span>;
+<a href=#65 id=65 data-nosnippet>65</a>
+<a href=#66 id=66 data-nosnippet>66</a><span class="doccomment">/// Number of generic of registers by a double generic gate.
+<a href=#67 id=67 data-nosnippet>67</a></span><span class="kw">pub const </span>DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * <span class="number">2</span>;
+<a href=#68 id=68 data-nosnippet>68</a>
+<a href=#69 id=69 data-nosnippet>69</a><span class="doccomment">/// Implementation of the `Generic` gate
+<a href=#70 id=70 data-nosnippet>70</a></span><span class="attr">#[derive(Default)]
+<a href=#71 id=71 data-nosnippet>71</a></span><span class="kw">pub struct </span>Generic&lt;F&gt;(PhantomData&lt;F&gt;);
+<a href=#72 id=72 data-nosnippet>72</a>
+<a href=#73 id=73 data-nosnippet>73</a><span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>Generic&lt;F&gt;
+<a href=#74 id=74 data-nosnippet>74</a><span class="kw">where
+<a href=#75 id=75 data-nosnippet>75</a>    </span>F: PrimeField,
+<a href=#76 id=76 data-nosnippet>76</a>{
+<a href=#77 id=77 data-nosnippet>77</a>    <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Generic);
+<a href=#78 id=78 data-nosnippet>78</a>    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">2</span>;
+<a href=#79 id=79 data-nosnippet>79</a>
+<a href=#80 id=80 data-nosnippet>80</a>    <span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F, BerkeleyChallengeTerm&gt;&gt;(
+<a href=#81 id=81 data-nosnippet>81</a>        env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;,
+<a href=#82 id=82 data-nosnippet>82</a>        _cache: <span class="kw-2">&amp;mut </span>Cache,
+<a href=#83 id=83 data-nosnippet>83</a>    ) -&gt; Vec&lt;T&gt; {
+<a href=#84 id=84 data-nosnippet>84</a>        <span class="comment">// First generic gate
+<a href=#85 id=85 data-nosnippet>85</a>        </span><span class="kw">let </span>left_coeff1 = env.coeff(<span class="number">0</span>);
+<a href=#86 id=86 data-nosnippet>86</a>        <span class="kw">let </span>right_coeff1 = env.coeff(<span class="number">1</span>);
+<a href=#87 id=87 data-nosnippet>87</a>        <span class="kw">let </span>out_coeff1 = env.coeff(<span class="number">2</span>);
+<a href=#88 id=88 data-nosnippet>88</a>        <span class="kw">let </span>mul_coeff1 = env.coeff(<span class="number">3</span>);
+<a href=#89 id=89 data-nosnippet>89</a>        <span class="kw">let </span>constant1 = env.coeff(<span class="number">4</span>);
+<a href=#90 id=90 data-nosnippet>90</a>        <span class="kw">let </span>left1 = env.witness_curr(<span class="number">0</span>);
+<a href=#91 id=91 data-nosnippet>91</a>        <span class="kw">let </span>right1 = env.witness_curr(<span class="number">1</span>);
+<a href=#92 id=92 data-nosnippet>92</a>        <span class="kw">let </span>out1 = env.witness_curr(<span class="number">2</span>);
+<a href=#93 id=93 data-nosnippet>93</a>
+<a href=#94 id=94 data-nosnippet>94</a>        <span class="kw">let </span>constraint1 = left_coeff1 * left1.clone()
+<a href=#95 id=95 data-nosnippet>95</a>            + right_coeff1 * right1.clone()
+<a href=#96 id=96 data-nosnippet>96</a>            + out_coeff1 * out1
+<a href=#97 id=97 data-nosnippet>97</a>            + mul_coeff1 * left1 * right1
+<a href=#98 id=98 data-nosnippet>98</a>            + constant1;
+<a href=#99 id=99 data-nosnippet>99</a>
+<a href=#100 id=100 data-nosnippet>100</a>        <span class="comment">// Second generic gate
+<a href=#101 id=101 data-nosnippet>101</a>        </span><span class="kw">let </span>left_coeff2 = env.coeff(<span class="number">5</span>);
+<a href=#102 id=102 data-nosnippet>102</a>        <span class="kw">let </span>right_coeff2 = env.coeff(<span class="number">6</span>);
+<a href=#103 id=103 data-nosnippet>103</a>        <span class="kw">let </span>out_coeff2 = env.coeff(<span class="number">7</span>);
+<a href=#104 id=104 data-nosnippet>104</a>        <span class="kw">let </span>mul_coeff2 = env.coeff(<span class="number">8</span>);
+<a href=#105 id=105 data-nosnippet>105</a>        <span class="kw">let </span>constant2 = env.coeff(<span class="number">9</span>);
+<a href=#106 id=106 data-nosnippet>106</a>        <span class="kw">let </span>left2 = env.witness_curr(<span class="number">3</span>);
+<a href=#107 id=107 data-nosnippet>107</a>        <span class="kw">let </span>right2 = env.witness_curr(<span class="number">4</span>);
+<a href=#108 id=108 data-nosnippet>108</a>        <span class="kw">let </span>out2 = env.witness_curr(<span class="number">5</span>);
+<a href=#109 id=109 data-nosnippet>109</a>
+<a href=#110 id=110 data-nosnippet>110</a>        <span class="kw">let </span>constraint2 = left_coeff2 * left2.clone()
+<a href=#111 id=111 data-nosnippet>111</a>            + right_coeff2 * right2.clone()
+<a href=#112 id=112 data-nosnippet>112</a>            + out_coeff2 * out2
+<a href=#113 id=113 data-nosnippet>113</a>            + mul_coeff2 * left2 * right2
+<a href=#114 id=114 data-nosnippet>114</a>            + constant2;
+<a href=#115 id=115 data-nosnippet>115</a>
+<a href=#116 id=116 data-nosnippet>116</a>        <span class="macro">vec!</span>[constraint1, constraint2]
+<a href=#117 id=117 data-nosnippet>117</a>    }
+<a href=#118 id=118 data-nosnippet>118</a>}
+<a href=#119 id=119 data-nosnippet>119</a>
+<a href=#120 id=120 data-nosnippet>120</a><span class="doccomment">/// The different type of computation that are possible with a generic gate.
+<a href=#121 id=121 data-nosnippet>121</a>/// This type is useful to create a generic gate via the [`CircuitGate::create_generic_gadget`] function.
+<a href=#122 id=122 data-nosnippet>122</a></span><span class="attr">#[derive(Clone)]
+<a href=#123 id=123 data-nosnippet>123</a></span><span class="kw">pub enum </span>GenericGateSpec&lt;F&gt; {
+<a href=#124 id=124 data-nosnippet>124</a>    <span class="doccomment">/// Add two values.
+<a href=#125 id=125 data-nosnippet>125</a>    </span>Add {
+<a href=#126 id=126 data-nosnippet>126</a>        <span class="doccomment">/// Optional coefficient that can be multiplied with the left operand.
+<a href=#127 id=127 data-nosnippet>127</a>        </span>left_coeff: <span class="prelude-ty">Option</span>&lt;F&gt;,
+<a href=#128 id=128 data-nosnippet>128</a>        <span class="doccomment">/// Optional coefficient that can be multiplied with the right operand.
+<a href=#129 id=129 data-nosnippet>129</a>        </span>right_coeff: <span class="prelude-ty">Option</span>&lt;F&gt;,
+<a href=#130 id=130 data-nosnippet>130</a>        <span class="doccomment">/// Optional coefficient that can be multiplied with the output.
+<a href=#131 id=131 data-nosnippet>131</a>        </span>output_coeff: <span class="prelude-ty">Option</span>&lt;F&gt;,
+<a href=#132 id=132 data-nosnippet>132</a>    },
+<a href=#133 id=133 data-nosnippet>133</a>    <span class="doccomment">/// Multiplication of two values
+<a href=#134 id=134 data-nosnippet>134</a>    </span>Mul {
+<a href=#135 id=135 data-nosnippet>135</a>        <span class="doccomment">/// Optional coefficient that can be multiplied with the output.
+<a href=#136 id=136 data-nosnippet>136</a>        </span>output_coeff: <span class="prelude-ty">Option</span>&lt;F&gt;,
+<a href=#137 id=137 data-nosnippet>137</a>        <span class="doccomment">/// Optional coefficient that can be multiplied with the multiplication result.
+<a href=#138 id=138 data-nosnippet>138</a>        </span>mul_coeff: <span class="prelude-ty">Option</span>&lt;F&gt;,
+<a href=#139 id=139 data-nosnippet>139</a>    },
+<a href=#140 id=140 data-nosnippet>140</a>    <span class="doccomment">/// A constant, the constructor contains the constant itself
+<a href=#141 id=141 data-nosnippet>141</a>    </span>Const(F),
+<a href=#142 id=142 data-nosnippet>142</a>    <span class="doccomment">/// A public gate
+<a href=#143 id=143 data-nosnippet>143</a>    </span>Pub,
+<a href=#144 id=144 data-nosnippet>144</a>    <span class="doccomment">/// Sum a value to a constant
+<a href=#145 id=145 data-nosnippet>145</a>    </span>Plus(F),
+<a href=#146 id=146 data-nosnippet>146</a>}
+<a href=#147 id=147 data-nosnippet>147</a>
+<a href=#148 id=148 data-nosnippet>148</a><span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
+<a href=#149 id=149 data-nosnippet>149</a>    <span class="doccomment">/// This allows you to create two generic gates that will fit in one row, check [`Self::create_generic_gadget`] for a better to way to create these gates.
+<a href=#150 id=150 data-nosnippet>150</a>    </span><span class="kw">pub fn </span>create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * <span class="number">2</span>]) -&gt; <span class="self">Self </span>{
+<a href=#151 id=151 data-nosnippet>151</a>        CircuitGate::new(GateType::Generic, wires, c.to_vec())
+<a href=#152 id=152 data-nosnippet>152</a>    }
+<a href=#153 id=153 data-nosnippet>153</a>
+<a href=#154 id=154 data-nosnippet>154</a>    <span class="doccomment">/// This allows you to create two generic gates by passing the desired
+<a href=#155 id=155 data-nosnippet>155</a>    /// `gate1` and `gate2` as two [`GenericGateSpec`].
+<a href=#156 id=156 data-nosnippet>156</a>    </span><span class="kw">pub fn </span>create_generic_gadget(
+<a href=#157 id=157 data-nosnippet>157</a>        wires: GateWires,
+<a href=#158 id=158 data-nosnippet>158</a>        gate1: GenericGateSpec&lt;F&gt;,
+<a href=#159 id=159 data-nosnippet>159</a>        gate2: <span class="prelude-ty">Option</span>&lt;GenericGateSpec&lt;F&gt;&gt;,
+<a href=#160 id=160 data-nosnippet>160</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#161 id=161 data-nosnippet>161</a>        <span class="kw">let </span><span class="kw-2">mut </span>coeffs = [F::zero(); GENERIC_COEFFS * <span class="number">2</span>];
+<a href=#162 id=162 data-nosnippet>162</a>        <span class="kw">match </span>gate1 {
+<a href=#163 id=163 data-nosnippet>163</a>            GenericGateSpec::Add {
+<a href=#164 id=164 data-nosnippet>164</a>                left_coeff,
+<a href=#165 id=165 data-nosnippet>165</a>                right_coeff,
+<a href=#166 id=166 data-nosnippet>166</a>                output_coeff,
+<a href=#167 id=167 data-nosnippet>167</a>            } =&gt; {
+<a href=#168 id=168 data-nosnippet>168</a>                coeffs[<span class="number">0</span>] = left_coeff.unwrap_or_else(F::one);
+<a href=#169 id=169 data-nosnippet>169</a>                coeffs[<span class="number">1</span>] = right_coeff.unwrap_or_else(F::one);
+<a href=#170 id=170 data-nosnippet>170</a>                coeffs[<span class="number">2</span>] = output_coeff.unwrap_or_else(|| -F::one());
+<a href=#171 id=171 data-nosnippet>171</a>            }
+<a href=#172 id=172 data-nosnippet>172</a>            GenericGateSpec::Mul {
+<a href=#173 id=173 data-nosnippet>173</a>                output_coeff,
+<a href=#174 id=174 data-nosnippet>174</a>                mul_coeff,
+<a href=#175 id=175 data-nosnippet>175</a>            } =&gt; {
+<a href=#176 id=176 data-nosnippet>176</a>                coeffs[<span class="number">2</span>] = output_coeff.unwrap_or_else(|| -F::one());
+<a href=#177 id=177 data-nosnippet>177</a>                coeffs[<span class="number">3</span>] = mul_coeff.unwrap_or_else(F::one);
+<a href=#178 id=178 data-nosnippet>178</a>            }
+<a href=#179 id=179 data-nosnippet>179</a>            GenericGateSpec::Const(cst) =&gt; {
+<a href=#180 id=180 data-nosnippet>180</a>                coeffs[<span class="number">0</span>] = F::one();
+<a href=#181 id=181 data-nosnippet>181</a>                coeffs[<span class="number">4</span>] = -cst;
+<a href=#182 id=182 data-nosnippet>182</a>            }
+<a href=#183 id=183 data-nosnippet>183</a>            GenericGateSpec::Pub =&gt; {
+<a href=#184 id=184 data-nosnippet>184</a>                coeffs[<span class="number">0</span>] = F::one();
+<a href=#185 id=185 data-nosnippet>185</a>            }
+<a href=#186 id=186 data-nosnippet>186</a>            GenericGateSpec::Plus(cst) =&gt; {
+<a href=#187 id=187 data-nosnippet>187</a>                coeffs[<span class="number">0</span>] = F::one();
+<a href=#188 id=188 data-nosnippet>188</a>                coeffs[<span class="number">1</span>] = F::zero();
+<a href=#189 id=189 data-nosnippet>189</a>                coeffs[<span class="number">2</span>] = -F::one();
+<a href=#190 id=190 data-nosnippet>190</a>                coeffs[<span class="number">3</span>] = F::zero();
+<a href=#191 id=191 data-nosnippet>191</a>                coeffs[<span class="number">4</span>] = cst;
+<a href=#192 id=192 data-nosnippet>192</a>            }
+<a href=#193 id=193 data-nosnippet>193</a>        };
+<a href=#194 id=194 data-nosnippet>194</a>        <span class="kw">match </span>gate2 {
+<a href=#195 id=195 data-nosnippet>195</a>            <span class="prelude-val">Some</span>(GenericGateSpec::Add {
+<a href=#196 id=196 data-nosnippet>196</a>                left_coeff,
+<a href=#197 id=197 data-nosnippet>197</a>                right_coeff,
+<a href=#198 id=198 data-nosnippet>198</a>                output_coeff,
+<a href=#199 id=199 data-nosnippet>199</a>            }) =&gt; {
+<a href=#200 id=200 data-nosnippet>200</a>                coeffs[<span class="number">5</span>] = left_coeff.unwrap_or_else(F::one);
+<a href=#201 id=201 data-nosnippet>201</a>                coeffs[<span class="number">6</span>] = right_coeff.unwrap_or_else(F::one);
+<a href=#202 id=202 data-nosnippet>202</a>                coeffs[<span class="number">7</span>] = output_coeff.unwrap_or_else(|| -F::one());
+<a href=#203 id=203 data-nosnippet>203</a>            }
+<a href=#204 id=204 data-nosnippet>204</a>            <span class="prelude-val">Some</span>(GenericGateSpec::Mul {
+<a href=#205 id=205 data-nosnippet>205</a>                output_coeff,
+<a href=#206 id=206 data-nosnippet>206</a>                mul_coeff,
+<a href=#207 id=207 data-nosnippet>207</a>            }) =&gt; {
+<a href=#208 id=208 data-nosnippet>208</a>                coeffs[<span class="number">7</span>] = output_coeff.unwrap_or_else(|| -F::one());
+<a href=#209 id=209 data-nosnippet>209</a>                coeffs[<span class="number">8</span>] = mul_coeff.unwrap_or_else(F::one);
+<a href=#210 id=210 data-nosnippet>210</a>            }
+<a href=#211 id=211 data-nosnippet>211</a>            <span class="prelude-val">Some</span>(GenericGateSpec::Const(cst)) =&gt; {
+<a href=#212 id=212 data-nosnippet>212</a>                coeffs[<span class="number">5</span>] = F::one();
+<a href=#213 id=213 data-nosnippet>213</a>                coeffs[<span class="number">9</span>] = -cst;
+<a href=#214 id=214 data-nosnippet>214</a>            }
+<a href=#215 id=215 data-nosnippet>215</a>            <span class="prelude-val">Some</span>(GenericGateSpec::Pub) =&gt; {
+<a href=#216 id=216 data-nosnippet>216</a>                <span class="macro">unimplemented!</span>();
+<a href=#217 id=217 data-nosnippet>217</a>            }
+<a href=#218 id=218 data-nosnippet>218</a>            <span class="prelude-val">Some</span>(GenericGateSpec::Plus(cst)) =&gt; {
+<a href=#219 id=219 data-nosnippet>219</a>                coeffs[<span class="number">5</span>] = F::one();
+<a href=#220 id=220 data-nosnippet>220</a>                coeffs[<span class="number">6</span>] = F::zero();
+<a href=#221 id=221 data-nosnippet>221</a>                coeffs[<span class="number">7</span>] = -F::one();
+<a href=#222 id=222 data-nosnippet>222</a>                coeffs[<span class="number">8</span>] = F::zero();
+<a href=#223 id=223 data-nosnippet>223</a>                coeffs[<span class="number">9</span>] = cst;
+<a href=#224 id=224 data-nosnippet>224</a>            }
+<a href=#225 id=225 data-nosnippet>225</a>            <span class="prelude-val">None </span>=&gt; (),
+<a href=#226 id=226 data-nosnippet>226</a>        };
+<a href=#227 id=227 data-nosnippet>227</a>        <span class="self">Self</span>::create_generic(wires, coeffs)
+<a href=#228 id=228 data-nosnippet>228</a>    }
+<a href=#229 id=229 data-nosnippet>229</a>
+<a href=#230 id=230 data-nosnippet>230</a>    <span class="kw">pub fn </span>extend_generic(
+<a href=#231 id=231 data-nosnippet>231</a>        gates: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="self">Self</span>&gt;,
+<a href=#232 id=232 data-nosnippet>232</a>        curr_row: <span class="kw-2">&amp;mut </span>usize,
+<a href=#233 id=233 data-nosnippet>233</a>        wires: GateWires,
+<a href=#234 id=234 data-nosnippet>234</a>        gate1: GenericGateSpec&lt;F&gt;,
+<a href=#235 id=235 data-nosnippet>235</a>        gate2: <span class="prelude-ty">Option</span>&lt;GenericGateSpec&lt;F&gt;&gt;,
+<a href=#236 id=236 data-nosnippet>236</a>    ) {
+<a href=#237 id=237 data-nosnippet>237</a>        <span class="kw">let </span>gate = <span class="self">Self</span>::create_generic_gadget(wires, gate1, gate2);
+<a href=#238 id=238 data-nosnippet>238</a>        <span class="kw-2">*</span>curr_row += <span class="number">1</span>;
+<a href=#239 id=239 data-nosnippet>239</a>        gates.extend_from_slice(<span class="kw-2">&amp;</span>[gate]);
+<a href=#240 id=240 data-nosnippet>240</a>    }
+<a href=#241 id=241 data-nosnippet>241</a>}
+<a href=#242 id=242 data-nosnippet>242</a>
+<a href=#243 id=243 data-nosnippet>243</a><span class="comment">// -------------------------------------------------
+<a href=#244 id=244 data-nosnippet>244</a>
+<a href=#245 id=245 data-nosnippet>245</a>//~ The constraints:
+<a href=#246 id=246 data-nosnippet>246</a>//~
+<a href=#247 id=247 data-nosnippet>247</a>//~ * $w_0 \cdot c_0 + w_1 \cdot c_1 + w_2 \cdot c_2 + w_0 \cdot w_1 \cdot c_3 + c_4$
+<a href=#248 id=248 data-nosnippet>248</a>//~ * $w_3 \cdot c_5 + w_4 \cdot c_6 + w_5 \cdot c_7 + w_3 w_4 c_8 + c_9$
+<a href=#249 id=249 data-nosnippet>249</a>//~
+<a href=#250 id=250 data-nosnippet>250</a>//~ where the $c_i$ are the `coefficients`.
+<a href=#251 id=251 data-nosnippet>251</a>
+<a href=#252 id=252 data-nosnippet>252</a>// -------------------------------------------------
+<a href=#253 id=253 data-nosnippet>253</a>
+<a href=#254 id=254 data-nosnippet>254</a></span><span class="kw">pub mod </span>testing {
+<a href=#255 id=255 data-nosnippet>255</a>    <span class="kw">use </span>super::<span class="kw-2">*</span>;
+<a href=#256 id=256 data-nosnippet>256</a>    <span class="kw">use </span><span class="kw">crate</span>::circuits::wires::Wire;
+<a href=#257 id=257 data-nosnippet>257</a>    <span class="kw">use </span>itertools::iterate;
+<a href=#258 id=258 data-nosnippet>258</a>
+<a href=#259 id=259 data-nosnippet>259</a>    <span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
+<a href=#260 id=260 data-nosnippet>260</a>        <span class="doccomment">/// verifies that the generic gate constraints are solved by the witness
+<a href=#261 id=261 data-nosnippet>261</a>        ///
+<a href=#262 id=262 data-nosnippet>262</a>        /// # Errors
+<a href=#263 id=263 data-nosnippet>263</a>        ///
+<a href=#264 id=264 data-nosnippet>264</a>        /// Will give error if `self.typ` is not `GateType::Generic`.
+<a href=#265 id=265 data-nosnippet>265</a>        </span><span class="kw">pub fn </span>verify_generic(
+<a href=#266 id=266 data-nosnippet>266</a>            <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#267 id=267 data-nosnippet>267</a>            row: usize,
+<a href=#268 id=268 data-nosnippet>268</a>            witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
+<a href=#269 id=269 data-nosnippet>269</a>            public: <span class="kw-2">&amp;</span>[F],
+<a href=#270 id=270 data-nosnippet>270</a>        ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+<a href=#271 id=271 data-nosnippet>271</a>            <span class="comment">// assignments
+<a href=#272 id=272 data-nosnippet>272</a>            </span><span class="kw">let </span>this: [F; COLUMNS] = array::from_fn(|i| witness[i][row]);
+<a href=#273 id=273 data-nosnippet>273</a>
+<a href=#274 id=274 data-nosnippet>274</a>            <span class="comment">// constants
+<a href=#275 id=275 data-nosnippet>275</a>            </span><span class="kw">let </span>zero = F::zero();
+<a href=#276 id=276 data-nosnippet>276</a>
+<a href=#277 id=277 data-nosnippet>277</a>            <span class="comment">// check if it's the correct gate
+<a href=#278 id=278 data-nosnippet>278</a>            </span><span class="macro">ensure_eq!</span>(<span class="self">self</span>.typ, GateType::Generic, <span class="string">"generic: incorrect gate"</span>);
+<a href=#279 id=279 data-nosnippet>279</a>
+<a href=#280 id=280 data-nosnippet>280</a>            <span class="kw">let </span>check_single = |coeffs_offset, register_offset| {
+<a href=#281 id=281 data-nosnippet>281</a>                <span class="kw">let </span>get = |offset| {
+<a href=#282 id=282 data-nosnippet>282</a>                    <span class="self">self</span>.coeffs
+<a href=#283 id=283 data-nosnippet>283</a>                        .get(offset)
+<a href=#284 id=284 data-nosnippet>284</a>                        .copied()
+<a href=#285 id=285 data-nosnippet>285</a>                        .unwrap_or_else(|| F::zero())
+<a href=#286 id=286 data-nosnippet>286</a>                };
+<a href=#287 id=287 data-nosnippet>287</a>                <span class="kw">let </span>l_coeff = get(coeffs_offset);
+<a href=#288 id=288 data-nosnippet>288</a>                <span class="kw">let </span>r_coeff = get(coeffs_offset + <span class="number">1</span>);
+<a href=#289 id=289 data-nosnippet>289</a>                <span class="kw">let </span>o_coeff = get(coeffs_offset + <span class="number">2</span>);
+<a href=#290 id=290 data-nosnippet>290</a>                <span class="kw">let </span>m_coeff = get(coeffs_offset + <span class="number">3</span>);
+<a href=#291 id=291 data-nosnippet>291</a>                <span class="kw">let </span>c_coeff = get(coeffs_offset + <span class="number">4</span>);
+<a href=#292 id=292 data-nosnippet>292</a>
+<a href=#293 id=293 data-nosnippet>293</a>                <span class="kw">let </span>sum = l_coeff * this[register_offset]
+<a href=#294 id=294 data-nosnippet>294</a>                    + r_coeff * this[register_offset + <span class="number">1</span>]
+<a href=#295 id=295 data-nosnippet>295</a>                    + o_coeff * this[register_offset + <span class="number">2</span>];
+<a href=#296 id=296 data-nosnippet>296</a>                <span class="kw">let </span>mul = m_coeff * this[register_offset] * this[register_offset + <span class="number">1</span>];
+<a href=#297 id=297 data-nosnippet>297</a>                <span class="kw">let </span>public = <span class="kw">if </span>coeffs_offset == <span class="number">0 </span>{
+<a href=#298 id=298 data-nosnippet>298</a>                    public.get(row).copied().unwrap_or_else(F::zero)
+<a href=#299 id=299 data-nosnippet>299</a>                } <span class="kw">else </span>{
+<a href=#300 id=300 data-nosnippet>300</a>                    F::zero()
+<a href=#301 id=301 data-nosnippet>301</a>                };
+<a href=#302 id=302 data-nosnippet>302</a>                <span class="macro">ensure_eq!</span>(
+<a href=#303 id=303 data-nosnippet>303</a>                    zero,
+<a href=#304 id=304 data-nosnippet>304</a>                    sum + mul + c_coeff - public,
+<a href=#305 id=305 data-nosnippet>305</a>                    <span class="string">"generic: incorrect gate"
+<a href=#306 id=306 data-nosnippet>306</a>                </span>);
+<a href=#307 id=307 data-nosnippet>307</a>                <span class="prelude-val">Ok</span>(())
+<a href=#308 id=308 data-nosnippet>308</a>            };
+<a href=#309 id=309 data-nosnippet>309</a>
+<a href=#310 id=310 data-nosnippet>310</a>            check_single(<span class="number">0</span>, <span class="number">0</span>)<span class="question-mark">?</span>;
+<a href=#311 id=311 data-nosnippet>311</a>            check_single(GENERIC_COEFFS, GENERIC_REGISTERS)
+<a href=#312 id=312 data-nosnippet>312</a>        }
+<a href=#313 id=313 data-nosnippet>313</a>    }
+<a href=#314 id=314 data-nosnippet>314</a>
+<a href=#315 id=315 data-nosnippet>315</a>    <span class="kw">impl</span>&lt;<span class="kw">const </span>FULL_ROUNDS: usize, F, G, Srs&gt; ProverIndex&lt;FULL_ROUNDS, G, Srs&gt;
+<a href=#316 id=316 data-nosnippet>316</a>    <span class="kw">where
+<a href=#317 id=317 data-nosnippet>317</a>        </span>F: PrimeField,
+<a href=#318 id=318 data-nosnippet>318</a>        G: KimchiCurve&lt;FULL_ROUNDS, ScalarField = F&gt;,
+<a href=#319 id=319 data-nosnippet>319</a>        Srs: poly_commitment::SRS&lt;G&gt;,
+<a href=#320 id=320 data-nosnippet>320</a>    {
+<a href=#321 id=321 data-nosnippet>321</a>        <span class="doccomment">/// Function to verify the generic polynomials with a witness.
+<a href=#322 id=322 data-nosnippet>322</a>        </span><span class="kw">pub fn </span>verify_generic(
+<a href=#323 id=323 data-nosnippet>323</a>            <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#324 id=324 data-nosnippet>324</a>            witness: <span class="kw-2">&amp;</span>[DensePolynomial&lt;F&gt;; COLUMNS],
+<a href=#325 id=325 data-nosnippet>325</a>            public: <span class="kw-2">&amp;</span>DensePolynomial&lt;F&gt;,
+<a href=#326 id=326 data-nosnippet>326</a>        ) -&gt; bool {
+<a href=#327 id=327 data-nosnippet>327</a>            <span class="kw">let </span>coefficientsm: [<span class="kw">_</span>; COLUMNS] = array::from_fn(|i| {
+<a href=#328 id=328 data-nosnippet>328</a>                <span class="self">self</span>.column_evaluations.get().coefficients8[i]
+<a href=#329 id=329 data-nosnippet>329</a>                    .clone()
+<a href=#330 id=330 data-nosnippet>330</a>                    .interpolate()
+<a href=#331 id=331 data-nosnippet>331</a>            });
+<a href=#332 id=332 data-nosnippet>332</a>
+<a href=#333 id=333 data-nosnippet>333</a>            <span class="kw">let </span>generic_gate = |coeff_offset, register_offset| {
+<a href=#334 id=334 data-nosnippet>334</a>                <span class="comment">// addition (of left, right, output wires)
+<a href=#335 id=335 data-nosnippet>335</a>                </span><span class="kw">let </span><span class="kw-2">mut </span>ff = <span class="kw-2">&amp;</span>coefficientsm[coeff_offset] * <span class="kw-2">&amp;</span>witness[register_offset];
+<a href=#336 id=336 data-nosnippet>336</a>                ff += <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>coefficientsm[coeff_offset + <span class="number">1</span>] * <span class="kw-2">&amp;</span>witness[register_offset + <span class="number">1</span>]);
+<a href=#337 id=337 data-nosnippet>337</a>                ff += <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>coefficientsm[coeff_offset + <span class="number">2</span>] * <span class="kw-2">&amp;</span>witness[register_offset + <span class="number">2</span>]);
+<a href=#338 id=338 data-nosnippet>338</a>
+<a href=#339 id=339 data-nosnippet>339</a>                <span class="comment">// multiplication
+<a href=#340 id=340 data-nosnippet>340</a>                </span>ff += <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>witness[register_offset] * <span class="kw-2">&amp;</span>witness[register_offset + <span class="number">1</span>])
+<a href=#341 id=341 data-nosnippet>341</a>                    * <span class="kw-2">&amp;</span>coefficientsm[coeff_offset + <span class="number">3</span>]);
+<a href=#342 id=342 data-nosnippet>342</a>
+<a href=#343 id=343 data-nosnippet>343</a>                <span class="comment">// constant
+<a href=#344 id=344 data-nosnippet>344</a>                </span><span class="kw-2">&amp;</span>ff + <span class="kw-2">&amp;</span>coefficientsm[coeff_offset + <span class="number">4</span>]
+<a href=#345 id=345 data-nosnippet>345</a>
+<a href=#346 id=346 data-nosnippet>346</a>                <span class="comment">// note: skip alpha power, as we're testing for completeness
+<a href=#347 id=347 data-nosnippet>347</a>            </span>};
+<a href=#348 id=348 data-nosnippet>348</a>
+<a href=#349 id=349 data-nosnippet>349</a>            <span class="kw">let </span><span class="kw-2">mut </span>res = generic_gate(<span class="number">0</span>, <span class="number">0</span>);
+<a href=#350 id=350 data-nosnippet>350</a>            res += <span class="kw-2">&amp;</span>generic_gate(GENERIC_COEFFS, GENERIC_REGISTERS);
+<a href=#351 id=351 data-nosnippet>351</a>
+<a href=#352 id=352 data-nosnippet>352</a>            <span class="comment">// public inputs
+<a href=#353 id=353 data-nosnippet>353</a>            </span>res += public;
+<a href=#354 id=354 data-nosnippet>354</a>
+<a href=#355 id=355 data-nosnippet>355</a>            <span class="comment">// selector poly
+<a href=#356 id=356 data-nosnippet>356</a>            </span>res = <span class="kw-2">&amp;</span>res
+<a href=#357 id=357 data-nosnippet>357</a>                * <span class="kw-2">&amp;</span><span class="self">self
+<a href=#358 id=358 data-nosnippet>358</a>                    </span>.column_evaluations
+<a href=#359 id=359 data-nosnippet>359</a>                    .get()
+<a href=#360 id=360 data-nosnippet>360</a>                    .generic_selector4
+<a href=#361 id=361 data-nosnippet>361</a>                    .interpolate_by_ref();
+<a href=#362 id=362 data-nosnippet>362</a>            <span class="comment">// Interpolation above is inefficient, as is the rest of the function,
+<a href=#363 id=363 data-nosnippet>363</a>            // would be better just to check the equation on all the rows.
+<a href=#364 id=364 data-nosnippet>364</a>
+<a href=#365 id=365 data-nosnippet>365</a>            // verify that it is divisible by Z_H
+<a href=#366 id=366 data-nosnippet>366</a>            </span><span class="kw">let </span>(_quotient, rest) = res.divide_by_vanishing_poly(<span class="self">self</span>.cs.domain.d1);
+<a href=#367 id=367 data-nosnippet>367</a>            rest.is_zero()
+<a href=#368 id=368 data-nosnippet>368</a>        }
+<a href=#369 id=369 data-nosnippet>369</a>    }
+<a href=#370 id=370 data-nosnippet>370</a>
+<a href=#371 id=371 data-nosnippet>371</a>    <span class="doccomment">/// Create a generic circuit
 <a href=#372 id=372 data-nosnippet>372</a>    ///
-<a href=#373 id=373 data-nosnippet>373</a>    /// Will panic if `gates_row` is None.
-<a href=#374 id=374 data-nosnippet>374</a>    </span><span class="kw">pub fn </span>create_circuit&lt;F: PrimeField&gt;(start_row: usize, public: usize) -&gt; Vec&lt;CircuitGate&lt;F&gt;&gt; {
-<a href=#375 id=375 data-nosnippet>375</a>        <span class="comment">// create constraint system with a single generic gate
-<a href=#376 id=376 data-nosnippet>376</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>gates = <span class="macro">vec!</span>[];
-<a href=#377 id=377 data-nosnippet>377</a>
-<a href=#378 id=378 data-nosnippet>378</a>        <span class="comment">// create generic gates
-<a href=#379 id=379 data-nosnippet>379</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>gates_row = iterate(start_row, |<span class="kw-2">&amp;</span>i| i + <span class="number">1</span>);
-<a href=#380 id=380 data-nosnippet>380</a>
-<a href=#381 id=381 data-nosnippet>381</a>        <span class="comment">// public input
-<a href=#382 id=382 data-nosnippet>382</a>        </span><span class="kw">for _ in </span><span class="number">0</span>..public {
-<a href=#383 id=383 data-nosnippet>383</a>            <span class="kw">let </span>r = gates_row.next().unwrap();
-<a href=#384 id=384 data-nosnippet>384</a>            gates.push(CircuitGate::create_generic_gadget(
-<a href=#385 id=385 data-nosnippet>385</a>                Wire::for_row(r),
-<a href=#386 id=386 data-nosnippet>386</a>                GenericGateSpec::Pub,
-<a href=#387 id=387 data-nosnippet>387</a>                <span class="prelude-val">None</span>,
-<a href=#388 id=388 data-nosnippet>388</a>            ));
-<a href=#389 id=389 data-nosnippet>389</a>        }
-<a href=#390 id=390 data-nosnippet>390</a>
-<a href=#391 id=391 data-nosnippet>391</a>        <span class="comment">// add and mul
-<a href=#392 id=392 data-nosnippet>392</a>        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">10 </span>{
-<a href=#393 id=393 data-nosnippet>393</a>            <span class="kw">let </span>r = gates_row.next().unwrap();
-<a href=#394 id=394 data-nosnippet>394</a>            <span class="kw">let </span>g1 = GenericGateSpec::Add {
-<a href=#395 id=395 data-nosnippet>395</a>                left_coeff: <span class="prelude-val">None</span>,
-<a href=#396 id=396 data-nosnippet>396</a>                right_coeff: <span class="prelude-val">Some</span>(<span class="number">3u32</span>.into()),
-<a href=#397 id=397 data-nosnippet>397</a>                output_coeff: <span class="prelude-val">None</span>,
-<a href=#398 id=398 data-nosnippet>398</a>            };
-<a href=#399 id=399 data-nosnippet>399</a>            <span class="kw">let </span>g2 = GenericGateSpec::Mul {
-<a href=#400 id=400 data-nosnippet>400</a>                output_coeff: <span class="prelude-val">None</span>,
-<a href=#401 id=401 data-nosnippet>401</a>                mul_coeff: <span class="prelude-val">Some</span>(<span class="number">2u32</span>.into()),
-<a href=#402 id=402 data-nosnippet>402</a>            };
-<a href=#403 id=403 data-nosnippet>403</a>            gates.push(CircuitGate::create_generic_gadget(
-<a href=#404 id=404 data-nosnippet>404</a>                Wire::for_row(r),
-<a href=#405 id=405 data-nosnippet>405</a>                g1,
-<a href=#406 id=406 data-nosnippet>406</a>                <span class="prelude-val">Some</span>(g2),
-<a href=#407 id=407 data-nosnippet>407</a>            ));
-<a href=#408 id=408 data-nosnippet>408</a>        }
-<a href=#409 id=409 data-nosnippet>409</a>
-<a href=#410 id=410 data-nosnippet>410</a>        <span class="comment">// two consts
-<a href=#411 id=411 data-nosnippet>411</a>        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">10 </span>{
-<a href=#412 id=412 data-nosnippet>412</a>            <span class="kw">let </span>r = gates_row.next().unwrap();
-<a href=#413 id=413 data-nosnippet>413</a>            <span class="kw">let </span>g1 = GenericGateSpec::Const(<span class="number">3u32</span>.into());
-<a href=#414 id=414 data-nosnippet>414</a>            <span class="kw">let </span>g2 = GenericGateSpec::Const(<span class="number">5u32</span>.into());
-<a href=#415 id=415 data-nosnippet>415</a>            gates.push(CircuitGate::create_generic_gadget(
-<a href=#416 id=416 data-nosnippet>416</a>                Wire::for_row(r),
-<a href=#417 id=417 data-nosnippet>417</a>                g1,
-<a href=#418 id=418 data-nosnippet>418</a>                <span class="prelude-val">Some</span>(g2),
-<a href=#419 id=419 data-nosnippet>419</a>            ));
-<a href=#420 id=420 data-nosnippet>420</a>        }
-<a href=#421 id=421 data-nosnippet>421</a>
-<a href=#422 id=422 data-nosnippet>422</a>        gates
-<a href=#423 id=423 data-nosnippet>423</a>    }
-<a href=#424 id=424 data-nosnippet>424</a>
-<a href=#425 id=425 data-nosnippet>425</a>    <span class="doccomment">/// Fill in a witness created via [`create_circuit`]
-<a href=#426 id=426 data-nosnippet>426</a>    ///
-<a href=#427 id=427 data-nosnippet>427</a>    /// # Panics
+<a href=#373 id=373 data-nosnippet>373</a>    /// # Panics
+<a href=#374 id=374 data-nosnippet>374</a>    ///
+<a href=#375 id=375 data-nosnippet>375</a>    /// Will panic if `gates_row` is None.
+<a href=#376 id=376 data-nosnippet>376</a>    </span><span class="kw">pub fn </span>create_circuit&lt;F: PrimeField&gt;(start_row: usize, public: usize) -&gt; Vec&lt;CircuitGate&lt;F&gt;&gt; {
+<a href=#377 id=377 data-nosnippet>377</a>        <span class="comment">// create constraint system with a single generic gate
+<a href=#378 id=378 data-nosnippet>378</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>gates = <span class="macro">vec!</span>[];
+<a href=#379 id=379 data-nosnippet>379</a>
+<a href=#380 id=380 data-nosnippet>380</a>        <span class="comment">// create generic gates
+<a href=#381 id=381 data-nosnippet>381</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>gates_row = iterate(start_row, |<span class="kw-2">&amp;</span>i| i + <span class="number">1</span>);
+<a href=#382 id=382 data-nosnippet>382</a>
+<a href=#383 id=383 data-nosnippet>383</a>        <span class="comment">// public input
+<a href=#384 id=384 data-nosnippet>384</a>        </span><span class="kw">for _ in </span><span class="number">0</span>..public {
+<a href=#385 id=385 data-nosnippet>385</a>            <span class="kw">let </span>r = gates_row.next().unwrap();
+<a href=#386 id=386 data-nosnippet>386</a>            gates.push(CircuitGate::create_generic_gadget(
+<a href=#387 id=387 data-nosnippet>387</a>                Wire::for_row(r),
+<a href=#388 id=388 data-nosnippet>388</a>                GenericGateSpec::Pub,
+<a href=#389 id=389 data-nosnippet>389</a>                <span class="prelude-val">None</span>,
+<a href=#390 id=390 data-nosnippet>390</a>            ));
+<a href=#391 id=391 data-nosnippet>391</a>        }
+<a href=#392 id=392 data-nosnippet>392</a>
+<a href=#393 id=393 data-nosnippet>393</a>        <span class="comment">// add and mul
+<a href=#394 id=394 data-nosnippet>394</a>        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">10 </span>{
+<a href=#395 id=395 data-nosnippet>395</a>            <span class="kw">let </span>r = gates_row.next().unwrap();
+<a href=#396 id=396 data-nosnippet>396</a>            <span class="kw">let </span>g1 = GenericGateSpec::Add {
+<a href=#397 id=397 data-nosnippet>397</a>                left_coeff: <span class="prelude-val">None</span>,
+<a href=#398 id=398 data-nosnippet>398</a>                right_coeff: <span class="prelude-val">Some</span>(<span class="number">3u32</span>.into()),
+<a href=#399 id=399 data-nosnippet>399</a>                output_coeff: <span class="prelude-val">None</span>,
+<a href=#400 id=400 data-nosnippet>400</a>            };
+<a href=#401 id=401 data-nosnippet>401</a>            <span class="kw">let </span>g2 = GenericGateSpec::Mul {
+<a href=#402 id=402 data-nosnippet>402</a>                output_coeff: <span class="prelude-val">None</span>,
+<a href=#403 id=403 data-nosnippet>403</a>                mul_coeff: <span class="prelude-val">Some</span>(<span class="number">2u32</span>.into()),
+<a href=#404 id=404 data-nosnippet>404</a>            };
+<a href=#405 id=405 data-nosnippet>405</a>            gates.push(CircuitGate::create_generic_gadget(
+<a href=#406 id=406 data-nosnippet>406</a>                Wire::for_row(r),
+<a href=#407 id=407 data-nosnippet>407</a>                g1,
+<a href=#408 id=408 data-nosnippet>408</a>                <span class="prelude-val">Some</span>(g2),
+<a href=#409 id=409 data-nosnippet>409</a>            ));
+<a href=#410 id=410 data-nosnippet>410</a>        }
+<a href=#411 id=411 data-nosnippet>411</a>
+<a href=#412 id=412 data-nosnippet>412</a>        <span class="comment">// two consts
+<a href=#413 id=413 data-nosnippet>413</a>        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">10 </span>{
+<a href=#414 id=414 data-nosnippet>414</a>            <span class="kw">let </span>r = gates_row.next().unwrap();
+<a href=#415 id=415 data-nosnippet>415</a>            <span class="kw">let </span>g1 = GenericGateSpec::Const(<span class="number">3u32</span>.into());
+<a href=#416 id=416 data-nosnippet>416</a>            <span class="kw">let </span>g2 = GenericGateSpec::Const(<span class="number">5u32</span>.into());
+<a href=#417 id=417 data-nosnippet>417</a>            gates.push(CircuitGate::create_generic_gadget(
+<a href=#418 id=418 data-nosnippet>418</a>                Wire::for_row(r),
+<a href=#419 id=419 data-nosnippet>419</a>                g1,
+<a href=#420 id=420 data-nosnippet>420</a>                <span class="prelude-val">Some</span>(g2),
+<a href=#421 id=421 data-nosnippet>421</a>            ));
+<a href=#422 id=422 data-nosnippet>422</a>        }
+<a href=#423 id=423 data-nosnippet>423</a>
+<a href=#424 id=424 data-nosnippet>424</a>        gates
+<a href=#425 id=425 data-nosnippet>425</a>    }
+<a href=#426 id=426 data-nosnippet>426</a>
+<a href=#427 id=427 data-nosnippet>427</a>    <span class="doccomment">/// Fill in a witness created via [`create_circuit`]
 <a href=#428 id=428 data-nosnippet>428</a>    ///
-<a href=#429 id=429 data-nosnippet>429</a>    /// Will panic if `witness_row` is None.
-<a href=#430 id=430 data-nosnippet>430</a>    </span><span class="kw">pub fn </span>fill_in_witness&lt;F: FftField&gt;(
-<a href=#431 id=431 data-nosnippet>431</a>        start_row: usize,
-<a href=#432 id=432 data-nosnippet>432</a>        witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
-<a href=#433 id=433 data-nosnippet>433</a>        public: <span class="kw-2">&amp;</span>[F],
-<a href=#434 id=434 data-nosnippet>434</a>    ) {
-<a href=#435 id=435 data-nosnippet>435</a>        <span class="comment">// fill witness
-<a href=#436 id=436 data-nosnippet>436</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>witness_row = iterate(start_row, |<span class="kw-2">&amp;</span>i| i + <span class="number">1</span>);
-<a href=#437 id=437 data-nosnippet>437</a>
-<a href=#438 id=438 data-nosnippet>438</a>        <span class="comment">// public
-<a href=#439 id=439 data-nosnippet>439</a>        </span><span class="kw">for </span>p <span class="kw">in </span>public {
-<a href=#440 id=440 data-nosnippet>440</a>            <span class="kw">let </span>r = witness_row.next().unwrap();
-<a href=#441 id=441 data-nosnippet>441</a>            witness[<span class="number">0</span>][r] = <span class="kw-2">*</span>p;
-<a href=#442 id=442 data-nosnippet>442</a>        }
-<a href=#443 id=443 data-nosnippet>443</a>
-<a href=#444 id=444 data-nosnippet>444</a>        <span class="comment">// add and mul
-<a href=#445 id=445 data-nosnippet>445</a>        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">10 </span>{
-<a href=#446 id=446 data-nosnippet>446</a>            <span class="kw">let </span>r = witness_row.next().unwrap();
-<a href=#447 id=447 data-nosnippet>447</a>
-<a href=#448 id=448 data-nosnippet>448</a>            witness[<span class="number">0</span>][r] = <span class="number">11u32</span>.into();
-<a href=#449 id=449 data-nosnippet>449</a>            witness[<span class="number">1</span>][r] = <span class="number">23u32</span>.into();
-<a href=#450 id=450 data-nosnippet>450</a>            witness[<span class="number">2</span>][r] = (<span class="number">11u32 </span>+ <span class="number">23u32 </span>* <span class="number">3u32</span>).into();
-<a href=#451 id=451 data-nosnippet>451</a>
-<a href=#452 id=452 data-nosnippet>452</a>            witness[<span class="number">3</span>][r] = <span class="number">11u32</span>.into();
-<a href=#453 id=453 data-nosnippet>453</a>            witness[<span class="number">4</span>][r] = <span class="number">23u32</span>.into();
-<a href=#454 id=454 data-nosnippet>454</a>            witness[<span class="number">5</span>][r] = (<span class="number">11u32 </span>* <span class="number">23 </span>* <span class="number">2</span>).into();
-<a href=#455 id=455 data-nosnippet>455</a>        }
-<a href=#456 id=456 data-nosnippet>456</a>
-<a href=#457 id=457 data-nosnippet>457</a>        <span class="comment">// const
-<a href=#458 id=458 data-nosnippet>458</a>        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">10 </span>{
-<a href=#459 id=459 data-nosnippet>459</a>            <span class="kw">let </span>r = witness_row.next().unwrap();
-<a href=#460 id=460 data-nosnippet>460</a>
-<a href=#461 id=461 data-nosnippet>461</a>            witness[<span class="number">0</span>][r] = <span class="number">3u32</span>.into();
+<a href=#429 id=429 data-nosnippet>429</a>    /// # Panics
+<a href=#430 id=430 data-nosnippet>430</a>    ///
+<a href=#431 id=431 data-nosnippet>431</a>    /// Will panic if `witness_row` is None.
+<a href=#432 id=432 data-nosnippet>432</a>    </span><span class="kw">pub fn </span>fill_in_witness&lt;F: FftField&gt;(
+<a href=#433 id=433 data-nosnippet>433</a>        start_row: usize,
+<a href=#434 id=434 data-nosnippet>434</a>        witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
+<a href=#435 id=435 data-nosnippet>435</a>        public: <span class="kw-2">&amp;</span>[F],
+<a href=#436 id=436 data-nosnippet>436</a>    ) {
+<a href=#437 id=437 data-nosnippet>437</a>        <span class="comment">// fill witness
+<a href=#438 id=438 data-nosnippet>438</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>witness_row = iterate(start_row, |<span class="kw-2">&amp;</span>i| i + <span class="number">1</span>);
+<a href=#439 id=439 data-nosnippet>439</a>
+<a href=#440 id=440 data-nosnippet>440</a>        <span class="comment">// public
+<a href=#441 id=441 data-nosnippet>441</a>        </span><span class="kw">for </span>p <span class="kw">in </span>public {
+<a href=#442 id=442 data-nosnippet>442</a>            <span class="kw">let </span>r = witness_row.next().unwrap();
+<a href=#443 id=443 data-nosnippet>443</a>            witness[<span class="number">0</span>][r] = <span class="kw-2">*</span>p;
+<a href=#444 id=444 data-nosnippet>444</a>        }
+<a href=#445 id=445 data-nosnippet>445</a>
+<a href=#446 id=446 data-nosnippet>446</a>        <span class="comment">// add and mul
+<a href=#447 id=447 data-nosnippet>447</a>        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">10 </span>{
+<a href=#448 id=448 data-nosnippet>448</a>            <span class="kw">let </span>r = witness_row.next().unwrap();
+<a href=#449 id=449 data-nosnippet>449</a>
+<a href=#450 id=450 data-nosnippet>450</a>            witness[<span class="number">0</span>][r] = <span class="number">11u32</span>.into();
+<a href=#451 id=451 data-nosnippet>451</a>            witness[<span class="number">1</span>][r] = <span class="number">23u32</span>.into();
+<a href=#452 id=452 data-nosnippet>452</a>            witness[<span class="number">2</span>][r] = (<span class="number">11u32 </span>+ <span class="number">23u32 </span>* <span class="number">3u32</span>).into();
+<a href=#453 id=453 data-nosnippet>453</a>
+<a href=#454 id=454 data-nosnippet>454</a>            witness[<span class="number">3</span>][r] = <span class="number">11u32</span>.into();
+<a href=#455 id=455 data-nosnippet>455</a>            witness[<span class="number">4</span>][r] = <span class="number">23u32</span>.into();
+<a href=#456 id=456 data-nosnippet>456</a>            witness[<span class="number">5</span>][r] = (<span class="number">11u32 </span>* <span class="number">23 </span>* <span class="number">2</span>).into();
+<a href=#457 id=457 data-nosnippet>457</a>        }
+<a href=#458 id=458 data-nosnippet>458</a>
+<a href=#459 id=459 data-nosnippet>459</a>        <span class="comment">// const
+<a href=#460 id=460 data-nosnippet>460</a>        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">10 </span>{
+<a href=#461 id=461 data-nosnippet>461</a>            <span class="kw">let </span>r = witness_row.next().unwrap();
 <a href=#462 id=462 data-nosnippet>462</a>
-<a href=#463 id=463 data-nosnippet>463</a>            witness[<span class="number">3</span>][r] = <span class="number">5u32</span>.into();
-<a href=#464 id=464 data-nosnippet>464</a>        }
-<a href=#465 id=465 data-nosnippet>465</a>    }
-<a href=#466 id=466 data-nosnippet>466</a>}
+<a href=#463 id=463 data-nosnippet>463</a>            witness[<span class="number">0</span>][r] = <span class="number">3u32</span>.into();
+<a href=#464 id=464 data-nosnippet>464</a>
+<a href=#465 id=465 data-nosnippet>465</a>            witness[<span class="number">3</span>][r] = <span class="number">5u32</span>.into();
+<a href=#466 id=466 data-nosnippet>466</a>        }
+<a href=#467 id=467 data-nosnippet>467</a>    }
+<a href=#468 id=468 data-nosnippet>468</a>}
 </code></pre></div></section></main></body></html>

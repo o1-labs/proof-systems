@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["PlonkSpongeConstants"],"trait":["ArrabbiataCurve"]};
+window.SIDEBAR_ITEMS = {"constant":["SPONGE_PARAM_FULL_ROUNDS"],"struct":["PlonkSpongeConstants"],"trait":["ArrabbiataCurve"],"type":["ArithmeticSpongeParams","DefaultFqSponge"]};

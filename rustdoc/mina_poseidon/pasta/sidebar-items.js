@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["fp_kimchi","fp_legacy","fq_kimchi","fq_legacy"]};
+window.SIDEBAR_ITEMS = {"constant":["FULL_ROUNDS","LEGACY_ROUNDS"],"mod":["fp_kimchi","fp_legacy","fq_kimchi","fq_legacy"]};

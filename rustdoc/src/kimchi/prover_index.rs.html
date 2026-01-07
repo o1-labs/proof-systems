@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/prover_index.rs`."><title>prover_index.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-2eb46af5.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (4fa80a5e7 2026-01-05)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-7bab91a1.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi/</div>prover_index.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module implements the prover index as [`ProverIndex`].
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/prover_index.rs`."><title>prover_index.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-2eb46af5.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (0aced202c 2026-01-06)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-7bab91a1.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi/</div>prover_index.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module implements the prover index as [`ProverIndex`].
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use </span>crate::{
 <a href=#4 id=4 data-nosnippet>4</a>    alphas::Alphas,
@@ -14,7 +14,7 @@
 <a href=#14 id=14 data-nosnippet>14</a>};
 <a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span>ark_ff::PrimeField;
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">use </span>mina_poseidon::FqSponge;
-<a href=#17 id=17 data-nosnippet>17</a><span class="kw">use </span>poly_commitment::{OpenProof, SRS <span class="kw">as _</span>};
+<a href=#17 id=17 data-nosnippet>17</a><span class="kw">use </span>poly_commitment::SRS;
 <a href=#18 id=18 data-nosnippet>18</a><span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
 <a href=#19 id=19 data-nosnippet>19</a><span class="kw">use </span>serde_with::serde_as;
 <a href=#20 id=20 data-nosnippet>20</a><span class="kw">use </span>std::sync::Arc;
@@ -23,7 +23,7 @@
 <a href=#23 id=23 data-nosnippet>23</a></span><span class="attr">#[serde_as]
 <a href=#24 id=24 data-nosnippet>24</a>#[derive(Serialize, Deserialize, Clone, Debug)]
 <a href=#25 id=25 data-nosnippet>25</a></span><span class="comment">//~spec:startcode
-<a href=#26 id=26 data-nosnippet>26</a></span><span class="kw">pub struct </span>ProverIndex&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; {
+<a href=#26 id=26 data-nosnippet>26</a></span><span class="kw">pub struct </span>ProverIndex&lt;<span class="kw">const </span>FULL_ROUNDS: usize, G: KimchiCurve&lt;FULL_ROUNDS&gt;, Srs&gt; {
 <a href=#27 id=27 data-nosnippet>27</a>    <span class="doccomment">/// constraints system polynomials
 <a href=#28 id=28 data-nosnippet>28</a>    </span><span class="attr">#[serde(bound = <span class="string">"ConstraintSystem&lt;G::ScalarField&gt;: Serialize + DeserializeOwned"</span>)]
 <a href=#29 id=29 data-nosnippet>29</a>    </span><span class="kw">pub </span>cs: Arc&lt;ConstraintSystem&lt;G::ScalarField&gt;&gt;,
@@ -39,26 +39,26 @@
 <a href=#39 id=39 data-nosnippet>39</a>
 <a href=#40 id=40 data-nosnippet>40</a>    <span class="doccomment">/// polynomial commitment keys
 <a href=#41 id=41 data-nosnippet>41</a>    </span><span class="attr">#[serde(skip)]
-<a href=#42 id=42 data-nosnippet>42</a>    #[serde(bound(deserialize = <span class="string">"OpeningProof::SRS: Default"</span>))]
-<a href=#43 id=43 data-nosnippet>43</a>    </span><span class="kw">pub </span>srs: Arc&lt;OpeningProof::SRS&gt;,
-<a href=#44 id=44 data-nosnippet>44</a>
-<a href=#45 id=45 data-nosnippet>45</a>    <span class="doccomment">/// maximal size of polynomial section
-<a href=#46 id=46 data-nosnippet>46</a>    </span><span class="kw">pub </span>max_poly_size: usize,
-<a href=#47 id=47 data-nosnippet>47</a>
-<a href=#48 id=48 data-nosnippet>48</a>    <span class="attr">#[serde(bound = <span class="string">"ColumnEvaluations&lt;G::ScalarField&gt;: Serialize + DeserializeOwned"</span>)]
-<a href=#49 id=49 data-nosnippet>49</a>    </span><span class="kw">pub </span>column_evaluations: Arc&lt;LazyCache&lt;ColumnEvaluations&lt;G::ScalarField&gt;&gt;&gt;,
-<a href=#50 id=50 data-nosnippet>50</a>
-<a href=#51 id=51 data-nosnippet>51</a>    <span class="doccomment">/// The verifier index corresponding to this prover index
-<a href=#52 id=52 data-nosnippet>52</a>    </span><span class="attr">#[serde(skip)]
-<a href=#53 id=53 data-nosnippet>53</a>    </span><span class="kw">pub </span>verifier_index: <span class="prelude-ty">Option</span>&lt;VerifierIndex&lt;G, OpeningProof&gt;&gt;,
-<a href=#54 id=54 data-nosnippet>54</a>
-<a href=#55 id=55 data-nosnippet>55</a>    <span class="doccomment">/// The verifier index digest corresponding to this prover index
-<a href=#56 id=56 data-nosnippet>56</a>    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">"Option&lt;o1_utils::serialization::SerdeAs&gt;"</span>)]
-<a href=#57 id=57 data-nosnippet>57</a>    </span><span class="kw">pub </span>verifier_index_digest: <span class="prelude-ty">Option</span>&lt;G::BaseField&gt;,
-<a href=#58 id=58 data-nosnippet>58</a>}
-<a href=#59 id=59 data-nosnippet>59</a><span class="comment">//~spec:endcode
-<a href=#60 id=60 data-nosnippet>60</a>
-<a href=#61 id=61 data-nosnippet>61</a></span><span class="kw">impl</span>&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; ProverIndex&lt;G, OpeningProof&gt;
+<a href=#42 id=42 data-nosnippet>42</a>    </span><span class="kw">pub </span>srs: Arc&lt;Srs&gt;,
+<a href=#43 id=43 data-nosnippet>43</a>
+<a href=#44 id=44 data-nosnippet>44</a>    <span class="doccomment">/// maximal size of polynomial section
+<a href=#45 id=45 data-nosnippet>45</a>    </span><span class="kw">pub </span>max_poly_size: usize,
+<a href=#46 id=46 data-nosnippet>46</a>
+<a href=#47 id=47 data-nosnippet>47</a>    <span class="attr">#[serde(bound = <span class="string">"ColumnEvaluations&lt;G::ScalarField&gt;: Serialize + DeserializeOwned"</span>)]
+<a href=#48 id=48 data-nosnippet>48</a>    </span><span class="kw">pub </span>column_evaluations: Arc&lt;LazyCache&lt;ColumnEvaluations&lt;G::ScalarField&gt;&gt;&gt;,
+<a href=#49 id=49 data-nosnippet>49</a>
+<a href=#50 id=50 data-nosnippet>50</a>    <span class="doccomment">/// The verifier index corresponding to this prover index
+<a href=#51 id=51 data-nosnippet>51</a>    </span><span class="attr">#[serde(skip)]
+<a href=#52 id=52 data-nosnippet>52</a>    </span><span class="kw">pub </span>verifier_index: <span class="prelude-ty">Option</span>&lt;VerifierIndex&lt;FULL_ROUNDS, G, Srs&gt;&gt;,
+<a href=#53 id=53 data-nosnippet>53</a>
+<a href=#54 id=54 data-nosnippet>54</a>    <span class="doccomment">/// The verifier index digest corresponding to this prover index
+<a href=#55 id=55 data-nosnippet>55</a>    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">"Option&lt;o1_utils::serialization::SerdeAs&gt;"</span>)]
+<a href=#56 id=56 data-nosnippet>56</a>    </span><span class="kw">pub </span>verifier_index_digest: <span class="prelude-ty">Option</span>&lt;G::BaseField&gt;,
+<a href=#57 id=57 data-nosnippet>57</a>}
+<a href=#58 id=58 data-nosnippet>58</a><span class="comment">//~spec:endcode
+<a href=#59 id=59 data-nosnippet>59</a>
+<a href=#60 id=60 data-nosnippet>60</a></span><span class="kw">impl</span>&lt;<span class="kw">const </span>FULL_ROUNDS: usize, G: KimchiCurve&lt;FULL_ROUNDS&gt;, Srs: SRS&lt;G&gt;&gt;
+<a href=#61 id=61 data-nosnippet>61</a>    ProverIndex&lt;FULL_ROUNDS, G, Srs&gt;
 <a href=#62 id=62 data-nosnippet>62</a><span class="kw">where
 <a href=#63 id=63 data-nosnippet>63</a>    </span>G::BaseField: PrimeField,
 <a href=#64 id=64 data-nosnippet>64</a>{
@@ -66,7 +66,7 @@
 <a href=#66 id=66 data-nosnippet>66</a>    </span><span class="kw">pub fn </span>create(
 <a href=#67 id=67 data-nosnippet>67</a>        <span class="kw-2">mut </span>cs: ConstraintSystem&lt;G::ScalarField&gt;,
 <a href=#68 id=68 data-nosnippet>68</a>        endo_q: G::ScalarField,
-<a href=#69 id=69 data-nosnippet>69</a>        srs: Arc&lt;OpeningProof::SRS&gt;,
+<a href=#69 id=69 data-nosnippet>69</a>        srs: Arc&lt;Srs&gt;,
 <a href=#70 id=70 data-nosnippet>70</a>        lazy_mode: bool,
 <a href=#71 id=71 data-nosnippet>71</a>    ) -&gt; <span class="self">Self </span>{
 <a href=#72 id=72 data-nosnippet>72</a>        <span class="kw">let </span>max_poly_size = srs.max_poly_size();
@@ -101,12 +101,12 @@
 <a href=#101 id=101 data-nosnippet>101</a>    <span class="doccomment">/// Retrieve or compute the digest for the corresponding verifier index.
 <a href=#102 id=102 data-nosnippet>102</a>    /// If the digest is not already cached inside the index, store it.
 <a href=#103 id=103 data-nosnippet>103</a>    </span><span class="kw">pub fn </span>compute_verifier_index_digest&lt;
-<a href=#104 id=104 data-nosnippet>104</a>        EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
+<a href=#104 id=104 data-nosnippet>104</a>        EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField, FULL_ROUNDS&gt;,
 <a href=#105 id=105 data-nosnippet>105</a>    &gt;(
 <a href=#106 id=106 data-nosnippet>106</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#107 id=107 data-nosnippet>107</a>    ) -&gt; G::BaseField
 <a href=#108 id=108 data-nosnippet>108</a>    <span class="kw">where
-<a href=#109 id=109 data-nosnippet>109</a>        </span>VerifierIndex&lt;G, OpeningProof&gt;: Clone,
+<a href=#109 id=109 data-nosnippet>109</a>        </span>VerifierIndex&lt;FULL_ROUNDS, G, Srs&gt;: Clone,
 <a href=#110 id=110 data-nosnippet>110</a>    {
 <a href=#111 id=111 data-nosnippet>111</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(verifier_index_digest) = <span class="self">self</span>.verifier_index_digest {
 <a href=#112 id=112 data-nosnippet>112</a>            <span class="kw">return </span>verifier_index_digest;
@@ -122,132 +122,139 @@
 <a href=#122 id=122 data-nosnippet>122</a>    }
 <a href=#123 id=123 data-nosnippet>123</a>
 <a href=#124 id=124 data-nosnippet>124</a>    <span class="doccomment">/// Retrieve or compute the digest for the corresponding verifier index.
-<a href=#125 id=125 data-nosnippet>125</a>    </span><span class="kw">pub fn </span>verifier_index_digest&lt;EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
-<a href=#126 id=126 data-nosnippet>126</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#127 id=127 data-nosnippet>127</a>    ) -&gt; G::BaseField
-<a href=#128 id=128 data-nosnippet>128</a>    <span class="kw">where
-<a href=#129 id=129 data-nosnippet>129</a>        </span>VerifierIndex&lt;G, OpeningProof&gt;: Clone,
-<a href=#130 id=130 data-nosnippet>130</a>    {
-<a href=#131 id=131 data-nosnippet>131</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(verifier_index_digest) = <span class="self">self</span>.verifier_index_digest {
-<a href=#132 id=132 data-nosnippet>132</a>            <span class="kw">return </span>verifier_index_digest;
-<a href=#133 id=133 data-nosnippet>133</a>        }
-<a href=#134 id=134 data-nosnippet>134</a>
-<a href=#135 id=135 data-nosnippet>135</a>        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.verifier_index {
-<a href=#136 id=136 data-nosnippet>136</a>            <span class="prelude-val">None </span>=&gt; {
-<a href=#137 id=137 data-nosnippet>137</a>                <span class="kw">let </span>verifier_index = <span class="self">self</span>.verifier_index();
-<a href=#138 id=138 data-nosnippet>138</a>                verifier_index.digest::&lt;EFqSponge&gt;()
-<a href=#139 id=139 data-nosnippet>139</a>            }
-<a href=#140 id=140 data-nosnippet>140</a>            <span class="prelude-val">Some</span>(verifier_index) =&gt; verifier_index.digest::&lt;EFqSponge&gt;(),
-<a href=#141 id=141 data-nosnippet>141</a>        }
-<a href=#142 id=142 data-nosnippet>142</a>    }
-<a href=#143 id=143 data-nosnippet>143</a>}
-<a href=#144 id=144 data-nosnippet>144</a>
-<a href=#145 id=145 data-nosnippet>145</a><span class="kw">pub mod </span>testing {
-<a href=#146 id=146 data-nosnippet>146</a>    <span class="kw">use </span>super::<span class="kw-2">*</span>;
-<a href=#147 id=147 data-nosnippet>147</a>    <span class="kw">use </span><span class="kw">crate</span>::circuits::{
-<a href=#148 id=148 data-nosnippet>148</a>        gate::CircuitGate,
-<a href=#149 id=149 data-nosnippet>149</a>        lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
-<a href=#150 id=150 data-nosnippet>150</a>    };
-<a href=#151 id=151 data-nosnippet>151</a>    <span class="kw">use </span>ark_ff::PrimeField;
-<a href=#152 id=152 data-nosnippet>152</a>    <span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>D};
-<a href=#153 id=153 data-nosnippet>153</a>    <span class="kw">use </span>poly_commitment::{
-<a href=#154 id=154 data-nosnippet>154</a>        ipa::{OpeningProof, SRS},
-<a href=#155 id=155 data-nosnippet>155</a>        precomputed_srs, OpenProof,
-<a href=#156 id=156 data-nosnippet>156</a>    };
-<a href=#157 id=157 data-nosnippet>157</a>
-<a href=#158 id=158 data-nosnippet>158</a>    <span class="attr">#[allow(clippy::too_many_arguments)]
-<a href=#159 id=159 data-nosnippet>159</a>    </span><span class="kw">pub fn </span>new_index_for_test_with_lookups_and_custom_srs&lt;
-<a href=#160 id=160 data-nosnippet>160</a>        G: KimchiCurve,
-<a href=#161 id=161 data-nosnippet>161</a>        OpeningProof: OpenProof&lt;G&gt;,
-<a href=#162 id=162 data-nosnippet>162</a>        F: FnMut(D&lt;G::ScalarField&gt;, usize) -&gt; OpeningProof::SRS,
-<a href=#163 id=163 data-nosnippet>163</a>    &gt;(
-<a href=#164 id=164 data-nosnippet>164</a>        gates: Vec&lt;CircuitGate&lt;G::ScalarField&gt;&gt;,
-<a href=#165 id=165 data-nosnippet>165</a>        public: usize,
-<a href=#166 id=166 data-nosnippet>166</a>        prev_challenges: usize,
-<a href=#167 id=167 data-nosnippet>167</a>        lookup_tables: Vec&lt;LookupTable&lt;G::ScalarField&gt;&gt;,
-<a href=#168 id=168 data-nosnippet>168</a>        runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;G::ScalarField&gt;&gt;&gt;,
-<a href=#169 id=169 data-nosnippet>169</a>        disable_gates_checks: bool,
-<a href=#170 id=170 data-nosnippet>170</a>        override_srs_size: <span class="prelude-ty">Option</span>&lt;usize&gt;,
-<a href=#171 id=171 data-nosnippet>171</a>        <span class="kw-2">mut </span>get_srs: F,
-<a href=#172 id=172 data-nosnippet>172</a>        lazy_mode: bool,
-<a href=#173 id=173 data-nosnippet>173</a>    ) -&gt; ProverIndex&lt;G, OpeningProof&gt;
-<a href=#174 id=174 data-nosnippet>174</a>    <span class="kw">where
-<a href=#175 id=175 data-nosnippet>175</a>        </span>G::BaseField: PrimeField,
-<a href=#176 id=176 data-nosnippet>176</a>        G::ScalarField: PrimeField,
-<a href=#177 id=177 data-nosnippet>177</a>    {
-<a href=#178 id=178 data-nosnippet>178</a>        <span class="comment">// not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-<a href=#179 id=179 data-nosnippet>179</a>        </span><span class="kw">let </span>cs = ConstraintSystem::&lt;G::ScalarField&gt;::create(gates)
-<a href=#180 id=180 data-nosnippet>180</a>            .lookup(lookup_tables)
-<a href=#181 id=181 data-nosnippet>181</a>            .runtime(runtime_tables)
-<a href=#182 id=182 data-nosnippet>182</a>            .public(public)
-<a href=#183 id=183 data-nosnippet>183</a>            .prev_challenges(prev_challenges)
-<a href=#184 id=184 data-nosnippet>184</a>            .disable_gates_checks(disable_gates_checks)
-<a href=#185 id=185 data-nosnippet>185</a>            .max_poly_size(override_srs_size)
-<a href=#186 id=186 data-nosnippet>186</a>            .lazy_mode(lazy_mode)
-<a href=#187 id=187 data-nosnippet>187</a>            .build()
-<a href=#188 id=188 data-nosnippet>188</a>            .unwrap();
-<a href=#189 id=189 data-nosnippet>189</a>
-<a href=#190 id=190 data-nosnippet>190</a>        <span class="kw">let </span>srs_size = override_srs_size.unwrap_or_else(|| cs.domain.d1.size());
-<a href=#191 id=191 data-nosnippet>191</a>        <span class="kw">let </span>srs = get_srs(cs.domain.d1, srs_size);
-<a href=#192 id=192 data-nosnippet>192</a>        <span class="kw">let </span>srs = Arc::new(srs);
-<a href=#193 id=193 data-nosnippet>193</a>
-<a href=#194 id=194 data-nosnippet>194</a>        <span class="kw">let </span><span class="kw-2">&amp;</span>endo_q = G::other_curve_endo();
-<a href=#195 id=195 data-nosnippet>195</a>        ProverIndex::create(cs, endo_q, srs, lazy_mode)
-<a href=#196 id=196 data-nosnippet>196</a>    }
-<a href=#197 id=197 data-nosnippet>197</a>
-<a href=#198 id=198 data-nosnippet>198</a>    <span class="doccomment">/// Create new index for lookups.
+<a href=#125 id=125 data-nosnippet>125</a>    </span><span class="kw">pub fn </span>verifier_index_digest&lt;
+<a href=#126 id=126 data-nosnippet>126</a>        EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField, FULL_ROUNDS&gt;,
+<a href=#127 id=127 data-nosnippet>127</a>    &gt;(
+<a href=#128 id=128 data-nosnippet>128</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#129 id=129 data-nosnippet>129</a>    ) -&gt; G::BaseField
+<a href=#130 id=130 data-nosnippet>130</a>    <span class="kw">where
+<a href=#131 id=131 data-nosnippet>131</a>        </span>VerifierIndex&lt;FULL_ROUNDS, G, Srs&gt;: Clone,
+<a href=#132 id=132 data-nosnippet>132</a>    {
+<a href=#133 id=133 data-nosnippet>133</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(verifier_index_digest) = <span class="self">self</span>.verifier_index_digest {
+<a href=#134 id=134 data-nosnippet>134</a>            <span class="kw">return </span>verifier_index_digest;
+<a href=#135 id=135 data-nosnippet>135</a>        }
+<a href=#136 id=136 data-nosnippet>136</a>
+<a href=#137 id=137 data-nosnippet>137</a>        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.verifier_index {
+<a href=#138 id=138 data-nosnippet>138</a>            <span class="prelude-val">None </span>=&gt; {
+<a href=#139 id=139 data-nosnippet>139</a>                <span class="kw">let </span>verifier_index = <span class="self">self</span>.verifier_index();
+<a href=#140 id=140 data-nosnippet>140</a>                verifier_index.digest::&lt;EFqSponge&gt;()
+<a href=#141 id=141 data-nosnippet>141</a>            }
+<a href=#142 id=142 data-nosnippet>142</a>            <span class="prelude-val">Some</span>(verifier_index) =&gt; verifier_index.digest::&lt;EFqSponge&gt;(),
+<a href=#143 id=143 data-nosnippet>143</a>        }
+<a href=#144 id=144 data-nosnippet>144</a>    }
+<a href=#145 id=145 data-nosnippet>145</a>}
+<a href=#146 id=146 data-nosnippet>146</a>
+<a href=#147 id=147 data-nosnippet>147</a><span class="kw">pub mod </span>testing {
+<a href=#148 id=148 data-nosnippet>148</a>    <span class="kw">use </span>super::<span class="kw-2">*</span>;
+<a href=#149 id=149 data-nosnippet>149</a>    <span class="kw">use </span><span class="kw">crate</span>::circuits::{
+<a href=#150 id=150 data-nosnippet>150</a>        gate::CircuitGate,
+<a href=#151 id=151 data-nosnippet>151</a>        lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
+<a href=#152 id=152 data-nosnippet>152</a>    };
+<a href=#153 id=153 data-nosnippet>153</a>    <span class="kw">use </span>ark_ff::PrimeField;
+<a href=#154 id=154 data-nosnippet>154</a>    <span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>D};
+<a href=#155 id=155 data-nosnippet>155</a>    <span class="kw">use </span>poly_commitment::{ipa::OpeningProof, precomputed_srs, OpenProof, SRS};
+<a href=#156 id=156 data-nosnippet>156</a>
+<a href=#157 id=157 data-nosnippet>157</a>    <span class="attr">#[allow(clippy::too_many_arguments)]
+<a href=#158 id=158 data-nosnippet>158</a>    </span><span class="kw">pub fn </span>new_index_for_test_with_lookups_and_custom_srs&lt;<span class="kw">const </span>FULL_ROUNDS: usize, G, Srs, F&gt;(
+<a href=#159 id=159 data-nosnippet>159</a>        gates: Vec&lt;CircuitGate&lt;G::ScalarField&gt;&gt;,
+<a href=#160 id=160 data-nosnippet>160</a>        public: usize,
+<a href=#161 id=161 data-nosnippet>161</a>        prev_challenges: usize,
+<a href=#162 id=162 data-nosnippet>162</a>        lookup_tables: Vec&lt;LookupTable&lt;G::ScalarField&gt;&gt;,
+<a href=#163 id=163 data-nosnippet>163</a>        runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;G::ScalarField&gt;&gt;&gt;,
+<a href=#164 id=164 data-nosnippet>164</a>        disable_gates_checks: bool,
+<a href=#165 id=165 data-nosnippet>165</a>        override_srs_size: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+<a href=#166 id=166 data-nosnippet>166</a>        <span class="kw-2">mut </span>get_srs: F,
+<a href=#167 id=167 data-nosnippet>167</a>        lazy_mode: bool,
+<a href=#168 id=168 data-nosnippet>168</a>    ) -&gt; ProverIndex&lt;FULL_ROUNDS, G, Srs&gt;
+<a href=#169 id=169 data-nosnippet>169</a>    <span class="kw">where
+<a href=#170 id=170 data-nosnippet>170</a>        </span>G: KimchiCurve&lt;FULL_ROUNDS&gt;,
+<a href=#171 id=171 data-nosnippet>171</a>        Srs: SRS&lt;G&gt;,
+<a href=#172 id=172 data-nosnippet>172</a>        F: FnMut(D&lt;G::ScalarField&gt;, usize) -&gt; Srs,
+<a href=#173 id=173 data-nosnippet>173</a>        G::BaseField: PrimeField,
+<a href=#174 id=174 data-nosnippet>174</a>        G::ScalarField: PrimeField,
+<a href=#175 id=175 data-nosnippet>175</a>    {
+<a href=#176 id=176 data-nosnippet>176</a>        <span class="comment">// not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
+<a href=#177 id=177 data-nosnippet>177</a>        </span><span class="kw">let </span>cs = ConstraintSystem::&lt;G::ScalarField&gt;::create(gates)
+<a href=#178 id=178 data-nosnippet>178</a>            .lookup(lookup_tables)
+<a href=#179 id=179 data-nosnippet>179</a>            .runtime(runtime_tables)
+<a href=#180 id=180 data-nosnippet>180</a>            .public(public)
+<a href=#181 id=181 data-nosnippet>181</a>            .prev_challenges(prev_challenges)
+<a href=#182 id=182 data-nosnippet>182</a>            .disable_gates_checks(disable_gates_checks)
+<a href=#183 id=183 data-nosnippet>183</a>            .max_poly_size(override_srs_size)
+<a href=#184 id=184 data-nosnippet>184</a>            .lazy_mode(lazy_mode)
+<a href=#185 id=185 data-nosnippet>185</a>            .build()
+<a href=#186 id=186 data-nosnippet>186</a>            .unwrap();
+<a href=#187 id=187 data-nosnippet>187</a>
+<a href=#188 id=188 data-nosnippet>188</a>        <span class="kw">let </span>srs_size = override_srs_size.unwrap_or_else(|| cs.domain.d1.size());
+<a href=#189 id=189 data-nosnippet>189</a>        <span class="kw">let </span>srs = get_srs(cs.domain.d1, srs_size);
+<a href=#190 id=190 data-nosnippet>190</a>        <span class="kw">let </span>srs = Arc::new(srs);
+<a href=#191 id=191 data-nosnippet>191</a>
+<a href=#192 id=192 data-nosnippet>192</a>        <span class="kw">let </span><span class="kw-2">&amp;</span>endo_q = G::other_curve_endo();
+<a href=#193 id=193 data-nosnippet>193</a>        ProverIndex::create(cs, endo_q, srs, lazy_mode)
+<a href=#194 id=194 data-nosnippet>194</a>    }
+<a href=#195 id=195 data-nosnippet>195</a>
+<a href=#196 id=196 data-nosnippet>196</a>    <span class="doccomment">/// Create new index for lookups.
+<a href=#197 id=197 data-nosnippet>197</a>    ///
+<a href=#198 id=198 data-nosnippet>198</a>    /// # Panics
 <a href=#199 id=199 data-nosnippet>199</a>    ///
-<a href=#200 id=200 data-nosnippet>200</a>    /// # Panics
-<a href=#201 id=201 data-nosnippet>201</a>    ///
-<a href=#202 id=202 data-nosnippet>202</a>    /// Will panic if `constraint system` is not built with `gates` input.
-<a href=#203 id=203 data-nosnippet>203</a>    </span><span class="kw">pub fn </span>new_index_for_test_with_lookups&lt;G: KimchiCurve&gt;(
-<a href=#204 id=204 data-nosnippet>204</a>        gates: Vec&lt;CircuitGate&lt;G::ScalarField&gt;&gt;,
-<a href=#205 id=205 data-nosnippet>205</a>        public: usize,
-<a href=#206 id=206 data-nosnippet>206</a>        prev_challenges: usize,
-<a href=#207 id=207 data-nosnippet>207</a>        lookup_tables: Vec&lt;LookupTable&lt;G::ScalarField&gt;&gt;,
-<a href=#208 id=208 data-nosnippet>208</a>        runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;G::ScalarField&gt;&gt;&gt;,
-<a href=#209 id=209 data-nosnippet>209</a>        disable_gates_checks: bool,
-<a href=#210 id=210 data-nosnippet>210</a>        override_srs_size: <span class="prelude-ty">Option</span>&lt;usize&gt;,
-<a href=#211 id=211 data-nosnippet>211</a>        lazy_mode: bool,
-<a href=#212 id=212 data-nosnippet>212</a>    ) -&gt; ProverIndex&lt;G, OpeningProof&lt;G&gt;&gt;
-<a href=#213 id=213 data-nosnippet>213</a>    <span class="kw">where
-<a href=#214 id=214 data-nosnippet>214</a>        </span>G::BaseField: PrimeField,
-<a href=#215 id=215 data-nosnippet>215</a>        G::ScalarField: PrimeField,
-<a href=#216 id=216 data-nosnippet>216</a>    {
-<a href=#217 id=217 data-nosnippet>217</a>        new_index_for_test_with_lookups_and_custom_srs(
-<a href=#218 id=218 data-nosnippet>218</a>            gates,
-<a href=#219 id=219 data-nosnippet>219</a>            public,
-<a href=#220 id=220 data-nosnippet>220</a>            prev_challenges,
-<a href=#221 id=221 data-nosnippet>221</a>            lookup_tables,
-<a href=#222 id=222 data-nosnippet>222</a>            runtime_tables,
-<a href=#223 id=223 data-nosnippet>223</a>            disable_gates_checks,
-<a href=#224 id=224 data-nosnippet>224</a>            override_srs_size,
-<a href=#225 id=225 data-nosnippet>225</a>            |d1: D&lt;G::ScalarField&gt;, size: usize| {
-<a href=#226 id=226 data-nosnippet>226</a>                <span class="kw">let </span>log2_size = size.ilog2();
-<a href=#227 id=227 data-nosnippet>227</a>                <span class="kw">let </span>srs = <span class="kw">if </span>log2_size &lt;= precomputed_srs::SERIALIZED_SRS_SIZE {
-<a href=#228 id=228 data-nosnippet>228</a>                    <span class="comment">// TODO: we should trim it if it's smaller
-<a href=#229 id=229 data-nosnippet>229</a>                    </span>precomputed_srs::get_srs_test()
-<a href=#230 id=230 data-nosnippet>230</a>                } <span class="kw">else </span>{
-<a href=#231 id=231 data-nosnippet>231</a>                    <span class="comment">// TODO: we should resume the SRS generation starting from the serialized one
-<a href=#232 id=232 data-nosnippet>232</a>                    </span>SRS::&lt;G&gt;::create(size)
-<a href=#233 id=233 data-nosnippet>233</a>                };
-<a href=#234 id=234 data-nosnippet>234</a>
-<a href=#235 id=235 data-nosnippet>235</a>                srs.get_lagrange_basis(d1);
-<a href=#236 id=236 data-nosnippet>236</a>                srs
-<a href=#237 id=237 data-nosnippet>237</a>            },
-<a href=#238 id=238 data-nosnippet>238</a>            lazy_mode,
-<a href=#239 id=239 data-nosnippet>239</a>        )
-<a href=#240 id=240 data-nosnippet>240</a>    }
-<a href=#241 id=241 data-nosnippet>241</a>
-<a href=#242 id=242 data-nosnippet>242</a>    <span class="kw">pub fn </span>new_index_for_test&lt;G: KimchiCurve&gt;(
-<a href=#243 id=243 data-nosnippet>243</a>        gates: Vec&lt;CircuitGate&lt;G::ScalarField&gt;&gt;,
-<a href=#244 id=244 data-nosnippet>244</a>        public: usize,
-<a href=#245 id=245 data-nosnippet>245</a>    ) -&gt; ProverIndex&lt;G, OpeningProof&lt;G&gt;&gt;
-<a href=#246 id=246 data-nosnippet>246</a>    <span class="kw">where
-<a href=#247 id=247 data-nosnippet>247</a>        </span>G::BaseField: PrimeField,
-<a href=#248 id=248 data-nosnippet>248</a>        G::ScalarField: PrimeField,
-<a href=#249 id=249 data-nosnippet>249</a>    {
-<a href=#250 id=250 data-nosnippet>250</a>        new_index_for_test_with_lookups::&lt;G&gt;(gates, public, <span class="number">0</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>, <span class="bool-val">false</span>, <span class="prelude-val">None</span>, <span class="bool-val">false</span>)
-<a href=#251 id=251 data-nosnippet>251</a>    }
-<a href=#252 id=252 data-nosnippet>252</a>}
+<a href=#200 id=200 data-nosnippet>200</a>    /// Will panic if `constraint system` is not built with `gates` input.
+<a href=#201 id=201 data-nosnippet>201</a>    </span><span class="kw">pub fn </span>new_index_for_test_with_lookups&lt;<span class="kw">const </span>FULL_ROUNDS: usize, G: KimchiCurve&lt;FULL_ROUNDS&gt;&gt;(
+<a href=#202 id=202 data-nosnippet>202</a>        gates: Vec&lt;CircuitGate&lt;G::ScalarField&gt;&gt;,
+<a href=#203 id=203 data-nosnippet>203</a>        public: usize,
+<a href=#204 id=204 data-nosnippet>204</a>        prev_challenges: usize,
+<a href=#205 id=205 data-nosnippet>205</a>        lookup_tables: Vec&lt;LookupTable&lt;G::ScalarField&gt;&gt;,
+<a href=#206 id=206 data-nosnippet>206</a>        runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;G::ScalarField&gt;&gt;&gt;,
+<a href=#207 id=207 data-nosnippet>207</a>        disable_gates_checks: bool,
+<a href=#208 id=208 data-nosnippet>208</a>        override_srs_size: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+<a href=#209 id=209 data-nosnippet>209</a>        lazy_mode: bool,
+<a href=#210 id=210 data-nosnippet>210</a>    ) -&gt; ProverIndex&lt;FULL_ROUNDS, G, &lt;OpeningProof&lt;G, FULL_ROUNDS&gt; <span class="kw">as </span>OpenProof&lt;G, FULL_ROUNDS&gt;&gt;::SRS&gt;
+<a href=#211 id=211 data-nosnippet>211</a>    <span class="kw">where
+<a href=#212 id=212 data-nosnippet>212</a>        </span>G::BaseField: PrimeField,
+<a href=#213 id=213 data-nosnippet>213</a>        G::ScalarField: PrimeField,
+<a href=#214 id=214 data-nosnippet>214</a>    {
+<a href=#215 id=215 data-nosnippet>215</a>        new_index_for_test_with_lookups_and_custom_srs::&lt;FULL_ROUNDS, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>&gt;(
+<a href=#216 id=216 data-nosnippet>216</a>            gates,
+<a href=#217 id=217 data-nosnippet>217</a>            public,
+<a href=#218 id=218 data-nosnippet>218</a>            prev_challenges,
+<a href=#219 id=219 data-nosnippet>219</a>            lookup_tables,
+<a href=#220 id=220 data-nosnippet>220</a>            runtime_tables,
+<a href=#221 id=221 data-nosnippet>221</a>            disable_gates_checks,
+<a href=#222 id=222 data-nosnippet>222</a>            override_srs_size,
+<a href=#223 id=223 data-nosnippet>223</a>            |d1: D&lt;G::ScalarField&gt;, size: usize| {
+<a href=#224 id=224 data-nosnippet>224</a>                <span class="kw">let </span>log2_size = size.ilog2();
+<a href=#225 id=225 data-nosnippet>225</a>                <span class="kw">let </span>srs = <span class="kw">if </span>log2_size &lt;= precomputed_srs::SERIALIZED_SRS_SIZE {
+<a href=#226 id=226 data-nosnippet>226</a>                    <span class="comment">// TODO: we should trim it if it's smaller
+<a href=#227 id=227 data-nosnippet>227</a>                    </span>precomputed_srs::get_srs_test()
+<a href=#228 id=228 data-nosnippet>228</a>                } <span class="kw">else </span>{
+<a href=#229 id=229 data-nosnippet>229</a>                    <span class="comment">// TODO: we should resume the SRS generation starting from the serialized one
+<a href=#230 id=230 data-nosnippet>230</a>                    </span>SRS::&lt;G&gt;::create(size)
+<a href=#231 id=231 data-nosnippet>231</a>                };
+<a href=#232 id=232 data-nosnippet>232</a>
+<a href=#233 id=233 data-nosnippet>233</a>                srs.get_lagrange_basis(d1);
+<a href=#234 id=234 data-nosnippet>234</a>                srs
+<a href=#235 id=235 data-nosnippet>235</a>            },
+<a href=#236 id=236 data-nosnippet>236</a>            lazy_mode,
+<a href=#237 id=237 data-nosnippet>237</a>        )
+<a href=#238 id=238 data-nosnippet>238</a>    }
+<a href=#239 id=239 data-nosnippet>239</a>
+<a href=#240 id=240 data-nosnippet>240</a>    <span class="kw">pub fn </span>new_index_for_test&lt;<span class="kw">const </span>FULL_ROUNDS: usize, G: KimchiCurve&lt;FULL_ROUNDS&gt;&gt;(
+<a href=#241 id=241 data-nosnippet>241</a>        gates: Vec&lt;CircuitGate&lt;G::ScalarField&gt;&gt;,
+<a href=#242 id=242 data-nosnippet>242</a>        public: usize,
+<a href=#243 id=243 data-nosnippet>243</a>    ) -&gt; ProverIndex&lt;FULL_ROUNDS, G, poly_commitment::ipa::SRS&lt;G&gt;&gt;
+<a href=#244 id=244 data-nosnippet>244</a>    <span class="kw">where
+<a href=#245 id=245 data-nosnippet>245</a>        </span>G::BaseField: PrimeField,
+<a href=#246 id=246 data-nosnippet>246</a>        G::ScalarField: PrimeField,
+<a href=#247 id=247 data-nosnippet>247</a>    {
+<a href=#248 id=248 data-nosnippet>248</a>        new_index_for_test_with_lookups::&lt;FULL_ROUNDS, G&gt;(
+<a href=#249 id=249 data-nosnippet>249</a>            gates,
+<a href=#250 id=250 data-nosnippet>250</a>            public,
+<a href=#251 id=251 data-nosnippet>251</a>            <span class="number">0</span>,
+<a href=#252 id=252 data-nosnippet>252</a>            <span class="macro">vec!</span>[],
+<a href=#253 id=253 data-nosnippet>253</a>            <span class="prelude-val">None</span>,
+<a href=#254 id=254 data-nosnippet>254</a>            <span class="bool-val">false</span>,
+<a href=#255 id=255 data-nosnippet>255</a>            <span class="prelude-val">None</span>,
+<a href=#256 id=256 data-nosnippet>256</a>            <span class="bool-val">false</span>,
+<a href=#257 id=257 data-nosnippet>257</a>        )
+<a href=#258 id=258 data-nosnippet>258</a>    }
+<a href=#259 id=259 data-nosnippet>259</a>}
 </code></pre></div></section></main></body></html>

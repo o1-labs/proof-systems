@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/constraints.rs`."><title>constraints.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-2eb46af5.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (4fa80a5e7 2026-01-05)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-7bab91a1.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi/circuits/</div>constraints.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/constraints.rs`."><title>constraints.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-2eb46af5.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (0aced202c 2026-01-06)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-c38705f0.js" ><script src="../../../static.files/storage-e2aeef58.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-7bab91a1.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">kimchi/circuits/</div>constraints.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-4"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
 <a href=#2 id=2 data-nosnippet>2</a></span><span class="kw">use </span><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>crate::{
 <a href=#4 id=4 data-nosnippet>4</a>    circuits::{
@@ -26,7 +26,7 @@
 <a href=#26 id=26 data-nosnippet>26</a>};
 <a href=#27 id=27 data-nosnippet>27</a><span class="kw">use </span>core::{array, default::Default};
 <a href=#28 id=28 data-nosnippet>28</a><span class="kw">use </span>o1_utils::ExtendedEvaluations;
-<a href=#29 id=29 data-nosnippet>29</a><span class="kw">use </span>poly_commitment::OpenProof;
+<a href=#29 id=29 data-nosnippet>29</a><span class="kw">use </span>poly_commitment::SRS;
 <a href=#30 id=30 data-nosnippet>30</a><span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <a href=#31 id=31 data-nosnippet>31</a><span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
 <a href=#32 id=32 data-nosnippet>32</a><span class="kw">use </span>serde_with::serde_as;
@@ -374,695 +374,698 @@
 <a href=#374 id=374 data-nosnippet>374</a>    }
 <a href=#375 id=375 data-nosnippet>375</a>}
 <a href=#376 id=376 data-nosnippet>376</a>
-<a href=#377 id=377 data-nosnippet>377</a><span class="kw">impl</span>&lt;F: PrimeField, G: KimchiCurve&lt;ScalarField = F&gt;, OpeningProof: OpenProof&lt;G&gt;&gt;
-<a href=#378 id=378 data-nosnippet>378</a>    ProverIndex&lt;G, OpeningProof&gt;
-<a href=#379 id=379 data-nosnippet>379</a>{
-<a href=#380 id=380 data-nosnippet>380</a>    <span class="doccomment">/// This function verifies the consistency of the wire
-<a href=#381 id=381 data-nosnippet>381</a>    /// assignments (witness) against the constraints
-<a href=#382 id=382 data-nosnippet>382</a>    ///     witness: wire assignment witness
-<a href=#383 id=383 data-nosnippet>383</a>    ///     RETURN: verification status
-<a href=#384 id=384 data-nosnippet>384</a>    </span><span class="kw">pub fn </span>verify(<span class="kw-2">&amp;</span><span class="self">self</span>, witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS], public: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="prelude-ty">Result</span>&lt;(), GateError&gt; {
-<a href=#385 id=385 data-nosnippet>385</a>        <span class="comment">// pad the witness
-<a href=#386 id=386 data-nosnippet>386</a>        </span><span class="kw">let </span>pad = <span class="macro">vec!</span>[F::zero(); <span class="self">self</span>.cs.domain.d1.size() - witness[<span class="number">0</span>].len()];
-<a href=#387 id=387 data-nosnippet>387</a>        <span class="kw">let </span>witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|i| {
-<a href=#388 id=388 data-nosnippet>388</a>            <span class="kw">let </span><span class="kw-2">mut </span>w = witness[i].to_vec();
-<a href=#389 id=389 data-nosnippet>389</a>            w.extend_from_slice(<span class="kw-2">&amp;</span>pad);
-<a href=#390 id=390 data-nosnippet>390</a>            w
-<a href=#391 id=391 data-nosnippet>391</a>        });
-<a href=#392 id=392 data-nosnippet>392</a>
-<a href=#393 id=393 data-nosnippet>393</a>        <span class="comment">// check each rows' wiring
-<a href=#394 id=394 data-nosnippet>394</a>        </span><span class="kw">for </span>(row, gate) <span class="kw">in </span><span class="self">self</span>.cs.gates.iter().enumerate() {
-<a href=#395 id=395 data-nosnippet>395</a>            <span class="comment">// check if wires are connected
-<a href=#396 id=396 data-nosnippet>396</a>            </span><span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..PERMUTS {
-<a href=#397 id=397 data-nosnippet>397</a>                <span class="kw">let </span>wire = gate.wires[col];
-<a href=#398 id=398 data-nosnippet>398</a>
-<a href=#399 id=399 data-nosnippet>399</a>                <span class="kw">if </span>wire.col &gt;= PERMUTS {
-<a href=#400 id=400 data-nosnippet>400</a>                    <span class="kw">return </span><span class="prelude-val">Err</span>(GateError::Custom {
-<a href=#401 id=401 data-nosnippet>401</a>                        row,
-<a href=#402 id=402 data-nosnippet>402</a>                        err: <span class="macro">format!</span>(<span class="string">"a wire can only be connected to the first {PERMUTS} columns"</span>),
-<a href=#403 id=403 data-nosnippet>403</a>                    });
-<a href=#404 id=404 data-nosnippet>404</a>                }
-<a href=#405 id=405 data-nosnippet>405</a>
-<a href=#406 id=406 data-nosnippet>406</a>                <span class="kw">if </span>witness[col][row] != witness[wire.col][wire.row] {
-<a href=#407 id=407 data-nosnippet>407</a>                    <span class="kw">return </span><span class="prelude-val">Err</span>(GateError::DisconnectedWires(
-<a href=#408 id=408 data-nosnippet>408</a>                        Wire { col, row },
-<a href=#409 id=409 data-nosnippet>409</a>                        Wire {
-<a href=#410 id=410 data-nosnippet>410</a>                            col: wire.col,
-<a href=#411 id=411 data-nosnippet>411</a>                            row: wire.row,
-<a href=#412 id=412 data-nosnippet>412</a>                        },
-<a href=#413 id=413 data-nosnippet>413</a>                    ));
-<a href=#414 id=414 data-nosnippet>414</a>                }
-<a href=#415 id=415 data-nosnippet>415</a>            }
-<a href=#416 id=416 data-nosnippet>416</a>
-<a href=#417 id=417 data-nosnippet>417</a>            <span class="comment">// for public gates, only the left wire is toggled
-<a href=#418 id=418 data-nosnippet>418</a>            </span><span class="kw">if </span>row &lt; <span class="self">self</span>.cs.public &amp;&amp; gate.coeffs.first() != <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>F::one()) {
-<a href=#419 id=419 data-nosnippet>419</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(GateError::IncorrectPublic(row));
-<a href=#420 id=420 data-nosnippet>420</a>            }
-<a href=#421 id=421 data-nosnippet>421</a>
-<a href=#422 id=422 data-nosnippet>422</a>            <span class="comment">// check the gate's satisfiability
-<a href=#423 id=423 data-nosnippet>423</a>            </span>gate.verify(row, <span class="kw-2">&amp;</span>witness, <span class="self">self</span>, public)
-<a href=#424 id=424 data-nosnippet>424</a>                .map_err(|err| GateError::Custom { row, err })<span class="question-mark">?</span>;
-<a href=#425 id=425 data-nosnippet>425</a>        }
-<a href=#426 id=426 data-nosnippet>426</a>
-<a href=#427 id=427 data-nosnippet>427</a>        <span class="comment">// all good!
-<a href=#428 id=428 data-nosnippet>428</a>        </span><span class="prelude-val">Ok</span>(())
-<a href=#429 id=429 data-nosnippet>429</a>    }
-<a href=#430 id=430 data-nosnippet>430</a>}
-<a href=#431 id=431 data-nosnippet>431</a>
-<a href=#432 id=432 data-nosnippet>432</a><span class="kw">impl</span>&lt;F: PrimeField&gt; ConstraintSystem&lt;F&gt; {
-<a href=#433 id=433 data-nosnippet>433</a>    <span class="doccomment">/// evaluate witness polynomials over domains
-<a href=#434 id=434 data-nosnippet>434</a>    </span><span class="kw">pub fn </span>evaluate(<span class="kw-2">&amp;</span><span class="self">self</span>, w: <span class="kw-2">&amp;</span>[DP&lt;F&gt;; COLUMNS], z: <span class="kw-2">&amp;</span>DP&lt;F&gt;) -&gt; WitnessOverDomains&lt;F&gt; {
-<a href=#435 id=435 data-nosnippet>435</a>        <span class="comment">// compute shifted witness polynomials and z8, all in parallel
-<a href=#436 id=436 data-nosnippet>436</a>        </span><span class="kw">let </span>(w8, z8): ([E&lt;F, D&lt;F&gt;&gt;; COLUMNS], <span class="kw">_</span>) = {
-<a href=#437 id=437 data-nosnippet>437</a>            <span class="kw">let </span><span class="kw-2">mut </span>res = w
-<a href=#438 id=438 data-nosnippet>438</a>                .par_iter()
-<a href=#439 id=439 data-nosnippet>439</a>                .chain(rayon::iter::once(z))
-<a href=#440 id=440 data-nosnippet>440</a>                .map(|elem| elem.evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8))
-<a href=#441 id=441 data-nosnippet>441</a>                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-<a href=#442 id=442 data-nosnippet>442</a>            <span class="kw">let </span>z8 = res[COLUMNS].clone();
-<a href=#443 id=443 data-nosnippet>443</a>            res.truncate(COLUMNS);
-<a href=#444 id=444 data-nosnippet>444</a>            (res.try_into().unwrap(), z8)
-<a href=#445 id=445 data-nosnippet>445</a>        };
-<a href=#446 id=446 data-nosnippet>446</a>
-<a href=#447 id=447 data-nosnippet>447</a>        <span class="kw">let </span>w4: [E&lt;F, D&lt;F&gt;&gt;; COLUMNS] = (<span class="number">0</span>..COLUMNS)
-<a href=#448 id=448 data-nosnippet>448</a>            .into_par_iter()
-<a href=#449 id=449 data-nosnippet>449</a>            .map(|i| {
-<a href=#450 id=450 data-nosnippet>450</a>                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
-<a href=#451 id=451 data-nosnippet>451</a>                    (<span class="number">0</span>..<span class="self">self</span>.domain.d4.size)
-<a href=#452 id=452 data-nosnippet>452</a>                        .map(|j| w8[i].evals[<span class="number">2 </span>* j <span class="kw">as </span>usize])
-<a href=#453 id=453 data-nosnippet>453</a>                        .collect(),
-<a href=#454 id=454 data-nosnippet>454</a>                    <span class="self">self</span>.domain.d4,
-<a href=#455 id=455 data-nosnippet>455</a>                )
-<a href=#456 id=456 data-nosnippet>456</a>            })
-<a href=#457 id=457 data-nosnippet>457</a>            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-<a href=#458 id=458 data-nosnippet>458</a>            .try_into()
-<a href=#459 id=459 data-nosnippet>459</a>            .unwrap();
-<a href=#460 id=460 data-nosnippet>460</a>
-<a href=#461 id=461 data-nosnippet>461</a>        <span class="kw">let </span>z4 = DP::&lt;F&gt;::zero().evaluate_over_domain_by_ref(D::&lt;F&gt;::new(<span class="number">1</span>).unwrap());
-<a href=#462 id=462 data-nosnippet>462</a>        <span class="kw">let </span>z8_shift8 = z8.shift(<span class="number">8</span>);
+<a href=#377 id=377 data-nosnippet>377</a><span class="kw">impl</span>&lt;<span class="kw">const </span>FULL_ROUNDS: usize, F, G, Srs&gt; ProverIndex&lt;FULL_ROUNDS, G, Srs&gt;
+<a href=#378 id=378 data-nosnippet>378</a><span class="kw">where
+<a href=#379 id=379 data-nosnippet>379</a>    </span>F: PrimeField,
+<a href=#380 id=380 data-nosnippet>380</a>    G: KimchiCurve&lt;FULL_ROUNDS, ScalarField = F&gt;,
+<a href=#381 id=381 data-nosnippet>381</a>    Srs: SRS&lt;G&gt;,
+<a href=#382 id=382 data-nosnippet>382</a>{
+<a href=#383 id=383 data-nosnippet>383</a>    <span class="doccomment">/// This function verifies the consistency of the wire
+<a href=#384 id=384 data-nosnippet>384</a>    /// assignments (witness) against the constraints
+<a href=#385 id=385 data-nosnippet>385</a>    ///     witness: wire assignment witness
+<a href=#386 id=386 data-nosnippet>386</a>    ///     RETURN: verification status
+<a href=#387 id=387 data-nosnippet>387</a>    </span><span class="kw">pub fn </span>verify(<span class="kw-2">&amp;</span><span class="self">self</span>, witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS], public: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="prelude-ty">Result</span>&lt;(), GateError&gt; {
+<a href=#388 id=388 data-nosnippet>388</a>        <span class="comment">// pad the witness
+<a href=#389 id=389 data-nosnippet>389</a>        </span><span class="kw">let </span>pad = <span class="macro">vec!</span>[F::zero(); <span class="self">self</span>.cs.domain.d1.size() - witness[<span class="number">0</span>].len()];
+<a href=#390 id=390 data-nosnippet>390</a>        <span class="kw">let </span>witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|i| {
+<a href=#391 id=391 data-nosnippet>391</a>            <span class="kw">let </span><span class="kw-2">mut </span>w = witness[i].to_vec();
+<a href=#392 id=392 data-nosnippet>392</a>            w.extend_from_slice(<span class="kw-2">&amp;</span>pad);
+<a href=#393 id=393 data-nosnippet>393</a>            w
+<a href=#394 id=394 data-nosnippet>394</a>        });
+<a href=#395 id=395 data-nosnippet>395</a>
+<a href=#396 id=396 data-nosnippet>396</a>        <span class="comment">// check each rows' wiring
+<a href=#397 id=397 data-nosnippet>397</a>        </span><span class="kw">for </span>(row, gate) <span class="kw">in </span><span class="self">self</span>.cs.gates.iter().enumerate() {
+<a href=#398 id=398 data-nosnippet>398</a>            <span class="comment">// check if wires are connected
+<a href=#399 id=399 data-nosnippet>399</a>            </span><span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..PERMUTS {
+<a href=#400 id=400 data-nosnippet>400</a>                <span class="kw">let </span>wire = gate.wires[col];
+<a href=#401 id=401 data-nosnippet>401</a>
+<a href=#402 id=402 data-nosnippet>402</a>                <span class="kw">if </span>wire.col &gt;= PERMUTS {
+<a href=#403 id=403 data-nosnippet>403</a>                    <span class="kw">return </span><span class="prelude-val">Err</span>(GateError::Custom {
+<a href=#404 id=404 data-nosnippet>404</a>                        row,
+<a href=#405 id=405 data-nosnippet>405</a>                        err: <span class="macro">format!</span>(<span class="string">"a wire can only be connected to the first {PERMUTS} columns"</span>),
+<a href=#406 id=406 data-nosnippet>406</a>                    });
+<a href=#407 id=407 data-nosnippet>407</a>                }
+<a href=#408 id=408 data-nosnippet>408</a>
+<a href=#409 id=409 data-nosnippet>409</a>                <span class="kw">if </span>witness[col][row] != witness[wire.col][wire.row] {
+<a href=#410 id=410 data-nosnippet>410</a>                    <span class="kw">return </span><span class="prelude-val">Err</span>(GateError::DisconnectedWires(
+<a href=#411 id=411 data-nosnippet>411</a>                        Wire { col, row },
+<a href=#412 id=412 data-nosnippet>412</a>                        Wire {
+<a href=#413 id=413 data-nosnippet>413</a>                            col: wire.col,
+<a href=#414 id=414 data-nosnippet>414</a>                            row: wire.row,
+<a href=#415 id=415 data-nosnippet>415</a>                        },
+<a href=#416 id=416 data-nosnippet>416</a>                    ));
+<a href=#417 id=417 data-nosnippet>417</a>                }
+<a href=#418 id=418 data-nosnippet>418</a>            }
+<a href=#419 id=419 data-nosnippet>419</a>
+<a href=#420 id=420 data-nosnippet>420</a>            <span class="comment">// for public gates, only the left wire is toggled
+<a href=#421 id=421 data-nosnippet>421</a>            </span><span class="kw">if </span>row &lt; <span class="self">self</span>.cs.public &amp;&amp; gate.coeffs.first() != <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>F::one()) {
+<a href=#422 id=422 data-nosnippet>422</a>                <span class="kw">return </span><span class="prelude-val">Err</span>(GateError::IncorrectPublic(row));
+<a href=#423 id=423 data-nosnippet>423</a>            }
+<a href=#424 id=424 data-nosnippet>424</a>
+<a href=#425 id=425 data-nosnippet>425</a>            <span class="comment">// check the gate's satisfiability
+<a href=#426 id=426 data-nosnippet>426</a>            </span>gate.verify(row, <span class="kw-2">&amp;</span>witness, <span class="self">self</span>, public)
+<a href=#427 id=427 data-nosnippet>427</a>                .map_err(|err| GateError::Custom { row, err })<span class="question-mark">?</span>;
+<a href=#428 id=428 data-nosnippet>428</a>        }
+<a href=#429 id=429 data-nosnippet>429</a>
+<a href=#430 id=430 data-nosnippet>430</a>        <span class="comment">// all good!
+<a href=#431 id=431 data-nosnippet>431</a>        </span><span class="prelude-val">Ok</span>(())
+<a href=#432 id=432 data-nosnippet>432</a>    }
+<a href=#433 id=433 data-nosnippet>433</a>}
+<a href=#434 id=434 data-nosnippet>434</a>
+<a href=#435 id=435 data-nosnippet>435</a><span class="kw">impl</span>&lt;F: PrimeField&gt; ConstraintSystem&lt;F&gt; {
+<a href=#436 id=436 data-nosnippet>436</a>    <span class="doccomment">/// evaluate witness polynomials over domains
+<a href=#437 id=437 data-nosnippet>437</a>    </span><span class="kw">pub fn </span>evaluate(<span class="kw-2">&amp;</span><span class="self">self</span>, w: <span class="kw-2">&amp;</span>[DP&lt;F&gt;; COLUMNS], z: <span class="kw-2">&amp;</span>DP&lt;F&gt;) -&gt; WitnessOverDomains&lt;F&gt; {
+<a href=#438 id=438 data-nosnippet>438</a>        <span class="comment">// compute shifted witness polynomials and z8, all in parallel
+<a href=#439 id=439 data-nosnippet>439</a>        </span><span class="kw">let </span>(w8, z8): ([E&lt;F, D&lt;F&gt;&gt;; COLUMNS], <span class="kw">_</span>) = {
+<a href=#440 id=440 data-nosnippet>440</a>            <span class="kw">let </span><span class="kw-2">mut </span>res = w
+<a href=#441 id=441 data-nosnippet>441</a>                .par_iter()
+<a href=#442 id=442 data-nosnippet>442</a>                .chain(rayon::iter::once(z))
+<a href=#443 id=443 data-nosnippet>443</a>                .map(|elem| elem.evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8))
+<a href=#444 id=444 data-nosnippet>444</a>                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+<a href=#445 id=445 data-nosnippet>445</a>            <span class="kw">let </span>z8 = res[COLUMNS].clone();
+<a href=#446 id=446 data-nosnippet>446</a>            res.truncate(COLUMNS);
+<a href=#447 id=447 data-nosnippet>447</a>            (res.try_into().unwrap(), z8)
+<a href=#448 id=448 data-nosnippet>448</a>        };
+<a href=#449 id=449 data-nosnippet>449</a>
+<a href=#450 id=450 data-nosnippet>450</a>        <span class="kw">let </span>w4: [E&lt;F, D&lt;F&gt;&gt;; COLUMNS] = (<span class="number">0</span>..COLUMNS)
+<a href=#451 id=451 data-nosnippet>451</a>            .into_par_iter()
+<a href=#452 id=452 data-nosnippet>452</a>            .map(|i| {
+<a href=#453 id=453 data-nosnippet>453</a>                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
+<a href=#454 id=454 data-nosnippet>454</a>                    (<span class="number">0</span>..<span class="self">self</span>.domain.d4.size)
+<a href=#455 id=455 data-nosnippet>455</a>                        .map(|j| w8[i].evals[<span class="number">2 </span>* j <span class="kw">as </span>usize])
+<a href=#456 id=456 data-nosnippet>456</a>                        .collect(),
+<a href=#457 id=457 data-nosnippet>457</a>                    <span class="self">self</span>.domain.d4,
+<a href=#458 id=458 data-nosnippet>458</a>                )
+<a href=#459 id=459 data-nosnippet>459</a>            })
+<a href=#460 id=460 data-nosnippet>460</a>            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+<a href=#461 id=461 data-nosnippet>461</a>            .try_into()
+<a href=#462 id=462 data-nosnippet>462</a>            .unwrap();
 <a href=#463 id=463 data-nosnippet>463</a>
-<a href=#464 id=464 data-nosnippet>464</a>        <span class="kw">let </span>d4_next_w: [<span class="kw">_</span>; COLUMNS] = w4
-<a href=#465 id=465 data-nosnippet>465</a>            .par_iter()
-<a href=#466 id=466 data-nosnippet>466</a>            .map(|w4_i| w4_i.shift(<span class="number">4</span>))
-<a href=#467 id=467 data-nosnippet>467</a>            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-<a href=#468 id=468 data-nosnippet>468</a>            .try_into()
-<a href=#469 id=469 data-nosnippet>469</a>            .unwrap();
-<a href=#470 id=470 data-nosnippet>470</a>
-<a href=#471 id=471 data-nosnippet>471</a>        <span class="kw">let </span>d8_next_w: [<span class="kw">_</span>; COLUMNS] = w8
-<a href=#472 id=472 data-nosnippet>472</a>            .par_iter()
-<a href=#473 id=473 data-nosnippet>473</a>            .map(|w8_i| w8_i.shift(<span class="number">8</span>))
-<a href=#474 id=474 data-nosnippet>474</a>            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-<a href=#475 id=475 data-nosnippet>475</a>            .try_into()
-<a href=#476 id=476 data-nosnippet>476</a>            .unwrap();
-<a href=#477 id=477 data-nosnippet>477</a>
-<a href=#478 id=478 data-nosnippet>478</a>        WitnessOverDomains {
-<a href=#479 id=479 data-nosnippet>479</a>            d4: WitnessShifts {
-<a href=#480 id=480 data-nosnippet>480</a>                next: WitnessEvals {
-<a href=#481 id=481 data-nosnippet>481</a>                    w: d4_next_w,
-<a href=#482 id=482 data-nosnippet>482</a>                    <span class="comment">// TODO(mimoo): change z to an Option? Or maybe not, we might actually need this dummy evaluation in the aggregated evaluation proof
-<a href=#483 id=483 data-nosnippet>483</a>                    </span>z: z4.clone(), <span class="comment">// dummy evaluation
-<a href=#484 id=484 data-nosnippet>484</a>                </span>},
-<a href=#485 id=485 data-nosnippet>485</a>                this: WitnessEvals {
-<a href=#486 id=486 data-nosnippet>486</a>                    w: w4,
-<a href=#487 id=487 data-nosnippet>487</a>                    z: z4, <span class="comment">// dummy evaluation
-<a href=#488 id=488 data-nosnippet>488</a>                </span>},
-<a href=#489 id=489 data-nosnippet>489</a>            },
-<a href=#490 id=490 data-nosnippet>490</a>            d8: WitnessShifts {
-<a href=#491 id=491 data-nosnippet>491</a>                next: WitnessEvals {
-<a href=#492 id=492 data-nosnippet>492</a>                    w: d8_next_w,
-<a href=#493 id=493 data-nosnippet>493</a>                    z: z8_shift8,
-<a href=#494 id=494 data-nosnippet>494</a>                },
-<a href=#495 id=495 data-nosnippet>495</a>                this: WitnessEvals { w: w8, z: z8 },
-<a href=#496 id=496 data-nosnippet>496</a>            },
-<a href=#497 id=497 data-nosnippet>497</a>        }
-<a href=#498 id=498 data-nosnippet>498</a>    }
-<a href=#499 id=499 data-nosnippet>499</a>
-<a href=#500 id=500 data-nosnippet>500</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>evaluated_column_coefficients(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; EvaluatedColumnCoefficients&lt;F&gt; {
-<a href=#501 id=501 data-nosnippet>501</a>        <span class="comment">// compute permutation polynomials
-<a href=#502 id=502 data-nosnippet>502</a>        </span><span class="kw">let </span>shifts = Shifts::new(<span class="kw-2">&amp;</span><span class="self">self</span>.domain.d1);
-<a href=#503 id=503 data-nosnippet>503</a>
-<a href=#504 id=504 data-nosnippet>504</a>        <span class="kw">let </span>n = <span class="self">self</span>.domain.d1.size();
-<a href=#505 id=505 data-nosnippet>505</a>
-<a href=#506 id=506 data-nosnippet>506</a>        <span class="kw">let </span><span class="kw-2">mut </span>sigmal1: [Vec&lt;F&gt;; PERMUTS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); n]);
-<a href=#507 id=507 data-nosnippet>507</a>
-<a href=#508 id=508 data-nosnippet>508</a>        <span class="kw">for </span>(row, gate) <span class="kw">in </span><span class="self">self</span>.gates.iter().enumerate() {
-<a href=#509 id=509 data-nosnippet>509</a>            <span class="kw">for </span>(cell, sigma) <span class="kw">in </span>gate.wires.iter().zip(sigmal1.iter_mut()) {
-<a href=#510 id=510 data-nosnippet>510</a>                sigma[row] = shifts.cell_to_field(cell);
-<a href=#511 id=511 data-nosnippet>511</a>            }
-<a href=#512 id=512 data-nosnippet>512</a>        }
-<a href=#513 id=513 data-nosnippet>513</a>
-<a href=#514 id=514 data-nosnippet>514</a>        <span class="comment">// Zero out the sigmas in the zk rows, to ensure that the permutation aggregation is
-<a href=#515 id=515 data-nosnippet>515</a>        // quasi-random for those rows.
-<a href=#516 id=516 data-nosnippet>516</a>        </span><span class="kw">for </span>row <span class="kw">in </span>n + <span class="number">2 </span>- (<span class="self">self</span>.zk_rows <span class="kw">as </span>usize)..n - <span class="number">1 </span>{
-<a href=#517 id=517 data-nosnippet>517</a>            <span class="kw">for </span>sigma <span class="kw">in </span>sigmal1.iter_mut() {
-<a href=#518 id=518 data-nosnippet>518</a>                sigma[row] = F::zero();
-<a href=#519 id=519 data-nosnippet>519</a>            }
-<a href=#520 id=520 data-nosnippet>520</a>        }
-<a href=#521 id=521 data-nosnippet>521</a>
-<a href=#522 id=522 data-nosnippet>522</a>        <span class="kw">let </span>sigmal1: [<span class="kw">_</span>; PERMUTS] = {
-<a href=#523 id=523 data-nosnippet>523</a>            <span class="kw">let </span>[s0, s1, s2, s3, s4, s5, s6] = sigmal1;
-<a href=#524 id=524 data-nosnippet>524</a>            [
-<a href=#525 id=525 data-nosnippet>525</a>                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s0, <span class="self">self</span>.domain.d1),
-<a href=#526 id=526 data-nosnippet>526</a>                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s1, <span class="self">self</span>.domain.d1),
-<a href=#527 id=527 data-nosnippet>527</a>                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s2, <span class="self">self</span>.domain.d1),
-<a href=#528 id=528 data-nosnippet>528</a>                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s3, <span class="self">self</span>.domain.d1),
-<a href=#529 id=529 data-nosnippet>529</a>                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s4, <span class="self">self</span>.domain.d1),
-<a href=#530 id=530 data-nosnippet>530</a>                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s5, <span class="self">self</span>.domain.d1),
-<a href=#531 id=531 data-nosnippet>531</a>                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s6, <span class="self">self</span>.domain.d1),
-<a href=#532 id=532 data-nosnippet>532</a>            ]
-<a href=#533 id=533 data-nosnippet>533</a>        };
-<a href=#534 id=534 data-nosnippet>534</a>
-<a href=#535 id=535 data-nosnippet>535</a>        <span class="kw">let </span>permutation_coefficients: [DP&lt;F&gt;; PERMUTS] =
-<a href=#536 id=536 data-nosnippet>536</a>            array::from_fn(|i| sigmal1[i].clone().interpolate());
+<a href=#464 id=464 data-nosnippet>464</a>        <span class="kw">let </span>z4 = DP::&lt;F&gt;::zero().evaluate_over_domain_by_ref(D::&lt;F&gt;::new(<span class="number">1</span>).unwrap());
+<a href=#465 id=465 data-nosnippet>465</a>        <span class="kw">let </span>z8_shift8 = z8.shift(<span class="number">8</span>);
+<a href=#466 id=466 data-nosnippet>466</a>
+<a href=#467 id=467 data-nosnippet>467</a>        <span class="kw">let </span>d4_next_w: [<span class="kw">_</span>; COLUMNS] = w4
+<a href=#468 id=468 data-nosnippet>468</a>            .par_iter()
+<a href=#469 id=469 data-nosnippet>469</a>            .map(|w4_i| w4_i.shift(<span class="number">4</span>))
+<a href=#470 id=470 data-nosnippet>470</a>            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+<a href=#471 id=471 data-nosnippet>471</a>            .try_into()
+<a href=#472 id=472 data-nosnippet>472</a>            .unwrap();
+<a href=#473 id=473 data-nosnippet>473</a>
+<a href=#474 id=474 data-nosnippet>474</a>        <span class="kw">let </span>d8_next_w: [<span class="kw">_</span>; COLUMNS] = w8
+<a href=#475 id=475 data-nosnippet>475</a>            .par_iter()
+<a href=#476 id=476 data-nosnippet>476</a>            .map(|w8_i| w8_i.shift(<span class="number">8</span>))
+<a href=#477 id=477 data-nosnippet>477</a>            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+<a href=#478 id=478 data-nosnippet>478</a>            .try_into()
+<a href=#479 id=479 data-nosnippet>479</a>            .unwrap();
+<a href=#480 id=480 data-nosnippet>480</a>
+<a href=#481 id=481 data-nosnippet>481</a>        WitnessOverDomains {
+<a href=#482 id=482 data-nosnippet>482</a>            d4: WitnessShifts {
+<a href=#483 id=483 data-nosnippet>483</a>                next: WitnessEvals {
+<a href=#484 id=484 data-nosnippet>484</a>                    w: d4_next_w,
+<a href=#485 id=485 data-nosnippet>485</a>                    <span class="comment">// TODO(mimoo): change z to an Option? Or maybe not, we might actually need this dummy evaluation in the aggregated evaluation proof
+<a href=#486 id=486 data-nosnippet>486</a>                    </span>z: z4.clone(), <span class="comment">// dummy evaluation
+<a href=#487 id=487 data-nosnippet>487</a>                </span>},
+<a href=#488 id=488 data-nosnippet>488</a>                this: WitnessEvals {
+<a href=#489 id=489 data-nosnippet>489</a>                    w: w4,
+<a href=#490 id=490 data-nosnippet>490</a>                    z: z4, <span class="comment">// dummy evaluation
+<a href=#491 id=491 data-nosnippet>491</a>                </span>},
+<a href=#492 id=492 data-nosnippet>492</a>            },
+<a href=#493 id=493 data-nosnippet>493</a>            d8: WitnessShifts {
+<a href=#494 id=494 data-nosnippet>494</a>                next: WitnessEvals {
+<a href=#495 id=495 data-nosnippet>495</a>                    w: d8_next_w,
+<a href=#496 id=496 data-nosnippet>496</a>                    z: z8_shift8,
+<a href=#497 id=497 data-nosnippet>497</a>                },
+<a href=#498 id=498 data-nosnippet>498</a>                this: WitnessEvals { w: w8, z: z8 },
+<a href=#499 id=499 data-nosnippet>499</a>            },
+<a href=#500 id=500 data-nosnippet>500</a>        }
+<a href=#501 id=501 data-nosnippet>501</a>    }
+<a href=#502 id=502 data-nosnippet>502</a>
+<a href=#503 id=503 data-nosnippet>503</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>evaluated_column_coefficients(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; EvaluatedColumnCoefficients&lt;F&gt; {
+<a href=#504 id=504 data-nosnippet>504</a>        <span class="comment">// compute permutation polynomials
+<a href=#505 id=505 data-nosnippet>505</a>        </span><span class="kw">let </span>shifts = Shifts::new(<span class="kw-2">&amp;</span><span class="self">self</span>.domain.d1);
+<a href=#506 id=506 data-nosnippet>506</a>
+<a href=#507 id=507 data-nosnippet>507</a>        <span class="kw">let </span>n = <span class="self">self</span>.domain.d1.size();
+<a href=#508 id=508 data-nosnippet>508</a>
+<a href=#509 id=509 data-nosnippet>509</a>        <span class="kw">let </span><span class="kw-2">mut </span>sigmal1: [Vec&lt;F&gt;; PERMUTS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); n]);
+<a href=#510 id=510 data-nosnippet>510</a>
+<a href=#511 id=511 data-nosnippet>511</a>        <span class="kw">for </span>(row, gate) <span class="kw">in </span><span class="self">self</span>.gates.iter().enumerate() {
+<a href=#512 id=512 data-nosnippet>512</a>            <span class="kw">for </span>(cell, sigma) <span class="kw">in </span>gate.wires.iter().zip(sigmal1.iter_mut()) {
+<a href=#513 id=513 data-nosnippet>513</a>                sigma[row] = shifts.cell_to_field(cell);
+<a href=#514 id=514 data-nosnippet>514</a>            }
+<a href=#515 id=515 data-nosnippet>515</a>        }
+<a href=#516 id=516 data-nosnippet>516</a>
+<a href=#517 id=517 data-nosnippet>517</a>        <span class="comment">// Zero out the sigmas in the zk rows, to ensure that the permutation aggregation is
+<a href=#518 id=518 data-nosnippet>518</a>        // quasi-random for those rows.
+<a href=#519 id=519 data-nosnippet>519</a>        </span><span class="kw">for </span>row <span class="kw">in </span>n + <span class="number">2 </span>- (<span class="self">self</span>.zk_rows <span class="kw">as </span>usize)..n - <span class="number">1 </span>{
+<a href=#520 id=520 data-nosnippet>520</a>            <span class="kw">for </span>sigma <span class="kw">in </span>sigmal1.iter_mut() {
+<a href=#521 id=521 data-nosnippet>521</a>                sigma[row] = F::zero();
+<a href=#522 id=522 data-nosnippet>522</a>            }
+<a href=#523 id=523 data-nosnippet>523</a>        }
+<a href=#524 id=524 data-nosnippet>524</a>
+<a href=#525 id=525 data-nosnippet>525</a>        <span class="kw">let </span>sigmal1: [<span class="kw">_</span>; PERMUTS] = {
+<a href=#526 id=526 data-nosnippet>526</a>            <span class="kw">let </span>[s0, s1, s2, s3, s4, s5, s6] = sigmal1;
+<a href=#527 id=527 data-nosnippet>527</a>            [
+<a href=#528 id=528 data-nosnippet>528</a>                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s0, <span class="self">self</span>.domain.d1),
+<a href=#529 id=529 data-nosnippet>529</a>                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s1, <span class="self">self</span>.domain.d1),
+<a href=#530 id=530 data-nosnippet>530</a>                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s2, <span class="self">self</span>.domain.d1),
+<a href=#531 id=531 data-nosnippet>531</a>                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s3, <span class="self">self</span>.domain.d1),
+<a href=#532 id=532 data-nosnippet>532</a>                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s4, <span class="self">self</span>.domain.d1),
+<a href=#533 id=533 data-nosnippet>533</a>                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s5, <span class="self">self</span>.domain.d1),
+<a href=#534 id=534 data-nosnippet>534</a>                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s6, <span class="self">self</span>.domain.d1),
+<a href=#535 id=535 data-nosnippet>535</a>            ]
+<a href=#536 id=536 data-nosnippet>536</a>        };
 <a href=#537 id=537 data-nosnippet>537</a>
-<a href=#538 id=538 data-nosnippet>538</a>        <span class="comment">// poseidon gate
-<a href=#539 id=539 data-nosnippet>539</a>        </span><span class="kw">let </span>poseidon_selector = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
-<a href=#540 id=540 data-nosnippet>540</a>            <span class="self">self</span>.gates.iter().map(|gate| gate.ps()).collect(),
-<a href=#541 id=541 data-nosnippet>541</a>            <span class="self">self</span>.domain.d1,
-<a href=#542 id=542 data-nosnippet>542</a>        )
-<a href=#543 id=543 data-nosnippet>543</a>        .interpolate();
-<a href=#544 id=544 data-nosnippet>544</a>
-<a href=#545 id=545 data-nosnippet>545</a>        <span class="comment">// double generic gate
-<a href=#546 id=546 data-nosnippet>546</a>        </span><span class="kw">let </span>generic_selector = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
-<a href=#547 id=547 data-nosnippet>547</a>            <span class="self">self</span>.gates
-<a href=#548 id=548 data-nosnippet>548</a>                .iter()
-<a href=#549 id=549 data-nosnippet>549</a>                .map(|gate| {
-<a href=#550 id=550 data-nosnippet>550</a>                    <span class="kw">if </span><span class="macro">matches!</span>(gate.typ, GateType::Generic) {
-<a href=#551 id=551 data-nosnippet>551</a>                        F::one()
-<a href=#552 id=552 data-nosnippet>552</a>                    } <span class="kw">else </span>{
-<a href=#553 id=553 data-nosnippet>553</a>                        F::zero()
-<a href=#554 id=554 data-nosnippet>554</a>                    }
-<a href=#555 id=555 data-nosnippet>555</a>                })
-<a href=#556 id=556 data-nosnippet>556</a>                .collect(),
-<a href=#557 id=557 data-nosnippet>557</a>            <span class="self">self</span>.domain.d1,
-<a href=#558 id=558 data-nosnippet>558</a>        )
-<a href=#559 id=559 data-nosnippet>559</a>        .interpolate();
-<a href=#560 id=560 data-nosnippet>560</a>
-<a href=#561 id=561 data-nosnippet>561</a>        <span class="comment">// coefficient polynomial
-<a href=#562 id=562 data-nosnippet>562</a>        </span><span class="kw">let </span>coefficients: [<span class="kw">_</span>; COLUMNS] = array::from_fn(|i| {
-<a href=#563 id=563 data-nosnippet>563</a>            <span class="kw">let </span>padded = <span class="self">self
-<a href=#564 id=564 data-nosnippet>564</a>                </span>.gates
-<a href=#565 id=565 data-nosnippet>565</a>                .iter()
-<a href=#566 id=566 data-nosnippet>566</a>                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
-<a href=#567 id=567 data-nosnippet>567</a>                .collect();
-<a href=#568 id=568 data-nosnippet>568</a>            <span class="kw">let </span>eval = E::from_vec_and_domain(padded, <span class="self">self</span>.domain.d1);
-<a href=#569 id=569 data-nosnippet>569</a>            eval.interpolate()
-<a href=#570 id=570 data-nosnippet>570</a>        });
-<a href=#571 id=571 data-nosnippet>571</a>
-<a href=#572 id=572 data-nosnippet>572</a>        EvaluatedColumnCoefficients {
-<a href=#573 id=573 data-nosnippet>573</a>            permutation_coefficients,
-<a href=#574 id=574 data-nosnippet>574</a>            coefficients,
-<a href=#575 id=575 data-nosnippet>575</a>            generic_selector,
-<a href=#576 id=576 data-nosnippet>576</a>            poseidon_selector,
-<a href=#577 id=577 data-nosnippet>577</a>        }
-<a href=#578 id=578 data-nosnippet>578</a>    }
-<a href=#579 id=579 data-nosnippet>579</a>
-<a href=#580 id=580 data-nosnippet>580</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>column_evaluations(
-<a href=#581 id=581 data-nosnippet>581</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#582 id=582 data-nosnippet>582</a>        evaluated_column_coefficients: <span class="kw-2">&amp;</span>EvaluatedColumnCoefficients&lt;F&gt;,
-<a href=#583 id=583 data-nosnippet>583</a>    ) -&gt; ColumnEvaluations&lt;F&gt; {
-<a href=#584 id=584 data-nosnippet>584</a>        <span class="kw">let </span>permutation_coefficients8 = array::from_fn(|i| {
-<a href=#585 id=585 data-nosnippet>585</a>            evaluated_column_coefficients.permutation_coefficients[i]
-<a href=#586 id=586 data-nosnippet>586</a>                .evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8)
-<a href=#587 id=587 data-nosnippet>587</a>        });
-<a href=#588 id=588 data-nosnippet>588</a>
-<a href=#589 id=589 data-nosnippet>589</a>        <span class="kw">let </span>poseidon_selector8 = evaluated_column_coefficients
-<a href=#590 id=590 data-nosnippet>590</a>            .poseidon_selector
-<a href=#591 id=591 data-nosnippet>591</a>            .evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8);
-<a href=#592 id=592 data-nosnippet>592</a>
-<a href=#593 id=593 data-nosnippet>593</a>        <span class="comment">// ECC gates
-<a href=#594 id=594 data-nosnippet>594</a>        </span><span class="kw">let </span>complete_add_selector4 = selector_polynomial(
-<a href=#595 id=595 data-nosnippet>595</a>            GateType::CompleteAdd,
-<a href=#596 id=596 data-nosnippet>596</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
-<a href=#597 id=597 data-nosnippet>597</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
-<a href=#598 id=598 data-nosnippet>598</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d4,
-<a href=#599 id=599 data-nosnippet>599</a>            <span class="self">self</span>.disable_gates_checks,
-<a href=#600 id=600 data-nosnippet>600</a>        );
-<a href=#601 id=601 data-nosnippet>601</a>
-<a href=#602 id=602 data-nosnippet>602</a>        <span class="kw">let </span>mul_selector8 = selector_polynomial(
-<a href=#603 id=603 data-nosnippet>603</a>            GateType::VarBaseMul,
-<a href=#604 id=604 data-nosnippet>604</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
-<a href=#605 id=605 data-nosnippet>605</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
-<a href=#606 id=606 data-nosnippet>606</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
-<a href=#607 id=607 data-nosnippet>607</a>            <span class="self">self</span>.disable_gates_checks,
-<a href=#608 id=608 data-nosnippet>608</a>        );
-<a href=#609 id=609 data-nosnippet>609</a>
-<a href=#610 id=610 data-nosnippet>610</a>        <span class="kw">let </span>emul_selector8 = selector_polynomial(
-<a href=#611 id=611 data-nosnippet>611</a>            GateType::EndoMul,
-<a href=#612 id=612 data-nosnippet>612</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
-<a href=#613 id=613 data-nosnippet>613</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
-<a href=#614 id=614 data-nosnippet>614</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
-<a href=#615 id=615 data-nosnippet>615</a>            <span class="self">self</span>.disable_gates_checks,
-<a href=#616 id=616 data-nosnippet>616</a>        );
-<a href=#617 id=617 data-nosnippet>617</a>
-<a href=#618 id=618 data-nosnippet>618</a>        <span class="kw">let </span>endomul_scalar_selector8 = selector_polynomial(
-<a href=#619 id=619 data-nosnippet>619</a>            GateType::EndoMulScalar,
-<a href=#620 id=620 data-nosnippet>620</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
-<a href=#621 id=621 data-nosnippet>621</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
-<a href=#622 id=622 data-nosnippet>622</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
-<a href=#623 id=623 data-nosnippet>623</a>            <span class="self">self</span>.disable_gates_checks,
-<a href=#624 id=624 data-nosnippet>624</a>        );
-<a href=#625 id=625 data-nosnippet>625</a>
-<a href=#626 id=626 data-nosnippet>626</a>        <span class="kw">let </span>generic_selector4 = evaluated_column_coefficients
-<a href=#627 id=627 data-nosnippet>627</a>            .generic_selector
-<a href=#628 id=628 data-nosnippet>628</a>            .evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d4);
-<a href=#629 id=629 data-nosnippet>629</a>
-<a href=#630 id=630 data-nosnippet>630</a>        <span class="comment">// RangeCheck0 constraint selector polynomials
-<a href=#631 id=631 data-nosnippet>631</a>        </span><span class="kw">let </span>range_check0_selector8 = {
-<a href=#632 id=632 data-nosnippet>632</a>            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.range_check0 {
-<a href=#633 id=633 data-nosnippet>633</a>                <span class="prelude-val">None
-<a href=#634 id=634 data-nosnippet>634</a>            </span>} <span class="kw">else </span>{
-<a href=#635 id=635 data-nosnippet>635</a>                <span class="prelude-val">Some</span>(selector_polynomial(
-<a href=#636 id=636 data-nosnippet>636</a>                    GateType::RangeCheck0,
-<a href=#637 id=637 data-nosnippet>637</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
-<a href=#638 id=638 data-nosnippet>638</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
-<a href=#639 id=639 data-nosnippet>639</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
-<a href=#640 id=640 data-nosnippet>640</a>                    <span class="self">self</span>.disable_gates_checks,
-<a href=#641 id=641 data-nosnippet>641</a>                ))
-<a href=#642 id=642 data-nosnippet>642</a>            }
-<a href=#643 id=643 data-nosnippet>643</a>        };
-<a href=#644 id=644 data-nosnippet>644</a>
-<a href=#645 id=645 data-nosnippet>645</a>        <span class="comment">// RangeCheck1 constraint selector polynomials
-<a href=#646 id=646 data-nosnippet>646</a>        </span><span class="kw">let </span>range_check1_selector8 = {
-<a href=#647 id=647 data-nosnippet>647</a>            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.range_check1 {
-<a href=#648 id=648 data-nosnippet>648</a>                <span class="prelude-val">None
-<a href=#649 id=649 data-nosnippet>649</a>            </span>} <span class="kw">else </span>{
-<a href=#650 id=650 data-nosnippet>650</a>                <span class="prelude-val">Some</span>(selector_polynomial(
-<a href=#651 id=651 data-nosnippet>651</a>                    GateType::RangeCheck1,
-<a href=#652 id=652 data-nosnippet>652</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
-<a href=#653 id=653 data-nosnippet>653</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
-<a href=#654 id=654 data-nosnippet>654</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
-<a href=#655 id=655 data-nosnippet>655</a>                    <span class="self">self</span>.disable_gates_checks,
-<a href=#656 id=656 data-nosnippet>656</a>                ))
-<a href=#657 id=657 data-nosnippet>657</a>            }
-<a href=#658 id=658 data-nosnippet>658</a>        };
-<a href=#659 id=659 data-nosnippet>659</a>
-<a href=#660 id=660 data-nosnippet>660</a>        <span class="comment">// Foreign field addition constraint selector polynomial
-<a href=#661 id=661 data-nosnippet>661</a>        </span><span class="kw">let </span>foreign_field_add_selector8 = {
-<a href=#662 id=662 data-nosnippet>662</a>            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.foreign_field_add {
-<a href=#663 id=663 data-nosnippet>663</a>                <span class="prelude-val">None
-<a href=#664 id=664 data-nosnippet>664</a>            </span>} <span class="kw">else </span>{
-<a href=#665 id=665 data-nosnippet>665</a>                <span class="prelude-val">Some</span>(selector_polynomial(
-<a href=#666 id=666 data-nosnippet>666</a>                    GateType::ForeignFieldAdd,
-<a href=#667 id=667 data-nosnippet>667</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
-<a href=#668 id=668 data-nosnippet>668</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
-<a href=#669 id=669 data-nosnippet>669</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
-<a href=#670 id=670 data-nosnippet>670</a>                    <span class="self">self</span>.disable_gates_checks,
-<a href=#671 id=671 data-nosnippet>671</a>                ))
-<a href=#672 id=672 data-nosnippet>672</a>            }
-<a href=#673 id=673 data-nosnippet>673</a>        };
-<a href=#674 id=674 data-nosnippet>674</a>
-<a href=#675 id=675 data-nosnippet>675</a>        <span class="comment">// Foreign field multiplication constraint selector polynomial
-<a href=#676 id=676 data-nosnippet>676</a>        </span><span class="kw">let </span>foreign_field_mul_selector8 = {
-<a href=#677 id=677 data-nosnippet>677</a>            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.foreign_field_mul {
-<a href=#678 id=678 data-nosnippet>678</a>                <span class="prelude-val">None
-<a href=#679 id=679 data-nosnippet>679</a>            </span>} <span class="kw">else </span>{
-<a href=#680 id=680 data-nosnippet>680</a>                <span class="prelude-val">Some</span>(selector_polynomial(
-<a href=#681 id=681 data-nosnippet>681</a>                    GateType::ForeignFieldMul,
-<a href=#682 id=682 data-nosnippet>682</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
-<a href=#683 id=683 data-nosnippet>683</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
-<a href=#684 id=684 data-nosnippet>684</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
-<a href=#685 id=685 data-nosnippet>685</a>                    <span class="self">self</span>.disable_gates_checks,
-<a href=#686 id=686 data-nosnippet>686</a>                ))
-<a href=#687 id=687 data-nosnippet>687</a>            }
-<a href=#688 id=688 data-nosnippet>688</a>        };
-<a href=#689 id=689 data-nosnippet>689</a>
-<a href=#690 id=690 data-nosnippet>690</a>        <span class="kw">let </span>xor_selector8 = {
-<a href=#691 id=691 data-nosnippet>691</a>            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.xor {
-<a href=#692 id=692 data-nosnippet>692</a>                <span class="prelude-val">None
-<a href=#693 id=693 data-nosnippet>693</a>            </span>} <span class="kw">else </span>{
-<a href=#694 id=694 data-nosnippet>694</a>                <span class="prelude-val">Some</span>(selector_polynomial(
-<a href=#695 id=695 data-nosnippet>695</a>                    GateType::Xor16,
-<a href=#696 id=696 data-nosnippet>696</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
-<a href=#697 id=697 data-nosnippet>697</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
-<a href=#698 id=698 data-nosnippet>698</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
-<a href=#699 id=699 data-nosnippet>699</a>                    <span class="self">self</span>.disable_gates_checks,
-<a href=#700 id=700 data-nosnippet>700</a>                ))
-<a href=#701 id=701 data-nosnippet>701</a>            }
-<a href=#702 id=702 data-nosnippet>702</a>        };
-<a href=#703 id=703 data-nosnippet>703</a>
-<a href=#704 id=704 data-nosnippet>704</a>        <span class="kw">let </span>rot_selector8 = {
-<a href=#705 id=705 data-nosnippet>705</a>            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.rot {
-<a href=#706 id=706 data-nosnippet>706</a>                <span class="prelude-val">None
-<a href=#707 id=707 data-nosnippet>707</a>            </span>} <span class="kw">else </span>{
-<a href=#708 id=708 data-nosnippet>708</a>                <span class="prelude-val">Some</span>(selector_polynomial(
-<a href=#709 id=709 data-nosnippet>709</a>                    GateType::Rot64,
-<a href=#710 id=710 data-nosnippet>710</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
-<a href=#711 id=711 data-nosnippet>711</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
-<a href=#712 id=712 data-nosnippet>712</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
-<a href=#713 id=713 data-nosnippet>713</a>                    <span class="self">self</span>.disable_gates_checks,
-<a href=#714 id=714 data-nosnippet>714</a>                ))
-<a href=#715 id=715 data-nosnippet>715</a>            }
-<a href=#716 id=716 data-nosnippet>716</a>        };
-<a href=#717 id=717 data-nosnippet>717</a>
-<a href=#718 id=718 data-nosnippet>718</a>        <span class="comment">// TODO: This doesn't need to be degree 8 but that would require some changes in expr
-<a href=#719 id=719 data-nosnippet>719</a>        </span><span class="kw">let </span>coefficients8 = array::from_fn(|i| {
-<a href=#720 id=720 data-nosnippet>720</a>            evaluated_column_coefficients.coefficients[i]
-<a href=#721 id=721 data-nosnippet>721</a>                .evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8)
-<a href=#722 id=722 data-nosnippet>722</a>        });
-<a href=#723 id=723 data-nosnippet>723</a>
-<a href=#724 id=724 data-nosnippet>724</a>        ColumnEvaluations {
-<a href=#725 id=725 data-nosnippet>725</a>            permutation_coefficients8,
-<a href=#726 id=726 data-nosnippet>726</a>            coefficients8,
-<a href=#727 id=727 data-nosnippet>727</a>            generic_selector4,
-<a href=#728 id=728 data-nosnippet>728</a>            poseidon_selector8,
-<a href=#729 id=729 data-nosnippet>729</a>            complete_add_selector4,
-<a href=#730 id=730 data-nosnippet>730</a>            mul_selector8,
-<a href=#731 id=731 data-nosnippet>731</a>            emul_selector8,
-<a href=#732 id=732 data-nosnippet>732</a>            endomul_scalar_selector8,
-<a href=#733 id=733 data-nosnippet>733</a>            range_check0_selector8,
-<a href=#734 id=734 data-nosnippet>734</a>            range_check1_selector8,
-<a href=#735 id=735 data-nosnippet>735</a>            foreign_field_add_selector8,
-<a href=#736 id=736 data-nosnippet>736</a>            foreign_field_mul_selector8,
-<a href=#737 id=737 data-nosnippet>737</a>            xor_selector8,
-<a href=#738 id=738 data-nosnippet>738</a>            rot_selector8,
-<a href=#739 id=739 data-nosnippet>739</a>        }
-<a href=#740 id=740 data-nosnippet>740</a>    }
-<a href=#741 id=741 data-nosnippet>741</a>}
-<a href=#742 id=742 data-nosnippet>742</a>
-<a href=#743 id=743 data-nosnippet>743</a><span class="doccomment">/// The default number of chunks in a circuit is one (&lt; 2^16 rows)
-<a href=#744 id=744 data-nosnippet>744</a></span><span class="kw">pub const </span>NUM_CHUNKS_BY_DEFAULT: usize = <span class="number">1</span>;
+<a href=#538 id=538 data-nosnippet>538</a>        <span class="kw">let </span>permutation_coefficients: [DP&lt;F&gt;; PERMUTS] =
+<a href=#539 id=539 data-nosnippet>539</a>            array::from_fn(|i| sigmal1[i].clone().interpolate());
+<a href=#540 id=540 data-nosnippet>540</a>
+<a href=#541 id=541 data-nosnippet>541</a>        <span class="comment">// poseidon gate
+<a href=#542 id=542 data-nosnippet>542</a>        </span><span class="kw">let </span>poseidon_selector = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
+<a href=#543 id=543 data-nosnippet>543</a>            <span class="self">self</span>.gates.iter().map(|gate| gate.ps()).collect(),
+<a href=#544 id=544 data-nosnippet>544</a>            <span class="self">self</span>.domain.d1,
+<a href=#545 id=545 data-nosnippet>545</a>        )
+<a href=#546 id=546 data-nosnippet>546</a>        .interpolate();
+<a href=#547 id=547 data-nosnippet>547</a>
+<a href=#548 id=548 data-nosnippet>548</a>        <span class="comment">// double generic gate
+<a href=#549 id=549 data-nosnippet>549</a>        </span><span class="kw">let </span>generic_selector = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
+<a href=#550 id=550 data-nosnippet>550</a>            <span class="self">self</span>.gates
+<a href=#551 id=551 data-nosnippet>551</a>                .iter()
+<a href=#552 id=552 data-nosnippet>552</a>                .map(|gate| {
+<a href=#553 id=553 data-nosnippet>553</a>                    <span class="kw">if </span><span class="macro">matches!</span>(gate.typ, GateType::Generic) {
+<a href=#554 id=554 data-nosnippet>554</a>                        F::one()
+<a href=#555 id=555 data-nosnippet>555</a>                    } <span class="kw">else </span>{
+<a href=#556 id=556 data-nosnippet>556</a>                        F::zero()
+<a href=#557 id=557 data-nosnippet>557</a>                    }
+<a href=#558 id=558 data-nosnippet>558</a>                })
+<a href=#559 id=559 data-nosnippet>559</a>                .collect(),
+<a href=#560 id=560 data-nosnippet>560</a>            <span class="self">self</span>.domain.d1,
+<a href=#561 id=561 data-nosnippet>561</a>        )
+<a href=#562 id=562 data-nosnippet>562</a>        .interpolate();
+<a href=#563 id=563 data-nosnippet>563</a>
+<a href=#564 id=564 data-nosnippet>564</a>        <span class="comment">// coefficient polynomial
+<a href=#565 id=565 data-nosnippet>565</a>        </span><span class="kw">let </span>coefficients: [<span class="kw">_</span>; COLUMNS] = array::from_fn(|i| {
+<a href=#566 id=566 data-nosnippet>566</a>            <span class="kw">let </span>padded = <span class="self">self
+<a href=#567 id=567 data-nosnippet>567</a>                </span>.gates
+<a href=#568 id=568 data-nosnippet>568</a>                .iter()
+<a href=#569 id=569 data-nosnippet>569</a>                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
+<a href=#570 id=570 data-nosnippet>570</a>                .collect();
+<a href=#571 id=571 data-nosnippet>571</a>            <span class="kw">let </span>eval = E::from_vec_and_domain(padded, <span class="self">self</span>.domain.d1);
+<a href=#572 id=572 data-nosnippet>572</a>            eval.interpolate()
+<a href=#573 id=573 data-nosnippet>573</a>        });
+<a href=#574 id=574 data-nosnippet>574</a>
+<a href=#575 id=575 data-nosnippet>575</a>        EvaluatedColumnCoefficients {
+<a href=#576 id=576 data-nosnippet>576</a>            permutation_coefficients,
+<a href=#577 id=577 data-nosnippet>577</a>            coefficients,
+<a href=#578 id=578 data-nosnippet>578</a>            generic_selector,
+<a href=#579 id=579 data-nosnippet>579</a>            poseidon_selector,
+<a href=#580 id=580 data-nosnippet>580</a>        }
+<a href=#581 id=581 data-nosnippet>581</a>    }
+<a href=#582 id=582 data-nosnippet>582</a>
+<a href=#583 id=583 data-nosnippet>583</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>column_evaluations(
+<a href=#584 id=584 data-nosnippet>584</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#585 id=585 data-nosnippet>585</a>        evaluated_column_coefficients: <span class="kw-2">&amp;</span>EvaluatedColumnCoefficients&lt;F&gt;,
+<a href=#586 id=586 data-nosnippet>586</a>    ) -&gt; ColumnEvaluations&lt;F&gt; {
+<a href=#587 id=587 data-nosnippet>587</a>        <span class="kw">let </span>permutation_coefficients8 = array::from_fn(|i| {
+<a href=#588 id=588 data-nosnippet>588</a>            evaluated_column_coefficients.permutation_coefficients[i]
+<a href=#589 id=589 data-nosnippet>589</a>                .evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8)
+<a href=#590 id=590 data-nosnippet>590</a>        });
+<a href=#591 id=591 data-nosnippet>591</a>
+<a href=#592 id=592 data-nosnippet>592</a>        <span class="kw">let </span>poseidon_selector8 = evaluated_column_coefficients
+<a href=#593 id=593 data-nosnippet>593</a>            .poseidon_selector
+<a href=#594 id=594 data-nosnippet>594</a>            .evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8);
+<a href=#595 id=595 data-nosnippet>595</a>
+<a href=#596 id=596 data-nosnippet>596</a>        <span class="comment">// ECC gates
+<a href=#597 id=597 data-nosnippet>597</a>        </span><span class="kw">let </span>complete_add_selector4 = selector_polynomial(
+<a href=#598 id=598 data-nosnippet>598</a>            GateType::CompleteAdd,
+<a href=#599 id=599 data-nosnippet>599</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+<a href=#600 id=600 data-nosnippet>600</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+<a href=#601 id=601 data-nosnippet>601</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d4,
+<a href=#602 id=602 data-nosnippet>602</a>            <span class="self">self</span>.disable_gates_checks,
+<a href=#603 id=603 data-nosnippet>603</a>        );
+<a href=#604 id=604 data-nosnippet>604</a>
+<a href=#605 id=605 data-nosnippet>605</a>        <span class="kw">let </span>mul_selector8 = selector_polynomial(
+<a href=#606 id=606 data-nosnippet>606</a>            GateType::VarBaseMul,
+<a href=#607 id=607 data-nosnippet>607</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+<a href=#608 id=608 data-nosnippet>608</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+<a href=#609 id=609 data-nosnippet>609</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+<a href=#610 id=610 data-nosnippet>610</a>            <span class="self">self</span>.disable_gates_checks,
+<a href=#611 id=611 data-nosnippet>611</a>        );
+<a href=#612 id=612 data-nosnippet>612</a>
+<a href=#613 id=613 data-nosnippet>613</a>        <span class="kw">let </span>emul_selector8 = selector_polynomial(
+<a href=#614 id=614 data-nosnippet>614</a>            GateType::EndoMul,
+<a href=#615 id=615 data-nosnippet>615</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+<a href=#616 id=616 data-nosnippet>616</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+<a href=#617 id=617 data-nosnippet>617</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+<a href=#618 id=618 data-nosnippet>618</a>            <span class="self">self</span>.disable_gates_checks,
+<a href=#619 id=619 data-nosnippet>619</a>        );
+<a href=#620 id=620 data-nosnippet>620</a>
+<a href=#621 id=621 data-nosnippet>621</a>        <span class="kw">let </span>endomul_scalar_selector8 = selector_polynomial(
+<a href=#622 id=622 data-nosnippet>622</a>            GateType::EndoMulScalar,
+<a href=#623 id=623 data-nosnippet>623</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+<a href=#624 id=624 data-nosnippet>624</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+<a href=#625 id=625 data-nosnippet>625</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+<a href=#626 id=626 data-nosnippet>626</a>            <span class="self">self</span>.disable_gates_checks,
+<a href=#627 id=627 data-nosnippet>627</a>        );
+<a href=#628 id=628 data-nosnippet>628</a>
+<a href=#629 id=629 data-nosnippet>629</a>        <span class="kw">let </span>generic_selector4 = evaluated_column_coefficients
+<a href=#630 id=630 data-nosnippet>630</a>            .generic_selector
+<a href=#631 id=631 data-nosnippet>631</a>            .evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d4);
+<a href=#632 id=632 data-nosnippet>632</a>
+<a href=#633 id=633 data-nosnippet>633</a>        <span class="comment">// RangeCheck0 constraint selector polynomials
+<a href=#634 id=634 data-nosnippet>634</a>        </span><span class="kw">let </span>range_check0_selector8 = {
+<a href=#635 id=635 data-nosnippet>635</a>            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.range_check0 {
+<a href=#636 id=636 data-nosnippet>636</a>                <span class="prelude-val">None
+<a href=#637 id=637 data-nosnippet>637</a>            </span>} <span class="kw">else </span>{
+<a href=#638 id=638 data-nosnippet>638</a>                <span class="prelude-val">Some</span>(selector_polynomial(
+<a href=#639 id=639 data-nosnippet>639</a>                    GateType::RangeCheck0,
+<a href=#640 id=640 data-nosnippet>640</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+<a href=#641 id=641 data-nosnippet>641</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+<a href=#642 id=642 data-nosnippet>642</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+<a href=#643 id=643 data-nosnippet>643</a>                    <span class="self">self</span>.disable_gates_checks,
+<a href=#644 id=644 data-nosnippet>644</a>                ))
+<a href=#645 id=645 data-nosnippet>645</a>            }
+<a href=#646 id=646 data-nosnippet>646</a>        };
+<a href=#647 id=647 data-nosnippet>647</a>
+<a href=#648 id=648 data-nosnippet>648</a>        <span class="comment">// RangeCheck1 constraint selector polynomials
+<a href=#649 id=649 data-nosnippet>649</a>        </span><span class="kw">let </span>range_check1_selector8 = {
+<a href=#650 id=650 data-nosnippet>650</a>            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.range_check1 {
+<a href=#651 id=651 data-nosnippet>651</a>                <span class="prelude-val">None
+<a href=#652 id=652 data-nosnippet>652</a>            </span>} <span class="kw">else </span>{
+<a href=#653 id=653 data-nosnippet>653</a>                <span class="prelude-val">Some</span>(selector_polynomial(
+<a href=#654 id=654 data-nosnippet>654</a>                    GateType::RangeCheck1,
+<a href=#655 id=655 data-nosnippet>655</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+<a href=#656 id=656 data-nosnippet>656</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+<a href=#657 id=657 data-nosnippet>657</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+<a href=#658 id=658 data-nosnippet>658</a>                    <span class="self">self</span>.disable_gates_checks,
+<a href=#659 id=659 data-nosnippet>659</a>                ))
+<a href=#660 id=660 data-nosnippet>660</a>            }
+<a href=#661 id=661 data-nosnippet>661</a>        };
+<a href=#662 id=662 data-nosnippet>662</a>
+<a href=#663 id=663 data-nosnippet>663</a>        <span class="comment">// Foreign field addition constraint selector polynomial
+<a href=#664 id=664 data-nosnippet>664</a>        </span><span class="kw">let </span>foreign_field_add_selector8 = {
+<a href=#665 id=665 data-nosnippet>665</a>            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.foreign_field_add {
+<a href=#666 id=666 data-nosnippet>666</a>                <span class="prelude-val">None
+<a href=#667 id=667 data-nosnippet>667</a>            </span>} <span class="kw">else </span>{
+<a href=#668 id=668 data-nosnippet>668</a>                <span class="prelude-val">Some</span>(selector_polynomial(
+<a href=#669 id=669 data-nosnippet>669</a>                    GateType::ForeignFieldAdd,
+<a href=#670 id=670 data-nosnippet>670</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+<a href=#671 id=671 data-nosnippet>671</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+<a href=#672 id=672 data-nosnippet>672</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+<a href=#673 id=673 data-nosnippet>673</a>                    <span class="self">self</span>.disable_gates_checks,
+<a href=#674 id=674 data-nosnippet>674</a>                ))
+<a href=#675 id=675 data-nosnippet>675</a>            }
+<a href=#676 id=676 data-nosnippet>676</a>        };
+<a href=#677 id=677 data-nosnippet>677</a>
+<a href=#678 id=678 data-nosnippet>678</a>        <span class="comment">// Foreign field multiplication constraint selector polynomial
+<a href=#679 id=679 data-nosnippet>679</a>        </span><span class="kw">let </span>foreign_field_mul_selector8 = {
+<a href=#680 id=680 data-nosnippet>680</a>            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.foreign_field_mul {
+<a href=#681 id=681 data-nosnippet>681</a>                <span class="prelude-val">None
+<a href=#682 id=682 data-nosnippet>682</a>            </span>} <span class="kw">else </span>{
+<a href=#683 id=683 data-nosnippet>683</a>                <span class="prelude-val">Some</span>(selector_polynomial(
+<a href=#684 id=684 data-nosnippet>684</a>                    GateType::ForeignFieldMul,
+<a href=#685 id=685 data-nosnippet>685</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+<a href=#686 id=686 data-nosnippet>686</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+<a href=#687 id=687 data-nosnippet>687</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+<a href=#688 id=688 data-nosnippet>688</a>                    <span class="self">self</span>.disable_gates_checks,
+<a href=#689 id=689 data-nosnippet>689</a>                ))
+<a href=#690 id=690 data-nosnippet>690</a>            }
+<a href=#691 id=691 data-nosnippet>691</a>        };
+<a href=#692 id=692 data-nosnippet>692</a>
+<a href=#693 id=693 data-nosnippet>693</a>        <span class="kw">let </span>xor_selector8 = {
+<a href=#694 id=694 data-nosnippet>694</a>            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.xor {
+<a href=#695 id=695 data-nosnippet>695</a>                <span class="prelude-val">None
+<a href=#696 id=696 data-nosnippet>696</a>            </span>} <span class="kw">else </span>{
+<a href=#697 id=697 data-nosnippet>697</a>                <span class="prelude-val">Some</span>(selector_polynomial(
+<a href=#698 id=698 data-nosnippet>698</a>                    GateType::Xor16,
+<a href=#699 id=699 data-nosnippet>699</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+<a href=#700 id=700 data-nosnippet>700</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+<a href=#701 id=701 data-nosnippet>701</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+<a href=#702 id=702 data-nosnippet>702</a>                    <span class="self">self</span>.disable_gates_checks,
+<a href=#703 id=703 data-nosnippet>703</a>                ))
+<a href=#704 id=704 data-nosnippet>704</a>            }
+<a href=#705 id=705 data-nosnippet>705</a>        };
+<a href=#706 id=706 data-nosnippet>706</a>
+<a href=#707 id=707 data-nosnippet>707</a>        <span class="kw">let </span>rot_selector8 = {
+<a href=#708 id=708 data-nosnippet>708</a>            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.rot {
+<a href=#709 id=709 data-nosnippet>709</a>                <span class="prelude-val">None
+<a href=#710 id=710 data-nosnippet>710</a>            </span>} <span class="kw">else </span>{
+<a href=#711 id=711 data-nosnippet>711</a>                <span class="prelude-val">Some</span>(selector_polynomial(
+<a href=#712 id=712 data-nosnippet>712</a>                    GateType::Rot64,
+<a href=#713 id=713 data-nosnippet>713</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+<a href=#714 id=714 data-nosnippet>714</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+<a href=#715 id=715 data-nosnippet>715</a>                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+<a href=#716 id=716 data-nosnippet>716</a>                    <span class="self">self</span>.disable_gates_checks,
+<a href=#717 id=717 data-nosnippet>717</a>                ))
+<a href=#718 id=718 data-nosnippet>718</a>            }
+<a href=#719 id=719 data-nosnippet>719</a>        };
+<a href=#720 id=720 data-nosnippet>720</a>
+<a href=#721 id=721 data-nosnippet>721</a>        <span class="comment">// TODO: This doesn't need to be degree 8 but that would require some changes in expr
+<a href=#722 id=722 data-nosnippet>722</a>        </span><span class="kw">let </span>coefficients8 = array::from_fn(|i| {
+<a href=#723 id=723 data-nosnippet>723</a>            evaluated_column_coefficients.coefficients[i]
+<a href=#724 id=724 data-nosnippet>724</a>                .evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8)
+<a href=#725 id=725 data-nosnippet>725</a>        });
+<a href=#726 id=726 data-nosnippet>726</a>
+<a href=#727 id=727 data-nosnippet>727</a>        ColumnEvaluations {
+<a href=#728 id=728 data-nosnippet>728</a>            permutation_coefficients8,
+<a href=#729 id=729 data-nosnippet>729</a>            coefficients8,
+<a href=#730 id=730 data-nosnippet>730</a>            generic_selector4,
+<a href=#731 id=731 data-nosnippet>731</a>            poseidon_selector8,
+<a href=#732 id=732 data-nosnippet>732</a>            complete_add_selector4,
+<a href=#733 id=733 data-nosnippet>733</a>            mul_selector8,
+<a href=#734 id=734 data-nosnippet>734</a>            emul_selector8,
+<a href=#735 id=735 data-nosnippet>735</a>            endomul_scalar_selector8,
+<a href=#736 id=736 data-nosnippet>736</a>            range_check0_selector8,
+<a href=#737 id=737 data-nosnippet>737</a>            range_check1_selector8,
+<a href=#738 id=738 data-nosnippet>738</a>            foreign_field_add_selector8,
+<a href=#739 id=739 data-nosnippet>739</a>            foreign_field_mul_selector8,
+<a href=#740 id=740 data-nosnippet>740</a>            xor_selector8,
+<a href=#741 id=741 data-nosnippet>741</a>            rot_selector8,
+<a href=#742 id=742 data-nosnippet>742</a>        }
+<a href=#743 id=743 data-nosnippet>743</a>    }
+<a href=#744 id=744 data-nosnippet>744</a>}
 <a href=#745 id=745 data-nosnippet>745</a>
-<a href=#746 id=746 data-nosnippet>746</a><span class="doccomment">/// The number of rows required for zero knowledge in circuits with one single chunk
-<a href=#747 id=747 data-nosnippet>747</a></span><span class="kw">pub const </span>ZK_ROWS_BY_DEFAULT: u64 = <span class="number">3</span>;
+<a href=#746 id=746 data-nosnippet>746</a><span class="doccomment">/// The default number of chunks in a circuit is one (&lt; 2^16 rows)
+<a href=#747 id=747 data-nosnippet>747</a></span><span class="kw">pub const </span>NUM_CHUNKS_BY_DEFAULT: usize = <span class="number">1</span>;
 <a href=#748 id=748 data-nosnippet>748</a>
-<a href=#749 id=749 data-nosnippet>749</a><span class="doccomment">/// This function computes a strict lower bound in the number of rows required
-<a href=#750 id=750 data-nosnippet>750</a>/// for zero knowledge in circuits with `num_chunks` chunks. This means that at
-<a href=#751 id=751 data-nosnippet>751</a>/// least one needs 1 more row than the result of this function to achieve zero
-<a href=#752 id=752 data-nosnippet>752</a>/// knowledge.
-<a href=#753 id=753 data-nosnippet>753</a>/// Example:
-<a href=#754 id=754 data-nosnippet>754</a>///   for 1 chunk, this function returns 2, but at least 3 rows are needed
-<a href=#755 id=755 data-nosnippet>755</a>/// Note:
-<a href=#756 id=756 data-nosnippet>756</a>///   the number of zero knowledge rows is usually computed across the codebase
-<a href=#757 id=757 data-nosnippet>757</a>///   as the formula `(16 * num_chunks + 5) / 7`, which is precisely the formula
-<a href=#758 id=758 data-nosnippet>758</a>///   in this function plus one.
-<a href=#759 id=759 data-nosnippet>759</a></span><span class="kw">pub fn </span>zk_rows_strict_lower_bound(num_chunks: usize) -&gt; usize {
-<a href=#760 id=760 data-nosnippet>760</a>    (<span class="number">2 </span>* (PERMUTS + <span class="number">1</span>) * num_chunks - <span class="number">2</span>) / PERMUTS
-<a href=#761 id=761 data-nosnippet>761</a>}
-<a href=#762 id=762 data-nosnippet>762</a>
-<a href=#763 id=763 data-nosnippet>763</a><span class="kw">impl </span>FeatureFlags {
-<a href=#764 id=764 data-nosnippet>764</a>    <span class="kw">pub fn </span>from_gates_and_lookup_features&lt;F: PrimeField&gt;(
-<a href=#765 id=765 data-nosnippet>765</a>        gates: <span class="kw-2">&amp;</span>[CircuitGate&lt;F&gt;],
-<a href=#766 id=766 data-nosnippet>766</a>        lookup_features: LookupFeatures,
-<a href=#767 id=767 data-nosnippet>767</a>    ) -&gt; FeatureFlags {
-<a href=#768 id=768 data-nosnippet>768</a>        <span class="kw">let </span><span class="kw-2">mut </span>feature_flags = FeatureFlags {
-<a href=#769 id=769 data-nosnippet>769</a>            range_check0: <span class="bool-val">false</span>,
-<a href=#770 id=770 data-nosnippet>770</a>            range_check1: <span class="bool-val">false</span>,
-<a href=#771 id=771 data-nosnippet>771</a>            lookup_features,
-<a href=#772 id=772 data-nosnippet>772</a>            foreign_field_add: <span class="bool-val">false</span>,
-<a href=#773 id=773 data-nosnippet>773</a>            foreign_field_mul: <span class="bool-val">false</span>,
-<a href=#774 id=774 data-nosnippet>774</a>            xor: <span class="bool-val">false</span>,
-<a href=#775 id=775 data-nosnippet>775</a>            rot: <span class="bool-val">false</span>,
-<a href=#776 id=776 data-nosnippet>776</a>        };
-<a href=#777 id=777 data-nosnippet>777</a>
-<a href=#778 id=778 data-nosnippet>778</a>        <span class="kw">for </span>gate <span class="kw">in </span>gates {
-<a href=#779 id=779 data-nosnippet>779</a>            <span class="kw">match </span>gate.typ {
-<a href=#780 id=780 data-nosnippet>780</a>                GateType::RangeCheck0 =&gt; feature_flags.range_check0 = <span class="bool-val">true</span>,
-<a href=#781 id=781 data-nosnippet>781</a>                GateType::RangeCheck1 =&gt; feature_flags.range_check1 = <span class="bool-val">true</span>,
-<a href=#782 id=782 data-nosnippet>782</a>                GateType::ForeignFieldAdd =&gt; feature_flags.foreign_field_add = <span class="bool-val">true</span>,
-<a href=#783 id=783 data-nosnippet>783</a>                GateType::ForeignFieldMul =&gt; feature_flags.foreign_field_mul = <span class="bool-val">true</span>,
-<a href=#784 id=784 data-nosnippet>784</a>                GateType::Xor16 =&gt; feature_flags.xor = <span class="bool-val">true</span>,
-<a href=#785 id=785 data-nosnippet>785</a>                GateType::Rot64 =&gt; feature_flags.rot = <span class="bool-val">true</span>,
-<a href=#786 id=786 data-nosnippet>786</a>                <span class="kw">_ </span>=&gt; (),
-<a href=#787 id=787 data-nosnippet>787</a>            }
-<a href=#788 id=788 data-nosnippet>788</a>        }
-<a href=#789 id=789 data-nosnippet>789</a>
-<a href=#790 id=790 data-nosnippet>790</a>        feature_flags
-<a href=#791 id=791 data-nosnippet>791</a>    }
+<a href=#749 id=749 data-nosnippet>749</a><span class="doccomment">/// The number of rows required for zero knowledge in circuits with one single chunk
+<a href=#750 id=750 data-nosnippet>750</a></span><span class="kw">pub const </span>ZK_ROWS_BY_DEFAULT: u64 = <span class="number">3</span>;
+<a href=#751 id=751 data-nosnippet>751</a>
+<a href=#752 id=752 data-nosnippet>752</a><span class="doccomment">/// This function computes a strict lower bound in the number of rows required
+<a href=#753 id=753 data-nosnippet>753</a>/// for zero knowledge in circuits with `num_chunks` chunks. This means that at
+<a href=#754 id=754 data-nosnippet>754</a>/// least one needs 1 more row than the result of this function to achieve zero
+<a href=#755 id=755 data-nosnippet>755</a>/// knowledge.
+<a href=#756 id=756 data-nosnippet>756</a>/// Example:
+<a href=#757 id=757 data-nosnippet>757</a>///   for 1 chunk, this function returns 2, but at least 3 rows are needed
+<a href=#758 id=758 data-nosnippet>758</a>/// Note:
+<a href=#759 id=759 data-nosnippet>759</a>///   the number of zero knowledge rows is usually computed across the codebase
+<a href=#760 id=760 data-nosnippet>760</a>///   as the formula `(16 * num_chunks + 5) / 7`, which is precisely the formula
+<a href=#761 id=761 data-nosnippet>761</a>///   in this function plus one.
+<a href=#762 id=762 data-nosnippet>762</a></span><span class="kw">pub fn </span>zk_rows_strict_lower_bound(num_chunks: usize) -&gt; usize {
+<a href=#763 id=763 data-nosnippet>763</a>    (<span class="number">2 </span>* (PERMUTS + <span class="number">1</span>) * num_chunks - <span class="number">2</span>) / PERMUTS
+<a href=#764 id=764 data-nosnippet>764</a>}
+<a href=#765 id=765 data-nosnippet>765</a>
+<a href=#766 id=766 data-nosnippet>766</a><span class="kw">impl </span>FeatureFlags {
+<a href=#767 id=767 data-nosnippet>767</a>    <span class="kw">pub fn </span>from_gates_and_lookup_features&lt;F: PrimeField&gt;(
+<a href=#768 id=768 data-nosnippet>768</a>        gates: <span class="kw-2">&amp;</span>[CircuitGate&lt;F&gt;],
+<a href=#769 id=769 data-nosnippet>769</a>        lookup_features: LookupFeatures,
+<a href=#770 id=770 data-nosnippet>770</a>    ) -&gt; FeatureFlags {
+<a href=#771 id=771 data-nosnippet>771</a>        <span class="kw">let </span><span class="kw-2">mut </span>feature_flags = FeatureFlags {
+<a href=#772 id=772 data-nosnippet>772</a>            range_check0: <span class="bool-val">false</span>,
+<a href=#773 id=773 data-nosnippet>773</a>            range_check1: <span class="bool-val">false</span>,
+<a href=#774 id=774 data-nosnippet>774</a>            lookup_features,
+<a href=#775 id=775 data-nosnippet>775</a>            foreign_field_add: <span class="bool-val">false</span>,
+<a href=#776 id=776 data-nosnippet>776</a>            foreign_field_mul: <span class="bool-val">false</span>,
+<a href=#777 id=777 data-nosnippet>777</a>            xor: <span class="bool-val">false</span>,
+<a href=#778 id=778 data-nosnippet>778</a>            rot: <span class="bool-val">false</span>,
+<a href=#779 id=779 data-nosnippet>779</a>        };
+<a href=#780 id=780 data-nosnippet>780</a>
+<a href=#781 id=781 data-nosnippet>781</a>        <span class="kw">for </span>gate <span class="kw">in </span>gates {
+<a href=#782 id=782 data-nosnippet>782</a>            <span class="kw">match </span>gate.typ {
+<a href=#783 id=783 data-nosnippet>783</a>                GateType::RangeCheck0 =&gt; feature_flags.range_check0 = <span class="bool-val">true</span>,
+<a href=#784 id=784 data-nosnippet>784</a>                GateType::RangeCheck1 =&gt; feature_flags.range_check1 = <span class="bool-val">true</span>,
+<a href=#785 id=785 data-nosnippet>785</a>                GateType::ForeignFieldAdd =&gt; feature_flags.foreign_field_add = <span class="bool-val">true</span>,
+<a href=#786 id=786 data-nosnippet>786</a>                GateType::ForeignFieldMul =&gt; feature_flags.foreign_field_mul = <span class="bool-val">true</span>,
+<a href=#787 id=787 data-nosnippet>787</a>                GateType::Xor16 =&gt; feature_flags.xor = <span class="bool-val">true</span>,
+<a href=#788 id=788 data-nosnippet>788</a>                GateType::Rot64 =&gt; feature_flags.rot = <span class="bool-val">true</span>,
+<a href=#789 id=789 data-nosnippet>789</a>                <span class="kw">_ </span>=&gt; (),
+<a href=#790 id=790 data-nosnippet>790</a>            }
+<a href=#791 id=791 data-nosnippet>791</a>        }
 <a href=#792 id=792 data-nosnippet>792</a>
-<a href=#793 id=793 data-nosnippet>793</a>    <span class="kw">pub fn </span>from_gates&lt;F: PrimeField&gt;(
-<a href=#794 id=794 data-nosnippet>794</a>        gates: <span class="kw-2">&amp;</span>[CircuitGate&lt;F&gt;],
-<a href=#795 id=795 data-nosnippet>795</a>        uses_runtime_tables: bool,
-<a href=#796 id=796 data-nosnippet>796</a>    ) -&gt; FeatureFlags {
-<a href=#797 id=797 data-nosnippet>797</a>        FeatureFlags::from_gates_and_lookup_features(
-<a href=#798 id=798 data-nosnippet>798</a>            gates,
-<a href=#799 id=799 data-nosnippet>799</a>            LookupFeatures::from_gates(gates, uses_runtime_tables),
-<a href=#800 id=800 data-nosnippet>800</a>        )
-<a href=#801 id=801 data-nosnippet>801</a>    }
-<a href=#802 id=802 data-nosnippet>802</a>}
-<a href=#803 id=803 data-nosnippet>803</a>
-<a href=#804 id=804 data-nosnippet>804</a><span class="kw">impl</span>&lt;F: PrimeField&gt; Builder&lt;F&gt; {
-<a href=#805 id=805 data-nosnippet>805</a>    <span class="doccomment">/// Set up the number of public inputs.
-<a href=#806 id=806 data-nosnippet>806</a>    /// If not invoked, it equals `0` by default.
-<a href=#807 id=807 data-nosnippet>807</a>    </span><span class="kw">pub fn </span>public(<span class="kw-2">mut </span><span class="self">self</span>, public: usize) -&gt; <span class="self">Self </span>{
-<a href=#808 id=808 data-nosnippet>808</a>        <span class="self">self</span>.public = public;
-<a href=#809 id=809 data-nosnippet>809</a>        <span class="self">self
-<a href=#810 id=810 data-nosnippet>810</a>    </span>}
-<a href=#811 id=811 data-nosnippet>811</a>
-<a href=#812 id=812 data-nosnippet>812</a>    <span class="doccomment">/// Set up the number of previous challenges, used for recusive proving.
-<a href=#813 id=813 data-nosnippet>813</a>    /// If not invoked, it equals `0` by default.
-<a href=#814 id=814 data-nosnippet>814</a>    </span><span class="kw">pub fn </span>prev_challenges(<span class="kw-2">mut </span><span class="self">self</span>, prev_challenges: usize) -&gt; <span class="self">Self </span>{
-<a href=#815 id=815 data-nosnippet>815</a>        <span class="self">self</span>.prev_challenges = prev_challenges;
-<a href=#816 id=816 data-nosnippet>816</a>        <span class="self">self
-<a href=#817 id=817 data-nosnippet>817</a>    </span>}
-<a href=#818 id=818 data-nosnippet>818</a>
-<a href=#819 id=819 data-nosnippet>819</a>    <span class="doccomment">/// Set up the lookup tables.
-<a href=#820 id=820 data-nosnippet>820</a>    /// If not invoked, it is `vec![]` by default.
-<a href=#821 id=821 data-nosnippet>821</a>    ///
-<a href=#822 id=822 data-nosnippet>822</a>    /// **Warning:** you have to make sure that the IDs of the lookup tables,
-<a href=#823 id=823 data-nosnippet>823</a>    /// are unique and not colliding with IDs of built-in lookup tables, otherwise
-<a href=#824 id=824 data-nosnippet>824</a>    /// the error will be raised.
-<a href=#825 id=825 data-nosnippet>825</a>    ///
-<a href=#826 id=826 data-nosnippet>826</a>    /// (see [crate::circuits::lookup::tables]).
-<a href=#827 id=827 data-nosnippet>827</a>    </span><span class="kw">pub fn </span>lookup(<span class="kw-2">mut </span><span class="self">self</span>, lookup_tables: Vec&lt;LookupTable&lt;F&gt;&gt;) -&gt; <span class="self">Self </span>{
-<a href=#828 id=828 data-nosnippet>828</a>        <span class="self">self</span>.lookup_tables = lookup_tables;
-<a href=#829 id=829 data-nosnippet>829</a>        <span class="self">self
-<a href=#830 id=830 data-nosnippet>830</a>    </span>}
-<a href=#831 id=831 data-nosnippet>831</a>
-<a href=#832 id=832 data-nosnippet>832</a>    <span class="doccomment">/// Set up the runtime tables.
-<a href=#833 id=833 data-nosnippet>833</a>    /// If not invoked, it is `None` by default.
-<a href=#834 id=834 data-nosnippet>834</a>    ///
-<a href=#835 id=835 data-nosnippet>835</a>    /// **Warning:** you have to make sure that the IDs of the runtime
-<a href=#836 id=836 data-nosnippet>836</a>    /// lookup tables, are unique, i.e. not colliding internaly (with other runtime tables),
-<a href=#837 id=837 data-nosnippet>837</a>    /// otherwise error will be raised.
-<a href=#838 id=838 data-nosnippet>838</a>    /// (see [crate::circuits::lookup::tables]).
-<a href=#839 id=839 data-nosnippet>839</a>    </span><span class="kw">pub fn </span>runtime(<span class="kw-2">mut </span><span class="self">self</span>, runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;F&gt;&gt;&gt;) -&gt; <span class="self">Self </span>{
-<a href=#840 id=840 data-nosnippet>840</a>        <span class="self">self</span>.runtime_tables = runtime_tables;
-<a href=#841 id=841 data-nosnippet>841</a>        <span class="self">self
-<a href=#842 id=842 data-nosnippet>842</a>    </span>}
-<a href=#843 id=843 data-nosnippet>843</a>
-<a href=#844 id=844 data-nosnippet>844</a>    <span class="doccomment">/// Set up the shared precomputations.
-<a href=#845 id=845 data-nosnippet>845</a>    /// If not invoked, it is `None` by default.
-<a href=#846 id=846 data-nosnippet>846</a>    </span><span class="kw">pub fn </span>shared_precomputations(
-<a href=#847 id=847 data-nosnippet>847</a>        <span class="kw-2">mut </span><span class="self">self</span>,
-<a href=#848 id=848 data-nosnippet>848</a>        shared_precomputations: Arc&lt;DomainConstantEvaluations&lt;F&gt;&gt;,
-<a href=#849 id=849 data-nosnippet>849</a>    ) -&gt; <span class="self">Self </span>{
-<a href=#850 id=850 data-nosnippet>850</a>        <span class="self">self</span>.precomputations = <span class="prelude-val">Some</span>(shared_precomputations);
-<a href=#851 id=851 data-nosnippet>851</a>        <span class="self">self
-<a href=#852 id=852 data-nosnippet>852</a>    </span>}
-<a href=#853 id=853 data-nosnippet>853</a>
-<a href=#854 id=854 data-nosnippet>854</a>    <span class="doccomment">/// Disable gates checks (for testing; only enables with development builds)
-<a href=#855 id=855 data-nosnippet>855</a>    </span><span class="kw">pub fn </span>disable_gates_checks(<span class="kw-2">mut </span><span class="self">self</span>, disable_gates_checks: bool) -&gt; <span class="self">Self </span>{
-<a href=#856 id=856 data-nosnippet>856</a>        <span class="self">self</span>.disable_gates_checks = disable_gates_checks;
-<a href=#857 id=857 data-nosnippet>857</a>        <span class="self">self
-<a href=#858 id=858 data-nosnippet>858</a>    </span>}
-<a href=#859 id=859 data-nosnippet>859</a>
-<a href=#860 id=860 data-nosnippet>860</a>    <span class="kw">pub fn </span>max_poly_size(<span class="kw-2">mut </span><span class="self">self</span>, max_poly_size: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; <span class="self">Self </span>{
-<a href=#861 id=861 data-nosnippet>861</a>        <span class="self">self</span>.max_poly_size = max_poly_size;
-<a href=#862 id=862 data-nosnippet>862</a>        <span class="self">self
-<a href=#863 id=863 data-nosnippet>863</a>    </span>}
-<a href=#864 id=864 data-nosnippet>864</a>
-<a href=#865 id=865 data-nosnippet>865</a>    <span class="kw">pub fn </span>lazy_mode(<span class="kw-2">mut </span><span class="self">self</span>, lazy_mode: bool) -&gt; <span class="self">Self </span>{
-<a href=#866 id=866 data-nosnippet>866</a>        <span class="self">self</span>.lazy_mode = lazy_mode;
-<a href=#867 id=867 data-nosnippet>867</a>        <span class="self">self
-<a href=#868 id=868 data-nosnippet>868</a>    </span>}
-<a href=#869 id=869 data-nosnippet>869</a>
-<a href=#870 id=870 data-nosnippet>870</a>    <span class="doccomment">/// Build the [ConstraintSystem] from a [Builder].
-<a href=#871 id=871 data-nosnippet>871</a>    </span><span class="kw">pub fn </span>build(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ConstraintSystem&lt;F&gt;, SetupError&gt; {
-<a href=#872 id=872 data-nosnippet>872</a>        <span class="kw">let </span><span class="kw-2">mut </span>gates = <span class="self">self</span>.gates;
-<a href=#873 id=873 data-nosnippet>873</a>        <span class="kw">let </span>lookup_tables = <span class="self">self</span>.lookup_tables.clone();
-<a href=#874 id=874 data-nosnippet>874</a>        <span class="kw">let </span>runtime_tables = <span class="self">self</span>.runtime_tables.clone();
-<a href=#875 id=875 data-nosnippet>875</a>
-<a href=#876 id=876 data-nosnippet>876</a>        <span class="comment">//~ 1. If the circuit is less than 2 gates, abort.
-<a href=#877 id=877 data-nosnippet>877</a>        // for some reason we need more than 1 gate for the circuit to work, see TODO below
-<a href=#878 id=878 data-nosnippet>878</a>        </span><span class="macro">assert!</span>(gates.len() &gt; <span class="number">1</span>);
-<a href=#879 id=879 data-nosnippet>879</a>
-<a href=#880 id=880 data-nosnippet>880</a>        <span class="kw">let </span>feature_flags = FeatureFlags::from_gates(<span class="kw-2">&amp;</span>gates, runtime_tables.is_some());
-<a href=#881 id=881 data-nosnippet>881</a>
-<a href=#882 id=882 data-nosnippet>882</a>        <span class="kw">let </span>lookup_domain_size = {
-<a href=#883 id=883 data-nosnippet>883</a>            <span class="comment">// First we sum over the lookup table size
-<a href=#884 id=884 data-nosnippet>884</a>            </span><span class="kw">let </span><span class="kw-2">mut </span>has_table_with_id_0 = <span class="bool-val">false</span>;
-<a href=#885 id=885 data-nosnippet>885</a>            <span class="kw">let </span><span class="kw-2">mut </span>lookup_domain_size: usize = lookup_tables
-<a href=#886 id=886 data-nosnippet>886</a>                .iter()
-<a href=#887 id=887 data-nosnippet>887</a>                .map(|LookupTable { id, data }| {
-<a href=#888 id=888 data-nosnippet>888</a>                    <span class="comment">// See below for the reason
-<a href=#889 id=889 data-nosnippet>889</a>                    </span><span class="kw">if </span><span class="kw-2">*</span>id == <span class="number">0_i32 </span>{
-<a href=#890 id=890 data-nosnippet>890</a>                        has_table_with_id_0 = <span class="bool-val">true
-<a href=#891 id=891 data-nosnippet>891</a>                    </span>}
-<a href=#892 id=892 data-nosnippet>892</a>                    <span class="kw">if </span>data.is_empty() {
-<a href=#893 id=893 data-nosnippet>893</a>                        <span class="number">0
-<a href=#894 id=894 data-nosnippet>894</a>                    </span>} <span class="kw">else </span>{
-<a href=#895 id=895 data-nosnippet>895</a>                        data[<span class="number">0</span>].len()
-<a href=#896 id=896 data-nosnippet>896</a>                    }
-<a href=#897 id=897 data-nosnippet>897</a>                })
-<a href=#898 id=898 data-nosnippet>898</a>                .sum();
-<a href=#899 id=899 data-nosnippet>899</a>            <span class="comment">// After that on the runtime tables
-<a href=#900 id=900 data-nosnippet>900</a>            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(runtime_tables) = <span class="kw-2">&amp;</span>runtime_tables {
-<a href=#901 id=901 data-nosnippet>901</a>                <span class="comment">// FIXME: Check that a runtime table with ID 0 is enforced to
-<a href=#902 id=902 data-nosnippet>902</a>                // contain a zero entry row.
-<a href=#903 id=903 data-nosnippet>903</a>                </span><span class="kw">for </span>runtime_table <span class="kw">in </span>runtime_tables.iter() {
-<a href=#904 id=904 data-nosnippet>904</a>                    lookup_domain_size += runtime_table.len();
-<a href=#905 id=905 data-nosnippet>905</a>                }
-<a href=#906 id=906 data-nosnippet>906</a>            }
-<a href=#907 id=907 data-nosnippet>907</a>            <span class="comment">// And we add the built-in tables, depending on the features.
-<a href=#908 id=908 data-nosnippet>908</a>            </span><span class="kw">let </span>LookupFeatures { patterns, .. } = <span class="kw-2">&amp;</span>feature_flags.lookup_features;
-<a href=#909 id=909 data-nosnippet>909</a>            <span class="kw">let </span><span class="kw-2">mut </span>gate_lookup_tables = GateLookupTables {
-<a href=#910 id=910 data-nosnippet>910</a>                xor: <span class="bool-val">false</span>,
-<a href=#911 id=911 data-nosnippet>911</a>                range_check: <span class="bool-val">false</span>,
-<a href=#912 id=912 data-nosnippet>912</a>            };
-<a href=#913 id=913 data-nosnippet>913</a>            <span class="kw">for </span>pattern <span class="kw">in </span>patterns.into_iter() {
-<a href=#914 id=914 data-nosnippet>914</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(gate_table) = pattern.table() {
-<a href=#915 id=915 data-nosnippet>915</a>                    gate_lookup_tables[gate_table] = <span class="bool-val">true
-<a href=#916 id=916 data-nosnippet>916</a>                </span>}
-<a href=#917 id=917 data-nosnippet>917</a>            }
-<a href=#918 id=918 data-nosnippet>918</a>            <span class="kw">for </span>gate_table <span class="kw">in </span>gate_lookup_tables.into_iter() {
-<a href=#919 id=919 data-nosnippet>919</a>                lookup_domain_size += gate_table.table_size();
+<a href=#793 id=793 data-nosnippet>793</a>        feature_flags
+<a href=#794 id=794 data-nosnippet>794</a>    }
+<a href=#795 id=795 data-nosnippet>795</a>
+<a href=#796 id=796 data-nosnippet>796</a>    <span class="kw">pub fn </span>from_gates&lt;F: PrimeField&gt;(
+<a href=#797 id=797 data-nosnippet>797</a>        gates: <span class="kw-2">&amp;</span>[CircuitGate&lt;F&gt;],
+<a href=#798 id=798 data-nosnippet>798</a>        uses_runtime_tables: bool,
+<a href=#799 id=799 data-nosnippet>799</a>    ) -&gt; FeatureFlags {
+<a href=#800 id=800 data-nosnippet>800</a>        FeatureFlags::from_gates_and_lookup_features(
+<a href=#801 id=801 data-nosnippet>801</a>            gates,
+<a href=#802 id=802 data-nosnippet>802</a>            LookupFeatures::from_gates(gates, uses_runtime_tables),
+<a href=#803 id=803 data-nosnippet>803</a>        )
+<a href=#804 id=804 data-nosnippet>804</a>    }
+<a href=#805 id=805 data-nosnippet>805</a>}
+<a href=#806 id=806 data-nosnippet>806</a>
+<a href=#807 id=807 data-nosnippet>807</a><span class="kw">impl</span>&lt;F: PrimeField&gt; Builder&lt;F&gt; {
+<a href=#808 id=808 data-nosnippet>808</a>    <span class="doccomment">/// Set up the number of public inputs.
+<a href=#809 id=809 data-nosnippet>809</a>    /// If not invoked, it equals `0` by default.
+<a href=#810 id=810 data-nosnippet>810</a>    </span><span class="kw">pub fn </span>public(<span class="kw-2">mut </span><span class="self">self</span>, public: usize) -&gt; <span class="self">Self </span>{
+<a href=#811 id=811 data-nosnippet>811</a>        <span class="self">self</span>.public = public;
+<a href=#812 id=812 data-nosnippet>812</a>        <span class="self">self
+<a href=#813 id=813 data-nosnippet>813</a>    </span>}
+<a href=#814 id=814 data-nosnippet>814</a>
+<a href=#815 id=815 data-nosnippet>815</a>    <span class="doccomment">/// Set up the number of previous challenges, used for recusive proving.
+<a href=#816 id=816 data-nosnippet>816</a>    /// If not invoked, it equals `0` by default.
+<a href=#817 id=817 data-nosnippet>817</a>    </span><span class="kw">pub fn </span>prev_challenges(<span class="kw-2">mut </span><span class="self">self</span>, prev_challenges: usize) -&gt; <span class="self">Self </span>{
+<a href=#818 id=818 data-nosnippet>818</a>        <span class="self">self</span>.prev_challenges = prev_challenges;
+<a href=#819 id=819 data-nosnippet>819</a>        <span class="self">self
+<a href=#820 id=820 data-nosnippet>820</a>    </span>}
+<a href=#821 id=821 data-nosnippet>821</a>
+<a href=#822 id=822 data-nosnippet>822</a>    <span class="doccomment">/// Set up the lookup tables.
+<a href=#823 id=823 data-nosnippet>823</a>    /// If not invoked, it is `vec![]` by default.
+<a href=#824 id=824 data-nosnippet>824</a>    ///
+<a href=#825 id=825 data-nosnippet>825</a>    /// **Warning:** you have to make sure that the IDs of the lookup tables,
+<a href=#826 id=826 data-nosnippet>826</a>    /// are unique and not colliding with IDs of built-in lookup tables, otherwise
+<a href=#827 id=827 data-nosnippet>827</a>    /// the error will be raised.
+<a href=#828 id=828 data-nosnippet>828</a>    ///
+<a href=#829 id=829 data-nosnippet>829</a>    /// (see [crate::circuits::lookup::tables]).
+<a href=#830 id=830 data-nosnippet>830</a>    </span><span class="kw">pub fn </span>lookup(<span class="kw-2">mut </span><span class="self">self</span>, lookup_tables: Vec&lt;LookupTable&lt;F&gt;&gt;) -&gt; <span class="self">Self </span>{
+<a href=#831 id=831 data-nosnippet>831</a>        <span class="self">self</span>.lookup_tables = lookup_tables;
+<a href=#832 id=832 data-nosnippet>832</a>        <span class="self">self
+<a href=#833 id=833 data-nosnippet>833</a>    </span>}
+<a href=#834 id=834 data-nosnippet>834</a>
+<a href=#835 id=835 data-nosnippet>835</a>    <span class="doccomment">/// Set up the runtime tables.
+<a href=#836 id=836 data-nosnippet>836</a>    /// If not invoked, it is `None` by default.
+<a href=#837 id=837 data-nosnippet>837</a>    ///
+<a href=#838 id=838 data-nosnippet>838</a>    /// **Warning:** you have to make sure that the IDs of the runtime
+<a href=#839 id=839 data-nosnippet>839</a>    /// lookup tables, are unique, i.e. not colliding internaly (with other runtime tables),
+<a href=#840 id=840 data-nosnippet>840</a>    /// otherwise error will be raised.
+<a href=#841 id=841 data-nosnippet>841</a>    /// (see [crate::circuits::lookup::tables]).
+<a href=#842 id=842 data-nosnippet>842</a>    </span><span class="kw">pub fn </span>runtime(<span class="kw-2">mut </span><span class="self">self</span>, runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;F&gt;&gt;&gt;) -&gt; <span class="self">Self </span>{
+<a href=#843 id=843 data-nosnippet>843</a>        <span class="self">self</span>.runtime_tables = runtime_tables;
+<a href=#844 id=844 data-nosnippet>844</a>        <span class="self">self
+<a href=#845 id=845 data-nosnippet>845</a>    </span>}
+<a href=#846 id=846 data-nosnippet>846</a>
+<a href=#847 id=847 data-nosnippet>847</a>    <span class="doccomment">/// Set up the shared precomputations.
+<a href=#848 id=848 data-nosnippet>848</a>    /// If not invoked, it is `None` by default.
+<a href=#849 id=849 data-nosnippet>849</a>    </span><span class="kw">pub fn </span>shared_precomputations(
+<a href=#850 id=850 data-nosnippet>850</a>        <span class="kw-2">mut </span><span class="self">self</span>,
+<a href=#851 id=851 data-nosnippet>851</a>        shared_precomputations: Arc&lt;DomainConstantEvaluations&lt;F&gt;&gt;,
+<a href=#852 id=852 data-nosnippet>852</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#853 id=853 data-nosnippet>853</a>        <span class="self">self</span>.precomputations = <span class="prelude-val">Some</span>(shared_precomputations);
+<a href=#854 id=854 data-nosnippet>854</a>        <span class="self">self
+<a href=#855 id=855 data-nosnippet>855</a>    </span>}
+<a href=#856 id=856 data-nosnippet>856</a>
+<a href=#857 id=857 data-nosnippet>857</a>    <span class="doccomment">/// Disable gates checks (for testing; only enables with development builds)
+<a href=#858 id=858 data-nosnippet>858</a>    </span><span class="kw">pub fn </span>disable_gates_checks(<span class="kw-2">mut </span><span class="self">self</span>, disable_gates_checks: bool) -&gt; <span class="self">Self </span>{
+<a href=#859 id=859 data-nosnippet>859</a>        <span class="self">self</span>.disable_gates_checks = disable_gates_checks;
+<a href=#860 id=860 data-nosnippet>860</a>        <span class="self">self
+<a href=#861 id=861 data-nosnippet>861</a>    </span>}
+<a href=#862 id=862 data-nosnippet>862</a>
+<a href=#863 id=863 data-nosnippet>863</a>    <span class="kw">pub fn </span>max_poly_size(<span class="kw-2">mut </span><span class="self">self</span>, max_poly_size: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; <span class="self">Self </span>{
+<a href=#864 id=864 data-nosnippet>864</a>        <span class="self">self</span>.max_poly_size = max_poly_size;
+<a href=#865 id=865 data-nosnippet>865</a>        <span class="self">self
+<a href=#866 id=866 data-nosnippet>866</a>    </span>}
+<a href=#867 id=867 data-nosnippet>867</a>
+<a href=#868 id=868 data-nosnippet>868</a>    <span class="kw">pub fn </span>lazy_mode(<span class="kw-2">mut </span><span class="self">self</span>, lazy_mode: bool) -&gt; <span class="self">Self </span>{
+<a href=#869 id=869 data-nosnippet>869</a>        <span class="self">self</span>.lazy_mode = lazy_mode;
+<a href=#870 id=870 data-nosnippet>870</a>        <span class="self">self
+<a href=#871 id=871 data-nosnippet>871</a>    </span>}
+<a href=#872 id=872 data-nosnippet>872</a>
+<a href=#873 id=873 data-nosnippet>873</a>    <span class="doccomment">/// Build the [ConstraintSystem] from a [Builder].
+<a href=#874 id=874 data-nosnippet>874</a>    </span><span class="kw">pub fn </span>build(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ConstraintSystem&lt;F&gt;, SetupError&gt; {
+<a href=#875 id=875 data-nosnippet>875</a>        <span class="kw">let </span><span class="kw-2">mut </span>gates = <span class="self">self</span>.gates;
+<a href=#876 id=876 data-nosnippet>876</a>        <span class="kw">let </span>lookup_tables = <span class="self">self</span>.lookup_tables.clone();
+<a href=#877 id=877 data-nosnippet>877</a>        <span class="kw">let </span>runtime_tables = <span class="self">self</span>.runtime_tables.clone();
+<a href=#878 id=878 data-nosnippet>878</a>
+<a href=#879 id=879 data-nosnippet>879</a>        <span class="comment">//~ 1. If the circuit is less than 2 gates, abort.
+<a href=#880 id=880 data-nosnippet>880</a>        // for some reason we need more than 1 gate for the circuit to work, see TODO below
+<a href=#881 id=881 data-nosnippet>881</a>        </span><span class="macro">assert!</span>(gates.len() &gt; <span class="number">1</span>);
+<a href=#882 id=882 data-nosnippet>882</a>
+<a href=#883 id=883 data-nosnippet>883</a>        <span class="kw">let </span>feature_flags = FeatureFlags::from_gates(<span class="kw-2">&amp;</span>gates, runtime_tables.is_some());
+<a href=#884 id=884 data-nosnippet>884</a>
+<a href=#885 id=885 data-nosnippet>885</a>        <span class="kw">let </span>lookup_domain_size = {
+<a href=#886 id=886 data-nosnippet>886</a>            <span class="comment">// First we sum over the lookup table size
+<a href=#887 id=887 data-nosnippet>887</a>            </span><span class="kw">let </span><span class="kw-2">mut </span>has_table_with_id_0 = <span class="bool-val">false</span>;
+<a href=#888 id=888 data-nosnippet>888</a>            <span class="kw">let </span><span class="kw-2">mut </span>lookup_domain_size: usize = lookup_tables
+<a href=#889 id=889 data-nosnippet>889</a>                .iter()
+<a href=#890 id=890 data-nosnippet>890</a>                .map(|LookupTable { id, data }| {
+<a href=#891 id=891 data-nosnippet>891</a>                    <span class="comment">// See below for the reason
+<a href=#892 id=892 data-nosnippet>892</a>                    </span><span class="kw">if </span><span class="kw-2">*</span>id == <span class="number">0_i32 </span>{
+<a href=#893 id=893 data-nosnippet>893</a>                        has_table_with_id_0 = <span class="bool-val">true
+<a href=#894 id=894 data-nosnippet>894</a>                    </span>}
+<a href=#895 id=895 data-nosnippet>895</a>                    <span class="kw">if </span>data.is_empty() {
+<a href=#896 id=896 data-nosnippet>896</a>                        <span class="number">0
+<a href=#897 id=897 data-nosnippet>897</a>                    </span>} <span class="kw">else </span>{
+<a href=#898 id=898 data-nosnippet>898</a>                        data[<span class="number">0</span>].len()
+<a href=#899 id=899 data-nosnippet>899</a>                    }
+<a href=#900 id=900 data-nosnippet>900</a>                })
+<a href=#901 id=901 data-nosnippet>901</a>                .sum();
+<a href=#902 id=902 data-nosnippet>902</a>            <span class="comment">// After that on the runtime tables
+<a href=#903 id=903 data-nosnippet>903</a>            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(runtime_tables) = <span class="kw-2">&amp;</span>runtime_tables {
+<a href=#904 id=904 data-nosnippet>904</a>                <span class="comment">// FIXME: Check that a runtime table with ID 0 is enforced to
+<a href=#905 id=905 data-nosnippet>905</a>                // contain a zero entry row.
+<a href=#906 id=906 data-nosnippet>906</a>                </span><span class="kw">for </span>runtime_table <span class="kw">in </span>runtime_tables.iter() {
+<a href=#907 id=907 data-nosnippet>907</a>                    lookup_domain_size += runtime_table.len();
+<a href=#908 id=908 data-nosnippet>908</a>                }
+<a href=#909 id=909 data-nosnippet>909</a>            }
+<a href=#910 id=910 data-nosnippet>910</a>            <span class="comment">// And we add the built-in tables, depending on the features.
+<a href=#911 id=911 data-nosnippet>911</a>            </span><span class="kw">let </span>LookupFeatures { patterns, .. } = <span class="kw-2">&amp;</span>feature_flags.lookup_features;
+<a href=#912 id=912 data-nosnippet>912</a>            <span class="kw">let </span><span class="kw-2">mut </span>gate_lookup_tables = GateLookupTables {
+<a href=#913 id=913 data-nosnippet>913</a>                xor: <span class="bool-val">false</span>,
+<a href=#914 id=914 data-nosnippet>914</a>                range_check: <span class="bool-val">false</span>,
+<a href=#915 id=915 data-nosnippet>915</a>            };
+<a href=#916 id=916 data-nosnippet>916</a>            <span class="kw">for </span>pattern <span class="kw">in </span>patterns.into_iter() {
+<a href=#917 id=917 data-nosnippet>917</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(gate_table) = pattern.table() {
+<a href=#918 id=918 data-nosnippet>918</a>                    gate_lookup_tables[gate_table] = <span class="bool-val">true
+<a href=#919 id=919 data-nosnippet>919</a>                </span>}
 <a href=#920 id=920 data-nosnippet>920</a>            }
-<a href=#921 id=921 data-nosnippet>921</a>
-<a href=#922 id=922 data-nosnippet>922</a>            <span class="comment">// A dummy zero entry will be added if there is no table with ID
-<a href=#923 id=923 data-nosnippet>923</a>            // zero. Therefore we must count this in the size.
-<a href=#924 id=924 data-nosnippet>924</a>            </span><span class="kw">if </span>has_table_with_id_0 {
-<a href=#925 id=925 data-nosnippet>925</a>                lookup_domain_size
-<a href=#926 id=926 data-nosnippet>926</a>            } <span class="kw">else </span>{
-<a href=#927 id=927 data-nosnippet>927</a>                lookup_domain_size + <span class="number">1
-<a href=#928 id=928 data-nosnippet>928</a>            </span>}
-<a href=#929 id=929 data-nosnippet>929</a>        };
-<a href=#930 id=930 data-nosnippet>930</a>
-<a href=#931 id=931 data-nosnippet>931</a>        <span class="comment">//~ 1. Compute the number of zero-knowledge rows (`zk_rows`) that will be required to
-<a href=#932 id=932 data-nosnippet>932</a>        //~    achieve zero-knowledge. The following constraints apply to `zk_rows`:
-<a href=#933 id=933 data-nosnippet>933</a>        //~    * The number of chunks `c` results in an evaluation at `zeta` and `zeta * omega` in
-<a href=#934 id=934 data-nosnippet>934</a>        //~      each column for `2*c` evaluations per column, so `zk_rows &gt;= 2*c + 1`.
-<a href=#935 id=935 data-nosnippet>935</a>        //~    * The permutation argument interacts with the `c` chunks in parallel, so it is
-<a href=#936 id=936 data-nosnippet>936</a>        //~      possible to cross-correlate between them to compromise zero knowledge. We know
-<a href=#937 id=937 data-nosnippet>937</a>        //~      that there is some `c &gt;= 1` such that `zk_rows = 2*c + k` from the above. Thus,
-<a href=#938 id=938 data-nosnippet>938</a>        //~      attempting to find the evaluation at a new point, we find that:
-<a href=#939 id=939 data-nosnippet>939</a>        //~      * the evaluation of every witness column in the permutation contains `k` unknowns;
-<a href=#940 id=940 data-nosnippet>940</a>        //~      * the evaluations of the permutation argument aggregation has `k-1` unknowns;
-<a href=#941 id=941 data-nosnippet>941</a>        //~      * the permutation argument applies on all but `zk_rows - 3` rows;
-<a href=#942 id=942 data-nosnippet>942</a>        //~      * and thus we form the equation `zk_rows - 3 &lt; 7 * k + (k - 1)` to ensure that we
-<a href=#943 id=943 data-nosnippet>943</a>        //~        can construct fewer equations than we have unknowns.
-<a href=#944 id=944 data-nosnippet>944</a>        //~
-<a href=#945 id=945 data-nosnippet>945</a>        //~    This simplifies to `k &gt; (2 * c - 2) / 7`, giving `zk_rows &gt; (16 * c - 2) / 7`.
-<a href=#946 id=946 data-nosnippet>946</a>        //~    We can derive `c` from the `max_poly_size` supported by the URS, and thus we find
-<a href=#947 id=947 data-nosnippet>947</a>        //~    `zk_rows` and `domain_size` satisfying the fixpoint
-<a href=#948 id=948 data-nosnippet>948</a>        //~
-<a href=#949 id=949 data-nosnippet>949</a>        //~    ```text
-<a href=#950 id=950 data-nosnippet>950</a>        //~    zk_rows = (16 * (domain_size / max_poly_size) + 5) / 7
-<a href=#951 id=951 data-nosnippet>951</a>        //~    domain_size = circuit_size + zk_rows
-<a href=#952 id=952 data-nosnippet>952</a>        //~    ```
-<a href=#953 id=953 data-nosnippet>953</a>        //~
-<a href=#954 id=954 data-nosnippet>954</a>        </span><span class="kw">let </span>(zk_rows, domain_size_lower_bound) = {
-<a href=#955 id=955 data-nosnippet>955</a>            <span class="comment">// We add 1 to the lookup domain size because there is one element
-<a href=#956 id=956 data-nosnippet>956</a>            // used to close the permutation argument (the polynomial Z is of
-<a href=#957 id=957 data-nosnippet>957</a>            // degree n + 1 where n is the order of the subgroup H).
-<a href=#958 id=958 data-nosnippet>958</a>            </span><span class="kw">let </span>circuit_lower_bound = core::cmp::max(gates.len(), lookup_domain_size + <span class="number">1</span>);
-<a href=#959 id=959 data-nosnippet>959</a>            <span class="kw">let </span>get_domain_size_lower_bound = |zk_rows: u64| circuit_lower_bound + zk_rows <span class="kw">as </span>usize;
-<a href=#960 id=960 data-nosnippet>960</a>
-<a href=#961 id=961 data-nosnippet>961</a>            <span class="kw">let </span><span class="kw-2">mut </span>zk_rows = <span class="number">3</span>;
-<a href=#962 id=962 data-nosnippet>962</a>            <span class="kw">let </span><span class="kw-2">mut </span>domain_size_lower_bound = get_domain_size_lower_bound(zk_rows);
-<a href=#963 id=963 data-nosnippet>963</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(max_poly_size) = <span class="self">self</span>.max_poly_size {
-<a href=#964 id=964 data-nosnippet>964</a>                <span class="comment">// Iterate to find a fixed-point where zk_rows is sufficient for the number of
-<a href=#965 id=965 data-nosnippet>965</a>                // chunks that we use, and also does not cause us to overflow the domain size.
-<a href=#966 id=966 data-nosnippet>966</a>                // NB: We use iteration here rather than hard-coding an assumption about
-<a href=#967 id=967 data-nosnippet>967</a>                // `compute_size_of_domain`s internals. In practice, this will never be executed
-<a href=#968 id=968 data-nosnippet>968</a>                // more than once.
-<a href=#969 id=969 data-nosnippet>969</a>                </span><span class="kw">while </span>{
-<a href=#970 id=970 data-nosnippet>970</a>                    <span class="kw">let </span>domain_size = D::&lt;F&gt;::compute_size_of_domain(domain_size_lower_bound)
-<a href=#971 id=971 data-nosnippet>971</a>                        .ok_or(SetupError::DomainCreation(
-<a href=#972 id=972 data-nosnippet>972</a>                            DomainCreationError::DomainSizeFailed(domain_size_lower_bound),
-<a href=#973 id=973 data-nosnippet>973</a>                        ))<span class="question-mark">?</span>;
-<a href=#974 id=974 data-nosnippet>974</a>                    <span class="kw">let </span>num_chunks = <span class="kw">if </span>domain_size &lt; max_poly_size {
-<a href=#975 id=975 data-nosnippet>975</a>                        <span class="number">1
-<a href=#976 id=976 data-nosnippet>976</a>                    </span>} <span class="kw">else </span>{
-<a href=#977 id=977 data-nosnippet>977</a>                        domain_size / max_poly_size
-<a href=#978 id=978 data-nosnippet>978</a>                    };
-<a href=#979 id=979 data-nosnippet>979</a>                    zk_rows = (zk_rows_strict_lower_bound(num_chunks) + <span class="number">1</span>) <span class="kw">as </span>u64;
-<a href=#980 id=980 data-nosnippet>980</a>                    domain_size_lower_bound = get_domain_size_lower_bound(zk_rows);
-<a href=#981 id=981 data-nosnippet>981</a>                    domain_size &lt; domain_size_lower_bound
-<a href=#982 id=982 data-nosnippet>982</a>                } {}
-<a href=#983 id=983 data-nosnippet>983</a>            }
-<a href=#984 id=984 data-nosnippet>984</a>            (zk_rows, domain_size_lower_bound)
-<a href=#985 id=985 data-nosnippet>985</a>        };
-<a href=#986 id=986 data-nosnippet>986</a>
-<a href=#987 id=987 data-nosnippet>987</a>        <span class="comment">//~ 1. Create a domain for the circuit. That is,
-<a href=#988 id=988 data-nosnippet>988</a>        //~    compute the smallest subgroup of the field that
-<a href=#989 id=989 data-nosnippet>989</a>        //~    has order greater or equal to `n + zk_rows` elements.
-<a href=#990 id=990 data-nosnippet>990</a>        </span><span class="kw">let </span>domain = EvaluationDomains::&lt;F&gt;::create(domain_size_lower_bound)
-<a href=#991 id=991 data-nosnippet>991</a>            .map_err(SetupError::DomainCreation)<span class="question-mark">?</span>;
-<a href=#992 id=992 data-nosnippet>992</a>
-<a href=#993 id=993 data-nosnippet>993</a>        <span class="macro">assert!</span>(domain.d1.size &gt; zk_rows);
-<a href=#994 id=994 data-nosnippet>994</a>
-<a href=#995 id=995 data-nosnippet>995</a>        <span class="comment">//~ 1. Pad the circuit: add zero gates to reach the domain size.
-<a href=#996 id=996 data-nosnippet>996</a>        </span><span class="kw">let </span>d1_size = domain.d1.size();
-<a href=#997 id=997 data-nosnippet>997</a>        <span class="kw">let </span><span class="kw-2">mut </span>padding = (gates.len()..d1_size)
-<a href=#998 id=998 data-nosnippet>998</a>            .map(|i| {
-<a href=#999 id=999 data-nosnippet>999</a>                CircuitGate::&lt;F&gt;::zero(array::from_fn(|j| Wire {
-<a href=#1000 id=1000 data-nosnippet>1000</a>                    col: WIRES[j],
-<a href=#1001 id=1001 data-nosnippet>1001</a>                    row: i,
-<a href=#1002 id=1002 data-nosnippet>1002</a>                }))
-<a href=#1003 id=1003 data-nosnippet>1003</a>            })
-<a href=#1004 id=1004 data-nosnippet>1004</a>            .collect();
-<a href=#1005 id=1005 data-nosnippet>1005</a>        gates.append(<span class="kw-2">&amp;mut </span>padding);
-<a href=#1006 id=1006 data-nosnippet>1006</a>
-<a href=#1007 id=1007 data-nosnippet>1007</a>        <span class="comment">//~ 1. sample the `PERMUTS` shifts.
-<a href=#1008 id=1008 data-nosnippet>1008</a>        </span><span class="kw">let </span>shifts = Shifts::new(<span class="kw-2">&amp;</span>domain.d1);
+<a href=#921 id=921 data-nosnippet>921</a>            <span class="kw">for </span>gate_table <span class="kw">in </span>gate_lookup_tables.into_iter() {
+<a href=#922 id=922 data-nosnippet>922</a>                lookup_domain_size += gate_table.table_size();
+<a href=#923 id=923 data-nosnippet>923</a>            }
+<a href=#924 id=924 data-nosnippet>924</a>
+<a href=#925 id=925 data-nosnippet>925</a>            <span class="comment">// A dummy zero entry will be added if there is no table with ID
+<a href=#926 id=926 data-nosnippet>926</a>            // zero. Therefore we must count this in the size.
+<a href=#927 id=927 data-nosnippet>927</a>            </span><span class="kw">if </span>has_table_with_id_0 {
+<a href=#928 id=928 data-nosnippet>928</a>                lookup_domain_size
+<a href=#929 id=929 data-nosnippet>929</a>            } <span class="kw">else </span>{
+<a href=#930 id=930 data-nosnippet>930</a>                lookup_domain_size + <span class="number">1
+<a href=#931 id=931 data-nosnippet>931</a>            </span>}
+<a href=#932 id=932 data-nosnippet>932</a>        };
+<a href=#933 id=933 data-nosnippet>933</a>
+<a href=#934 id=934 data-nosnippet>934</a>        <span class="comment">//~ 1. Compute the number of zero-knowledge rows (`zk_rows`) that will be required to
+<a href=#935 id=935 data-nosnippet>935</a>        //~    achieve zero-knowledge. The following constraints apply to `zk_rows`:
+<a href=#936 id=936 data-nosnippet>936</a>        //~    * The number of chunks `c` results in an evaluation at `zeta` and `zeta * omega` in
+<a href=#937 id=937 data-nosnippet>937</a>        //~      each column for `2*c` evaluations per column, so `zk_rows &gt;= 2*c + 1`.
+<a href=#938 id=938 data-nosnippet>938</a>        //~    * The permutation argument interacts with the `c` chunks in parallel, so it is
+<a href=#939 id=939 data-nosnippet>939</a>        //~      possible to cross-correlate between them to compromise zero knowledge. We know
+<a href=#940 id=940 data-nosnippet>940</a>        //~      that there is some `c &gt;= 1` such that `zk_rows = 2*c + k` from the above. Thus,
+<a href=#941 id=941 data-nosnippet>941</a>        //~      attempting to find the evaluation at a new point, we find that:
+<a href=#942 id=942 data-nosnippet>942</a>        //~      * the evaluation of every witness column in the permutation contains `k` unknowns;
+<a href=#943 id=943 data-nosnippet>943</a>        //~      * the evaluations of the permutation argument aggregation has `k-1` unknowns;
+<a href=#944 id=944 data-nosnippet>944</a>        //~      * the permutation argument applies on all but `zk_rows - 3` rows;
+<a href=#945 id=945 data-nosnippet>945</a>        //~      * and thus we form the equation `zk_rows - 3 &lt; 7 * k + (k - 1)` to ensure that we
+<a href=#946 id=946 data-nosnippet>946</a>        //~        can construct fewer equations than we have unknowns.
+<a href=#947 id=947 data-nosnippet>947</a>        //~
+<a href=#948 id=948 data-nosnippet>948</a>        //~    This simplifies to `k &gt; (2 * c - 2) / 7`, giving `zk_rows &gt; (16 * c - 2) / 7`.
+<a href=#949 id=949 data-nosnippet>949</a>        //~    We can derive `c` from the `max_poly_size` supported by the URS, and thus we find
+<a href=#950 id=950 data-nosnippet>950</a>        //~    `zk_rows` and `domain_size` satisfying the fixpoint
+<a href=#951 id=951 data-nosnippet>951</a>        //~
+<a href=#952 id=952 data-nosnippet>952</a>        //~    ```text
+<a href=#953 id=953 data-nosnippet>953</a>        //~    zk_rows = (16 * (domain_size / max_poly_size) + 5) / 7
+<a href=#954 id=954 data-nosnippet>954</a>        //~    domain_size = circuit_size + zk_rows
+<a href=#955 id=955 data-nosnippet>955</a>        //~    ```
+<a href=#956 id=956 data-nosnippet>956</a>        //~
+<a href=#957 id=957 data-nosnippet>957</a>        </span><span class="kw">let </span>(zk_rows, domain_size_lower_bound) = {
+<a href=#958 id=958 data-nosnippet>958</a>            <span class="comment">// We add 1 to the lookup domain size because there is one element
+<a href=#959 id=959 data-nosnippet>959</a>            // used to close the permutation argument (the polynomial Z is of
+<a href=#960 id=960 data-nosnippet>960</a>            // degree n + 1 where n is the order of the subgroup H).
+<a href=#961 id=961 data-nosnippet>961</a>            </span><span class="kw">let </span>circuit_lower_bound = core::cmp::max(gates.len(), lookup_domain_size + <span class="number">1</span>);
+<a href=#962 id=962 data-nosnippet>962</a>            <span class="kw">let </span>get_domain_size_lower_bound = |zk_rows: u64| circuit_lower_bound + zk_rows <span class="kw">as </span>usize;
+<a href=#963 id=963 data-nosnippet>963</a>
+<a href=#964 id=964 data-nosnippet>964</a>            <span class="kw">let </span><span class="kw-2">mut </span>zk_rows = <span class="number">3</span>;
+<a href=#965 id=965 data-nosnippet>965</a>            <span class="kw">let </span><span class="kw-2">mut </span>domain_size_lower_bound = get_domain_size_lower_bound(zk_rows);
+<a href=#966 id=966 data-nosnippet>966</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(max_poly_size) = <span class="self">self</span>.max_poly_size {
+<a href=#967 id=967 data-nosnippet>967</a>                <span class="comment">// Iterate to find a fixed-point where zk_rows is sufficient for the number of
+<a href=#968 id=968 data-nosnippet>968</a>                // chunks that we use, and also does not cause us to overflow the domain size.
+<a href=#969 id=969 data-nosnippet>969</a>                // NB: We use iteration here rather than hard-coding an assumption about
+<a href=#970 id=970 data-nosnippet>970</a>                // `compute_size_of_domain`s internals. In practice, this will never be executed
+<a href=#971 id=971 data-nosnippet>971</a>                // more than once.
+<a href=#972 id=972 data-nosnippet>972</a>                </span><span class="kw">while </span>{
+<a href=#973 id=973 data-nosnippet>973</a>                    <span class="kw">let </span>domain_size = D::&lt;F&gt;::compute_size_of_domain(domain_size_lower_bound)
+<a href=#974 id=974 data-nosnippet>974</a>                        .ok_or(SetupError::DomainCreation(
+<a href=#975 id=975 data-nosnippet>975</a>                            DomainCreationError::DomainSizeFailed(domain_size_lower_bound),
+<a href=#976 id=976 data-nosnippet>976</a>                        ))<span class="question-mark">?</span>;
+<a href=#977 id=977 data-nosnippet>977</a>                    <span class="kw">let </span>num_chunks = <span class="kw">if </span>domain_size &lt; max_poly_size {
+<a href=#978 id=978 data-nosnippet>978</a>                        <span class="number">1
+<a href=#979 id=979 data-nosnippet>979</a>                    </span>} <span class="kw">else </span>{
+<a href=#980 id=980 data-nosnippet>980</a>                        domain_size / max_poly_size
+<a href=#981 id=981 data-nosnippet>981</a>                    };
+<a href=#982 id=982 data-nosnippet>982</a>                    zk_rows = (zk_rows_strict_lower_bound(num_chunks) + <span class="number">1</span>) <span class="kw">as </span>u64;
+<a href=#983 id=983 data-nosnippet>983</a>                    domain_size_lower_bound = get_domain_size_lower_bound(zk_rows);
+<a href=#984 id=984 data-nosnippet>984</a>                    domain_size &lt; domain_size_lower_bound
+<a href=#985 id=985 data-nosnippet>985</a>                } {}
+<a href=#986 id=986 data-nosnippet>986</a>            }
+<a href=#987 id=987 data-nosnippet>987</a>            (zk_rows, domain_size_lower_bound)
+<a href=#988 id=988 data-nosnippet>988</a>        };
+<a href=#989 id=989 data-nosnippet>989</a>
+<a href=#990 id=990 data-nosnippet>990</a>        <span class="comment">//~ 1. Create a domain for the circuit. That is,
+<a href=#991 id=991 data-nosnippet>991</a>        //~    compute the smallest subgroup of the field that
+<a href=#992 id=992 data-nosnippet>992</a>        //~    has order greater or equal to `n + zk_rows` elements.
+<a href=#993 id=993 data-nosnippet>993</a>        </span><span class="kw">let </span>domain = EvaluationDomains::&lt;F&gt;::create(domain_size_lower_bound)
+<a href=#994 id=994 data-nosnippet>994</a>            .map_err(SetupError::DomainCreation)<span class="question-mark">?</span>;
+<a href=#995 id=995 data-nosnippet>995</a>
+<a href=#996 id=996 data-nosnippet>996</a>        <span class="macro">assert!</span>(domain.d1.size &gt; zk_rows);
+<a href=#997 id=997 data-nosnippet>997</a>
+<a href=#998 id=998 data-nosnippet>998</a>        <span class="comment">//~ 1. Pad the circuit: add zero gates to reach the domain size.
+<a href=#999 id=999 data-nosnippet>999</a>        </span><span class="kw">let </span>d1_size = domain.d1.size();
+<a href=#1000 id=1000 data-nosnippet>1000</a>        <span class="kw">let </span><span class="kw-2">mut </span>padding = (gates.len()..d1_size)
+<a href=#1001 id=1001 data-nosnippet>1001</a>            .map(|i| {
+<a href=#1002 id=1002 data-nosnippet>1002</a>                CircuitGate::&lt;F&gt;::zero(array::from_fn(|j| Wire {
+<a href=#1003 id=1003 data-nosnippet>1003</a>                    col: WIRES[j],
+<a href=#1004 id=1004 data-nosnippet>1004</a>                    row: i,
+<a href=#1005 id=1005 data-nosnippet>1005</a>                }))
+<a href=#1006 id=1006 data-nosnippet>1006</a>            })
+<a href=#1007 id=1007 data-nosnippet>1007</a>            .collect();
+<a href=#1008 id=1008 data-nosnippet>1008</a>        gates.append(<span class="kw-2">&amp;mut </span>padding);
 <a href=#1009 id=1009 data-nosnippet>1009</a>
-<a href=#1010 id=1010 data-nosnippet>1010</a>        <span class="comment">//
-<a href=#1011 id=1011 data-nosnippet>1011</a>        // Lookup
-<a href=#1012 id=1012 data-nosnippet>1012</a>        // ------
-<a href=#1013 id=1013 data-nosnippet>1013</a>        </span><span class="kw">let </span>gates = Arc::new(gates);
-<a href=#1014 id=1014 data-nosnippet>1014</a>        <span class="kw">let </span>gates_clone = Arc::clone(<span class="kw-2">&amp;</span>gates);
-<a href=#1015 id=1015 data-nosnippet>1015</a>        <span class="kw">let </span>lookup_constraint_system = LazyCache::new(<span class="kw">move </span>|| {
-<a href=#1016 id=1016 data-nosnippet>1016</a>            LookupConstraintSystem::create(
-<a href=#1017 id=1017 data-nosnippet>1017</a>                <span class="kw-2">&amp;</span>gates_clone,
-<a href=#1018 id=1018 data-nosnippet>1018</a>                <span class="self">self</span>.lookup_tables,
-<a href=#1019 id=1019 data-nosnippet>1019</a>                <span class="self">self</span>.runtime_tables,
-<a href=#1020 id=1020 data-nosnippet>1020</a>                <span class="kw-2">&amp;</span>domain,
-<a href=#1021 id=1021 data-nosnippet>1021</a>                zk_rows <span class="kw">as </span>usize,
-<a href=#1022 id=1022 data-nosnippet>1022</a>            )
-<a href=#1023 id=1023 data-nosnippet>1023</a>        });
-<a href=#1024 id=1024 data-nosnippet>1024</a>        <span class="kw">if </span>!<span class="self">self</span>.lazy_mode {
-<a href=#1025 id=1025 data-nosnippet>1025</a>            <span class="comment">// Precompute and map setup error
-<a href=#1026 id=1026 data-nosnippet>1026</a>            </span>lookup_constraint_system
-<a href=#1027 id=1027 data-nosnippet>1027</a>                .try_get_or_err()
-<a href=#1028 id=1028 data-nosnippet>1028</a>                .map_err(SetupError::from)<span class="question-mark">?</span>;
-<a href=#1029 id=1029 data-nosnippet>1029</a>        }
-<a href=#1030 id=1030 data-nosnippet>1030</a>
-<a href=#1031 id=1031 data-nosnippet>1031</a>        <span class="kw">let </span>sid = shifts.map[<span class="number">0</span>].clone();
-<a href=#1032 id=1032 data-nosnippet>1032</a>
-<a href=#1033 id=1033 data-nosnippet>1033</a>        <span class="comment">// TODO: remove endo as a field
-<a href=#1034 id=1034 data-nosnippet>1034</a>        </span><span class="kw">let </span>endo = F::zero();
+<a href=#1010 id=1010 data-nosnippet>1010</a>        <span class="comment">//~ 1. sample the `PERMUTS` shifts.
+<a href=#1011 id=1011 data-nosnippet>1011</a>        </span><span class="kw">let </span>shifts = Shifts::new(<span class="kw-2">&amp;</span>domain.d1);
+<a href=#1012 id=1012 data-nosnippet>1012</a>
+<a href=#1013 id=1013 data-nosnippet>1013</a>        <span class="comment">//
+<a href=#1014 id=1014 data-nosnippet>1014</a>        // Lookup
+<a href=#1015 id=1015 data-nosnippet>1015</a>        // ------
+<a href=#1016 id=1016 data-nosnippet>1016</a>        </span><span class="kw">let </span>gates = Arc::new(gates);
+<a href=#1017 id=1017 data-nosnippet>1017</a>        <span class="kw">let </span>gates_clone = Arc::clone(<span class="kw-2">&amp;</span>gates);
+<a href=#1018 id=1018 data-nosnippet>1018</a>        <span class="kw">let </span>lookup_constraint_system = LazyCache::new(<span class="kw">move </span>|| {
+<a href=#1019 id=1019 data-nosnippet>1019</a>            LookupConstraintSystem::create(
+<a href=#1020 id=1020 data-nosnippet>1020</a>                <span class="kw-2">&amp;</span>gates_clone,
+<a href=#1021 id=1021 data-nosnippet>1021</a>                <span class="self">self</span>.lookup_tables,
+<a href=#1022 id=1022 data-nosnippet>1022</a>                <span class="self">self</span>.runtime_tables,
+<a href=#1023 id=1023 data-nosnippet>1023</a>                <span class="kw-2">&amp;</span>domain,
+<a href=#1024 id=1024 data-nosnippet>1024</a>                zk_rows <span class="kw">as </span>usize,
+<a href=#1025 id=1025 data-nosnippet>1025</a>            )
+<a href=#1026 id=1026 data-nosnippet>1026</a>        });
+<a href=#1027 id=1027 data-nosnippet>1027</a>        <span class="kw">if </span>!<span class="self">self</span>.lazy_mode {
+<a href=#1028 id=1028 data-nosnippet>1028</a>            <span class="comment">// Precompute and map setup error
+<a href=#1029 id=1029 data-nosnippet>1029</a>            </span>lookup_constraint_system
+<a href=#1030 id=1030 data-nosnippet>1030</a>                .try_get_or_err()
+<a href=#1031 id=1031 data-nosnippet>1031</a>                .map_err(SetupError::from)<span class="question-mark">?</span>;
+<a href=#1032 id=1032 data-nosnippet>1032</a>        }
+<a href=#1033 id=1033 data-nosnippet>1033</a>
+<a href=#1034 id=1034 data-nosnippet>1034</a>        <span class="kw">let </span>sid = shifts.map[<span class="number">0</span>].clone();
 <a href=#1035 id=1035 data-nosnippet>1035</a>
-<a href=#1036 id=1036 data-nosnippet>1036</a>        <span class="kw">let </span>precomputations = <span class="kw">if </span>!<span class="self">self</span>.lazy_mode {
-<a href=#1037 id=1037 data-nosnippet>1037</a>            <span class="kw">match </span><span class="self">self</span>.precomputations {
-<a href=#1038 id=1038 data-nosnippet>1038</a>                <span class="prelude-val">Some</span>(t) =&gt; LazyCache::preinit(t),
-<a href=#1039 id=1039 data-nosnippet>1039</a>                <span class="prelude-val">None </span>=&gt; LazyCache::preinit(Arc::new(
-<a href=#1040 id=1040 data-nosnippet>1040</a>                    DomainConstantEvaluations::create(domain, zk_rows).unwrap(),
-<a href=#1041 id=1041 data-nosnippet>1041</a>                )),
-<a href=#1042 id=1042 data-nosnippet>1042</a>            }
-<a href=#1043 id=1043 data-nosnippet>1043</a>        } <span class="kw">else </span>{
-<a href=#1044 id=1044 data-nosnippet>1044</a>            LazyCache::new(<span class="kw">move </span>|| {
-<a href=#1045 id=1045 data-nosnippet>1045</a>                Arc::new(DomainConstantEvaluations::create(domain, zk_rows).unwrap())
-<a href=#1046 id=1046 data-nosnippet>1046</a>            })
-<a href=#1047 id=1047 data-nosnippet>1047</a>        };
-<a href=#1048 id=1048 data-nosnippet>1048</a>
-<a href=#1049 id=1049 data-nosnippet>1049</a>        <span class="kw">let </span>constraints = ConstraintSystem {
-<a href=#1050 id=1050 data-nosnippet>1050</a>            domain,
-<a href=#1051 id=1051 data-nosnippet>1051</a>            public: <span class="self">self</span>.public,
-<a href=#1052 id=1052 data-nosnippet>1052</a>            prev_challenges: <span class="self">self</span>.prev_challenges,
-<a href=#1053 id=1053 data-nosnippet>1053</a>            sid,
-<a href=#1054 id=1054 data-nosnippet>1054</a>            gates,
-<a href=#1055 id=1055 data-nosnippet>1055</a>            shift: shifts.shifts,
-<a href=#1056 id=1056 data-nosnippet>1056</a>            endo,
-<a href=#1057 id=1057 data-nosnippet>1057</a>            zk_rows,
-<a href=#1058 id=1058 data-nosnippet>1058</a>            <span class="comment">//fr_sponge_params: self.sponge_params,
-<a href=#1059 id=1059 data-nosnippet>1059</a>            </span>lookup_constraint_system: Arc::new(lookup_constraint_system),
-<a href=#1060 id=1060 data-nosnippet>1060</a>            feature_flags,
-<a href=#1061 id=1061 data-nosnippet>1061</a>            precomputations: Arc::new(precomputations),
-<a href=#1062 id=1062 data-nosnippet>1062</a>            disable_gates_checks: <span class="self">self</span>.disable_gates_checks,
-<a href=#1063 id=1063 data-nosnippet>1063</a>        };
-<a href=#1064 id=1064 data-nosnippet>1064</a>
-<a href=#1065 id=1065 data-nosnippet>1065</a>        <span class="prelude-val">Ok</span>(constraints)
-<a href=#1066 id=1066 data-nosnippet>1066</a>    }
-<a href=#1067 id=1067 data-nosnippet>1067</a>}
+<a href=#1036 id=1036 data-nosnippet>1036</a>        <span class="comment">// TODO: remove endo as a field
+<a href=#1037 id=1037 data-nosnippet>1037</a>        </span><span class="kw">let </span>endo = F::zero();
+<a href=#1038 id=1038 data-nosnippet>1038</a>
+<a href=#1039 id=1039 data-nosnippet>1039</a>        <span class="kw">let </span>precomputations = <span class="kw">if </span>!<span class="self">self</span>.lazy_mode {
+<a href=#1040 id=1040 data-nosnippet>1040</a>            <span class="kw">match </span><span class="self">self</span>.precomputations {
+<a href=#1041 id=1041 data-nosnippet>1041</a>                <span class="prelude-val">Some</span>(t) =&gt; LazyCache::preinit(t),
+<a href=#1042 id=1042 data-nosnippet>1042</a>                <span class="prelude-val">None </span>=&gt; LazyCache::preinit(Arc::new(
+<a href=#1043 id=1043 data-nosnippet>1043</a>                    DomainConstantEvaluations::create(domain, zk_rows).unwrap(),
+<a href=#1044 id=1044 data-nosnippet>1044</a>                )),
+<a href=#1045 id=1045 data-nosnippet>1045</a>            }
+<a href=#1046 id=1046 data-nosnippet>1046</a>        } <span class="kw">else </span>{
+<a href=#1047 id=1047 data-nosnippet>1047</a>            LazyCache::new(<span class="kw">move </span>|| {
+<a href=#1048 id=1048 data-nosnippet>1048</a>                Arc::new(DomainConstantEvaluations::create(domain, zk_rows).unwrap())
+<a href=#1049 id=1049 data-nosnippet>1049</a>            })
+<a href=#1050 id=1050 data-nosnippet>1050</a>        };
+<a href=#1051 id=1051 data-nosnippet>1051</a>
+<a href=#1052 id=1052 data-nosnippet>1052</a>        <span class="kw">let </span>constraints = ConstraintSystem {
+<a href=#1053 id=1053 data-nosnippet>1053</a>            domain,
+<a href=#1054 id=1054 data-nosnippet>1054</a>            public: <span class="self">self</span>.public,
+<a href=#1055 id=1055 data-nosnippet>1055</a>            prev_challenges: <span class="self">self</span>.prev_challenges,
+<a href=#1056 id=1056 data-nosnippet>1056</a>            sid,
+<a href=#1057 id=1057 data-nosnippet>1057</a>            gates,
+<a href=#1058 id=1058 data-nosnippet>1058</a>            shift: shifts.shifts,
+<a href=#1059 id=1059 data-nosnippet>1059</a>            endo,
+<a href=#1060 id=1060 data-nosnippet>1060</a>            zk_rows,
+<a href=#1061 id=1061 data-nosnippet>1061</a>            <span class="comment">//fr_sponge_params: self.sponge_params,
+<a href=#1062 id=1062 data-nosnippet>1062</a>            </span>lookup_constraint_system: Arc::new(lookup_constraint_system),
+<a href=#1063 id=1063 data-nosnippet>1063</a>            feature_flags,
+<a href=#1064 id=1064 data-nosnippet>1064</a>            precomputations: Arc::new(precomputations),
+<a href=#1065 id=1065 data-nosnippet>1065</a>            disable_gates_checks: <span class="self">self</span>.disable_gates_checks,
+<a href=#1066 id=1066 data-nosnippet>1066</a>        };
+<a href=#1067 id=1067 data-nosnippet>1067</a>
+<a href=#1068 id=1068 data-nosnippet>1068</a>        <span class="prelude-val">Ok</span>(constraints)
+<a href=#1069 id=1069 data-nosnippet>1069</a>    }
+<a href=#1070 id=1070 data-nosnippet>1070</a>}
 </code></pre></div></section></main></body></html>

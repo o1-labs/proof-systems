@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `poly-commitment/src/commitment.rs`."><title>commitment.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-2eb46af5.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="poly_commitment" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (4fa80a5e7 2026-01-05)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-7bab91a1.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">poly_commitment/</div>commitment.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `poly-commitment/src/commitment.rs`."><title>commitment.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-2eb46af5.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="poly_commitment" data-themes="" data-resource-suffix="" data-rustdoc-version="1.94.0-nightly (0aced202c 2026-01-06)" data-channel="nightly" data-search-js="search-9e2438ea.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-7bab91a1.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-ffcac47a.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">poly_commitment/</div>commitment.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 <a href=#2 id=2 data-nosnippet>2</a>//! The following functionality is implemented
 <a href=#3 id=3 data-nosnippet>3</a>//!
 <a href=#4 id=4 data-nosnippet>4</a>//! 1. Commit to polynomial with its max degree
@@ -393,324 +393,342 @@
 <a href=#393 id=393 data-nosnippet>393</a>    s
 <a href=#394 id=394 data-nosnippet>394</a>}
 <a href=#395 id=395 data-nosnippet>395</a>
-<a href=#396 id=396 data-nosnippet>396</a><span class="kw">pub fn </span>squeeze_prechallenge&lt;Fq: Field, G, Fr: Field, EFqSponge: FqSponge&lt;Fq, G, Fr&gt;&gt;(
-<a href=#397 id=397 data-nosnippet>397</a>    sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
-<a href=#398 id=398 data-nosnippet>398</a>) -&gt; ScalarChallenge&lt;Fr&gt; {
-<a href=#399 id=399 data-nosnippet>399</a>    ScalarChallenge(sponge.challenge())
-<a href=#400 id=400 data-nosnippet>400</a>}
-<a href=#401 id=401 data-nosnippet>401</a>
-<a href=#402 id=402 data-nosnippet>402</a><span class="kw">pub fn </span>squeeze_challenge&lt;Fq: Field, G, Fr: PrimeField, EFqSponge: FqSponge&lt;Fq, G, Fr&gt;&gt;(
-<a href=#403 id=403 data-nosnippet>403</a>    endo_r: <span class="kw-2">&amp;</span>Fr,
-<a href=#404 id=404 data-nosnippet>404</a>    sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
-<a href=#405 id=405 data-nosnippet>405</a>) -&gt; Fr {
-<a href=#406 id=406 data-nosnippet>406</a>    squeeze_prechallenge(sponge).to_field(endo_r)
-<a href=#407 id=407 data-nosnippet>407</a>}
-<a href=#408 id=408 data-nosnippet>408</a>
-<a href=#409 id=409 data-nosnippet>409</a><span class="kw">pub fn </span>absorb_commitment&lt;Fq: Field, G: Clone, Fr: PrimeField, EFqSponge: FqSponge&lt;Fq, G, Fr&gt;&gt;(
-<a href=#410 id=410 data-nosnippet>410</a>    sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
-<a href=#411 id=411 data-nosnippet>411</a>    commitment: <span class="kw-2">&amp;</span>PolyComm&lt;G&gt;,
-<a href=#412 id=412 data-nosnippet>412</a>) {
-<a href=#413 id=413 data-nosnippet>413</a>    sponge.absorb_g(<span class="kw-2">&amp;</span>commitment.chunks);
-<a href=#414 id=414 data-nosnippet>414</a>}
-<a href=#415 id=415 data-nosnippet>415</a>
-<a href=#416 id=416 data-nosnippet>416</a><span class="doccomment">/// A useful trait extending AffineRepr for commitments.
-<a href=#417 id=417 data-nosnippet>417</a>/// Unfortunately, we can't specify that `AffineRepr&lt;BaseField : PrimeField&gt;`,
-<a href=#418 id=418 data-nosnippet>418</a>/// so usage of this traits must manually bind `G::BaseField: PrimeField`.
-<a href=#419 id=419 data-nosnippet>419</a></span><span class="kw">pub trait </span>CommitmentCurve: AffineRepr + Sub&lt;Output = <span class="self">Self</span>::Group&gt; {
-<a href=#420 id=420 data-nosnippet>420</a>    <span class="kw">type </span>Params: SWCurveConfig;
-<a href=#421 id=421 data-nosnippet>421</a>    <span class="kw">type </span>Map: GroupMap&lt;<span class="self">Self</span>::BaseField&gt;;
-<a href=#422 id=422 data-nosnippet>422</a>
-<a href=#423 id=423 data-nosnippet>423</a>    <span class="kw">fn </span>to_coordinates(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::BaseField)&gt;;
-<a href=#424 id=424 data-nosnippet>424</a>    <span class="kw">fn </span>of_coordinates(x: <span class="self">Self</span>::BaseField, y: <span class="self">Self</span>::BaseField) -&gt; <span class="self">Self</span>;
-<a href=#425 id=425 data-nosnippet>425</a>}
-<a href=#426 id=426 data-nosnippet>426</a>
-<a href=#427 id=427 data-nosnippet>427</a><span class="doccomment">/// A trait extending CommitmentCurve for endomorphisms.
-<a href=#428 id=428 data-nosnippet>428</a>/// Unfortunately, we can't specify that `AffineRepr&lt;BaseField : PrimeField&gt;`,
-<a href=#429 id=429 data-nosnippet>429</a>/// so usage of this traits must manually bind `G::BaseField: PrimeField`.
-<a href=#430 id=430 data-nosnippet>430</a></span><span class="kw">pub trait </span>EndoCurve: CommitmentCurve {
-<a href=#431 id=431 data-nosnippet>431</a>    <span class="doccomment">/// Combine where x1 = one
-<a href=#432 id=432 data-nosnippet>432</a>    </span><span class="kw">fn </span>combine_one(g1: <span class="kw-2">&amp;</span>[<span class="self">Self</span>], g2: <span class="kw-2">&amp;</span>[<span class="self">Self</span>], x2: <span class="self">Self</span>::ScalarField) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
-<a href=#433 id=433 data-nosnippet>433</a>        <span class="kw">crate</span>::combine::window_combine(g1, g2, <span class="self">Self</span>::ScalarField::one(), x2)
-<a href=#434 id=434 data-nosnippet>434</a>    }
-<a href=#435 id=435 data-nosnippet>435</a>
-<a href=#436 id=436 data-nosnippet>436</a>    <span class="doccomment">/// Combine where x1 = one
-<a href=#437 id=437 data-nosnippet>437</a>    </span><span class="kw">fn </span>combine_one_endo(
-<a href=#438 id=438 data-nosnippet>438</a>        endo_r: <span class="self">Self</span>::ScalarField,
-<a href=#439 id=439 data-nosnippet>439</a>        _endo_q: <span class="self">Self</span>::BaseField,
-<a href=#440 id=440 data-nosnippet>440</a>        g1: <span class="kw-2">&amp;</span>[<span class="self">Self</span>],
-<a href=#441 id=441 data-nosnippet>441</a>        g2: <span class="kw-2">&amp;</span>[<span class="self">Self</span>],
-<a href=#442 id=442 data-nosnippet>442</a>        x2: ScalarChallenge&lt;<span class="self">Self</span>::ScalarField&gt;,
-<a href=#443 id=443 data-nosnippet>443</a>    ) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
-<a href=#444 id=444 data-nosnippet>444</a>        <span class="kw">crate</span>::combine::window_combine(g1, g2, <span class="self">Self</span>::ScalarField::one(), x2.to_field(<span class="kw-2">&amp;</span>endo_r))
-<a href=#445 id=445 data-nosnippet>445</a>    }
-<a href=#446 id=446 data-nosnippet>446</a>
-<a href=#447 id=447 data-nosnippet>447</a>    <span class="kw">fn </span>combine(
-<a href=#448 id=448 data-nosnippet>448</a>        g1: <span class="kw-2">&amp;</span>[<span class="self">Self</span>],
-<a href=#449 id=449 data-nosnippet>449</a>        g2: <span class="kw-2">&amp;</span>[<span class="self">Self</span>],
-<a href=#450 id=450 data-nosnippet>450</a>        x1: <span class="self">Self</span>::ScalarField,
-<a href=#451 id=451 data-nosnippet>451</a>        x2: <span class="self">Self</span>::ScalarField,
-<a href=#452 id=452 data-nosnippet>452</a>    ) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
-<a href=#453 id=453 data-nosnippet>453</a>        <span class="kw">crate</span>::combine::window_combine(g1, g2, x1, x2)
-<a href=#454 id=454 data-nosnippet>454</a>    }
-<a href=#455 id=455 data-nosnippet>455</a>}
-<a href=#456 id=456 data-nosnippet>456</a>
-<a href=#457 id=457 data-nosnippet>457</a><span class="kw">impl</span>&lt;P: SWCurveConfig + Clone&gt; CommitmentCurve <span class="kw">for </span>SWJAffine&lt;P&gt; {
-<a href=#458 id=458 data-nosnippet>458</a>    <span class="kw">type </span>Params = P;
-<a href=#459 id=459 data-nosnippet>459</a>    <span class="kw">type </span>Map = BWParameters&lt;P&gt;;
-<a href=#460 id=460 data-nosnippet>460</a>
-<a href=#461 id=461 data-nosnippet>461</a>    <span class="kw">fn </span>to_coordinates(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::BaseField)&gt; {
-<a href=#462 id=462 data-nosnippet>462</a>        <span class="kw">if </span><span class="self">self</span>.infinity {
-<a href=#463 id=463 data-nosnippet>463</a>            <span class="prelude-val">None
-<a href=#464 id=464 data-nosnippet>464</a>        </span>} <span class="kw">else </span>{
-<a href=#465 id=465 data-nosnippet>465</a>            <span class="prelude-val">Some</span>((<span class="self">self</span>.x, <span class="self">self</span>.y))
-<a href=#466 id=466 data-nosnippet>466</a>        }
-<a href=#467 id=467 data-nosnippet>467</a>    }
-<a href=#468 id=468 data-nosnippet>468</a>
-<a href=#469 id=469 data-nosnippet>469</a>    <span class="kw">fn </span>of_coordinates(x: P::BaseField, y: P::BaseField) -&gt; SWJAffine&lt;P&gt; {
-<a href=#470 id=470 data-nosnippet>470</a>        SWJAffine::&lt;P&gt;::new_unchecked(x, y)
-<a href=#471 id=471 data-nosnippet>471</a>    }
-<a href=#472 id=472 data-nosnippet>472</a>}
-<a href=#473 id=473 data-nosnippet>473</a>
-<a href=#474 id=474 data-nosnippet>474</a><span class="kw">impl</span>&lt;P: SWCurveConfig + Clone&gt; EndoCurve <span class="kw">for </span>SWJAffine&lt;P&gt; {
-<a href=#475 id=475 data-nosnippet>475</a>    <span class="kw">fn </span>combine_one(g1: <span class="kw-2">&amp;</span>[<span class="self">Self</span>], g2: <span class="kw-2">&amp;</span>[<span class="self">Self</span>], x2: <span class="self">Self</span>::ScalarField) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
-<a href=#476 id=476 data-nosnippet>476</a>        <span class="kw">crate</span>::combine::affine_window_combine_one(g1, g2, x2)
-<a href=#477 id=477 data-nosnippet>477</a>    }
+<a href=#396 id=396 data-nosnippet>396</a><span class="kw">pub fn </span>squeeze_prechallenge&lt;
+<a href=#397 id=397 data-nosnippet>397</a>    <span class="kw">const </span>FULL_ROUNDS: usize,
+<a href=#398 id=398 data-nosnippet>398</a>    Fq: Field,
+<a href=#399 id=399 data-nosnippet>399</a>    G,
+<a href=#400 id=400 data-nosnippet>400</a>    Fr: Field,
+<a href=#401 id=401 data-nosnippet>401</a>    EFqSponge: FqSponge&lt;Fq, G, Fr, FULL_ROUNDS&gt;,
+<a href=#402 id=402 data-nosnippet>402</a>&gt;(
+<a href=#403 id=403 data-nosnippet>403</a>    sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
+<a href=#404 id=404 data-nosnippet>404</a>) -&gt; ScalarChallenge&lt;Fr&gt; {
+<a href=#405 id=405 data-nosnippet>405</a>    ScalarChallenge(sponge.challenge())
+<a href=#406 id=406 data-nosnippet>406</a>}
+<a href=#407 id=407 data-nosnippet>407</a>
+<a href=#408 id=408 data-nosnippet>408</a><span class="kw">pub fn </span>squeeze_challenge&lt;
+<a href=#409 id=409 data-nosnippet>409</a>    <span class="kw">const </span>FULL_ROUNDS: usize,
+<a href=#410 id=410 data-nosnippet>410</a>    Fq: Field,
+<a href=#411 id=411 data-nosnippet>411</a>    G,
+<a href=#412 id=412 data-nosnippet>412</a>    Fr: PrimeField,
+<a href=#413 id=413 data-nosnippet>413</a>    EFqSponge: FqSponge&lt;Fq, G, Fr, FULL_ROUNDS&gt;,
+<a href=#414 id=414 data-nosnippet>414</a>&gt;(
+<a href=#415 id=415 data-nosnippet>415</a>    endo_r: <span class="kw-2">&amp;</span>Fr,
+<a href=#416 id=416 data-nosnippet>416</a>    sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
+<a href=#417 id=417 data-nosnippet>417</a>) -&gt; Fr {
+<a href=#418 id=418 data-nosnippet>418</a>    squeeze_prechallenge(sponge).to_field(endo_r)
+<a href=#419 id=419 data-nosnippet>419</a>}
+<a href=#420 id=420 data-nosnippet>420</a>
+<a href=#421 id=421 data-nosnippet>421</a><span class="kw">pub fn </span>absorb_commitment&lt;
+<a href=#422 id=422 data-nosnippet>422</a>    <span class="kw">const </span>FULL_ROUNDS: usize,
+<a href=#423 id=423 data-nosnippet>423</a>    Fq: Field,
+<a href=#424 id=424 data-nosnippet>424</a>    G: Clone,
+<a href=#425 id=425 data-nosnippet>425</a>    Fr: PrimeField,
+<a href=#426 id=426 data-nosnippet>426</a>    EFqSponge: FqSponge&lt;Fq, G, Fr, FULL_ROUNDS&gt;,
+<a href=#427 id=427 data-nosnippet>427</a>&gt;(
+<a href=#428 id=428 data-nosnippet>428</a>    sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
+<a href=#429 id=429 data-nosnippet>429</a>    commitment: <span class="kw-2">&amp;</span>PolyComm&lt;G&gt;,
+<a href=#430 id=430 data-nosnippet>430</a>) {
+<a href=#431 id=431 data-nosnippet>431</a>    sponge.absorb_g(<span class="kw-2">&amp;</span>commitment.chunks);
+<a href=#432 id=432 data-nosnippet>432</a>}
+<a href=#433 id=433 data-nosnippet>433</a>
+<a href=#434 id=434 data-nosnippet>434</a><span class="doccomment">/// A useful trait extending AffineRepr for commitments.
+<a href=#435 id=435 data-nosnippet>435</a>/// Unfortunately, we can't specify that `AffineRepr&lt;BaseField : PrimeField&gt;`,
+<a href=#436 id=436 data-nosnippet>436</a>/// so usage of this traits must manually bind `G::BaseField: PrimeField`.
+<a href=#437 id=437 data-nosnippet>437</a></span><span class="kw">pub trait </span>CommitmentCurve: AffineRepr + Sub&lt;Output = <span class="self">Self</span>::Group&gt; {
+<a href=#438 id=438 data-nosnippet>438</a>    <span class="kw">type </span>Params: SWCurveConfig;
+<a href=#439 id=439 data-nosnippet>439</a>    <span class="kw">type </span>Map: GroupMap&lt;<span class="self">Self</span>::BaseField&gt;;
+<a href=#440 id=440 data-nosnippet>440</a>
+<a href=#441 id=441 data-nosnippet>441</a>    <span class="kw">fn </span>to_coordinates(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::BaseField)&gt;;
+<a href=#442 id=442 data-nosnippet>442</a>    <span class="kw">fn </span>of_coordinates(x: <span class="self">Self</span>::BaseField, y: <span class="self">Self</span>::BaseField) -&gt; <span class="self">Self</span>;
+<a href=#443 id=443 data-nosnippet>443</a>}
+<a href=#444 id=444 data-nosnippet>444</a>
+<a href=#445 id=445 data-nosnippet>445</a><span class="doccomment">/// A trait extending CommitmentCurve for endomorphisms.
+<a href=#446 id=446 data-nosnippet>446</a>/// Unfortunately, we can't specify that `AffineRepr&lt;BaseField : PrimeField&gt;`,
+<a href=#447 id=447 data-nosnippet>447</a>/// so usage of this traits must manually bind `G::BaseField: PrimeField`.
+<a href=#448 id=448 data-nosnippet>448</a></span><span class="kw">pub trait </span>EndoCurve: CommitmentCurve {
+<a href=#449 id=449 data-nosnippet>449</a>    <span class="doccomment">/// Combine where x1 = one
+<a href=#450 id=450 data-nosnippet>450</a>    </span><span class="kw">fn </span>combine_one(g1: <span class="kw-2">&amp;</span>[<span class="self">Self</span>], g2: <span class="kw-2">&amp;</span>[<span class="self">Self</span>], x2: <span class="self">Self</span>::ScalarField) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
+<a href=#451 id=451 data-nosnippet>451</a>        <span class="kw">crate</span>::combine::window_combine(g1, g2, <span class="self">Self</span>::ScalarField::one(), x2)
+<a href=#452 id=452 data-nosnippet>452</a>    }
+<a href=#453 id=453 data-nosnippet>453</a>
+<a href=#454 id=454 data-nosnippet>454</a>    <span class="doccomment">/// Combine where x1 = one
+<a href=#455 id=455 data-nosnippet>455</a>    </span><span class="kw">fn </span>combine_one_endo(
+<a href=#456 id=456 data-nosnippet>456</a>        endo_r: <span class="self">Self</span>::ScalarField,
+<a href=#457 id=457 data-nosnippet>457</a>        _endo_q: <span class="self">Self</span>::BaseField,
+<a href=#458 id=458 data-nosnippet>458</a>        g1: <span class="kw-2">&amp;</span>[<span class="self">Self</span>],
+<a href=#459 id=459 data-nosnippet>459</a>        g2: <span class="kw-2">&amp;</span>[<span class="self">Self</span>],
+<a href=#460 id=460 data-nosnippet>460</a>        x2: ScalarChallenge&lt;<span class="self">Self</span>::ScalarField&gt;,
+<a href=#461 id=461 data-nosnippet>461</a>    ) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
+<a href=#462 id=462 data-nosnippet>462</a>        <span class="kw">crate</span>::combine::window_combine(g1, g2, <span class="self">Self</span>::ScalarField::one(), x2.to_field(<span class="kw-2">&amp;</span>endo_r))
+<a href=#463 id=463 data-nosnippet>463</a>    }
+<a href=#464 id=464 data-nosnippet>464</a>
+<a href=#465 id=465 data-nosnippet>465</a>    <span class="kw">fn </span>combine(
+<a href=#466 id=466 data-nosnippet>466</a>        g1: <span class="kw-2">&amp;</span>[<span class="self">Self</span>],
+<a href=#467 id=467 data-nosnippet>467</a>        g2: <span class="kw-2">&amp;</span>[<span class="self">Self</span>],
+<a href=#468 id=468 data-nosnippet>468</a>        x1: <span class="self">Self</span>::ScalarField,
+<a href=#469 id=469 data-nosnippet>469</a>        x2: <span class="self">Self</span>::ScalarField,
+<a href=#470 id=470 data-nosnippet>470</a>    ) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
+<a href=#471 id=471 data-nosnippet>471</a>        <span class="kw">crate</span>::combine::window_combine(g1, g2, x1, x2)
+<a href=#472 id=472 data-nosnippet>472</a>    }
+<a href=#473 id=473 data-nosnippet>473</a>}
+<a href=#474 id=474 data-nosnippet>474</a>
+<a href=#475 id=475 data-nosnippet>475</a><span class="kw">impl</span>&lt;P: SWCurveConfig + Clone&gt; CommitmentCurve <span class="kw">for </span>SWJAffine&lt;P&gt; {
+<a href=#476 id=476 data-nosnippet>476</a>    <span class="kw">type </span>Params = P;
+<a href=#477 id=477 data-nosnippet>477</a>    <span class="kw">type </span>Map = BWParameters&lt;P&gt;;
 <a href=#478 id=478 data-nosnippet>478</a>
-<a href=#479 id=479 data-nosnippet>479</a>    <span class="kw">fn </span>combine_one_endo(
-<a href=#480 id=480 data-nosnippet>480</a>        _endo_r: <span class="self">Self</span>::ScalarField,
-<a href=#481 id=481 data-nosnippet>481</a>        endo_q: <span class="self">Self</span>::BaseField,
-<a href=#482 id=482 data-nosnippet>482</a>        g1: <span class="kw-2">&amp;</span>[<span class="self">Self</span>],
-<a href=#483 id=483 data-nosnippet>483</a>        g2: <span class="kw-2">&amp;</span>[<span class="self">Self</span>],
-<a href=#484 id=484 data-nosnippet>484</a>        x2: ScalarChallenge&lt;<span class="self">Self</span>::ScalarField&gt;,
-<a href=#485 id=485 data-nosnippet>485</a>    ) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
-<a href=#486 id=486 data-nosnippet>486</a>        <span class="kw">crate</span>::combine::affine_window_combine_one_endo(endo_q, g1, g2, x2)
-<a href=#487 id=487 data-nosnippet>487</a>    }
-<a href=#488 id=488 data-nosnippet>488</a>
-<a href=#489 id=489 data-nosnippet>489</a>    <span class="kw">fn </span>combine(
-<a href=#490 id=490 data-nosnippet>490</a>        g1: <span class="kw-2">&amp;</span>[<span class="self">Self</span>],
-<a href=#491 id=491 data-nosnippet>491</a>        g2: <span class="kw-2">&amp;</span>[<span class="self">Self</span>],
-<a href=#492 id=492 data-nosnippet>492</a>        x1: <span class="self">Self</span>::ScalarField,
-<a href=#493 id=493 data-nosnippet>493</a>        x2: <span class="self">Self</span>::ScalarField,
-<a href=#494 id=494 data-nosnippet>494</a>    ) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
-<a href=#495 id=495 data-nosnippet>495</a>        <span class="kw">crate</span>::combine::affine_window_combine(g1, g2, x1, x2)
-<a href=#496 id=496 data-nosnippet>496</a>    }
-<a href=#497 id=497 data-nosnippet>497</a>}
-<a href=#498 id=498 data-nosnippet>498</a>
-<a href=#499 id=499 data-nosnippet>499</a><span class="doccomment">/// Computes the linearization of the evaluations of a (potentially
-<a href=#500 id=500 data-nosnippet>500</a>/// split) polynomial.
-<a href=#501 id=501 data-nosnippet>501</a>///
-<a href=#502 id=502 data-nosnippet>502</a>/// Each polynomial in `polys` is represented by a matrix where the
-<a href=#503 id=503 data-nosnippet>503</a>/// rows correspond to evaluated points, and the columns represent
-<a href=#504 id=504 data-nosnippet>504</a>/// potential segments (if a polynomial was split in several parts).
-<a href=#505 id=505 data-nosnippet>505</a>///
-<a href=#506 id=506 data-nosnippet>506</a>/// Elements in `evaluation_points` are several discrete points on which
-<a href=#507 id=507 data-nosnippet>507</a>/// we evaluate polynomials, e.g. `[zeta,zeta*w]`. See `PointEvaluations`.
-<a href=#508 id=508 data-nosnippet>508</a>///
-<a href=#509 id=509 data-nosnippet>509</a>/// Note that if one of the polynomial comes specified with a degree
-<a href=#510 id=510 data-nosnippet>510</a>/// bound, the evaluation for the last segment is potentially shifted
-<a href=#511 id=511 data-nosnippet>511</a>/// to meet the proof.
-<a href=#512 id=512 data-nosnippet>512</a>///
-<a href=#513 id=513 data-nosnippet>513</a>/// Returns
-<a href=#514 id=514 data-nosnippet>514</a>/// ```text
-<a href=#515 id=515 data-nosnippet>515</a>/// |polys| |segments[k]|
-<a href=#516 id=516 data-nosnippet>516</a>///    Σ         Σ         polyscale^{k*n+i} (Σ polys[k][j][i] * evalscale^j)
-<a href=#517 id=517 data-nosnippet>517</a>///  k = 1     i = 1                          j
-<a href=#518 id=518 data-nosnippet>518</a>/// ```
-<a href=#519 id=519 data-nosnippet>519</a></span><span class="attr">#[allow(clippy::type_complexity)]
-<a href=#520 id=520 data-nosnippet>520</a></span><span class="kw">pub fn </span>combined_inner_product&lt;F: PrimeField&gt;(
-<a href=#521 id=521 data-nosnippet>521</a>    polyscale: <span class="kw-2">&amp;</span>F,
-<a href=#522 id=522 data-nosnippet>522</a>    evalscale: <span class="kw-2">&amp;</span>F,
-<a href=#523 id=523 data-nosnippet>523</a>    <span class="comment">// TODO(mimoo): needs a type that can get you evaluations or segments
-<a href=#524 id=524 data-nosnippet>524</a>    </span>polys: <span class="kw-2">&amp;</span>[Vec&lt;Vec&lt;F&gt;&gt;],
-<a href=#525 id=525 data-nosnippet>525</a>) -&gt; F {
-<a href=#526 id=526 data-nosnippet>526</a>    <span class="comment">// final combined evaluation result
-<a href=#527 id=527 data-nosnippet>527</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>res = F::zero();
-<a href=#528 id=528 data-nosnippet>528</a>    <span class="comment">// polyscale^i
-<a href=#529 id=529 data-nosnippet>529</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>polyscale_i = F::one();
-<a href=#530 id=530 data-nosnippet>530</a>
-<a href=#531 id=531 data-nosnippet>531</a>    <span class="kw">for </span>evals_tr <span class="kw">in </span>polys.iter().filter(|evals_tr| !evals_tr[<span class="number">0</span>].is_empty()) {
-<a href=#532 id=532 data-nosnippet>532</a>        <span class="comment">// Transpose the evaluations.
-<a href=#533 id=533 data-nosnippet>533</a>        // evals[i] = {evals_tr[j][i]}_j now corresponds to a column in
-<a href=#534 id=534 data-nosnippet>534</a>        // evals_tr, representing a segment.
-<a href=#535 id=535 data-nosnippet>535</a>        </span><span class="kw">let </span>evals: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..evals_tr[<span class="number">0</span>].len())
-<a href=#536 id=536 data-nosnippet>536</a>            .map(|i| evals_tr.iter().map(|v| v[i]).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;())
-<a href=#537 id=537 data-nosnippet>537</a>            .collect();
-<a href=#538 id=538 data-nosnippet>538</a>
-<a href=#539 id=539 data-nosnippet>539</a>        <span class="comment">// Iterating over the polynomial segments.
-<a href=#540 id=540 data-nosnippet>540</a>        // Each segment gets its own polyscale^i, each segment element j is
-<a href=#541 id=541 data-nosnippet>541</a>        // multiplied by evalscale^j. Given that polyscale_i = polyscale^i0 at
-<a href=#542 id=542 data-nosnippet>542</a>        // this point, after this loop we have:
-<a href=#543 id=543 data-nosnippet>543</a>        //
-<a href=#544 id=544 data-nosnippet>544</a>        //    res += Σ polyscale^{i0+i} ( Σ evals_tr[j][i] * evalscale^j )
-<a href=#545 id=545 data-nosnippet>545</a>        //           i                    j
-<a href=#546 id=546 data-nosnippet>546</a>        //
-<a href=#547 id=547 data-nosnippet>547</a>        </span><span class="kw">for </span>eval <span class="kw">in </span><span class="kw-2">&amp;</span>evals {
-<a href=#548 id=548 data-nosnippet>548</a>            <span class="comment">// p_i(evalscale)
-<a href=#549 id=549 data-nosnippet>549</a>            </span><span class="kw">let </span>term = DensePolynomial::&lt;F&gt;::eval_polynomial(eval, <span class="kw-2">*</span>evalscale);
-<a href=#550 id=550 data-nosnippet>550</a>            res += <span class="kw-2">&amp;</span>(polyscale_i * term);
-<a href=#551 id=551 data-nosnippet>551</a>            polyscale_i <span class="kw-2">*</span>= polyscale;
-<a href=#552 id=552 data-nosnippet>552</a>        }
-<a href=#553 id=553 data-nosnippet>553</a>    }
-<a href=#554 id=554 data-nosnippet>554</a>    res
-<a href=#555 id=555 data-nosnippet>555</a>}
+<a href=#479 id=479 data-nosnippet>479</a>    <span class="kw">fn </span>to_coordinates(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::BaseField)&gt; {
+<a href=#480 id=480 data-nosnippet>480</a>        <span class="kw">if </span><span class="self">self</span>.infinity {
+<a href=#481 id=481 data-nosnippet>481</a>            <span class="prelude-val">None
+<a href=#482 id=482 data-nosnippet>482</a>        </span>} <span class="kw">else </span>{
+<a href=#483 id=483 data-nosnippet>483</a>            <span class="prelude-val">Some</span>((<span class="self">self</span>.x, <span class="self">self</span>.y))
+<a href=#484 id=484 data-nosnippet>484</a>        }
+<a href=#485 id=485 data-nosnippet>485</a>    }
+<a href=#486 id=486 data-nosnippet>486</a>
+<a href=#487 id=487 data-nosnippet>487</a>    <span class="kw">fn </span>of_coordinates(x: P::BaseField, y: P::BaseField) -&gt; SWJAffine&lt;P&gt; {
+<a href=#488 id=488 data-nosnippet>488</a>        SWJAffine::&lt;P&gt;::new_unchecked(x, y)
+<a href=#489 id=489 data-nosnippet>489</a>    }
+<a href=#490 id=490 data-nosnippet>490</a>}
+<a href=#491 id=491 data-nosnippet>491</a>
+<a href=#492 id=492 data-nosnippet>492</a><span class="kw">impl</span>&lt;P: SWCurveConfig + Clone&gt; EndoCurve <span class="kw">for </span>SWJAffine&lt;P&gt; {
+<a href=#493 id=493 data-nosnippet>493</a>    <span class="kw">fn </span>combine_one(g1: <span class="kw-2">&amp;</span>[<span class="self">Self</span>], g2: <span class="kw-2">&amp;</span>[<span class="self">Self</span>], x2: <span class="self">Self</span>::ScalarField) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
+<a href=#494 id=494 data-nosnippet>494</a>        <span class="kw">crate</span>::combine::affine_window_combine_one(g1, g2, x2)
+<a href=#495 id=495 data-nosnippet>495</a>    }
+<a href=#496 id=496 data-nosnippet>496</a>
+<a href=#497 id=497 data-nosnippet>497</a>    <span class="kw">fn </span>combine_one_endo(
+<a href=#498 id=498 data-nosnippet>498</a>        _endo_r: <span class="self">Self</span>::ScalarField,
+<a href=#499 id=499 data-nosnippet>499</a>        endo_q: <span class="self">Self</span>::BaseField,
+<a href=#500 id=500 data-nosnippet>500</a>        g1: <span class="kw-2">&amp;</span>[<span class="self">Self</span>],
+<a href=#501 id=501 data-nosnippet>501</a>        g2: <span class="kw-2">&amp;</span>[<span class="self">Self</span>],
+<a href=#502 id=502 data-nosnippet>502</a>        x2: ScalarChallenge&lt;<span class="self">Self</span>::ScalarField&gt;,
+<a href=#503 id=503 data-nosnippet>503</a>    ) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
+<a href=#504 id=504 data-nosnippet>504</a>        <span class="kw">crate</span>::combine::affine_window_combine_one_endo(endo_q, g1, g2, x2)
+<a href=#505 id=505 data-nosnippet>505</a>    }
+<a href=#506 id=506 data-nosnippet>506</a>
+<a href=#507 id=507 data-nosnippet>507</a>    <span class="kw">fn </span>combine(
+<a href=#508 id=508 data-nosnippet>508</a>        g1: <span class="kw-2">&amp;</span>[<span class="self">Self</span>],
+<a href=#509 id=509 data-nosnippet>509</a>        g2: <span class="kw-2">&amp;</span>[<span class="self">Self</span>],
+<a href=#510 id=510 data-nosnippet>510</a>        x1: <span class="self">Self</span>::ScalarField,
+<a href=#511 id=511 data-nosnippet>511</a>        x2: <span class="self">Self</span>::ScalarField,
+<a href=#512 id=512 data-nosnippet>512</a>    ) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
+<a href=#513 id=513 data-nosnippet>513</a>        <span class="kw">crate</span>::combine::affine_window_combine(g1, g2, x1, x2)
+<a href=#514 id=514 data-nosnippet>514</a>    }
+<a href=#515 id=515 data-nosnippet>515</a>}
+<a href=#516 id=516 data-nosnippet>516</a>
+<a href=#517 id=517 data-nosnippet>517</a><span class="doccomment">/// Computes the linearization of the evaluations of a (potentially
+<a href=#518 id=518 data-nosnippet>518</a>/// split) polynomial.
+<a href=#519 id=519 data-nosnippet>519</a>///
+<a href=#520 id=520 data-nosnippet>520</a>/// Each polynomial in `polys` is represented by a matrix where the
+<a href=#521 id=521 data-nosnippet>521</a>/// rows correspond to evaluated points, and the columns represent
+<a href=#522 id=522 data-nosnippet>522</a>/// potential segments (if a polynomial was split in several parts).
+<a href=#523 id=523 data-nosnippet>523</a>///
+<a href=#524 id=524 data-nosnippet>524</a>/// Elements in `evaluation_points` are several discrete points on which
+<a href=#525 id=525 data-nosnippet>525</a>/// we evaluate polynomials, e.g. `[zeta,zeta*w]`. See `PointEvaluations`.
+<a href=#526 id=526 data-nosnippet>526</a>///
+<a href=#527 id=527 data-nosnippet>527</a>/// Note that if one of the polynomial comes specified with a degree
+<a href=#528 id=528 data-nosnippet>528</a>/// bound, the evaluation for the last segment is potentially shifted
+<a href=#529 id=529 data-nosnippet>529</a>/// to meet the proof.
+<a href=#530 id=530 data-nosnippet>530</a>///
+<a href=#531 id=531 data-nosnippet>531</a>/// Returns
+<a href=#532 id=532 data-nosnippet>532</a>/// ```text
+<a href=#533 id=533 data-nosnippet>533</a>/// |polys| |segments[k]|
+<a href=#534 id=534 data-nosnippet>534</a>///    Σ         Σ         polyscale^{k*n+i} (Σ polys[k][j][i] * evalscale^j)
+<a href=#535 id=535 data-nosnippet>535</a>///  k = 1     i = 1                          j
+<a href=#536 id=536 data-nosnippet>536</a>/// ```
+<a href=#537 id=537 data-nosnippet>537</a></span><span class="attr">#[allow(clippy::type_complexity)]
+<a href=#538 id=538 data-nosnippet>538</a></span><span class="kw">pub fn </span>combined_inner_product&lt;F: PrimeField&gt;(
+<a href=#539 id=539 data-nosnippet>539</a>    polyscale: <span class="kw-2">&amp;</span>F,
+<a href=#540 id=540 data-nosnippet>540</a>    evalscale: <span class="kw-2">&amp;</span>F,
+<a href=#541 id=541 data-nosnippet>541</a>    <span class="comment">// TODO(mimoo): needs a type that can get you evaluations or segments
+<a href=#542 id=542 data-nosnippet>542</a>    </span>polys: <span class="kw-2">&amp;</span>[Vec&lt;Vec&lt;F&gt;&gt;],
+<a href=#543 id=543 data-nosnippet>543</a>) -&gt; F {
+<a href=#544 id=544 data-nosnippet>544</a>    <span class="comment">// final combined evaluation result
+<a href=#545 id=545 data-nosnippet>545</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>res = F::zero();
+<a href=#546 id=546 data-nosnippet>546</a>    <span class="comment">// polyscale^i
+<a href=#547 id=547 data-nosnippet>547</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>polyscale_i = F::one();
+<a href=#548 id=548 data-nosnippet>548</a>
+<a href=#549 id=549 data-nosnippet>549</a>    <span class="kw">for </span>evals_tr <span class="kw">in </span>polys.iter().filter(|evals_tr| !evals_tr[<span class="number">0</span>].is_empty()) {
+<a href=#550 id=550 data-nosnippet>550</a>        <span class="comment">// Transpose the evaluations.
+<a href=#551 id=551 data-nosnippet>551</a>        // evals[i] = {evals_tr[j][i]}_j now corresponds to a column in
+<a href=#552 id=552 data-nosnippet>552</a>        // evals_tr, representing a segment.
+<a href=#553 id=553 data-nosnippet>553</a>        </span><span class="kw">let </span>evals: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..evals_tr[<span class="number">0</span>].len())
+<a href=#554 id=554 data-nosnippet>554</a>            .map(|i| evals_tr.iter().map(|v| v[i]).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;())
+<a href=#555 id=555 data-nosnippet>555</a>            .collect();
 <a href=#556 id=556 data-nosnippet>556</a>
-<a href=#557 id=557 data-nosnippet>557</a><span class="doccomment">/// Contains the evaluation of a polynomial commitment at a set of points.
-<a href=#558 id=558 data-nosnippet>558</a></span><span class="kw">pub struct </span>Evaluation&lt;G&gt;
-<a href=#559 id=559 data-nosnippet>559</a><span class="kw">where
-<a href=#560 id=560 data-nosnippet>560</a>    </span>G: AffineRepr,
-<a href=#561 id=561 data-nosnippet>561</a>{
-<a href=#562 id=562 data-nosnippet>562</a>    <span class="doccomment">/// The commitment of the polynomial being evaluated.
-<a href=#563 id=563 data-nosnippet>563</a>    /// Note that PolyComm contains a vector of commitments, which handles the
-<a href=#564 id=564 data-nosnippet>564</a>    /// case when chunking is used, i.e. when the polynomial degree is higher
-<a href=#565 id=565 data-nosnippet>565</a>    /// than the SRS size.
-<a href=#566 id=566 data-nosnippet>566</a>    </span><span class="kw">pub </span>commitment: PolyComm&lt;G&gt;,
-<a href=#567 id=567 data-nosnippet>567</a>
-<a href=#568 id=568 data-nosnippet>568</a>    <span class="doccomment">/// Contains an evaluation table. For instance, for vanilla PlonK, it
-<a href=#569 id=569 data-nosnippet>569</a>    /// would be a vector of (chunked) evaluations at ζ and ζω.
-<a href=#570 id=570 data-nosnippet>570</a>    /// The outer vector would be the evaluations at the different points (e.g.
-<a href=#571 id=571 data-nosnippet>571</a>    /// ζ and ζω for vanilla PlonK) and the inner vector would be the chunks of
-<a href=#572 id=572 data-nosnippet>572</a>    /// the polynomial.
-<a href=#573 id=573 data-nosnippet>573</a>    </span><span class="kw">pub </span>evaluations: Vec&lt;Vec&lt;G::ScalarField&gt;&gt;,
-<a href=#574 id=574 data-nosnippet>574</a>}
-<a href=#575 id=575 data-nosnippet>575</a>
-<a href=#576 id=576 data-nosnippet>576</a><span class="doccomment">/// Contains the batch evaluation
-<a href=#577 id=577 data-nosnippet>577</a></span><span class="kw">pub struct </span>BatchEvaluationProof&lt;<span class="lifetime">'a</span>, G, EFqSponge, OpeningProof&gt;
-<a href=#578 id=578 data-nosnippet>578</a><span class="kw">where
-<a href=#579 id=579 data-nosnippet>579</a>    </span>G: AffineRepr,
-<a href=#580 id=580 data-nosnippet>580</a>    EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
-<a href=#581 id=581 data-nosnippet>581</a>{
-<a href=#582 id=582 data-nosnippet>582</a>    <span class="doccomment">/// Sponge used to coin and absorb values and simulate
-<a href=#583 id=583 data-nosnippet>583</a>    /// non-interactivity using the Fiat-Shamir transformation.
-<a href=#584 id=584 data-nosnippet>584</a>    </span><span class="kw">pub </span>sponge: EFqSponge,
-<a href=#585 id=585 data-nosnippet>585</a>    <span class="doccomment">/// A list of evaluations, each supposed to correspond to a different
-<a href=#586 id=586 data-nosnippet>586</a>    /// polynomial.
-<a href=#587 id=587 data-nosnippet>587</a>    </span><span class="kw">pub </span>evaluations: Vec&lt;Evaluation&lt;G&gt;&gt;,
-<a href=#588 id=588 data-nosnippet>588</a>    <span class="doccomment">/// The actual evaluation points. Each field `evaluations` of each structure
-<a href=#589 id=589 data-nosnippet>589</a>    /// of `Evaluation` should have the same (outer) length.
-<a href=#590 id=590 data-nosnippet>590</a>    </span><span class="kw">pub </span>evaluation_points: Vec&lt;G::ScalarField&gt;,
-<a href=#591 id=591 data-nosnippet>591</a>    <span class="doccomment">/// A challenge to combine polynomials. Powers of this point will be used,
-<a href=#592 id=592 data-nosnippet>592</a>    /// hence the name.
-<a href=#593 id=593 data-nosnippet>593</a>    </span><span class="kw">pub </span>polyscale: G::ScalarField,
-<a href=#594 id=594 data-nosnippet>594</a>    <span class="doccomment">/// A challenge to aggregate multiple evaluation points.
-<a href=#595 id=595 data-nosnippet>595</a>    </span><span class="kw">pub </span>evalscale: G::ScalarField,
-<a href=#596 id=596 data-nosnippet>596</a>    <span class="doccomment">/// The opening proof.
-<a href=#597 id=597 data-nosnippet>597</a>    </span><span class="kw">pub </span>opening: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>OpeningProof,
-<a href=#598 id=598 data-nosnippet>598</a>    <span class="kw">pub </span>combined_inner_product: G::ScalarField,
-<a href=#599 id=599 data-nosnippet>599</a>}
-<a href=#600 id=600 data-nosnippet>600</a>
-<a href=#601 id=601 data-nosnippet>601</a><span class="doccomment">/// This function populates the parameters `scalars` and `points`.
-<a href=#602 id=602 data-nosnippet>602</a>/// It iterates over the evaluations and adds each commitment to the
-<a href=#603 id=603 data-nosnippet>603</a>/// vector `points`.
-<a href=#604 id=604 data-nosnippet>604</a>/// The parameter `scalars` is populated with the values:
-<a href=#605 id=605 data-nosnippet>605</a>/// `rand_base * polyscale^i` for each commitment.
-<a href=#606 id=606 data-nosnippet>606</a>/// For instance, if we have 3 commitments, the `scalars` vector will
-<a href=#607 id=607 data-nosnippet>607</a>/// contain the values
-<a href=#608 id=608 data-nosnippet>608</a>/// ```text
-<a href=#609 id=609 data-nosnippet>609</a>/// [rand_base, rand_base * polyscale, rand_base * polyscale^2]
-<a href=#610 id=610 data-nosnippet>610</a>/// ```
-<a href=#611 id=611 data-nosnippet>611</a>/// and the vector `points` will contain the commitments.
-<a href=#612 id=612 data-nosnippet>612</a>///
-<a href=#613 id=613 data-nosnippet>613</a>/// Note that the function skips the commitments that are empty.
-<a href=#614 id=614 data-nosnippet>614</a>///
-<a href=#615 id=615 data-nosnippet>615</a>/// If more than one commitment is present in a single evaluation (i.e. if
-<a href=#616 id=616 data-nosnippet>616</a>/// `elems` is larger than one), it means that probably chunking was used (i.e.
-<a href=#617 id=617 data-nosnippet>617</a>/// it is a commitment to a polynomial larger than the SRS).
-<a href=#618 id=618 data-nosnippet>618</a></span><span class="kw">pub fn </span>combine_commitments&lt;G: CommitmentCurve&gt;(
-<a href=#619 id=619 data-nosnippet>619</a>    evaluations: <span class="kw-2">&amp;</span>[Evaluation&lt;G&gt;],
-<a href=#620 id=620 data-nosnippet>620</a>    scalars: <span class="kw-2">&amp;mut </span>Vec&lt;G::ScalarField&gt;,
-<a href=#621 id=621 data-nosnippet>621</a>    points: <span class="kw-2">&amp;mut </span>Vec&lt;G&gt;,
-<a href=#622 id=622 data-nosnippet>622</a>    polyscale: G::ScalarField,
-<a href=#623 id=623 data-nosnippet>623</a>    rand_base: G::ScalarField,
-<a href=#624 id=624 data-nosnippet>624</a>) {
-<a href=#625 id=625 data-nosnippet>625</a>    <span class="comment">// will contain the power of polyscale
-<a href=#626 id=626 data-nosnippet>626</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>polyscale_i = G::ScalarField::one();
-<a href=#627 id=627 data-nosnippet>627</a>
-<a href=#628 id=628 data-nosnippet>628</a>    <span class="kw">for </span>Evaluation { commitment, .. } <span class="kw">in </span>evaluations.iter().filter(|x| !x.commitment.is_empty()) {
-<a href=#629 id=629 data-nosnippet>629</a>        <span class="comment">// iterating over the polynomial segments
-<a href=#630 id=630 data-nosnippet>630</a>        </span><span class="kw">for </span>comm_ch <span class="kw">in </span><span class="kw-2">&amp;</span>commitment.chunks {
-<a href=#631 id=631 data-nosnippet>631</a>            scalars.push(rand_base * polyscale_i);
-<a href=#632 id=632 data-nosnippet>632</a>            points.push(<span class="kw-2">*</span>comm_ch);
-<a href=#633 id=633 data-nosnippet>633</a>
-<a href=#634 id=634 data-nosnippet>634</a>            <span class="comment">// compute next power of polyscale
-<a href=#635 id=635 data-nosnippet>635</a>            </span>polyscale_i <span class="kw-2">*</span>= polyscale;
-<a href=#636 id=636 data-nosnippet>636</a>        }
-<a href=#637 id=637 data-nosnippet>637</a>    }
-<a href=#638 id=638 data-nosnippet>638</a>}
-<a href=#639 id=639 data-nosnippet>639</a>
-<a href=#640 id=640 data-nosnippet>640</a><span class="attr">#[cfg(feature = <span class="string">"ocaml_types"</span>)]
-<a href=#641 id=641 data-nosnippet>641</a>#[allow(non_local_definitions)]
-<a href=#642 id=642 data-nosnippet>642</a></span><span class="kw">pub mod </span>caml {
-<a href=#643 id=643 data-nosnippet>643</a>    <span class="comment">// polynomial commitment
-<a href=#644 id=644 data-nosnippet>644</a>    </span><span class="kw">use </span><span class="kw">super</span>::PolyComm;
-<a href=#645 id=645 data-nosnippet>645</a>    <span class="kw">use </span>ark_ec::AffineRepr;
-<a href=#646 id=646 data-nosnippet>646</a>
-<a href=#647 id=647 data-nosnippet>647</a>    <span class="attr">#[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-<a href=#648 id=648 data-nosnippet>648</a>    </span><span class="kw">pub struct </span>CamlPolyComm&lt;CamlG&gt; {
-<a href=#649 id=649 data-nosnippet>649</a>        <span class="kw">pub </span>unshifted: Vec&lt;CamlG&gt;,
-<a href=#650 id=650 data-nosnippet>650</a>        <span class="kw">pub </span>shifted: <span class="prelude-ty">Option</span>&lt;CamlG&gt;,
-<a href=#651 id=651 data-nosnippet>651</a>    }
-<a href=#652 id=652 data-nosnippet>652</a>
-<a href=#653 id=653 data-nosnippet>653</a>    <span class="comment">// handy conversions
-<a href=#654 id=654 data-nosnippet>654</a>
-<a href=#655 id=655 data-nosnippet>655</a>    </span><span class="kw">impl</span>&lt;G, CamlG&gt; From&lt;PolyComm&lt;G&gt;&gt; <span class="kw">for </span>CamlPolyComm&lt;CamlG&gt;
-<a href=#656 id=656 data-nosnippet>656</a>    <span class="kw">where
-<a href=#657 id=657 data-nosnippet>657</a>        </span>G: AffineRepr,
-<a href=#658 id=658 data-nosnippet>658</a>        CamlG: From&lt;G&gt;,
-<a href=#659 id=659 data-nosnippet>659</a>    {
-<a href=#660 id=660 data-nosnippet>660</a>        <span class="kw">fn </span>from(polycomm: PolyComm&lt;G&gt;) -&gt; <span class="self">Self </span>{
-<a href=#661 id=661 data-nosnippet>661</a>            <span class="self">Self </span>{
-<a href=#662 id=662 data-nosnippet>662</a>                unshifted: polycomm.chunks.into_iter().map(CamlG::from).collect(),
-<a href=#663 id=663 data-nosnippet>663</a>                shifted: <span class="prelude-val">None</span>,
-<a href=#664 id=664 data-nosnippet>664</a>            }
-<a href=#665 id=665 data-nosnippet>665</a>        }
-<a href=#666 id=666 data-nosnippet>666</a>    }
-<a href=#667 id=667 data-nosnippet>667</a>
-<a href=#668 id=668 data-nosnippet>668</a>    <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, G, CamlG&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;G&gt;&gt; <span class="kw">for </span>CamlPolyComm&lt;CamlG&gt;
-<a href=#669 id=669 data-nosnippet>669</a>    <span class="kw">where
-<a href=#670 id=670 data-nosnippet>670</a>        </span>G: AffineRepr,
-<a href=#671 id=671 data-nosnippet>671</a>        CamlG: From&lt;G&gt; + From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>G&gt;,
-<a href=#672 id=672 data-nosnippet>672</a>    {
-<a href=#673 id=673 data-nosnippet>673</a>        <span class="kw">fn </span>from(polycomm: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;G&gt;) -&gt; <span class="self">Self </span>{
-<a href=#674 id=674 data-nosnippet>674</a>            <span class="self">Self </span>{
-<a href=#675 id=675 data-nosnippet>675</a>                unshifted: polycomm.chunks.iter().map(Into::&lt;CamlG&gt;::into).collect(),
-<a href=#676 id=676 data-nosnippet>676</a>                shifted: <span class="prelude-val">None</span>,
-<a href=#677 id=677 data-nosnippet>677</a>            }
-<a href=#678 id=678 data-nosnippet>678</a>        }
-<a href=#679 id=679 data-nosnippet>679</a>    }
-<a href=#680 id=680 data-nosnippet>680</a>
-<a href=#681 id=681 data-nosnippet>681</a>    <span class="kw">impl</span>&lt;G, CamlG&gt; From&lt;CamlPolyComm&lt;CamlG&gt;&gt; <span class="kw">for </span>PolyComm&lt;G&gt;
-<a href=#682 id=682 data-nosnippet>682</a>    <span class="kw">where
-<a href=#683 id=683 data-nosnippet>683</a>        </span>G: AffineRepr + From&lt;CamlG&gt;,
-<a href=#684 id=684 data-nosnippet>684</a>    {
-<a href=#685 id=685 data-nosnippet>685</a>        <span class="kw">fn </span>from(camlpolycomm: CamlPolyComm&lt;CamlG&gt;) -&gt; PolyComm&lt;G&gt; {
-<a href=#686 id=686 data-nosnippet>686</a>            <span class="macro">assert!</span>(
-<a href=#687 id=687 data-nosnippet>687</a>                camlpolycomm.shifted.is_none(),
-<a href=#688 id=688 data-nosnippet>688</a>                <span class="string">"mina#14628: Shifted commitments are deprecated and must not be used"
-<a href=#689 id=689 data-nosnippet>689</a>            </span>);
-<a href=#690 id=690 data-nosnippet>690</a>            PolyComm {
-<a href=#691 id=691 data-nosnippet>691</a>                chunks: camlpolycomm
-<a href=#692 id=692 data-nosnippet>692</a>                    .unshifted
-<a href=#693 id=693 data-nosnippet>693</a>                    .into_iter()
-<a href=#694 id=694 data-nosnippet>694</a>                    .map(Into::&lt;G&gt;::into)
-<a href=#695 id=695 data-nosnippet>695</a>                    .collect(),
-<a href=#696 id=696 data-nosnippet>696</a>            }
-<a href=#697 id=697 data-nosnippet>697</a>        }
-<a href=#698 id=698 data-nosnippet>698</a>    }
-<a href=#699 id=699 data-nosnippet>699</a>
-<a href=#700 id=700 data-nosnippet>700</a>    <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, G, CamlG&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>CamlPolyComm&lt;CamlG&gt;&gt; <span class="kw">for </span>PolyComm&lt;G&gt;
-<a href=#701 id=701 data-nosnippet>701</a>    <span class="kw">where
-<a href=#702 id=702 data-nosnippet>702</a>        </span>G: AffineRepr + From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>CamlG&gt; + From&lt;CamlG&gt;,
-<a href=#703 id=703 data-nosnippet>703</a>    {
-<a href=#704 id=704 data-nosnippet>704</a>        <span class="kw">fn </span>from(camlpolycomm: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>CamlPolyComm&lt;CamlG&gt;) -&gt; PolyComm&lt;G&gt; {
-<a href=#705 id=705 data-nosnippet>705</a>            <span class="macro">assert!</span>(
-<a href=#706 id=706 data-nosnippet>706</a>                camlpolycomm.shifted.is_none(),
-<a href=#707 id=707 data-nosnippet>707</a>                <span class="string">"mina#14628: Shifted commitments are deprecated and must not be used"
-<a href=#708 id=708 data-nosnippet>708</a>            </span>);
-<a href=#709 id=709 data-nosnippet>709</a>            PolyComm {
-<a href=#710 id=710 data-nosnippet>710</a>                <span class="comment">//FIXME something with as_ref()
-<a href=#711 id=711 data-nosnippet>711</a>                </span>chunks: camlpolycomm.unshifted.iter().map(Into::into).collect(),
-<a href=#712 id=712 data-nosnippet>712</a>            }
-<a href=#713 id=713 data-nosnippet>713</a>        }
-<a href=#714 id=714 data-nosnippet>714</a>    }
-<a href=#715 id=715 data-nosnippet>715</a>}
+<a href=#557 id=557 data-nosnippet>557</a>        <span class="comment">// Iterating over the polynomial segments.
+<a href=#558 id=558 data-nosnippet>558</a>        // Each segment gets its own polyscale^i, each segment element j is
+<a href=#559 id=559 data-nosnippet>559</a>        // multiplied by evalscale^j. Given that polyscale_i = polyscale^i0 at
+<a href=#560 id=560 data-nosnippet>560</a>        // this point, after this loop we have:
+<a href=#561 id=561 data-nosnippet>561</a>        //
+<a href=#562 id=562 data-nosnippet>562</a>        //    res += Σ polyscale^{i0+i} ( Σ evals_tr[j][i] * evalscale^j )
+<a href=#563 id=563 data-nosnippet>563</a>        //           i                    j
+<a href=#564 id=564 data-nosnippet>564</a>        //
+<a href=#565 id=565 data-nosnippet>565</a>        </span><span class="kw">for </span>eval <span class="kw">in </span><span class="kw-2">&amp;</span>evals {
+<a href=#566 id=566 data-nosnippet>566</a>            <span class="comment">// p_i(evalscale)
+<a href=#567 id=567 data-nosnippet>567</a>            </span><span class="kw">let </span>term = DensePolynomial::&lt;F&gt;::eval_polynomial(eval, <span class="kw-2">*</span>evalscale);
+<a href=#568 id=568 data-nosnippet>568</a>            res += <span class="kw-2">&amp;</span>(polyscale_i * term);
+<a href=#569 id=569 data-nosnippet>569</a>            polyscale_i <span class="kw-2">*</span>= polyscale;
+<a href=#570 id=570 data-nosnippet>570</a>        }
+<a href=#571 id=571 data-nosnippet>571</a>    }
+<a href=#572 id=572 data-nosnippet>572</a>    res
+<a href=#573 id=573 data-nosnippet>573</a>}
+<a href=#574 id=574 data-nosnippet>574</a>
+<a href=#575 id=575 data-nosnippet>575</a><span class="doccomment">/// Contains the evaluation of a polynomial commitment at a set of points.
+<a href=#576 id=576 data-nosnippet>576</a></span><span class="kw">pub struct </span>Evaluation&lt;G&gt;
+<a href=#577 id=577 data-nosnippet>577</a><span class="kw">where
+<a href=#578 id=578 data-nosnippet>578</a>    </span>G: AffineRepr,
+<a href=#579 id=579 data-nosnippet>579</a>{
+<a href=#580 id=580 data-nosnippet>580</a>    <span class="doccomment">/// The commitment of the polynomial being evaluated.
+<a href=#581 id=581 data-nosnippet>581</a>    /// Note that PolyComm contains a vector of commitments, which handles the
+<a href=#582 id=582 data-nosnippet>582</a>    /// case when chunking is used, i.e. when the polynomial degree is higher
+<a href=#583 id=583 data-nosnippet>583</a>    /// than the SRS size.
+<a href=#584 id=584 data-nosnippet>584</a>    </span><span class="kw">pub </span>commitment: PolyComm&lt;G&gt;,
+<a href=#585 id=585 data-nosnippet>585</a>
+<a href=#586 id=586 data-nosnippet>586</a>    <span class="doccomment">/// Contains an evaluation table. For instance, for vanilla PlonK, it
+<a href=#587 id=587 data-nosnippet>587</a>    /// would be a vector of (chunked) evaluations at ζ and ζω.
+<a href=#588 id=588 data-nosnippet>588</a>    /// The outer vector would be the evaluations at the different points (e.g.
+<a href=#589 id=589 data-nosnippet>589</a>    /// ζ and ζω for vanilla PlonK) and the inner vector would be the chunks of
+<a href=#590 id=590 data-nosnippet>590</a>    /// the polynomial.
+<a href=#591 id=591 data-nosnippet>591</a>    </span><span class="kw">pub </span>evaluations: Vec&lt;Vec&lt;G::ScalarField&gt;&gt;,
+<a href=#592 id=592 data-nosnippet>592</a>}
+<a href=#593 id=593 data-nosnippet>593</a>
+<a href=#594 id=594 data-nosnippet>594</a><span class="doccomment">/// Contains the batch evaluation
+<a href=#595 id=595 data-nosnippet>595</a></span><span class="kw">pub struct </span>BatchEvaluationProof&lt;<span class="lifetime">'a</span>, G, EFqSponge, OpeningProof, <span class="kw">const </span>FULL_ROUNDS: usize&gt;
+<a href=#596 id=596 data-nosnippet>596</a><span class="kw">where
+<a href=#597 id=597 data-nosnippet>597</a>    </span>G: AffineRepr,
+<a href=#598 id=598 data-nosnippet>598</a>    EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField, FULL_ROUNDS&gt;,
+<a href=#599 id=599 data-nosnippet>599</a>{
+<a href=#600 id=600 data-nosnippet>600</a>    <span class="doccomment">/// Sponge used to coin and absorb values and simulate
+<a href=#601 id=601 data-nosnippet>601</a>    /// non-interactivity using the Fiat-Shamir transformation.
+<a href=#602 id=602 data-nosnippet>602</a>    </span><span class="kw">pub </span>sponge: EFqSponge,
+<a href=#603 id=603 data-nosnippet>603</a>    <span class="doccomment">/// A list of evaluations, each supposed to correspond to a different
+<a href=#604 id=604 data-nosnippet>604</a>    /// polynomial.
+<a href=#605 id=605 data-nosnippet>605</a>    </span><span class="kw">pub </span>evaluations: Vec&lt;Evaluation&lt;G&gt;&gt;,
+<a href=#606 id=606 data-nosnippet>606</a>    <span class="doccomment">/// The actual evaluation points. Each field `evaluations` of each structure
+<a href=#607 id=607 data-nosnippet>607</a>    /// of `Evaluation` should have the same (outer) length.
+<a href=#608 id=608 data-nosnippet>608</a>    </span><span class="kw">pub </span>evaluation_points: Vec&lt;G::ScalarField&gt;,
+<a href=#609 id=609 data-nosnippet>609</a>    <span class="doccomment">/// A challenge to combine polynomials. Powers of this point will be used,
+<a href=#610 id=610 data-nosnippet>610</a>    /// hence the name.
+<a href=#611 id=611 data-nosnippet>611</a>    </span><span class="kw">pub </span>polyscale: G::ScalarField,
+<a href=#612 id=612 data-nosnippet>612</a>    <span class="doccomment">/// A challenge to aggregate multiple evaluation points.
+<a href=#613 id=613 data-nosnippet>613</a>    </span><span class="kw">pub </span>evalscale: G::ScalarField,
+<a href=#614 id=614 data-nosnippet>614</a>    <span class="doccomment">/// The opening proof.
+<a href=#615 id=615 data-nosnippet>615</a>    </span><span class="kw">pub </span>opening: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>OpeningProof,
+<a href=#616 id=616 data-nosnippet>616</a>    <span class="kw">pub </span>combined_inner_product: G::ScalarField,
+<a href=#617 id=617 data-nosnippet>617</a>}
+<a href=#618 id=618 data-nosnippet>618</a>
+<a href=#619 id=619 data-nosnippet>619</a><span class="doccomment">/// This function populates the parameters `scalars` and `points`.
+<a href=#620 id=620 data-nosnippet>620</a>/// It iterates over the evaluations and adds each commitment to the
+<a href=#621 id=621 data-nosnippet>621</a>/// vector `points`.
+<a href=#622 id=622 data-nosnippet>622</a>/// The parameter `scalars` is populated with the values:
+<a href=#623 id=623 data-nosnippet>623</a>/// `rand_base * polyscale^i` for each commitment.
+<a href=#624 id=624 data-nosnippet>624</a>/// For instance, if we have 3 commitments, the `scalars` vector will
+<a href=#625 id=625 data-nosnippet>625</a>/// contain the values
+<a href=#626 id=626 data-nosnippet>626</a>/// ```text
+<a href=#627 id=627 data-nosnippet>627</a>/// [rand_base, rand_base * polyscale, rand_base * polyscale^2]
+<a href=#628 id=628 data-nosnippet>628</a>/// ```
+<a href=#629 id=629 data-nosnippet>629</a>/// and the vector `points` will contain the commitments.
+<a href=#630 id=630 data-nosnippet>630</a>///
+<a href=#631 id=631 data-nosnippet>631</a>/// Note that the function skips the commitments that are empty.
+<a href=#632 id=632 data-nosnippet>632</a>///
+<a href=#633 id=633 data-nosnippet>633</a>/// If more than one commitment is present in a single evaluation (i.e. if
+<a href=#634 id=634 data-nosnippet>634</a>/// `elems` is larger than one), it means that probably chunking was used (i.e.
+<a href=#635 id=635 data-nosnippet>635</a>/// it is a commitment to a polynomial larger than the SRS).
+<a href=#636 id=636 data-nosnippet>636</a></span><span class="kw">pub fn </span>combine_commitments&lt;G: CommitmentCurve&gt;(
+<a href=#637 id=637 data-nosnippet>637</a>    evaluations: <span class="kw-2">&amp;</span>[Evaluation&lt;G&gt;],
+<a href=#638 id=638 data-nosnippet>638</a>    scalars: <span class="kw-2">&amp;mut </span>Vec&lt;G::ScalarField&gt;,
+<a href=#639 id=639 data-nosnippet>639</a>    points: <span class="kw-2">&amp;mut </span>Vec&lt;G&gt;,
+<a href=#640 id=640 data-nosnippet>640</a>    polyscale: G::ScalarField,
+<a href=#641 id=641 data-nosnippet>641</a>    rand_base: G::ScalarField,
+<a href=#642 id=642 data-nosnippet>642</a>) {
+<a href=#643 id=643 data-nosnippet>643</a>    <span class="comment">// will contain the power of polyscale
+<a href=#644 id=644 data-nosnippet>644</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>polyscale_i = G::ScalarField::one();
+<a href=#645 id=645 data-nosnippet>645</a>
+<a href=#646 id=646 data-nosnippet>646</a>    <span class="kw">for </span>Evaluation { commitment, .. } <span class="kw">in </span>evaluations.iter().filter(|x| !x.commitment.is_empty()) {
+<a href=#647 id=647 data-nosnippet>647</a>        <span class="comment">// iterating over the polynomial segments
+<a href=#648 id=648 data-nosnippet>648</a>        </span><span class="kw">for </span>comm_ch <span class="kw">in </span><span class="kw-2">&amp;</span>commitment.chunks {
+<a href=#649 id=649 data-nosnippet>649</a>            scalars.push(rand_base * polyscale_i);
+<a href=#650 id=650 data-nosnippet>650</a>            points.push(<span class="kw-2">*</span>comm_ch);
+<a href=#651 id=651 data-nosnippet>651</a>
+<a href=#652 id=652 data-nosnippet>652</a>            <span class="comment">// compute next power of polyscale
+<a href=#653 id=653 data-nosnippet>653</a>            </span>polyscale_i <span class="kw-2">*</span>= polyscale;
+<a href=#654 id=654 data-nosnippet>654</a>        }
+<a href=#655 id=655 data-nosnippet>655</a>    }
+<a href=#656 id=656 data-nosnippet>656</a>}
+<a href=#657 id=657 data-nosnippet>657</a>
+<a href=#658 id=658 data-nosnippet>658</a><span class="attr">#[cfg(feature = <span class="string">"ocaml_types"</span>)]
+<a href=#659 id=659 data-nosnippet>659</a>#[allow(non_local_definitions)]
+<a href=#660 id=660 data-nosnippet>660</a></span><span class="kw">pub mod </span>caml {
+<a href=#661 id=661 data-nosnippet>661</a>    <span class="comment">// polynomial commitment
+<a href=#662 id=662 data-nosnippet>662</a>    </span><span class="kw">use </span><span class="kw">super</span>::PolyComm;
+<a href=#663 id=663 data-nosnippet>663</a>    <span class="kw">use </span>ark_ec::AffineRepr;
+<a href=#664 id=664 data-nosnippet>664</a>
+<a href=#665 id=665 data-nosnippet>665</a>    <span class="attr">#[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+<a href=#666 id=666 data-nosnippet>666</a>    </span><span class="kw">pub struct </span>CamlPolyComm&lt;CamlG&gt; {
+<a href=#667 id=667 data-nosnippet>667</a>        <span class="kw">pub </span>unshifted: Vec&lt;CamlG&gt;,
+<a href=#668 id=668 data-nosnippet>668</a>        <span class="kw">pub </span>shifted: <span class="prelude-ty">Option</span>&lt;CamlG&gt;,
+<a href=#669 id=669 data-nosnippet>669</a>    }
+<a href=#670 id=670 data-nosnippet>670</a>
+<a href=#671 id=671 data-nosnippet>671</a>    <span class="comment">// handy conversions
+<a href=#672 id=672 data-nosnippet>672</a>
+<a href=#673 id=673 data-nosnippet>673</a>    </span><span class="kw">impl</span>&lt;G, CamlG&gt; From&lt;PolyComm&lt;G&gt;&gt; <span class="kw">for </span>CamlPolyComm&lt;CamlG&gt;
+<a href=#674 id=674 data-nosnippet>674</a>    <span class="kw">where
+<a href=#675 id=675 data-nosnippet>675</a>        </span>G: AffineRepr,
+<a href=#676 id=676 data-nosnippet>676</a>        CamlG: From&lt;G&gt;,
+<a href=#677 id=677 data-nosnippet>677</a>    {
+<a href=#678 id=678 data-nosnippet>678</a>        <span class="kw">fn </span>from(polycomm: PolyComm&lt;G&gt;) -&gt; <span class="self">Self </span>{
+<a href=#679 id=679 data-nosnippet>679</a>            <span class="self">Self </span>{
+<a href=#680 id=680 data-nosnippet>680</a>                unshifted: polycomm.chunks.into_iter().map(CamlG::from).collect(),
+<a href=#681 id=681 data-nosnippet>681</a>                shifted: <span class="prelude-val">None</span>,
+<a href=#682 id=682 data-nosnippet>682</a>            }
+<a href=#683 id=683 data-nosnippet>683</a>        }
+<a href=#684 id=684 data-nosnippet>684</a>    }
+<a href=#685 id=685 data-nosnippet>685</a>
+<a href=#686 id=686 data-nosnippet>686</a>    <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, G, CamlG&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;G&gt;&gt; <span class="kw">for </span>CamlPolyComm&lt;CamlG&gt;
+<a href=#687 id=687 data-nosnippet>687</a>    <span class="kw">where
+<a href=#688 id=688 data-nosnippet>688</a>        </span>G: AffineRepr,
+<a href=#689 id=689 data-nosnippet>689</a>        CamlG: From&lt;G&gt; + From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>G&gt;,
+<a href=#690 id=690 data-nosnippet>690</a>    {
+<a href=#691 id=691 data-nosnippet>691</a>        <span class="kw">fn </span>from(polycomm: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;G&gt;) -&gt; <span class="self">Self </span>{
+<a href=#692 id=692 data-nosnippet>692</a>            <span class="self">Self </span>{
+<a href=#693 id=693 data-nosnippet>693</a>                unshifted: polycomm.chunks.iter().map(Into::&lt;CamlG&gt;::into).collect(),
+<a href=#694 id=694 data-nosnippet>694</a>                shifted: <span class="prelude-val">None</span>,
+<a href=#695 id=695 data-nosnippet>695</a>            }
+<a href=#696 id=696 data-nosnippet>696</a>        }
+<a href=#697 id=697 data-nosnippet>697</a>    }
+<a href=#698 id=698 data-nosnippet>698</a>
+<a href=#699 id=699 data-nosnippet>699</a>    <span class="kw">impl</span>&lt;G, CamlG&gt; From&lt;CamlPolyComm&lt;CamlG&gt;&gt; <span class="kw">for </span>PolyComm&lt;G&gt;
+<a href=#700 id=700 data-nosnippet>700</a>    <span class="kw">where
+<a href=#701 id=701 data-nosnippet>701</a>        </span>G: AffineRepr + From&lt;CamlG&gt;,
+<a href=#702 id=702 data-nosnippet>702</a>    {
+<a href=#703 id=703 data-nosnippet>703</a>        <span class="kw">fn </span>from(camlpolycomm: CamlPolyComm&lt;CamlG&gt;) -&gt; PolyComm&lt;G&gt; {
+<a href=#704 id=704 data-nosnippet>704</a>            <span class="macro">assert!</span>(
+<a href=#705 id=705 data-nosnippet>705</a>                camlpolycomm.shifted.is_none(),
+<a href=#706 id=706 data-nosnippet>706</a>                <span class="string">"mina#14628: Shifted commitments are deprecated and must not be used"
+<a href=#707 id=707 data-nosnippet>707</a>            </span>);
+<a href=#708 id=708 data-nosnippet>708</a>            PolyComm {
+<a href=#709 id=709 data-nosnippet>709</a>                chunks: camlpolycomm
+<a href=#710 id=710 data-nosnippet>710</a>                    .unshifted
+<a href=#711 id=711 data-nosnippet>711</a>                    .into_iter()
+<a href=#712 id=712 data-nosnippet>712</a>                    .map(Into::&lt;G&gt;::into)
+<a href=#713 id=713 data-nosnippet>713</a>                    .collect(),
+<a href=#714 id=714 data-nosnippet>714</a>            }
+<a href=#715 id=715 data-nosnippet>715</a>        }
+<a href=#716 id=716 data-nosnippet>716</a>    }
+<a href=#717 id=717 data-nosnippet>717</a>
+<a href=#718 id=718 data-nosnippet>718</a>    <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, G, CamlG&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>CamlPolyComm&lt;CamlG&gt;&gt; <span class="kw">for </span>PolyComm&lt;G&gt;
+<a href=#719 id=719 data-nosnippet>719</a>    <span class="kw">where
+<a href=#720 id=720 data-nosnippet>720</a>        </span>G: AffineRepr + From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>CamlG&gt; + From&lt;CamlG&gt;,
+<a href=#721 id=721 data-nosnippet>721</a>    {
+<a href=#722 id=722 data-nosnippet>722</a>        <span class="kw">fn </span>from(camlpolycomm: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>CamlPolyComm&lt;CamlG&gt;) -&gt; PolyComm&lt;G&gt; {
+<a href=#723 id=723 data-nosnippet>723</a>            <span class="macro">assert!</span>(
+<a href=#724 id=724 data-nosnippet>724</a>                camlpolycomm.shifted.is_none(),
+<a href=#725 id=725 data-nosnippet>725</a>                <span class="string">"mina#14628: Shifted commitments are deprecated and must not be used"
+<a href=#726 id=726 data-nosnippet>726</a>            </span>);
+<a href=#727 id=727 data-nosnippet>727</a>            PolyComm {
+<a href=#728 id=728 data-nosnippet>728</a>                <span class="comment">//FIXME something with as_ref()
+<a href=#729 id=729 data-nosnippet>729</a>                </span>chunks: camlpolycomm.unshifted.iter().map(Into::into).collect(),
+<a href=#730 id=730 data-nosnippet>730</a>            }
+<a href=#731 id=731 data-nosnippet>731</a>        }
+<a href=#732 id=732 data-nosnippet>732</a>    }
+<a href=#733 id=733 data-nosnippet>733</a>}
 </code></pre></div></section></main></body></html>

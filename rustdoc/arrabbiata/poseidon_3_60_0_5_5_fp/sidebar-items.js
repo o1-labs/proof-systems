@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["params","static_params"]};
+window.SIDEBAR_ITEMS = {"fn":["params","static_params"],"type":["Params"]};

@@ -1715,7 +1715,7 @@ only if a table with an ID different from zero was used.</p>
 <h3 id="prover-index"><a class="header" href="#prover-index">Prover Index</a></h3>
 <p>Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.
 These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.</p>
-<pre><code class="language-rs">pub struct ProverIndex&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; {
+<pre><code class="language-rs">pub struct ProverIndex&lt;const FULL_ROUNDS: usize, G: KimchiCurve&lt;FULL_ROUNDS&gt;, Srs&gt; {
     /// constraints system polynomials
     #[serde(bound = &quot;ConstraintSystem&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;)]
     pub cs: Arc&lt;ConstraintSystem&lt;G::ScalarField&gt;&gt;,
@@ -1731,8 +1731,7 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 
     /// polynomial commitment keys
     #[serde(skip)]
-    #[serde(bound(deserialize = &quot;OpeningProof::SRS: Default&quot;))]
-    pub srs: Arc&lt;OpeningProof::SRS&gt;,
+    pub srs: Arc&lt;Srs&gt;,
 
     /// maximal size of polynomial section
     pub max_poly_size: usize,
@@ -1742,7 +1741,7 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
-    pub verifier_index: Option&lt;VerifierIndex&lt;G, OpeningProof&gt;&gt;,
+    pub verifier_index: Option&lt;VerifierIndex&lt;FULL_ROUNDS, G, Srs&gt;&gt;,
 
     /// The verifier index digest corresponding to this prover index
     #[serde_as(as = &quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
@@ -1775,7 +1774,7 @@ pub struct LookupVerifierIndex&lt;G: CommitmentCurve&gt; {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct VerifierIndex&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; {
+pub struct VerifierIndex&lt;const FULL_ROUNDS: usize, G: KimchiCurve&lt;FULL_ROUNDS&gt;, Srs&gt; {
     /// evaluation domain
     #[serde_as(as = &quot;o1_utils::serialization::SerdeAs&quot;)]
     pub domain: D&lt;G::ScalarField&gt;,
@@ -1785,8 +1784,7 @@ pub struct VerifierIndex&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt;
     pub zk_rows: u64,
     /// polynomial commitment keys
     #[serde(skip)]
-    #[serde(bound(deserialize = &quot;OpeningProof::SRS: Default&quot;))]
-    pub srs: Arc&lt;OpeningProof::SRS&gt;,
+    pub srs: Arc&lt;Srs&gt;,
     /// number of public inputs
     pub public: usize,
     /// number of previous evaluation challenges, for recursive proving
@@ -2063,7 +2061,11 @@ pub struct ProverCommitments&lt;G: AffineRepr&gt; {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
-pub struct ProverProof&lt;G: AffineRepr, OpeningProof&gt; {
+pub struct ProverProof&lt;G, OpeningProof, const FULL_ROUNDS: usize&gt;
+where
+    G: CommitmentCurve,
+    OpeningProof: OpenProof&lt;G, FULL_ROUNDS&gt;,
+{
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments&lt;G&gt;,
 
