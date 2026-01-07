@@ -471,7 +471,7 @@
 <a href=#471 id=471 data-nosnippet>471</a>            .into_group();
 <a href=#472 id=472 data-nosnippet>472</a>        <span class="kw">let </span>numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
 <a href=#473 id=473 data-nosnippet>473</a>        <span class="comment">// We compute the result of the multiplication of two miller loop, to
-<a href=#474 id=474 data-nosnippet>474</a>        // apply only one final exponentation
+<a href=#474 id=474 data-nosnippet>474</a>        // apply only one final exponentiation
 <a href=#475 id=475 data-nosnippet>475</a>        </span><span class="kw">let </span>to_loop_left = [
 <a href=#476 id=476 data-nosnippet>476</a>            ark_ec::pairing::prepare_g1::&lt;Pair&gt;(numerator_commitment),
 <a href=#477 id=477 data-nosnippet>477</a>            <span class="comment">// Note that we do a neagtion here, to put everything on the same

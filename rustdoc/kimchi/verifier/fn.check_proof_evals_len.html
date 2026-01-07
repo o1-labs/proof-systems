@@ -2,7 +2,7 @@
     proof: &amp;<a class="struct" href="../proof/struct.ProverProof.html" title="struct kimchi::proof::ProverProof">ProverProof</a>&lt;G, OpeningProof, FULL_ROUNDS&gt;,
     expected_size: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
 ) -&gt; <a class="type" href="type.Result.html" title="type kimchi::verifier::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>&gt;<div class="where">where
-    OpeningProof: OpenProof&lt;G, FULL_ROUNDS&gt;,
+    OpeningProof: <a class="trait" href="../../poly_commitment/trait.OpenProof.html" title="trait poly_commitment::OpenProof">OpenProof</a>&lt;G, FULL_ROUNDS&gt;,
     G: <a class="trait" href="../curve/trait.KimchiCurve.html" title="trait kimchi::curve::KimchiCurve">KimchiCurve</a>&lt;FULL_ROUNDS&gt;,
     G::BaseField: PrimeField,</div></code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Enforce the length of evaluations inside <a href="../proof/struct.ProverProof.html" title="struct kimchi::proof::ProverProof"><code>ProverProof</code></a>.
 Atm, the length of evaluations(both <code>zeta</code> and <code>zeta_omega</code>) SHOULD be 1.
