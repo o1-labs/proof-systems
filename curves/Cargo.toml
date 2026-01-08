@@ -19,6 +19,7 @@ asm = []
 ark-bn254.workspace = true
 ark-ec.workspace = true
 ark-ff.workspace = true
+ark-secp256k1.workspace = true
 ark-std.workspace = true
 num-bigint.workspace = true
 
@@ -27,3 +28,4 @@ rand.workspace = true
 ark-test-curves.workspace = true
 ark-algebra-test-templates.workspace = true
 ark-serialize.workspace = true
+proptest.workspace = true
