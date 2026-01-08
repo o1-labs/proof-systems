@@ -3,6 +3,7 @@
 //! Definition of secret key, keypairs and related helpers
 
 extern crate alloc;
+
 use crate::{pubkey::PubKeyError, seckey::SecKeyError, CurvePoint, PubKey, ScalarField, SecKey};
 use alloc::{string::String, vec::Vec};
 use core::fmt;

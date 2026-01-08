@@ -3,10 +3,10 @@
 //! Definition of random oracle input structure and
 //! methods for serializing into bytes and field elements
 
+use alloc::{vec, vec::Vec};
 use core::fmt::Error;
 
 use super::Hashable;
-use alloc::{vec, vec::Vec};
 use ark_ff::{BigInteger, PrimeField};
 use bitvec::{prelude::*, view::AsBits};
 use mina_curves::pasta::{Fp, Fq};

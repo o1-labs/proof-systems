@@ -1,4 +1,5 @@
 extern crate alloc;
+
 use crate::{pasta::FULL_ROUNDS, poseidon::ArithmeticSpongeParams};
 use ark_ff::Field;
 use core::{fmt::Debug, str::FromStr};

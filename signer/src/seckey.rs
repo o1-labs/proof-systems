@@ -1,6 +1,7 @@
 //! Secret key structures and helpers
 
 extern crate alloc;
+
 use crate::ScalarField;
 use alloc::{string::String, vec, vec::Vec};
 use ark_ff::UniformRand;

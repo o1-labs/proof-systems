@@ -3,6 +3,7 @@
 //! Definition of public key structure and helpers
 
 extern crate alloc;
+
 use crate::{BaseField, CurvePoint, ScalarField, SecKey};
 use alloc::{string::String, vec, vec::Vec};
 use ark_ec::{short_weierstrass::Affine, AffineRepr, CurveGroup};

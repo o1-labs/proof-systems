@@ -168,7 +168,8 @@ jobs:
         run: |
           eval $(opam env)
           make test-doc
-      - name: generate docs
+
+      - name: Generate docs
         run: |
           eval $(opam env)
           make generate-doc
@@ -209,8 +210,35 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./book/book/html
 
+  # Tracking issue: https://github.com/o1-labs/mina-rust/issues/1984
+  no-std-check:
+    name: "no_std: ${{ matrix.crate.name }}"
+    needs: ['refresh-cache']
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        crate:
+          # Crates with no-std feature
+          - { name: "mina-hasher", path: "hasher" } # https://github.com/o1-labs/mina-rust/issues/1994
+          - { name: "mina-poseidon", path: "poseidon" } # https://github.com/o1-labs/mina-rust/issues/1996
+          - { name: "mina-signer", path: "signer" } # https://github.com/o1-labs/mina-rust/issues/1995
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: stable
+
+      - name: Check ${{ matrix.crate.name }} (no_std)
+        run: |
+          cd ${{ matrix.crate.path }}
+          cargo check --no-default-features
+
   build:
-    needs: ['define-matrix', 'refresh-cache']
+    needs: ['define-matrix', 'refresh-cache', 'no-std-check']
     strategy:
       matrix:
         rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
