@@ -410,7 +410,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
             let pos = self.alloc_scratch();
             unsafe { self.test_zero(x, pos) }
         };
-        // write the non deterministic advice inv_or_zero
+        // write the non-deterministic advice inv_or_zero
         let pos = self.alloc_scratch_inverse();
         if *x == 0 {
             self.write_field_column(pos, Fp::zero());
@@ -753,7 +753,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                     length_byte as u64,
                 );
 
-                // TODO: Proabably, the scratch state of MIPS_LENGTH_BYTES_OFF
+                // TODO: Probably, the scratch state of MIPS_LENGTH_BYTES_OFF
                 // is redundant with lines below
                 unsafe {
                     self.push_memory(&(*addr + i), length_byte as u64);
@@ -780,7 +780,7 @@ impl<Fp: PrimeField, PreImageOracle: PreImageOracleT> InterpreterEnv for Env<Fp,
                 // read in this call
                 preimage_read_len += 1;
 
-                // TODO: Proabably, the scratch state of MIPS_PREIMAGE_BYTES_OFF
+                // TODO: Probably, the scratch state of MIPS_PREIMAGE_BYTES_OFF
                 // is redundant with lines below
                 unsafe {
                     self.push_memory(&(*addr + i), preimage_byte as u64);
