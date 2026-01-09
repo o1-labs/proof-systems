@@ -748,27 +748,6 @@ macro_rules! impl_proof {
                 prev_sgs: NapiVector<$NapiG>,
             ) -> Result<NapiProofF> {
                 println!("Entering proof create NAPI function");
-                println!("NAPI proof_create:");
-                println!("  witness len: {}", witness.0.len());
-                println!(
-                    "  runtime_tables len: {}",
-                    runtime_tables.len()
-                );
-                println!(
-                    "  prev_challenges len (bytes): {}",
-                    prev_challenges.len()
-                );
-                println!(
-                    "  prev_sgs len: {}",
-                    prev_sgs.len()
-                );
-                println!(
-                    "  index domain d1 size: {:?}",
-                    index.0.as_ref().cs.domain.d1
-                );
-                if let Some(first) = witness.0.get(0) {
-                    println!("  witness[0] len: {}", first.len());
-                }
                 let (maybe_proof, public_input) = {
                     index
                         .0

@@ -93,6 +93,9 @@ macro_rules! impl_field_wrapper {
                 env: sys::napi_env,
                 napi_val: sys::napi_value,
             ) -> Result<sys::napi_value> {
+                if <Uint8Array as ValidateNapiValue>::validate(env, napi_val).is_ok() {
+                    return Ok(napi_val);
+                }
                 <Buffer as ValidateNapiValue>::validate(env, napi_val)
             }
         }
@@ -102,6 +105,9 @@ macro_rules! impl_field_wrapper {
                 env: sys::napi_env,
                 napi_val: sys::napi_value,
             ) -> Result<Self> {
+                if let Ok(arr) = <Uint8Array as FromNapiValue>::from_napi_value(env, napi_val) {
+                    return Ok(Self::from_bytes(arr.as_ref()));
+                }
                 let buffer = <Buffer as FromNapiValue>::from_napi_value(env, napi_val)?;
                 Ok(Self::from_bytes(buffer.as_ref()))
             }

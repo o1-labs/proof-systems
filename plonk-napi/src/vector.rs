@@ -128,8 +128,7 @@ where
 {
     unsafe fn from_napi_value(env: sys::napi_env, napi_val: sys::napi_value) -> Result<Self> {
         // Prefer `Uint8Array`/`Buffer` inputs for performance.
-        let bytes = if let Ok(arr) = <Uint8Array as FromNapiValue>::from_napi_value(env, napi_val)
-        {
+        let bytes = if let Ok(arr) = <Uint8Array as FromNapiValue>::from_napi_value(env, napi_val) {
             arr.as_ref().to_vec()
         } else {
             <Vec<u8> as FromNapiValue>::from_napi_value(env, napi_val)?
@@ -318,7 +317,6 @@ macro_rules! impl_vec_vec {
         impl $name {
             #[napi(constructor)]
             pub fn new(capacity: i32) -> Self {
-                println!("Creating napi VecVec");
                 $name(Vec::with_capacity(capacity as usize))
             }
 
