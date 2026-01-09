@@ -117,7 +117,9 @@ macro_rules! impl_srs {
               #[napi(js_name = [<"caml_" $name:snake "_srs_create_parallel">])]
               pub fn [<caml_ $name:snake _srs_create_parallel>](depth: i32) -> [<Napi $name:camel Srs>] {
                   println!("Creating SRS in parallel with napi");
-                  Arc::new(SRS::<$G>::create_parallel(depth as usize)).into()
+                  let srs = Arc::new(SRS::<$G>::create_parallel(depth as usize));
+                  println!(" created SRS: g.len={} h:{}", srs.g.len(), srs.h);
+                  srs.into()
               }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_add_lagrange_basis">])]
@@ -181,17 +183,40 @@ macro_rules! impl_srs {
             // the pointer for wasm, or the actual data for napi
             #[napi(js_name = [<"caml_" $name:snake "_srs_lagrange_commitments_whole_domain_ptr">])]
             pub fn [<caml_ $name:snake _srs_lagrange_commitments_whole_domain_ptr>](
-                srs: &External<[<Napi $name:camel Srs>]>,
+                srs: &[<Napi $name:camel Srs>],
                 domain_size: i32,
             ) -> Result<NapiVector<$NapiPolyComm>> {
-                let domain = EvaluationDomain::<$F>::new(domain_size as usize)
+                println!("entering _srs_lagrange_commitments_whole_domain_ptr in rust land");
+                let domain = ark_poly::Radix2EvaluationDomain::<$F>::new(domain_size as usize)
                     .ok_or_else(invalid_domain_error)?;
-                let basis = srs.0.get_lagrange_basis(domain);
+                println!("created domain {}", domain.size());
+                if srs.0.g.is_empty() {
+                    println!("SRS is empty error");
+                    return Err(Error::new(
+                        Status::InvalidArg,
+                        "SRS is empty; regenerate or clear cache",
+                    ));
+                }
+                let dom_size = domain.size();
+                if dom_size > srs.0.g.len() {
+                    return Err(Error::new(
+                        Status::InvalidArg,
+                        format!(
+                            "domain size {} exceeds SRS size {}; regenerate SRS with higher depth",
+                            dom_size,
+                            srs.0.g.len()
+                        ),
+                    ));
+                }
+                println!("trying to get lagrange basis");
+                let basis = srs.get_lagrange_basis(domain);
+
+                println!("about to return ok for _srs_lagrange_commitments_whole_domain_ptr");
                 Ok(basis.iter().cloned().map(Into::into).collect())
             }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_get">])]
-              pub fn [<caml_ $name:snake _srs_get>](srs: &External<[<Napi $name:camel Srs>]>) -> Vec<$NapiG> {
+              pub fn [<caml_ $name:snake _srs_get>](srs: &[<Napi $name:camel Srs>]) -> Vec<$NapiG> {
                   println!("Getting SRS with napi");
                   let mut h_and_gs: Vec<$NapiG> = vec![srs.0.h.into()];
                   h_and_gs.extend(srs.0.g.iter().cloned().map(Into::into));
@@ -206,6 +231,7 @@ macro_rules! impl_srs {
                   let h = h_and_gs.remove(0);
                   let g = h_and_gs;
                   let srs = SRS::<$G> { h, g, lagrange_bases: HashMapCache::new() };
+                  println!(" set SRS: g.len={} h:{}", srs.g.len(), srs.h);
                   Arc::new(srs).into()
               }
 
@@ -216,6 +242,9 @@ macro_rules! impl_srs {
                   i: i32,
               ) -> Option<$NapiPolyComm> {
                   println!("Getting maybe lagrange commitment with napi rust");
+                  println!("srs pointer: {:?}", srs);
+                  println!("srs.0: {:?}", srs.0);
+
                   if !srs
                       .0
                       .lagrange_bases
@@ -328,7 +357,7 @@ macro_rules! impl_srs {
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_h">])]
               pub fn [<caml_ $name:snake _srs_h>](srs: &[<Napi $name:camel Srs>]) -> $NapiG {
-                  println!("Getting h point with napi");
+                  println!("Getting h point with napi {:?}", srs.h);
                   srs.h.into()
               }
         }
