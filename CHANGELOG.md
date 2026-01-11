@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.3.0
+
 ### CI
 
 - Remove Rust 1.81 from CI matrix, update MSRV to 1.92 to match mina-rust and MinaProtocol/mina ([#3419](https://github.com/o1-labs/proof-systems/pull/3419))
