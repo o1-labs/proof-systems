@@ -107,6 +107,7 @@ kimchi-visu = { path = "./tools/kimchi-visu" }
 mina-curves = { path = "./curves", features = ["asm"] }
 mina-hasher = { path = "./hasher" }
 mina-poseidon = { path = "./poseidon" }
+mina-signer = { path = "./signer" }
 mvpoly = { path = "./mvpoly" }
 o1-utils = { path = "./utils" }
 o1vm = { path = "./o1vm" }
