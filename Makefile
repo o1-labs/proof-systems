@@ -156,6 +156,7 @@ test: ## Test the project with non-heavy tests and using native cargo test runne
 			--features "$(WORKSPACE_FEATURES)" \
 			--exclude plonk_neon \
 			--exclude plonk_wasm \
+			--workspace \
 			--release $(CARGO_EXTRA_ARGS) \
 			-- --nocapture \
 			--skip heavy $(BIN_EXTRA_ARGS)
@@ -170,6 +171,7 @@ test-heavy: ## Test the project with heavy tests and using native cargo test run
 			--features "$(WORKSPACE_FEATURES)" \
 			--exclude plonk_neon \
 			--exclude plonk_wasm \
+			--workspace \
 			--release $(CARGO_EXTRA_ARGS) \
 			-- --nocapture heavy $(BIN_EXTRA_ARGS)
 
@@ -184,6 +186,7 @@ test-all: ## Test the project with all tests and using native cargo test runner
 			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--release $(CARGO_EXTRA_ARGS) \
+			--workspace \
 			-- --nocapture $(BIN_EXTRA_ARGS)
 
 .PHONY: test-all-with-coverage
@@ -193,7 +196,7 @@ test-all-with-coverage:
 .PHONY: nextest
 nextest: ## Test the project with non-heavy tests and using nextest test runner
 		cargo nextest run \
-			--all \
+			--workspace \
 			--features "$(WORKSPACE_FEATURES)" \
 			--exclude plonk_neon \
 			--exclude plonk_wasm \
@@ -208,6 +211,7 @@ nextest-with-coverage:
 .PHONY: nextest-heavy
 nextest-heavy: ## Test the project with heavy tests and using nextest test runner
 		cargo nextest run \
+			--workspace \
 			--features "$(WORKSPACE_FEATURES)" \
 			--exclude plonk_neon \
 			--exclude plonk_wasm \
@@ -222,6 +226,7 @@ nextest-heavy-with-coverage:
 .PHONY: nextest-all
 nextest-all: ## Test the project with all tests and using nextest test runner
 		cargo nextest run \
+			--workspace \
 			--features "$(WORKSPACE_FEATURES)" \
 			--exclude plonk_neon \
 			--exclude plonk_wasm \
