@@ -307,7 +307,7 @@ dependencies = [
 
 [[package]]
 name = "arkworks"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -322,7 +322,7 @@ dependencies = [
 
 [[package]]
 name = "arrabbiata"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -1233,7 +1233,7 @@ dependencies = [
 
 [[package]]
 name = "export_test_vectors"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-ff",
  "ark-serialize",
@@ -1402,7 +1402,7 @@ checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
 name = "groupmap"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -1747,7 +1747,7 @@ dependencies = [
 
 [[package]]
 name = "internal-tracing"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ocaml",
  "ocaml-gen",
@@ -1862,7 +1862,7 @@ dependencies = [
 
 [[package]]
 name = "kimchi"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-bn254",
  "ark-ec",
@@ -1907,7 +1907,7 @@ dependencies = [
 
 [[package]]
 name = "kimchi-msm"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-bn254",
  "ark-ec",
@@ -1938,7 +1938,7 @@ dependencies = [
 
 [[package]]
 name = "kimchi-stubs"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -1965,7 +1965,7 @@ dependencies = [
 
 [[package]]
 name = "kimchi-visu"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -2152,7 +2152,7 @@ dependencies = [
 
 [[package]]
 name = "mina-book"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "cargo-spec",
  "plist",
@@ -2161,7 +2161,7 @@ dependencies = [
 
 [[package]]
 name = "mina-curves"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-algebra-test-templates",
  "ark-bn254",
@@ -2176,7 +2176,7 @@ dependencies = [
 
 [[package]]
 name = "mina-hasher"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-ff",
  "bitvec",
@@ -2189,7 +2189,7 @@ dependencies = [
 
 [[package]]
 name = "mina-poseidon"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -2211,7 +2211,7 @@ dependencies = [
 
 [[package]]
 name = "mina-signer"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -2289,7 +2289,7 @@ dependencies = [
 
 [[package]]
 name = "mvpoly"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-ff",
  "criterion",
@@ -2416,7 +2416,7 @@ dependencies = [
 
 [[package]]
 name = "o1-utils"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -2444,7 +2444,7 @@ dependencies = [
 
 [[package]]
 name = "o1vm"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-bn254",
  "ark-ec",
@@ -2760,7 +2760,7 @@ dependencies = [
 
 [[package]]
 name = "plonk_neon"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -2787,7 +2787,7 @@ dependencies = [
 
 [[package]]
 name = "plonk_wasm"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -2851,7 +2851,7 @@ dependencies = [
 
 [[package]]
 name = "poly-commitment"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-bn254",
  "ark-ec",
@@ -3957,7 +3957,7 @@ checksum = "bfb942dfe1d8e29a7ee7fcbde5bd2b9a25fb89aa70caea2eba3bee836ff41076"
 
 [[package]]
 name = "turshi"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -4273,7 +4273,7 @@ dependencies = [
 
 [[package]]
 name = "wasm-types"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "wasm-bindgen",
 ]
@@ -4511,7 +4511,7 @@ checksum = "213b7324336b53d2414b2db8537e56544d981803139155afa84f76eeebb7a546"
 
 [[package]]
 name = "xtask"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "clap 4.4.18",
