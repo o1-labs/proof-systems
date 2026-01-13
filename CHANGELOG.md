@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### plonk_neon
+
+#### Removed
+- Remove unused `plonk_neon` crate from workspace ([#3440](https://github.com/o1-labs/proof-systems/pull/3440))
+
 ## 0.3.0
 
 ### CI
