@@ -36,7 +36,7 @@ MIPS_LD ?= mips-linux-gnu-ld
 # .github/workflows/wasm.yml) should be changed accordingly.
 # Can be overridden via environment variable, e.g.:
 #   NIGHTLY_RUST_VERSION=nightly make build-web
-NIGHTLY_RUST_VERSION ?= nightly-2024-09-05
+NIGHTLY_RUST_VERSION ?= nightly-2025-12-11
 PLONK_WASM_NODEJS_OUTDIR ?= target/nodejs
 PLONK_WASM_WEB_OUTDIR ?= target/web
 
