@@ -197,18 +197,8 @@ macro_rules! impl_srs {
                         "SRS is empty; regenerate or clear cache",
                     ));
                 }
-                let dom_size = domain.size();
-                if dom_size > srs.0.g.len() {
-                    return Err(Error::new(
-                        Status::InvalidArg,
-                        format!(
-                            "domain size {} exceeds SRS size {}; regenerate SRS with higher depth",
-                            dom_size,
-                            srs.0.g.len()
-                        ),
-                    ));
-                }
-                println!("trying to get lagrange basis");
+                // Chunkeing is supported so domain can be larger than SRS size.
+                 println!("trying to get lagrange basis");
                 let basis = srs.get_lagrange_basis(domain);
 
                 println!("about to return ok for _srs_lagrange_commitments_whole_domain_ptr");
