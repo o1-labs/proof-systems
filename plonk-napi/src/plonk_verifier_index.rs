@@ -210,6 +210,7 @@ macro_rules! impl_verification_key {
             #[napi(object, js_name = [<Wasm $field_name:camel LookupVerifierIndex>])]
             #[derive(Clone, Debug, Serialize, Deserialize, Default)]
             pub struct [<Napi $field_name:camel LookupVerifierIndex>] {
+                #[napi(js_name = "joint_lookup_used")]
                 pub joint_lookup_used: bool,
 
                 #[napi(js_name = "lookup_table")]

@@ -23,7 +23,9 @@ use wasm_types::{FlatVector, FlatVectorElem};
 pub struct NapiLookupPatterns {
     pub xor: bool,
     pub lookup: bool,
+    #[napi(js_name = "range_check")]
     pub range_check: bool,
+    #[napi(js_name = "foreign_field_mul")]
     pub foreign_field_mul: bool,
 }
 
@@ -53,7 +55,9 @@ impl From<NapiLookupPatterns> for LookupPatterns {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct NapiLookupFeatures {
     pub patterns: NapiLookupPatterns,
+    #[napi(js_name = "joint_lookup_used")]
     pub joint_lookup_used: bool,
+    #[napi(js_name = "uses_runtime_tables")]
     pub uses_runtime_tables: bool,
 }
 
@@ -80,7 +84,9 @@ impl From<NapiLookupFeatures> for LookupFeatures {
 #[napi(object, js_name = "WasmLookupInfo")]
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct NapiLookupInfo {
+    #[napi(js_name = "max_per_row")]
     pub max_per_row: i32,
+    #[napi(js_name = "max_joint_size")]
     pub max_joint_size: i32,
     pub features: NapiLookupFeatures,
 }
@@ -197,7 +203,7 @@ macro_rules! impl_lookup_wrappers {
                     self.id = id;
                 }
 
-                #[napi(getter)]
+                #[napi(getter, js_name = "first_column")]
                 pub fn first_column(&self) -> Result<Uint8Array> {
                     let mut bytes = Vec::with_capacity(self.first_column.len() * <$NapiF>::FLATTENED_SIZE);
                     for value in &self.first_column {
