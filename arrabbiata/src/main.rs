@@ -1,169 +1,160 @@
-//! This file contains an entry point to run a zkApp written in Rust.
-//! Until the first version is complete, this file will contain code that
-//! will need to be moved later into the Arrabbiata library.
-//! The end goal is to allow the end-user to simply select the zkApp they want,
-//! specify the number of iterations, and keep this file relatively simple.
+//! Entry point for running zkApps with the Arrabbiata IVC scheme.
+//!
+//! This binary allows selecting a circuit to fold, specifying the number of
+//! iterations, and measuring the performance of the folding scheme.
+//!
+//! ## Usage
+//!
+//! ```bash
+//! # Run 10 iterations of the squaring circuit with SRS size 2^8
+//! cargo run --release -p arrabbiata -- execute --circuit squaring -n 10 --srs-size 8
+//!
+//! # Run Fibonacci circuit
+//! cargo run --release -p arrabbiata -- execute --circuit fibonacci -n 5 --srs-size 8
+//!
+//! # Run cubic circuit
+//! cargo run --release -p arrabbiata -- execute --circuit cubic -n 10 --srs-size 8
+//! ```
+//!
+//! ## Available Circuits
+//!
+//! - `trivial`: Identity circuit z_{i+1} = z_i
+//! - `squaring`: Squaring circuit z_{i+1} = z_i^2
+//! - `cubic`: Cubic circuit z_{i+1} = z_i^3 + z_i + 5
+//! - `square-cubic`: Composed circuit x -> x^6 + x^2 + 5
+//! - `fibonacci`: Fibonacci sequence (x, y) -> (y, x + y)
+//! - `counter`: Counter circuit z_{i+1} = z_i + 1
+//! - `minroot`: MinRoot VDF computing 5th roots
+//! - `hashchain`: Hash chain circuit z_{i+1} = hash(z_i)
 
 use arrabbiata::{
-    challenge::ChallengeTerm,
     cli,
-    interpreter::{self, InterpreterEnv},
+    decider::{
+        prover::prove,
+        verifier::{verify, VerificationKey},
+    },
+    registry::CircuitRegistry,
     setup::IndexedRelation,
-    witness, MIN_SRS_LOG2_SIZE, VERIFIER_CIRCUIT_SIZE,
+    witness, MIN_SRS_LOG2_SIZE,
 };
 use clap::Parser;
-use log::{debug, info};
+use log::info;
 use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 use num_bigint::BigInt;
 use std::time::Instant;
 
 pub fn execute(args: cli::ExecuteArgs) {
-    let srs_log2_size = args.srs_size;
-    let n_iteration = args.n;
-    let zkapp = args.zkapp;
-    assert_eq!(
-        zkapp, "square-root",
-        "This is a dummy value for now. This argument does nothing, but it is while we're changing the CLI interface"
-    );
+    let registry = CircuitRegistry::default();
+
+    // Handle --list-circuits flag
+    if args.list_circuits {
+        println!("Available circuits:\n");
+        for (name, info) in registry.circuits() {
+            println!("  {}", name);
+            println!("    {}", info.description);
+            println!(
+                "    arity: {}, degree: {}, constraints: {}, rows: {}, min-srs: {}",
+                info.arity,
+                info.max_degree,
+                info.num_constraints,
+                info.rows_per_fold,
+                info.min_srs_log2_size()
+            );
+            println!();
+        }
+        return;
+    }
+
+    // Validate circuit name
+    if let Err(e) = args.validate_circuit(&registry) {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
+
+    // These are required unless --list-circuits is used
+    let srs_log2_size = args.srs_size.expect("srs-size is required");
+    let n_iterations = args.n.expect("n is required");
+    let circuit = &args.circuit;
 
     assert!(
         srs_log2_size >= MIN_SRS_LOG2_SIZE,
         "SRS size must be at least 2^{MIN_SRS_LOG2_SIZE} to support the verifier circuit size"
     );
 
-    info!("Instantiating environment to execute square-root {n_iteration} times with SRS of size 2^{srs_log2_size}");
+    info!(
+        "Executing circuit '{}' for {} iterations with SRS of size 2^{}",
+        circuit, n_iterations, srs_log2_size
+    );
 
-    // FIXME: correctly setup
+    // Setup phase
+    let setup_start = Instant::now();
     let indexed_relation = IndexedRelation::new(srs_log2_size);
+    let setup_time = setup_start.elapsed();
+    info!("Setup completed in {:?}", setup_time);
 
+    // Create environment
     let mut env = witness::Env::<Fp, Fq, Vesta, Pallas>::new(BigInt::from(1u64), indexed_relation);
 
-    while env.current_iteration < n_iteration {
-        let start_iteration = Instant::now();
+    // Folding phase
+    let fold_start = Instant::now();
+    env.fold(n_iterations);
+    let fold_time = fold_start.elapsed();
+    info!(
+        "Folding {} iterations completed in {:?} ({:.2} ms/iteration)",
+        n_iterations,
+        fold_time,
+        fold_time.as_millis() as f64 / n_iterations as f64
+    );
 
-        info!("Run iteration: {}/{}", env.current_iteration, n_iteration);
+    // Prove phase
+    let prove_start = Instant::now();
+    let proof = prove(&env).expect("Proof generation should succeed");
+    let prove_time = prove_start.elapsed();
+    info!("Proof generation completed in {:?}", prove_time);
 
-        // Build the application circuit
-        info!(
-            "Running {} iterations of the application circuit",
-            env.indexed_relation.app_size
-        );
-        for _i in 0..env.indexed_relation.app_size {
-            interpreter::run_app(&mut env);
-            env.reset();
-        }
+    // Print proof statistics
+    info!("Proof statistics:");
+    info!("  - Iterations: {}", proof.num_iterations);
+    info!("  - Proof size: {} bytes", proof.estimated_size());
+    info!(
+        "  - E1 witness commitments: {}",
+        proof.instance_e1.witness_commitments.len()
+    );
+    info!(
+        "  - E2 witness commitments: {}",
+        proof.instance_e2.witness_commitments.len()
+    );
+    info!(
+        "  - E1 cross-term commitments: {}",
+        proof.instance_e1.cross_term_commitments.len()
+    );
+    info!(
+        "  - E2 cross-term commitments: {}",
+        proof.instance_e2.cross_term_commitments.len()
+    );
 
-        info!(
-            "Building the verifier circuit. A total number of {} rows will be filled from the witness row {}",
-            VERIFIER_CIRCUIT_SIZE, env.current_row,
-        );
-        // Build the verifier circuit
-        // FIXME: Minus one as the last row of the verifier circuit is a
-        // Poseidon hash, and we write on the next row. We don't want to execute
-        // a new instruction for the verifier circuit here.
-        for i in 0..VERIFIER_CIRCUIT_SIZE - 1 {
-            let current_instr = env.fetch_instruction();
-            debug!(
-                "Running verifier row {} (instruction = {:?}, witness row = {})",
-                i,
-                current_instr.clone(),
-                env.current_row
-            );
-            interpreter::run_ivc(&mut env, current_instr);
-            env.current_instruction = interpreter::fetch_next_instruction(current_instr);
-            env.reset();
-        }
-        // FIXME: additional row for the Poseidon hash
-        env.reset();
+    // Verify phase
+    let verify_start = Instant::now();
+    let vk = VerificationKey::from_indexed_relation(&env.indexed_relation);
+    let verify_result = verify(&vk, &proof);
+    let verify_time = verify_start.elapsed();
 
-        debug!(
-            "Witness for iteration {i} computed in {elapsed} μs",
-            i = env.current_iteration,
-            elapsed = start_iteration.elapsed().as_micros()
-        );
-
-        // Commit to the program state.
-        // Depending on the iteration, either E1 or E2 will be used.
-        // The environment will keep the commitments to the program state to
-        // verify and accumulate it at the next iteration.
-        env.commit_state();
-
-        // Absorb the last program state.
-        env.absorb_state();
-
-        // ----- Permutation argument -----
-        // FIXME:
-        // Coin chalenges β and γ for the permutation argument
-
-        // FIXME:
-        // Compute the accumulator for the permutation argument
-
-        // FIXME:
-        // Commit to the accumulator and absorb the commitment
-        // ----- Permutation argument -----
-
-        // Coin challenge α for combining the constraints
-        env.coin_challenge(ChallengeTerm::ConstraintCombiner);
-        debug!(
-            "Coin challenge α: 0x{chal}",
-            chal = env.challenges[ChallengeTerm::ConstraintCombiner].to_str_radix(16)
-        );
-
-        // ----- Accumulation/folding argument -----
-        // FIXME:
-        // Compute the cross-terms
-
-        // FIXME:
-        // Absorb the cross-terms
-
-        // Coin challenge r to fold the instances of the relation.
-        // FIXME: we must do the step before first! Skipping for now to achieve
-        // the next step, i.e. accumulating on the prover side the different
-        // values below.
-        env.coin_challenge(ChallengeTerm::RelationCombiner);
-        debug!(
-            "Coin challenge r: 0x{r}",
-            r = env.challenges[ChallengeTerm::RelationCombiner].to_str_radix(16)
-        );
-        env.accumulate_program_state();
-
-        // Compute the accumulation of the commitments to the witness columns
-        env.accumulate_committed_state();
-
-        // FIXME:
-        // Compute the accumulation of the challenges
-
-        // FIXME:
-        // Compute the accumulation of the public inputs/selectors
-
-        // FIXME:
-        // Compute the accumulation of the blinders for the PCS
-
-        // FIXME:
-        // Compute the accumulated error
-        // ----- Accumulation/folding argument -----
-
-        debug!(
-            "Iteration {i} fully proven in {elapsed} μs",
-            i = env.current_iteration,
-            elapsed = start_iteration.elapsed().as_micros()
-        );
-
-        env.reset_for_next_iteration();
-        env.current_iteration += 1;
+    match &verify_result {
+        Ok(()) => info!("Verification completed in {:?}: PASSED", verify_time),
+        Err(e) => info!("Verification completed in {:?}: FAILED - {}", verify_time, e),
     }
 
-    // Regression test in case we change the Poseidon gadget or the verifier circuit.
-    // These values define the state of the application at the end of the
-    // execution.
-    assert_eq!(
-        env.challenges[ChallengeTerm::RelationCombiner].to_str_radix(16),
-        "f900168373307589ea461f97f47ca7d7"
-    );
-    assert_eq!(
-        env.challenges[ChallengeTerm::ConstraintCombiner].to_str_radix(16),
-        "fc5ac212f5f89cbd3a04a3eb39ce2999"
-    );
+    // Total timing summary
+    let total_time = setup_time + fold_time + prove_time + verify_time;
+    info!("Total execution time: {:?}", total_time);
+
+    // Exit with error if verification failed
+    if verify_result.is_err() {
+        std::process::exit(1);
+    }
+
+    // Note: Regression tests for challenge values are in the integration tests
+    // where we can control the SRS seed for reproducibility.
 }
 
 pub fn main() {

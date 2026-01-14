@@ -9,13 +9,15 @@ use num_integer::Integer;
 use o1_utils::field_helpers::FieldHelpers;
 use poly_commitment::{commitment::CommitmentCurve, ipa::SRS, PolyComm, SRS as _};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use std::collections::HashMap;
 
 use crate::{
     challenge::{ChallengeTerm, Challenges},
     column::Column,
     curve::{ArrabbiataCurve, PlonkSpongeConstants},
+    folding::{self, CrossTerms},
     interpreter::{Instruction, InterpreterEnv, Side, VERIFIER_STARTING_INSTRUCTION},
-    setup, NUMBER_OF_COLUMNS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
+    setup, MAX_DEGREE, NUMBER_OF_COLUMNS, NUMBER_OF_VALUES_TO_ABSORB_PUBLIC_IO,
 };
 
 /// A running program that the (folding) interpreter has access to.
@@ -54,6 +56,26 @@ pub struct Program<
     /// This field is useful to keep track of the challenges that must be
     /// verified in circuit.
     pub previous_challenges: Challenges<BigInt>,
+
+    /// Cross-terms computed during the folding process.
+    /// These are the coefficients of r^1, r^2, ..., r^{D-1} in the constraint
+    /// expansion when folding two instances.
+    pub cross_terms: CrossTerms<E::ScalarField>,
+
+    /// Commitments to the cross-terms polynomials.
+    /// One commitment per power of r (from 1 to MAX_DEGREE).
+    pub cross_terms_commitments: HashMap<usize, PolyComm<E>>,
+
+    /// The accumulated error term polynomial.
+    /// This captures the "slack" from folding relaxed instances.
+    pub error_term: Vec<E::ScalarField>,
+
+    /// Commitment to the error term polynomial.
+    pub error_term_commitment: PolyComm<E>,
+
+    /// The homogenization variable u for this instance.
+    /// For fresh instances u=1, for accumulated instances u is folded.
+    pub homogenizer: E::ScalarField,
 }
 
 impl<Fp: PrimeField, Fq: PrimeField, E: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>>
@@ -85,12 +107,32 @@ where
 
         let previous_challenges: Challenges<BigInt> = Challenges::default();
 
+        // Initialize cross-terms with zeros
+        let cross_terms: CrossTerms<E::ScalarField> = CrossTerms::new(srs_size);
+
+        // Initialize cross-terms commitments (empty until computed)
+        let cross_terms_commitments: HashMap<usize, PolyComm<E>> = HashMap::new();
+
+        // Initialize error term with zeros
+        let error_term: Vec<E::ScalarField> = vec![E::ScalarField::zero(); srs_size];
+
+        // Initialize error term commitment to blinder
+        let error_term_commitment: PolyComm<E> = PolyComm::new(vec![blinder]);
+
+        // Initialize homogenizer to 1 for fresh instances
+        let homogenizer = E::ScalarField::one();
+
         Self {
             accumulated_committed_state,
             previous_committed_state,
             accumulated_program_state,
             accumulated_challenges,
             previous_challenges,
+            cross_terms,
+            cross_terms_commitments,
+            error_term,
+            error_term_commitment,
+            homogenizer,
         }
     }
 
@@ -251,6 +293,77 @@ where
             .zip(self.previous_committed_state.iter())
             .map(|(l, r)| l + &r.scale(chal))
             .collect();
+    }
+
+    /// Commit to the cross-terms polynomials.
+    ///
+    /// This method commits to each cross-term polynomial (one per power of r)
+    /// and stores the commitments in `cross_terms_commitments`.
+    pub fn commit_cross_terms(&mut self, srs: &SRS<E>, domain: EvaluationDomains<E::ScalarField>) {
+        for power in 1..=MAX_DEGREE {
+            if let Some(poly) = self.cross_terms.get(power) {
+                let evals = Evaluations::from_vec_and_domain(poly.clone(), domain.d1);
+                let comm = srs.commit_evaluations_non_hiding(domain.d1, &evals);
+                self.cross_terms_commitments.insert(power, comm);
+            }
+        }
+    }
+
+    /// Commit to the error term polynomial.
+    pub fn commit_error_term(&mut self, srs: &SRS<E>, domain: EvaluationDomains<E::ScalarField>) {
+        let evals = Evaluations::from_vec_and_domain(self.error_term.clone(), domain.d1);
+        self.error_term_commitment = srs.commit_evaluations_non_hiding(domain.d1, &evals);
+    }
+
+    /// Fold the error term with cross-terms using the folding challenge r.
+    ///
+    /// Computes: e_new[i] = e_acc[i] + sum_{j=1}^{D}(r^j * t_j[i]) + r^{D+1} * e_fresh[i]
+    pub fn fold_error_term(&mut self, error_fresh: &[E::ScalarField], r: E::ScalarField) {
+        self.error_term =
+            folding::fold_error_terms(&self.error_term, error_fresh, &self.cross_terms, r);
+    }
+
+    /// Fold the homogenization variable.
+    ///
+    /// Computes: u_new = u_acc + r * u_fresh
+    pub fn fold_homogenizer(&mut self, u_fresh: E::ScalarField, r: E::ScalarField) {
+        self.homogenizer = folding::fold_homogenizer(self.homogenizer, u_fresh, r);
+    }
+
+    /// Fold the error term commitment with cross-term commitments.
+    ///
+    /// Computes: E_new = E_acc + sum_{j=1}^{D}(r^j * T_j) + r^{D+1} * E_fresh
+    pub fn fold_error_commitment(
+        &mut self,
+        error_fresh_commitment: &PolyComm<E>,
+        r: E::ScalarField,
+    ) {
+        let mut result = self.error_term_commitment.clone();
+
+        // Add cross-term commitments: sum_{j=1}^{D}(r^j * T_j)
+        let mut r_power = r;
+        for power in 1..=MAX_DEGREE {
+            if let Some(comm) = self.cross_terms_commitments.get(&power) {
+                result = &result + &comm.scale(r_power);
+            }
+            r_power *= r;
+        }
+
+        // Add r^{D+1} * E_fresh
+        result = &result + &error_fresh_commitment.scale(r_power);
+
+        self.error_term_commitment = result;
+    }
+
+    /// Clear cross-terms polynomials after folding (to prepare for next iteration).
+    ///
+    /// This clears the polynomial evaluations but preserves the commitments,
+    /// which are needed for the final proof.
+    pub fn clear_cross_terms(&mut self) {
+        let domain_size = self.error_term.len();
+        self.cross_terms = CrossTerms::new(domain_size);
+        // Note: We keep cross_terms_commitments for the proof.
+        // They will be replaced in the next iteration's commit_cross_terms().
     }
 }
 
@@ -1216,6 +1329,309 @@ where
             self.program_e2.accumulate_committed_state(chal);
         } else {
             self.program_e1.accumulate_committed_state(chal);
+        }
+    }
+
+    /// Compute cross-terms for the current iteration.
+    ///
+    /// This method computes the cross-terms between the accumulated instance
+    /// and the fresh instance (current witness). The cross-terms are stored
+    /// in the appropriate program state (E1 or E2 depending on iteration).
+    ///
+    /// The cross-terms are computed using the constraints from the indexed
+    /// relation and the selectors that define which gadget is active at each row.
+    pub fn compute_cross_terms(&mut self) {
+        if self.current_iteration.is_multiple_of(2) {
+            // On E1: compute cross-terms for Fp field
+            // Note: alpha must be non-zero for mvpoly cross-terms computation.
+            // On the first iteration, the accumulated alpha is zero (no prior folding),
+            // so we use 1 as a safe default (trivial initial accumulator).
+            let alpha_acc: Fp = {
+                let alpha =
+                    &self.program_e1.accumulated_challenges[ChallengeTerm::ConstraintCombiner];
+                let val = Fp::from_biguint(&alpha.to_biguint().unwrap()).unwrap_or(Fp::one());
+                if val == Fp::zero() {
+                    Fp::one()
+                } else {
+                    val
+                }
+            };
+            let alpha_fresh: Fp = {
+                let alpha = &self.challenges[ChallengeTerm::ConstraintCombiner];
+                let val = Fp::from_biguint(&alpha.to_biguint().unwrap()).unwrap_or(Fp::one());
+                if val == Fp::zero() {
+                    Fp::one()
+                } else {
+                    val
+                }
+            };
+            let u_acc: Fp = self.program_e1.homogenizer;
+            let u_fresh: Fp = Fp::one();
+
+            let fresh_witness: Vec<Vec<Fp>> = self
+                .witness
+                .iter()
+                .map(|col| {
+                    col.iter()
+                        .map(|v| Fp::from_biguint(&v.to_biguint().unwrap()).unwrap())
+                        .collect()
+                })
+                .collect();
+
+            self.program_e1.cross_terms = folding::compute_all_cross_terms(
+                &self.indexed_relation.constraints_fp,
+                &self.indexed_relation.circuit_gates,
+                &self.program_e1.accumulated_program_state,
+                &fresh_witness,
+                u_acc,
+                u_fresh,
+                alpha_acc,
+                alpha_fresh,
+            );
+        } else {
+            // On E2: compute cross-terms for Fq field
+            // Note: alpha must be non-zero for mvpoly cross-terms computation.
+            // On the first iteration, the accumulated alpha is zero (no prior folding),
+            // so we use 1 as a safe default (trivial initial accumulator).
+            let alpha_acc: Fq = {
+                let alpha =
+                    &self.program_e2.accumulated_challenges[ChallengeTerm::ConstraintCombiner];
+                let val = Fq::from_biguint(&alpha.to_biguint().unwrap()).unwrap_or(Fq::one());
+                if val == Fq::zero() {
+                    Fq::one()
+                } else {
+                    val
+                }
+            };
+            let alpha_fresh: Fq = {
+                let alpha = &self.challenges[ChallengeTerm::ConstraintCombiner];
+                let val = Fq::from_biguint(&alpha.to_biguint().unwrap()).unwrap_or(Fq::one());
+                if val == Fq::zero() {
+                    Fq::one()
+                } else {
+                    val
+                }
+            };
+            let u_acc: Fq = self.program_e2.homogenizer;
+            let u_fresh: Fq = Fq::one();
+
+            let fresh_witness: Vec<Vec<Fq>> = self
+                .witness
+                .iter()
+                .map(|col| {
+                    col.iter()
+                        .map(|v| Fq::from_biguint(&v.to_biguint().unwrap()).unwrap())
+                        .collect()
+                })
+                .collect();
+
+            self.program_e2.cross_terms = folding::compute_all_cross_terms(
+                &self.indexed_relation.constraints_fq,
+                &self.indexed_relation.circuit_gates,
+                &self.program_e2.accumulated_program_state,
+                &fresh_witness,
+                u_acc,
+                u_fresh,
+                alpha_acc,
+                alpha_fresh,
+            );
+        }
+    }
+
+    /// Commit to the cross-terms for the current iteration.
+    pub fn commit_cross_terms(&mut self) {
+        if self.current_iteration.is_multiple_of(2) {
+            self.program_e1.commit_cross_terms(
+                &self.indexed_relation.srs_e1,
+                self.indexed_relation.domain_fp,
+            );
+        } else {
+            self.program_e2.commit_cross_terms(
+                &self.indexed_relation.srs_e2,
+                self.indexed_relation.domain_fq,
+            );
+        }
+    }
+
+    /// Absorb cross-term commitments into the sponge.
+    ///
+    /// This absorbs each cross-term commitment (for powers 1 to MAX_DEGREE)
+    /// into the prover's Fiat-Shamir sponge.
+    pub fn absorb_cross_terms(&mut self) {
+        if self.current_iteration.is_multiple_of(2) {
+            // On E1: create sponge and absorb E1 commitments
+            let mut sponge = E1::create_new_sponge();
+            // Initialize sponge with current state
+            for state_elem in self.prover_sponge_state.iter() {
+                let elem: Fq = Fq::from_biguint(&state_elem.to_biguint().unwrap()).unwrap();
+                E1::absorb_fq(&mut sponge, elem);
+            }
+            // Absorb each cross-term commitment
+            for power in 1..=MAX_DEGREE {
+                if let Some(comm) = self.program_e1.cross_terms_commitments.get(&power) {
+                    E1::absorb_curve_points(&mut sponge, &comm.chunks);
+                }
+            }
+            // Update sponge state
+            for (i, state_elem) in sponge.sponge.state.iter().enumerate() {
+                self.prover_sponge_state[i] = state_elem.to_biguint().into();
+            }
+        } else {
+            // On E2: create sponge and absorb E2 commitments
+            let mut sponge = E2::create_new_sponge();
+            // Initialize sponge with current state
+            for state_elem in self.prover_sponge_state.iter() {
+                let elem: Fp = Fp::from_biguint(&state_elem.to_biguint().unwrap()).unwrap();
+                E2::absorb_fq(&mut sponge, elem);
+            }
+            // Absorb each cross-term commitment
+            for power in 1..=MAX_DEGREE {
+                if let Some(comm) = self.program_e2.cross_terms_commitments.get(&power) {
+                    E2::absorb_curve_points(&mut sponge, &comm.chunks);
+                }
+            }
+            // Update sponge state
+            for (i, state_elem) in sponge.sponge.state.iter().enumerate() {
+                self.prover_sponge_state[i] = state_elem.to_biguint().into();
+            }
+        }
+    }
+
+    /// Perform the full folding step after cross-terms are computed.
+    ///
+    /// This method:
+    /// 1. Folds the error term with cross-terms
+    /// 2. Folds the homogenizer
+    /// 3. Clears cross-terms for next iteration
+    pub fn fold_instance(&mut self) {
+        let r = &self.challenges[ChallengeTerm::RelationCombiner];
+        let r_fp: Fp = Fp::from_biguint(&r.to_biguint().unwrap()).unwrap();
+        let r_fq: Fq = Fq::from_biguint(&r.to_biguint().unwrap()).unwrap();
+
+        if self.current_iteration.is_multiple_of(2) {
+            // Fold error term (fresh error is zeros for new instances)
+            let fresh_error = vec![Fp::zero(); self.indexed_relation.get_srs_size()];
+            self.program_e1.fold_error_term(&fresh_error, r_fp);
+
+            // Fold homogenizer (fresh u = 1)
+            self.program_e1.fold_homogenizer(Fp::one(), r_fp);
+
+            // Clear cross-terms for next iteration
+            self.program_e1.clear_cross_terms();
+        } else {
+            // Fold error term
+            let fresh_error = vec![Fq::zero(); self.indexed_relation.get_srs_size()];
+            self.program_e2.fold_error_term(&fresh_error, r_fq);
+
+            // Fold homogenizer
+            self.program_e2.fold_homogenizer(Fq::one(), r_fq);
+
+            // Clear cross-terms
+            self.program_e2.clear_cross_terms();
+        }
+    }
+
+    /// Run the complete folding loop for a specified number of iterations.
+    ///
+    /// This is the main entry point for running the IVC. Each iteration:
+    /// 1. Executes the application circuit
+    /// 2. Executes the verifier circuit
+    /// 3. Commits to the program state
+    /// 4. Computes and commits cross-terms
+    /// 5. Folds the instances together
+    ///
+    /// # Arguments
+    ///
+    /// * `n_iterations` - Number of folding iterations to run
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use arrabbiata::{setup::IndexedRelation, witness::Env};
+    /// use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
+    /// use num_bigint::BigInt;
+    ///
+    /// let indexed_relation = IndexedRelation::new(8);
+    /// let mut env: Env<Fp, Fq, Vesta, Pallas> = Env::new(BigInt::from(1u64), indexed_relation);
+    /// env.fold(10);
+    /// assert_eq!(env.current_iteration, 10);
+    /// ```
+    pub fn fold(&mut self, n_iterations: u64) {
+        use crate::interpreter;
+        use crate::VERIFIER_CIRCUIT_SIZE;
+        use log::debug;
+        use std::time::Instant;
+
+        while self.current_iteration < n_iterations {
+            let start_iteration = Instant::now();
+
+            // Build the application circuit
+            for _i in 0..self.indexed_relation.app_size {
+                interpreter::run_app(self);
+                self.reset();
+            }
+
+            // Build the verifier circuit
+            for _i in 0..VERIFIER_CIRCUIT_SIZE - 1 {
+                let current_instr = self.fetch_instruction();
+                interpreter::run_ivc(self, current_instr);
+                self.current_instruction = interpreter::fetch_next_instruction(current_instr);
+                self.reset();
+            }
+            // Additional row for the Poseidon hash
+            self.reset();
+
+            // Commit to the program state
+            self.commit_state();
+
+            // Absorb the last program state
+            self.absorb_state();
+
+            // ----- Permutation argument -----
+            // FIXME:
+            // Coin chalenges β and γ for the permutation argument
+
+            // FIXME:
+            // Compute the accumulator for the permutation argument
+
+            // FIXME:
+            // Commit to the accumulator and absorb the commitment
+            // ----- Permutation argument -----
+
+            // Coin challenge α for combining the constraints
+            self.coin_challenge(ChallengeTerm::ConstraintCombiner);
+
+            // ----- Accumulation/folding argument -----
+            // Compute cross-terms for folding high-degree constraints
+            self.compute_cross_terms();
+
+            // Commit to cross-terms polynomials
+            self.commit_cross_terms();
+
+            // Absorb cross-terms commitments into the transcript
+            self.absorb_cross_terms();
+
+            // Coin challenge r to fold the instances
+            self.coin_challenge(ChallengeTerm::RelationCombiner);
+
+            // Fold the accumulated and fresh instances together
+            self.fold_instance();
+
+            // Accumulate the witness polynomials
+            self.accumulate_program_state();
+
+            // Accumulate the commitments to witness columns
+            self.accumulate_committed_state();
+            // ----- Accumulation/folding argument -----
+
+            debug!(
+                "Iteration {} completed in {} μs",
+                self.current_iteration,
+                start_iteration.elapsed().as_micros()
+            );
+
+            self.reset_for_next_iteration();
+            self.current_iteration += 1;
         }
     }
 }

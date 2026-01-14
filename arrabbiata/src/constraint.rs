@@ -339,24 +339,11 @@ where
         constraints
     }
 
-    /// Get all the constraints for the verifier circuit and the application.
-    // FIXME: the application should be given as an argument to handle Rust
-    // zkApp. It is only for the PoC.
+    /// Get all the constraints for the verifier circuit.
     // FIXME: the selectors are not added for now.
+    // Note: User-defined circuits now compose gadgets directly via StepCircuit.
     pub fn get_all_constraints(&self) -> Vec<E<C::ScalarField>> {
-        let mut constraints = self.get_all_constraints_for_verifier();
-
-        // Copying the instance we got in parameter, and making it mutable to
-        // avoid modifying the original instance.
-        let mut env = self.clone();
-        // Resetting before running anything
-        env.reset();
-
-        // Get the constraints for the application
-        interpreter::run_app(&mut env);
-        constraints.extend(env.constraints.clone());
-
-        constraints
+        self.get_all_constraints_for_verifier()
     }
 
     pub fn get_all_constraints_indexed_by_gadget(&self) -> HashMap<Gadget, Vec<E<C::ScalarField>>> {
@@ -388,10 +375,7 @@ where
         hashmap.insert(Gadget::EllipticCurveAddition, env.constraints.clone());
         env.reset();
 
-        interpreter::run_app(&mut env);
-        hashmap.insert(Gadget::App, env.constraints.clone());
-        env.reset();
-
+        // Note: Gadget::App has been removed - user-defined circuits compose gadgets directly
         hashmap
     }
 }

@@ -16,14 +16,10 @@ use crate::NUMBER_OF_COLUMNS;
 pub enum Gadget {
     /// A dummy gadget, doing nothing. Use for padding.
     NoOp,
-
-    /// The gadget defining the app.
+    /// The gadget defining the application circuit.
     ///
-    /// For now, the application is considered to be a one-line computation.
-    /// However, we want to see the application as a collection of reusable
-    /// gadgets.
-    ///
-    /// See `<https://github.com/o1-labs/proof-systems/issues/3074>`
+    /// This represents user-defined computation that is composed of
+    /// other gadgets via the `StepCircuit` trait.
     App,
     // Elliptic curve related gadgets
     EllipticCurveAddition,
@@ -75,21 +71,27 @@ pub enum Column {
 
 /// Convert a column to a usize. This is used by the library [mvpoly] when we
 /// need to compute the cross-terms.
-/// For now, only the private inputs and the public inputs are converted,
-/// because there might not need to treat the selectors in the polynomial while
-/// computing the cross-terms (FIXME: check this later, but pretty sure it's the
-/// case).
 ///
-/// Also, the [mvpoly::monomials] implementation of the trait [mvpoly::MVPoly]
+/// The mapping is:
+/// - `Column::X(i)` -> i (witness columns, 0 to NUMBER_OF_COLUMNS-1)
+/// - `Column::PublicInput(i)` -> NUMBER_OF_COLUMNS + i (public inputs)
+/// - `Column::Selector(g)` -> 2 * NUMBER_OF_COLUMNS + gadget_to_index(g) (selectors)
+///
+/// The [mvpoly::monomials] implementation of the trait [mvpoly::MVPoly]
 /// will be used, and the mapping here is consistent with the one expected by
 /// this implementation, i.e. we simply map to an increasing number starting at
 /// 0, without any gap.
+///
+/// Note: For cross-term computation, selectors are typically constant and may
+/// not need to be included in the multivariate polynomial. However, we provide
+/// the mapping for completeness and constraint evaluation.
 impl From<Column> for usize {
     fn from(val: Column) -> usize {
+        use crate::circuits::selector::gadget_to_index;
         match val {
             Column::X(i) => i,
             Column::PublicInput(i) => NUMBER_OF_COLUMNS + i,
-            Column::Selector(_) => unimplemented!("Selectors are not supported. This method is supposed to be called only to compute the cross-term and an optimisation is in progress to avoid the inclusion of the selectors in the multi-variate polynomial."),
+            Column::Selector(gadget) => 2 * NUMBER_OF_COLUMNS + gadget_to_index(gadget),
         }
     }
 }

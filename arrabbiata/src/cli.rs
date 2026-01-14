@@ -1,23 +1,51 @@
 use clap::Parser;
 
+use crate::registry::CircuitRegistry;
+
 #[derive(Parser)]
 pub struct ExecuteArgs {
     #[arg(
-        long = "zkapp",
-        value_name = "ZKAPP",
-        help = "the selected zkapp to execute"
+        long = "circuit",
+        value_name = "CIRCUIT",
+        help = "The circuit to execute (use --list-circuits to see available circuits)",
+        default_value = "squaring"
     )]
-    pub zkapp: String,
+    pub circuit: String,
 
-    #[arg(long, short = 'n', value_name = "N", help = "Number of iterations")]
-    pub n: u64,
+    #[arg(
+        long,
+        short = 'n',
+        value_name = "N",
+        help = "Number of iterations",
+        required_unless_present = "list_circuits"
+    )]
+    pub n: Option<u64>,
 
     #[arg(
         long = "srs-size",
         value_name = "SRS_SIZE",
-        help = "The SRS size, given in log2"
+        help = "The SRS size, given in log2",
+        required_unless_present = "list_circuits"
     )]
-    pub srs_size: usize,
+    pub srs_size: Option<usize>,
+
+    #[arg(long = "list-circuits", help = "List all available circuits")]
+    pub list_circuits: bool,
+}
+
+impl ExecuteArgs {
+    /// Validate that the circuit name is registered.
+    pub fn validate_circuit(&self, registry: &CircuitRegistry) -> Result<(), String> {
+        if !registry.contains(&self.circuit) {
+            let available: Vec<String> = registry.names().cloned().collect();
+            return Err(format!(
+                "Unknown circuit '{}'. Available circuits: {}",
+                self.circuit,
+                available.join(", ")
+            ));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Parser)]

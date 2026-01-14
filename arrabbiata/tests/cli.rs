@@ -20,12 +20,12 @@ fn test_arrabbiata_binary() {
     // Build the command
     let output = Command::new(binary_path)
         .arg("execute")
-        .arg("--zkapp")
-        .arg("square-root")
+        .arg("--circuit")
+        .arg("squaring")
         .arg("-n")
         .arg("10")
         .arg("--srs-size")
-        .arg("16")
+        .arg("8")
         .output()
         .expect("Failed to execute binary");
 

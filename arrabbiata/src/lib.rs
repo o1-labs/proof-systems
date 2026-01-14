@@ -2,21 +2,57 @@ use curve::PlonkSpongeConstants;
 use mina_poseidon::constants::SpongeConstants;
 use strum::EnumCount as _;
 
-pub mod challenge;
+pub mod circuit;
+pub mod circuits;
 pub mod cli;
-pub mod column;
 pub mod constraint;
 pub mod curve;
+pub mod interpreter;
+pub mod nifs;
+pub mod registry;
+pub mod setup;
 
 /// The final decider, i.e. the SNARK used on the accumulation scheme.
 pub mod decider;
 
-pub mod interpreter;
-pub mod logup;
-pub mod poseidon_3_60_0_5_5_fp;
-pub mod poseidon_3_60_0_5_5_fq;
-pub mod setup;
-pub mod witness;
+// Re-exports for backwards compatibility
+// All NIFS-related modules have been moved to the `nifs` submodule
+
+pub mod challenge {
+    //! Challenge terms for Fiat-Shamir heuristic.
+    pub use crate::nifs::challenge::*;
+}
+
+pub mod column {
+    //! Column and gadget definitions.
+    pub use crate::nifs::column::*;
+}
+
+pub mod folding {
+    //! Core folding operations.
+    pub use crate::nifs::folding::*;
+}
+
+// TODO: Re-enable when logup is used
+// pub mod logup {
+//     //! LogUp lookup argument.
+//     pub use crate::nifs::logup::*;
+// }
+
+pub mod poseidon_3_60_0_5_5_fp {
+    //! Poseidon parameters for Fp.
+    pub use crate::nifs::poseidon_3_60_0_5_5_fp::*;
+}
+
+pub mod poseidon_3_60_0_5_5_fq {
+    //! Poseidon parameters for Fq.
+    pub use crate::nifs::poseidon_3_60_0_5_5_fq::*;
+}
+
+pub mod witness {
+    //! Witness environment and program state.
+    pub use crate::nifs::witness::*;
+}
 
 /// The maximum degree of the polynomial that can be represented by the
 /// polynomial-time function the library supports.
@@ -68,5 +104,13 @@ pub const NUMBER_OF_GADGETS: usize =
 /// relation. We also suppose that the private inputs on the next row can be
 /// used, hence the multiplication by two.
 ///
+/// The mapping is:
+/// - Indices 0 to NUMBER_OF_COLUMNS-1: current row witness columns
+/// - Indices NUMBER_OF_COLUMNS to 2*NUMBER_OF_COLUMNS-1: next row/public inputs
+/// - Indices 2*NUMBER_OF_COLUMNS to 2*NUMBER_OF_COLUMNS+NUMBER_OF_SELECTOR_TYPES-1: selectors
+///
 /// It is going to be used to convert into the representation used in [mvpoly].
-pub const MV_POLYNOMIAL_ARITY: usize = NUMBER_OF_COLUMNS * 2;
+pub const MV_POLYNOMIAL_ARITY: usize = NUMBER_OF_COLUMNS * 2 + NUMBER_OF_SELECTOR_TYPES;
+
+/// Number of selector types (re-exported from circuits::selector).
+pub use circuits::selector::NUMBER_OF_SELECTOR_TYPES;
