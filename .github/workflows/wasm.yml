@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        rust_toolchain_version: ['nightly-2024-09-05', 'nightly']
+        rust_toolchain_version: ['nightly-2025-12-11', 'nightly']
 
     runs-on: ${{ matrix.os }}
 

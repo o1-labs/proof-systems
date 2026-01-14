@@ -12,7 +12,6 @@ members = [
   "msm",
   "mvpoly",
   "o1vm",
-  "plonk-neon",
   "plonk-wasm",
   "poly-commitment",
   "poseidon",

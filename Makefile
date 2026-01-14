@@ -36,7 +36,7 @@ MIPS_LD ?= mips-linux-gnu-ld
 # .github/workflows/wasm.yml) should be changed accordingly.
 # Can be overridden via environment variable, e.g.:
 #   NIGHTLY_RUST_VERSION=nightly make build-web
-NIGHTLY_RUST_VERSION ?= nightly-2024-09-05
+NIGHTLY_RUST_VERSION ?= nightly-2025-12-11
 PLONK_WASM_NODEJS_OUTDIR ?= target/nodejs
 PLONK_WASM_WEB_OUTDIR ?= target/web
 
@@ -122,7 +122,6 @@ build: ## Build the project
 		cargo build \
 			--all-targets \
 			--features "$(WORKSPACE_FEATURES)" \
-			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--workspace
 
@@ -131,7 +130,6 @@ release: ## Build the project in release mode
 		cargo build \
 			--all-targets \
 			--features "$(WORKSPACE_FEATURES)" \
-			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--release \
 			--workspace
@@ -141,7 +139,6 @@ test-doc: ## Test the project's docs comments
 		cargo test \
 			--features "$(WORKSPACE_FEATURES)" \
 			--doc \
-			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--release \
 			--workspace
@@ -154,7 +151,6 @@ test-doc-with-coverage:
 test: ## Test the project with non-heavy tests and using native cargo test runner
 		cargo test \
 			--features "$(WORKSPACE_FEATURES)" \
-			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--release $(CARGO_EXTRA_ARGS) \
 			-- --nocapture \
@@ -168,7 +164,6 @@ test-with-coverage:
 test-heavy: ## Test the project with heavy tests and using native cargo test runner
 		cargo test \
 			--features "$(WORKSPACE_FEATURES)" \
-			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--release $(CARGO_EXTRA_ARGS) \
 			-- --nocapture heavy $(BIN_EXTRA_ARGS)
@@ -181,7 +176,6 @@ test-heavy-with-coverage:
 test-all: ## Test the project with all tests and using native cargo test runner
 		cargo test \
 			--features "$(WORKSPACE_FEATURES)" \
-			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--release $(CARGO_EXTRA_ARGS) \
 			-- --nocapture $(BIN_EXTRA_ARGS)
@@ -195,7 +189,6 @@ nextest: ## Test the project with non-heavy tests and using nextest test runner
 		cargo nextest run \
 			--all \
 			--features "$(WORKSPACE_FEATURES)" \
-			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--release $(CARGO_EXTRA_ARGS) \
 			--profile ci \
@@ -209,7 +202,6 @@ nextest-with-coverage:
 nextest-heavy: ## Test the project with heavy tests and using nextest test runner
 		cargo nextest run \
 			--features "$(WORKSPACE_FEATURES)" \
-			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--release $(CARGO_EXTRA_ARGS) \
 			--profile ci \
@@ -223,7 +215,6 @@ nextest-heavy-with-coverage:
 nextest-all: ## Test the project with all tests and using nextest test runner
 		cargo nextest run \
 			--features "$(WORKSPACE_FEATURES)" \
-			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--release $(CARGO_EXTRA_ARGS) \
 			--profile ci $(BIN_EXTRA_ARGS)
@@ -271,7 +262,6 @@ generate-doc: ## Generate the Rust documentation
 			--document-private-items \
 			--features "$(WORKSPACE_FEATURES)" \
 			--no-deps \
-			--exclude plonk_neon \
 			--exclude plonk_wasm \
 			--workspace
 		@echo ""
