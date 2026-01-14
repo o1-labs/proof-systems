@@ -40,7 +40,9 @@ pub const POSEIDON_FULL_ROUNDS: usize = mina_poseidon::pasta::FULL_ROUNDS;
 /// This corresponds to a "relaxed R1CS instance" in Nova terminology,
 /// adapted for our Plonkish constraint system.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(bound = "PolyComm<E>: Serialize + DeserializeOwned, E::ScalarField: Serialize + DeserializeOwned")]
+#[serde(
+    bound = "PolyComm<E>: Serialize + DeserializeOwned, E::ScalarField: Serialize + DeserializeOwned"
+)]
 pub struct RelaxedInstance<E: CommitmentCurve>
 where
     <<E as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
@@ -117,7 +119,9 @@ pub struct PolynomialEvaluations<F: PrimeField> {
 
 /// Opening proof data for one curve.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(bound = "PolyComm<E>: Serialize + DeserializeOwned, OpeningProof<E, POSEIDON_FULL_ROUNDS>: Serialize + DeserializeOwned, E::ScalarField: Serialize + DeserializeOwned")]
+#[serde(
+    bound = "PolyComm<E>: Serialize + DeserializeOwned, OpeningProof<E, POSEIDON_FULL_ROUNDS>: Serialize + DeserializeOwned, E::ScalarField: Serialize + DeserializeOwned"
+)]
 pub struct CurveOpeningProof<E: CommitmentCurve>
 where
     <<E as CommitmentCurve>::Params as CurveConfig>::BaseField: PrimeField,
@@ -221,7 +225,7 @@ where
             size += size_of::<Fp>(); // error_eval
             size += size_of::<Fp>(); // quotient_eval
             size += size_of::<E1>(); // quotient_commitment
-            // IPA proof: lr pairs + delta + z1 + z2 + sg
+                                     // IPA proof: lr pairs + delta + z1 + z2 + sg
             size += opening.opening_proof.lr.len() * 2 * size_of::<E1>();
             size += size_of::<E1>() * 2 + size_of::<Fp>() * 2;
         }

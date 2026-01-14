@@ -7,31 +7,33 @@
 //!
 //! All operations use the short Weierstrass form: y² = x³ + ax + b
 //!
-//! The circuits are parameterized by a curve type `C` that must implement
+//! The gadgets are parameterized by a curve type `C` that must implement
 //! [`ark_ec::short_weierstrass::SWCurveConfig`], ensuring at compile time
 //! that the curve is in short Weierstrass form.
 //!
-//! This enables type-safe circuit composition: when combining circuits
+//! This enables type-safe circuit composition: when combining gadgets
 //! (e.g., Schnorr signature using scalar multiplication), the curve types
 //! are checked at compile time, preventing mismatched curves.
 //!
 //! ## Legacy Parameters
 //!
 //! [`WeierstrassParams`] is provided for backwards compatibility.
-//! Prefer using the curve-typed circuits when possible.
+//! Prefer using the curve-typed gadgets when possible.
 //!
 //! ## Available Gadgets
 //!
-//! - [`CurveNativeAdd`] - Addition of two points
-//! - [`CurveNativeDouble`] - Specialized point doubling
-//! - [`CurveNativeScalarMulStep`] - One step of double-and-add scalar multiplication
-//! - [`CurveNativeScalarMul`] - Full scalar multiplication
+//! - [`CurveNativeAddGadget`] - Addition of two points
+//! - [`CurveNativeDoubleGadget`] - Specialized point doubling
+//! - [`CurveNativeScalarMulStepGadget`] - One step of double-and-add scalar multiplication
+//! - [`CurveNativeScalarMulGadget`] - Full scalar multiplication
 
 mod ec_add;
+mod ec_double;
 mod ec_scale;
 
-pub use ec_add::{CurveNativeAdd, CurveNativeDouble};
-pub use ec_scale::{CurveNativeScalarMul, CurveNativeScalarMulStep};
+pub use ec_add::CurveNativeAddGadget;
+pub use ec_double::CurveNativeDoubleGadget;
+pub use ec_scale::{CurveNativeScalarMulGadget, CurveNativeScalarMulStepGadget};
 
 use ark_ec::short_weierstrass::SWCurveConfig;
 use core::marker::PhantomData;
@@ -54,7 +56,7 @@ use core::marker::PhantomData;
 /// # Example
 ///
 /// ```
-/// use arrabbiata::circuits::curve::native::CurveAffineParams;
+/// use arrabbiata::circuits::gadgets::curve::native::CurveAffineParams;
 /// use mina_curves::pasta::PallasParameters;
 ///
 /// // Create params for Pallas curve - compile-time verified as Weierstrass

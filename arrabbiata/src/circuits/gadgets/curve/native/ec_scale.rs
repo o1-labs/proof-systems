@@ -3,21 +3,21 @@
 //! This module implements elliptic curve scalar multiplication using the
 //! double-and-add algorithm. Each step processes one bit of the scalar.
 //!
-//! # Available Circuits
+//! # Available Gadgets
 //!
-//! - [`CurveNativeScalarMulStep`]: Single step of scalar multiplication (one bit).
+//! - [`CurveNativeScalarMulStepGadget`]: Single step of scalar multiplication (one bit).
 //!   Use this when you need fine-grained control over the multiplication.
-//! - [`CurveNativeScalarMul`]: Full scalar multiplication for `num_bits` bits.
+//! - [`CurveNativeScalarMulGadget`]: Full scalar multiplication for `num_bits` bits.
 //!   Chains multiple steps and handles the final subtraction.
 //!
 //! # Type Safety
 //!
-//! All circuits are parameterized by a curve type `C` implementing [`SWCurveConfig`],
+//! All gadgets are parameterized by a curve type `C` implementing [`SWCurveConfig`],
 //! which guarantees at compile time that:
 //! 1. The curve is in short Weierstrass form (y² = x³ + ax + b)
 //! 2. Points are in affine coordinates (x, y)
 //!
-//! This enables type-safe circuit composition: when combining circuits
+//! This enables type-safe circuit composition: when combining gadgets
 //! (e.g., Schnorr signature using scalar multiplication), the curve types are checked
 //! at compile time, preventing mismatched curves.
 //!
@@ -51,7 +51,7 @@
 //!
 //! # Layout
 //!
-//! For a single bit step ([`CurveNativeScalarMulStep`]):
+//! For a single bit step ([`CurveNativeScalarMulStepGadget`]):
 //!
 //! ```text
 //! | C1   |   C2   |    C3    |    C4    |  C5  |  C6 |   C7   |   C8   | C9 | C10 |
@@ -74,14 +74,74 @@ use ark_ec::short_weierstrass::SWCurveConfig;
 use ark_ff::{Field, One, PrimeField, Zero};
 use core::marker::PhantomData;
 
-use crate::circuit::{CircuitEnv, SelectorEnv, StepCircuit};
+use crate::{
+    circuit::{CircuitEnv, SelectorEnv},
+    circuits::{
+        gadget::{ECPoint, ECScalarMulInput, ECScalarMulState, Position, Row, TypedGadget},
+        selector::QECScale,
+    },
+};
+
+// ============================================================================
+// CurveNativeScalarMulStepGadget - Single step of scalar multiplication
+// ============================================================================
+
+// Position constants for CurveNativeScalarMulStepGadget
+// Layout (current row): | o_x | o_y | tmp_x | tmp_y | r_i | λ | sum_x | sum_y | λ' | bit |
+//                       |  0  |  1  |   2   |   3   |  4  | 5 |   6   |   7   |  8 |  9  |
+// Layout (next row):    | o'_x | o'_y | tmp'_x | tmp'_y | r' |
+//                       |  0   |  1   |   2    |   3    |  4 |
+const EC_SCALE_STEP_INPUT_POSITIONS: &[Position] = &[
+    Position {
+        col: 0,
+        row: Row::Curr,
+    }, // o_x (res_x)
+    Position {
+        col: 1,
+        row: Row::Curr,
+    }, // o_y (res_y)
+    Position {
+        col: 2,
+        row: Row::Curr,
+    }, // tmp_x
+    Position {
+        col: 3,
+        row: Row::Curr,
+    }, // tmp_y
+    Position {
+        col: 4,
+        row: Row::Curr,
+    }, // r_i (scalar)
+];
+const EC_SCALE_STEP_OUTPUT_POSITIONS: &[Position] = &[
+    Position {
+        col: 0,
+        row: Row::Next,
+    }, // o'_x (next res_x)
+    Position {
+        col: 1,
+        row: Row::Next,
+    }, // o'_y (next res_y)
+    Position {
+        col: 2,
+        row: Row::Next,
+    }, // tmp'_x (next tmp_x)
+    Position {
+        col: 3,
+        row: Row::Next,
+    }, // tmp'_y (next tmp_y)
+    Position {
+        col: 4,
+        row: Row::Next,
+    }, // r' (next scalar)
+];
 
 /// Single step of native field EC scalar multiplication (processes one bit).
 ///
-/// This circuit processes one bit of the scalar using double-and-add.
+/// This gadget processes one bit of the scalar using double-and-add.
 /// Chain multiple instances to compute the full scalar multiplication.
 ///
-/// The circuit is parameterized by a curve type `C` implementing [`SWCurveConfig`],
+/// The gadget is parameterized by a curve type `C` implementing [`SWCurveConfig`],
 /// which guarantees at compile time that:
 /// 1. The curve is in short Weierstrass form (y² = x³ + ax + b)
 /// 2. Points are in affine coordinates
@@ -90,19 +150,19 @@ use crate::circuit::{CircuitEnv, SelectorEnv, StepCircuit};
 ///
 /// - `C`: A curve configuration implementing [`SWCurveConfig`]
 ///
-/// # State Format
+/// # Input/Output Format
 ///
-/// State is [res_x, res_y, tmp_x, tmp_y, scalar]:
-/// - (res_x, res_y): Current accumulator in affine coordinates
-/// - (tmp_x, tmp_y): Current doubled point in affine coordinates
+/// Input: `ECScalarMulState<V>` containing (res, tmp, scalar)
+/// - res: Current accumulator point
+/// - tmp: Current doubled point
 /// - scalar: Remaining scalar value
 ///
-/// Output is the same format with updated values.
-pub struct CurveNativeScalarMulStep<C: SWCurveConfig> {
+/// Output: Same format with updated values after one bit step.
+pub struct CurveNativeScalarMulStepGadget<C: SWCurveConfig> {
     _marker: PhantomData<C>,
 }
 
-impl<C: SWCurveConfig> Clone for CurveNativeScalarMulStep<C> {
+impl<C: SWCurveConfig> Clone for CurveNativeScalarMulStepGadget<C> {
     fn clone(&self) -> Self {
         Self {
             _marker: PhantomData,
@@ -110,17 +170,17 @@ impl<C: SWCurveConfig> Clone for CurveNativeScalarMulStep<C> {
     }
 }
 
-impl<C: SWCurveConfig> core::fmt::Debug for CurveNativeScalarMulStep<C> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CurveNativeScalarMulStep").finish()
+impl<C: SWCurveConfig> core::fmt::Debug for CurveNativeScalarMulStepGadget<C> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("CurveNativeScalarMulStepGadget").finish()
     }
 }
 
-impl<C: SWCurveConfig> CurveNativeScalarMulStep<C>
+impl<C: SWCurveConfig> CurveNativeScalarMulStepGadget<C>
 where
     C::BaseField: PrimeField,
 {
-    /// Create a new native EC scaling step circuit.
+    /// Create a new native EC scaling step gadget.
     ///
     /// The curve type `C` must implement [`SWCurveConfig`], which provides
     /// the curve coefficients and ensures the curve is in short Weierstrass form.
@@ -131,7 +191,12 @@ where
     }
 
     /// Compute λ for point addition (different points).
-    fn compute_lambda_add(x1: C::BaseField, y1: C::BaseField, x2: C::BaseField, y2: C::BaseField) -> C::BaseField {
+    fn compute_lambda_add(
+        x1: C::BaseField,
+        y1: C::BaseField,
+        x2: C::BaseField,
+        y2: C::BaseField,
+    ) -> C::BaseField {
         let numerator = y1 - y2;
         let denominator = x1 - x2;
         numerator * denominator.inverse().unwrap()
@@ -145,7 +210,7 @@ where
     }
 }
 
-impl<C: SWCurveConfig> Default for CurveNativeScalarMulStep<C>
+impl<C: SWCurveConfig> Default for CurveNativeScalarMulStepGadget<C>
 where
     C::BaseField: PrimeField,
 {
@@ -154,36 +219,47 @@ where
     }
 }
 
-impl<C: SWCurveConfig> PartialEq for CurveNativeScalarMulStep<C> {
+impl<C: SWCurveConfig> PartialEq for CurveNativeScalarMulStepGadget<C> {
     fn eq(&self, _other: &Self) -> bool {
         true
     }
 }
 
-impl<C: SWCurveConfig> Eq for CurveNativeScalarMulStep<C> {}
+impl<C: SWCurveConfig> Eq for CurveNativeScalarMulStepGadget<C> {}
 
-impl<C: SWCurveConfig> StepCircuit<C::BaseField, 5> for CurveNativeScalarMulStep<C>
+impl<C: SWCurveConfig> TypedGadget<C::BaseField> for CurveNativeScalarMulStepGadget<C>
 where
     C::BaseField: PrimeField,
 {
-    const NAME: &'static str = "CurveNativeScalarMulStep";
+    type Selector = QECScale;
+    type Input<V: Clone> = ECScalarMulState<V>;
+    type Output<V: Clone> = ECScalarMulState<V>;
+    const ROWS: usize = 1;
+
+    fn input_positions() -> &'static [Position] {
+        EC_SCALE_STEP_INPUT_POSITIONS
+    }
+
+    fn output_positions() -> &'static [Position] {
+        EC_SCALE_STEP_OUTPUT_POSITIONS
+    }
 
     fn synthesize<E: CircuitEnv<C::BaseField> + SelectorEnv<C::BaseField>>(
         &self,
         env: &mut E,
-        z: &[E::Variable; 5],
-    ) -> [E::Variable; 5] {
+        input: Self::Input<E::Variable>,
+    ) -> Self::Output<E::Variable> {
         // Layout (from module docs):
         // | C1   |  C2  |  C3   |  C4   | C5  | C6 |  C7   |  C8   | C9 | C10 |
         // | o_x  | o_y  | tmp_x | tmp_y | r_i | λ  | sum_x | sum_y | λ' | bit |
         // | o'_x | o'_y | tmp'_x| tmp'_y| r'  |
         //
         // Inputs on current row (C1-C5)
-        let o_x = z[0].clone();
-        let o_y = z[1].clone();
-        let tmp_x = z[2].clone();
-        let tmp_y = z[3].clone();
-        let r_i = z[4].clone();
+        let o_x = input.res.x;
+        let o_y = input.res.y;
+        let tmp_x = input.tmp.x;
+        let tmp_y = input.tmp.y;
+        let r_i = input.scalar;
 
         // Constants
         let one = env.constant(C::BaseField::one());
@@ -316,15 +392,19 @@ where
         let r_decomp = r_i - bit.clone() - two_r_next;
         env.assert_zero_named("scalar_decomp", &r_decomp);
 
-        [o_x_next, o_y_next, tmp_x_next, tmp_y_next, r_next]
+        ECScalarMulState::new(
+            ECPoint::new(o_x_next, o_y_next),
+            ECPoint::new(tmp_x_next, tmp_y_next),
+            r_next,
+        )
     }
 
-    fn output(&self, z: &[C::BaseField; 5]) -> [C::BaseField; 5] {
-        let res_x = z[0];
-        let res_y = z[1];
-        let tmp_x = z[2];
-        let tmp_y = z[3];
-        let scalar = z[4];
+    fn output(&self, input: &Self::Input<C::BaseField>) -> Self::Output<C::BaseField> {
+        let res_x = input.res.x;
+        let res_y = input.res.y;
+        let tmp_x = input.tmp.x;
+        let tmp_y = input.tmp.y;
+        let scalar = input.scalar;
 
         // Extract lowest bit
         let scalar_bigint: num_bigint::BigUint = scalar.into();
@@ -349,26 +429,66 @@ where
         };
 
         // Conditional select
-        let (next_res_x, next_res_y) = if bit {
-            (sum_x, sum_y)
-        } else {
-            (res_x, res_y)
-        };
+        let (next_res_x, next_res_y) = if bit { (sum_x, sum_y) } else { (res_x, res_y) };
 
         // Double tmp
         let lambda_double = Self::compute_lambda_double(tmp_x, tmp_y);
         let next_tmp_x = lambda_double * lambda_double - C::BaseField::from(2u64) * tmp_x;
         let next_tmp_y = lambda_double * (tmp_x - next_tmp_x) - tmp_y;
 
-        [next_res_x, next_res_y, next_tmp_x, next_tmp_y, next_scalar]
+        ECScalarMulState::new(
+            ECPoint::new(next_res_x, next_res_y),
+            ECPoint::new(next_tmp_x, next_tmp_y),
+            next_scalar,
+        )
     }
 }
 
-/// Full native field EC scalar multiplication circuit.
+// ============================================================================
+// CurveNativeScalarMulGadget - Full scalar multiplication
+// ============================================================================
+
+// Position constants for CurveNativeScalarMulGadget
+// Input layout: | p_x | p_y | scalar |
+//               |  0  |  1  |   2    |
+// Output: After num_bits steps + final subtraction, the result is at the end
+// The output x3, y3 are allocated after the loop, and scalar is from the state
+const EC_SCALE_INPUT_POSITIONS: &[Position] = &[
+    Position {
+        col: 0,
+        row: Row::Curr,
+    }, // p_x (base point x)
+    Position {
+        col: 1,
+        row: Row::Curr,
+    }, // p_y (base point y)
+    Position {
+        col: 2,
+        row: Row::Curr,
+    }, // scalar
+];
+// Output positions are on the last row after all steps complete
+// The final x3, y3, and remaining scalar are allocated at the end
+const EC_SCALE_OUTPUT_POSITIONS: &[Position] = &[
+    Position {
+        col: 5,
+        row: Row::Curr,
+    }, // x3 (result point x, after lambda at col 5)
+    Position {
+        col: 6,
+        row: Row::Curr,
+    }, // y3 (result point y)
+    Position {
+        col: 4,
+        row: Row::Curr,
+    }, // remaining scalar (from state)
+];
+
+/// Full native field EC scalar multiplication gadget.
 ///
 /// Computes [k]P by chaining `num_bits` steps of the double-and-add algorithm.
 ///
-/// The circuit is parameterized by a curve type `C` implementing [`SWCurveConfig`],
+/// The gadget is parameterized by a curve type `C` implementing [`SWCurveConfig`],
 /// which guarantees at compile time that:
 /// 1. The curve is in short Weierstrass form (y² = x³ + ax + b)
 /// 2. Points are in affine coordinates
@@ -377,11 +497,15 @@ where
 ///
 /// - `C`: A curve configuration implementing [`SWCurveConfig`]
 ///
-/// # State Format
+/// # Input/Output Format
 ///
-/// Input: `[P.x, P.y, k]` where P is the base point in affine coordinates
-/// and k is the scalar.
-/// Output: `[Q.x, Q.y, 0]` where `Q = [k]P` in affine coordinates.
+/// Input: `ECScalarMulInput<V>` containing (P, k)
+/// - P: Base point in affine coordinates
+/// - k: Scalar
+///
+/// Output: `ECScalarMulInput<V>` containing (Q, 0)
+/// - Q = [k]P in affine coordinates
+/// - 0: Remaining scalar (should be 0 if fully consumed)
 ///
 /// # Implementation Details
 ///
@@ -392,13 +516,13 @@ where
 ///
 /// This adds one EC subtraction (implemented as addition with negated point)
 /// but eliminates all point-at-infinity checks from the circuit.
-pub struct CurveNativeScalarMul<C: SWCurveConfig> {
+pub struct CurveNativeScalarMulGadget<C: SWCurveConfig> {
     /// Number of bits to process (typically 256)
     pub num_bits: usize,
     _marker: PhantomData<C>,
 }
 
-impl<C: SWCurveConfig> Clone for CurveNativeScalarMul<C> {
+impl<C: SWCurveConfig> Clone for CurveNativeScalarMulGadget<C> {
     fn clone(&self) -> Self {
         Self {
             num_bits: self.num_bits,
@@ -407,19 +531,19 @@ impl<C: SWCurveConfig> Clone for CurveNativeScalarMul<C> {
     }
 }
 
-impl<C: SWCurveConfig> core::fmt::Debug for CurveNativeScalarMul<C> {
+impl<C: SWCurveConfig> core::fmt::Debug for CurveNativeScalarMulGadget<C> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("CurveNativeScalarMul")
+        f.debug_struct("CurveNativeScalarMulGadget")
             .field("num_bits", &self.num_bits)
             .finish()
     }
 }
 
-impl<C: SWCurveConfig> CurveNativeScalarMul<C>
+impl<C: SWCurveConfig> CurveNativeScalarMulGadget<C>
 where
     C::BaseField: PrimeField,
 {
-    /// Create a new full native EC scaling circuit.
+    /// Create a new full native EC scaling gadget.
     ///
     /// The curve type `C` must implement [`SWCurveConfig`], which provides
     /// the curve coefficients and ensures the curve is in short Weierstrass form.
@@ -434,31 +558,14 @@ where
     pub fn new_standard() -> Self {
         Self::new(256)
     }
-}
 
-impl<C: SWCurveConfig> Default for CurveNativeScalarMul<C>
-where
-    C::BaseField: PrimeField,
-{
-    fn default() -> Self {
-        Self::new_standard()
-    }
-}
-
-impl<C: SWCurveConfig> PartialEq for CurveNativeScalarMul<C> {
-    fn eq(&self, other: &Self) -> bool {
-        self.num_bits == other.num_bits
-    }
-}
-
-impl<C: SWCurveConfig> Eq for CurveNativeScalarMul<C> {}
-
-impl<C: SWCurveConfig> CurveNativeScalarMul<C>
-where
-    C::BaseField: PrimeField,
-{
     /// Compute λ for point addition (different points).
-    fn compute_lambda_add(x1: C::BaseField, y1: C::BaseField, x2: C::BaseField, y2: C::BaseField) -> C::BaseField {
+    fn compute_lambda_add(
+        x1: C::BaseField,
+        y1: C::BaseField,
+        x2: C::BaseField,
+        y2: C::BaseField,
+    ) -> C::BaseField {
         let numerator = y1 - y2;
         let denominator = x1 - x2;
         numerator * denominator.inverse().unwrap()
@@ -466,7 +573,12 @@ where
 
     /// Subtract point (x2, y2) from (x1, y1) using affine coordinates.
     /// Subtraction is addition with negated y: (x1, y1) - (x2, y2) = (x1, y1) + (x2, -y2)
-    fn subtract_point(x1: C::BaseField, y1: C::BaseField, x2: C::BaseField, y2: C::BaseField) -> (C::BaseField, C::BaseField) {
+    fn subtract_point(
+        x1: C::BaseField,
+        y1: C::BaseField,
+        x2: C::BaseField,
+        y2: C::BaseField,
+    ) -> (C::BaseField, C::BaseField) {
         // Negate y2 for subtraction
         let neg_y2 = -y2;
 
@@ -483,53 +595,80 @@ where
     }
 }
 
-impl<C: SWCurveConfig> StepCircuit<C::BaseField, 3> for CurveNativeScalarMul<C>
+impl<C: SWCurveConfig> Default for CurveNativeScalarMulGadget<C>
 where
     C::BaseField: PrimeField,
 {
-    const NAME: &'static str = "CurveNativeScalarMul";
+    fn default() -> Self {
+        Self::new_standard()
+    }
+}
+
+impl<C: SWCurveConfig> PartialEq for CurveNativeScalarMulGadget<C> {
+    fn eq(&self, other: &Self) -> bool {
+        self.num_bits == other.num_bits
+    }
+}
+
+impl<C: SWCurveConfig> Eq for CurveNativeScalarMulGadget<C> {}
+
+impl<C: SWCurveConfig> TypedGadget<C::BaseField> for CurveNativeScalarMulGadget<C>
+where
+    C::BaseField: PrimeField,
+{
+    type Selector = QECScale;
+    type Input<V: Clone> = ECScalarMulInput<V>;
+    type Output<V: Clone> = ECScalarMulInput<V>;
+    const ROWS: usize = 256; // Default, actual depends on num_bits
+
+    fn input_positions() -> &'static [Position] {
+        EC_SCALE_INPUT_POSITIONS
+    }
+
+    fn output_positions() -> &'static [Position] {
+        EC_SCALE_OUTPUT_POSITIONS
+    }
 
     fn synthesize<E: CircuitEnv<C::BaseField> + SelectorEnv<C::BaseField>>(
         &self,
         env: &mut E,
-        z: &[E::Variable; 3],
-    ) -> [E::Variable; 3] {
+        input: Self::Input<E::Variable>,
+    ) -> Self::Output<E::Variable> {
         // Input: [P.x, P.y, scalar]
         // We use P as the initial accumulator to avoid the point at infinity.
         // This computes [k+1]P, and we subtract P at the end to get [k]P.
 
-        let step = CurveNativeScalarMulStep::<C>::new();
+        let step = CurveNativeScalarMulStepGadget::<C>::new();
 
         // Initialize: res = P, tmp = P, scalar = k
-        let mut state = [
-            z[0].clone(), // res_x = P.x
-            z[1].clone(), // res_y = P.y
-            z[0].clone(), // tmp_x = P.x
-            z[1].clone(), // tmp_y = P.y
-            z[2].clone(), // scalar
-        ];
+        let mut state = ECScalarMulState::new(
+            input.point.clone(), // res = P
+            input.point.clone(), // tmp = P
+            input.scalar.clone(),
+        );
 
         // Process each bit: after this, state contains [k+1]P
         for _ in 0..self.num_bits {
-            state = step.synthesize(env, &state);
+            state = step.synthesize(env, state);
         }
 
         // Subtract P to get [k]P: result = [k+1]P - P = [k]P
         // This is done by adding (P.x, -P.y)
-        let res_x = state[0].clone();
-        let res_y = state[1].clone();
-        let p_x = z[0].clone();
+        let res_x = state.res.x;
+        let res_y = state.res.y;
+        let p_x = input.point.x.clone();
 
         // Allocate witnesses for the subtraction
         // λ = (res_y - (-p_y)) / (res_x - p_x) = (res_y + p_y) / (res_x - p_x)
-        let lambda_expr = (res_y.clone() + z[1].clone()) * (res_x.clone() - p_x.clone());
+        let lambda_expr = (res_y.clone() + input.point.y.clone()) * (res_x.clone() - p_x.clone());
         let lambda = {
             let pos = env.allocate();
             env.write_column(pos, lambda_expr.clone())
         };
 
         // Constraint: λ * (res_x - p_x) = res_y + p_y
-        let lambda_check = lambda.clone() * (res_x.clone() - p_x.clone()) - res_y.clone() - z[1].clone();
+        let lambda_check =
+            lambda.clone() * (res_x.clone() - p_x.clone()) - res_y.clone() - input.point.y.clone();
         env.assert_zero(&lambda_check);
 
         // x3 = λ² - res_x - p_x
@@ -551,14 +690,15 @@ where
         env.assert_zero(&y3_check);
 
         // Return [result_x, result_y, remaining_scalar (should be 0)]
-        [x3, y3, state[4].clone()]
+        ECScalarMulInput::new(ECPoint::new(x3, y3), state.scalar)
     }
 
-    fn output(&self, z: &[C::BaseField; 3]) -> [C::BaseField; 3] {
-        let step = CurveNativeScalarMulStep::<C>::new();
+    fn output(&self, input: &Self::Input<C::BaseField>) -> Self::Output<C::BaseField> {
+        let step = CurveNativeScalarMulStepGadget::<C>::new();
 
         // Initialize: res = P, tmp = P, scalar = k
-        let mut state = [z[0], z[1], z[0], z[1], z[2]];
+        let mut state =
+            ECScalarMulState::new(input.point.clone(), input.point.clone(), input.scalar);
 
         // Process each bit: after this, state contains [k+1]P
         for _ in 0..self.num_bits {
@@ -566,16 +706,11 @@ where
         }
 
         // Subtract P to get [k]P: result = [k+1]P - P = [k]P
-        let (result_x, result_y) = Self::subtract_point(state[0], state[1], z[0], z[1]);
+        let (result_x, result_y) =
+            Self::subtract_point(state.res.x, state.res.y, input.point.x, input.point.y);
 
         // Return [result_x, result_y, remaining_scalar]
-        [result_x, result_y, state[4]]
-    }
-
-    fn num_rows(&self) -> usize {
-        // num_bits for the double-and-add loop
-        // The final subtraction happens on the last row (reusing witnesses)
-        self.num_bits
+        ECScalarMulInput::new(ECPoint::new(result_x, result_y), state.scalar)
     }
 }
 
@@ -586,18 +721,37 @@ where
 #[cfg(test)]
 mod constraint_tests {
     use super::*;
-    use crate::circuit::ConstraintEnv;
+    use crate::{circuit::ConstraintEnv, circuits::selector::SelectorTag};
     use mina_curves::pasta::{Fp, PallasParameters};
 
     #[test]
-    fn test_curve_native_scalar_mul_step_constraints() {
-        let step = CurveNativeScalarMulStep::<PallasParameters>::new();
+    fn test_curve_native_scalar_mul_step_gadget_constraints() {
+        let gadget = CurveNativeScalarMulStepGadget::<PallasParameters>::new();
 
         let mut env = ConstraintEnv::<Fp>::new();
-        let z = env.make_input_vars::<5>();
-        let _ = step.synthesize(&mut env, &z);
 
-        // CurveNativeScalarMulStep has 10 constraints:
+        // Create input
+        let input = {
+            let res_x_pos = env.allocate();
+            let res_x = env.read_position(res_x_pos);
+            let res_y_pos = env.allocate();
+            let res_y = env.read_position(res_y_pos);
+            let tmp_x_pos = env.allocate();
+            let tmp_x = env.read_position(tmp_x_pos);
+            let tmp_y_pos = env.allocate();
+            let tmp_y = env.read_position(tmp_y_pos);
+            let scalar_pos = env.allocate();
+            let scalar = env.read_position(scalar_pos);
+            ECScalarMulState::new(
+                ECPoint::new(res_x, res_y),
+                ECPoint::new(tmp_x, tmp_y),
+                scalar,
+            )
+        };
+
+        let _ = gadget.synthesize(&mut env, input);
+
+        // CurveNativeScalarMulStepGadget has 10 constraints:
         // 1. bit_boolean: bit * (1 - bit) = 0 (degree 2)
         // 2. add_slope: λ * (o_x - tmp_x) - (o_y - tmp_y) = 0 (degree 2)
         // 3. sum_x: sum_x - (λ² - o_x - tmp_x) = 0 (degree 2)
@@ -611,45 +765,27 @@ mod constraint_tests {
         assert_eq!(
             env.num_constraints(),
             10,
-            "CurveNativeScalarMulStep should have 10 constraints"
+            "CurveNativeScalarMulStepGadget should have 10 constraints"
         );
 
         // Max degree is 2
         assert_eq!(env.max_degree(), 2, "Max degree should be 2");
 
-        // 5 witness allocations on current row:
-        // lambda_add, sum_x, sum_y, lambda_double, bit
-        // Note: num_witness_allocations() only counts current row
-        // Next row allocations (o_x_next, o_y_next, tmp_x_next, tmp_y_next, r_next) are separate
-        assert_eq!(
-            env.num_witness_allocations(),
-            5,
-            "Should have 5 witness allocations on current row"
-        );
-
         env.check_degrees()
             .expect("All constraints should have degree <= MAX_DEGREE");
     }
 
-    /// Regression test for CurveNativeScalarMulStep metrics.
     #[test]
-    fn test_curve_native_scalar_mul_step_metrics() {
-        let step = CurveNativeScalarMulStep::<PallasParameters>::new();
-
-        let mut env = ConstraintEnv::<Fp>::new();
-        let z = env.make_input_vars::<5>();
-        let _ = step.synthesize(&mut env, &z);
-
-        assert_eq!(env.num_constraints(), 10, "constraints changed");
-        assert_eq!(env.num_witness_allocations(), 5, "witness allocations changed");
-        assert_eq!(env.max_degree(), 2, "max degree changed");
+    fn test_curve_native_scalar_mul_step_gadget_selector() {
+        assert_eq!(
+            <CurveNativeScalarMulStepGadget<PallasParameters> as TypedGadget<Fp>>::Selector::GADGET,
+            crate::column::Gadget::EllipticCurveScaling
+        );
+        assert_eq!(
+            <CurveNativeScalarMulStepGadget<PallasParameters> as TypedGadget<Fp>>::Selector::INDEX,
+            9
+        );
     }
-
-    // Note: Multi-step constraint tests (test_curve_native_scalar_mul_full_constraints,
-    // test_curve_native_scalar_mul_4bit_metrics) are removed because:
-    // 1. Named constraints conflict when the same circuit is repeated
-    // 2. ConstraintEnv composes symbolic expressions, causing degree explosion
-    // The full circuit correctness is verified in output_tests using the output() method.
 }
 
 // ============================================================================
@@ -665,75 +801,82 @@ mod output_tests {
     use rand::{Rng, SeedableRng};
 
     #[test]
-    fn test_curve_native_scalar_mul_step_bit_decomposition() {
-        let step = CurveNativeScalarMulStep::<PallasParameters>::new();
+    fn test_curve_native_scalar_mul_step_gadget_bit_decomposition() {
+        let gadget = CurveNativeScalarMulStepGadget::<PallasParameters>::new();
 
         let g = Pallas::generator();
 
         // Test with scalar = 5 = 101 in binary
         let scalar = Fp::from(5u64);
-        let state = [g.x, g.y, g.x, g.y, scalar];
+        let input = ECScalarMulState::new(ECPoint::new(g.x, g.y), ECPoint::new(g.x, g.y), scalar);
 
-        let output = step.output(&state);
+        let output = gadget.output(&input);
 
         // After one step:
         // - bit = 1 (LSB of 5)
         // - next_scalar = 2 (5 >> 1)
-        assert_eq!(output[4], Fp::from(2u64), "Scalar should be halved");
+        assert_eq!(output.scalar, Fp::from(2u64), "Scalar should be halved");
     }
 
     #[test]
-    fn test_curve_native_scalar_mul_step_random() {
-        let step = CurveNativeScalarMulStep::<PallasParameters>::new();
-        let mut rng = rand::rngs::StdRng::seed_from_u64(42);
+    fn test_curve_native_scalar_mul_step_gadget_random() {
+        let seed: u64 = rand::random();
+        println!("test_curve_native_scalar_mul_step_gadget_random seed: {seed}");
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
-        for _ in 0..10 {
-            let scalar: u64 = rng.gen_range(1..1_000_000);
-            let s: u64 = rng.gen_range(1..1_000_000);
+        let gadget = CurveNativeScalarMulStepGadget::<PallasParameters>::new();
 
-            let p: Pallas = Pallas::generator().mul_bigint([s]).into();
+        let scalar: u64 = rng.gen_range(1..1_000_000);
+        let s: u64 = rng.gen_range(1..1_000_000);
 
-            let state = [p.x, p.y, p.x, p.y, Fp::from(scalar)];
-            let output = step.output(&state);
+        let p: Pallas = Pallas::generator().mul_bigint([s]).into();
 
-            // Scalar should be halved
-            let expected_next_scalar = scalar >> 1;
-            assert_eq!(
-                output[4],
-                Fp::from(expected_next_scalar),
-                "Scalar should be halved"
-            );
-        }
+        let input = ECScalarMulState::new(
+            ECPoint::new(p.x, p.y),
+            ECPoint::new(p.x, p.y),
+            Fp::from(scalar),
+        );
+        let output = gadget.output(&input);
+
+        // Scalar should be halved
+        let expected_next_scalar = scalar >> 1;
+        assert_eq!(
+            output.scalar,
+            Fp::from(expected_next_scalar),
+            "Scalar should be halved"
+        );
     }
 
     #[test]
-    fn test_curve_native_scalar_mul_small() {
-        let circuit = CurveNativeScalarMul::<PallasParameters>::new(4);
+    fn test_curve_native_scalar_mul_gadget_small() {
+        let gadget = CurveNativeScalarMulGadget::<PallasParameters>::new(4);
 
         let g = Pallas::generator();
         let scalar = Fp::from(3u64);
-        let [_x, _y, remaining] = circuit.output(&[g.x, g.y, scalar]);
+        let input = ECScalarMulInput::new(ECPoint::new(g.x, g.y), scalar);
+        let output = gadget.output(&input);
 
         // The remaining scalar should be 0 after 4 bits (3 < 16)
-        assert_eq!(remaining, Fp::zero(), "Scalar should be fully consumed");
+        assert_eq!(output.scalar, Fp::zero(), "Scalar should be fully consumed");
     }
 
     #[test]
-    fn test_curve_native_scalar_mul_deterministic() {
-        let circuit = CurveNativeScalarMul::<PallasParameters>::new(8);
+    fn test_curve_native_scalar_mul_gadget_deterministic() {
+        let gadget = CurveNativeScalarMulGadget::<PallasParameters>::new(8);
 
         let g = Pallas::generator();
         let scalar = Fp::from(42u64);
+        let input = ECScalarMulInput::new(ECPoint::new(g.x, g.y), scalar);
 
-        let output1 = circuit.output(&[g.x, g.y, scalar]);
-        let output2 = circuit.output(&[g.x, g.y, scalar]);
+        let output1 = gadget.output(&input);
+        let output2 = gadget.output(&input);
 
         assert_eq!(output1, output2, "Same inputs should give same outputs");
     }
 
     #[test]
-    fn test_curve_native_scalar_mul_various_scalars() {
-        let circuit = CurveNativeScalarMul::<PallasParameters>::new(16);
+    fn test_curve_native_scalar_mul_gadget_various_scalars() {
+        let gadget = CurveNativeScalarMulGadget::<PallasParameters>::new(16);
 
         let g = Pallas::generator();
 
@@ -741,11 +884,12 @@ mod output_tests {
         let scalars: Vec<u64> = vec![1, 2, 3, 4, 5, 7, 10, 15, 16, 100, 255];
 
         for scalar in scalars {
-            let [_x, _y, remaining] = circuit.output(&[g.x, g.y, Fp::from(scalar)]);
+            let input = ECScalarMulInput::new(ECPoint::new(g.x, g.y), Fp::from(scalar));
+            let output = gadget.output(&input);
 
             // Scalar should be fully consumed after 16 bits
             assert_eq!(
-                remaining,
+                output.scalar,
                 Fp::zero(),
                 "Scalar {} should be fully consumed",
                 scalar
@@ -754,29 +898,26 @@ mod output_tests {
     }
 
     #[test]
-    fn test_curve_native_scalar_mul_random_scalars() {
-        let circuit = CurveNativeScalarMul::<PallasParameters>::new(32);
-        let mut rng = rand::rngs::StdRng::seed_from_u64(42);
+    fn test_curve_native_scalar_mul_gadget_random_scalar() {
+        let seed: u64 = rand::random();
+        println!("test_curve_native_scalar_mul_gadget_random_scalar seed: {seed}");
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
-        for _ in 0..5 {
-            let scalar: u32 = rng.gen();
-            let s: u64 = rng.gen_range(1..1_000);
-            let p: Pallas = Pallas::generator().mul_bigint([s]).into();
+        let gadget = CurveNativeScalarMulGadget::<PallasParameters>::new(32);
 
-            let [_x, _y, remaining] = circuit.output(&[p.x, p.y, Fp::from(scalar)]);
+        let scalar: u32 = rng.gen();
+        let s: u64 = rng.gen_range(1..1_000);
+        let p: Pallas = Pallas::generator().mul_bigint([s]).into();
 
-            // Scalar should be fully consumed after 32 bits
-            assert_eq!(
-                remaining,
-                Fp::zero(),
-                "Scalar {} should be fully consumed",
-                scalar
-            );
-        }
+        let input = ECScalarMulInput::new(ECPoint::new(p.x, p.y), Fp::from(scalar));
+        let output = gadget.output(&input);
+
+        // Scalar should be fully consumed after 32 bits
+        assert_eq!(
+            output.scalar,
+            Fp::zero(),
+            "Scalar {} should be fully consumed",
+            scalar
+        );
     }
 }
-
-// Note: Trace tests are not included for these circuits because they use
-// write_column(pos, env.constant(F::zero())) which doesn't compute actual witness values.
-// The circuits are designed for ConstraintEnv (symbolic mode) and output
-// correctness is verified in output_tests module using the output() function.

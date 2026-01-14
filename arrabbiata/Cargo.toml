@@ -40,8 +40,8 @@ strum_macros.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
-mina-signer = { path = "../signer" }
 mina-hasher.workspace = true
+mina-signer.workspace = true
 
 [[bench]]
 name = "circuits"

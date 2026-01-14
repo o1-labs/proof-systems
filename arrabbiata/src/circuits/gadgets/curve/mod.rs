@@ -12,6 +12,6 @@ pub mod native;
 
 // Re-export native curve operations for convenience
 pub use native::{
-    CurveAffineParams, CurveNativeAdd, CurveNativeDouble, CurveNativeScalarMul,
-    CurveNativeScalarMulStep,
+    CurveAffineParams, CurveNativeAddGadget, CurveNativeDoubleGadget, CurveNativeScalarMulGadget,
+    CurveNativeScalarMulStepGadget,
 };

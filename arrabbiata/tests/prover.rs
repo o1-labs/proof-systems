@@ -104,8 +104,7 @@ fn test_proof_size_is_constant() {
 
     // Run with 10 iterations
     let indexed_relation_10 = IndexedRelation::new(MIN_SRS_LOG2_SIZE);
-    let mut env_10: Env<Fp, Fq, Vesta, Pallas> =
-        Env::new(BigInt::from(1u64), indexed_relation_10);
+    let mut env_10: Env<Fp, Fq, Vesta, Pallas> = Env::new(BigInt::from(1u64), indexed_relation_10);
     env_10.fold(10);
     let proof_10 = prove(&env_10).expect("Prove should succeed for 10 iterations");
 

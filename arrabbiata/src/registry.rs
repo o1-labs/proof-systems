@@ -154,8 +154,8 @@ impl Default for CircuitRegistry {
                     "Repeated squaring: 2^15 squarings per fold (requires --srs-size 15)",
                     1,
                     2,
-                    1,      // Same constraint repeated across rows
-                    32768,  // 2^15 rows per fold
+                    1,     // Same constraint repeated across rows
+                    32768, // 2^15 rows per fold
                 ),
             )
             .register(
@@ -181,8 +181,8 @@ impl Default for CircuitRegistry {
                     "Repeated Fibonacci: 2^15 steps per fold (requires --srs-size 15)",
                     2,
                     1,
-                    2,      // Same 2 constraints repeated across rows
-                    32768,  // 2^15 rows per fold
+                    2,     // Same 2 constraints repeated across rows
+                    32768, // 2^15 rows per fold
                 ),
             )
             .register(

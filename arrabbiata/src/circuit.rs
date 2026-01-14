@@ -110,14 +110,15 @@
 //!
 //! ## Example
 //!
-//! See [`crate::circuits::SquaringCircuit`] for a simple example that squares
+//! See [`crate::circuits::SquaringGadget`] for a simple example that squares
 //! the input at each step:
 //!
 //! ```
-//! use arrabbiata::circuits::{SquaringCircuit, StepCircuit};
+//! use arrabbiata::circuits::{GadgetCircuit, Scalar, SquaringGadget, StepCircuit};
 //! use mina_curves::pasta::Fp;
 //!
-//! let circuit = SquaringCircuit::<Fp>::new();
+//! // Wrap SquaringGadget as a StepCircuit<Fp, 1>
+//! let circuit = GadgetCircuit::new(SquaringGadget, "squaring");
 //!
 //! // Compute output: 3² = 9
 //! let z0 = [Fp::from(3u64)];
@@ -258,8 +259,7 @@ pub trait CircuitEnv<F: PrimeField> {
 // SelectorEnv Trait
 // ============================================================================
 
-use crate::circuits::selector::SelectorTag;
-use crate::column::Gadget;
+use crate::{circuits::selector::SelectorTag, column::Gadget};
 
 /// Extension trait for environments that support selector columns.
 ///
@@ -424,11 +424,6 @@ pub trait StepCircuit<F: PrimeField, const ARITY: usize>: Clone + Debug + Send +
     /// Compute the output of a step directly (for verification/testing).
     fn output(&self, z: &[F; ARITY]) -> [F; ARITY];
 
-    /// Returns a list of gadgets used by this circuit.
-    fn gadgets(&self) -> Vec<crate::column::Gadget> {
-        vec![]
-    }
-
     /// Returns the number of rows used per fold.
     ///
     /// For simple circuits, this is 1. For circuits that amortize computation
@@ -462,15 +457,15 @@ use std::collections::HashMap;
 ///
 /// ```
 /// use arrabbiata::circuit::{ConstraintEnv, CircuitEnv, StepCircuit};
-/// use arrabbiata::circuits::TrivialCircuit;
+/// use arrabbiata::circuits::{GadgetCircuit, TrivialGadget};
 /// use mina_curves::pasta::Fp;
 ///
-/// let circuit = TrivialCircuit::<Fp>::new();
+/// let circuit = GadgetCircuit::new(TrivialGadget, "trivial");
 /// let mut env = ConstraintEnv::<Fp>::new();
 /// let z = env.make_input_vars::<1>();
 /// let _ = circuit.synthesize(&mut env, &z);
 ///
-/// // TrivialCircuit has no constraints
+/// // TrivialGadget has no constraints
 /// assert_eq!(env.num_constraints(), 0);
 /// ```
 pub struct ConstraintEnv<F: PrimeField> {
@@ -482,8 +477,6 @@ pub struct ConstraintEnv<F: PrimeField> {
     constraints: Vec<E<F>>,
     /// Named constraints (from assert_zero_named) - deduplicated by name
     named_constraints: HashMap<String, E<F>>,
-    /// Maximum allowed degree
-    max_allowed_degree: usize,
     /// Currently active gadget (for SelectorEnv tracking)
     active_gadget: Option<Gadget>,
 }
@@ -496,19 +489,6 @@ impl<F: PrimeField> ConstraintEnv<F> {
             witness_idx_next_row: 0,
             constraints: Vec::new(),
             named_constraints: HashMap::new(),
-            max_allowed_degree: crate::MAX_DEGREE,
-            active_gadget: None,
-        }
-    }
-
-    /// Create a new constraint environment with a custom max degree.
-    pub fn with_max_degree(max_degree: usize) -> Self {
-        Self {
-            witness_idx: 0,
-            witness_idx_next_row: 0,
-            constraints: Vec::new(),
-            named_constraints: HashMap::new(),
-            max_allowed_degree: max_degree,
             active_gadget: None,
         }
     }
@@ -572,14 +552,16 @@ impl<F: PrimeField> ConstraintEnv<F> {
             .unwrap_or(0)
     }
 
-    /// Check that all constraints have degree at most max_allowed_degree.
+    /// Check that all constraints have degree at most MAX_DEGREE.
     pub fn check_degrees(&self) -> Result<(), String> {
         for (i, c) in self.all_constraints().iter().enumerate() {
             let deg = c.degree(1, 0) as usize;
-            if deg > self.max_allowed_degree {
+            if deg > crate::MAX_DEGREE {
                 return Err(format!(
                     "Constraint {} has degree {} but max allowed is {}",
-                    i, deg, self.max_allowed_degree
+                    i,
+                    deg,
+                    crate::MAX_DEGREE
                 ));
             }
         }
@@ -642,10 +624,10 @@ impl<F: PrimeField> CircuitEnv<F> for ConstraintEnv<F> {
     fn assert_zero(&mut self, x: &Self::Variable) {
         let degree = x.degree(1, 0);
         assert!(
-            (degree as usize) <= self.max_allowed_degree,
+            (degree as usize) <= crate::MAX_DEGREE,
             "Constraint has degree {} but max allowed is {}",
             degree,
-            self.max_allowed_degree
+            crate::MAX_DEGREE
         );
         self.constraints.push(x.clone());
     }
@@ -653,11 +635,11 @@ impl<F: PrimeField> CircuitEnv<F> for ConstraintEnv<F> {
     fn assert_zero_named(&mut self, name: &str, x: &Self::Variable) {
         let degree = x.degree(1, 0);
         assert!(
-            (degree as usize) <= self.max_allowed_degree,
+            (degree as usize) <= crate::MAX_DEGREE,
             "Constraint '{}' has degree {} but max allowed is {}",
             name,
             degree,
-            self.max_allowed_degree
+            crate::MAX_DEGREE
         );
         // Check if this name already exists
         if let Some(existing) = self.named_constraints.get(name) {
@@ -726,10 +708,10 @@ use crate::NUMBER_OF_COLUMNS;
 ///
 /// ```
 /// use arrabbiata::circuit::{Trace, CircuitEnv, StepCircuit};
-/// use arrabbiata::circuits::SquaringCircuit;
+/// use arrabbiata::circuits::{GadgetCircuit, SquaringGadget};
 /// use mina_curves::pasta::Fp;
 ///
-/// let circuit = SquaringCircuit::<Fp>::new();
+/// let circuit = GadgetCircuit::new(SquaringGadget, "squaring");
 /// let domain_size = 1 << 8; // 256 rows
 /// let mut env = Trace::<Fp>::new(domain_size);
 ///
@@ -741,6 +723,29 @@ use crate::NUMBER_OF_COLUMNS;
 /// // Domain size is fixed
 /// assert_eq!(env.num_rows(), domain_size);
 /// ```
+// TODO: Parallelization opportunity for witness generation
+//
+// The current Trace implementation generates witnesses sequentially row-by-row.
+// For circuits with independent row computations (e.g., repeated gadgets like
+// Poseidon hashing or scalar multiplication), witness generation could be
+// parallelized using rayon:
+//
+// 1. **Row-level parallelism**: When gadgets are independent across rows,
+//    compute multiple rows in parallel using `par_iter_mut()` on the witness.
+//
+// 2. **Gadget-level parallelism**: For composite gadgets that internally use
+//    multiple independent sub-gadgets (e.g., SchnorrVerifyGadget computes
+//    two scalar multiplications), these could run in parallel.
+//
+// 3. **Batch witness generation**: Pre-allocate the full witness table and
+//    use work-stealing to fill rows as inputs become available.
+//
+// Considerations:
+// - Row dependencies must be tracked (some gadgets read from previous rows)
+// - Memory allocation patterns may need adjustment for cache efficiency
+// - Thread synchronization overhead vs computation cost tradeoff
+//
+// See also: `rayon::prelude::*` for parallel iterators
 pub struct Trace<F: PrimeField> {
     /// Domain size (number of rows, determined by SRS size)
     domain_size: usize,
@@ -1083,11 +1088,11 @@ mod trace_tests {
         let b = env.constant(Fp::from(4u64));
 
         // Add
-        let sum = a.clone() + b.clone();
+        let sum = a + b;
         assert_eq!(sum, Fp::from(7u64));
 
         // Mul
-        let prod = a.clone() * b.clone();
+        let prod = a * b;
         assert_eq!(prod, Fp::from(12u64));
 
         // Sub
@@ -1279,7 +1284,7 @@ mod trace_tests {
         let mut env = Trace::<Fp>::new(2); // Only 2 rows
 
         env.next_row(); // Move to last row (row 1)
-        // Now trying to write to "next row" (row 2) should fail
+                        // Now trying to write to "next row" (row 2) should fail
         let pos = env.allocate_next_row();
         env.write_column(pos, Fp::from(1u64));
     }

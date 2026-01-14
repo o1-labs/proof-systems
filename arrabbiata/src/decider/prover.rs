@@ -20,9 +20,7 @@
 
 use ark_ec::CurveConfig;
 use ark_ff::PrimeField;
-use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain,
-};
+use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain};
 use groupmap::GroupMap;
 use kimchi::curve::KimchiCurve;
 use mina_poseidon::FqSponge;
@@ -169,6 +167,7 @@ where
 ///
 /// This is a generic function that works for both E1 and E2.
 /// It computes the quotient polynomial and generates IPA opening proofs.
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn generate_opening_proof<
     F: PrimeField,
     E: CommitmentCurve<ScalarField = F> + EndoCurve + KimchiCurve<POSEIDON_FULL_ROUNDS>,
@@ -225,8 +224,7 @@ where
 
     // Get error polynomial
     let error_poly = {
-        let evaluations =
-            ark_poly::Evaluations::from_vec_and_domain(error_term.to_vec(), domain);
+        let evaluations = ark_poly::Evaluations::from_vec_and_domain(error_term.to_vec(), domain);
         evaluations.interpolate()
     };
 
@@ -408,8 +406,7 @@ where
 
     // Interpolate numerator
     let numerator_poly = {
-        let evaluations =
-            ark_poly::Evaluations::from_vec_and_domain(numerator_evals, domain);
+        let evaluations = ark_poly::Evaluations::from_vec_and_domain(numerator_evals, domain);
         evaluations.interpolate()
     };
 

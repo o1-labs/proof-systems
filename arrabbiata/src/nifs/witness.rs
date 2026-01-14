@@ -1557,8 +1557,7 @@ where
     /// assert_eq!(env.current_iteration, 10);
     /// ```
     pub fn fold(&mut self, n_iterations: u64) {
-        use crate::interpreter;
-        use crate::VERIFIER_CIRCUIT_SIZE;
+        use crate::{interpreter, VERIFIER_CIRCUIT_SIZE};
         use log::debug;
         use std::time::Instant;
 

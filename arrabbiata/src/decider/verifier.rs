@@ -259,8 +259,12 @@ where
 pub fn verify_with_opening<
     Fp: PrimeField,
     Fq: PrimeField,
-    E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq> + EndoCurve + KimchiCurve<POSEIDON_FULL_ROUNDS>,
-    E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp> + EndoCurve + KimchiCurve<POSEIDON_FULL_ROUNDS>,
+    E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>
+        + EndoCurve
+        + KimchiCurve<POSEIDON_FULL_ROUNDS>,
+    E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>
+        + EndoCurve
+        + KimchiCurve<POSEIDON_FULL_ROUNDS>,
     EFqSponge1: Clone + FqSponge<Fq, E1, Fp, POSEIDON_FULL_ROUNDS>,
     EFqSponge2: Clone + FqSponge<Fp, E2, Fq, POSEIDON_FULL_ROUNDS>,
 >(
@@ -315,7 +319,9 @@ where
 fn verify_opening_e1<
     Fp: PrimeField,
     Fq: PrimeField,
-    E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq> + EndoCurve + KimchiCurve<POSEIDON_FULL_ROUNDS>,
+    E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>
+        + EndoCurve
+        + KimchiCurve<POSEIDON_FULL_ROUNDS>,
     E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>,
     EFqSponge: Clone + FqSponge<Fq, E1, Fp, POSEIDON_FULL_ROUNDS>,
 >(
@@ -331,7 +337,8 @@ where
     let mut rng = OsRng;
 
     // Re-derive evaluation point via Fiat-Shamir (must match prover)
-    let mut sponge = EFqSponge::new(<E1 as KimchiCurve<POSEIDON_FULL_ROUNDS>>::other_curve_sponge_params());
+    let mut sponge =
+        EFqSponge::new(<E1 as KimchiCurve<POSEIDON_FULL_ROUNDS>>::other_curve_sponge_params());
 
     // Absorb all witness commitments
     for comm in &instance.witness_commitments {
@@ -354,9 +361,7 @@ where
 
     // Verify evaluation point matches
     if eval_point != opening.eval_point {
-        return Err(VerifierError::OpeningFailed(
-            "E1 evaluation point mismatch",
-        ));
+        return Err(VerifierError::OpeningFailed("E1 evaluation point mismatch"));
     }
 
     // Build evaluation structures for batch verification
@@ -413,7 +418,9 @@ fn verify_opening_e2<
     Fp: PrimeField,
     Fq: PrimeField,
     E1: ArrabbiataCurve<ScalarField = Fp, BaseField = Fq>,
-    E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp> + EndoCurve + KimchiCurve<POSEIDON_FULL_ROUNDS>,
+    E2: ArrabbiataCurve<ScalarField = Fq, BaseField = Fp>
+        + EndoCurve
+        + KimchiCurve<POSEIDON_FULL_ROUNDS>,
     EFqSponge: Clone + FqSponge<Fp, E2, Fq, POSEIDON_FULL_ROUNDS>,
 >(
     srs: &SRS<E2>,
@@ -428,7 +435,8 @@ where
     let mut rng = OsRng;
 
     // Re-derive evaluation point via Fiat-Shamir (must match prover)
-    let mut sponge = EFqSponge::new(<E2 as KimchiCurve<POSEIDON_FULL_ROUNDS>>::other_curve_sponge_params());
+    let mut sponge =
+        EFqSponge::new(<E2 as KimchiCurve<POSEIDON_FULL_ROUNDS>>::other_curve_sponge_params());
 
     // Absorb all witness commitments
     for comm in &instance.witness_commitments {
@@ -451,9 +459,7 @@ where
 
     // Verify evaluation point matches
     if eval_point != opening.eval_point {
-        return Err(VerifierError::OpeningFailed(
-            "E2 evaluation point mismatch",
-        ));
+        return Err(VerifierError::OpeningFailed("E2 evaluation point mismatch"));
     }
 
     // Build evaluation structures for batch verification
@@ -838,7 +844,10 @@ mod tests {
 
         // E1 should have: 15 witness + 1 error + 4 cross-terms (MAX_DEGREE - 1)
         // (E1 is active on iteration 0, so it has cross-terms)
-        assert_eq!(cost.num_commitments_e1, NUMBER_OF_COLUMNS + 1 + (MAX_DEGREE - 1));
+        assert_eq!(
+            cost.num_commitments_e1,
+            NUMBER_OF_COLUMNS + 1 + (MAX_DEGREE - 1)
+        );
 
         // E2 should have: 15 witness + 1 error + 0 cross-terms
         // (E2 is not active on iteration 0, so no cross-terms)

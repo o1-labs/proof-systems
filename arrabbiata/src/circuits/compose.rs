@@ -10,9 +10,10 @@
 use ark_ff::PrimeField;
 use core::fmt::Debug;
 
-use crate::circuit::{CircuitEnv, SelectorEnv, StepCircuit};
-use crate::circuits::gadget::{Scalar, TypedGadget};
-use crate::column::Gadget;
+use crate::{
+    circuit::{CircuitEnv, SelectorEnv, StepCircuit},
+    circuits::gadget::{Pair, PoseidonState3, Position, Scalar, TypedGadget},
+};
 
 // ============================================================================
 // ScalarGadget marker trait
@@ -82,6 +83,15 @@ pub struct Chain<G1, G2> {
     pub second: G2,
 }
 
+impl<G1: Default, G2: Default> Default for Chain<G1, G2> {
+    fn default() -> Self {
+        Self {
+            first: G1::default(),
+            second: G2::default(),
+        }
+    }
+}
+
 impl<G1, G2> Chain<G1, G2> {
     /// Create a new chain of two gadgets.
     pub fn new(first: G1, second: G2) -> Self {
@@ -100,6 +110,16 @@ where
     type Output<V: Clone> = Scalar<V>;
 
     const ROWS: usize = G1::ROWS + G2::ROWS;
+
+    fn input_positions() -> &'static [Position] {
+        // Chain uses G1's input positions
+        G1::input_positions()
+    }
+
+    fn output_positions() -> &'static [Position] {
+        // Chain uses G2's output positions
+        G2::output_positions()
+    }
 
     fn synthesize<E: CircuitEnv<F> + SelectorEnv<F>>(
         &self,
@@ -146,6 +166,17 @@ where
 
     const ROWS: usize = G::ROWS * N;
 
+    fn input_positions() -> &'static [Position] {
+        // Repeat uses the underlying gadget's input positions
+        G::input_positions()
+    }
+
+    fn output_positions() -> &'static [Position] {
+        // Repeat uses the underlying gadget's output positions
+        // (final iteration's output)
+        G::output_positions()
+    }
+
     fn synthesize<E: CircuitEnv<F> + SelectorEnv<F>>(
         &self,
         env: &mut E,
@@ -172,13 +203,52 @@ where
 }
 
 // ============================================================================
-// GadgetCircuit: Bridge from TypedGadget to StepCircuit
+// PairGadget marker trait
 // ============================================================================
 
-/// Wraps a `TypedGadget` as a `StepCircuit`.
+/// Marker trait for gadgets that use `Pair<V>` for input and output.
+///
+/// This simplifies type bounds for composition combinators with arity 2.
+pub trait PairGadget<F: PrimeField>:
+    TypedGadget<F, Input<F> = Pair<F>, Output<F> = Pair<F>>
+{
+    /// Synthesize using Pair types directly (avoids GAT issues).
+    fn synthesize_pair<E: CircuitEnv<F> + SelectorEnv<F>>(
+        &self,
+        env: &mut E,
+        input: Pair<E::Variable>,
+    ) -> Pair<E::Variable>;
+}
+
+// Blanket impl: any TypedGadget with Pair I/O is a PairGadget
+impl<F: PrimeField, G> PairGadget<F> for G
+where
+    G: TypedGadget<F, Input<F> = Pair<F>, Output<F> = Pair<F>>,
+{
+    fn synthesize_pair<E: CircuitEnv<F> + SelectorEnv<F>>(
+        &self,
+        env: &mut E,
+        input: Pair<E::Variable>,
+    ) -> Pair<E::Variable> {
+        // Cast through raw parts - this is safe when Input<V> = Pair<V>
+        let (first, second) = (input.first, input.second);
+        let typed_input: Self::Input<E::Variable> =
+            unsafe { core::mem::transmute_copy(&Pair::new(first.clone(), second.clone())) };
+        let typed_output = self.synthesize(env, typed_input);
+        unsafe { core::mem::transmute_copy(&typed_output) }
+    }
+}
+
+// ============================================================================
+// GadgetCircuit: Bridge from ScalarGadget to StepCircuit<F, 1>
+// ============================================================================
+
+/// Wraps a `ScalarGadget` (arity 1) as a `StepCircuit<F, 1>`.
 ///
 /// This allows composed gadgets (via `Chain` and `Repeat`) to be used
 /// as step circuits in the IVC framework.
+///
+/// For arity-2 gadgets using `Pair`, use `PairCircuit` instead.
 #[derive(Clone, Debug)]
 pub struct GadgetCircuit<G> {
     pub gadget: G,
@@ -215,8 +285,192 @@ where
         [output.0]
     }
 
-    fn gadgets(&self) -> Vec<Gadget> {
-        vec![self.gadget.gadget(); G::ROWS]
+    fn num_rows(&self) -> usize {
+        G::ROWS
+    }
+}
+
+// ============================================================================
+// PairCircuit: Bridge from PairGadget to StepCircuit<F, 2>
+// ============================================================================
+
+/// Wraps a `PairGadget` (arity 2) as a `StepCircuit<F, 2>`.
+///
+/// This allows gadgets with `Pair<V>` input/output to be used
+/// as step circuits in the IVC framework.
+///
+/// # Example
+///
+/// ```
+/// use arrabbiata::circuits::{FibonacciGadget, PairCircuit, StepCircuit};
+/// use mina_curves::pasta::Fp;
+///
+/// // Wrap FibonacciGadget as a StepCircuit
+/// let circuit = PairCircuit::new(FibonacciGadget, "Fibonacci");
+///
+/// // Use as StepCircuit<Fp, 2>
+/// let z0 = [Fp::from(0u64), Fp::from(1u64)];
+/// let z1 = circuit.output(&z0);
+/// assert_eq!(z1, [Fp::from(1u64), Fp::from(1u64)]);
+/// ```
+#[derive(Clone, Debug)]
+pub struct PairCircuit<G> {
+    pub gadget: G,
+    pub name: &'static str,
+}
+
+impl<G> PairCircuit<G> {
+    /// Create a new pair circuit with a name.
+    pub fn new(gadget: G, name: &'static str) -> Self {
+        Self { gadget, name }
+    }
+}
+
+impl<G: Default> Default for PairCircuit<G> {
+    fn default() -> Self {
+        Self {
+            gadget: G::default(),
+            name: "PairCircuit",
+        }
+    }
+}
+
+impl<F, G> StepCircuit<F, 2> for PairCircuit<G>
+where
+    F: PrimeField,
+    G: PairGadget<F>,
+{
+    const NAME: &'static str = "PairCircuit";
+
+    fn synthesize<E: CircuitEnv<F> + SelectorEnv<F>>(
+        &self,
+        env: &mut E,
+        z: &[E::Variable; 2],
+    ) -> [E::Variable; 2] {
+        let input = Pair::new(z[0].clone(), z[1].clone());
+        let output = self.gadget.synthesize_pair(env, input);
+        [output.first, output.second]
+    }
+
+    fn output(&self, z: &[F; 2]) -> [F; 2] {
+        let input = Pair::new(z[0], z[1]);
+        let output = self.gadget.output(&input);
+        [output.first, output.second]
+    }
+
+    fn num_rows(&self) -> usize {
+        G::ROWS
+    }
+}
+
+// ============================================================================
+// StateGadget marker trait (arity 3)
+// ============================================================================
+
+/// Marker trait for gadgets that use `PoseidonState3<V>` for input and output.
+///
+/// This simplifies type bounds for composition combinators with arity 3.
+/// Primarily used for Poseidon hash function gadgets.
+pub trait StateGadget<F: PrimeField>:
+    TypedGadget<F, Input<F> = PoseidonState3<F>, Output<F> = PoseidonState3<F>>
+{
+    /// Synthesize using PoseidonState3 types directly (avoids GAT issues).
+    fn synthesize_state<E: CircuitEnv<F> + SelectorEnv<F>>(
+        &self,
+        env: &mut E,
+        input: PoseidonState3<E::Variable>,
+    ) -> PoseidonState3<E::Variable>;
+}
+
+// Blanket impl: any TypedGadget with PoseidonState3 I/O is a StateGadget
+impl<F: PrimeField, G> StateGadget<F> for G
+where
+    G: TypedGadget<F, Input<F> = PoseidonState3<F>, Output<F> = PoseidonState3<F>>,
+{
+    fn synthesize_state<E: CircuitEnv<F> + SelectorEnv<F>>(
+        &self,
+        env: &mut E,
+        input: PoseidonState3<E::Variable>,
+    ) -> PoseidonState3<E::Variable> {
+        // Cast through raw parts - this is safe when Input<V> = PoseidonState3<V>
+        let state = input.state;
+        let typed_input: Self::Input<E::Variable> =
+            unsafe { core::mem::transmute_copy(&PoseidonState3::new(state.clone())) };
+        let typed_output = self.synthesize(env, typed_input);
+        unsafe { core::mem::transmute_copy(&typed_output) }
+    }
+}
+
+// ============================================================================
+// StateCircuit: Bridge from StateGadget to StepCircuit<F, 3>
+// ============================================================================
+
+/// Wraps a `StateGadget` (arity 3) as a `StepCircuit<F, 3>`.
+///
+/// This allows gadgets with `PoseidonState3<V>` input/output to be used
+/// as step circuits in the IVC framework.
+///
+/// # Example
+///
+/// ```
+/// use arrabbiata::circuit::StepCircuit;
+/// use arrabbiata::circuits::compose::StateCircuit;
+/// use arrabbiata::circuits::gadgets::hash::{PoseidonPermutationGadget, NUMBER_FULL_ROUNDS};
+/// use arrabbiata::poseidon_3_60_0_5_5_fp;
+/// use mina_curves::pasta::Fp;
+///
+/// // Create gadget with params and wrap as StepCircuit
+/// let params = poseidon_3_60_0_5_5_fp::static_params();
+/// let gadget = PoseidonPermutationGadget::<Fp, NUMBER_FULL_ROUNDS>::new(params);
+/// let circuit = StateCircuit::new(gadget, "PoseidonPermutation");
+///
+/// // Use as StepCircuit<Fp, 3>
+/// let z0 = [Fp::from(0u64), Fp::from(0u64), Fp::from(0u64)];
+/// let z1 = circuit.output(&z0);
+/// ```
+#[derive(Clone, Debug)]
+pub struct StateCircuit<G> {
+    pub gadget: G,
+    pub name: &'static str,
+}
+
+impl<G> StateCircuit<G> {
+    /// Create a new state circuit with a name.
+    pub fn new(gadget: G, name: &'static str) -> Self {
+        Self { gadget, name }
+    }
+}
+
+impl<G: Default> Default for StateCircuit<G> {
+    fn default() -> Self {
+        Self {
+            gadget: G::default(),
+            name: "StateCircuit",
+        }
+    }
+}
+
+impl<F, G> StepCircuit<F, 3> for StateCircuit<G>
+where
+    F: PrimeField,
+    G: StateGadget<F>,
+{
+    const NAME: &'static str = "StateCircuit";
+
+    fn synthesize<E: CircuitEnv<F> + SelectorEnv<F>>(
+        &self,
+        env: &mut E,
+        z: &[E::Variable; 3],
+    ) -> [E::Variable; 3] {
+        let input = PoseidonState3::new([z[0].clone(), z[1].clone(), z[2].clone()]);
+        let output = self.gadget.synthesize_state(env, input);
+        output.into_array()
+    }
+
+    fn output(&self, z: &[F; 3]) -> [F; 3] {
+        let input = PoseidonState3::new(*z);
+        let output = self.gadget.output(&input);
+        output.into_array()
     }
 
     fn num_rows(&self) -> usize {
@@ -231,19 +485,38 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::circuit::{ConstraintEnv, Trace};
-    use crate::circuits::selector::QNoOp;
+    use crate::{
+        circuit::{ConstraintEnv, Trace},
+        circuits::{gadget::Row, selector::QNoOp},
+    };
     use mina_curves::pasta::Fp;
 
     /// A simple gadget that doubles its input.
     #[derive(Clone, Debug)]
     struct DoubleGadget;
 
+    const DOUBLE_INPUT_POSITIONS: &[Position] = &[Position {
+        col: 0,
+        row: Row::Curr,
+    }];
+    const DOUBLE_OUTPUT_POSITIONS: &[Position] = &[Position {
+        col: 1,
+        row: Row::Curr,
+    }];
+
     impl<F: PrimeField> TypedGadget<F> for DoubleGadget {
         type Selector = QNoOp;
         type Input<V: Clone> = Scalar<V>;
         type Output<V: Clone> = Scalar<V>;
         const ROWS: usize = 1;
+
+        fn input_positions() -> &'static [Position] {
+            DOUBLE_INPUT_POSITIONS
+        }
+
+        fn output_positions() -> &'static [Position] {
+            DOUBLE_OUTPUT_POSITIONS
+        }
 
         fn synthesize<E: CircuitEnv<F> + SelectorEnv<F>>(
             &self,
@@ -265,11 +538,28 @@ mod tests {
     #[derive(Clone, Debug)]
     struct SquareGadget;
 
+    const SQUARE_INPUT_POSITIONS: &[Position] = &[Position {
+        col: 0,
+        row: Row::Curr,
+    }];
+    const SQUARE_OUTPUT_POSITIONS: &[Position] = &[Position {
+        col: 1,
+        row: Row::Curr,
+    }];
+
     impl<F: PrimeField> TypedGadget<F> for SquareGadget {
         type Selector = QNoOp;
         type Input<V: Clone> = Scalar<V>;
         type Output<V: Clone> = Scalar<V>;
         const ROWS: usize = 1;
+
+        fn input_positions() -> &'static [Position] {
+            SQUARE_INPUT_POSITIONS
+        }
+
+        fn output_positions() -> &'static [Position] {
+            SQUARE_OUTPUT_POSITIONS
+        }
 
         fn synthesize<E: CircuitEnv<F> + SelectorEnv<F>>(
             &self,
@@ -332,7 +622,10 @@ mod tests {
     #[test]
     fn test_chain_rows() {
         let chain = Chain::new(DoubleGadget, SquareGadget);
-        assert_eq!(<Chain<DoubleGadget, SquareGadget> as TypedGadget<Fp>>::ROWS, 2);
+        assert_eq!(
+            <Chain<DoubleGadget, SquareGadget> as TypedGadget<Fp>>::ROWS,
+            2
+        );
         let _ = chain;
     }
 
@@ -434,7 +727,8 @@ mod tests {
     #[test]
     fn test_gadget_circuit_num_rows() {
         let gadget = Repeat::<_, 5>::new(SquareGadget);
-        let circuit: GadgetCircuit<Repeat<SquareGadget, 5>> = GadgetCircuit::new(gadget, "RepeatedSquare5");
+        let circuit: GadgetCircuit<Repeat<SquareGadget, 5>> =
+            GadgetCircuit::new(gadget, "RepeatedSquare5");
         assert_eq!(StepCircuit::<Fp, 1>::num_rows(&circuit), 5);
     }
 }

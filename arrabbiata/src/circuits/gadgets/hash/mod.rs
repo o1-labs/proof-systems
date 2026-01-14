@@ -1,6 +1,6 @@
 //! Hash circuit gadgets.
 //!
-//! This module contains circuit gadgets for cryptographic hash functions.
+//! This module contains typed gadgets for cryptographic hash functions.
 //!
 //! ## Sponge Construction
 //!
@@ -20,17 +20,20 @@
 use ark_ff::PrimeField;
 use core::fmt::Debug;
 
-use crate::circuit::{CircuitEnv, SelectorEnv, StepCircuit};
+use crate::{
+    circuit::{CircuitEnv, SelectorEnv},
+    circuits::gadget::{PoseidonState3, TypedGadget},
+};
 
 mod poseidon;
 mod poseidon_kimchi;
 
 pub use poseidon::{
-    PoseidonAbsorbCircuit, PoseidonPermutationCircuit, PoseidonRoundCircuit, NUMBER_FULL_ROUNDS,
+    PoseidonAbsorbGadget, PoseidonPermutationGadget, PoseidonRoundGadget, NUMBER_FULL_ROUNDS,
     ROUNDS_PER_ROW, ROWS_FOR_PERMUTATION,
 };
 pub use poseidon_kimchi::{
-    PoseidonKimchiPermutationCircuit, PoseidonKimchiRoundCircuit, KIMCHI_FULL_ROUNDS,
+    PoseidonKimchiPermutationGadget, PoseidonKimchiRoundGadget, KIMCHI_FULL_ROUNDS,
     KIMCHI_ROUNDS_PER_ROW, KIMCHI_ROWS_FOR_PERMUTATION,
 };
 
@@ -69,18 +72,33 @@ pub use poseidon_kimchi::{
 ///
 /// # Example
 ///
-/// ```ignore
-/// // Create a sponge with state_size=3, rate=2
-/// let sponge = PoseidonSponge::new(params);
+/// ```no_run
+/// use arrabbiata::circuit::{CircuitEnv, Trace};
+/// use arrabbiata::circuits::gadgets::hash::{PoseidonKimchiSponge, Sponge};
+/// use mina_curves::pasta::Fp;
+/// use mina_poseidon::pasta::fp_kimchi;
+///
+/// // Create a sponge with Poseidon Kimchi parameters (55 rounds, x^7)
+/// let params = fp_kimchi::static_params();
+/// let sponge = PoseidonKimchiSponge::<Fp>::new(params);
+///
+/// // Create a trace environment
+/// let mut env = Trace::<Fp>::new(16);
 ///
 /// // Initialize state
-/// let zero = env.zero();
+/// let zero = env.constant(Fp::from(0u64));
 /// let state = [zero.clone(), zero.clone(), zero];
 ///
-/// // Absorb-permute-squeeze cycle
-/// let state = sponge.absorb(env, &state, [v1, v2]);
-/// let state = sponge.permute(env, &state);
-/// let output = sponge.squeeze(&state);
+/// // Absorb values into state
+/// let v1 = env.constant(Fp::from(1u64));
+/// let v2 = env.constant(Fp::from(2u64));
+/// let state = sponge.absorb(&mut env, &state, [v1, v2]);
+///
+/// // Apply permutation
+/// let state = sponge.permute(&mut env, &state);
+///
+/// // Squeeze output (returns rate portion)
+/// let output = sponge.squeeze::<Trace<Fp>>(&state);
 /// ```
 pub trait Sponge<F: PrimeField, const STATE_SIZE: usize, const RATE: usize>:
     Clone + Debug + Send + Sync
@@ -119,11 +137,7 @@ pub trait Sponge<F: PrimeField, const STATE_SIZE: usize, const RATE: usize>:
     }
 
     /// Absorb field elements (for witness generation).
-    fn absorb_witness(
-        &self,
-        state: &[F; STATE_SIZE],
-        values: [F; RATE],
-    ) -> [F; STATE_SIZE];
+    fn absorb_witness(&self, state: &[F; STATE_SIZE], values: [F; RATE]) -> [F; STATE_SIZE];
 
     /// Apply the full internal permutation (for witness generation).
     fn permute_witness(&self, state: &[F; STATE_SIZE]) -> [F; STATE_SIZE];
@@ -151,7 +165,7 @@ pub const POSEIDON_STATE_SIZE: usize = 3;
 /// Poseidon rate (number of elements absorbed per call).
 pub const POSEIDON_RATE: usize = 2;
 
-/// Poseidon sponge circuit with x^5 S-box (Arrabbiata default).
+/// Poseidon sponge with x^5 S-box (Arrabbiata default).
 ///
 /// This is the default hash function used in Arrabbiata with 60 full rounds.
 /// State size is 3, rate is 2, capacity is 1.
@@ -206,8 +220,9 @@ impl<F: PrimeField, const FULL_ROUNDS: usize> Sponge<F, POSEIDON_STATE_SIZE, POS
         env: &mut E,
         state: &[E::Variable; POSEIDON_STATE_SIZE],
     ) -> [E::Variable; POSEIDON_STATE_SIZE] {
-        let perm = PoseidonPermutationCircuit::new(self.params);
-        perm.synthesize(env, state)
+        let perm = PoseidonPermutationGadget::new(self.params);
+        let input = PoseidonState3::new(state.clone());
+        perm.synthesize(env, input).into_array()
     }
 
     fn absorb_witness(
@@ -221,8 +236,9 @@ impl<F: PrimeField, const FULL_ROUNDS: usize> Sponge<F, POSEIDON_STATE_SIZE, POS
     }
 
     fn permute_witness(&self, state: &[F; POSEIDON_STATE_SIZE]) -> [F; POSEIDON_STATE_SIZE] {
-        let perm = PoseidonPermutationCircuit::new(self.params);
-        perm.output(state)
+        let perm = PoseidonPermutationGadget::new(self.params);
+        let input = PoseidonState3::new(*state);
+        perm.output(&input).into_array()
     }
 
     fn permutation_rows(&self) -> usize {
@@ -234,7 +250,7 @@ impl<F: PrimeField, const FULL_ROUNDS: usize> Sponge<F, POSEIDON_STATE_SIZE, POS
 // Poseidon Kimchi x^7 Sponge (55 rounds) - Mina compatible
 // ============================================================================
 
-/// Poseidon Kimchi sponge circuit with x^7 S-box.
+/// Poseidon Kimchi sponge with x^7 S-box.
 ///
 /// This is the Kimchi-compatible hash function used in Mina with 55 full rounds.
 /// State size is 3, rate is 2, capacity is 1 (same as standard Poseidon).
@@ -286,8 +302,9 @@ impl<F: PrimeField> Sponge<F, POSEIDON_STATE_SIZE, POSEIDON_RATE> for PoseidonKi
         env: &mut E,
         state: &[E::Variable; POSEIDON_STATE_SIZE],
     ) -> [E::Variable; POSEIDON_STATE_SIZE] {
-        let perm = PoseidonKimchiPermutationCircuit::new(self.params);
-        perm.synthesize(env, state)
+        let perm = PoseidonKimchiPermutationGadget::new(self.params);
+        let input = PoseidonState3::new(state.clone());
+        perm.synthesize(env, input).into_array()
     }
 
     fn absorb_witness(
@@ -301,8 +318,9 @@ impl<F: PrimeField> Sponge<F, POSEIDON_STATE_SIZE, POSEIDON_RATE> for PoseidonKi
     }
 
     fn permute_witness(&self, state: &[F; POSEIDON_STATE_SIZE]) -> [F; POSEIDON_STATE_SIZE] {
-        let perm = PoseidonKimchiPermutationCircuit::new(self.params);
-        perm.output(state)
+        let perm = PoseidonKimchiPermutationGadget::new(self.params);
+        let input = PoseidonState3::new(*state);
+        perm.output(&input).into_array()
     }
 
     fn permutation_rows(&self) -> usize {

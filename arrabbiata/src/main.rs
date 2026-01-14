@@ -141,7 +141,10 @@ pub fn execute(args: cli::ExecuteArgs) {
 
     match &verify_result {
         Ok(()) => info!("Verification completed in {:?}: PASSED", verify_time),
-        Err(e) => info!("Verification completed in {:?}: FAILED - {}", verify_time, e),
+        Err(e) => info!(
+            "Verification completed in {:?}: FAILED - {}",
+            verify_time, e
+        ),
     }
 
     // Total timing summary
