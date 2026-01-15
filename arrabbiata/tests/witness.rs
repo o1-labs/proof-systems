@@ -283,6 +283,7 @@ fn test_regression_witness_structure_sizeof() {
     let size = std::mem::size_of::<Env<Fp, Fq, Vesta, Pallas>>();
     println!("Current size of Env structure: {}", size);
     // Size increased from 5888 to 6240 after adding folding fields
-    // (cross_terms, error_term, homogenizer, etc.) to Program struct
-    assert_eq!(size, 6240, "The witness environment structure changed")
+    // (cross_terms, error_term, homogenizer, etc.) to Program struct.
+    // Size increased from 6240 to 6624 after NIFS verifier circuit updates.
+    assert_eq!(size, 6624, "The witness environment structure changed")
 }

@@ -4,23 +4,81 @@
 //!
 //! ## Overview
 //!
-//! The NIFS verifier circuit implements the verifier's computation:
+//! The NIFS verifier circuit implements the in-circuit verifier computation:
 //!
-//! 1. **Hash commitments**: Absorb commitments into a Poseidon sponge to
-//!    derive challenges using Fiat-Shamir.
-//! 2. **Fold commitments**: (TODO) Use EC scalar multiplication and addition to
-//!    combine accumulated commitments with fresh ones.
+//! 1. **Absorb commitments**: Hash commitments into a Poseidon sponge
+//! 2. **Derive challenges**: Squeeze α, r, u via Fiat-Shamir
+//! 3. **Verify accumulation**: Check scalar accumulation equations
+//! 4. **Output digest**: Produce sponge state for next instance
 //!
-//! ## Commitment Absorption
+//! ## Two-Step Delay Pattern
+//!
+//! Due to the curve cycle (Pallas/Vesta), verification happens with a delay:
+//!
+//! ```text
+//! ┌─────────────────────────────────────────────────────────────────────────────┐
+//! │                        IVC Message Flow Diagram                              │
+//! └─────────────────────────────────────────────────────────────────────────────┘
+//!
+//!   Instance n                    Instance n+1                  Instance n+2
+//!   (Vesta/Fp)                    (Pallas/Fq)                   (Vesta/Fp)
+//!   ──────────                    ───────────                   ──────────
+//!        │                              │                             │
+//!        │  Generates:                  │                             │
+//!        │  - α, r, u (Fq elements)     │                             │
+//!        │  - Commitments (Fq points)   │                             │
+//!        │  - Digest o_(p,n)            │                             │
+//!        │                              │                             │
+//!        │────────────────────────────▶ │                             │
+//!        │  Pass: commitments,          │                             │
+//!        │        α, r, u, digest       │  Verifies FS:               │
+//!        │                              │  - Re-derive α, r, u        │
+//!        │                              │    from sponge over Fq      │
+//!        │                              │  - Compare with claimed     │
+//!        │                              │                             │
+//!        │                              │  Cannot verify:             │
+//!        │                              │  - u_acc = u_old + r·u      │
+//!        │                              │    (that's Fp arithmetic!)  │
+//!        │                              │                             │
+//!        │                              │─────────────────────────────▶
+//!        │                              │  Pass: accumulation data    │
+//!        │                              │        for native verify    │
+//!        │                              │                             │
+//!        │                              │                             │  Verifies accumulation:
+//!        │                              │                             │  - u_new = u_old + r·u
+//!        │                              │                             │  - α_new = α_old + r·α
+//!        │                              │                             │    (native Fp ops!)
+//!        │                              │                             │
+//!        ▼                              ▼                             ▼
+//! ```
+//!
+//! ## Commitments Absorbed
 //!
 //! The verifier absorbs all commitments from the prover:
-//! - Witness column commitments (NUMBER_OF_COLUMNS × 2 field elements)
-//! - Cross-term commitments (MAX_DEGREE × 2 field elements)
-//! - Error term commitment (2 field elements)
+//! - Witness column commitments: `NUMBER_OF_COLUMNS` points (2 field elements each)
+//! - Cross-term commitments: `MAX_DEGREE - 1` points
+//! - Error term commitment: 1 point
+//!
+//! Total: `(NUMBER_OF_COLUMNS + MAX_DEGREE) × 2` field elements per instance.
+//!
+//! ## Challenges Derived
+//!
+//! After absorption, the sponge squeezes:
+//! - `α`: Constraint combiner (combines all constraint polynomials)
+//! - `r`: Folding challenge (random linear combination for folding)
+//! - `u`: Homogenizer (tracks relaxation degree)
+//!
+//! ## Data Structures
+//!
+//! - [`PreviousInstanceData`]: Data from instance n-1 (opposite curve)
+//! - [`TwoStepBackData`]: Data from instance n-2 (same curve, for native verification)
+//! - [`AccumulatedState`]: Accumulated scalars and sponge state
+//! - [`VerifierCircuit`]: Main verifier circuit structure
 
-// TODO: Restore when verifier.rs is reconstructed
-// mod verifier;
-// pub use verifier::{
-//     initial_sponge_state, squeeze_challenge, VerifierCircuit, NUM_CROSS_TERM_COMMITMENTS,
-//     NUM_WITNESS_COMMITMENTS, TOTAL_FRESH_COMMITMENTS,
-// };
+pub mod verifier;
+
+pub use verifier::{
+    AccumulatedState, PreviousInstanceData, TwoStepBackData, VerifierCircuit,
+    ELEMENTS_TO_ABSORB_PER_INSTANCE, NUM_CHALLENGES_PER_INSTANCE, NUM_CROSS_TERM_COMMITMENTS,
+    NUM_WITNESS_COMMITMENTS, SCALAR_MUL_BITS, TOTAL_FRESH_COMMITMENTS, VERIFIER_ARITY,
+};

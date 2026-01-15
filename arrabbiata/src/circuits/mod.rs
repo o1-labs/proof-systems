@@ -5,6 +5,7 @@
 //! - **compose**: Combinators for composing gadgets (`Chain`, `Repeat`)
 //! - **gadget**: The `TypedGadget` trait and typed input/output wrappers
 //! - **selector**: Selector type markers for constraint gating
+//! - **register**: Typed registers for Plonk's permutation argument
 //! - **types**: Advanced circuit value types
 //! - **nifs**: NIFS-related circuit components
 //!
@@ -27,6 +28,7 @@ pub mod gadget;
 pub mod gadgets;
 pub mod hlist;
 pub mod nifs;
+pub mod register;
 pub mod selector;
 pub mod types;
 
@@ -59,6 +61,9 @@ pub use compose::{
 
 // Re-export HList types
 pub use hlist::{gadgets, GadgetList, HCons, HNil, TypedGadgetList};
+
+// Re-export register types
+pub use register::{AlphaAccReg, DigestReg, Register, UAccReg, NUM_STANDARD_REGISTERS};
 
 // Re-export the core traits and environments from circuit.rs
 pub use crate::circuit::{CircuitEnv, ConstraintEnv, SelectorEnv, StepCircuit, Trace};
