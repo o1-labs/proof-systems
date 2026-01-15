@@ -21,19 +21,16 @@
 //! - `trivial`: Identity circuit z_{i+1} = z_i
 //! - `squaring`: Squaring circuit z_{i+1} = z_i^2
 //! - `cubic`: Cubic circuit z_{i+1} = z_i^3 + z_i + 5
-//! - `square-cubic`: Composed circuit x -> x^6 + x^2 + 5
 //! - `fibonacci`: Fibonacci sequence (x, y) -> (y, x + y)
-//! - `counter`: Counter circuit z_{i+1} = z_i + 1
-//! - `minroot`: MinRoot VDF computing 5th roots
-//! - `hashchain`: Hash chain circuit z_{i+1} = hash(z_i)
 
 use arrabbiata::{
+    circuits::{CubicGadget, FibonacciGadget, SquaringGadget, TrivialGadget},
     cli,
     decider::{
         prover::prove,
         verifier::{verify, VerificationKey},
     },
-    registry::CircuitRegistry,
+    registry::{circuits, CircuitList},
     setup::IndexedRelation,
     witness, MIN_SRS_LOG2_SIZE,
 };
@@ -44,24 +41,16 @@ use num_bigint::BigInt;
 use std::time::Instant;
 
 pub fn execute(args: cli::ExecuteArgs) {
-    let registry = CircuitRegistry::default();
+    // Build the circuit registry using HList
+    let registry = circuits()
+        .register(TrivialGadget::new())
+        .register(SquaringGadget::new())
+        .register(CubicGadget::new())
+        .register(FibonacciGadget::new());
 
     // Handle --list-circuits flag
     if args.list_circuits {
-        println!("Available circuits:\n");
-        for (name, info) in registry.circuits() {
-            println!("  {}", name);
-            println!("    {}", info.description);
-            println!(
-                "    arity: {}, degree: {}, constraints: {}, rows: {}, min-srs: {}",
-                info.arity,
-                info.max_degree,
-                info.num_constraints,
-                info.rows_per_fold,
-                info.min_srs_log2_size()
-            );
-            println!();
-        }
+        registry.print_all();
         return;
     }
 

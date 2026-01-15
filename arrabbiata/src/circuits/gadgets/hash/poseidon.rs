@@ -235,6 +235,9 @@ impl<F: PrimeField, const FULL_ROUNDS: usize, const STARTING_ROUND: usize> Typed
     type Input<V: Clone> = PoseidonState3<V>;
     type Output<V: Clone> = PoseidonState3<V>;
 
+    const NAME: &'static str = "poseidon-round";
+    const DESCRIPTION: &'static str = "Poseidon hash round";
+    const ARITY: usize = 3;
     const ROWS: usize = 1;
 
     fn input_positions() -> &'static [Position] {
@@ -337,6 +340,9 @@ impl<F: PrimeField, const FULL_ROUNDS: usize> TypedGadget<F>
     type Input<V: Clone> = PoseidonState3<V>;
     type Output<V: Clone> = PoseidonState3<V>;
 
+    const NAME: &'static str = "poseidon-permutation";
+    const DESCRIPTION: &'static str = "Poseidon full permutation";
+    const ARITY: usize = 3;
     const ROWS: usize = FULL_ROUNDS / ROUNDS_PER_ROW;
 
     fn input_positions() -> &'static [Position] {
@@ -489,6 +495,9 @@ impl<F: PrimeField> TypedGadget<F> for PoseidonAbsorbGadget<F> {
     type Input<V: Clone> = PoseidonState3<V>;
     type Output<V: Clone> = PoseidonState3<V>;
 
+    const NAME: &'static str = "poseidon-absorb";
+    const DESCRIPTION: &'static str = "Poseidon sponge absorption";
+    const ARITY: usize = 3;
     const ROWS: usize = 1;
 
     fn input_positions() -> &'static [Position] {

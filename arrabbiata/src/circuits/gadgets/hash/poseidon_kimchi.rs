@@ -231,6 +231,9 @@ impl<F: PrimeField, const STARTING_ROUND: usize> TypedGadget<F>
     type Input<V: Clone> = PoseidonState3<V>;
     type Output<V: Clone> = PoseidonState3<V>;
 
+    const NAME: &'static str = "poseidon-kimchi-round";
+    const DESCRIPTION: &'static str = "Poseidon round (Kimchi style)";
+    const ARITY: usize = 3;
     const ROWS: usize = 1;
 
     fn input_positions() -> &'static [Position] {
@@ -429,6 +432,9 @@ impl<F: PrimeField> TypedGadget<F> for PoseidonKimchiPermutationGadget<F> {
     type Input<V: Clone> = PoseidonState3<V>;
     type Output<V: Clone> = PoseidonState3<V>;
 
+    const NAME: &'static str = "poseidon-kimchi";
+    const DESCRIPTION: &'static str = "Poseidon permutation (Kimchi style)";
+    const ARITY: usize = 3;
     const ROWS: usize = KIMCHI_ROWS_FOR_PERMUTATION;
 
     fn input_positions() -> &'static [Position] {

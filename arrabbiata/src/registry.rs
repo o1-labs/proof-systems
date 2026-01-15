@@ -1,265 +1,285 @@
-//! Circuit registry for managing and selecting circuits.
+//! Circuit registry using heterogeneous lists (HList).
 //!
-//! The `CircuitRegistry` allows registering circuits by name and retrieving
-//! metadata about them. This is used by the CLI to select which circuit to run.
+//! This module provides a type-safe, compile-time circuit registry built on HList.
+//! Circuits are registered by their `TypedGadget` implementation which provides
+//! all necessary metadata (NAME, DESCRIPTION, ARITY, ROWS).
 //!
 //! ## Example
 //!
 //! ```
-//! use arrabbiata::registry::{CircuitRegistry, CircuitInfo};
+//! use arrabbiata::registry::{circuits, CircuitList};
+//! use arrabbiata::circuits::{SquaringGadget, FibonacciGadget};
 //!
-//! let registry = CircuitRegistry::default();
+//! // Build a registry at compile time
+//! let registry = circuits()
+//!     .register(SquaringGadget::new())
+//!     .register(FibonacciGadget::new());
 //!
-//! // Get all registered circuits
-//! for (name, info) in registry.circuits() {
-//!     println!("{}: {} (arity {})", name, info.description, info.arity);
-//! }
+//! // Get all circuit names
+//! let names = registry.names();
+//! assert!(names.contains(&"squaring"));
+//! assert!(names.contains(&"fibonacci"));
 //!
-//! // Get a specific circuit
-//! if let Some(info) = registry.get("fibonacci") {
-//!     println!("Fibonacci has arity {}", info.arity);
-//! }
+//! // Check if a circuit exists
+//! assert!(registry.contains("squaring"));
 //! ```
 
-use std::collections::HashMap;
+use core::fmt::Debug;
+use mina_curves::pasta::Fp;
 
-/// Information about a registered circuit.
+use crate::circuits::gadget::TypedGadget;
+
+// ============================================================================
+// CircuitInfo - Runtime representation
+// ============================================================================
+
+/// Runtime information about a circuit.
+///
+/// This is extracted from a circuit implementing `TypedGadget`.
 #[derive(Debug, Clone)]
 pub struct CircuitInfo {
-    /// Human-readable description of the circuit.
-    pub description: String,
-    /// The arity (number of input/output elements) of the circuit.
+    /// Circuit name.
+    pub name: &'static str,
+    /// Human-readable description.
+    pub description: &'static str,
+    /// The arity (number of input/output elements).
     pub arity: usize,
-    /// Maximum constraint degree of the circuit.
-    pub max_degree: usize,
-    /// Number of constraints in the circuit.
-    pub num_constraints: usize,
-    /// Number of rows used per fold. Determines minimum SRS size.
-    pub rows_per_fold: usize,
+    /// Number of rows per fold.
+    pub rows: usize,
 }
 
 impl CircuitInfo {
-    /// Create a new circuit info with 1 row per fold (default for simple circuits).
-    pub fn new(description: &str, arity: usize, max_degree: usize, num_constraints: usize) -> Self {
-        Self {
-            description: description.to_string(),
-            arity,
-            max_degree,
-            num_constraints,
-            rows_per_fold: 1,
-        }
-    }
-
-    /// Create a new circuit info with a specified number of rows per fold.
-    pub fn with_rows(
-        description: &str,
-        arity: usize,
-        max_degree: usize,
-        num_constraints: usize,
-        rows_per_fold: usize,
-    ) -> Self {
-        Self {
-            description: description.to_string(),
-            arity,
-            max_degree,
-            num_constraints,
-            rows_per_fold,
-        }
-    }
-
     /// Get the minimum SRS log2 size required for this circuit.
     pub fn min_srs_log2_size(&self) -> usize {
-        // SRS size must be >= rows_per_fold, rounded up to next power of 2
         let mut log2 = 0;
         let mut size = 1;
-        while size < self.rows_per_fold {
+        while size < self.rows {
             size *= 2;
             log2 += 1;
         }
-        // Minimum is 8 for the verifier circuit
-        log2.max(8)
+        log2.max(8) // Minimum 8 for verifier circuit
     }
 }
 
-/// A registry for circuit types.
-///
-/// The registry maps circuit names to their metadata.
-#[derive(Debug, Clone)]
-pub struct CircuitRegistry {
-    circuits: HashMap<String, CircuitInfo>,
+// ============================================================================
+// HList Types for Circuit Registry
+// ============================================================================
+
+/// Empty circuit list (base case).
+#[derive(Clone, Debug, Default)]
+pub struct CNil;
+
+/// Non-empty circuit list: head circuit followed by tail.
+#[derive(Clone, Debug)]
+pub struct CCons<H, T> {
+    pub head: H,
+    pub tail: T,
 }
 
-impl CircuitRegistry {
-    /// Create an empty circuit registry.
-    pub fn new() -> Self {
-        Self {
-            circuits: HashMap::new(),
+// ============================================================================
+// CircuitList Trait
+// ============================================================================
+
+/// Trait for heterogeneous lists of circuits.
+pub trait CircuitList: Clone + Debug {
+    /// Number of circuits in the list.
+    const LEN: usize;
+
+    /// Get the length of this list.
+    fn len(&self) -> usize {
+        Self::LEN
+    }
+
+    /// Check if the list is empty.
+    fn is_empty(&self) -> bool {
+        Self::LEN == 0
+    }
+
+    /// Register a new circuit (prepends to the list).
+    fn register<G>(self, circuit: G) -> CCons<G, Self>
+    where
+        Self: Sized,
+    {
+        CCons {
+            head: circuit,
+            tail: self,
         }
     }
 
-    /// Register a circuit with the given name and info.
-    pub fn register(&mut self, name: &str, info: CircuitInfo) -> &mut Self {
-        self.circuits.insert(name.to_string(), info);
-        self
+    /// Get all circuit names.
+    fn names(&self) -> Vec<&'static str>;
+
+    /// Check if a circuit with the given name exists.
+    fn contains(&self, name: &str) -> bool {
+        self.names().contains(&name)
     }
 
-    /// Get information about a circuit by name.
-    pub fn get(&self, name: &str) -> Option<&CircuitInfo> {
-        self.circuits.get(name)
+    /// Get all circuit info.
+    fn infos(&self) -> Vec<CircuitInfo>;
+
+    /// Get info for a specific circuit by name.
+    fn get(&self, name: &str) -> Option<CircuitInfo> {
+        self.infos().into_iter().find(|info| info.name == name)
     }
 
-    /// Check if a circuit is registered.
-    pub fn contains(&self, name: &str) -> bool {
-        self.circuits.contains_key(name)
-    }
-
-    /// Get all registered circuits.
-    pub fn circuits(&self) -> impl Iterator<Item = (&String, &CircuitInfo)> {
-        self.circuits.iter()
-    }
-
-    /// Get the names of all registered circuits.
-    pub fn names(&self) -> impl Iterator<Item = &String> {
-        self.circuits.keys()
-    }
-
-    /// Get the number of registered circuits.
-    pub fn len(&self) -> usize {
-        self.circuits.len()
-    }
-
-    /// Check if the registry is empty.
-    pub fn is_empty(&self) -> bool {
-        self.circuits.is_empty()
-    }
-}
-
-impl Default for CircuitRegistry {
-    /// Create a registry with all built-in circuits registered.
-    fn default() -> Self {
-        let mut registry = Self::new();
-
-        registry
-            .register(
-                "trivial",
-                CircuitInfo::new("Identity circuit: z_{i+1} = z_i", 1, 1, 1),
-            )
-            .register(
-                "squaring",
-                CircuitInfo::new("Squaring circuit: z_{i+1} = z_i^2", 1, 2, 1),
-            )
-            .register(
-                "repeated-squaring",
-                CircuitInfo::with_rows(
-                    "Repeated squaring: 2^15 squarings per fold (requires --srs-size 15)",
-                    1,
-                    2,
-                    1,     // Same constraint repeated across rows
-                    32768, // 2^15 rows per fold
-                ),
-            )
-            .register(
-                "cubic",
-                CircuitInfo::new("Cubic circuit: z_{i+1} = z_i^3 + z_i + 5", 1, 3, 1),
-            )
-            .register(
-                "square-cubic",
-                CircuitInfo::new(
-                    "Composed circuit: x -> x^6 + x^2 + 5",
-                    1,
-                    3, // max degree from cubic
-                    2, // 1 from squaring + 1 from cubic
-                ),
-            )
-            .register(
-                "fibonacci",
-                CircuitInfo::new("Fibonacci sequence: (x, y) -> (y, x + y)", 2, 1, 2),
-            )
-            .register(
-                "repeated-fibonacci",
-                CircuitInfo::with_rows(
-                    "Repeated Fibonacci: 2^15 steps per fold (requires --srs-size 15)",
-                    2,
-                    1,
-                    2,     // Same 2 constraints repeated across rows
-                    32768, // 2^15 rows per fold
-                ),
-            )
-            .register(
-                "counter",
-                CircuitInfo::new("Counter circuit: z_{i+1} = z_i + 1", 1, 1, 1),
-            )
-            .register(
-                "minroot",
-                CircuitInfo::new("MinRoot VDF: computes 5th roots", 2, 5, 1),
-            )
-            .register(
-                "hashchain",
-                CircuitInfo::new("Hash chain: z_{i+1} = hash(z_i)", 1, 5, 1),
+    /// Print all circuits (for CLI --list-circuits).
+    fn print_all(&self) {
+        println!("Available circuits:\n");
+        for info in self.infos() {
+            println!("  {}", info.name);
+            println!("    {}", info.description);
+            println!(
+                "    arity: {}, rows: {}, min-srs: {}",
+                info.arity,
+                info.rows,
+                info.min_srs_log2_size()
             );
-
-        registry
+            println!();
+        }
     }
 }
+
+impl CircuitList for CNil {
+    const LEN: usize = 0;
+
+    fn names(&self) -> Vec<&'static str> {
+        Vec::new()
+    }
+
+    fn infos(&self) -> Vec<CircuitInfo> {
+        Vec::new()
+    }
+}
+
+impl<H, T> CircuitList for CCons<H, T>
+where
+    H: TypedGadget<Fp>,
+    T: CircuitList,
+{
+    const LEN: usize = 1 + T::LEN;
+
+    fn names(&self) -> Vec<&'static str> {
+        let mut result = vec![H::NAME];
+        result.extend(self.tail.names());
+        result
+    }
+
+    fn infos(&self) -> Vec<CircuitInfo> {
+        let info = CircuitInfo {
+            name: H::NAME,
+            description: H::DESCRIPTION,
+            arity: H::ARITY,
+            rows: H::ROWS,
+        };
+        let mut result = vec![info];
+        result.extend(self.tail.infos());
+        result
+    }
+}
+
+// ============================================================================
+// Builder Helper
+// ============================================================================
+
+/// Start building a circuit registry.
+pub fn circuits() -> CNil {
+    CNil
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::circuits::gadgets::{CubicGadget, FibonacciGadget, SquaringGadget, TrivialGadget};
 
     #[test]
-    fn test_registry_default() {
-        let registry = CircuitRegistry::default();
+    fn test_empty_registry() {
+        let registry = circuits();
+        assert_eq!(registry.len(), 0);
+        assert!(registry.is_empty());
+        assert!(registry.names().is_empty());
+    }
+
+    #[test]
+    fn test_register_circuits() {
+        let registry = circuits()
+            .register(SquaringGadget::new())
+            .register(FibonacciGadget::new());
+
+        assert_eq!(registry.len(), 2);
+        assert!(!registry.is_empty());
+
+        let names = registry.names();
+        assert!(names.contains(&"fibonacci"));
+        assert!(names.contains(&"squaring"));
+    }
+
+    #[test]
+    fn test_contains() {
+        let registry = circuits()
+            .register(SquaringGadget::new())
+            .register(CubicGadget::new());
 
         assert!(registry.contains("squaring"));
-        assert!(registry.contains("fibonacci"));
         assert!(registry.contains("cubic"));
-        assert!(registry.contains("square-cubic"));
+        assert!(!registry.contains("fibonacci"));
         assert!(!registry.contains("nonexistent"));
+    }
+
+    #[test]
+    fn test_get_info() {
+        let registry = circuits()
+            .register(SquaringGadget::new())
+            .register(FibonacciGadget::new());
 
         let squaring = registry.get("squaring").unwrap();
+        assert_eq!(squaring.name, "squaring");
         assert_eq!(squaring.arity, 1);
-        assert_eq!(squaring.max_degree, 2);
-        assert_eq!(squaring.num_constraints, 1);
+        assert_eq!(squaring.rows, 1);
+
+        let fibonacci = registry.get("fibonacci").unwrap();
+        assert_eq!(fibonacci.name, "fibonacci");
+        assert_eq!(fibonacci.arity, 2);
+        assert_eq!(fibonacci.rows, 1);
+
+        assert!(registry.get("nonexistent").is_none());
     }
 
     #[test]
-    fn test_registry_register() {
-        let mut registry = CircuitRegistry::new();
-        registry.register("custom", CircuitInfo::new("Custom circuit", 3, 4, 5));
+    fn test_infos() {
+        let registry = circuits()
+            .register(TrivialGadget::new())
+            .register(SquaringGadget::new())
+            .register(CubicGadget::new());
 
-        assert!(registry.contains("custom"));
-        let custom = registry.get("custom").unwrap();
-        assert_eq!(custom.arity, 3);
-        assert_eq!(custom.max_degree, 4);
-        assert_eq!(custom.num_constraints, 5);
+        let infos = registry.infos();
+        assert_eq!(infos.len(), 3);
+
+        // Order is reversed (push prepends)
+        assert_eq!(infos[0].name, "cubic");
+        assert_eq!(infos[1].name, "squaring");
+        assert_eq!(infos[2].name, "trivial");
     }
 
     #[test]
-    fn test_registry_len() {
-        let registry = CircuitRegistry::default();
-        assert_eq!(registry.len(), 10);
+    fn test_min_srs_log2_size() {
+        let info = CircuitInfo {
+            name: "test",
+            description: "Test circuit",
+            arity: 1,
+            rows: 1,
+        };
+        assert_eq!(info.min_srs_log2_size(), 8); // Minimum
 
-        let empty = CircuitRegistry::new();
-        assert_eq!(empty.len(), 0);
-        assert!(empty.is_empty());
-    }
-
-    #[test]
-    fn test_repeated_circuit_srs_size() {
-        let registry = CircuitRegistry::default();
-
-        // Repeated circuits require larger SRS
-        let repeated_sq = registry.get("repeated-squaring").unwrap();
-        assert_eq!(repeated_sq.rows_per_fold, 32768);
-        assert_eq!(repeated_sq.min_srs_log2_size(), 15);
-
-        let repeated_fib = registry.get("repeated-fibonacci").unwrap();
-        assert_eq!(repeated_fib.rows_per_fold, 32768);
-        assert_eq!(repeated_fib.min_srs_log2_size(), 15);
-
-        // Simple circuits use 1 row
-        let squaring = registry.get("squaring").unwrap();
-        assert_eq!(squaring.rows_per_fold, 1);
-        assert_eq!(squaring.min_srs_log2_size(), 8); // Minimum for verifier circuit
+        let info_large = CircuitInfo {
+            name: "large",
+            description: "Large circuit",
+            arity: 1,
+            rows: 32768, // 2^15
+        };
+        assert_eq!(info_large.min_srs_log2_size(), 15);
     }
 }

@@ -41,6 +41,10 @@ impl<F: PrimeField> TypedGadget<F> for SquaringGadget {
     type Selector = QSquaring;
     type Input<V: Clone> = Scalar<V>;
     type Output<V: Clone> = Scalar<V>;
+
+    const NAME: &'static str = "squaring";
+    const DESCRIPTION: &'static str = "Squaring circuit: z_{i+1} = z_i^2";
+    const ARITY: usize = 1;
     const ROWS: usize = 1;
 
     fn input_positions() -> &'static [Position] {

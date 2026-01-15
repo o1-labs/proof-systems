@@ -140,6 +140,10 @@ where
     type Selector = QECAdd;
     type Input<V: Clone> = ECPoint<V>;
     type Output<V: Clone> = ECPoint<V>;
+
+    const NAME: &'static str = "ec-double";
+    const DESCRIPTION: &'static str = "Elliptic curve point doubling";
+    const ARITY: usize = 2;
     const ROWS: usize = 1;
 
     fn input_positions() -> &'static [Position] {

@@ -238,7 +238,6 @@ pub struct TwoStepBackData<F: PrimeField> {
     // ========================================================================
     // Commitment accumulation data
     // ========================================================================
-
     /// Previous accumulated witness commitments (before fold at n-2).
     pub witness_acc_old: [ECPoint<F>; NUM_WITNESS_COMMITMENTS],
 
@@ -526,11 +525,7 @@ where
     /// # Returns
     ///
     /// The final digest after all operations (for chaining to next instance).
-    pub fn synthesize<Env>(
-        &self,
-        env: &mut Env,
-        initial_digest: Env::Variable,
-    ) -> Env::Variable
+    pub fn synthesize<Env>(&self, env: &mut Env, initial_digest: Env::Variable) -> Env::Variable
     where
         Env: CircuitEnv<F> + SelectorEnv<F>,
     {
@@ -573,8 +568,13 @@ where
         Env: CircuitEnv<F> + SelectorEnv<F>,
     {
         // Initialize sponge state from digest (digest in first position, zeros elsewhere)
-        let mut state: [Env::Variable; POSEIDON_STATE_SIZE] =
-            core::array::from_fn(|i| if i == 0 { initial_digest.clone() } else { env.zero() });
+        let mut state: [Env::Variable; POSEIDON_STATE_SIZE] = core::array::from_fn(|i| {
+            if i == 0 {
+                initial_digest.clone()
+            } else {
+                env.zero()
+            }
+        });
 
         // Phase 1: Absorb witness commitments
         for comm in &self.previous.witness_commitments {
@@ -716,7 +716,6 @@ where
                 .zip(data.witness_fresh.iter())
                 .zip(data.witness_acc_new_claimed.iter())
             {
-
                 // Allocate fresh point as circuit input
                 let fresh_x = {
                     let pos = env.allocate();
@@ -1232,8 +1231,7 @@ mod tests {
 mod circuit_regression_tests {
     use super::*;
     use crate::{
-        circuit::ConstraintEnv,
-        circuits::gadgets::hash::PoseidonSponge,
+        circuit::ConstraintEnv, circuits::gadgets::hash::PoseidonSponge,
         nifs::poseidon_3_60_0_5_5_fp,
     };
     use mina_curves::pasta::{Fp, Pallas, PallasParameters};
@@ -1380,8 +1378,8 @@ mod circuit_regression_tests {
         // 6. Accumulation verification: 2 constraints (when two_step_back present)
 
         // Total absorption rounds
-        let witness_absorptions = (NUM_WITNESS_COMMITMENTS * 2 + 1) / 2; // 15
-        let cross_term_absorptions = (NUM_CROSS_TERM_COMMITMENTS * 2 + 1) / 2; // 4
+        let witness_absorptions = (NUM_WITNESS_COMMITMENTS * 2).div_ceil(2); // 15
+        let cross_term_absorptions = (NUM_CROSS_TERM_COMMITMENTS * 2).div_ceil(2); // 4
         let error_absorptions = 1;
         let total_absorptions = witness_absorptions + cross_term_absorptions + error_absorptions;
 
@@ -1497,9 +1495,9 @@ mod circuit_regression_tests {
 
         // Initial state
         let z_in: [Fp; VERIFIER_ARITY] = [
-            Fp::from(0u64),  // digest
-            Fp::from(0u64),  // u_acc
-            Fp::from(1u64),  // alpha_acc (starts at 1)
+            Fp::from(0u64), // digest
+            Fp::from(0u64), // u_acc
+            Fp::from(1u64), // alpha_acc (starts at 1)
         ];
 
         // Compute output

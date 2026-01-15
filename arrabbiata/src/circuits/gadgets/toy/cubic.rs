@@ -41,6 +41,10 @@ impl<F: PrimeField> TypedGadget<F> for CubicGadget {
     type Selector = QCubic;
     type Input<V: Clone> = Scalar<V>;
     type Output<V: Clone> = Scalar<V>;
+
+    const NAME: &'static str = "cubic";
+    const DESCRIPTION: &'static str = "Cubic circuit: z_{i+1} = z_i^3 + z_i + 5";
+    const ARITY: usize = 1;
     const ROWS: usize = 1;
 
     fn input_positions() -> &'static [Position] {

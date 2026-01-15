@@ -63,7 +63,7 @@ pub use compose::{
 pub use hlist::{gadgets, GadgetList, HCons, HNil, TypedGadgetList};
 
 // Re-export register types
-pub use register::{AlphaAccReg, DigestReg, Register, UAccReg, NUM_STANDARD_REGISTERS};
+pub use register::{Register, RegisterEnv, RegisterState};
 
 // Re-export the core traits and environments from circuit.rs
 pub use crate::circuit::{CircuitEnv, ConstraintEnv, SelectorEnv, StepCircuit, Trace};

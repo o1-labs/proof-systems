@@ -39,6 +39,8 @@
 //!        │                              │  Cannot verify:             │
 //!        │                              │  - u_acc = u_old + r·u      │
 //!        │                              │    (that's Fp arithmetic!)  │
+//!        │                              │  - C_acc = C_old + r·C      │
+//!        │                              │    (that's E1 EC ops!)      │
 //!        │                              │                             │
 //!        │                              │─────────────────────────────▶
 //!        │                              │  Pass: accumulation data    │
@@ -48,6 +50,8 @@
 //!        │                              │                             │  - u_new = u_old + r·u
 //!        │                              │                             │  - α_new = α_old + r·α
 //!        │                              │                             │    (native Fp ops!)
+//!        │                              │                             │  - C_new = C_old + r·C
+//!        │                              │                             │    (native E2 EC ops!)
 //!        │                              │                             │
 //!        ▼                              ▼                             ▼
 //! ```

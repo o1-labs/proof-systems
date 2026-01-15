@@ -109,6 +109,9 @@ where
     type Input<V: Clone> = Scalar<V>;
     type Output<V: Clone> = Scalar<V>;
 
+    const NAME: &'static str = "chain";
+    const DESCRIPTION: &'static str = "Composed gadget chain";
+    const ARITY: usize = G1::ARITY;
     const ROWS: usize = G1::ROWS + G2::ROWS;
 
     fn input_positions() -> &'static [Position] {
@@ -164,6 +167,9 @@ where
     type Input<V: Clone> = Scalar<V>;
     type Output<V: Clone> = Scalar<V>;
 
+    const NAME: &'static str = "repeat";
+    const DESCRIPTION: &'static str = "Repeated gadget application";
+    const ARITY: usize = G::ARITY;
     const ROWS: usize = G::ROWS * N;
 
     fn input_positions() -> &'static [Position] {
@@ -508,6 +514,10 @@ mod tests {
         type Selector = QNoOp;
         type Input<V: Clone> = Scalar<V>;
         type Output<V: Clone> = Scalar<V>;
+
+        const NAME: &'static str = "test-double";
+        const DESCRIPTION: &'static str = "Test gadget that doubles input";
+        const ARITY: usize = 1;
         const ROWS: usize = 1;
 
         fn input_positions() -> &'static [Position] {
@@ -551,6 +561,10 @@ mod tests {
         type Selector = QNoOp;
         type Input<V: Clone> = Scalar<V>;
         type Output<V: Clone> = Scalar<V>;
+
+        const NAME: &'static str = "test-square";
+        const DESCRIPTION: &'static str = "Test gadget that squares input";
+        const ARITY: usize = 1;
         const ROWS: usize = 1;
 
         fn input_positions() -> &'static [Position] {

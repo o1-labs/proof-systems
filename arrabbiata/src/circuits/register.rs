@@ -95,7 +95,10 @@
 //! - Register banks (groups of related registers)
 //! - Versioned registers (for RAM-like semantics within trace)
 
+use ark_ff::PrimeField;
 use core::fmt::Debug;
+
+use crate::circuit::CircuitEnv;
 
 // ============================================================================
 // Register Trait
@@ -139,76 +142,132 @@ pub trait Register: 'static + Copy + Clone + Debug + Default + Send + Sync {
 }
 
 // ============================================================================
-// Standard Registers
+// Register State
 // ============================================================================
 
-/// Register for the sponge digest (used in IVC).
-#[derive(Clone, Copy, Debug, Default)]
-pub struct DigestReg;
-
-impl Register for DigestReg {
-    const INDEX: usize = 0;
-    const NAME: &'static str = "digest";
+/// Tracks which registers have been stored.
+///
+/// This ensures the invariant that a register must be stored before it can
+/// be loaded. Attempting to load from an empty register will panic.
+#[derive(Clone, Debug)]
+pub struct RegisterState<const N: usize> {
+    /// Bitmap of which registers have been stored.
+    /// `stored[i]` is true if register with INDEX=i has been stored.
+    stored: [bool; N],
 }
 
-/// Register for the accumulated homogenizer u.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct UAccReg;
-
-impl Register for UAccReg {
-    const INDEX: usize = 1;
-    const NAME: &'static str = "u_acc";
+impl<const N: usize> Default for RegisterState<N> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
-/// Register for the accumulated constraint combiner α.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct AlphaAccReg;
+impl<const N: usize> RegisterState<N> {
+    /// Create a new register state with all registers empty.
+    pub fn new() -> Self {
+        Self { stored: [false; N] }
+    }
 
-impl Register for AlphaAccReg {
-    const INDEX: usize = 2;
-    const NAME: &'static str = "alpha_acc";
+    /// Mark a register as stored.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the register index is out of bounds.
+    pub fn store<R: Register>(&mut self) {
+        assert!(
+            R::INDEX < N,
+            "Register index {} out of bounds (max {})",
+            R::INDEX,
+            N
+        );
+        self.stored[R::INDEX] = true;
+    }
+
+    /// Check if a register has been stored, panic if not.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the register has not been stored (is empty).
+    pub fn check_stored<R: Register>(&self) {
+        assert!(
+            R::INDEX < N,
+            "Register index {} out of bounds (max {})",
+            R::INDEX,
+            N
+        );
+        assert!(
+            self.stored[R::INDEX],
+            "Cannot load from empty register '{}' (index {}): must store before load",
+            R::NAME,
+            R::INDEX
+        );
+    }
+
+    /// Check if a register has been stored (non-panicking).
+    pub fn is_stored<R: Register>(&self) -> bool {
+        R::INDEX < N && self.stored[R::INDEX]
+    }
+
+    /// Reset all registers to empty state.
+    pub fn reset(&mut self) {
+        self.stored = [false; N];
+    }
 }
 
 // ============================================================================
 // RegisterEnv Trait
 // ============================================================================
 
-// Note: The RegisterEnv trait will be added to circuit.rs once we implement
-// the permutation argument infrastructure. For now, we define the registers
-// and their indices.
-//
-// The trait will look like:
-//
-// ```
-// pub trait RegisterEnv<F: PrimeField>: CircuitEnv<F> {
-//     /// Store a value in a typed register.
-//     ///
-//     /// This records the (position, value) pair for the permutation argument.
-//     /// The position is determined by the current row and register index.
-//     fn reg_store<R: Register>(&mut self, value: Self::Variable);
-//
-//     /// Load a value from a typed register.
-//     ///
-//     /// This creates a new variable and records a copy constraint via the
-//     /// permutation argument. The returned variable is constrained to equal
-//     /// the most recently stored value in this register.
-//     fn reg_load<R: Register>(&mut self) -> Self::Variable;
-//
-//     /// Create an explicit copy constraint between two variables.
-//     ///
-//     /// This adds the pair to the permutation argument, ensuring a = b.
-//     fn copy(&mut self, a: &Self::Variable, b: &Self::Variable);
-// }
-// ```
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-/// Total number of standard registers.
+/// Environment trait for register operations.
 ///
-/// This is used to size arrays in the permutation argument implementation.
-pub const NUM_STANDARD_REGISTERS: usize = 3;
+/// This trait extends `CircuitEnv` with register store/load operations.
+/// Implementations must track which registers have been stored and panic
+/// if a load is attempted on an empty register.
+///
+/// # Store-Before-Load Invariant
+///
+/// A register **must** be stored before it can be loaded. This is enforced
+/// at runtime:
+///
+/// ```ignore
+/// // OK: store then load
+/// env.reg_store::<DigestReg>(value);
+/// let v = env.reg_load::<DigestReg>();  // works
+///
+/// // ERROR: load before store
+/// let v = env.reg_load::<DigestReg>();  // panics!
+/// ```
+///
+/// # Multiple Stores
+///
+/// A register can be stored multiple times. Each store overwrites the
+/// previous value. The load always returns the most recently stored value.
+pub trait RegisterEnv<F: PrimeField>: CircuitEnv<F> {
+    /// Store a value in a typed register.
+    ///
+    /// This records the (position, value) pair for the permutation argument.
+    /// The position is determined by the current row and register index.
+    ///
+    /// Multiple stores to the same register are allowed; each store
+    /// overwrites the previous value.
+    fn reg_store<R: Register>(&mut self, value: Self::Variable);
+
+    /// Load a value from a typed register.
+    ///
+    /// This creates a new variable and records a copy constraint via the
+    /// permutation argument. The returned variable is constrained to equal
+    /// the most recently stored value in this register.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the register has not been stored (is empty).
+    fn reg_load<R: Register>(&mut self) -> Self::Variable;
+
+    /// Create an explicit copy constraint between two variables.
+    ///
+    /// This adds the pair to the permutation argument, ensuring a = b.
+    fn copy(&mut self, a: &Self::Variable, b: &Self::Variable);
+}
 
 // ============================================================================
 // Tests
@@ -218,37 +277,180 @@ pub const NUM_STANDARD_REGISTERS: usize = 3;
 mod tests {
     use super::*;
 
+    // Test registers (defined locally for testing)
+    #[derive(Clone, Copy, Debug, Default)]
+    struct TestReg0;
+    impl Register for TestReg0 {
+        const INDEX: usize = 0;
+        const NAME: &'static str = "test_reg_0";
+    }
+
+    #[derive(Clone, Copy, Debug, Default)]
+    struct TestReg1;
+    impl Register for TestReg1 {
+        const INDEX: usize = 1;
+        const NAME: &'static str = "test_reg_1";
+    }
+
+    #[derive(Clone, Copy, Debug, Default)]
+    struct TestReg2;
+    impl Register for TestReg2 {
+        const INDEX: usize = 2;
+        const NAME: &'static str = "test_reg_2";
+    }
+
+    const NUM_TEST_REGISTERS: usize = 3;
+
+    // ========================================================================
+    // Register Trait Tests
+    // ========================================================================
+
     #[test]
     fn test_register_indices_unique() {
-        // Ensure all standard registers have unique indices
-        assert_ne!(DigestReg::INDEX, UAccReg::INDEX);
-        assert_ne!(DigestReg::INDEX, AlphaAccReg::INDEX);
-        assert_ne!(UAccReg::INDEX, AlphaAccReg::INDEX);
+        assert_ne!(TestReg0::INDEX, TestReg1::INDEX);
+        assert_ne!(TestReg0::INDEX, TestReg2::INDEX);
+        assert_ne!(TestReg1::INDEX, TestReg2::INDEX);
     }
 
     #[test]
     fn test_register_indices_sequential() {
-        // Ensure indices are sequential starting from 0
-        assert_eq!(DigestReg::INDEX, 0);
-        assert_eq!(UAccReg::INDEX, 1);
-        assert_eq!(AlphaAccReg::INDEX, 2);
+        assert_eq!(TestReg0::INDEX, 0);
+        assert_eq!(TestReg1::INDEX, 1);
+        assert_eq!(TestReg2::INDEX, 2);
     }
 
     #[test]
     fn test_register_names() {
-        assert_eq!(DigestReg::NAME, "digest");
-        assert_eq!(UAccReg::NAME, "u_acc");
-        assert_eq!(AlphaAccReg::NAME, "alpha_acc");
+        assert_eq!(TestReg0::NAME, "test_reg_0");
+        assert_eq!(TestReg1::NAME, "test_reg_1");
+        assert_eq!(TestReg2::NAME, "test_reg_2");
+    }
+
+    // ========================================================================
+    // RegisterState Tests
+    // ========================================================================
+
+    #[test]
+    fn test_register_state_new() {
+        let state = RegisterState::<NUM_TEST_REGISTERS>::new();
+        assert!(!state.is_stored::<TestReg0>());
+        assert!(!state.is_stored::<TestReg1>());
+        assert!(!state.is_stored::<TestReg2>());
     }
 
     #[test]
-    fn test_num_standard_registers() {
-        assert_eq!(NUM_STANDARD_REGISTERS, 3);
-        // Verify it matches the highest index + 1
-        assert_eq!(
-            NUM_STANDARD_REGISTERS,
-            AlphaAccReg::INDEX + 1,
-            "NUM_STANDARD_REGISTERS should be highest index + 1"
-        );
+    fn test_register_state_store() {
+        let mut state = RegisterState::<NUM_TEST_REGISTERS>::new();
+
+        // Initially empty
+        assert!(!state.is_stored::<TestReg0>());
+
+        // Store marks as stored
+        state.store::<TestReg0>();
+        assert!(state.is_stored::<TestReg0>());
+
+        // Other registers remain empty
+        assert!(!state.is_stored::<TestReg1>());
+        assert!(!state.is_stored::<TestReg2>());
+    }
+
+    #[test]
+    fn test_register_state_check_stored_after_store() {
+        let mut state = RegisterState::<NUM_TEST_REGISTERS>::new();
+        state.store::<TestReg0>();
+
+        // Should not panic
+        state.check_stored::<TestReg0>();
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot load from empty register 'test_reg_0'")]
+    fn test_register_state_check_stored_before_store_panics() {
+        let state = RegisterState::<NUM_TEST_REGISTERS>::new();
+
+        // Should panic: register is empty
+        state.check_stored::<TestReg0>();
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot load from empty register 'test_reg_1'")]
+    fn test_register_state_load_wrong_register_panics() {
+        let mut state = RegisterState::<NUM_TEST_REGISTERS>::new();
+
+        // Store reg0, but try to load reg1
+        state.store::<TestReg0>();
+        state.check_stored::<TestReg1>(); // Should panic
+    }
+
+    #[test]
+    fn test_register_state_multiple_stores() {
+        let mut state = RegisterState::<NUM_TEST_REGISTERS>::new();
+
+        // Multiple stores to same register are allowed
+        state.store::<TestReg0>();
+        state.store::<TestReg0>();
+        state.store::<TestReg0>();
+
+        assert!(state.is_stored::<TestReg0>());
+        state.check_stored::<TestReg0>(); // Should not panic
+    }
+
+    #[test]
+    fn test_register_state_reset() {
+        let mut state = RegisterState::<NUM_TEST_REGISTERS>::new();
+
+        // Store all registers
+        state.store::<TestReg0>();
+        state.store::<TestReg1>();
+        state.store::<TestReg2>();
+
+        assert!(state.is_stored::<TestReg0>());
+        assert!(state.is_stored::<TestReg1>());
+        assert!(state.is_stored::<TestReg2>());
+
+        // Reset clears all
+        state.reset();
+
+        assert!(!state.is_stored::<TestReg0>());
+        assert!(!state.is_stored::<TestReg1>());
+        assert!(!state.is_stored::<TestReg2>());
+    }
+
+    #[test]
+    fn test_register_state_default() {
+        let state = RegisterState::<NUM_TEST_REGISTERS>::default();
+        assert!(!state.is_stored::<TestReg0>());
+        assert!(!state.is_stored::<TestReg1>());
+        assert!(!state.is_stored::<TestReg2>());
+    }
+
+    #[test]
+    #[should_panic(expected = "Register index 5 out of bounds")]
+    fn test_register_state_out_of_bounds_store() {
+        let mut state = RegisterState::<3>::new();
+
+        #[derive(Clone, Copy, Debug, Default)]
+        struct BadReg;
+        impl Register for BadReg {
+            const INDEX: usize = 5;
+            const NAME: &'static str = "bad";
+        }
+
+        state.store::<BadReg>(); // Should panic
+    }
+
+    #[test]
+    fn test_register_state_is_stored_out_of_bounds_returns_false() {
+        let state = RegisterState::<3>::new();
+
+        #[derive(Clone, Copy, Debug, Default)]
+        struct BadReg;
+        impl Register for BadReg {
+            const INDEX: usize = 5;
+            const NAME: &'static str = "bad";
+        }
+
+        // is_stored returns false for out-of-bounds (non-panicking)
+        assert!(!state.is_stored::<BadReg>());
     }
 }

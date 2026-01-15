@@ -342,6 +342,10 @@ where
     type Selector = QSchnorrVerify;
     type Input<V: Clone> = SchnorrVerifyInput<V>;
     type Output<V: Clone> = SchnorrVerifyOutput<V>;
+
+    const NAME: &'static str = "schnorr-verify";
+    const DESCRIPTION: &'static str = "Schnorr signature verification";
+    const ARITY: usize = 6;
     const ROWS: usize = 512; // 2 * 255 bits + subtraction + checks
 
     fn input_positions() -> &'static [Position] {

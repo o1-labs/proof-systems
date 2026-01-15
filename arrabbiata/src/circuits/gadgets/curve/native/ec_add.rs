@@ -214,6 +214,10 @@ where
     type Selector = QECAdd;
     type Input<V: Clone> = ECPointPair<V>;
     type Output<V: Clone> = ECPointPair<V>;
+
+    const NAME: &'static str = "ec-add";
+    const DESCRIPTION: &'static str = "Elliptic curve point addition";
+    const ARITY: usize = 4;
     const ROWS: usize = 1;
 
     fn input_positions() -> &'static [Position] {

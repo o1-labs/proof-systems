@@ -49,6 +49,10 @@ impl<F: PrimeField> TypedGadget<F> for CounterGadget {
     type Selector = QCounter;
     type Input<V: Clone> = Scalar<V>;
     type Output<V: Clone> = Scalar<V>;
+
+    const NAME: &'static str = "counter";
+    const DESCRIPTION: &'static str = "Counter circuit: z_{i+1} = z_i + 1";
+    const ARITY: usize = 1;
     const ROWS: usize = 1;
 
     fn input_positions() -> &'static [Position] {
@@ -116,6 +120,10 @@ impl<F: PrimeField> TypedGadget<F> for StepCounterGadget<F> {
     type Selector = QCounter;
     type Input<V: Clone> = Scalar<V>;
     type Output<V: Clone> = Scalar<V>;
+
+    const NAME: &'static str = "step-counter";
+    const DESCRIPTION: &'static str = "Step counter: z_{i+1} = z_i + step";
+    const ARITY: usize = 1;
     const ROWS: usize = 1;
 
     fn input_positions() -> &'static [Position] {

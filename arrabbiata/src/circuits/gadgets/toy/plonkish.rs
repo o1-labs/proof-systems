@@ -171,6 +171,10 @@ impl<F: PrimeField> TypedGadget<F> for PlonkishGadget<F> {
     type Selector = QApp;
     type Input<V: Clone> = Triple<V>;
     type Output<V: Clone> = Triple<V>;
+
+    const NAME: &'static str = "plonkish";
+    const DESCRIPTION: &'static str = "Generic PlonK-style constraint";
+    const ARITY: usize = 1;
     const ROWS: usize = 1;
 
     fn input_positions() -> &'static [Position] {

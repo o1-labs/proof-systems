@@ -44,6 +44,10 @@ impl<F: PrimeField> TypedGadget<F> for TrivialGadget {
     type Selector = QTrivial;
     type Input<V: Clone> = Scalar<V>;
     type Output<V: Clone> = Scalar<V>;
+
+    const NAME: &'static str = "trivial";
+    const DESCRIPTION: &'static str = "Identity circuit: z_{i+1} = z_i";
+    const ARITY: usize = 1;
     const ROWS: usize = 1;
 
     fn input_positions() -> &'static [Position] {

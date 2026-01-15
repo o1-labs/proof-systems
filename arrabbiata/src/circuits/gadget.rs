@@ -116,6 +116,15 @@ pub trait TypedGadget<F: PrimeField>: Clone + Debug + Send + Sync {
     /// Output type, parameterized by variable type.
     type Output<V: Clone>: Clone;
 
+    /// Unique name for this circuit (used for CLI selection and display).
+    const NAME: &'static str;
+
+    /// Human-readable description of what this gadget computes.
+    const DESCRIPTION: &'static str;
+
+    /// The arity (number of input/output field elements).
+    const ARITY: usize;
+
     /// Number of rows this gadget uses.
     const ROWS: usize;
 
@@ -274,6 +283,10 @@ mod tests {
         type Selector = QNoOp;
         type Input<V: Clone> = Scalar<V>;
         type Output<V: Clone> = Scalar<V>;
+
+        const NAME: &'static str = "test-squaring";
+        const DESCRIPTION: &'static str = "Test gadget that squares input";
+        const ARITY: usize = 1;
         const ROWS: usize = 1;
 
         fn input_positions() -> &'static [Position] {

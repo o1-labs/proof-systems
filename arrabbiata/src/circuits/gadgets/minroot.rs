@@ -127,6 +127,9 @@ impl<F: PrimeField> TypedGadget<F> for MinRootGadget<F> {
     type Input<V: Clone> = Pair<V>;
     type Output<V: Clone> = Pair<V>;
 
+    const NAME: &'static str = "minroot";
+    const DESCRIPTION: &'static str = "MinRoot VDF: computes 5th roots";
+    const ARITY: usize = 2;
     const ROWS: usize = 1;
 
     fn input_positions() -> &'static [Position] {

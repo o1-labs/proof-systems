@@ -79,6 +79,9 @@ impl<F: PrimeField> TypedGadget<F> for FibonacciGadget {
     type Input<V: Clone> = Pair<V>;
     type Output<V: Clone> = Pair<V>;
 
+    const NAME: &'static str = "fibonacci";
+    const DESCRIPTION: &'static str = "Fibonacci sequence: (x, y) -> (y, x + y)";
+    const ARITY: usize = 2;
     const ROWS: usize = 1;
 
     fn input_positions() -> &'static [Position] {

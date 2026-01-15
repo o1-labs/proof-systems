@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::registry::CircuitRegistry;
+use crate::registry::CircuitList;
 
 #[derive(Parser)]
 pub struct ExecuteArgs {
@@ -35,9 +35,9 @@ pub struct ExecuteArgs {
 
 impl ExecuteArgs {
     /// Validate that the circuit name is registered.
-    pub fn validate_circuit(&self, registry: &CircuitRegistry) -> Result<(), String> {
+    pub fn validate_circuit<R: CircuitList>(&self, registry: &R) -> Result<(), String> {
         if !registry.contains(&self.circuit) {
-            let available: Vec<String> = registry.names().cloned().collect();
+            let available: Vec<&str> = registry.names();
             return Err(format!(
                 "Unknown circuit '{}'. Available circuits: {}",
                 self.circuit,

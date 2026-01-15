@@ -234,6 +234,10 @@ where
     type Selector = QECScale;
     type Input<V: Clone> = ECScalarMulState<V>;
     type Output<V: Clone> = ECScalarMulState<V>;
+
+    const NAME: &'static str = "ec-scalar-mul-step";
+    const DESCRIPTION: &'static str = "Single step of EC scalar multiplication";
+    const ARITY: usize = 4;
     const ROWS: usize = 1;
 
     fn input_positions() -> &'static [Position] {
@@ -719,6 +723,10 @@ where
     type Selector = QECScale;
     type Input<V: Clone> = ECScalarMulInput<V>;
     type Output<V: Clone> = ECScalarMulInput<V>;
+
+    const NAME: &'static str = "ec-scalar-mul";
+    const DESCRIPTION: &'static str = "Elliptic curve scalar multiplication";
+    const ARITY: usize = 3;
     const ROWS: usize = 256; // Default, actual depends on num_bits
 
     fn input_positions() -> &'static [Position] {

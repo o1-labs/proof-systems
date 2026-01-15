@@ -360,12 +360,8 @@ where
     pub fn trivial_accumulator(&self) -> TrivialAccumulator<E1, E2> {
         TrivialAccumulator {
             // Witness commitments: blinded zero polynomials
-            witness_commitments_e1: core::array::from_fn(|_| {
-                PolyComm::new(vec![self.srs_e1.h])
-            }),
-            witness_commitments_e2: core::array::from_fn(|_| {
-                PolyComm::new(vec![self.srs_e2.h])
-            }),
+            witness_commitments_e1: core::array::from_fn(|_| PolyComm::new(vec![self.srs_e1.h])),
+            witness_commitments_e2: core::array::from_fn(|_| PolyComm::new(vec![self.srs_e2.h])),
 
             // Error commitments: blinded zero polynomials
             error_commitment_e1: PolyComm::new(vec![self.srs_e1.h]),
