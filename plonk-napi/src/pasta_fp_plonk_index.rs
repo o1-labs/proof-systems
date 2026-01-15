@@ -1,4 +1,4 @@
-use crate::{build_info::report_native_call, gate_vector::NapiFpGateVector, WasmFpSrs};
+use crate::{gate_vector::NapiFpGateVector, WasmFpSrs};
 use ark_poly::EvaluationDomain;
 use kimchi::{
     circuits::{
@@ -87,8 +87,6 @@ impl WasmPastaFpPlonkIndex {
 pub fn prover_index_fp_serialize(
     index: &External<WasmPastaFpPlonkIndex>,
 ) -> napi::bindgen_prelude::Result<Uint8Array> {
-    report_native_call();
-
     let bytes = index
         .serialize_inner()
         .map_err(|e| Error::new(Status::GenericFailure, e))?;
@@ -100,8 +98,6 @@ pub fn prover_index_fp_serialize(
 pub fn prover_index_fp_deserialize(
     bytes: Uint8Array,
 ) -> napi::bindgen_prelude::Result<External<WasmPastaFpPlonkIndex>> {
-    report_native_call();
-
     let index = WasmPastaFpPlonkIndex::deserialize_inner(bytes.as_ref())
         .map_err(|e| Error::new(Status::InvalidArg, e))?;
     Ok(External::new(index))

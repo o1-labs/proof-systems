@@ -1,4 +1,4 @@
-use crate::{build_info::report_native_call, gate_vector::NapiFqGateVector, WasmFqSrs};
+use crate::{gate_vector::NapiFqGateVector, WasmFqSrs};
 use ark_poly::EvaluationDomain;
 use kimchi::{
     circuits::constraints::ConstraintSystem, linearization::expr_linearization,
@@ -82,8 +82,6 @@ impl WasmPastaFqPlonkIndex {
 pub fn prover_index_fq_serialize(
     index: &External<WasmPastaFqPlonkIndex>,
 ) -> napi::bindgen_prelude::Result<Uint8Array> {
-    report_native_call();
-
     let bytes = index
         .serialize_inner()
         .map_err(|e| Error::new(Status::GenericFailure, e))?;
@@ -95,8 +93,6 @@ pub fn prover_index_fq_serialize(
 pub fn prover_index_fq_deserialize(
     bytes: Uint8Array,
 ) -> napi::bindgen_prelude::Result<External<WasmPastaFqPlonkIndex>> {
-    report_native_call();
-
     let index = WasmPastaFqPlonkIndex::deserialize_inner(bytes.as_ref())
         .map_err(|e| Error::new(Status::InvalidArg, e))?;
     Ok(External::new(index))
