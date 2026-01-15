@@ -507,11 +507,6 @@ macro_rules! impl_verification_key {
 
             #[napi(js_name = [<caml_pasta_ $field_name:snake _plonk_verifier_index_shifts>])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_verifier_index_shifts>](log2_size: i32) -> napi::bindgen_prelude::Result<NapiShifts> {
-                println!(
-                    "from napi! caml_pasta_plonk_verifier_index_shifts with log2_size {}",
-                    log2_size
-                );
-
                 let size = 1usize << (log2_size as u32);
                 let domain = Domain::<$F>::new(size)
                     .ok_or_else(|| Error::new(Status::InvalidArg, "failed to create evaluation domain"))?;
