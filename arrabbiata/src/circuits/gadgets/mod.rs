@@ -1,31 +1,41 @@
 //! Gadget implementations for the Arrabbiata IVC scheme.
 //!
-//! This module contains various `TypedGadget` implementations:
+//! This module contains `TypedGadget` implementations organized into:
 //!
-//! - **Basic arithmetic**: `TrivialGadget`, `SquaringGadget`, `CubicGadget`
-//! - **Iterative computation**: `FibonacciGadget`, `MinRootGadget` (VDF)
-//! - **Cryptographic**: `CounterGadget`, `PoseidonPermutationGadget`
-//! - **Elliptic curve**: `CurveNativeAddGadget`, `CurveNativeScalarMulGadget`
-//! - **Composition**: `SquareCubicGadget`
+//! ## NIFS Gadgets (for IVC verifier circuit)
+//!
+//! These are the actual gadgets used in the Non-Interactive Folding Scheme:
+//!
+//! - **Hash**: `PoseidonPermutationGadget`, `PoseidonRoundGadget` - Fiat-Shamir
+//! - **Elliptic curve**: `CurveNativeAddGadget`, `CurveNativeScalarMulGadget` - commitment ops
+//! - **Signature**: `SchnorrVerifyGadget` - signature verification
+//! - **Counter**: `CounterGadget`, `StepCounterGadget` - iteration tracking
+//! - **VDF**: `MinRootGadget` - verifiable delay function
+//!
+//! ## Toy Gadgets (for testing and examples)
+//!
+//! Simple gadgets for testing the API and demonstrating usage:
+//!
+//! - **Arithmetic**: `TrivialGadget`, `SquaringGadget`, `CubicGadget`
+//! - **Iterative**: `FibonacciGadget`
+//! - **Composed**: `SquareCubicGadget`
 
+// NIFS gadgets - used in the IVC verifier circuit
 mod counter;
-mod cubic;
 pub mod curve;
-mod fibonacci;
 pub mod hash;
 mod minroot;
 mod signature;
-mod square_cubic;
-mod squaring;
-mod trivial;
 
+// Toy gadgets - for testing and examples
+pub mod toy;
+
+// Re-export NIFS gadgets
 pub use counter::{CounterGadget, StepCounterGadget};
-pub use cubic::CubicGadget;
 pub use curve::{
     CurveAffineParams, CurveNativeAddGadget, CurveNativeDoubleGadget, CurveNativeScalarMulGadget,
     CurveNativeScalarMulStepGadget,
 };
-pub use fibonacci::FibonacciGadget;
 pub use hash::{
     PoseidonAbsorbGadget, PoseidonKimchiPermutationGadget, PoseidonKimchiRoundGadget,
     PoseidonPermutationGadget, PoseidonRoundGadget, KIMCHI_FULL_ROUNDS, KIMCHI_ROUNDS_PER_ROW,
@@ -36,6 +46,9 @@ pub use signature::{
     verify_schnorr_signature, SchnorrHashGadget, SchnorrHashInput, SchnorrHashOutput,
     SchnorrSignature, SchnorrVerifyGadget, SchnorrVerifyInput, SchnorrVerifyOutput,
 };
-pub use square_cubic::{square_cubic_gadget, SquareCubicGadget, SQUARE_CUBIC_ROWS};
-pub use squaring::SquaringGadget;
-pub use trivial::TrivialGadget;
+
+// Re-export toy gadgets for convenience
+pub use toy::{
+    square_cubic_gadget, CubicGadget, FibonacciGadget, PlonkishGadget, SquareCubicGadget,
+    SquaringGadget, TrivialGadget, SQUARE_CUBIC_ROWS,
+};

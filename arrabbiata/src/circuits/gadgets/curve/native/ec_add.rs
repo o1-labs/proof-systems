@@ -235,16 +235,40 @@ where
         let x2 = input.p2.x;
         let y2 = input.p2.y;
 
+        // Try to extract concrete values for witness computation
+        let (is_same_val, lambda_val) = match (
+            env.try_as_field(&x1),
+            env.try_as_field(&y1),
+            env.try_as_field(&x2),
+            env.try_as_field(&y2),
+        ) {
+            (Some(x1_f), Some(y1_f), Some(x2_f), Some(y2_f)) => {
+                // In witness mode: compute actual values
+                let is_same_bool = Self::is_same_point(x1_f, y1_f, x2_f, y2_f);
+                let is_same_f = if is_same_bool {
+                    C::BaseField::one()
+                } else {
+                    C::BaseField::zero()
+                };
+                let lambda_f = Self::compute_lambda(x1_f, y1_f, x2_f, y2_f, is_same_bool);
+                (is_same_f, lambda_f)
+            }
+            _ => {
+                // In constraint mode: use placeholder values
+                (C::BaseField::zero(), C::BaseField::zero())
+            }
+        };
+
         // Boolean flag for same point (witness)
         let is_same = {
             let pos = env.allocate();
-            env.write_column(pos, env.constant(C::BaseField::zero()))
+            env.write_column(pos, env.constant(is_same_val))
         };
 
         // Compute λ (witness)
         let lambda = {
             let pos = env.allocate();
-            env.write_column(pos, env.constant(C::BaseField::zero()))
+            env.write_column(pos, env.constant(lambda_val))
         };
 
         // Constraint 1: is_same is boolean
@@ -280,12 +304,22 @@ where
         // Output point: X3 = λ² - X1 - X2
         let lambda_squared = lambda.clone() * lambda.clone();
         let x3_temp = lambda_squared - x1.clone();
-        let x3 = x3_temp - x2;
+        let x3_computed = x3_temp - x2;
 
         // Y3 = λ (X1 - X3) - Y1
-        let x1_minus_x3 = x1.clone() - x3.clone();
+        let x1_minus_x3 = x1.clone() - x3_computed.clone();
         let lambda_times_diff = lambda * x1_minus_x3;
-        let y3 = lambda_times_diff - y1.clone();
+        let y3_computed = lambda_times_diff - y1.clone();
+
+        // Write outputs to witness columns (positions 6, 7 per output_positions)
+        let x3 = {
+            let pos = env.allocate();
+            env.write_column(pos, x3_computed)
+        };
+        let y3 = {
+            let pos = env.allocate();
+            env.write_column(pos, y3_computed)
+        };
 
         // Return result P3 as p1 and original P1 as p2 for chaining
         ECPointPair::new(ECPoint::new(x3, y3), ECPoint::new(x1, y1))
@@ -355,11 +389,11 @@ mod constraint_tests {
         // Max degree is 3 (from the is_same * (λ*2y1 - 3x1² - a) constraint)
         assert_eq!(env.max_degree(), 3, "Max degree should be 3");
 
-        // 2 witness allocations: is_same, lambda (plus 4 for inputs)
+        // 4 witness allocations: is_same, lambda, x3, y3 (plus 4 for inputs)
         assert_eq!(
             env.num_witness_allocations(),
-            6,
-            "Should have 6 allocations (4 inputs + 2 witnesses)"
+            8,
+            "Should have 8 allocations (4 inputs + is_same + lambda + x3 + y3)"
         );
 
         env.check_degrees()
@@ -469,5 +503,67 @@ mod output_tests {
 
         assert_eq!(result2.p1.x, g4.x, "X coordinate of 4G should match");
         assert_eq!(result2.p1.y, g4.y, "Y coordinate of 4G should match");
+    }
+
+    /// Verify that output positions correctly describe where outputs are written in the trace.
+    #[test]
+    fn test_curve_native_add_gadget_output_positions_match_trace() {
+        use crate::{
+            circuit::{CircuitEnv, Trace},
+            circuits::gadget::{test_utils::verify_trace_positions, TypedGadget},
+        };
+        use mina_curves::pasta::Fp;
+
+        let gadget = CurveNativeAddGadget::<PallasParameters>::new();
+        let mut env = Trace::<Fp>::new(16);
+
+        // Use generator and 2G as test points
+        let g = Pallas::generator();
+        let g2: Pallas = (Pallas::generator() + Pallas::generator()).into();
+
+        // Write input values
+        let x1_pos = env.allocate();
+        let x1_var = env.write_column(x1_pos, g.x);
+        let y1_pos = env.allocate();
+        let y1_var = env.write_column(y1_pos, g.y);
+        let x2_pos = env.allocate();
+        let x2_var = env.write_column(x2_pos, g2.x);
+        let y2_pos = env.allocate();
+        let y2_var = env.write_column(y2_pos, g2.y);
+
+        let input = ECPointPair::new(ECPoint::new(x1_var, y1_var), ECPoint::new(x2_var, y2_var));
+
+        // Synthesize
+        let _output = gadget.synthesize(&mut env, input);
+
+        // Get expected output
+        let expected_output = gadget.output(&ECPointPair::new(
+            ECPoint::new(g.x, g.y),
+            ECPoint::new(g2.x, g2.y),
+        ));
+
+        // Verify positions using helper
+        let current_row = env.current_row();
+
+        verify_trace_positions(
+            &env,
+            current_row,
+            <CurveNativeAddGadget<PallasParameters> as TypedGadget<Fp>>::input_positions(),
+            &[g.x, g.y, g2.x, g2.y],
+            "input",
+        );
+
+        verify_trace_positions(
+            &env,
+            current_row,
+            <CurveNativeAddGadget<PallasParameters> as TypedGadget<Fp>>::output_positions(),
+            &[
+                expected_output.p1.x,
+                expected_output.p1.y,
+                expected_output.p2.x,
+                expected_output.p2.y,
+            ],
+            "output",
+        );
     }
 }

@@ -518,4 +518,47 @@ mod gadget_tests {
             );
         }
     }
+
+    /// Verify that output positions correctly describe where outputs are written in the trace.
+    #[test]
+    fn test_minroot_gadget_output_positions_match_trace() {
+        use crate::circuits::gadget::test_utils::verify_trace_positions;
+
+        let x = Fp::from(7u64);
+        let y = Fp::from(11u64);
+        let gadget = MinRootGadget::from_input(x, y);
+        let mut env = Trace::<Fp>::new(16);
+
+        // Write input values
+        let x_pos = env.allocate();
+        let x_var = env.write_column(x_pos, x);
+        let y_pos = env.allocate();
+        let y_var = env.write_column(y_pos, y);
+        let input = Pair::new(x_var, y_var);
+
+        // Synthesize
+        let _output = gadget.synthesize(&mut env, input);
+
+        // Get expected output
+        let expected_output = gadget.output(&Pair::new(x, y));
+
+        // Verify positions using helper
+        let current_row = env.current_row();
+
+        verify_trace_positions(
+            &env,
+            current_row,
+            <MinRootGadget<Fp> as TypedGadget<Fp>>::input_positions(),
+            &[x, y],
+            "input",
+        );
+
+        verify_trace_positions(
+            &env,
+            current_row,
+            <MinRootGadget<Fp> as TypedGadget<Fp>>::output_positions(),
+            &[expected_output.first, expected_output.second],
+            "output",
+        );
+    }
 }

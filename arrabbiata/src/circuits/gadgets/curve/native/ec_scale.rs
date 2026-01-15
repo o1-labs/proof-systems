@@ -261,6 +261,103 @@ where
         let tmp_y = input.tmp.y;
         let r_i = input.scalar;
 
+        // Try to extract concrete values for witness computation
+        let witness_vals = match (
+            env.try_as_field(&o_x),
+            env.try_as_field(&o_y),
+            env.try_as_field(&tmp_x),
+            env.try_as_field(&tmp_y),
+            env.try_as_field(&r_i),
+        ) {
+            (Some(o_x_f), Some(o_y_f), Some(tmp_x_f), Some(tmp_y_f), Some(r_i_f)) => {
+                // In witness mode: compute actual values
+
+                // Extract bit from scalar
+                let scalar_bigint: num_bigint::BigUint = r_i_f.into();
+                let bit_bool = scalar_bigint.bit(0);
+                let bit_f = if bit_bool {
+                    C::BaseField::one()
+                } else {
+                    C::BaseField::zero()
+                };
+                let next_scalar_bigint = &scalar_bigint >> 1;
+                let r_next_f = C::BaseField::from(next_scalar_bigint);
+
+                // Check if res == tmp (same point)
+                let is_same = o_x_f == tmp_x_f && o_y_f == tmp_y_f;
+
+                // Compute λ for addition (or doubling if same point)
+                // and compute sum = o + tmp
+                let (lambda_add_f, sum_x_f, sum_y_f) = if is_same {
+                    // Use doubling formula: λ = (3x² + a) / (2y)
+                    let lambda = Self::compute_lambda_double(o_x_f, o_y_f);
+                    let x3 = lambda * lambda - C::BaseField::from(2u64) * o_x_f;
+                    let y3 = lambda * (o_x_f - x3) - o_y_f;
+                    (lambda, x3, y3)
+                } else {
+                    // Use addition formula: λ = (y1 - y2) / (x1 - x2)
+                    let lambda = Self::compute_lambda_add(o_x_f, o_y_f, tmp_x_f, tmp_y_f);
+                    let x3 = lambda * lambda - o_x_f - tmp_x_f;
+                    let y3 = lambda * (o_x_f - x3) - o_y_f;
+                    (lambda, x3, y3)
+                };
+
+                // Compute λ' for doubling: λ' = (3*tmp_x² + a) / (2*tmp_y)
+                let lambda_double_f = Self::compute_lambda_double(tmp_x_f, tmp_y_f);
+
+                // Compute doubled tmp
+                let tmp_x_next_f =
+                    lambda_double_f * lambda_double_f - C::BaseField::from(2u64) * tmp_x_f;
+                let tmp_y_next_f = lambda_double_f * (tmp_x_f - tmp_x_next_f) - tmp_y_f;
+
+                // Conditional select for next res
+                let (o_x_next_f, o_y_next_f) = if bit_bool {
+                    (sum_x_f, sum_y_f)
+                } else {
+                    (o_x_f, o_y_f)
+                };
+
+                Some((
+                    lambda_add_f,
+                    sum_x_f,
+                    sum_y_f,
+                    lambda_double_f,
+                    bit_f,
+                    o_x_next_f,
+                    o_y_next_f,
+                    tmp_x_next_f,
+                    tmp_y_next_f,
+                    r_next_f,
+                ))
+            }
+            _ => None,
+        };
+
+        // Get witness values or use placeholders
+        let (
+            lambda_add_val,
+            sum_x_val,
+            sum_y_val,
+            lambda_double_val,
+            bit_val,
+            o_x_next_val,
+            o_y_next_val,
+            tmp_x_next_val,
+            tmp_y_next_val,
+            r_next_val,
+        ) = witness_vals.unwrap_or((
+            C::BaseField::zero(),
+            C::BaseField::zero(),
+            C::BaseField::zero(),
+            C::BaseField::zero(),
+            C::BaseField::zero(),
+            C::BaseField::zero(),
+            C::BaseField::zero(),
+            C::BaseField::zero(),
+            C::BaseField::zero(),
+            C::BaseField::zero(),
+        ));
+
         // Constants
         let one = env.constant(C::BaseField::one());
         let two = env.constant(C::BaseField::from(2u64));
@@ -271,27 +368,27 @@ where
         // C6: λ (slope for addition)
         let lambda_add = {
             let pos = env.allocate();
-            env.write_column(pos, env.constant(C::BaseField::zero()))
+            env.write_column(pos, env.constant(lambda_add_val))
         };
         // C7: sum_x (result of o + tmp addition)
         let sum_x = {
             let pos = env.allocate();
-            env.write_column(pos, env.constant(C::BaseField::zero()))
+            env.write_column(pos, env.constant(sum_x_val))
         };
         // C8: sum_y
         let sum_y = {
             let pos = env.allocate();
-            env.write_column(pos, env.constant(C::BaseField::zero()))
+            env.write_column(pos, env.constant(sum_y_val))
         };
         // C9: λ' (slope for doubling)
         let lambda_double = {
             let pos = env.allocate();
-            env.write_column(pos, env.constant(C::BaseField::zero()))
+            env.write_column(pos, env.constant(lambda_double_val))
         };
         // C10: bit (current scalar bit)
         let bit = {
             let pos = env.allocate();
-            env.write_column(pos, env.constant(C::BaseField::zero()))
+            env.write_column(pos, env.constant(bit_val))
         };
 
         // Constraint 1: bit is boolean
@@ -344,19 +441,19 @@ where
         // We allocate first, then constrain using the witnesses to keep degree low
         let o_x_next = {
             let pos = env.allocate_next_row();
-            env.write_column(pos, env.constant(C::BaseField::zero()))
+            env.write_column(pos, env.constant(o_x_next_val))
         };
         let o_y_next = {
             let pos = env.allocate_next_row();
-            env.write_column(pos, env.constant(C::BaseField::zero()))
+            env.write_column(pos, env.constant(o_y_next_val))
         };
         let tmp_x_next = {
             let pos = env.allocate_next_row();
-            env.write_column(pos, env.constant(C::BaseField::zero()))
+            env.write_column(pos, env.constant(tmp_x_next_val))
         };
         let tmp_y_next = {
             let pos = env.allocate_next_row();
-            env.write_column(pos, env.constant(C::BaseField::zero()))
+            env.write_column(pos, env.constant(tmp_y_next_val))
         };
 
         // Constraint 6: o'_x = bit * sum_x + (1 - bit) * o_x
@@ -386,7 +483,7 @@ where
         // r' is on next row
         let r_next = {
             let pos = env.allocate_next_row();
-            env.write_column(pos, env.constant(C::BaseField::zero()))
+            env.write_column(pos, env.constant(r_next_val))
         };
         let two_r_next = two * r_next.clone();
         let r_decomp = r_i - bit.clone() - two_r_next;
@@ -468,14 +565,17 @@ const EC_SCALE_INPUT_POSITIONS: &[Position] = &[
     }, // scalar
 ];
 // Output positions are on the last row after all steps complete
-// The final x3, y3, and remaining scalar are allocated at the end
+// After the loop: state outputs at cols 0-4, then final subtraction allocates lambda, x3, y3
+// - state.res.x at col 0, state.res.y at col 1 (from last step)
+// - state.scalar at col 4 (from last step)
+// - lambda at col 5, x3 at col 6, y3 at col 7 (final subtraction)
 const EC_SCALE_OUTPUT_POSITIONS: &[Position] = &[
     Position {
-        col: 5,
-        row: Row::Curr,
-    }, // x3 (result point x, after lambda at col 5)
-    Position {
         col: 6,
+        row: Row::Curr,
+    }, // x3 (result point x)
+    Position {
+        col: 7,
         row: Row::Curr,
     }, // y3 (result point y)
     Position {
@@ -650,6 +750,7 @@ where
         // Process each bit: after this, state contains [k+1]P
         for _ in 0..self.num_bits {
             state = step.synthesize(env, state);
+            env.next_row(); // Advance to the next row for the next iteration
         }
 
         // Subtract P to get [k]P: result = [k+1]P - P = [k]P
@@ -657,34 +758,55 @@ where
         let res_x = state.res.x;
         let res_y = state.res.y;
         let p_x = input.point.x.clone();
+        let p_y = input.point.y.clone();
+
+        // Try to extract concrete values for the final subtraction witness
+        let (lambda_val, x3_val, y3_val) = match (
+            env.try_as_field(&res_x),
+            env.try_as_field(&res_y),
+            env.try_as_field(&p_x),
+            env.try_as_field(&p_y),
+        ) {
+            (Some(res_x_f), Some(res_y_f), Some(p_x_f), Some(p_y_f)) => {
+                // In witness mode: compute actual subtraction values
+                let (x3_f, y3_f) = Self::subtract_point(res_x_f, res_y_f, p_x_f, p_y_f);
+                // λ = (res_y + p_y) / (res_x - p_x) (subtraction formula with negated p_y)
+                let lambda_f = Self::compute_lambda_add(res_x_f, res_y_f, p_x_f, -p_y_f);
+                (lambda_f, x3_f, y3_f)
+            }
+            _ => {
+                // In constraint mode: use placeholders
+                (
+                    C::BaseField::zero(),
+                    C::BaseField::zero(),
+                    C::BaseField::zero(),
+                )
+            }
+        };
 
         // Allocate witnesses for the subtraction
         // λ = (res_y - (-p_y)) / (res_x - p_x) = (res_y + p_y) / (res_x - p_x)
-        let lambda_expr = (res_y.clone() + input.point.y.clone()) * (res_x.clone() - p_x.clone());
         let lambda = {
             let pos = env.allocate();
-            env.write_column(pos, lambda_expr.clone())
+            env.write_column(pos, env.constant(lambda_val))
         };
 
         // Constraint: λ * (res_x - p_x) = res_y + p_y
-        let lambda_check =
-            lambda.clone() * (res_x.clone() - p_x.clone()) - res_y.clone() - input.point.y.clone();
+        let lambda_check = lambda.clone() * (res_x.clone() - p_x.clone()) - res_y.clone() - p_y;
         env.assert_zero(&lambda_check);
 
         // x3 = λ² - res_x - p_x
-        let x3_expr = lambda.clone() * lambda.clone() - res_x.clone() - p_x.clone();
         let x3 = {
             let pos = env.allocate();
-            env.write_column(pos, x3_expr.clone())
+            env.write_column(pos, env.constant(x3_val))
         };
         let x3_check = x3.clone() + res_x.clone() + p_x - lambda.clone() * lambda.clone();
         env.assert_zero(&x3_check);
 
         // y3 = λ(res_x - x3) - res_y
-        let y3_expr = lambda.clone() * (res_x.clone() - x3.clone()) - res_y.clone();
         let y3 = {
             let pos = env.allocate();
-            env.write_column(pos, y3_expr.clone())
+            env.write_column(pos, env.constant(y3_val))
         };
         let y3_check = y3.clone() - lambda * (res_x - x3.clone()) + res_y;
         env.assert_zero(&y3_check);
@@ -918,6 +1040,145 @@ mod output_tests {
             Fp::zero(),
             "Scalar {} should be fully consumed",
             scalar
+        );
+    }
+
+    /// Verify that output positions correctly describe where outputs are written in the trace.
+    #[test]
+    fn test_curve_native_scalar_mul_step_gadget_output_positions_match_trace() {
+        use crate::{
+            circuit::{CircuitEnv, Trace},
+            circuits::gadget::test_utils::verify_trace_positions,
+        };
+
+        let gadget = CurveNativeScalarMulStepGadget::<PallasParameters>::new();
+        let mut env = Trace::<Fp>::new(16);
+
+        // Use the generator as input point
+        let g = Pallas::generator();
+        let (o_x, o_y) = (g.x, g.y);
+        let (tmp_x, tmp_y) = (g.x, g.y);
+        let scalar = Fp::from(5u64); // 101 in binary
+
+        // Allocate and write inputs
+        let o_x_pos = env.allocate();
+        let o_x_var = env.write_column(o_x_pos, o_x);
+        let o_y_pos = env.allocate();
+        let o_y_var = env.write_column(o_y_pos, o_y);
+        let tmp_x_pos = env.allocate();
+        let tmp_x_var = env.write_column(tmp_x_pos, tmp_x);
+        let tmp_y_pos = env.allocate();
+        let tmp_y_var = env.write_column(tmp_y_pos, tmp_y);
+        let scalar_pos = env.allocate();
+        let scalar_var = env.write_column(scalar_pos, scalar);
+
+        let input = ECScalarMulState::new(
+            ECPoint::new(o_x_var, o_y_var),
+            ECPoint::new(tmp_x_var, tmp_y_var),
+            scalar_var,
+        );
+
+        let current_row = env.current_row();
+
+        // Synthesize
+        let _output = gadget.synthesize(&mut env, input);
+
+        // Compute expected output
+        let expected_output = gadget.output(&ECScalarMulState::new(
+            ECPoint::new(o_x, o_y),
+            ECPoint::new(tmp_x, tmp_y),
+            scalar,
+        ));
+
+        // Verify input positions
+        verify_trace_positions(
+            &env,
+            current_row,
+            <CurveNativeScalarMulStepGadget<PallasParameters> as TypedGadget<Fp>>::input_positions(
+            ),
+            &[o_x, o_y, tmp_x, tmp_y, scalar],
+            "input",
+        );
+
+        // Verify output positions (on next row)
+        verify_trace_positions(
+            &env,
+            current_row,
+            <CurveNativeScalarMulStepGadget<PallasParameters> as TypedGadget<Fp>>::output_positions(
+            ),
+            &[
+                expected_output.res.x,
+                expected_output.res.y,
+                expected_output.tmp.x,
+                expected_output.tmp.y,
+                expected_output.scalar,
+            ],
+            "output",
+        );
+    }
+
+    /// Verify that CurveNativeScalarMulGadget produces correct output in trace.
+    /// Note: This gadget spans multiple rows, so we verify the final output matches
+    /// the expected computation.
+    #[test]
+    fn test_curve_native_scalar_mul_gadget_output_positions_match_trace() {
+        use crate::{
+            circuit::{CircuitEnv, Trace},
+            circuits::gadget::test_utils::verify_trace_positions,
+        };
+
+        let num_bits = 4;
+        let gadget = CurveNativeScalarMulGadget::<PallasParameters>::new(num_bits);
+        // Need enough rows: num_bits + 2 (for step rows and final row)
+        let mut env = Trace::<Fp>::new(num_bits + 4);
+
+        // Use the generator and a small scalar
+        let g = Pallas::generator();
+        let (p_x, p_y) = (g.x, g.y);
+        let scalar = Fp::from(3u64); // Small scalar for 4 bits
+
+        // Allocate and write inputs
+        let p_x_pos = env.allocate();
+        let p_x_var = env.write_column(p_x_pos, p_x);
+        let p_y_pos = env.allocate();
+        let p_y_var = env.write_column(p_y_pos, p_y);
+        let scalar_pos = env.allocate();
+        let scalar_var = env.write_column(scalar_pos, scalar);
+
+        let input = ECScalarMulInput::new(ECPoint::new(p_x_var, p_y_var), scalar_var);
+
+        let start_row = env.current_row();
+
+        // Synthesize
+        let _output = gadget.synthesize(&mut env, input);
+
+        // After synthesis, the output is on the current row (after all steps + final subtraction)
+        let final_row = env.current_row();
+
+        // Compute expected output
+        let expected_output = gadget.output(&ECScalarMulInput::new(ECPoint::new(p_x, p_y), scalar));
+
+        // Verify input positions (on start row)
+        verify_trace_positions(
+            &env,
+            start_row,
+            <CurveNativeScalarMulGadget<PallasParameters> as TypedGadget<Fp>>::input_positions(),
+            &[p_x, p_y, scalar],
+            "input",
+        );
+
+        // Verify output positions (on final row)
+        // Output positions are: col 5 (x3), col 6 (y3), col 4 (remaining scalar)
+        verify_trace_positions(
+            &env,
+            final_row,
+            <CurveNativeScalarMulGadget<PallasParameters> as TypedGadget<Fp>>::output_positions(),
+            &[
+                expected_output.point.x,
+                expected_output.point.y,
+                expected_output.scalar,
+            ],
+            "output",
         );
     }
 }

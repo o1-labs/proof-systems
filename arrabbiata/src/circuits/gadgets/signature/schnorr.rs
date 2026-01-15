@@ -837,4 +837,129 @@ mod tests {
             output.recovered_r.y.into_bigint().is_even()
         );
     }
+
+    // ========================================================================
+    // Position verification tests
+    // ========================================================================
+
+    #[test]
+    fn test_schnorr_verify_gadget_input_positions_match_trace() {
+        use crate::circuits::{
+            gadget::{test_utils::verify_trace_positions, TypedGadget},
+            Trace,
+        };
+        use mina_hasher::Hasher;
+
+        // Generate a valid signature using mina-signer
+        let kp = Keypair::from_secret_key(SecKey::new(Fq::from(99999u64)))
+            .expect("Failed to create keypair");
+
+        let message = TestMessage {
+            value: Fp::from(777u64),
+        };
+
+        let mut ctx = mina_signer::create_kimchi::<TestMessage>(NetworkId::TESTNET);
+        let sig = ctx.sign(&kp, &message, true);
+
+        // Compute challenge using mina-hasher
+        #[derive(Clone)]
+        struct SchnorrMsg {
+            input: TestMessage,
+            pub_key_x: Fp,
+            pub_key_y: Fp,
+            rx: Fp,
+        }
+
+        impl Hashable for SchnorrMsg {
+            type D = NetworkId;
+
+            fn to_roinput(&self) -> ROInput {
+                self.input
+                    .to_roinput()
+                    .append_field(self.pub_key_x)
+                    .append_field(self.pub_key_y)
+                    .append_field(self.rx)
+            }
+
+            fn domain_string(network_id: NetworkId) -> Option<String> {
+                TestMessage::domain_string(network_id)
+            }
+        }
+
+        let schnorr_msg = SchnorrMsg {
+            input: message.clone(),
+            pub_key_x: kp.public.point().x,
+            pub_key_y: kp.public.point().y,
+            rx: sig.rx,
+        };
+
+        let mut hasher = mina_hasher::create_kimchi::<SchnorrMsg>(NetworkId::TESTNET);
+        let challenge: Fp = hasher.hash(&schnorr_msg);
+
+        // Prepare input values
+        let gen = Pallas::generator();
+        let pk_x = kp.public.point().x;
+        let pk_y = kp.public.point().y;
+        let sig_rx = sig.rx;
+        let sig_s = Fp::from(sig.s.into_bigint());
+        let gen_x = gen.x;
+        let gen_y = gen.y;
+
+        let input_values = [pk_x, pk_y, sig_rx, sig_s, challenge, gen_x, gen_y];
+
+        // Create trace
+        let gadget = SchnorrVerifyGadget::<PallasParameters>::new(255);
+        let mut env = Trace::<Fp>::new(600); // Need enough rows for 255-bit scalar mul
+
+        // Allocate and write inputs
+        let pk_x_var = {
+            let pos = env.allocate();
+            env.write_column(pos, pk_x)
+        };
+        let pk_y_var = {
+            let pos = env.allocate();
+            env.write_column(pos, pk_y)
+        };
+        let sig_rx_var = {
+            let pos = env.allocate();
+            env.write_column(pos, sig_rx)
+        };
+        let sig_s_var = {
+            let pos = env.allocate();
+            env.write_column(pos, sig_s)
+        };
+        let challenge_var = {
+            let pos = env.allocate();
+            env.write_column(pos, challenge)
+        };
+        let gen_x_var = {
+            let pos = env.allocate();
+            env.write_column(pos, gen_x)
+        };
+        let gen_y_var = {
+            let pos = env.allocate();
+            env.write_column(pos, gen_y)
+        };
+
+        let input = SchnorrVerifyInput {
+            public_key: ECPoint::new(pk_x_var, pk_y_var),
+            signature: SchnorrSignature::new(sig_rx_var, sig_s_var),
+            challenge: challenge_var,
+            generator: ECPoint::new(gen_x_var, gen_y_var),
+        };
+
+        let start_row = env.current_row();
+
+        // Synthesize with valid signature
+        let _output = gadget.synthesize(&mut env, input);
+
+        // Verify input positions at start row
+        verify_trace_positions(
+            &env,
+            start_row,
+            SchnorrVerifyGadget::<PallasParameters>::input_positions(),
+            &input_values,
+            "input",
+        );
+    }
 }

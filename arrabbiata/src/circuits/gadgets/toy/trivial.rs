@@ -6,7 +6,7 @@ use crate::{
     circuit::{CircuitEnv, SelectorEnv},
     circuits::{
         gadget::{Position, Row, Scalar, TypedGadget},
-        selector::QNoOp,
+        selector::QTrivial,
     },
 };
 
@@ -41,7 +41,7 @@ const TRIVIAL_OUTPUT_POSITIONS: &[Position] = &[Position {
 }];
 
 impl<F: PrimeField> TypedGadget<F> for TrivialGadget {
-    type Selector = QNoOp;
+    type Selector = QTrivial;
     type Input<V: Clone> = Scalar<V>;
     type Output<V: Clone> = Scalar<V>;
     const ROWS: usize = 1;
@@ -208,5 +208,46 @@ mod trace_tests {
             assert_eq!(synth_output.0, direct_output.0);
             assert_eq!(synth_output.0, input_val);
         }
+    }
+
+    /// Verify that output positions correctly describe where outputs are written in the trace.
+    #[test]
+    fn test_trivial_gadget_output_positions_match_trace() {
+        use crate::circuits::gadget::test_utils::verify_trace_positions;
+
+        let gadget = TrivialGadget::new();
+        let mut env = Trace::<Fp>::new(16);
+
+        // Input value
+        let input_val = Fp::from(42u64);
+        let x_pos = env.allocate();
+        let x_var = env.write_column(x_pos, input_val);
+        let input = Scalar(x_var);
+
+        // Synthesize
+        let _output = gadget.synthesize(&mut env, input);
+
+        // Get expected output
+        let expected_output = gadget.output(&Scalar(input_val));
+
+        // Verify positions using helper
+        let current_row = env.current_row();
+
+        // TrivialGadget has input and output at the same position (pass-through)
+        verify_trace_positions(
+            &env,
+            current_row,
+            <TrivialGadget as TypedGadget<Fp>>::input_positions(),
+            &[input_val],
+            "input",
+        );
+
+        verify_trace_positions(
+            &env,
+            current_row,
+            <TrivialGadget as TypedGadget<Fp>>::output_positions(),
+            &[expected_output.0],
+            "output",
+        );
     }
 }

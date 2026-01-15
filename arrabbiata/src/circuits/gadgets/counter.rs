@@ -14,7 +14,7 @@ use crate::{
     circuit::{CircuitEnv, SelectorEnv},
     circuits::{
         gadget::{Position, Row, Scalar, TypedGadget},
-        selector::QNoOp,
+        selector::QCounter,
     },
 };
 
@@ -46,7 +46,7 @@ const COUNTER_OUTPUT_POSITIONS: &[Position] = &[Position {
 }];
 
 impl<F: PrimeField> TypedGadget<F> for CounterGadget {
-    type Selector = QNoOp;
+    type Selector = QCounter;
     type Input<V: Clone> = Scalar<V>;
     type Output<V: Clone> = Scalar<V>;
     const ROWS: usize = 1;
@@ -113,7 +113,7 @@ const STEP_COUNTER_OUTPUT_POSITIONS: &[Position] = &[Position {
 }];
 
 impl<F: PrimeField> TypedGadget<F> for StepCounterGadget<F> {
-    type Selector = QNoOp;
+    type Selector = QCounter;
     type Input<V: Clone> = Scalar<V>;
     type Output<V: Clone> = Scalar<V>;
     const ROWS: usize = 1;
@@ -484,5 +484,85 @@ mod trace_tests {
         }
 
         assert_eq!(current, Fp::from(30u64));
+    }
+
+    /// Verify that output positions correctly describe where outputs are written in the trace.
+    #[test]
+    fn test_counter_gadget_output_positions_match_trace() {
+        use crate::circuits::gadget::test_utils::verify_trace_positions;
+
+        let gadget = CounterGadget::new();
+        let mut env = Trace::<Fp>::new(16);
+
+        // Input value
+        let input_val = Fp::from(5u64);
+        let x_pos = env.allocate();
+        let x_var = env.write_column(x_pos, input_val);
+        let input = Scalar(x_var);
+
+        // Synthesize
+        let _output = gadget.synthesize(&mut env, input);
+
+        // Get expected output
+        let expected_output = gadget.output(&Scalar(input_val));
+
+        // Verify positions using helper
+        let current_row = env.current_row();
+
+        verify_trace_positions(
+            &env,
+            current_row,
+            <CounterGadget as TypedGadget<Fp>>::input_positions(),
+            &[input_val],
+            "input",
+        );
+
+        verify_trace_positions(
+            &env,
+            current_row,
+            <CounterGadget as TypedGadget<Fp>>::output_positions(),
+            &[expected_output.0],
+            "output",
+        );
+    }
+
+    /// Verify that output positions correctly describe where outputs are written in the trace.
+    #[test]
+    fn test_step_counter_gadget_output_positions_match_trace() {
+        use crate::circuits::gadget::test_utils::verify_trace_positions;
+
+        let gadget = StepCounterGadget::<Fp>::new(Fp::from(7u64));
+        let mut env = Trace::<Fp>::new(16);
+
+        // Input value
+        let input_val = Fp::from(10u64);
+        let x_pos = env.allocate();
+        let x_var = env.write_column(x_pos, input_val);
+        let input = Scalar(x_var);
+
+        // Synthesize
+        let _output = gadget.synthesize(&mut env, input);
+
+        // Get expected output
+        let expected_output = gadget.output(&Scalar(input_val));
+
+        // Verify positions using helper
+        let current_row = env.current_row();
+
+        verify_trace_positions(
+            &env,
+            current_row,
+            <StepCounterGadget<Fp> as TypedGadget<Fp>>::input_positions(),
+            &[input_val],
+            "input",
+        );
+
+        verify_trace_positions(
+            &env,
+            current_row,
+            <StepCounterGadget<Fp> as TypedGadget<Fp>>::output_positions(),
+            &[expected_output.0],
+            "output",
+        );
     }
 }

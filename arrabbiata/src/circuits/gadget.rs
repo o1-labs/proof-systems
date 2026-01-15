@@ -8,7 +8,7 @@
 //! # Example
 //!
 //! ```
-//! use arrabbiata::circuits::gadget::{TypedGadget, Scalar};
+//! use arrabbiata::circuits::gadget::{TypedGadget, Scalar, Position, Row};
 //! use arrabbiata::circuits::selector::QNoOp;
 //! use arrabbiata::circuit::{CircuitEnv, SelectorEnv};
 //! use ark_ff::PrimeField;
@@ -16,11 +16,17 @@
 //! #[derive(Clone, Debug)]
 //! struct SquaringGadget;
 //!
+//! const SQUARING_INPUT: &[Position] = &[Position { col: 0, row: Row::Curr }];
+//! const SQUARING_OUTPUT: &[Position] = &[Position { col: 1, row: Row::Curr }];
+//!
 //! impl<F: PrimeField> TypedGadget<F> for SquaringGadget {
 //!     type Selector = QNoOp;
 //!     type Input<V: Clone> = Scalar<V>;
 //!     type Output<V: Clone> = Scalar<V>;
 //!     const ROWS: usize = 1;
+//!
+//!     fn input_positions() -> &'static [Position] { SQUARING_INPUT }
+//!     fn output_positions() -> &'static [Position] { SQUARING_OUTPUT }
 //!
 //!     fn synthesize<E: CircuitEnv<F> + SelectorEnv<F>>(
 //!         &self,
@@ -53,7 +59,7 @@ use crate::{
 pub use crate::circuits::types::{
     check_arity, Arity, Bit, Bits, Commitment, DoubleCommitment, ECPoint, ECPointPair,
     ECScalarMulInput, ECScalarMulState, FixedVec, HomoPair, Pair, PoseidonState, PoseidonState3,
-    Position, Row, Scalar, SingleCommitment,
+    Position, Row, Scalar, SingleCommitment, Triple,
 };
 
 // ============================================================================

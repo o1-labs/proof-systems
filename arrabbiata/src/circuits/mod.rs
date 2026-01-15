@@ -25,6 +25,7 @@
 pub mod compose;
 pub mod gadget;
 pub mod gadgets;
+pub mod hlist;
 pub mod nifs;
 pub mod selector;
 pub mod types;
@@ -33,9 +34,9 @@ pub mod types;
 pub use gadgets::{
     square_cubic_gadget, CounterGadget, CubicGadget, CurveAffineParams, CurveNativeAddGadget,
     CurveNativeDoubleGadget, CurveNativeScalarMulGadget, CurveNativeScalarMulStepGadget,
-    FibonacciGadget, MinRootGadget, PoseidonAbsorbGadget, PoseidonPermutationGadget,
-    PoseidonRoundGadget, SquareCubicGadget, SquaringGadget, StepCounterGadget, TrivialGadget,
-    ROUNDS_PER_ROW, ROWS_FOR_PERMUTATION, SQUARE_CUBIC_ROWS,
+    FibonacciGadget, MinRootGadget, PlonkishGadget, PoseidonAbsorbGadget,
+    PoseidonPermutationGadget, PoseidonRoundGadget, SquareCubicGadget, SquaringGadget,
+    StepCounterGadget, TrivialGadget, ROUNDS_PER_ROW, ROWS_FOR_PERMUTATION, SQUARE_CUBIC_ROWS,
 };
 
 // Re-export selector types
@@ -48,13 +49,16 @@ pub use selector::{
 // Re-export typed gadget types
 pub use gadget::{
     Commitment, ECPoint, ECPointPair, ECScalarMulInput, ECScalarMulState, Pair, PoseidonState,
-    Scalar, SingleCommitment, TypedGadget,
+    Scalar, SingleCommitment, Triple, TypedGadget,
 };
 
 // Re-export composition combinators
 pub use compose::{
     Chain, GadgetCircuit, PairCircuit, PairGadget, Repeat, ScalarGadget, StateCircuit, StateGadget,
 };
+
+// Re-export HList types
+pub use hlist::{gadgets, GadgetList, HCons, HNil, TypedGadgetList};
 
 // Re-export the core traits and environments from circuit.rs
 pub use crate::circuit::{CircuitEnv, ConstraintEnv, SelectorEnv, StepCircuit, Trace};

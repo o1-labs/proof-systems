@@ -158,23 +158,50 @@ where
         let x1 = input.x;
         let y1 = input.y;
 
+        // Try to extract concrete values for witness computation
+        let (lambda_val, x3_val, y3_val) = match (env.try_as_field(&x1), env.try_as_field(&y1)) {
+            (Some(x1_f), Some(y1_f)) => {
+                // In witness mode: compute actual values
+                // λ = (3x1² + a) / (2y1)
+                let numerator = C::BaseField::from(3u64) * x1_f * x1_f + C::COEFF_A;
+                let denominator = C::BaseField::from(2u64) * y1_f;
+                let lambda_f = numerator * denominator.inverse().unwrap();
+
+                // X3 = λ² - 2X1
+                let x3_f = lambda_f * lambda_f - C::BaseField::from(2u64) * x1_f;
+
+                // Y3 = λ (X1 - X3) - Y1
+                let y3_f = lambda_f * (x1_f - x3_f) - y1_f;
+
+                (lambda_f, x3_f, y3_f)
+            }
+            _ => {
+                // In constraint mode: use placeholder values (constraints are symbolic)
+                (
+                    C::BaseField::zero(),
+                    C::BaseField::zero(),
+                    C::BaseField::zero(),
+                )
+            }
+        };
+
         // λ = (3x1² + a) / (2y1)
         // Constraint: λ * 2y1 = 3x1² + a
         let lambda = {
             let pos = env.allocate();
-            env.write_column(pos, env.constant(C::BaseField::zero()))
+            env.write_column(pos, env.constant(lambda_val))
         };
 
         // Allocate x3 as witness
         let x3 = {
             let pos = env.allocate();
-            env.write_column(pos, env.constant(C::BaseField::zero()))
+            env.write_column(pos, env.constant(x3_val))
         };
 
         // Allocate y3 as witness
         let y3 = {
             let pos = env.allocate();
-            env.write_column(pos, env.constant(C::BaseField::zero()))
+            env.write_column(pos, env.constant(y3_val))
         };
 
         let two = env.constant(C::BaseField::from(2u64));
@@ -350,5 +377,54 @@ mod output_tests {
         let output2 = gadget.output(&input);
 
         assert_eq!(output1, output2, "Same inputs should give same outputs");
+    }
+
+    /// Verify that output positions correctly describe where outputs are written in the trace.
+    #[test]
+    fn test_curve_native_double_gadget_output_positions_match_trace() {
+        use crate::{
+            circuit::{CircuitEnv, Trace},
+            circuits::gadget::test_utils::verify_trace_positions,
+        };
+        use mina_curves::pasta::Fp;
+
+        let gadget = CurveNativeDoubleGadget::<PallasParameters>::new();
+        let mut env = Trace::<Fp>::new(16);
+
+        // Use the generator as input point
+        let g = Pallas::generator();
+        let (x1, y1) = (g.x, g.y);
+
+        // Allocate and write input point
+        let x1_pos = env.allocate();
+        let x1_var = env.write_column(x1_pos, x1);
+        let y1_pos = env.allocate();
+        let y1_var = env.write_column(y1_pos, y1);
+        let input = ECPoint::new(x1_var, y1_var);
+
+        // Synthesize
+        let _output = gadget.synthesize(&mut env, input);
+
+        // Compute expected output using the output() method
+        let expected_output = gadget.output(&ECPoint::new(x1, y1));
+
+        // Verify positions using helper
+        let current_row = env.current_row();
+
+        verify_trace_positions(
+            &env,
+            current_row,
+            <CurveNativeDoubleGadget<PallasParameters> as TypedGadget<Fp>>::input_positions(),
+            &[x1, y1],
+            "input",
+        );
+
+        verify_trace_positions(
+            &env,
+            current_row,
+            <CurveNativeDoubleGadget<PallasParameters> as TypedGadget<Fp>>::output_positions(),
+            &[expected_output.x, expected_output.y],
+            "output",
+        );
     }
 }

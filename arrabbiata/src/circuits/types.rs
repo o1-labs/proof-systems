@@ -7,6 +7,7 @@
 //!
 //! ```text
 //! V (raw variable, e.g., F or Expr<F>)
+//! ├── Unit<V>             - No value / void (arity: 0)
 //! ├── Scalar<V>           - Single field element (arity: 1)
 //! ├── Bit<V>              - Single bit (arity: 1)
 //! ├── Pair<V>             - Two field elements (arity: 2)
@@ -183,6 +184,37 @@ impl Position {
 }
 
 // ============================================================================
+// Unit - No Value (void/unit type)
+// ============================================================================
+
+/// Unit type representing no value (arity 0).
+///
+/// This is used for gadgets that don't produce meaningful output,
+/// such as verification gadgets that only assert constraints.
+///
+/// # Example
+///
+/// ```
+/// use arrabbiata::circuits::types::{Unit, Arity};
+///
+/// // Unit has arity 0
+/// assert_eq!(<Unit<()> as Arity>::SIZE, 0);
+/// ```
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Unit<V>(core::marker::PhantomData<V>);
+
+impl<V> Arity for Unit<V> {
+    const SIZE: usize = 0;
+}
+
+impl<V> Unit<V> {
+    /// Create a new unit value.
+    pub fn new() -> Self {
+        Self(core::marker::PhantomData)
+    }
+}
+
+// ============================================================================
 // Scalar - Single Field Element
 // ============================================================================
 
@@ -272,6 +304,67 @@ pub type HomoPair<V> = Pair<V, V>;
 ///
 /// Use this when you want to explicitly mark that a pair has different types.
 pub type HeteroPair<A, B> = Pair<A, B>;
+
+// ============================================================================
+// Triple - Three Values
+// ============================================================================
+
+/// A triple of values.
+///
+/// Used for operations that naturally work with three values, like the
+/// standard Plonkish constraint with 3 wires (a, b, c).
+///
+/// # Examples
+///
+/// ```
+/// use arrabbiata::circuits::types::Triple;
+///
+/// let t = Triple::new(1, 2, 3);
+/// assert_eq!(t.first, 1);
+/// assert_eq!(t.second, 2);
+/// assert_eq!(t.third, 3);
+/// ```
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Triple<V> {
+    pub first: V,
+    pub second: V,
+    pub third: V,
+}
+
+impl<V> Arity for Triple<V> {
+    const SIZE: usize = 3;
+}
+
+impl<V: Clone> Triple<V> {
+    /// Create a new triple.
+    pub fn new(first: V, second: V, third: V) -> Self {
+        Self {
+            first,
+            second,
+            third,
+        }
+    }
+
+    /// Destructure into a tuple.
+    pub fn into_tuple(self) -> (V, V, V) {
+        (self.first, self.second, self.third)
+    }
+
+    /// Create from an array.
+    pub fn from_array(arr: [V; 3]) -> Self {
+        let [first, second, third] = arr;
+        Self {
+            first,
+            second,
+            third,
+        }
+    }
+
+    /// Convert to an array.
+    pub fn into_array(self) -> [V; 3] {
+        [self.first, self.second, self.third]
+    }
+}
 
 // ============================================================================
 // ECPoint - Affine Weierstrass Elliptic Curve Point
@@ -704,6 +797,16 @@ mod tests {
     // ========================================================================
     // Arity tests
     // ========================================================================
+
+    #[test]
+    fn test_arity_unit() {
+        assert_eq!(<Unit<()> as Arity>::SIZE, 0);
+    }
+
+    #[test]
+    fn test_unit_new() {
+        let _u: Unit<u64> = Unit::new();
+    }
 
     #[test]
     fn test_arity_scalar() {

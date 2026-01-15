@@ -6,7 +6,7 @@ use crate::{
     circuit::{CircuitEnv, SelectorEnv},
     circuits::{
         gadget::{Position, Row, Scalar, TypedGadget},
-        selector::QNoOp,
+        selector::QSquaring,
     },
 };
 
@@ -38,7 +38,7 @@ const SQUARING_OUTPUT_POSITIONS: &[Position] = &[Position {
 }];
 
 impl<F: PrimeField> TypedGadget<F> for SquaringGadget {
-    type Selector = QNoOp;
+    type Selector = QSquaring;
     type Input<V: Clone> = Scalar<V>;
     type Output<V: Clone> = Scalar<V>;
     const ROWS: usize = 1;

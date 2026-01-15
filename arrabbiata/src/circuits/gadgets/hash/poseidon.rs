@@ -160,24 +160,23 @@ impl<F: PrimeField, const FULL_ROUNDS: usize, const STARTING_ROUND: usize>
         let mut state = input.clone();
 
         // Process 5 rounds
+        // Layout: | x | y | z | s0 | s1 | s2 | s3 | s4 | s5 | s6 | s7 | s8 | s9 | s10 | s11 |
+        //         | o0| o1| o2|
+        // Where (x,y,z) = input, (s0-s2) = after round 0, ..., (s9-s11) = after round 3
+        // (o0-o2) = after round 4 (on next row)
         for round_offset in 0..ROUNDS_PER_ROW {
             let round = starting_round + round_offset;
             let is_last_round = round_offset == ROUNDS_PER_ROW - 1;
 
             // S-box: x^5 = x^4 * x = (x^2)^2 * x
-            let mut sbox_state = [env.zero(), env.zero(), env.zero()];
-
+            // We compute sbox inline (no separate allocation) to save columns.
+            // The constraint degree is 5 from x^5 term.
+            let mut sbox_exprs = [env.zero(), env.zero(), env.zero()];
             for i in 0..STATE_SIZE {
                 let x2 = state[i].clone() * state[i].clone();
                 let x4 = x2.clone() * x2;
                 let x5 = x4 * state[i].clone();
-
-                let sbox_witness = {
-                    let pos = env.allocate();
-                    env.write_column(pos, x5.clone())
-                };
-                env.assert_eq(&sbox_witness, &x5);
-                sbox_state[i] = sbox_witness;
+                sbox_exprs[i] = x5;
             }
 
             // MDS matrix multiplication and add round constants
@@ -189,9 +188,9 @@ impl<F: PrimeField, const FULL_ROUNDS: usize, const STARTING_ROUND: usize>
                 let c1 = env.constant(mds[i][1]);
                 let c2 = env.constant(mds[i][2]);
 
-                let term0 = c0 * sbox_state[0].clone();
-                let term1 = c1 * sbox_state[1].clone();
-                let term2 = c2 * sbox_state[2].clone();
+                let term0 = c0 * sbox_exprs[0].clone();
+                let term1 = c1 * sbox_exprs[1].clone();
+                let term2 = c2 * sbox_exprs[2].clone();
 
                 let acc = term0 + term1 + term2;
                 let rc_const = env.constant(rc[i]);
@@ -369,16 +368,27 @@ impl<F: PrimeField, const FULL_ROUNDS: usize> TypedGadget<F>
         let g55 = PoseidonRoundGadget::<F, FULL_ROUNDS, 55>::new(self.params);
 
         let state = g0.synthesize(env, input);
+        env.next_row();
         let state = g5.synthesize(env, state);
+        env.next_row();
         let state = g10.synthesize(env, state);
+        env.next_row();
         let state = g15.synthesize(env, state);
+        env.next_row();
         let state = g20.synthesize(env, state);
+        env.next_row();
         let state = g25.synthesize(env, state);
+        env.next_row();
         let state = g30.synthesize(env, state);
+        env.next_row();
         let state = g35.synthesize(env, state);
+        env.next_row();
         let state = g40.synthesize(env, state);
+        env.next_row();
         let state = g45.synthesize(env, state);
+        env.next_row();
         let state = g50.synthesize(env, state);
+        env.next_row();
         g55.synthesize(env, state)
     }
 
@@ -622,10 +632,10 @@ mod tests {
                 _ => unreachable!(),
             }
 
-            // Per round: 3 sbox witnesses + 3 new_state witnesses = 6
-            // But last round uses allocate_next_row which doesn't count
-            // So: 5 rounds * 3 sbox + 4 rounds * 3 new_state = 15 + 12 = 27
-            let expected_witnesses = ROUNDS_PER_ROW * 3 + (ROUNDS_PER_ROW - 1) * 3;
+            // Per round: 3 new_state witnesses (sbox is computed inline, no allocation)
+            // But last round uses allocate_next_row which doesn't count in witness_idx
+            // So: 4 rounds * 3 new_state = 12 on current row
+            let expected_witnesses = (ROUNDS_PER_ROW - 1) * 3;
             assert_eq!(
                 env.num_witness_allocations(),
                 expected_witnesses,
@@ -634,9 +644,9 @@ mod tests {
                 expected_witnesses
             );
 
-            // Per round: 3 S-box constraints (degree 5) + 3 MDS constraints (degree 1) = 6
-            // 5 rounds = 30 constraints
-            let expected_constraints = ROUNDS_PER_ROW * 6;
+            // Per round: 3 MDS constraints (degree 5 from x^5 term)
+            // 5 rounds = 15 constraints
+            let expected_constraints = ROUNDS_PER_ROW * 3;
             assert_eq!(
                 env.num_constraints(),
                 expected_constraints,
@@ -712,9 +722,9 @@ mod tests {
         assert_eq!(output_array.len(), 3);
 
         // Check constraint count:
-        // Each of 12 steps has: 5 rounds * (3 sbox + 3 mds) = 30 constraints
-        // Total: 12 * 30 = 360 constraints
-        let expected_constraints = 12 * 30;
+        // Each of 12 steps has: 5 rounds * 3 mds = 15 constraints
+        // Total: 12 * 15 = 180 constraints
+        let expected_constraints = 12 * 15;
         assert_eq!(
             env.num_constraints(),
             expected_constraints,
@@ -1040,6 +1050,113 @@ mod trace_tests {
             output_str.contains("Next"),
             "Output should reference next row, got: {}",
             output_str
+        );
+    }
+
+    /// Verify that output positions correctly describe where outputs are written in the trace.
+    #[test]
+    fn test_poseidon_round_gadget_output_positions_match_trace() {
+        use crate::circuits::gadget::{test_utils::verify_trace_positions, TypedGadget};
+
+        let gadget = PoseidonRoundGadget::<Fp, NUMBER_FULL_ROUNDS, 0>::new(fp_params());
+        let mut env = Trace::<Fp>::new(16);
+
+        // Input state
+        let z = [Fp::from(1u64), Fp::from(2u64), Fp::from(3u64)];
+
+        // Allocate and write inputs
+        let z0 = {
+            let pos = env.allocate();
+            env.write_column(pos, z[0])
+        };
+        let z1 = {
+            let pos = env.allocate();
+            env.write_column(pos, z[1])
+        };
+        let z2 = {
+            let pos = env.allocate();
+            env.write_column(pos, z[2])
+        };
+
+        let input = PoseidonState3::new([z0, z1, z2]);
+        let current_row = env.current_row();
+
+        // Synthesize
+        let _output = gadget.synthesize(&mut env, input);
+
+        // Compute expected output
+        let expected_output = gadget.output(&PoseidonState3::new([z[0], z[1], z[2]]));
+
+        // Verify input positions
+        verify_trace_positions(
+            &env,
+            current_row,
+            <PoseidonRoundGadget<Fp, NUMBER_FULL_ROUNDS, 0> as TypedGadget<Fp>>::input_positions(),
+            &z,
+            "input",
+        );
+
+        // Verify output positions (on next row)
+        verify_trace_positions(
+            &env,
+            current_row,
+            <PoseidonRoundGadget<Fp, NUMBER_FULL_ROUNDS, 0> as TypedGadget<Fp>>::output_positions(),
+            expected_output.as_array(),
+            "output",
+        );
+    }
+
+    /// Verify that PoseidonAbsorbGadget output positions match trace.
+    #[test]
+    fn test_poseidon_absorb_gadget_output_positions_match_trace() {
+        use crate::circuits::gadget::{test_utils::verify_trace_positions, TypedGadget};
+
+        let values = [Fp::from(100u64), Fp::from(200u64)];
+        let gadget = PoseidonAbsorbGadget::<Fp>::new(values);
+        let mut env = Trace::<Fp>::new(16);
+
+        // Input state
+        let z = [Fp::from(1u64), Fp::from(2u64), Fp::from(3u64)];
+
+        // Allocate and write inputs
+        let z0 = {
+            let pos = env.allocate();
+            env.write_column(pos, z[0])
+        };
+        let z1 = {
+            let pos = env.allocate();
+            env.write_column(pos, z[1])
+        };
+        let z2 = {
+            let pos = env.allocate();
+            env.write_column(pos, z[2])
+        };
+
+        let input = PoseidonState3::new([z0, z1, z2]);
+        let current_row = env.current_row();
+
+        // Synthesize
+        let _output = gadget.synthesize(&mut env, input);
+
+        // Compute expected output
+        let expected_output = gadget.output(&PoseidonState3::new([z[0], z[1], z[2]]));
+
+        // Verify input positions
+        verify_trace_positions(
+            &env,
+            current_row,
+            <PoseidonAbsorbGadget<Fp> as TypedGadget<Fp>>::input_positions(),
+            &z,
+            "input",
+        );
+
+        // Verify output positions
+        verify_trace_positions(
+            &env,
+            current_row,
+            <PoseidonAbsorbGadget<Fp> as TypedGadget<Fp>>::output_positions(),
+            expected_output.as_array(),
+            "output",
         );
     }
 }

@@ -16,12 +16,12 @@
 //! - w4 = w2^2 = x^4 (constraint degree 2)
 //! - w7 = w4 * w2 * x = x^7 (constraint degree 3)
 //!
-//! This requires 3 intermediate witnesses per state element.
+//! This requires 3 intermediate witnesses per state element (9 total for state width 3).
 //!
-//! ## Layout (5 rounds per row)
+//! ## Layout (1 round per row)
 //!
-//! With 15 columns and state width 3, we fit 5 rounds per row.
-//! 55 rounds / 5 rounds per row = 11 rows for full permutation.
+//! With 15 columns, state width 3, and x^7 S-box needing 9 columns for intermediates,
+//! we can only fit 1 round per row. 55 rounds / 1 round per row = 55 rows for full permutation.
 
 use ark_ff::PrimeField;
 use mina_poseidon::poseidon::ArithmeticSpongeParams;
@@ -41,11 +41,12 @@ pub const STATE_SIZE: usize = 3;
 pub const KIMCHI_FULL_ROUNDS: usize = 55;
 
 /// Number of Poseidon rounds processed per circuit step.
-/// With 15 columns and width 3, we can fit 5 rounds per row.
-pub const KIMCHI_ROUNDS_PER_ROW: usize = 5;
+/// With x^7 S-box requiring 3 intermediate witnesses per element (w2, w4, w7),
+/// each round needs 9 columns for S-box. With 3 input columns, only 1 round fits per row.
+pub const KIMCHI_ROUNDS_PER_ROW: usize = 1;
 
 /// Total number of rows needed for the full Kimchi Poseidon permutation.
-/// 55 rounds / 5 rounds per row = 11 rows
+/// 55 rounds / 1 round per row = 55 rows
 pub const KIMCHI_ROWS_FOR_PERMUTATION: usize = KIMCHI_FULL_ROUNDS / KIMCHI_ROUNDS_PER_ROW;
 
 // ============================================================================
@@ -84,19 +85,19 @@ const POSEIDON_KIMCHI_ROUND_OUTPUT_POSITIONS: &[Position] = &[
     },
 ];
 
-/// Poseidon Kimchi round gadget processing 5 rounds starting at a specific round.
+/// Poseidon Kimchi round gadget processing 1 round at a specific round index.
 ///
-/// This gadget processes 5 Poseidon Kimchi full rounds on a 3-element state
+/// This gadget processes 1 Poseidon Kimchi full round on a 3-element state
 /// using the x^7 S-box.
 ///
 /// # Type Parameters
 ///
 /// - `F`: The field type (must match the Poseidon parameters)
-/// - `STARTING_ROUND`: The round index to start from (must be multiple of 5: 0, 5, 10, ..., 50)
+/// - `STARTING_ROUND`: The round index to process (0, 1, 2, ..., 54)
 ///
 /// # Selector
 ///
-/// Uses `QPoseidonKimchiRound<STARTING_ROUND>` which maps to index `23 + STARTING_ROUND / 5`.
+/// Uses `QPoseidonKimchiRound<STARTING_ROUND>` which maps to index `23 + STARTING_ROUND`.
 #[derive(Clone, Debug)]
 pub struct PoseidonKimchiRoundGadget<F: PrimeField, const STARTING_ROUND: usize> {
     /// Poseidon parameters (MDS matrix and round constants)
@@ -110,9 +111,8 @@ impl<F: PrimeField, const STARTING_ROUND: usize> PoseidonKimchiRoundGadget<F, ST
     ///
     /// Panics at compile time via const assertion if STARTING_ROUND is invalid.
     pub fn new(params: &'static ArithmeticSpongeParams<F, KIMCHI_FULL_ROUNDS>) -> Self {
-        // Compile-time checks via const evaluation
-        const { assert!(STARTING_ROUND.is_multiple_of(KIMCHI_ROUNDS_PER_ROW)) };
-        const { assert!(STARTING_ROUND + KIMCHI_ROUNDS_PER_ROW <= KIMCHI_FULL_ROUNDS) };
+        // Compile-time check: round must be within valid range
+        const { assert!(STARTING_ROUND < KIMCHI_FULL_ROUNDS) };
         Self { params }
     }
 
@@ -147,7 +147,7 @@ impl<F: PrimeField, const STARTING_ROUND: usize> PoseidonKimchiRoundGadget<F, ST
     ) -> [E::Variable; STATE_SIZE] {
         let mut state = input.clone();
 
-        // Process 5 rounds
+        // Process rounds (1 round per row due to x^7 S-box needing 9 columns)
         for round_offset in 0..KIMCHI_ROUNDS_PER_ROW {
             let round = STARTING_ROUND + round_offset;
             let is_last_round = round_offset == KIMCHI_ROUNDS_PER_ROW - 1;
@@ -252,14 +252,9 @@ impl<F: PrimeField, const STARTING_ROUND: usize> TypedGadget<F>
     }
 
     fn output(&self, input: &Self::Input<F>) -> Self::Output<F> {
-        let mut state = input.clone().into_array();
-
-        // Apply 5 rounds
-        for round_offset in 0..KIMCHI_ROUNDS_PER_ROW {
-            let round = STARTING_ROUND + round_offset;
-            state = self.round(state, round);
-        }
-
+        let state = input.clone().into_array();
+        // Apply just this one round
+        let state = self.round(state, STARTING_ROUND);
         PoseidonState3::new(state)
     }
 }
@@ -303,8 +298,8 @@ const POSEIDON_KIMCHI_PERMUTATION_OUTPUT_POSITIONS: &[Position] = &[
 
 /// Full Poseidon Kimchi permutation gadget (55 rounds).
 ///
-/// This gadget chains 11 `PoseidonKimchiRoundGadget` steps to complete
-/// the full Poseidon Kimchi permutation.
+/// This gadget runs all 55 Poseidon Kimchi rounds to complete
+/// the full permutation, using 1 round per row.
 ///
 /// # Selector
 ///
@@ -321,9 +316,111 @@ impl<F: PrimeField> PoseidonKimchiPermutationGadget<F> {
         Self { params }
     }
 
-    /// Number of rows needed for this permutation (55 / 5 = 11).
+    /// Number of rows needed for this permutation (55 rounds / 1 round per row = 55).
     pub const fn num_rows() -> usize {
         KIMCHI_ROWS_FOR_PERMUTATION
+    }
+
+    /// Compute one round of Poseidon Kimchi: S-box (x^7) -> MDS -> ARK
+    fn round(&self, state: [F; STATE_SIZE], round: usize) -> [F; STATE_SIZE] {
+        // S-box: x^7
+        let state: [F; STATE_SIZE] = [state[0].pow([7]), state[1].pow([7]), state[2].pow([7])];
+
+        // MDS matrix multiplication
+        let mds = &self.params.mds;
+        let mut new_state = [F::zero(); STATE_SIZE];
+        for i in 0..STATE_SIZE {
+            for j in 0..STATE_SIZE {
+                new_state[i] += mds[i][j] * state[j];
+            }
+        }
+
+        // Add round constants
+        let rc = &self.params.round_constants[round];
+        [
+            new_state[0] + rc[0],
+            new_state[1] + rc[1],
+            new_state[2] + rc[2],
+        ]
+    }
+
+    /// Synthesize one round of Poseidon Kimchi with constraints.
+    fn synthesize_round<E: CircuitEnv<F> + SelectorEnv<F>>(
+        &self,
+        env: &mut E,
+        state: &[E::Variable; STATE_SIZE],
+        round: usize,
+        is_last_round: bool,
+    ) -> [E::Variable; STATE_SIZE] {
+        // S-box: x^7 = x^4 * x^2 * x
+        let mut sbox_state = [env.zero(), env.zero(), env.zero()];
+
+        for i in 0..STATE_SIZE {
+            let x = &state[i];
+
+            // Compute x^2
+            let x2_expr = x.clone() * x.clone();
+            let w2 = {
+                let pos = env.allocate();
+                env.write_column(pos, x2_expr.clone())
+            };
+            env.assert_eq(&w2, &x2_expr);
+
+            // Compute x^4 = w2^2
+            let x4_expr = w2.clone() * w2.clone();
+            let w4 = {
+                let pos = env.allocate();
+                env.write_column(pos, x4_expr.clone())
+            };
+            env.assert_eq(&w4, &x4_expr);
+
+            // Compute x^7 = w4 * w2 * x
+            let x7_expr = w4 * w2 * x.clone();
+            let w7 = {
+                let pos = env.allocate();
+                env.write_column(pos, x7_expr.clone())
+            };
+            env.assert_eq(&w7, &x7_expr);
+
+            sbox_state[i] = w7;
+        }
+
+        // MDS matrix multiplication and add round constants
+        let mds = &self.params.mds;
+        let rc = &self.params.round_constants[round];
+        let mut new_state = [env.zero(), env.zero(), env.zero()];
+
+        for i in 0..STATE_SIZE {
+            let c0 = env.constant(mds[i][0]);
+            let c1 = env.constant(mds[i][1]);
+            let c2 = env.constant(mds[i][2]);
+
+            let term0 = c0 * sbox_state[0].clone();
+            let term1 = c1 * sbox_state[1].clone();
+            let term2 = c2 * sbox_state[2].clone();
+
+            let acc = term0 + term1 + term2;
+            let rc_const = env.constant(rc[i]);
+            let mds_result = acc + rc_const;
+
+            let new_state_witness = if is_last_round {
+                let pos = env.allocate_next_row();
+                let w = env.write_column(pos, mds_result.clone());
+                env.assert_eq(&w, &mds_result);
+                w
+            } else {
+                let w = {
+                    let pos = env.allocate();
+                    env.write_column(pos, mds_result.clone())
+                };
+                env.assert_eq(&w, &mds_result);
+                w
+            };
+
+            new_state[i] = new_state_witness;
+        }
+
+        new_state
     }
 }
 
@@ -347,56 +444,29 @@ impl<F: PrimeField> TypedGadget<F> for PoseidonKimchiPermutationGadget<F> {
         env: &mut E,
         input: Self::Input<E::Variable>,
     ) -> Self::Output<E::Variable> {
-        // Chain all 11 round gadgets explicitly to use correct selectors
-        let g0 = PoseidonKimchiRoundGadget::<F, 0>::new(self.params);
-        let g5 = PoseidonKimchiRoundGadget::<F, 5>::new(self.params);
-        let g10 = PoseidonKimchiRoundGadget::<F, 10>::new(self.params);
-        let g15 = PoseidonKimchiRoundGadget::<F, 15>::new(self.params);
-        let g20 = PoseidonKimchiRoundGadget::<F, 20>::new(self.params);
-        let g25 = PoseidonKimchiRoundGadget::<F, 25>::new(self.params);
-        let g30 = PoseidonKimchiRoundGadget::<F, 30>::new(self.params);
-        let g35 = PoseidonKimchiRoundGadget::<F, 35>::new(self.params);
-        let g40 = PoseidonKimchiRoundGadget::<F, 40>::new(self.params);
-        let g45 = PoseidonKimchiRoundGadget::<F, 45>::new(self.params);
-        let g50 = PoseidonKimchiRoundGadget::<F, 50>::new(self.params);
+        let mut state = input.into_array();
 
-        let state = g0.synthesize(env, input);
-        let state = g5.synthesize(env, state);
-        let state = g10.synthesize(env, state);
-        let state = g15.synthesize(env, state);
-        let state = g20.synthesize(env, state);
-        let state = g25.synthesize(env, state);
-        let state = g30.synthesize(env, state);
-        let state = g35.synthesize(env, state);
-        let state = g40.synthesize(env, state);
-        let state = g45.synthesize(env, state);
-        g50.synthesize(env, state)
+        // Process all 55 rounds
+        for round in 0..KIMCHI_FULL_ROUNDS {
+            let is_last_round = round == KIMCHI_FULL_ROUNDS - 1;
+            state = self.synthesize_round(env, &state, round, is_last_round);
+            if !is_last_round {
+                env.next_row();
+            }
+        }
+
+        PoseidonState3::new(state)
     }
 
     fn output(&self, input: &Self::Input<F>) -> Self::Output<F> {
-        let g0 = PoseidonKimchiRoundGadget::<F, 0>::new(self.params);
-        let g5 = PoseidonKimchiRoundGadget::<F, 5>::new(self.params);
-        let g10 = PoseidonKimchiRoundGadget::<F, 10>::new(self.params);
-        let g15 = PoseidonKimchiRoundGadget::<F, 15>::new(self.params);
-        let g20 = PoseidonKimchiRoundGadget::<F, 20>::new(self.params);
-        let g25 = PoseidonKimchiRoundGadget::<F, 25>::new(self.params);
-        let g30 = PoseidonKimchiRoundGadget::<F, 30>::new(self.params);
-        let g35 = PoseidonKimchiRoundGadget::<F, 35>::new(self.params);
-        let g40 = PoseidonKimchiRoundGadget::<F, 40>::new(self.params);
-        let g45 = PoseidonKimchiRoundGadget::<F, 45>::new(self.params);
-        let g50 = PoseidonKimchiRoundGadget::<F, 50>::new(self.params);
+        let mut state = input.clone().into_array();
 
-        let state = g0.output(input);
-        let state = g5.output(&state);
-        let state = g10.output(&state);
-        let state = g15.output(&state);
-        let state = g20.output(&state);
-        let state = g25.output(&state);
-        let state = g30.output(&state);
-        let state = g35.output(&state);
-        let state = g40.output(&state);
-        let state = g45.output(&state);
-        g50.output(&state)
+        // Apply all 55 rounds
+        for round in 0..KIMCHI_FULL_ROUNDS {
+            state = self.round(state, round);
+        }
+
+        PoseidonState3::new(state)
     }
 }
 
@@ -473,7 +543,7 @@ mod tests {
             PoseidonKimchiPermutationGadget::<Fp>::ROWS,
             KIMCHI_ROWS_FOR_PERMUTATION
         );
-        assert_eq!(KIMCHI_ROWS_FOR_PERMUTATION, 11); // 55 / 5 = 11
+        assert_eq!(KIMCHI_ROWS_FOR_PERMUTATION, 55); // 55 rounds / 1 round per row = 55
     }
 
     // ========================================================================
@@ -487,15 +557,20 @@ mod tests {
             <PoseidonKimchiRoundGadget<Fp, 0> as TypedGadget<Fp>>::Selector::INDEX,
             23
         );
-        // Round 5 -> index 24
+        // Round 5 -> index 28
         assert_eq!(
             <PoseidonKimchiRoundGadget<Fp, 5> as TypedGadget<Fp>>::Selector::INDEX,
-            24
+            28
         );
-        // Round 50 -> index 33
+        // Round 50 -> index 73
         assert_eq!(
             <PoseidonKimchiRoundGadget<Fp, 50> as TypedGadget<Fp>>::Selector::INDEX,
-            33
+            73
+        );
+        // Round 54 (last) -> index 77
+        assert_eq!(
+            <PoseidonKimchiRoundGadget<Fp, 54> as TypedGadget<Fp>>::Selector::INDEX,
+            77
         );
     }
 
@@ -528,15 +603,132 @@ mod tests {
         // - x^7 constraint: 1
         // - MDS output constraint: 1
         // Total per round: 3 * 4 = 12 constraints
-        // For 5 rounds: 60 constraints
+        // For 1 round per gadget: 12 constraints
         assert_eq!(
             env.num_constraints(),
-            60,
-            "Expected 60 constraints (5 rounds * 3 elements * 4 constraints)"
+            12,
+            "Expected 12 constraints (1 round * 3 elements * 4 constraints)"
         );
 
         // All constraints should be degree <= MAX_DEGREE
         env.check_degrees()
             .expect("All constraints should have degree <= MAX_DEGREE");
+    }
+
+    // ========================================================================
+    // Position verification tests
+    // ========================================================================
+
+    #[test]
+    fn test_poseidon_kimchi_round_gadget_output_positions_match_trace() {
+        use crate::circuits::{
+            gadget::{test_utils::verify_trace_positions, TypedGadget},
+            Trace,
+        };
+
+        let gadget = PoseidonKimchiRoundGadget::<Fp, 0>::new(kimchi_params());
+        let mut env = Trace::<Fp>::new(16);
+
+        // Input state
+        let z = [Fp::from(1u64), Fp::from(2u64), Fp::from(3u64)];
+
+        // Allocate and write inputs
+        let z0 = {
+            let pos = env.allocate();
+            env.write_column(pos, z[0])
+        };
+        let z1 = {
+            let pos = env.allocate();
+            env.write_column(pos, z[1])
+        };
+        let z2 = {
+            let pos = env.allocate();
+            env.write_column(pos, z[2])
+        };
+
+        let input = PoseidonState3::new([z0, z1, z2]);
+        let current_row = env.current_row();
+
+        // Synthesize
+        let _output = gadget.synthesize(&mut env, input);
+
+        // Compute expected output
+        let expected_output = gadget.output(&PoseidonState3::new([z[0], z[1], z[2]]));
+
+        // Verify input positions
+        verify_trace_positions(
+            &env,
+            current_row,
+            PoseidonKimchiRoundGadget::<Fp, 0>::input_positions(),
+            &z,
+            "input",
+        );
+
+        // Verify output positions
+        verify_trace_positions(
+            &env,
+            current_row,
+            PoseidonKimchiRoundGadget::<Fp, 0>::output_positions(),
+            &expected_output.into_array(),
+            "output",
+        );
+    }
+
+    #[test]
+    fn test_poseidon_kimchi_permutation_gadget_output_positions_match_trace() {
+        use crate::circuits::{
+            gadget::{test_utils::verify_trace_positions, TypedGadget},
+            Trace,
+        };
+
+        let gadget = PoseidonKimchiPermutationGadget::<Fp>::new(kimchi_params());
+        let mut env = Trace::<Fp>::new(100); // Need 55+ rows for full permutation
+
+        // Input state
+        let z = [Fp::from(0u64), Fp::from(0u64), Fp::from(0u64)];
+
+        // Allocate and write inputs
+        let z0 = {
+            let pos = env.allocate();
+            env.write_column(pos, z[0])
+        };
+        let z1 = {
+            let pos = env.allocate();
+            env.write_column(pos, z[1])
+        };
+        let z2 = {
+            let pos = env.allocate();
+            env.write_column(pos, z[2])
+        };
+
+        let input = PoseidonState3::new([z0, z1, z2]);
+        let start_row = env.current_row();
+
+        // Synthesize
+        let _output = gadget.synthesize(&mut env, input);
+
+        // Compute expected output
+        let expected_output = gadget.output(&PoseidonState3::new([z[0], z[1], z[2]]));
+
+        // Verify input positions
+        verify_trace_positions(
+            &env,
+            start_row,
+            PoseidonKimchiPermutationGadget::<Fp>::input_positions(),
+            &z,
+            "input",
+        );
+
+        // For permutation, output is on the last row's next row
+        // The gadget spans 55 rows (start_row through start_row + 54)
+        // Output positions are relative to final row (start_row + 54)
+        let final_row = start_row + KIMCHI_FULL_ROUNDS - 1;
+        verify_trace_positions(
+            &env,
+            final_row,
+            PoseidonKimchiPermutationGadget::<Fp>::output_positions(),
+            &expected_output.into_array(),
+            "output",
+        );
     }
 }

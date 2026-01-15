@@ -196,6 +196,16 @@ pub trait CircuitEnv<F: PrimeField> {
     /// Used for constraints that span two rows (e.g., Poseidon output on next row).
     fn allocate_next_row(&mut self) -> Self::Position;
 
+    /// Advance to the next row.
+    ///
+    /// Call this after completing synthesis for a row to move to the next row.
+    /// For gadgets that span multiple rows (like scalar multiplication steps),
+    /// this must be called between each step.
+    ///
+    /// For constraint environments: this is typically a no-op.
+    /// For trace environments: advances the current row index.
+    fn next_row(&mut self);
+
     /// Read the variable at the given position.
     ///
     /// For constraint environments: creates a symbolic variable referencing this cell.
@@ -253,6 +263,20 @@ pub trait CircuitEnv<F: PrimeField> {
         let diff = x.clone() - y.clone();
         self.assert_zero_named(name, &diff);
     }
+
+    // ========================================================================
+    // Witness computation helpers
+    // ========================================================================
+
+    /// Try to extract the concrete field value from a variable.
+    ///
+    /// Returns `Some(value)` in witness generation mode (Trace) where variables
+    /// are concrete field elements. Returns `None` in constraint generation mode
+    /// (ConstraintEnv) where variables are symbolic expressions.
+    ///
+    /// This is useful for gadgets that need to compute witness values during
+    /// synthesis (e.g., computing an inverse for EC addition).
+    fn try_as_field(&self, var: &Self::Variable) -> Option<F>;
 }
 
 // ============================================================================
@@ -594,15 +618,30 @@ impl<F: PrimeField> CircuitEnv<F> for ConstraintEnv<F> {
     type Variable = E<F>;
 
     fn allocate(&mut self) -> Self::Position {
+        assert!(
+            self.witness_idx < NUMBER_OF_COLUMNS,
+            "Maximum number of columns reached ({NUMBER_OF_COLUMNS})"
+        );
         let col = Column::X(self.witness_idx);
         self.witness_idx += 1;
         (col, CurrOrNext::Curr)
     }
 
     fn allocate_next_row(&mut self) -> Self::Position {
+        assert!(
+            self.witness_idx_next_row < NUMBER_OF_COLUMNS,
+            "Maximum number of columns reached ({NUMBER_OF_COLUMNS})"
+        );
         let col = Column::X(self.witness_idx_next_row);
         self.witness_idx_next_row += 1;
         (col, CurrOrNext::Next)
+    }
+
+    fn next_row(&mut self) {
+        // For constraint environments, advance allocation indices similar to Trace.
+        // After next_row(), what was "next row" becomes "current row".
+        self.witness_idx = self.witness_idx_next_row;
+        self.witness_idx_next_row = 0;
     }
 
     fn read_position(&self, pos: Self::Position) -> Self::Variable {
@@ -658,6 +697,11 @@ impl<F: PrimeField> CircuitEnv<F> for ConstraintEnv<F> {
         } else {
             self.named_constraints.insert(name.to_string(), x.clone());
         }
+    }
+
+    fn try_as_field(&self, _var: &Self::Variable) -> Option<F> {
+        // In constraint mode, variables are symbolic expressions, not concrete values
+        None
     }
 }
 
@@ -963,6 +1007,11 @@ impl<F: PrimeField> CircuitEnv<F> for Trace<F> {
         (col, CurrOrNext::Next)
     }
 
+    fn next_row(&mut self) {
+        // Delegate to the existing method on Trace
+        Trace::next_row(self);
+    }
+
     fn read_position(&self, pos: Self::Position) -> Self::Variable {
         let (col, row) = pos;
         let row_idx = match row {
@@ -1015,6 +1064,11 @@ impl<F: PrimeField> CircuitEnv<F> for Trace<F> {
                 self.failed_constraints.push(msg);
             }
         }
+    }
+
+    fn try_as_field(&self, var: &Self::Variable) -> Option<F> {
+        // In witness mode, variables ARE concrete field elements
+        Some(*var)
     }
 }
 

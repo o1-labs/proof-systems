@@ -186,6 +186,7 @@ pub mod folding;
 pub mod logup;
 pub mod poseidon_3_60_0_5_5_fp;
 pub mod poseidon_3_60_0_5_5_fq;
+pub mod setup;
 pub mod witness;
 
 // Re-export commonly used items
@@ -195,4 +196,5 @@ pub use folding::{
     compute_all_cross_terms, compute_cross_terms_for_row, fold_challenge, fold_error_terms,
     fold_homogenizer, fold_witnesses, CrossTerms,
 };
+pub use setup::{Setup, TrivialAccumulator, VerificationKey};
 pub use witness::{Env, Program};
