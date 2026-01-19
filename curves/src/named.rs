@@ -29,3 +29,7 @@ impl NamedCurve for Affine<LegacyPallasParameters> {
 impl NamedCurve for Affine<ark_bn254::g1::Config> {
     const NAME: &'static str = "bn254";
 }
+
+impl NamedCurve for Affine<ark_secp256k1::Config> {
+    const NAME: &'static str = "secp256k1";
+}
