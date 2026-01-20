@@ -1,0 +1,21 @@
+name: Test o1js
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - brian/o1js-test # TODO only needed for this pr then remove
+
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trigger_o1js_checks:
+    uses: o1-labs/o1js/.github/workflows/checks.yml@main
+    with:
+      proof_systems_commit: ${{ github.sha }}
+      target_repo: "o1-labs/o1js"
+      target_ref: "main"
