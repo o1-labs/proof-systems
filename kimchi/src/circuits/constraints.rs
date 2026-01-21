@@ -36,7 +36,21 @@ use std::sync::Arc;
 // ConstraintSystem
 //
 
-/// Flags for optional features in the constraint system
+/// Flags indicating which optional gates are used in a circuit.
+///
+/// Kimchi circuits can use a variety of optional gates and lookup patterns.
+/// Rather than always including constraints for every possible gate type,
+/// these flags track which gates are actually present. This allows the prover
+/// and verifier to only compute and check relevant constraints.
+///
+/// Flags are typically computed automatically via [`Self::from_gates`], which
+/// scans the circuit gates and enables the corresponding flags.
+///
+/// When a flag is disabled, the following optimizations apply:
+///
+/// - The gate's selector polynomial is not computed
+/// - The gate's constraints are excluded from linearization
+/// - Associated lookup tables are not included
 #[cfg_attr(
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
@@ -44,19 +58,26 @@ use std::sync::Arc;
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 pub struct FeatureFlags {
-    /// RangeCheck0 gate
+    /// Enables [`GateType::RangeCheck0`], which partially constrains one
+    /// 88-bit value. Can also perform a standalone 64-bit range check by
+    /// constraining columns 1-2 to zero (removing the two highest 12-bit
+    /// limbs: 88 - 24 = 64 bits).
+    /// See [`crate::circuits::polynomials::range_check`] for details.
     pub range_check0: bool,
-    /// RangeCheck1 gate
+    /// Enables [`GateType::RangeCheck1`], which fully constrains the third
+    /// value in the multi-range-check gadget and triggers deferred lookups.
+    /// See [`crate::circuits::polynomials::range_check`] for details.
     pub range_check1: bool,
-    /// Foreign field addition gate
+    /// Enables [`GateType::ForeignFieldAdd`] for addition over non-native fields.
     pub foreign_field_add: bool,
-    /// Foreign field multiplication gate
+    /// Enables [`GateType::ForeignFieldMul`] for multiplication over non-native fields.
     pub foreign_field_mul: bool,
-    /// XOR gate
+    /// Enables [`GateType::Xor16`] for 16-bit XOR operations.
     pub xor: bool,
-    /// ROT gate
+    /// Enables [`GateType::Rot64`] for 64-bit rotation operations.
     pub rot: bool,
-    /// Lookup features
+    /// Lookup feature configuration.
+    /// See [`LookupFeatures`] for details.
     pub lookup_features: LookupFeatures,
 }
 
@@ -764,6 +785,7 @@ pub fn zk_rows_strict_lower_bound(num_chunks: usize) -> usize {
 }
 
 impl FeatureFlags {
+    /// Creates feature flags by scanning gates, using pre-computed lookup features.
     pub fn from_gates_and_lookup_features<F: PrimeField>(
         gates: &[CircuitGate<F>],
         lookup_features: LookupFeatures,
@@ -793,6 +815,10 @@ impl FeatureFlags {
         feature_flags
     }
 
+    /// Creates feature flags by scanning gates for optional gate types.
+    ///
+    /// This is the primary constructor. It detects both gate-level features
+    /// and lookup features from the circuit gates.
     pub fn from_gates<F: PrimeField>(
         gates: &[CircuitGate<F>],
         uses_runtime_tables: bool,
