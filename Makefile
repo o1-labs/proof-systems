@@ -214,6 +214,7 @@ nextest-heavy-with-coverage:
 .PHONY: nextest-all
 nextest-all: ## Test the project with all tests and using nextest test runner
 		cargo nextest run \
+			--workspace \
 			--features "$(WORKSPACE_FEATURES)" \
 			--exclude plonk_wasm \
 			--release $(CARGO_EXTRA_ARGS) \
