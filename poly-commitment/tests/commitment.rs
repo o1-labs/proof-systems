@@ -1,4 +1,4 @@
-use ark_ff::{UniformRand, Zero};
+use ark_ff::{One, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Radix2EvaluationDomain};
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
@@ -11,8 +11,8 @@ use o1_utils::{
 };
 use poly_commitment::{
     commitment::{
-        combined_inner_product, BatchEvaluationProof, BlindedCommitment, CommitmentCurve,
-        Evaluation, PolyComm,
+        b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof,
+        BlindedCommitment, CommitmentCurve, Evaluation, PolyComm,
     },
     ipa::{OpeningProof, SRS},
     utils::DensePolynomialOrEvaluations,
@@ -380,6 +380,158 @@ pub fn ser_regression_canonical_polycomm() {
     ];
 
     test_generic_serialization_regression_serde(data_expected, buf_expected);
+}
+
+// =============================================================================
+// Tests for b_poly and b_poly_coefficients
+// =============================================================================
+
+#[test]
+fn test_b_poly_empty_challenges() {
+    // With no challenges, the product is empty, which equals 1
+    let chals: Vec<Fp> = vec![];
+    let x = Fp::from(5u64);
+    let result = b_poly(&chals, x);
+    assert_eq!(result, Fp::one());
+}
+
+#[test]
+fn test_b_poly_single_challenge() {
+    // With one challenge c, b_poly returns (1 + c*x)
+    // chals = [3], x = 5 => (1 + 3*5) = 16
+    let chals = vec![Fp::from(3u64)];
+    let x = Fp::from(5u64);
+    let result = b_poly(&chals, x);
+    assert_eq!(result, Fp::from(16u64));
+}
+
+#[test]
+fn test_b_poly_two_challenges() {
+    // With chals = [c0, c1], b_poly returns (1 + c1*x)(1 + c0*x^2)
+    // chals = [2, 3], x = 5
+    // => (1 + 3*5)(1 + 2*25) = (1 + 15)(1 + 50) = 16 * 51 = 816
+    let chals = vec![Fp::from(2u64), Fp::from(3u64)];
+    let x = Fp::from(5u64);
+    let result = b_poly(&chals, x);
+    assert_eq!(result, Fp::from(816u64));
+}
+
+#[test]
+fn test_b_poly_three_challenges() {
+    // With chals = [c0, c1, c2], b_poly returns (1 + c2*x)(1 + c1*x^2)(1 + c0*x^4)
+    // chals = [2, 3, 5], x = 2
+    // => (1 + 5*2)(1 + 3*4)(1 + 2*16) = (1 + 10)(1 + 12)(1 + 32) = 11 * 13 * 33 = 4719
+    let chals = vec![Fp::from(2u64), Fp::from(3u64), Fp::from(5u64)];
+    let x = Fp::from(2u64);
+    let result = b_poly(&chals, x);
+    assert_eq!(result, Fp::from(4719u64));
+}
+
+#[test]
+fn test_b_poly_coefficients_empty() {
+    // With no challenges, the polynomial is just 1, so coefficients = [1]
+    let chals: Vec<Fp> = vec![];
+    let coeffs = b_poly_coefficients(&chals);
+    assert_eq!(coeffs.len(), 1);
+    assert_eq!(coeffs[0], Fp::one());
+}
+
+#[test]
+fn test_b_poly_coefficients_single() {
+    // With one challenge c, polynomial is (1 + c*x), coefficients = [1, c]
+    let c = Fp::from(7u64);
+    let chals = vec![c];
+    let coeffs = b_poly_coefficients(&chals);
+    assert_eq!(coeffs.len(), 2);
+    assert_eq!(coeffs[0], Fp::one());
+    assert_eq!(coeffs[1], c);
+}
+
+#[test]
+fn test_b_poly_coefficients_two_challenges() {
+    // With chals = [c0, c1], polynomial is (1 + c1*x)(1 + c0*x^2)
+    // = 1 + c1*x + c0*x^2 + c0*c1*x^3
+    // coefficients = [1, c1, c0, c0*c1]
+    let c0 = Fp::from(2u64);
+    let c1 = Fp::from(3u64);
+    let chals = vec![c0, c1];
+    let coeffs = b_poly_coefficients(&chals);
+    assert_eq!(coeffs.len(), 4);
+    assert_eq!(coeffs[0], Fp::one());
+    assert_eq!(coeffs[1], c1);
+    assert_eq!(coeffs[2], c0);
+    assert_eq!(coeffs[3], c0 * c1);
+}
+
+#[test]
+fn test_b_poly_coefficients_consistency_with_b_poly() {
+    // Verify that evaluating the polynomial from coefficients matches b_poly
+    let chals = vec![Fp::from(2u64), Fp::from(3u64), Fp::from(5u64)];
+    let x = Fp::from(7u64);
+
+    let direct_result = b_poly(&chals, x);
+    let coeffs = b_poly_coefficients(&chals);
+
+    // Evaluate polynomial: sum_{i=0}^{n-1} coeffs[i] * x^i
+    let mut poly_result = Fp::zero();
+    let mut x_power = Fp::one();
+    for coeff in &coeffs {
+        poly_result += *coeff * x_power;
+        x_power *= x;
+    }
+
+    assert_eq!(direct_result, poly_result);
+}
+
+#[test]
+fn test_b_poly_coefficients_consistency_random() {
+    // Randomized test: verify consistency between b_poly and b_poly_coefficients
+    let mut rng = o1_utils::tests::make_test_rng(Some([42u8; 32]));
+
+    for num_challenges in 1..=8 {
+        let chals: Vec<Fp> = (0..num_challenges).map(|_| Fp::rand(&mut rng)).collect();
+        let x = Fp::rand(&mut rng);
+
+        let direct_result = b_poly(&chals, x);
+        let coeffs = b_poly_coefficients(&chals);
+
+        // Verify length is 2^num_challenges
+        assert_eq!(coeffs.len(), 1 << num_challenges);
+
+        // Evaluate polynomial from coefficients
+        let mut poly_result = Fp::zero();
+        let mut x_power = Fp::one();
+        for coeff in &coeffs {
+            poly_result += *coeff * x_power;
+            x_power *= x;
+        }
+
+        assert_eq!(
+            direct_result, poly_result,
+            "Mismatch for {} challenges",
+            num_challenges
+        );
+    }
+}
+
+#[test]
+fn test_b_poly_at_zero() {
+    // b_poly at x=0 should always be 1 (constant term)
+    let chals = vec![Fp::from(2u64), Fp::from(3u64), Fp::from(5u64)];
+    let x = Fp::zero();
+    let result = b_poly(&chals, x);
+    assert_eq!(result, Fp::one());
+}
+
+#[test]
+fn test_b_poly_at_one() {
+    // b_poly at x=1: (1 + c[-1])(1 + c[-2])(1 + c[-3])...
+    // = product of (1 + c_i) for all challenges
+    let chals = vec![Fp::from(2u64), Fp::from(3u64), Fp::from(5u64)];
+    let x = Fp::one();
+    let result = b_poly(&chals, x);
+    // (1 + 2)(1 + 3)(1 + 5) = 3 * 4 * 6 = 72
+    assert_eq!(result, Fp::from(72u64));
 }
 
 #[test]
