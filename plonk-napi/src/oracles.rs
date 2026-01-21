@@ -39,17 +39,23 @@ macro_rules! impl_oracles {
             #[napi(js_name = [<Wasm $field_name:camel RandomOracles>])]
             #[derive(Clone, Copy)]
             pub struct [<Napi $field_name:camel RandomOracles>] {
+                #[napi(js_name = "joint_combiner_chal")]
                 pub joint_combiner_chal: Option<$NapiF>,
+                #[napi(js_name = "joint_combiner")]
                 pub joint_combiner: Option<$NapiF>,
                 pub beta: $NapiF,
                 pub gamma: $NapiF,
+                #[napi(js_name = "alpha_chal")]
                 pub alpha_chal: $NapiF,
                 pub alpha: $NapiF,
                 pub zeta: $NapiF,
                 pub v: $NapiF,
                 pub u: $NapiF,
+                #[napi(js_name = "zeta_chal")]
                 pub zeta_chal: $NapiF,
+                #[napi(js_name = "v_chal")]
                 pub v_chal: $NapiF,
+                #[napi(js_name = "u_chal")]
                 pub u_chal: $NapiF,
             }
             type NapiRandomOracles = [<Napi $field_name:camel RandomOracles>];
@@ -152,10 +158,13 @@ macro_rules! impl_oracles {
             #[derive(Clone)]
             pub struct [<Napi $field_name:camel Oracles>] {
                 pub o: [<Napi $field_name:camel RandomOracles>],
+                #[napi(js_name = "p_eval0")]
                 pub p_eval0: $NapiF,
+                #[napi(js_name = "p_eval1")]
                 pub p_eval1: $NapiF,
                 #[napi(skip)]
                 pub opening_prechallenges: NapiFlatVector<$NapiF>,
+                #[napi(js_name = "digest_before_evaluations")]
                 pub digest_before_evaluations: $NapiF,
             }
 

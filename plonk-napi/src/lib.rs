@@ -93,7 +93,10 @@ pub use srs::{
     fq::NapiFqSrs as WasmFqSrs, *,
 };
 pub use tables::{JsLookupTableFp, JsLookupTableFq, JsRuntimeTableCfgFp, JsRuntimeTableCfgFq};
-pub use vector::{fp::WasmVecVecFp, fq::WasmVecVecFq, NapiFlatVector};
+pub use vector::{
+    fp::NapiVecVecFp as WasmVecVecFp, fq::NapiVecVecFq as WasmVecVecFq,
+    NapiFlatVector as WasmFlatVector,
+};
 pub use wrappers::{
     field::{NapiPastaFp as WasmPastaFp, NapiPastaFq as WasmPastaFq},
     group::{NapiGPallas as WasmGPallas, NapiGVesta as WasmGVesta},

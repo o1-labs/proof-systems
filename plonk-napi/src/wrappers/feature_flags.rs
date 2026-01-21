@@ -7,13 +7,18 @@ use napi_derive::napi;
 #[napi(object, js_name = "WasmFeatureFlags")]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct NapiFeatureFlags {
+    #[napi(js_name = "range_check0")]
     pub range_check0: bool,
+    #[napi(js_name = "range_check1")]
     pub range_check1: bool,
+    #[napi(js_name = "foreign_field_add")]
     pub foreign_field_add: bool,
+    #[napi(js_name = "foreign_field_mul")]
     pub foreign_field_mul: bool,
     pub xor: bool,
     pub rot: bool,
     pub lookup: bool,
+    #[napi(js_name = "runtime_tables")]
     pub runtime_tables: bool,
 }
 
