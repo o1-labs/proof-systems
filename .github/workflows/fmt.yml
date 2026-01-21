@@ -28,3 +28,22 @@ jobs:
 
       - name: Check formatting related to Rust code
         run: make check-format
+
+  run_markdown_formatting:
+    name: Formatting Markdown files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check markdown formatting
+        run: make check-format-md

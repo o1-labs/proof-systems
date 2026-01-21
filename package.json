@@ -1,0 +1,7 @@
+{
+  "name": "proof-systems",
+  "private": true,
+  "devDependencies": {
+    "prettier": "3.8.0"
+  }
+}
