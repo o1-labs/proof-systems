@@ -234,6 +234,14 @@ format: ## Format the code
 		cargo +nightly fmt
 		taplo fmt
 
+.PHONY: check-format-md
+check-format-md: ## Check markdown formatting
+		npx prettier --check '**/*.md'
+
+.PHONY: format-md
+format-md: ## Format markdown files
+		npx prettier --write '**/*.md'
+
 .PHONY: lint
 lint: ## Lint the code
 		cargo clippy --all --features "$(WORKSPACE_FEATURES)" --all-targets --tests \

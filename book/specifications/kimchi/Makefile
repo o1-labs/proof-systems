@@ -16,10 +16,22 @@ OUT_FILE := ../../src/specs/kimchi.md
 #   · because it interprets the underscore in LaTeX as emphasis
 # - MD056: Table column count
 #   · because CI hetzner does not work otherwise; seems that the problem is synthetic
+# - MD004: Unordered list style
+#   · because cargo-spec generates asterisk lists but markdownlint prefers dashes
 build:
 	cargo spec build --output-file $(OUT_FILE)
-	@which markdownlint &>/dev/null || (echo "Missing markdownlint-cli dependency: npm install -g markdownlint-cli" && exit 1)
-	markdownlint --ignore node_modules --disable=MD012 --disable=MD024 --disable=MD049 --disable=MD013 --disable=MD010 --disable=MD056 $(OUT_FILE)
+	@which markdownlint &>/dev/null || \
+		(echo "Missing markdownlint-cli dependency: npm install -g markdownlint-cli" \
+		&& exit 1)
+	markdownlint --ignore node_modules \
+		--disable=MD004 \
+		--disable=MD010 \
+		--disable=MD012 \
+		--disable=MD013 \
+		--disable=MD024 \
+		--disable=MD049 \
+		--disable=MD056 \
+		$(OUT_FILE)
 
 # watches specification-related files and rebuilds them on the fly
 watch:

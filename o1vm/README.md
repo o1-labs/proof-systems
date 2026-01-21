@@ -14,23 +14,22 @@ Currently, the only program that the codebase has been tested on is the
 [op-program](./ethereum-optimism/op-program), which contains code to verify
 Ethereum state transitions (EVM).
 
-`op-program` is first compiled into MIPS, using the Go compiler.
-From there, we fetch the latest Ethereum/Optimism network information (latest
-block, etc), and execute the op-program using the MIPS VM provided by Optimism,
-named Cannon (`./run-cannon`).
+`op-program` is first compiled into MIPS, using the Go compiler. From there, we
+fetch the latest Ethereum/Optimism network information (latest block, etc), and
+execute the op-program using the MIPS VM provided by Optimism, named Cannon
+(`./run-cannon`).
 
-We can execute o1vm later using `run-vm.sh`. It will build the whole data
-points (witness) required to make a proof later.
-Note that everything is only local at the moment. Nothing is posted on-chain or
-anywhere else.
+We can execute o1vm later using `run-vm.sh`. It will build the whole data points
+(witness) required to make a proof later. Note that everything is only local at
+the moment. Nothing is posted on-chain or anywhere else.
 
 Each different step can be run using `./run-code.sh`.
 
 ## Pre-requisites
 
 o1vm compiles a certain version of the Optimism codebase (written in Go), and
-therefore you need to have a Go compiler installed on your machine. For now,
-at least go 1.21 is required.
+therefore you need to have a Go compiler installed on your machine. For now, at
+least go 1.21 is required.
 
 You can use [gvm](https://github.com/moovweb/gvm) to install a Go compiler.
 Switch to go 1.21 before continuing.
@@ -40,8 +39,8 @@ gvm install go1.21
 gvm use go1.21 [--default]
 ```
 
-If you do not have a go version installed you will need earlier versions
-to install 1.21
+If you do not have a go version installed you will need earlier versions to
+install 1.21
 
 ```shell
 gvm install go1.4 -B
@@ -54,8 +53,8 @@ gvm install go1.21
 gvm use go1.21s
 ```
 
-You also will need to install the [Foundry](https://getfoundry.sh/) toolkit
-in order to utilize applications like `cast`.
+You also will need to install the [Foundry](https://getfoundry.sh/) toolkit in
+order to utilize applications like `cast`.
 
 ```shell
 foundryup
@@ -94,8 +93,9 @@ block and its predecessor:
 ./run-code.sh
 ```
 
-By default this will also create a script named `env-for-latest-l2-block.sh` with a
-snapshot of all the information that you need to rerun the same test again:
+By default this will also create a script named `env-for-latest-l2-block.sh`
+with a snapshot of all the information that you need to rerun the same test
+again:
 
 ```bash
 FILENAME=env-for-latest-l2-block.sh bash run-code.sh
@@ -148,8 +148,10 @@ The `NETWORK_NAME` defaults to `sepolia`.
 
 If you want to run the o1vm with cached data, you can use the following steps:
 
-- Make sure you have [Docker Engine](https://docs.docker.com/engine/install/) and [Python3](https://www.python.org/downloads/) installed on your machine.
-- Fetch the cached data by executing the following command (it might take some time):
+- Make sure you have [Docker Engine](https://docs.docker.com/engine/install/)
+  and [Python3](https://www.python.org/downloads/) installed on your machine.
+- Fetch the cached data by executing the following command (it might take some
+  time):
 
 ```shell
 ./fetch-e2e-testing-cache.sh
@@ -191,12 +193,12 @@ respectively in `resources/programs/[ISA]/src` and
 For the RISC-V 32 bits architecture, the user can install the toolchain by using
 `make setup-riscv32-toolchain`.
 
-If you encounter any issue with the build dependencies, you can refer to [this
-GitHub repository](https://github.com/riscv-collab/riscv-gnu-toolchain?tab=readme-ov-file#prerequisites).
+If you encounter any issue with the build dependencies, you can refer to
+[this GitHub repository](https://github.com/riscv-collab/riscv-gnu-toolchain?tab=readme-ov-file#prerequisites).
 
-The toolchain will be available in the directory
-`_riscv32-gnu-toolchain/build` at the root of this repository (see variable
-`RISCV32_TOOLCHAIN_PATH` in the [Makefile](../Makefile).
+The toolchain will be available in the directory `_riscv32-gnu-toolchain/build`
+at the root of this repository (see variable `RISCV32_TOOLCHAIN_PATH` in the
+[Makefile](../Makefile).
 
 To compile on of the source files available in
 `resources/programs/riscv32im/src`, the user can use:
@@ -221,8 +223,8 @@ binary.
 
 This project is dual-licensed under either:
 
-* MIT license (see LICENSE-MIT)
-* Apache License, Version 2.0 (see LICENSE-APACHE)
+- MIT license (see LICENSE-MIT)
+- Apache License, Version 2.0 (see LICENSE-APACHE)
 
 at your option.
 

@@ -2,14 +2,16 @@
 
 Snarky, as of today, is constructed as two parts:
 
-* a snarky wrapper, which is explained in this document
-* a backend underneath that wrapper, explained in the [kimchi backend section](./kimchi-backend.md)
+- a snarky wrapper, which is explained in this document
+- a backend underneath that wrapper, explained in the
+  [kimchi backend section](./kimchi-backend.md)
 
 ```admonish
 This separation exists for legacy reasons, and ideally we should merge the two into a single library.
 ```
 
-The snarky wrapper mostly exists in `checked_runner.rs`, and has the following state:
+The snarky wrapper mostly exists in `checked_runner.rs`, and has the following
+state:
 
 ```rust
 where
@@ -44,7 +46,8 @@ where
 }
 ```
 
-The wrapper is designed to be used in different ways, depending on the fields set.
+The wrapper is designed to be used in different ways, depending on the fields
+set.
 
 ```admonish
 Ideally, we would like to only run this once and obtain a result that's an immutable compiled artifact.
@@ -56,15 +59,23 @@ In the future these should be passed as arguments to functions, and should not e
 
 The support for public output is implemented as kind of a hack.
 
-When the developer writes a circuit, they have to specify the type of the public output.
+When the developer writes a circuit, they have to specify the type of the public
+output.
 
-This allows the API to save enough room at the end of the public input, and store the variables used in the public output in the state.
+This allows the API to save enough room at the end of the public input, and
+store the variables used in the public output in the state.
 
-When the API calls the circuit written by the developer, it expects the public output (as a snarky type) to be returned by the function.
-The compilation or proving API that ends up calling that function, can thus obtain the variables of the public output.
-With that in hand, the API can continue to write the circuit to enforce an equality constraint between these variables being returned and the public output variable that it had previously stored in the state.
+When the API calls the circuit written by the developer, it expects the public
+output (as a snarky type) to be returned by the function. The compilation or
+proving API that ends up calling that function, can thus obtain the variables of
+the public output. With that in hand, the API can continue to write the circuit
+to enforce an equality constraint between these variables being returned and the
+public output variable that it had previously stored in the state.
 
-Essentially, the kimchi backend will turn this into as many wiring as there are `FieldVar` in the public output.
+Essentially, the kimchi backend will turn this into as many wiring as there are
+`FieldVar` in the public output.
 
-During witness generation, we need a way to modify the witness once we know the values of the public output.
-As the public output `FieldVar`s were generated from the snarky wrapper (and not from the kimchi backend), the snarky wrapper should know their values after running the given circuit.
+During witness generation, we need a way to modify the witness once we know the
+values of the public output. As the public output `FieldVar`s were generated
+from the snarky wrapper (and not from the kimchi backend), the snarky wrapper
+should know their values after running the given circuit.

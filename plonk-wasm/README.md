@@ -1,22 +1,23 @@
 # Kimchi compatibility layer for WebAssembly
 
-This code allows us to compile parts of [Kimchi](./../kimchi) into [Web Assembly
-(WASM)](https://webassembly.org/), making the proof system available for use in
-Web and NodeJS applications.
-The WebAssembly module is also exposing all the methods and primitives that the
-OCaml Mina codebase requires.
+This code allows us to compile parts of [Kimchi](./../kimchi) into
+[Web Assembly (WASM)](https://webassembly.org/), making the proof system
+available for use in Web and NodeJS applications. The WebAssembly module is also
+exposing all the methods and primitives that the OCaml Mina codebase requires.
 
 The WebAssembly module will be used in particular to define frameworks like
 [o1js](https://github.com/o1-labs/o1js).
 
 ## Usage
 
-Makefile targets are defined at the top-level of this repository.
-From that location, you can run
+Makefile targets are defined at the top-level of this repository. From that
+location, you can run
+
 ```
 make build-nodejs # (for NodeJS environments)
 make build-web    # (for web browsers)
 ```
+
 to compile the Kimchi library (and its dependencies) into a WebAssembly module
 ready to be run in NodeJS or in the browser.
 
@@ -46,9 +47,9 @@ The library exposes several core components from the Kimchi proof system:
   proof system
 
 The methods that will be exposed in the WebAssembly module are surrounded by the
-macro `#[wasm_bindgen]`.
-All Rust symbols used by the OCaml client of Mina are required to be exposed in
-the WebAssembly module, even if not directly desired in the user API.
+macro `#[wasm_bindgen]`. All Rust symbols used by the OCaml client of Mina are
+required to be exposed in the WebAssembly module, even if not directly desired
+in the user API.
 
 ### 3. Build System
 

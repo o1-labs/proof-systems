@@ -53,11 +53,13 @@ where
 
 ## Check
 
-The `check()` function is simply constraining the `FieldVar` $x$ to be either $0$ or $1$ using the following constraint:
+The `check()` function is simply constraining the `FieldVar` $x$ to be either
+$0$ or $1$ using the following constraint:
 
 $$x ( x - 1) = 0$$
 
-It is trivial to use the [double generic gate](../specs/kimchi.md#double-generic-gate) for this.
+It is trivial to use the
+[double generic gate](../specs/kimchi.md#double-generic-gate) for this.
 
 ## And
 
@@ -69,5 +71,5 @@ $$\sim x = 1 - x$$
 
 ## Or
 
-* $\sim x \land \sim y = b$
-* $x \lor y = \sim b$
+- $\sim x \land \sim y = b$
+- $x \lor y = \sim b$
