@@ -59,7 +59,6 @@
   - [Foreign Field Multiplication](./kimchi/foreign_field_mul.md)
   - [Keccak](./kimchi/keccak.md)
 
-
 # Pickles & Inductive Proof Systems
 
 - [Overview](./pickles/overview.md)
@@ -67,7 +66,6 @@
 - [Accumulation](./pickles/accumulation.md)
 - [Deferred Computation](./pickles/deferred.md)
 - [Technical Diagrams](./pickles/diagrams.md)
-
 
 # Technical Specifications
 

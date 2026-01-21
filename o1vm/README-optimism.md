@@ -1,6 +1,7 @@
 ## Run infra for OP Sepolia on Ubuntu
 
 Install the first dependencies:
+
 ```
 sudo apt update
 # chrony will ensure the system clock is up to date
@@ -8,6 +9,7 @@ sudo apt install build-essential git vim chrony ufw -y
 ```
 
 Set up your firewall
+
 ```
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
@@ -21,12 +23,14 @@ sudo ufw enable
 ```
 
 Set up a non-root user and its environment
+
 ```
 sudo useradd validator
 mkdir /validator
 ```
 
 Set up go:
+
 ```
 cd /validator
 curl -OL https://go.dev/dl/go1.22.3.linux-amd64.tar.gz
@@ -36,6 +40,7 @@ source ~/.profile
 ```
 
 Set up op-geth:
+
 ```
 git clone https://github.com/ethereum-optimism/op-geth.git
 cd op-geth
@@ -44,6 +49,7 @@ make all
 ```
 
 Set up op-node:
+
 ```
 cd /validator
 git clone https://github.com/ethereum-optimism/optimism.git
@@ -53,6 +59,7 @@ make op-node
 ```
 
 Generate a JWT token:
+
 ```
 cd /validator
 mkdir infra-for-op && cd infra-for-op
@@ -60,12 +67,14 @@ openssl rand -hex 32 > jwt.txt
 ```
 
 Generate genesis:
+
 ```
 curl -o genesis.json -sL https://storage.googleapis.com/oplabs-network-data/Sepolia/genesis.json
 ../op-geth/build/bin/geth init --datadir="op-geth-data" genesis.json
 ```
 
 Create the script `/validator/infra-for-op/op-geth-run.sh` to run OP geth
+
 ```
 #!/bin/bash
 SEQUENCER_URL="https://sepolia-sequencer.optimism.io/"
@@ -104,6 +113,7 @@ PORT=30303
 ```
 
 Create the service `/etc/systemd/system/op-geth.service`
+
 ```
 [Unit]
 Description=OP geth service
@@ -112,23 +122,26 @@ Description=OP geth service
 Type=simple
 User=validator
 Restart=always
-ExecStart=/validator/infra-for-optimism/op-geth-run.sh 
+ExecStart=/validator/infra-for-optimism/op-geth-run.sh
 
 [Install]
 WantedBy=default.target
 ```
 
 Enable the op-geth service
+
 ```
 sudo systemctl enable op-geth
 ```
 
 Create the folder to store op-node files:
+
 ```
 mkdir /validator/infra-for-optimism/op-node-data
 ```
 
 Create the script `/validator/infra-for-op/op-node-run.sh` to run the OP node:
+
 ```
 #!/bin/bash
 L1_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
@@ -152,6 +165,7 @@ cd /validator/infra-for-optimism/op-node-data
 ```
 
 Create the service `/etc/systemd/system/op-node.service`
+
 ```
 [Unit]
 Description=OP node service
@@ -168,23 +182,27 @@ WantedBy=multi-user.target
 ```
 
 Enable the op-node service
+
 ```
 sudo systemctl enable op-node
 ```
 
 Make sure the user `validator` can run the services smoothly:
+
 ```
 chown -R validator:validator /validator
 loginctl enable-linger validator
 ```
 
 Start and check the op-geth service
+
 ```
 sudo systemctl start op-geth
 journalctl -u op-geth -n 20 -f
 ```
 
 Start and check the op-node service
+
 ```
 sudo systemctl start op-node
 journalctl -u op-node -n 20 -f

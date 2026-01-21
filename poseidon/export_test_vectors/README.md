@@ -26,9 +26,11 @@ cargo run --bin export_test_vectors --all-features -- <MODE> <PARAM_TYPE> <OUTPU
   - `es5`: ES5 JavaScript format
   - `json`: JSON format
 
-- `--seed <SEED>`: Custom seed for test vector generation (32 bytes as hex string)
+- `--seed <SEED>`: Custom seed for test vector generation (32 bytes as hex
+  string)
   - If not provided, uses a default fixed seed for reproducibility
-  - Example: `--seed 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`
+  - Example:
+    `--seed 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`
 
 - `--deterministic`: Use deterministic output for regression testing
   - Only affects version info in ES5 file headers, not test vectors

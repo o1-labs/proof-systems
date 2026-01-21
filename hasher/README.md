@@ -1,17 +1,17 @@
 # Mina hasher
 
 This crate provides an API and framework for Mina hashing. It is a safe wrapper
-around Mina's instances of the [Poseidon arithmetic
-sponge](https://o1-labs.github.io/proof-systems/specs/poseidon.html) that
-converts it from a sponge into a hash interface.
+around Mina's instances of the
+[Poseidon arithmetic sponge](https://o1-labs.github.io/proof-systems/specs/poseidon.html)
+that converts it from a sponge into a hash interface.
 
 ## Hasher interface
 
 The `mina_hasher` crate currently supports creating both the legacy hasher and
 an experimental kimchi hasher.
 
-* [`create_legacy`] create a legacy hasher
-* [`create_kimchi`] create an experimental kimchi hasher
+- [`create_legacy`] create a legacy hasher
+- [`create_kimchi`] create an experimental kimchi hasher
 
 Here is an example of how to use the hasher interface.
 
@@ -146,8 +146,9 @@ let out = hasher.hash(&node2);
 
 **Combining `ROInput`s**
 
-When implementing the `Hashable` trait for a structure composed of other `Hashable`
-structures, the `to_roinput()` implementation needs to combine `ROInput`s.
+When implementing the `Hashable` trait for a structure composed of other
+`Hashable` structures, the `to_roinput()` implementation needs to combine
+`ROInput`s.
 
 Here is an example showing how this is done.
 
@@ -203,8 +204,8 @@ For more details please see the rustdoc mina-hasher documentation.
 
 # Tests
 
-There is a standard set of [hasher
-tests](https://github.com/o1-labs/proof-systems/tree/master/hasher/tests/hasher.rs)
+There is a standard set of
+[hasher tests](https://github.com/o1-labs/proof-systems/tree/master/hasher/tests/hasher.rs)
 in the
 [`./tests`](https://github.com/o1-labs/proof-systems/tree/master/hasher/tests)
 directory.

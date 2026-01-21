@@ -8,13 +8,18 @@ This needs to be fixed.
 
 The URS comprises of:
 
-* `Gs`: an arbitrary ordered list of curve points that can be used to commit to a polynomial in a non-hiding way.
-* `H`: a blinding curve point that can be used to add hiding to a polynomial commitment scheme.
+- `Gs`: an arbitrary ordered list of curve points that can be used to commit to
+  a polynomial in a non-hiding way.
+- `H`: a blinding curve point that can be used to add hiding to a polynomial
+  commitment scheme.
 
 The URS is generated deterministically, and thus can be rederived if not stored.
 
-As different circuits of different size do not share the same domain, and the size of the domain is directly equal to the number of `Gs` curve points we use to commit to polynomials, we often want to share the same URS of maximum size across many circuits (constraint systems).
-Circuit associated with smaller domains will simply use a truncation of the shared URS.
+As different circuits of different size do not share the same domain, and the
+size of the domain is directly equal to the number of `Gs` curve points we use
+to commit to polynomials, we often want to share the same URS of maximum size
+across many circuits (constraint systems). Circuit associated with smaller
+domains will simply use a truncation of the shared URS.
 
 ```admonish
 A circuit's domain is generated as the first power of 2 that is equal, or larger, to the number of gates used in the circuit (including zero-knowledge gates).
@@ -26,7 +31,8 @@ TODO: specify this part
 
 ## Curve points to commit to a polynomial
 
-The following pseudo-code specifies how the `Gs` curve points, as well as the `H` curve point, are generated.
+The following pseudo-code specifies how the `Gs` curve points, as well as the
+`H` curve point, are generated.
 
 ```python
 def create(depth):
@@ -62,7 +68,8 @@ TODO: specify `map.to_group` in the previous section.
 
 ## URS values in practice
 
-As there is no limit to the number of commitment curve points you can generate, we only provide the first three ones to serve as test vectors.
+As there is no limit to the number of commitment curve points you can generate,
+we only provide the first three ones to serve as test vectors.
 
 TODO: specify the encoding
 
@@ -81,7 +88,6 @@ G2 = (x=26985F27306586711466C5B2C28754AA62FE33516D75CEF1F7751F1A169713FD, y=2E89
 ```
 H = (x=092060386301C999AAB4F263757836369CA27975E28BC7A8E5B2CE5B26262201, y=314FC4D83AE66A509F9D41BE6165F2606A209A9B5805EE85CE20249C5EBCBE26)
 ```
-
 
 ### Pallas
 

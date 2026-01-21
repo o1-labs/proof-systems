@@ -38,16 +38,19 @@ cryptographic implementations.
 #### Examples
 
 Generate legacy width 3 Poseidon parameters in Rust format:
+
 ```bash
 ./params.sage rust 3 ''
 ```
 
 Generate width 3 Poseidon parameters with 54 rounds:
+
 ```bash
 ./params.sage rust 3 3 --rounds 54
 ```
 
 Generate parameters for the "kimchi" parameter set:
+
 ```bash
 ./params.sage rust 3 kimchi --rounds 55
 ```
@@ -66,9 +69,9 @@ ensuring completely unique parameters for each hash function definition.
 
 ### Parameter Sets
 
-| Name   | Parameters                     |
-|--------|--------------------------------|
-| ''     | Reserved for legacy            |
+| Name   | Parameters                          |
+| ------ | ----------------------------------- |
+| ''     | Reserved for legacy                 |
 | kimchi | rounds=55, width=3, rate=2, alpha=7 |
 
 ### Implementation Details
