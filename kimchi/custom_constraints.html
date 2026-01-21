@@ -177,56 +177,106 @@
                 <div id="content" class="content">
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
-<p>This section explains how to design and add a custom constraint to our <code>proof-systems</code> library.</p>
-<p>PLONK is an AIOP. That is, it is a protocol in which the prover sends polynomials as messages and the verifier sends random challenges, and then evaluates the prover’s polynomials and performs some final checks on the outputs.</p>
-<p>PLONK is very flexible. It can be customized with constraints specific to computations of interest. For example, in Mina, we use a PLONK configuration called kimchi that has custom constraints for poseidon hashing, doing elliptic curve operations, and more.</p>
+<p>This section explains how to design and add a custom constraint to our
+<code>proof-systems</code> library.</p>
+<p>PLONK is an AIOP. That is, it is a protocol in which the prover sends
+polynomials as messages and the verifier sends random challenges, and then
+evaluates the prover’s polynomials and performs some final checks on the
+outputs.</p>
+<p>PLONK is very flexible. It can be customized with constraints specific to
+computations of interest. For example, in Mina, we use a PLONK configuration
+called kimchi that has custom constraints for poseidon hashing, doing elliptic
+curve operations, and more.</p>
 <p>A “PLONK configuration” specifies</p>
 <ul>
-<li>The set of types of constraints that you would like to be able to enforce. We will describe below how these types of constraints are specified.</li>
+<li>The set of types of constraints that you would like to be able to enforce. We
+will describe below how these types of constraints are specified.</li>
 <li>A number of “eq-able” columns <code>W</code></li>
 <li>A number of “advice” columns <code>A</code></li>
 </ul>
 <p>Under such configuration, a circuit is specified by</p>
 <ul>
 <li>A number of rows <code>n</code></li>
-<li>A vector <code>cs</code> of constraint-types of length <code>n</code>. I.e., a vector that specifies, for each row, which types of constraints should be enforced on that row.</li>
-<li>A vector <code>eqs : Vec&lt;(Position, Position)&gt;</code> of equalities to enforce, where <code>struct Position { row: usize, column: usize }</code>. E.g., if the pair <code>(Position { row: 0, col: 8 }, Position { row: 10, col: 2 })</code> is in <code>eqs</code>, then the circuit is saying the entries in those two positions should be equal, or in other words that they refer to the same value. This is where the distinction between “eq-able” and “advice” columns comes in. The <code>column</code> field of a position in the <code>eqs</code> array can only refer to one of the first <code>W</code> columns. Equalities cannot be enforced on entries in the <code>A</code> columns after that.</li>
+<li>A vector <code>cs</code> of constraint-types of length <code>n</code>. I.e., a vector that
+specifies, for each row, which types of constraints should be enforced on that
+row.</li>
+<li>A vector <code>eqs : Vec&lt;(Position, Position)&gt;</code> of equalities to enforce, where
+<code>struct Position { row: usize, column: usize }</code>. E.g., if the pair
+<code>(Position { row: 0, col: 8 }, Position { row: 10, col: 2 })</code> is in <code>eqs</code>,
+then the circuit is saying the entries in those two positions should be equal,
+or in other words that they refer to the same value. This is where the
+distinction between “eq-able” and “advice” columns comes in. The <code>column</code>
+field of a position in the <code>eqs</code> array can only refer to one of the first <code>W</code>
+columns. Equalities cannot be enforced on entries in the <code>A</code> columns after
+that.</li>
 </ul>
 <p>Then, given such a circuit, PLONK lets you produce proofs for the statement</p>
 <blockquote>
-<p>I know <code>W + A</code> “column vectors” of field elements <code>vs: [Vec&lt;F&gt;; W + A]</code> such that for each row index <code>i &lt; n</code>, the constraint of type <code>cs[i]</code> holds on the values <code>[vs[0][i], ..., vs[W+A - 1][i], vs[0][i+1], ..., vs[W+A - 1][i+1]</code> and all the equalities in <code>eqs</code> hold. I.e., for <code>(p1, p2)</code> in <code>eqs</code> we have <code>vs[p1.col][p1.row] == vs[p2.col][p2.row]</code>. So, a constraint can check the values in two adjacent rows.</p>
+<p>I know <code>W + A</code> “column vectors” of field elements <code>vs: [Vec&lt;F&gt;; W + A]</code> such
+that for each row index <code>i &lt; n</code>, the constraint of type <code>cs[i]</code> holds on the
+values <code>[vs[0][i], ..., vs[W+A - 1][i], vs[0][i+1], ..., vs[W+A - 1][i+1]</code> and
+all the equalities in <code>eqs</code> hold. I.e., for <code>(p1, p2)</code> in <code>eqs</code> we have
+<code>vs[p1.col][p1.row] == vs[p2.col][p2.row]</code>. So, a constraint can check the
+values in two adjacent rows.</p>
 </blockquote>
 <h2 id="specifying-a-constraint"><a class="header" href="#specifying-a-constraint">Specifying a constraint</a></h2>
-<p>Mathematically speaking, a constraint is a multivariate polynomial over the variables <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal">c</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathsf mtight" style="margin-right:0.01389em;">Curr</span></span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">i</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner">…</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathsf mtight" style="margin-right:0.01389em;">Curr</span></span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.13889em;">W</span><span class="mbin mtight">+</span><span class="mord mathnormal mtight">A</span><span class="mbin mtight">−</span><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathsf mtight">Next</span></span><span class="mpunct mtight">,</span><span class="mord mtight">0</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner">…</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathsf mtight">Next</span></span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.13889em;">W</span><span class="mbin mtight">+</span><span class="mord mathnormal mtight">A</span><span class="mbin mtight">−</span><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span>. In other words, there is one variable corresponding to the value of each column in the “current row” and one variable correspond to the value of each column in the “next row”.</p>
-<p>In Rust, <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.02778em;">r</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">i</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span> is written <code>E::cell(Column::Witness(i), r)</code>. So, for example, the variable <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathsf mtight">Next</span></span><span class="mpunct mtight">,</span><span class="mord mtight">3</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span> is written
+<p>Mathematically speaking, a constraint is a multivariate polynomial over the
+variables
+<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal">c</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathsf mtight" style="margin-right:0.01389em;">Curr</span></span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">i</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner">…</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathsf mtight" style="margin-right:0.01389em;">Curr</span></span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.13889em;">W</span><span class="mbin mtight">+</span><span class="mord mathnormal mtight">A</span><span class="mbin mtight">−</span><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathsf mtight">Next</span></span><span class="mpunct mtight">,</span><span class="mord mtight">0</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner">…</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathsf mtight">Next</span></span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.13889em;">W</span><span class="mbin mtight">+</span><span class="mord mathnormal mtight">A</span><span class="mbin mtight">−</span><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span>.
+In other words, there is one variable corresponding to the value of each column
+in the “current row” and one variable correspond to the value of each column in
+the “next row”.</p>
+<p>In Rust, <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.02778em;">r</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">i</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span> is written <code>E::cell(Column::Witness(i), r)</code>. So, for
+example, the variable <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathsf mtight">Next</span></span><span class="mpunct mtight">,</span><span class="mord mtight">3</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span> is written
 <code>E::cell(Column::Witness(3), CurrOrNext::Next)</code>.</p>
 <pre><code>let w = |i| v(Column::Witness(i));
 </code></pre>
-<p>Let’s </p>
+<p>Let’s</p>
 <h2 id="defining-a-plonk-configuration"><a class="header" href="#defining-a-plonk-configuration">Defining a PLONK configuration</a></h2>
-<p>The art in proof systems comes from knowing how to design a PLONK configuration to ensure maximal efficiency for the sorts of computations you are trying to prove. That is, how to choose the numbers of columns <code>W</code> and <code>A</code>, and how to define the set of constraint types.</p>
+<p>The art in proof systems comes from knowing how to design a PLONK configuration
+to ensure maximal efficiency for the sorts of computations you are trying to
+prove. That is, how to choose the numbers of columns <code>W</code> and <code>A</code>, and how to
+define the set of constraint types.</p>
 <p>Let’s describe the trade-offs involved here.</p>
 <p>The majority of the proving time for the PLONK prover is in</p>
 <ul>
-<li>committing to the <code>W + A</code> column polynomials, which have length equal to the number of rows <code>n</code></li>
+<li>committing to the <code>W + A</code> column polynomials, which have length equal to the
+number of rows <code>n</code></li>
 <li>committing to the “permutation accumulator polynomial, which has length <code>n</code>.</li>
-<li>committing to the quotient polynomial, which reduces to computing <code>max(k, W)</code> MSMs of size <code>n</code>, where <code>k</code> is the max degree of a constraint.</li>
-<li>performing the commitment opening proof, which is mostly dependent on the number of rows <code>n</code>.</li>
+<li>committing to the quotient polynomial, which reduces to computing <code>max(k, W)</code>
+MSMs of size <code>n</code>, where <code>k</code> is the max degree of a constraint.</li>
+<li>performing the commitment opening proof, which is mostly dependent on the
+number of rows <code>n</code>.</li>
 </ul>
-<p>So all in all, the proving time is approximately equal to the time to perform <code>W + A + 1 + max(k - 1, W)</code> MSMs of size <code>n</code>, plus the cost of an opening proof for polynomials of degree <code>n - 1</code>.</p>
+<p>So all in all, the proving time is approximately equal to the time to perform
+<code>W + A + 1 + max(k - 1, W)</code> MSMs of size <code>n</code>, plus the cost of an opening proof
+for polynomials of degree <code>n - 1</code>.</p>
 <p>and maybe</p>
 <ul>
 <li>
-<p>computing the combined constraint polynomial, which has degree <code>k * n</code> where <code>k</code> is the maximum degree of a constraint</p>
+<p>computing the combined constraint polynomial, which has degree <code>k * n</code> where
+<code>k</code> is the maximum degree of a constraint</p>
 </li>
 <li>
-<p>Increasing <code>W</code> and <code>A</code> increase proof size, and they potentially impact the prover-time as the prover must compute polynomial commitments to each column, and computing a polynomial commitment corresponds to doing one MSM (multi-scalar multiplication, also called a multi-exponentiation.)</p>
-<p>However, often increasing the number of columns allows you to decrease the number of rows required for a given computation. For example, if you can perform one Poseidon hash in 36 rows with 5 total columns, then you can also perform it in 12 (= 36 / 3) rows with 15 (= 5 * 3) total columns.</p>
-<p><strong>Decreasing the number of rows (even while keeping the total number of table entries the same) is desirable because it reduces the cost of the polynomial commitment opening proof, which is dominated by a factor linear in the number of rows, and barely depends on the number of columns.</strong></p>
-<p>Increasing the number of columns also increases verifier time, as the verifier must perform one scalar-multiplication and one hash per column. Proof length is also affected by a larger number of columns, as more polynomials need to be committed and sent along to the verifier.</p>
+<p>Increasing <code>W</code> and <code>A</code> increase proof size, and they potentially impact the
+prover-time as the prover must compute polynomial commitments to each column,
+and computing a polynomial commitment corresponds to doing one MSM
+(multi-scalar multiplication, also called a multi-exponentiation.)</p>
+<p>However, often increasing the number of columns allows you to decrease the
+number of rows required for a given computation. For example, if you can
+perform one Poseidon hash in 36 rows with 5 total columns, then you can also
+perform it in 12 (= 36 / 3) rows with 15 (= 5 * 3) total columns.</p>
+<p><strong>Decreasing the number of rows (even while keeping the total number of table
+entries the same) is desirable because it reduces the cost of the polynomial
+commitment opening proof, which is dominated by a factor linear in the number
+of rows, and barely depends on the number of columns.</strong></p>
+<p>Increasing the number of columns also increases verifier time, as the verifier
+must perform one scalar-multiplication and one hash per column. Proof length
+is also affected by a larger number of columns, as more polynomials need to be
+committed and sent along to the verifier.</p>
 </li>
 </ul>
-<p>There is typically some interplay between these </p>
+<p>There is typically some interplay between these</p>
 
                     </main>
 

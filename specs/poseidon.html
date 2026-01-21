@@ -178,10 +178,16 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
 <h1 id="poseidon-hash-function"><a class="header" href="#poseidon-hash-function">Poseidon hash function</a></h1>
-<p>Poseidon is a hash function that can efficiently run in a zk circuit. (See <a href="https://www.poseidon-hash.info/">poseidon-hash.info</a>)
-It is based on the <a href="https://keccak.team/sponge_duplex.html#:~:text=A%20sponge%20function%20is%20a,or%20the%20retrieval%20of%20output.">sponge function</a>, with a state composed of field elements and a permutation based on field element operation (addition and exponentiation).</p>
-<p>The permutation contains an S-box (exponentiation of a group element), adding constants to the state, and matrix multiplication of the state (multiplications and additions) with an <a href="https://en.wikipedia.org/wiki/MDS_matrix">MDS matrix</a>.</p>
-<p>Since a field element is around 255-bit, a single field element is enough as the capacity of the sponge to provide around 116-bit security.</p>
+<p>Poseidon is a hash function that can efficiently run in a zk circuit. (See
+<a href="https://www.poseidon-hash.info/">poseidon-hash.info</a>) It is based on the
+<a href="https://keccak.team/sponge_duplex.html#:~:text=A%20sponge%20function%20is%20a,or%20the%20retrieval%20of%20output.">sponge function</a>,
+with a state composed of field elements and a permutation based on field element
+operation (addition and exponentiation).</p>
+<p>The permutation contains an S-box (exponentiation of a group element), adding
+constants to the state, and matrix multiplication of the state (multiplications
+and additions) with an <a href="https://en.wikipedia.org/wiki/MDS_matrix">MDS matrix</a>.</p>
+<p>Since a field element is around 255-bit, a single field element is enough as the
+capacity of the sponge to provide around 116-bit security.</p>
 <div id="admonition-note" class="admonition admonish-note">
 <div class="admonition-title">
 <p>Note</p>
@@ -192,9 +198,11 @@ It is based on the <a href="https://keccak.team/sponge_duplex.html#:~:text=A%20s
 </div>
 </div>
 <h2 id="apis"><a class="header" href="#apis">APIs</a></h2>
-<p>We define a base sponge, and a scalar sponge. Both must be instantiated when verifying a proof (this is due to recursion-support baked in Kimchi).</p>
-<p>External users of kimchi (or pickles) are most likely to interact with a wrap proof (see the <a href="./pickles.html">pickles specification</a>).
-As such, the sponges they need to instantiate are most likely to be instantiated with:</p>
+<p>We define a base sponge, and a scalar sponge. Both must be instantiated when
+verifying a proof (this is due to recursion-support baked in Kimchi).</p>
+<p>External users of kimchi (or pickles) are most likely to interact with a wrap
+proof (see the <a href="./pickles.html">pickles specification</a>). As such, the sponges they
+need to instantiate are most likely to be instantiated with:</p>
 <ul>
 <li>Poseidon-Fp for base sponge</li>
 <li>Poseidon-Fq for the scalar sponge</li>
@@ -202,15 +210,23 @@ As such, the sponges they need to instantiate are most likely to be instantiated
 <h3 id="base-sponge"><a class="header" href="#base-sponge">Base Sponge</a></h3>
 <ul>
 <li><code>new(params) -&gt; BaseSponge</code>. Creates a new base sponge.</li>
-<li><code>BaseSponge.absorb(field_element)</code>. Absorbs a field element by calling the underlying sponge <code>absorb</code> function.</li>
-<li><code>BaseSponge.absorb_point(point)</code>. Absorbs an elliptic curve point. If the point is the point at infinity, absorb two zeros. Otherwise, absorb the x and y coordinates with two calls to <code>absorb</code>.</li>
+<li><code>BaseSponge.absorb(field_element)</code>. Absorbs a field element by calling the
+underlying sponge <code>absorb</code> function.</li>
+<li><code>BaseSponge.absorb_point(point)</code>. Absorbs an elliptic curve point. If the
+point is the point at infinity, absorb two zeros. Otherwise, absorb the x and
+y coordinates with two calls to <code>absorb</code>.</li>
 <li><code>BaseSponge.absorb_scalar(field_element_of_scalar_field)</code>. Absorbs a scalar.
 <ul>
-<li>If the scalar field is smaller than the base field (e.g. Fp is smaller than Fq), then the scalar is casted to a field element of the base field and absorbed via <code>absorb</code>.</li>
-<li>Otherwise, the value is split between its least significant bit and the rest. Then both values are casted to field elements of the base field and absorbed via <code>absorb</code> (the high bits first, then the low bit).</li>
+<li>If the scalar field is smaller than the base field (e.g. Fp is smaller than
+Fq), then the scalar is casted to a field element of the base field and
+absorbed via <code>absorb</code>.</li>
+<li>Otherwise, the value is split between its least significant bit and the
+rest. Then both values are casted to field elements of the base field and
+absorbed via <code>absorb</code> (the high bits first, then the low bit).</li>
 </ul>
 </li>
-<li><code>BaseSponge.digest() -&gt; field_element</code>. The <code>squeeze</code> function of the underlying sponge function is called and the first field element is returned.</li>
+<li><code>BaseSponge.digest() -&gt; field_element</code>. The <code>squeeze</code> function of the
+underlying sponge function is called and the first field element is returned.</li>
 <li><code>BaseSponge.digest_scalar() -&gt; field_element_of_scalar_field</code>.</li>
 <li><code>BaseSponge.challenge // TODO: specify</code>.</li>
 <li><code>BaseSponge.challenge_fq // TODO: specify</code>.</li>
@@ -224,8 +240,9 @@ As such, the sponges they need to instantiate are most likely to be instantiated
 </ul>
 <h2 id="algorithms"><a class="header" href="#algorithms">Algorithms</a></h2>
 <p>Note that every operation is done in the field of the sponge.</p>
-<p>In this section we define the high-level algorithm behind the permutation and the sponge.
-The permutation is never used directly by users, it is used only by the sponge function.</p>
+<p>In this section we define the high-level algorithm behind the permutation and
+the sponge. The permutation is never used directly by users, it is used only by
+the sponge function.</p>
 <h3 id="permutation"><a class="header" href="#permutation">Permutation</a></h3>
 <p>In pseudo-code:</p>
 <pre><code class="language-python">def sbox(field_element):
@@ -303,7 +320,8 @@ def squeeze(sponge):
     return result
 </code></pre>
 <h2 id="instantiations"><a class="header" href="#instantiations">Instantiations</a></h2>
-<p>We instantiate two versions of Poseidon, one for the field Fp, and one for the field Fq (see the <a href="./pasta.html">pasta specification</a>).</p>
+<p>We instantiate two versions of Poseidon, one for the field Fp, and one for the
+field Fq (see the <a href="./pasta.html">pasta specification</a>).</p>
 <p>Both share the following sponge configuration:</p>
 <ul>
 <li>capacity 1</li>
@@ -316,15 +334,20 @@ def squeeze(sponge):
 <li>ARK_INITIAL: false</li>
 </ul>
 <h3 id="poseidon-fp"><a class="header" href="#poseidon-fp">Poseidon-Fp</a></h3>
-<p>You can find the MDS matrix and round constants we use in <a href="https://github.com/o1-labs/proof-systems/tree/master/poseidon/src/pasta/fp_kimchi.rs">/poseidon/src/pasta/fp_kimchi.rs</a>.</p>
+<p>You can find the MDS matrix and round constants we use in
+<a href="https://github.com/o1-labs/proof-systems/tree/master/poseidon/src/pasta/fp_kimchi.rs">/poseidon/src/pasta/fp_kimchi.rs</a>.</p>
 <h3 id="poseidon-fq"><a class="header" href="#poseidon-fq">Poseidon-Fq</a></h3>
-<p>You can find the MDS matrix and round constants we use in <a href="https://github.com/o1-labs/proof-systems/tree/master/poseidon/src/pasta/fq_kimchi.rs">/poseidon/src/pasta/fp_kimchi.rs</a>.</p>
+<p>You can find the MDS matrix and round constants we use in
+<a href="https://github.com/o1-labs/proof-systems/tree/master/poseidon/src/pasta/fq_kimchi.rs">/poseidon/src/pasta/fp_kimchi.rs</a>.</p>
 <h2 id="test-vectors"><a class="header" href="#test-vectors">Test vectors</a></h2>
-<p>We have test vectors contained in <a href="https://github.com/o1-labs/proof-systems/tree/master/poseidon/tests/test_vectors/kimchi.json">/poseidon/tests/test_vectors/kimchi.json</a>.</p>
+<p>We have test vectors contained in
+<a href="https://github.com/o1-labs/proof-systems/tree/master/poseidon/tests/test_vectors/kimchi.json">/poseidon/tests/test_vectors/kimchi.json</a>.</p>
 <h2 id="pointers-to-the-ocaml-code"><a class="header" href="#pointers-to-the-ocaml-code">Pointers to the OCaml code</a></h2>
 <ul>
-<li>our ocaml implementation: https://github.com/minaprotocol/mina/blob/develop/src/lib/random_oracle/random_oracle.mli</li>
-<li>relies on random_oracle_input: https://github.com/minaprotocol/mina/blob/develop/src/lib/random_oracle_input/random_oracle_input.ml</li>
+<li>our ocaml implementation:
+https://github.com/minaprotocol/mina/blob/develop/src/lib/random_oracle/random_oracle.mli</li>
+<li>relies on random_oracle_input:
+https://github.com/minaprotocol/mina/blob/develop/src/lib/random_oracle_input/random_oracle_input.ml</li>
 <li>is instantiated with two types of fields:
 <ul>
 <li>https://github.com/minaprotocol/mina/blob/develop/src/nonconsensus/snark_params/snark_params_nonconsensus.ml</li>

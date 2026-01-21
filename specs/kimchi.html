@@ -179,8 +179,10 @@
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
 <h1 id="kimchi"><a class="header" href="#kimchi">Kimchi</a></h1>
 <ul>
-<li>This document specifies <em>kimchi</em>, a zero-knowledge proof system that’s a variant of PLONK.</li>
-<li>This document does not specify how circuits are created or executed, but only how to convert a circuit and its execution into a proof.</li>
+<li>This document specifies <em>kimchi</em>, a zero-knowledge proof system that’s a
+variant of PLONK.</li>
+<li>This document does not specify how circuits are created or executed, but only
+how to convert a circuit and its execution into a proof.</li>
 </ul>
 <p>Table of content:</p>
 <ul>
@@ -258,34 +260,42 @@
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
 <p>There are three main algorithms to kimchi:</p>
 <ul>
-<li><a href="#setup">Setup</a>: takes a circuit and produces a prover index, and a verifier index.</li>
-<li><a href="#proof-creation">Proof creation</a>: takes the prover index, and the execution trace of the circuit to produce a proof.</li>
-<li><a href="#proof-verification">Proof verification</a>: takes the verifier index and a proof to verify.</li>
+<li><a href="#setup">Setup</a>: takes a circuit and produces a prover index, and a verifier
+index.</li>
+<li><a href="#proof-creation">Proof creation</a>: takes the prover index, and the execution
+trace of the circuit to produce a proof.</li>
+<li><a href="#proof-verification">Proof verification</a>: takes the verifier index and a
+proof to verify.</li>
 </ul>
-<p>As part of these algorithms, a number of tables are created (and then converted into polynomials) to create a proof.</p>
+<p>As part of these algorithms, a number of tables are created (and then converted
+into polynomials) to create a proof.</p>
 <h3 id="tables-used-to-describe-a-circuit"><a class="header" href="#tables-used-to-describe-a-circuit">Tables used to describe a circuit</a></h3>
 <p>The following tables are created to describe the circuit:</p>
 <p><strong>Gates</strong>. A circuit is described by a series of gates, that we list in a table.
-The columns of the tables list the gates, while the rows are the length of the circuit.
-For each row, only a single gate can take a value <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">1</span></span></span></span> while all other gates take the value <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0</span></span></span></span>.</p>
+The columns of the tables list the gates, while the rows are the length of the
+circuit. For each row, only a single gate can take a value <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">1</span></span></span></span> while all other
+gates take the value <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0</span></span></span></span>.</p>
 <div class="table-wrapper"><table><thead><tr><th style="text-align: center">row</th><th style="text-align: center">Generic</th><th style="text-align: center">Poseidon</th><th style="text-align: center">CompleteAdd</th><th style="text-align: center">VarBaseMul</th><th style="text-align: center">EndoMul</th><th style="text-align: center">EndoMulScalar</th></tr></thead><tbody>
 <tr><td style="text-align: center">0</td><td style="text-align: center">1</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td></tr>
 <tr><td style="text-align: center">1</td><td style="text-align: center">0</td><td style="text-align: center">1</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td></tr>
 </tbody></table>
 </div>
-<p><strong>Coefficients</strong>. The coefficient table has 15 columns, and is used to tweak the gates.
-Currently, only the <a href="#double-generic-gate">Generic</a> and the <a href="#poseidon">Poseidon</a> gates use it (refer to their own sections to see how).
-All other gates set their values to <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0</span></span></span></span>.</p>
+<p><strong>Coefficients</strong>. The coefficient table has 15 columns, and is used to tweak the
+gates. Currently, only the <a href="#double-generic-gate">Generic</a> and the
+<a href="#poseidon">Poseidon</a> gates use it (refer to their own sections to see how). All
+other gates set their values to <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0</span></span></span></span>.</p>
 <div class="table-wrapper"><table><thead><tr><th style="text-align: center">row</th><th style="text-align: center">0</th><th style="text-align: center">1</th><th style="text-align: center">2</th><th style="text-align: center">3</th><th style="text-align: center">4</th><th style="text-align: center">5</th><th style="text-align: center">6</th><th style="text-align: center">7</th><th style="text-align: center">8</th><th style="text-align: center">9</th><th style="text-align: center">10</th><th style="text-align: center">11</th><th style="text-align: center">12</th><th style="text-align: center">13</th><th style="text-align: center">14</th></tr></thead><tbody>
 <tr><td style="text-align: center">0</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td></tr>
 </tbody></table>
 </div>
-<p><strong>Wiring (or Permutation, or sigmas)</strong>. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together.
-To learn about registers, see the next section.
-It is defined at every row, but only for the first <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">7</span></span></span></span> registers.
-Each cell specifies a <code>(row, column)</code> tuple that it should be wired to.  Cells that are not connected to another cell are wired to themselves.
-Note that if three or more registers are wired together, they must form a cycle.
-For example, if register <code>(0, 4)</code> is wired to both registers <code>(80, 6)</code> and <code>(90, 0)</code> then you would have the following table:</p>
+<p><strong>Wiring (or Permutation, or sigmas)</strong>. For gates to take the outputs of other
+gates as inputs, we use a wiring table to wire registers together. To learn
+about registers, see the next section. It is defined at every row, but only for
+the first <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">7</span></span></span></span> registers. Each cell specifies a <code>(row, column)</code> tuple that it
+should be wired to. Cells that are not connected to another cell are wired to
+themselves. Note that if three or more registers are wired together, they must
+form a cycle. For example, if register <code>(0, 4)</code> is wired to both registers
+<code>(80, 6)</code> and <code>(90, 0)</code> then you would have the following table:</p>
 <div class="table-wrapper"><table><thead><tr><th style="text-align: center">row</th><th style="text-align: center">0</th><th style="text-align: center">1</th><th style="text-align: center">2</th><th style="text-align: center">3</th><th style="text-align: center">4</th><th style="text-align: center">5</th><th style="text-align: center">6</th></tr></thead><tbody>
 <tr><td style="text-align: center">0</td><td style="text-align: center">0,0</td><td style="text-align: center">0,1</td><td style="text-align: center">0,2</td><td style="text-align: center">0,3</td><td style="text-align: center"><strong>80,6</strong></td><td style="text-align: center">0,5</td><td style="text-align: center">0,6</td></tr>
 <tr><td style="text-align: center">…</td><td style="text-align: center"></td><td style="text-align: center"></td><td style="text-align: center"></td><td style="text-align: center"></td><td style="text-align: center"></td><td style="text-align: center"></td><td style="text-align: center"></td></tr>
@@ -294,9 +304,12 @@ For example, if register <code>(0, 4)</code> is wired to both registers <code>(8
 <tr><td style="text-align: center">90</td><td style="text-align: center"><strong>0,4</strong></td><td style="text-align: center">90,1</td><td style="text-align: center">90,2</td><td style="text-align: center">90,3</td><td style="text-align: center">90,4</td><td style="text-align: center">90,5</td><td style="text-align: center">90,6</td></tr>
 </tbody></table>
 </div>
-<p>The lookup feature is currently optional, as it can add some overhead to the protocol.
-In the case where you would want to use lookups, the following tables would be needed:</p>
-<p><strong>Lookup Tables</strong>. The different <a href="https://en.wikipedia.org/wiki/Lookup_table">lookup tables</a> that are used in the circuit. For example, the XOR lookup table:</p>
+<p>The lookup feature is currently optional, as it can add some overhead to the
+protocol. In the case where you would want to use lookups, the following tables
+would be needed:</p>
+<p><strong>Lookup Tables</strong>. The different
+<a href="https://en.wikipedia.org/wiki/Lookup_table">lookup tables</a> that are used in the
+circuit. For example, the XOR lookup table:</p>
 <div class="table-wrapper"><table><thead><tr><th>l</th><th>r</th><th>o</th></tr></thead><tbody>
 <tr><td>1</td><td>0</td><td>1</td></tr>
 <tr><td>0</td><td>1</td><td>1</td></tr>
@@ -304,45 +317,70 @@ In the case where you would want to use lookups, the following tables would be n
 <tr><td>0</td><td>0</td><td>0</td></tr>
 </tbody></table>
 </div>
-<p><strong>Lookup selectors</strong>. A lookup selector is used to perform a number of queries in different lookup tables. Any gate can advertise its use of a lookup selector (so a lookup selector can be associated to several gates), and on which rows they want to use them (current and/or next). In cases where a gate need to use lookups in its current row only, and is the only one performing a specific combination of queries, then its gate selector can be used in place of a lookup selector. As with gates, lookup selectors (including gates used as lookup selectors) are mutually exclusives (only one can be used on a given row).</p>
+<p><strong>Lookup selectors</strong>. A lookup selector is used to perform a number of queries
+in different lookup tables. Any gate can advertise its use of a lookup selector
+(so a lookup selector can be associated to several gates), and on which rows
+they want to use them (current and/or next). In cases where a gate need to use
+lookups in its current row only, and is the only one performing a specific
+combination of queries, then its gate selector can be used in place of a lookup
+selector. As with gates, lookup selectors (including gates used as lookup
+selectors) are mutually exclusives (only one can be used on a given row).</p>
 <p>For example, suppose we have two lookup selectors:</p>
 <div class="table-wrapper"><table><thead><tr><th style="text-align: center">row</th><th style="text-align: center">ChaChaQuery</th><th style="text-align: center">ChaChaFinalQuery</th></tr></thead><tbody>
 <tr><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td></tr>
 <tr><td style="text-align: center">1</td><td style="text-align: center">1</td><td style="text-align: center">0</td></tr>
 </tbody></table>
 </div>
-<p>Where each applies 4 queries. A query is a table describing which lookup table it queries, and the linear combination of the witness to use in the query.
-For example, the following table describes a query into the XOR table made out of linear combinations of registers (checking that <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⊕</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">2</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>):</p>
+<p>Where each applies 4 queries. A query is a table describing which lookup table
+it queries, and the linear combination of the witness to use in the query. For
+example, the following table describes a query into the XOR table made out of
+linear combinations of registers (checking that <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⊕</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">2</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>):</p>
 <div class="table-wrapper"><table><thead><tr><th style="text-align: center">table_id</th><th style="text-align: center">l</th><th style="text-align: center">r</th><th style="text-align: center">o</th></tr></thead><tbody>
 <tr><td style="text-align: center">XOR</td><td style="text-align: center">1, r0</td><td style="text-align: center">1, r2</td><td style="text-align: center">2, r1</td></tr>
 </tbody></table>
 </div>
 <h3 id="tables-produced-during-proof-creation"><a class="header" href="#tables-produced-during-proof-creation">Tables produced during proof creation</a></h3>
 <p>The following tables are created by the prover at runtime:</p>
-<p><strong>Registers (or Witness)</strong>. Registers are also defined at every row, and are split into two types: the <em>IO registers</em> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0</span></span></span></span> to <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">6</span></span></span></span> usually contain input or output of the gates (note that a gate can output a value on the next row as well).
-I/O registers can be wired to each other (they’ll be forced to have the same value), no matter what row they’re on (for example, the register at <code>row:0, col:4</code> can be wired to the register at <code>row:80, col:6</code>).
-The rest of the registers, <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">7</span></span></span></span> through <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">14</span></span></span></span>, are called <em>advice registers</em> as they can store values that useful only for the row’s active gate.
-Think of them as intermediary or temporary values needed in the computation when the prover executes a circuit.</p>
+<p><strong>Registers (or Witness)</strong>. Registers are also defined at every row, and are
+split into two types: the <em>IO registers</em> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0</span></span></span></span> to <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">6</span></span></span></span> usually contain input
+or output of the gates (note that a gate can output a value on the next row as
+well). I/O registers can be wired to each other (they’ll be forced to have the
+same value), no matter what row they’re on (for example, the register at
+<code>row:0, col:4</code> can be wired to the register at <code>row:80, col:6</code>). The rest of the
+registers, <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">7</span></span></span></span> through <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">14</span></span></span></span>, are called <em>advice registers</em> as they can store
+values that useful only for the row’s active gate. Think of them as intermediary
+or temporary values needed in the computation when the prover executes a
+circuit.</p>
 <div class="table-wrapper"><table><thead><tr><th style="text-align: center">row</th><th style="text-align: center">0</th><th style="text-align: center">1</th><th style="text-align: center">2</th><th style="text-align: center">3</th><th style="text-align: center">4</th><th style="text-align: center">5</th><th style="text-align: center">6</th><th style="text-align: center">7</th><th style="text-align: center">8</th><th style="text-align: center">9</th><th style="text-align: center">10</th><th style="text-align: center">11</th><th style="text-align: center">12</th><th style="text-align: center">13</th><th style="text-align: center">14</th></tr></thead><tbody>
 <tr><td style="text-align: center">0</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td></tr>
 </tbody></table>
 </div>
-<p><strong>Wiring (Permutation) trace</strong>. You can think of the permutation trace as an extra register that is used to enforce the wiring specified in the wiring table.
-It is a single column that applies on all the rows as well, which the prover computes as part of a proof.</p>
+<p><strong>Wiring (Permutation) trace</strong>. You can think of the permutation trace as an
+extra register that is used to enforce the wiring specified in the wiring table.
+It is a single column that applies on all the rows as well, which the prover
+computes as part of a proof.</p>
 <div class="table-wrapper"><table><thead><tr><th style="text-align: center">row</th><th style="text-align: center">pt</th></tr></thead><tbody>
 <tr><td style="text-align: center">0</td><td style="text-align: center">/</td></tr>
 </tbody></table>
 </div>
-<p><strong>Queries trace</strong>. These are the actual values made by queries, calculated by the prover at runtime, and used to construct the proof.</p>
-<p><strong>Table trace</strong>. Represents the concatenation of all the lookup tables, combined into a single column at runtime by both the prover and the verifier.</p>
-<p><strong>Sorted trace</strong>. Represents the processed (see the lookup section) concatenation of the queries trace and the table trace. It is produced at runtime by the prover. The sorted trace is long enough that it is split in several columns.</p>
-<p><strong>Lookup (aggregation, or permutation) trace</strong>. This is a one column table that is similar to the wiring (permutation) trace we talked above. It is produced at runtime by the prover.</p>
+<p><strong>Queries trace</strong>. These are the actual values made by queries, calculated by
+the prover at runtime, and used to construct the proof.</p>
+<p><strong>Table trace</strong>. Represents the concatenation of all the lookup tables, combined
+into a single column at runtime by both the prover and the verifier.</p>
+<p><strong>Sorted trace</strong>. Represents the processed (see the lookup section)
+concatenation of the queries trace and the table trace. It is produced at
+runtime by the prover. The sorted trace is long enough that it is split in
+several columns.</p>
+<p><strong>Lookup (aggregation, or permutation) trace</strong>. This is a one column table that
+is similar to the wiring (permutation) trace we talked above. It is produced at
+runtime by the prover.</p>
 <h2 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h2>
-<p>To specify kimchi, we rely on a number of primitives that are specified outside of this specification.
-In this section we list these specifications, as well as the interfaces we make use of in this specification.</p>
+<p>To specify kimchi, we rely on a number of primitives that are specified outside
+of this specification. In this section we list these specifications, as well as
+the interfaces we make use of in this specification.</p>
 <h3 id="polynomial-commitments"><a class="header" href="#polynomial-commitments">Polynomial Commitments</a></h3>
-<p>Refer to the <a href="./poly-commitment.html">specification on polynomial commitments</a>.
-We make use of the following functions from that specification:</p>
+<p>Refer to the <a href="./poly-commitment.html">specification on polynomial commitments</a>. We
+make use of the following functions from that specification:</p>
 <ul>
 <li><code>PolyCom.non_hiding_commit(poly) -&gt; PolyCom::NonHidingCommitment</code></li>
 <li><code>PolyCom.commit(poly) -&gt; PolyCom::HidingCommitment</code></li>
@@ -350,8 +388,8 @@ We make use of the following functions from that specification:</p>
 <li><code>PolyCom.verify(commitment, point, evaluation, evaluation_proof) -&gt; bool</code></li>
 </ul>
 <h3 id="poseidon-hash-function"><a class="header" href="#poseidon-hash-function">Poseidon hash function</a></h3>
-<p>Refer to the <a href="./poseidon.html">specification on Poseidon</a>.
-We make use of the following functions from that specification:</p>
+<p>Refer to the <a href="./poseidon.html">specification on Poseidon</a>. We make use of the
+following functions from that specification:</p>
 <ul>
 <li><code>Poseidon.init(params) -&gt; FqSponge</code></li>
 <li><code>Poseidon.update(field_elem)</code></li>
@@ -368,21 +406,28 @@ We make use of the following functions from that specification:</p>
 <li>Width: <code>3</code></li>
 <li>Rate: <code>2</code></li>
 <li>Full rounds: <code>55</code></li>
-<li>Round constants: <a href="https://github.com/o1-labs/proof-systems/blob/0b01f7575cdfa45541fcfcd88d59f73b015af56b/oracle/src/pasta/fp_kimchi.rs#L55"><code>fp_kimchi</code></a>, <a href="https://github.com/o1-labs/proof-systems/blob/0b01f7575cdfa45541fcfcd88d59f73b015af56b/oracle/src/pasta/fq_kimchi.rs#L54"><code>fq_kimchi</code></a></li>
-<li>MDS matrix: <a href="https://github.com/o1-labs/proof-systems/blob/0b01f7575cdfa45541fcfcd88d59f73b015af56b/oracle/src/pasta/fp_kimchi.rs#L10"><code>fp_kimchi</code></a>, <a href="https://github.com/o1-labs/proof-systems/blob/0b01f7575cdfa45541fcfcd88d59f73b015af56b/oracle/src/pasta/fq_kimchi.rs#L10"><code>fq_kimchi</code></a></li>
+<li>Round constants:
+<a href="https://github.com/o1-labs/proof-systems/blob/0b01f7575cdfa45541fcfcd88d59f73b015af56b/oracle/src/pasta/fp_kimchi.rs#L55"><code>fp_kimchi</code></a>,
+<a href="https://github.com/o1-labs/proof-systems/blob/0b01f7575cdfa45541fcfcd88d59f73b015af56b/oracle/src/pasta/fq_kimchi.rs#L54"><code>fq_kimchi</code></a></li>
+<li>MDS matrix:
+<a href="https://github.com/o1-labs/proof-systems/blob/0b01f7575cdfa45541fcfcd88d59f73b015af56b/oracle/src/pasta/fp_kimchi.rs#L10"><code>fp_kimchi</code></a>,
+<a href="https://github.com/o1-labs/proof-systems/blob/0b01f7575cdfa45541fcfcd88d59f73b015af56b/oracle/src/pasta/fq_kimchi.rs#L10"><code>fq_kimchi</code></a></li>
 </ul>
 <h3 id="pasta"><a class="header" href="#pasta">Pasta</a></h3>
-<p>Kimchi is made to work on cycles of curves, so the protocol switch between two fields Fq and Fr, where Fq represents the base field and Fr represents the scalar field.</p>
+<p>Kimchi is made to work on cycles of curves, so the protocol switch between two
+fields Fq and Fr, where Fq represents the base field and Fr represents the
+scalar field.</p>
 <p>See the <a href="./pasta.html">Pasta curves specification</a>.</p>
 <h2 id="constraints"><a class="header" href="#constraints">Constraints</a></h2>
-<p>Kimchi enforces the correct execution of a circuit by creating a number of constraints and combining them together.
-In this section, we describe all the constraints that make up the main polynomial <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span></span></span></span> once combined.</p>
+<p>Kimchi enforces the correct execution of a circuit by creating a number of
+constraints and combining them together. In this section, we describe all the
+constraints that make up the main polynomial <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span></span></span></span> once combined.</p>
 <p>We define the following functions:</p>
 <ul>
-<li><code>combine_constraints(range_alpha, constraints)</code>, which takes a range of contiguous powers of alpha and a number of constraints.
-It returns the sum of all the constraints, where each constraint has been multiplied by a power of alpha.
-In other words it returns:
-<span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:2.3277em;vertical-align:-1.2777em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.05em;"><span style="top:-1.8723em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span><span style="top:-3.05em;"><span class="pstrut" style="height:3.05em;"></span><span><span class="mop op-symbol large-op">∑</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.2777em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0037em;">α</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8747em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.8179em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord text"><span class="mord">constraint</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></span></li>
+<li><code>combine_constraints(range_alpha, constraints)</code>, which takes a range of
+contiguous powers of alpha and a number of constraints. It returns the sum of
+all the constraints, where each constraint has been multiplied by a power of
+alpha. In other words it returns: <span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:2.3277em;vertical-align:-1.2777em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.05em;"><span style="top:-1.8723em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span><span style="top:-3.05em;"><span class="pstrut" style="height:3.05em;"></span><span><span class="mop op-symbol large-op">∑</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.2777em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0037em;">α</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8747em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.9779em;vertical-align:-0.31em;"></span><span class="mord text"><span class="mord">constraint</span></span><span class="mord" style="margin-right:0.02778em;">_</span><span class="mord mathnormal">i</span></span></span></span></span></li>
 </ul>
 <p>The different ranges of alpha are described as follows:</p>
 <!-- generated using `cargo test -p kimchi --lib -- alphas::tests::get_alphas_for_spec --nocapture` -->
@@ -436,8 +481,12 @@ evaluations are computed as:</p>
 zero-knowledge to the protocol.</p>
 <p>For a valid witness, we then have have <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.0991em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.04398em;">z</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8491em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">n</span><span class="mbin mtight">−</span><span class="mord mathnormal mtight" style="margin-right:0.04398em;">z</span><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.03148em;">k</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1645em;"><span style="top:-2.357em;margin-left:-0.0315em;margin-right:0.0714em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mathnormal mtight" style="margin-right:0.02778em;">r</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.143em;"><span></span></span></span></span></span></span><span class="mord mathnormal mtight">o</span><span class="mord mathnormal mtight" style="margin-right:0.02691em;">w</span><span class="mord mathnormal mtight">s</span></span></span></span></span></span></span></span></span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">1</span></span></span></span>.</p>
 <h3 id="lookup"><a class="header" href="#lookup">Lookup</a></h3>
-<p>Lookups in kimchi allows you to check if a single value, or a series of values, are part of a table.
-The first case is useful to check for checking if a value belongs to a range (from 0 to 1,000, for example), whereas the second case is useful to check truth tables (for example, checking that three values can be found in the rows of an XOR table) or write and read from a memory vector (where one column is an index, and the other is the value stored at that index).</p>
+<p>Lookups in kimchi allows you to check if a single value, or a series of values,
+are part of a table. The first case is useful to check for checking if a value
+belongs to a range (from 0 to 1,000, for example), whereas the second case is
+useful to check truth tables (for example, checking that three values can be
+found in the rows of an XOR table) or write and read from a memory vector (where
+one column is an index, and the other is the value stored at that index).</p>
 <div id="admonition-note-1" class="admonition admonish-note">
 <div class="admonition-title">
 <p>Note</p>
@@ -447,10 +496,14 @@ The first case is useful to check for checking if a value belongs to a range (fr
 <p>Similarly to the generic gate, each values taking part in a lookup can be scaled with a fixed field element.</p>
 </div>
 </div>
-<p>The lookup functionality is an opt-in feature of kimchi that can be used by custom gates.
-From the user’s perspective, not using any gates that make use of lookups means that the  feature will be disabled and there will be no overhead to the protocol.</p>
-<p>Please refer to the <a href="../kimchi/lookup.html">lookup RFC</a> for an overview of the lookup feature.</p>
-<p>In this section, we describe the tables kimchi supports, as well as the different lookup selectors (and their associated queries)</p>
+<p>The lookup functionality is an opt-in feature of kimchi that can be used by
+custom gates. From the user’s perspective, not using any gates that make use of
+lookups means that the feature will be disabled and there will be no overhead to
+the protocol.</p>
+<p>Please refer to the <a href="../kimchi/lookup.html">lookup RFC</a> for an overview of the
+lookup feature.</p>
+<p>In this section, we describe the tables kimchi supports, as well as the
+different lookup selectors (and their associated queries)</p>
 <h4 id="the-lookup-tables"><a class="header" href="#the-lookup-tables">The Lookup Tables</a></h4>
 <p>Kimchi currently supports two lookup tables:</p>
 <pre><code class="language-rs">/// The table ID associated with the XOR lookup table.
@@ -472,7 +525,8 @@ columns, those entries that have the dummy value of</p>
 <p>The range check table is a single-column table containing the numbers from 0 to 2^12 (excluded).
 This is used to check that the value fits in 12 bits.</p>
 <h5 id="runtime-tables"><a class="header" href="#runtime-tables">Runtime tables</a></h5>
-<p>Another type of lookup tables has been suggested in the <a href="../kimchi/extended-lookup-tables.html">Extended Lookup Tables</a>.</p>
+<p>Another type of lookup tables has been suggested in the
+<a href="../kimchi/extended-lookup-tables.html">Extended Lookup Tables</a>.</p>
 <h4 id="the-lookup-selectors"><a class="header" href="#the-lookup-selectors">The Lookup Selectors</a></h4>
 <p><strong>XorSelector</strong>. Performs 4 queries to the XOR lookup table.</p>
 <div class="table-wrapper"><table><thead><tr><th style="text-align: center">l</th><th style="text-align: center">r</th><th style="text-align: center">o</th><th>-</th><th style="text-align: center">l</th><th style="text-align: center">r</th><th style="text-align: center">o</th><th>-</th><th style="text-align: center">l</th><th style="text-align: center">r</th><th style="text-align: center">o</th><th>-</th><th style="text-align: center">l</th><th style="text-align: center">r</th><th style="text-align: center">o</th></tr></thead><tbody>
@@ -502,8 +556,10 @@ last element of <code>LookupSorted(i) = last element of LookupSorted(i + 1)</cod
 and if <code>i % 2 = 1</code>, we enforce that
 the first element of <code>LookupSorted(i) = first element of LookupSorted(i + 1)</code>.</p>
 <h3 id="gates"><a class="header" href="#gates">Gates</a></h3>
-<p>A circuit is described as a series of gates.
-In this section we describe the different gates currently supported by kimchi, the constraints associated to them, and the way the register table, coefficient table, and permutation can be used in conjunction.</p>
+<p>A circuit is described as a series of gates. In this section we describe the
+different gates currently supported by kimchi, the constraints associated to
+them, and the way the register table, coefficient table, and permutation can be
+used in conjunction.</p>
 <p>TODO: for each gate describe how to create it?</p>
 <h4 id="double-generic-gate"><a class="header" href="#double-generic-gate">Double Generic Gate</a></h4>
 <p>The double generic gate contains two generic gates.</p>
@@ -1456,7 +1512,8 @@ use the 8-bit XOR table.</p>
 </div>
 </div>
 <h3 id="gadgets"><a class="header" href="#gadgets">Gadgets</a></h3>
-<p>Here we describe basic gadgets that we build using a combination of the gates described above.</p>
+<p>Here we describe basic gadgets that we build using a combination of the gates
+described above.</p>
 <h4 id="not"><a class="header" href="#not">Not</a></h4>
 <p>We implement NOT, i.e. bitwise negation, as a gadget in two different ways, needing no new gate type for it. Instead, it reuses the XOR gadget and the Generic gate.</p>
 <p> The first version of the NOT gadget reuses <code>Xor16</code> by making the following observation: <em>the bitwise NOT operation is equivalent to the
@@ -1532,10 +1589,12 @@ Meaning,</p>
 </li>
 </ul>
 <h2 id="setup"><a class="header" href="#setup">Setup</a></h2>
-<p>In this section we specify the setup that goes into creating two indexes from a circuit:</p>
+<p>In this section we specify the setup that goes into creating two indexes from a
+circuit:</p>
 <ul>
 <li>A <a href="#prover-index"><em>prover index</em></a>, necessary for the prover to create proofs.</li>
-<li>A <a href="#verifier-index"><em>verifier index</em></a>, necessary for the verifier to verify proofs.</li>
+<li>A <a href="#verifier-index"><em>verifier index</em></a>, necessary for the verifier to verify
+proofs.</li>
 </ul>
 <div id="admonition-note-5" class="admonition admonish-note">
 <div class="admonition-title">
@@ -1546,11 +1605,17 @@ Meaning,</p>
 <p>The circuit creation part is not specified in this document. It might be specified in a separate document, or we might want to specify how to create the circuit description tables.</p>
 </div>
 </div>
-<p>As such, the transformation of a circuit into these two indexes can be seen as a compilation step. Note that the prover still needs access to the original circuit to create proofs, as they need to execute it to create the witness (register table).</p>
+<p>As such, the transformation of a circuit into these two indexes can be seen as a
+compilation step. Note that the prover still needs access to the original
+circuit to create proofs, as they need to execute it to create the witness
+(register table).</p>
 <h3 id="common-index"><a class="header" href="#common-index">Common Index</a></h3>
-<p>In this section we describe data that both the prover and the verifier index share.</p>
-<p><strong><code>URS</code> (Uniform Reference String)</strong> The URS is a set of parameters that is generated once, and shared between the prover and the verifier.
-It is used for polynomial commitments, so refer to the <a href="./poly-commitment.html">poly-commitment specification</a> for more details.</p>
+<p>In this section we describe data that both the prover and the verifier index
+share.</p>
+<p><strong><code>URS</code> (Uniform Reference String)</strong> The URS is a set of parameters that is
+generated once, and shared between the prover and the verifier. It is used for
+polynomial commitments, so refer to the
+<a href="./poly-commitment.html">poly-commitment specification</a> for more details.</p>
 <div id="admonition-note-6" class="admonition admonish-note">
 <div class="admonition-title">
 <p>Note</p>
@@ -1560,8 +1625,11 @@ It is used for polynomial commitments, so refer to the <a href="./poly-commitmen
 <p>Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits (<a href="https://minaprotocol.com/blog/what-are-zkapps">see zkapps for more details</a>).</p>
 </div>
 </div>
-<p><strong><code>Domain</code></strong>. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to <code>n + ZK_ROWS</code>, with <code>n</code> is the number of gates in the circuit.
-TODO: what if the domain is larger than the URS?</p>
+<p><strong><code>Domain</code></strong>. A domain large enough to contain the circuit and the
+zero-knowledge rows (used to provide zero-knowledge to the protocol).
+Specifically, the smallest subgroup in our field that has order greater or equal
+to <code>n + ZK_ROWS</code>, with <code>n</code> is the number of gates in the circuit. TODO: what if
+the domain is larger than the URS?</p>
 <div id="admonition-ordering-of-elements-in-the-domain" class="admonition admonish-warning">
 <div class="admonition-title">
 <p>Ordering of elements in the domain</p>
@@ -1571,9 +1639,9 @@ TODO: what if the domain is larger than the URS?</p>
 <p>Note that in this specification we always assume that the first element of a domain is $1$.</p>
 </div>
 </div>
-<p><strong><code>Shifts</code></strong>. As part of the permutation, we need to create <code>PERMUTS</code> shifts.
-To do that, the following logic is followed (in pseudo code):
-(TODO: move shift creation within the permutation section?)</p>
+<p><strong><code>Shifts</code></strong>. As part of the permutation, we need to create <code>PERMUTS</code> shifts. To
+do that, the following logic is followed (in pseudo code): (TODO: move shift
+creation within the permutation section?)</p>
 <pre><code class="language-python">shifts[0] = 1 # first shift is identity
 
 for i in 0..7: # generate 7 shifts
@@ -1591,7 +1659,8 @@ def sample(domain, i):
         shift = Field(Blake2b512(to_be_bytes(i)))
     return shift, i
 </code></pre>
-<p><strong><code>Public</code></strong>. This variable simply contains the number of public inputs. (TODO: actually, it’s not contained in the verifier index)</p>
+<p><strong><code>Public</code></strong>. This variable simply contains the number of public inputs. (TODO:
+actually, it’s not contained in the verifier index)</p>
 <p>The compilation steps to create the common index are as follow:</p>
 <ol>
 <li>
@@ -1637,9 +1706,12 @@ has order greater or equal to <code>n + zk_rows</code> elements.</p>
 </ol>
 <h3 id="lookup-index"><a class="header" href="#lookup-index">Lookup Index</a></h3>
 <p>If lookup is used, the following values are added to the common index:</p>
-<p><strong><code>LookupSelectors</code></strong>. The list of lookup selectors used. In practice, this tells you which lookup tables are used.</p>
+<p><strong><code>LookupSelectors</code></strong>. The list of lookup selectors used. In practice, this
+tells you which lookup tables are used.</p>
 <p><strong><code>TableIds</code></strong>. This is a list of table ids used by the Lookup gate.</p>
-<p><strong><code>MaxJointSize</code></strong>. This is the maximum number of columns appearing in the lookup tables used by the lookup selectors. For example, the XOR lookup has 3 columns.</p>
+<p><strong><code>MaxJointSize</code></strong>. This is the maximum number of columns appearing in the
+lookup tables used by the lookup selectors. For example, the XOR lookup has 3
+columns.</p>
 <p>To create the index, follow these steps:</p>
 <ol>
 <li>
@@ -1713,8 +1785,10 @@ only if a table with an ID different from zero was used.</p>
 </li>
 </ol>
 <h3 id="prover-index"><a class="header" href="#prover-index">Prover Index</a></h3>
-<p>Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.
-These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.</p>
+<p>Both the prover and the verifier index, besides the common parts described
+above, are made out of pre-computations which can be used to speed up the
+protocol. These pre-computations are optimizations, in the context of normal
+proofs, but they are necessary for recursion.</p>
 <pre><code class="language-rs">pub struct ProverIndex&lt;const FULL_ROUNDS: usize, G: KimchiCurve&lt;FULL_ROUNDS&gt;, Srs&gt; {
     /// constraints system polynomials
     #[serde(bound = &quot;ConstraintSystem&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;)]
@@ -1749,7 +1823,8 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 }
 </code></pre>
 <h3 id="verifier-index"><a class="header" href="#verifier-index">Verifier Index</a></h3>
-<p>Same as the prover index, we have a number of pre-computations as part of the verifier index.</p>
+<p>Same as the prover index, we have a number of pre-computations as part of the
+verifier index.</p>
 <pre><code class="language-rs">#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LookupVerifierIndex&lt;G: CommitmentCurve&gt; {
@@ -1870,8 +1945,11 @@ pub struct VerifierIndex&lt;const FULL_ROUNDS: usize, G: KimchiCurve&lt;FULL_ROU
 }
 </code></pre>
 <h2 id="proof-construction--verification"><a class="header" href="#proof-construction--verification">Proof Construction &amp; Verification</a></h2>
-<p>Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the <a href="https://o1-labs.github.io/proof-systems/plonk/fiat_shamir.html">Fiat-Shamir</a> transform.
-For this reason, it can be useful to visualize the high-level interactive protocol before the transformation:</p>
+<p>Originally, kimchi is based on an interactive protocol that was transformed into
+a non-interactive one using the
+<a href="https://o1-labs.github.io/proof-systems/plonk/fiat_shamir.html">Fiat-Shamir</a>
+transform. For this reason, it can be useful to visualize the high-level
+interactive protocol before the transformation:</p>
 <pre class="mermaid">sequenceDiagram
     participant Prover
     participant Verifier
@@ -1930,8 +2008,11 @@ For this reason, it can be useful to visualize the high-level interactive protoc
 
     Prover-&gt;&gt;Verifier: aggregated evaluation proof (involves more interaction)
 </pre>
-<p>The Fiat-Shamir transform simulates the verifier messages via a hash function that hashes the transcript of the protocol so far before outputing verifier messages.
-You can find these operations under the <a href="#proof-creation">proof creation</a> and <a href="#proof-verification">proof verification</a> algorithms as absorption and squeezing of values with the sponge.</p>
+<p>The Fiat-Shamir transform simulates the verifier messages via a hash function
+that hashes the transcript of the protocol so far before outputing verifier
+messages. You can find these operations under the
+<a href="#proof-creation">proof creation</a> and <a href="#proof-verification">proof verification</a>
+algorithms as absorption and squeezing of values with the sponge.</p>
 <h3 id="proof-structure"><a class="header" href="#proof-structure">Proof Structure</a></h3>
 <p>A proof consists of the following data structures:</p>
 <pre><code class="language-rs">/// Evaluations of a polynomial at 2 points
@@ -2104,12 +2185,15 @@ where
 }
 
 </code></pre>
-<p>The following sections specify how a prover creates a proof, and how a verifier validates a number of proofs.</p>
+<p>The following sections specify how a prover creates a proof, and how a verifier
+validates a number of proofs.</p>
 <h3 id="proof-creation"><a class="header" href="#proof-creation">Proof Creation</a></h3>
 <p>To create a proof, the prover expects:</p>
 <ul>
-<li>A prover index, containing a representation of the circuit (and optionaly pre-computed values to be used in the proof creation).</li>
-<li>The (filled) registers table, representing parts of the execution trace of the circuit.</li>
+<li>A prover index, containing a representation of the circuit (and optionaly
+pre-computed values to be used in the proof creation).</li>
+<li>The (filled) registers table, representing parts of the execution trace of the
+circuit.</li>
 </ul>
 <div id="admonition-note-7" class="admonition admonish-note">
 <div class="admonition-title">
@@ -2122,12 +2206,15 @@ where
 </div>
 <p>The following constants are set:</p>
 <ul>
-<li><code>EVAL_POINTS = 2</code>. This is the number of points that the prover has to evaluate their polynomials at.
-($\zeta$ and $\zeta\omega$ where $\zeta$ will be deterministically generated.)</li>
-<li><code>ZK_ROWS = 3</code>. This is the number of rows that will be randomized to provide zero-knowledgeness.
-Note that it only needs to be greater or equal to the number of evaluations (2) in the protocol.
-Yet, it contains one extra row to take into account the last constraint (final value of the permutation accumulator).
-(TODO: treat the final constraint separately so that ZK_ROWS = 2)</li>
+<li><code>EVAL_POINTS = 2</code>. This is the number of points that the prover has to
+evaluate their polynomials at. ($\zeta$ and $\zeta\omega$ where $\zeta$ will
+be deterministically generated.)</li>
+<li><code>ZK_ROWS = 3</code>. This is the number of rows that will be randomized to provide
+zero-knowledgeness. Note that it only needs to be greater or equal to the
+number of evaluations (2) in the protocol. Yet, it contains one extra row to
+take into account the last constraint (final value of the permutation
+accumulator). (TODO: treat the final constraint separately so that ZK_ROWS
+= 2)</li>
 </ul>
 <p>The prover then follows the following steps to create the proof:</p>
 <ol>
@@ -2376,7 +2463,8 @@ First, include the previous challenges, in case we are in a recursive prover.</p
 </li>
 </ol>
 <h3 id="proof-verification"><a class="header" href="#proof-verification">Proof Verification</a></h3>
-<p>TODO: we talk about batch verification, but is there an actual batch operation? It seems like we’re just verifying an aggregated opening proof</p>
+<p>TODO: we talk about batch verification, but is there an actual batch operation?
+It seems like we’re just verifying an aggregated opening proof</p>
 <p>We define two helper algorithms below, used in the batch verification of proofs.</p>
 <h4 id="fiat-shamir-argument"><a class="header" href="#fiat-shamir-argument">Fiat-Shamir argument</a></h4>
 <p>We run the following algorithm:</p>

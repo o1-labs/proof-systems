@@ -33,10 +33,11 @@ Estimated Cycles: 27476974171
 <li>run cargo flamegraph with <code>sudo</code> (or with the option <code>--root</code> on mac):<div class="example-wrap"><pre class="language-console"><code>$ # flamegraph of the proof creation:
 $ CARGO_PROFILE_RELEASE_DEBUG=true cargo flamegraph --bin flamegraph --notes &quot;proof creation&quot; -- prove
 $ # flamegraph of the proof verification:
-$ CARGO_PROFILE_RELEASE_DEBUG=true cargo flamegraph --bin flamegraph --notes &quot;proof verification&quot; -- verify</code></pre></div>the <a href="src/bin/flamegraph.rs">binary</a> will run forever, so you have to C-c to exit and produce the <code>flamegraph.svg</code> file.</li>
+$ CARGO_PROFILE_RELEASE_DEBUG=true cargo flamegraph --bin flamegraph --notes &quot;proof verification&quot; -- verify</code></pre></div>the <a href="src/bin/flamegraph.rs">binary</a> will run forever, so you have to C-c to
+exit and produce the <code>flamegraph.svg</code> file.</li>
 </ol>
-<p>Note: lots of good advice on system performance in the <a href="https://github.com/flamegraph-rs/flamegraph#systems-performance-work-guided-by-flamegraphs">flamegraph
-repo</a>.</p>
+<p>Note: lots of good advice on system performance in the
+<a href="https://github.com/flamegraph-rs/flamegraph#systems-performance-work-guided-by-flamegraphs">flamegraph repo</a>.</p>
 </div></details><h2 id="reexports" class="section-header">Re-exports<a href="#reexports" class="anchor">§</a></h2><dl class="item-table reexports"><dt id="reexport.groupmap"><code>pub use groupmap;</code></dt><dt id="reexport.mina_curves"><code>pub use mina_curves;</code></dt><dt id="reexport.mina_poseidon"><code>pub use mina_poseidon;</code></dt><dt id="reexport.o1_utils"><code>pub use o1_utils;</code></dt><dt id="reexport.poly_commitment"><code>pub use poly_commitment;</code></dt><dt id="reexport.turshi"><code>pub use turshi;</code></dt></dl><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><dl class="item-table"><dt><a class="mod" href="alphas/index.html" title="mod kimchi::alphas">alphas</a></dt><dd>This module implements an abstraction to keep track of the powers of alphas.
 As a recap, alpha is a challenge sent by the verifier in PLONK,
 and is used to aggregate multiple constraints into a single polynomial.

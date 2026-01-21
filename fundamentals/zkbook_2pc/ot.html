@@ -178,18 +178,36 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
 <h1 id="oblivious-transfer"><a class="header" href="#oblivious-transfer">Oblivious Transfer</a></h1>
-<p>Oblivious transfer (OT) protocol is an essential tool in cryptography that provides a wide range of applications in secure multi-party computation. The OT protocol has different variants such as <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58em;"></span><span class="mord sizing reset-size6 size5">1</span></span></span></span>-out-of-<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58em;"></span><span class="mord sizing reset-size6 size5">2</span></span></span></span>, <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58em;"></span><span class="mord sizing reset-size6 size5">1</span></span></span></span>-out-of-<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.3875em;"></span><span class="mord mathnormal sizing reset-size6 size5">n</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;"></span><span class="mord mathnormal sizing reset-size6 size5" style="margin-right:0.03148em;">k</span></span></span></span>-out-of-<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.3875em;"></span><span class="mord mathnormal sizing reset-size6 size5">n</span></span></span></span>. Here we only focus on <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58em;"></span><span class="mord sizing reset-size6 size5">1</span></span></span></span>-out-of-<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58em;"></span><span class="mord sizing reset-size6 size5">2</span></span></span></span>.</p>
-<p>An OT protocol involves two parties: the sender and the receiver. The sender has <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58em;"></span><span class="mord sizing reset-size6 size5">2</span></span></span></span> strings, whereas the receiver has a chosen bit. After the execution of this OT protocol, the receiver obtains one of the strings according to the chosen bit, but no information of the other string. Then sender get no information of the chosen bit.</p>
+<p>Oblivious transfer (OT) protocol is an essential tool in cryptography that
+provides a wide range of applications in secure multi-party computation. The OT
+protocol has different variants such as <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58em;"></span><span class="mord sizing reset-size6 size5">1</span></span></span></span>-out-of-<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58em;"></span><span class="mord sizing reset-size6 size5">2</span></span></span></span>,
+<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58em;"></span><span class="mord sizing reset-size6 size5">1</span></span></span></span>-out-of-<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.3875em;"></span><span class="mord mathnormal sizing reset-size6 size5">n</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;"></span><span class="mord mathnormal sizing reset-size6 size5" style="margin-right:0.03148em;">k</span></span></span></span>-out-of-<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.3875em;"></span><span class="mord mathnormal sizing reset-size6 size5">n</span></span></span></span>. Here we only
+focus on <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58em;"></span><span class="mord sizing reset-size6 size5">1</span></span></span></span>-out-of-<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58em;"></span><span class="mord sizing reset-size6 size5">2</span></span></span></span>.</p>
+<p>An OT protocol involves two parties: the sender and the receiver. The sender has
+<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58em;"></span><span class="mord sizing reset-size6 size5">2</span></span></span></span> strings, whereas the receiver has a chosen bit. After the execution
+of this OT protocol, the receiver obtains one of the strings according to the
+chosen bit, but no information of the other string. Then sender get no
+information of the chosen bit.</p>
 <pre><code class="language-text">                    Sender                               Receiver
-    
+
                                       +----------+
                     (x_0,x_1) -------&gt;|          |&lt;------ b
                                       | OT Prot. |
-                                      |          |-------&gt; x_b 
-                                      +----------+                
+                                      |          |-------&gt; x_b
+                                      +----------+
 </code></pre>
-<p>Due to a result of Impagliazzo and Rudich in <a href="https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.14.6170&amp;rep=rep1&amp;type=pdf">this paper</a>, it is very unlikely that OT is possible without the use of public-key cryptography. However, OT can be efficiently extended. That is, starting with a small number of base OTs, one could create many more OTs with only symmetric primitives.</p>
-<p>The seminal work of <a href="https://www.iacr.org/archive/crypto2003/27290145/27290145.pdf">IKNP03</a> presented a very efficient protocol for extending OTs, requiring only black-box use of symmetric primitives and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord mathnormal">λ</span></span></span></span> base OTs, where <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord mathnormal">λ</span></span></span></span> is the security parameter. This doc focuses on the family of protocols inspired by IKNP.</p>
+<p>Due to a result of Impagliazzo and Rudich in
+<a href="https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.14.6170&amp;rep=rep1&amp;type=pdf">this paper</a>,
+it is very unlikely that OT is possible without the use of public-key
+cryptography. However, OT can be efficiently extended. That is, starting with a
+small number of base OTs, one could create many more OTs with only symmetric
+primitives.</p>
+<p>The seminal work of
+<a href="https://www.iacr.org/archive/crypto2003/27290145/27290145.pdf">IKNP03</a>
+presented a very efficient protocol for extending OTs, requiring only black-box
+use of symmetric primitives and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord mathnormal">λ</span></span></span></span> base OTs, where <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord mathnormal">λ</span></span></span></span> is the
+security parameter. This doc focuses on the family of protocols inspired by
+IKNP.</p>
 
                     </main>
 

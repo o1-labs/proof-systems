@@ -191,12 +191,17 @@ This needs to be fixed.</p>
 </div>
 <p>The URS comprises of:</p>
 <ul>
-<li><code>Gs</code>: an arbitrary ordered list of curve points that can be used to commit to a polynomial in a non-hiding way.</li>
-<li><code>H</code>: a blinding curve point that can be used to add hiding to a polynomial commitment scheme.</li>
+<li><code>Gs</code>: an arbitrary ordered list of curve points that can be used to commit to
+a polynomial in a non-hiding way.</li>
+<li><code>H</code>: a blinding curve point that can be used to add hiding to a polynomial
+commitment scheme.</li>
 </ul>
 <p>The URS is generated deterministically, and thus can be rederived if not stored.</p>
-<p>As different circuits of different size do not share the same domain, and the size of the domain is directly equal to the number of <code>Gs</code> curve points we use to commit to polynomials, we often want to share the same URS of maximum size across many circuits (constraint systems).
-Circuit associated with smaller domains will simply use a truncation of the shared URS.</p>
+<p>As different circuits of different size do not share the same domain, and the
+size of the domain is directly equal to the number of <code>Gs</code> curve points we use
+to commit to polynomials, we often want to share the same URS of maximum size
+across many circuits (constraint systems). Circuit associated with smaller
+domains will simply use a truncation of the shared URS.</p>
 <div id="admonition-note-1" class="admonition admonish-note">
 <div class="admonition-title">
 <p>Note</p>
@@ -209,7 +214,8 @@ Circuit associated with smaller domains will simply use a truncation of the shar
 <h2 id="group-map"><a class="header" href="#group-map">Group map</a></h2>
 <p>TODO: specify this part</p>
 <h2 id="curve-points-to-commit-to-a-polynomial"><a class="header" href="#curve-points-to-commit-to-a-polynomial">Curve points to commit to a polynomial</a></h2>
-<p>The following pseudo-code specifies how the <code>Gs</code> curve points, as well as the <code>H</code> curve point, are generated.</p>
+<p>The following pseudo-code specifies how the <code>Gs</code> curve points, as well as the
+<code>H</code> curve point, are generated.</p>
 <pre><code class="language-python">def create(depth):
     # generators
     Gs = []
@@ -240,7 +246,8 @@ def point_of_random_bytes(random_bytes):
 </code></pre>
 <p>TODO: specify <code>map.to_group</code> in the previous section.</p>
 <h2 id="urs-values-in-practice"><a class="header" href="#urs-values-in-practice">URS values in practice</a></h2>
-<p>As there is no limit to the number of commitment curve points you can generate, we only provide the first three ones to serve as test vectors.</p>
+<p>As there is no limit to the number of commitment curve points you can generate,
+we only provide the first three ones to serve as test vectors.</p>
 <p>TODO: specify the encoding</p>
 <h3 id="vesta"><a class="header" href="#vesta">Vesta</a></h3>
 <p><strong><code>Gs</code></strong>.</p>

@@ -178,36 +178,71 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
 <h1 id="proof-systems-design-overview"><a class="header" href="#proof-systems-design-overview">Proof Systems Design Overview</a></h1>
-<p>Many modern proof systems (and I think all that are in use) are constructed according to the  following recipe.</p>
+<p>Many modern proof systems (and I think all that are in use) are constructed
+according to the following recipe.</p>
 <ol>
 <li>
 <p>You start out with a class of computations.</p>
 </li>
 <li>
-<p>You devise a way to <em>arithmetize</em> those computations. That is, to express your computation as a statement about polynomials.</p>
-<p>More specifically, you describe what is often called an “algebraic interactive oracle proof” (AIOP) that encodes your computation. An AIOP is a protocol describing an interaction between a prover and a verifier, in which the prover sends the verifier some “polynomial oracles” (basically a black box function that given a point evaluates a polynomial at that point), the verifier sends the prover random challenges, and at the end, the verifier queries the prover’s polynomials at points of its choosing and makes a decision as to whether it has been satisfied by the proof.</p>
+<p>You devise a way to <em>arithmetize</em> those computations. That is, to express
+your computation as a statement about polynomials.</p>
+<p>More specifically, you describe what is often called an “algebraic
+interactive oracle proof” (AIOP) that encodes your computation. An AIOP is a
+protocol describing an interaction between a prover and a verifier, in which
+the prover sends the verifier some “polynomial oracles” (basically a black
+box function that given a point evaluates a polynomial at that point), the
+verifier sends the prover random challenges, and at the end, the verifier
+queries the prover’s polynomials at points of its choosing and makes a
+decision as to whether it has been satisfied by the proof.</p>
 </li>
 <li>
-<p>An AIOP is an imagined interaction between parties. It is an abstract description of the protocol that will be “compiled” into a SNARK. There are several “non-realistic” aspects about it. One is that the prover sends the verifier black-box polynomials that the verifier can evaluate. These polynomials have degree comparable to the size of the computation being verified. If we implemented these “polynomial oracles” by having the prover really send the <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord mathnormal">n</span><span class="mclose">)</span></span></span></span> size polynomials (say by sending all their coefficients), then we would not have a zk-SNARK at all, since the verifier would have to read this linearly sized polynomial so we would  lose succinctness, and the polynomials would not be black-box functions, so we may lose zero-knowledge.</p>
-<p>Instead, when we concretely instantiate the AIOP, we have the prover send constant-sized, hiding <em>polynomial commitments</em>. Then, in the phase of the AIOP where the verifier queries the polynomials, the prover sends an <em>opening proof</em> for the polynomial commitments which the verifier can check, thus simulating the activity of evaluating the prover’s polynomials on your own.</p>
-<p>So this is the next step of making a SNARK: instantiating the AIOP with a polynomial commitment scheme of one’s choosing. There are several choices here and these affect the properties of the SNARK you are constructing, as the SNARK will inherit efficiency and setup properties of the polynomial commitment scheme used.</p>
+<p>An AIOP is an imagined interaction between parties. It is an abstract
+description of the protocol that will be “compiled” into a SNARK. There are
+several “non-realistic” aspects about it. One is that the prover sends the
+verifier black-box polynomials that the verifier can evaluate. These
+polynomials have degree comparable to the size of the computation being
+verified. If we implemented these “polynomial oracles” by having the prover
+really send the <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.02778em;">O</span><span class="mopen">(</span><span class="mord mathnormal">n</span><span class="mclose">)</span></span></span></span> size polynomials (say by sending all their
+coefficients), then we would not have a zk-SNARK at all, since the verifier
+would have to read this linearly sized polynomial so we would lose
+succinctness, and the polynomials would not be black-box functions, so we may
+lose zero-knowledge.</p>
+<p>Instead, when we concretely instantiate the AIOP, we have the prover send
+constant-sized, hiding <em>polynomial commitments</em>. Then, in the phase of the
+AIOP where the verifier queries the polynomials, the prover sends an <em>opening
+proof</em> for the polynomial commitments which the verifier can check, thus
+simulating the activity of evaluating the prover’s polynomials on your own.</p>
+<p>So this is the next step of making a SNARK: instantiating the AIOP with a
+polynomial commitment scheme of one’s choosing. There are several choices
+here and these affect the properties of the SNARK you are constructing, as
+the SNARK will inherit efficiency and setup properties of the polynomial
+commitment scheme used.</p>
 </li>
 <li>
-<p>An AIOP describes an interactive protocol between the verifier and the prover. In reality, typically, we also want our proofs to be non-interactive.</p>
-<p>This is accomplished by what is called the <a href="">Fiat–Shamir transformation</a>. The basic idea is this: all that the verifier is doing is sampling random values to send to the prover. Instead, to generate a “random” value, the prover simulates the verifier by hashing its messages. The resulting hash is used as the “random” challenge.</p>
+<p>An AIOP describes an interactive protocol between the verifier and the
+prover. In reality, typically, we also want our proofs to be non-interactive.</p>
+<p>This is accomplished by what is called the <a href="">Fiat–Shamir transformation</a>.
+The basic idea is this: all that the verifier is doing is sampling random
+values to send to the prover. Instead, to generate a “random” value, the
+prover simulates the verifier by hashing its messages. The resulting hash is
+used as the “random” challenge.</p>
 <p>At this point we have a fully non-interactive proof. Let’s review our steps.</p>
 <ol>
 <li>
 <p>Start with a computation.</p>
 </li>
 <li>
-<p>Translate the computation into a statement about polynomials and design a corresponding AIOP.</p>
+<p>Translate the computation into a statement about polynomials and design a
+corresponding AIOP.</p>
 </li>
 <li>
-<p>Compile the AIOP into an interactive protocol by having the prover send hiding polynomial commitments instead of polynomial oracles.</p>
+<p>Compile the AIOP into an interactive protocol by having the prover send
+hiding polynomial commitments instead of polynomial oracles.</p>
 </li>
 <li>
-<p>Get rid of the verifier-interaction by replacing it with a hash function. I.e., apply the Fiat–Shamir transform.</p>
+<p>Get rid of the verifier-interaction by replacing it with a hash function.
+I.e., apply the Fiat–Shamir transform.</p>
 </li>
 </ol>
 </li>

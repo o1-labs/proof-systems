@@ -178,26 +178,55 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
 <h1 id="pickles-technical-diagrams"><a class="header" href="#pickles-technical-diagrams">Pickles Technical Diagrams</a></h1>
-<p>This section contains a series of diagrams giving an overview of implementation of pickles, closely following the structures and abstractions in the code. However, they are very technical and are primarily intended for developer use. The primary source of all the images in this section is <a href="./pickles_structure.drawio"><code>pickles_structure.drawio</code></a> file, and if one edits it one must re-generate the <code>.svg</code> renders by doing “export -&gt; selection”.</p>
+<p>This section contains a series of diagrams giving an overview of implementation
+of pickles, closely following the structures and abstractions in the code.
+However, they are very technical and are primarily intended for developer use.
+The primary source of all the images in this section is
+<a href="./pickles_structure.drawio"><code>pickles_structure.drawio</code></a> file, and if one edits
+it one must re-generate the <code>.svg</code> renders by doing “export -&gt; selection”.</p>
 <p>The legend of the diagrams is quite straightforward:</p>
 <ul>
-<li>The black boxes are data structures that have names and labels following the implementation.
+<li>The black boxes are data structures that have names and labels following the
+implementation.
 <ul>
-<li><code>MFNStep</code>/<code>MFNWrap</code> is an abbreviation from <code>MessagesForNextStep</code> and <code>MessagesForNextWrap</code> that is used for brevity. Most other datatypes are exactly the same as in the codebase.</li>
+<li><code>MFNStep</code>/<code>MFNWrap</code> is an abbreviation from <code>MessagesForNextStep</code> and
+<code>MessagesForNextWrap</code> that is used for brevity. Most other datatypes are
+exactly the same as in the codebase.</li>
 </ul>
 </li>
-<li>The blue boxes are computations. Sometimes, when the computation is trivial or only vaguely indicated, it is denoted as a text sign directly on an arrow.</li>
-<li>Arrows are blue by default and denote moving a piece of data from one place to another with no (or very little) change. Light blue arrows are denoting witness query that is implemented through the <code>handler</code> mechanism. The “chicken foot” connector means that this arrow accesses just one field in an array: such an arrow could connect e.g. a input field of type <code>old_a: A</code> in a structure <code>Vec&lt;(A,B)&gt;</code> to an output <code>new_a: A</code>, which just means that we are inside a <code>for</code> loop and this computation is done for all the elements in the vector/array.</li>
-<li>Colour of the field is sometimes introduced and denotes how many steps ago was this piece of data created. The absence of the colour means either that (1) the data structure contains different subfields of different origin, or that (2) it was not coloured but it could be. The colours are assigned according to the following convention:</li>
+<li>The blue boxes are computations. Sometimes, when the computation is trivial or
+only vaguely indicated, it is denoted as a text sign directly on an arrow.</li>
+<li>Arrows are blue by default and denote moving a piece of data from one place to
+another with no (or very little) change. Light blue arrows are denoting
+witness query that is implemented through the <code>handler</code> mechanism. The
+“chicken foot” connector means that this arrow accesses just one field in an
+array: such an arrow could connect e.g. a input field of type <code>old_a: A</code> in a
+structure <code>Vec&lt;(A,B)&gt;</code> to an output <code>new_a: A</code>, which just means that we are
+inside a <code>for</code> loop and this computation is done for all the elements in the
+vector/array.</li>
+<li>Colour of the field is sometimes introduced and denotes how many steps ago was
+this piece of data created. The absence of the colour means either that (1)
+the data structure contains different subfields of different origin, or that
+(2) it was not coloured but it could be. The colours are assigned according to
+the following convention:</li>
 </ul>
 <p><img src="./pickles_structure_legend_1.svg" alt="" /></p>
 <h3 id="wrap-computatiton-and-deferred-values"><a class="header" href="#wrap-computatiton-and-deferred-values">Wrap Computatiton and Deferred Values</a></h3>
-<p>The following is the diagram that explains the Wrap computation. The left half of it corresponds to the <code>wrap.ml</code> file and the general logic of proof creation, while the right part of it is <code>wrap_main.ml</code>/<code>wrap_verifier.ml</code> and explains in-circuit computation.</p>
+<p>The following is the diagram that explains the Wrap computation. The left half
+of it corresponds to the <code>wrap.ml</code> file and the general logic of proof creation,
+while the right part of it is <code>wrap_main.ml</code>/<code>wrap_verifier.ml</code> and explains
+in-circuit computation.</p>
 <p><a href="./pickles_structure_wrap.svg"> <img src="pickles_structure_wrap.svg" alt="" /> </a></p>
-<p>This diagram explains the <code>deferred_values</code> computation which is in the heart of <code>wrap.ml</code> represented as a blue box in the middle of the left pane of the main Wrap diagram. Deferred values for Wrap are computed as follows:</p>
+<p>This diagram explains the <code>deferred_values</code> computation which is in the heart of
+<code>wrap.ml</code> represented as a blue box in the middle of the left pane of the main
+Wrap diagram. Deferred values for Wrap are computed as follows:</p>
 <p><a href="./pickles_structure_wrap_deferred_values.svg"> <img src="pickles_structure_wrap_deferred_values.svg" alt="" /> </a></p>
 <h3 id="step-computation"><a class="header" href="#step-computation">Step Computation</a></h3>
-<p>The following is the diagram that explains the Step computation, similarly to Wrap. The left half of it corresponds to the general logic in <code>step.ml</code>, and the right part of it is <code>step_main.ml</code> and explains in-circuit computation. We provide no <code>deferred_values</code> computation diagram for Step, but it is very conceptually similar to the one already presented for Wrap.</p>
+<p>The following is the diagram that explains the Step computation, similarly to
+Wrap. The left half of it corresponds to the general logic in <code>step.ml</code>, and the
+right part of it is <code>step_main.ml</code> and explains in-circuit computation. We
+provide no <code>deferred_values</code> computation diagram for Step, but it is very
+conceptually similar to the one already presented for Wrap.</p>
 <p><a href="./pickles_structure_step.svg"> <img src="pickles_structure_step.svg" alt="" /> </a></p>
 
                     </main>

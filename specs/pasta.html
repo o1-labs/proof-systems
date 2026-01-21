@@ -178,14 +178,19 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
 <h1 id="pasta-curves"><a class="header" href="#pasta-curves">Pasta Curves</a></h1>
-<p>The two curves pallas and vesta (pa(llas ve)sta) created by the Zcash team.
-Each curve’s scalar field is the other curve’s base field, which is practical for recursion (see Pickles).</p>
+<p>The two curves pallas and vesta (pa(llas ve)sta) created by the Zcash team. Each
+curve’s scalar field is the other curve’s base field, which is practical for
+recursion (see Pickles).</p>
 <ul>
 <li><a href="https://github.com/zcash/pasta">supporting evidence</a></li>
-<li>mina parameters: https://github.com/o1-labs/proof-systems/tree/master/curves/src/pasta</li>
-<li>arkworks <a href="https://docs.rs/ark-pallas/0.3.0/ark_pallas/">ark-pallas</a>, <a href="https://github.com/arkworks-rs/curves/tree/master/pallas">pallas</a> and <a href="https://github.com/arkworks-rs/curves/tree/master/vesta">vesta</a></li>
+<li>mina parameters:
+https://github.com/o1-labs/proof-systems/tree/master/curves/src/pasta</li>
+<li>arkworks <a href="https://docs.rs/ark-pallas/0.3.0/ark_pallas/">ark-pallas</a>,
+<a href="https://github.com/arkworks-rs/curves/tree/master/pallas">pallas</a> and
+<a href="https://github.com/arkworks-rs/curves/tree/master/vesta">vesta</a></li>
 </ul>
-<p>Note that in general Fq refers to the base field (in which the curve is defined over), while Fr refers to the scalar field (defined by the order of the curve).
+<p>Note that in general Fq refers to the base field (in which the curve is defined
+over), while Fr refers to the scalar field (defined by the order of the curve).
 But in our code, because of the cycles:</p>
 <ul>
 <li>Fp refers to the base field of Pallas, and the scalar field of Vesta</li>
@@ -200,9 +205,12 @@ But in our code, because of the cycles:</p>
 <h2 id="pallas"><a class="header" href="#pallas">Pallas</a></h2>
 <ul>
 <li>curve equation: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.0085em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.8974em;vertical-align:-0.0833em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">3</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">5</span></span></span></span></li>
-<li>base field: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">28948022309329048855892746252171976963363056481941560715954676764349967630337</span></span></span></span></li>
-<li>scalar field: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">28948022309329048855892746252171976963363056481941647379679742748393362948097</span></span></span></span></li>
-<li>mina generator: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">12418654782883325593414442427049395787963493412651469444558597405572177144507</span><span class="mclose">)</span></span></span></span></li>
+<li>base field:
+<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">28948022309329048855892746252171976963363056481941560715954676764349967630337</span></span></span></span></li>
+<li>scalar field:
+<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">28948022309329048855892746252171976963363056481941647379679742748393362948097</span></span></span></span></li>
+<li>mina generator:
+<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">12418654782883325593414442427049395787963493412651469444558597405572177144507</span><span class="mclose">)</span></span></span></span></li>
 <li>arkworks generator: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">−</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mclose">)</span></span></span></span></li>
 <li>endo:</li>
 </ul>
@@ -221,13 +229,16 @@ Pallas.count_points()
 <p>curve equation: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.0085em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.8974em;vertical-align:-0.0833em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">3</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">5</span></span></span></span></p>
 </li>
 <li>
-<p>base field: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">28948022309329048855892746252171976963363056481941647379679742748393362948097</span></span></span></span></p>
+<p>base field:
+<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">28948022309329048855892746252171976963363056481941647379679742748393362948097</span></span></span></span></p>
 </li>
 <li>
-<p>scalar field: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">28948022309329048855892746252171976963363056481941560715954676764349967630337</span></span></span></span></p>
+<p>scalar field:
+<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">28948022309329048855892746252171976963363056481941560715954676764349967630337</span></span></span></span></p>
 </li>
 <li>
-<p>mina generator: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">11426906929455361843568202299992114520848200991084027513389447476559454104162</span><span class="mclose">)</span></span></span></span></p>
+<p>mina generator:
+<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">11426906929455361843568202299992114520848200991084027513389447476559454104162</span><span class="mclose">)</span></span></span></span></p>
 </li>
 <li>
 <p>arkworks generator: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">−</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mclose">)</span></span></span></span></p>

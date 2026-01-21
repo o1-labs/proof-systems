@@ -178,20 +178,20 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
 <h1 id="extended-lookup-tables"><a class="header" href="#extended-lookup-tables">Extended lookup tables</a></h1>
-<p>This (old) RFC proposes an extension to our use of lookup tables using the PLOOKUP
-multiset inclusion argument, so that values within lookup tables can be chosen
-after the constraint system for a circuit has been fixed.</p>
+<p>This (old) RFC proposes an extension to our use of lookup tables using the
+PLOOKUP multiset inclusion argument, so that values within lookup tables can be
+chosen after the constraint system for a circuit has been fixed.</p>
 <h2 id="motivation"><a class="header" href="#motivation">Motivation</a></h2>
 <p>This extension should provide us with</p>
 <ul>
-<li>array-style lookups (<code>arr[i]</code>, where <code>arr</code> and <code>i</code> are formed of values in
-the proof witness).</li>
+<li>array-style lookups (<code>arr[i]</code>, where <code>arr</code> and <code>i</code> are formed of values in the
+proof witness).</li>
 <li>the ability to load ‘bytecode’ using a proof-independent commitment.</li>
 <li>the ability to load tables of arbitrary data for use in the circuit, allowing
 e.g. the full data of a HTTPS transcript to be entered into a proof without
 using some in-circuit commitment.</li>
-<li>the ability to expose tables of arbitrary in-circuit data, for re-use by
-other proofs.</li>
+<li>the ability to expose tables of arbitrary in-circuit data, for re-use by other
+proofs.</li>
 </ul>
 <p>These goals support 5 major use-cases:</p>
 <ul>
@@ -223,15 +223,14 @@ in-circuit commitment.</li>
 <h2 id="detailed-design"><a class="header" href="#detailed-design">Detailed design</a></h2>
 <p>In order to support the desired goals, we first define 3 types of table:</p>
 <ul>
-<li><strong>fixed tables</strong> are tables declared as part of the constraint system, and
-are the same for every proof of that circuit.</li>
+<li><strong>fixed tables</strong> are tables declared as part of the constraint system, and are
+the same for every proof of that circuit.</li>
 <li><strong>runtime tables</strong> are tables whose contents are determined at proving time,
 to be used for array accesses to data from the witness. Also called dynamic
 tables in other projects.</li>
-<li><strong>side-loaded tables</strong> are tables that are committed to in a
-proof-independent way, so that they may be reused across proofs and/or signed
-without knowledge of the specific proof, but may be different for each
-execution of the circuit.</li>
+<li><strong>side-loaded tables</strong> are tables that are committed to in a proof-independent
+way, so that they may be reused across proofs and/or signed without knowledge
+of the specific proof, but may be different for each execution of the circuit.</li>
 </ul>
 <p>These distinct types of tables are a slight fiction: often it will be desirable
 to have some fixed part of runtime or side-loaded tables, e.g. to ensure that
@@ -249,10 +248,10 @@ such as <code>[(0,a), (0,x), (1,y), (2,z)]</code>, otherwise the value <code>a</
 where the value <code>x</code> was intended.</p>
 <h3 id="combining-multiple-tables"><a class="header" href="#combining-multiple-tables">Combining multiple tables</a></h3>
 <p>The current implementation only supports a single fixed table. In order to make
-multiple tables available, we either need to run a separate PLOOKUP argument
-for each table, or to concatenate the tables to form an combined table and
-identify the values from each table in such a way that the prover cannot use
-values from the ‘wrong’ table.</p>
+multiple tables available, we either need to run a separate PLOOKUP argument for
+each table, or to concatenate the tables to form an combined table and identify
+the values from each table in such a way that the prover cannot use values from
+the ‘wrong’ table.</p>
 <p>We already solve a similar problem with ‘vector’ tables – tables where a row
 contains multiple values – where we want to ensure that the prover used an
 entry <code>(x, y, z)</code> from the table, and not some parts of different entries, or
@@ -264,17 +263,17 @@ it in fact was, they are not able to use the knowledge of the <code>joint_combin
 to choose their <code>(a, b, c)</code>, since the <code>joint_combiner</code> will depend on those
 values <code>a</code>, <code>b</code>, and <code>c</code>.</p>
 <p>This is a standard technique for checking multiple equalities at once by
-checking a single equality; to use it, we must simply ensure that the
-randomness depends on all of the (non-constant) values in the equality.</p>
+checking a single equality; to use it, we must simply ensure that the randomness
+depends on all of the (non-constant) values in the equality.</p>
 <p>We propose extending each table with an extra column, which we will call the
-<code>TableID</code> column, which associates a different number with each table. Since
-the sizes of all tables must be known at constraint system time, we can treat
-this as a fixed column. For example, this converts a lookup <code>(a, b, c)</code> in the
-table with ID <code>1</code> into a lookup of <code>(a, b, c, 1)</code> in the combined table, and
-ensures that any value <code>(x, y, z)</code> from table ID <code>2</code> will not match that
-lookup, since its representative is <code>(x, y, z, 2)</code>.</p>
-<p>To avoid any interaction between the <code>TableID</code> column and any other data in
-the tables, we use <code>TableID * joint_combiner^max_joint_size</code> to mix in the
+<code>TableID</code> column, which associates a different number with each table. Since the
+sizes of all tables must be known at constraint system time, we can treat this
+as a fixed column. For example, this converts a lookup <code>(a, b, c)</code> in the table
+with ID <code>1</code> into a lookup of <code>(a, b, c, 1)</code> in the combined table, and ensures
+that any value <code>(x, y, z)</code> from table ID <code>2</code> will not match that lookup, since
+its representative is <code>(x, y, z, 2)</code>.</p>
+<p>To avoid any interaction between the <code>TableID</code> column and any other data in the
+tables, we use <code>TableID * joint_combiner^max_joint_size</code> to mix in the
 <code>TableID</code>, where <code>max_joint_size</code> is the maximum length of any lookup or table
 value. This also simplifies the ‘joining’ of the <code>table_id</code> polynomial
 commitment, since we can straightforwardly scale it by the constant
@@ -286,8 +285,8 @@ witness. However, where we have runtime or side-loaded tables, a malicious
 prover may be able to select values in those tables that abuse knowledge of
 <code>joint_combiner</code> to create collisions.</p>
 <p>For example, the prover could create the appearance that there is a value
-<code>(x, y, z)</code> in the table with ID 1 by entering a single value <code>a</code> into the
-table with ID 2, by computing</p>
+<code>(x, y, z)</code> in the table with ID 1 by entering a single value <code>a</code> into the table
+with ID 2, by computing</p>
 <pre><code>a =   x
     + y * joint_combiner
     + z * joint_combiner^2
@@ -296,7 +295,8 @@ table with ID 2, by computing</p>
 <p>so that the combined contribution with its table ID becomes</p>
 <pre><code>a + 2 * joint_combiner^max_joint_size
 </code></pre>
-<p>and thus matches exactly the combined value from <code>(x, y, z)</code> in the table with ID 1:</p>
+<p>and thus matches exactly the combined value from <code>(x, y, z)</code> in the table with
+ID 1:</p>
 <pre><code>x + y * joint_combiner + z * joint_combiner^2 + 1 * joint_combiner^max_joint_size
 </code></pre>
 <p>Thus, we need to ensure that the <code>joint_combiner</code> depends on the values in
@@ -315,25 +315,23 @@ extending all of the constituent tables to the same width (i.e. number of
 columns), generating the appropriate table IDs array, and concatenating all of
 the tables. Concretely:</p>
 <p>Let <code>t[id][row][col]</code> be the <code>col</code>th element of the <code>row</code>th entry in the <code>id</code>th
-fixed table.
-Let <code>W</code> be the maximum width of all of the <code>t[id][row]</code>s.
-For any <code>t[id][row]</code> whose width <code>w</code> is less than <code>W</code>, pad it to width <code>W</code> by
-setting <code>t[id][row][col] = 0</code> for all <code>w &lt; col &lt;= W</code>.
-Form the combined table by concatenating all of these tables
-<code>FixedTable = t[0] || t[1] || t[2] || ...</code>
-and store in <code>TableID</code> the table ID that the corresponding row came from.
-Then, for every <code>output_row</code>, we have</p>
+fixed table. Let <code>W</code> be the maximum width of all of the <code>t[id][row]</code>s. For any
+<code>t[id][row]</code> whose width <code>w</code> is less than <code>W</code>, pad it to width <code>W</code> by setting
+<code>t[id][row][col] = 0</code> for all <code>w &lt; col &lt;= W</code>. Form the combined table by
+concatenating all of these tables <code>FixedTable = t[0] || t[1] || t[2] || ...</code> and
+store in <code>TableID</code> the table ID that the corresponding row came from. Then, for
+every <code>output_row</code>, we have</p>
 <pre><code>FixedTable[output_row][col] = t[id][row][col]`
 TableID[output_row] = id
 where output_row = len(t[0]) + len(t[1]) + ... + len(t[id-1]) + row
 </code></pre>
-<p>This can be encoded as <code>W+1</code> polynomials in the constraint system, which we
-will reference as <code>FixedTable(col)</code> for <code>0 &lt;= col &lt; W</code> and <code>TableID</code>.</p>
+<p>This can be encoded as <code>W+1</code> polynomials in the constraint system, which we will
+reference as <code>FixedTable(col)</code> for <code>0 &lt;= col &lt; W</code> and <code>TableID</code>.</p>
 <p>For any unused entries, we use <code>TableID = -1</code>, to avoid collisions with any
 tables.</p>
 <h3 id="representing-the-runtime-table"><a class="header" href="#representing-the-runtime-table">Representing the runtime table</a></h3>
-<p>The runtime table can be considered as a ‘mask’ that we apply to the fixed
-table to introduce proof-specific data at runtime.</p>
+<p>The runtime table can be considered as a ‘mask’ that we apply to the fixed table
+to introduce proof-specific data at runtime.</p>
 <p>We make the simplifying assumption that an entry in the runtime table has
 exactly 1 ‘fixed’ entry, which can be used for indexing (or set to <code>0</code> if
 unused), and that the table has a fixed width of <code>X</code>. We can pad any narrower
@@ -353,10 +351,10 @@ the zero vector wherever the selector is zero:</p>
 + sum[i=1, X, RuntimeTable(i) * joint_combiner^i]
 + TableID * joint_combiner^max_joint_size
 </code></pre>
-<p>where we assume that <code>RuntimeTableSelector * FixedTable(i) = 0</code> for
-<code>1 &lt;= i &lt; W</code> via our simplifying assumption above. We compute this as a
-polynomial <code>FixedAndRuntimeTable</code>, giving its evaluations and openings as part
-of the proof, and asserting that each entry matches the above.</p>
+<p>where we assume that <code>RuntimeTableSelector * FixedTable(i) = 0</code> for <code>1 &lt;= i &lt; W</code>
+via our simplifying assumption above. We compute this as a polynomial
+<code>FixedAndRuntimeTable</code>, giving its evaluations and openings as part of the
+proof, and asserting that each entry matches the above.</p>
 <p>The <code>RuntimeTableSelector</code> polynomial will be fixed at constraint system time,
 and we can avoid opening it. However, we must provide openings for
 <code>RuntimeTable(i)</code>.</p>
@@ -366,10 +364,10 @@ chosen with prior knowledge <code>joint_combiner</code>.</p>
 <h3 id="representing-the-side-loaded-tables"><a class="header" href="#representing-the-side-loaded-tables">Representing the side-loaded tables</a></h3>
 <p>The side-loaded tables can be considered as additional ‘masks’ that we apply to
 the combined fixed and runtime table, to introduce this side-loaded data.</p>
-<p>Again, we make the simplifying assumption that an entry from a side-loaded
-table has exactly 1 ‘fixed’ entry, which can be used for indexing (or set to
-<code>0</code> if unused). We also assume that at most 1 side-loaded table contributes to
-each entry.</p>
+<p>Again, we make the simplifying assumption that an entry from a side-loaded table
+has exactly 1 ‘fixed’ entry, which can be used for indexing (or set to <code>0</code> if
+unused). We also assume that at most 1 side-loaded table contributes to each
+entry.</p>
 <p>In order to compute the lookup multiset inclusion argument, we also need the
 combined table of all 3 table kinds, which we will call <code>LookupTable</code>. We can
 calculate the contribution of the side-loaded table for each lookup as</p>
@@ -377,32 +375,31 @@ calculate the contribution of the side-loaded table for each lookup as</p>
 </code></pre>
 <p>We will represent the polynomials for the side-loaded tables as
 <code>SideLoadedTable(i, j)</code>, where <code>i</code> identifies the table, and <code>j</code> identifies the
-column within that table. We also include polynomials <code>SideLoadedCombined(i)</code>
-in the proof, along with their openings, where</p>
+column within that table. We also include polynomials <code>SideLoadedCombined(i)</code> in
+the proof, along with their openings, where</p>
 <pre><code>SideLoadedCombined(i)
   = sum[j=1, ?, SideLoadedTable(i, j) * joint_combiner^(j-1)]
 </code></pre>
 <p>and check for consistency of the evaluations and openings when verifying the
 proof.</p>
 <p>The <code>SideLoadedTable</code> polynomials are included in the proof, but we do so ‘as
-if’ they had been part of the verification index (ie. without any
-proof-specific openings), so that they may be reused across multiple different
-proofs without modification.</p>
+if’ they had been part of the verification index (ie. without any proof-specific
+openings), so that they may be reused across multiple different proofs without
+modification.</p>
 <p>The <code>joint_combiner</code> should be sampled using randomness that depends on the
-individual <code>SideLoadedTable(i,j)</code>s, to ensure that the side-loaded values
-cannot be chosen with prior knowledge <code>joint_combiner</code>.</p>
+individual <code>SideLoadedTable(i,j)</code>s, to ensure that the side-loaded values cannot
+be chosen with prior knowledge <code>joint_combiner</code>.</p>
 <p><em>Note: it may be useful for the verifier to pass the <code>SideLoadedTable(i,j)</code>s as
-public inputs to the proof, so that the circuit may assert that the table it
-had side-loaded was signed or otherwise correlated with a cryptographic
-commitment that it had access to. The details of this are deliberately elided
-in this RFC, since the principle and implementation are both fairly
-straightforward.</em></p>
+public inputs to the proof, so that the circuit may assert that the table it had
+side-loaded was signed or otherwise correlated with a cryptographic commitment
+that it had access to. The details of this are deliberately elided in this RFC,
+since the principle and implementation are both fairly straightforward.</em></p>
 <h3 id="position-independence-of-side-loaded-tables"><a class="header" href="#position-independence-of-side-loaded-tables">Position-independence of side-loaded tables</a></h3>
 <p>We want to ensure that side-loaded tables are maximally re-usable across
-different proofs, even where the ‘position’ of the same side-loaded table in
-the combined table may vary between proofs. For example, we could consider a
-‘folding’ circuit <code>C</code> which takes 2 side-loaded tables <code>t_in</code> and <code>t_out</code>,
-where we prove</p>
+different proofs, even where the ‘position’ of the same side-loaded table in the
+combined table may vary between proofs. For example, we could consider a
+‘folding’ circuit <code>C</code> which takes 2 side-loaded tables <code>t_in</code> and <code>t_out</code>, where
+we prove</p>
 <pre><code>C(t_0, t_1)
 C(t_1, t_2)
 C(t_2, t_3)
@@ -440,9 +437,9 @@ relevant to each value.</p>
    * (SideLoadedCombined(3) + gamma + x * beta * shift[11])
 </code></pre>
 <p>where <code>shift[0..7]</code> is the existing <code>shift</code> vector used for the witness
-permutation, and the additional values above are chosen so that
-<code>shift[i] * w^j</code> are distinct for all <code>i</code> and <code>j</code>, and <code>Sigma(_)</code> are the
-columns representing the permutation. We then assert that</p>
+permutation, and the additional values above are chosen so that <code>shift[i] * w^j</code>
+are distinct for all <code>i</code> and <code>j</code>, and <code>Sigma(_)</code> are the columns representing
+the permutation. We then assert that</p>
 <pre><code>Lagrange(0)
   * (LookupPermutation * (0 + gamma + beta * zero_sigma)
     - (0 + gamma + beta * shift[len(shift)-1]))
@@ -459,10 +456,10 @@ another, which is likely to be useful in examples like the ‘fold’ one above,
 some data is expected to be shared between <code>t_in</code> and <code>t_out</code>.</p>
 <h3 id="permutation-argument-for-cheap-array-lookups"><a class="header" href="#permutation-argument-for-cheap-array-lookups">Permutation argument for cheap array lookups</a></h3>
 <p>It would be useful to add data to the runtime table using the existing
-permutation arguments rather than using a lookup to ‘store’ data. In
-particular, the polynomial degree limits the number of lookups available per
-row, but we are able to assert equalities on all 7 permuted witness columns
-using the existing argument. By combining the existing <code>PermutationAggreg</code> with
+permutation arguments rather than using a lookup to ‘store’ data. In particular,
+the polynomial degree limits the number of lookups available per row, but we are
+able to assert equalities on all 7 permuted witness columns using the existing
+argument. By combining the existing <code>PermutationAggreg</code> with
 <code>LookupPermutation</code>, we can allow all of these values to interact.</p>
 <p>Concretely, by involving the original aggregation and the first row of the
 runtime table, we can construct the permutation</p>
@@ -492,8 +489,8 @@ side-loaded tables when they contain a single entry due to their use of
 <code>joint_combiner</code> for subsequent entries, which is sampled using randomness that
 depends on this witness.</p>
 <p>In order to check the combined permutation, we remove the final check from the
-existing permutation argument and compute the combined check of both
-permutation arguments:</p>
+existing permutation argument and compute the combined check of both permutation
+arguments:</p>
 <pre><code>Lagrange(n-ZK_ROWS) * (LookupPermutation * PermutationAggreg - 1) = 0
 </code></pre>
 <h3 id="full-list-of-polynomials-and-constraints"><a class="header" href="#full-list-of-polynomials-and-constraints">Full list of polynomials and constraints</a></h3>
@@ -584,14 +581,14 @@ runtime table checks (and columns) can be omitted when there is no runtime
 table.</p>
 <h2 id="drawbacks"><a class="header" href="#drawbacks">Drawbacks</a></h2>
 <p>This proposal increases the size of proofs, and increases the number of checks
-that the verifier must perform, and thus the cost of the recusive verifier.
-This also increases the complexity of the proof system.</p>
+that the verifier must perform, and thus the cost of the recusive verifier. This
+also increases the complexity of the proof system.</p>
 <h2 id="rationale-and-alternatives"><a class="header" href="#rationale-and-alternatives">Rationale and alternatives</a></h2>
 <h3 id="why-is-this-design-the-best-in-the-space-of-possible-designs"><a class="header" href="#why-is-this-design-the-best-in-the-space-of-possible-designs">Why is this design the best in the space of possible designs?</a></h3>
 <p>This design combines the 3 different ‘modes’ of random access memory, roughly
 approximating <code>ROM -&gt; RAM</code> loading, <code>disk -&gt; RAM</code> loading, and <code>RAM r/w</code>. This
-gives the maximum flexibility for circuit designers, and each primitive has
-uses for projects that we are pursuing.</p>
+gives the maximum flexibility for circuit designers, and each primitive has uses
+for projects that we are pursuing.</p>
 <p>This design has been refined over several iterations to reduce the number of
 components exposed in the proof and the amount of computation that the verifier
 requires. The largest remaining parts represent the data itself and the method
@@ -616,7 +613,8 @@ this or similar extensions.</p>
 <h2 id="unresolved-questions"><a class="header" href="#unresolved-questions">Unresolved questions</a></h2>
 <h3 id="what-parts-of-the-design-do-you-expect-to-resolve-through-the-rfc-process-before-this-gets-merged"><a class="header" href="#what-parts-of-the-design-do-you-expect-to-resolve-through-the-rfc-process-before-this-gets-merged">What parts of the design do you expect to resolve through the RFC process before this gets merged?</a></h3>
 <ul>
-<li>The maximum number of tables / entries of each kind that we want to support in the ‘standard’ protocol.</li>
+<li>The maximum number of tables / entries of each kind that we want to support in
+the ‘standard’ protocol.</li>
 <li>Validation (or rejection) of the simplifying assumptions.</li>
 <li>Confirmation of the design constraints, or simplifications thereto.</li>
 <li>Necessity / utility of the permutation argument.</li>

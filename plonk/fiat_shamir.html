@@ -178,25 +178,42 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
 <h1 id="non-interactivity-via-fiat-shamir"><a class="header" href="#non-interactivity-via-fiat-shamir">Non-Interactivity via Fiat-Shamir</a></h1>
-<p>So far we’ve talked about an interactive protocol between a prover and a verifier.
-The zero-knowledge proof was also in the honest verifier zero-knowedlge (HVZK) model, which is problematic.</p>
-<p>In practice, we want to remove the interaction and have the prover produce a proof by themselves, that anyone can verify.</p>
+<p>So far we’ve talked about an interactive protocol between a prover and a
+verifier. The zero-knowledge proof was also in the honest verifier
+zero-knowedlge (HVZK) model, which is problematic.</p>
+<p>In practice, we want to remove the interaction and have the prover produce a
+proof by themselves, that anyone can verify.</p>
 <h2 id="public-coin-protocols"><a class="header" href="#public-coin-protocols">Public-coin protocols</a></h2>
-<p>public-coin protocols are protocols were the messages of the verifier are simply random messages.
-This is important as our technique to transform an interactive protocol to a non-interactive protocol works on public-coin protocols.</p>
+<p>public-coin protocols are protocols were the messages of the verifier are simply
+random messages. This is important as our technique to transform an interactive
+protocol to a non-interactive protocol works on public-coin protocols.</p>
 <h2 id="fiat-shamir-trick"><a class="header" href="#fiat-shamir-trick">Fiat-Shamir trick</a></h2>
-<p>The whole idea is to replace the verifier by a random oracle, which in practice is a hash function.
-Note that by doing this, we remove potential leaks that can happen when the verifier acts dishonestly.</p>
-<p>Initially the Fiat-Shamir transformation was only applied to sigma protocols, named after the greek letter <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord">Σ</span></span></span></span> due to its shape resembling the direction of messages (prover sends a commit to a verifier, verifier sends a challenge to a prover, prover sends the final proof to a verifier).
-A <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.07153em;">Z</span></span></span></span> would have made more sense but here we are.</p>
+<p>The whole idea is to replace the verifier by a random oracle, which in practice
+is a hash function. Note that by doing this, we remove potential leaks that can
+happen when the verifier acts dishonestly.</p>
+<p>Initially the Fiat-Shamir transformation was only applied to sigma protocols,
+named after the greek letter <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord">Σ</span></span></span></span> due to its shape resembling the direction
+of messages (prover sends a commit to a verifier, verifier sends a challenge to
+a prover, prover sends the final proof to a verifier). A <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.07153em;">Z</span></span></span></span> would have made
+more sense but here we are.</p>
 <h2 id="generalization-of-fiat-shamir"><a class="header" href="#generalization-of-fiat-shamir">Generalization of Fiat-Shamir</a></h2>
-<p>As our protocol has more than three moves, where every even move is a challenge from the verifier, we need to generalize Fiat-Shamir.
-This is simple: every verifier move can be replaced by a hash of the transcript (every message sent and received so far) to obtain a challenge.</p>
+<p>As our protocol has more than three moves, where every even move is a challenge
+from the verifier, we need to generalize Fiat-Shamir. This is simple: every
+verifier move can be replaced by a hash of the transcript (every message sent
+and received so far) to obtain a challenge.</p>
 <h2 id="in-practice-a-duplex-construction-as-merlin"><a class="header" href="#in-practice-a-duplex-construction-as-merlin">In practice: a duplex construction as Merlin</a></h2>
-<p>While we use a hash function for that, a different construction called the <a href="https://keccak.team/sponge_duplex.html">duplex construction</a> is particularly useful in such situations as they allow to continuously absorb the transcript and produce challenges, while automatically authenticating the fact that they produced a challenge.</p>
-<p><a href="https://merlin.cool/">Merlin</a> is a standardization of such a construction using the <a href="https://strobe.sourceforge.io/">Strobe protocol framework</a> (a framework to make use of a duplex construction).
-Note that the more recent <a href="https://keccak.team/xoodyak.html">Xoodyak</a> (part of NIST’s lightweight competition) could have been used for this as well.
-Note also that Mina uses none of these standards, instead it simply uses Poseidon (see section on poseidon).</p>
+<p>While we use a hash function for that, a different construction called the
+<a href="https://keccak.team/sponge_duplex.html">duplex construction</a> is particularly
+useful in such situations as they allow to continuously absorb the transcript
+and produce challenges, while automatically authenticating the fact that they
+produced a challenge.</p>
+<p><a href="https://merlin.cool/">Merlin</a> is a standardization of such a construction using
+the <a href="https://strobe.sourceforge.io/">Strobe protocol framework</a> (a framework to
+make use of a duplex construction). Note that the more recent
+<a href="https://keccak.team/xoodyak.html">Xoodyak</a> (part of NIST’s lightweight
+competition) could have been used for this as well. Note also that Mina uses
+none of these standards, instead it simply uses Poseidon (see section on
+poseidon).</p>
 
                     </main>
 
