@@ -98,18 +98,18 @@ macro_rules! impl_oracles {
             {
                 fn from(ro: RandomOracles<$F>) -> Self {
                     Self {
-                        joint_combiner_chal: ro.joint_combiner.as_ref().map(|x| x.0.0.into()),
+                        joint_combiner_chal: ro.joint_combiner.as_ref().map(|x| x.0.inner().into()),
                         joint_combiner: ro.joint_combiner.as_ref().map(|x| x.1.into()),
                         beta: ro.beta.into(),
                         gamma: ro.gamma.into(),
-                        alpha_chal: ro.alpha_chal.0.into(),
+                        alpha_chal: ro.alpha_chal.inner().into(),
                         alpha: ro.alpha.into(),
                         zeta: ro.zeta.into(),
                         v: ro.v.into(),
                         u: ro.u.into(),
-                        zeta_chal: ro.zeta_chal.0.into(),
-                        v_chal: ro.v_chal.0.into(),
-                        u_chal: ro.u_chal.0.into(),
+                        zeta_chal: ro.zeta_chal.inner().into(),
+                        v_chal: ro.v_chal.inner().into(),
+                        u_chal: ro.u_chal.inner().into(),
                     }
                 }
             }
@@ -235,7 +235,7 @@ macro_rules! impl_oracles {
                         .proof
                         .prechallenges(&mut sponge)
                         .into_iter()
-                        .map(|x| x.0.into())
+                        .map(|x| x.inner().into())
                         .collect();
 
                     Ok((oracles, p_eval, opening_prechallenges, digest))

@@ -62,7 +62,7 @@ const HIGH_ENTROPY_LIMBS: usize = 2;
 ///
 /// See [`ScalarChallenge::to_field`] for how the conversion works.
 #[derive(Clone, Debug)]
-pub struct ScalarChallenge<F>(pub F);
+pub struct ScalarChallenge<F>(F);
 
 impl<F> ScalarChallenge<F> {
     /// Creates a ScalarChallenge from a field element.
@@ -126,6 +126,11 @@ impl<F: PrimeField> ScalarChallenge<F> {
     /// required by [`Self::to_field`].
     pub fn from_limbs(limbs: [u64; 2]) -> Self {
         Self(F::from_bigint(pack(&limbs)).expect("128 bits always fits in field"))
+    }
+
+    /// Get the inner value
+    pub fn inner(&self) -> F {
+        self.0
     }
 
     /// Converts a scalar challenge to an "effective" scalar using endomorphism
