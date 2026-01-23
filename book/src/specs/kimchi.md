@@ -787,6 +787,12 @@ When the scalar is longer (which will usually be the case), multiple EVBSM rows 
 |     i | xT | yT |  Ø |  Ø | xP | yP | n  |  xR |  yR |  s1 | s3  | b1  |  b2 |  b3 |  b4 | EVBSM |
 |   i+1 |  = |  = |    |    | xS | yS | n' | xR' | yR' | s1' | s3' | b1' | b2' | b3' | b4' | EVBSM |
 
+The values (`xR`, `yR`) are the coordinates of the intermediary point resulting from the
+computation of `(P ± T)`. The gate computes two points addition, first `R = P ± T` and after
+that `S = R + P`.
+`n` and `n'` are the accumulated bit decompositions of the value `k` (in little endian and
+`n < n'`. `s1` and `s3` are intermediary values used to compute the slopes from the curve
+addition formula.
 The layout of this gate (and the next row) allows for this chained behavior where the output point
 of the current row $S$ gets accumulated as one of the inputs of the following row, becoming $P$ in
 the next constraints. Similarly, the scalar is decomposed into binary form and $n$ ($n'$ respectively)
@@ -817,7 +823,7 @@ which take care of 4 bits of the scalar within a single EVBSM row:
   * Bit flag $b_3$: `0 = b3 * (b3 - 1)`
   * Bit flag $b_4$: `0 = b4 * (b4 - 1)`
 * Binary decomposition:
-  * Accumulated scalar: `n_next = 16 * n + 8 * b1 + 4 * b2 + 2 * b3 + b4`
+  * Accumulated scalar: `n' = 16 * n + 8 * b1 + 4 * b2 + 2 * b3 + b4`
 
 The constraints above are derived from the following EC Affine arithmetic equations:
 
