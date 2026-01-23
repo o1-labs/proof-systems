@@ -127,6 +127,54 @@ impl<F: PrimeField> ScalarChallenge<F> {
     pub fn from_limbs(limbs: [u64; 2]) -> Self {
         Self(F::from_bigint(pack(&limbs)).expect("128 bits always fits in field"))
     }
+
+    /// Converts a scalar challenge to an "effective" scalar using endomorphism
+    /// decomposition.
+    ///
+    /// # Background
+    ///
+    /// For curves with an endomorphism φ(P) = [λ]P, we can represent any scalar
+    /// k as:
+    ///
+    ///   k = a·λ + b
+    ///
+    /// This allows efficient scalar multiplication because:
+    ///
+    ///   [k]P = [a·λ + b]P = [a]·φ(P) + [b]·P
+    ///
+    /// Since φ(P) = (ξ·x, y) is essentially free (one field multiplication),
+    /// we reduce the scalar multiplication cost by processing two scalar
+    /// multiplications of half the size instead of one full-size multiplication.
+    ///
+    /// # Algorithm
+    ///
+    /// Starting with a = b = 2, the challenge bits are processed in pairs
+    /// (r_{2i}, r_{2i+1}) from MSB to LSB. For each pair:
+    ///
+    /// 1. Double both a and b
+    /// 2. Add ±1 to either a or b based on the bit pair:
+    ///
+    /// | r_{2i} | r_{2i+1} | Action  |
+    /// |--------|----------|---------|
+    /// |   0    |    0     | b += -1 |
+    /// |   1    |    0     | b += +1 |
+    /// |   0    |    1     | a += -1 |
+    /// |   1    |    1     | a += +1 |
+    ///
+    /// The result is: a·λ + b
+    ///
+    /// # Parameters
+    ///
+    /// - `length_in_bits`: Number of bits to process from the challenge
+    /// - `endo_coeff`: The scalar λ such that φ(P) = [λ]P
+    ///
+    /// # Returns
+    ///
+    /// The effective scalar k = a·λ + b
+    ///
+    /// # References
+    ///
+    /// - Halo paper, Section 6.2: <https://eprint.iacr.org/2019/1021>
     pub fn to_field_with_length(&self, length_in_bits: usize, endo_coeff: &F) -> F {
         let rep = self.0.into_bigint();
         let r = rep.as_ref();
@@ -154,6 +202,12 @@ impl<F: PrimeField> ScalarChallenge<F> {
         a * endo_coeff + b
     }
 
+    /// Converts a scalar challenge to an effective scalar.
+    ///
+    /// This is a convenience wrapper around [`Self::to_field_with_length`]
+    /// using the default challenge length (128 bits).
+    ///
+    /// See [`Self::to_field_with_length`] for details on the algorithm.
     pub fn to_field(&self, endo_coeff: &F) -> F {
         let length_in_bits = 64 * CHALLENGE_LENGTH_IN_LIMBS;
         self.to_field_with_length(length_in_bits, endo_coeff)
