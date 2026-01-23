@@ -9,12 +9,36 @@ and this project adheres to
 
 ## Unreleased
 
+### [mina-poseidon](./poseidon)
+
+#### Added
+
+- Add documentation for the `from_field` methods
+  ([#3450](https://github.com/o1-labs/proof-systems/pull/3450)).
+- Add constructor `new` in `ScalarChallenge` with documentation describing the
+  coming deprecation
+  ([#3450](https://github.com/o1-labs/proof-systems/pull/3450)).
+- Add constructor `from_limbs` in `ScalarChallenge` to be used later instead of
+  `ScalarChallenge::new`
+  ([#3450](https://github.com/o1-labs/proof-systems/pull/3450)).
+- Add method `inner` and make inner field of `ScalarChallenge` private
+  ([#3450](https://github.com/o1-labs/proof-systems/pull/3450)).
+- Propagate the usage of `new` in all the crate
+  ([#3450](https://github.com/o1-labs/proof-systems/pull/3450)).
+
 ### plonk_neon
 
 #### Removed
 
 - Remove unused `plonk_neon` crate from workspace
   ([#3440](https://github.com/o1-labs/proof-systems/pull/3440))
+
+### [poly-commitment](./poly-commitment)
+
+#### Added
+
+- Add documentation for the method `endos`
+  ([#3450](https://github.com/o1-labs/proof-systems/pull/3450)).
 
 ## 0.3.0
 
