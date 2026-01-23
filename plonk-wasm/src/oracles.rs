@@ -119,18 +119,18 @@ macro_rules! impl_oracles {
                 fn from(ro: WasmRandomOracles) -> Self {
                     Self {
                         joint_combiner: ro.joint_combiner_chal.and_then(|x| {
-                            ro.joint_combiner.map(|y| (ScalarChallenge(x.into()), y.into()))
+                            ro.joint_combiner.map(|y| (ScalarChallenge::new(x.into()), y.into()))
                         }),
                         beta: ro.beta.into(),
                         gamma: ro.gamma.into(),
-                        alpha_chal: ScalarChallenge(ro.alpha_chal.into()),
+                        alpha_chal: ScalarChallenge::new(ro.alpha_chal.into()),
                         alpha: ro.alpha.into(),
                         zeta: ro.zeta.into(),
                         v: ro.v.into(),
                         u: ro.u.into(),
-                        zeta_chal: ScalarChallenge(ro.zeta_chal.into()),
-                        v_chal: ScalarChallenge(ro.v_chal.into()),
-                        u_chal: ScalarChallenge(ro.u_chal.into()),
+                        zeta_chal: ScalarChallenge::new(ro.zeta_chal.into()),
+                        v_chal: ScalarChallenge::new(ro.v_chal.into()),
+                        u_chal: ScalarChallenge::new(ro.u_chal.into()),
                     }
                 }
             }

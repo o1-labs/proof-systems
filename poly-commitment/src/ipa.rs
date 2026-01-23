@@ -236,7 +236,7 @@ impl<G: CommitmentCurve> SRS<G> {
             let Challenges { chal, chal_inv } = opening.challenges::<EFqSponge>(&endo_r, sponge);
 
             sponge.absorb_g(&[opening.delta]);
-            let c = ScalarChallenge(sponge.challenge()).to_field(&endo_r);
+            let c = ScalarChallenge::new(sponge.challenge()).to_field(&endo_r);
 
             // < s, sum_i evalscale^i pows(evaluation_point[i]) >
             // ==
@@ -838,7 +838,7 @@ impl<G: CommitmentCurve> SRS<G> {
         .into_affine();
 
         sponge.absorb_g(&[delta]);
-        let c = ScalarChallenge(sponge.challenge()).to_field(&endo_r);
+        let c = ScalarChallenge::new(sponge.challenge()).to_field(&endo_r);
 
         // (?) Schnorr-like responses showing the knowledge of r_prime and a0.
         let z1 = a0 * c + d;

@@ -73,7 +73,7 @@ where
     // squeeze zeta
     // TODO: understand why we use the endo here and for IPA ,
     // but not for alpha
-    let zeta_chal = ScalarChallenge(fq_sponge.challenge());
+    let zeta_chal = ScalarChallenge::new(fq_sponge.challenge());
 
     let zeta: G::ScalarField = zeta_chal.to_field(endo_r);
     let zeta_omega = zeta * domain.d1.group_gen;

@@ -43,15 +43,70 @@ pub trait FqSponge<Fq: Field, G, Fr, const FULL_ROUNDS: usize> {
     fn digest(self) -> Fr;
 }
 
+/// Number of 64-bit limbs used to represent a scalar challenge.
+///
+/// With 2 limbs, challenges are 128 bits. This is sufficient because:
+///
+/// **Endomorphism decomposition**: The challenge is converted to an effective
+///  scalar k = a·λ + b where both a and b are derived from the 128-bit input.
+///  Since λ is a cube root of unity in a ~255-bit scalar field, a 128-bit
+///  challenge provides enough entropy for both components.
 pub const CHALLENGE_LENGTH_IN_LIMBS: usize = 2;
 
 const HIGH_ENTROPY_LIMBS: usize = 2;
 
-// TODO: move to a different file / module
-/// A challenge which is used as a scalar on a group element in the verifier
+/// A challenge which is used as a scalar on a group element in the verifier.
+///
+/// This wraps a field element that will be converted to an "effective" scalar
+/// using the curve endomorphism for efficient scalar multiplication.
+///
+/// See [`ScalarChallenge::to_field`] for how the conversion works.
 #[derive(Clone, Debug)]
 pub struct ScalarChallenge<F>(pub F);
 
+impl<F> ScalarChallenge<F> {
+    /// Creates a ScalarChallenge from a field element.
+    ///
+    /// # Deprecation
+    ///
+    /// This constructor will be deprecated in favor of [`Self::from_limbs`],
+    /// which enforces the 128-bit constraint at construction.
+    ///
+    /// The field element is assumed to contain at most 128 bits of data
+    /// (i.e., only the two lowest 64-bit limbs are set). This is the case
+    /// when the value comes from [`FqSponge::challenge`].
+    pub fn new(challenge: F) -> Self {
+        Self(challenge)
+    }
+}
+
+/// Computes a primitive cube root of unity ξ in the field F.
+///
+/// For a prime field F_p where 3 divides p-1, this returns:
+///
+///   ξ = g^((p-1)/3)
+///
+/// where g is a generator of the multiplicative group F_p*.
+///
+/// # Properties
+///
+/// - ξ³ = g^(p-1) = 1 (by Fermat's Little Theorem)
+/// - ξ ≠ 1 (since (p-1)/3 is not a multiple of p-1)
+/// - The three cube roots of unity are: {1, ξ, ξ²}
+///
+/// # Usage
+///
+/// This is used in two contexts:
+///
+/// 1. **Base field (ξ)**: For the curve endomorphism φ(x,y) = (ξ·x, y)
+/// 2. **Scalar field (λ)**: As the scalar such that φ(P) = [λ]P
+///
+/// Both fields (Fp and Fq for Pasta curves) have cube roots of unity,
+/// and they correspond to each other via the endomorphism relationship.
+///
+/// # References
+///
+/// - Halo paper, Section 6.2: <https://eprint.iacr.org/2019/1021>
 pub fn endo_coefficient<F: PrimeField>() -> F {
     let p_minus_1_over_3 = (F::zero() - F::one()) / F::from(3u64);
 
@@ -65,6 +120,13 @@ fn get_bit(limbs_lsb: &[u64], i: u64) -> u64 {
 }
 
 impl<F: PrimeField> ScalarChallenge<F> {
+    /// Creates a ScalarChallenge from exactly 128 bits (2 limbs).
+    ///
+    /// This is the preferred constructor as it enforces the 128-bit constraint
+    /// required by [`Self::to_field`].
+    pub fn from_limbs(limbs: [u64; 2]) -> Self {
+        Self(F::from_bigint(pack(&limbs)).expect("128 bits always fits in field"))
+    }
     pub fn to_field_with_length(&self, length_in_bits: usize, endo_coeff: &F) -> F {
         let rep = self.0.into_bigint();
         let r = rep.as_ref();

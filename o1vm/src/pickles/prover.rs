@@ -319,7 +319,7 @@ where
     ////////////////////////////////////////////////////////////////////////////
 
     debug!("Prover: evaluating all columns, including the selectors, at ζ and ζω");
-    let zeta_chal = ScalarChallenge(fq_sponge.challenge());
+    let zeta_chal = ScalarChallenge::new(fq_sponge.challenge());
 
     let zeta = zeta_chal.to_field(endo_r);
     let zeta_omega = zeta * omega;
