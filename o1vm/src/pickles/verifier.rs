@@ -118,7 +118,7 @@ where
     absorb_commitment(&mut fq_sponge, quotient_commitment);
 
     // -- Preparing for opening proof verification
-    let zeta_chal = ScalarChallenge(fq_sponge.challenge());
+    let zeta_chal = ScalarChallenge::new(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let zeta = zeta_chal.to_field(endo_r);
     let omega = domain.d1.group_gen;

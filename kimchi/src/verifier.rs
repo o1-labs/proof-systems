@@ -206,7 +206,7 @@ where
 
             //~~ * Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
             //~~   (TODO: specify endomorphism)
-            let joint_combiner = ScalarChallenge(joint_combiner);
+            let joint_combiner = ScalarChallenge::new(joint_combiner);
             let joint_combiner_field = joint_combiner.to_field(endo_r);
             let joint_combiner = (joint_combiner, joint_combiner_field);
 
@@ -251,7 +251,7 @@ where
 
         // --- PlonK - Round 3
         //~ 1. Sample the quotient challenge $\alpha'$ with the Fq-Sponge.
-        let alpha_chal = ScalarChallenge(fq_sponge.challenge());
+        let alpha_chal = ScalarChallenge::new(fq_sponge.challenge());
 
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
         let alpha = alpha_chal.to_field(endo_r);
@@ -270,7 +270,7 @@ where
 
         // --- PlonK - Round 4
         //~ 1. Sample $\zeta'$ with the Fq-Sponge.
-        let zeta_chal = ScalarChallenge(fq_sponge.challenge());
+        let zeta_chal = ScalarChallenge::new(fq_sponge.challenge());
 
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
         let zeta = zeta_chal.to_field(endo_r);

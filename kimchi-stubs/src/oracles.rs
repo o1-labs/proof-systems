@@ -92,7 +92,7 @@ macro_rules! impl_oracles {
                     .proof
                     .prechallenges(&mut sponge)
                     .into_iter()
-                    .map(|x| x.0.into())
+                    .map(|x| x.inner().into())
                     .collect();
 
                 Ok(CamlOracles {
@@ -169,7 +169,7 @@ macro_rules! impl_oracles {
                     .proof
                     .prechallenges(&mut sponge)
                     .into_iter()
-                    .map(|x| x.0.into())
+                    .map(|x| x.inner().into())
                     .collect();
 
                 Ok(CamlOracles {

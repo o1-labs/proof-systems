@@ -66,7 +66,7 @@ fn endomul_test() {
         )
         .unwrap();
 
-        let x_scalar = ScalarChallenge(x).to_field(&endo_r);
+        let x_scalar = ScalarChallenge::new(x).to_field(&endo_r);
 
         let base = Other::generator();
         // let g = Other::generator().into_group();

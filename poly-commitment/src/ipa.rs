@@ -61,6 +61,44 @@ where
     }
 }
 
+/// Computes the endomorphism coefficients (ξ, λ) for a curve.
+///
+/// For curves of the form y² = x³ + b (like Pallas and Vesta), there exists
+/// an efficient endomorphism φ defined by:
+///
+///   φ(x, y) = (ξ · x, y)
+///
+/// where ξ is a primitive cube root of unity in the base field (ξ³ = 1, ξ ≠ 1).
+/// This works because (ξx)³ = ξ³x³ = x³, so the point remains on the curve.
+///
+/// This endomorphism corresponds to scalar multiplication by λ:
+///
+///   φ(P) = [λ]P
+///
+/// where λ is a primitive cube root of unity in the scalar field.
+///
+/// # Returns
+///
+/// A tuple `(endo_q, endo_r)` where:
+/// - `endo_q` (ξ): cube root of unity in the base field F_q, used to compute φ(P)
+/// - `endo_r` (λ): the corresponding scalar in F_r such that φ(P) = [λ]P
+///
+/// # Mathematical Background
+///
+/// The cube root is computed as ξ = g^((p-1)/3) where g is a generator of F_p*.
+/// By Fermat's Little Theorem, ξ³ = g^(p-1) = 1.
+///
+/// Since there are two primitive cube roots of unity (ξ and ξ²), the function
+/// verifies which one corresponds to the endomorphism by checking:
+///
+///   [potential_λ]G == φ(G)
+///
+/// If not, it uses λ = potential_λ² instead.
+///
+/// # References
+///
+/// - Halo paper, Section 6.2: <https://eprint.iacr.org/2019/1021>
+/// - GLV method for fast scalar multiplication
 pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)
 where
     G::BaseField: PrimeField,
@@ -198,7 +236,7 @@ impl<G: CommitmentCurve> SRS<G> {
             let Challenges { chal, chal_inv } = opening.challenges::<EFqSponge>(&endo_r, sponge);
 
             sponge.absorb_g(&[opening.delta]);
-            let c = ScalarChallenge(sponge.challenge()).to_field(&endo_r);
+            let c = ScalarChallenge::new(sponge.challenge()).to_field(&endo_r);
 
             // < s, sum_i evalscale^i pows(evaluation_point[i]) >
             // ==
@@ -800,7 +838,7 @@ impl<G: CommitmentCurve> SRS<G> {
         .into_affine();
 
         sponge.absorb_g(&[delta]);
-        let c = ScalarChallenge(sponge.challenge()).to_field(&endo_r);
+        let c = ScalarChallenge::new(sponge.challenge()).to_field(&endo_r);
 
         // (?) Schnorr-like responses showing the knowledge of r_prime and a0.
         let z1 = a0 * c + d;

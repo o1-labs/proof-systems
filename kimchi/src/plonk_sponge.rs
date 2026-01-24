@@ -44,7 +44,7 @@ impl<const FULL_ROUNDS: usize, Fr: PrimeField> FrSponge<Fr>
     }
 
     fn challenge(&mut self) -> ScalarChallenge<Fr> {
-        ScalarChallenge(self.squeeze(mina_poseidon::sponge::CHALLENGE_LENGTH_IN_LIMBS))
+        ScalarChallenge::new(self.squeeze(mina_poseidon::sponge::CHALLENGE_LENGTH_IN_LIMBS))
     }
 
     fn digest(mut self) -> Fr {

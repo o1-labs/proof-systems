@@ -402,7 +402,7 @@ pub fn squeeze_prechallenge<
 >(
     sponge: &mut EFqSponge,
 ) -> ScalarChallenge<Fr> {
-    ScalarChallenge(sponge.challenge())
+    ScalarChallenge::new(sponge.challenge())
 }
 
 pub fn squeeze_challenge<

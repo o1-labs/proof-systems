@@ -306,7 +306,7 @@ fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
         (limbs_lsb[limb as usize] >> j) & 1
     }
 
-    let rep = chal.0.into_bigint();
+    let rep = chal.inner().into_bigint();
     let r = rep.as_ref();
 
     let mut denominators = vec![P::BaseField::zero(); g1.len()];
