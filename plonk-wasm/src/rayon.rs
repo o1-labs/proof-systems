@@ -18,6 +18,8 @@ use wasm_bindgen::prelude::*;
 #[cfg(feature = "nodejs")]
 use js_sys::JsString;
 
+// IMPORTANT: This thread pool must be cleaned up by calling exit_thread_pool() from JavaScript
+// when the WASM module is being disposed. Otherwise, the threads will leak memory.
 static mut THREAD_POOL: Option<rayon::ThreadPool> = None;
 
 pub fn run_in_pool<OP, R>(op: OP) -> R
