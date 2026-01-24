@@ -20,6 +20,7 @@ pub use seckey::SecKey;
 use serde::{Deserialize, Serialize};
 pub use signature::Signature;
 
+pub mod bip39;
 pub mod keypair;
 pub mod pubkey;
 pub mod schnorr;

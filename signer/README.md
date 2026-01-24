@@ -20,6 +20,37 @@ The scalar field is larger than the base field by exactly
 Both fields are approximately 2^254, making signatures 64 bytes total (32 bytes
 for `rx` + 32 bytes for `s`).
 
+## BIP39 Mnemonic Support
+
+The `mina_signer` crate now supports deriving Mina keypairs from BIP39 mnemonic seed phrases. This enables:
+
+* Generating and using 12-24 word mnemonic phrases
+* BIP32 hierarchical deterministic (HD) wallet derivation
+* Ledger hardware wallet compatibility (using path `m/44'/12586'/account'/0/0`)
+* Multiple account derivation from a single mnemonic
+
+### Quick Example
+
+```rust
+use mina_signer::bip39::Bip39;
+
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
+// Generate a new 24-word mnemonic
+let mnemonic = Bip39::generate_mnemonic(24)?;
+
+// Derive a keypair using BIP32 (Ledger-compatible)
+let keypair = Bip39::mnemonic_to_keypair_bip32(&mnemonic, None, 0)?;
+let address = keypair.public.into_address();
+
+// Derive multiple accounts
+let account1 = Bip39::mnemonic_to_keypair_bip32(&mnemonic, None, 1)?;
+# Ok(())
+# }
+```
+
+For a complete example with multiple derivation methods, see:
+`cargo run --example bip39_derivation`
+
 ## Signer interface
 
 The `mina_signer` crate currently supports creating both legacy and current
