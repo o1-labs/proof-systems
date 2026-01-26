@@ -1090,3 +1090,115 @@ pub mod caml {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ark_ec::{CurveGroup, VariableBaseMSM};
+    use ark_ff::Field;
+    use mina_curves::pasta::{Fp, Fq, Vesta, VestaParameters};
+    use poly_commitment::PolyComm;
+    use std::str::FromStr;
+
+    type VestaGroup = ark_ec::short_weierstrass::Projective<VestaParameters>;
+
+    /// Regression test for RecursionChallenge::evals.
+    ///
+    /// This test verifies that the challenge polynomial evaluation remains
+    /// consistent. The challenge polynomial b(X) is defined as:
+    /// ```text
+    /// b(X) = prod_{i=0}^{k-1} (1 + u_{k-i} * X^{2^i})
+    /// ```
+    /// See Section 3.2 of the [Halo paper](https://eprint.iacr.org/2019/1021.pdf).
+    #[test]
+    fn test_recursion_challenge_evals_regression() {
+        // 15 challenges (typical for domain size 2^15)
+        let chals: Vec<Fp> = (2..=16).map(|i| Fp::from(i as u64)).collect();
+
+        let comm = PolyComm::<Vesta> {
+            chunks: vec![Vesta::generator()],
+        };
+
+        let rec_chal = RecursionChallenge::<Vesta>::new(chals.clone(), comm);
+
+        let zeta = Fp::from(17u64);
+        let zeta_omega = Fp::from(19u64);
+        let evaluation_points = [zeta, zeta_omega];
+
+        let max_poly_size = 1 << 15;
+        let powers_of_eval_points_for_chunks = [
+            zeta.pow([max_poly_size as u64]),
+            zeta_omega.pow([max_poly_size as u64]),
+        ];
+
+        let evals = rec_chal.evals(
+            max_poly_size,
+            &evaluation_points,
+            &powers_of_eval_points_for_chunks,
+        );
+
+        // Expected values (computed and verified)
+        let expected_eval_zeta = Fp::from_str(
+            "21115683812642620361045381629886583866877919362491419134086003378733605776328",
+        )
+        .unwrap();
+        let expected_eval_zeta_omega = Fp::from_str(
+            "2298325069360593860729719174291433577456794311517767070156020442825391962511",
+        )
+        .unwrap();
+
+        assert_eq!(evals[0].len(), 1, "Should have single chunk");
+        assert_eq!(evals[1].len(), 1, "Should have single chunk");
+        assert_eq!(evals[0][0], expected_eval_zeta, "b(zeta) mismatch");
+        assert_eq!(
+            evals[1][0], expected_eval_zeta_omega,
+            "b(zeta*omega) mismatch"
+        );
+
+        // Verify consistency with b_poly
+        assert_eq!(evals[0][0], b_poly(&chals, zeta));
+        assert_eq!(evals[1][0], b_poly(&chals, zeta_omega));
+    }
+
+    /// Regression test for accumulated commitment computation.
+    ///
+    /// The accumulated commitment U = <h, G> where h are the coefficients of
+    /// b(X) and G is the SRS basis. This test uses a small example (4 challenges)
+    /// to verify the MSM computation.
+    #[test]
+    fn test_recursion_challenge_commitment_regression() {
+        // Use 4 challenges for a manageable test (2^4 = 16 coefficients)
+        let chals: Vec<Fp> = vec![
+            Fp::from(2u64),
+            Fp::from(3u64),
+            Fp::from(5u64),
+            Fp::from(7u64),
+        ];
+
+        // Compute b(X) coefficients
+        let coeffs = b_poly_coefficients(&chals);
+        assert_eq!(coeffs.len(), 16);
+
+        // Create a simple SRS-like basis (for testing, use multiples of generator)
+        let g = Vesta::generator();
+        let basis: Vec<Vesta> = (1..=16)
+            .map(|i| (g * Fp::from(i as u64)).into_affine())
+            .collect();
+
+        // Compute accumulated commitment U = <coeffs, basis>
+        let accumulated_comm = VestaGroup::msm(&basis, &coeffs).unwrap().into_affine();
+
+        // Expected commitment coordinates (computed and verified)
+        let expected_x = Fq::from_str(
+            "3756288960823668761746459900985719106126835112055076922409498125279524024429",
+        )
+        .unwrap();
+        let expected_y = Fq::from_str(
+            "7540929664328976141648477194277016811781677917189411360504995258251130097840",
+        )
+        .unwrap();
+
+        assert_eq!(accumulated_comm.x, expected_x, "commitment x mismatch");
+        assert_eq!(accumulated_comm.y, expected_y, "commitment y mismatch");
+    }
+}
