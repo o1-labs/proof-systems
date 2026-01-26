@@ -364,9 +364,35 @@ impl<C: AffineRepr> PolyComm<C> {
     }
 }
 
-/// Returns `(1 + chal[-1] x)(1 + chal[-2] x^2)(1 + chal[-3] x^4) ...`. It's
-/// "step 8: Define the univariate polynomial" of
-/// appendix A.2 of <https://eprint.iacr.org/2020/499>
+/// Evaluates the challenge polynomial `b(X)` at point `x`.
+///
+/// The challenge polynomial is defined as:
+/// ```text
+/// b(X) = prod_{i=0}^{k-1} (1 + u_{k-i} * X^{2^i})
+/// ```
+/// where `chals = [u_1, ..., u_k]` are the IPA challenges.
+///
+/// This polynomial was introduced in Section 3.2 of the
+/// [Halo paper](https://eprint.iacr.org/2019/1021.pdf) as part of the Inner Product
+/// Argument. It efficiently encodes the folded evaluation point: after `k` rounds
+/// of IPA, the evaluation point vector is reduced to a single value `b(x)`.
+///
+/// The polynomial has degree `2^k - 1` and can be evaluated in `O(k)` field
+/// operations using the product form above. Its coefficients can be computed
+/// using [`b_poly_coefficients`].
+///
+/// # Usage
+///
+/// - In the verifier (`ipa.rs`), `b_poly` is called to compute evaluations at
+///   the challenge points (e.g., `zeta`, `zeta * omega`).
+/// - In `RecursionChallenge::evals`, it computes evaluations for the batched
+///   polynomial commitment check.
+///
+/// # References
+/// - [Halo paper, Section 3.2](https://eprint.iacr.org/2019/1021.pdf) - original
+///   definition of the challenge polynomial
+/// - [PCD paper, Appendix A.2, Step 8](https://eprint.iacr.org/2020/499) - use in
+///   accumulation context
 pub fn b_poly<F: Field>(chals: &[F], x: F) -> F {
     let k = chals.len();
 
@@ -379,6 +405,32 @@ pub fn b_poly<F: Field>(chals: &[F], x: F) -> F {
     product((0..k).map(|i| F::one() + (chals[i] * pow_twos[k - 1 - i])))
 }
 
+/// Computes the coefficients of the challenge polynomial `b(X)`.
+///
+/// Given IPA challenges `chals = [u_1, ..., u_k]`, returns a vector
+/// `[s_0, s_1, ..., s_{2^k - 1}]` such that:
+/// ```text
+/// b(X) = sum_{i=0}^{2^k - 1} s_i * X^i
+/// ```
+///
+/// The coefficients have a closed form: for each index `i` with bit decomposition
+/// `i = sum_j b_j * 2^j`, the coefficient is `s_i = prod_{j: b_j = 1} u_{k-j}`.
+///
+/// # Usage
+///
+/// This function is used when the full coefficient vector is needed:
+/// - In `SRS::verify` (`ipa.rs`): the coefficients are computed and included in
+///   the batched MSM to verify the accumulated commitment `<s, G>`.
+/// - In `RecursionChallenge::evals`: for chunked polynomial evaluation when the
+///   degree exceeds `max_poly_size`.
+///
+/// # Complexity
+///
+/// Returns `2^k` coefficients. The MSM `<s, G>` using these coefficients is the
+/// expensive operation that gets deferred in recursive proof composition.
+///
+/// # References
+/// - [Halo paper, Section 3.2](https://eprint.iacr.org/2019/1021.pdf)
 pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
     let rounds = chals.len();
     let s_length = 1 << rounds;
