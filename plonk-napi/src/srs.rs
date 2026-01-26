@@ -332,11 +332,6 @@ pub fn caml_fp_srs_to_bytes(srs: &fp::NapiFpSrs) -> Result<Uint8Array> {
     srs.serialize()
 }
 
-#[napi(js_name = "caml_fp_srs_to_bytes_external")]
-pub fn caml_fp_srs_to_bytes_external(srs: &External<fp::NapiFpSrs>) -> Uint8Array {
-    caml_fp_srs_to_bytes(srs).expect("failed to serialize external fp srs")
-}
-
 #[napi(js_name = "caml_fp_srs_from_bytes")]
 pub fn caml_fp_srs_from_bytes(bytes: Uint8Array) -> Result<fp::NapiFpSrs> {
     fp::NapiFpSrs::deserialize(bytes)
@@ -351,11 +346,6 @@ pub fn caml_fp_srs_from_bytes_external(bytes: Uint8Array) -> External<fp::NapiFp
 #[napi(js_name = "caml_fq_srs_to_bytes")]
 pub fn caml_fq_srs_to_bytes(srs: &fq::NapiFqSrs) -> Result<Uint8Array> {
     srs.serialize()
-}
-
-#[napi(js_name = "caml_fq_srs_to_bytes_external")]
-pub fn caml_fq_srs_to_bytes_external(srs: &External<fq::NapiFqSrs>) -> Uint8Array {
-    caml_fq_srs_to_bytes(srs).expect("failed to serialize external fq srs")
 }
 
 #[napi(js_name = "caml_fq_srs_from_bytes")]
