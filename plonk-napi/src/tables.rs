@@ -36,18 +36,6 @@ pub struct JsLookupTableFq {
 }
 
 #[napi(object)]
-pub struct JsRuntimeTableFp {
-    pub id: i32,
-    pub data: Vec<Uint8Array>,
-}
-
-#[napi(object)]
-pub struct JsRuntimeTableFq {
-    pub id: i32,
-    pub data: Vec<Uint8Array>,
-}
-
-#[napi(object)]
 pub struct JsRuntimeTableCfgFp {
     pub id: i32,
     pub first_column: Uint8Array,
