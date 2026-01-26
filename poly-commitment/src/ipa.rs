@@ -152,8 +152,33 @@ where
 
 /// Additional methods for the SRS structure
 impl<G: CommitmentCurve> SRS<G> {
-    /// This function verifies a batch of polynomial commitment opening proofs.
-    /// Return `true` if the verification is successful, `false` otherwise.
+    /// Verifies a batch of polynomial commitment opening proofs.
+    ///
+    /// This IPA verification method is primarily designed for integration into
+    /// recursive proof systems like Pickles. In recursive proofs, IPA verification
+    /// is deferred by storing accumulators ([`RecursionChallenge`](kimchi::proof::RecursionChallenge))
+    /// rather than verifying immediately in-circuit. This method performs the final
+    /// out-of-circuit verification of those accumulators.
+    ///
+    /// The function reconstructs the **challenge polynomial** `b(X)` from the IPA
+    /// challenges and uses it to verify the opening proofs. The challenge polynomial
+    /// is defined as:
+    /// ```text
+    /// b(X) = prod_{i=0}^{k-1} (1 + u_{k-i} * X^{2^i})
+    /// ```
+    /// where `u_1, ..., u_k` are the challenges from the `k` rounds of the IPA protocol.
+    /// See Section 3.2 of the [Halo paper](https://eprint.iacr.org/2019/1021.pdf).
+    ///
+    /// The verification reconstructs `b(X)` in two forms:
+    /// - **Evaluation form**: `b_poly(&chal, x)` computes `b(x)` in `O(k)` operations
+    /// - **Coefficient form**: `b_poly_coefficients(&chal)` returns the `2^k` coefficients
+    ///   for the MSM `<s, G>` that verifies the accumulated commitment
+    ///
+    /// Note: The challenge polynomial reconstruction is specifically needed for recursive
+    /// proof verification. For standalone (non-recursive) IPA verification, a simpler
+    /// approach without `b(X)` reconstruction could be used.
+    ///
+    /// Returns `true` if verification succeeds, `false` otherwise.
     pub fn verify<EFqSponge, RNG, const FULL_ROUNDS: usize>(
         &self,
         group_map: &G::Map,
@@ -238,9 +263,10 @@ impl<G: CommitmentCurve> SRS<G> {
             sponge.absorb_g(&[opening.delta]);
             let c = ScalarChallenge::new(sponge.challenge()).to_field(&endo_r);
 
-            // < s, sum_i evalscale^i pows(evaluation_point[i]) >
-            // ==
-            // sum_i evalscale^i < s, pows(evaluation_point[i]) >
+            // Evaluate the challenge polynomial b(X) at each evaluation point and combine.
+            // This computes: b0 = sum_i evalscale^i * b(evaluation_point[i])
+            // where b(X) = prod_{j=0}^{k-1} (1 + u_{k-j} * X^{2^j}) is the challenge polynomial
+            // reconstructed from the IPA challenges `chal`.
             let b0 = {
                 let mut scale = G::ScalarField::one();
                 let mut res = G::ScalarField::zero();
@@ -252,6 +278,8 @@ impl<G: CommitmentCurve> SRS<G> {
                 res
             };
 
+            // Compute the 2^k coefficients of the challenge polynomial b(X).
+            // These are used in the MSM <s, G> to verify the accumulated commitment.
             let s = b_poly_coefficients(&chal);
 
             let neg_rand_base_i = -rand_base_i;
@@ -612,11 +640,33 @@ where
 }
 
 impl<G: CommitmentCurve> SRS<G> {
+    /// Creates an opening proof for a batch of polynomial commitments.
+    ///
+    /// This function implements the IPA (Inner Product Argument) prover. During the
+    /// `k = log_2(n)` rounds of folding, it implicitly constructs the **challenge
+    /// polynomial** `b(X)`:
+    ///
+    /// The evaluation vector `b` starts as `b_init` (combined evaluation points) and
+    /// is folded in each round using challenge `u_i`:
+    /// ```text
+    /// b_new = b_lo + u_i * b_hi
+    /// ```
+    ///
+    /// After all rounds, `b` reduces to a single value `b0` which equals
+    /// `b_poly(chals, evaluation_point)` where:
+    /// ```text
+    /// b(X) = prod_{i=0}^{k-1} (1 + u_{k-i} * X^{2^i})
+    /// ```
+    ///
+    /// The verifier reconstructs this same value using `b_poly` without redoing
+    /// the folding. See Section 3.2 of the [Halo paper](https://eprint.iacr.org/2019/1021.pdf).
+    ///
+    /// Note: The use of the challenge polynomial `b(X)` is a modification to the
+    /// original IPA protocol that improves efficiency in recursive proof settings.
+    /// Instead of sending the full folded evaluation, we use `b(X)` to allow the
+    /// verifier to recompute it from the challenges alone.
     #[allow(clippy::type_complexity)]
     #[allow(clippy::many_single_char_names)]
-    // NB: a slight modification to the original protocol is done when absorbing
-    // the first prover message to improve the efficiency in a recursive
-    // setting.
     pub fn open<EFqSponge, RNG, D: EvaluationDomain<G::ScalarField>, const FULL_ROUNDS: usize>(
         &self,
         group_map: &G::Map,
@@ -786,7 +836,9 @@ impl<G: CommitmentCurve> SRS<G> {
                 })
                 .collect();
 
-            // IPA-folding evaluation points
+            // IPA-folding evaluation points.
+            // This folding implicitly constructs the challenge polynomial b(X):
+            // after all rounds, b[0] = b_poly(chals, evaluation_point).
             b = b_lo
                 .par_iter()
                 .zip(b_hi)
@@ -808,6 +860,10 @@ impl<G: CommitmentCurve> SRS<G> {
             "IPA commitment folding must produce single elements after log rounds"
         );
         let a0 = a[0];
+        // b0 is the folded evaluation point, equal to b_poly(chals, evaluation_point).
+        // Note: The folding of `b` (and this extraction) could be skipped in a
+        // non-recursive setting where the verifier doesn't need to recompute
+        // the evaluation from challenges using b_poly.
         let b0 = b[0];
         let g0 = g[0];
 
