@@ -2176,11 +2176,55 @@ where
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ft_eval1: G::ScalarField,
 
-    /// The challenges underlying the optional polynomials folded into the proof
+    /// Accumulators from previously verified proofs in the recursion chain.
+    ///
+    /// Each [`RecursionChallenge`] stores the IPA folding challenges and accumulated
+    /// commitment from verifying a previous proof. Instead of checking the IPA
+    /// immediately (which requires an expensive MSM `<s, G>` where `s` has `2^k`
+    /// elements), we defer this check by storing the accumulator.
+    ///
+    /// During verification, these accumulators are processed as follows:
+    /// 1. The commitments are absorbed into the Fiat-Shamir sponge
+    /// 2. The challenges are used to compute evaluations of `b(X)` at `zeta` and
+    ///    `zeta * omega` (see [`RecursionChallenge::evals`])
+    /// 3. These evaluations are paired with the commitments and included in the
+    ///    batched polynomial commitment check
+    ///
+    /// The actual MSM verification happens in [`SRS::verify`](poly_commitment::ipa::SRS::verify)
+    /// (see `poly-commitment/src/ipa.rs`), where `b_poly_coefficients` computes
+    /// the `2^k` coefficients and they are batched into a single large MSM with
+    /// all other verification checks.
+    ///
+    /// This design enables efficient recursive proof composition as described in
+    /// Section 3.2 of the [Halo paper](https://eprint.iacr.org/2019/1021.pdf).
     pub prev_challenges: Vec<RecursionChallenge<G>>,
 }
 
-/// A struct to store the challenges inside a `ProverProof`
+/// Stores the accumulator from a previously verified IPA (Inner Product Argument).
+///
+/// In recursive proof composition, when we verify a proof, the IPA verification
+/// produces an accumulator that can be "deferred" rather than checked immediately.
+/// This accumulator consists of:
+///
+/// - **`chals`**: The folding challenges `u_1, ..., u_k` sampled during the
+///   `k = log_2(n)` rounds of the IPA. These challenges define the
+///   **challenge polynomial** (also called `b(X)` or `h(X)`):
+///   ```text
+///   b(X) = prod_{i=0}^{k-1} (1 + u_{k-i} * X^{2^i})
+///   ```
+///   This polynomial was introduced in Section 3.2 of the
+///   [Halo paper](https://eprint.iacr.org/2019/1021.pdf) as a way to efficiently
+///   represent the folded evaluation point.
+///
+/// - **`comm`**: The accumulated commitment `U = <h, G>` where `h` is the vector
+///   of coefficients of `b(X)` and `G` is the commitment basis. This is the
+///   "deferred" part of IPA verification.
+///
+/// The accumulator satisfies the relation `R_Acc`: anyone can verify it in `O(n)`
+/// time by recomputing `<h, G>`.
+///
+/// See the [accumulation documentation](https://o1-labs.github.io/proof-systems/pickles/accumulation.html)
+/// for a complete description of how these accumulators are used in Pickles.
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
@@ -2188,10 +2232,18 @@ pub struct RecursionChallenge<G>
 where
     G: AffineRepr,
 {
-    /// Vector of scalar field elements
+    /// The IPA folding challenges `[u_1, ..., u_k]` that define the challenge
+    /// polynomial `b(X)`. See [`b_poly`](poly_commitment::commitment::b_poly).
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub chals: Vec<G::ScalarField>,
-    /// Polynomial commitment
+    /// The accumulated commitment from IPA verification.
+    ///
+    /// This commitment is used in two places:
+    /// 1. Absorbed into the Fq-sponge for Fiat-Shamir (see `prover.rs` and
+    ///    `verifier.rs` where commitments of previous challenges are absorbed).
+    /// 2. Included in the batched polynomial commitment verification, paired
+    ///    with evaluations of `b(X)` at `zeta` and `zeta * omega` (see
+    ///    `verifier.rs` where `polys` is constructed from `prev_challenges`).
     pub comm: PolyComm<G>,
 }
 

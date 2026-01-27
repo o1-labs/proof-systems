@@ -169,11 +169,55 @@ where
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ft_eval1: G::ScalarField,
 
-    /// The challenges underlying the optional polynomials folded into the proof
+    /// Accumulators from previously verified proofs in the recursion chain.
+    ///
+    /// Each [`RecursionChallenge`] stores the IPA folding challenges and accumulated
+    /// commitment from verifying a previous proof. Instead of checking the IPA
+    /// immediately (which requires an expensive MSM `<s, G>` where `s` has `2^k`
+    /// elements), we defer this check by storing the accumulator.
+    ///
+    /// During verification, these accumulators are processed as follows:
+    /// 1. The commitments are absorbed into the Fiat-Shamir sponge
+    /// 2. The challenges are used to compute evaluations of `b(X)` at `zeta` and
+    ///    `zeta * omega` (see [`RecursionChallenge::evals`])
+    /// 3. These evaluations are paired with the commitments and included in the
+    ///    batched polynomial commitment check
+    ///
+    /// The actual MSM verification happens in [`SRS::verify`](poly_commitment::ipa::SRS::verify)
+    /// (see `poly-commitment/src/ipa.rs`), where `b_poly_coefficients` computes
+    /// the `2^k` coefficients and they are batched into a single large MSM with
+    /// all other verification checks.
+    ///
+    /// This design enables efficient recursive proof composition as described in
+    /// Section 3.2 of the [Halo paper](https://eprint.iacr.org/2019/1021.pdf).
     pub prev_challenges: Vec<RecursionChallenge<G>>,
 }
 
-/// A struct to store the challenges inside a `ProverProof`
+/// Stores the accumulator from a previously verified IPA (Inner Product Argument).
+///
+/// In recursive proof composition, when we verify a proof, the IPA verification
+/// produces an accumulator that can be "deferred" rather than checked immediately.
+/// This accumulator consists of:
+///
+/// - **`chals`**: The folding challenges `u_1, ..., u_k` sampled during the
+///   `k = log_2(n)` rounds of the IPA. These challenges define the
+///   **challenge polynomial** (also called `b(X)` or `h(X)`):
+///   ```text
+///   b(X) = prod_{i=0}^{k-1} (1 + u_{k-i} * X^{2^i})
+///   ```
+///   This polynomial was introduced in Section 3.2 of the
+///   [Halo paper](https://eprint.iacr.org/2019/1021.pdf) as a way to efficiently
+///   represent the folded evaluation point.
+///
+/// - **`comm`**: The accumulated commitment `U = <h, G>` where `h` is the vector
+///   of coefficients of `b(X)` and `G` is the commitment basis. This is the
+///   "deferred" part of IPA verification.
+///
+/// The accumulator satisfies the relation `R_Acc`: anyone can verify it in `O(n)`
+/// time by recomputing `<h, G>`.
+///
+/// See the [accumulation documentation](https://o1-labs.github.io/proof-systems/pickles/accumulation.html)
+/// for a complete description of how these accumulators are used in Pickles.
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
@@ -181,10 +225,18 @@ pub struct RecursionChallenge<G>
 where
     G: AffineRepr,
 {
-    /// Vector of scalar field elements
+    /// The IPA folding challenges `[u_1, ..., u_k]` that define the challenge
+    /// polynomial `b(X)`. See [`b_poly`](poly_commitment::commitment::b_poly).
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub chals: Vec<G::ScalarField>,
-    /// Polynomial commitment
+    /// The accumulated commitment from IPA verification.
+    ///
+    /// This commitment is used in two places:
+    /// 1. Absorbed into the Fq-sponge for Fiat-Shamir (see `prover.rs` and
+    ///    `verifier.rs` where commitments of previous challenges are absorbed).
+    /// 2. Included in the batched polynomial commitment verification, paired
+    ///    with evaluations of `b(X)` at `zeta` and `zeta * omega` (see
+    ///    `verifier.rs` where `polys` is constructed from `prev_challenges`).
     pub comm: PolyComm<G>,
 }
 
@@ -365,6 +417,40 @@ impl<G: AffineRepr> RecursionChallenge<G> {
         RecursionChallenge { chals, comm }
     }
 
+    /// Computes evaluations of the challenge polynomial `b(X)` at the given points.
+    ///
+    /// The challenge polynomial is defined by the IPA challenges as:
+    /// ```text
+    /// b(X) = prod_{i=0}^{k-1} (1 + u_{k-i} * X^{2^i})
+    /// ```
+    /// where `u_1, ..., u_k` are the challenges sampled during the `k` rounds of
+    /// the IPA protocol (stored in `self.chals`).
+    ///
+    /// This method evaluates `b(X)` at `evaluation_points` (typically `zeta` and
+    /// `zeta * omega`). If the polynomial degree exceeds `max_poly_size`, the
+    /// evaluations are "chunked" to handle polynomial splitting.
+    ///
+    /// These evaluations are paired with [`Self::comm`] and included in the
+    /// batched polynomial commitment verification (see `verifier.rs`).
+    ///
+    /// The MSM has size `2^k` where `k` is the number of IPA rounds (e.g., `k = 15` for
+    /// a domain of size `2^15`, giving an MSM of 32768 points). Computing this in-circuit
+    /// would require EC scalar multiplication: using [`VarBaseMul`](crate::circuits::polynomials::varbasemul)
+    /// costs 2 rows per 5 bits (~104 rows for a 256-bit scalar). For an MSM of 32768 points,
+    /// the constraint count would be higher than the accepted circuit size. By deferring to
+    /// the out-of-circuit verifier, we avoid this cost entirely.
+    ///
+    /// # Arguments
+    /// * `max_poly_size` - Maximum polynomial size for chunking
+    /// * `evaluation_points` - Points at which to evaluate (typically `[zeta, zeta * omega]`)
+    /// * `powers_of_eval_points_for_chunks` - Powers used for recombining chunks
+    ///
+    /// # Returns
+    /// A vector of evaluation vectors, one per evaluation point. Each inner vector
+    /// contains the chunked evaluations (or a single evaluation if no chunking needed).
+    ///
+    /// # References
+    /// - [Halo paper, Section 3.2](https://eprint.iacr.org/2019/1021.pdf)
     pub fn evals(
         &self,
         max_poly_size: usize,
@@ -1002,5 +1088,117 @@ pub mod caml {
                     .map(|x| x.map(&|x| x.iter().map(|x| x.clone().into()).collect())),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ark_ec::{CurveGroup, VariableBaseMSM};
+    use ark_ff::Field;
+    use mina_curves::pasta::{Fp, Fq, Vesta, VestaParameters};
+    use poly_commitment::PolyComm;
+    use std::str::FromStr;
+
+    type VestaGroup = ark_ec::short_weierstrass::Projective<VestaParameters>;
+
+    /// Regression test for RecursionChallenge::evals.
+    ///
+    /// This test verifies that the challenge polynomial evaluation remains
+    /// consistent. The challenge polynomial b(X) is defined as:
+    /// ```text
+    /// b(X) = prod_{i=0}^{k-1} (1 + u_{k-i} * X^{2^i})
+    /// ```
+    /// See Section 3.2 of the [Halo paper](https://eprint.iacr.org/2019/1021.pdf).
+    #[test]
+    fn test_recursion_challenge_evals_regression() {
+        // 15 challenges (typical for domain size 2^15)
+        let chals: Vec<Fp> = (2..=16).map(|i| Fp::from(i as u64)).collect();
+
+        let comm = PolyComm::<Vesta> {
+            chunks: vec![Vesta::generator()],
+        };
+
+        let rec_chal = RecursionChallenge::<Vesta>::new(chals.clone(), comm);
+
+        let zeta = Fp::from(17u64);
+        let zeta_omega = Fp::from(19u64);
+        let evaluation_points = [zeta, zeta_omega];
+
+        let max_poly_size = 1 << 15;
+        let powers_of_eval_points_for_chunks = [
+            zeta.pow([max_poly_size as u64]),
+            zeta_omega.pow([max_poly_size as u64]),
+        ];
+
+        let evals = rec_chal.evals(
+            max_poly_size,
+            &evaluation_points,
+            &powers_of_eval_points_for_chunks,
+        );
+
+        // Expected values (computed and verified)
+        let expected_eval_zeta = Fp::from_str(
+            "21115683812642620361045381629886583866877919362491419134086003378733605776328",
+        )
+        .unwrap();
+        let expected_eval_zeta_omega = Fp::from_str(
+            "2298325069360593860729719174291433577456794311517767070156020442825391962511",
+        )
+        .unwrap();
+
+        assert_eq!(evals[0].len(), 1, "Should have single chunk");
+        assert_eq!(evals[1].len(), 1, "Should have single chunk");
+        assert_eq!(evals[0][0], expected_eval_zeta, "b(zeta) mismatch");
+        assert_eq!(
+            evals[1][0], expected_eval_zeta_omega,
+            "b(zeta*omega) mismatch"
+        );
+
+        // Verify consistency with b_poly
+        assert_eq!(evals[0][0], b_poly(&chals, zeta));
+        assert_eq!(evals[1][0], b_poly(&chals, zeta_omega));
+    }
+
+    /// Regression test for accumulated commitment computation.
+    ///
+    /// The accumulated commitment U = <h, G> where h are the coefficients of
+    /// b(X) and G is the SRS basis. This test uses a small example (4 challenges)
+    /// to verify the MSM computation.
+    #[test]
+    fn test_recursion_challenge_commitment_regression() {
+        // Use 4 challenges for a manageable test (2^4 = 16 coefficients)
+        let chals: Vec<Fp> = vec![
+            Fp::from(2u64),
+            Fp::from(3u64),
+            Fp::from(5u64),
+            Fp::from(7u64),
+        ];
+
+        // Compute b(X) coefficients
+        let coeffs = b_poly_coefficients(&chals);
+        assert_eq!(coeffs.len(), 16);
+
+        // Create a simple SRS-like basis (for testing, use multiples of generator)
+        let g = Vesta::generator();
+        let basis: Vec<Vesta> = (1..=16)
+            .map(|i| (g * Fp::from(i as u64)).into_affine())
+            .collect();
+
+        // Compute accumulated commitment U = <coeffs, basis>
+        let accumulated_comm = VestaGroup::msm(&basis, &coeffs).unwrap().into_affine();
+
+        // Expected commitment coordinates (computed and verified)
+        let expected_x = Fq::from_str(
+            "3756288960823668761746459900985719106126835112055076922409498125279524024429",
+        )
+        .unwrap();
+        let expected_y = Fq::from_str(
+            "7540929664328976141648477194277016811781677917189411360504995258251130097840",
+        )
+        .unwrap();
+
+        assert_eq!(accumulated_comm.x, expected_x, "commitment x mismatch");
+        assert_eq!(accumulated_comm.y, expected_y, "commitment y mismatch");
     }
 }

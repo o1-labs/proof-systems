@@ -364,9 +364,35 @@ impl<C: AffineRepr> PolyComm<C> {
     }
 }
 
-/// Returns `(1 + chal[-1] x)(1 + chal[-2] x^2)(1 + chal[-3] x^4) ...`. It's
-/// "step 8: Define the univariate polynomial" of
-/// appendix A.2 of <https://eprint.iacr.org/2020/499>
+/// Evaluates the challenge polynomial `b(X)` at point `x`.
+///
+/// The challenge polynomial is defined as:
+/// ```text
+/// b(X) = prod_{i=0}^{k-1} (1 + u_{k-i} * X^{2^i})
+/// ```
+/// where `chals = [u_1, ..., u_k]` are the IPA challenges.
+///
+/// This polynomial was introduced in Section 3.2 of the
+/// [Halo paper](https://eprint.iacr.org/2019/1021.pdf) as part of the Inner Product
+/// Argument. It efficiently encodes the folded evaluation point: after `k` rounds
+/// of IPA, the evaluation point vector is reduced to a single value `b(x)`.
+///
+/// The polynomial has degree `2^k - 1` and can be evaluated in `O(k)` field
+/// operations using the product form above. Its coefficients can be computed
+/// using [`b_poly_coefficients`].
+///
+/// # Usage
+///
+/// - In the verifier (`ipa.rs`), `b_poly` is called to compute evaluations at
+///   the challenge points (e.g., `zeta`, `zeta * omega`).
+/// - In `RecursionChallenge::evals`, it computes evaluations for the batched
+///   polynomial commitment check.
+///
+/// # References
+/// - [Halo paper, Section 3.2](https://eprint.iacr.org/2019/1021.pdf) - original
+///   definition of the challenge polynomial
+/// - [PCD paper, Appendix A.2, Step 8](https://eprint.iacr.org/2020/499) - use in
+///   accumulation context
 pub fn b_poly<F: Field>(chals: &[F], x: F) -> F {
     let k = chals.len();
 
@@ -379,6 +405,32 @@ pub fn b_poly<F: Field>(chals: &[F], x: F) -> F {
     product((0..k).map(|i| F::one() + (chals[i] * pow_twos[k - 1 - i])))
 }
 
+/// Computes the coefficients of the challenge polynomial `b(X)`.
+///
+/// Given IPA challenges `chals = [u_1, ..., u_k]`, returns a vector
+/// `[s_0, s_1, ..., s_{2^k - 1}]` such that:
+/// ```text
+/// b(X) = sum_{i=0}^{2^k - 1} s_i * X^i
+/// ```
+///
+/// The coefficients have a closed form: for each index `i` with bit decomposition
+/// `i = sum_j b_j * 2^j`, the coefficient is `s_i = prod_{j: b_j = 1} u_{k-j}`.
+///
+/// # Usage
+///
+/// This function is used when the full coefficient vector is needed:
+/// - In `SRS::verify` (`ipa.rs`): the coefficients are computed and included in
+///   the batched MSM to verify the accumulated commitment `<s, G>`.
+/// - In `RecursionChallenge::evals`: for chunked polynomial evaluation when the
+///   degree exceeds `max_poly_size`.
+///
+/// # Complexity
+///
+/// Returns `2^k` coefficients. The MSM `<s, G>` using these coefficients is the
+/// expensive operation that gets deferred in recursive proof composition.
+///
+/// # References
+/// - [Halo paper, Section 3.2](https://eprint.iacr.org/2019/1021.pdf)
 pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
     let rounds = chals.len();
     let s_length = 1 << rounds;
@@ -728,6 +780,126 @@ pub mod caml {
                 //FIXME something with as_ref()
                 chunks: camlpolycomm.unshifted.iter().map(Into::into).collect(),
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mina_curves::pasta::Fp;
+    use std::str::FromStr;
+
+    /// Regression test for b_poly evaluation.
+    ///
+    /// The challenge polynomial b(X) is defined as:
+    /// ```text
+    /// b(X) = prod_{i=0}^{k-1} (1 + u_{k-i} * X^{2^i})
+    /// ```
+    /// See Section 3.2 of the [Halo paper](https://eprint.iacr.org/2019/1021.pdf).
+    #[test]
+    fn test_b_poly_regression() {
+        // 15 challenges (typical for domain size 2^15)
+        let chals: Vec<Fp> = (2..=16).map(|i| Fp::from(i as u64)).collect();
+
+        let zeta = Fp::from(17u64);
+        let zeta_omega = Fp::from(19u64);
+
+        let b_at_zeta = b_poly(&chals, zeta);
+        let b_at_zeta_omega = b_poly(&chals, zeta_omega);
+
+        // Expected values (computed and verified)
+        let expected_at_zeta = Fp::from_str(
+            "21115683812642620361045381629886583866877919362491419134086003378733605776328",
+        )
+        .unwrap();
+        let expected_at_zeta_omega = Fp::from_str(
+            "2298325069360593860729719174291433577456794311517767070156020442825391962511",
+        )
+        .unwrap();
+
+        assert_eq!(b_at_zeta, expected_at_zeta, "b(zeta) mismatch");
+        assert_eq!(
+            b_at_zeta_omega, expected_at_zeta_omega,
+            "b(zeta*omega) mismatch"
+        );
+    }
+
+    /// Regression test for b_poly_coefficients.
+    ///
+    /// Verifies that the coefficients satisfy: b(x) = sum_i s_i * x^i
+    /// where s_i = prod_{j: bit_j(i) = 1} u_{k-j}
+    #[test]
+    fn test_b_poly_coefficients_regression() {
+        // Use 4 challenges for manageable output (2^4 = 16 coefficients)
+        let chals: Vec<Fp> = vec![
+            Fp::from(2u64),
+            Fp::from(3u64),
+            Fp::from(5u64),
+            Fp::from(7u64),
+        ];
+
+        let coeffs = b_poly_coefficients(&chals);
+
+        assert_eq!(coeffs.len(), 16, "Should have 2^4 = 16 coefficients");
+
+        // Expected coefficients (computed and verified)
+        // s_i = prod_{j: bit_j(i) = 1} u_{k-j}
+        // chals = [2, 3, 5, 7] means u_1=2, u_2=3, u_3=5, u_4=7
+        // Index 0 (0000): 1
+        // Index 1 (0001): u_4 = 7
+        // Index 2 (0010): u_3 = 5
+        // Index 3 (0011): u_3 * u_4 = 35
+        // etc.
+        let expected: Vec<Fp> = vec![
+            Fp::from(1u64),   // 0: 1
+            Fp::from(7u64),   // 1: u_4
+            Fp::from(5u64),   // 2: u_3
+            Fp::from(35u64),  // 3: u_3 * u_4
+            Fp::from(3u64),   // 4: u_2
+            Fp::from(21u64),  // 5: u_2 * u_4
+            Fp::from(15u64),  // 6: u_2 * u_3
+            Fp::from(105u64), // 7: u_2 * u_3 * u_4
+            Fp::from(2u64),   // 8: u_1
+            Fp::from(14u64),  // 9: u_1 * u_4
+            Fp::from(10u64),  // 10: u_1 * u_3
+            Fp::from(70u64),  // 11: u_1 * u_3 * u_4
+            Fp::from(6u64),   // 12: u_1 * u_2
+            Fp::from(42u64),  // 13: u_1 * u_2 * u_4
+            Fp::from(30u64),  // 14: u_1 * u_2 * u_3
+            Fp::from(210u64), // 15: u_1 * u_2 * u_3 * u_4
+        ];
+
+        assert_eq!(coeffs, expected, "Coefficients mismatch");
+    }
+
+    /// Test that b_poly and b_poly_coefficients are consistent:
+    /// evaluating b(x) via the product form should equal evaluating via coefficients.
+    #[test]
+    fn test_b_poly_consistency() {
+        let chals: Vec<Fp> = (2..=10).map(|i| Fp::from(i as u64)).collect();
+        let coeffs = b_poly_coefficients(&chals);
+
+        // Test at several points
+        for x_val in [1u64, 7, 13, 42, 100] {
+            let x = Fp::from(x_val);
+
+            // Evaluate via product form
+            let b_product = b_poly(&chals, x);
+
+            // Evaluate via coefficients: sum_i s_i * x^i
+            let mut b_coeffs = Fp::zero();
+            let mut x_pow = Fp::one();
+            for coeff in &coeffs {
+                b_coeffs += *coeff * x_pow;
+                x_pow *= x;
+            }
+
+            assert_eq!(
+                b_product, b_coeffs,
+                "b_poly and b_poly_coefficients inconsistent at x={}",
+                x_val
+            );
         }
     }
 }
