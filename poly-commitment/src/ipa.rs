@@ -644,28 +644,13 @@ impl<G: CommitmentCurve> SRS<G> {
     ///
     /// This function implements the IPA (Inner Product Argument) prover. During the
     /// `k = log_2(n)` rounds of folding, it implicitly constructs the **challenge
-    /// polynomial** `b(X)`:
-    ///
-    /// The evaluation vector `b` starts as `b_init` (combined evaluation points) and
-    /// is folded in each round using challenge `u_i`:
-    /// ```text
-    /// b_new = b_lo + u_i * b_hi
-    /// ```
-    ///
-    /// After all rounds, `b` reduces to a single value `b0` which equals
-    /// `b_poly(chals, evaluation_point)` where:
-    /// ```text
-    /// b(X) = prod_{i=0}^{k-1} (1 + u_{k-i} * X^{2^i})
-    /// ```
-    ///
-    /// The verifier reconstructs this same value using `b_poly` without redoing
-    /// the folding. See Section 3.2 of the [Halo paper](https://eprint.iacr.org/2019/1021.pdf).
+    /// polynomial** `b(X)`.
     ///
     /// Note: The use of the challenge polynomial `b(X)` is a modification to the
-    /// original IPA protocol that improves efficiency in recursive proof settings.
-    /// Instead of sending the full folded evaluation, we use `b(X)` to allow the
-    /// verifier to recompute it from the challenges alone.
-    #[allow(clippy::type_complexity)]
+    /// original IPA protocol that improves efficiency in recursive proof settings. The challenge
+    /// polynomial is inspired from the "Amoritization strategy"" from [Recursive Proof
+    /// Composition without a Trusted Setup](https://eprint.iacr.org/2019/1021.pdf), section 3.2.
+    /// #[allow(clippy::type_complexity)]
     #[allow(clippy::many_single_char_names)]
     pub fn open<EFqSponge, RNG, D: EvaluationDomain<G::ScalarField>, const FULL_ROUNDS: usize>(
         &self,
