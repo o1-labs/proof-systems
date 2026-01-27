@@ -761,36 +761,43 @@ Putting together all of the above, these are the 11 constraints for this gate
 We implement custom gate constraints for short Weierstrass curve
 endomorphism optimised variable base scalar multiplication.
 
-Given a finite field $\mathbb{F}_{q}$ of order $q$, if the order is not a multiple of 2 nor 3, then an
-elliptic curve over $\mathbb{F}_{q}$ in short Weierstrass form is represented by the set of points $(x,y)$
-that satisfy the following equation with
-$a,b\in\mathbb{F}_{q}$
- and
-$4a^3+27b^2\neq_{\mathbb{F}_q} 0 $:
+Given a finite field $\mathbb{F}_{q}$ of order $q$, if the order is not a
+multiple of 2 nor 3, then an
+elliptic curve over $\mathbb{F}_{q}$ in short Weierstrass form is
+represented by the set of points $(x,y)$ that satisfy the following
+equation with $a,b\in\mathbb{F}_{q}$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:
 $$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$
-If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve $E(\mathbb{F}_q)$, the goal of this
-operation is to perform the operation $2P±T$ efficiently as $(P±T)+P$.
+If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve
+$E(\mathbb{F}_q)$, the goal of this operation is to compute
+$S = (P + Q) + P$ where $Q \in \{T, -T, \phi(T), -\phi(T)\}$ is determined
+by bits $(b_1, b_2)$. Here $\phi$ is the curve endomorphism
+$\phi(x,y) = (\mathtt{endo} \cdot x, y)$.
 
-`S = (P + (b ? T : −T)) + P`
+The bits encode the point $Q$ as follows:
+* $b_1 = 0$: use $T$, i.e., $x_q = x_t$
+* $b_1 = 1$: use $\phi(T)$, i.e., $x_q = \mathtt{endo} \cdot x_t$
+* $b_2 = 0$: negate, i.e., $y_q = -y_t$
+* $b_2 = 1$: keep sign, i.e., $y_q = y_t$
 
-The same algorithm can be used to perform other scalar multiplications, meaning it is
-not restricted to the case $2\cdot P$, but it can be used for any arbitrary $k\cdot P$. This is done
-by decomposing the scalar $k$ into its binary representation.
-Moreover, for every step, there will be a one-bit constraint meant to differentiate between addition and subtraction
-for the operation $(P±T)+P$:
+This technique allows processing 2 bits of the scalar per point operation.
+Since each row performs two such operations (using bits $b_1, b_2$ and then
+$b_3, b_4$), we process 4 bits per row.
 
-In particular, the constraints of this gate take care of 4 bits of the scalar within a single EVBSM row.
-When the scalar is longer (which will usually be the case), multiple EVBSM rows will be concatenated.
+In particular, the constraints of this gate take care of 4 bits of the
+scalar within a single EVBSM row. When the scalar is longer (which will
+usually be the case), multiple EVBSM rows will be concatenated.
 
 |  Row  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |   7 |   8 |   9 |  10 |  11 |  12 |  13 |  14 |  Type |
 |-------|----|----|----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|-------|
 |     i | xT | yT |  Ø |  Ø | xP | yP | n  |  xR |  yR |  s1 | s3  | b1  |  b2 |  b3 |  b4 | EVBSM |
 |   i+1 |  = |  = |    |    | xS | yS | n' | xR' | yR' | s1' | s3' | b1' | b2' | b3' | b4' | EVBSM |
 
-The layout of this gate (and the next row) allows for this chained behavior where the output point
-of the current row $S$ gets accumulated as one of the inputs of the following row, becoming $P$ in
-the next constraints. Similarly, the scalar is decomposed into binary form and $n$ ($n'$ respectively)
-will store the current accumulated value and the next one for the check.
+The layout of this gate (and the next row) allows for this chained
+behavior where the output point of the current row $S$ gets accumulated
+as one of the inputs of the following row, becoming $P$ in the next
+constraints. Similarly, the scalar is decomposed into binary form and $n$
+($n'$ respectively) will store the current accumulated value and the next
+one for the check.
 
 For readability, we define the following variables for the constraints:
 
@@ -805,11 +812,11 @@ which take care of 4 bits of the scalar within a single EVBSM row:
 
 * First block:
   * `(xq1 - xp) * s1 = yq1 - yp`
-  * `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
+  * `(2*xp - s1^2 + xq1) * ((xp - xr)*s1 + yr + yp) = (xp - xr) * 2*yp`
   * `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
 * Second block:
   * `(xq2 - xr) * s3 = yq2 - yr`
-  * `(2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
+  * `(2*xr - s3^2 + xq2) * ((xr - xs)*s3 + ys + yr) = (xr - xs) * 2*yr`
   * `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
 * Booleanity checks:
   * Bit flag $b_1$: `0 = b1 * (b1 - 1)`
@@ -819,19 +826,49 @@ which take care of 4 bits of the scalar within a single EVBSM row:
 * Binary decomposition:
   * Accumulated scalar: `n_next = 16 * n + 8 * b1 + 4 * b2 + 2 * b3 + b4`
 
-The constraints above are derived from the following EC Affine arithmetic equations:
+The constraints above are derived from the following EC Affine arithmetic
+equations.
+
+**Background on EC point addition/doubling:**
+
+For points P = (x_p, y_p) and Q = (x_q, y_q) on a short Weierstrass curve,
+the sum R = P + Q = (x_r, y_r) is computed as:
+
+* Slope: $s = (y_q - y_p) / (x_q - x_p)$
+* $x_r = s^2 - x_p - x_q$
+* $y_r = s \cdot (x_p - x_r) - y_p$
+
+For point doubling R = 2P:
+
+* Slope: $s = (3 x_p^2 + a) / (2 y_p)$ (where a=0 for our curves)
+* $x_r = s^2 - 2 \cdot x_p$
+* $y_r = s \cdot (x_p - x_r) - y_p$
+
+**Derivation of the constraints:**
+
+Each "block" computes S = (P + Q) + P where Q = (xq, yq) is determined by
+bits. The intermediate point R = P + Q and final point S = R + P.
+
+We use two slopes:
+* $s_1$: slope for P + Q -> R
+* $s_2$: slope for R + P -> S
+
+The key optimization is eliminating $s_2$ from the constraints by
+substituting:
 
 * (1) => $(x_{q_1} - x_p) \cdot s_1 = y_{q_1} - y_p$
 * (2&3) => $(x_p – x_r) \cdot s_2 = y_r + y_p$
 * (2) => $(2 \cdot x_p + x_{q_1} – s_1^2) \cdot (s_1 + s_2) = 2 \cdot y_p$
-  * <=> $(2 \cdot x_p – s_1^2 + x_{q_1}) \cdot ((x_p – x_r) \cdot s_1 + y_r + y_p) = (x_p – x_r) \cdot 2 \cdot y_p$
+  * <=> $(2 x_p - s_1^2 + x_{q_1})((x_p - x_r) s_1 + y_r + y_p)$
+        $= (x_p - x_r) \cdot 2 y_p$
 * (3) => $s_1^2 - s_2^2 = x_{q_1} - x_r$
   * <=> $(y_r + y_p)^2 = (x_p – x_r)^2 \cdot (s_1^2 – x_{q_1} + x_r)$
 *
 * (4) => $(x_{q_2} - x_r) \cdot s_3 = y_{q_2} - y_r$
 * (5&6) => $(x_r – x_s) \cdot s_4 = y_s + y_r$
 * (5) => $(2 \cdot x_r + x_{q_2} – s_3^2) \cdot (s_3 + s_4) = 2 \cdot y_r$
-  * <=> $(2 \cdot x_r – s_3^2 + x_{q_2}) \cdot ((x_r – x_s) \cdot s_3 + y_s + y_r) = (x_r – x_s) \cdot 2 \cdot y_r$
+  * <=> $(2 x_r - s_3^2 + x_{q_2})((x_r - x_s) s_3 + y_s + y_r)$
+        $= (x_r - x_s) \cdot 2 y_r$
 * (6) => $s_3^2 – s_4^2 = x_{q_2} - x_s$
   * <=> $(y_s + y_r)^2 = (x_r – x_s)^2 \cdot (s_3^2 – x_{q_2} + x_s)$
 
@@ -840,14 +877,14 @@ Defining $s_2$ and $s_4$ as
 * $s_2 := \frac{2 \cdot y_P}{2 * x_P + x_T - s_1^2} - s_1$
 * $s_4 := \frac{2 \cdot y_R}{2 * x_R + x_T - s_3^2} - s_3$
 
-Gives the following equations when substituting the values of $s_2$ and $s_4$:
+Gives the following equations when substituting $s_2$ and $s_4$:
 
-1. `(xq1 - xp) * s1 = (2 * b1 - 1) * yt - yp`
-2. `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
+1. `(xq1 - xp) * s1 = yq1 - yp` (i.e., `(2 * b2 - 1) * yt - yp`)
+2. `(2*xp - s1^2 + xq1) * ((xp - xr)*s1 + yr + yp) = (xp - xr) * 2*yp`
 3. `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
 
-4. `(xq2 - xr) * s3 = (2 * b2 - 1) * yt - yr`
-5. `(2 * xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
+4. `(xq2 - xr) * s3 = yq2 - yr` (i.e., `(2 * b4 - 1) * yt - yr`)
+5. `(2*xr - s3^2 + xq2) * ((xr - xs)*s3 + ys + yr) = (xr - xs) * 2*yr`
 6. `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
 
 

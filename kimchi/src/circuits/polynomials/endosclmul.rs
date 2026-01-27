@@ -1,6 +1,175 @@
-//! This module implements short Weierstrass curve
-//! endomorphism optimised variable base
-//! scalar multiplication custom Plonk polynomials.
+//! This module implements the **EndoMul** gate for short Weierstrass curve
+//! endomorphism-optimized variable base scalar multiplication.
+//!
+//! # Purpose
+//!
+//! Compute `[scalar] * base_point` where the scalar is given as bits and the
+//! base point is a curve point. This is the core operation for EC-based
+//! cryptography in-circuit.
+//!
+//! # Inputs (per row)
+//!
+//! - `(x_T, y_T)`: Base point T being multiplied (columns 0, 1)
+//! - `(x_P, y_P)`: Current accumulator point P (columns 4, 5)
+//! - `n`: Current accumulated scalar value (column 6)
+//! - `b1, b2, b3, b4`: Four scalar bits for this row (columns 11-14)
+//!
+//! # Outputs (in next row)
+//!
+//! - `(x_S, y_S)`: Updated accumulator point after processing 4 bits (cols 4,5)
+//! - `n'`: Updated accumulated scalar: `n' = 16*n + 8*b1 + 4*b2 + 2*b3 + b4`
+//!
+//! # Endomorphism-Optimized Scalar Multiplication
+//!
+//! For curves of the form y^2 = x^3 + b (like Pallas and Vesta), there exists
+//! an efficient endomorphism phi defined by:
+//!
+//!   phi(x, y) = (endo * x, y)
+//!
+//! where `endo` (also called xi) is a primitive cube root of unity in the base
+//! field. This works because (endo * x)^3 = endo^3 * x^3 = x^3, so the point
+//! remains on the curve.
+//!
+//! This endomorphism corresponds to scalar multiplication by lambda:
+//!
+//!   phi(P) = [lambda]P
+//!
+//! where lambda is a primitive cube root of unity in the scalar field.
+//!
+//! ## How the Optimization Works
+//!
+//! The key insight is that we can compute `P + phi(T)` or `P - phi(T)` almost
+//! as cheaply as `P + T` or `P - T`, because applying phi only requires
+//! multiplying the x-coordinate by `endo`.
+//!
+//! For a 2-bit window (b1, b2), we can encode 4 different point operations:
+//!
+//! | b1 | b2 | Point Q added to P |
+//! |----|----|--------------------|
+//! |  0 |  0 |  -T                |
+//! |  0 |  1 |   T                |
+//! |  1 |  0 |  -phi(T)           |
+//! |  1 |  1 |   phi(T)           |
+//!
+//! This is achieved by:
+//! - `xq = (1 + (endo - 1) * b1) * x_T` = x_T if b1=0, or endo * x_T if b1=1
+//! - `yq = (2 * b2 - 1) * y_T` = -y_T if b2=0, or y_T if b2=1
+//!
+//! So (xq, yq) represents one of {T, -T, phi(T), -phi(T)} based on (b1, b2).
+//!
+//! ## Why phi(T)? The GLV Optimization
+//!
+//! When we want to compute `[k]P` for a large scalar k, the naive approach
+//! requires ~256 double-and-add steps for a 256-bit scalar. The GLV method
+//! (Gallant-Lambert-Vanstone) provides a way to cut this roughly in half.
+//!
+//! The key insight is that any scalar k can be decomposed as:
+//!
+//!   k = k1 + k2 * lambda (mod r)
+//!
+//! where k1, k2 are roughly half the bit-length of k (about 128 bits each).
+//! Since `phi(P) = [lambda]P`, we can rewrite:
+//!
+//!   [k]P = [k1]P + [k2][lambda]P = [k1]P + [k2]phi(P)
+//!
+//! Now instead of one 256-bit scalar multiplication, we have two 128-bit scalar
+//! multiplications: `[k1]P` and `[k2]phi(P)`. But we can do even better by
+//! computing both **simultaneously** using a multi-scalar multiplication
+//! approach.
+//!
+//! In each step, we process one bit from k1 and one bit from k2 together. The
+//! 2-bit encoding (b1, b2) selects which combination of T and phi(T) to add:
+//!
+//! - b1 selects between T (b1=0) and phi(T) (b1=1)
+//! - b2 selects the sign: negative (b2=0) or positive (b2=1)
+//!
+//! | b1 | b2 | Point added |
+//! |----|----|-------------|
+//! |  0 |  0 |  -T         |
+//! |  0 |  1 |   T         |
+//! |  1 |  0 |  -phi(T)    |
+//! |  1 |  1 |   phi(T)    |
+//!
+//! The negative points come from the y-coordinate formula: `yq = (2*b2 - 1)*y_T`.
+//! When b2=0, we get `-y_T`, which negates the point (since `-P = (x, -y)` on
+//! elliptic curves). We need both positive and negative points to encode the
+//! scalar using a **signed digit representation**. With 2 bits we represent 4
+//! distinct values `{-1, +1} x {T, phi(T)}`, which is more expressive than just
+//! `{0, 1} x {T, phi(T)}`. This signed representation is part of what makes the
+//! GLV method efficient - it allows the scalar decomposition to use both
+//! positive and negative contributions.
+//!
+//! This interleaves the bits of k1 and k2, processing one bit of each per
+//! double-and-add step. Since k1 and k2 are ~128 bits, we need only ~128 steps
+//! instead of ~256, halving the circuit size.
+//!
+//! The gate processes 4 bits per row (two consecutive double-and-add steps),
+//! so a 128-bit scalar requires 32 rows of EndoMul gates.
+//!
+//! ## Usage
+//!
+//! To compute `[scalar] * base` for a 128-bit scalar:
+//!
+//! 1. **Set up gates**: Create 32 consecutive EndoMul gates (128 bits / 4 bits
+//!    per row), followed by one Zero gate. The Zero gate is required because
+//!    each EndoMul gate reads the accumulator from the next row.
+//!
+//! 2. **Compute initial accumulator**: To avoid point-at-infinity edge cases,
+//!    initialize the accumulator as `acc0 = 2 * (T + phi(T))` where T is the
+//!    base point and phi is the endomorphism.
+//!
+//! 3. **Prepare scalar bits**: Convert the scalar to bits in **MSB-first**
+//!    order (most significant bit at index 0).
+//!
+//! 4. **Generate witness**: Call `gen_witness` with the witness array, starting
+//!    row, endo coefficient, base point coordinates, MSB-first bits, and
+//!    initial accumulator. The function returns the final accumulated point
+//!    and the reconstructed scalar value.
+//!
+//! See `kimchi/src/tests/endomul.rs` for a complete example.
+//!
+//! ## Invariants
+//!
+//! The following invariants **must** be respected:
+//!
+//! 1. **Bit count**: `bits.len()` must be a multiple of 4.
+//!
+//! 2. **Bit order**: Bits must be in **MSB-first** order (most significant bit
+//!    at index 0).
+//!
+//! 3. **Gate chain**: For `n` bits, you need `n/4` consecutive EndoMul gates,
+//!    followed by a Zero gate (or any gate that doesn't constrain the EndoMul
+//!    output columns). The Zero gate is needed because EndoMul reads from the
+//!    next row.
+//!
+//! 4. **Initial accumulator**: `acc0` must not be the point at infinity. The
+//!    standard initialization is `acc0 = 2 * (T + phi(T))` where T is the base
+//!    point. This ensures the accumulator never hits the point at infinity
+//!    during computation.
+//!
+//! 5. **Endo coefficient**: The `endo` parameter must be the correct cube root
+//!    of unity for the curve, obtained via `endos::<Curve>()`.
+//!
+//! 6. **Base point consistency**: The base point `(x_T, y_T)` must be the same
+//!    across all rows of a single scalar multiplication.
+//!
+//! 7. **Row continuity**: Column 4,5 (accumulator) and column 6 (scalar) of
+//!    row `i+1` must equal the outputs computed by row `i`.
+//!
+//! 8. **Scalar value verification**: The EndoMul gate only constrains the
+//!    row-to-row relationship `n' = 16*n + 8*b1 + 4*b2 + 2*b3 + b4`. It does
+//!    **not** constrain the initial or final value of `n`. The calling circuit
+//!    must add external constraints (e.g., copy constraints or public inputs)
+//!    to enforce:
+//!    - Initial `n = 0` at the first EndoMul row
+//!    - Final `n = k` where `k` is the expected scalar value
+//!    Without these constraints, a malicious prover could use arbitrary bits
+//!    that don't correspond to the intended scalar.
+//!
+//! ## References
+//!
+//! - Halo paper, Section 6.2: <https://eprint.iacr.org/2019/1021>
+//! - GLV method: <https://www.iacr.org/archive/crypto2001/21390189.pdf>
 
 use crate::{
     circuits::{
@@ -24,36 +193,43 @@ use core::marker::PhantomData;
 //~ We implement custom gate constraints for short Weierstrass curve
 //~ endomorphism optimised variable base scalar multiplication.
 //~
-//~ Given a finite field $\mathbb{F}_{q}$ of order $q$, if the order is not a multiple of 2 nor 3, then an
-//~ elliptic curve over $\mathbb{F}_{q}$ in short Weierstrass form is represented by the set of points $(x,y)$
-//~ that satisfy the following equation with
-//~ $a,b\in\mathbb{F}_{q}$
-//~ and
-//~ $4a^3+27b^2\neq_{\mathbb{F}_q} 0 $:
+//~ Given a finite field $\mathbb{F}_{q}$ of order $q$, if the order is not a
+//~ multiple of 2 nor 3, then an
+//~ elliptic curve over $\mathbb{F}_{q}$ in short Weierstrass form is
+//~ represented by the set of points $(x,y)$ that satisfy the following
+//~ equation with $a,b\in\mathbb{F}_{q}$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:
 //~ $$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$
-//~ If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve $E(\mathbb{F}_q)$, the goal of this
-//~ operation is to perform the operation $2P±T$ efficiently as $(P±T)+P$.
+//~ If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve
+//~ $E(\mathbb{F}_q)$, the goal of this operation is to compute
+//~ $S = (P + Q) + P$ where $Q \in \{T, -T, \phi(T), -\phi(T)\}$ is determined
+//~ by bits $(b_1, b_2)$. Here $\phi$ is the curve endomorphism
+//~ $\phi(x,y) = (\mathtt{endo} \cdot x, y)$.
 //~
-//~ `S = (P + (b ? T : −T)) + P`
+//~ The bits encode the point $Q$ as follows:
+//~ * $b_1 = 0$: use $T$, i.e., $x_q = x_t$
+//~ * $b_1 = 1$: use $\phi(T)$, i.e., $x_q = \mathtt{endo} \cdot x_t$
+//~ * $b_2 = 0$: negate, i.e., $y_q = -y_t$
+//~ * $b_2 = 1$: keep sign, i.e., $y_q = y_t$
 //~
-//~ The same algorithm can be used to perform other scalar multiplications, meaning it is
-//~ not restricted to the case $2\cdot P$, but it can be used for any arbitrary $k\cdot P$. This is done
-//~ by decomposing the scalar $k$ into its binary representation.
-//~ Moreover, for every step, there will be a one-bit constraint meant to differentiate between addition and subtraction
-//~ for the operation $(P±T)+P$:
+//~ This technique allows processing 2 bits of the scalar per point operation.
+//~ Since each row performs two such operations (using bits $b_1, b_2$ and then
+//~ $b_3, b_4$), we process 4 bits per row.
 //~
-//~ In particular, the constraints of this gate take care of 4 bits of the scalar within a single EVBSM row.
-//~ When the scalar is longer (which will usually be the case), multiple EVBSM rows will be concatenated.
+//~ In particular, the constraints of this gate take care of 4 bits of the
+//~ scalar within a single EVBSM row. When the scalar is longer (which will
+//~ usually be the case), multiple EVBSM rows will be concatenated.
 //~
 //~ |  Row  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |   7 |   8 |   9 |  10 |  11 |  12 |  13 |  14 |  Type |
 //~ |-------|----|----|----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|-------|
 //~ |     i | xT | yT |  Ø |  Ø | xP | yP | n  |  xR |  yR |  s1 | s3  | b1  |  b2 |  b3 |  b4 | EVBSM |
 //~ |   i+1 |  = |  = |    |    | xS | yS | n' | xR' | yR' | s1' | s3' | b1' | b2' | b3' | b4' | EVBSM |
 //~
-//~ The layout of this gate (and the next row) allows for this chained behavior where the output point
-//~ of the current row $S$ gets accumulated as one of the inputs of the following row, becoming $P$ in
-//~ the next constraints. Similarly, the scalar is decomposed into binary form and $n$ ($n'$ respectively)
-//~ will store the current accumulated value and the next one for the check.
+//~ The layout of this gate (and the next row) allows for this chained
+//~ behavior where the output point of the current row $S$ gets accumulated
+//~ as one of the inputs of the following row, becoming $P$ in the next
+//~ constraints. Similarly, the scalar is decomposed into binary form and $n$
+//~ ($n'$ respectively) will store the current accumulated value and the next
+//~ one for the check.
 //~
 //~ For readability, we define the following variables for the constraints:
 //~
@@ -68,11 +244,11 @@ use core::marker::PhantomData;
 //~
 //~ * First block:
 //~   * `(xq1 - xp) * s1 = yq1 - yp`
-//~   * `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
+//~   * `(2*xp - s1^2 + xq1) * ((xp - xr)*s1 + yr + yp) = (xp - xr) * 2*yp`
 //~   * `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
 //~ * Second block:
 //~   * `(xq2 - xr) * s3 = yq2 - yr`
-//~   * `(2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
+//~   * `(2*xr - s3^2 + xq2) * ((xr - xs)*s3 + ys + yr) = (xr - xs) * 2*yr`
 //~   * `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
 //~ * Booleanity checks:
 //~   * Bit flag $b_1$: `0 = b1 * (b1 - 1)`
@@ -82,19 +258,49 @@ use core::marker::PhantomData;
 //~ * Binary decomposition:
 //~   * Accumulated scalar: `n_next = 16 * n + 8 * b1 + 4 * b2 + 2 * b3 + b4`
 //~
-//~ The constraints above are derived from the following EC Affine arithmetic equations:
+//~ The constraints above are derived from the following EC Affine arithmetic
+//~ equations.
+//~
+//~ **Background on EC point addition/doubling:**
+//~
+//~ For points P = (x_p, y_p) and Q = (x_q, y_q) on a short Weierstrass curve,
+//~ the sum R = P + Q = (x_r, y_r) is computed as:
+//~
+//~ * Slope: $s = (y_q - y_p) / (x_q - x_p)$
+//~ * $x_r = s^2 - x_p - x_q$
+//~ * $y_r = s \cdot (x_p - x_r) - y_p$
+//~
+//~ For point doubling R = 2P:
+//~
+//~ * Slope: $s = (3 x_p^2 + a) / (2 y_p)$ (where a=0 for our curves)
+//~ * $x_r = s^2 - 2 \cdot x_p$
+//~ * $y_r = s \cdot (x_p - x_r) - y_p$
+//~
+//~ **Derivation of the constraints:**
+//~
+//~ Each "block" computes S = (P + Q) + P where Q = (xq, yq) is determined by
+//~ bits. The intermediate point R = P + Q and final point S = R + P.
+//~
+//~ We use two slopes:
+//~ * $s_1$: slope for P + Q -> R
+//~ * $s_2$: slope for R + P -> S
+//~
+//~ The key optimization is eliminating $s_2$ from the constraints by
+//~ substituting:
 //~
 //~ * (1) => $(x_{q_1} - x_p) \cdot s_1 = y_{q_1} - y_p$
 //~ * (2&3) => $(x_p – x_r) \cdot s_2 = y_r + y_p$
 //~ * (2) => $(2 \cdot x_p + x_{q_1} – s_1^2) \cdot (s_1 + s_2) = 2 \cdot y_p$
-//~   * <=> $(2 \cdot x_p – s_1^2 + x_{q_1}) \cdot ((x_p – x_r) \cdot s_1 + y_r + y_p) = (x_p – x_r) \cdot 2 \cdot y_p$
+//~   * <=> $(2 x_p - s_1^2 + x_{q_1})((x_p - x_r) s_1 + y_r + y_p)$
+//~         $= (x_p - x_r) \cdot 2 y_p$
 //~ * (3) => $s_1^2 - s_2^2 = x_{q_1} - x_r$
 //~   * <=> $(y_r + y_p)^2 = (x_p – x_r)^2 \cdot (s_1^2 – x_{q_1} + x_r)$
 //~ *
 //~ * (4) => $(x_{q_2} - x_r) \cdot s_3 = y_{q_2} - y_r$
 //~ * (5&6) => $(x_r – x_s) \cdot s_4 = y_s + y_r$
 //~ * (5) => $(2 \cdot x_r + x_{q_2} – s_3^2) \cdot (s_3 + s_4) = 2 \cdot y_r$
-//~   * <=> $(2 \cdot x_r – s_3^2 + x_{q_2}) \cdot ((x_r – x_s) \cdot s_3 + y_s + y_r) = (x_r – x_s) \cdot 2 \cdot y_r$
+//~   * <=> $(2 x_r - s_3^2 + x_{q_2})((x_r - x_s) s_3 + y_s + y_r)$
+//~         $= (x_r - x_s) \cdot 2 y_r$
 //~ * (6) => $s_3^2 – s_4^2 = x_{q_2} - x_s$
 //~   * <=> $(y_s + y_r)^2 = (x_r – x_s)^2 \cdot (s_3^2 – x_{q_2} + x_s)$
 //~
@@ -103,14 +309,14 @@ use core::marker::PhantomData;
 //~ * $s_2 := \frac{2 \cdot y_P}{2 * x_P + x_T - s_1^2} - s_1$
 //~ * $s_4 := \frac{2 \cdot y_R}{2 * x_R + x_T - s_3^2} - s_3$
 //~
-//~ Gives the following equations when substituting the values of $s_2$ and $s_4$:
+//~ Gives the following equations when substituting $s_2$ and $s_4$:
 //~
-//~ 1. `(xq1 - xp) * s1 = (2 * b1 - 1) * yt - yp`
-//~ 2. `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
+//~ 1. `(xq1 - xp) * s1 = yq1 - yp` (i.e., `(2 * b2 - 1) * yt - yp`)
+//~ 2. `(2*xp - s1^2 + xq1) * ((xp - xr)*s1 + yr + yp) = (xp - xr) * 2*yp`
 //~ 3. `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
 //~
-//~ 4. `(xq2 - xr) * s3 = (2 * b2 - 1) * yt - yr`
-//~ 5. `(2 * xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
+//~ 4. `(xq2 - xr) * s3 = yq2 - yr` (i.e., `(2 * b4 - 1) * yt - yr`)
+//~ 5. `(2*xr - s3^2 + xq2) * ((xr - xs)*s3 + ys + yr) = (xr - xs) * 2*yr`
 //~ 6. `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
 //~
 
@@ -125,7 +331,8 @@ impl<F: PrimeField> CircuitGate<F> {
     ///
     /// # Errors
     ///
-    /// Will give error if `self.typ` is not `GateType::EndoMul`, or `constraint evaluation` fails.
+    /// Will give error if `self.typ` is not `GateType::EndoMul`, or if
+    /// constraint evaluation fails.
     pub fn verify_endomul<
         const FULL_ROUNDS: usize,
         G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
@@ -267,18 +474,54 @@ where
     }
 }
 
-/// The result of performing an endoscaling: the accumulated curve point
-/// and scalar.
+/// The result of performing an endomorphism-optimized scalar multiplication.
+///
+/// After processing all scalar bits through the EndoMul gates, this struct
+/// holds:
+/// - The final accumulated curve point (as affine coordinates)
+/// - The reconstructed scalar value from the processed bits
 pub struct EndoMulResult<F> {
+    /// The final accumulated point (x, y) after all scalar multiplication
+    /// steps.
+    /// This equals [scalar]P where P is the base point and scalar is derived
+    /// from the input bits combined with the endomorphism.
     pub acc: (F, F),
+    /// The accumulated scalar value reconstructed from all processed bits.
+    /// For a 128-bit scalar processed in 32 rows (4 bits/row), this equals
+    /// the original scalar k such that acc = [k]base (with endomorphism
+    /// applied).
     pub n: F,
 }
 
-/// Generates the `witness_curr` values for a series of endoscaling constraints.
+/// Generates the witness values for a series of EndoMul gates.
+///
+/// This function computes the witness for endomorphism-optimized scalar
+/// multiplication. It processes 4 bits of the scalar per row, computing
+/// the intermediate curve points and slopes needed for the constraints.
+///
+/// # Arguments
+///
+/// * `w` - The witness array to populate (15 columns x num_rows)
+/// * `row0` - The starting row index
+/// * `endo` - The endomorphism coefficient (cube root of unity in base field)
+/// * `base` - The base point T = (x_T, y_T) being multiplied
+/// * `bits` - Scalar bits in MSB-first order. Length must be a multiple of 4.
+/// * `acc0` - Initial accumulator point. Typically set to `2*T + phi(T)` to
+///   avoid edge cases with the point at infinity.
+///
+/// # Returns
+///
+/// The final accumulated point and scalar after processing all bits.
+///
+/// # Wire Layout (per row)
+///
+/// | Col |  0  |  1  |  4  |  5  |  6  |  7  |  8  |  9  | 10  | 11  | 12  | 13  | 14  |
+/// |-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|
+/// |     | x_T | y_T | x_P | y_P |  n  | x_R | y_R | s1  | s3  | b1  | b2  | b3  | b4  |
 ///
 /// # Panics
 ///
-/// Will panic if `bits` length does not match the requirement.
+/// Will panic if `bits` length is not a multiple of 4.
 pub fn gen_witness<F: Field + core::fmt::Display>(
     w: &mut [Vec<F>; COLUMNS],
     row0: usize,
