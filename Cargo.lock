@@ -2055,6 +2055,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "kimchi-napi"
+version = "0.1.0"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-poly",
+ "ark-serialize",
+ "arkworks",
+ "base64 0.21.7",
+ "getrandom 0.2.15",
+ "kimchi",
+ "kimchi_wasm",
+ "libc",
+ "mina-curves",
+ "mina-poseidon",
+ "napi",
+ "napi-build 2.2.3",
+ "napi-derive",
+ "num-bigint",
+ "o1-utils",
+ "once_cell",
+ "paste",
+ "poly-commitment",
+ "rand",
+ "rayon",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "wasm-types",
+]
+
+[[package]]
 name = "kimchi-stubs"
 version = "0.1.0"
 dependencies = [
@@ -2096,6 +2129,42 @@ dependencies = [
  "serde_json",
  "serde_with",
  "tinytemplate",
+]
+
+[[package]]
+name = "kimchi_wasm"
+version = "0.1.0"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-poly",
+ "ark-serialize",
+ "arkworks",
+ "base64 0.21.7",
+ "console_error_panic_hook",
+ "getrandom 0.2.15",
+ "groupmap",
+ "js-sys",
+ "kimchi",
+ "libc",
+ "mina-curves",
+ "mina-poseidon",
+ "num-bigint",
+ "o1-utils",
+ "once_cell",
+ "paste",
+ "poly-commitment",
+ "rand",
+ "rayon",
+ "rmp-serde",
+ "serde",
+ "serde-wasm-bindgen",
+ "serde_json",
+ "serde_with",
+ "spmc",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
+ "wasm-types",
 ]
 
 [[package]]
@@ -2971,39 +3040,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "plonk-napi"
-version = "0.1.0"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-poly",
- "ark-serialize",
- "arkworks",
- "base64 0.21.7",
- "getrandom 0.2.15",
- "kimchi",
- "libc",
- "mina-curves",
- "mina-poseidon",
- "napi",
- "napi-build 2.2.3",
- "napi-derive",
- "num-bigint",
- "o1-utils",
- "once_cell",
- "paste",
- "plonk_wasm",
- "poly-commitment",
- "rand",
- "rayon",
- "rmp-serde",
- "serde",
- "serde_json",
- "serde_with",
- "wasm-types",
-]
-
-[[package]]
 name = "plonk_neon"
 version = "0.1.0"
 dependencies = [
@@ -3027,42 +3063,6 @@ dependencies = [
  "serde",
  "serde_with",
  "wasm-bindgen",
- "wasm-types",
-]
-
-[[package]]
-name = "plonk_wasm"
-version = "0.1.0"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-poly",
- "ark-serialize",
- "arkworks",
- "base64 0.21.7",
- "console_error_panic_hook",
- "getrandom 0.2.15",
- "groupmap",
- "js-sys",
- "kimchi",
- "libc",
- "mina-curves",
- "mina-poseidon",
- "num-bigint",
- "o1-utils",
- "once_cell",
- "paste",
- "poly-commitment",
- "rand",
- "rayon",
- "rmp-serde",
- "serde",
- "serde-wasm-bindgen",
- "serde_json",
- "serde_with",
- "spmc",
- "wasm-bindgen",
- "wasm-bindgen-test",
  "wasm-types",
 ]
 
