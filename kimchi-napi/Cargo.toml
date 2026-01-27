@@ -1,5 +1,5 @@
 [package]
-name = "plonk-napi"
+name = "kimchi-napi"
 version = "0.1.0"
 authors = ["opensource@o1labs.org"]
 description = "Node-API bindings for plonk proof systems"
@@ -8,7 +8,7 @@ license = "MIT/Apache-2.0"
 edition = "2021"
 
 [lib]
-name = "plonk_napi"
+name = "kimchi_napi"
 crate-type = ["cdylib"] # to generate a dynamic library that is loadable by Node
 
 [dependencies]
@@ -26,7 +26,7 @@ arkworks.workspace = true
 mina-curves = { path = "../curves" }
 mina-poseidon = { path = "../poseidon" }
 o1-utils = { path = "../utils" }
-plonk_wasm.workspace = true
+kimchi_wasm.workspace = true
 poly-commitment = { path = "../poly-commitment" }
 
 base64.workspace = true
