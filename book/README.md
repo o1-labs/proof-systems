@@ -3,14 +3,16 @@
 This directory holds the code related to documentation and specifications of the
 proof systems.
 
-It is built with [mdbook](https://rust-lang.github.io/mdBook/), which you can
-use to serve the page via the following command:
+It is built with [Docusaurus](https://docusaurus.io/), which you can use to
+serve the page via the following command:
 
 ```console
 $ # install dependencies
 $ make deps
 $ # serve the page locally
-$ make
+$ make serve
+$ # build
+$ make build
 $ # clean
 $ make clean
 ```

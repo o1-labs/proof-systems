@@ -19,12 +19,6 @@ $ cargo install --git https://github.com/o1-labs/cargo-specification.git \
     --branch main cargo-spec
 ```
 
-You will also need markdownlint:
-
-```console
-$ npm install markdownlint-cli -g
-```
-
 ## Render
 
 To produce a specification, simply run the following command:

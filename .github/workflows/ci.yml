@@ -42,7 +42,7 @@ jobs:
       - id: ocaml
         run: echo 'version=["4.14.2"]' >> "$GITHUB_OUTPUT"
       - id: node
-        run: echo 'version=["20"]' >> "$GITHUB_OUTPUT"
+        run: echo 'version=["24"]' >> "$GITHUB_OUTPUT"
       - id: defaults
         run: |
           echo 'rust_version=1.92' >> "$GITHUB_OUTPUT"
@@ -142,11 +142,6 @@ jobs:
           cargo install --git https://github.com/o1-labs/cargo-specification.git \
             --branch main cargo-spec
 
-      - name: Install markdownlint
-        run: |
-          # FIXME: 0.39.0 makes the CI fail
-          npm install -g markdownlint-cli@0.38.0
-
       #
       # Doc & Spec
       #
@@ -178,11 +173,6 @@ jobs:
       #
       # Docusaurus Book
       #
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
 
       - name: Build the book
         run: |
