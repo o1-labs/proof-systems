@@ -7,15 +7,16 @@ The `specifications/` directory hosts specifications-related code:
 - [kimchi/](kimchi/) contains the specification for the proof system
 
 The specifications are written using
-[cargo-spec](https://crates.io/crates/cargo-spec), which combines markdown files
-as well as text extracted directly from the code.
+[cargo-spec](https://github.com/o1-labs/cargo-specification), which combines
+markdown files as well as text extracted directly from the code.
 
 ## Set up
 
-Install cargo-spec:
+Install cargo-spec from the o1-labs fork:
 
 ```console
-$ cargo install cargo-spec
+$ cargo install --git https://github.com/o1-labs/cargo-specification.git \
+    --branch main cargo-spec
 ```
 
 You will also need markdownlint:

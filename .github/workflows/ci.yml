@@ -137,9 +137,10 @@ jobs:
         with:
           ocaml_version: ${{ matrix.ocaml_version }}
 
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-spec
+      - name: Install cargo-spec from o1-labs fork
+        run: |
+          cargo install --git https://github.com/o1-labs/cargo-specification.git \
+            --branch main cargo-spec
 
       - name: Install markdownlint
         run: |
