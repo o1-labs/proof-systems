@@ -176,10 +176,15 @@ jobs:
           make generate-doc
 
       #
-      # MD Book
+      # Docusaurus Book
       #
 
-      - name: Build the mdbook
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build the book
         run: |
           cd book
           make deps
@@ -198,7 +203,7 @@ jobs:
         run: |
           eval $(opam env)
           make generate-doc
-          cp -r ./target/doc ./book/book/html/rustdoc
+          cp -r ./target/doc ./book/build/rustdoc
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e
@@ -209,7 +214,7 @@ jobs:
           matrix.rust_and_os.os == needs.define-matrix.outputs.default_os
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./book/book/html
+          publish_dir: ./book/build
 
   # Tracking issue: https://github.com/o1-labs/mina-rust/issues/1984
   no-std-check:
