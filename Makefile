@@ -262,6 +262,10 @@ generate-test-coverage-report: ## Generate the code coverage report
 		@echo "The test coverage report is available at: ./target/coverage"
 		@echo ""
 
+.PHONY: serve-book
+serve-book: ## Rebuild and serve the specifications book locally
+		cd book && mdbook build && mdbook serve
+
 .PHONY: generate-doc
 generate-doc: ## Generate the Rust documentation
 		@echo ""
