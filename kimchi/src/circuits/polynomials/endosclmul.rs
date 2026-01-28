@@ -19,7 +19,7 @@
 //! - `(x_S, y_S)`: Updated accumulator point after processing 4 bits (cols 4,5)
 //! - `n'`: Updated accumulated scalar: `n' = 16*n + 8*b1 + 4*b2 + 2*b3 + b4`
 //!
-//! # Endomorphism-Optimized Scalar Multiplication
+//! # Endomorphism-optimized scalar multiplication
 //!
 //! For curves of the form y^2 = x^3 + b (like Pallas and Vesta), there exists
 //! an efficient endomorphism phi defined by:
@@ -36,7 +36,7 @@
 //!
 //! where lambda is a primitive cube root of unity in the scalar field.
 //!
-//! ## How the Optimization Works
+//! ## How the optimization works
 //!
 //! The key insight is that we can compute `P + phi(T)` or `P - phi(T)` almost
 //! as cheaply as `P + T` or `P - T`, because applying phi only requires
@@ -57,7 +57,7 @@
 //!
 //! So (xq, yq) represents one of {T, -T, phi(T), -phi(T)} based on (b1, b2).
 //!
-//! ## Why phi(T)? The GLV Optimization
+//! ## Why phi(T)? The GLV optimization
 //!
 //! When we want to compute `[k]P` for a large scalar k, the naive approach
 //! requires ~256 double-and-add steps for a 256-bit scalar. The GLV method
@@ -153,18 +153,13 @@
 //! 6. **Base point consistency**: The base point `(x_T, y_T)` must be the same
 //!    across all rows of a single scalar multiplication.
 //!
-//! 7. **Row continuity**: Column 4,5 (accumulator) and column 6 (scalar) of
-//!    row `i+1` must equal the outputs computed by row `i`.
-//!
 //! 8. **Scalar value verification**: The EndoMul gate only constrains the
 //!    row-to-row relationship `n' = 16*n + 8*b1 + 4*b2 + 2*b3 + b4`. It does
 //!    **not** constrain the initial or final value of `n`. The calling circuit
-//!    must add external constraints (e.g., copy constraints or public inputs)
-//!    to enforce:
+//!    must add external constraints.
+//!    To enforce:
 //!    - Initial `n = 0` at the first EndoMul row
 //!    - Final `n = k` where `k` is the expected scalar value
-//!    Without these constraints, a malicious prover could use arbitrary bits
-//!    that don't correspond to the intended scalar.
 //!
 //! ## References
 //!
