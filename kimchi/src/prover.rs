@@ -887,6 +887,7 @@ where
         };
 
         //~ 1. commit (hiding) to the quotient polynomial $t$
+        // We have 7 because of the maximum degree.
         let t_comm = { index.srs.commit(&quotient_poly, 7 * num_chunks, rng) };
 
         //~ 1. Absorb the commitment of the quotient polynomial with the Fq-Sponge.
@@ -1112,17 +1113,19 @@ where
         //~    This is to implement [Maller's optimization](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html).
         internal_tracing::checkpoint!(internal_traces; compute_ft_poly);
         let ft: DensePolynomial<G::ScalarField> = {
+            // Compute f_tilde: the linearized (chunked) linearization polynomial
             let f_chunked = {
                 // TODO: compute the linearization polynomial in evaluation form so
                 // that we can drop the coefficient forms of the index polynomials from
                 // the constraint system struct
 
-                // permutation (not part of linearization yet)
+                // Permutation contribution to the linearization polynomial
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
                 let f = index.perm_lnrz(&evals, zeta, beta, gamma, alphas);
 
-                // the circuit polynomial
+                // Circuit/gate constraints contribution to the linearization polynomial
+                // f = permutation_linearization + circuit_linearization
                 let f = {
                     let (_lin_constant, mut lin) =
                         index.linearization.to_polynomial(&env, zeta, &evals);
@@ -1132,15 +1135,20 @@ where
 
                 drop(env);
 
+                // Chunk and linearize: f_tilde = f_0 + zeta^n * f_1 + zeta^{2n} * f_2 + ...
                 // see https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#the-prover-side
                 f.to_chunked_polynomial(num_chunks, index.max_poly_size)
                     .linearize(zeta_to_srs_len)
             };
 
+            // Compute t_tilde: the linearized (chunked) quotient polynomial
+            // t_tilde = t_0 + zeta^n * t_1 + zeta^{2n} * t_2 + ...
+            // We have 7 because of the maximum degree.
             let t_chunked = quotient_poly
                 .to_chunked_polynomial(7 * num_chunks, index.max_poly_size)
                 .linearize(zeta_to_srs_len);
 
+            // ft = f_tilde - Z_H(zeta) * t_tilde, where Z_H(zeta) = zeta^n - 1
             &f_chunked - &t_chunked.scale(zeta_to_domain_size - G::ScalarField::one())
         };
 
