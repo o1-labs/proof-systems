@@ -1,6 +1,6 @@
 .PHONY: build watch
 
-OUT_FILE := ../../src/specs/poly-commitment.md
+OUT_FILE := ../../docs/specs/poly-commitment.md
 
 # builds the specification once
 build:

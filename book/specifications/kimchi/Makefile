@@ -1,6 +1,6 @@
 .PHONY: build watch
 
-OUT_FILE := ../../src/specs/kimchi.md
+OUT_FILE := ../../docs/specs/kimchi.md
 
 # builds the specification once
 # disables the following rules for the generated file:

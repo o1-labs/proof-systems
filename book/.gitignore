@@ -1,1 +1,16 @@
-book
+# Docusaurus build artifacts
+build/
+.docusaurus/
+
+# Dependencies
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store

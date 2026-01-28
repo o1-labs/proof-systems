@@ -1,62 +1,40 @@
 #
-# list versions of mdbook and mdbook plugins
+# Makefile for Docusaurus-based Mina book
 #
 
-MDBOOK_VERSION = 0.4.35
-MDBOOK_KATEX_VERSION = 0.3.8
-MDBOOK_ADMONISH_VERSION = 1.14.0
-MDBOOK_LINKCHECK_VERSION = 0.7.7
-MDBOOK_MERMAID_VERSION = 0.12.6
-MDBOOK_TOC_VERSION = 0.14.1
+.PHONY: help
+help: ## Show this help message
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
+		awk 'BEGIN {FS = ":.*?## "}; \
+		{printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
+.PHONY: all
+all: deps build ## Run deps and build
 
-all: deps check build serve
+.PHONY: deps
+deps: ## Install dependencies required to build the book
+	npm install
 
-#
-# Installs the dependencies required to serve or build the book
-#
+.PHONY: build
+build: ## Build the book
+	npx docusaurus build
 
-deps:
-	cargo install --locked "mdbook@$(MDBOOK_VERSION)"
-	cargo install --locked "mdbook-admonish@$(MDBOOK_ADMONISH_VERSION)"
-	cargo install --locked "mdbook-katex@$(MDBOOK_KATEX_VERSION)"
-	cargo install --locked --git https://github.com/o1-labs/mdbook-linkcheck --rev 8cccfc8fee397092ecdf1236a42871c5c980672e mdbook-linkcheck
-	cargo install --locked "mdbook-mermaid@$(MDBOOK_MERMAID_VERSION)"
-	cargo install --locked "mdbook-toc@$(MDBOOK_TOC_VERSION)"
+.PHONY: serve
+serve: ## Serve the book locally with hot reload
+	npx docusaurus start
 
-#
-# Checks if your installed dependencies match what we've listed above
-#
+.PHONY: serve-built
+serve-built: ## Serve the production build locally
+	npx docusaurus serve
 
-define check_version
-	@(cargo install --list | grep "$(1) v" | cut -d " " -f 2 | tr -d ':' | grep -Fx "v$(2)") || (echo "your $(1) version needs to be $(2)" && exit 1)
-endef
+.PHONY: clean
+clean: ## Clean generated artifacts
+	rm -rf build node_modules .docusaurus
 
-check:
-	$(call check_version,mdbook,$(MDBOOK_VERSION))
-	$(call check_version,mdbook-admonish,$(MDBOOK_ADMONISH_VERSION))
-	$(call check_version,mdbook-katex,$(MDBOOK_KATEX_VERSION))
-	$(call check_version,mdbook-linkcheck,$(MDBOOK_LINKCHECK_VERSION))
-	$(call check_version,mdbook-mermaid,$(MDBOOK_MERMAID_VERSION))
-	$(call check_version,mdbook-toc,$(MDBOOK_TOC_VERSION))
+.PHONY: typecheck
+typecheck: ## Run TypeScript type checker
+	npx tsc --noEmit
 
-#
-# Builds the book
-#
-
-build: check
-	mdbook build
-
-#
-# Serves the book locally
-#
-
-serve: check
-	mdbook serve --open
-
-#
-# Cleans the generated artefacts
-#
-
-clean:
-	mdbook clean
+.PHONY: clear
+clear: ## Clear Docusaurus cache
+	npx docusaurus clear
