@@ -3,6 +3,7 @@ name: Test Export Test Vectors
 on:
   workflow_dispatch:
   pull_request:
+  merge_group:
   push:
     branches:
       - master

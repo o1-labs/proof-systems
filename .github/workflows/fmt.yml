@@ -3,6 +3,7 @@ name: Global configuration for formatting related jobs
 on:
   workflow_dispatch:
   pull_request:
+  merge_group:
 
 jobs:
   run_rust_formatting:

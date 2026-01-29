@@ -2,6 +2,7 @@ name: Bench mina circuits (check regressions against master)
 
 on:
   pull_request:
+  merge_group:
 
 env:
   OCAML_VERSION: "4.14.2"
