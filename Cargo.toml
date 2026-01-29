@@ -52,7 +52,7 @@ criterion = { version = "0.5", features = [
   "html_reports",
 ] }
 elf = "0.7.2"
-env_logger = "0.11.1"
+env_logger = "0.11.6"
 getrandom = { version = "0.2.15", features = ["js"] }
 hex = { version = "0.4", features = ["serde"] }
 iai = "0.1"
