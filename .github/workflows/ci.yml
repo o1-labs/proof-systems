@@ -7,6 +7,7 @@ on:
     workflows: [Nightly tests with the code coverage]
     types: [completed]
   pull_request:
+  merge_group:
   push:
     branches:
       - master
