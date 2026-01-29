@@ -116,6 +116,13 @@ jobs:
         ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
         node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
     runs-on: ${{ matrix.rust_and_os.os }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -176,16 +183,32 @@ jobs:
           make generate-doc
           cp -r ./target/doc ./book/build/rustdoc
 
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/master' &&
+          matrix.rust_and_os.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
+          matrix.rust_and_os.os == needs.define-matrix.outputs.default_os
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
         if: >-
           github.event_name == 'push' &&
           github.ref == 'refs/heads/master' &&
           matrix.rust_and_os.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
           matrix.rust_and_os.os == needs.define-matrix.outputs.default_os
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./book/build
+          path: ./book/build
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/master' &&
+          matrix.rust_and_os.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
+          matrix.rust_and_os.os == needs.define-matrix.outputs.default_os
 
   # Tracking issue: https://github.com/o1-labs/mina-rust/issues/1984
   no-std-check:
