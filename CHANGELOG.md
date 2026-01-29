@@ -9,6 +9,22 @@ and this project adheres to
 
 ## Unreleased
 
+### Book
+
+#### Changed
+
+- Migrate book from mdBook to Docusaurus
+  ([#3456](https://github.com/o1-labs/proof-systems/pull/3456))
+
+### CI
+
+#### Changed
+
+- Update Node.js to v24 and remove markdownlint-cli dependency
+  ([#3456](https://github.com/o1-labs/proof-systems/pull/3456))
+- Use cargo-spec docusaurus flavor for specification generation
+  ([#3456](https://github.com/o1-labs/proof-systems/pull/3456))
+
 ### [mina-poseidon](./poseidon)
 
 #### Added
