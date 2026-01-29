@@ -1,3 +1,7 @@
+---
+sidebar_label: Plookup
+---
+
 # $\plookup$
 
 $\plookup$ allows us to check if witness values belong to a look up table. This

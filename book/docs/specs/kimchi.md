@@ -1,13 +1,12 @@
----
-format: md
----
-
 # Kimchi
 
 - This document specifies _kimchi_, a zero-knowledge proof system that's a
   variant of PLONK.
 - This document does not specify how circuits are created or executed, but only
   how to convert a circuit and its execution into a proof.
+
+Table of content:
+
 
 ## Overview
 
@@ -219,9 +218,7 @@ The different ranges of alpha are described as follows:
 * **Permutation**. Offset starts at 21 and 3 powers of $\alpha$ are used
 
 :::note
-
 As gates are mutually exclusive (a single gate is used on each row), we can reuse the same range of powers of alpha across all the gates.
-
 :::
 
 ### Linearization
@@ -322,7 +319,7 @@ z(\zeta \omega) \beta \alpha^{PERM0} zkpl(\zeta) \cdot \\
 (\gamma + \beta \sigma_2(\zeta) + w_2(\zeta)) \cdot \\
 (\gamma + \beta \sigma_3(\zeta) + w_3(\zeta)) \cdot \\
 (\gamma + \beta \sigma_4(\zeta) + w_4(\zeta)) \cdot \\
-(\gamma + \beta \sigma_5(\zeta) + w_5(\zeta)) \cdot
+(\gamma + \beta \sigma_5(\zeta) + w_5(\zeta)) \cdot \\
 \end{aligned}
 $$
 
@@ -380,9 +377,7 @@ found in the rows of an XOR table) or write and read from a memory vector (where
 one column is an index, and the other is the value stored at that index).
 
 :::note
-
 Similarly to the generic gate, each values taking part in a lookup can be scaled with a fixed field element.
-
 :::
 
 The lookup functionality is an opt-in feature of kimchi that can be used by
@@ -553,11 +548,9 @@ The last state is stored on the next row. This last state is either used:
 * or with another gate expecting an input of 3 field elements in its first registers.
 
 :::note
-
 As some of the poseidon hash variants might not use $5k$ rounds (for some $k$),
 the result of the 4-th round is stored directly after the initial state.
 This makes that state accessible to the permutation.
-
 :::
 
 We define $M_{r, c}$ as the MDS matrix at row $r$ and column $c$.
@@ -771,43 +764,36 @@ Putting together all of the above, these are the 11 constraints for this gate
 We implement custom gate constraints for short Weierstrass curve
 endomorphism optimised variable base scalar multiplication.
 
-Given a finite field $\mathbb{F}_{q}$ of order $q$, if the order is not a
-multiple of 2 nor 3, then an
-elliptic curve over $\mathbb{F}_{q}$ in short Weierstrass form is
-represented by the set of points $(x,y)$ that satisfy the following
-equation with $a,b\in\mathbb{F}_{q}$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:
+Given a finite field $\mathbb{F}_{q}$ of order $q$, if the order is not a multiple of 2 nor 3, then an
+elliptic curve over $\mathbb{F}_{q}$ in short Weierstrass form is represented by the set of points $(x,y)$
+that satisfy the following equation with
+$a,b\in\mathbb{F}_{q}$
+ and
+$4a^3+27b^2\neq_{\mathbb{F}_q} 0 $:
 $$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$
-If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve
-$E(\mathbb{F}_q)$, the goal of this operation is to compute
-$S = (P + Q) + P$ where $Q \in \{T, -T, \phi(T), -\phi(T)\}$ is determined
-by bits $(b_1, b_2)$. Here $\phi$ is the curve endomorphism
-$\phi(x,y) = (\mathtt{endo} \cdot x, y)$.
+If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve $E(\mathbb{F}_q)$, the goal of this
+operation is to perform the operation $2P±T$ efficiently as $(P±T)+P$.
 
-The bits encode the point $Q$ as follows:
-* $b_1 = 0$: use $T$, i.e., $x_q = x_t$
-* $b_1 = 1$: use $\phi(T)$, i.e., $x_q = \mathtt{endo} \cdot x_t$
-* $b_2 = 0$: negate, i.e., $y_q = -y_t$
-* $b_2 = 1$: keep sign, i.e., $y_q = y_t$
+`S = (P + (b ? T : −T)) + P`
 
-This technique allows processing 2 bits of the scalar per point operation.
-Since each row performs two such operations (using bits $b_1, b_2$ and then
-$b_3, b_4$), we process 4 bits per row.
+The same algorithm can be used to perform other scalar multiplications, meaning it is
+not restricted to the case $2\cdot P$, but it can be used for any arbitrary $k\cdot P$. This is done
+by decomposing the scalar $k$ into its binary representation.
+Moreover, for every step, there will be a one-bit constraint meant to differentiate between addition and subtraction
+for the operation $(P±T)+P$:
 
-In particular, the constraints of this gate take care of 4 bits of the
-scalar within a single EVBSM row. When the scalar is longer (which will
-usually be the case), multiple EVBSM rows will be concatenated.
+In particular, the constraints of this gate take care of 4 bits of the scalar within a single EVBSM row.
+When the scalar is longer (which will usually be the case), multiple EVBSM rows will be concatenated.
 
 |  Row  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |   7 |   8 |   9 |  10 |  11 |  12 |  13 |  14 |  Type |
 |-------|----|----|----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|-------|
 |     i | xT | yT |  Ø |  Ø | xP | yP | n  |  xR |  yR |  s1 | s3  | b1  |  b2 |  b3 |  b4 | EVBSM |
 |   i+1 |  = |  = |    |    | xS | yS | n' | xR' | yR' | s1' | s3' | b1' | b2' | b3' | b4' | EVBSM |
 
-The layout of this gate (and the next row) allows for this chained
-behavior where the output point of the current row $S$ gets accumulated
-as one of the inputs of the following row, becoming $P$ in the next
-constraints. Similarly, the scalar is decomposed into binary form and $n$
-($n'$ respectively) will store the current accumulated value and the next
-one for the check.
+The layout of this gate (and the next row) allows for this chained behavior where the output point
+of the current row $S$ gets accumulated as one of the inputs of the following row, becoming $P$ in
+the next constraints. Similarly, the scalar is decomposed into binary form and $n$ ($n'$ respectively)
+will store the current accumulated value and the next one for the check.
 
 For readability, we define the following variables for the constraints:
 
@@ -822,12 +808,12 @@ which take care of 4 bits of the scalar within a single EVBSM row:
 
 * First block:
   * `(xq1 - xp) * s1 = yq1 - yp`
-  * `(2*xp - s1^2 + xq1) * ((xp - xr)*s1 + yr + yp) = (xp - xr) * 2*yp`
-  * `(yr + yp)^2 = (xp - xr)^2 * (s1^2 - xq1 + xr)`
+  * `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
+  * `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
 * Second block:
   * `(xq2 - xr) * s3 = yq2 - yr`
-  * `(2*xr - s3^2 + xq2) * ((xr - xs)*s3 + ys + yr) = (xr - xs) * 2*yr`
-  * `(ys + yr)^2 = (xr - xs)^2 * (s3^2 - xq2 + xs)`
+  * `(2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
+  * `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
 * Booleanity checks:
   * Bit flag $b_1$: `0 = b1 * (b1 - 1)`
   * Bit flag $b_2$: `0 = b2 * (b2 - 1)`
@@ -836,66 +822,36 @@ which take care of 4 bits of the scalar within a single EVBSM row:
 * Binary decomposition:
   * Accumulated scalar: `n_next = 16 * n + 8 * b1 + 4 * b2 + 2 * b3 + b4`
 
-The constraints above are derived from the following EC Affine arithmetic
-equations.
-
-**Background on EC point addition/doubling:**
-
-For points P = (x_p, y_p) and Q = (x_q, y_q) on a short Weierstrass curve,
-the sum R = P + Q = (x_r, y_r) is computed as:
-
-* Slope: $s = (y_q - y_p) / (x_q - x_p)$
-* $x_r = s^2 - x_p - x_q$
-* $y_r = s \cdot (x_p - x_r) - y_p$
-
-For point doubling R = 2P:
-
-* Slope: $s = (3 x_p^2 + a) / (2 y_p)$ (where a=0 for our curves)
-* $x_r = s^2 - 2 \cdot x_p$
-* $y_r = s \cdot (x_p - x_r) - y_p$
-
-**Derivation of the constraints:**
-
-Each "block" computes S = (P + Q) + P where Q = (xq, yq) is determined by
-bits. The intermediate point R = P + Q and final point S = R + P.
-
-We use two slopes:
-* $s_1$: slope for P + Q -> R
-* $s_2$: slope for R + P -> S
-
-The key optimization is eliminating $s_2$ from the constraints by
-substituting:
+The constraints above are derived from the following EC Affine arithmetic equations:
 
 * (1) => $(x_{q_1} - x_p) \cdot s_1 = y_{q_1} - y_p$
-* (2&3) => $(x_p - x_r) \cdot s_2 = y_r + y_p$
-* (2) => $(2 \cdot x_p + x_{q_1} - s_1^2) \cdot (s_1 + s_2) = 2 \cdot y_p$
-  * \<=\> $(2 x_p - s_1^2 + x_{q_1})((x_p - x_r) s_1 + y_r + y_p)$
-        $= (x_p - x_r) \cdot 2 y_p$
+* (2&3) => $(x_p – x_r) \cdot s_2 = y_r + y_p$
+* (2) => $(2 \cdot x_p + x_{q_1} – s_1^2) \cdot (s_1 + s_2) = 2 \cdot y_p$
+  * <=> $(2 \cdot x_p – s_1^2 + x_{q_1}) \cdot ((x_p – x_r) \cdot s_1 + y_r + y_p) = (x_p – x_r) \cdot 2 \cdot y_p$
 * (3) => $s_1^2 - s_2^2 = x_{q_1} - x_r$
-  * \<=\> $(y_r + y_p)^2 = (x_p - x_r)^2 \cdot (s_1^2 - x_{q_1} + x_r)$
+  * <=> $(y_r + y_p)^2 = (x_p – x_r)^2 \cdot (s_1^2 – x_{q_1} + x_r)$
 *
 * (4) => $(x_{q_2} - x_r) \cdot s_3 = y_{q_2} - y_r$
-* (5&6) => $(x_r - x_s) \cdot s_4 = y_s + y_r$
-* (5) => $(2 \cdot x_r + x_{q_2} - s_3^2) \cdot (s_3 + s_4) = 2 \cdot y_r$
-  * \<=\> $(2 x_r - s_3^2 + x_{q_2})((x_r - x_s) s_3 + y_s + y_r)$
-        $= (x_r - x_s) \cdot 2 y_r$
-* (6) => $s_3^2 - s_4^2 = x_{q_2} - x_s$
-  * \<=\> $(y_s + y_r)^2 = (x_r - x_s)^2 \cdot (s_3^2 - x_{q_2} + x_s)$
+* (5&6) => $(x_r – x_s) \cdot s_4 = y_s + y_r$
+* (5) => $(2 \cdot x_r + x_{q_2} – s_3^2) \cdot (s_3 + s_4) = 2 \cdot y_r$
+  * <=> $(2 \cdot x_r – s_3^2 + x_{q_2}) \cdot ((x_r – x_s) \cdot s_3 + y_s + y_r) = (x_r – x_s) \cdot 2 \cdot y_r$
+* (6) => $s_3^2 – s_4^2 = x_{q_2} - x_s$
+  * <=> $(y_s + y_r)^2 = (x_r – x_s)^2 \cdot (s_3^2 – x_{q_2} + x_s)$
 
 Defining $s_2$ and $s_4$ as
 
 * $s_2 := \frac{2 \cdot y_P}{2 * x_P + x_T - s_1^2} - s_1$
 * $s_4 := \frac{2 \cdot y_R}{2 * x_R + x_T - s_3^2} - s_3$
 
-Gives the following equations when substituting $s_2$ and $s_4$:
+Gives the following equations when substituting the values of $s_2$ and $s_4$:
 
-1. `(xq1 - xp) * s1 = yq1 - yp` (i.e., `(2 * b2 - 1) * yt - yp`)
-2. `(2*xp - s1^2 + xq1) * ((xp - xr)*s1 + yr + yp) = (xp - xr) * 2*yp`
-3. `(yr + yp)^2 = (xp - xr)^2 * (s1^2 - xq1 + xr)`
+1. `(xq1 - xp) * s1 = (2 * b1 - 1) * yt - yp`
+2. `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
+3. `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
 
-4. `(xq2 - xr) * s3 = yq2 - yr` (i.e., `(2 * b4 - 1) * yt - yr`)
-5. `(2*xr - s3^2 + xq2) * ((xr - xs)*s3 + ys + yr) = (xr - xs) * 2*yr`
-6. `(ys + yr)^2 = (xr - xs)^2 * (s3^2 - xq2 + xs)`
+4. `(xq2 - xr) * s3 = (2 * b2 - 1) * yt - yr`
+5. `(2 * xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
+6. `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
 
 
 
@@ -911,12 +867,10 @@ If $P=(x_p, y_p)$ and $Q=(x_q, y_q)$ are two points in the curve $E(\mathbb{F}_q
 represent here computes the operation $2P+Q$ (point doubling and point addition) as $(P+Q)+Q$.
 
 :::info
-
 Point $Q=(x_q, y_q)$ has nothing to do with the order $q$ of the field $\mathbb{F}_q$.
-
 :::
 
-The original algorithm that is being used can be found in the Section 3.1 of [this paper](https://arxiv.org/pdf/math/0208038.pdf),
+The original algorithm that is being used can be found in the Section 3.1 of <https://arxiv.org/pdf/math/0208038.pdf>,
 which can perform the above operation using 1 multiplication, 2 squarings and 2 divisions (one more squaring)
 if $P=Q$), thanks to the fact that computing the $Y$-coordinate of the intermediate addition is not required.
 This is more efficient to the standard algorithm that requires 1 more multiplication, 3 squarings in total and 2 divisions.
@@ -924,7 +878,7 @@ This is more efficient to the standard algorithm that requires 1 more multiplica
 Moreover, this algorithm can be applied not only to the operation $2P+Q$, but any other scalar multiplication $kP$.
 This can be done by expressing the scalar $k$ in biwise form and performing a double-and-add approach.
 Nonetheless, this requires conditionals to differentiate $2P$ from $2P+Q$. For that reason, we will implement
-the following pseudocode from [this GitHub issue](https://github.com/zcash/zcash/issues/3924) (where instead, they give a variant
+the following pseudocode from <https://github.com/zcash/zcash/issues/3924> (where instead, they give a variant
 of the above efficient algorithm for Montgomery curves $b\cdot y^2 = x^3 + a \cdot x^2 + x$).
 
 ```ignore
@@ -967,9 +921,7 @@ Let us call `Input` the point with coordinates `(xI, yI)` and
 Then `Output` will be the point with coordinates `(xO, yO)` resulting from `O = ( I ± T ) + I`
 
 :::info
-
 Do not confuse our `Output` point `(xO, yO)` with the point at infinity that is normally represented as $\mathcal{O}$.
-
 :::
 
 In each step of the algorithm, we consider the following elliptic curves affine arithmetic equations:
@@ -991,7 +943,7 @@ Next, for each bit in the algorithm, we create the following 4 constraints that 
 * Booleanity check on the bit $b$:
 `0 = b * b - b`
 * Constrain $s_1$:
-`(xI - xT) * s1 = yI - (2b - 1) * yT`
+`(xI - xT) * s1 = yI – (2b - 1) * yT`
 * Constrain `Output` $X$-coordinate $x_o$ and $s_2$:
 `0 = u^2 - t^2 * (xO - xT + s1^2)`
 * Constrain `Output` $Y$-coordinate $y_o$ and $s_2$:
@@ -1071,10 +1023,8 @@ The values are decomposed into limbs as follows:
   remaining 10 crumbs of $v_2$
 
 :::note
-
 Because we are constrained to 4 lookups per row, we are forced to postpone
 some lookups of v0 and v1 to the final row.
-
 :::
 
 **Constraints:**
@@ -1130,10 +1080,8 @@ Different rows are constrained using different `CircuitGate` types
 |   3 | `Zero`        | Complete the constraining of $v_0$ and $v_1$ using lookups         |
 
 :::note
-
-Each CircuitGate type corresponds to a unique polynomial and thus is assigned
-its own unique powers of alpha
-
+ Each CircuitGate type corresponds to a unique polynomial and thus is assigned
+ its own unique powers of alpha
 :::
 
 **`RangeCheck0` - Range check constraints**
@@ -1561,12 +1509,10 @@ to obtain a gadget for 64-bit words XOR:
 |   4 | `Generic`     | Zero values, can be reused as generic gate |
 
 :::info
-
 We could halve the number of rows of the 64-bit XOR gadget by having lookups
 for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
 Rough computations show that if we run 8 or more Keccaks in one circuit we should
 use the 8-bit XOR table.
-
 :::
 
 
@@ -1671,9 +1617,7 @@ circuit:
   proofs.
 
 :::note
-
 The circuit creation part is not specified in this document. It might be specified in a separate document, or we might want to specify how to create the circuit description tables.
-
 :::
 
 As such, the transformation of a circuit into these two indexes can be seen as a
@@ -1692,9 +1636,7 @@ polynomial commitments, so refer to the
 [poly-commitment specification](./poly-commitment.md) for more details.
 
 :::note
-
 Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits ([see zkapps for more details](https://minaprotocol.com/blog/what-are-zkapps)).
-
 :::
 
 **`Domain`**. A domain large enough to contain the circuit and the
@@ -1703,10 +1645,8 @@ Specifically, the smallest subgroup in our field that has order greater or equal
 to `n + ZK_ROWS`, with `n` is the number of gates in the circuit. TODO: what if
 the domain is larger than the URS?
 
-:::warning[Ordering of elements in the domain]
-
+:::warning
 Note that in this specification we always assume that the first element of a domain is $1$.
-
 :::
 
 **`Shifts`**. As part of the permutation, we need to create `PERMUTS` shifts. To
@@ -2239,11 +2179,55 @@ where
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ft_eval1: G::ScalarField,
 
-    /// The challenges underlying the optional polynomials folded into the proof
+    /// Accumulators from previously verified proofs in the recursion chain.
+    ///
+    /// Each [`RecursionChallenge`] stores the IPA folding challenges and accumulated
+    /// commitment from verifying a previous proof. Instead of checking the IPA
+    /// immediately (which requires an expensive MSM `<s, G>` where `s` has `2^k`
+    /// elements), we defer this check by storing the accumulator.
+    ///
+    /// During verification, these accumulators are processed as follows:
+    /// 1. The commitments are absorbed into the Fiat-Shamir sponge
+    /// 2. The challenges are used to compute evaluations of `b(X)` at `zeta` and
+    ///    `zeta * omega` (see [`RecursionChallenge::evals`])
+    /// 3. These evaluations are paired with the commitments and included in the
+    ///    batched polynomial commitment check
+    ///
+    /// The actual MSM verification happens in [`SRS::verify`](poly_commitment::ipa::SRS::verify)
+    /// (see `poly-commitment/src/ipa.rs`), where `b_poly_coefficients` computes
+    /// the `2^k` coefficients and they are batched into a single large MSM with
+    /// all other verification checks.
+    ///
+    /// This design enables efficient recursive proof composition as described in
+    /// Section 3.2 of the [Halo paper](https://eprint.iacr.org/2019/1021.pdf).
     pub prev_challenges: Vec<RecursionChallenge<G>>,
 }
 
-/// A struct to store the challenges inside a `ProverProof`
+/// Stores the accumulator from a previously verified IPA (Inner Product Argument).
+///
+/// In recursive proof composition, when we verify a proof, the IPA verification
+/// produces an accumulator that can be "deferred" rather than checked immediately.
+/// This accumulator consists of:
+///
+/// - **`chals`**: The folding challenges `u_1, ..., u_k` sampled during the
+///   `k = log_2(n)` rounds of the IPA. These challenges define the
+///   **challenge polynomial** (also called `b(X)` or `h(X)`):
+///   ```text
+///   b(X) = prod_{i=0}^{k-1} (1 + u_{k-i} * X^{2^i})
+///   ```
+///   This polynomial was introduced in Section 3.2 of the
+///   [Halo paper](https://eprint.iacr.org/2019/1021.pdf) as a way to efficiently
+///   represent the folded evaluation point.
+///
+/// - **`comm`**: The accumulated commitment `U = <h, G>` where `h` is the vector
+///   of coefficients of `b(X)` and `G` is the commitment basis. This is the
+///   "deferred" part of IPA verification.
+///
+/// The accumulator satisfies the relation `R_Acc`: anyone can verify it in `O(n)`
+/// time by recomputing `<h, G>`.
+///
+/// See the [accumulation documentation](https://o1-labs.github.io/proof-systems/pickles/accumulation.html)
+/// for a complete description of how these accumulators are used in Pickles.
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
@@ -2251,10 +2235,18 @@ pub struct RecursionChallenge<G>
 where
     G: AffineRepr,
 {
-    /// Vector of scalar field elements
+    /// The IPA folding challenges `[u_1, ..., u_k]` that define the challenge
+    /// polynomial `b(X)`. See [`b_poly`](poly_commitment::commitment::b_poly).
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub chals: Vec<G::ScalarField>,
-    /// Polynomial commitment
+    /// The accumulated commitment from IPA verification.
+    ///
+    /// This commitment is used in two places:
+    /// 1. Absorbed into the Fq-sponge for Fiat-Shamir (see `prover.rs` and
+    ///    `verifier.rs` where commitments of previous challenges are absorbed).
+    /// 2. Included in the batched polynomial commitment verification, paired
+    ///    with evaluations of `b(X)` at `zeta` and `zeta * omega` (see
+    ///    `verifier.rs` where `polys` is constructed from `prev_challenges`).
     pub comm: PolyComm<G>,
 }
 
@@ -2274,9 +2266,7 @@ To create a proof, the prover expects:
   circuit.
 
 :::note
-
 The public input is expected to be passed in the first `Public` rows of the registers table.
-
 :::
 
 The following constants are set:

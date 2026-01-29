@@ -11,12 +11,16 @@ the right, so much that it becomes impossible to fit them if the polynomial were
 to be more than the maximum degree we wanted to enforce. This is equivalent to
 the following:
 
-$$ \text{right_shift}(f) = x^{n-max} f $$
+$$
+\text{right\_shift}(f) = x^{n-\text{max}} f
+$$
 
 When the verifier verifies the opening, they will have to right shift the
 received evaluation in the same way.
 
-$$ \text{right_shift}(f(z)) = z^{n-max} f(z) $$
+$$
+\text{right\_shift}(f(z)) = z^{n-\text{max}} f(z)
+$$
 
 ### Aggregating opening proofs for several polynomials
 
