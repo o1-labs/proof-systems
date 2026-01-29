@@ -9,6 +9,13 @@ and this project adheres to
 
 ## Unreleased
 
+### Dependencies
+
+#### Changed
+
+- Bump thiserror from 2.0.12 to 2.0.18
+  ([#3459](https://github.com/o1-labs/proof-systems/pull/3459))
+
 ### Book
 
 #### Changed
