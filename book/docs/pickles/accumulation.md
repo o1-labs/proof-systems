@@ -217,7 +217,10 @@ If the prover is honest, we should have a commitment of the form:
 
 
 $$
-C = \langle \vec{f}, \vec{G} \rangle + [\openy] \cdot H = \langle \vec{f}, \vec{G} \rangle + [\langle \vec{\openx}, \vec{f} \rangle] \cdot H \in \GG
+
+C = \langle \vec{f}, \vec{G} \rangle + [\openy] \cdot H = \langle \vec{f},
+\vec{G} \rangle + [\langle \vec{\openx}, \vec{f} \rangle] \cdot H \in \GG
+
 $$
 
 **Note:** In some variants of this reduction $H$ is chosen as $[\delta] \cdot J$ for a constant $J \in \GG$ where $\delta \sample \FF$ by the verifier,
@@ -234,10 +237,10 @@ To see how it works let us rewrite the inner product in terms of a first and sec
 
 $$
 
-\langle \vec{f}, \vec{\openx} \rangle = \langle \vec{f}_L, \vec{\openx}_L
+\langle \vec{f}, \vec{\openx} \rangle = \langle \vec{f}\_L, \vec{\openx}\_L
 \rangle
 
-- \langle \vec{f}_R, \vec{\openx}_R \rangle \in \FF $$
+- \langle \vec{f}\_R, \vec{\openx}\_R \rangle \in \FF $$
 
 Where $\vec{f}_L = (f_1, \ldots, f_{\ell/2})$ and
 $\vec{f}_R = (f_{\ell/2 + 1}, \ldots, f_\ell)$, similarly for $\vec{\openx}$.

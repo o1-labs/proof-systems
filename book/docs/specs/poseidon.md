@@ -15,7 +15,9 @@ capacity of the sponge to provide around 116-bit security.
 
 :::note
 
-We might want to piggy back on the [zcash poseidon spec](https://github.com/C2SP/C2SP/pull/3) at some point (perhaps by making this an extension of the zcash poseidon spec).
+We might want to piggy back on the
+[zcash poseidon spec](https://github.com/C2SP/C2SP/pull/3) at some point
+(perhaps by making this an extension of the zcash poseidon spec).
 
 :::
 

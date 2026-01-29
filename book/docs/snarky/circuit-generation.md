@@ -38,8 +38,9 @@ It then performs the following steps:
 
 :::note
 
-At this point we only created variables to hold future values, and made sure that they are constrained.
-The actual values will fill the room created by the `FieldVar` only during the witness generation phase.
+At this point we only created variables to hold future values, and made sure
+that they are constrained. The actual values will fill the room created by the
+`FieldVar` only during the witness generation phase.
 
 :::
 

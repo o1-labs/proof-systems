@@ -8,7 +8,8 @@ to call the `plonk_constraint_system` or `kimchi_backend` in
 
 :::note
 
-It is good to note that we're planning on removing this abstract separation between the snarky wrapper and the constraint system.
+It is good to note that we're planning on removing this abstract separation
+between the snarky wrapper and the constraint system.
 
 :::
 
@@ -126,12 +127,17 @@ the `reduce_lincom()` or `reduce_to_var()` functions).
 
 :::note
 
-This is a remnant of an optimization targeting R1CS (in which additions are for free).
-An issue with this approach is the following: imagine that two circuit variables are created from the same circuit variable, imagine also that the original circuit variable contained a long AST, then both variables might end up creating the same constraints to convert that AST.
-Currently, snarkyjs and pickles expose a `seal()` function that allows you to reduce this issue, at the cost of some manual work and mental tracking on the developer.
-We should probably get rid of this, while making sure that we can continue to optimize generic gates
-(in some cases you can merge two generic gates in one (TODO: give an example of where that can happen)).
-Another solution is to keep track of what was reduced, and reuse previous reductions (similar to how we handle constants).
+This is a remnant of an optimization targeting R1CS (in which additions are for
+free). An issue with this approach is the following: imagine that two circuit
+variables are created from the same circuit variable, imagine also that the
+original circuit variable contained a long AST, then both variables might end up
+creating the same constraints to convert that AST. Currently, snarkyjs and
+pickles expose a `seal()` function that allows you to reduce this issue, at the
+cost of some manual work and mental tracking on the developer. We should
+probably get rid of this, while making sure that we can continue to optimize
+generic gates (in some cases you can merge two generic gates in one (TODO: give
+an example of where that can happen)). Another solution is to keep track of what
+was reduced, and reuse previous reductions (similar to how we handle constants).
 
 :::
 
@@ -140,8 +146,11 @@ kimchi backend) are created.
 
 :::note
 
-The process is quite safe, as the kimchi backend cannot use the snarky wrapper variables directly (which are of type `FieldVar`).
-Since the expected format (see the [variables section](#variables) is a number (of type `usize`), the only way to convert a non-tracked variable (constant, or scale, or linear combination) is to reduce it (and in the process constraining its value).
+The process is quite safe, as the kimchi backend cannot use the snarky wrapper
+variables directly (which are of type `FieldVar`). Since the expected format
+(see the [variables section](#variables) is a number (of type `usize`), the only
+way to convert a non-tracked variable (constant, or scale, or linear
+combination) is to reduce it (and in the process constraining its value).
 
 :::
 
@@ -204,7 +213,8 @@ The permutation is used to wire cells of the execution trace table
 
 :::note
 
-In snarky, the permutation is represented differently from kimchi, and thus needs to be converted to the kimchi's format before a proof can be created.
+In snarky, the permutation is represented differently from kimchi, and thus
+needs to be converted to the kimchi's format before a proof can be created.
 TODO: merge the representations
 
 :::
@@ -217,8 +227,8 @@ Another example, is that we use it to assert equality between two cells.
 
 There's two aspect of the implementation of the permutation, the first one is a
 hashmap of equivalence classes, which is used to track all the positions of a
-variable, the second one is making use of a union find data structure to
-link variables that are equivalent (we'll talk about that after).
+variable, the second one is making use of a union find data structure to link
+variables that are equivalent (we'll talk about that after).
 
 The two data structures are in the kimchi backend's state:
 
@@ -276,8 +286,8 @@ Sometimes, we know that two variables will have equivalent values due to an
 together, they need to be part of the same cycle, and as such we need to be able
 to detect that to construct correct cycles.
 
-To do this, we use a union find data structure, which allows us to easily
-find the unions of equivalent variables.
+To do this, we use a union find data structure, which allows us to easily find
+the unions of equivalent variables.
 
 When an `assert_equal()` is called, we link the two variables together using the
 `union_finds` data structure.

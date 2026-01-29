@@ -44,11 +44,12 @@ according to the following recipe.
 4. An AIOP describes an interactive protocol between the verifier and the
    prover. In reality, typically, we also want our proofs to be non-interactive.
 
-   This is accomplished by what is called the [Fiat-Shamir transformation](../plonk/fiat_shamir).
-   The basic idea is this: all that the verifier is doing is sampling random
-   values to send to the prover. Instead, to generate a "random" value, the
-   prover simulates the verifier by hashing its messages. The resulting hash is
-   used as the "random" challenge.
+   This is accomplished by what is called the
+   [Fiat-Shamir transformation](../plonk/fiat_shamir). The basic idea is this:
+   all that the verifier is doing is sampling random values to send to the
+   prover. Instead, to generate a "random" value, the prover simulates the
+   verifier by hashing its messages. The resulting hash is used as the "random"
+   challenge.
 
    At this point we have a fully non-interactive proof. Let's review our steps.
    1. Start with a computation.

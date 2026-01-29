@@ -143,8 +143,8 @@ users, and as a type implementing `SnarkyType` by snarky (e.g.
 [`Boolean`](./booleans.md)). Thus, the user can pass them to snarky in two ways:
 
 **As public inputs**. In this case they will be serialized into field elements
-for snarky before witness generation (via the
-`value_to_field_elements()` function)
+for snarky before witness generation (via the `value_to_field_elements()`
+function)
 
 **As private inputs**. In this case, they must be created using the `compute()`
 function with a closure returning an `OutOfCircuit` value by the user. The call

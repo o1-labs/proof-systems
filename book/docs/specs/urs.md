@@ -2,8 +2,8 @@
 
 :::note
 
-Note that the URS is called SRS in our codebase at the moment.
-SRS is incorrect, as it is used in the presence of a trusted setup (which kimchi does not have).
+Note that the URS is called SRS in our codebase at the moment. SRS is incorrect,
+as it is used in the presence of a trusted setup (which kimchi does not have).
 This needs to be fixed.
 
 :::
@@ -25,7 +25,9 @@ domains will simply use a truncation of the shared URS.
 
 :::note
 
-A circuit's domain is generated as the first power of 2 that is equal, or larger, to the number of gates used in the circuit (including zero-knowledge gates).
+A circuit's domain is generated as the first power of 2 that is equal, or
+larger, to the number of gates used in the circuit (including zero-knowledge
+gates).
 
 :::
 
