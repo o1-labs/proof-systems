@@ -137,24 +137,9 @@ jobs:
         with:
           ocaml_version: ${{ matrix.ocaml_version }}
 
-      - name: Install cargo-spec from o1-labs fork
-        run: |
-          cargo install --git https://github.com/o1-labs/cargo-specification.git \
-            --branch main cargo-spec
-
       #
       # Doc & Spec
       #
-
-      - name: Build the kimchi specification
-        run: |
-          cd book/specifications/kimchi
-          make build
-
-      - name: Build the polynomial commitment specification
-        run: |
-          cd book/specifications/poly-commitment
-          make build
 
       - name: Doc tests
         run: |

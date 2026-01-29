@@ -2,6 +2,9 @@
 # Makefile for Docusaurus-based Mina book
 #
 
+CARGO_SPEC_REPO := https://github.com/o1-labs/cargo-specification.git
+CARGO_SPEC_BRANCH := main
+
 .PHONY: help
 help: ## Show this help message
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -14,6 +17,7 @@ all: deps build ## Run deps and build
 .PHONY: deps
 deps: ## Install dependencies required to build the book
 	npm install
+	cargo install --git $(CARGO_SPEC_REPO) --branch $(CARGO_SPEC_BRANCH) cargo-spec
 
 .PHONY: specs
 specs: ## Build kimchi and poly-commitment specifications
