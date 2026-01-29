@@ -117,13 +117,6 @@ jobs:
         ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
         node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
     runs-on: ${{ matrix.rust_and_os.os }}
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -169,47 +162,64 @@ jobs:
           make deps
           make build
 
-      #
-      # Deploy Book on push to master
-      #
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: ['define-matrix', 'doc-and-spec']
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
-      - name: Rerun doc generation with different args and copy into book directory
-        if: >-
-          github.event_name == 'push' &&
-          github.ref == 'refs/heads/master' &&
-          matrix.rust_and_os.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
-          matrix.rust_and_os.os == needs.define-matrix.outputs.default_os
+      - name: Set up NodeJS
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ fromJSON(needs.define-matrix.outputs.node)[0] }}
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ needs.define-matrix.outputs.default_rust_version }}
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version)[0] }}
+
+      - name: Generate rustdoc
         run: |
           eval $(opam env)
           make generate-doc
-          cp -r ./target/doc ./book/build/rustdoc
+
+      - name: Build the book
+        run: |
+          cd book
+          make deps
+          make build
+
+      - name: Copy rustdoc into book directory
+        run: cp -r ./target/doc ./book/build/rustdoc
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
-        if: >-
-          github.event_name == 'push' &&
-          github.ref == 'refs/heads/master' &&
-          matrix.rust_and_os.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
-          matrix.rust_and_os.os == needs.define-matrix.outputs.default_os
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
-        if: >-
-          github.event_name == 'push' &&
-          github.ref == 'refs/heads/master' &&
-          matrix.rust_and_os.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
-          matrix.rust_and_os.os == needs.define-matrix.outputs.default_os
         with:
           path: ./book/build
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-        if: >-
-          github.event_name == 'push' &&
-          github.ref == 'refs/heads/master' &&
-          matrix.rust_and_os.rust_toolchain_version == needs.define-matrix.outputs.default_rust_version &&
-          matrix.rust_and_os.os == needs.define-matrix.outputs.default_os
 
   # Tracking issue: https://github.com/o1-labs/mina-rust/issues/1984
   no-std-check:
