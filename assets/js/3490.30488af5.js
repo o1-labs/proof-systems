@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunkmina_book=globalThis.webpackChunkmina_book||[]).push([[3490],{3490(a,e,o){o.d(e,{createInfoServices:()=>b.v});var b=o(1885);o(7960)}}]);

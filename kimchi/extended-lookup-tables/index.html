@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-kimchi/extended-lookup-tables" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.9.2">
+<title data-rh="true">Extended lookup tables | Mina book</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://o1-labs.github.io/proof-systems/kimchi/extended-lookup-tables"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Extended lookup tables | Mina book"><meta data-rh="true" name="description" content="This (old) RFC proposes an extension to our use of lookup tables using the"><meta data-rh="true" property="og:description" content="This (old) RFC proposes an extension to our use of lookup tables using the"><link data-rh="true" rel="icon" href="/proof-systems/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://o1-labs.github.io/proof-systems/kimchi/extended-lookup-tables"><link data-rh="true" rel="alternate" href="https://o1-labs.github.io/proof-systems/kimchi/extended-lookup-tables" hreflang="en"><link data-rh="true" rel="alternate" href="https://o1-labs.github.io/proof-systems/kimchi/extended-lookup-tables" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Lookup Tables","item":"https://o1-labs.github.io/proof-systems/kimchi/lookup"},{"@type":"ListItem","position":2,"name":"Extended lookup tables","item":"https://o1-labs.github.io/proof-systems/kimchi/extended-lookup-tables"}]}</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous"><link rel="stylesheet" href="/proof-systems/assets/css/styles.3e58dbd9.css">
+<script src="/proof-systems/assets/js/runtime~main.fb0a9564.js" defer="defer"></script>
+<script src="/proof-systems/assets/js/main.baa4debc.js" defer="defer"></script>
+</head>
+<body class="navigation-with-keyboard">
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"light"),document.documentElement.setAttribute("data-theme-choice",t||"light")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/proof-systems/"><b class="navbar__title text--truncate">Mina book</b></a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://o1-labs.github.io/proof-systems/rustdoc/" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">Rust Docs<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a><a href="https://github.com/o1-labs/proof-systems" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Scroll back to top" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/proof-systems/"><span title="Introduction" class="linkLabel_WmDU">Introduction</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" href="/proof-systems/fundamentals/zkbook_foundations"><span title="Foundations" class="categoryLinkLabel_W154">Foundations</span></a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" href="/proof-systems/fundamentals/zkbook_commitment"><span title="Cryptographic Tools" class="categoryLinkLabel_W154">Cryptographic Tools</span></a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" href="/proof-systems/plonk/overview"><span title="Background on PLONK" class="categoryLinkLabel_W154">Background on PLONK</span></a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret menu__link--active" role="button" aria-expanded="true" href="/proof-systems/kimchi/overview"><span title="Kimchi" class="categoryLinkLabel_W154">Kimchi</span></a></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/proof-systems/kimchi/overview"><span title="Overview" class="linkLabel_WmDU">Overview</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/proof-systems/kimchi/arguments"><span title="Arguments" class="linkLabel_WmDU">Arguments</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/proof-systems/kimchi/final_check"><span title="Understanding the implementation of the $f(\zeta) = Z_H(\zeta) t(\zeta)$ check" class="linkLabel_WmDU">Understanding the implementation of the $f(\zeta) = Z_H(\zeta) t(\zeta)$ check</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/proof-systems/kimchi/maller_15"><span title="Maller&#x27;s optimization for Kimchi" class="linkLabel_WmDU">Maller&#x27;s optimization for Kimchi</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--active" tabindex="0" href="/proof-systems/kimchi/lookup"><span title="Lookup Tables" class="categoryLinkLabel_W154">Lookup Tables</span></a><button aria-label="Collapse sidebar category &#x27;Lookup Tables&#x27;" aria-expanded="true" type="button" class="clean-btn menu__caret"></button></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-3 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/proof-systems/kimchi/extended-lookup-tables"><span title="Extended lookup tables" class="linkLabel_WmDU">Extended lookup tables</span></a></li></ul></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/proof-systems/kimchi/custom_constraints"><span title="Custom Constraints" class="linkLabel_WmDU">Custom Constraints</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist" tabindex="0" href="/proof-systems/kimchi/gates"><span title="Custom Gates" class="categoryLinkLabel_W154">Custom Gates</span></a><button aria-label="Expand sidebar category &#x27;Custom Gates&#x27;" aria-expanded="false" type="button" class="clean-btn menu__caret"></button></div></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" href="/proof-systems/pickles/overview"><span title="Pickles &amp; Inductive Proof Systems" class="categoryLinkLabel_W154">Pickles &amp; Inductive Proof Systems</span></a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" href="/proof-systems/specs/poseidon"><span title="Technical Specifications" class="categoryLinkLabel_W154">Technical Specifications</span></a></div></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Breadcrumbs"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Home page" class="breadcrumbs__link" href="/proof-systems/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><span class="breadcrumbs__link">Kimchi</span></li><li class="breadcrumbs__item"><a class="breadcrumbs__link" href="/proof-systems/kimchi/lookup"><span>Lookup Tables</span></a></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Extended lookup tables</span></li></ul></nav><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><div class="theme-doc-markdown markdown"><header><h1>Extended lookup tables</h1></header>
+<p>This (old) RFC proposes an extension to our use of lookup tables using the
+PLOOKUP multiset inclusion argument, so that values within lookup tables can be
+chosen after the constraint system for a circuit has been fixed.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="motivation">Motivation<a href="#motivation" class="hash-link" aria-label="Direct link to Motivation" title="Direct link to Motivation" translate="no">​</a></h2>
+<p>This extension should provide us with</p>
+<ul>
+<li class="">array-style lookups (<code>arr[i]</code>, where <code>arr</code> and <code>i</code> are formed of values in the
+proof witness).</li>
+<li class="">the ability to load &#x27;bytecode&#x27; using a proof-independent commitment.</li>
+<li class="">the ability to load tables of arbitrary data for use in the circuit, allowing
+e.g. the full data of a HTTPS transcript to be entered into a proof without
+using some in-circuit commitment.</li>
+<li class="">the ability to expose tables of arbitrary in-circuit data, for re-use by other
+proofs.</li>
+</ul>
+<p>These goals support 5 major use-cases:</p>
+<ul>
+<li class="">allow the verifier circuit to support &#x27;custom&#x27; or user-specified gates
+<ul>
+<li class="">using array indexing, the use of constants and commitments/evaluations can
+be determined by the verifier index, instead of being fixed by the
+permutation argument as currently.</li>
+</ul>
+</li>
+<li class="">allow random-access lookups in arrays as a base-primitive for user programs</li>
+<li class="">allow circuits to use low-cost branching and other familiar programming
+primitives
+<ul>
+<li class="">this depends on the development of a bytecode interpreter on top of the
+lookup-table primitives, where the values in the table represent the
+bytecode of the instructions.</li>
+</ul>
+</li>
+<li class="">allow circuits to load and execute some &#x27;user provided&#x27; bytecode
+<ul>
+<li class="">e.g. to run a small bytecode program provided in a transaction at
+block-production time.</li>
+</ul>
+</li>
+<li class="">allow zkOracles to load a full HTTPS transcript without using an expensive
+in-circuit commitment.</li>
+</ul>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="detailed-design">Detailed design<a href="#detailed-design" class="hash-link" aria-label="Direct link to Detailed design" title="Direct link to Detailed design" translate="no">​</a></h2>
+<p>In order to support the desired goals, we first define 3 types of table:</p>
+<ul>
+<li class=""><strong>fixed tables</strong> are tables declared as part of the constraint system, and are
+the same for every proof of that circuit.</li>
+<li class=""><strong>runtime tables</strong> are tables whose contents are determined at proving time,
+to be used for array accesses to data from the witness. Also called dynamic
+tables in other projects.</li>
+<li class=""><strong>side-loaded tables</strong> are tables that are committed to in a proof-independent
+way, so that they may be reused across proofs and/or signed without knowledge
+of the specific proof, but may be different for each execution of the circuit.</li>
+</ul>
+<p>These distinct types of tables are a slight fiction: often it will be desirable
+to have some fixed part of runtime or side-loaded tables, e.g. to ensure that
+indexing is reliable. For example, a table representing an array of values
+<code>[x, y, z]</code> in the proof might be laid out as</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>value1</th><th>value2</th></tr></thead><tbody><tr><td>0</td><td>?runtime</td></tr><tr><td>1</td><td>?runtime</td></tr><tr><td>2</td><td>?runtime</td></tr></tbody></table>
+<p>where the <code>value1</code> entries are fixed in the constraint system. This ensure that
+a malicious prover is not free to create multiple values with the same index,
+such as <code>[(0,a), (0,x), (1,y), (2,z)]</code>, otherwise the value <code>a</code> might be used
+where the value <code>x</code> was intended.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="combining-multiple-tables">Combining multiple tables<a href="#combining-multiple-tables" class="hash-link" aria-label="Direct link to Combining multiple tables" title="Direct link to Combining multiple tables" translate="no">​</a></h3>
+<p>The current implementation only supports a single fixed table. In order to make
+multiple tables available, we either need to run a separate PLOOKUP argument for
+each table, or to concatenate the tables to form an combined table and identify
+the values from each table in such a way that the prover cannot use values from
+the &#x27;wrong&#x27; table.</p>
+<p>We already solve a similar problem with &#x27;vector&#x27; tables -- tables where a row
+contains multiple values -- where we want to ensure that the prover used an
+entry <code>(x, y, z)</code> from the table, and not some parts of different entries, or
+some other value entirely. In order to do this, we generate a randomising field
+element <code>joint_combiner</code>, where the randomness depends on the circuit witness,
+and then compute <code>x + y * joint_combiner + z * joint_combiner^2</code>. Notice that,
+if the prover wants to select some <code>(a, b, c)</code> not in the table and claim that
+it in fact was, they are not able to use the knowledge of the <code>joint_combiner</code>
+to choose their <code>(a, b, c)</code>, since the <code>joint_combiner</code> will depend on those
+values <code>a</code>, <code>b</code>, and <code>c</code>.</p>
+<p>This is a standard technique for checking multiple equalities at once by
+checking a single equality; to use it, we must simply ensure that the randomness
+depends on all of the (non-constant) values in the equality.</p>
+<p>We propose extending each table with an extra column, which we will call the
+<code>TableID</code> column, which associates a different number with each table. Since the
+sizes of all tables must be known at constraint system time, we can treat this
+as a fixed column. For example, this converts a lookup <code>(a, b, c)</code> in the table
+with ID <code>1</code> into a lookup of <code>(a, b, c, 1)</code> in the combined table, and ensures
+that any value <code>(x, y, z)</code> from table ID <code>2</code> will not match that lookup, since
+its representative is <code>(x, y, z, 2)</code>.</p>
+<p>To avoid any interaction between the <code>TableID</code> column and any other data in the
+tables, we use <code>TableID * joint_combiner^max_joint_size</code> to mix in the
+<code>TableID</code>, where <code>max_joint_size</code> is the maximum length of any lookup or table
+value. This also simplifies the &#x27;joining&#x27; of the <code>table_id</code> polynomial
+commitment, since we can straightforwardly scale it by the constant
+<code>joint_combiner^max_joint_size</code> to find its contribution to every row in the
+combined table.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="sampling-the-joint_combiner">Sampling the <code>joint_combiner</code><a href="#sampling-the-joint_combiner" class="hash-link" aria-label="Direct link to sampling-the-joint_combiner" title="Direct link to sampling-the-joint_combiner" translate="no">​</a></h3>
+<p>Currently, the <code>joint_combiner</code> is sampled using randomness that depends on the
+witness. However, where we have runtime or side-loaded tables, a malicious
+prover may be able to select values in those tables that abuse knowledge of
+<code>joint_combiner</code> to create collisions.</p>
+<p>For example, the prover could create the appearance that there is a value
+<code>(x, y, z)</code> in the table with ID 1 by entering a single value <code>a</code> into the table
+with ID 2, by computing</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">a =   x</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">    + y * joint_combiner</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">    + z * joint_combiner^2</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">    + -1 * joint_combiner^max_joint_size</span><br></span></code></pre></div></div>
+<p>so that the combined contribution with its table ID becomes</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">a + 2 * joint_combiner^max_joint_size</span><br></span></code></pre></div></div>
+<p>and thus matches exactly the combined value from <code>(x, y, z)</code> in the table with
+ID 1:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">x + y * joint_combiner + z * joint_combiner^2 + 1 * joint_combiner^max_joint_size</span><br></span></code></pre></div></div>
+<p>Thus, we need to ensure that the <code>joint_combiner</code> depends on the values in
+runtime or side-loaded tables, so that the values in these tables cannot be
+chosen using knowledge of the <code>joint_combiner</code>. To do this, we must use the
+commitments to the values in these tables as part of the source of randomness
+for <code>joint_combiner</code> in the prover and verifier.</p>
+<p>In particular, this means that we must have a commitment per column for each
+type of table, so that the verifier can confirm the correct construction of the
+combined table.</p>
+<p>As usual, we will use the &#x27;transcript&#x27; of the proof so far -- including all of
+these components -- as the seed for this randomness.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="representing-the-combined-fixed-table">Representing the combined fixed table<a href="#representing-the-combined-fixed-table" class="hash-link" aria-label="Direct link to Representing the combined fixed table" title="Direct link to Representing the combined fixed table" translate="no">​</a></h3>
+<p>The fixed table can be constructed at constraint system generation time, by
+extending all of the constituent tables to the same width (i.e. number of
+columns), generating the appropriate table IDs array, and concatenating all of
+the tables. Concretely:</p>
+<p>Let <code>t[id][row][col]</code> be the <code>col</code>th element of the <code>row</code>th entry in the <code>id</code>th
+fixed table. Let <code>W</code> be the maximum width of all of the <code>t[id][row]</code>s. For any
+<code>t[id][row]</code> whose width <code>w</code> is less than <code>W</code>, pad it to width <code>W</code> by setting
+<code>t[id][row][col] = 0</code> for all <code>w &lt; col &lt;= W</code>. Form the combined table by
+concatenating all of these tables <code>FixedTable = t[0] || t[1] || t[2] || ...</code> and
+store in <code>TableID</code> the table ID that the corresponding row came from. Then, for
+every <code>output_row</code>, we have</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">FixedTable[output_row][col] = t[id][row][col]`</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">TableID[output_row] = id</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">where output_row = len(t[0]) + len(t[1]) + ... + len(t[id-1]) + row</span><br></span></code></pre></div></div>
+<p>This can be encoded as <code>W+1</code> polynomials in the constraint system, which we will
+reference as <code>FixedTable(col)</code> for <code>0 &lt;= col &lt; W</code> and <code>TableID</code>.</p>
+<p>For any unused entries, we use <code>TableID = -1</code>, to avoid collisions with any
+tables.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="representing-the-runtime-table">Representing the runtime table<a href="#representing-the-runtime-table" class="hash-link" aria-label="Direct link to Representing the runtime table" title="Direct link to Representing the runtime table" translate="no">​</a></h3>
+<p>The runtime table can be considered as a &#x27;mask&#x27; that we apply to the fixed table
+to introduce proof-specific data at runtime.</p>
+<p>We make the simplifying assumption that an entry in the runtime table has
+exactly 1 &#x27;fixed&#x27; entry, which can be used for indexing (or set to <code>0</code> if
+unused), and that the table has a fixed width of <code>X</code>. We can pad any narrower
+entries in the table to the full width <code>X</code> in the same way as the fixed tables
+above.</p>
+<p>We represent the masked values in the runtime table as <code>RuntimeTable(i)</code> for
+<code>1 &lt;= i &lt; X</code>.</p>
+<p>To specify whether a runtime table entry is applicable in the <code>i</code>th row, we use
+a selector polynomial <code>RuntimeTableSelector</code>. In order to reduce the polynomial
+degree of later checks, we add a constraint to check that the runtime entry is
+the zero vector wherever the selector is zero:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">RuntimeTableSelector * sum[i=1, X, RuntimeTable(i) * joint_combiner^i]</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> = sum[i=1, X, RuntimeTable(i) * joint_combiner^i]</span><br></span></code></pre></div></div>
+<p>This gives the combined entry of the fixed and runtime tables as</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">sum[i=0, W, FixedTable(i) * joint_combiner^i]</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">+ sum[i=1, X, RuntimeTable(i) * joint_combiner^i]</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">+ TableID * joint_combiner^max_joint_size</span><br></span></code></pre></div></div>
+<p>where we assume that <code>RuntimeTableSelector * FixedTable(i) = 0</code> for <code>1 &lt;= i &lt; W</code>
+via our simplifying assumption above. We compute this as a polynomial
+<code>FixedAndRuntimeTable</code>, giving its evaluations and openings as part of the
+proof, and asserting that each entry matches the above.</p>
+<p>The <code>RuntimeTableSelector</code> polynomial will be fixed at constraint system time,
+and we can avoid opening it. However, we must provide openings for
+<code>RuntimeTable(i)</code>.</p>
+<p>The <code>joint_combiner</code> should be sampled using randomness that depends on the
+individual <code>RuntimeTable(i)</code>s, to ensure that the runtime values cannot be
+chosen with prior knowledge <code>joint_combiner</code>.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="representing-the-side-loaded-tables">Representing the side-loaded tables<a href="#representing-the-side-loaded-tables" class="hash-link" aria-label="Direct link to Representing the side-loaded tables" title="Direct link to Representing the side-loaded tables" translate="no">​</a></h3>
+<p>The side-loaded tables can be considered as additional &#x27;masks&#x27; that we apply to
+the combined fixed and runtime table, to introduce this side-loaded data.</p>
+<p>Again, we make the simplifying assumption that an entry from a side-loaded table
+has exactly 1 &#x27;fixed&#x27; entry, which can be used for indexing (or set to <code>0</code> if
+unused). We also assume that at most 1 side-loaded table contributes to each
+entry.</p>
+<p>In order to compute the lookup multiset inclusion argument, we also need the
+combined table of all 3 table kinds, which we will call <code>LookupTable</code>. We can
+calculate the contribution of the side-loaded table for each lookup as</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">LookupTable - FixedAndRuntimeTable</span><br></span></code></pre></div></div>
+<p>We will represent the polynomials for the side-loaded tables as
+<code>SideLoadedTable(i, j)</code>, where <code>i</code> identifies the table, and <code>j</code> identifies the
+column within that table. We also include polynomials <code>SideLoadedCombined(i)</code> in
+the proof, along with their openings, where</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">SideLoadedCombined(i)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  = sum[j=1, ?, SideLoadedTable(i, j) * joint_combiner^(j-1)]</span><br></span></code></pre></div></div>
+<p>and check for consistency of the evaluations and openings when verifying the
+proof.</p>
+<p>The <code>SideLoadedTable</code> polynomials are included in the proof, but we do so &#x27;as
+if&#x27; they had been part of the verification index (ie. without any proof-specific
+openings), so that they may be reused across multiple different proofs without
+modification.</p>
+<p>The <code>joint_combiner</code> should be sampled using randomness that depends on the
+individual <code>SideLoadedTable(i,j)</code>s, to ensure that the side-loaded values cannot
+be chosen with prior knowledge <code>joint_combiner</code>.</p>
+<p><em>Note: it may be useful for the verifier to pass the <code>SideLoadedTable(i,j)</code>s as
+public inputs to the proof, so that the circuit may assert that the table it had
+side-loaded was signed or otherwise correlated with a cryptographic commitment
+that it had access to. The details of this are deliberately elided in this RFC,
+since the principle and implementation are both fairly straightforward.</em></p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="position-independence-of-side-loaded-tables">Position-independence of side-loaded tables<a href="#position-independence-of-side-loaded-tables" class="hash-link" aria-label="Direct link to Position-independence of side-loaded tables" title="Direct link to Position-independence of side-loaded tables" translate="no">​</a></h3>
+<p>We want to ensure that side-loaded tables are maximally re-usable across
+different proofs, even where the &#x27;position&#x27; of the same side-loaded table in the
+combined table may vary between proofs. For example, we could consider a
+&#x27;folding&#x27; circuit <code>C</code> which takes 2 side-loaded tables <code>t_in</code> and <code>t_out</code>, where
+we prove</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">C(t_0, t_1)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">C(t_1, t_2)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">C(t_2, t_3)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">...</span><br></span></code></pre></div></div>
+<p>and the &#x27;result&#x27; of the fold is the final <code>t_n</code>. In each pair of executions in
+the sequence, we find that <code>t_i</code> is used as both <code>t_in</code> and <code>t_out</code>, but we
+would like to expose the same table as the value for each.</p>
+<p>To achieve this, we use a permutation argument to &#x27;place&#x27; the values from each
+side-loaded table at the correct position in the final table. Recall that every
+value</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">LookupTable - FixedAndRuntimeTable</span><br></span></code></pre></div></div>
+<p>is either 0 (where no side-loaded table contributes a value) or the value of
+some row in <code>SideLoadedCombined(i) * joint_combiner</code> from the table <code>i</code>.</p>
+<p>For the <code>0</code> differences, we calculate a permutation between them all and the
+single constant <code>0</code>, to ensure that <code>LookupTable = FixedAndRuntimeTable</code>. For
+all other values, we set-up a permutation based upon the side-loaded table
+relevant to each value.</p>
+<p>Thus, we build the permutation accumulator</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">LookupPermutation</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * ((LookupTable - FixedAndRuntimeTable) * joint_combiner^(-1)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">     + gamma + beta * Sigma(7))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * (SideLoadedCombined(0) + gamma + beta * Sigma(8))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * (SideLoadedCombined(1) + gamma + beta * Sigma(9))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * (SideLoadedCombined(2) + gamma + beta * Sigma(10))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * (SideLoadedCombined(3) + gamma + beta * Sigma(11))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> =</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   LookupPermutation[prev]</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * ((LookupTable - FixedAndRuntimeTable) * joint_combiner^(-1)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">       + gamma + x * beta * shift[7])</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * (SideLoadedCombined(0) + gamma + x * beta * shift[8])</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * (SideLoadedCombined(1) + gamma + x * beta * shift[9])</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * (SideLoadedCombined(2) + gamma + x * beta * shift[10])</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * (SideLoadedCombined(3) + gamma + x * beta * shift[11])</span><br></span></code></pre></div></div>
+<p>where <code>shift[0..7]</code> is the existing <code>shift</code> vector used for the witness
+permutation, and the additional values above are chosen so that <code>shift[i] * w^j</code>
+are distinct for all <code>i</code> and <code>j</code>, and <code>Sigma(_)</code> are the columns representing
+the permutation. We then assert that</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Lagrange(0)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  * (LookupPermutation * (0 + gamma + beta * zero_sigma)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">    - (0 + gamma + beta * shift[len(shift)-1]))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  = 0</span><br></span></code></pre></div></div>
+<p>to mix in the contributions for the constant <code>0</code> value, and</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Lagrange(n-ZK_ROWS) * (LookupPermutation - 1) = 0</span><br></span></code></pre></div></div>
+<p>to ensure that the permuted values cancel.</p>
+<p>Note also that the permutation argument allows for interaction <strong>between</strong>
+tables, as well as injection of values into the combined lookup table. As a
+result, the permutation argument can be used to &#x27;copy&#x27; parts of one table into
+another, which is likely to be useful in examples like the &#x27;fold&#x27; one above, if
+some data is expected to be shared between <code>t_in</code> and <code>t_out</code>.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="permutation-argument-for-cheap-array-lookups">Permutation argument for cheap array lookups<a href="#permutation-argument-for-cheap-array-lookups" class="hash-link" aria-label="Direct link to Permutation argument for cheap array lookups" title="Direct link to Permutation argument for cheap array lookups" translate="no">​</a></h3>
+<p>It would be useful to add data to the runtime table using the existing
+permutation arguments rather than using a lookup to &#x27;store&#x27; data. In particular,
+the polynomial degree limits the number of lookups available per row, but we are
+able to assert equalities on all 7 permuted witness columns using the existing
+argument. By combining the existing <code>PermutationAggreg</code> with
+<code>LookupPermutation</code>, we can allow all of these values to interact.</p>
+<p>Concretely, by involving the original aggregation and the first row of the
+runtime table, we can construct the permutation</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">LookupPermutation</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * PermutationAggreg</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * ((LookupTable - FixedAndRuntimeTable) * joint_combiner^(-1)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">     + gamma + beta * Sigma(7))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * (SideLoadedCombined(0) + gamma + beta * Sigma(8))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * (SideLoadedCombined(1) + gamma + beta * Sigma(9))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * (SideLoadedCombined(2) + gamma + beta * Sigma(10))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * (SideLoadedCombined(3) + gamma + beta * Sigma(11))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * (RuntimeTable(1) + gamma + beta * Sigma(12))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> =</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   LookupPermutation[prev]</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * PermutationAggreg[prev]</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * ((LookupTable - FixedAndRuntimeTable) * joint_combiner^(-1)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">       + gamma + x * beta * shift[7])</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * (SideLoadedCombined(0) + gamma + x * beta * shift[8])</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * (SideLoadedCombined(1) + gamma + x * beta * shift[9])</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * (SideLoadedCombined(2) + gamma + x * beta * shift[10])</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * (SideLoadedCombined(3) + gamma + x * beta * shift[11])</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * (RuntimeTable(1) + gamma + x * beta * shift[12])</span><br></span></code></pre></div></div>
+<p>to allow interaction between any of the first 7 witness rows and the first row
+of the runtime table. Note that the witness rows can only interact with the
+side-loaded tables when they contain a single entry due to their use of
+<code>joint_combiner</code> for subsequent entries, which is sampled using randomness that
+depends on this witness.</p>
+<p>In order to check the combined permutation, we remove the final check from the
+existing permutation argument and compute the combined check of both permutation
+arguments:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Lagrange(n-ZK_ROWS) * (LookupPermutation * PermutationAggreg - 1) = 0</span><br></span></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="full-list-of-polynomials-and-constraints">Full list of polynomials and constraints<a href="#full-list-of-polynomials-and-constraints" class="hash-link" aria-label="Direct link to Full list of polynomials and constraints" title="Direct link to Full list of polynomials and constraints" translate="no">​</a></h3>
+<h4 class="anchor anchorTargetStickyNavbar_Vzrq" id="constants">Constants<a href="#constants" class="hash-link" aria-label="Direct link to Constants" title="Direct link to Constants" translate="no">​</a></h4>
+<ul>
+<li class=""><code>shift[0..14]</code> (<code>shift[0..7]</code> existing)</li>
+<li class=""><code>zero_sigma</code></li>
+<li class=""><code>joint_combiner</code> (existing)</li>
+<li class=""><code>beta</code> (existing)</li>
+<li class=""><code>gamma</code> (existing)</li>
+<li class=""><code>max_joint_size</code> (existing, integer)</li>
+</ul>
+<p>This results in 8 new constants.</p>
+<h4 class="anchor anchorTargetStickyNavbar_Vzrq" id="polynomials-without-per-proof-evaluations">Polynomials without per-proof evaluations<a href="#polynomials-without-per-proof-evaluations" class="hash-link" aria-label="Direct link to Polynomials without per-proof evaluations" title="Direct link to Polynomials without per-proof evaluations" translate="no">​</a></h4>
+<ul>
+<li class=""><code>TableID</code> (verifier index)</li>
+<li class=""><code>FixedTable(i)</code> (verifier index, existing)</li>
+<li class=""><code>RuntimeTableSelector</code> (verifier index)</li>
+<li class=""><code>SideLoadedTable(i, j)</code> (proof)</li>
+</ul>
+<p>This results in 2 new polynomials + 1 new polynomial for each column of each
+side-loaded table.</p>
+<h4 class="anchor anchorTargetStickyNavbar_Vzrq" id="polynomials-with-per-proof-evaluations--openings">Polynomials with per-proof evaluations + openings<a href="#polynomials-with-per-proof-evaluations--openings" class="hash-link" aria-label="Direct link to Polynomials with per-proof evaluations + openings" title="Direct link to Polynomials with per-proof evaluations + openings" translate="no">​</a></h4>
+<ul>
+<li class=""><code>LookupTable</code> (existing)</li>
+<li class=""><code>RuntimeTable(i)</code></li>
+<li class=""><code>FixedAndRuntimeTable</code></li>
+<li class=""><code>PermutationAggreg</code> (existing)</li>
+<li class=""><code>LookupPermutation</code></li>
+<li class=""><code>Sigma(i)</code> (existing for <code>0 &lt;= i &lt; 7</code>, new for <code>7 &lt;= i &lt; 13</code>)</li>
+</ul>
+<p>This results in 8 new polynomial evaluations + 1 new evaluation for each column
+of the runtime table.</p>
+<h4 class="anchor anchorTargetStickyNavbar_Vzrq" id="constraints">Constraints<a href="#constraints" class="hash-link" aria-label="Direct link to Constraints" title="Direct link to Constraints" translate="no">​</a></h4>
+<ul>
+<li class="">permutation argument (existing, remove <code>n-ZK_ROWS</code> check) (elided)</li>
+<li class="">lookup argument (existing) (elided)</li>
+<li class="">runtime-table consistency
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">RuntimeTableSelector * sum[i=1, X, RuntimeTable(i) * joint_combiner^i]</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> = sum[i=1, X, RuntimeTable(i) * joint_combiner^i]</span><br></span></code></pre></div></div>
+</li>
+<li class="">fixed and runtime table evaluation
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">FixedAndRuntimeTable</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  = sum[i=0, W, FixedTable(i) * joint_combiner^i]</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">    + sum[i=1, X, RuntimeTable(i) * joint_combiner^i]</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">    + TableID * joint_combiner^max_joint_size</span><br></span></code></pre></div></div>
+</li>
+<li class="">lookup permutation argument
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">LookupPermutation</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * PermutationAggreg</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * ((LookupTable - FixedAndRuntimeTable) * joint_combiner^(-1)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">     + gamma + beta * Sigma(7))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * (SideLoadedCombined(0) + gamma + beta * Sigma(8))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * (SideLoadedCombined(1) + gamma + beta * Sigma(9))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * (SideLoadedCombined(2) + gamma + beta * Sigma(10))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * (SideLoadedCombined(3) + gamma + beta * Sigma(11))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> * (RuntimeTable(1) + gamma + beta * Sigma(12))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"> =</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   LookupPermutation[prev]</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * PermutationAggreg[prev]</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * ((LookupTable - FixedAndRuntimeTable) * joint_combiner^(-1)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">       + gamma + x * beta * shift[7])</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * (SideLoadedCombined(0) + gamma + x * beta * shift[8])</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * (SideLoadedCombined(1) + gamma + x * beta * shift[9])</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * (SideLoadedCombined(2) + gamma + x * beta * shift[10])</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * (SideLoadedCombined(3) + gamma + x * beta * shift[11])</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   * (RuntimeTable(1) + gamma + x * beta * shift[12])</span><br></span></code></pre></div></div>
+</li>
+<li class="">lookup permutation initializer
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Lagrange(0)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  * (LookupPermutation * (0 + gamma + beta * zero_sigma)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">    - (0 + gamma + beta * shift[len(shift)-1]))</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  = 0</span><br></span></code></pre></div></div>
+</li>
+<li class="">lookup permutation finalizer
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Lagrange(n-ZK_ROWS) * (LookupPermutation - 1) = 0</span><br></span></code></pre></div></div>
+</li>
+</ul>
+<p>This results in 5 new checks, and the removal of 1 old check.</p>
+<p>The lookup permutation argument (and its columns) can be elided when it is
+unused by either the side-loaded table or the runtime table. Similarly, the
+runtime table checks (and columns) can be omitted when there is no runtime
+table.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="drawbacks">Drawbacks<a href="#drawbacks" class="hash-link" aria-label="Direct link to Drawbacks" title="Direct link to Drawbacks" translate="no">​</a></h2>
+<p>This proposal increases the size of proofs, and increases the number of checks
+that the verifier must perform, and thus the cost of the recusive verifier. This
+also increases the complexity of the proof system.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="rationale-and-alternatives">Rationale and alternatives<a href="#rationale-and-alternatives" class="hash-link" aria-label="Direct link to Rationale and alternatives" title="Direct link to Rationale and alternatives" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="why-is-this-design-the-best-in-the-space-of-possible-designs">Why is this design the best in the space of possible designs?<a href="#why-is-this-design-the-best-in-the-space-of-possible-designs" class="hash-link" aria-label="Direct link to Why is this design the best in the space of possible designs?" title="Direct link to Why is this design the best in the space of possible designs?" translate="no">​</a></h3>
+<p>This design combines the 3 different &#x27;modes&#x27; of random access memory, roughly
+approximating <code>ROM -&gt; RAM</code> loading, <code>disk -&gt; RAM</code> loading, and <code>RAM r/w</code>. This
+gives the maximum flexibility for circuit designers, and each primitive has uses
+for projects that we are pursuing.</p>
+<p>This design has been refined over several iterations to reduce the number of
+components exposed in the proof and the amount of computation that the verifier
+requires. The largest remaining parts represent the data itself and the method
+for combining them, where simplifying assumptions have been made to minimize
+their impact while still satisfying the design constraints.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="what-other-designs-have-been-considered-and-what-is-the-rationale-for-not-choosing-them">What other designs have been considered and what is the rationale for not choosing them?<a href="#what-other-designs-have-been-considered-and-what-is-the-rationale-for-not-choosing-them" class="hash-link" aria-label="Direct link to What other designs have been considered and what is the rationale for not choosing them?" title="Direct link to What other designs have been considered and what is the rationale for not choosing them?" translate="no">​</a></h3>
+<p>Other designs building upon the lookup primitive reduce on some subset of this
+design, or on relaxing a design constraint that would remove some useful /
+required functionality.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="what-is-the-impact-of-not-doing-this">What is the impact of not doing this?<a href="#what-is-the-impact-of-not-doing-this" class="hash-link" aria-label="Direct link to What is the impact of not doing this?" title="Direct link to What is the impact of not doing this?" translate="no">​</a></h3>
+<p>We are currently unable to expose certain useful functionality to users of
+Snapps / SnarkyJS, and are missing the ability to use that same functionality
+for important parts of the zkOracles ecosystem (such as parsing / scraping).</p>
+<p>We also are currently forced to hard-code any constraints that we need for
+particular uses in the verifier circuit, and users are unable to remove the
+parts they do not need and to replace them with other useful constraints that
+their circuits might benefit from.</p>
+<p>The Mina transaction model is unable to support a bytecode interpreter without
+this or similar extensions.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="prior-art">Prior art<a href="#prior-art" class="hash-link" aria-label="Direct link to Prior art" title="Direct link to Prior art" translate="no">​</a></h2>
+<p><em>(Elided)</em></p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="unresolved-questions">Unresolved questions<a href="#unresolved-questions" class="hash-link" aria-label="Direct link to Unresolved questions" title="Direct link to Unresolved questions" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="what-parts-of-the-design-do-you-expect-to-resolve-through-the-rfc-process-before-this-gets-merged">What parts of the design do you expect to resolve through the RFC process before this gets merged?<a href="#what-parts-of-the-design-do-you-expect-to-resolve-through-the-rfc-process-before-this-gets-merged" class="hash-link" aria-label="Direct link to What parts of the design do you expect to resolve through the RFC process before this gets merged?" title="Direct link to What parts of the design do you expect to resolve through the RFC process before this gets merged?" translate="no">​</a></h3>
+<ul>
+<li class="">The maximum number of tables / entries of each kind that we want to support in
+the &#x27;standard&#x27; protocol.</li>
+<li class="">Validation (or rejection) of the simplifying assumptions.</li>
+<li class="">Confirmation of the design constraints, or simplifications thereto.</li>
+<li class="">Necessity / utility of the permutation argument.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="what-parts-of-the-design-do-you-expect-to-resolve-through-the-implementation-of-this-feature-before-merge">What parts of the design do you expect to resolve through the implementation of this feature before merge?<a href="#what-parts-of-the-design-do-you-expect-to-resolve-through-the-implementation-of-this-feature-before-merge" class="hash-link" aria-label="Direct link to What parts of the design do you expect to resolve through the implementation of this feature before merge?" title="Direct link to What parts of the design do you expect to resolve through the implementation of this feature before merge?" translate="no">​</a></h3>
+<p>None, this RFC has been developed in part from an initial design and iteration
+on implementations of parts of that design.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="what-related-issues-do-you-consider-out-of-scope-for-this-rfc-that-could-be-addressed-in-the-future-independently-of-the-solution-that-comes-out-of-this-rfc">What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC?<a href="#what-related-issues-do-you-consider-out-of-scope-for-this-rfc-that-could-be-addressed-in-the-future-independently-of-the-solution-that-comes-out-of-this-rfc" class="hash-link" aria-label="Direct link to What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC?" title="Direct link to What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC?" translate="no">​</a></h3>
+<ul>
+<li class="">Bytecode design and implementation details.</li>
+<li class="">Mina transaction interface for interacting with these features.</li>
+<li class="">Snarky / SnarkyJS interface for interacting with these features.</li>
+</ul></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col noPrint_WFHX"><a href="https://github.com/o1-labs/proof-systems/tree/master/book/docs/kimchi/extended-lookup-tables.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Z9Sw" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Edit this page</a></div><div class="col lastUpdated_JAkA"></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/proof-systems/kimchi/lookup"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">$\plookup$ in Kimchi</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/proof-systems/kimchi/custom_constraints"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Custom Constraints</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#motivation" class="table-of-contents__link toc-highlight">Motivation</a></li><li><a href="#detailed-design" class="table-of-contents__link toc-highlight">Detailed design</a><ul><li><a href="#combining-multiple-tables" class="table-of-contents__link toc-highlight">Combining multiple tables</a></li><li><a href="#sampling-the-joint_combiner" class="table-of-contents__link toc-highlight">Sampling the <code>joint_combiner</code></a></li><li><a href="#representing-the-combined-fixed-table" class="table-of-contents__link toc-highlight">Representing the combined fixed table</a></li><li><a href="#representing-the-runtime-table" class="table-of-contents__link toc-highlight">Representing the runtime table</a></li><li><a href="#representing-the-side-loaded-tables" class="table-of-contents__link toc-highlight">Representing the side-loaded tables</a></li><li><a href="#position-independence-of-side-loaded-tables" class="table-of-contents__link toc-highlight">Position-independence of side-loaded tables</a></li><li><a href="#permutation-argument-for-cheap-array-lookups" class="table-of-contents__link toc-highlight">Permutation argument for cheap array lookups</a></li><li><a href="#full-list-of-polynomials-and-constraints" class="table-of-contents__link toc-highlight">Full list of polynomials and constraints</a></li></ul></li><li><a href="#drawbacks" class="table-of-contents__link toc-highlight">Drawbacks</a></li><li><a href="#rationale-and-alternatives" class="table-of-contents__link toc-highlight">Rationale and alternatives</a><ul><li><a href="#why-is-this-design-the-best-in-the-space-of-possible-designs" class="table-of-contents__link toc-highlight">Why is this design the best in the space of possible designs?</a></li><li><a href="#what-other-designs-have-been-considered-and-what-is-the-rationale-for-not-choosing-them" class="table-of-contents__link toc-highlight">What other designs have been considered and what is the rationale for not choosing them?</a></li><li><a href="#what-is-the-impact-of-not-doing-this" class="table-of-contents__link toc-highlight">What is the impact of not doing this?</a></li></ul></li><li><a href="#prior-art" class="table-of-contents__link toc-highlight">Prior art</a></li><li><a href="#unresolved-questions" class="table-of-contents__link toc-highlight">Unresolved questions</a><ul><li><a href="#what-parts-of-the-design-do-you-expect-to-resolve-through-the-rfc-process-before-this-gets-merged" class="table-of-contents__link toc-highlight">What parts of the design do you expect to resolve through the RFC process before this gets merged?</a></li><li><a href="#what-parts-of-the-design-do-you-expect-to-resolve-through-the-implementation-of-this-feature-before-merge" class="table-of-contents__link toc-highlight">What parts of the design do you expect to resolve through the implementation of this feature before merge?</a></li><li><a href="#what-related-issues-do-you-consider-out-of-scope-for-this-rfc-that-could-be-addressed-in-the-future-independently-of-the-solution-that-comes-out-of-this-rfc" class="table-of-contents__link toc-highlight">What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC?</a></li></ul></li></ul></div></div></div></div></main></div></div></div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Documentation</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/proof-systems/">Introduction</a></li><li class="footer__item"><a href="https://o1-labs.github.io/proof-systems/rustdoc/" target="_blank" rel="noopener noreferrer" class="footer__link-item">Rust Documentation<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Community</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://minaprotocol.com/" target="_blank" rel="noopener noreferrer" class="footer__link-item">Mina Protocol<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a href="https://discord.gg/minaprotocol" target="_blank" rel="noopener noreferrer" class="footer__link-item">Discord<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">More</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://github.com/o1-labs/proof-systems" target="_blank" rel="noopener noreferrer" class="footer__link-item">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li></ul></div></div><div class="footer__bottom text--center"><div class="footer__copyright">Copyright 2026 o1Labs. Built with Docusaurus.</div></div></div></footer></div>
+</body>
+</html>

@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunkmina_book=globalThis.webpackChunkmina_book||[]).push([[2325],{2325(a,e,k){k.d(e,{createPacketServices:()=>b.$});var b=k(1477);k(7960)}}]);
