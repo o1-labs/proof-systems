@@ -15,12 +15,17 @@ all: deps build ## Run deps and build
 deps: ## Install dependencies required to build the book
 	npm install
 
+.PHONY: specs
+specs: ## Build kimchi and poly-commitment specifications
+	$(MAKE) -C specifications/kimchi build
+	$(MAKE) -C specifications/poly-commitment build
+
 .PHONY: build
-build: ## Build the book
+build: specs ## Build the book
 	npx docusaurus build
 
 .PHONY: serve
-serve: ## Serve the book locally with hot reload
+serve: specs ## Serve the book locally with hot reload
 	npx docusaurus start --no-open
 
 .PHONY: serve-built
