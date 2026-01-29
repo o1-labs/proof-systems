@@ -15,10 +15,9 @@ There are three main algorithms to kimchi:
 
 - [Setup](#setup): takes a circuit and produces a prover index, and a verifier
   index.
-- [Proof creation](#proof-creation): takes the prover index, and the execution
-  trace of the circuit to produce a proof.
-- [Proof verification](#proof-verification): takes the verifier index and a
-  proof to verify.
+- [Proof Construction & Verification](#proof-construction--verification): takes
+  the prover index and the execution trace of the circuit to produce a proof,
+  and verifies it using the verifier index.
 
 As part of these algorithms, a number of tables are created (and then converted
 into polynomials) to create a proof.
