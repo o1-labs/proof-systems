@@ -18,7 +18,7 @@ version.workspace = true
 [dependencies]
 ark-ec.workspace = true
 ark-ff.workspace = true
-rand.workspace = true
 
 [dev-dependencies]
 mina-curves.workspace = true
+rand.workspace = true
