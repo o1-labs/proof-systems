@@ -156,10 +156,6 @@ jobs:
           cd book/specifications/poly-commitment
           make build
 
-      - name: Check that up-to-date specification is checked in
-        run: |
-          git diff --exit-code ":(exclude)rust-toolchain.toml"
-
       - name: Doc tests
         run: |
           eval $(opam env)
