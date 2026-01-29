@@ -25,6 +25,13 @@ and this project adheres to
 - Use cargo-spec docusaurus flavor for specification generation
   ([#3456](https://github.com/o1-labs/proof-systems/pull/3456))
 
+### [groupmap](./groupmap)
+
+#### Added
+
+- Add `no_std` support
+  ([#3415](https://github.com/o1-labs/proof-systems/pull/3415))
+
 ### [mina-poseidon](./poseidon)
 
 #### Added
