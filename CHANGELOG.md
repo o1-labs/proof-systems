@@ -13,6 +13,8 @@ and this project adheres to
 
 #### Changed
 
+- Bump strum from 0.26.1 to 0.27.2
+  ([#3457](https://github.com/o1-labs/proof-systems/pull/3457))
 - Bump env_logger from 0.11.1 to 0.11.6
   ([#3461](https://github.com/o1-labs/proof-systems/pull/3461))
 - Bump raw-cpuid from 11.5.0 to 11.6.0
