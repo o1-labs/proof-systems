@@ -72,7 +72,6 @@ const config: Config = {
 
   onBrokenLinks: "throw",
   onBrokenAnchors: "throw",
-  onBrokenMarkdownLinks: "throw",
 
   i18n: {
     defaultLocale: "en",
@@ -85,6 +84,9 @@ const config: Config = {
     parseFrontMatter: async (params) => {
       const result = await params.defaultParseFrontMatter(params);
       return result;
+    },
+    hooks: {
+      onBrokenMarkdownLinks: "throw",
     },
   },
 

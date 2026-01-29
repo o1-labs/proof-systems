@@ -21,11 +21,11 @@ build: ## Build the book
 
 .PHONY: serve
 serve: ## Serve the book locally with hot reload
-	npx docusaurus start
+	npx docusaurus start --no-open
 
 .PHONY: serve-built
 serve-built: ## Serve the production build locally
-	npx docusaurus serve
+	npx docusaurus serve --no-open
 
 .PHONY: clean
 clean: ## Clean generated artifacts
