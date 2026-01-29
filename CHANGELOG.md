@@ -55,6 +55,11 @@ and this project adheres to
 
 ### [mina-curves](./curves)
 
+#### Added
+
+- Add `no_std` support
+  ([#3416](https://github.com/o1-labs/proof-systems/pull/3416))
+
 #### Changed
 
 - Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
@@ -78,7 +83,7 @@ and this project adheres to
 
 ### [kimchi](./kimchi)
 
-#### Added
+#### Added
 
 - Added test for the behavior of padding inside Poseidon circuits
   ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
@@ -232,7 +237,7 @@ and this project adheres to
   functions to be generic over the number of full rounds.
   ([#3386](https://github.com/o1-labs/proof-systems/pull/3386))
 
-#### Added
+#### Added
 
 - Added regression tests for the behavior of padding inside Poseidon instances
   ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
