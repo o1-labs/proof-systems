@@ -3,16 +3,26 @@
 This directory holds the code related to documentation and specifications of the
 proof systems.
 
-It is built with [mdbook](https://rust-lang.github.io/mdBook/), which you can
-use to serve the page via the following command:
+It is built with [Docusaurus](https://docusaurus.io/).
+
+## Running locally
 
 ```console
-$ # install dependencies
-$ make deps
-$ # serve the page locally
-$ make
-$ # clean
-$ make clean
+# Install dependencies
+make deps
+
+# Serve the page locally with hot reload
+make serve
+# Then open http://localhost:3000/proof-systems/ in your browser
+
+# Build for production
+make build
+
+# Serve the production build locally
+make serve-built
+
+# Clean generated artifacts
+make clean
 ```
 
 The specifications in the book are dynamically generated. Refer to the

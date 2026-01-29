@@ -47,8 +47,8 @@ the equations for addition are:
 ```
 
 ```math
-\begin{align}
+\begin{aligned}
 x_3 & = \lambda^2 - x_{1} - x_{2} \\
 y_3 & = \lambda (x_{1} - x_{3}) - y_{1}
-\end{align}
+\end{aligned}
 ```
