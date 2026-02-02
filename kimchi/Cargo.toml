@@ -53,8 +53,6 @@ mina-curves.workspace = true
 mina-poseidon.workspace = true
 o1-utils.workspace = true
 poly-commitment.workspace = true
-turshi.workspace = true
-
 
 [dev-dependencies]
 proptest.workspace = true

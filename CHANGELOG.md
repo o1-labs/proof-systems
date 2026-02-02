@@ -188,7 +188,7 @@ and this project adheres to
 
 #### Changed
 
-- (No changes in current release)
+- Remove crate as it will never be used
 
 ## 0.2.0 (2025-11-26)
 
