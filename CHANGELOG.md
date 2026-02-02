@@ -189,6 +189,7 @@ and this project adheres to
 #### Changed
 
 - Remove crate as it will never be used
+  ([#3466](https://github.com/o1-labs/proof-systems/pull/3466))
 
 ## 0.2.0 (2025-11-26)
 
