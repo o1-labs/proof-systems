@@ -21,10 +21,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1_utils::math;
-use poly_commitment::{
-    commitment::CommitmentCurve,
-    ipa::OpeningProof,
-};
+use poly_commitment::{commitment::CommitmentCurve, ipa::OpeningProof};
 use rand::rngs::OsRng;
 
 // aliases
@@ -153,13 +150,13 @@ fn test_poseidon_in_circuit_padding() {
 
     let proof3: ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS> =
         ProverProof::create::<BaseSponge, ScalarSponge, _>(
-        &group_map,
-        witness3,
-        &[],
-        &index3,
-        &mut OsRng,
-    )
-    .unwrap();
+            &group_map,
+            witness3,
+            &[],
+            &index3,
+            &mut OsRng,
+        )
+        .unwrap();
 
     verify::<FULL_ROUNDS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta, FULL_ROUNDS>>(
         &group_map,
@@ -171,13 +168,13 @@ fn test_poseidon_in_circuit_padding() {
 
     let proof4: ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS> =
         ProverProof::create::<BaseSponge, ScalarSponge, _>(
-        &group_map,
-        witness4,
-        &[],
-        &index4,
-        &mut OsRng,
-    )
-    .unwrap();
+            &group_map,
+            witness4,
+            &[],
+            &index4,
+            &mut OsRng,
+        )
+        .unwrap();
 
     verify::<FULL_ROUNDS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta, FULL_ROUNDS>>(
         &group_map,
@@ -187,12 +184,13 @@ fn test_poseidon_in_circuit_padding() {
     )
     .expect("even input length circuit proof should verify with its vk");
 
-    let bad = verify::<FULL_ROUNDS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta, FULL_ROUNDS>>(
-        &group_map,
-        &index3.verifier_index(),
-        &proof4,
-        &[],
-    );
+    let bad = verify::<
+        FULL_ROUNDS,
+        Vesta,
+        BaseSponge,
+        ScalarSponge,
+        OpeningProof<Vesta, FULL_ROUNDS>,
+    >(&group_map, &index3.verifier_index(), &proof4, &[]);
     assert!(
         bad.is_err(),
         "leven input length proof must not verify with odd input length vk"
