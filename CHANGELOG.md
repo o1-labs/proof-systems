@@ -47,7 +47,7 @@ and this project adheres to
 
 ### [kimchi](./kimchi)
 
-#### Added 
+#### Added
 
 - Added regression tests for the behavior of padding inside Poseidon instances
   ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
@@ -129,7 +129,7 @@ and this project adheres to
   functions to be generic over the number of full rounds.
   ([#3386](https://github.com/o1-labs/proof-systems/pull/3386))
 
-#### Added 
+#### Added
 
 - Added regression tests for the behavior of padding inside Poseidon instances
   ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
