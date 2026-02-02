@@ -21,7 +21,10 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1_utils::math;
-use poly_commitment::commitment::CommitmentCurve;
+use poly_commitment::{
+    commitment::CommitmentCurve,
+    ipa::OpeningProof,
+};
 use rand::rngs::OsRng;
 
 // aliases
@@ -99,7 +102,7 @@ fn test_poseidon() {
 fn build_poseidon_instance(
     inputs: Vec<[Fp; SPONGE_WIDTH]>,
 ) -> (Vec<CircuitGate<Fp>>, [Vec<Fp>; COLUMNS]) {
-    let rounds = &*Vesta::sponge_params().round_constants;
+    let rounds = Vesta::sponge_params().round_constants;
     let rows_per = POS_ROWS_PER_HASH + 1;
     let mut gates = Vec::with_capacity(inputs.len() * rows_per);
     let mut abs_row = 0;
@@ -108,7 +111,7 @@ fn build_poseidon_instance(
         let first_wire = Wire::for_row(abs_row);
         let last_wire = Wire::for_row(abs_row + POS_ROWS_PER_HASH);
         let (poseidon, _) =
-            CircuitGate::<Fp>::create_poseidon_gadget(abs_row, [first_wire, last_wire], rounds);
+            CircuitGate::<Fp>::create_poseidon_gadget(abs_row, [first_wire, last_wire], &rounds);
         gates.extend(poseidon);
         abs_row += rows_per;
     }
@@ -143,12 +146,13 @@ fn test_poseidon_in_circuit_padding() {
 
     assert!(gates4.len() > gates3.len());
 
-    let index3 = new_index_for_test::<Vesta>(gates3, 0);
-    let index4 = new_index_for_test::<Vesta>(gates4, 0);
+    let index3 = new_index_for_test::<FULL_ROUNDS, Vesta>(gates3, 0);
+    let index4 = new_index_for_test::<FULL_ROUNDS, Vesta>(gates4, 0);
 
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
-    let proof3 = ProverProof::create::<BaseSponge, ScalarSponge, _>(
+    let proof3: ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS> =
+        ProverProof::create::<BaseSponge, ScalarSponge, _>(
         &group_map,
         witness3,
         &[],
@@ -157,7 +161,7 @@ fn test_poseidon_in_circuit_padding() {
     )
     .unwrap();
 
-    verify::<Vesta, BaseSponge, ScalarSponge, _>(
+    verify::<FULL_ROUNDS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta, FULL_ROUNDS>>(
         &group_map,
         &index3.verifier_index(),
         &proof3,
@@ -165,7 +169,8 @@ fn test_poseidon_in_circuit_padding() {
     )
     .expect("odd length input circuit proof should verify with its vk");
 
-    let proof4 = ProverProof::create::<BaseSponge, ScalarSponge, _>(
+    let proof4: ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS> =
+        ProverProof::create::<BaseSponge, ScalarSponge, _>(
         &group_map,
         witness4,
         &[],
@@ -174,7 +179,7 @@ fn test_poseidon_in_circuit_padding() {
     )
     .unwrap();
 
-    verify::<Vesta, BaseSponge, ScalarSponge, _>(
+    verify::<FULL_ROUNDS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta, FULL_ROUNDS>>(
         &group_map,
         &index4.verifier_index(),
         &proof4,
@@ -182,7 +187,7 @@ fn test_poseidon_in_circuit_padding() {
     )
     .expect("even input length circuit proof should verify with its vk");
 
-    let bad = verify::<Vesta, BaseSponge, ScalarSponge, _>(
+    let bad = verify::<FULL_ROUNDS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta, FULL_ROUNDS>>(
         &group_map,
         &index3.verifier_index(),
         &proof4,
