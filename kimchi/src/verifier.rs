@@ -95,7 +95,6 @@ impl<
                     EndoMul => Some(&self.verifier_index.emul_comm),
                     EndoMulScalar => Some(&self.verifier_index.endomul_scalar_comm),
                     Poseidon => Some(&self.verifier_index.psm_comm),
-                    CairoClaim | CairoInstruction | CairoFlags | CairoTransition => None,
                     RangeCheck0 => Some(self.verifier_index.range_check0_comm.as_ref()?),
                     RangeCheck1 => Some(self.verifier_index.range_check1_comm.as_ref()?),
                     ForeignFieldAdd => Some(self.verifier_index.foreign_field_add_comm.as_ref()?),

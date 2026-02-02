@@ -35,8 +35,7 @@ protocols. Currently, we give support to specific gates for the `Poseidon` hash
 function, the `CompleteAdd` operation for curve points, `VarBaseMul` for
 variable base multiplication, `EndoMulScalar` for endomorphism variable base
 scalar multiplication, `RangeCheck` for range checks and `ForeignFieldMul` and
-`ForeignFieldAdd` for foreign field arithmetic. Nonetheless, we have plans to
-further support many other gates soon, possibly even `Cairo` instructions.
+`ForeignFieldAdd` for foreign field arithmetic.
 
 The circuit structure is known ahead of time, as this is part of the public
 information that is shared with the verifier. What is secret is what we call the

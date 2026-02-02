@@ -1636,7 +1636,6 @@ dependencies = [
  "thiserror 2.0.12",
  "tikv-jemalloc-ctl",
  "tikv-jemallocator",
- "turshi",
  "wasm-bindgen",
 ]
 
@@ -3179,17 +3178,6 @@ name = "toml_write"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfb942dfe1d8e29a7ee7fcbde5bd2b9a25fb89aa70caea2eba3bee836ff41076"
-
-[[package]]
-name = "turshi"
-version = "0.3.0"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "hex",
- "mina-curves",
- "o1-utils",
-]
 
 [[package]]
 name = "typenum"

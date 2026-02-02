@@ -63,6 +63,13 @@ and this project adheres to
 - Add documentation for the method `endos`
   ([#3450](https://github.com/o1-labs/proof-systems/pull/3450)).
 
+### [turshi](./turshi)
+
+#### Changed
+
+- Remove crate as it will never be used
+  ([#3466](https://github.com/o1-labs/proof-systems/pull/3466))
+
 ## 0.3.0
 
 ### CI
