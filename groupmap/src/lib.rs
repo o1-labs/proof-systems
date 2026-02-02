@@ -19,6 +19,11 @@
 //! WB19: Riad S. Wahby and Dan Boneh, Fast and simple constant-time hashing to the BLS12-381 elliptic curve. <https://eprint.iacr.org/2019/403>
 //!
 
+#![no_std]
+
+extern crate alloc;
+
+use alloc::vec::Vec;
 use ark_ec::short_weierstrass::SWCurveConfig;
 use ark_ff::{Field, One, Zero};
 
