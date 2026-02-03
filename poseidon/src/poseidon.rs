@@ -72,6 +72,7 @@ impl<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize> ArithmeticSponge<F
     }
 
     pub fn poseidon_block_cipher(&mut self) {
+        assert_eq!(self.state.len(), 3);
         poseidon_block_cipher::<F, SC, FULL_ROUNDS>(self.params, &mut self.state);
     }
 }
