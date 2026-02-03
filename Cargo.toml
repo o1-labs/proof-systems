@@ -14,7 +14,6 @@ members = [
   "msm",
   "mvpoly",
   "o1vm",
-  "plonk-neon",
   "kimchi-napi",
   "kimchi-wasm",
   "poly-commitment",
@@ -62,8 +61,12 @@ libflate = "2"
 log = "0.4.20"
 num-bigint = { version = "0.4.4", features = ["rand", "serde"] }
 num-integer = "0.1.45"
-napi = { git = "https://github.com/o1-labs/napi-rs.git", rev = "023d1d4f31bd75e8ab55c95b5077a319b5208cdf", version = "3.3.0", default-features = false, features = ["napi7"] }
-napi-derive = { git="https://github.com/o1-labs/napi-rs.git", rev = "023d1d4f31bd75e8ab55c95b5077a319b5208cdf", version = "3.3.0", features = ["type-def"] }
+napi = { git = "https://github.com/o1-labs/napi-rs.git", rev = "023d1d4f31bd75e8ab55c95b5077a319b5208cdf", version = "3.3.0", default-features = false, features = [
+  "napi7",
+] }
+napi-derive = { git = "https://github.com/o1-labs/napi-rs.git", rev = "023d1d4f31bd75e8ab55c95b5077a319b5208cdf", version = "3.3.0", features = [
+  "type-def",
+] }
 napi-build = "2.1.0"
 ocaml = { version = "0.22.2" }
 ocaml-gen = { version = "1.0.0" }
