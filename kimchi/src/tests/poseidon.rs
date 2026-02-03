@@ -132,57 +132,59 @@ fn build_poseidon_instance(
 // triples so that padding with zeros changes the output and the circuit
 // structure itself.
 #[test]
-fn test_poseidon_in_circuit_padding() {
-    // len-3 vs len-4 (padded) circuits
-    let (gates3, witness3) =
+// Test that Poseidon in circuit treats an extra zero block as a distinct input,
+// i.e. different circuit structure / vk.
+fn test_poseidon_in_circuit_extra_zero_block() {
+    // 1 block vs 2 blocks (second is all zeros)
+    let (gates1, witness1) =
         build_poseidon_instance(vec![[Fp::from(1u32), Fp::from(2u32), Fp::from(3u32)]]);
-    let (gates4, witness4) = build_poseidon_instance(vec![
+    let (gates2, witness2) = build_poseidon_instance(vec![
         [Fp::from(1u32), Fp::from(2u32), Fp::from(3u32)],
         [Fp::zero(), Fp::zero(), Fp::zero()],
     ]);
 
-    assert!(gates4.len() > gates3.len());
+    assert!(gates2.len() > gates1.len());
 
-    let index3 = new_index_for_test::<FULL_ROUNDS, Vesta>(gates3, 0);
-    let index4 = new_index_for_test::<FULL_ROUNDS, Vesta>(gates4, 0);
+    let index1 = new_index_for_test::<FULL_ROUNDS, Vesta>(gates1, 0);
+    let index2 = new_index_for_test::<FULL_ROUNDS, Vesta>(gates2, 0);
 
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
-    let proof3: ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS> =
+    let proof1: ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS> =
         ProverProof::create::<BaseSponge, ScalarSponge, _>(
             &group_map,
-            witness3,
+            witness1,
             &[],
-            &index3,
+            &index1,
             &mut OsRng,
         )
         .unwrap();
 
     verify::<FULL_ROUNDS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta, FULL_ROUNDS>>(
         &group_map,
-        &index3.verifier_index(),
-        &proof3,
+        &index1.verifier_index(),
+        &proof1,
         &[],
     )
-    .expect("odd length input circuit proof should verify with its vk");
+    .expect("single-block circuit proof should verify with its vk");
 
-    let proof4: ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS> =
+    let proof2: ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS> =
         ProverProof::create::<BaseSponge, ScalarSponge, _>(
             &group_map,
-            witness4,
+            witness2,
             &[],
-            &index4,
+            &index2,
             &mut OsRng,
         )
         .unwrap();
 
     verify::<FULL_ROUNDS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta, FULL_ROUNDS>>(
         &group_map,
-        &index4.verifier_index(),
-        &proof4,
+        &index2.verifier_index(),
+        &proof2,
         &[],
     )
-    .expect("even input length circuit proof should verify with its vk");
+    .expect("two-block circuit proof should verify with its vk");
 
     let bad = verify::<
         FULL_ROUNDS,
@@ -190,9 +192,9 @@ fn test_poseidon_in_circuit_padding() {
         BaseSponge,
         ScalarSponge,
         OpeningProof<Vesta, FULL_ROUNDS>,
-    >(&group_map, &index3.verifier_index(), &proof4, &[]);
+    >(&group_map, &index1.verifier_index(), &proof2, &[]);
     assert!(
         bad.is_err(),
-        "leven input length proof must not verify with odd input length vk"
+        "two-block proof must not verify with single-block vk"
     );
 }

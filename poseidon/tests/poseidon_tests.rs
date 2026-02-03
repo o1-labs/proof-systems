@@ -224,5 +224,7 @@ fn test_poseidon_challenge_padding() {
         fq_kimchi::static_params(),
         &mut state_padded,
     );
-    assert_eq!(state, state_padded);
+    // Assert collision and untouched trailing zero
+    assert_eq!(&state[..], &state_padded[..3]);
+    assert_eq!(state_padded[3], Fq::zero());
 }
