@@ -1,5 +1,5 @@
 use ark_ec::AffineRepr;
-use ark_ff::{Field, One, UniformRand, Zero};
+use ark_ff::{Field, UniformRand, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, PlonkSpongeConstantsLegacy},
@@ -211,20 +211,26 @@ fn test_poseidon_challenge_multiple_times_without_absorption() {
 }
 
 #[test]
-fn test_poseidon_challenge_padding() {
-    let mut state: Vec<Fq> = Vec::new();
-    state.push(Fq::one());
-    state.push(Fq::from(2u32));
-    state.push(Fq::from(3u32));
-    let mut state_padded = state.clone();
-    state_padded.push(Fq::zero());
+fn test_poseidon_padding() {
+    let mut sponge_1 =
+        DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>::new(
+            fq_kimchi::static_params(),
+        );
+    let input = [Fq::from(1_u32), Fq::from(2_u32), Fq::from(3_u32)];
+    let input_padded = [
+        Fq::from(1_u32),
+        Fq::from(2_u32),
+        Fq::from(3_u32),
+        Fq::zero(),
+    ];
 
-    poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi>(fq_kimchi::static_params(), &mut state);
-    poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi>(
-        fq_kimchi::static_params(),
-        &mut state_padded,
-    );
-    // Assert collision and untouched trailing zero
-    assert_eq!(&state[..], &state_padded[..3]);
-    assert_eq!(state_padded[3], Fq::zero());
+    let mut sponge_2 =
+        DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>::new(
+            fq_kimchi::static_params(),
+        );
+
+    sponge_1.sponge.absorb(&input[..]);
+    sponge_2.sponge.absorb(&input_padded[..]);
+
+    assert_eq!(sponge_1.challenge(), sponge_2.challenge());
 }
