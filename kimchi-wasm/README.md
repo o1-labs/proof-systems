@@ -22,7 +22,7 @@ ready to be run in NodeJS or in the browser.
 
 ## Architecture and Inner Workings
 
-The plonk-wasm library serves as a bridge between the Rust-based Kimchi proof
+The kimchi-wasm library serves as a bridge between the Rust-based Kimchi proof
 system and JavaScript environments. It consists of several key components:
 
 ### 1. Core Components

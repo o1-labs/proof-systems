@@ -17,7 +17,7 @@
 //! #[derive(serde::Serialize, serde::Deserialize)]
 //! struct Thing { a: usize, b: u32 }
 //!
-//! let serializer = crate::plonk_wasm::wasm_ocaml_serde::ser::Serializer::new();
+//! let serializer = crate::kimchi_wasm::wasm_ocaml_serde::ser::Serializer::new();
 //! let thing = Thing { a: 5, b: 6 };
 //! let js_value = serde::Serialize::serialize(&thing, &mut serializer).unwrap();
 //! assert_eq!(format!("{}", js_value), "[0, 5, 6]");

@@ -102,7 +102,7 @@ fn build_wasm(out_dir: &str, target: Target, rust_version: RustVersion) -> Resul
         target.into(),
         "--out-dir",
         out_dir,
-        "plonk-wasm",
+        "kimchi-wasm",
         "--",
         "-Z",
         "build-std=panic_abort,std",

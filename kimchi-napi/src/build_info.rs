@@ -36,6 +36,6 @@ pub fn get_native_calls() -> u64 {
     NATIVE_CALLS.load(Ordering::Relaxed)
 }
 
-pub(crate) fn report_native_call() {
+pub(crate) fn _report_native_call() {
     NATIVE_CALLS.fetch_add(1, Ordering::Relaxed);
 }

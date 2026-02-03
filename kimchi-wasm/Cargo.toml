@@ -1,5 +1,5 @@
 [package]
-name = "plonk_wasm"
+name = "kimchi_wasm"
 version = "0.1.0"
 authors = ["opensource@o1labs.org"]
 description = "WASM stubs for plonk proof systems"
@@ -8,7 +8,7 @@ license = "MIT/Apache-2.0"
 edition = "2018"
 
 [lib]
-name = "plonk_wasm"
+name = "kimchi_wasm"
 crate-type = ["cdylib", "rlib"]
 
 ################################# Dependencies ################################
