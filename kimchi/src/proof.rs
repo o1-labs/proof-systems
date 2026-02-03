@@ -226,7 +226,7 @@ where
     G: AffineRepr,
 {
     /// The IPA folding challenges `[u_1, ..., u_k]` that define the challenge
-    /// polynomial `b(X)`. See [`b_poly`](poly_commitment::commitment::b_poly).
+    /// polynomial `b(X)`. See [`b_poly`].
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub chals: Vec<G::ScalarField>,
     /// The accumulated commitment from IPA verification.
