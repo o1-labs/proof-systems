@@ -40,6 +40,20 @@ pub trait FqSponge<Fq: Field, G, Fr> {
 
     /// Returns a scalar field digest using the binary representation technique.
     fn digest(self) -> Fr;
+
+    /// Get a checkpoint of the current sponge state for testing/debugging.
+    fn checkpoint(&self) -> SpongeCheckpoint<Fq>;
+}
+
+/// Snapshot of sponge state for checkpointing/testing.
+#[derive(Clone, Debug)]
+pub struct SpongeCheckpoint<F> {
+    /// The 3 field elements of the Poseidon state
+    pub state: Vec<F>,
+    /// Sponge mode (Absorbed or Squeezed with count)
+    pub sponge_state: crate::poseidon::SpongeState,
+    /// Buffered squeeze limbs from previous operations
+    pub last_squeezed: Vec<u64>,
 }
 
 pub const CHALLENGE_LENGTH_IN_LIMBS: usize = 2;
@@ -161,6 +175,15 @@ where
         P::ScalarField::from_bigint(pack(&self.squeeze_limbs(num_limbs)))
             .expect("internal representation was not a valid field element")
     }
+
+    /// Get a checkpoint of the current sponge state.
+    pub fn checkpoint(&self) -> SpongeCheckpoint<P::BaseField> {
+        SpongeCheckpoint {
+            state: self.sponge.state.clone(),
+            sponge_state: self.sponge.sponge_state.clone(),
+            last_squeezed: self.last_squeezed.clone(),
+        }
+    }
 }
 
 impl<P: SWCurveConfig, SC: SpongeConstants> FqSponge<P::BaseField, Affine<P>, P::ScalarField>
@@ -254,6 +277,10 @@ where
 
     fn challenge_fq(&mut self) -> P::BaseField {
         self.squeeze_field()
+    }
+
+    fn checkpoint(&self) -> SpongeCheckpoint<P::BaseField> {
+        self.checkpoint()
     }
 }
 
