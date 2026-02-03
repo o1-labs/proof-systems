@@ -99,7 +99,7 @@ impl<F> ScalarChallenge<F> {
 /// This is used in two contexts:
 ///
 /// 1. **Base field (ξ)**: For the curve endomorphism φ(x,y) = (ξ·x, y)
-/// 2. **Scalar field (λ)**: As the scalar such that φ(P) = [λ]P
+/// 2. **Scalar field (λ)**: As the scalar such that `φ(P) = [λ]P`
 ///
 /// Both fields (Fp and Fq for Pasta curves) have cube roots of unity,
 /// and they correspond to each other via the endomorphism relationship.
@@ -138,14 +138,14 @@ impl<F: PrimeField> ScalarChallenge<F> {
     ///
     /// # Background
     ///
-    /// For curves with an endomorphism φ(P) = [λ]P, we can represent any scalar
-    /// k as:
+    /// For curves with an endomorphism `φ(P) = [λ]P`, we can represent any scalar
+    /// `k` as:
     ///
     ///   k = a·λ + b
     ///
     /// This allows efficient scalar multiplication because:
     ///
-    ///   [k]P = [a·λ + b]P = [a]·φ(P) + [b]·P
+    ///   `[k]P = [a·λ + b]P = [a]·φ(P) + [b]·P`
     ///
     /// Since φ(P) = (ξ·x, y) is essentially free (one field multiplication),
     /// we reduce the scalar multiplication cost by processing two scalar
@@ -171,7 +171,7 @@ impl<F: PrimeField> ScalarChallenge<F> {
     /// # Parameters
     ///
     /// - `length_in_bits`: Number of bits to process from the challenge
-    /// - `endo_coeff`: The scalar λ such that φ(P) = [λ]P
+    /// - `endo_coeff`: The scalar λ such that `φ(P) = [λ]P`
     ///
     /// # Returns
     ///

@@ -73,7 +73,7 @@ where
 ///
 /// This endomorphism corresponds to scalar multiplication by λ:
 ///
-///   φ(P) = [λ]P
+///   φ(P) = \[λ\]P
 ///
 /// where λ is a primitive cube root of unity in the scalar field.
 ///
@@ -81,7 +81,7 @@ where
 ///
 /// A tuple `(endo_q, endo_r)` where:
 /// - `endo_q` (ξ): cube root of unity in the base field F_q, used to compute φ(P)
-/// - `endo_r` (λ): the corresponding scalar in F_r such that φ(P) = [λ]P
+/// - `endo_r` (λ): the corresponding scalar in F_r such that φ(P) = \[λ\]P
 ///
 /// # Mathematical Background
 ///
@@ -91,7 +91,7 @@ where
 /// Since there are two primitive cube roots of unity (ξ and ξ²), the function
 /// verifies which one corresponds to the endomorphism by checking:
 ///
-///   [potential_λ]G == φ(G)
+///   \[potential_λ\]G == φ(G)
 ///
 /// If not, it uses λ = potential_λ² instead.
 ///
@@ -156,7 +156,7 @@ impl<G: CommitmentCurve> SRS<G> {
     ///
     /// This IPA verification method is primarily designed for integration into
     /// recursive proof systems like Pickles. In recursive proofs, IPA verification
-    /// is deferred by storing accumulators ([`RecursionChallenge`](kimchi::proof::RecursionChallenge))
+    /// is deferred by storing accumulators (`RecursionChallenge`)
     /// rather than verifying immediately in-circuit. This method performs the final
     /// out-of-circuit verification of those accumulators.
     ///
