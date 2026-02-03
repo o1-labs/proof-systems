@@ -120,9 +120,6 @@ pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants, const FULL_ROUNDS: u
 ) {
     if SC::PERM_HALF_ROUNDS_FULL == 0 {
         if SC::PERM_INITIAL_ARK {
-            // maintaining previous invariants
-            assert!(params.round_constants[0].len() <= state.len());
-
             state
                 .iter_mut()
                 .zip(params.round_constants[0].iter())
