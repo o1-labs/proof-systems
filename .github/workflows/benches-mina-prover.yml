@@ -21,7 +21,7 @@ jobs:
 
       - name: Download artifact
         id: download-artifact
-        uses: dawidd6/action-download-artifact@v12
+        uses: dawidd6/action-download-artifact@v14
         with:
           workflow: benches-mina-prover-set-baseline.yml
           name: criterion-ps-mina-master-baseline
