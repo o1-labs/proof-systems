@@ -13,6 +13,8 @@ and this project adheres to
 
 #### Changed
 
+- Bump secp256k1 from 0.28.2 to 0.31.1
+  ([#3470](https://github.com/o1-labs/proof-systems/pull/3470))
 - Bump strum from 0.26.1 to 0.27.2
   ([#3457](https://github.com/o1-labs/proof-systems/pull/3457))
 - Bump env_logger from 0.11.1 to 0.11.6
