@@ -49,7 +49,7 @@ and this project adheres to
 
 #### Added
 
-- Added regression tests for the behavior of padding inside Poseidon instances
+- Added test for the behavior of padding inside Poseidon circuits
   ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
 
 ### [mina-poseidon](./poseidon)
@@ -69,6 +69,9 @@ and this project adheres to
 - Propagate the usage of `new` in all the crate
   ([#3450](https://github.com/o1-labs/proof-systems/pull/3450)).
 - Add documentation for the `poseidon_block_cipher` function
+  ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
+- Add check that the state input length of `poseidon_block_cipher` is
+  `SC::SPONGE_WIDTH` (e.g. 3)
   ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
 
 ### plonk_neon
