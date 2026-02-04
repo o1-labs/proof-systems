@@ -13,6 +13,8 @@ and this project adheres to
 
 #### Changed
 
+- Bump raw-cpuid from 11.5.0 to 11.6.0
+  ([#3460](https://github.com/o1-labs/proof-systems/pull/3460))
 - Bump thiserror from 2.0.12 to 2.0.18
   ([#3459](https://github.com/o1-labs/proof-systems/pull/3459))
 
