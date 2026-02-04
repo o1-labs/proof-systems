@@ -210,6 +210,8 @@ fn test_poseidon_challenge_multiple_times_without_absorption() {
     }
 }
 
+// Test that absorbing inputs with trailing zeros padding produces the same
+// result as absorbing the unpadded inputs until reaching an even length input
 #[test]
 fn test_poseidon_padding() {
     let mut sponge_1 =
