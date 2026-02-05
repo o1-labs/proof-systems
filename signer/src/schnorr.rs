@@ -71,7 +71,7 @@ impl<H: 'static + Hashable> Signer<H> for Schnorr<H> {
         let k: ScalarField = if r.y.into_bigint().is_even() { k } else { -k };
 
         let e: ScalarField = self.message_hash(&kp.public, r.x, input);
-        let s: ScalarField = k + e * kp.secret.scalar();
+        let s: ScalarField = k + e * kp.secret_key().scalar();
 
         Signature::new(r.x, s)
     }
@@ -184,7 +184,7 @@ impl<H: 'static + Hashable> Schnorr<H> {
                 // Convert scalar to base field with explicit wraparound (modular reduction)
                 // This replicates the "Field.project" method with unpack from the OCaml implementation
 
-                let secret_biguint: BigUint = kp.secret.scalar().into_bigint().into();
+                let secret_biguint: BigUint = kp.secret_key().scalar().into_bigint().into();
                 let modulus = BaseField::MODULUS.into();
                 if secret_biguint >= modulus {
                     // Reduce modulo base field modulus
@@ -279,7 +279,7 @@ impl<H: 'static + Hashable> Schnorr<H> {
             .to_roinput()
             .append_field(kp.public.point().x)
             .append_field(kp.public.point().y)
-            .append_scalar(*kp.secret.scalar())
+            .append_scalar(*kp.secret_key().scalar())
             .append_bytes(&self.domain_param.clone().into_bytes());
 
         blake_hasher.update(&roi.to_bytes());

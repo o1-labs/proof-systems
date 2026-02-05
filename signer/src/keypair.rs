@@ -27,10 +27,14 @@ pub enum KeypairError {
 pub type Result<T> = core::result::Result<T, KeypairError>;
 
 /// Keypair structure
+///
+/// The secret key is intentionally private to prevent accidental exposure
+/// through logging or serialization. Use [`secret_key()`](Self::secret_key)
+/// to access it when needed.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Keypair {
-    /// Secret key
-    pub secret: SecKey,
+    /// Secret key (private to prevent accidental exposure)
+    secret: SecKey,
     /// Public key
     pub public: PubKey,
 }
@@ -43,6 +47,17 @@ impl Keypair {
             secret: SecKey::new(secret),
             public: PubKey::from_point_unsafe(public),
         }
+    }
+
+    /// Returns a reference to the secret key.
+    ///
+    /// # Security
+    ///
+    /// Handle the returned secret key with care. Avoid logging, printing,
+    /// or transmitting it unless absolutely necessary for cryptographic
+    /// operations.
+    pub fn secret_key(&self) -> &SecKey {
+        &self.secret
     }
 
     /// Create keypair from secret key
