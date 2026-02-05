@@ -169,7 +169,7 @@ impl<H: 'static + Hashable> Schnorr<H> {
     ///   key)
     /// - Is compatible with existing Mina protocol implementations
     pub fn derive_nonce_chunked(&self, kp: &Keypair, input: &H) -> ScalarField {
-        let mut blake_hasher = Blake2bVar::new(32).unwrap();
+        let mut blake_hasher = Blake2bVar::new(32).expect("BLAKE2b-256 output size is valid");
 
         // Create ROInput with message + [px, py, private_key_as_field] +
         // network_id_packed
@@ -282,7 +282,7 @@ impl<H: 'static + Hashable> Schnorr<H> {
     /// that depends on the private key, public key, message, and network
     /// context.
     fn derive_nonce_legacy(&self, kp: &Keypair, input: &H) -> ScalarField {
-        let mut blake_hasher = Blake2bVar::new(32).unwrap();
+        let mut blake_hasher = Blake2bVar::new(32).expect("BLAKE2b-256 output size is valid");
 
         let roi = input
             .to_roinput()
