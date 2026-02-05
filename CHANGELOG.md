@@ -69,6 +69,8 @@ and this project adheres to
   parameter in `Signer::sign()`, aligned with OCaml `Message.Legacy` and
   `Message.Chunked` naming
   ([#3474](https://github.com/o1-labs/proof-systems/pull/3474))
+- Add `TryFrom<SecKey>` implementation for `Keypair` for idiomatic Rust
+  conversions ([#3473](https://github.com/o1-labs/proof-systems/pull/3473))
 
 #### Changed
 
@@ -80,6 +82,12 @@ and this project adheres to
   ([#3474](https://github.com/o1-labs/proof-systems/pull/3474))
 - Replace `.unwrap()` with `.expect()` in BLAKE2b hasher creation for better
   error messages ([#3472](https://github.com/o1-labs/proof-systems/pull/3472))
+
+#### Deprecated
+
+- Deprecate `Keypair::from_secret_key()` in favor of `Keypair::try_from()`, will
+  be removed in 0.5.0
+  ([#3473](https://github.com/o1-labs/proof-systems/pull/3473))
 
 ### [mina-poseidon](./poseidon)
 
