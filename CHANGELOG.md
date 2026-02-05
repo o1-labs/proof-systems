@@ -69,6 +69,8 @@ and this project adheres to
 - Rename internal nonce derivation methods: `derive_nonce_compatible` →
   `derive_nonce_chunked`, `derive_nonce` → `derive_nonce_legacy`
   ([#3474](https://github.com/o1-labs/proof-systems/pull/3474))
+- Replace `.unwrap()` with `.expect()` in BLAKE2b hasher creation for better
+  error messages ([#3472](https://github.com/o1-labs/proof-systems/pull/3472))
 
 ### [mina-poseidon](./poseidon)
 
