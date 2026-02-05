@@ -45,6 +45,13 @@ and this project adheres to
 - Add `no_std` support
   ([#3415](https://github.com/o1-labs/proof-systems/pull/3415))
 
+### [kimchi](./kimchi)
+
+#### Added
+
+- Added test for the behavior of padding inside Poseidon circuits
+  ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
+
 ### [mina-poseidon](./poseidon)
 
 #### Added
@@ -61,6 +68,11 @@ and this project adheres to
   ([#3450](https://github.com/o1-labs/proof-systems/pull/3450)).
 - Propagate the usage of `new` in all the crate
   ([#3450](https://github.com/o1-labs/proof-systems/pull/3450)).
+- Add documentation for the `poseidon_block_cipher` function
+  ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
+- Add check that the state input length of `poseidon_block_cipher` is
+  `SC::SPONGE_WIDTH` (e.g. 3)
+  ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
 
 ### plonk_neon
 
@@ -119,6 +131,11 @@ and this project adheres to
 - Update `verify_poseidon`, `generate_witness` and other sponge-dependent
   functions to be generic over the number of full rounds.
   ([#3386](https://github.com/o1-labs/proof-systems/pull/3386))
+
+#### Added
+
+- Added regression tests for the behavior of padding inside Poseidon instances
+  ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
 
 ### [kimchi-msm](./msm)
 

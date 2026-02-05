@@ -122,6 +122,13 @@ pub fn half_rounds<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize>(
 /// * `state` - The state array to permute in place. Must have length
 ///   [`SpongeConstants::SPONGE_WIDTH`] (e.g., `3` for
 ///   [`PlonkSpongeConstantsKimchi`](crate::constants::PlonkSpongeConstantsKimchi)).
+///
+/// # Security
+///
+/// **NOTE:** Because this function can only be called with fixed-length input
+/// states of length [`SpongeConstants::SPONGE_WIDTH`], the function will not
+/// incur in trailing-zeros padding type of collisions.
+///
 pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize>(
     params: &ArithmeticSpongeParams<F, FULL_ROUNDS>,
     state: &mut [F],

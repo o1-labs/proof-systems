@@ -1,5 +1,5 @@
 use ark_ec::AffineRepr;
-use ark_ff::{Field, UniformRand};
+use ark_ff::{Field, UniformRand, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, PlonkSpongeConstantsLegacy},
@@ -208,4 +208,31 @@ fn test_poseidon_challenge_multiple_times_without_absorption() {
         );
         challenges.push(chal);
     }
+}
+
+// Test that absorbing inputs with trailing zeros padding produces the same
+// result as absorbing the unpadded inputs until reaching an even length input
+#[test]
+fn test_poseidon_padding() {
+    let mut sponge_1 =
+        DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>::new(
+            fq_kimchi::static_params(),
+        );
+    let input = [Fq::from(1_u32), Fq::from(2_u32), Fq::from(3_u32)];
+    let input_padded = [
+        Fq::from(1_u32),
+        Fq::from(2_u32),
+        Fq::from(3_u32),
+        Fq::zero(),
+    ];
+
+    let mut sponge_2 =
+        DefaultFqSponge::<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>::new(
+            fq_kimchi::static_params(),
+        );
+
+    sponge_1.sponge.absorb(&input[..]);
+    sponge_2.sponge.absorb(&input_padded[..]);
+
+    assert_eq!(sponge_1.challenge(), sponge_2.challenge());
 }

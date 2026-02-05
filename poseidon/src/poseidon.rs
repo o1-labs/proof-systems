@@ -98,6 +98,12 @@ impl<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize> Sponge<F, F, FULL_
         }
     }
 
+    /// Absorb an array of field elements `x` into the sponge.
+    ///
+    /// # Security
+    /// **WARNING:** This function produces collisions when inputs differ only
+    /// in trailing zeros until reaching an even length input. Therefore, **use
+    /// only with inputs of fixed-length**.
     fn absorb(&mut self, x: &[F]) {
         for x in x.iter() {
             match self.sponge_state {
