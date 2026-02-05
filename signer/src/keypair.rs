@@ -62,7 +62,7 @@ impl Keypair {
 
     /// Create keypair from secret key
     pub fn from_secret_key(secret_key: SecKey) -> Result<Self> {
-        let public = PubKey::from_secret_key(secret_key.clone())?;
+        let public = PubKey::from_secret_key(&secret_key)?;
 
         // Safe now because PubKey::from_secret_key() checked point is on the curve
         Ok(Self::from_parts_unsafe(

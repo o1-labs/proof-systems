@@ -120,12 +120,14 @@ impl PubKey {
     }
 
     /// Create public key from a secret key
-    pub fn from_secret_key(secret_key: SecKey) -> Result<Self> {
-        if secret_key.clone().into_scalar() == ScalarField::zero() {
+    ///
+    /// Takes a reference to avoid requiring callers to clone the secret key.
+    pub fn from_secret_key(secret_key: &SecKey) -> Result<Self> {
+        if *secret_key.scalar() == ScalarField::zero() {
             return Err(PubKeyError::SecKey);
         }
         let pt = CurvePoint::generator()
-            .mul(secret_key.into_scalar())
+            .mul(*secret_key.scalar())
             .into_affine();
         if !pt.is_on_curve() {
             return Err(PubKeyError::NonCurvePoint);
