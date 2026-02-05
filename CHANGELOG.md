@@ -116,6 +116,12 @@ and this project adheres to
 - **Breaking**: Make `secret` field in `Keypair` private to prevent accidental
   exposure; use `secret_key()` accessor instead
   ([#3475](https://github.com/o1-labs/proof-systems/pull/3475))
+- **Breaking**: `PubKey::from_secret_key` now takes `&SecKey` instead of
+  `SecKey` to avoid unnecessary cloning
+  ([#3476](https://github.com/o1-labs/proof-systems/pull/3476))
+- Add `BLAKE2B_OUTPUT_SIZE` constant and replace `.unwrap()` with `.expect()` in
+  nonce derivation functions
+  ([#3476](https://github.com/o1-labs/proof-systems/pull/3476))
 
 ### plonk_neon
 
