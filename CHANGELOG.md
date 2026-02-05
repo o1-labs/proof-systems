@@ -74,6 +74,14 @@ and this project adheres to
   `SC::SPONGE_WIDTH` (e.g. 3)
   ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
 
+### [mina-signer](./signer)
+
+#### Changed
+
+- **Breaking**: Make `secret` field in `Keypair` private to prevent accidental
+  exposure; use `secret_key()` accessor instead
+  ([#3475](https://github.com/o1-labs/proof-systems/pull/3475))
+
 ### plonk_neon
 
 #### Removed
