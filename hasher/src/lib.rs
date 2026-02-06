@@ -1,4 +1,8 @@
 #![deny(missing_docs)]
+#![deny(unsafe_code)]
+#![deny(clippy::all)]
+#![deny(clippy::pedantic)]
+#![deny(clippy::nursery)]
 #![doc = include_str!("../README.md")]
 #![no_std]
 
@@ -172,7 +176,7 @@ pub trait Hasher<H: Hashable> {
 /// right-padded with asterisks (`*`) to reach 20 characters before
 /// conversion to a field element. For example, `"CodaSignature"` becomes
 /// `"CodaSignature*******"`.
-fn domain_prefix_to_field<F: PrimeField>(prefix: String) -> F {
+fn domain_prefix_to_field<F: PrimeField>(prefix: &str) -> F {
     assert!(prefix.len() <= MAX_DOMAIN_STRING_LEN);
     let prefix = &prefix[..core::cmp::min(prefix.len(), MAX_DOMAIN_STRING_LEN)];
     let mut bytes = format!("{prefix:*<MAX_DOMAIN_STRING_LEN$}")
@@ -187,7 +191,7 @@ pub fn create_legacy<H: Hashable>(domain_param: H::D) -> PoseidonHasherLegacy<H>
     poseidon::new_legacy::<H>(domain_param)
 }
 
-/// Create a kimchi hasher context for ZkApp signing (Berkeley upgrade)
+/// Create a kimchi hasher context for `ZkApp` signing (Berkeley upgrade)
 pub fn create_kimchi<H: Hashable>(domain_param: H::D) -> PoseidonHasherKimchi<H>
 where
     H::D: DomainParameter,
@@ -198,12 +202,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::string::ToString;
 
     #[test]
     fn test_domain_prefix_padding_short_string() {
         // "CodaSignature" (13 chars) should be padded to "CodaSignature*******"
-        let result: Fp = domain_prefix_to_field("CodaSignature".to_string());
+        let result: Fp = domain_prefix_to_field("CodaSignature");
         let bytes = result.to_bytes();
         let padded = &bytes[..MAX_DOMAIN_STRING_LEN];
         assert_eq!(padded, b"CodaSignature*******");
@@ -212,7 +215,7 @@ mod tests {
     #[test]
     fn test_domain_prefix_padding_exact_length() {
         // Exactly 20 chars should not be padded
-        let result: Fp = domain_prefix_to_field("MinaSignatureMainnet".to_string());
+        let result: Fp = domain_prefix_to_field("MinaSignatureMainnet");
         let bytes = result.to_bytes();
         let padded = &bytes[..MAX_DOMAIN_STRING_LEN];
         assert_eq!(padded, b"MinaSignatureMainnet");
@@ -221,7 +224,7 @@ mod tests {
     #[test]
     fn test_domain_prefix_padding_empty_string() {
         // Empty string should become 20 asterisks
-        let result: Fp = domain_prefix_to_field("".to_string());
+        let result: Fp = domain_prefix_to_field("");
         let bytes = result.to_bytes();
         let padded = &bytes[..MAX_DOMAIN_STRING_LEN];
         assert_eq!(padded, b"********************");
@@ -230,8 +233,8 @@ mod tests {
     #[test]
     fn test_domain_prefix_same_result_with_or_without_padding() {
         // Pre-padded and un-padded versions should produce the same result
-        let unpadded: Fp = domain_prefix_to_field("CodaSignature".to_string());
-        let prepadded: Fp = domain_prefix_to_field("CodaSignature*******".to_string());
+        let unpadded: Fp = domain_prefix_to_field("CodaSignature");
+        let prepadded: Fp = domain_prefix_to_field("CodaSignature*******");
         assert_eq!(unpadded, prepadded);
     }
 
@@ -239,6 +242,6 @@ mod tests {
     #[should_panic]
     fn test_domain_prefix_too_long() {
         // Strings longer than 20 chars should panic
-        let _: Fp = domain_prefix_to_field("ThisStringIsTooLongForDomain".to_string());
+        let _: Fp = domain_prefix_to_field("ThisStringIsTooLongForDomain");
     }
 }

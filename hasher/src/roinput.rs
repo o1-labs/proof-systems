@@ -12,9 +12,9 @@ use bitvec::{prelude::*, view::AsBits};
 use mina_curves::pasta::{Fp, Fq};
 use o1_utils::FieldHelpers;
 
-/// Total number of bytes for the header of the serialized ROInput
+/// Total number of bytes for the header of the serialized [`ROInput`].
 const SER_HEADER_SIZE: usize = 8;
-/// Number of bytes for each part of the header of the serialized ROInput
+/// Number of bytes for each part of the header of the serialized [`ROInput`].
 const SINGLE_HEADER_SIZE: usize = 4;
 
 /// Random oracle input structure
@@ -73,26 +73,30 @@ pub struct ROInput {
 
 impl ROInput {
     /// Create a new empty random oracle input
+    #[must_use]
     pub fn new() -> Self {
-        ROInput {
+        Self {
             fields: vec![],
             bits: BitVec::new(),
         }
     }
 
-    /// Append a `Hashable` input
+    /// Append a [`Hashable`] input
+    #[must_use]
     pub fn append_hashable(self, input: &impl Hashable) -> Self {
         self.append_roinput(input.to_roinput())
     }
 
     /// Append another random oracle input
-    pub fn append_roinput(mut self, mut roi: ROInput) -> Self {
+    #[must_use]
+    pub fn append_roinput(mut self, mut roi: Self) -> Self {
         self.fields.append(&mut roi.fields);
         self.bits.extend(roi.bits);
         self
     }
 
     /// Append a base field element
+    #[must_use]
     pub fn append_field(mut self, f: Fp) -> Self {
         self.fields.push(f);
         self
@@ -138,6 +142,7 @@ impl ROInput {
     ///
     /// All scalar field values, including the maximum value (modulus - 1),
     /// will fit exactly in 255 bits and can be safely appended.
+    #[must_use]
     pub fn append_scalar(mut self, s: Fq) -> Self {
         // mina scalars are 255 bits
         let bytes = s.to_bytes();
@@ -147,28 +152,33 @@ impl ROInput {
     }
 
     /// Append a single bit
+    #[must_use]
     pub fn append_bool(mut self, b: bool) -> Self {
         self.bits.push(b);
         self
     }
 
     /// Append bytes
+    #[must_use]
     pub fn append_bytes(mut self, bytes: &[u8]) -> Self {
         self.bits.extend_from_bitslice(bytes.as_bits::<Lsb0>());
         self
     }
 
     /// Append a 32-bit unsigned integer
+    #[must_use]
     pub fn append_u32(self, x: u32) -> Self {
         self.append_bytes(&x.to_le_bytes())
     }
 
     /// Append a 64-bit unsigned integer
+    #[must_use]
     pub fn append_u64(self, x: u64) -> Self {
         self.append_bytes(&x.to_le_bytes())
     }
 
     /// Serialize random oracle input to bytes
+    #[must_use]
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bits: BitVec<u8> = self.fields.iter().fold(BitVec::new(), |mut acc, fe| {
             acc.extend_from_bitslice(
@@ -186,6 +196,11 @@ impl ROInput {
     /// Convert the random oracle input to a vector of packed field elements
     /// by packing the bits into field elements and appending them to the fields.
     /// The bits are packed by taking chunks of size `Fp::MODULUS_BIT_SIZE - 1`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a bit chunk cannot be converted to a valid base field element.
+    #[must_use]
     pub fn to_fields(&self) -> Vec<Fp> {
         let mut fields: Vec<Fp> = self.fields.clone();
 
@@ -226,9 +241,12 @@ impl ROInput {
         fields
     }
 
-    /// Serialize the ROInput into bytes
+    /// Serialize the [`ROInput`](Self) into bytes
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
     pub fn serialize(&self) -> Vec<u8> {
         // 4-byte LE field count, 4-byte LE bit count, then payload
+        // Truncation is safe: field/bit counts cannot realistically exceed u32::MAX
         let fields_len = self.fields.len() as u32;
         let bits_len = self.bits.len() as u32;
 
@@ -239,7 +257,18 @@ impl ROInput {
         bytes
     }
 
-    /// Deserialize a `ROInput` from bytes
+    /// Deserialize a [`ROInput`](Self) from bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error`] if the input is too short, the header lengths are
+    /// inconsistent with the payload size, or a field element cannot be
+    /// reconstructed from the bits.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the header slice conversion to a fixed-size array fails
+    /// (unreachable after the length check).
     pub fn deserialize(input: &[u8]) -> Result<Self, Error> {
         if input.len() < SER_HEADER_SIZE {
             return Err(Error);
@@ -281,7 +310,7 @@ impl ROInput {
         // Delete the final bits according to the bits length
         let bits = remainder.iter().take(bits_len).collect::<BitVec<u8>>();
 
-        let roi = ROInput { fields, bits };
+        let roi = Self { fields, bits };
 
         Ok(roi)
     }
