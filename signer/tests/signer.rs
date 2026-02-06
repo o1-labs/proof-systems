@@ -360,7 +360,7 @@ fn test_poseidon_initial_state_network_kimchi() {
 
 #[test]
 fn sign_fields_test() {
-    let kp = Keypair::from_secret_key(
+    let kp = Keypair::try_from(
         SecKey::from_base58("EKFXH5yESt7nsD1TJy5WNb4agVczkvzPRVexKQ8qYdNqauQRA8Ef")
             .expect("failed to create secret key"),
     )
@@ -416,7 +416,7 @@ fn test_scalar_to_base_field_overflow() {
 
     // Create a keypair with a large scalar value to test derive_nonce_chunked
     let large_secret = SecKey::new(scalar_field_modulus_minus_diff);
-    let kp = Keypair::from_secret_key(large_secret).unwrap();
+    let kp = Keypair::try_from(large_secret).unwrap();
 
     let input = Input {
         fields: vec![BaseField::from(1), BaseField::from(2), BaseField::from(3)],
@@ -444,7 +444,7 @@ fn test_base_field_modulus_minus_one_works() {
 
     // Create a keypair with a large scalar value to test derive_nonce_chunked
     let large_secret = SecKey::new(base_field_modulus_minus_one);
-    let kp = Keypair::from_secret_key(large_secret).unwrap();
+    let kp = Keypair::try_from(large_secret).unwrap();
 
     let input = Input {
         fields: vec![BaseField::from(1), BaseField::from(2), BaseField::from(3)],
@@ -464,7 +464,7 @@ fn test_base_field_modulus_minus_one_works() {
 #[test]
 pub fn test_mainnet_compatibility_derive_nonce_chunked_empty_input() {
     let privkey1 = ScalarField::from(12345u64);
-    let kp = Keypair::from_secret_key(SecKey::new(privkey1)).unwrap();
+    let kp = Keypair::try_from(SecKey::new(privkey1)).unwrap();
 
     let input = Input { fields: vec![] };
     let domain_param = NetworkId::MAINNET;
@@ -482,7 +482,7 @@ pub fn test_mainnet_compatibility_derive_nonce_chunked_empty_input() {
 #[test]
 pub fn test_mainnet_compatibility_derive_nonce_chunked_single_field() {
     let privkey = ScalarField::from(98765u64);
-    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let kp = Keypair::try_from(SecKey::new(privkey)).unwrap();
     let input = Input {
         fields: vec![BaseField::from(42u64)],
     };
@@ -501,7 +501,7 @@ pub fn test_mainnet_compatibility_derive_nonce_chunked_single_field() {
 #[test]
 pub fn test_mainnet_compatibility_derive_nonce_chunked_multiple_fields() {
     let privkey = ScalarField::from(12345u64);
-    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let kp = Keypair::try_from(SecKey::new(privkey)).unwrap();
     let input = Input {
         fields: vec![
             BaseField::from(1u64),
@@ -526,7 +526,7 @@ pub fn test_mainnet_compatibility_derive_nonce_chunked_multiple_fields() {
 #[test]
 pub fn test_mainnet_compatibility_corner_case() {
     let privkey = -ScalarField::from(1u64);
-    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let kp = Keypair::try_from(SecKey::new(privkey)).unwrap();
     let input = Input {
         fields: vec![BaseField::from(1000u64)],
     };
@@ -547,7 +547,7 @@ pub fn test_mainnet_compatibility_corner_case() {
 #[test]
 pub fn test_testnet_compatibility_derive_nonce_chunked_empty_input() {
     let privkey1 = ScalarField::from(12345u64);
-    let kp = Keypair::from_secret_key(SecKey::new(privkey1)).unwrap();
+    let kp = Keypair::try_from(SecKey::new(privkey1)).unwrap();
 
     let input = Input { fields: vec![] };
     let domain_param = NetworkId::TESTNET;
@@ -566,7 +566,7 @@ pub fn test_testnet_compatibility_derive_nonce_chunked_empty_input() {
 #[test]
 pub fn test_testnet_compatibility_derive_nonce_chunked_single_field() {
     let privkey = ScalarField::from(98765u64);
-    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let kp = Keypair::try_from(SecKey::new(privkey)).unwrap();
     let input = Input {
         fields: vec![BaseField::from(42u64)],
     };
@@ -586,7 +586,7 @@ pub fn test_testnet_compatibility_derive_nonce_chunked_single_field() {
 #[test]
 pub fn test_testnet_compatibility_derive_nonce_chunked_multiple_fields() {
     let privkey = ScalarField::from(12345u64);
-    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let kp = Keypair::try_from(SecKey::new(privkey)).unwrap();
     let input = Input {
         fields: vec![
             BaseField::from(1u64),
@@ -612,7 +612,7 @@ pub fn test_testnet_compatibility_derive_nonce_chunked_multiple_fields() {
 #[test]
 pub fn test_testnet_compatibility_corner_case() {
     let privkey = -ScalarField::from(1u64);
-    let kp = Keypair::from_secret_key(SecKey::new(privkey)).unwrap();
+    let kp = Keypair::try_from(SecKey::new(privkey)).unwrap();
     let input = Input {
         fields: vec![BaseField::from(1000u64)],
     };
