@@ -243,6 +243,16 @@ and this project adheres to
 - Add `into_domain_string()` method to `NetworkId` for domain string conversion
   ([#3428](https://github.com/o1-labs/proof-systems/pull/3428))
 
+### [mina-tx-type](./mina-tx-type)
+
+#### Added
+
+- New crate providing `no_std` compatible Mina transaction types for external
+  use (hardware wallets, WASM). Implements
+  [o1-labs/mina-rust#1824](https://github.com/o1-labs/mina-rust/issues/1824).
+- Currency types: `Amount`, `Fee`, `Signed<T>`, `Sign`, `Magnitude` trait
+- Transaction types: `Coinbase`, `CoinbaseFeeTransfer`
+
 ### [mvpoly](./mvpoly)
 
 #### Changed

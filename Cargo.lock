@@ -1856,6 +1856,7 @@ dependencies = [
  "bs58",
  "hex",
  "sha2",
+ "subtle",
  "thiserror 2.0.18",
 ]
 
@@ -1927,6 +1928,13 @@ dependencies = [
  "serde",
  "sha2",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "mina-tx-type"
+version = "0.3.0"
+dependencies = [
+ "mina-signer",
 ]
 
 [[package]]
