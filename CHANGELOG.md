@@ -250,8 +250,7 @@ and this project adheres to
 - New crate providing `no_std` compatible Mina transaction types for external
   use (hardware wallets, WASM). Implements
   [o1-labs/mina-rust#1824](https://github.com/o1-labs/mina-rust/issues/1824).
-- Currency types: `Amount`, `Fee`, `Signed<T>`, `Sgn`, `Magnitude` trait,
-  `MinMax` trait
+- Currency types: `Amount`, `Fee`, `Signed<T>`, `Sign`, `Magnitude` trait
 - Transaction types: `Coinbase`, `CoinbaseFeeTransfer`
 
 ### [mvpoly](./mvpoly)
