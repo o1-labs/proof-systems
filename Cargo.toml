@@ -102,6 +102,7 @@ kimchi = { path = "./kimchi", features = ["bn254"] }
 kimchi-msm = { path = "./msm" }
 kimchi-stubs = { path = "./kimchi-stubs" }
 kimchi-visu = { path = "./tools/kimchi-visu" }
+mina-base58 = { path = "./crates/mina-base58" }
 mina-curves = { path = "./curves", features = ["asm"] }
 mina-hasher = { path = "./hasher" }
 mina-poseidon = { path = "./poseidon" }
