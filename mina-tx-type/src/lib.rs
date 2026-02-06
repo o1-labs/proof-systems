@@ -68,7 +68,7 @@ pub mod zkapp_command;
 pub use coinbase::{Coinbase, CoinbaseFeeTransfer};
 pub use common::{ClosedInterval, OneOrTwo, OrIgnore, SetOrKeep};
 pub use currency::{
-    Amount, Balance, Fee, Length, Magnitude, Nonce, Sgn, Signed, Slot, SlotSpan, TxnVersion,
+    Amount, Balance, Fee, Length, Magnitude, Nonce, Sign, Signed, Slot, SlotSpan, TxnVersion,
 };
 pub use fee_transfer::{FeeTransfer, SingleFeeTransfer};
 pub use permissions::{AuthRequired, Permissions, SetVerificationKey};
