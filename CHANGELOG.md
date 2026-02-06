@@ -52,6 +52,24 @@ and this project adheres to
 - Added test for the behavior of padding inside Poseidon circuits
   ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
 
+### [mina-signer](./signer)
+
+#### Added
+
+- Add `NonceMode` enum (`Legacy`, `Chunked`) to replace boolean `packed`
+  parameter in `Signer::sign()`, aligned with OCaml `Message.Legacy` and
+  `Message.Chunked` naming
+  ([#3474](https://github.com/o1-labs/proof-systems/pull/3474))
+
+#### Changed
+
+- **Breaking**: Replace boolean `packed` parameter with `NonceMode` enum in
+  `Signer::sign()` method
+  ([#3474](https://github.com/o1-labs/proof-systems/pull/3474))
+- Rename internal nonce derivation methods: `derive_nonce_compatible` →
+  `derive_nonce_chunked`, `derive_nonce` → `derive_nonce_legacy`
+  ([#3474](https://github.com/o1-labs/proof-systems/pull/3474))
+
 ### [mina-poseidon](./poseidon)
 
 #### Added

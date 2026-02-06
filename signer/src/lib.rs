@@ -72,6 +72,35 @@ impl DomainParameter for NetworkId {
     }
 }
 
+/// Nonce derivation mode for signature generation.
+///
+/// Controls how the deterministic nonce is derived during signing.
+/// Different transaction types require different nonce derivation methods.
+///
+/// These modes correspond to the `Message.Legacy` and `Message.Chunked` modules
+/// in the OCaml Mina implementation (`src/lib/crypto/signature_lib/schnorr.ml`).
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub enum NonceMode {
+    /// Legacy nonce derivation for user commands.
+    ///
+    /// Use this mode for legacy Mina transactions (user commands) such as
+    /// payments and delegations. This corresponds to `Message.Legacy` in
+    /// the OCaml implementation.
+    ///
+    /// Uses direct byte serialization (`ROInput.to_bytes()`) for nonce derivation.
+    Legacy,
+
+    /// Chunked nonce derivation for zkApp transactions.
+    ///
+    /// Use this mode for zkApp transactions. This mode is compatible with
+    /// o1js and uses field packing for nonce derivation. This corresponds
+    /// to `Message.Chunked` in the OCaml implementation.
+    ///
+    /// Uses field packing (`ROInput.to_fields()`) then bit conversion for
+    /// nonce derivation.
+    Chunked,
+}
+
 /// Interface for signed objects
 ///
 /// Signer interface for signing [`Hashable`] inputs and verifying
@@ -85,25 +114,14 @@ pub trait Signer<H: Hashable> {
     ///
     /// * `kp` - The keypair to use for signing
     /// * `input` - The message to sign (must implement [`Hashable`])
-    /// * `packed` - Controls nonce derivation method:
-    ///   - `true`: Use OCaml/TypeScript compatible nonce derivation with field
-    ///     packing
-    ///   - `false`: Use standard Rust nonce derivation
+    /// * `nonce_mode` - Controls nonce derivation method:
+    ///   - [`NonceMode::Legacy`]: For user commands (payments, delegations)
+    ///   - [`NonceMode::Chunked`]: For zkApp transactions (o1js compatible)
     ///
     /// # Returns
     ///
     /// A [`Signature`] over the input message.
-    ///
-    /// # Compatibility
-    ///
-    /// Use `packed: true` when compatibility with OCaml and TypeScript
-    /// implementations is required. Use `packed: false` for standard Rust-only
-    /// usage.
-    ///
-    /// **Note**: The standard nonce derivation (`packed: false`) will be
-    /// deprecated in future versions. Use `packed: true` for new code to ensure
-    /// forward compatibility.
-    fn sign(&mut self, kp: &Keypair, input: &H, packed: bool) -> Signature;
+    fn sign(&mut self, kp: &Keypair, input: &H, nonce_mode: NonceMode) -> Signature;
 
     /// Verify that the signature `sig` on `input` (see [`Hashable`]) is signed
     /// with the secret key corresponding to `pub_key`.

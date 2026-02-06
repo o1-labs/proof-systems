@@ -38,7 +38,7 @@ transactions.
 mod transaction;
 
 use rand;
-use mina_signer::{NetworkId, Keypair, PubKey, Signer};
+use mina_signer::{NetworkId, NonceMode, Keypair, PubKey, Signer};
 use transaction::Transaction;
 
 let keypair = Keypair::rand(&mut rand::rngs::OsRng).expect("failed to generate keypair");
@@ -52,7 +52,7 @@ let tx = Transaction::new_payment(
             );
 
 let mut ctx = mina_signer::create_legacy::<Transaction>(NetworkId::TESTNET);
-let sig = ctx.sign(&keypair, &tx, false);
+let sig = ctx.sign(&keypair, &tx, NonceMode::Legacy);
 assert!(ctx.verify(&sig, &keypair.public, &tx));
 ```
 
