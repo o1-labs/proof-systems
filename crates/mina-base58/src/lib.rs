@@ -38,10 +38,12 @@ pub fn checksum(data: &[u8]) -> [u8; 4] {
 /// over `[version || payload]`, appends it, and base58-encodes.
 #[must_use]
 pub fn encode(version: u8, payload: &[u8]) -> String {
-    let mut raw = Vec::with_capacity(1 + payload.len());
-    raw.push(version);
-    raw.extend_from_slice(payload);
-    encode_raw(&raw)
+    let mut buf = Vec::with_capacity(1 + payload.len() + 4);
+    buf.push(version);
+    buf.extend_from_slice(payload);
+    let cs = checksum(&buf);
+    buf.extend_from_slice(&cs);
+    bs58::encode(buf).into_string()
 }
 
 /// Decode a base58check string, returning `(version, payload)`.
@@ -50,9 +52,12 @@ pub fn encode(version: u8, payload: &[u8]) -> String {
 ///
 /// Returns an error if the input is not valid base58, is too short,
 /// or has an invalid checksum.
+#[must_use = "decoding result must be used"]
 pub fn decode(b58: &str) -> Result<(u8, Vec<u8>), DecodeError> {
-    let raw = decode_raw(b58)?;
-    Ok((raw[0], raw[1..].to_vec()))
+    let mut raw = decode_raw(b58)?;
+    let version = raw[0];
+    raw.drain(..1);
+    Ok((version, raw))
 }
 
 /// Decode a base58check string and verify the version byte.
@@ -61,6 +66,7 @@ pub fn decode(b58: &str) -> Result<(u8, Vec<u8>), DecodeError> {
 ///
 /// Returns an error if decoding fails or the version byte does not
 /// match `expected`.
+#[must_use = "decoding result must be used"]
 pub fn decode_version(b58: &str, expected: u8) -> Result<Vec<u8>, DecodeError> {
     let (version, payload) = decode(b58)?;
     if version != expected {
@@ -90,18 +96,20 @@ pub fn encode_raw(raw: &[u8]) -> String {
 ///
 /// Returns an error if the input is not valid base58, is too short,
 /// or has an invalid checksum.
+#[must_use = "decoding result must be used"]
 pub fn decode_raw(b58: &str) -> Result<Vec<u8>, DecodeError> {
-    let bytes = bs58::decode(b58)
+    let mut bytes = bs58::decode(b58)
         .into_vec()
         .map_err(|_| DecodeError::InvalidBase58)?;
     if bytes.len() < 5 {
         return Err(DecodeError::TooShort);
     }
-    let (raw, cs) = bytes.split_at(bytes.len() - 4);
-    if cs != checksum(raw) {
+    let data_len = bytes.len() - 4;
+    if bytes[data_len..] != checksum(&bytes[..data_len]) {
         return Err(DecodeError::InvalidChecksum);
     }
-    Ok(raw.to_vec())
+    bytes.truncate(data_len);
+    Ok(bytes)
 }
 
 #[cfg(test)]
