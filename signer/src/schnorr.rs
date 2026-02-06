@@ -25,7 +25,7 @@ use core::ops::{Add, Neg};
 use mina_hasher::{self, DomainParameter, Hasher, ROInput};
 use o1_utils::FieldHelpers;
 
-/// BLAKE2b output size in bytes for nonce derivation.
+/// `BLAKE2b` output size in bytes for nonce derivation.
 ///
 /// Using 256 bits (32 bytes) provides sufficient entropy for deriving
 /// a scalar field element after masking the top 2 bits.
