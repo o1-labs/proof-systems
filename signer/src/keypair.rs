@@ -75,7 +75,7 @@ impl Keypair {
     }
 
     /// Internal implementation of keypair creation from secret key.
-    /// Used by both the deprecated `from_secret_key` and `TryFrom` impl.
+    /// Used by both `TryFrom` impl and the deprecated `from_secret_key`.
     fn from_secret_key_impl(secret_key: SecKey) -> Result<Self> {
         let public = PubKey::from_secret_key(&secret_key)?;
 
