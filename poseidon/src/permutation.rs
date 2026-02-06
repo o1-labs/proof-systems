@@ -57,9 +57,9 @@ pub(crate) fn full_round<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize
     state: &mut [F],
     r: usize,
 ) {
-    state.iter_mut().for_each(|s| {
+    for s in &mut *state {
         *s = sbox::<F, SC>(*s);
-    });
+    }
     let mds = params.mds;
 
     apply_mds_matrix::<F, SC>(mds, state);

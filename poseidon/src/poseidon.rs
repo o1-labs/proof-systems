@@ -37,7 +37,7 @@ pub fn sbox<F: Field, SC: SpongeConstants>(mut x: F) -> F {
         x *= square;
         x
     } else {
-        x.pow([SC::PERM_SBOX as u64])
+        x.pow([u64::from(SC::PERM_SBOX)])
     }
 }
 
@@ -105,20 +105,20 @@ impl<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize> Sponge<F, F, FULL_
     /// in trailing zeros until reaching an even length input. Therefore, **use
     /// only with inputs of fixed-length**.
     fn absorb(&mut self, x: &[F]) {
-        for x in x.iter() {
+        for elem in x {
             match self.sponge_state {
                 SpongeState::Absorbed(n) => {
                     if n == self.rate {
                         self.poseidon_block_cipher();
                         self.sponge_state = SpongeState::Absorbed(1);
-                        self.state[0].add_assign(x);
+                        self.state[0].add_assign(elem);
                     } else {
                         self.sponge_state = SpongeState::Absorbed(n + 1);
-                        self.state[n].add_assign(x);
+                        self.state[n].add_assign(elem);
                     }
                 }
                 SpongeState::Squeezed(_n) => {
-                    self.state[0].add_assign(x);
+                    self.state[0].add_assign(elem);
                     self.sponge_state = SpongeState::Absorbed(1);
                 }
             }
