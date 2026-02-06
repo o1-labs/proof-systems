@@ -1,6 +1,8 @@
-//! This is a polyfill of the `LazyLock` type in the std library as of Rust 1.80.
+#![allow(unsafe_code)]
+//! Polyfill of the `LazyLock` type in the std library as of Rust 1.80.
+//!
 //! The current file should be deleted soon, as we now support Rust 1.81 and
-//! use the official `LazyLock`, and `LazyCache` as a wrapper around `LazyLock`
+//! use the official `LazyLock`, and [`LazyCache`] as a wrapper around `LazyLock`
 //! to allow for custom serialization definitions.
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize, Serializer};
@@ -15,14 +17,14 @@ pub struct LazyCache<T> {
     pub(crate) init: UnsafeCell<Option<LazyFn<T>>>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum LazyCacheError {
     LockPoisoned,
     UninitializedCache,
     MissingFunctionOrInitializedTwice,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum LazyCacheErrorOr<E> {
     Inner(E),
     Outer(LazyCacheError),
@@ -41,7 +43,7 @@ impl<T> LazyCache<T> {
     where
         F: FnOnce() -> T + Send + Sync + 'static,
     {
-        LazyCache {
+        Self {
             once: Once::new(),
             value: UnsafeCell::new(None),
             init: UnsafeCell::new(Some(Box::new(f))),
@@ -49,10 +51,10 @@ impl<T> LazyCache<T> {
     }
 
     /// Creates a new lazy value that is already initialized.
-    pub fn preinit(value: T) -> LazyCache<T> {
+    pub fn preinit(value: T) -> Self {
         let once = Once::new();
         once.call_once(|| {});
-        LazyCache {
+        Self {
             once,
             value: UnsafeCell::new(Some(value)),
             init: UnsafeCell::new(None),
@@ -93,6 +95,9 @@ impl<T> LazyCache<T> {
         }
     }
 
+    /// # Errors
+    ///
+    /// Returns `LazyCacheError` if initialization fails or the cache is poisoned.
     pub(crate) fn try_get(&self) -> Result<&T, LazyCacheError> {
         self.try_initialize()?;
         unsafe {
@@ -102,6 +107,9 @@ impl<T> LazyCache<T> {
         }
     }
 
+    /// # Panics
+    ///
+    /// Panics if initialization fails or the cache is poisoned.
     pub fn get(&self) -> &T {
         self.try_get().unwrap()
     }
@@ -110,6 +118,9 @@ impl<T> LazyCache<T> {
 // Wrapper to support cases where the init function might return an error that
 // needs to be handled separately (for example, LookupConstraintSystem::crate())
 impl<T, E: Clone> LazyCache<Result<T, E>> {
+    /// # Errors
+    ///
+    /// Returns `LazyCacheErrorOr` if initialization fails or the inner result is an error.
     pub fn try_get_or_err(&self) -> Result<&T, LazyCacheErrorOr<E>> {
         match self.try_get() {
             Ok(Ok(v)) => Ok(v),
@@ -160,7 +171,7 @@ where
         D: serde::Deserializer<'de>,
     {
         let value = T::deserialize(deserializer)?;
-        Ok(LazyCache::preinit(value))
+        Ok(Self::preinit(value))
     }
 }
 

@@ -23,11 +23,12 @@ pub struct ForeignElement<F: Field, const B: usize, const N: usize> {
 
 impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
     /// Creates a new foreign element from an array containing N limbs
-    pub fn new(limbs: [F; N]) -> Self {
+    pub const fn new(limbs: [F; N]) -> Self {
         Self { limbs, len: N }
     }
 
     /// Creates a new foreign element representing the value zero
+    #[must_use]
     pub fn zero() -> Self {
         Self {
             limbs: [F::zero(); N],
@@ -35,17 +36,19 @@ impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
         }
     }
 
-    /// Initializes a new foreign element from a big unsigned integer
-    /// Panics if the BigUint is too large to fit in the `N` limbs
-    pub fn from_biguint(big: BigUint) -> Self {
-        let vec = ForeignElement::<F, B, N>::big_to_vec(big);
+    /// Initializes a new foreign element from a [`BigUint`]
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `BigUint` is too large to fit in the `N` limbs.
+    #[must_use]
+    pub fn from_biguint(big: &BigUint) -> Self {
+        let vec = Self::big_to_vec(big);
 
         // create an array of N native elements containing the limbs
         // until the array is full in big endian, so most significant
         // limbs may be zero if the big number is smaller
-        if vec.len() > N {
-            panic!("BigUint element is too large for N limbs");
-        }
+        assert!(vec.len() <= N, "BigUint element is too large for N limbs");
 
         let mut limbs = [F::zero(); N];
         for (i, term) in vec.iter().enumerate() {
@@ -62,19 +65,22 @@ impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
     /// foreign element obtained corresponds to the negated input. It first converts the
     /// input big element to a big integer modulo the foreign field modulus, and then
     /// computes the negation of the result.
+    #[must_use]
     pub fn neg(&self, modulus: &BigUint) -> Self {
         let big = self.to_biguint();
         let ok = big % modulus;
         let neg = modulus - ok;
-        Self::from_biguint(neg)
+        Self::from_biguint(&neg)
     }
 
     /// Initializes a new foreign element from a set of bytes in big endian
+    #[must_use]
     pub fn from_be(bytes: &[u8]) -> Self {
-        Self::from_biguint(BigUint::from_bytes_be(bytes))
+        Self::from_biguint(&BigUint::from_bytes_be(bytes))
     }
 
     /// Obtains the big integer representation of the foreign field element
+    #[must_use]
     pub fn to_biguint(&self) -> BigUint {
         let mut bytes = vec![];
         if B.is_multiple_of(8) {
@@ -87,14 +93,13 @@ impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
             let mut bits: Vec<bool> = vec![];
             for limb in self.limbs {
                 // Only take lower B bits, as there might be more (zeroes) in the high ones.
-                let f_bits_lower: Vec<bool> = limb.to_bits().into_iter().take(B).collect();
-                bits.extend(&f_bits_lower);
+                bits.extend(limb.to_bits().into_iter().take(B));
             }
 
             let bytes_len = (B * N).div_ceil(8);
             bytes = vec![0u8; bytes_len];
-            for i in 0..bits.len() {
-                bytes[i / 8] |= u8::from(bits[i]) << (i % 8);
+            for (i, &bit) in bits.iter().enumerate() {
+                bytes[i / 8] |= u8::from(bit) << (i % 8);
             }
         }
         BigUint::from_bytes_le(&bytes)
@@ -103,12 +108,11 @@ impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
     /// Split a foreign field element into a vector of `B` (limb bitsize) bits field
     /// elements of type `F` in little-endian. Right now it is written
     /// so that it gives `N` (limb count) limbs, even if it fits in less bits.
-    fn big_to_vec(fe: BigUint) -> Vec<F> {
+    fn big_to_vec(fe: &BigUint) -> Vec<F> {
         if B.is_multiple_of(8) {
             let bytes = fe.to_bytes_le();
-            let chunks: Vec<&[u8]> = bytes.chunks(B / 8).collect();
-            chunks
-                .iter()
+            bytes
+                .chunks(B / 8)
                 .map(|chunk| F::from_random_bytes(chunk).expect("failed to deserialize"))
                 .collect()
         } else {
@@ -121,9 +125,7 @@ impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
             for i in 0..B * N {
                 bits.push(fe.bit(i as u64));
             }
-            let chunks: Vec<_> = bits.chunks(B).collect();
-            chunks
-                .into_iter()
+            bits.chunks(B)
                 .map(|chunk| F::from_bits(chunk).expect("failed to deserialize"))
                 .collect()
         }
@@ -133,7 +135,7 @@ impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
 impl<F: PrimeField, const B: usize, const N: usize> ForeignElement<F, B, N> {
     /// Initializes a new foreign element from an element in the native field
     pub fn from_field(field: F) -> Self {
-        Self::from_biguint(field.into())
+        Self::from_biguint(&field.into())
     }
 }
 

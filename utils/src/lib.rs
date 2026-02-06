@@ -4,6 +4,10 @@
 // Enable unstable `is_multiple_of` on nightly for Wasm builds until nightly is updated
 // See: https://github.com/o1-labs/mina-rust/issues/1997
 #![cfg_attr(target_arch = "wasm32", feature(unsigned_is_multiple_of))]
+#![deny(unsafe_code)]
+#![deny(clippy::all)]
+#![deny(clippy::pedantic)]
+#![deny(clippy::nursery)]
 
 pub mod adjacent_pairs;
 pub mod biguint_helpers;
@@ -32,9 +36,10 @@ pub mod tests {
     use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 
     /// Create a new test rng with a random seed
+    #[must_use]
     pub fn make_test_rng(seed: Option<[u8; 32]>) -> StdRng {
-        let seed = seed.unwrap_or(thread_rng().gen());
-        eprintln!("Seed: {:?}", seed);
+        let seed = seed.unwrap_or_else(|| thread_rng().gen());
+        eprintln!("Seed: {seed:?}");
         StdRng::from_seed(seed)
     }
 }

@@ -1,9 +1,10 @@
-//! This module hosts the [AdjacentPairs] type,
-//! which can be used to list all the adjacent pairs of a list.
+//! This module hosts the [`AdjacentPairs`] type.
+//!
+//! It can be used to list all the adjacent pairs of a list.
 //! For example, if you have a list of integers `[1, 2, 3]`,
 //! you can use it to obtain the list of tuples `[(1, 2), (2, 3)]`.
 
-/// You can create a new [AdjacentPairs] from an iterator using:
+/// You can create a new [`AdjacentPairs`] from an iterator using:
 ///
 /// ```
 /// use o1_utils::adjacent_pairs::AdjacentPairs;
@@ -27,25 +28,15 @@ impl<A: Copy, I: Iterator<Item = A>> Iterator for AdjacentPairs<A, I> {
     type Item = (A, A);
 
     fn next(&mut self) -> Option<(A, A)> {
-        match self.prev_second_component {
-            Some(x) => match self.i.next() {
-                None => None,
-                Some(y) => {
-                    self.prev_second_component = Some(y);
-                    Some((x, y))
-                }
-            },
-            None => {
-                let x = self.i.next();
-                let y = self.i.next();
-                match (x, y) {
-                    (None, _) | (_, None) => None,
-                    (Some(x), Some(y)) => {
-                        self.prev_second_component = Some(y);
-                        Some((x, y))
-                    }
-                }
-            }
+        if let Some(x) = self.prev_second_component {
+            let y = self.i.next()?;
+            self.prev_second_component = Some(y);
+            Some((x, y))
+        } else {
+            let x = self.i.next()?;
+            let y = self.i.next()?;
+            self.prev_second_component = Some(y);
+            Some((x, y))
         }
     }
 }
