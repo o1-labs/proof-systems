@@ -63,9 +63,8 @@ fn test_ocaml_invalid_checksum() {
 
 #[test]
 fn test_ocaml_invalid_length() {
-    // "abcd" in base58 decodes to too few bytes
-    let err = decode("abcd").unwrap_err();
-    assert!(err == DecodeError::TooShort || err == DecodeError::InvalidChecksum);
+    // "abcd" in base58 decodes to 3 bytes, below the 5-byte minimum
+    assert_eq!(decode("abcd").unwrap_err(), DecodeError::TooShort);
 }
 
 #[test]

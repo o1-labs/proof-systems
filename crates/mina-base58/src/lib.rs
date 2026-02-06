@@ -1,35 +1,66 @@
+//! Mina base58check encoding and decoding.
+//!
+//! Implements the base58check scheme used by the Mina protocol: a
+//! single version byte followed by the payload, with a 4-byte
+//! double-SHA256 checksum appended before base58 encoding.
+
 #![no_std]
+#![deny(missing_docs)]
+#![deny(unsafe_code)]
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]
 #![deny(clippy::nursery)]
 
 extern crate alloc;
 
+/// Version bytes for Mina base58check encodings.
 pub mod version;
 
 use alloc::{string::String, vec::Vec};
 use sha2::{Digest, Sha256};
 use thiserror::Error;
 
+/// Errors that can occur when decoding a base58check string.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum DecodeError {
+    /// The input contains characters outside the base58 alphabet.
     #[error("invalid base58 character")]
     InvalidBase58,
+    /// The decoded data is shorter than the 5-byte minimum
+    /// (1 version byte + 4 checksum bytes).
     #[error("decoded data too short")]
     TooShort,
+    /// The trailing 4-byte checksum does not match the data.
     #[error("invalid checksum")]
     InvalidChecksum,
+    /// The version byte does not match the expected value.
     #[error("invalid version byte: expected {expected:#04x}, found {found:#04x}")]
-    InvalidVersion { expected: u8, found: u8 },
+    InvalidVersion {
+        /// The version byte that was expected.
+        expected: u8,
+        /// The version byte that was found.
+        found: u8,
+    },
 }
 
 /// Double-SHA256 checksum of `data`.
 #[must_use]
-pub fn checksum(data: &[u8]) -> [u8; 4] {
+pub(crate) fn checksum(data: &[u8]) -> [u8; 4] {
     let hash = Sha256::digest(&Sha256::digest(data)[..]);
     let mut out = [0u8; 4];
     out.copy_from_slice(&hash[..4]);
     out
+}
+
+/// Constant-time comparison of a 4-byte slice against a checksum.
+///
+/// Prevents timing side-channels that could reveal how many leading
+/// checksum bytes matched.
+fn checksum_verify(got: &[u8], expected: [u8; 4]) -> bool {
+    got.iter()
+        .zip(expected.iter())
+        .fold(0u8, |acc, (a, b)| acc | (a ^ b))
+        == 0
 }
 
 /// Encode `payload` with a leading `version` byte in base58check.
@@ -105,7 +136,8 @@ pub fn decode_raw(b58: &str) -> Result<Vec<u8>, DecodeError> {
         return Err(DecodeError::TooShort);
     }
     let data_len = bytes.len() - 4;
-    if bytes[data_len..] != checksum(&bytes[..data_len]) {
+    if !checksum_verify(&bytes[data_len..], checksum(&bytes[..data_len]))
+    {
         return Err(DecodeError::InvalidChecksum);
     }
     bytes.truncate(data_len);
@@ -116,6 +148,27 @@ pub fn decode_raw(b58: &str) -> Result<Vec<u8>, DecodeError> {
 mod tests {
     use super::*;
     use alloc::vec;
+
+    // ================================================================
+    // checksum tests
+    // ================================================================
+
+    #[test]
+    fn test_checksum_is_deterministic() {
+        let data = b"hello world";
+        assert_eq!(checksum(data), checksum(data));
+    }
+
+    #[test]
+    fn test_checksum_differs_for_different_data() {
+        assert_ne!(checksum(b"aaa"), checksum(b"bbb"));
+    }
+
+    #[test]
+    fn test_checksum_is_four_bytes() {
+        let cs = checksum(b"any data");
+        assert_eq!(cs.len(), 4);
+    }
 
     // ================================================================
     // decode_version tests

@@ -57,11 +57,7 @@ fn test_decode_corrupted_checksum_address() {
 
 #[test]
 fn test_decode_empty_input() {
-    let err = decode("").unwrap_err();
-    assert!(
-        err == DecodeError::InvalidBase58
-            || err == DecodeError::TooShort
-    );
+    assert_eq!(decode("").unwrap_err(), DecodeError::TooShort);
 }
 
 #[test]
