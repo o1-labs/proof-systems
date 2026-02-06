@@ -179,6 +179,21 @@ mod tests {
         assert_eq!(cs.len(), 4);
     }
 
+    #[test]
+    fn test_checksum_verify_equal() {
+        assert!(checksum_verify([0xAA, 0xBB, 0xCC, 0xDD], [0xAA, 0xBB, 0xCC, 0xDD]));
+    }
+
+    #[test]
+    fn test_checksum_verify_rejects_each_byte() {
+        let expected = [0xAA, 0xBB, 0xCC, 0xDD];
+        for i in 0..4 {
+            let mut bad = expected;
+            bad[i] ^= 0x01;
+            assert!(!checksum_verify(bad, expected), "byte {i} flip not detected");
+        }
+    }
+
     // ================================================================
     // decode_version tests
     // ================================================================
