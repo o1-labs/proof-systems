@@ -47,6 +47,13 @@ and this project adheres to
 - Add `no_std` support
   ([#3415](https://github.com/o1-labs/proof-systems/pull/3415))
 
+### [mina-base58](./crates/mina-base58)
+
+#### Added
+
+- Add `mina-base58` crate with generic base58check encoding/decoding and all
+  known Mina version bytes, matching the OCaml `Base58_check` implementation
+
 ### [kimchi](./kimchi)
 
 #### Added
