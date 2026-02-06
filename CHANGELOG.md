@@ -98,6 +98,12 @@ and this project adheres to
 
 ### [mina-signer](./signer)
 
+#### Added
+
+- Add documentation for the internal `Message` struct explaining its role in
+  Schnorr signature hash computation
+  ([#3477](https://github.com/o1-labs/proof-systems/pull/3477))
+
 #### Changed
 
 - **Breaking**: Make `secret` field in `Keypair` private to prevent accidental

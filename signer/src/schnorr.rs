@@ -36,12 +36,44 @@ pub struct Schnorr<H: Hashable> {
     pub domain_param: H::D,
 }
 
-/// The message to be signed/verified
+/// Internal message structure for Schnorr signature hash computation.
+///
+/// This struct combines the user's input message with cryptographic context
+/// (public key and nonce commitment) to create the hash input for computing
+/// the Schnorr signature challenge. It implements [`Hashable`] to be
+/// compatible with Mina's Poseidon-based hashing.
+///
+/// # Schnorr Signature Context
+///
+/// In the Schnorr signature scheme, the challenge `e` is computed as:
+///
+/// ```text
+/// e = H(input || pub_key_x || pub_key_y || rx)
+/// ```
+///
+/// where:
+/// - `input` is the user's message to sign
+/// - `pub_key_x`, `pub_key_y` are the signer's public key coordinates
+/// - `rx` is the x-coordinate of the nonce commitment point `R = k·G`
+///
+/// This binding ensures the signature is tied to a specific message, public
+/// key, and nonce, preventing various attack vectors.
+///
+/// # Fields
+///
+/// - `input`: The original message being signed, implementing [`Hashable`]
+/// - `pub_key_x`: X-coordinate of the signer's public key
+/// - `pub_key_y`: Y-coordinate of the signer's public key
+/// - `rx`: X-coordinate of the nonce commitment point
 #[derive(Clone)]
 pub struct Message<H: Hashable> {
+    /// The original input message to be signed
     input: H,
+    /// X-coordinate of the signer's public key
     pub_key_x: BaseField,
+    /// Y-coordinate of the signer's public key
     pub_key_y: BaseField,
+    /// X-coordinate of the nonce commitment point R = k·G
     rx: BaseField,
 }
 
