@@ -582,7 +582,8 @@ where
     ) -> PolyComm<G> {
         let basis = self.get_lagrange_basis(domain);
         let commit_evaluations = |evals: &Vec<G::ScalarField>, basis: &Vec<PolyComm<G>>| {
-            PolyComm::<G>::multi_scalar_mul(&basis.iter().collect::<Vec<_>>()[..], &evals[..])
+            let basis_refs: Vec<_> = basis.iter().collect();
+            PolyComm::<G>::multi_scalar_mul(&basis_refs, evals)
         };
         match domain.size.cmp(&plnm.domain().size) {
             std::cmp::Ordering::Less => {
