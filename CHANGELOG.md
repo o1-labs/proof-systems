@@ -49,16 +49,16 @@ and this project adheres to
 
 #### Changed
 
-- Add strict clippy lints (`clippy::all`, `clippy::pedantic`,
-  `clippy::nursery`, `unsafe_code`) and fix all warnings
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
+  `unsafe_code`) and fix all warnings
   ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 
 ### [mina-curves](./curves)
 
 #### Changed
 
-- Add strict clippy lints (`clippy::all`, `clippy::pedantic`,
-  `clippy::nursery`, `unsafe_code`) and fix all warnings
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
+  `unsafe_code`) and fix all warnings
   ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 
 ### [mina-base58](./crates/mina-base58)
@@ -72,8 +72,8 @@ and this project adheres to
 
 #### Changed
 
-- Add strict clippy lints (`clippy::all`, `clippy::pedantic`,
-  `clippy::nursery`, `unsafe_code`) and fix all warnings
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
+  `unsafe_code`) and fix all warnings
   ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 
 ### [kimchi](./kimchi)
@@ -102,8 +102,8 @@ and this project adheres to
   ([#3474](https://github.com/o1-labs/proof-systems/pull/3474))
 - Replace `.unwrap()` with `.expect()` in BLAKE2b hasher creation for better
   error messages ([#3472](https://github.com/o1-labs/proof-systems/pull/3472))
-- Add strict clippy lints (`clippy::all`, `clippy::pedantic`,
-  `clippy::nursery`, `unsafe_code`) and fix all warnings
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
+  `unsafe_code`) and fix all warnings
   ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 
 ### [mina-poseidon](./poseidon)
@@ -130,8 +130,8 @@ and this project adheres to
 
 #### Changed
 
-- Add strict clippy lints (`clippy::all`, `clippy::pedantic`,
-  `clippy::nursery`, `unsafe_code`) and fix all warnings
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
+  `unsafe_code`) and fix all warnings
   ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 
 ### [mina-signer](./signer)
@@ -168,8 +168,8 @@ and this project adheres to
 - **Breaking**: `ForeignElement::from_biguint` now takes `&BigUint` instead of
   `BigUint` by value
   ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
-- Add strict clippy lints (`clippy::all`, `clippy::pedantic`,
-  `clippy::nursery`, `unsafe_code`) and fix all warnings
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
+  `unsafe_code`) and fix all warnings
   ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 
 ### [poly-commitment](./poly-commitment)
@@ -184,8 +184,8 @@ and this project adheres to
 - Replace `once_cell::sync::Lazy` with `std::sync::LazyLock` and remove
   `once_cell` dependency
   ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
-- Add strict clippy lints (`clippy::all`, `clippy::pedantic`,
-  `clippy::nursery`, `unsafe_code`) and fix all warnings
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
+  `unsafe_code`) and fix all warnings
   ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 
 ### [turshi](./turshi)

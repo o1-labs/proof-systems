@@ -551,14 +551,14 @@ mod tests {
                 Fq::from_hex("01d1755db21c8cd2a9cf5a3436178da3d70f484cd4b4c8834b799921e7d7a102")
                     .expect("failed to create scalar"),
             )
-            .append_u64(18446744073709551557)
+            .append_u64(18_446_744_073_709_551_557)
             .append_bytes(&[0xba, 0xdc, 0x0f, 0xfe])
             .append_scalar(
                 Fq::from_hex("e70187e9b125524489d0433da76fd8287fa652eaebde147b45fa0cd86f171810")
                     .expect("failed to create scalar"),
             )
             .append_bool(false)
-            .append_u32(2147483647)
+            .append_u32(2_147_483_647)
             .append_bool(true);
 
         assert!(roi.bits.len() == 641);
@@ -579,7 +579,7 @@ mod tests {
     #[test]
     fn transaction_bits() {
         let roi = ROInput::new()
-            .append_u64(1000000) // fee
+            .append_u64(1_000_000) // fee
             .append_u64(1) // fee token
             .append_bool(true) // fee payer pk odd
             .append_u32(0) // nonce
@@ -591,7 +591,7 @@ mod tests {
             .append_bool(true) // sender pk odd
             .append_bool(false) // receiver pk odd
             .append_u64(1) // token_id
-            .append_u64(10000000000) // amount
+            .append_u64(10_000_000_000) // amount
             .append_bool(false) // token_locked
             .append_scalar(
                 Fq::from_hex("de217a3017ca0b7a278e75f63c09890e3894be532d8dbadd30a7d450055f6d2d")
@@ -611,7 +611,7 @@ mod tests {
                 0xc7, 0x3a, 0x7b, 0x9e, 0x84, 0x44, 0x07, 0x1c, 0x4a, 0xdf, 0xa9, 0x96, 0x46, 0xdd,
                 0x6e, 0x98, 0x53, 0x6a, 0xa8, 0x82, 0xaf, 0xb6, 0x56, 0x00
             ]
-        )
+        );
     }
 
     #[test]
@@ -869,7 +869,7 @@ mod tests {
                 Fq::from_hex("689634de233b06251a80ac7df64483922727757eea1adc6f0c8f184441cfe10d")
                     .expect("failed to create scalar"),
             )
-            .append_u32(834803);
+            .append_u32(834_803);
 
         assert_eq!(
             roi.to_bytes(),
@@ -944,7 +944,7 @@ mod tests {
                 Fp::from_hex("3fba4fa71bce0dfdf709d827463036d6291458dfef772ff65e87bd6d1b1e062a")
                     .expect("failed to create field"),
             ) // receiver
-            .append_u64(1000000) // fee
+            .append_u64(1_000_000) // fee
             .append_u64(1) // fee token
             .append_bool(true) // fee payer pk odd
             .append_u32(0) // nonce
@@ -956,7 +956,7 @@ mod tests {
             .append_bool(true) // sender pk odd
             .append_bool(false) // receiver pk odd
             .append_u64(1) // token_id
-            .append_u64(10000000000) // amount
+            .append_u64(10_000_000_000) // amount
             .append_bool(false); // token_locked
         assert_eq!(roi.bits.len() + roi.fields.len() * 255, 1364);
         assert_eq!(
@@ -1016,7 +1016,7 @@ mod tests {
                     .append_u32(self.z)
             }
 
-            fn domain_string(_: Self::D) -> Option<String> {
+            fn domain_string((): Self::D) -> Option<String> {
                 "A".to_string().into()
             }
         }
@@ -1035,7 +1035,7 @@ mod tests {
                 self.a.to_roinput().append_u64(self.b).append_bool(self.c)
             }
 
-            fn domain_string(_: Self::D) -> Option<String> {
+            fn domain_string((): Self::D) -> Option<String> {
                 "B".to_string().into()
             }
         }
@@ -1056,19 +1056,19 @@ mod tests {
                     .append_roinput(ROInput::new().append_u64(self.b).append_bool(self.c))
             }
 
-            fn domain_string(_: Self::D) -> Option<String> {
+            fn domain_string((): Self::D) -> Option<String> {
                 "B".to_string().into()
             }
         }
 
         let a = A {
-            x: 16830533,
+            x: 16_830_533,
             y: false,
-            z: 39827791,
+            z: 39_827_791,
         };
         let b1 = B1 {
             a,
-            b: 124819,
+            b: 124_819,
             c: true,
         };
         let b2 = B2 {
@@ -1145,7 +1145,7 @@ mod tests {
             roi,
             ROInput::deserialize(&serialized).expect("Failed to deserialize ROInput"),
             "Serialized and deserialized ROInput do not match"
-        )
+        );
     }
 
     #[test]
@@ -1188,8 +1188,7 @@ mod tests {
                 ROInput::deserialize(&serialized).expect("Failed to deserialize ROInput");
             assert_eq!(
                 roi, deserialized_roi,
-                "Serialized and deserialized ROInput do not match for i={}",
-                i
+                "Serialized and deserialized ROInput do not match for i={i}"
             );
         }
     }
@@ -1262,7 +1261,7 @@ mod tests {
                 Fp::from_hex("3fba4fa71bce0dfdf709d827463036d6291458dfef772ff65e87bd6d1b1e062a")
                     .expect("failed to create field"),
             ) // receiver
-            .append_u64(1000000) // fee
+            .append_u64(1_000_000) // fee
             .append_u64(1) // fee token
             .append_bool(true) // fee payer pk odd
             .append_u32(0) // nonce
@@ -1274,7 +1273,7 @@ mod tests {
             .append_bool(true) // sender pk odd
             .append_bool(false) // receiver pk odd
             .append_u64(1) // token_id
-            .append_u64(10000000000) // amount
+            .append_u64(10_000_000_000) // amount
             .append_bool(false); // token_locked
 
         let tx_bytes = tx_roi.serialize();

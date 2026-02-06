@@ -239,7 +239,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "assertion failed")]
     fn test_domain_prefix_too_long() {
         // Strings longer than 20 chars should panic
         let _: Fp = domain_prefix_to_field("ThisStringIsTooLongForDomain");

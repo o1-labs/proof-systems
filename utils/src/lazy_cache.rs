@@ -239,10 +239,10 @@ mod test {
         // debug
         {
             let cache = LazyCache::preinit(10);
-            assert_eq!(format!("{:?}", cache), "LazyCache(10)");
+            assert_eq!(format!("{cache:?}"), "LazyCache(10)");
 
             let lazy = LazyCache::new(|| 20);
-            assert_eq!(format!("{:?}", lazy), "LazyCache(<uninitialized>)");
+            assert_eq!(format!("{lazy:?}"), "LazyCache(<uninitialized>)");
         }
         // LazyCacheError::MissingFunctionOrInitializedTwice
         {

@@ -776,12 +776,12 @@ pub mod caml {
     where
         G: AffineRepr + From<CamlG>,
     {
-        fn from(camlpolycomm: CamlPolyComm<CamlG>) -> PolyComm<G> {
+        fn from(camlpolycomm: CamlPolyComm<CamlG>) -> Self {
             assert!(
                 camlpolycomm.shifted.is_none(),
                 "mina#14628: Shifted commitments are deprecated and must not be used"
             );
-            PolyComm {
+            Self {
                 chunks: camlpolycomm
                     .unshifted
                     .into_iter()
@@ -795,12 +795,12 @@ pub mod caml {
     where
         G: AffineRepr + From<&'a CamlG> + From<CamlG>,
     {
-        fn from(camlpolycomm: &'a CamlPolyComm<CamlG>) -> PolyComm<G> {
+        fn from(camlpolycomm: &'a CamlPolyComm<CamlG>) -> Self {
             assert!(
                 camlpolycomm.shifted.is_none(),
                 "mina#14628: Shifted commitments are deprecated and must not be used"
             );
-            PolyComm {
+            Self {
                 //FIXME something with as_ref()
                 chunks: camlpolycomm.unshifted.iter().map(Into::into).collect(),
             }
@@ -814,7 +814,7 @@ mod tests {
     use mina_curves::pasta::Fp;
     use std::str::FromStr;
 
-    /// Regression test for b_poly evaluation.
+    /// Regression test for `b_poly` evaluation.
     ///
     /// The challenge polynomial b(X) is defined as:
     /// ```text
@@ -824,7 +824,7 @@ mod tests {
     #[test]
     fn test_b_poly_regression() {
         // 15 challenges (typical for domain size 2^15)
-        let chals: Vec<Fp> = (2..=16).map(|i| Fp::from(i as u64)).collect();
+        let chals: Vec<Fp> = (2u64..=16).map(Fp::from).collect();
 
         let zeta = Fp::from(17u64);
         let zeta_omega = Fp::from(19u64);
@@ -849,10 +849,10 @@ mod tests {
         );
     }
 
-    /// Regression test for b_poly_coefficients.
+    /// Regression test for `b_poly_coefficients`.
     ///
-    /// Verifies that the coefficients satisfy: b(x) = sum_i s_i * x^i
-    /// where s_i = prod_{j: bit_j(i) = 1} u_{k-j}
+    /// Verifies that the coefficients satisfy: `b(x) = sum_i s_i * x^i`
+    /// where `s_i = prod_{j: bit_j(i) = 1} u_{k-j}`
     #[test]
     fn test_b_poly_coefficients_regression() {
         // Use 4 challenges for manageable output (2^4 = 16 coefficients)
@@ -897,11 +897,11 @@ mod tests {
         assert_eq!(coeffs, expected, "Coefficients mismatch");
     }
 
-    /// Test that b_poly and b_poly_coefficients are consistent:
+    /// Test that `b_poly` and `b_poly_coefficients` are consistent:
     /// evaluating b(x) via the product form should equal evaluating via coefficients.
     #[test]
     fn test_b_poly_consistency() {
-        let chals: Vec<Fp> = (2..=10).map(|i| Fp::from(i as u64)).collect();
+        let chals: Vec<Fp> = (2u64..=10).map(Fp::from).collect();
         let coeffs = b_poly_coefficients(&chals);
 
         // Test at several points
@@ -921,8 +921,7 @@ mod tests {
 
             assert_eq!(
                 b_product, b_coeffs,
-                "b_poly and b_poly_coefficients inconsistent at x={}",
-                x_val
+                "b_poly and b_poly_coefficients inconsistent at x={x_val}"
             );
         }
     }

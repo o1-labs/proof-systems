@@ -416,6 +416,9 @@ where
 #[cfg(feature = "ocaml_types")]
 #[allow(non_local_definitions)]
 pub mod caml {
+    // The ocaml_gen::Struct derive macro requires items from parent scope
+    // that cannot be enumerated explicitly.
+    #[allow(clippy::wildcard_imports)]
     use super::*;
 
     extern crate alloc;
