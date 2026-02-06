@@ -25,6 +25,12 @@ use core::ops::{Add, Neg};
 use mina_hasher::{self, DomainParameter, Hasher, ROInput};
 use o1_utils::FieldHelpers;
 
+/// BLAKE2b output size in bytes for nonce derivation.
+///
+/// Using 256 bits (32 bytes) provides sufficient entropy for deriving
+/// a scalar field element after masking the top 2 bits.
+const BLAKE2B_OUTPUT_SIZE: usize = 32;
+
 /// Schnorr signer context for the Mina signature algorithm
 ///
 /// For details about the signature algorithm please see the
@@ -201,7 +207,8 @@ impl<H: 'static + Hashable> Schnorr<H> {
     ///   key)
     /// - Is compatible with existing Mina protocol implementations
     pub fn derive_nonce_chunked(&self, kp: &Keypair, input: &H) -> ScalarField {
-        let mut blake_hasher = Blake2bVar::new(32).expect("BLAKE2b-256 output size is valid");
+        let mut blake_hasher =
+            Blake2bVar::new(BLAKE2B_OUTPUT_SIZE).expect("BLAKE2b output size is valid");
 
         // Create ROInput with message + [px, py, private_key_as_field] +
         // network_id_packed
@@ -263,7 +270,7 @@ impl<H: 'static + Hashable> Schnorr<H> {
 
         // Hash with BLAKE2b and drop top 2 bits
         blake_hasher.update(&input_bytes);
-        let mut bytes = [0; 32];
+        let mut bytes = [0; BLAKE2B_OUTPUT_SIZE];
         blake_hasher
             .finalize_variable(&mut bytes)
             .expect("incorrect output size");
@@ -314,7 +321,8 @@ impl<H: 'static + Hashable> Schnorr<H> {
     /// that depends on the private key, public key, message, and network
     /// context.
     fn derive_nonce_legacy(&self, kp: &Keypair, input: &H) -> ScalarField {
-        let mut blake_hasher = Blake2bVar::new(32).expect("BLAKE2b-256 output size is valid");
+        let mut blake_hasher =
+            Blake2bVar::new(BLAKE2B_OUTPUT_SIZE).expect("BLAKE2b output size is valid");
 
         let roi = input
             .to_roinput()
@@ -325,7 +333,7 @@ impl<H: 'static + Hashable> Schnorr<H> {
 
         blake_hasher.update(&roi.to_bytes());
 
-        let mut bytes = [0; 32];
+        let mut bytes = [0; BLAKE2B_OUTPUT_SIZE];
         blake_hasher
             .finalize_variable(&mut bytes)
             .expect("incorrect output size");

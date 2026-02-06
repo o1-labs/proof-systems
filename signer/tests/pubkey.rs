@@ -46,19 +46,19 @@ fn test_from_hex() {
 #[test]
 fn test_from_secret_key() {
     assert_eq!(PubKey::from_secret_key(
-                SecKey::from_hex("090dd91a2505081a158782c5a24fef63f326749b383423c29827e465f7ca262b").expect("failed to decode sec key")
+                &SecKey::from_hex("090dd91a2505081a158782c5a24fef63f326749b383423c29827e465f7ca262b").expect("failed to decode sec key")
             ).expect("failed to decode pub key").to_hex(),
             "3f8c32817851b7c1ad99495463ef5e99c3b3240524f0df3ff7fc41181d849e0086fa821d54de15c523a840c5f62df90aeabb1097b85c6a88e163e9d74e505803"
         );
 
     assert_eq!(PubKey::from_secret_key(
-                SecKey::from_hex("086d78e0e5deb62daeef8e3a5574d52a3d3bff5281b4dd49140564c7d80468c9").expect("failed to decode sec key")
+                &SecKey::from_hex("086d78e0e5deb62daeef8e3a5574d52a3d3bff5281b4dd49140564c7d80468c9").expect("failed to decode sec key")
             ).expect("failed to decode pub key").to_hex(),
             "666c450f5e888d3b2341d77b32cb6d0cd4912829ea9c41030d1fd2baff6b9a30c267208638544299e8d369e80b25a24bdd07383b6ea908028d9a406b528d4a01"
         );
 
     assert_eq!(PubKey::from_secret_key(
-                SecKey::from_hex("0859771e9394e96dd6d01d57ef074dc25313e63bd331fa5478a9fed9e24855a0").expect("failed to decode sec key")
+                &SecKey::from_hex("0859771e9394e96dd6d01d57ef074dc25313e63bd331fa5478a9fed9e24855a0").expect("failed to decode sec key")
             ).expect("failed to decode pub key").to_hex(),
             "6ed0776ab11e3dd3b637cce03a90529e518220132f1a61dd9c0d50aa998abf1d2f43c0f1eb73888ef6f7dac4d7094d3c92cd67abab39b828c5f10aff0b6a0002"
         );
