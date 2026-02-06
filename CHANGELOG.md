@@ -47,12 +47,34 @@ and this project adheres to
 - Add `no_std` support
   ([#3415](https://github.com/o1-labs/proof-systems/pull/3415))
 
+#### Changed
+
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`,
+  `clippy::nursery`, `unsafe_code`) and fix all warnings
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
+
+### [mina-curves](./curves)
+
+#### Changed
+
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`,
+  `clippy::nursery`, `unsafe_code`) and fix all warnings
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
+
 ### [mina-base58](./crates/mina-base58)
 
 #### Added
 
 - Add `mina-base58` crate with generic base58check encoding/decoding and all
   known Mina version bytes, matching the OCaml `Base58_check` implementation
+
+### [mina-hasher](./hasher)
+
+#### Changed
+
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`,
+  `clippy::nursery`, `unsafe_code`) and fix all warnings
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 
 ### [kimchi](./kimchi)
 
@@ -80,6 +102,9 @@ and this project adheres to
   ([#3474](https://github.com/o1-labs/proof-systems/pull/3474))
 - Replace `.unwrap()` with `.expect()` in BLAKE2b hasher creation for better
   error messages ([#3472](https://github.com/o1-labs/proof-systems/pull/3472))
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`,
+  `clippy::nursery`, `unsafe_code`) and fix all warnings
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 
 ### [mina-poseidon](./poseidon)
 
@@ -102,6 +127,12 @@ and this project adheres to
 - Add check that the state input length of `poseidon_block_cipher` is
   `SC::SPONGE_WIDTH` (e.g. 3)
   ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
+
+#### Changed
+
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`,
+  `clippy::nursery`, `unsafe_code`) and fix all warnings
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 
 ### [mina-signer](./signer)
 
@@ -130,12 +161,32 @@ and this project adheres to
 - Remove unused `plonk_neon` crate from workspace
   ([#3440](https://github.com/o1-labs/proof-systems/pull/3440))
 
+### [o1-utils](./utils)
+
+#### Changed
+
+- **Breaking**: `ForeignElement::from_biguint` now takes `&BigUint` instead of
+  `BigUint` by value
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`,
+  `clippy::nursery`, `unsafe_code`) and fix all warnings
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
+
 ### [poly-commitment](./poly-commitment)
 
 #### Added
 
 - Add documentation for the method `endos`
   ([#3450](https://github.com/o1-labs/proof-systems/pull/3450)).
+
+#### Changed
+
+- Replace `once_cell::sync::Lazy` with `std::sync::LazyLock` and remove
+  `once_cell` dependency
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`,
+  `clippy::nursery`, `unsafe_code`) and fix all warnings
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 
 ### [turshi](./turshi)
 
