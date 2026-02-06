@@ -235,6 +235,7 @@ jobs:
           - { name: "mina-hasher", path: "hasher" } # https://github.com/o1-labs/mina-rust/issues/1994
           - { name: "mina-poseidon", path: "poseidon" } # https://github.com/o1-labs/mina-rust/issues/1996
           - { name: "mina-signer", path: "signer" } # https://github.com/o1-labs/mina-rust/issues/1995
+          - { name: "mina-tx-type", path: "mina-tx-type" }
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
