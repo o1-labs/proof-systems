@@ -42,7 +42,8 @@ pub struct Keypair {
 impl Keypair {
     /// Create keypair from scalar field `secret` element and curve point `public`
     /// Note: Does not check point `public` is on curve
-    pub fn from_parts_unsafe(secret: ScalarField, public: CurvePoint) -> Self {
+    #[must_use]
+    pub const fn from_parts_unsafe(secret: ScalarField, public: CurvePoint) -> Self {
         Self {
             secret: SecKey::new(secret),
             public: PubKey::from_point_unsafe(public),
@@ -56,11 +57,17 @@ impl Keypair {
     /// Handle the returned secret key with care. Avoid logging, printing,
     /// or transmitting it unless absolutely necessary for cryptographic
     /// operations.
-    pub fn secret_key(&self) -> &SecKey {
+    #[must_use]
+    pub const fn secret_key(&self) -> &SecKey {
         &self.secret
     }
 
     /// Create keypair from secret key
+    ///
+    /// # Errors
+    ///
+    /// Returns [`KeypairError`] if the public key cannot be derived from
+    /// the secret key.
     pub fn from_secret_key(secret_key: SecKey) -> Result<Self> {
         let public = PubKey::from_secret_key(&secret_key)?;
 
@@ -72,9 +79,14 @@ impl Keypair {
     }
 
     /// Generate random keypair
+    ///
+    /// # Errors
+    ///
+    /// Returns [`KeypairError`] if the generated secret key produces an
+    /// invalid public key.
     pub fn rand(rng: &mut (impl RngCore + CryptoRng)) -> Result<Self> {
         let sec_key: SecKey = SecKey::rand(rng);
-        Keypair::from_secret_key(sec_key)
+        Self::from_secret_key(sec_key)
     }
 
     /// Deserialize keypair from secret key bytes
@@ -84,7 +96,7 @@ impl Keypair {
     /// Will give error if `bytes` do not match certain requirements.
     pub fn from_bytes(secret_bytes: &[u8]) -> Result<Self> {
         let secret = SecKey::from_bytes(secret_bytes)?;
-        Keypair::from_secret_key(secret)
+        Self::from_secret_key(secret)
     }
 
     /// Deserialize keypair from secret key hex
@@ -94,20 +106,23 @@ impl Keypair {
     /// Will give error if `hex` string does not match certain requirements.
     pub fn from_hex(secret_hex: &str) -> Result<Self> {
         let secret = SecKey::from_hex(secret_hex)?;
-        Keypair::from_secret_key(secret)
+        Self::from_secret_key(secret)
     }
 
     /// Obtain the Mina address corresponding to the keypair's public key
+    #[must_use]
     pub fn get_address(self) -> String {
         self.public.into_address()
     }
 
     /// Deserialize keypair into bytes
+    #[must_use]
     pub fn to_bytes(&self) -> Vec<u8> {
         self.secret.to_bytes()
     }
 
     /// Deserialize keypair into hex
+    #[must_use]
     pub fn to_hex(&self) -> String {
         hex::encode(self.to_bytes())
     }

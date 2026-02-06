@@ -114,12 +114,14 @@ impl Signature {
     /// a valid signature for any particular message or public key. It simply
     /// creates the data structure. Signature validation must be performed
     /// separately using appropriate verification functions.
-    pub fn new(rx: BaseField, s: ScalarField) -> Self {
+    #[must_use]
+    pub const fn new(rx: BaseField, s: ScalarField) -> Self {
         Self { rx, s }
     }
 
     /// Create a dummy signature, whose components are both equal to one.
     /// Use it with caution.
+    #[must_use]
     pub fn dummy() -> Self {
         Self {
             rx: BaseField::one(),
