@@ -53,3 +53,54 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normal_sequence() {
+        let pairs: Vec<_> = AdjacentPairs::from(vec![1, 2, 3, 4]).collect();
+        assert_eq!(pairs, vec![(1, 2), (2, 3), (3, 4)]);
+    }
+
+    #[test]
+    fn test_two_elements() {
+        let pairs: Vec<_> = AdjacentPairs::from(vec![10, 20]).collect();
+        assert_eq!(pairs, vec![(10, 20)]);
+    }
+
+    #[test]
+    fn test_single_element() {
+        let mut pairs = AdjacentPairs::from(vec![42]);
+        assert_eq!(pairs.next(), None);
+    }
+
+    #[test]
+    fn test_empty() {
+        let mut pairs = AdjacentPairs::from(Vec::<i32>::new());
+        assert_eq!(pairs.next(), None);
+    }
+
+    #[test]
+    fn test_duplicate_values() {
+        let pairs: Vec<_> = AdjacentPairs::from(vec![5, 5, 5]).collect();
+        assert_eq!(pairs, vec![(5, 5), (5, 5)]);
+    }
+
+    #[test]
+    fn test_step_by_step_iteration() {
+        let mut pairs = AdjacentPairs::from(vec![1, 2, 3]);
+        assert_eq!(pairs.next(), Some((1, 2)));
+        assert_eq!(pairs.next(), Some((2, 3)));
+        assert_eq!(pairs.next(), None);
+        // exhausted iterator stays exhausted
+        assert_eq!(pairs.next(), None);
+    }
+
+    #[test]
+    fn test_from_range() {
+        let pairs: Vec<_> = AdjacentPairs::from(0..5).collect();
+        assert_eq!(pairs, vec![(0, 1), (1, 2), (2, 3), (3, 4)]);
+    }
+}
