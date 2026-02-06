@@ -1,6 +1,4 @@
-use mina_base58::{
-    decode, decode_raw, decode_version, encode, encode_raw, version,
-};
+use mina_base58::{decode, decode_raw, decode_version, encode, encode_raw, version};
 
 #[test]
 fn test_encode_raw_decode_raw_roundtrip() {

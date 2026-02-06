@@ -1,8 +1,6 @@
 mod helpers;
 
-use mina_base58::{
-    decode, decode_version, encode, version, DecodeError,
-};
+use mina_base58::{decode, decode_version, encode, version, DecodeError};
 
 const OCAML_TEST_VERSION: u8 = 0x53;
 
@@ -52,8 +50,7 @@ fn test_ocaml_roundtrip_longer() {
 
 #[test]
 fn test_ocaml_invalid_checksum() {
-    let encoded =
-        encode(OCAML_TEST_VERSION, b"Bluer than velvet were her eyes");
+    let encoded = encode(OCAML_TEST_VERSION, b"Bluer than velvet were her eyes");
     let corrupted = helpers::corrupt_last_char(&encoded);
     assert_eq!(
         decode(&corrupted).unwrap_err(),

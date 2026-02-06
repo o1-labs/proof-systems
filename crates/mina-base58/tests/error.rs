@@ -32,9 +32,8 @@ fn test_decode_too_short_four_bytes() {
 
 #[test]
 fn test_decode_corrupted_checksum_state_hash() {
-    let corrupted = helpers::corrupt_last_char(
-        "3NLx3eBDTvYmP27bUmYANzmhjL5rGe36nGW6N5XhGcuStF6Zv7ZD",
-    );
+    let corrupted =
+        helpers::corrupt_last_char("3NLx3eBDTvYmP27bUmYANzmhjL5rGe36nGW6N5XhGcuStF6Zv7ZD");
     assert_eq!(
         decode(&corrupted).unwrap_err(),
         DecodeError::InvalidChecksum
@@ -43,9 +42,8 @@ fn test_decode_corrupted_checksum_state_hash() {
 
 #[test]
 fn test_decode_corrupted_checksum_address() {
-    let corrupted = helpers::corrupt_last_char(
-        "B62qnzbXmRNo9q32n4SNu2mpB8e7FYYLH8NmaX6oFCBYjjQ8SbD7uzV",
-    );
+    let corrupted =
+        helpers::corrupt_last_char("B62qnzbXmRNo9q32n4SNu2mpB8e7FYYLH8NmaX6oFCBYjjQ8SbD7uzV");
     assert_eq!(
         decode(&corrupted).unwrap_err(),
         DecodeError::InvalidChecksum

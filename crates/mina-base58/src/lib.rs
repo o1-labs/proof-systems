@@ -181,7 +181,10 @@ mod tests {
 
     #[test]
     fn test_checksum_verify_equal() {
-        assert!(checksum_verify([0xAA, 0xBB, 0xCC, 0xDD], [0xAA, 0xBB, 0xCC, 0xDD]));
+        assert!(checksum_verify(
+            [0xAA, 0xBB, 0xCC, 0xDD],
+            [0xAA, 0xBB, 0xCC, 0xDD]
+        ));
     }
 
     #[test]
@@ -190,7 +193,10 @@ mod tests {
         for i in 0..4 {
             let mut bad = expected;
             bad[i] ^= 0x01;
-            assert!(!checksum_verify(bad, expected), "byte {i} flip not detected");
+            assert!(
+                !checksum_verify(bad, expected),
+                "byte {i} flip not detected"
+            );
         }
     }
 
