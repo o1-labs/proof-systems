@@ -1,3 +1,5 @@
+mod helpers;
+
 use mina_base58::{
     decode, decode_version, encode, version, DecodeError,
 };
@@ -50,11 +52,9 @@ fn test_ocaml_roundtrip_longer() {
 
 #[test]
 fn test_ocaml_invalid_checksum() {
-    let encoded = encode(OCAML_TEST_VERSION, b"Bluer than velvet were her eyes");
-    let mut chars: Vec<char> = encoded.chars().collect();
-    let last = chars.last_mut().unwrap();
-    *last = if *last == '1' { '2' } else { '1' };
-    let corrupted: String = chars.into_iter().collect();
+    let encoded =
+        encode(OCAML_TEST_VERSION, b"Bluer than velvet were her eyes");
+    let corrupted = helpers::corrupt_last_char(&encoded);
     assert_eq!(
         decode(&corrupted).unwrap_err(),
         DecodeError::InvalidChecksum

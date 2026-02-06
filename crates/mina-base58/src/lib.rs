@@ -16,16 +16,19 @@ extern crate alloc;
 /// Version bytes for Mina base58check encodings.
 pub mod version;
 
-use alloc::{string::String, vec::Vec};
+use alloc::{format, string::String, vec::Vec};
 use sha2::{Digest, Sha256};
 use thiserror::Error;
 
 /// Errors that can occur when decoding a base58check string.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum DecodeError {
-    /// The input contains characters outside the base58 alphabet.
-    #[error("invalid base58 character")]
-    InvalidBase58,
+    /// The input is not valid base58.
+    ///
+    /// The contained string carries the detail from the underlying
+    /// `bs58` decoder (e.g. invalid character and position).
+    #[error("invalid base58: {0}")]
+    InvalidBase58(String),
     /// The decoded data is shorter than the 5-byte minimum
     /// (1 version byte + 4 checksum bytes).
     #[error("decoded data too short")]
@@ -131,7 +134,7 @@ pub fn encode_raw(raw: &[u8]) -> String {
 pub fn decode_raw(b58: &str) -> Result<Vec<u8>, DecodeError> {
     let mut bytes = bs58::decode(b58)
         .into_vec()
-        .map_err(|_| DecodeError::InvalidBase58)?;
+        .map_err(|e| DecodeError::InvalidBase58(format!("{e}")))?;
     if bytes.len() < 5 {
         return Err(DecodeError::TooShort);
     }
