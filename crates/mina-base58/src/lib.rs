@@ -52,11 +52,11 @@ pub(crate) fn checksum(data: &[u8]) -> [u8; 4] {
     out
 }
 
-/// Constant-time comparison of a 4-byte slice against a checksum.
+/// Constant-time comparison of two 4-byte checksums.
 ///
 /// Prevents timing side-channels that could reveal how many leading
 /// checksum bytes matched.
-fn checksum_verify(got: &[u8], expected: [u8; 4]) -> bool {
+fn checksum_verify(got: [u8; 4], expected: [u8; 4]) -> bool {
     got.iter()
         .zip(expected.iter())
         .fold(0u8, |acc, (a, b)| acc | (a ^ b))
@@ -136,8 +136,13 @@ pub fn decode_raw(b58: &str) -> Result<Vec<u8>, DecodeError> {
         return Err(DecodeError::TooShort);
     }
     let data_len = bytes.len() - 4;
-    if !checksum_verify(&bytes[data_len..], checksum(&bytes[..data_len]))
-    {
+    let got = [
+        bytes[data_len],
+        bytes[data_len + 1],
+        bytes[data_len + 2],
+        bytes[data_len + 3],
+    ];
+    if !checksum_verify(got, checksum(&bytes[..data_len])) {
         return Err(DecodeError::InvalidChecksum);
     }
     bytes.truncate(data_len);
