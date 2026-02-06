@@ -52,6 +52,7 @@ where
     C: CommitmentCurve,
 {
     /// Multiplies each commitment chunk of f with powers of zeta^n
+    #[must_use]
     pub fn chunk_commitment(&self, zeta_n: C::ScalarField) -> Self {
         let mut res = C::Group::zero();
         // use Horner's to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...
@@ -62,7 +63,7 @@ where
             res.add_assign(chunk);
         }
 
-        PolyComm {
+        Self {
             chunks: vec![res.into_affine()],
         }
     }
@@ -80,9 +81,16 @@ where
         // (https://en.wikipedia.org/wiki/Horner%27s_method)
         for chunk in self.chunks.iter().rev() {
             res *= zeta_n;
-            res += chunk
+            res += chunk;
         }
         res
+    }
+}
+
+impl<G> PolyComm<G> {
+    /// Returns an iterator over the chunks.
+    pub fn iter(&self) -> std::slice::Iter<'_, G> {
+        self.chunks.iter()
     }
 }
 
@@ -106,7 +114,8 @@ where
 }
 
 impl<T> PolyComm<T> {
-    pub fn new(chunks: Vec<T>) -> Self {
+    #[must_use]
+    pub const fn new(chunks: Vec<T>) -> Self {
         Self { chunks }
     }
 }
@@ -186,17 +195,20 @@ impl<A: Copy + Clone + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
     }
 
     /// Returns the number of chunks.
-    pub fn len(&self) -> usize {
+    #[must_use]
+    pub const fn len(&self) -> usize {
         self.chunks.len()
     }
 
     /// Returns `true` if the commitment is empty.
-    pub fn is_empty(&self) -> bool {
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
         self.chunks.is_empty()
     }
 
     // TODO: if all callers end up calling unwrap, just call this zip_eq and
     // panic here (and document the panic)
+    #[must_use]
     pub fn zip<B: Copy + CanonicalDeserialize + CanonicalSerialize>(
         &self,
         other: &PolyComm<B>,
@@ -213,9 +225,11 @@ impl<A: Copy + Clone + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
         Some(PolyComm::new(chunks))
     }
 
-    /// Return only the first chunk
+    /// Return only the first chunk.
+    ///
     /// Getting this single value is relatively common in the codebase, even
     /// though we should not do this, and abstract the chunks in the structure.
+    #[must_use]
     pub fn get_first_chunk(&self) -> A {
         self.chunks[0]
     }
@@ -261,7 +275,7 @@ where
         &<G::BaseField as PrimeField>::MODULUS.to_bits_le()[..],
     );
     let two: G::ScalarField = (2u64).into();
-    let two_pow = two.pow([<G::ScalarField as PrimeField>::MODULUS_BIT_SIZE as u64]);
+    let two_pow = two.pow([u64::from(<G::ScalarField as PrimeField>::MODULUS_BIT_SIZE)]);
     if n1 < n2 {
         (x - (two_pow + G::ScalarField::one())) / two
     } else {
@@ -312,20 +326,24 @@ impl<'a, C: AffineRepr + Sub<Output = C::Group>> Sub<&'a PolyComm<C>> for &PolyC
 }
 
 impl<C: AffineRepr> PolyComm<C> {
-    pub fn scale(&self, c: C::ScalarField) -> PolyComm<C> {
-        PolyComm {
+    #[must_use]
+    pub fn scale(&self, c: C::ScalarField) -> Self {
+        Self {
             chunks: self.chunks.iter().map(|g| g.mul(c).into_affine()).collect(),
         }
     }
 
     /// Performs a multi-scalar multiplication between scalars `elm` and
-    /// commitments `com`. If both are empty, returns a commitment of length 1
+    /// commitments `com`.
+    ///
+    /// If both are empty, returns a commitment of length 1
     /// containing the point at infinity.
     ///
     /// ## Panics
     ///
     /// Panics if `com` and `elm` are not of the same size.
-    pub fn multi_scalar_mul(com: &[&PolyComm<C>], elm: &[C::ScalarField]) -> Self {
+    #[must_use]
+    pub fn multi_scalar_mul(com: &[&Self], elm: &[C::ScalarField]) -> Self {
         assert_eq!(com.len(), elm.len());
 
         if com.is_empty() || elm.is_empty() {
@@ -438,8 +456,8 @@ pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
     let mut k: usize = 0;
     let mut pow: usize = 1;
     for i in 1..s_length {
-        k += if i == pow { 1 } else { 0 };
-        pow <<= if i == pow { 1 } else { 0 };
+        k += usize::from(i == pow);
+        pow <<= u32::from(i == pow);
         s[i] = s[i - (pow >> 1)] * chals[rounds - 1 - (k - 1)];
     }
     s
@@ -483,7 +501,8 @@ pub fn absorb_commitment<
     sponge.absorb_g(&commitment.chunks);
 }
 
-/// A useful trait extending AffineRepr for commitments.
+/// A useful trait extending [`AffineRepr`] for commitments.
+///
 /// Unfortunately, we can't specify that `AffineRepr<BaseField : PrimeField>`,
 /// so usage of this traits must manually bind `G::BaseField: PrimeField`.
 pub trait CommitmentCurve: AffineRepr + Sub<Output = Self::Group> {
@@ -494,7 +513,8 @@ pub trait CommitmentCurve: AffineRepr + Sub<Output = Self::Group> {
     fn of_coordinates(x: Self::BaseField, y: Self::BaseField) -> Self;
 }
 
-/// A trait extending CommitmentCurve for endomorphisms.
+/// A trait extending [`CommitmentCurve`] for endomorphisms.
+///
 /// Unfortunately, we can't specify that `AffineRepr<BaseField : PrimeField>`,
 /// so usage of this traits must manually bind `G::BaseField: PrimeField`.
 pub trait EndoCurve: CommitmentCurve {
@@ -536,8 +556,8 @@ impl<P: SWCurveConfig + Clone> CommitmentCurve for SWJAffine<P> {
         }
     }
 
-    fn of_coordinates(x: P::BaseField, y: P::BaseField) -> SWJAffine<P> {
-        SWJAffine::<P>::new_unchecked(x, y)
+    fn of_coordinates(x: P::BaseField, y: P::BaseField) -> Self {
+        Self::new_unchecked(x, y)
     }
 }
 
@@ -566,9 +586,9 @@ impl<P: SWCurveConfig + Clone> EndoCurve for SWJAffine<P> {
     }
 }
 
-/// Computes the linearization of the evaluations of a (potentially
-/// split) polynomial.
+/// Computes the linearization of evaluations.
 ///
+/// Handles a (potentially split) polynomial.
 /// Each polynomial in `polys` is represented by a matrix where the
 /// rows correspond to evaluated points, and the columns represent
 /// potential segments (if a polynomial was split in several parts).
@@ -630,16 +650,19 @@ where
     G: AffineRepr,
 {
     /// The commitment of the polynomial being evaluated.
-    /// Note that PolyComm contains a vector of commitments, which handles the
-    /// case when chunking is used, i.e. when the polynomial degree is higher
-    /// than the SRS size.
+    ///
+    /// Note that [`PolyComm`] contains a vector of commitments, which handles
+    /// the case when chunking is used, i.e. when the polynomial degree is
+    /// higher than the SRS size.
     pub commitment: PolyComm<G>,
 
-    /// Contains an evaluation table. For instance, for vanilla PlonK, it
-    /// would be a vector of (chunked) evaluations at ζ and ζω.
-    /// The outer vector would be the evaluations at the different points (e.g.
-    /// ζ and ζω for vanilla PlonK) and the inner vector would be the chunks of
-    /// the polynomial.
+    /// Contains an evaluation table.
+    ///
+    /// For instance, for vanilla `PlonK`, it would be a vector of (chunked)
+    /// evaluations at zeta and zeta*omega. The outer vector would be the
+    /// evaluations at the different points (e.g. zeta and zeta*omega for
+    /// vanilla `PlonK`) and the inner vector would be the chunks of the
+    /// polynomial.
     pub evaluations: Vec<Vec<G::ScalarField>>,
 }
 
@@ -668,7 +691,8 @@ where
     pub combined_inner_product: G::ScalarField,
 }
 
-/// This function populates the parameters `scalars` and `points`.
+/// Populates the parameters `scalars` and `points`.
+///
 /// It iterates over the evaluations and adds each commitment to the
 /// vector `points`.
 /// The parameter `scalars` is populated with the values:

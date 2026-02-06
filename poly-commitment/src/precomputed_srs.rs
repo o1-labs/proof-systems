@@ -1,4 +1,6 @@
-//! To prover and verify proofs you need a [Structured Reference
+//! Pre-generated SRS (Structured Reference String) for proofs.
+//!
+//! To prove and verify proofs you need a [Structured Reference
 //! String](https://www.cryptologie.net/article/560/zk-faq-whats-a-trusted-setup-whats-a-structured-reference-string-whats-toxic-waste/)
 //! (SRS).
 //! The generation of this SRS is quite expensive, so we provide a pre-generated
@@ -50,7 +52,7 @@ pub struct TestSRS<G> {
 
 impl<G: Clone> From<SRS<G>> for TestSRS<G> {
     fn from(value: SRS<G>) -> Self {
-        TestSRS {
+        Self {
             g: value.g,
             h: value.h,
             lagrange_bases: value.lagrange_bases.into(),
@@ -60,7 +62,7 @@ impl<G: Clone> From<SRS<G>> for TestSRS<G> {
 
 impl<G> From<TestSRS<G>> for SRS<G> {
     fn from(value: TestSRS<G>) -> Self {
-        SRS {
+        Self {
             g: value.g,
             h: value.h,
             lagrange_bases: HashMapCache::new_from_hashmap(value.lagrange_bases),
@@ -85,13 +87,19 @@ fn get_srs_path<G: NamedCurve>(srs_type: StoredSRSType) -> PathBuf {
 }
 
 /// Generic SRS getter function.
+///
+/// # Panics
+///
+/// Panics if the SRS file does not exist on disk or cannot be
+/// deserialized.
+#[must_use]
 pub fn get_srs_generic<G>(srs_type: StoredSRSType) -> SRS<G>
 where
     G: NamedCurve + CommitmentCurve,
 {
     let srs_path = get_srs_path::<G>(srs_type);
-    let file =
-        File::open(srs_path.clone()).unwrap_or_else(|_| panic!("missing SRS file: {srs_path:?}"));
+    let file = File::open(srs_path.clone())
+        .unwrap_or_else(|_| panic!("missing SRS file: {}", srs_path.display()));
     let reader = BufReader::new(file);
     match srs_type {
         StoredSRSType::Test => {
@@ -103,7 +111,11 @@ where
 }
 
 /// Obtains an SRS for a specific curve from disk.
-/// Panics if the SRS does not exists.
+///
+/// # Panics
+///
+/// Panics if the SRS does not exist on disk or cannot be deserialized.
+#[must_use]
 pub fn get_srs<G>() -> SRS<G>
 where
     G: NamedCurve + CommitmentCurve,
@@ -112,7 +124,11 @@ where
 }
 
 /// Obtains a Test SRS for a specific curve from disk.
-/// Panics if the SRS does not exists.
+///
+/// # Panics
+///
+/// Panics if the SRS does not exist on disk or cannot be deserialized.
+#[must_use]
 pub fn get_srs_test<G>() -> SRS<G>
 where
     G: NamedCurve + CommitmentCurve,

@@ -54,11 +54,11 @@ mod cache {
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use core::marker::PhantomData;
     use mina_curves::pasta::{Pallas, Vesta};
-    use once_cell::sync::Lazy;
     use std::{
         env, fs,
         fs::File,
         path::{Path, PathBuf},
+        sync::LazyLock,
     };
 
     pub trait LagrangeCache<G: AffineRepr> {
@@ -91,8 +91,8 @@ mod cache {
     }
 
     impl<G> FileCache<G> {
-        fn new(cache_dir: PathBuf) -> Self {
-            FileCache {
+        const fn new(cache_dir: PathBuf) -> Self {
+            Self {
                 cache_dir,
                 point_type: PhantomData,
             }
@@ -110,11 +110,9 @@ mod cache {
             srs_length: usize,
             domain: &D<G::ScalarField>,
         ) -> Self::CacheKey {
-            self.cache_dir.clone().join(format!(
-                "lagrange_basis_{:}-{:}",
-                srs_length,
-                domain.size()
-            ))
+            self.cache_dir
+                .clone()
+                .join(format!("lagrange_basis_{srs_length}-{}", domain.size()))
         }
 
         fn load_lagrange_basis_from_cache(
@@ -125,11 +123,11 @@ mod cache {
             let cache_key = self.lagrange_basis_cache_key(srs_length, domain);
             if Path::exists(&cache_key) {
                 let f = File::open(cache_key.clone()).unwrap_or_else(|_| {
-                    panic!("Missing lagrange basis cache file {:?}", cache_key)
+                    panic!("Missing lagrange basis cache file {}", cache_key.display())
                 });
                 let basis: Vec<PolyComm<G>> =
                     rmp_serde::decode::from_read(f).unwrap_or_else(|_| {
-                        panic!("Error decoding lagrange cache file {:?}", cache_key)
+                        panic!("Error decoding lagrange cache file {}", cache_key.display())
                     });
                 Some(basis)
             } else {
@@ -146,10 +144,16 @@ mod cache {
             let cache_key = self.lagrange_basis_cache_key(srs_length, domain);
             if !Path::exists(&cache_key) {
                 let mut f = File::create(cache_key.clone()).unwrap_or_else(|_| {
-                    panic!("Error creating lagrange basis cache file {:?}", cache_key)
+                    panic!(
+                        "Error creating lagrange basis cache file {}",
+                        cache_key.display()
+                    )
                 });
                 rmp_serde::encode::write(&mut f, basis).unwrap_or_else(|_| {
-                    panic!("Error encoding lagrange basis to file {:?}", cache_key)
+                    panic!(
+                        "Error encoding lagrange basis to file {}",
+                        cache_key.display()
+                    )
                 });
             }
         }
@@ -157,10 +161,10 @@ mod cache {
 
     // The following two caches are all that we need for mina tests. These will
     // not be initialized unless they are explicitly called.
-    static VESTA_FILE_CACHE: Lazy<FileCache<Vesta>> = Lazy::new(|| {
+    static VESTA_FILE_CACHE: LazyLock<FileCache<Vesta>> = LazyLock::new(|| {
         let cache_base_dir: String =
             env::var("LAGRANGE_CACHE_DIR").expect("LAGRANGE_CACHE_DIR missing in env");
-        let cache_dir = PathBuf::from(format!("{}/vesta", cache_base_dir));
+        let cache_dir = PathBuf::from(format!("{cache_base_dir}/vesta"));
         if !cache_dir.exists() {
             fs::create_dir_all(&cache_dir).unwrap();
         }
@@ -171,10 +175,10 @@ mod cache {
         &VESTA_FILE_CACHE
     }
 
-    static PALLAS_FILE_CACHE: Lazy<FileCache<Pallas>> = Lazy::new(|| {
+    static PALLAS_FILE_CACHE: LazyLock<FileCache<Pallas>> = LazyLock::new(|| {
         let cache_base_dir: String =
             env::var("LAGRANGE_CACHE_DIR").expect("LAGRANGE_CACHE_DIR missing in env");
-        let cache_dir = PathBuf::from(format!("{}/pallas", cache_base_dir));
+        let cache_dir = PathBuf::from(format!("{cache_base_dir}/pallas"));
         if !cache_dir.exists() {
             fs::create_dir_all(&cache_dir).unwrap();
         }
