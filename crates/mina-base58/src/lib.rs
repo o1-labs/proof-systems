@@ -18,6 +18,7 @@ pub mod version;
 
 use alloc::{format, string::String, vec::Vec};
 use sha2::{Digest, Sha256};
+use subtle::ConstantTimeEq;
 use thiserror::Error;
 
 /// Errors that can occur when decoding a base58check string.
@@ -57,14 +58,10 @@ pub(crate) fn checksum(data: &[u8]) -> [u8; 4] {
 
 /// Constant-time comparison of two 4-byte checksums.
 ///
-/// Prevents timing side-channels that could reveal how many leading
-/// checksum bytes matched.
-const fn checksum_verify(got: [u8; 4], expected: [u8; 4]) -> bool {
-    (got[0] ^ expected[0])
-        | (got[1] ^ expected[1])
-        | (got[2] ^ expected[2])
-        | (got[3] ^ expected[3])
-        == 0
+/// Uses [`subtle::ConstantTimeEq`] to prevent timing side-channels
+/// that could reveal how many leading checksum bytes matched.
+fn checksum_verify(got: [u8; 4], expected: [u8; 4]) -> bool {
+    got.ct_eq(&expected).into()
 }
 
 /// Encode `payload` with a leading `version` byte in base58check.
@@ -156,7 +153,6 @@ pub fn decode_raw(b58: &str) -> Result<Vec<u8>, DecodeError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::vec;
 
     // ================================================================
     // checksum tests
@@ -198,57 +194,5 @@ mod tests {
                 "byte {i} flip not detected"
             );
         }
-    }
-
-    // ================================================================
-    // decode_version tests
-    // ================================================================
-
-    #[test]
-    fn test_decode_version_correct() {
-        let encoded = encode(version::STATE_HASH, b"data");
-        let payload = decode_version(&encoded, version::STATE_HASH).unwrap();
-        assert_eq!(payload, b"data");
-    }
-
-    #[test]
-    fn test_decode_version_wrong() {
-        let encoded = encode(version::STATE_HASH, b"data");
-        let err = decode_version(&encoded, version::LEDGER_HASH).unwrap_err();
-        assert_eq!(
-            err,
-            DecodeError::InvalidVersion {
-                expected: version::LEDGER_HASH,
-                found: version::STATE_HASH,
-            }
-        );
-    }
-
-    // ================================================================
-    // Cross-check: encode vs encode_raw consistency
-    // ================================================================
-
-    #[test]
-    fn test_encode_matches_encode_raw() {
-        let version = version::STATE_HASH;
-        let payload = b"hello";
-        let via_encode = encode(version, payload);
-
-        let mut raw = vec![version];
-        raw.extend_from_slice(payload);
-        let via_raw = encode_raw(&raw);
-
-        assert_eq!(via_encode, via_raw);
-    }
-
-    #[test]
-    fn test_decode_matches_decode_raw() {
-        let b58 = encode(version::STATE_HASH, b"hello");
-
-        let (ver, payload) = decode(&b58).unwrap();
-        let raw = decode_raw(&b58).unwrap();
-
-        assert_eq!(raw[0], ver);
-        assert_eq!(&raw[1..], &payload[..]);
     }
 }

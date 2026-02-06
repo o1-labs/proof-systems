@@ -1,6 +1,6 @@
 mod helpers;
 
-use mina_base58::{decode, decode_raw, encode_raw, DecodeError};
+use mina_base58::{decode, decode_raw, decode_version, encode, encode_raw, version, DecodeError};
 
 #[test]
 fn test_decode_invalid_base58_chars() {
@@ -103,4 +103,17 @@ fn test_error_display_invalid_version() {
     let msg = err.to_string();
     assert!(msg.contains("0x05"));
     assert!(msg.contains("0x10"));
+}
+
+#[test]
+fn test_decode_version_wrong() {
+    let encoded = encode(version::STATE_HASH, b"data");
+    let err = decode_version(&encoded, version::LEDGER_HASH).unwrap_err();
+    assert_eq!(
+        err,
+        DecodeError::InvalidVersion {
+            expected: version::LEDGER_HASH,
+            found: version::STATE_HASH,
+        }
+    );
 }

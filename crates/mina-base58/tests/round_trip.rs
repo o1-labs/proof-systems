@@ -1,6 +1,37 @@
 use mina_base58::{decode, decode_raw, decode_version, encode, encode_raw, version};
 
 #[test]
+fn test_decode_version_correct() {
+    let encoded = encode(version::STATE_HASH, b"data");
+    let payload = decode_version(&encoded, version::STATE_HASH).unwrap();
+    assert_eq!(payload, b"data");
+}
+
+#[test]
+fn test_encode_matches_encode_raw() {
+    let version = version::STATE_HASH;
+    let payload = b"hello";
+    let via_encode = encode(version, payload);
+
+    let mut raw = vec![version];
+    raw.extend_from_slice(payload);
+    let via_raw = encode_raw(&raw);
+
+    assert_eq!(via_encode, via_raw);
+}
+
+#[test]
+fn test_decode_matches_decode_raw() {
+    let b58 = encode(version::STATE_HASH, b"hello");
+
+    let (ver, payload) = decode(&b58).unwrap();
+    let raw = decode_raw(&b58).unwrap();
+
+    assert_eq!(raw[0], ver);
+    assert_eq!(&raw[1..], &payload[..]);
+}
+
+#[test]
 fn test_encode_raw_decode_raw_roundtrip() {
     let raw = b"\x10\x01\x02\x03some data";
     let encoded = encode_raw(raw);
