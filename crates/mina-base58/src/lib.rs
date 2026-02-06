@@ -59,10 +59,11 @@ pub(crate) fn checksum(data: &[u8]) -> [u8; 4] {
 ///
 /// Prevents timing side-channels that could reveal how many leading
 /// checksum bytes matched.
-fn checksum_verify(got: [u8; 4], expected: [u8; 4]) -> bool {
-    got.iter()
-        .zip(expected.iter())
-        .fold(0u8, |acc, (a, b)| acc | (a ^ b))
+const fn checksum_verify(got: [u8; 4], expected: [u8; 4]) -> bool {
+    (got[0] ^ expected[0])
+        | (got[1] ^ expected[1])
+        | (got[2] ^ expected[2])
+        | (got[3] ^ expected[3])
         == 0
 }
 
