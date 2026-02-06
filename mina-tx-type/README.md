@@ -11,7 +11,7 @@ the full ledger crate's dependencies.
 
 - `no_std` compatible for embedded/constrained environments
 - Transaction types: `Coinbase`, `CoinbaseFeeTransfer`
-- Currency types: `Amount`, `Fee`, `Signed<T>`, `Sgn`
+- Currency types: `Amount`, `Fee`, `Signed<T>`, `Sign`
 
 ## References
 

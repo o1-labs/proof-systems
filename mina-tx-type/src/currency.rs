@@ -10,7 +10,7 @@ use core::{fmt, ops::Neg};
 /// Used in conjunction with [`Signed`] to represent signed quantities
 /// where the sign is tracked separately from the magnitude.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub enum Sgn {
+pub enum Sign {
     /// Positive value
     #[default]
     Pos,
@@ -18,7 +18,7 @@ pub enum Sgn {
     Neg,
 }
 
-impl Sgn {
+impl Sign {
     /// Returns `true` if the sign is positive.
     #[inline]
     #[must_use]
@@ -32,11 +32,12 @@ impl Sgn {
     pub const fn is_neg(&self) -> bool {
         matches!(self, Self::Neg)
     }
+}
 
-    /// Negates the sign, returning the opposite.
-    #[inline]
-    #[must_use]
-    pub const fn negate(&self) -> Self {
+impl Neg for Sign {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
         match self {
             Self::Pos => Self::Neg,
             Self::Neg => Self::Pos,
@@ -44,15 +45,7 @@ impl Sgn {
     }
 }
 
-impl Neg for Sgn {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        self.negate()
-    }
-}
-
-impl fmt::Display for Sgn {
+impl fmt::Display for Sign {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Pos => write!(f, "+"),
@@ -65,14 +58,14 @@ impl fmt::Display for Sgn {
 ///
 /// This trait defines the core operations needed for currency magnitude types
 /// like [`Amount`] and [`Fee`].
-pub trait Magnitude:
-    Copy + Clone + PartialOrd + Ord + PartialEq + Eq + Default + fmt::Debug
-{
+pub trait Magnitude: Copy + PartialEq + PartialOrd {
     /// The zero value for this type.
     const ZERO: Self;
 
     /// Returns `true` if this value is zero.
-    fn is_zero(self) -> bool;
+    fn is_zero(self) -> bool {
+        self == Self::ZERO
+    }
 
     /// Returns the absolute difference between `self` and `other`.
     #[must_use]
@@ -95,7 +88,7 @@ pub trait Magnitude:
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Signed<T: Magnitude> {
     magnitude: T,
-    sgn: Sgn,
+    sign: Sign,
 }
 
 impl<T: Magnitude> Default for Signed<T> {
@@ -106,17 +99,17 @@ impl<T: Magnitude> Default for Signed<T> {
 
 impl<T: Magnitude> Signed<T> {
     /// Normalizes the sign: zero magnitude always has positive sign.
-    fn normalize(magnitude: T, sgn: Sgn) -> Self {
-        let sgn = if magnitude.is_zero() { Sgn::Pos } else { sgn };
-        Self { magnitude, sgn }
+    fn normalize(magnitude: T, sign: Sign) -> Self {
+        let sign = if magnitude.is_zero() { Sign::Pos } else { sign };
+        Self { magnitude, sign }
     }
 
     /// Creates a new signed value with the given magnitude and sign.
     ///
     /// Zero magnitude is always normalized to positive sign.
     #[must_use]
-    pub fn new(magnitude: T, sgn: Sgn) -> Self {
-        Self::normalize(magnitude, sgn)
+    pub fn new(magnitude: T, sign: Sign) -> Self {
+        Self::normalize(magnitude, sign)
     }
 
     /// Creates a new positive signed value.
@@ -124,7 +117,7 @@ impl<T: Magnitude> Signed<T> {
     /// Zero magnitude is normalized to positive sign.
     #[must_use]
     pub fn pos(magnitude: T) -> Self {
-        Self::normalize(magnitude, Sgn::Pos)
+        Self::normalize(magnitude, Sign::Pos)
     }
 
     /// Creates a new negative signed value.
@@ -132,7 +125,7 @@ impl<T: Magnitude> Signed<T> {
     /// Zero magnitude is normalized to positive sign.
     #[must_use]
     pub fn neg(magnitude: T) -> Self {
-        Self::normalize(magnitude, Sgn::Neg)
+        Self::normalize(magnitude, Sign::Neg)
     }
 
     /// Creates the zero value.
@@ -140,7 +133,7 @@ impl<T: Magnitude> Signed<T> {
     pub const fn zero() -> Self {
         Self {
             magnitude: T::ZERO,
-            sgn: Sgn::Pos,
+            sign: Sign::Pos,
         }
     }
 
@@ -152,8 +145,8 @@ impl<T: Magnitude> Signed<T> {
 
     /// Returns the sign.
     #[must_use]
-    pub const fn sgn(&self) -> Sgn {
-        self.sgn
+    pub const fn sign(&self) -> Sign {
+        self.sign
     }
 
     /// Returns `true` if this value is zero.
@@ -165,38 +158,32 @@ impl<T: Magnitude> Signed<T> {
     /// Returns `true` if this value is positive (including zero).
     #[must_use]
     pub const fn is_pos(&self) -> bool {
-        self.sgn.is_pos()
+        self.sign.is_pos()
     }
 
     /// Returns `true` if this value is negative.
     #[must_use]
     pub const fn is_neg(&self) -> bool {
-        self.sgn.is_neg()
-    }
-
-    /// Negates this signed value.
-    #[must_use]
-    pub fn negate(&self) -> Self {
-        Self::normalize(self.magnitude, self.sgn.negate())
+        self.sign.is_neg()
     }
 
     /// Checked addition of two signed values.
     ///
     /// Returns `None` if overflow occurs.
     #[must_use]
-    pub fn checked_add(&self, other: &Self) -> Option<Self> {
-        if self.sgn == other.sgn {
+    pub fn checked_add(self, other: Self) -> Option<Self> {
+        if self.sign == other.sign {
             // Same sign: add magnitudes, keep sign
             let magnitude = self.magnitude.checked_add(other.magnitude)?;
-            Some(Self::normalize(magnitude, self.sgn))
+            Some(Self::normalize(magnitude, self.sign))
         } else {
             // Opposite signs: subtract smaller from larger
-            let (magnitude, sgn) = if self.magnitude >= other.magnitude {
-                (self.magnitude.abs_diff(other.magnitude), self.sgn)
+            let (magnitude, sign) = if self.magnitude >= other.magnitude {
+                (self.magnitude.abs_diff(other.magnitude), self.sign)
             } else {
-                (other.magnitude.abs_diff(self.magnitude), other.sgn)
+                (other.magnitude.abs_diff(self.magnitude), other.sign)
             };
-            Some(Self::normalize(magnitude, sgn))
+            Some(Self::normalize(magnitude, sign))
         }
     }
 
@@ -204,14 +191,14 @@ impl<T: Magnitude> Signed<T> {
     ///
     /// Returns `None` if overflow occurs.
     #[must_use]
-    pub fn checked_sub(&self, other: &Self) -> Option<Self> {
-        self.checked_add(&other.negate())
+    pub fn checked_sub(self, other: Self) -> Option<Self> {
+        self.checked_add(-other)
     }
 }
 
 impl<T: Magnitude + fmt::Display> fmt::Display for Signed<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.sgn.is_neg() {
+        if self.sign.is_neg() {
             write!(f, "-{}", self.magnitude)
         } else {
             write!(f, "{}", self.magnitude)
@@ -223,7 +210,7 @@ impl<T: Magnitude> Neg for Signed<T> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        self.negate()
+        Self::normalize(self.magnitude, -self.sign)
     }
 }
 
@@ -259,10 +246,6 @@ macro_rules! impl_number {
 
         impl Magnitude for $name {
             const ZERO: Self = Self(0);
-
-            fn is_zero(self) -> bool {
-                self.0 == 0
-            }
 
             fn abs_diff(self, other: Self) -> Self {
                 Self(self.0.abs_diff(other.0))

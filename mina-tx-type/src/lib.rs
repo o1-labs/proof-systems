@@ -24,7 +24,7 @@
 //! - [`Amount`]: Currency amounts in nanomina
 //! - [`Fee`]: Transaction fees in nanomina
 //! - [`Signed`]: Signed quantities with separate magnitude and sign
-//! - [`Sgn`]: Sign indicator (positive or negative)
+//! - [`Sign`]: Sign indicator (positive or negative)
 //!
 //! # Example
 //!
@@ -50,4 +50,4 @@ pub mod currency;
 
 // Re-export main types at crate root for convenience
 pub use coinbase::{Coinbase, CoinbaseFeeTransfer};
-pub use currency::{Amount, Fee, Magnitude, Sgn, Signed};
+pub use currency::{Amount, Fee, Magnitude, Sign, Signed};
