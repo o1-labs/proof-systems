@@ -312,18 +312,19 @@ where
                 })
                 .collect(),
         };
-        let w_comm_opt_res: Vec<Result<_>> = witness
-            .clone()
-            .into_par_iter()
+        //~ 1. Commit to the witness columns and compute witness polynomials
+        //~    in a single parallel pass. We commit using the evaluations form
+        //~    to take advantage of sparsity, then interpolate for later use.
+        let w_comm_and_poly: Vec<Result<_>> = witness
+            .par_iter()
             .zip(blinders_final.into_par_iter())
-            .map(|(witness, blinder)| {
+            .map(|(witness_col, blinder)| {
                 let witness_eval =
                     Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                        witness,
+                        witness_col.clone(),
                         index.cs.domain.d1,
                     );
 
-                // TODO: make this a function rather no? mask_with_custom()
                 let witness_com = index
                     .srs
                     .commit_evaluations_non_hiding(index.cs.domain.d1, &witness_eval);
@@ -332,15 +333,21 @@ where
                     .mask_custom(witness_com, &blinder)
                     .map_err(ProverError::WrongBlinders)?;
 
-                Ok(com)
+                let poly = witness_eval.interpolate();
+                Ok((com, poly))
             })
             .collect();
 
-        let w_comm_res: Result<Vec<BlindedCommitment<G>>> = w_comm_opt_res.into_iter().collect();
+        let w_comm_and_poly: Vec<(BlindedCommitment<G>, DensePolynomial<G::ScalarField>)> =
+            w_comm_and_poly.into_iter().collect::<Result<_>>()?;
 
-        let w_comm = w_comm_res?;
+        let (w_comm_vec, witness_poly_vec): (Vec<_>, Vec<_>) = w_comm_and_poly.into_iter().unzip();
 
-        let w_comm: [BlindedCommitment<G>; COLUMNS] = w_comm
+        let w_comm: [BlindedCommitment<G>; COLUMNS] = w_comm_vec
+            .try_into()
+            .expect("previous loop is of the correct length");
+
+        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = witness_poly_vec
             .try_into()
             .expect("previous loop is of the correct length");
 
@@ -348,23 +355,6 @@ where
         w_comm
             .iter()
             .for_each(|c| absorb_commitment(&mut fq_sponge, &c.commitment));
-
-        //~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
-        //~    As mentioned above, we commit using the evaluations form rather than the coefficients
-        //~    form so we can take advantage of the sparsity of the evaluations (i.e., there are many
-        //~    0 entries and entries that have less-than-full-size field elemnts.)
-        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = (0..COLUMNS)
-            .into_par_iter()
-            .map(|i| {
-                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                    witness[i].clone(),
-                    index.cs.domain.d1,
-                )
-                .interpolate()
-            })
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap();
 
         let mut lookup_context = LookupContext::default();
 
