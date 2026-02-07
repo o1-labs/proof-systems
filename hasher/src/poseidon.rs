@@ -92,7 +92,7 @@ where
 
         if let Some(domain_string) = H::domain_string(domain_param) {
             self.sponge
-                .absorb(&[domain_prefix_to_field::<Fp>(domain_string)]);
+                .absorb(&[domain_prefix_to_field::<Fp>(&domain_string)]);
             self.sponge.squeeze();
         }
 

@@ -1,6 +1,10 @@
 // Enable unstable `is_multiple_of` on nightly for Wasm builds until nightly is updated
 // See: https://github.com/o1-labs/mina-rust/issues/1997
 #![cfg_attr(target_arch = "wasm32", feature(unsigned_is_multiple_of))]
+#![deny(unsafe_code)]
+#![deny(clippy::all)]
+#![deny(clippy::pedantic)]
+#![deny(clippy::nursery)]
 
 mod combine;
 pub mod commitment;
@@ -37,24 +41,31 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     /// Get the group element used for blinding commitments
     fn blinding_commitment(&self) -> G;
 
-    /// Same as [SRS::mask] except that you can pass the blinders manually.
-    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
-    /// keep the blinding factors and the commitment together. The blinded
-    /// commitment is saved in the commitment field of the output.
-    /// The output is wrapped into a [Result] to handle the case the blinders
+    /// Same as [`SRS::mask`] except you can pass blinders manually.
+    ///
+    /// A [`BlindedCommitment`] object is returned instead of a [`PolyComm`]
+    /// object to keep the blinding factors and the commitment together. The
+    /// blinded commitment is saved in the commitment field of the output.
+    /// The output is wrapped into a [`Result`] to handle the case the blinders
     /// are not the same length than the number of chunks commitments have.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CommitmentError::BlindersDontMatch`] if the number of
+    /// blinders does not match the number of commitment chunks.
     fn mask_custom(
         &self,
         com: PolyComm<G>,
         blinders: &PolyComm<G::ScalarField>,
     ) -> Result<BlindedCommitment<G>, CommitmentError>;
 
-    /// Turns a non-hiding polynomial commitment into a hiding polynomial
-    /// commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with
+    /// Turns a non-hiding commitment into a hiding one.
+    ///
+    /// Transforms each given `<a, G>` into `(<a, G> + wH, w)` with
     /// a random `w` per commitment.
-    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
-    /// keep the blinding factors and the commitment together. The blinded
-    /// commitment is saved in the commitment field of the output.
+    /// A [`BlindedCommitment`] object is returned instead of a [`PolyComm`]
+    /// object to keep the blinding factors and the commitment together. The
+    /// blinded commitment is saved in the commitment field of the output.
     fn mask(
         &self,
         comm: PolyComm<G>,
@@ -81,7 +92,7 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     /// also contain the additional chunks.
     ///
     /// See the test
-    /// [crate::pbt_srs::test_regression_commit_non_hiding_expected_number_of_chunks]
+    /// [`crate::pbt_srs::test_regression_commit_non_hiding_expected_number_of_chunks`]
     /// for an example of the number of chunks returned.
     fn commit_non_hiding(
         &self,
@@ -89,12 +100,12 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
         num_chunks: usize,
     ) -> PolyComm<G>;
 
-    /// Commits a polynomial, potentially splitting the result in multiple
-    /// commitments.
-    /// It is analogous to [SRS::commit_evaluations] but for polynomials.
-    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
-    /// keep the blinding factors and the commitment together. The blinded
-    /// commitment is saved in the commitment field of the output.
+    /// Commits a polynomial, potentially splitting the result.
+    ///
+    /// It is analogous to [`SRS::commit_evaluations`] but for polynomials.
+    /// A [`BlindedCommitment`] object is returned instead of a [`PolyComm`]
+    /// object to keep the blinding factors and the commitment together. The
+    /// blinded commitment is saved in the commitment field of the output.
     fn commit(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
@@ -103,13 +114,20 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     ) -> BlindedCommitment<G>;
 
     /// Commit to a polynomial, with custom blinding factors.
-    /// It is a combination of [SRS::commit] and [SRS::mask_custom].
-    /// It is analogous to [SRS::commit_evaluations_custom] but for polynomials.
-    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
-    /// keep the blinding factors and the commitment together. The blinded
-    /// commitment is saved in the commitment field of the output.
-    /// The output is wrapped into a [Result] to handle the case the blinders
+    ///
+    /// It is a combination of [`SRS::commit`] and [`SRS::mask_custom`].
+    /// It is analogous to [`SRS::commit_evaluations_custom`] but for
+    /// polynomials.
+    /// A [`BlindedCommitment`] object is returned instead of a [`PolyComm`]
+    /// object to keep the blinding factors and the commitment together. The
+    /// blinded commitment is saved in the commitment field of the output.
+    /// The output is wrapped into a [`Result`] to handle the case the blinders
     /// are not the same length than the number of chunks commitments have.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CommitmentError::BlindersDontMatch`] if the number of
+    /// blinders does not match the number of commitment chunks.
     fn commit_custom(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
@@ -118,19 +136,21 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     ) -> Result<BlindedCommitment<G>, CommitmentError>;
 
     /// Commit to evaluations, without blinding factors.
-    /// It is analogous to [SRS::commit_non_hiding] but for evaluations.
+    ///
+    /// It is analogous to [`SRS::commit_non_hiding`] but for evaluations.
     fn commit_evaluations_non_hiding(
         &self,
         domain: D<G::ScalarField>,
         plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
     ) -> PolyComm<G>;
 
-    /// Commit to evaluations with blinding factors, generated using the random
-    /// number generator `rng`.
-    /// It is analogous to [SRS::commit] but for evaluations.
-    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
-    /// keep the blinding factors and the commitment together. The blinded
-    /// commitment is saved in the commitment field of the output.
+    /// Commit to evaluations with blinding factors.
+    ///
+    /// Generated using the random number generator `rng`.
+    /// It is analogous to [`SRS::commit`] but for evaluations.
+    /// A [`BlindedCommitment`] object is returned instead of a [`PolyComm`]
+    /// object to keep the blinding factors and the commitment together. The
+    /// blinded commitment is saved in the commitment field of the output.
     fn commit_evaluations(
         &self,
         domain: D<G::ScalarField>,
@@ -139,13 +159,20 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     ) -> BlindedCommitment<G>;
 
     /// Commit to evaluations with custom blinding factors.
-    /// It is a combination of [SRS::commit_evaluations] and [SRS::mask_custom].
-    /// It is analogous to [SRS::commit_custom] but for evaluations.
-    /// A [BlindedCommitment] object is returned instead of a PolyComm object to
-    /// keep the blinding factors and the commitment together. The blinded
-    /// commitment is saved in the commitment field of the output.
-    /// The output is wrapped into a [Result] to handle the case the blinders
+    ///
+    /// It is a combination of [`SRS::commit_evaluations`] and
+    /// [`SRS::mask_custom`].
+    /// It is analogous to [`SRS::commit_custom`] but for evaluations.
+    /// A [`BlindedCommitment`] object is returned instead of a [`PolyComm`]
+    /// object to keep the blinding factors and the commitment together. The
+    /// blinded commitment is saved in the commitment field of the output.
+    /// The output is wrapped into a [`Result`] to handle the case the blinders
     /// are not the same length than the number of chunks commitments have.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CommitmentError::BlindersDontMatch`] if the number of
+    /// blinders does not match the number of commitment chunks.
     fn commit_evaluations_custom(
         &self,
         domain: D<G::ScalarField>,

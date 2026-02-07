@@ -1,13 +1,13 @@
 //! This crate provides a generic implementation of the Poseidon hash function.
-//! It provides a [Sponge](crate::sponge::FqSponge) trait that can be
+//! It provides a [`Sponge`](crate::sponge::FqSponge) trait that can be
 //! implemented for any field.
 //!
 //! Some parameters for the Pasta fields are provided in the sub-crate
-//! [crate::pasta].
+//! [`pasta`](crate::pasta).
 //!
 //! To instantiate an object that can be used to generate challenges for the
 //! Fiat-Shamir transformation, use the
-//! [DefaultFqSponge](crate::sponge::DefaultFqSponge) struct. For instance, to
+//! [`DefaultFqSponge`](crate::sponge::DefaultFqSponge) struct. For instance, to
 //! instantiate with the parameters used by the Mina hard-fork called Berkeley,
 //! use:
 //! ```rust
@@ -23,6 +23,10 @@
 //! let challenge = sponge.challenge();
 //! ```
 
+#![deny(unsafe_code)]
+#![deny(clippy::all)]
+#![deny(clippy::pedantic)]
+#![deny(clippy::nursery)]
 #![no_std]
 
 extern crate alloc;

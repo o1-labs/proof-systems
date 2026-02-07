@@ -81,7 +81,7 @@ fn compute_ffadd_values<F: PrimeField>(
     // result = left + sign * right - field_overflow * modulus
     // TODO: unluckily, we cannot do it in one line if we keep these types, because one
     //       cannot combine field elements and biguints in the same operation automatically
-    let result = ForeignElement::from_biguint({
+    let result = ForeignElement::from_biguint(&{
         if opcode == FFOps::Add {
             if !has_overflow {
                 // normal addition
@@ -149,16 +149,16 @@ pub fn create_chain<F: PrimeField>(
 
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
 
-    let foreign_modulus = ForeignElement::from_biguint(modulus);
+    let foreign_modulus = ForeignElement::from_biguint(&modulus);
 
-    let mut left = ForeignElement::from_biguint(inputs[0].clone());
+    let mut left = ForeignElement::from_biguint(&inputs[0]);
 
     for i in 0..num {
         // Create foreign field addition row
         for w in &mut witness {
             w.extend(std::iter::repeat_n(F::zero(), 1));
         }
-        let right = ForeignElement::from_biguint(inputs[i + 1].clone());
+        let right = ForeignElement::from_biguint(&inputs[i + 1]);
         let (output, _sign, ovf, carry) =
             compute_ffadd_values(&left, &right, opcodes[i], &foreign_modulus);
         init_ffadd_row(
@@ -286,7 +286,7 @@ pub fn extend_witness_bound_addition<F: PrimeField>(
     }
 
     // Compute values for final bound check, needs a 4 limb right input
-    let right_input = ForeignElement::<F, LIMB_BITS, 4>::from_biguint(BigUint::binary_modulus());
+    let right_input = ForeignElement::<F, LIMB_BITS, 4>::from_biguint(&BigUint::binary_modulus());
 
     // Compute the bound and related witness data
     let (bound_output, bound_sign, bound_ovf, bound_carry) =

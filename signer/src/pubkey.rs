@@ -74,7 +74,9 @@ pub struct PubKey(CurvePoint);
 impl PubKey {
     /// Create public key from curve point
     /// Note: Does not check point is on curve
-    pub fn from_point_unsafe(point: CurvePoint) -> Self {
+    #[allow(clippy::needless_pass_by_value)]
+    #[must_use]
+    pub const fn from_point_unsafe(point: CurvePoint) -> Self {
         Self(point)
     }
 
@@ -106,7 +108,7 @@ impl PubKey {
         }
 
         // Safe now because we checked point is on the curve
-        Ok(PubKey::from_point_unsafe(public))
+        Ok(Self::from_point_unsafe(public))
     }
 
     /// Deserialize public key from hex
@@ -116,12 +118,15 @@ impl PubKey {
     /// Will give error if `hex` string does not match certain requirements.
     pub fn from_hex(public_hex: &str) -> Result<Self> {
         let bytes: Vec<u8> = hex::decode(public_hex).map_err(|_| PubKeyError::Hex)?;
-        PubKey::from_bytes(&bytes)
+        Self::from_bytes(&bytes)
     }
 
     /// Create public key from a secret key
     ///
-    /// Takes a reference to avoid requiring callers to clone the secret key.
+    /// # Errors
+    ///
+    /// Returns [`PubKeyError::SecKey`] if the scalar is zero, or
+    /// [`PubKeyError::NonCurvePoint`] if the derived point is not on the curve.
     pub fn from_secret_key(secret_key: &SecKey) -> Result<Self> {
         if *secret_key.scalar() == ScalarField::zero() {
             return Err(PubKeyError::SecKey);
@@ -132,7 +137,7 @@ impl PubKey {
         if !pt.is_on_curve() {
             return Err(PubKeyError::NonCurvePoint);
         }
-        Ok(PubKey::from_point_unsafe(pt))
+        Ok(Self::from_point_unsafe(pt))
     }
 
     /// Deserialize Mina address into public key
@@ -181,20 +186,21 @@ impl PubKey {
         }
 
         // Safe now because we checked point pt is on curve
-        Ok(PubKey::from_point_unsafe(pt))
+        Ok(Self::from_point_unsafe(pt))
     }
 
     /// Borrow public key as curve point
-    pub fn point(&self) -> &CurvePoint {
+    pub const fn point(&self) -> &CurvePoint {
         &self.0
     }
 
     /// Convert public key into curve point
-    pub fn into_point(self) -> CurvePoint {
+    pub const fn into_point(self) -> CurvePoint {
         self.0
     }
 
     /// Convert public key into compressed public key
+    #[must_use]
     pub fn into_compressed(&self) -> CompressedPubKey {
         let point = self.0;
         CompressedPubKey {
@@ -204,18 +210,29 @@ impl PubKey {
     }
 
     /// Serialize public key into corresponding Mina address
+    #[must_use]
     pub fn into_address(&self) -> String {
         let point = self.point();
         into_address(&point.x, point.y.into_bigint().is_odd())
     }
 
     /// Deserialize public key into bytes
+    ///
+    /// # Panics
+    ///
+    /// Panics if the field element byte conversion fails.
+    #[must_use]
     pub fn to_bytes(&self) -> Vec<u8> {
         let point = self.point();
         [point.x.to_bytes(), point.y.to_bytes()].concat()
     }
 
     /// Deserialize public key into hex
+    ///
+    /// # Panics
+    ///
+    /// Panics if the field element byte conversion fails.
+    #[must_use]
     pub fn to_hex(&self) -> String {
         let point = self.point();
         point.x.to_hex() + point.y.to_hex().as_str()
@@ -261,6 +278,7 @@ fn into_address(x: &BaseField, is_odd: bool) -> String {
 
 impl CompressedPubKey {
     /// Serialize compressed public key into corresponding Mina address
+    #[must_use]
     pub fn into_address(&self) -> String {
         into_address(&self.x, self.is_odd)
     }
@@ -304,6 +322,7 @@ impl CompressedPubKey {
     }
 
     /// Create compressed public key from a secret key
+    #[must_use]
     pub fn from_secret_key(sec_key: SecKey) -> Self {
         // We do not need to check point is on the curve, since it's derived
         // directly from the generator point
@@ -326,8 +345,9 @@ impl CompressedPubKey {
     }
 
     /// The empty [`CompressedPubKey`] value that is used as `public_key` in
-    /// empty account and [None] value for calculating the hash of
-    /// [`Option<CompressedPubKey>`], etc.
+    /// empty account and `None` value for calculating the hash of
+    /// `Option<CompressedPubKey>`, etc.
+    #[must_use]
     pub fn empty() -> Self {
         Self {
             x: BaseField::zero(),
@@ -336,13 +356,15 @@ impl CompressedPubKey {
     }
 
     /// Deserialize compressed public key into bytes
+    #[must_use]
     pub fn to_bytes(&self) -> Vec<u8> {
         let x_bytes = self.x.to_bytes();
-        let is_odd_bytes = vec![if self.is_odd { 0x01u8 } else { 0x00u8 }];
+        let is_odd_bytes = vec![u8::from(self.is_odd)];
         [x_bytes, is_odd_bytes].concat()
     }
 
     /// Deserialize compressed public key into hex
+    #[must_use]
     pub fn to_hex(&self) -> String {
         hex::encode(self.to_bytes())
     }

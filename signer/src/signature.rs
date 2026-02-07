@@ -114,12 +114,14 @@ impl Signature {
     /// a valid signature for any particular message or public key. It simply
     /// creates the data structure. Signature validation must be performed
     /// separately using appropriate verification functions.
-    pub fn new(rx: BaseField, s: ScalarField) -> Self {
+    #[must_use]
+    pub const fn new(rx: BaseField, s: ScalarField) -> Self {
         Self { rx, s }
     }
 
     /// Create a dummy signature, whose components are both equal to one.
     /// Use it with caution.
+    #[must_use]
     pub fn dummy() -> Self {
         Self {
             rx: BaseField::one(),
@@ -166,19 +168,19 @@ mod tests {
         );
 
         // Split into rx and s parts (64 chars each)
-        let (rx_hex, s_hex) = encoded.split_at(64);
+        let (encoded_rx, encoded_s) = encoded.split_at(64);
 
         // Verify rx part ends with "04" (4 in big-endian hex, padded to 32
         // bytes)
         assert!(
-            rx_hex.ends_with("04"),
+            encoded_rx.ends_with("04"),
             "rx component should end with '04' for value 4"
         );
 
         // Verify s part ends with "2a" (42 in big-endian hex, padded to 32
         // bytes)
         assert!(
-            s_hex.ends_with("2a"),
+            encoded_s.ends_with("2a"),
             "s component should end with '2a' for value 42"
         );
 
@@ -188,21 +190,24 @@ mod tests {
         let signature2 = Signature::new(rx2, s2);
         let encoded2 = signature2.to_string();
 
-        let (rx2_hex, s2_hex) = encoded2.split_at(64);
+        let (hex_rx_part, hex_s_part) = encoded2.split_at(64);
         assert!(
-            rx2_hex.ends_with("ff"),
+            hex_rx_part.ends_with("ff"),
             "rx should end with 'ff' for value 255"
         );
         assert!(
-            s2_hex.ends_with("0100"),
+            hex_s_part.ends_with("0100"),
             "s should end with '0100' for value 256"
         );
 
         // Verify the order: rx comes first, then s
-        assert_ne!(rx_hex, s_hex, "rx and s components should be different");
+        assert_ne!(
+            encoded_rx, encoded_s,
+            "rx and s components should be different"
+        );
         assert_eq!(
             encoded,
-            format!("{}{}", rx_hex, s_hex),
+            format!("{encoded_rx}{encoded_s}"),
             "Encoding should be rx followed by s"
         );
     }

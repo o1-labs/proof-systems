@@ -1,6 +1,11 @@
 //! This modules implements some math helper functions.
 
 /// Returns ceil(log2(d)) but panics if d = 0.
+///
+/// # Panics
+///
+/// Panics if `d` is 0.
+#[must_use]
 pub fn ceil_log2(d: usize) -> usize {
     // NOTE: should this really be usize, since usize is depended on the underlying system architecture?
 

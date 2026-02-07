@@ -9,7 +9,10 @@ use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain,
 use o1_utils::ExtendedDensePolynomial;
 use rayon::prelude::*;
 
-/// Represent a polynomial either with its coefficients or its evaluations
+/// Represent a polynomial either with its coefficients or its evaluations.
+///
+/// See [`DensePolynomialOrEvaluations::DensePolynomial`] and
+/// [`DensePolynomialOrEvaluations::Evaluations`] for the two variants.
 pub enum DensePolynomialOrEvaluations<'a, F: FftField, D: EvaluationDomain<F>> {
     /// Polynomial represented by its coefficients
     DensePolynomial(&'a DensePolynomial<F>),
@@ -29,7 +32,7 @@ struct ScaledChunkedPolynomial<F, P>(Vec<(F, P)>);
 
 impl<F, P> ScaledChunkedPolynomial<F, P> {
     fn add_poly(&mut self, scale: F, p: P) {
-        self.0.push((scale, p))
+        self.0.push((scale, p));
     }
 }
 
@@ -66,11 +69,16 @@ impl<F: Field> ScaledChunkedPolynomial<F, &[F]> {
     }
 }
 
-/// Combine the polynomials using a scalar (`polyscale`), creating a single
-/// unified polynomial to open. This function also accepts polynomials in
-/// evaluations form. In this case it applies an IFFT, and, if necessary,
-/// applies chunking to it (ie. split it in multiple polynomials of
-/// degree less than the SRS size).
+/// Combine the polynomials using a scalar (`polyscale`).
+///
+/// Creates a single unified polynomial to open. This function also accepts
+/// polynomials in evaluations form. In this case it applies an IFFT, and,
+/// if necessary, applies chunking to it (ie. split it in multiple
+/// polynomials of degree less than the SRS size).
+///
+/// # Panics
+///
+/// Panics if the evaluation polynomials have inconsistent domain sizes.
 ///
 /// Parameters:
 /// - `plnms`: vector of polynomials, either in evaluations or coefficients form, together with
@@ -147,7 +155,7 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                     .for_each(|(i, x)| {
                         *x += polyscale_to_i * evals[i * stride];
                     });
-                for comm_chunk in p_i_comm.into_iter() {
+                for comm_chunk in p_i_comm {
                     combined_comm += &(*comm_chunk * polyscale_to_i);
                     polyscale_to_i *= &polyscale;
                 }
@@ -157,7 +165,7 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
             DensePolynomialOrEvaluations::DensePolynomial(p_i) => {
                 let mut offset = 0;
                 // iterating over chunks of the polynomial
-                for comm_chunk in p_i_comm.into_iter() {
+                for comm_chunk in p_i_comm {
                     let segment = &p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
                         ..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
                     plnm_coefficients.add_poly(polyscale_to_i, segment);
@@ -183,8 +191,7 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
         // We treat now each chunk.
         let n = plnm_evals_part.len();
         let max_poly_size = srs_length;
-        // equiv to divceil, but unstable in rust < 1.73.
-        let num_chunks = n / max_poly_size + if n % max_poly_size == 0 { 0 } else { 1 };
+        let num_chunks = n.div_ceil(max_poly_size);
         // Interpolation on the whole domain, i.e. it can be d2, d4, etc.
         combined_plnm += &Evaluations::from_vec_and_domain(plnm_evals_part, D::new(n).unwrap())
             .interpolate()
@@ -195,6 +202,12 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
     (combined_plnm, combined_comm)
 }
 
+/// Check a batch of dlog accumulator commitments.
+///
+/// # Panics
+///
+/// Panics if `comms` is non-empty and `chals.len()` is not a
+/// multiple of `comms.len()`.
 // TODO: Not compatible with variable rounds
 pub fn batch_dlog_accumulator_check<G: CommitmentCurve>(
     urs: &SRS<G>,
@@ -241,7 +254,9 @@ pub fn batch_dlog_accumulator_check<G: CommitmentCurve>(
         .map(|(chunk, r)| {
             let chals: Vec<_> = chunk.iter().map(|(c, _)| **c).collect();
             let mut s = b_poly_coefficients(&chals);
-            s.iter_mut().for_each(|c| *c *= &r);
+            for c in &mut s {
+                *c *= &r;
+            }
             s
         })
         .collect();
@@ -257,10 +272,16 @@ pub fn batch_dlog_accumulator_check<G: CommitmentCurve>(
     G::Group::msm_bigint(&points, &scalars) == G::Group::zero()
 }
 
+/// Generate a batch of dlog accumulator commitments.
+///
+/// # Panics
+///
+/// Panics if `num_comms` is non-zero and `chals.len()` is not a
+/// multiple of the derived round count.
 pub fn batch_dlog_accumulator_generate<G: CommitmentCurve>(
     urs: &SRS<G>,
     num_comms: usize,
-    chals: &Vec<G::ScalarField>,
+    chals: &[G::ScalarField],
 ) -> Vec<G> {
     let k = num_comms;
 
@@ -273,13 +294,13 @@ pub fn batch_dlog_accumulator_generate<G: CommitmentCurve>(
     assert_eq!(chals.len() % rounds, 0);
 
     let comms: Vec<_> = chals
-        .into_par_iter()
+        .par_iter()
         .chunks(rounds)
         .map(|chals| {
             let chals: Vec<G::ScalarField> = chals.into_iter().copied().collect();
             let scalars: Vec<_> = b_poly_coefficients(&chals)
                 .into_iter()
-                .map(|x| x.into_bigint())
+                .map(ark_ff::PrimeField::into_bigint)
                 .collect();
             let points: Vec<_> = urs.g.clone();
             G::Group::msm_bigint(&points, &scalars).into_affine()

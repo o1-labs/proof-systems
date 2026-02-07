@@ -67,7 +67,7 @@ delegation transaction structures found on mainnet and testnet.
 you to define how types are hashed by implementing the [`Hashable`] trait -- see
 the [`mina_hasher`] documentation
 
-For more details about the ``mina_signer`, please see rustdoc mina-signer
+For more details about the `mina_signer`, please see rustdoc mina-signer
 documentation.
 
 # Tests

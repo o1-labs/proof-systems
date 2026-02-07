@@ -224,10 +224,11 @@ macro_rules! impl_srs {
                 comms: i32,
                 chals: WasmFlatVector<$WasmF>,
             ) -> WasmVector<$WasmG> {
+                let chals_vec: Vec<_> = chals.into_iter().map(From::from).collect();
                 poly_commitment::utils::batch_dlog_accumulator_generate::<$G>(
                     &srs,
                     comms as usize,
-                    &chals.into_iter().map(From::from).collect(),
+                    &chals_vec,
                 ).into_iter().map(Into::into).collect()
             }
 

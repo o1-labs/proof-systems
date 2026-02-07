@@ -12,6 +12,7 @@ use thiserror::Error;
 
 /// Keypair error
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[allow(clippy::module_name_repetitions)]
 pub enum SecKeyError {
     /// Invalid secret key hex
     #[error("invalid secret key hex")]
@@ -51,7 +52,8 @@ impl SecKey {
     }
 
     /// Create secret key from scalar field element
-    pub fn new(scalar: ScalarField) -> Self {
+    #[must_use]
+    pub const fn new(scalar: ScalarField) -> Self {
         Self(scalar)
     }
 
@@ -69,7 +71,7 @@ impl SecKey {
         sec_bytes.reverse(); // mina scalars hex format is in big-endian order
         let secret =
             ScalarField::from_bytes(&sec_bytes).map_err(|_| SecKeyError::SecretKeyBytes)?;
-        Ok(SecKey(secret))
+        Ok(Self(secret))
     }
 
     /// Deserialize secret key from hex
@@ -79,7 +81,7 @@ impl SecKey {
     /// Will give error if `hex` string does not match certain requirements.
     pub fn from_hex(secret_hex: &str) -> Result<Self> {
         let bytes: Vec<u8> = hex::decode(secret_hex).map_err(|_| SecKeyError::SecretKeyHex)?;
-        SecKey::from_bytes(&bytes)
+        Self::from_bytes(&bytes)
     }
 
     /// Deserialize base58 encoded secret key
@@ -118,16 +120,19 @@ impl SecKey {
     }
 
     /// Borrows secret key as scalar field element
-    pub fn scalar(&self) -> &ScalarField {
+    #[must_use]
+    pub const fn scalar(&self) -> &ScalarField {
         &self.0
     }
 
     /// Convert secret key into scalar field element
-    pub fn into_scalar(self) -> ScalarField {
+    #[must_use]
+    pub const fn into_scalar(self) -> ScalarField {
         self.0
     }
 
     /// Deserialize secret key into bytes
+    #[must_use]
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = self.0.to_bytes();
         bytes.reverse(); // mina scalars hex format is in big-endian order
@@ -135,11 +140,13 @@ impl SecKey {
     }
 
     /// Deserialize secret key into hex
+    #[must_use]
     pub fn to_hex(&self) -> String {
         hex::encode(self.to_bytes())
     }
 
     /// Deserialize secret key into base58
+    #[must_use]
     pub fn to_base58(&self) -> String {
         let mut raw: Vec<u8> = vec![0x5a, 0x01];
 
