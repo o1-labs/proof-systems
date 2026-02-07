@@ -442,8 +442,7 @@ where
             .into_par_iter()
             .map(|i| {
                 let mut h = Blake2b512::new();
-                #[allow(clippy::cast_possible_truncation)]
-                h.update((i as u32).to_be_bytes());
+                h.update(u32::try_from(i).unwrap().to_be_bytes());
                 point_of_random_bytes(&m, &h.finalize())
             })
             .collect();
@@ -623,8 +622,7 @@ where
         let g: Vec<_> = (0..depth)
             .map(|i| {
                 let mut h = Blake2b512::new();
-                #[allow(clippy::cast_possible_truncation)]
-                h.update((i as u32).to_be_bytes());
+                h.update(u32::try_from(i).unwrap().to_be_bytes());
                 point_of_random_bytes(&m, &h.finalize())
             })
             .collect();
