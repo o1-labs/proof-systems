@@ -197,6 +197,8 @@ and this project adheres to
   ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 - Pass `ScalarChallenge` by reference in `combine_one_endo`
   ([#3484](https://github.com/o1-labs/proof-systems/pull/3484))
+- Replace `i as u32` cast with `u32::try_from(i).unwrap()` in SRS creation
+  ([#3483](https://github.com/o1-labs/proof-systems/pull/3483))
 
 ### [turshi](./turshi)
 
