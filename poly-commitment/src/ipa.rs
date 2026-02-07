@@ -237,14 +237,14 @@ impl<G: CommitmentCurve> SRS<G> {
 
         let (_, endo_r) = endos::<G>();
 
-        // TODO: This will need adjusting
-        let padding = padded_length - nonzero_length;
-        let mut points = vec![self.h];
-        points.extend(self.g.clone());
-        points.extend(vec![G::zero(); padding]);
+        // Scalars for the fixed SRS bases: h (index 0), g[0..] (indices 1..),
+        // then zero-padding. We reference self.g directly in the final MSM
+        // instead of cloning it.
+        let mut srs_scalars = vec![G::ScalarField::zero(); padded_length + 1];
 
-        let mut scalars = vec![G::ScalarField::zero(); padded_length + 1];
-        assert_eq!(scalars.len(), points.len());
+        // Dynamic points and scalars accumulated per proof (sg, U, L, R, etc.)
+        let mut extra_points = Vec::new();
+        let mut extra_scalars = Vec::new();
 
         // sample randomiser to scale the proofs with
         let rand_base = G::ScalarField::rand(rng);
@@ -301,8 +301,8 @@ impl<G: CommitmentCurve> SRS<G> {
             // - rand_base_i z1 G
             //
             // we also add -sg_rand_base_i * G to check correctness of sg.
-            points.push(opening.sg);
-            scalars.push(neg_rand_base_i * opening.z1 - sg_rand_base_i);
+            extra_points.push(opening.sg);
+            extra_scalars.push(neg_rand_base_i * opening.z1 - sg_rand_base_i);
 
             // Here we add
             // sg_rand_base_i * ( < s, self.g > )
@@ -314,18 +314,18 @@ impl<G: CommitmentCurve> SRS<G> {
                 let terms: Vec<_> = s.par_iter().map(|s| sg_rand_base_i * s).collect();
 
                 for (i, term) in terms.iter().enumerate() {
-                    scalars[i + 1] += term;
+                    srs_scalars[i + 1] += term;
                 }
             }
 
             // TERM
             // - rand_base_i * z2 * H
-            scalars[0] -= &(rand_base_i * opening.z2);
+            srs_scalars[0] -= &(rand_base_i * opening.z2);
 
             // TERM
             // -rand_base_i * (z1 * b0 * U)
-            scalars.push(neg_rand_base_i * (opening.z1 * b0));
-            points.push(u_base);
+            extra_scalars.push(neg_rand_base_i * (opening.z1 * b0));
+            extra_points.push(u_base);
 
             // TERM
             // rand_base_i c_i Q_i
@@ -334,11 +334,11 @@ impl<G: CommitmentCurve> SRS<G> {
             // where P_prime = combined commitment + combined_inner_product * U
             let rand_base_i_c_i = c * rand_base_i;
             for ((l, r), (u_inv, u)) in opening.lr.iter().zip(chal_inv.iter().zip(chal.iter())) {
-                points.push(*l);
-                scalars.push(rand_base_i_c_i * u_inv);
+                extra_points.push(*l);
+                extra_scalars.push(rand_base_i_c_i * u_inv);
 
-                points.push(*r);
-                scalars.push(rand_base_i_c_i * u);
+                extra_points.push(*r);
+                extra_scalars.push(rand_base_i_c_i * u);
             }
 
             // TERM
@@ -347,42 +347,69 @@ impl<G: CommitmentCurve> SRS<G> {
             // == sum_i polyscale^i sum_j evalscale^j f_i(elm_j)
             combine_commitments(
                 evaluations,
-                &mut scalars,
-                &mut points,
+                &mut extra_scalars,
+                &mut extra_points,
                 *polyscale,
                 rand_base_i_c_i,
             );
 
-            scalars.push(rand_base_i_c_i * *combined_inner_product);
-            points.push(u_base);
+            extra_scalars.push(rand_base_i_c_i * *combined_inner_product);
+            extra_points.push(u_base);
 
-            scalars.push(rand_base_i);
-            points.push(opening.delta);
+            extra_scalars.push(rand_base_i);
+            extra_points.push(opening.delta);
 
             rand_base_i *= &rand_base;
             sg_rand_base_i *= &sg_rand_base;
         }
 
-        // Verify the equation in two chunks, which is optimal for our SRS size.
-        // (see the comment to the `benchmark_msm_parallel_vesta` MSM benchmark)
-        let chunk_size = points.len() / 2;
-        let msm_res = points
-            .into_par_iter()
-            .chunks(chunk_size)
-            .zip(scalars.into_par_iter().chunks(chunk_size))
-            .map(|(bases, coeffs)| {
-                let coeffs_bigint = coeffs
-                    .into_iter()
-                    .map(ark_ff::PrimeField::into_bigint)
-                    .collect::<Vec<_>>();
-                G::Group::msm_bigint(&bases, &coeffs_bigint)
-            })
-            .reduce(G::Group::zero, |mut l, r| {
-                l += r;
-                l
-            });
+        self.final_msm(&srs_scalars, nonzero_length, extra_points, extra_scalars)
+    }
 
-        msm_res == G::Group::zero()
+    /// Compute the final MSM in two parallel parts to avoid cloning the SRS:
+    /// 1. SRS part: h scalar + `<srs_scalars[1..], self.g>` (references
+    ///    `self.g` directly)
+    /// 2. Extra part: dynamic points accumulated per proof
+    fn final_msm(
+        &self,
+        srs_scalars: &[G::ScalarField],
+        nonzero_length: usize,
+        extra_points: Vec<G>,
+        extra_scalars: Vec<G::ScalarField>,
+    ) -> bool {
+        let msm_res = rayon::join(
+            || {
+                let h_contrib = self.h.mul(srs_scalars[0]).into_affine();
+                let g_scalars_bigint: Vec<_> = srs_scalars[1..=nonzero_length]
+                    .iter()
+                    .map(|s| s.into_bigint())
+                    .collect();
+                let g_msm = G::Group::msm_bigint(&self.g, &g_scalars_bigint);
+                g_msm + h_contrib.into_group()
+            },
+            || {
+                if extra_points.is_empty() {
+                    return G::Group::zero();
+                }
+                let chunk_size = std::cmp::max(extra_points.len() / 2, 1);
+                extra_points
+                    .into_par_iter()
+                    .chunks(chunk_size)
+                    .zip(extra_scalars.into_par_iter().chunks(chunk_size))
+                    .map(|(bases, coeffs)| {
+                        let coeffs_bigint: Vec<_> = coeffs
+                            .into_iter()
+                            .map(ark_ff::PrimeField::into_bigint)
+                            .collect();
+                        G::Group::msm_bigint(&bases, &coeffs_bigint)
+                    })
+                    .reduce(G::Group::zero, |mut l, r| {
+                        l += r;
+                        l
+                    })
+            },
+        );
+        (msm_res.0 + msm_res.1) == G::Group::zero()
     }
 
     /// This function creates a trusted-setup SRS instance for circuits with
