@@ -37,7 +37,6 @@ use std::{cmp::min, iter::Iterator, ops::AddAssign};
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(bound = "G: CanonicalDeserialize + CanonicalSerialize")]
-#[allow(clippy::unsafe_derive_deserialize)]
 pub struct SRS<G> {
     /// The vector of group elements for committing to polynomials in
     /// coefficient form.
@@ -388,12 +387,11 @@ impl<G: CommitmentCurve> SRS<G> {
     /// This function creates a trusted-setup SRS instance for circuits with
     /// number of rows up to `depth`.
     ///
-    /// # Safety
+    /// # Security
     ///
-    /// This function is unsafe because it creates a trusted setup and the toxic
-    /// waste is passed as a parameter.
-    #[allow(unsafe_code)]
-    pub unsafe fn create_trusted_setup(x: G::ScalarField, depth: usize) -> Self {
+    /// The caller must ensure that the toxic waste `x` is securely destroyed
+    /// after use. Leaking `x` compromises the soundness of the proof system.
+    pub fn create_trusted_setup_with_toxic_waste(x: G::ScalarField, depth: usize) -> Self {
         let m = G::Map::setup();
 
         let mut x_pow = G::ScalarField::one();
