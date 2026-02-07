@@ -45,10 +45,9 @@ macro_rules! impl_oracles {
                     .take(proof.proof.public.len())
                     .map(Into::into)
                     .collect();
-                let lgr_comm_refs: Vec<_> = lgr_comm.iter().collect();
 
                 let p_comm = PolyComm::<$G>::multi_scalar_mul(
-                    &lgr_comm_refs,
+                    &lgr_comm,
                     &proof
                         .proof
                         .public
@@ -122,10 +121,9 @@ macro_rules! impl_oracles {
                     .take(proof.proof.public.len())
                     .map(Into::into)
                     .collect();
-                let lgr_comm_refs: Vec<_> = lgr_comm.iter().collect();
 
                 let p_comm = PolyComm::<$G>::multi_scalar_mul(
-                    &lgr_comm_refs,
+                    &lgr_comm,
                     &proof
                         .proof
                         .public

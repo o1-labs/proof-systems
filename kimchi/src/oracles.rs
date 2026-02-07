@@ -79,11 +79,10 @@ pub mod caml {
         CurveParams: poly_commitment::OpenProof<G, FULL_ROUNDS>,
     {
         let lgr_comm: Vec<PolyComm<G>> = lgr_comm.into_iter().take(public_input.len()).collect();
-        let lgr_comm_refs: Vec<_> = lgr_comm.iter().collect();
 
         let negated_public: Vec<_> = public_input.iter().map(|s| -*s).collect();
 
-        let p_comm = PolyComm::<G>::multi_scalar_mul(&lgr_comm_refs, &negated_public);
+        let p_comm = PolyComm::<G>::multi_scalar_mul(&lgr_comm, &negated_public);
 
         let oracles_result = proof.oracles::<EFqSponge, EFrSponge, CurveParams>(
             &index,
