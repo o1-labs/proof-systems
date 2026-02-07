@@ -187,6 +187,9 @@ and this project adheres to
 - Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
   `unsafe_code`) and fix all warnings
   ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
+- Rename `create_trusted_setup` to `create_trusted_setup_with_toxic_waste` and
+  remove misuse of `unsafe fn` — the risk is cryptographic, not memory-safety
+  ([#3482](https://github.com/o1-labs/proof-systems/pull/3482))
 
 ### [turshi](./turshi)
 
