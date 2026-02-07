@@ -1934,6 +1934,7 @@ dependencies = [
 name = "mina-tx-type"
 version = "0.3.0"
 dependencies = [
+ "mina-curves",
  "mina-signer",
 ]
 

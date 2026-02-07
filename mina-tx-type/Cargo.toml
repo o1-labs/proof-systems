@@ -14,4 +14,5 @@ default = []
 std = []
 
 [dependencies]
+mina-curves.workspace = true
 mina-signer.workspace = true
