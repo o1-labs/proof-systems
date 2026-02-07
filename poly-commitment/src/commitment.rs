@@ -529,7 +529,7 @@ pub trait EndoCurve: CommitmentCurve {
         _endo_q: Self::BaseField,
         g1: &[Self],
         g2: &[Self],
-        x2: ScalarChallenge<Self::ScalarField>,
+        x2: &ScalarChallenge<Self::ScalarField>,
     ) -> Vec<Self> {
         crate::combine::window_combine(g1, g2, Self::ScalarField::one(), x2.to_field(&endo_r))
     }
@@ -571,7 +571,7 @@ impl<P: SWCurveConfig + Clone> EndoCurve for SWJAffine<P> {
         endo_q: Self::BaseField,
         g1: &[Self],
         g2: &[Self],
-        x2: ScalarChallenge<Self::ScalarField>,
+        x2: &ScalarChallenge<Self::ScalarField>,
     ) -> Vec<Self> {
         crate::combine::affine_window_combine_one_endo(endo_q, g1, g2, x2)
     }
