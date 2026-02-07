@@ -289,12 +289,11 @@ fn batch_negate_in_place<P: SWCurveConfig>(ps: &mut [SWJAffine<P>]) {
 /// Uses a batch version of Algorithm 1 of
 /// <https://eprint.iacr.org/2019/1021.pdf> (on page 19) to compute `g1 +
 /// g2.scale(chal.to_field(endo_coeff))`
-#[allow(clippy::needless_pass_by_value)]
 fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
     endo_coeff: P::BaseField,
     g1: &[SWJAffine<P>],
     g2: &[SWJAffine<P>],
-    chal: ScalarChallenge<P::ScalarField>,
+    chal: &ScalarChallenge<P::ScalarField>,
 ) -> Vec<SWJAffine<P>> {
     fn assign<A: Copy>(dst: &mut [A], src: &[A]) {
         let n = dst.len();
@@ -436,18 +435,17 @@ pub fn affine_window_combine<P: SWCurveConfig>(
 /// entry is `g1[i] + g2[i].scale(chal.to_field(endo_coeff))`
 ///
 /// Internally, it uses the curve endomorphism to speed up this operation.
-#[allow(clippy::needless_pass_by_value)]
 pub fn affine_window_combine_one_endo<P: SWCurveConfig>(
     endo_coeff: P::BaseField,
     g1: &[SWJAffine<P>],
     g2: &[SWJAffine<P>],
-    chal: ScalarChallenge<P::ScalarField>,
+    chal: &ScalarChallenge<P::ScalarField>,
 ) -> Vec<SWJAffine<P>> {
     const CHUNK_SIZE: usize = 4096;
     let b: Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
     let v: Vec<_> = b
         .into_par_iter()
-        .map(|(v1, v2)| affine_window_combine_one_endo_base(endo_coeff, v1, v2, chal.clone()))
+        .map(|(v1, v2)| affine_window_combine_one_endo_base(endo_coeff, v1, v2, chal))
         .collect();
     v.concat()
 }
