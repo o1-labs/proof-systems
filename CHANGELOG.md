@@ -187,6 +187,8 @@ and this project adheres to
 - Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
   `unsafe_code`) and fix all warnings
   ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
+- Pass `ScalarChallenge` by reference in `combine_one_endo`
+  ([#3484](https://github.com/o1-labs/proof-systems/pull/3484))
 
 ### [turshi](./turshi)
 

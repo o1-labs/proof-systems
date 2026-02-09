@@ -866,7 +866,7 @@ impl<G: CommitmentCurve> SRS<G> {
                 .collect();
 
             // IPA-folding bases
-            g = G::combine_one_endo(endo_r, endo_q, g_lo, g_hi, u_pre);
+            g = G::combine_one_endo(endo_r, endo_q, g_lo, g_hi, &u_pre);
         }
 
         assert!(
