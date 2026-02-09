@@ -130,7 +130,7 @@ pub fn caml_pasta_fq_plonk_index_create(
     lookup_tables: Vec<JsLookupTableFq>,
     runtime_table_cfgs: Vec<JsRuntimeTableCfgFq>,
     prev_challenges: i32,
-    srs: &External<WasmFqSrs>,
+    srs: &WasmFqSrs,
     lazy_mode: bool,
 ) -> Result<External<WasmPastaFqPlonkIndex>, Error> {
     // TODO: check if and how we run rayon threads automatically in napi
@@ -147,13 +147,11 @@ pub fn caml_pasta_fq_plonk_index_create(
         .map(lookup_table_fq_from_js)
         .collect::<Result<Vec<_>, _>>()?;
 
-    let srs_ref = srs.as_ref();
-
     let cs = ConstraintSystem::<Fq>::create(gates)
         .public(public_ as usize)
         .prev_challenges(prev_challenges as usize)
         .lookup(lookup_tables)
-        .max_poly_size(Some(srs_ref.0.max_poly_size()))
+        .max_poly_size(Some(srs.0.max_poly_size()))
         .runtime(if runtime_cfgs.is_empty() {
             None
         } else {
@@ -170,12 +168,12 @@ pub fn caml_pasta_fq_plonk_index_create(
 
     let (endo_q, _endo_r) = poly_commitment::ipa::endos::<GAffineOther>();
 
-    srs_ref.0.get_lagrange_basis(cs.domain.d1);
+    srs.0.get_lagrange_basis(cs.domain.d1);
 
     let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::create(
         cs,
         endo_q,
-        srs_ref.0.clone(),
+        srs.0.clone(),
         lazy_mode,
     );
     index.compute_verifier_index_digest::<DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>>();
@@ -186,7 +184,7 @@ pub fn caml_pasta_fq_plonk_index_create(
 #[napi(js_name = "caml_pasta_fq_plonk_index_decode")]
 pub fn caml_pasta_fq_plonk_index_decode(
     bytes: &[u8],
-    srs: &External<WasmFqSrs>,
+    srs: &WasmFqSrs,
 ) -> Result<External<WasmPastaFqPlonkIndex>, Error> {
     let mut deserializer = rmp_serde::Deserializer::new(bytes);
     let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
@@ -244,7 +242,7 @@ pub fn caml_pasta_fq_plonk_index_write(
 #[napi(js_name = "caml_pasta_fq_plonk_index_read")]
 pub fn caml_pasta_fq_plonk_index_read(
     offset: Option<i32>,
-    srs: &External<WasmFqSrs>,
+    srs: &WasmFqSrs,
     path: String,
 ) -> Result<External<WasmPastaFqPlonkIndex>, Error> {
     // read from file

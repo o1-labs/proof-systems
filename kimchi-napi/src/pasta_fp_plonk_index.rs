@@ -135,7 +135,7 @@ pub fn caml_pasta_fp_plonk_index_create(
     lookup_tables: Vec<JsLookupTableFp>,
     runtime_table_cfgs: Vec<JsRuntimeTableCfgFp>,
     prev_challenges: i32,
-    srs: &External<WasmFpSrs>,
+    srs: &WasmFpSrs,
     lazy_mode: bool,
 ) -> Result<External<WasmPastaFpPlonkIndex>, Error> {
     let gates: Vec<_> = gates.to_vec();
@@ -150,13 +150,11 @@ pub fn caml_pasta_fp_plonk_index_create(
         .map(lookup_table_fp_from_js)
         .collect::<Result<_, _>>()?;
 
-    let srs_ref = srs.as_ref();
-
     let cs = ConstraintSystem::<Fp>::create(gates)
         .public(public_ as usize)
         .prev_challenges(prev_challenges as usize)
         .lookup(lookup_tables)
-        .max_poly_size(Some(srs_ref.0.max_poly_size()))
+        .max_poly_size(Some(srs.0.max_poly_size()))
         .runtime(if runtime_cfgs.is_empty() {
             None
         } else {
@@ -173,12 +171,12 @@ pub fn caml_pasta_fp_plonk_index_create(
 
     let (endo_q, _endo_r) = poly_commitment::ipa::endos::<GAffineOther>();
 
-    srs_ref.0.get_lagrange_basis(cs.domain.d1);
+    srs.0.get_lagrange_basis(cs.domain.d1);
 
     let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::create(
         cs,
         endo_q,
-        srs_ref.0.clone(),
+        srs.0.clone(),
         lazy_mode,
     );
     index.compute_verifier_index_digest::<DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>();
@@ -189,7 +187,7 @@ pub fn caml_pasta_fp_plonk_index_create(
 #[napi(js_name = "caml_pasta_fp_plonk_index_decode")]
 pub fn caml_pasta_fp_plonk_index_decode(
     bytes: &[u8],
-    srs: &External<WasmFpSrs>,
+    srs: &WasmFpSrs,
 ) -> Result<External<WasmPastaFpPlonkIndex>, Error> {
     let mut deserializer = rmp_serde::Deserializer::new(bytes);
     let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
@@ -248,7 +246,7 @@ pub fn caml_pasta_fp_plonk_index_write(
 #[napi(js_name = "caml_pasta_fp_plonk_index_read")]
 pub fn caml_pasta_fp_plonk_index_read(
     offset: Option<i32>,
-    srs: &External<WasmFpSrs>,
+    srs: &WasmFpSrs,
     path: String,
 ) -> Result<External<WasmPastaFpPlonkIndex>, Error> {
     // read from file
