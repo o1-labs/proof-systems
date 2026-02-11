@@ -67,7 +67,7 @@ impl Keypair {
     /// # Errors
     ///
     /// Returns [`KeypairError`] if the public key cannot be derived from
-    /// the secret key. 
+    /// the secret key.
     ///
     /// # Deprecated
     ///
