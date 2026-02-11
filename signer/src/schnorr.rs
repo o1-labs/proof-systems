@@ -25,7 +25,7 @@ use core::ops::{Add, Neg};
 use mina_hasher::{self, DomainParameter, Hasher, ROInput};
 use o1_utils::FieldHelpers;
 
-/// BLAKE2b output size in bytes for nonce derivation.
+/// `BLAKE2b` output size in bytes for nonce derivation.
 ///
 /// Using 256 bits (32 bytes) provides sufficient entropy for deriving
 /// a scalar field element after masking the top 2 bits.
@@ -176,10 +176,10 @@ impl<H: 'static + Hashable> Schnorr<H> {
     /// # Algorithm
     ///
     /// The nonce derivation follows this process:
-    /// 1. Create ROInput from: `message || public_key_x || public_key_y || private_key || network_id`
-    /// 2. Pack the ROInput into fields using Mina's field packing
+    /// 1. Create `ROInput` from: `message || public_key_x || public_key_y || private_key || network_id`
+    /// 2. Pack the `ROInput` into fields using Mina's field packing
     /// 3. Convert packed fields to bits (255 bits per field)
-    /// 4. Convert bits to bytes for BLAKE2b input
+    /// 4. Convert bits to bytes for `BLAKE2b` input
     /// 5. Hash with BLAKE2b-256
     /// 6. Drop the top 2 bits to create a valid scalar field element
     ///
@@ -206,6 +206,11 @@ impl<H: 'static + Hashable> Schnorr<H> {
     /// - Ensures no two different messages share the same nonce (with the same
     ///   key)
     /// - Is compatible with existing Mina protocol implementations
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `BLAKE2b` variable-output hasher cannot be created with
+    /// a 32-byte output size (should not happen).
     pub fn derive_nonce_chunked(&self, kp: &Keypair, input: &H) -> ScalarField {
         let mut blake_hasher =
             Blake2bVar::new(BLAKE2B_OUTPUT_SIZE).expect("BLAKE2b output size is valid");
@@ -249,7 +254,7 @@ impl<H: 'static + Hashable> Schnorr<H> {
         for field in packed_fields {
             let field_bytes = field.to_bytes();
             let mut field_bits = 0;
-            for &byte in field_bytes.iter() {
+            for &byte in &field_bytes {
                 for bit_idx in 0..8 {
                     if field_bits < 255 {
                         let bit = (byte & (1 << bit_idx)) != 0;
@@ -313,7 +318,7 @@ impl<H: 'static + Hashable> Schnorr<H> {
     /// - Appends private key as scalar field element instead of base field
     ///   element
     /// - Uses full network ID bytes instead of packed single byte
-    /// - Does not perform bit-level manipulation for BLAKE2b input
+    /// - Does not perform bit-level manipulation for `BLAKE2b` input
     ///
     /// # Security
     ///

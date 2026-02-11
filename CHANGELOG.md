@@ -47,12 +47,34 @@ and this project adheres to
 - Add `no_std` support
   ([#3415](https://github.com/o1-labs/proof-systems/pull/3415))
 
+#### Changed
+
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
+  `unsafe_code`) and fix all warnings
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
+
+### [mina-curves](./curves)
+
+#### Changed
+
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
+  `unsafe_code`) and fix all warnings
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
+
 ### [mina-base58](./crates/mina-base58)
 
 #### Added
 
 - Add `mina-base58` crate with generic base58check encoding/decoding and all
   known Mina version bytes, matching the OCaml `Base58_check` implementation
+
+### [mina-hasher](./hasher)
+
+#### Changed
+
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
+  `unsafe_code`) and fix all warnings
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 
 ### [kimchi](./kimchi)
 
@@ -82,6 +104,9 @@ and this project adheres to
   ([#3474](https://github.com/o1-labs/proof-systems/pull/3474))
 - Replace `.unwrap()` with `.expect()` in BLAKE2b hasher creation for better
   error messages ([#3472](https://github.com/o1-labs/proof-systems/pull/3472))
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
+  `unsafe_code`) and fix all warnings
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 
 #### Deprecated
 
@@ -111,6 +136,12 @@ and this project adheres to
   `SC::SPONGE_WIDTH` (e.g. 3)
   ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
 
+#### Changed
+
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
+  `unsafe_code`) and fix all warnings
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
+
 ### [mina-signer](./signer)
 
 #### Added
@@ -138,12 +169,34 @@ and this project adheres to
 - Remove unused `plonk_neon` crate from workspace
   ([#3440](https://github.com/o1-labs/proof-systems/pull/3440))
 
+### [o1-utils](./utils)
+
+#### Changed
+
+- **Breaking**: `ForeignElement::from_biguint` now takes `&BigUint` instead of
+  `BigUint` by value
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
+  `unsafe_code`) and fix all warnings
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
+
 ### [poly-commitment](./poly-commitment)
 
 #### Added
 
 - Add documentation for the method `endos`
   ([#3450](https://github.com/o1-labs/proof-systems/pull/3450)).
+
+#### Changed
+
+- Replace `once_cell::sync::Lazy` with `std::sync::LazyLock` and remove
+  `once_cell` dependency
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
+  `unsafe_code`) and fix all warnings
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
+- Pass `ScalarChallenge` by reference in `combine_one_endo`
+  ([#3484](https://github.com/o1-labs/proof-systems/pull/3484))
 
 ### [turshi](./turshi)
 
@@ -250,6 +303,16 @@ and this project adheres to
 
 - Add `into_domain_string()` method to `NetworkId` for domain string conversion
   ([#3428](https://github.com/o1-labs/proof-systems/pull/3428))
+
+### [mina-tx-type](./mina-tx-type)
+
+#### Added
+
+- New crate providing `no_std` compatible Mina transaction types for external
+  use (hardware wallets, WASM). Implements
+  [o1-labs/mina-rust#1824](https://github.com/o1-labs/mina-rust/issues/1824).
+- Currency types: `Amount`, `Fee`, `Signed<T>`, `Sign`, `Magnitude` trait
+- Transaction types: `Coinbase`, `CoinbaseFeeTransfer`
 
 ### [mvpoly](./mvpoly)
 

@@ -22,11 +22,11 @@ fn test_big_be() {
     let bytes = big.to_bytes_be();
     assert_eq!(
         ForeignElement::<BaseField, TEST_B_1, 3>::from_be(&bytes),
-        ForeignElement::<BaseField, TEST_B_1, 3>::from_biguint(big.clone())
+        ForeignElement::<BaseField, TEST_B_1, 3>::from_biguint(&big)
     );
     assert_eq!(
         ForeignElement::<BaseField, TEST_B_2, TEST_N_2>::from_be(&bytes),
-        ForeignElement::<BaseField, TEST_B_2, TEST_N_2>::from_biguint(big)
+        ForeignElement::<BaseField, TEST_B_2, TEST_N_2>::from_biguint(&big)
     );
 }
 
@@ -50,7 +50,7 @@ fn test_from_biguint() {
         );
 
         let max_big = BaseField::modulus_biguint() - 1u32;
-        let max_fe = ForeignElement::<BaseField, TEST_B_1, TEST_N_1>::from_biguint(max_big.clone());
+        let max_fe = ForeignElement::<BaseField, TEST_B_1, TEST_N_1>::from_biguint(&max_big);
         assert_eq!(
             BaseField::from_biguint(&max_fe.to_biguint()).unwrap(),
             BaseField::from_bytes(&max_big.to_bytes_le()).unwrap(),
@@ -64,7 +64,7 @@ fn test_from_biguint() {
         );
 
         let max_big = BaseField::modulus_biguint() - 1u32;
-        let max_fe = ForeignElement::<BaseField, TEST_B_2, TEST_N_2>::from_biguint(max_big.clone());
+        let max_fe = ForeignElement::<BaseField, TEST_B_2, TEST_N_2>::from_biguint(&max_big);
         assert_eq!(
             BaseField::from_biguint(&max_fe.to_biguint()).unwrap(),
             BaseField::from_bytes(&max_big.to_bytes_le()).unwrap(),

@@ -1,4 +1,8 @@
 #![deny(missing_docs)]
+#![deny(unsafe_code)]
+#![deny(clippy::all)]
+#![deny(clippy::pedantic)]
+#![deny(clippy::nursery)]
 #![doc = include_str!("../README.md")]
 #![no_std]
 
@@ -43,8 +47,8 @@ pub enum NetworkId {
 }
 
 impl From<NetworkId> for u8 {
-    fn from(id: NetworkId) -> u8 {
-        id as u8
+    fn from(id: NetworkId) -> Self {
+        id as Self
     }
 }
 
@@ -58,10 +62,11 @@ impl NetworkId {
     /// Returns:
     /// - `"MinaSignatureMainnet"` for `NetworkId::MAINNET`
     /// - `"CodaSignature"` for `NetworkId::TESTNET`
+    #[must_use]
     pub fn into_domain_string(self) -> String {
         match self {
-            NetworkId::MAINNET => "MinaSignatureMainnet".to_string(),
-            NetworkId::TESTNET => "CodaSignature".to_string(),
+            Self::MAINNET => "MinaSignatureMainnet".to_string(),
+            Self::TESTNET => "CodaSignature".to_string(),
         }
     }
 }
@@ -146,7 +151,7 @@ pub fn create_legacy<H: 'static + Hashable>(domain_param: H::D) -> impl Signer<H
     schnorr::create_legacy::<H>(domain_param)
 }
 
-/// Create a kimchi signer context for ZkApp signing (Berkeley upgrade)
+/// Create a kimchi signer context for `ZkApp` signing (Berkeley upgrade)
 /// with domain parameters initialized with `domain_param`
 ///
 /// **Example**

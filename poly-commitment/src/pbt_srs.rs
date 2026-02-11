@@ -1,4 +1,5 @@
-//! This module defines Property-based tests for the SRS trait.
+//! Property-based tests for the SRS trait.
+//!
 //! It includes tests regarding methods the SRS trait should implement.
 //! It aims to verify the implementation respects the properties described in
 //! the documentation of the methods.
@@ -9,8 +10,14 @@ use rand::Rng;
 
 use crate::{commitment::CommitmentCurve, SRS};
 
-// Testing how many chunks are generated with different polynomial sizes and
-// different number of chunks requested.
+/// Test how many chunks are generated with different polynomial sizes.
+///
+/// Verifies that `commit_non_hiding` produces the expected number of
+/// chunks for various polynomial sizes and requested chunk counts.
+///
+/// # Panics
+///
+/// Panics if the number of generated chunks does not match expectations.
 pub fn test_regression_commit_non_hiding_expected_number_of_chunks<
     G: CommitmentCurve,
     Srs: SRS<G>,

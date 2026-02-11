@@ -224,52 +224,52 @@ fn affine_window_combine_base<P: SWCurveConfig>(
         match ((hi_1, lo_1), (hi_2, lo_2)) {
             ((false, false), (false, false)) => (),
             ((false, true), (false, false)) => {
-                batch_add_assign(&mut denominators, &mut points, &g01_00)
+                batch_add_assign(&mut denominators, &mut points, &g01_00);
             }
             ((true, false), (false, false)) => {
-                batch_add_assign(&mut denominators, &mut points, &g10_00)
+                batch_add_assign(&mut denominators, &mut points, &g10_00);
             }
             ((true, true), (false, false)) => {
-                batch_add_assign(&mut denominators, &mut points, &g11_00)
+                batch_add_assign(&mut denominators, &mut points, &g11_00);
             }
 
             ((false, false), (false, true)) => {
-                batch_add_assign(&mut denominators, &mut points, &g00_01)
+                batch_add_assign(&mut denominators, &mut points, &g00_01);
             }
             ((false, true), (false, true)) => {
-                batch_add_assign(&mut denominators, &mut points, &g01_01)
+                batch_add_assign(&mut denominators, &mut points, &g01_01);
             }
             ((true, false), (false, true)) => {
-                batch_add_assign(&mut denominators, &mut points, &g10_01)
+                batch_add_assign(&mut denominators, &mut points, &g10_01);
             }
             ((true, true), (false, true)) => {
-                batch_add_assign(&mut denominators, &mut points, &g11_01)
+                batch_add_assign(&mut denominators, &mut points, &g11_01);
             }
 
             ((false, false), (true, false)) => {
-                batch_add_assign(&mut denominators, &mut points, &g00_10)
+                batch_add_assign(&mut denominators, &mut points, &g00_10);
             }
             ((false, true), (true, false)) => {
-                batch_add_assign(&mut denominators, &mut points, &g01_10)
+                batch_add_assign(&mut denominators, &mut points, &g01_10);
             }
             ((true, false), (true, false)) => {
-                batch_add_assign(&mut denominators, &mut points, &g10_10)
+                batch_add_assign(&mut denominators, &mut points, &g10_10);
             }
             ((true, true), (true, false)) => {
-                batch_add_assign(&mut denominators, &mut points, &g11_10)
+                batch_add_assign(&mut denominators, &mut points, &g11_10);
             }
 
             ((false, false), (true, true)) => {
-                batch_add_assign(&mut denominators, &mut points, &g00_11)
+                batch_add_assign(&mut denominators, &mut points, &g00_11);
             }
             ((false, true), (true, true)) => {
-                batch_add_assign(&mut denominators, &mut points, &g01_11)
+                batch_add_assign(&mut denominators, &mut points, &g01_11);
             }
             ((true, false), (true, true)) => {
-                batch_add_assign(&mut denominators, &mut points, &g10_11)
+                batch_add_assign(&mut denominators, &mut points, &g10_11);
             }
             ((true, true), (true, true)) => {
-                batch_add_assign(&mut denominators, &mut points, &g11_11)
+                batch_add_assign(&mut denominators, &mut points, &g11_11);
             }
         }
     }
@@ -293,7 +293,7 @@ fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
     endo_coeff: P::BaseField,
     g1: &[SWJAffine<P>],
     g2: &[SWJAffine<P>],
-    chal: ScalarChallenge<P::ScalarField>,
+    chal: &ScalarChallenge<P::ScalarField>,
 ) -> Vec<SWJAffine<P>> {
     fn assign<A: Copy>(dst: &mut [A], src: &[A]) {
         let n = dst.len();
@@ -405,7 +405,9 @@ fn affine_window_combine_one_base<P: SWCurveConfig>(
             (false, false) => (),
             (false, true) => batch_add_assign(&mut denominators, &mut points, &g01),
             (true, false) => batch_add_assign(&mut denominators, &mut points, &g10),
-            (true, true) => batch_add_assign(&mut denominators, &mut points, &g11),
+            (true, true) => {
+                batch_add_assign(&mut denominators, &mut points, &g11);
+            }
         }
     }
 
@@ -437,13 +439,13 @@ pub fn affine_window_combine_one_endo<P: SWCurveConfig>(
     endo_coeff: P::BaseField,
     g1: &[SWJAffine<P>],
     g2: &[SWJAffine<P>],
-    chal: ScalarChallenge<P::ScalarField>,
+    chal: &ScalarChallenge<P::ScalarField>,
 ) -> Vec<SWJAffine<P>> {
     const CHUNK_SIZE: usize = 4096;
     let b: Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
     let v: Vec<_> = b
         .into_par_iter()
-        .map(|(v1, v2)| affine_window_combine_one_endo_base(endo_coeff, v1, v2, chal.clone()))
+        .map(|(v1, v2)| affine_window_combine_one_endo_base(endo_coeff, v1, v2, chal))
         .collect();
     v.concat()
 }

@@ -6,12 +6,19 @@ use core::{fmt::Debug, str::FromStr};
 
 type Params<FieldType> = ArithmeticSpongeParams<FieldType, FULL_ROUNDS>;
 
-/// Placeholder dummy value for the kimchi configuration, suitable for fields of bitlength 254 and
-/// above.
+/// Placeholder dummy value for the kimchi configuration, suitable for
+/// fields of bitlength 254 and above.
+///
 /// These parameters are duplicated from the Vesta parameters, generated with
 /// ```text
 /// ./pasta/params.sage --rounds 55 rust 3 kimchi
 /// ```
+///
+/// # Panics
+///
+/// Panics if any constant string cannot be parsed as a field element.
+#[must_use]
+#[allow(clippy::too_many_lines)]
 pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> Params<Fp> {
     Params {
         mds: [

@@ -1856,6 +1856,7 @@ dependencies = [
  "bs58",
  "hex",
  "sha2",
+ "subtle",
  "thiserror 2.0.18",
 ]
 
@@ -1927,6 +1928,13 @@ dependencies = [
  "serde",
  "sha2",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "mina-tx-type"
+version = "0.3.0"
+dependencies = [
+ "mina-signer",
 ]
 
 [[package]]
@@ -2335,7 +2343,6 @@ dependencies = [
  "o1-utils",
  "ocaml",
  "ocaml-gen",
- "once_cell",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
  "rand_core 0.6.4",

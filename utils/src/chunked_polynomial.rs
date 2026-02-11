@@ -1,4 +1,4 @@
-//! This module contains a type [ChunkedPolynomial],
+//! This module contains a type [`ChunkedPolynomial`],
 //! and a number of helper methods to deal with chunked polynomials.
 //! Polynomials that cut in several polynomials of the same length.
 
@@ -42,7 +42,7 @@ impl<F: Field> ChunkedPolynomial<F> {
             scale *= zeta_n;
         }
 
-        while coeffs.last().is_some_and(|c| c.is_zero()) {
+        while coeffs.last().is_some_and(F::is_zero) {
             coeffs.pop();
         }
 

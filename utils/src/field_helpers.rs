@@ -1,4 +1,4 @@
-//! Useful helper methods to extend [ark_ff::Field].
+//! Useful helper methods to extend [`ark_ff::Field`].
 
 use ark_ff::{BigInteger, Field, PrimeField};
 use num_bigint::{BigInt, BigUint, RandBigInt, Sign};
@@ -20,7 +20,7 @@ pub enum FieldHelpersError {
     FromBigToField,
 }
 
-/// Result alias using [FieldHelpersError]
+/// Result alias using [`FieldHelpersError`]
 pub type Result<T> = std::result::Result<T, FieldHelpersError>;
 
 /// Helper to generate random field elements
@@ -33,18 +33,16 @@ pub trait RandomField<F> {
 }
 
 impl<F: PrimeField> RandomField<F> for StdRng {
+    #[allow(clippy::cast_possible_truncation)]
     fn gen_field_with_bits(&mut self, bits: usize) -> F {
         F::from_biguint(&self.gen_biguint_below(&BigUint::from(2u8).pow(bits as u32))).unwrap()
     }
 
     fn gen(&mut self, input: Option<F>, bits: Option<usize>) -> F {
-        if let Some(inp) = input {
-            inp
-        } else {
+        input.unwrap_or_else(|| {
             assert!(bits.is_some());
-            let bits = bits.unwrap();
-            self.gen_field_with_bits(bits)
-        }
+            self.gen_field_with_bits(bits.unwrap())
+        })
     }
 }
 
@@ -71,15 +69,31 @@ impl<F: Field> Two<F> for F {
 ///   Unless otherwise stated everything is in little-endian byte order.
 pub trait FieldHelpers<F> {
     /// Deserialize from bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns error if deserialization fails.
     fn from_bytes(bytes: &[u8]) -> Result<F>;
 
     /// Deserialize from little-endian hex
+    ///
+    /// # Errors
+    ///
+    /// Returns error if hex decoding or deserialization fails.
     fn from_hex(hex: &str) -> Result<F>;
 
     /// Deserialize from bits
+    ///
+    /// # Errors
+    ///
+    /// Returns error if deserialization fails.
     fn from_bits(bits: &[bool]) -> Result<F>;
 
-    /// Deserialize from BigUint
+    /// Deserialize from `BigUint`
+    ///
+    /// # Errors
+    ///
+    /// Returns error if conversion fails.
     fn from_biguint(big: &BigUint) -> Result<F>
     where
         F: PrimeField,
@@ -96,7 +110,7 @@ pub trait FieldHelpers<F> {
     /// Serialize to bits
     fn to_bits(&self) -> Vec<bool>;
 
-    /// Serialize field element to a BigUint
+    /// Serialize field element to a `BigUint`
     fn to_biguint(&self) -> BigUint
     where
         F: PrimeField,
@@ -104,7 +118,7 @@ pub trait FieldHelpers<F> {
         BigUint::from_bytes_le(&self.to_bytes())
     }
 
-    /// Serialize field element f to a (positive) BigInt directly.
+    /// Serialize field element f to a (positive) [`BigInt`] directly.
     fn to_bigint_positive(&self) -> BigInt
     where
         F: PrimeField,
@@ -120,14 +134,20 @@ pub trait FieldHelpers<F> {
     }
 
     /// Create a new field element from this field elements bits
+    ///
+    /// # Errors
+    ///
+    /// Returns error if deserialization fails.
     fn bits_to_field(&self, start: usize, end: usize) -> Result<F>;
 
     /// Field size in bytes
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
     fn size_in_bytes() -> usize
     where
         F: PrimeField,
     {
-        (F::MODULUS_BIT_SIZE / 8) as usize + (F::MODULUS_BIT_SIZE % 8 != 0) as usize
+        (F::MODULUS_BIT_SIZE / 8) as usize + usize::from(F::MODULUS_BIT_SIZE % 8 != 0)
     }
 
     /// Get the modulus as `BigUint`
@@ -156,7 +176,7 @@ impl<F: Field> FieldHelpers<F> for F {
             .iter()
             .enumerate()
             .fold(F::zero().to_bytes(), |mut bytes, (i, bit)| {
-                bytes[i / 8] |= (*bit as u8) << (i % 8);
+                bytes[i / 8] |= u8::from(*bit) << (i % 8);
                 bytes
             });
 
@@ -193,9 +213,13 @@ impl<F: Field> FieldHelpers<F> for F {
     }
 }
 
-/// Field element wrapper for [BigUint]
+/// Field element wrapper for [`BigUint`]
 pub trait BigUintFieldHelpers {
-    /// Convert BigUint into PrimeField element
+    /// Convert `BigUint` into `PrimeField` element
+    ///
+    /// # Errors
+    ///
+    /// Returns error if conversion fails.
     fn to_field<F: PrimeField>(self) -> Result<F>;
 }
 
@@ -205,7 +229,9 @@ impl BigUintFieldHelpers for BigUint {
     }
 }
 
-/// Converts an [i32] into a [Field]
+/// Converts an [`i32`] into a [`Field`]
+#[must_use]
+#[allow(clippy::cast_sign_loss)]
 pub fn i32_to_field<F: From<u64> + Neg<Output = F>>(i: i32) -> F {
     if i >= 0 {
         F::from(i as u64)
@@ -216,6 +242,7 @@ pub fn i32_to_field<F: From<u64> + Neg<Output = F>>(i: i32) -> F {
 
 /// `pows(d, x)` returns a vector containing the first `d` powers of the
 /// field element `x` (from `1` to `x^(d-1)`).
+#[must_use]
 pub fn pows<F: Field>(d: usize, x: F) -> Vec<F> {
     let mut acc = F::one();
     let mut res = Vec::with_capacity(d);
@@ -235,7 +262,7 @@ pub fn product<F: Field>(xs: impl Iterator<Item = F>) -> F {
     res
 }
 
-/// COmpute the inner product of two slices of field elements.
+/// Compute the inner product of two slices of field elements.
 pub fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
     let mut res = F::zero();
     for (&x, y) in xs.iter().zip(ys) {
