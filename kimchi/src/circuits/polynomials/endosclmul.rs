@@ -7,6 +7,11 @@
 //! base point is a curve point. This is the core operation for EC-based
 //! cryptography in-circuit.
 //!
+//! # Notation
+//!
+//! - `T`: The fixed base point for the full scalar multiplication
+//! - `P`: The running accumulator point (changes row by row)
+//!
 //! # Inputs (per row)
 //!
 //! - `(x_T, y_T)`: Base point T being multiplied (columns 0, 1)
@@ -32,7 +37,7 @@
 //!
 //! This endomorphism corresponds to scalar multiplication by lambda:
 //!
-//!   phi(P) = [lambda]P
+//!   phi(T) = [lambda]T
 //!
 //! where lambda is a primitive cube root of unity in the scalar field.
 //!
@@ -44,7 +49,7 @@
 //!
 //! For a 2-bit window (b1, b2), we can encode 4 different point operations:
 //!
-//! | b1 | b2 | Point Q added to P |
+//! | b1 | b2 | Point Q added to accumulator P |
 //! |----|----|--------------------|
 //! |  0 |  0 |  -T                |
 //! |  0 |  1 |   T                |
@@ -59,7 +64,7 @@
 //!
 //! ## Why phi(T)? The GLV optimization
 //!
-//! When we want to compute `[k]P` for a large scalar k, the naive approach
+//! When we want to compute `[k]T` for a large scalar k, the naive approach
 //! requires ~256 double-and-add steps for a 256-bit scalar. The GLV method
 //! (Gallant-Lambert-Vanstone) provides a way to cut this roughly in half.
 //!
@@ -68,12 +73,12 @@
 //!   k = k1 + k2 * lambda (mod r)
 //!
 //! where k1, k2 are roughly half the bit-length of k (about 128 bits each).
-//! Since `phi(P) = [lambda]P`, we can rewrite:
+//! Since `phi(T) = [lambda]T`, we can rewrite:
 //!
-//!   [k]P = [k1]P + [k2][lambda]P = [k1]P + [k2]phi(P)
+//!   [k]T = [k1]T + [k2][lambda]T = [k1]T + [k2]phi(T)
 //!
 //! Now instead of one 256-bit scalar multiplication, we have two 128-bit scalar
-//! multiplications: `[k1]P` and `[k2]phi(P)`. But we can do even better by
+//! multiplications: `[k1]T` and `[k2]phi(T)`. But we can do even better by
 //! computing both **simultaneously** using a multi-scalar multiplication
 //! approach.
 //!
@@ -186,7 +191,7 @@ use ark_ff::{Field, PrimeField};
 use core::marker::PhantomData;
 
 //~ We implement custom gate constraints for short Weierstrass curve
-//~ endomorphism optimised variable base scalar multiplication.
+//~ endomorphism optimized variable base scalar multiplication.
 //~
 //~ Given a finite field $\mathbb{F}_{q}$ of order $q$, if the order is not a
 //~ multiple of 2 nor 3, then an
@@ -221,7 +226,10 @@ use core::marker::PhantomData;
 //~
 //~ The values (`xR`, `yR`) are the coordinates of the intermediary point resulting from the
 //~ computation of `(P ± T)`. The gate computes two points addition, first `R = P ± T` and after
-//~ that `S = R + P`.
+//~ that `S = R + P`. That is equivalent to say, first it computes `R = P + Q` where `Q` is one of
+//~ `{T, -T, \phi(T), -\phi(T)}` depending on the bits `b1` and `b2`, and then it computes
+//~ `S = R + P`.
+//~
 //~ `n` and `n'` are the accumulated bit decompositions of the value `k` (in little endian and
 //~ `n < n'`. `s1` and `s3` are intermediary values used to compute the slopes from the curve
 //~ addition formula.
@@ -319,7 +327,7 @@ use core::marker::PhantomData;
 //~ 6. `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
 //~
 
-/// Implementation of group endomorphism optimised
+/// Implementation of group endomorphism optimized
 /// variable base scalar multiplication custom Plonk constraints.
 impl<F: PrimeField> CircuitGate<F> {
     pub fn create_endomul(wires: GateWires) -> Self {
@@ -482,12 +490,12 @@ where
 pub struct EndoMulResult<F> {
     /// The final accumulated point (x, y) after all scalar multiplication
     /// steps.
-    /// This equals [scalar]P where P is the base point and scalar is derived
-    /// from the input bits combined with the endomorphism.
+    /// This equals `[scalar]T` where `T` is the base point and `scalar` is
+    /// derived from the input bits combined with the endomorphism.
     pub acc: (F, F),
     /// The accumulated scalar value reconstructed from all processed bits.
     /// For a 128-bit scalar processed in 32 rows (4 bits/row), this equals
-    /// the original scalar k such that acc = [k]base (with endomorphism
+    /// the original scalar k such that `acc = [k]T` (with endomorphism
     /// applied).
     pub n: F,
 }
@@ -505,7 +513,7 @@ pub struct EndoMulResult<F> {
 /// * `endo` - The endomorphism coefficient (cube root of unity in base field)
 /// * `base` - The base point T = (x_T, y_T) being multiplied
 /// * `bits` - Scalar bits in MSB-first order. Length must be a multiple of 4.
-/// * `acc0` - Initial accumulator point. Typically set to `2*T + phi(T)` to
+/// * `acc0` - Initial accumulator point. Typically set to `2*(T + phi(T))` to
 ///   avoid edge cases with the point at infinity.
 ///
 /// # Returns
