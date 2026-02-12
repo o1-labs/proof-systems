@@ -64,9 +64,10 @@
 //!
 //! ## Why phi(T)? The GLV optimization
 //!
-//! When we want to compute `[k]T` for a large scalar k, the naive approach
-//! requires ~256 double-and-add steps for a 256-bit scalar. The GLV method
-//! (Gallant-Lambert-Vanstone) provides a way to cut this roughly in half.
+//! When we want to compute `[k]T` for a large scalar `k`, a standard
+//! variable-base method uses roughly one double-and-add update per scalar bit
+//! (~256 updates for a 256-bit scalar). The GLV method
+//! (Gallant-Lambert-Vanstone) cuts this roughly in half.
 //!
 //! The key insight is that any scalar k can be decomposed as:
 //!
@@ -105,10 +106,10 @@
 //! positive and negative contributions.
 //!
 //! This interleaves the bits of k1 and k2, processing one bit of each per
-//! double-and-add step. Since k1 and k2 are ~128 bits, we need only ~128 steps
+//! accumulator update. Since k1 and k2 are ~128 bits, we need only ~128 updates
 //! instead of ~256, halving the circuit size.
 //!
-//! The gate processes 4 bits per row (two consecutive double-and-add steps),
+//! The gate processes 4 bits per row (two consecutive accumulator updates),
 //! so a 128-bit scalar requires 32 rows of EndoMul gates.
 //!
 //! ## Usage
@@ -158,7 +159,7 @@
 //! 6. **Base point consistency**: The base point `(x_T, y_T)` must be the same
 //!    across all rows of a single scalar multiplication.
 //!
-//! 8. **Scalar value verification**: The EndoMul gate only constrains the
+//! 7. **Scalar value verification**: The EndoMul gate only constrains the
 //!    row-to-row relationship `n' = 16*n + 8*b1 + 4*b2 + 2*b3 + b4`. It does
 //!    **not** constrain the initial or final value of `n`. The calling circuit
 //!    must add external constraints.
@@ -219,20 +220,31 @@ use core::marker::PhantomData;
 //~ scalar within a single EVBSM row. When the scalar is longer (which will
 //~ usually be the case), multiple EVBSM rows will be concatenated.
 //~
-//~ |  Row  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |   7 |   8 |   9 |  10 |  11 |  12 |  13 |  14 |  Type |
-//~ |-------|----|----|----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|-------|
-//~ |     i | xT | yT |  Ø |  Ø | xP | yP | n  |  xR |  yR |  s1 | s3  | b1  |  b2 |  b3 |  b4 | EVBSM |
-//~ |   i+1 |  = |  = |    |    | xS | yS | n' | xR' | yR' | s1' | s3' | b1' | b2' | b3' | b4' | EVBSM |
+//~ | Row | 0  | 1  | 2 | 3 | 4  |  5 | 6  | 7   | 8   | 9   | 10  | 11  | 12  | 13  | 14  | Type  |
+//~ |-----|----|----|---|---|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|-------|
+//~ |   i | xT | yT | Ø | Ø | xP | yP | n  | xR  | yR  | s1  | s3  | b1  | b2  | b3  | b4  | EVBSM |
+//~ | i+1 | =  | =  |   |   | xS | yS | n' | xR' | yR' | s1' | s3' | b1' | b2' | b3' | b4' | EVBSM |
 //~
-//~ The values (`xR`, `yR`) are the coordinates of the intermediary point resulting from the
-//~ computation of `(P ± T)`. The gate computes two points addition, first `R = P ± T` and after
-//~ that `S = R + P`. That is equivalent to say, first it computes `R = P + Q` where `Q` is one of
-//~ `{T, -T, \phi(T), -\phi(T)}` depending on the bits `b1` and `b2`, and then it computes
-//~ `S = R + P`.
+//~ The gate performs two accumulator updates per row, each of the form
+//~ `A <- (A + Q) + A = 2A + Q`.
 //~
-//~ `n` and `n'` are the accumulated bit decompositions of the value `k` (in little endian and
-//~ `n < n'`. `s1` and `s3` are intermediary values used to compute the slopes from the curve
-//~ addition formula.
+//~ - First, bits `(b1, b2)` select `Q1` in `{T, -T, \phi(T), -\phi(T)}`, and the
+//~ stored point `R = (xR, yR)` is the output of the first update: `R = (P + Q1) + P`.
+//~ - Second, bits `(b3, b4)` select `Q2` in the same set, and the stored point
+//~ `S = (xS, yS)` is the output of the second update: `S = (R + Q2) + R`.
+//~
+//~ The intermediate sums `P + Q1` and `R + Q2` are not stored as witness
+//~ columns. On the next row, `(xS, yS)` becomes the new `(xP, yP)`, and
+//~ `(xR', yR')` is the next row's first-update output.
+//~
+//~ The variables (`xT`, `yT`), (`xP`, `yP`), (`xR`, `yR`), and (`xS`, `yS`)
+//~ are the corresponding affine coordinates of points `T`, `P`, `R`, and `S`.
+//~
+//~ `n` and `n'` are accumulated scalar prefixes in MSB-first order, where `n'`
+//~ extends `n` with the next 4-bit chunk encoded by `b1..b4` with `n ≤ n'``.
+//~ `s1` and `s3` are intermediary values used to compute the slopes from the
+//~ curve addition formula.
+//~
 //~ The layout of this gate (and the next row) allows for this chained behavior where the output point
 //~ of the current row $S$ gets accumulated as one of the inputs of the following row, becoming $P$ in
 //~ the next constraints. Similarly, the scalar is decomposed into binary form and $n$ ($n'$ respectively)
@@ -245,6 +257,29 @@ use core::marker::PhantomData;
 //~ * `xq2` $:= (1 + ($`endo`$ - 1)\cdot b_3) \cdot x_t$
 //~ * `yq1` $:= (2\cdot b_2 - 1) \cdot y_t$
 //~ * `yq2` $:= (2\cdot b_4 - 1) \cdot y_t$
+//~
+//~ Note: each row is performing two additions, so we use two selected points:
+//~ `Q1 := (xq1, yq1)` from bits `(b1, b2)` and `Q2 := (xq2, yq2)` from bits
+//~ `(b3, b4)`. They are points, and each is selected from
+//~ `Q:={T, -T, \phi(T), -\phi(T)}` by its corresponding bit pair. That means:
+//~
+//~ Selection table for the first selected point `Q1`:
+//~
+//~ | b1 | b2 | Q1       | (xq1, yq1)               |
+//~ |----|----|----------|--------------------------|
+//~ | 0  | 0  | -T       | (x_t, -y_t)              |
+//~ | 0  | 1  |  T       | (x_t,  y_t)              |
+//~ | 1  | 0  | -\phi(T) | (`endo` \cdot x_t, -y_t) |
+//~ | 1  | 1  |  \phi(T) | (`endo` \cdot x_t,  y_t) |
+//~
+//~ Selection table for the second selected point `Q2`:
+//~
+//~ | b3 | b4 | Q2       | (xq2, yq2)               |
+//~ |----|----|----------|--------------------------|
+//~ | 0  | 0  | -T       | (x_t, -y_t)              |
+//~ | 0  | 1  |  T       | (x_t,  y_t)              |
+//~ | 1  | 0  | -\phi(T) | (`endo` \cdot x_t, -y_t) |
+//~ | 1  | 1  |  \phi(T) | (`endo` \cdot x_t,  y_t) |
 //~
 //~ These are the 11 constraints that correspond to each EVBSM gate,
 //~ which take care of 4 bits of the scalar within a single EVBSM row:
@@ -264,6 +299,11 @@ use core::marker::PhantomData;
 //~   * Bit flag $b_4$: `0 = b4 * (b4 - 1)`
 //~ * Binary decomposition:
 //~   * Accumulated scalar: `n' = 16 * n + 8 * b1 + 4 * b2 + 2 * b3 + b4`
+//~
+//~ Note: in the EC derivation below, `R` and `S` are local symbols inside each
+//~ block's addition formulas. The witness columns still follow the row layout
+//~ above (`xP, yP` as input, `xR, yR` after the first update, `xS, yS` after
+//~ the second update).
 //~
 //~ The constraints above are derived from the following EC Affine arithmetic
 //~ equations.
@@ -313,8 +353,8 @@ use core::marker::PhantomData;
 //~
 //~ Defining $s_2$ and $s_4$ as
 //~
-//~ * $s_2 := \frac{2 \cdot y_P}{2 * x_P + x_T - s_1^2} - s_1$
-//~ * $s_4 := \frac{2 \cdot y_R}{2 * x_R + x_T - s_3^2} - s_3$
+//~ * $s_2 := \frac{2 \cdot y_P}{2 * x_P + x_{q_1} - s_1^2} - s_1$
+//~ * $s_4 := \frac{2 \cdot y_R}{2 * x_R + x_{q_2} - s_3^2} - s_3$
 //~
 //~ Gives the following equations when substituting $s_2$ and $s_4$:
 //~
