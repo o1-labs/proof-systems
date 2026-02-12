@@ -112,6 +112,26 @@
 //! The gate processes 4 bits per row (two consecutive accumulator updates),
 //! so a 128-bit scalar requires 32 rows of EndoMul gates.
 //!
+//! ## Protocol fit
+//!
+//! In Kimchi/Snarky terminology, this gate enforces the **EC_endoscale**
+//! point-update constraint (the point side of endomorphism-optimized scaling
+//! rounds). In Pickles terms, this corresponds to endomorphism-optimized
+//! point updates used with scalar challenges.
+//!
+//! This gate is used to implement recursive verifier IPA/bulletproof
+//! point-folding logic efficiently (GLV endomorphism optimization), including
+//! repeated accumulator updates of the form `A <- (A + Q) + A`.
+//!
+//! Typical protocol usage:
+//!
+//! - **Wrap proofs**: used as part of normal wrap-circuit verification of step
+//!   proofs (part of the wrap recursion flow).
+//! - **Step proofs (recursive setting)**: used when the step circuit verifies
+//!   previous proofs (e.g. `max_proofs_verified > 0`).
+//! - **Non-recursive step circuits**: not inherently required; if no recursive
+//!   verification gadget is instantiated, this gate need not be active.
+//!
 //! ## Usage
 //!
 //! To compute `[scalar] * base` for a 128-bit scalar:
