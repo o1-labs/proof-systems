@@ -149,24 +149,16 @@ fn test_endomul_regression() {
 
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); chunks + 1]);
 
-    let res = endosclmul::gen_witness(
-        &mut witness,
-        0,
-        endo_q,
-        (base.x, base.y),
-        &bits_msb,
-        acc0,
-    );
+    let res = endosclmul::gen_witness(&mut witness, 0, endo_q, (base.x, base.y), &bits_msb, acc0);
 
     // Expected values (computed once and hardcoded for regression testing)
     let expected_acc_x = F::from_str(
         "13451015727828487409105090745067382573284440950068981965830848908350988424768",
     )
     .unwrap();
-    let expected_acc_y = F::from_str(
-        "9969116504129436059100105870338261105816321160161624462757629802673790029360",
-    )
-    .unwrap();
+    let expected_acc_y =
+        F::from_str("9969116504129436059100105870338261105816321160161624462757629802673790029360")
+            .unwrap();
     let expected_n = F::from(41925u64);
 
     assert_eq!(
