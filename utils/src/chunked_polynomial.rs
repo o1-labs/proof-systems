@@ -1,4 +1,4 @@
-//! This module contains a type [ChunkedPolynomial],
+//! This module contains a type [`ChunkedPolynomial`],
 //! and a number of helper methods to deal with chunked polynomials.
 //! Polynomials that cut in several polynomials of the same length.
 
@@ -6,6 +6,7 @@ use ark_ff::Field;
 use ark_poly::polynomial::{univariate::DensePolynomial, Polynomial};
 
 /// This struct contains multiple chunk polynomials with degree `size-1`.
+#[derive(Clone)]
 pub struct ChunkedPolynomial<F: Field> {
     /// The chunk polynomials.
     pub polys: Vec<DensePolynomial<F>>,
@@ -41,42 +42,10 @@ impl<F: Field> ChunkedPolynomial<F> {
             scale *= zeta_n;
         }
 
-        while coeffs.last().map_or(false, |c| c.is_zero()) {
+        while coeffs.last().is_some_and(F::is_zero) {
             coeffs.pop();
         }
 
         DensePolynomial { coeffs }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::ExtendedDensePolynomial;
-
-    use super::*;
-    use ark_ff::One;
-    use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial};
-    use mina_curves::pasta::Fp;
-
-    #[test]
-
-    fn test_chunk_poly() {
-        let one = Fp::one();
-        let zeta = one + one;
-        let zeta_n = zeta.square();
-        let num_chunks = 4;
-        let res = (one + zeta)
-            * (one + zeta_n + zeta_n * zeta.square() + zeta_n * zeta.square() * zeta.square());
-
-        // 1 + x + x^2 + x^3 + x^4 + x^5 + x^6 + x^7 = (1+x) + x^2 (1+x) + x^4 (1+x) + x^6 (1+x)
-        let coeffs = [one, one, one, one, one, one, one, one];
-        let f = DensePolynomial::from_coefficients_slice(&coeffs);
-
-        let eval = f
-            .to_chunked_polynomial(num_chunks, 2)
-            .linearize(zeta_n)
-            .evaluate(&zeta);
-
-        assert!(eval == res);
     }
 }

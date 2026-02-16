@@ -1,0 +1,36 @@
+[package]
+name = "arrabbiata"
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "arrabbiata"
+path = "src/main.rs"
+
+[dependencies]
+ark-ec.workspace = true
+ark-ff.workspace = true
+ark-poly.workspace = true
+clap = { workspace = true, features = ["derive"] }
+env_logger.workspace = true
+groupmap.workspace = true
+itertools.workspace = true
+kimchi.workspace = true
+log.workspace = true
+mina-curves.workspace = true
+mina-poseidon.workspace = true
+mvpoly.workspace = true
+num-bigint.workspace = true
+num-integer.workspace = true
+o1-utils.workspace = true
+once_cell.workspace = true
+poly-commitment.workspace = true
+rand.workspace = true
+rayon.workspace = true
+serde.workspace = true
+strum.workspace = true
+strum_macros.workspace = true

@@ -1,7 +1,7 @@
-//! This module provides the [CryptoDigest] trait,
+//! This module provides the [`CryptoDigest`] trait,
 //! which provides a generic interface for hashing.
 //!
-//! To use it, simply implement [CryptoDigest] for your type:
+//! To use it, simply implement [`CryptoDigest`] for your type:
 //!
 //! ```
 //! use o1_utils::hasher::CryptoDigest;
@@ -33,7 +33,7 @@
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-/// This trait can be implemented on any type that implements [serde::Serialize],
+/// This trait can be implemented on any type that implements [`serde::Serialize`],
 /// in order to provide a `digest()` function that returns a unique hash.
 pub trait CryptoDigest: Serialize {
     /// The domain separation string to use in the hash.
@@ -53,7 +53,7 @@ pub trait CryptoDigest: Serialize {
         let mut hasher = Sha256::new();
         hasher.update(Self::PREFIX);
         hasher.update(
-            &bcs::to_bytes(self).unwrap_or_else(|e| panic!("couldn't serialize the gate: {e}")),
+            bcs::to_bytes(self).unwrap_or_else(|e| panic!("couldn't serialize the gate: {e}")),
         );
         hasher.finalize().into()
     }

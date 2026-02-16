@@ -1,0 +1,68 @@
+# Lint workflow for multiple Rust toolchains
+#
+# This workflow runs clippy on multiple Rust toolchains (stable, beta, and
+# optionally other versions). It uses a matrix strategy to run all versions
+# in parallel.
+#
+# To add a new Rust version, simply add it to the rust_toolchain matrix.
+# Examples: "stable", "beta", "nightly", "1.92"
+#
+# Tracking issue: https://github.com/o1-labs/mina-rust/issues/1926
+# Sub-issues for each crate: #1927-#1949
+# This workflow issue: https://github.com/o1-labs/mina-rust/issues/1950
+
+name: Lint
+
+on:
+  workflow_dispatch:
+  pull_request:
+  merge_group:
+  push:
+    branches:
+      - master
+
+env:
+  CARGO_TERM_COLOR: always
+  OCAML_VERSION: "4.14.2"
+
+jobs:
+  clippy:
+    name: Clippy (${{ matrix.rust_toolchain }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Add or remove Rust versions as needed.
+        # Supported values: "stable", "beta", "nightly", or specific versions like "1.92"
+        # We keep 1.92 to match mina-rust and MinaProtocol/mina.
+        rust_toolchain: ["1.92", stable, beta]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ env.OCAML_VERSION }}
+
+      - name: Install Rust ${{ matrix.rust_toolchain }}
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust_toolchain }}
+          components: clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.rust_toolchain }}
+
+      - name: Run clippy on ${{ matrix.rust_toolchain }}
+        env:
+          RUSTUP_TOOLCHAIN: ${{ matrix.rust_toolchain }}
+        run: |
+          # Load OCaml environment
+          eval $(opam env)
+          echo "Rust toolchain: ${{ matrix.rust_toolchain }}"
+          make lint

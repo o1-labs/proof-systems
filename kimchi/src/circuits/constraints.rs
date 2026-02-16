@@ -6,7 +6,7 @@ use crate::{
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
         lookup::{
-            index::LookupConstraintSystem,
+            index::{LookupConstraintSystem, LookupError},
             lookups::{LookupFeatures, LookupPatterns},
             tables::{GateLookupTables, LookupTable},
         },
@@ -16,6 +16,7 @@ use crate::{
     },
     curve::KimchiCurve,
     error::{DomainCreationError, SetupError},
+    o1_utils::lazy_cache::LazyCache,
     prover_index::ProverIndex,
 };
 use ark_ff::{PrimeField, Zero};
@@ -23,18 +24,33 @@ use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
 };
+use core::{array, default::Default};
 use o1_utils::ExtendedEvaluations;
-use once_cell::sync::OnceCell;
-use poly_commitment::OpenProof;
+use poly_commitment::SRS;
+use rayon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{array, default::Default, sync::Arc};
+use std::sync::Arc;
 
 //
 // ConstraintSystem
 //
 
-/// Flags for optional features in the constraint system
+/// Flags indicating which optional gates are used in a circuit.
+///
+/// Kimchi circuits can use a variety of optional gates and lookup patterns.
+/// Rather than always including constraints for every possible gate type,
+/// these flags track which gates are actually present. This allows the prover
+/// and verifier to only compute and check relevant constraints.
+///
+/// Flags are typically computed automatically via [`Self::from_gates`], which
+/// scans the circuit gates and enables the corresponding flags.
+///
+/// When a flag is disabled, the following optimizations apply:
+///
+/// - The gate's selector polynomial is not computed
+/// - The gate's constraints are excluded from linearization
+/// - Associated lookup tables are not included
 #[cfg_attr(
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
@@ -42,19 +58,26 @@ use std::{array, default::Default, sync::Arc};
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 pub struct FeatureFlags {
-    /// RangeCheck0 gate
+    /// Enables [`GateType::RangeCheck0`], which partially constrains one
+    /// 88-bit value. Can also perform a standalone 64-bit range check by
+    /// constraining columns 1-2 to zero (removing the two highest 12-bit
+    /// limbs: 88 - 24 = 64 bits).
+    /// See [`crate::circuits::polynomials::range_check`] for details.
     pub range_check0: bool,
-    /// RangeCheck1 gate
+    /// Enables [`GateType::RangeCheck1`], which fully constrains the third
+    /// value in the multi-range-check gadget and triggers deferred lookups.
+    /// See [`crate::circuits::polynomials::range_check`] for details.
     pub range_check1: bool,
-    /// Foreign field addition gate
+    /// Enables [`GateType::ForeignFieldAdd`] for addition over non-native fields.
     pub foreign_field_add: bool,
-    /// Foreign field multiplication gate
+    /// Enables [`GateType::ForeignFieldMul`] for multiplication over non-native fields.
     pub foreign_field_mul: bool,
-    /// XOR gate
+    /// Enables [`GateType::Xor16`] for 16-bit XOR operations.
     pub xor: bool,
-    /// ROT gate
+    /// Enables [`GateType::Rot64`] for 64-bit rotation operations.
     pub rot: bool,
-    /// Lookup features
+    /// Lookup feature configuration.
+    /// See [`LookupFeatures`] for details.
     pub lookup_features: LookupFeatures,
 }
 
@@ -166,7 +189,7 @@ pub struct ColumnEvaluations<F: PrimeField> {
 }
 
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Debug)]
 pub struct ConstraintSystem<F: PrimeField> {
     // Basics
     // ------
@@ -179,7 +202,7 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub domain: EvaluationDomains<F>,
     /// circuit gates
     #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
-    pub gates: Vec<CircuitGate<F>>,
+    pub gates: Arc<Vec<CircuitGate<F>>>,
 
     pub zk_rows: u64,
 
@@ -198,13 +221,75 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub endo: F,
     /// lookup constraint system
     #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
-    pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
+    pub lookup_constraint_system: Arc<LookupConstraintSystemCache<F>>,
     /// precomputes
     #[serde(skip)]
-    precomputations: OnceCell<Arc<DomainConstantEvaluations<F>>>,
+    precomputations: Arc<LazyCache<Arc<DomainConstantEvaluations<F>>>>,
 
     /// Disable gates checks (for testing; only enables with development builds)
     pub disable_gates_checks: bool,
+}
+
+pub(crate) type LookupConstraintSystemCache<F> =
+    LazyCache<Result<Option<LookupConstraintSystem<F>>, LookupError>>;
+
+impl<'de, F> Deserialize<'de> for ConstraintSystem<F>
+where
+    F: PrimeField,
+    EvaluationDomains<F>: Serialize + DeserializeOwned,
+    CircuitGate<F>: Serialize + DeserializeOwned,
+    LookupConstraintSystem<F>: Serialize + DeserializeOwned,
+{
+    fn deserialize<D>(deserializer: D) -> Result<ConstraintSystem<F>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[serde_as]
+        #[derive(Clone, Serialize, Deserialize, Debug)]
+        struct ConstraintSystemSerde<F: PrimeField> {
+            public: usize,
+            prev_challenges: usize,
+            #[serde(bound = "EvaluationDomains<F>: Serialize + DeserializeOwned")]
+            domain: EvaluationDomains<F>,
+            #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
+            gates: Arc<Vec<CircuitGate<F>>>,
+            zk_rows: u64,
+            feature_flags: FeatureFlags,
+            #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+            sid: Vec<F>,
+            #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
+            shift: [F; PERMUTS],
+            #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+            endo: F,
+            #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
+            lookup_constraint_system: Arc<LookupConstraintSystemCache<F>>,
+            disable_gates_checks: bool,
+        }
+
+        // This is to avoid implementing a default value for LazyCache
+        let cs = ConstraintSystemSerde::<F>::deserialize(deserializer)?;
+
+        let precomputations = Arc::new({
+            LazyCache::new(move || {
+                Arc::new(DomainConstantEvaluations::create(cs.domain, cs.zk_rows).unwrap())
+            })
+        });
+
+        Ok(ConstraintSystem {
+            public: cs.public,
+            prev_challenges: cs.prev_challenges,
+            domain: cs.domain,
+            gates: cs.gates,
+            zk_rows: cs.zk_rows,
+            feature_flags: cs.feature_flags,
+            sid: cs.sid,
+            shift: cs.shift,
+            endo: cs.endo,
+            lookup_constraint_system: cs.lookup_constraint_system,
+            disable_gates_checks: cs.disable_gates_checks,
+            precomputations,
+        })
+    }
 }
 
 /// Represents an error found when verifying a witness with a gate
@@ -227,6 +312,7 @@ pub struct Builder<F: PrimeField> {
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
     disable_gates_checks: bool,
     max_poly_size: Option<usize>,
+    lazy_mode: bool,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -270,10 +356,11 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// - `runtime_tables: None`,
     /// - `precomputations: None`,
     /// - `disable_gates_checks: false`,
+    /// - `lazy_mode: false`,
     ///
     /// How to use it:
     /// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`
-    /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations()``
+    /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations(), lazy_mode()`
     /// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`
     pub fn create(gates: Vec<CircuitGate<F>>) -> Builder<F> {
         Builder {
@@ -285,24 +372,34 @@ impl<F: PrimeField> ConstraintSystem<F> {
             precomputations: None,
             disable_gates_checks: false,
             max_poly_size: None,
+            lazy_mode: false,
         }
     }
 
-    pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<F>> {
-        self.precomputations.get_or_init(|| {
-            Arc::new(DomainConstantEvaluations::create(self.domain, self.zk_rows).unwrap())
-        })
+    pub fn precomputations(&self) -> Arc<DomainConstantEvaluations<F>> {
+        self.precomputations.get().clone()
     }
 
-    pub fn set_precomputations(&self, precomputations: Arc<DomainConstantEvaluations<F>>) {
-        self.precomputations
-            .set(precomputations)
-            .expect("Precomputation has been set before");
+    /// test helpers
+    pub fn for_testing(gates: Vec<CircuitGate<F>>) -> Self {
+        let public = 0;
+        // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
+        ConstraintSystem::<F>::create(gates)
+            .public(public)
+            .build()
+            .unwrap()
+    }
+
+    pub fn fp_for_testing(gates: Vec<CircuitGate<F>>) -> Self {
+        Self::for_testing(gates)
     }
 }
 
-impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
-    ProverIndex<G, OpeningProof>
+impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
+where
+    F: PrimeField,
+    G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    Srs: SRS<G>,
 {
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
@@ -342,7 +439,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
             }
 
             // for public gates, only the left wire is toggled
-            if row < self.cs.public && gate.coeffs[0] != F::one() {
+            if row < self.cs.public && gate.coeffs.first() != Some(&F::one()) {
                 return Err(GateError::IncorrectPublic(row));
             }
 
@@ -359,25 +456,53 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
 impl<F: PrimeField> ConstraintSystem<F> {
     /// evaluate witness polynomials over domains
     pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
-        // compute shifted witness polynomials
-        let w8: [E<F, D<F>>; COLUMNS] =
-            array::from_fn(|i| w[i].evaluate_over_domain_by_ref(self.domain.d8));
-        let z8 = z.evaluate_over_domain_by_ref(self.domain.d8);
+        // compute shifted witness polynomials and z8, all in parallel
+        let (w8, z8): ([E<F, D<F>>; COLUMNS], _) = {
+            let mut res = w
+                .par_iter()
+                .chain(rayon::iter::once(z))
+                .map(|elem| elem.evaluate_over_domain_by_ref(self.domain.d8))
+                .collect::<Vec<_>>();
+            let z8 = res[COLUMNS].clone();
+            res.truncate(COLUMNS);
+            (res.try_into().unwrap(), z8)
+        };
 
-        let w4: [E<F, D<F>>; COLUMNS] = array::from_fn(|i| {
-            E::<F, D<F>>::from_vec_and_domain(
-                (0..self.domain.d4.size)
-                    .map(|j| w8[i].evals[2 * j as usize])
-                    .collect(),
-                self.domain.d4,
-            )
-        });
+        let w4: [E<F, D<F>>; COLUMNS] = (0..COLUMNS)
+            .into_par_iter()
+            .map(|i| {
+                E::<F, D<F>>::from_vec_and_domain(
+                    (0..self.domain.d4.size)
+                        .map(|j| w8[i].evals[2 * j as usize])
+                        .collect(),
+                    self.domain.d4,
+                )
+            })
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
         let z4 = DP::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap());
+        let z8_shift8 = z8.shift(8);
+
+        let d4_next_w: [_; COLUMNS] = w4
+            .par_iter()
+            .map(|w4_i| w4_i.shift(4))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
+        let d8_next_w: [_; COLUMNS] = w8
+            .par_iter()
+            .map(|w8_i| w8_i.shift(8))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
 
         WitnessOverDomains {
             d4: WitnessShifts {
                 next: WitnessEvals {
-                    w: array::from_fn(|i| w4[i].shift(4)),
+                    w: d4_next_w,
                     // TODO(mimoo): change z to an Option? Or maybe not, we might actually need this dummy evaluation in the aggregated evaluation proof
                     z: z4.clone(), // dummy evaluation
                 },
@@ -388,8 +513,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
             },
             d8: WitnessShifts {
                 next: WitnessEvals {
-                    w: array::from_fn(|i| w8[i].shift(8)),
-                    z: z8.shift(8),
+                    w: d8_next_w,
+                    z: z8_shift8,
                 },
                 this: WitnessEvals { w: w8, z: z8 },
             },
@@ -660,6 +785,7 @@ pub fn zk_rows_strict_lower_bound(num_chunks: usize) -> usize {
 }
 
 impl FeatureFlags {
+    /// Creates feature flags by scanning gates, using pre-computed lookup features.
     pub fn from_gates_and_lookup_features<F: PrimeField>(
         gates: &[CircuitGate<F>],
         lookup_features: LookupFeatures,
@@ -689,6 +815,10 @@ impl FeatureFlags {
         feature_flags
     }
 
+    /// Creates feature flags by scanning gates for optional gate types.
+    ///
+    /// This is the primary constructor. It detects both gate-level features
+    /// and lookup features from the circuit gates.
     pub fn from_gates<F: PrimeField>(
         gates: &[CircuitGate<F>],
         uses_runtime_tables: bool,
@@ -761,11 +891,16 @@ impl<F: PrimeField> Builder<F> {
         self
     }
 
+    pub fn lazy_mode(mut self, lazy_mode: bool) -> Self {
+        self.lazy_mode = lazy_mode;
+        self
+    }
+
     /// Build the [ConstraintSystem] from a [Builder].
     pub fn build(self) -> Result<ConstraintSystem<F>, SetupError> {
         let mut gates = self.gates;
-        let lookup_tables = self.lookup_tables;
-        let runtime_tables = self.runtime_tables;
+        let lookup_tables = self.lookup_tables.clone();
+        let runtime_tables = self.runtime_tables.clone();
 
         //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
@@ -791,7 +926,7 @@ impl<F: PrimeField> Builder<F> {
                 })
                 .sum();
             // After that on the runtime tables
-            if let Some(runtime_tables) = runtime_tables.as_ref() {
+            if let Some(runtime_tables) = &runtime_tables {
                 // FIXME: Check that a runtime table with ID 0 is enforced to
                 // contain a zero entry row.
                 for runtime_table in runtime_tables.iter() {
@@ -849,7 +984,7 @@ impl<F: PrimeField> Builder<F> {
             // We add 1 to the lookup domain size because there is one element
             // used to close the permutation argument (the polynomial Z is of
             // degree n + 1 where n is the order of the subgroup H).
-            let circuit_lower_bound = std::cmp::max(gates.len(), lookup_domain_size + 1);
+            let circuit_lower_bound = core::cmp::max(gates.len(), lookup_domain_size + 1);
             let get_domain_size_lower_bound = |zk_rows: u64| circuit_lower_bound + zk_rows as usize;
 
             let mut zk_rows = 3;
@@ -904,21 +1039,41 @@ impl<F: PrimeField> Builder<F> {
         //
         // Lookup
         // ------
-        let lookup_constraint_system = LookupConstraintSystem::create(
-            &gates,
-            lookup_tables,
-            runtime_tables,
-            &domain,
-            zk_rows as usize,
-        )
-        .map_err(SetupError::LookupCreation)?;
+        let gates = Arc::new(gates);
+        let gates_clone = Arc::clone(&gates);
+        let lookup_constraint_system = LazyCache::new(move || {
+            LookupConstraintSystem::create(
+                &gates_clone,
+                self.lookup_tables,
+                self.runtime_tables,
+                &domain,
+                zk_rows as usize,
+            )
+        });
+        if !self.lazy_mode {
+            // Precompute and map setup error
+            lookup_constraint_system
+                .try_get_or_err()
+                .map_err(SetupError::from)?;
+        }
 
         let sid = shifts.map[0].clone();
 
         // TODO: remove endo as a field
         let endo = F::zero();
 
-        let domain_constant_evaluation = OnceCell::new();
+        let precomputations = if !self.lazy_mode {
+            match self.precomputations {
+                Some(t) => LazyCache::preinit(t),
+                None => LazyCache::preinit(Arc::new(
+                    DomainConstantEvaluations::create(domain, zk_rows).unwrap(),
+                )),
+            }
+        } else {
+            LazyCache::new(move || {
+                Arc::new(DomainConstantEvaluations::create(domain, zk_rows).unwrap())
+            })
+        };
 
         let constraints = ConstraintSystem {
             domain,
@@ -930,72 +1085,12 @@ impl<F: PrimeField> Builder<F> {
             endo,
             zk_rows,
             //fr_sponge_params: self.sponge_params,
-            lookup_constraint_system,
+            lookup_constraint_system: Arc::new(lookup_constraint_system),
             feature_flags,
-            precomputations: domain_constant_evaluation,
+            precomputations: Arc::new(precomputations),
             disable_gates_checks: self.disable_gates_checks,
         };
 
-        match self.precomputations {
-            Some(t) => {
-                constraints.set_precomputations(t);
-            }
-            None => {
-                constraints.precomputations();
-            }
-        }
         Ok(constraints)
-    }
-}
-
-#[cfg(test)]
-pub mod tests {
-    use super::*;
-    use mina_curves::pasta::Fp;
-
-    impl<F: PrimeField> ConstraintSystem<F> {
-        pub fn for_testing(gates: Vec<CircuitGate<F>>) -> Self {
-            let public = 0;
-            // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-            ConstraintSystem::<F>::create(gates)
-                .public(public)
-                .build()
-                .unwrap()
-        }
-    }
-
-    impl ConstraintSystem<Fp> {
-        pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
-            //let fp_sponge_params = mina_poseidon::pasta::fp_kimchi::params();
-            Self::for_testing(gates)
-        }
-    }
-
-    #[test]
-    pub fn test_domains_computation_with_runtime_tables() {
-        let dummy_gate = CircuitGate {
-            typ: GateType::Generic,
-            wires: [Wire::new(0, 0); PERMUTS],
-            coeffs: vec![Fp::zero()],
-        };
-        // inputs + expected output
-        let data = [((10, 10), 128), ((0, 0), 8), ((5, 100), 512)];
-        for ((number_of_rt_cfgs, size), expected_domain_size) in data.into_iter() {
-            let builder = ConstraintSystem::create(vec![dummy_gate.clone(), dummy_gate.clone()]);
-            let table_ids: Vec<i32> = (0..number_of_rt_cfgs).collect();
-            let rt_cfgs: Vec<RuntimeTableCfg<Fp>> = table_ids
-                .into_iter()
-                .map(|table_id| {
-                    let indexes: Vec<u32> = (0..size).collect();
-                    let first_column: Vec<Fp> = indexes.into_iter().map(Fp::from).collect();
-                    RuntimeTableCfg {
-                        id: table_id,
-                        first_column,
-                    }
-                })
-                .collect();
-            let res = builder.runtime(Some(rt_cfgs)).build().unwrap();
-            assert_eq!(res.domain.d1.size, expected_domain_size)
-        }
     }
 }

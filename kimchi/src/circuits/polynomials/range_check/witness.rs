@@ -1,19 +1,19 @@
 //! Range check witness computation
 
 use ark_ff::PrimeField;
+use core::array;
 use num_bigint::BigUint;
 use num_integer::Integer;
 use o1_utils::{field_helpers::BigUintFieldHelpers, FieldHelpers, ForeignElement};
-use std::array;
 
 use crate::{
     circuits::{
         polynomial::COLUMNS,
+        polynomials::foreign_field_common::{BigUintForeignFieldHelpers, LIMB_BITS},
         witness::{init_row, CopyBitsCell, CopyCell, VariableCell, Variables, WitnessCell},
     },
     variable_map, variables,
 };
-use o1_utils::foreign_field::BigUintForeignFieldHelpers;
 
 /// Witness layout
 ///   * The values and cell contents are in little-endian order.
@@ -26,14 +26,14 @@ use o1_utils::foreign_field::BigUintForeignFieldHelpers;
 ///     For example, we can convert the `RangeCheck0` circuit gate into
 ///     a 64-bit lookup by adding two copy constraints to constrain
 ///     columns 1 and 2 to zero.
-fn layout<F: PrimeField>() -> Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> {
-    vec![
+fn layout<F: PrimeField>() -> [Vec<Box<dyn WitnessCell<F>>>; 4] {
+    [
         /* row 1, RangeCheck0 row */
         range_check_0_row("v0", 0),
         /* row 2, RangeCheck0 row */
         range_check_0_row("v1", 1),
         /* row 3, RangeCheck1 row */
-        [
+        vec![
             VariableCell::create("v2"),
             VariableCell::create("v12"), // optional
             /* 2-bit crumbs (placed here to keep lookup pattern */
@@ -55,7 +55,7 @@ fn layout<F: PrimeField>() -> Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> {
             CopyBitsCell::create(2, 0, 22, 24),
         ],
         /* row 4, Zero row */
-        [
+        vec![
             CopyBitsCell::create(2, 0, 20, 22),
             /* 2-bit crumbs (placed here to keep lookup pattern */
             /*               the same as RangeCheck0) */
@@ -83,8 +83,8 @@ fn layout<F: PrimeField>() -> Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> {
 pub fn range_check_0_row<F: PrimeField>(
     limb_name: &'static str,
     row: usize,
-) -> [Box<dyn WitnessCell<F>>; COLUMNS] {
-    [
+) -> Vec<Box<dyn WitnessCell<F>>> {
+    vec![
         VariableCell::create(limb_name),
         /* 12-bit copies */
         // Copy cells are required because we have a limit
@@ -211,7 +211,7 @@ pub fn extend_multi_compact_limbs<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS]
 /// Extend an existing witness with a multi-range-check gadget for ForeignElement
 pub fn extend_multi_from_fe<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
-    fe: &ForeignElement<F, 3>,
+    fe: &ForeignElement<F, LIMB_BITS, 3>,
 ) {
     extend_multi(witness, fe.limbs[0], fe.limbs[1], fe.limbs[2]);
 }

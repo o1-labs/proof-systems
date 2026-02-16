@@ -1,10 +1,13 @@
 //! This module implements zk-proof batch verifier functionality.
 
+use std::fmt::Debug;
+
 use crate::{
     circuits::{
         argument::ArgumentType,
+        berkeley_columns::{BerkeleyChallenges, Column},
         constraints::ConstraintSystem,
-        expr::{Column, Constants, PolishToken},
+        expr::{Constants, PolishToken},
         gate::GateType,
         lookup::{lookups::LookupPattern, tables::combine_table},
         polynomials::permutation,
@@ -21,32 +24,45 @@ use crate::{
 use ark_ec::AffineRepr;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Polynomial};
-use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use mina_poseidon::{poseidon::ArithmeticSpongeParams, sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
     commitment::{
         absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
     },
-    OpenProof, SRS as _,
+    OpenProof, SRS,
 };
 use rand::thread_rng;
 
 /// The result of a proof verification.
-pub type Result<T> = std::result::Result<T, VerifyError>;
+pub type Result<T> = core::result::Result<T, VerifyError>;
 
 #[derive(Debug)]
-pub struct Context<'a, G: KimchiCurve, OpeningProof: OpenProof<G>> {
+pub struct Context<
+    'a,
+    const FULL_ROUNDS: usize,
+    G: KimchiCurve<FULL_ROUNDS>,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    SRS,
+> {
     /// The [VerifierIndex] associated to the proof
-    pub verifier_index: &'a VerifierIndex<G, OpeningProof>,
+    pub verifier_index: &'a VerifierIndex<FULL_ROUNDS, G, SRS>,
 
     /// The proof to verify
-    pub proof: &'a ProverProof<G, OpeningProof>,
+    pub proof: &'a ProverProof<G, OpeningProof, FULL_ROUNDS>,
 
     /// The public input used in the creation of the proof
     pub public_input: &'a [G::ScalarField],
 }
 
-impl<'a, G: KimchiCurve, OpeningProof: OpenProof<G>> Context<'a, G, OpeningProof> {
+impl<
+        'a,
+        const FULL_ROUNDS: usize,
+        G: KimchiCurve<FULL_ROUNDS>,
+        OpeningProof: OpenProof<G, FULL_ROUNDS>,
+        SRS,
+    > Context<'a, FULL_ROUNDS, G, OpeningProof, SRS>
+{
     pub fn get_column(&self, col: Column) -> Option<&'a PolyComm<G>> {
         use Column::*;
         match col {
@@ -79,7 +95,6 @@ impl<'a, G: KimchiCurve, OpeningProof: OpenProof<G>> Context<'a, G, OpeningProof
                     EndoMul => Some(&self.verifier_index.emul_comm),
                     EndoMulScalar => Some(&self.verifier_index.endomul_scalar_comm),
                     Poseidon => Some(&self.verifier_index.psm_comm),
-                    CairoClaim | CairoInstruction | CairoFlags | CairoTransition => None,
                     RangeCheck0 => Some(self.verifier_index.range_check0_comm.as_ref()?),
                     RangeCheck1 => Some(self.verifier_index.range_check1_comm.as_ref()?),
                     ForeignFieldAdd => Some(self.verifier_index.foreign_field_add_comm.as_ref()?),
@@ -92,8 +107,10 @@ impl<'a, G: KimchiCurve, OpeningProof: OpenProof<G>> Context<'a, G, OpeningProof
     }
 }
 
-impl<G: KimchiCurve, OpeningProof: OpenProof<G>> ProverProof<G, OpeningProof>
+impl<const FULL_ROUNDS: usize, G, OpeningProof> ProverProof<G, OpeningProof, FULL_ROUNDS>
 where
+    G: KimchiCurve<FULL_ROUNDS>,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
     G::BaseField: PrimeField,
 {
     /// This function runs the random oracle argument
@@ -105,15 +122,17 @@ where
     /// # Panics
     ///
     /// Will panic if `PolishToken` evaluation is invalid.
-    pub fn oracles<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
-    >(
+    pub fn oracles<EFqSponge, EFrSponge, Srs>(
         &self,
-        index: &VerifierIndex<G, OpeningProof>,
+        index: &VerifierIndex<FULL_ROUNDS, G, Srs>,
         public_comm: &PolyComm<G>,
         public_input: Option<&[G::ScalarField]>,
-    ) -> Result<OraclesResult<G, EFqSponge>> {
+    ) -> Result<OraclesResult<FULL_ROUNDS, G, EFqSponge>>
+    where
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
+        EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
+    {
         //~
         //~ #### Fiat-Shamir argument
         //~
@@ -133,7 +152,9 @@ where
 
         let zk_rows = index.zk_rows;
 
-        //~ 1. Setup the Fq-Sponge.
+        //~ 1. Setup the Fq-Sponge. This sponge mostly absorbs group
+        // elements (points as tuples over the base field), but it
+        // squeezes out elements of the group's scalar field.
         let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
         //~ 1. Absorb the digest of the VerifierIndex.
@@ -184,7 +205,7 @@ where
 
             //~~ * Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
             //~~   (TODO: specify endomorphism)
-            let joint_combiner = ScalarChallenge(joint_combiner);
+            let joint_combiner = ScalarChallenge::new(joint_combiner);
             let joint_combiner_field = joint_combiner.to_field(endo_r);
             let joint_combiner = (joint_combiner, joint_combiner_field);
 
@@ -229,17 +250,17 @@ where
 
         // --- PlonK - Round 3
         //~ 1. Sample the quotient challenge $\alpha'$ with the Fq-Sponge.
-        let alpha_chal = ScalarChallenge(fq_sponge.challenge());
+        let alpha_chal = ScalarChallenge::new(fq_sponge.challenge());
 
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
         let alpha = alpha_chal.to_field(endo_r);
 
         //~ 1. Enforce that the length of the $t$ commitment is of size 7.
-        if self.commitments.t_comm.elems.len() > chunk_size * 7 {
+        if self.commitments.t_comm.len() > chunk_size * 7 {
             return Err(VerifyError::IncorrectCommitmentLength(
                 "t",
                 chunk_size * 7,
-                self.commitments.t_comm.elems.len(),
+                self.commitments.t_comm.len(),
             ));
         }
 
@@ -248,14 +269,18 @@ where
 
         // --- PlonK - Round 4
         //~ 1. Sample $\zeta'$ with the Fq-Sponge.
-        let zeta_chal = ScalarChallenge(fq_sponge.challenge());
+        let zeta_chal = ScalarChallenge::new(fq_sponge.challenge());
 
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
         let zeta = zeta_chal.to_field(endo_r);
 
-        //~ 1. Setup the Fr-Sponge.
+        //~ 1. Setup the Fr-Sponge. This sponge absorbs elements from
+        // the scalar field of the curve (equal to the base field of
+        // the previous recursion round), and squeezes scalar elements
+        // of the field. The squeeze result is the same as with the
+        // `fq_sponge`.
         let digest = fq_sponge.clone().digest();
-        let mut fr_sponge = EFrSponge::new(G::sponge_params());
+        let mut fr_sponge = EFrSponge::from(G::sponge_params());
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&digest);
@@ -264,7 +289,7 @@ where
         let prev_challenge_digest = {
             // Note: we absorb in a new sponge here to limit the scope in which we need the
             // more-expensive 'optional sponge'.
-            let mut fr_sponge = EFrSponge::new(G::sponge_params());
+            let mut fr_sponge = EFrSponge::from(G::sponge_params());
             for RecursionChallenge { chals, .. } in &self.prev_challenges {
                 fr_sponge.absorb_multiple(chals);
             }
@@ -366,13 +391,13 @@ where
         fr_sponge.absorb_multiple(&public_evals[1]);
         fr_sponge.absorb_evaluations(&self.evals);
 
-        //~ 1. Sample $v'$ with the Fr-Sponge.
+        //~ 1. Sample the "polyscale" $v'$ with the Fr-Sponge.
         let v_chal = fr_sponge.challenge();
 
         //~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
         let v = v_chal.to_field(endo_r);
 
-        //~ 1. Sample $u'$ with the Fr-Sponge.
+        //~ 1. Sample the "evalscale" $u'$ with the Fr-Sponge.
         let u_chal = fr_sponge.challenge();
 
         //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
@@ -436,13 +461,18 @@ where
             ft_eval0 += numerator * denominator;
 
             let constants = Constants {
-                alpha,
-                beta,
-                gamma,
-                joint_combiner: joint_combiner.as_ref().map(|j| j.1),
                 endo_coefficient: index.endo,
                 mds: &G::sponge_params().mds,
                 zk_rows,
+            };
+            let challenges = BerkeleyChallenges {
+                alpha,
+                beta,
+                gamma,
+                joint_combiner: joint_combiner
+                    .as_ref()
+                    .map(|j| j.1)
+                    .unwrap_or(G::ScalarField::zero()),
             };
 
             ft_eval0 -= PolishToken::evaluate(
@@ -451,6 +481,7 @@ where
                 zeta,
                 &evals,
                 &constants,
+                &challenges,
             )
             .unwrap();
 
@@ -602,15 +633,16 @@ where
     }
 }
 
-/// Enforce the length of evaluations inside [`Proof`].
+/// Enforce the length of evaluations inside [`ProverProof`].
 /// Atm, the length of evaluations(both `zeta` and `zeta_omega`) SHOULD be 1.
 /// The length value is prone to future change.
-fn check_proof_evals_len<G, OpeningProof>(
-    proof: &ProverProof<G, OpeningProof>,
+fn check_proof_evals_len<const FULL_ROUNDS: usize, G, OpeningProof>(
+    proof: &ProverProof<G, OpeningProof, FULL_ROUNDS>,
     expected_size: usize,
 ) -> Result<()>
 where
-    G: KimchiCurve,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    G: KimchiCurve<FULL_ROUNDS>,
     G::BaseField: PrimeField,
 {
     let ProofEvaluations {
@@ -745,16 +777,24 @@ where
     Ok(())
 }
 
-fn to_batch<'a, G, EFqSponge, EFrSponge, OpeningProof: OpenProof<G>>(
-    verifier_index: &VerifierIndex<G, OpeningProof>,
-    proof: &'a ProverProof<G, OpeningProof>,
-    public_input: &'a [<G as AffineRepr>::ScalarField],
-) -> Result<BatchEvaluationProof<'a, G, EFqSponge, OpeningProof>>
+fn to_batch<
+    'b,
+    const FULL_ROUNDS: usize,
+    G,
+    EFqSponge,
+    EFrSponge,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+>(
+    verifier_index: &VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>,
+    proof: &'b ProverProof<G, OpeningProof, FULL_ROUNDS>,
+    public_input: &[<G as AffineRepr>::ScalarField],
+) -> Result<BatchEvaluationProof<'b, G, EFqSponge, OpeningProof, FULL_ROUNDS>>
 where
-    G: KimchiCurve,
+    G: KimchiCurve<FULL_ROUNDS>,
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
 {
     //~
     //~ #### Partial verification
@@ -798,7 +838,7 @@ where
         }
         let lgr_comm = verifier_index
             .srs()
-            .get_lagrange_basis(verifier_index.domain.size());
+            .get_lagrange_basis(verifier_index.domain);
         let com: Vec<_> = lgr_comm.iter().take(verifier_index.public).collect();
         if public_input.is_empty() {
             PolyComm::new(vec![verifier_index.srs().blinding_commitment(); chunk_size])
@@ -828,7 +868,11 @@ where
         ft_eval0,
         combined_inner_product,
         ..
-    } = proof.oracles::<EFqSponge, EFrSponge>(verifier_index, &public_comm, Some(public_input))?;
+    } = proof.oracles::<EFqSponge, EFrSponge, _>(
+        verifier_index,
+        &public_comm,
+        Some(public_input),
+    )?;
 
     //~ 1. Combine the chunked polynomials' evaluations
     //~    (TODO: most likely only the quotient polynomial is chunked)
@@ -868,15 +912,21 @@ where
 
         // other gates are implemented using the expression framework
         {
-            // TODO: Reuse constants from oracles function
+            // TODO: Reuse constants and challenges from oracles function
             let constants = Constants {
-                alpha: oracles.alpha,
-                beta: oracles.beta,
-                gamma: oracles.gamma,
-                joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.1),
                 endo_coefficient: verifier_index.endo,
                 mds: &G::sponge_params().mds,
                 zk_rows,
+            };
+            let challenges = BerkeleyChallenges {
+                alpha: oracles.alpha,
+                beta: oracles.beta,
+                gamma: oracles.gamma,
+                joint_combiner: oracles
+                    .joint_combiner
+                    .as_ref()
+                    .map(|j| j.1)
+                    .unwrap_or(G::ScalarField::zero()),
             };
 
             for (col, tokens) in &verifier_index.linearization.index_terms {
@@ -886,6 +936,7 @@ where
                     oracles.zeta,
                     &evals,
                     &constants,
+                    &challenges,
                 )
                 .expect("should evaluate");
 
@@ -1146,24 +1197,31 @@ where
 /// # Errors
 ///
 /// Will give error if `proof(s)` are not verified as valid.
-pub fn verify<G, EFqSponge, EFrSponge, OpeningProof: OpenProof<G>>(
+pub fn verify<
+    const FULL_ROUNDS: usize,
+    G,
+    EFqSponge,
+    EFrSponge,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+>(
     group_map: &G::Map,
-    verifier_index: &VerifierIndex<G, OpeningProof>,
-    proof: &ProverProof<G, OpeningProof>,
+    verifier_index: &VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>,
+    proof: &ProverProof<G, OpeningProof, FULL_ROUNDS>,
     public_input: &[G::ScalarField],
 ) -> Result<()>
 where
-    G: KimchiCurve,
+    G: KimchiCurve<FULL_ROUNDS>,
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
 {
-    let proofs = vec![Context {
+    let proofs = [Context {
         verifier_index,
         proof,
         public_input,
     }];
-    batch_verify::<G, EFqSponge, EFrSponge, OpeningProof>(group_map, &proofs)
+    batch_verify::<FULL_ROUNDS, G, EFqSponge, EFrSponge, OpeningProof>(group_map, &proofs)
 }
 
 /// This function verifies the batch of zk-proofs
@@ -1173,15 +1231,22 @@ where
 /// # Errors
 ///
 /// Will give error if `srs` of `proof` is invalid or `verify` process fails.
-pub fn batch_verify<G, EFqSponge, EFrSponge, OpeningProof: OpenProof<G>>(
+pub fn batch_verify<
+    const FULL_ROUNDS: usize,
+    G,
+    EFqSponge,
+    EFrSponge,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+>(
     group_map: &G::Map,
-    proofs: &[Context<G, OpeningProof>],
+    proofs: &[Context<FULL_ROUNDS, G, OpeningProof, OpeningProof::SRS>],
 ) -> Result<()>
 where
-    G: KimchiCurve,
+    G: KimchiCurve<FULL_ROUNDS>,
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
 {
     //~ #### Batch verification of proofs
     //~
@@ -1206,17 +1271,20 @@ where
 
     //~ 1. Validate each proof separately following the [partial verification](#partial-verification) steps.
     let mut batch = vec![];
-    for &Context {
-        verifier_index,
-        proof,
-        public_input,
-    } in proofs
-    {
-        batch.push(to_batch::<G, EFqSponge, EFrSponge, OpeningProof>(
+    for context in proofs {
+        let Context {
             verifier_index,
             proof,
             public_input,
-        )?);
+        } = context;
+
+        batch.push(to_batch::<
+            FULL_ROUNDS,
+            G,
+            EFqSponge,
+            EFrSponge,
+            OpeningProof,
+        >(verifier_index, proof, public_input)?);
     }
 
     //~ 1. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.

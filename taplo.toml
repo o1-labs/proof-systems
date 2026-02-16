@@ -1,0 +1,11 @@
+
+include = ["**/Cargo.toml"]
+exclude = ["o1vm/ethereum-optimism/**"]
+
+[formatting]
+reorder_keys = false
+
+[[rule]]
+include = ["**/Cargo.toml"]
+keys = ["dependencies", "workspace.dependencies"]
+formatting = { reorder_keys = true }

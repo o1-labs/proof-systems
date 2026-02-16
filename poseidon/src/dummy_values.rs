@@ -1,17 +1,28 @@
-use crate::poseidon::ArithmeticSpongeParams;
-use ark_ff::Field;
-use std::{fmt::Debug, str::FromStr};
+extern crate alloc;
 
-/// Placeholder dummy value for the kimchi configuration, suitable for fields of bitlength 254 and
-/// above.
+use crate::{pasta::FULL_ROUNDS, poseidon::ArithmeticSpongeParams};
+use ark_ff::Field;
+use core::{fmt::Debug, str::FromStr};
+
+type Params<FieldType> = ArithmeticSpongeParams<FieldType, FULL_ROUNDS>;
+
+/// Placeholder dummy value for the kimchi configuration, suitable for
+/// fields of bitlength 254 and above.
+///
 /// These parameters are duplicated from the Vesta parameters, generated with
 /// ```text
 /// ./pasta/params.sage --rounds 55 rust 3 kimchi
 /// ```
-pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticSpongeParams<Fp> {
-    ArithmeticSpongeParams {
-        mds: vec![
-            vec![
+///
+/// # Panics
+///
+/// Panics if any constant string cannot be parsed as a field element.
+#[must_use]
+#[allow(clippy::too_many_lines)]
+pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> Params<Fp> {
+    Params {
+        mds: [
+            [
                 Fp::from_str(
                     "12035446894107573964500871153637039653510326950134440362813193268448863222019",
                 )
@@ -25,7 +36,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "4491931056866994439025447213644536587424785196363427220456343191847333476930",
                 )
@@ -39,7 +50,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "10525578725509990281643336361904863911009900817790387635342941550657754064843",
                 )
@@ -55,8 +66,8 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
             ],
         ],
 
-        round_constants: vec![
-            vec![
+        round_constants: [
+            [
                 Fp::from_str(
                     "21155079691556475130150866428468322463125560312786319980770950159250751855431",
                 )
@@ -70,7 +81,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "25216718237129482752721276445368692059997901880654047883630276346421457427360",
                 )
@@ -84,7 +95,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "15251000790817261169639394496851831733819930596125214313084182526610855787494",
                 )
@@ -98,7 +109,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "15831416454198644276563319006805490049460322229057756462580029181847589006611",
                 )
@@ -112,7 +123,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "19039802679983063488134304670998725949842655199289961967801223969839823940152",
                 )
@@ -126,7 +137,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "20878756131129218406920515859235137275859844638301967889441262030146031838819",
                 )
@@ -140,7 +151,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "15205545916434157464929420145756897321482314798910153575340430817222504672630",
                 )
@@ -154,7 +165,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "1383799642177300432144836486981606294838630135265094078921115713566691160459",
                 )
@@ -168,7 +179,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "21725577575710270071808882335900370909424604447083353471892004026180492193649",
                 )
@@ -182,7 +193,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "10402240124664763733060094237696964473609580414190944671778761753887884341073",
                 )
@@ -196,7 +207,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "23818602699032741669874498456696325705498383130221297580399035778119213224810",
                 )
@@ -210,7 +221,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "5515589673266504033533906836494002702866463791762187140099560583198974233395",
                 )
@@ -224,7 +235,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "24694843201907722940091503626731830056550128225297370217610328578733387733444",
                 )
@@ -238,7 +249,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "19934060063390905409309407607814787335159021816537006003398035237707924006757",
                 )
@@ -252,7 +263,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "15178481650950399259757805400615635703086255035073919114667254549690862896985",
                 )
@@ -266,7 +277,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "721141070179074082553302896292167103755384741083338957818644728290501449040",
                 )
@@ -280,7 +291,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "3880429241956357176819112098792744584376727450211873998699580893624868748961",
                 )
@@ -294,7 +305,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "2942627347777337187690939671601251987500285937340386328746818861972711408579",
                 )
@@ -308,7 +319,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "20170632877385406450742199836933900257692624353889848352407590794211839130727",
                 )
@@ -322,7 +333,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "22228158921984425749199071461510152694025757871561406897041788037116931009246",
                 )
@@ -336,7 +347,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "7220714562509721437034241786731185291972496952091254931195414855962344025067",
                 )
@@ -350,7 +361,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "8251343892709140154567051772980662609566359215743613773155065627504813327653",
                 )
@@ -364,7 +375,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "21652518608959234550262559135285358020552897349934571164032339186996805408040",
                 )
@@ -378,7 +389,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "5680310394102577950568930199056707827608275306479994663197187031893244826674",
                 )
@@ -392,7 +403,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "23101411405087512171421838856759448177512679869882987631073569441496722536782",
                 )
@@ -406,7 +417,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "13540762114500083869920564649399977644344247485313990448129838910231204868111",
                 )
@@ -420,7 +431,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "1109643801053963021778418773196543643970146666329661268825691230294798976318",
                 )
@@ -434,7 +445,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "17080385857812672649489217965285727739557573467014392822992021264701563205891",
                 )
@@ -448,7 +459,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "13934033814940585315406666445960471293638427404971553891617533231178815348902",
                 )
@@ -462,7 +473,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "24820015636966360150164458094894587765384135259446295278101998130934963922381",
                 )
@@ -476,7 +487,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "9712576468091272384496248353414290908377825697488757134833205246106605867289",
                 )
@@ -490,7 +501,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "23563839965372067275137992801035780013422228997724286060975035719045352435470",
                 )
@@ -504,7 +515,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "11001863048692031559800673473526311616702863826063550559568315794438941516621",
                 )
@@ -518,7 +529,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "28670526516158451470169873496541739545860177757793329093045522432279094518766",
                 )
@@ -532,7 +543,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "5372129954699791301953948907349887257752247843844511069896766784624930478273",
                 )
@@ -546,7 +557,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "25350392006158741749134238306326265756085455157012701586003300872637887157982",
                 )
@@ -560,7 +571,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "4393613870462297385565277757207010824900723217720226130342463666351557475823",
                 )
@@ -574,7 +585,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "17723373371137275859467518615551278584842947963894791032296774955869958211070",
                 )
@@ -588,7 +599,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "6584607987789185408123601849106260907671314994378225066806060862710814193906",
                 )
@@ -602,7 +613,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "16016664911651770663938916450245705908287192964254704641717751103464322455303",
                 )
@@ -616,7 +627,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "19773307918850685463180290966774465805537520595602496529624568184993487593855",
                 )
@@ -630,7 +641,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "5189242080957784038860188184443287562488963023922086723850863987437818393811",
                 )
@@ -644,7 +655,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "17345901407013599418148210465150865782628422047458024807490502489711252831342",
                 )
@@ -658,7 +669,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "10241738906190857416046229928455551829189196941239601756375665129874835232299",
                 )
@@ -672,7 +683,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "7983688435214640842673294735439196010654951226956101271763849527529940619307",
                 )
@@ -686,7 +697,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "25752201169361795911258625731016717414310986450004737514595241038036936283227",
                 )
@@ -700,7 +711,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "26678257097278788410676026718736087312816016749016738933942134600725962413805",
                 )
@@ -714,7 +725,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "1564862894215434177641156287699106659379648851457681469848362532131406827573",
                 )
@@ -728,7 +739,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "2794525076937490807476666942602262298677291735723129868457629508555429470085",
                 )
@@ -742,7 +753,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "1878392460078272317716114458784636517603142716091316893054365153068227117145",
                 )
@@ -756,7 +767,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "25869136641898166514111941708608048269584233242773814014385564101168774293194",
                 )
@@ -770,7 +781,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "12957012022018304419868287033513141736995211906682903915897515954290678373899",
                 )
@@ -784,7 +795,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "1607741027962933685476527275858938699728586794398382348454736018784568853937",
                 )
@@ -798,7 +809,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "20203606758501212620842735123770014952499754751430660463060696990317556818571",
                 )
@@ -812,7 +823,7 @@ pub fn kimchi_dummy<Err: Debug, Fp: Field + FromStr<Err = Err>>() -> ArithmeticS
                 )
                 .unwrap(),
             ],
-            vec![
+            [
                 Fp::from_str(
                     "6361981813552614697928697527332318530502852015189048838072565811230204474643",
                 )

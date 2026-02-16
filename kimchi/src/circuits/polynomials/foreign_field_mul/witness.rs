@@ -4,21 +4,23 @@ use crate::{
     auto_clone_array,
     circuits::{
         polynomial::COLUMNS,
-        polynomials::{foreign_field_add, range_check},
+        polynomials::{
+            foreign_field_add,
+            foreign_field_common::{
+                BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
+                KimchiForeignElement,
+            },
+            range_check,
+        },
         witness::{self, ConstantCell, VariableBitsCell, VariableCell, Variables, WitnessCell},
     },
     variable_map,
 };
-use ark_ff::PrimeField;
+use ark_ff::{One, PrimeField};
+use core::{array, ops::Div};
 use num_bigint::BigUint;
 use num_integer::Integer;
-
-use num_traits::One;
-use o1_utils::foreign_field::{
-    BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
-    ForeignFieldHelpers,
-};
-use std::{array, ops::Div};
+use o1_utils::foreign_field::ForeignFieldHelpers;
 
 use super::circuitgates;
 
@@ -41,10 +43,10 @@ use super::circuitgates;
 //
 //     so that most significant limb, q2, is in W[2][0].
 //
-fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
+fn create_layout<F: PrimeField>() -> [Vec<Box<dyn WitnessCell<F>>>; 2] {
     [
         // ForeignFieldMul row
-        [
+        vec![
             // Copied for multi-range-check
             VariableCell::create("left_input0"),
             VariableCell::create("left_input1"),
@@ -64,7 +66,7 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
             VariableBitsCell::create("carry1", 90, None),
         ],
         // Zero row
-        [
+        vec![
             // Copied for multi-range-check
             VariableCell::create("remainder01"),
             VariableCell::create("remainder2"),
@@ -148,7 +150,7 @@ pub fn create<F: PrimeField>(
     right_input: &BigUint,
     foreign_field_modulus: &BigUint,
 ) -> ([Vec<F>; COLUMNS], ExternalChecks<F>) {
-    let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
     let mut external_checks = ExternalChecks::<F>::default();
 
     // Compute quotient and remainder using foreign field modulus
@@ -196,7 +198,7 @@ pub fn create<F: PrimeField>(
 
     // Extend the witness by two rows for foreign field multiplication
     for w in &mut witness {
-        w.extend(std::iter::repeat(F::zero()).take(2));
+        w.extend(std::iter::repeat_n(F::zero(), 2));
     }
 
     // Create the foreign field multiplication witness rows
@@ -321,11 +323,13 @@ impl<F: PrimeField> ExternalChecks<F> {
         witness: &mut [Vec<F>; COLUMNS],
         foreign_field_modulus: &BigUint,
     ) {
-        let hi_limb = F::two_to_limb() - foreign_field_modulus.to_field_limbs::<F>()[2] - F::one();
+        let hi_limb = KimchiForeignElement::<F>::two_to_limb()
+            - foreign_field_modulus.to_field_limbs::<F>()[2]
+            - F::one();
         for chunk in self.high_bounds.clone().chunks(2) {
             // Extend the witness for the generic gate
             for col in witness.iter_mut().take(COLUMNS) {
-                col.extend(std::iter::repeat(F::zero()).take(1))
+                col.extend(std::iter::repeat_n(F::zero(), 1))
             }
             let last_row = witness[0].len() - 1;
             // Fill in with dummy if it is an odd number of bounds

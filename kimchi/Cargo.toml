@@ -1,53 +1,44 @@
 [package]
 name = "kimchi"
-version = "0.1.0"
 description = "The kimchi proof system"
-repository = "https://github.com/o1-labs/proof-systems"
-homepage = "https://o1-labs.github.io/proof-systems/"
-documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
 readme = "README.md"
-edition = "2021"
-license = "Apache-2.0"
+repository.workspace = true
+version.workspace = true
 
 [lib]
 path = "src/lib.rs"
 bench = false       # needed for criterion (https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options)
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tikv-jemalloc-ctl = { workspace = true, optional = true }
+tikv-jemallocator = { workspace = true, optional = true }
+
 [dependencies]
-ark-ff.workspace = true
+ark-bn254 = { workspace = true, optional = true }
 ark-ec.workspace = true
+ark-ff.workspace = true
 ark-poly.workspace = true
 ark-serialize.workspace = true
-ark-bn254 = { workspace = true, optional = true }
 blake2.workspace = true
-num-bigint.workspace = true
-num-derive.workspace = true
-num-integer.workspace = true
-num-traits.workspace = true
+hex.workspace = true
 itertools.workspace = true
+log.workspace = true
+num-bigint.workspace = true
+num-integer.workspace = true
+once_cell.workspace = true
 rand = { workspace = true, features = ["std_rng"] }
 rand_core.workspace = true
 rayon.workspace = true
 rmp-serde.workspace = true
 serde.workspace = true
 serde_with.workspace = true
-thiserror.workspace = true
-once_cell.workspace = true
-hex.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
-
-
-# TODO: audit this
-disjoint-set = "0.0.2"
-
-
-turshi.workspace = true
-poly-commitment.workspace = true
-groupmap.workspace = true
-mina-curves.workspace = true
-o1-utils.workspace = true
-mina-poseidon.workspace = true
+thiserror.workspace = true
 
 ocaml = { workspace = true, optional = true }
 ocaml-gen = { workspace = true, optional = true }
@@ -56,10 +47,16 @@ wasm-bindgen = { workspace = true, optional = true }
 
 internal-tracing.workspace = true
 
+# Internal dependencies
+groupmap.workspace = true
+mina-curves.workspace = true
+mina-poseidon.workspace = true
+o1-utils.workspace = true
+poly-commitment.workspace = true
+
 [dev-dependencies]
 proptest.workspace = true
 proptest-derive.workspace = true
-colored.workspace = true
 serde_json.workspace = true
 num-bigint.workspace = true
 secp256k1.workspace = true
@@ -70,6 +67,10 @@ iai.workspace = true
 
 [[bench]]
 name = "proof_criterion"
+harness = false
+
+[[bench]]
+name = "proof_criterion_mina"
 harness = false
 
 [[bench]]
@@ -84,12 +85,13 @@ harness = false
 default = []
 internal_tracing = ["internal-tracing/enabled"]
 ocaml_types = [
-    "ocaml",
-    "ocaml-gen",
-    "poly-commitment/ocaml_types",
-    "mina-poseidon/ocaml_types",
-    "internal-tracing/ocaml_types",
+  "ocaml",
+  "ocaml-gen",
+  "poly-commitment/ocaml_types",
+  "mina-poseidon/ocaml_types",
+  "internal-tracing/ocaml_types",
 ]
 bn254 = ["ark-bn254"]
 wasm_types = ["wasm-bindgen"]
 check_feature_flags = []
+diagnostics = ["tikv-jemalloc-ctl", "tikv-jemallocator"]

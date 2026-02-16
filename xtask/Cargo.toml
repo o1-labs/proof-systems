@@ -1,0 +1,11 @@
+[package]
+name = "xtask"
+edition.workspace = true
+publish = false
+version.workspace = true
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.4.6", features = ["derive"] }
+raw-cpuid = "11.6.0"
+wasm-pack = "=0.12.1"

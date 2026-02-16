@@ -7,17 +7,18 @@ use crate::{
     tests::framework::TestFramework,
 };
 use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
+use core::array;
 use mina_curves::pasta::{Fp as F, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
-use poly_commitment::srs::endos;
-use std::array;
+use poly_commitment::ipa::endos;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type ScalarSponge = DefaultFrSponge<F, SpongeParams, FULL_ROUNDS>;
 
 #[test]
 fn endomul_scalar_test() {
@@ -58,12 +59,12 @@ fn endomul_scalar_test() {
         };
 
         assert_eq!(
-            ScalarChallenge(x).to_field(&endo_scalar_coeff),
+            ScalarChallenge::new(x).to_field(&endo_scalar_coeff),
             endomul_scalar::gen_witness(&mut witness, x, endo_scalar_coeff, num_bits)
         );
     }
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()

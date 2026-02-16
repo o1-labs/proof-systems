@@ -1,4 +1,4 @@
-//! Follows approach of SvdW06 to construct a "near injection" from a field
+//! Follows approach of `SvdW06` to construct a "near injection" from a field
 //! into an elliptic curve defined over that field. WB19 is also a useful
 //! reference that details several constructions which are more appropriate in other
 //! contexts.
@@ -11,14 +11,23 @@
 //!
 //! By a not-too-hard we have a map `V -> E`. Thus, a map of type `F -> V` yields a
 //! map of type `F -> E` by composing.
-//! Our goal is to construct such a map of type `F -> V`. The paper SvdW06 constructs
+//! Our goal is to construct such a map of type `F -> V`. The paper `SvdW06` constructs
 //! a family of such maps, defined by a collection of values which we'll term `params`.
 //!
 //! OCaml implementation <https://github.com/o1-labs/snarky/blob/2e9013159ad0d1df0af681735b89518befc4be11/group_map/group_map.ml#L4>
-//! SvdW06: Shallue and van de Woestijne, "Construction of rational points on elliptic curves over finite fields." Proc. ANTS 2006. <https://works.bepress.com/andrew_shallue/1/download/>
+//! `SvdW06`: Shallue and van de Woestijne, "Construction of rational points on elliptic curves over finite fields." Proc. ANTS 2006. <https://works.bepress.com/andrew_shallue/1/download/>
 //! WB19: Riad S. Wahby and Dan Boneh, Fast and simple constant-time hashing to the BLS12-381 elliptic curve. <https://eprint.iacr.org/2019/403>
 //!
 
+#![no_std]
+#![deny(unsafe_code)]
+#![deny(clippy::all)]
+#![deny(clippy::pedantic)]
+#![deny(clippy::nursery)]
+
+extern crate alloc;
+
+use alloc::vec::Vec;
 use ark_ec::short_weierstrass::SWCurveConfig;
 use ark_ff::{Field, One, Zero};
 
@@ -30,11 +39,11 @@ pub trait GroupMap<F> {
 
 #[derive(Clone, Copy)]
 pub struct BWParameters<G: SWCurveConfig> {
-    u: G::BaseField,
-    fu: G::BaseField,
-    sqrt_neg_three_u_squared_minus_u_over_2: G::BaseField,
-    sqrt_neg_three_u_squared: G::BaseField,
-    inv_three_u_squared: G::BaseField,
+    pub u: G::BaseField,
+    pub fu: G::BaseField,
+    pub sqrt_neg_three_u_squared_minus_u_over_2: G::BaseField,
+    pub sqrt_neg_three_u_squared: G::BaseField,
+    pub inv_three_u_squared: G::BaseField,
 }
 
 /// returns the right-hand side of the Short Weierstrass curve equation for a given x
@@ -96,10 +105,7 @@ fn potential_xs<G: SWCurveConfig>(params: &BWParameters<G>, t: G::BaseField) -> 
     alpha_inv += &params.fu;
     alpha_inv *= &t2;
 
-    let alpha = match alpha_inv.inverse() {
-        Some(x) => x,
-        None => G::BaseField::zero(),
-    };
+    let alpha = alpha_inv.inverse().unwrap_or_else(G::BaseField::zero);
 
     potential_xs_helper(params, t2, alpha)
 }
@@ -147,7 +153,7 @@ impl<G: SWCurveConfig> GroupMap<G::BaseField> for BWParameters<G> {
         let two_inv = two.inverse().unwrap();
         let sqrt_neg_three_u_squared_minus_u_over_2 = (sqrt_neg_three_u_squared - u) * two_inv;
 
-        BWParameters::<G> {
+        Self {
             u,
             fu,
             sqrt_neg_three_u_squared_minus_u_over_2,

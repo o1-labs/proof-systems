@@ -23,23 +23,41 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use ark_poly::Radix2EvaluationDomain as D;
+use core::fmt::Write;
 use groupmap::GroupMap;
-use mina_poseidon::sponge::FqSponge;
+use mina_poseidon::{poseidon::ArithmeticSpongeParams, sponge::FqSponge};
 use num_bigint::BigUint;
 use poly_commitment::{
-    commitment::CommitmentCurve, evaluation_proof::OpeningProof as DlogOpeningProof, OpenProof,
+    commitment::CommitmentCurve, ipa::OpeningProof as DlogOpeningProof, OpenProof,
 };
 use rand_core::{CryptoRng, RngCore};
-use std::{fmt::Write, time::Instant};
+use std::time::Instant;
+
+// Returns the number of bytes allocated by the heap at a given point in time
+#[cfg(all(not(target_arch = "wasm32"), feature = "diagnostics"))]
+fn heap_allocated() -> usize {
+    use tikv_jemalloc_ctl::{epoch, stats};
+
+    epoch::advance().unwrap(); // refresh internal stats!
+    stats::allocated::read().unwrap()
+}
+
+#[cfg(any(target_arch = "wasm32", not(feature = "diagnostics")))]
+fn heap_allocated() -> usize {
+    0
+}
 
 // aliases
 
 #[derive(Default, Clone)]
-pub(crate) struct TestFramework<G: KimchiCurve, OpeningProof: OpenProof<G> = DlogOpeningProof<G>>
-where
+pub(crate) struct TestFramework<
+    const FULL_ROUNDS: usize,
+    G: KimchiCurve<FULL_ROUNDS>,
+    OpeningProof = DlogOpeningProof<G, FULL_ROUNDS>,
+> where
     G::BaseField: PrimeField,
-    OpeningProof::SRS: Clone,
-    VerifierIndex<G, OpeningProof>: Clone,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
 {
     gates: Option<Vec<CircuitGate<G::ScalarField>>>,
     witness: Option<[Vec<G::ScalarField>; COLUMNS]>,
@@ -51,25 +69,31 @@ where
     num_prev_challenges: usize,
     disable_gates_checks: bool,
     override_srs_size: Option<usize>,
+    lazy_mode: bool,
 
-    prover_index: Option<ProverIndex<G, OpeningProof>>,
-    verifier_index: Option<VerifierIndex<G, OpeningProof>>,
+    prover_index: Option<ProverIndex<FULL_ROUNDS, G, OpeningProof::SRS>>,
+    verifier_index: Option<VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>>,
+
+    with_logs: bool,
 }
 
 #[derive(Clone)]
-pub(crate) struct TestRunner<G: KimchiCurve, OpeningProof: OpenProof<G> = DlogOpeningProof<G>>(
-    TestFramework<G, OpeningProof>,
-)
+pub(crate) struct TestRunner<
+    const FULL_ROUNDS: usize,
+    G: KimchiCurve<FULL_ROUNDS>,
+    OpeningProof = DlogOpeningProof<G, FULL_ROUNDS>,
+>(TestFramework<FULL_ROUNDS, G, OpeningProof>)
 where
     G::BaseField: PrimeField,
-    OpeningProof::SRS: Clone,
-    VerifierIndex<G, OpeningProof>: Clone;
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone;
 
-impl<G: KimchiCurve, OpeningProof: OpenProof<G>> TestFramework<G, OpeningProof>
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, OpeningProof>
+    TestFramework<FULL_ROUNDS, G, OpeningProof>
 where
     G::BaseField: PrimeField,
-    OpeningProof::SRS: Clone,
-    VerifierIndex<G, OpeningProof>: Clone,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
 {
     #[must_use]
     pub(crate) fn gates(mut self, gates: Vec<CircuitGate<G::ScalarField>>) -> Self {
@@ -122,6 +146,17 @@ where
         self
     }
 
+    #[must_use]
+    pub(crate) fn lazy_mode(mut self, lazy_mode: bool) -> Self {
+        self.lazy_mode = lazy_mode;
+        self
+    }
+
+    pub(crate) fn with_logs(mut self, with_logs: bool) -> Self {
+        self.with_logs = with_logs;
+        self
+    }
+
     // Re allow(dead_code): this method is used in tests; without the annotation it warns unnecessarily.
     /// creates the indexes
     #[must_use]
@@ -129,10 +164,10 @@ where
     pub(crate) fn setup_with_custom_srs<F: FnMut(D<G::ScalarField>, usize) -> OpeningProof::SRS>(
         mut self,
         get_srs: F,
-    ) -> TestRunner<G, OpeningProof> {
+    ) -> TestRunner<FULL_ROUNDS, G, OpeningProof> {
         let start = Instant::now();
 
-        let lookup_tables = std::mem::take(&mut self.lookup_tables);
+        let lookup_tables = core::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = self.runtime_tables_setup.take();
 
         let index = new_index_for_test_with_lookups_and_custom_srs(
@@ -144,11 +179,19 @@ where
             self.disable_gates_checks,
             self.override_srs_size,
             get_srs,
+            self.lazy_mode,
         );
         println!(
             "- time to create prover index: {:?}s",
             start.elapsed().as_secs()
         );
+        if self.with_logs {
+            let at_index = heap_allocated();
+            println!(
+                "- heap after creating prover index: {:?} MB",
+                at_index / (1024 * 1024)
+            );
+        }
 
         self.verifier_index = Some(index.verifier_index());
         self.prover_index = Some(index);
@@ -157,19 +200,19 @@ where
     }
 }
 
-impl<G: KimchiCurve> TestFramework<G>
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>> TestFramework<FULL_ROUNDS, G>
 where
     G::BaseField: PrimeField,
 {
     /// creates the indexes
     #[must_use]
-    pub(crate) fn setup(mut self) -> TestRunner<G> {
+    pub(crate) fn setup(mut self) -> TestRunner<FULL_ROUNDS, G> {
         let start = Instant::now();
 
-        let lookup_tables = std::mem::take(&mut self.lookup_tables);
+        let lookup_tables = core::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = self.runtime_tables_setup.take();
 
-        let index = new_index_for_test_with_lookups::<G>(
+        let index = new_index_for_test_with_lookups::<FULL_ROUNDS, G>(
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             self.num_prev_challenges,
@@ -177,11 +220,20 @@ where
             runtime_tables_setup,
             self.disable_gates_checks,
             self.override_srs_size,
+            self.lazy_mode,
         );
         println!(
             "- time to create prover index: {:?}s",
             start.elapsed().as_secs()
         );
+
+        if self.with_logs {
+            let bytes = heap_allocated();
+            println!(
+                "- heap after creating prover index: {:?} MB",
+                bytes / (1024 * 1024)
+            );
+        };
 
         self.verifier_index = Some(index.verifier_index());
         self.prover_index = Some(index);
@@ -190,12 +242,13 @@ where
     }
 }
 
-impl<G: KimchiCurve, OpeningProof: OpenProof<G>> TestRunner<G, OpeningProof>
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, OpeningProof>
+    TestRunner<FULL_ROUNDS, G, OpeningProof>
 where
     G::ScalarField: PrimeField + Clone,
     G::BaseField: PrimeField + Clone,
-    OpeningProof::SRS: Clone,
-    VerifierIndex<G, OpeningProof>: Clone,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
 {
     #[must_use]
     pub(crate) fn runtime_tables(
@@ -218,7 +271,7 @@ where
         self
     }
 
-    pub(crate) fn prover_index(&self) -> &ProverIndex<G, OpeningProof> {
+    pub(crate) fn prover_index(&self) -> &ProverIndex<FULL_ROUNDS, G, OpeningProof::SRS> {
         self.0.prover_index.as_ref().unwrap()
     }
 
@@ -226,8 +279,9 @@ where
     /// raises an exception
     pub(crate) fn prove<EFqSponge, EFrSponge>(self) -> Result<(), String>
     where
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
     {
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
@@ -242,7 +296,7 @@ where
 
         let group_map = <G as CommitmentCurve>::Map::setup();
 
-        ProverProof::create_recursive::<EFqSponge, EFrSponge, _>(
+        ProverProof::<G, OpeningProof, FULL_ROUNDS>::create_recursive::<EFqSponge, EFrSponge, _>(
             &group_map,
             witness,
             &self.0.runtime_tables,
@@ -258,8 +312,9 @@ where
     /// Create and verify a proof
     pub(crate) fn prove_and_verify<EFqSponge, EFrSponge>(self) -> Result<(), String>
     where
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
+        EFrSponge: FrSponge<G::ScalarField>
+            + From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
     {
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
@@ -277,6 +332,14 @@ where
 
         let group_map = <G as CommitmentCurve>::Map::setup();
 
+        if self.0.with_logs {
+            let bytes = heap_allocated();
+            println!(
+                "- heap before creating proof: {:?} MB",
+                bytes / (1024 * 1024)
+            );
+        }
+
         let proof = ProverProof::create_recursive::<EFqSponge, EFrSponge, _>(
             &group_map,
             witness,
@@ -289,9 +352,17 @@ where
         .map_err(|e| e.to_string())?;
         println!("- time to create proof: {:?}s", start.elapsed().as_secs());
 
+        if self.0.with_logs {
+            let bytes = heap_allocated();
+            println!(
+                "- heap after creating proof: {:?} MB",
+                bytes / (1024 * 1024)
+            );
+        }
+
         // verify the proof (propagate any errors)
         let start = Instant::now();
-        verify::<G, EFqSponge, EFrSponge, OpeningProof>(
+        verify::<FULL_ROUNDS, G, EFqSponge, EFrSponge, OpeningProof>(
             &group_map,
             &self.0.verifier_index.unwrap(),
             &proof,
@@ -299,25 +370,33 @@ where
         )
         .map_err(|e| e.to_string())?;
         println!("- time to verify: {}ms", start.elapsed().as_millis());
+        if self.0.with_logs {
+            let bytes = heap_allocated();
+            println!(
+                "- heap after verifying proof: {:?} MB",
+                bytes / (1024 * 1024)
+            );
+        }
 
         Ok(())
     }
 }
 
-impl<G: KimchiCurve, OpeningProof> TestRunner<G, OpeningProof>
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, OpeningProof>
+    TestRunner<FULL_ROUNDS, G, OpeningProof>
 where
     G::ScalarField: PrimeField + Clone,
     G::BaseField: PrimeField + Clone,
-    OpeningProof: OpenProof<G>
+    OpeningProof: OpenProof<G, FULL_ROUNDS>
         + Clone
         + PartialEq
-        + std::fmt::Debug
+        + core::fmt::Debug
         + serde::Serialize
         + for<'a> serde::Deserialize<'a>,
     OpeningProof::SRS: Clone,
-    VerifierIndex<G, OpeningProof>: Clone,
+    VerifierIndex<FULL_ROUNDS, G, OpeningProof>: Clone,
 {
-    /// Regression test: Create a proof and check that is is equal to
+    /// Regression test: Create a proof and check that is equal to
     /// the given serialized implementation (and that deserializes
     /// correctly).
     pub(crate) fn prove_and_check_serialization_regression<
@@ -330,8 +409,9 @@ where
         rng: &mut RNG,
     ) -> Result<(), String>
     where
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
     {
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
@@ -346,7 +426,11 @@ where
 
         let group_map = <G as CommitmentCurve>::Map::setup();
 
-        let proof = ProverProof::create_recursive::<EFqSponge, EFrSponge, _>(
+        let proof = ProverProof::<G, OpeningProof, FULL_ROUNDS>::create_recursive::<
+            EFqSponge,
+            EFrSponge,
+            _,
+        >(
             &group_map,
             witness,
             &self.0.runtime_tables,

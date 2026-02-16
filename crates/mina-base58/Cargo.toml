@@ -1,0 +1,16 @@
+[package]
+name = "mina-base58"
+description = "Mina base58check encoding and decoding"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+bs58.workspace = true
+sha2.workspace = true
+subtle = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+hex.workspace = true

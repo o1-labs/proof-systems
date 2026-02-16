@@ -1,5 +1,14 @@
 #![deny(missing_docs)]
+#![deny(unsafe_code)]
+#![deny(clippy::all)]
+#![deny(clippy::pedantic)]
+#![deny(clippy::nursery)]
 #![doc = include_str!("../README.md")]
+#![no_std]
+
+extern crate alloc;
+
+use alloc::{format, string::String, vec, vec::Vec};
 
 pub mod poseidon;
 pub mod roinput;
@@ -7,14 +16,15 @@ pub use mina_curves::pasta::Fp;
 pub use poseidon::{PoseidonHasherKimchi, PoseidonHasherLegacy};
 pub use roinput::ROInput;
 
-#[cfg(test)]
-mod tests;
-
 use ark_ff::PrimeField;
 use o1_utils::FieldHelpers;
 
+/// Maximum length for domain strings used in hashing.
+const MAX_DOMAIN_STRING_LEN: usize = 20;
+
 /// The domain parameter trait is used during hashing to convey extra
-/// arguments to domain string generation.  It is also used by generic signing code.
+/// arguments to domain string generation. It is also used by generic signing
+/// code.
 pub trait DomainParameter: Clone {
     /// Conversion into vector of bytes
     fn into_bytes(self) -> Vec<u8>;
@@ -40,13 +50,16 @@ impl DomainParameter for u64 {
 
 /// Interface for hashable objects
 ///
-/// Mina uses fixed-length hashing with domain separation for each type of object hashed.
-/// The prior means that `Hashable` only supports types whose size is not variable.
+/// Mina uses fixed-length hashing with domain separation for each type of
+/// object hashed. The prior means that `Hashable` only supports types whose
+/// size is not variable.
 ///
-/// **Important:** The developer MUST assure that all domain strings used throughout the
-/// system are unique and that all structures hashed are of fixed size.
+/// **Important:** The developer MUST assure that all domain strings used
+/// throughout the system are unique and that all structures hashed are of fixed
+/// size.
 ///
-/// Here is an example of how to implement the `Hashable` trait for am `Example` type.
+/// Here is an example of how to implement the `Hashable` trait for am `Example`
+/// type.
 ///
 /// ```rust
 /// use mina_hasher::{Hashable, ROInput};
@@ -80,8 +93,8 @@ pub trait Hashable: Clone {
 
     /// Generate unique domain string of length `<= 20`.
     ///
-    /// The length bound is guarded by an assertion, but uniqueness must
-    /// be enforced by the developer implementing the traits (see [`Hashable`] for
+    /// The length bound is guarded by an assertion, but uniqueness must be
+    /// enforced by the developer implementing the traits (see [`Hashable`] for
     /// more details). The domain string may be parameterized by the contents of
     /// the generic `domain_param` argument.
     ///
@@ -92,9 +105,11 @@ pub trait Hashable: Clone {
 
 /// Interface for hashing [`Hashable`] inputs
 ///
-/// Mina uses a unique hasher configured with domain separation for each type of object hashed.
-/// The underlying hash parameters are large and costly to initialize, so the [`Hasher`] interface
-/// provides a reusable context for efficient hashing with domain separation.
+/// Mina uses a unique hasher configured with domain separation for each type of
+/// object hashed.
+/// The underlying hash parameters are large and costly to initialize, so the
+/// [`Hasher`] interface provides a reusable context for efficient hashing with
+/// domain separation.
 ///
 /// Example usage
 ///
@@ -123,8 +138,8 @@ pub trait Hashable: Clone {
 /// ```
 ///
 pub trait Hasher<H: Hashable> {
-    /// Set the initial state based on domain separation string
-    /// generated from `H::domain_string(domain_param)`
+    /// Set the initial state based on domain separation string generated from
+    /// `H::domain_string(domain_param)`
     fn init(&mut self, domain_param: H::D) -> &mut dyn Hasher<H>;
 
     /// Restore the initial state that was set most recently
@@ -155,11 +170,15 @@ pub trait Hasher<H: Hashable> {
     }
 }
 
-/// Transform domain prefix string to field element
-fn domain_prefix_to_field<F: PrimeField>(prefix: String) -> F {
-    const MAX_DOMAIN_STRING_LEN: usize = 20;
+/// Transform domain prefix string to field element.
+///
+/// The prefix must be at most 20 characters. Shorter strings are
+/// right-padded with asterisks (`*`) to reach 20 characters before
+/// conversion to a field element. For example, `"CodaSignature"` becomes
+/// `"CodaSignature*******"`.
+fn domain_prefix_to_field<F: PrimeField>(prefix: &str) -> F {
     assert!(prefix.len() <= MAX_DOMAIN_STRING_LEN);
-    let prefix = &prefix[..std::cmp::min(prefix.len(), MAX_DOMAIN_STRING_LEN)];
+    let prefix = &prefix[..core::cmp::min(prefix.len(), MAX_DOMAIN_STRING_LEN)];
     let mut bytes = format!("{prefix:*<MAX_DOMAIN_STRING_LEN$}")
         .as_bytes()
         .to_vec();
@@ -172,10 +191,57 @@ pub fn create_legacy<H: Hashable>(domain_param: H::D) -> PoseidonHasherLegacy<H>
     poseidon::new_legacy::<H>(domain_param)
 }
 
-/// Create an experimental kimchi hasher context
+/// Create a kimchi hasher context for `ZkApp` signing (Berkeley upgrade)
 pub fn create_kimchi<H: Hashable>(domain_param: H::D) -> PoseidonHasherKimchi<H>
 where
     H::D: DomainParameter,
 {
     poseidon::new_kimchi::<H>(domain_param)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_domain_prefix_padding_short_string() {
+        // "CodaSignature" (13 chars) should be padded to "CodaSignature*******"
+        let result: Fp = domain_prefix_to_field("CodaSignature");
+        let bytes = result.to_bytes();
+        let padded = &bytes[..MAX_DOMAIN_STRING_LEN];
+        assert_eq!(padded, b"CodaSignature*******");
+    }
+
+    #[test]
+    fn test_domain_prefix_padding_exact_length() {
+        // Exactly 20 chars should not be padded
+        let result: Fp = domain_prefix_to_field("MinaSignatureMainnet");
+        let bytes = result.to_bytes();
+        let padded = &bytes[..MAX_DOMAIN_STRING_LEN];
+        assert_eq!(padded, b"MinaSignatureMainnet");
+    }
+
+    #[test]
+    fn test_domain_prefix_padding_empty_string() {
+        // Empty string should become 20 asterisks
+        let result: Fp = domain_prefix_to_field("");
+        let bytes = result.to_bytes();
+        let padded = &bytes[..MAX_DOMAIN_STRING_LEN];
+        assert_eq!(padded, b"********************");
+    }
+
+    #[test]
+    fn test_domain_prefix_same_result_with_or_without_padding() {
+        // Pre-padded and un-padded versions should produce the same result
+        let unpadded: Fp = domain_prefix_to_field("CodaSignature");
+        let prepadded: Fp = domain_prefix_to_field("CodaSignature*******");
+        assert_eq!(unpadded, prepadded);
+    }
+
+    #[test]
+    #[should_panic(expected = "assertion failed")]
+    fn test_domain_prefix_too_long() {
+        // Strings longer than 20 chars should panic
+        let _: Fp = domain_prefix_to_field("ThisStringIsTooLongForDomain");
+    }
 }

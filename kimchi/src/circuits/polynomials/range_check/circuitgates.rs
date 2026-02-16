@@ -114,10 +114,11 @@
 //~  its own unique powers of alpha
 //~ ```
 
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
+    berkeley_columns::BerkeleyChallengeTerm,
     expr::{
         constraints::{crumb, ExprOps},
         Cache,
@@ -178,7 +179,10 @@ where
     //   * Operates on Curr row
     //   * Range constrain all limbs except vp0 and vp1 (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the limb stored in column 0
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+        env: &ArgumentEnv<F, T>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         // 1) Apply range constraints on the limbs
         //    * Columns 1-2 are 12-bit copy constraints
         //        * They are copied 3 rows ahead (to the final row) and are constrained by lookups
@@ -279,7 +283,10 @@ where
     //   * Operates on Curr and Next row
     //   * Range constrain all limbs (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the value v2 stored in row Curr, column 0
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+        env: &ArgumentEnv<F, T>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         // 1) Apply range constraints on limbs for Curr row
         //    * Column 2 is a 2-bit crumb
         let mut constraints = vec![crumb(&env.witness_curr(2))];
@@ -330,7 +337,7 @@ where
             power_of_2 *= 4u64.into(); // 2 bits
         }
 
-        // Next row:  Sum remaining 2-bit limbs vc10 and vc11
+        // Next row:  Sum remaining 2-bit limbs v2c9, v2c10, and v2c11 (reverse order)
         for i in (0..=2).rev() {
             sum_of_limbs += power_of_2.clone() * env.witness_next(i);
             power_of_2 *= 4u64.into(); // 2 bits

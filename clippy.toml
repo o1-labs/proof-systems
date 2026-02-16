@@ -1,0 +1,6 @@
+# Default is 7. However, it seems to be arbitrary. Some protocols do require
+# many parameters, like polynomial commitment scheme when we want to make an
+# opening.
+# Note that we should not use too much this threshold, and stay clean in the
+# choice of our routine parameters.
+too-many-arguments-threshold = 8

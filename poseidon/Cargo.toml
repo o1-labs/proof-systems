@@ -1,47 +1,44 @@
 [package]
 name = "mina-poseidon"
-version = "0.1.0"
 description = "An instantiation of the Poseidon hash function for the pasta fields"
-repository = "https://github.com/o1-labs/proof-systems"
-homepage = "https://o1-labs.github.io/proof-systems/"
-documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
 readme = "README.md"
-edition = "2021"
-license = "Apache-2.0"
+repository.workspace = true
+version.workspace = true
 
 [lib]
 path = "src/lib.rs"
 
 [dependencies]
-ark-ff.workspace = true
 ark-ec.workspace = true
+ark-ff.workspace = true
 ark-poly.workspace = true
 ark-serialize.workspace = true
+mina-curves.workspace = true
+o1-utils.workspace = true
+ocaml = { workspace = true, optional = true }
+ocaml-gen = { workspace = true, optional = true }
+once_cell.workspace = true
 rand.workspace = true
 rayon.workspace = true
 serde.workspace = true
 serde_with.workspace = true
-once_cell.workspace = true
-
-mina-curves.workspace = true
-o1-utils.workspace = true
-
-# for ocaml
-ocaml = { workspace = true, optional = true }
-ocaml-gen = { workspace = true, optional = true }
 
 [dev-dependencies]
-serde_json.workspace = true
+criterion.workspace = true
 hex.workspace = true
-criterion = { version = "0.3", default-features = false, features = [
-  "cargo_bench_support",
-  "html_reports",
-] }
+serde_json.workspace = true
 
 [features]
-default = []
 ocaml_types = ["ocaml", "ocaml-gen"]
 
 [[bench]]
 name = "poseidon_bench"
+harness = false
+
+[[bench]]
+name = "poseidon"
 harness = false

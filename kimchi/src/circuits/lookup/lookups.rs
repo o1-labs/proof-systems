@@ -37,10 +37,16 @@ type Evaluations<Field> = E<Field, D<Field>>;
 fn max_lookups_per_row(kinds: LookupPatterns) -> usize {
     kinds
         .into_iter()
-        .fold(0, |acc, x| std::cmp::max(x.max_lookups_per_row(), acc))
+        .fold(0, |acc, x| core::cmp::max(x.max_lookups_per_row(), acc))
 }
 
-/// Flags for each of the hard-coded lookup patterns.
+/// Flags for each of the built-in lookup patterns.
+///
+/// Each pattern corresponds to a specific lookup table and constraint
+/// configuration. When enabled, the corresponding lookup table is included
+/// in the circuit and lookup constraints are generated.
+///
+/// Typically computed via [`Self::from_gates`] by scanning circuit gates.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "ocaml_types",
@@ -48,9 +54,13 @@ fn max_lookups_per_row(kinds: LookupPatterns) -> usize {
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct LookupPatterns {
+    /// Enables XOR lookup table for bitwise XOR operations.
     pub xor: bool,
+    /// Enables generic lookup pattern for user-defined tables.
     pub lookup: bool,
+    /// Enables range check lookup table for 12-bit range constraints.
     pub range_check: bool,
+    /// Enables lookup tables for foreign field multiplication.
     pub foreign_field_mul: bool,
 }
 
@@ -85,7 +95,7 @@ impl IntoIterator for LookupPatterns {
     }
 }
 
-impl std::ops::Index<LookupPattern> for LookupPatterns {
+impl core::ops::Index<LookupPattern> for LookupPatterns {
     type Output = bool;
 
     fn index(&self, index: LookupPattern) -> &Self::Output {
@@ -98,7 +108,7 @@ impl std::ops::Index<LookupPattern> for LookupPatterns {
     }
 }
 
-impl std::ops::IndexMut<LookupPattern> for LookupPatterns {
+impl core::ops::IndexMut<LookupPattern> for LookupPatterns {
     fn index_mut(&mut self, index: LookupPattern) -> &mut Self::Output {
         match index {
             LookupPattern::Xor => &mut self.xor,
@@ -110,6 +120,11 @@ impl std::ops::IndexMut<LookupPattern> for LookupPatterns {
 }
 
 impl LookupPatterns {
+    /// Detects which lookup patterns are used by scanning circuit gates.
+    ///
+    /// Each gate type may require specific lookup patterns. This method
+    /// iterates through all gates and enables the corresponding pattern
+    /// flags based on [`LookupPattern::from_gate`].
     pub fn from_gates<F: PrimeField>(gates: &[CircuitGate<F>]) -> LookupPatterns {
         let mut kinds = LookupPatterns::default();
         for g in gates.iter() {
@@ -122,7 +137,8 @@ impl LookupPatterns {
         kinds
     }
 
-    /// Check what kind of lookups, if any, are used by this circuit.
+    /// Returns `true` if any enabled pattern uses joint lookups (multiple
+    /// columns combined into a single lookup).
     pub fn joint_lookups_used(&self) -> bool {
         for lookup_pattern in *self {
             if lookup_pattern.max_joint_size() > 1 {
@@ -133,6 +149,11 @@ impl LookupPatterns {
     }
 }
 
+/// Configuration for lookup-related features in a circuit.
+///
+/// Lookups allow efficient verification that witness values exist in
+/// precomputed tables. This struct tracks which lookup capabilities are
+/// needed, enabling kimchi to include only the required lookup machinery.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "ocaml_types",
@@ -140,15 +161,21 @@ impl LookupPatterns {
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct LookupFeatures {
-    /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
+    /// Which lookup patterns are enabled. See [`LookupPatterns`].
     pub patterns: LookupPatterns,
-    /// Whether joint lookups are used
+    /// Whether any enabled pattern uses joint lookups (multiple columns
+    /// combined into a single lookup value).
     pub joint_lookup_used: bool,
-    /// True if runtime lookup tables are used.
+    /// Whether the circuit uses runtime lookup tables (tables whose contents
+    /// are provided at proving time rather than being fixed at setup).
     pub uses_runtime_tables: bool,
 }
 
 impl LookupFeatures {
+    /// Detects lookup features by scanning circuit gates.
+    ///
+    /// Determines which lookup patterns are used and whether joint lookups
+    /// are needed based on the gate types present in the circuit.
     pub fn from_gates<F: PrimeField>(gates: &[CircuitGate<F>], uses_runtime_tables: bool) -> Self {
         let patterns = LookupPatterns::from_gates(gates);
 
@@ -183,7 +210,7 @@ impl LookupInfo {
             max_joint_size: features
                 .patterns
                 .into_iter()
-                .fold(0, |acc, v| std::cmp::max(acc, v.max_joint_size())),
+                .fold(0, |acc, v| core::cmp::max(acc, v.max_joint_size())),
             max_per_row,
             features,
         }

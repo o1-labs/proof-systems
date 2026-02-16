@@ -11,18 +11,24 @@ use crate::{
 };
 use ark_ec::short_weierstrass::Affine;
 use ark_ff::Zero;
+use core::array;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof, srs::SRS};
-use std::{array, time::Instant};
+use poly_commitment::{
+    commitment::CommitmentCurve,
+    ipa::{OpeningProof, SRS},
+    SRS as _,
+};
+use std::time::Instant;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
 #[cfg(test)]
 mod tests {
@@ -40,11 +46,11 @@ mod tests {
         println!("proof size: {} bytes", ser_pf.len());
 
         // deserialize the proof
-        let de_pf: ProverProof<Vesta, OpeningProof<Vesta>> =
+        let de_pf: ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS> =
             rmp_serde::from_slice(&ser_pf).unwrap();
 
         // verify the deserialized proof (must accept the proof)
-        ctx.batch_verification(&vec![(de_pf, public_input)]);
+        ctx.batch_verification(&[(de_pf, public_input)]);
     }
 
     #[test]
@@ -77,7 +83,7 @@ mod tests {
         .unwrap();
 
         // deserialize the verifier index
-        let mut verifier_index_deserialize: VerifierIndex<Affine<VestaParameters>, _> =
+        let mut verifier_index_deserialize: VerifierIndex<FULL_ROUNDS, Affine<VestaParameters>, _> =
             serde_json::from_str(&verifier_index_serialize).unwrap();
 
         // add srs with lagrange bases
@@ -89,7 +95,7 @@ mod tests {
 
         // verify the proof
         let start = Instant::now();
-        verify::<Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>>(
+        verify::<FULL_ROUNDS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta, FULL_ROUNDS>>(
             &group_map,
             &verifier_index_deserialize,
             &proof,

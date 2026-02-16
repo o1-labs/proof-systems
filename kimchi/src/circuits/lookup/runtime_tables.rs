@@ -2,10 +2,10 @@
 //! The setup has to prepare for their presence using [`RuntimeTableCfg`].
 //! At proving time, the prover can use [`RuntimeTable`] to specify the actual tables.
 
-use crate::circuits::{
-    expr::{prologue::*, Column},
-    gate::CurrOrNext,
-};
+// TODO: write cargo specifications
+
+use crate::circuits::{berkeley_columns::Column, expr::prologue::*, gate::CurrOrNext};
+
 use ark_ff::Field;
 use serde::{Deserialize, Serialize};
 

@@ -1,0 +1,39 @@
+[package]
+name = "mvpoly"
+description = "Symbolic interpreter of multivariate polyomials"
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme = "README.md"
+repository.workspace = true
+version.workspace = true
+
+[[bin]]
+path = "src/bin/bench_cross_terms.rs"
+name = "bench-cross-terms"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+ark-ff.workspace = true
+kimchi.workspace = true
+log.workspace = true
+mina-curves.workspace = true
+num-integer.workspace = true
+o1-utils.workspace = true
+rand.workspace = true
+
+[dev-dependencies]
+mina-curves.workspace = true
+rand.workspace = true
+criterion = { version = "0.5.1", features = ["html_reports"] }
+
+[[bench]]
+name = "prime"
+harness = false
+
+[[bench]]
+name = "monomials"
+harness = false

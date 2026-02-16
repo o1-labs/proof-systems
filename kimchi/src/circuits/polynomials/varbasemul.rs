@@ -12,13 +12,16 @@
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ExprOps, Cache, Column, Variable},
+    berkeley_columns::{BerkeleyChallengeTerm, Column},
+    expr::{constraints::ExprOps, Cache, Variable as VariableGen},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
 use ark_ff::{FftField, PrimeField};
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 use CurrOrNext::{Curr, Next};
+
+type Variable = VariableGen<Column>;
 
 //~ We implement custom Plonk constraints for short Weierstrass curve variable base scalar multiplication.
 //~
@@ -47,11 +50,10 @@ use CurrOrNext::{Curr, Next};
 //~ ```ignore
 //~ Acc := [2]T
 //~ for i = n-1 ... 0:
-//~    Q := (r_i == 1) ? T : -T
+//~    Q := (k_{i + 1} == 1) ? T : -T
 //~    Acc := Acc + (Q + Acc)
-//~ return (d_0 == 0) ? Q - P : Q
+//~ return (k_0 == 0) ? Acc - P : Acc
 //~ ```
-//~
 //~
 //~ The layout of the witness requires 2 rows.
 //~ The i-th row will be a `VBSM` gate whereas the next row will be a `ZERO` gate.
@@ -169,7 +171,10 @@ impl<T> Point<T> {
 }
 
 impl Point<Variable> {
-    pub fn new_from_env<F: PrimeField, T: ExprOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Point<T> {
+    pub fn new_from_env<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(
+        &self,
+        env: &ArgumentEnv<F, T>,
+    ) -> Point<T> {
         Point::create(self.x.new_from_env(env), self.y.new_from_env(env))
     }
 }
@@ -219,7 +224,7 @@ fn single_bit_witness<F: FftField>(
     (out_x, out_y)
 }
 
-fn single_bit<F: FftField, T: ExprOps<F>>(
+fn single_bit<F: FftField, T: ExprOps<F, BerkeleyChallengeTerm>>(
     cache: &mut Cache,
     b: &T,
     base: Point<T>,
@@ -286,7 +291,7 @@ where
 impl<F, T> FromWitness<F, T> for Variable
 where
     F: PrimeField,
-    T: ExprOps<F>,
+    T: ExprOps<F, BerkeleyChallengeTerm>,
 {
     fn new_from_env(&self, env: &ArgumentEnv<F, T>) -> T {
         let column_to_index = |_| match self.col {
@@ -324,7 +329,10 @@ impl Layout<Variable> {
         }
     }
 
-    fn new_from_env<F: PrimeField, T: ExprOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Layout<T> {
+    fn new_from_env<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(
+        &self,
+        env: &ArgumentEnv<F, T>,
+    ) -> Layout<T> {
         Layout {
             accs: self.accs.map(|point| point.new_from_env(env)),
             bits: self.bits.map(|var| var.new_from_env(env)),
@@ -357,7 +365,7 @@ pub struct VarbaseMulResult<F> {
 /// # Panics
 ///
 /// Will panic if `bits chunk` length validation fails.
-pub fn witness<F: FftField + std::fmt::Display>(
+pub fn witness<F: FftField + core::fmt::Display>(
     w: &mut [Vec<F>; COLUMNS],
     row0: usize,
     base: (F, F),
@@ -407,7 +415,10 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
     const CONSTRAINTS: u32 = 21;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+        env: &ArgumentEnv<F, T>,
+        cache: &mut Cache,
+    ) -> Vec<T> {
         let Layout {
             base,
             accs,

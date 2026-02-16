@@ -3,15 +3,18 @@
 //! Both the permutation and the plookup arguments fit this type.
 //! Gates can be seen as filtered arguments,
 //! which apply only in some points (rows) of the domain.
+//! For more info, read book/src/kimchi/arguments.md
 
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 use crate::{alphas::Alphas, circuits::expr::prologue::*};
 use ark_ff::{Field, PrimeField};
 use serde::{Deserialize, Serialize};
 
+//TODO use generic challenge
 use super::{
-    expr::{constraints::ExprOps, Cache, ConstantExpr, Constants},
+    berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
+    expr::{constraints::ExprOps, Cache, ConstantExpr, ConstantTerm, Constants},
     gate::{CurrOrNext, GateType},
     polynomial::COLUMNS,
 };
@@ -32,7 +35,7 @@ pub enum ArgumentType {
 
 /// The argument environment is used to specify how the argument's constraints are
 /// represented when they are built.  If the environment is created without ArgumentData
-/// and with F = `Expr<F>`, then the constraints are built as Expr expressions (e.g. for
+/// and with `F = Expr<F>`, then the constraints are built as Expr expressions (e.g. for
 /// use with the prover/verifier).  On the other hand, if the environment is
 /// created with ArgumentData and F = Field or F = PrimeField, then the constraints
 /// are built as expressions of real field elements and can be evaluated directly on
@@ -52,15 +55,21 @@ impl<F, T> Default for ArgumentEnv<F, T> {
     }
 }
 
-impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
+impl<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>> ArgumentEnv<F, T> {
     /// Initialize the environment for creating constraints of real field elements that can be
     /// evaluated directly over the witness without the prover/verifier
-    pub fn create(witness: ArgumentWitness<F>, coeffs: Vec<F>, constants: Constants<F>) -> Self {
+    pub fn create(
+        witness: ArgumentWitness<F>,
+        coeffs: Vec<F>,
+        constants: Constants<F>,
+        challenges: BerkeleyChallenges<F>,
+    ) -> Self {
         ArgumentEnv {
             data: Some(ArgumentData {
                 witness,
                 coeffs,
                 constants,
+                challenges,
             }),
             phantom_data: PhantomData,
         }
@@ -81,24 +90,57 @@ impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
         T::witness(Next, col, self.data.as_ref())
     }
 
+    /// Witness cells in current row in an interval [from, to)
+    pub fn witness_curr_chunk(&self, from: usize, to: usize) -> Vec<T> {
+        let mut chunk = Vec::with_capacity(to - from);
+        for i in from..to {
+            chunk.push(self.witness_curr(i));
+        }
+        chunk
+    }
+
+    /// Witness cells in next row in an interval [from, to)
+    pub fn witness_next_chunk(&self, from: usize, to: usize) -> Vec<T> {
+        let mut chunk = Vec::with_capacity(to - from);
+        for i in from..to {
+            chunk.push(self.witness_next(i));
+        }
+        chunk
+    }
+
     /// Coefficient value at index idx
     pub fn coeff(&self, idx: usize) -> T {
         T::coeff(idx, self.data.as_ref())
     }
 
+    /// Chunk of consecutive coefficients in an interval [from, to)
+    pub fn coeff_chunk(&self, from: usize, to: usize) -> Vec<T> {
+        let mut chunk = Vec::with_capacity(to - from);
+        for i in from..to {
+            chunk.push(self.coeff(i));
+        }
+        chunk
+    }
+
     /// Constant value (see [ConstantExpr] for supported constants)
-    pub fn constant(&self, expr: ConstantExpr<F>) -> T {
+    pub fn constant(&self, expr: ConstantExpr<F, BerkeleyChallengeTerm>) -> T {
         T::constant(expr, self.data.as_ref())
     }
 
     /// Helper to access endomorphism coefficient constant
     pub fn endo_coefficient(&self) -> T {
-        T::constant(ConstantExpr::<F>::EndoCoefficient, self.data.as_ref())
+        T::constant(
+            ConstantExpr::from(ConstantTerm::EndoCoefficient),
+            self.data.as_ref(),
+        )
     }
 
     /// Helper to access maximum distance separable matrix constant at row, col
     pub fn mds(&self, row: usize, col: usize) -> T {
-        T::constant(ConstantExpr::<F>::Mds { row, col }, self.data.as_ref())
+        T::constant(
+            ConstantExpr::from(ConstantTerm::Mds { row, col }),
+            self.data.as_ref(),
+        )
     }
 }
 
@@ -110,9 +152,10 @@ pub struct ArgumentData<F: 'static> {
     pub coeffs: Vec<F>,
     /// Constants
     pub constants: Constants<F>,
+    pub challenges: BerkeleyChallenges<F>,
 }
 
-/// Witness data for a argument
+/// Witness data for an argument
 pub struct ArgumentWitness<T> {
     /// Witness for current row
     pub curr: [T; COLUMNS],
@@ -120,7 +163,7 @@ pub struct ArgumentWitness<T> {
     pub next: [T; COLUMNS],
 }
 
-impl<T> std::ops::Index<(CurrOrNext, usize)> for ArgumentWitness<T> {
+impl<T> core::ops::Index<(CurrOrNext, usize)> for ArgumentWitness<T> {
     type Output = T;
 
     fn index(&self, idx: (CurrOrNext, usize)) -> &T {
@@ -142,7 +185,10 @@ pub trait Argument<F: PrimeField> {
     const CONSTRAINTS: u32;
 
     /// Constraints for this argument
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T>;
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+        env: &ArgumentEnv<F, T>,
+        cache: &mut Cache,
+    ) -> Vec<T>;
 
     /// Returns the set of constraints required to prove this argument.
     fn constraints(cache: &mut Cache) -> Vec<E<F>> {

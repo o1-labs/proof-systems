@@ -1,0 +1,7 @@
+[package]
+name = "wasm-types"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+wasm-bindgen.workspace = true

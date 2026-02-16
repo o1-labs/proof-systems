@@ -4,16 +4,17 @@ use crate::{
     circuits::{
         expr::constraints::compact_limb,
         polynomial::COLUMNS,
+        polynomials::foreign_field_common::{
+            BigUintForeignFieldHelpers, KimchiForeignElement, HI, LIMB_BITS, LO, MI,
+        },
         witness::{self, ConstantCell, VariableCell, Variables, WitnessCell},
     },
     variable_map,
 };
 use ark_ff::PrimeField;
+use core::array;
 use num_bigint::BigUint;
-use o1_utils::foreign_field::{
-    BigUintForeignFieldHelpers, ForeignElement, ForeignFieldHelpers, HI, LO, MI,
-};
-use std::array;
+use o1_utils::foreign_field::{ForeignElement, ForeignFieldHelpers};
 
 /// All foreign field operations allowed
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
@@ -42,17 +43,17 @@ impl FFOps {
 // - the overflow flag
 // - the carry value
 fn compute_ffadd_values<F: PrimeField>(
-    left_input: &ForeignElement<F, 3>,
-    right_input: &ForeignElement<F, 4>,
+    left_input: &ForeignElement<F, LIMB_BITS, 3>,
+    right_input: &ForeignElement<F, LIMB_BITS, 4>,
     opcode: FFOps,
-    foreign_modulus: &ForeignElement<F, 3>,
-) -> (ForeignElement<F, 3>, F, F, F) {
+    foreign_modulus: &ForeignElement<F, LIMB_BITS, 3>,
+) -> (ForeignElement<F, LIMB_BITS, 3>, F, F, F) {
     // Compute bigint version of the inputs
     let left = left_input.to_biguint();
     let right = right_input.to_biguint();
 
     // Clarification:
-    let right_hi = right_input[3] * F::two_to_limb() + right_input[HI]; // This allows to store 2^88 in the high limb
+    let right_hi = right_input[3] * KimchiForeignElement::<F>::two_to_limb() + right_input[HI]; // This allows to store 2^88 in the high limb
 
     let modulus = foreign_modulus.to_biguint();
 
@@ -80,7 +81,7 @@ fn compute_ffadd_values<F: PrimeField>(
     // result = left + sign * right - field_overflow * modulus
     // TODO: unluckily, we cannot do it in one line if we keep these types, because one
     //       cannot combine field elements and biguints in the same operation automatically
-    let result = ForeignElement::from_biguint({
+    let result = ForeignElement::from_biguint(&{
         if opcode == FFOps::Add {
             if !has_overflow {
                 // normal addition
@@ -110,7 +111,7 @@ fn compute_ffadd_values<F: PrimeField>(
         + compact_limb(&right_input[LO], &right_input[MI]) * sign
         - compact_limb(&foreign_modulus[LO], &foreign_modulus[MI]) * field_overflow
         - compact_limb(&result[LO], &result[MI]))
-        / F::two_to_2limb();
+        / KimchiForeignElement::<F>::two_to_2limb();
 
     let carry_top: F =
         result[HI] - left_input[HI] - sign * right_hi + field_overflow * foreign_modulus[HI];
@@ -126,7 +127,7 @@ fn compute_ffadd_values<F: PrimeField>(
 /// opcode: true for addition, false for subtraction
 /// modulus: modulus of the foreign field
 pub fn create_chain<F: PrimeField>(
-    inputs: &Vec<BigUint>,
+    inputs: &[BigUint],
     opcodes: &[FFOps],
     modulus: BigUint,
 ) -> [Vec<F>; COLUMNS] {
@@ -146,18 +147,18 @@ pub fn create_chain<F: PrimeField>(
     // Make sure that the inputs are smaller than the modulus just in case
     let inputs: Vec<BigUint> = inputs.iter().map(|input| input % modulus.clone()).collect();
 
-    let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
 
-    let foreign_modulus = ForeignElement::from_biguint(modulus);
+    let foreign_modulus = ForeignElement::from_biguint(&modulus);
 
-    let mut left = ForeignElement::from_biguint(inputs[0].clone());
+    let mut left = ForeignElement::from_biguint(&inputs[0]);
 
     for i in 0..num {
         // Create foreign field addition row
         for w in &mut witness {
-            w.extend(std::iter::repeat(F::zero()).take(1));
+            w.extend(std::iter::repeat_n(F::zero(), 1));
         }
-        let right = ForeignElement::from_biguint(inputs[i + 1].clone());
+        let right = ForeignElement::from_biguint(&inputs[i + 1]);
         let (output, _sign, ovf, carry) =
             compute_ffadd_values(&left, &right, opcodes[i], &foreign_modulus);
         init_ffadd_row(
@@ -184,9 +185,9 @@ fn init_ffadd_row<F: PrimeField>(
     overflow: F,
     carry: F,
 ) {
-    let witness_shape: Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> = vec![
+    let layout: [Vec<Box<dyn WitnessCell<F>>>; 1] = [
         // ForeignFieldAdd row
-        [
+        vec![
             VariableCell::create("left_lo"),
             VariableCell::create("left_mi"),
             VariableCell::create("left_hi"),
@@ -208,7 +209,7 @@ fn init_ffadd_row<F: PrimeField>(
     witness::init(
         witness,
         offset,
-        &witness_shape,
+        &layout,
         &variable_map!["left_lo" => left[LO], "left_mi" => left[MI], "left_hi" => left[HI], "right_lo" => right[LO], "right_mi" => right[MI], "right_hi" => right[HI], "overflow" => overflow, "carry" => carry],
     );
 }
@@ -220,16 +221,16 @@ fn init_bound_rows<F: PrimeField>(
     bound: &[F; 3],
     carry: &F,
 ) {
-    let witness_shape: Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> = vec![
-        [
+    let layout: [Vec<Box<dyn WitnessCell<F>>>; 2] = [
+        vec![
             // ForeignFieldAdd row
             VariableCell::create("result_lo"),
             VariableCell::create("result_mi"),
             VariableCell::create("result_hi"),
-            ConstantCell::create(F::zero()),        // 0
-            ConstantCell::create(F::zero()),        // 0
-            ConstantCell::create(F::two_to_limb()), // 2^88
-            ConstantCell::create(F::one()),         // field_overflow
+            ConstantCell::create(F::zero()), // 0
+            ConstantCell::create(F::zero()), // 0
+            ConstantCell::create(KimchiForeignElement::<F>::two_to_limb()), // 2^88
+            ConstantCell::create(F::one()),  // field_overflow
             VariableCell::create("carry"),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
@@ -239,7 +240,7 @@ fn init_bound_rows<F: PrimeField>(
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
         ],
-        [
+        vec![
             // Zero Row
             VariableCell::create("bound_lo"),
             VariableCell::create("bound_mi"),
@@ -262,7 +263,7 @@ fn init_bound_rows<F: PrimeField>(
     witness::init(
         witness,
         offset,
-        &witness_shape,
+        &layout,
         &variable_map!["carry" => *carry, "result_lo" => result[LO], "result_mi" => result[MI], "result_hi" => result[HI], "bound_lo" => bound[LO], "bound_mi" => bound[MI], "bound_hi" => bound[HI]],
     );
 }
@@ -274,8 +275,8 @@ pub fn extend_witness_bound_addition<F: PrimeField>(
     foreign_field_modulus: &[F; 3],
 ) {
     // Convert to types used by this module
-    let fe = ForeignElement::<F, 3>::new(*limbs);
-    let foreign_field_modulus = ForeignElement::<F, 3>::new(*foreign_field_modulus);
+    let fe = ForeignElement::<F, LIMB_BITS, 3>::new(*limbs);
+    let foreign_field_modulus = ForeignElement::<F, LIMB_BITS, 3>::new(*foreign_field_modulus);
     if foreign_field_modulus.to_biguint() > BigUint::max_foreign_field_modulus::<F>() {
         panic!(
             "foreign_field_modulus exceeds maximum: {} > {}",
@@ -285,7 +286,7 @@ pub fn extend_witness_bound_addition<F: PrimeField>(
     }
 
     // Compute values for final bound check, needs a 4 limb right input
-    let right_input = ForeignElement::<F, 4>::from_biguint(BigUint::binary_modulus());
+    let right_input = ForeignElement::<F, LIMB_BITS, 4>::from_biguint(&BigUint::binary_modulus());
 
     // Compute the bound and related witness data
     let (bound_output, bound_sign, bound_ovf, bound_carry) =
@@ -297,7 +298,7 @@ pub fn extend_witness_bound_addition<F: PrimeField>(
     // Extend the witness for the add gate
     let offset = witness[0].len();
     for col in witness.iter_mut().take(COLUMNS) {
-        col.extend(std::iter::repeat(F::zero()).take(2))
+        col.extend(std::iter::repeat_n(F::zero(), 2))
     }
 
     init_bound_rows(

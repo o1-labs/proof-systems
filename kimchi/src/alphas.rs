@@ -130,7 +130,7 @@ impl<F: Field> Alphas<F> {
         &self,
         ty: ArgumentType,
         num: u32,
-    ) -> MustConsumeIterator<Cloned<Take<Skip<Iter<F>>>>, F> {
+    ) -> MustConsumeIterator<Cloned<Take<Skip<Iter<'_, F>>>>, F> {
         let ty = if matches!(ty, ArgumentType::Gate(_)) {
             ArgumentType::Gate(GateType::Zero)
         } else {
@@ -167,7 +167,7 @@ impl<F: Field> Alphas<F> {
 }
 
 impl<T> Display for Alphas<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for arg in [
             ArgumentType::Gate(GateType::Zero),
             ArgumentType::Permutation,
@@ -200,7 +200,7 @@ impl<T> Display for Alphas<T> {
 pub struct MustConsumeIterator<I, T>
 where
     I: Iterator<Item = T>,
-    T: std::fmt::Display,
+    T: core::fmt::Display,
 {
     inner: I,
     debug_info: ArgumentType,
@@ -209,7 +209,7 @@ where
 impl<I, T> Iterator for MustConsumeIterator<I, T>
 where
     I: Iterator<Item = T>,
-    T: std::fmt::Display,
+    T: core::fmt::Display,
 {
     type Item = I::Item;
     fn next(&mut self) -> Option<Self::Item> {
@@ -220,7 +220,7 @@ where
 impl<I, T> Drop for MustConsumeIterator<I, T>
 where
     I: Iterator<Item = T>,
-    T: std::fmt::Display,
+    T: core::fmt::Display,
 {
     fn drop(&mut self) {
         if let Some(v) = self.inner.next() {
@@ -239,11 +239,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, path::Path};
-
     use super::*;
     use crate::circuits::gate::GateType;
     use mina_curves::pasta::{Fp, Vesta};
+    use mina_poseidon::pasta::FULL_ROUNDS;
+    use std::{fs, path::Path};
 
     // testing [Builder]
 
@@ -322,7 +322,7 @@ mod tests {
     #[test]
     fn get_alphas_for_spec() {
         let gates = vec![CircuitGate::<Fp>::zero(Wire::for_row(0)); 2];
-        let index = new_index_for_test::<Vesta>(gates, 0);
+        let index = new_index_for_test::<FULL_ROUNDS, Vesta>(gates, 0);
         let (_linearization, powers_of_alpha) =
             expr_linearization::<Fp>(Some(&index.cs.feature_flags), true);
         // make sure this is present in the specification

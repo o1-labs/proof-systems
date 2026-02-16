@@ -1,0 +1,17 @@
+[package]
+description = "Mina Protocol transaction types for external use"
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "mina-tx-type"
+repository.workspace = true
+version.workspace = true
+readme = "README.md"
+
+[features]
+default = []
+std = []
+
+[dependencies]
+mina-signer.workspace = true

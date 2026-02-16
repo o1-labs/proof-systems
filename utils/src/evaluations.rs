@@ -1,22 +1,26 @@
-//! This adds a few utility functions for the [Evaluations] arkworks type.
+//! This adds a few utility functions for the [`Evaluations`] arkworks type.
 
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use rayon::prelude::*;
 
-/// An extension for the [Evaluations] type.
+/// An extension for the [`Evaluations`] type.
 pub trait ExtendedEvaluations<F: FftField> {
-    /// This function "scales" (multiplies) a polynomial with a scalar
-    /// It is implemented to have the desired functionality for DensePolynomial
+    /// This function "scales" (multiplies) a polynomial with a scalar.
+    /// It is implemented to have the desired functionality for [`DensePolynomial`].
+    #[must_use]
     fn scale(&self, elm: F) -> Self;
 
     /// Square each evaluation
+    #[must_use]
     fn square(&self) -> Self;
 
     /// Raise each evaluation to some power `pow`
+    #[must_use]
     fn pow(&self, pow: usize) -> Self;
 
     /// Utility function for shifting poly along domain coordinate
+    #[must_use]
     fn shift(&self, len: usize) -> Self;
 }
 
@@ -45,12 +49,10 @@ impl<F: FftField> ExtendedEvaluations<F> for Evaluations<F, Radix2EvaluationDoma
     }
 
     fn shift(&self, len: usize) -> Self {
-        let len = len % self.evals.len();
-        let mut result = self.clone();
-        result.evals.clear();
-        result.evals = self.evals[len..].to_vec();
-        let mut tail = self.evals[0..len].to_vec();
-        result.evals.append(&mut tail);
+        let len_new = len % self.evals.len();
+        let mut result = Self::from_vec_and_domain(Vec::with_capacity(len), self.domain());
+        result.evals.extend_from_slice(&self.evals[len_new..]);
+        result.evals.extend_from_slice(&self.evals[0..len_new]);
         result
     }
 }

@@ -7,10 +7,10 @@ use mina_poseidon::FqSponge;
 use poly_commitment::commitment::{CommitmentCurve, PolyComm};
 
 /// The result of running the oracle protocol
-pub struct OraclesResult<G, EFqSponge>
+pub struct OraclesResult<const FULL_ROUNDS: usize, G, EFqSponge>
 where
     G: CommitmentCurve,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
 {
     /// A sponge that acts on the base field of a curve
     pub fq_sponge: EFqSponge,
@@ -38,7 +38,8 @@ where
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use ark_ff::PrimeField;
-    use poly_commitment::{commitment::shift_scalar, evaluation_proof::OpeningProof};
+    use mina_poseidon::poseidon::ArithmeticSpongeParams;
+    use poly_commitment::{commitment::shift_scalar, ipa::OpeningProof};
 
     use crate::{
         circuits::scalars::caml::CamlRandomOracles, curve::KimchiCurve, error::VerifyError,
@@ -55,18 +56,27 @@ pub mod caml {
         pub digest_before_evaluations: CamlF,
     }
 
-    pub fn create_caml_oracles<G, CamlF, EFqSponge, EFrSponge, CurveParams>(
+    pub fn create_caml_oracles<
+        const FULL_ROUNDS: usize,
+        G,
+        CamlF,
+        EFqSponge,
+        EFrSponge,
+        CurveParams,
+    >(
         lgr_comm: Vec<PolyComm<G>>,
-        index: VerifierIndex<G, OpeningProof<G>>,
-        proof: ProverProof<G, OpeningProof<G>>,
+        index: VerifierIndex<FULL_ROUNDS, G, CurveParams>,
+        proof: ProverProof<G, OpeningProof<G, FULL_ROUNDS>, FULL_ROUNDS>,
         public_input: &[G::ScalarField],
     ) -> Result<CamlOracles<CamlF>, VerifyError>
     where
-        G: KimchiCurve,
+        G: KimchiCurve<FULL_ROUNDS>,
         G::BaseField: PrimeField,
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
         CamlF: From<G::ScalarField>,
+        CurveParams: poly_commitment::OpenProof<G, FULL_ROUNDS>,
     {
         let lgr_comm: Vec<PolyComm<G>> = lgr_comm.into_iter().take(public_input.len()).collect();
         let lgr_comm_refs: Vec<_> = lgr_comm.iter().collect();
@@ -75,8 +85,11 @@ pub mod caml {
 
         let p_comm = PolyComm::<G>::multi_scalar_mul(&lgr_comm_refs, &negated_public);
 
-        let oracles_result =
-            proof.oracles::<EFqSponge, EFrSponge>(&index, &p_comm, Some(public_input))?;
+        let oracles_result = proof.oracles::<EFqSponge, EFrSponge, CurveParams>(
+            &index,
+            &p_comm,
+            Some(public_input),
+        )?;
 
         let (mut sponge, combined_inner_product, public_evals, digest, oracles) = (
             oracles_result.fq_sponge,
@@ -92,7 +105,7 @@ pub mod caml {
             .proof
             .prechallenges(&mut sponge)
             .into_iter()
-            .map(|x| x.0.into())
+            .map(|x| x.inner().into())
             .collect();
 
         Ok(CamlOracles {

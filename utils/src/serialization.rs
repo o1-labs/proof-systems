@@ -1,5 +1,6 @@
-//! This adds a few utility functions for serializing and deserializing
-//! [arkworks](http://arkworks.rs/) types that implement [CanonicalSerialize] and [CanonicalDeserialize].
+//! Utility functions for serializing and deserializing arkworks types.
+//!
+//! Supports types that implement [`CanonicalSerialize`] and [`CanonicalDeserialize`].
 
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Write};
 use serde_with::Bytes;
@@ -10,15 +11,21 @@ use std::io::BufReader;
 //
 
 pub mod ser {
-    //! You can use this module for serialization and deserializing arkworks types with [serde].
+    //! You can use this module for serialization and deserializing arkworks types with [`serde`].
+    //!
     //! Simply use the following attribute on your field:
     //! `#[serde(with = "o1_utils::serialization::ser") attribute"]`
 
-    use super::*;
+    use super::{Bytes, CanonicalDeserialize, CanonicalSerialize};
     use serde_with::{DeserializeAs, SerializeAs};
 
-    /// You can use this to serialize an arkworks type with serde and the "serialize_with" attribute.
+    /// You can use this to serialize an arkworks type with serde and the `serialize_with` attribute.
     /// See <https://serde.rs/field-attrs.html>
+    ///
+    /// # Errors
+    ///
+    /// Returns error if serialization fails.
+    #[allow(clippy::needless_pass_by_value)]
     pub fn serialize<S>(val: impl CanonicalSerialize, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -30,8 +37,12 @@ pub mod ser {
         Bytes::serialize_as(&bytes, serializer)
     }
 
-    /// You can use this to deserialize an arkworks type with serde and the "deserialize_with" attribute.
+    /// You can use this to deserialize an arkworks type with serde and the `deserialize_with` attribute.
     /// See <https://serde.rs/field-attrs.html>
+    ///
+    /// # Errors
+    ///
+    /// Returns error if deserialization fails.
     pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     where
         T: CanonicalDeserialize,
@@ -46,7 +57,9 @@ pub mod ser {
 // Serialization with [serde_with]
 //
 
-/// You can use [SerdeAs] with [serde_with] in order to serialize and deserialize types that implement [CanonicalSerialize] and [CanonicalDeserialize],
+/// Serde adapter for [`CanonicalSerialize`] and [`CanonicalDeserialize`] types.
+///
+/// You can use [`SerdeAs`] with `serde_with` in order to serialize and deserialize types,
 /// or containers of types that implement these traits (Vec, arrays, etc.)
 /// Simply add annotations like `#[serde_as(as = "o1_utils::serialization::SerdeAs")]`
 /// See <https://docs.rs/serde_with/1.10.0/serde_with/guide/serde_as/index.html#switching-from-serdes-with-to-serde_as>
@@ -89,8 +102,54 @@ where
     }
 }
 
+/// Same as `SerdeAs` but using unchecked and uncompressed (de)serialization.
+pub struct SerdeAsUnchecked;
+
+impl<T> serde_with::SerializeAs<T> for SerdeAsUnchecked
+where
+    T: CanonicalSerialize,
+{
+    fn serialize_as<S>(val: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut bytes = vec![];
+        val.serialize_uncompressed(&mut bytes)
+            .map_err(serde::ser::Error::custom)?;
+
+        if serializer.is_human_readable() {
+            hex::serde::serialize(bytes, serializer)
+        } else {
+            Bytes::serialize_as(&bytes, serializer)
+        }
+    }
+}
+
+impl<'de, T> serde_with::DeserializeAs<'de, T> for SerdeAsUnchecked
+where
+    T: CanonicalDeserialize,
+{
+    fn deserialize_as<D>(deserializer: D) -> Result<T, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let bytes: Vec<u8> = if deserializer.is_human_readable() {
+            hex::serde::deserialize(deserializer)?
+        } else {
+            Bytes::deserialize_as(deserializer)?
+        };
+        T::deserialize_uncompressed_unchecked(&mut &bytes[..]).map_err(serde::de::Error::custom)
+    }
+}
+
 /// A generic regression serialization test for serialization via
 /// `CanonicalSerialize` and `CanonicalDeserialize`.
+///
+/// # Panics
+///
+/// Panics if serialization or deserialization fails, or if the results
+/// do not match the expected values.
+#[allow(clippy::needless_pass_by_value)]
 pub fn test_generic_serialization_regression_canonical<
     T: CanonicalSerialize + CanonicalDeserialize + std::cmp::PartialEq + std::fmt::Debug,
 >(
@@ -124,6 +183,12 @@ pub fn test_generic_serialization_regression_canonical<
 }
 
 /// A generic regression serialization test for serialization via `serde`.
+///
+/// # Panics
+///
+/// Panics if serialization or deserialization fails, or if the results
+/// do not match the expected values.
+#[allow(clippy::needless_pass_by_value)]
 pub fn test_generic_serialization_regression_serde<
     T: serde::Serialize + for<'a> serde::Deserialize<'a> + std::cmp::PartialEq + std::fmt::Debug,
 >(
@@ -171,86 +236,4 @@ pub fn test_generic_serialization_regression_serde<
             data_read == data_expected,
             "Serde: deserialized value...\n {data_read:?}\n does not match the expected one...\n {data_expected:?}"
         );
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::{
-        test_generic_serialization_regression_canonical,
-        test_generic_serialization_regression_serde,
-    };
-    use ark_ec::short_weierstrass::SWCurveConfig;
-    use mina_curves::pasta::{Pallas, PallasParameters, Vesta, VestaParameters};
-    use serde::{Deserialize, Serialize};
-    use serde_with::serde_as;
-
-    #[test]
-    pub fn ser_regression_canonical_bigint() {
-        use mina_curves::pasta::Fp;
-
-        // Generated with commit 1494cf973d40fb276465929eb7db1952c5de7bdc
-        let samples: Vec<(Fp, Vec<u8>)> = vec![
-            (
-                Fp::from(5u64),
-                vec![
-                    5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0,
-                ],
-            ),
-            (
-                Fp::from((1u64 << 62) + 7u64),
-                vec![
-                    7, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0,
-                ],
-            ),
-            (
-                Fp::from((1u64 << 30) * 13u64 * 7u64 * 5u64 * 3u64 + 7u64),
-                vec![
-                    7, 0, 0, 64, 85, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0,
-                ],
-            ),
-            (
-                Fp::from((1u64 << 63) + 7u64)
-                    * Fp::from((1u64 << 63) + 13u64)
-                    * Fp::from((1u64 << 63) + 17u64),
-                vec![
-                    11, 6, 0, 0, 0, 0, 0, 128, 215, 0, 0, 0, 0, 0, 0, 64, 9, 0, 0, 0, 0, 0, 0, 32,
-                    0, 0, 0, 0, 0, 0, 0, 0,
-                ],
-            ),
-        ];
-
-        for (data_expected, buf_expected) in samples {
-            test_generic_serialization_regression_canonical(data_expected, buf_expected);
-        }
-    }
-
-    #[test]
-    pub fn ser_regression_canonical_pasta() {
-        #[serde_as]
-        #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-        struct TestStruct {
-            #[serde_as(as = "crate::serialization::SerdeAs")]
-            pallas: Pallas,
-            #[serde_as(as = "crate::serialization::SerdeAs")]
-            vesta: Vesta,
-        }
-
-        let data_expected = TestStruct {
-            pallas: PallasParameters::GENERATOR,
-            vesta: VestaParameters::GENERATOR,
-        };
-
-        // Generated with commit 1494cf973d40fb276465929eb7db1952c5de7bdc
-        let buf_expected: Vec<u8> = vec![
-            146, 196, 33, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 196, 33, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        ];
-
-        test_generic_serialization_regression_serde(data_expected, buf_expected);
-    }
 }

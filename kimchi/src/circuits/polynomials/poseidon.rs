@@ -1,7 +1,7 @@
 //! This module implements the Poseidon constraint polynomials.
 
 //~ The poseidon gate encodes 5 rounds of the poseidon permutation.
-//~ A state is represents by 3 field elements. For example,
+//~ A state is represented by 3 field elements. For example,
 //~ the first state is represented by `(s0, s0, s0)`,
 //~ and the next state, after permutation, is represented by `(s1, s1, s1)`.
 //~
@@ -28,6 +28,7 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
+        berkeley_columns::BerkeleyChallengeTerm,
         expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, CurrOrNext, GateType},
         polynomial::COLUMNS,
@@ -36,11 +37,11 @@ use crate::{
     curve::KimchiCurve,
 };
 use ark_ff::{Field, PrimeField};
+use core::{marker::PhantomData, ops::Range};
 use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
-use std::{marker::PhantomData, ops::Range};
 use CurrOrNext::{Curr, Next};
 
 //
@@ -87,18 +88,22 @@ impl<F: PrimeField> CircuitGate<F> {
         CircuitGate::new(GateType::Poseidon, wires, coeffs)
     }
 
-    /// `create_poseidon_gadget(row, first_and_last_row, round_constants)`  creates an entire set of constraint for a Poseidon hash.
+    /// `create_poseidon_gadget(row, first_and_last_row, round_constants)`
+    /// creates an entire set of constraint for a Poseidon hash.
+    ///
     /// For that, you need to pass:
     /// - the index of the first `row`
     /// - the first and last rows' wires (because they are used in the permutation)
     /// - the round constants
-    /// The function returns a set of gates, as well as the next pointer to the circuit (next empty absolute row)
+    ///
+    /// The function returns a set of gates, as well as the next pointer to the
+    /// circuit (next empty absolute row)
     pub fn create_poseidon_gadget(
         // the absolute row in the circuit
         row: usize,
         // first and last row of the poseidon circuit (because they are used in the permutation)
         first_and_last_row: [GateWires; 2],
-        round_constants: &[Vec<F>],
+        round_constants: &[[F; 3]],
     ) -> (Vec<Self>, usize) {
         let mut gates = vec![];
 
@@ -112,13 +117,13 @@ impl<F: PrimeField> CircuitGate<F> {
             let wires = if rel_row == 0 {
                 first_and_last_row[0]
             } else {
-                std::array::from_fn(|col| Wire { col, row: abs_row })
+                core::array::from_fn(|col| Wire { col, row: abs_row })
             };
 
             // round constant for this row
-            let coeffs = std::array::from_fn(|offset| {
+            let coeffs = core::array::from_fn(|offset| {
                 let round = rel_row * ROUNDS_PER_ROW + offset;
-                std::array::from_fn(|field_el| round_constants[round][field_el])
+                round_constants[round]
             });
 
             // create poseidon gate for this row
@@ -137,7 +142,10 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `Poseidon` gate, or `state` does not match after `permutation`.
-    pub fn verify_poseidon<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_poseidon<
+        const FULL_ROUNDS: usize,
+        G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    >(
         &self,
         row: usize,
         // TODO(mimoo): we should just pass two rows instead of the whole witness
@@ -203,8 +211,8 @@ impl<F: PrimeField> CircuitGate<F> {
 
     /// round constant that are relevant for this specific gate
     pub fn rc(&self) -> [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] {
-        std::array::from_fn(|round| {
-            std::array::from_fn(|col| {
+        core::array::from_fn(|round| {
+            core::array::from_fn(|col| {
                 if self.typ == GateType::Poseidon {
                     self.coeffs[SPONGE_WIDTH * round + col]
                 } else {
@@ -223,9 +231,9 @@ impl<F: PrimeField> CircuitGate<F> {
 ///
 /// Will panic if the `circuit` has `INITIAL_ARK`.
 #[allow(clippy::assertions_on_constants)]
-pub fn generate_witness<F: Field>(
+pub fn generate_witness<const FULL_ROUNDS: usize, F: Field>(
     row: usize,
-    params: &'static ArithmeticSpongeParams<F>,
+    params: &'static ArithmeticSpongeParams<F, FULL_ROUNDS>,
     witness_cols: &mut [Vec<F>; COLUMNS],
     input: [F; SPONGE_WIDTH],
 ) {
@@ -235,7 +243,7 @@ pub fn generate_witness<F: Field>(
     witness_cols[2][row] = input[2];
 
     // set the sponge state
-    let mut sponge = ArithmeticSponge::<F, PlonkSpongeConstantsKimchi>::new(params);
+    let mut sponge = ArithmeticSponge::<F, PlonkSpongeConstantsKimchi, FULL_ROUNDS>::new(params);
     sponge.state = input.into();
 
     // for the poseidon rows
@@ -339,7 +347,10 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Poseidon);
     const CONSTRAINTS: u32 = 15;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+        env: &ArgumentEnv<F, T>,
+        cache: &mut Cache,
+    ) -> Vec<T> {
         let mut res = vec![];
 
         let mut idx = 0;

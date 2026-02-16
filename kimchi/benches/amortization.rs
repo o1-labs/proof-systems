@@ -8,9 +8,7 @@ pub fn amortization(c: &mut Criterion) {
 
     let ctx = BenchmarkCtx::new(16);
     let proof_and_public = ctx.create_proof();
-    let proofs: Vec<_> = std::iter::repeat(proof_and_public)
-        .take(1 << PROOFS)
-        .collect();
+    let proofs: Vec<_> = std::iter::repeat_n(proof_and_public, 1 << PROOFS).collect();
 
     group.sample_size(10);
     for size in 0..=PROOFS {

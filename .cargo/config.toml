@@ -1,5 +1,14 @@
-[source.crates-io]
-replace-with = "vendored-sources"
+[alias]
+xtask = "run --package xtask --"
 
-[source.vendored-sources]
-directory = "proof-systems-vendors"
+# See https://zshipko.github.io/ocaml-rs/#initial-setup
+# Required to avoid undefined symbols when building dylib on MacOS
+# (e.g. required for at the time of writing).
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-args=-Wl,-undefined,dynamic_lookup"]
+
+[target.wasm32-unknown-unknown]
+rustflags = [
+  "-C", "target-feature=+atomics,+bulk-memory,+mutable-globals",
+  "-C", "link-arg=--max-memory=4294967296",
+]

@@ -3,10 +3,11 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv},
+        berkeley_columns::BerkeleyChallenges,
         constraints::ConstraintSystem,
         polynomials::{
             complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
-            poseidon, range_check, turshi, varbasemul,
+            poseidon, range_check, rot, varbasemul, xor,
         },
         wires::*,
     },
@@ -15,16 +16,11 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use o1_utils::hasher::CryptoDigest;
-use poly_commitment::OpenProof;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use thiserror::Error;
 
-use super::{
-    argument::ArgumentWitness,
-    expr,
-    polynomials::{rot, xor},
-};
+use super::{argument::ArgumentWitness, expr};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -60,19 +56,7 @@ impl CurrOrNext {
 /// not to re-use powers of alpha across constraints.
 #[repr(C)]
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    FromPrimitive,
-    ToPrimitive,
-    Serialize,
-    Deserialize,
-    Eq,
-    Hash,
-    PartialOrd,
-    Ord,
+    Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, Eq, Hash, PartialOrd, Ord,
 )]
 #[cfg_attr(
     feature = "ocaml_types",
@@ -98,11 +82,6 @@ pub enum GateType {
     EndoMulScalar,
     // Lookup
     Lookup,
-    /// Cairo
-    CairoClaim,
-    CairoInstruction,
-    CairoFlags,
-    CairoTransition,
     /// Range check
     RangeCheck0,
     RangeCheck1,
@@ -137,7 +116,7 @@ pub enum CircuitGateError {
 }
 
 /// Gate result
-pub type CircuitGateResult<T> = std::result::Result<T, CircuitGateError>;
+pub type CircuitGateResult<T> = core::result::Result<T, CircuitGateError>;
 
 #[serde_as]
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -175,48 +154,52 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if verify process returns error.
-    pub fn verify<G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>(
+    pub fn verify<
+        const FULL_ROUNDS: usize,
+        G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+        Srs: poly_commitment::SRS<G>,
+    >(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        index: &ProverIndex<G, OpeningProof>,
+        index: &ProverIndex<FULL_ROUNDS, G, Srs>,
         public: &[F],
     ) -> Result<(), String> {
         use GateType::*;
         match self.typ {
             Zero => Ok(()),
             Generic => self.verify_generic(row, witness, public),
-            Poseidon => self.verify_poseidon::<G>(row, witness),
+            Poseidon => self.verify_poseidon::<FULL_ROUNDS, G>(row, witness),
             CompleteAdd => self.verify_complete_add(row, witness),
             VarBaseMul => self.verify_vbmul(row, witness),
-            EndoMul => self.verify_endomul::<G>(row, witness, &index.cs),
-            EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, &index.cs),
+            EndoMul => self.verify_endomul::<FULL_ROUNDS, G>(row, witness, &index.cs),
+            EndoMulScalar => self.verify_endomul_scalar::<FULL_ROUNDS, G>(row, witness, &index.cs),
             // TODO: implement the verification for the lookup gate
             // See https://github.com/MinaProtocol/mina/issues/14011
             Lookup => Ok(()),
-            CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
-                self.verify_cairo_gate::<G>(row, witness, &index.cs)
-            }
             RangeCheck0 | RangeCheck1 => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldAdd => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldMul => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             Xor16 => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             Rot64 => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
         }
     }
 
     /// Verify the witness against the constraints
-    pub fn verify_witness<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_witness<
+        const FULL_ROUNDS: usize,
+        G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    >(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
@@ -228,16 +211,24 @@ impl<F: PrimeField> CircuitGate<F> {
         // Set up the constants.  Note that alpha, beta, gamma and joint_combiner
         // are one because this function is not running the prover.
         let constants = expr::Constants {
-            alpha: F::one(),
-            beta: F::one(),
-            gamma: F::one(),
-            joint_combiner: Some(F::one()),
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
             zk_rows: cs.zk_rows,
         };
+        //TODO : use generic challenges, since we do not need those here
+        let challenges = BerkeleyChallenges {
+            alpha: F::one(),
+            beta: F::one(),
+            gamma: F::one(),
+            joint_combiner: F::one(),
+        };
         // Create the argument environment for the constraints over field elements
-        let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
+        let env = ArgumentEnv::<F, F>::create(
+            argument_witness,
+            self.coeffs.clone(),
+            constants,
+            challenges,
+        );
 
         // Check the wiring (i.e. copy constraints) for this gate
         // Note: Gates can operated on row Curr or Curr and Next.
@@ -284,10 +275,6 @@ impl<F: PrimeField> CircuitGate<F> {
                 // See https://github.com/MinaProtocol/mina/issues/14011
                 vec![]
             }
-            GateType::CairoClaim => turshi::Claim::constraint_checks(&env, &mut cache),
-            GateType::CairoInstruction => turshi::Instruction::constraint_checks(&env, &mut cache),
-            GateType::CairoFlags => turshi::Flags::constraint_checks(&env, &mut cache),
-            GateType::CairoTransition => turshi::Transition::constraint_checks(&env, &mut cache),
             GateType::RangeCheck0 => {
                 range_check::circuitgates::RangeCheck0::constraint_checks(&env, &mut cache)
             }
@@ -369,8 +356,9 @@ pub trait Connect {
     /// - `left_rc`: the first row of the range check for the left input
     /// - `right_rc`: the first row of the range check for the right input
     /// - `out_rc`: the first row of the range check for the output of the addition
+    ///
     /// Note:
-    /// If run with `left_rc = None` and `right_rc = None` then it can be used for the bound check range check
+    ///   If run with `left_rc = None` and `right_rc = None` then it can be used for the bound check range check
     fn connect_ffadd_range_checks(
         &mut self,
         ffadd_row: usize,
@@ -567,14 +555,6 @@ mod tests {
     use mina_curves::pasta::Fp;
     use proptest::prelude::*;
     use rand::SeedableRng as _;
-
-    // TODO: move to mina-curves
-    prop_compose! {
-        pub fn arb_fp()(seed: [u8; 32]) -> Fp {
-            let rng = &mut rand::rngs::StdRng::from_seed(seed);
-            Fp::rand(rng)
-        }
-    }
 
     prop_compose! {
         fn arb_fp_vec(max: usize)(seed: [u8; 32], num in 0..max) -> Vec<Fp> {

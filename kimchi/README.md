@@ -1,24 +1,32 @@
 # Kimchi
 
-Kimchi is based on [plonk](https://eprint.iacr.org/2019/953.pdf), a zk-SNARK protocol.
+Kimchi is based on [PlonK](https://eprint.iacr.org/2019/953.pdf), a zk-SNARK
+protocol.
 
 ## Benchmarks
 
-To bench kimchi, we have two types of benchmark engines. 
+To bench kimchi, we have two types of benchmark engines.
 
-[Criterion](https://bheisler.github.io/criterion.rs/) is used to benchmark time:
+[Criterion](https://bheisler.github.io/criterion.rs/) is used to benchmark time.
+If you have installed
+[cargo-criterion](https://github.com/bheisler/cargo-criterion) and
+[gnuplot](http://www.gnuplot.info), you can run the benchmarks via
 
 ```console
 $ cargo criterion -p kimchi --bench proof_criterion
 ```
 
-The result will appear in `target/criterion/single\ proof/report/index.html` and look like this:
+The result will appear in `target/criterion/single\ proof/report/index.html` and
+look like this:
 
 ![criterion kimchi](https://i.imgur.com/OGqiuHD.png)
 
-Note that it only does 10 passes. To have more accurate statistics, remove the `.sample_size(10)` line from the [bench](benches/proof_criterion.rs).
+Note that it only does 10 passes. To have more accurate statistics, remove the
+`.sample_size(10)` line from the [bench](benches/proof_criterion.rs).
 
-The other benchmark uses [iai](https://github.com/bheisler/iai) to perform precise one-shot benchmarking. This is useful in CI, for example, where typical benchmarks are affected by the load of the host running CI.
+The other benchmark uses [iai](https://github.com/bheisler/iai) to perform
+precise one-shot benchmarking. This is useful in CI, for example, where typical
+benchmarks are affected by the load of the host running CI.
 
 ```console
 $ cargo bench -p kimchi --bench proof_iai
@@ -40,17 +48,18 @@ To obtain a flamegraph:
 
 1. [install required dependencies based on your OS](https://github.com/flamegraph-rs/flamegraph#installation)
 2. install cargo-flamegraph:
-    ```console
-    $ cargo install flamegraph
-    ```
+   ```console
+   $ cargo install flamegraph
+   ```
 3. run cargo flamegraph with `sudo` (or with the option `--root` on mac):
-    ```console
-    $ # flamegraph of the proof creation:
-    $ CARGO_PROFILE_RELEASE_DEBUG=true cargo flamegraph --bin flamegraph --notes "proof creation" -- prove
-    $ # flamegraph of the proof verification:
-    $ CARGO_PROFILE_RELEASE_DEBUG=true cargo flamegraph --bin flamegraph --notes "proof verification" -- verify
-    ```
-    the [binary](src/bin/flamegraph.rs) will run forever, so you have to C-c to exit and produce the `flamegraph.svg` file.
+   ```console
+   $ # flamegraph of the proof creation:
+   $ CARGO_PROFILE_RELEASE_DEBUG=true cargo flamegraph --bin flamegraph --notes "proof creation" -- prove
+   $ # flamegraph of the proof verification:
+   $ CARGO_PROFILE_RELEASE_DEBUG=true cargo flamegraph --bin flamegraph --notes "proof verification" -- verify
+   ```
+   the [binary](src/bin/flamegraph.rs) will run forever, so you have to C-c to
+   exit and produce the `flamegraph.svg` file.
 
-Note: lots of good advice on system performance in the [flamegraph repo](https://github.com/flamegraph-rs/flamegraph#systems-performance-work-guided-by-flamegraphs).
-
+Note: lots of good advice on system performance in the
+[flamegraph repo](https://github.com/flamegraph-rs/flamegraph#systems-performance-work-guided-by-flamegraphs).

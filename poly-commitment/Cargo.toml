@@ -1,23 +1,24 @@
 [package]
 name = "poly-commitment"
-version = "0.1.0"
-description = "An implementation of an inner-product argument polynomial commitment scheme, as used in kimchi"
-repository = "https://github.com/o1-labs/proof-systems"
-homepage = "https://o1-labs.github.io/proof-systems/"
-documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+description = "Library implementing different polynomial commitments schemes, like IPA and KZG10"
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
 readme = "../README.md"
-edition = "2021"
-license = "Apache-2.0"
+repository.workspace = true
+version.workspace = true
 
 [dependencies]
-ark-ff.workspace = true
 ark-ec.workspace = true
+ark-ff.workspace = true
 ark-poly.workspace = true
 ark-serialize.workspace = true
 
 blake2.workspace = true
+hex.workspace = true
 itertools.workspace = true
-once_cell.workspace = true
+num-bigint.workspace = true
 rand.workspace = true
 rand_core.workspace = true
 rayon.workspace = true
@@ -28,15 +29,14 @@ thiserror.workspace = true
 
 groupmap.workspace = true
 mina-curves.workspace = true
-o1-utils.workspace = true
 mina-poseidon.workspace = true
+o1-utils.workspace = true
 
 ocaml = { workspace = true, optional = true }
 ocaml-gen = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion.workspace = true
-colored.workspace = true
 rand_chacha.workspace = true
 ark-bn254.workspace = true
 
@@ -45,4 +45,12 @@ ocaml_types = ["ocaml", "ocaml-gen"]
 
 [[bench]]
 name = "poly_comm"
+harness = false
+
+[[bench]]
+name = "ipa"
+harness = false
+
+[[bench]]
+name = "msm"
 harness = false

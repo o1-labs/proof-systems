@@ -1,19 +1,20 @@
 //! This module implements Poseidon Hash Function primitive
 
+extern crate alloc;
+
 use crate::{
     constants::SpongeConstants,
     permutation::{full_round, poseidon_block_cipher},
 };
+use alloc::{vec, vec::Vec};
 use ark_ff::Field;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 
 /// Cryptographic sponge interface - for hashing an arbitrary amount of
 /// data into one or more field elements
-pub trait Sponge<Input: Field, Digest> {
+pub trait Sponge<Input: Field, Digest, const FULL_ROUNDS: usize> {
     /// Create a new cryptographic sponge using arithmetic sponge `params`
-    fn new(params: &'static ArithmeticSpongeParams<Input>) -> Self;
+    fn new(params: &'static ArithmeticSpongeParams<Input, FULL_ROUNDS>) -> Self;
 
     /// Absorb an array of field elements `x`
     fn absorb(&mut self, x: &[Input]);
@@ -25,8 +26,19 @@ pub trait Sponge<Input: Field, Digest> {
     fn reset(&mut self);
 }
 
-pub fn sbox<F: Field, SC: SpongeConstants>(x: F) -> F {
-    x.pow([SC::PERM_SBOX as u64])
+pub fn sbox<F: Field, SC: SpongeConstants>(mut x: F) -> F {
+    if SC::PERM_SBOX == 7 {
+        // This is much faster than using the generic `pow`. Hard-code to get the ~50% speed-up
+        // that it gives to hashing.
+        let mut square = x;
+        square.square_in_place();
+        x *= square;
+        square.square_in_place();
+        x *= square;
+        x
+    } else {
+        x.pow([u64::from(SC::PERM_SBOX)])
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -35,37 +47,39 @@ pub enum SpongeState {
     Squeezed(usize),
 }
 
-#[serde_as]
-#[derive(Clone, Serialize, Deserialize, Default, Debug)]
-pub struct ArithmeticSpongeParams<F: Field + CanonicalSerialize + CanonicalDeserialize> {
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub round_constants: Vec<Vec<F>>,
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub mds: Vec<Vec<F>>,
+#[derive(Clone, Debug)]
+pub struct ArithmeticSpongeParams<
+    F: Field + CanonicalSerialize + CanonicalDeserialize,
+    const FULL_ROUNDS: usize,
+> {
+    pub round_constants: [[F; 3]; FULL_ROUNDS],
+    pub mds: [[F; 3]; 3],
 }
 
 #[derive(Clone)]
-pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
+pub struct ArithmeticSponge<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize> {
     pub sponge_state: SpongeState,
     rate: usize,
     // TODO(mimoo: an array enforcing the width is better no? or at least an assert somewhere)
     pub state: Vec<F>,
-    params: &'static ArithmeticSpongeParams<F>,
-    pub constants: std::marker::PhantomData<SC>,
+    params: &'static ArithmeticSpongeParams<F, FULL_ROUNDS>,
+    pub constants: core::marker::PhantomData<SC>,
 }
 
-impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
+impl<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize> ArithmeticSponge<F, SC, FULL_ROUNDS> {
     pub fn full_round(&mut self, r: usize) {
-        full_round::<F, SC>(self.params, &mut self.state, r);
+        full_round::<F, SC, FULL_ROUNDS>(self.params, &mut self.state, r);
     }
 
-    fn poseidon_block_cipher(&mut self) {
-        poseidon_block_cipher::<F, SC>(self.params, &mut self.state);
+    pub fn poseidon_block_cipher(&mut self) {
+        poseidon_block_cipher::<F, SC, FULL_ROUNDS>(self.params, &mut self.state);
     }
 }
 
-impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
-    fn new(params: &'static ArithmeticSpongeParams<F>) -> ArithmeticSponge<F, SC> {
+impl<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize> Sponge<F, F, FULL_ROUNDS>
+    for ArithmeticSponge<F, SC, FULL_ROUNDS>
+{
+    fn new(params: &'static ArithmeticSpongeParams<F, FULL_ROUNDS>) -> Self {
         let capacity = SC::SPONGE_CAPACITY;
         let rate = SC::SPONGE_RATE;
 
@@ -75,30 +89,36 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
             state.push(F::zero());
         }
 
-        ArithmeticSponge {
+        Self {
             state,
             rate,
             sponge_state: SpongeState::Absorbed(0),
             params,
-            constants: std::marker::PhantomData,
+            constants: core::marker::PhantomData,
         }
     }
 
+    /// Absorb an array of field elements `x` into the sponge.
+    ///
+    /// # Security
+    /// **WARNING:** This function produces collisions when inputs differ only
+    /// in trailing zeros until reaching an even length input. Therefore, **use
+    /// only with inputs of fixed-length**.
     fn absorb(&mut self, x: &[F]) {
-        for x in x.iter() {
+        for elem in x {
             match self.sponge_state {
                 SpongeState::Absorbed(n) => {
                     if n == self.rate {
                         self.poseidon_block_cipher();
                         self.sponge_state = SpongeState::Absorbed(1);
-                        self.state[0].add_assign(x);
+                        self.state[0].add_assign(elem);
                     } else {
                         self.sponge_state = SpongeState::Absorbed(n + 1);
-                        self.state[n].add_assign(x);
+                        self.state[n].add_assign(elem);
                     }
                 }
                 SpongeState::Squeezed(_n) => {
-                    self.state[0].add_assign(x);
+                    self.state[0].add_assign(elem);
                     self.sponge_state = SpongeState::Absorbed(1);
                 }
             }

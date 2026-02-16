@@ -55,11 +55,10 @@ use ark_poly::{
     DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D,
 };
 use blake2::{Blake2b512, Digest};
+use core::array;
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
-use poly_commitment::OpenProof;
 use rand::{CryptoRng, RngCore};
 use rayon::prelude::*;
-use std::array;
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 3;
@@ -193,8 +192,11 @@ where
     }
 }
 
-impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
-    ProverIndex<G, OpeningProof>
+impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
+where
+    F: PrimeField,
+    G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    Srs: poly_commitment::SRS<G>,
 {
     /// permutation quotient poly contribution computation
     ///
@@ -257,29 +259,45 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
             // (w[1](x) + gamma + x * beta * shift[1]) * ...
             // (w[6](x) + gamma + x * beta * shift[6])
             // in evaluation form in d8
-            let mut shifts = lagrange.d8.this.z.clone();
-            for (witness, shift) in lagrange.d8.this.w.iter().zip(self.cs.shift.iter()) {
-                let term =
-                    &(witness + gamma) + &self.cs.precomputations().poly_x_d1.scale(beta * shift);
-                shifts = &shifts * &term;
-            }
+            let shifts: Evaluations<F, D<F>> = &lagrange
+                .d8
+                .this
+                .w
+                .par_iter()
+                .zip(self.cs.shift.par_iter())
+                .map(|(witness, shift)| {
+                    &(witness + gamma) + &self.cs.precomputations().poly_x_d1.scale(beta * shift)
+                })
+                .reduce_with(|mut l, r| {
+                    l *= &r;
+                    l
+                })
+                .unwrap()
+                * &lagrange.d8.this.z.clone();
 
             // sigmas = z(x * w) *
             // (w8[0] + gamma + sigma[0] * beta) *
             // (w8[1] + gamma + sigma[1] * beta) * ...
             // (w8[6] + gamma + sigma[6] * beta)
             // in evaluation form in d8
-            let mut sigmas = lagrange.d8.next.z.clone();
-            for (witness, sigma) in lagrange
+            let sigmas = &lagrange
                 .d8
                 .this
                 .w
-                .iter()
-                .zip(self.column_evaluations.permutation_coefficients8.iter())
-            {
-                let term = witness + &(gamma + &sigma.scale(beta));
-                sigmas = &sigmas * &term;
-            }
+                .par_iter()
+                .zip(
+                    self.column_evaluations
+                        .get()
+                        .permutation_coefficients8
+                        .par_iter(),
+                )
+                .map(|(witness, sigma)| witness + &(gamma + &sigma.scale(beta)))
+                .reduce_with(|mut l, r| {
+                    l *= &r;
+                    l
+                })
+                .unwrap()
+                * &lagrange.d8.next.z.clone();
 
             &(&shifts - &sigmas).scale(alpha0)
                 * &self.cs.precomputations().permutation_vanishing_polynomial_l
@@ -324,7 +342,6 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
 
             &bnd1.scale(alpha1) + &bnd2.scale(alpha2)
         };
-
         Ok((perm, bnd))
     }
 
@@ -348,7 +365,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
             .permutation_vanishing_polynomial_m
             .evaluate(&zeta);
         let scalar = ConstraintSystem::<F>::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
-        let evals8 = &self.column_evaluations.permutation_coefficients8[PERMUTS - 1].evals;
+        let evals8 = &self.column_evaluations.get().permutation_coefficients8[PERMUTS - 1].evals;
         const STRIDE: usize = 8;
         let n = evals8.len() / STRIDE;
         let evals = (0..n)
@@ -401,8 +418,11 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
-    ProverIndex<G, OpeningProof>
+impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
+where
+    F: PrimeField,
+    G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    Srs: poly_commitment::SRS<G>,
 {
     /// permutation aggregation polynomial computation
     ///
@@ -432,8 +452,6 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
 
         //~ The first evaluation represents the initial value of the accumulator:
         //~ $$z(g^0) = 1$$
-
-        let mut z = vec![F::one(); n];
 
         //~ For $i = 0, \cdot, n - 4$, where $n$ is the size of the domain,
         //~ evaluations are computed as:
@@ -468,15 +486,58 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         //~ \end{align}
         //~ $$
         //~
-        for j in 0..n - 1 {
-            z[j + 1] = witness
-                .iter()
-                .zip(self.column_evaluations.permutation_coefficients8.iter())
-                .map(|(w, s)| w[j] + (s[8 * j] * beta) + gamma)
-                .fold(F::one(), |x, y| x * y);
-        }
+
+        // We compute z such that:
+        // z[0] = 1
+        // z[j+1] = \Prod_{i=0}^{PERMUTS}(wit[i][j] + (s[i][8*j] * beta) + gamma)     for j ∈ 0..n-1
+        //
+        // We compute every product batch separately first (one batch
+        // per i∈[COLUMNS]), and then multiply all batches together.
+        //
+        // Note that we zip array of COLUMNS with array of PERMUTS;
+        // Since PERMUTS < COLUMNS, that's what's actually used.
+        let mut z: Vec<F> = witness
+            .par_iter()
+            .zip(
+                self.column_evaluations
+                    .get()
+                    .permutation_coefficients8
+                    .par_iter(),
+            )
+            .map(|(w_i, perm_coeffs8_i)| {
+                let mut output_vec: Vec<_> = vec![F::one(); 1];
+                for (j, w_i_j) in w_i.iter().enumerate().take(n - 1) {
+                    output_vec.push(*w_i_j + (perm_coeffs8_i[8 * j] * beta) + gamma);
+                }
+                output_vec
+            })
+            .reduce_with(|mut l, r| {
+                for i in 0..n {
+                    l[i] *= &r[i];
+                }
+                l
+            })
+            .unwrap();
 
         ark_ff::fields::batch_inversion::<F>(&mut z[1..n]);
+
+        let z_prefolded: Vec<F> = witness
+            .par_iter()
+            .zip(self.cs.shift.par_iter())
+            .map(|(w_i, shift_i)| {
+                let mut output_vec: Vec<_> = vec![F::one(); 1];
+                for (j, w_i_j) in w_i.iter().enumerate().take(n - 1) {
+                    output_vec.push(*w_i_j + (self.cs.sid[j] * beta * shift_i) + gamma);
+                }
+                output_vec
+            })
+            .reduce_with(|mut l, r| {
+                for i in 0..n {
+                    l[i] *= &r[i];
+                }
+                l
+            })
+            .unwrap();
 
         //~ We randomize the evaluations at `n - zk_rows + 1` and `n - zk_rows + 2` in order to add
         //~ zero-knowledge to the protocol.
@@ -484,11 +545,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         for j in 0..n - 1 {
             if j != n - zk_rows && j != n - zk_rows + 1 {
                 let x = z[j];
-                z[j + 1] *= witness
-                    .iter()
-                    .zip(self.cs.shift.iter())
-                    .map(|(w, s)| w[j] + (self.cs.sid[j] * beta * s) + gamma)
-                    .fold(x, |z, y| z * y);
+                z[j + 1] *= z_prefolded[j + 1] * x;
             } else {
                 z[j + 1] = F::rand(rng);
             }
@@ -501,6 +558,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
         };
 
         let res = Evaluations::<F, D<F>>::from_vec_and_domain(z, self.cs.domain.d1).interpolate();
+
         Ok(res)
     }
 }

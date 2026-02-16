@@ -1,21 +1,21 @@
+use super::framework::TestFramework;
 use crate::circuits::{
     gate::{CircuitGate, GateType},
     wires::*,
 };
-use ark_ec::{AffineRepr, CurveGroup};
+use ark_ec::{AdditiveGroup, AffineRepr, CurveGroup};
 use ark_ff::{Field, One, UniformRand, Zero};
+use core::{array, ops::Mul};
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use std::{array, ops::Mul};
-
-use super::framework::TestFramework;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type ScalarSponge = DefaultFrSponge<F, SpongeParams, FULL_ROUNDS>;
 
 // Tests add and double gates
 #[test]
@@ -118,7 +118,7 @@ fn ec_test() {
     }
 
     for &p in ps.iter().take(num_infs) {
-        let q = -p;
+        let q: Other = -p;
 
         let p2: Other = (p + p).into();
         let (x1, y1) = (p.x, p.y);
@@ -144,7 +144,7 @@ fn ec_test() {
         witness[14].push(F::zero());
     }
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()

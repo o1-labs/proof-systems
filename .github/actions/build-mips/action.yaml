@@ -1,0 +1,42 @@
+name: 'Build MIPS Programs'
+description: 'Builds MIPS programs for testing'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Cache apt packages (Linux)
+      if: runner.os == 'Linux'
+      uses: actions/cache@v4
+      with:
+        path: |
+          /var/cache/apt/archives/*.deb
+        key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/o1vm-mips-build.yml') }}
+
+    - name: Install MIPS tools (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y binutils-mips-linux-gnu
+
+    - name: Install MIPS tools (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        # Pull the dockcross MIPS image for cross-compilation
+        docker pull dockcross/linux-mips:latest
+
+    - name: Build MIPS programs (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: make build-mips-programs
+
+    - name: Build MIPS programs (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        # Use dockcross Docker image for MIPS cross-compilation on macOS
+        docker run --rm -v $(pwd):/work dockcross/linux-mips:latest bash -c "
+          cd /work &&
+          make build-mips-programs MIPS_AS=mips-linux-gnu-as MIPS_LD=mips-linux-gnu-ld
+        "

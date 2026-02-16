@@ -5,17 +5,18 @@ use crate::circuits::{
     wires::{Wire, COLUMNS},
 };
 use ark_ff::{UniformRand, Zero};
+use core::array;
 use itertools::iterate;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
 fn test_generic_gate_with_srs_override(
     circuit_size_log_2: usize,
@@ -76,7 +77,7 @@ fn test_generic_gate_with_srs_override(
     }
 
     // create and verify proof based on the witness
-    let framework = TestFramework::<Vesta>::default()
+    let framework = TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(public);
@@ -104,7 +105,7 @@ fn test_2_to_18_chunked_generic_gate_pub() {
 }*/
 
 #[test]
-fn test_2_to_17_chunked_generic_gate_pub() {
+fn heavy_test_2_to_17_chunked_generic_gate_pub() {
     test_generic_gate_with_srs_override(17, Some(1 << 16))
 }
 

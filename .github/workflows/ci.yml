@@ -2,7 +2,15 @@ name: CI
 
 on:
   workflow_dispatch:
+  # Trigger after nightly runs to rebuild the cache
+  workflow_run:
+    workflows: [Nightly tests with the code coverage]
+    types: [completed]
   pull_request:
+  merge_group:
+  push:
+    branches:
+      - master
 
 concurrency:
   group: ${{ github.ref }}
@@ -17,134 +25,254 @@ env:
   CARGO_TERM_COLOR: always
   # 30 MB of stack for Keccak tests
   RUST_MIN_STACK: 31457280
+  CARGO_EXTRA_ARGS: '--workspace'
 
 jobs:
-  run_mdbook:
-    name: Building MDBook
+  define-matrix:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust_toolchain_version: ["1.72"]
+    outputs:
+      ocaml_version: ${{ steps.ocaml.outputs.version }}
+      node: ${{ steps.node.outputs.version }}
+      matrix: ${{ steps.matrix.outputs.value }}
+      default_rust_version: ${{ steps.defaults.outputs.rust_version }}
+      default_os: ${{ steps.defaults.outputs.os }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Use shared Rust toolchain setting up steps
-        uses: ./.github/actions/toolchain-shared
-        with:
-          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
-
-      - name: Build the mdbook
+      # FIXME: currently not available for 5.0.0.
+      # It might be related to boxroot dependency, and we would need to bump
+      # up the ocaml-rs dependency
+      - id: ocaml
+        run: echo 'version=["4.14.2"]' >> "$GITHUB_OUTPUT"
+      - id: node
+        run: echo 'version=["24"]' >> "$GITHUB_OUTPUT"
+      - id: defaults
         run: |
-          cd book
-          make deps
-          make build
-
-  run_formatting:
-    name: Formatting
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust_toolchain_version: ["nightly"]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Use shared Rust toolchain setting up steps
-        uses: ./.github/actions/toolchain-shared
-        with:
-          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
-
-      - name: Run cargo fmt
+          echo 'rust_version=1.92' >> "$GITHUB_OUTPUT"
+          echo 'os=ubuntu-latest' >> "$GITHUB_OUTPUT"
+      - id: matrix
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
         run: |
-          make format
+          # Build matrix: 1.92/stable/beta for Ubuntu, stable/beta for macOS
+          # We keep 1.92 to match mina-rust and MinaProtocol/mina.
+          # Skip macOS on PRs to improve CI velocity (macOS runners are limited)
+          # macOS runs on master pushes only
+          if [[ "$EVENT_NAME" == "push" && "$REF" == "refs/heads/master" ]]; then
+            cat > matrix.json << 'EOF'
+          {
+            "include": [
+              {"rust_toolchain_version": "1.92", "os": "ubuntu-latest"},
+              {"rust_toolchain_version": "stable", "os": "ubuntu-latest"},
+              {"rust_toolchain_version": "beta", "os": "ubuntu-latest"},
+              {"rust_toolchain_version": "1.92", "os": "macos-latest"},
+              {"rust_toolchain_version": "stable", "os": "macos-latest"},
+              {"rust_toolchain_version": "beta", "os": "macos-latest"}
+            ]
+          }
+          EOF
+          else
+            cat > matrix.json << 'EOF'
+          {
+            "include": [
+              {"rust_toolchain_version": "1.92", "os": "ubuntu-latest"},
+              {"rust_toolchain_version": "stable", "os": "ubuntu-latest"},
+              {"rust_toolchain_version": "beta", "os": "ubuntu-latest"}
+            ]
+          }
+          EOF
+          fi
+          echo "value=$(cat matrix.json | jq -c .)" >> "$GITHUB_OUTPUT"
 
-  run_checks:
-    name: Run checks and tests
-    # We run only one of the matrix options on the toffee `hetzner-1` self-hosted GitHub runner.
-    # Only in this configuration we enable tests with the code coverage data gathering.
-    # runs-on: [hetzner-proof-systems-runners-group-1]
-    runs-on: ${{ matrix.rust_toolchain_version == '1.74' && 'hetzner-1' || 'ubuntu-latest' }}
-    env:
-      RUST_TOOLCHAIN_COVERAGE_VERSION: "1.74"
+  refresh-cache:
+    needs: ['define-matrix']
+    strategy:
+      matrix: ${{ fromJSON(needs.define-matrix.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      # if 'workflow_run'
+
+      - uses: actions/checkout@v6
+        if: ${{ github.event_name == 'workflow_run' }}
+      - uses: ./.github/actions/toolchain-shared
+        if: ${{ github.event_name == 'workflow_run' }}
+        with:
+          rust_toolchain_version: ${{ matrix.rust_and_os.rust_toolchain_version }}
+      - name: start-fresh
+        if: ${{ github.event_name == 'workflow_run' }}
+        shell: bash
+        run: cargo clean
+
+      # else
+
+      - name: skip-refresh
+        if: ${{ github.event_name != 'workflow_run' }}
+        shell: bash
+        run: echo 'no need to refresh'
+
+  doc-and-spec:
+    needs: ['define-matrix', 'refresh-cache']
     strategy:
       matrix:
-        rust_toolchain_version: ["1.71", "1.72", "1.73", "1.74"]
-        # FIXME: currently not available for 5.0.0.
-        # It might be related to boxroot dependency, and we would need to bump
-        # up the ocaml-rs dependency
-        ocaml_version: ["4.14"]
-        node: [20]
+        rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
+        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
+        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
+    runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
       - name: Set up NodeJS
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
+          rust_toolchain_version: ${{ matrix.rust_and_os.rust_toolchain_version }}
 
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:
           ocaml_version: ${{ matrix.ocaml_version }}
 
-      - name: Install markdownlint
-        run: |
-          # FIXME: 0.39.0 makes the CI fail
-          npm install -g markdownlint-cli@0.38.0
-
       #
       # Doc & Spec
       #
 
-      - name: Install cargo-spec for specifications
+      - name: Doc tests
         run: |
           eval $(opam env)
-          cargo install --locked cargo-spec
+          make test-doc
 
-      - name: Build the kimchi specification
-        run: |
-          cd book/specifications/kimchi
-          make build
-
-      - name: Build the polynomial commitment specification
-        run: |
-          cd book/specifications/poly-commitment
-          make build
-
-      - name: Check that up-to-date specification is checked in
-        run: |
-          git diff --exit-code ":(exclude)rust-toolchain"
-
-      - name: Build cargo docs
+      - name: Generate docs
         run: |
           eval $(opam env)
-          RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps
+          make generate-doc
 
       #
-      # Coding guidelines
+      # Docusaurus Book
       #
 
-      - name: Lint (clippy)
+      - name: Build the book
+        run: |
+          cd book
+          make deps
+          make build
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: ['define-matrix', 'doc-and-spec']
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Set up NodeJS
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ fromJSON(needs.define-matrix.outputs.node)[0] }}
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ needs.define-matrix.outputs.default_rust_version }}
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version)[0] }}
+
+      - name: Generate rustdoc
         run: |
           eval $(opam env)
-          make lint
+          make generate-doc
 
+      - name: Build the book
+        run: |
+          cd book
+          make deps
+          make build
+
+      - name: Copy rustdoc into book directory
+        run: cp -r ./target/doc ./book/build/rustdoc
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./book/build
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Tracking issue: https://github.com/o1-labs/mina-rust/issues/1984
+  no-std-check:
+    name: "no_std: ${{ matrix.crate.name }}"
+    needs: ['refresh-cache']
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        crate:
+          # Crates with no-std feature
+          - { name: "groupmap", path: "groupmap" }
+          - { name: "mina-hasher", path: "hasher" } # https://github.com/o1-labs/mina-rust/issues/1994
+          - { name: "mina-poseidon", path: "poseidon" } # https://github.com/o1-labs/mina-rust/issues/1996
+          - { name: "mina-signer", path: "signer" } # https://github.com/o1-labs/mina-rust/issues/1995
+          - { name: "mina-tx-type", path: "mina-tx-type" }
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: stable
+
+      - name: Check ${{ matrix.crate.name }} (no_std)
+        run: |
+          cd ${{ matrix.crate.path }}
+          cargo check --no-default-features
+
+  build:
+    needs: ['define-matrix', 'refresh-cache', 'no-std-check']
+    strategy:
+      matrix:
+        rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
+        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
+        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
+    runs-on: ${{ matrix.rust_and_os.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_and_os.rust_toolchain_version }}
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ matrix.ocaml_version }}
       #
       # Build
       #
@@ -154,44 +282,48 @@ jobs:
           eval $(opam env)
           make
 
+      - name: Ensure that kimchi-stubs can be built with xtask
+        run: |
+          eval $(opam env)
+          cargo run -p xtask -- build-kimchi-stubs
+
+  tests:
+    needs: ['define-matrix', 'refresh-cache']
+    strategy:
+      matrix:
+        rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
+        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
+        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
+    runs-on: ${{ matrix.rust_and_os.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_and_os.rust_toolchain_version }}
+          components: llvm-tools-preview
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ matrix.ocaml_version }}
       #
       # Tests
       #
 
-      - name: Install test dependencies
-        run: |
-          make install-test-deps
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest@0.9.67, grcov@0.8.13
 
-      - name: Doc tests
-        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
-        run: |
-          eval $(opam env)
-          make test-doc
+      - name: Build the MIPS binaries
+        if: runner.os == 'Linux'
+        uses: ./.github/actions/build-mips
 
       - name: Run non-heavy tests without the code coverage
-        if: ${{ matrix.rust_toolchain_version != env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
         run: |
           eval $(opam env)
           make nextest
-
-      - name: Run heavy tests without the code coverage
-        if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
-        run: |
-          eval $(opam env)
-          make nextest-heavy
-          # TODO: Re-enable this for tests with coverage data gathering.
-          # TODO: We intentionally disable the tests with the code coverage data gathering because
-          # TODO:   Rust's code coverage instrumentation is not compatible with some of the optimizations that occur during release builds.
-          # make nextest-with-coverage
-          # make test-doc-with-coverage
-          # make generate-test-coverage-report
-
-      # - name: Use shared code coverage summary
-      #   if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
-      #   uses: ./.github/actions/coverage-summary-shared
-
-      # - name: Use shared Codecov reporting steps
-      #   if: ${{ matrix.rust_toolchain_version == env.RUST_TOOLCHAIN_COVERAGE_VERSION }}
-      #   uses: ./.github/actions/codecov-shared
-      #   with:
-      #     token: ${{ secrets.CODECOV_TOKEN }}

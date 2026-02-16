@@ -6,19 +6,20 @@ use crate::{
     },
     tests::framework::TestFramework,
 };
-use ark_ec::{AffineRepr, CurveGroup};
-use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
+use ark_ec::{AdditiveGroup, AffineRepr, CurveGroup};
+use ark_ff::{BigInteger, BitIteratorLE, One, PrimeField, UniformRand, Zero};
+use core::{array, ops::Mul};
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
-use poly_commitment::srs::endos;
-use std::{array, ops::Mul};
+use poly_commitment::ipa::endos;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type ScalarSponge = DefaultFrSponge<F, SpongeParams, FULL_ROUNDS>;
 
 #[test]
 fn endomul_test() {
@@ -65,12 +66,13 @@ fn endomul_test() {
         )
         .unwrap();
 
-        let x_scalar = ScalarChallenge(x).to_field(&endo_r);
+        let x_scalar = ScalarChallenge::new(x).to_field(&endo_r);
 
         let base = Other::generator();
         // let g = Other::generator().into_group();
         let acc0 = {
             let t = Other::new_unchecked(endo_q * base.x, base.y);
+            // Ensuring we use affine coordinates
             let p = t + base;
             let acc: Other = (p + p).into();
             (acc.x, acc.y)
@@ -108,7 +110,7 @@ fn endomul_test() {
         assert_eq!(x.into_bigint(), res.n.into_bigint());
     }
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()

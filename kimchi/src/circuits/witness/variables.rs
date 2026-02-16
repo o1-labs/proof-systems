@@ -1,4 +1,3 @@
-use ark_ff::Field;
 /// Layout variable handling
 ///
 ///   First, you use "anchor" names for the variables when specifying
@@ -50,28 +49,28 @@ use std::{
 ///
 ///   Map of witness values (used by VariableCells)
 ///     name (String) -> value (F)
-pub struct Variables<'a, F: Field>(HashMap<&'a str, F>);
+pub struct Variables<'a, T>(HashMap<&'a str, T>);
 
-impl<'a, F: Field> Variables<'a, F> {
+impl<'a, T> Variables<'a, T> {
     /// Create a layout variable map
-    pub fn create() -> Variables<'a, F> {
+    pub fn create() -> Variables<'a, T> {
         Variables(HashMap::new())
     }
 
     /// Insert a variable and corresponding value into the variable map
-    pub fn insert(&mut self, name: &'a str, value: F) {
+    pub fn insert(&mut self, name: &'a str, value: T) {
         self.0.insert(name, value);
     }
 }
 
-impl<'a, F: Field> Index<&'a str> for Variables<'a, F> {
-    type Output = F;
+impl<'a, T> Index<&'a str> for Variables<'a, T> {
+    type Output = T;
     fn index(&self, name: &'a str) -> &Self::Output {
         &self.0[name]
     }
 }
 
-impl<'a, F: Field> IndexMut<&'a str> for Variables<'a, F> {
+impl<'a, T> IndexMut<&'a str> for Variables<'a, T> {
     fn index_mut(&mut self, name: &'a str) -> &mut Self::Output {
         self.0.get_mut(name).expect("failed to get witness value")
     }

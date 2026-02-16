@@ -23,9 +23,36 @@ build
 *.swp
 *.swo
 .vscode
+.envrc
+.direnv
 
 *.html
 # If symlink created for kimchi-visu
 tools/srs
 
 .ignore
+o1vm/env-for-*
+o1vm/cpu.pprof
+o1vm/snapshot-state*
+o1vm/rpcs.sh
+o1vm/meta.json
+o1vm/out.json
+o1vm/op-program-db*
+o1vm/state.json
+meta.json
+state.json
+o1vm/meta_test.json
+
+# Directory for the RISC-V 32bits toolchain
+_riscv32-gnu-toolchain
+o1vm/resources/programs/riscv32im/bin/*.o
+
+# modified assembly files generated from cannon's open mips tests
+o1vm/resources/programs/mips/src
+# mips binary files for open mips tests
+o1vm/resources/programs/mips/bin
+
+CLAUDE.md
+
+# Node.js
+node_modules/

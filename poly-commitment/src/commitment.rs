@@ -1,46 +1,109 @@
 //! This module implements Dlog-based polynomial commitment schema.
-//! The folowing functionality is implemented
+//! The following functionality is implemented
 //!
 //! 1. Commit to polynomial with its max degree
-//! 2. Open polynomial commitment batch at the given evaluation point and scaling factor scalar
-//!     producing the batched opening proof
+//! 2. Open polynomial commitment batch at the given evaluation point and
+//!    scaling factor scalar producing the batched opening proof
 //! 3. Verify batch of batched opening proofs
 
-use crate::{
-    error::CommitmentError,
-    srs::{endos, SRS},
-    SRS as SRSTrait,
-};
 use ark_ec::{
     models::short_weierstrass::Affine as SWJAffine, short_weierstrass::SWCurveConfig, AffineRepr,
     CurveGroup, VariableBaseMSM,
 };
-use ark_ff::{BigInteger, Field, One, PrimeField, UniformRand, Zero};
-use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
-};
+use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
+use ark_poly::univariate::DensePolynomial;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use core::ops::{Add, AddAssign, Sub};
 use groupmap::{BWParameters, GroupMap};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use o1_utils::{math, ExtendedDensePolynomial as _};
-use rand_core::{CryptoRng, RngCore};
+use o1_utils::{field_helpers::product, ExtendedDensePolynomial as _};
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
-use std::iter::Iterator;
+use serde::{de::Visitor, Deserialize, Serialize};
+use serde_with::{
+    de::DeserializeAsWrap, ser::SerializeAsWrap, serde_as, DeserializeAs, SerializeAs,
+};
+use std::{
+    iter::Iterator,
+    marker::PhantomData,
+    ops::{Add, AddAssign, Sub},
+};
 
-use super::evaluation_proof::*;
-
-/// A polynomial commitment.
+/// Represent a polynomial commitment when the type is instantiated with a
+/// curve.
+///
+/// The structure also handles chunking, i.e. when we aim to handle polynomials
+/// whose degree is higher than the SRS size. For this reason, we do use a
+/// vector for the field `chunks`.
+///
+/// Note that the parameter `C` is not constrained to be a curve, therefore in
+/// some places in the code, `C` can refer to a scalar field element. For
+/// instance, `PolyComm<G::ScalarField>` is used to represent the evaluation of
+/// the polynomial bound by a specific commitment, at a particular evaluation
+/// point.
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(bound = "C: CanonicalDeserialize + CanonicalSerialize")]
 pub struct PolyComm<C> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub elems: Vec<C>,
+    pub chunks: Vec<C>,
 }
 
+impl<C> PolyComm<C>
+where
+    C: CommitmentCurve,
+{
+    /// Multiplies each commitment chunk of f with powers of zeta^n
+    #[must_use]
+    pub fn chunk_commitment(&self, zeta_n: C::ScalarField) -> Self {
+        let mut res = C::Group::zero();
+        // use Horner's to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...
+        // as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]
+        // (https://en.wikipedia.org/wiki/Horner%27s_method)
+        for chunk in self.chunks.iter().rev() {
+            res *= zeta_n;
+            res.add_assign(chunk);
+        }
+
+        Self {
+            chunks: vec![res.into_affine()],
+        }
+    }
+}
+
+impl<F> PolyComm<F>
+where
+    F: Field,
+{
+    /// Multiplies each blinding chunk of f with powers of zeta^n
+    pub fn chunk_blinding(&self, zeta_n: F) -> F {
+        let mut res = F::zero();
+        // use Horner's to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...
+        // as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]
+        // (https://en.wikipedia.org/wiki/Horner%27s_method)
+        for chunk in self.chunks.iter().rev() {
+            res *= zeta_n;
+            res += chunk;
+        }
+        res
+    }
+}
+
+impl<G> PolyComm<G> {
+    /// Returns an iterator over the chunks.
+    pub fn iter(&self) -> std::slice::Iter<'_, G> {
+        self.chunks.iter()
+    }
+}
+
+impl<'a, G> IntoIterator for &'a PolyComm<G> {
+    type Item = &'a G;
+    type IntoIter = std::slice::Iter<'a, G>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.chunks.iter()
+    }
+}
+
+/// A commitment to a polynomial with some blinding factors.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BlindedCommitment<G>
 where
@@ -51,56 +114,129 @@ where
 }
 
 impl<T> PolyComm<T> {
-    pub fn new(elems: Vec<T>) -> Self {
-        Self { elems }
+    #[must_use]
+    pub const fn new(chunks: Vec<T>) -> Self {
+        Self { chunks }
     }
 }
 
-impl<A: Clone> PolyComm<A>
+impl<T, U> SerializeAs<PolyComm<T>> for PolyComm<U>
 where
-    A: CanonicalDeserialize + CanonicalSerialize,
+    U: SerializeAs<T>,
 {
+    fn serialize_as<S>(source: &PolyComm<T>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_seq(
+            source
+                .chunks
+                .iter()
+                .map(|e| SerializeAsWrap::<T, U>::new(e)),
+        )
+    }
+}
+
+impl<'de, T, U> DeserializeAs<'de, PolyComm<T>> for PolyComm<U>
+where
+    U: DeserializeAs<'de, T>,
+{
+    fn deserialize_as<D>(deserializer: D) -> Result<PolyComm<T>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct SeqVisitor<T, U> {
+            marker: PhantomData<(T, U)>,
+        }
+
+        impl<'de, T, U> Visitor<'de> for SeqVisitor<T, U>
+        where
+            U: DeserializeAs<'de, T>,
+        {
+            type Value = PolyComm<T>;
+
+            fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                formatter.write_str("a sequence")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                #[allow(clippy::redundant_closure_call)]
+                let mut chunks = vec![];
+
+                while let Some(value) = seq
+                    .next_element()?
+                    .map(|v: DeserializeAsWrap<T, U>| v.into_inner())
+                {
+                    chunks.push(value);
+                }
+
+                Ok(PolyComm::new(chunks))
+            }
+        }
+
+        let visitor = SeqVisitor::<T, U> {
+            marker: PhantomData,
+        };
+        deserializer.deserialize_seq(visitor)
+    }
+}
+
+impl<A: Copy + Clone + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
     pub fn map<B, F>(&self, mut f: F) -> PolyComm<B>
     where
         F: FnMut(A) -> B,
         B: CanonicalDeserialize + CanonicalSerialize,
     {
-        let elems = self.elems.iter().map(|x| f(x.clone())).collect();
-        PolyComm { elems }
+        let chunks = self.chunks.iter().map(|x| f(*x)).collect();
+        PolyComm::new(chunks)
     }
 
-    /// Returns the length of the commitment.
-    pub fn len(&self) -> usize {
-        self.elems.len()
+    /// Returns the number of chunks.
+    #[must_use]
+    pub const fn len(&self) -> usize {
+        self.chunks.len()
     }
 
     /// Returns `true` if the commitment is empty.
-    pub fn is_empty(&self) -> bool {
-        self.elems.is_empty()
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.chunks.is_empty()
     }
-}
 
-impl<A: Copy + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
-    // TODO: if all callers end up calling unwrap, just call this zip_eq and panic here (and document the panic)
+    // TODO: if all callers end up calling unwrap, just call this zip_eq and
+    // panic here (and document the panic)
+    #[must_use]
     pub fn zip<B: Copy + CanonicalDeserialize + CanonicalSerialize>(
         &self,
         other: &PolyComm<B>,
     ) -> Option<PolyComm<(A, B)>> {
-        if self.elems.len() != other.elems.len() {
+        if self.chunks.len() != other.chunks.len() {
             return None;
         }
-        let elems = self
-            .elems
+        let chunks = self
+            .chunks
             .iter()
-            .zip(other.elems.iter())
+            .zip(other.chunks.iter())
             .map(|(x, y)| (*x, *y))
             .collect();
-        Some(PolyComm { elems })
+        Some(PolyComm::new(chunks))
+    }
+
+    /// Return only the first chunk.
+    ///
+    /// Getting this single value is relatively common in the codebase, even
+    /// though we should not do this, and abstract the chunks in the structure.
+    #[must_use]
+    pub fn get_first_chunk(&self) -> A {
+        self.chunks[0]
     }
 }
 
-/// Inside the circuit, we have a specialized scalar multiplication which computes
-/// either
+/// Inside the circuit, we have a specialized scalar multiplication which
+/// computes either
 ///
 /// ```ignore
 /// |g: G, x: G::ScalarField| g.scale(x + 2^n)
@@ -113,9 +249,10 @@ impl<A: Copy + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
 /// |g: G, x: G::ScalarField| g.scale(2*x + 2^n)
 /// ```
 ///
-/// otherwise. So, if we want to actually scale by `s`, we need to apply the inverse function
-/// of `|x| x + 2^n` (or of `|x| 2*x + 2^n` in the other case), before supplying the scalar
-/// to our in-circuit scalar-multiplication function. This computes that inverse function.
+/// otherwise. So, if we want to actually scale by `x`, we need to apply the
+/// inverse function of `|x| x + 2^n` (or of `|x| 2*x + 2^n` in the other case),
+/// before supplying the scalar to our in-circuit scalar-multiplication
+/// function. This computes that inverse function.
 /// Namely,
 ///
 /// ```ignore
@@ -138,7 +275,7 @@ where
         &<G::BaseField as PrimeField>::MODULUS.to_bits_le()[..],
     );
     let two: G::ScalarField = (2u64).into();
-    let two_pow = two.pow([<G::ScalarField as PrimeField>::MODULUS_BIT_SIZE as u64]);
+    let two_pow = two.pow([u64::from(<G::ScalarField as PrimeField>::MODULUS_BIT_SIZE)]);
     if n1 < n2 {
         (x - (two_pow + G::ScalarField::one())) / two
     } else {
@@ -146,62 +283,67 @@ where
     }
 }
 
-impl<'a, 'b, C: AffineRepr> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
+impl<'a, C: AffineRepr> Add<&'a PolyComm<C>> for &PolyComm<C> {
     type Output = PolyComm<C>;
 
     fn add(self, other: &'a PolyComm<C>) -> PolyComm<C> {
-        let mut elems = vec![];
-        let n1 = self.elems.len();
-        let n2 = other.elems.len();
+        let mut chunks = vec![];
+        let n1 = self.chunks.len();
+        let n2 = other.chunks.len();
         for i in 0..std::cmp::max(n1, n2) {
             let pt = if i < n1 && i < n2 {
-                (self.elems[i] + other.elems[i]).into_affine()
+                (self.chunks[i] + other.chunks[i]).into_affine()
             } else if i < n1 {
-                self.elems[i]
+                self.chunks[i]
             } else {
-                other.elems[i]
+                other.chunks[i]
             };
-            elems.push(pt);
+            chunks.push(pt);
         }
-        PolyComm { elems }
+        PolyComm::new(chunks)
     }
 }
 
-impl<'a, 'b, C: AffineRepr + Sub<Output = C::Group>> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
+impl<'a, C: AffineRepr + Sub<Output = C::Group>> Sub<&'a PolyComm<C>> for &PolyComm<C> {
     type Output = PolyComm<C>;
 
     fn sub(self, other: &'a PolyComm<C>) -> PolyComm<C> {
-        let mut elems = vec![];
-        let n1 = self.elems.len();
-        let n2 = other.elems.len();
+        let mut chunks = vec![];
+        let n1 = self.chunks.len();
+        let n2 = other.chunks.len();
         for i in 0..std::cmp::max(n1, n2) {
             let pt = if i < n1 && i < n2 {
-                (self.elems[i] - other.elems[i]).into_affine()
+                (self.chunks[i] - other.chunks[i]).into_affine()
             } else if i < n1 {
-                self.elems[i]
+                self.chunks[i]
             } else {
-                other.elems[i]
+                other.chunks[i]
             };
-            elems.push(pt);
+            chunks.push(pt);
         }
-        PolyComm { elems }
+        PolyComm::new(chunks)
     }
 }
 
 impl<C: AffineRepr> PolyComm<C> {
-    pub fn scale(&self, c: C::ScalarField) -> PolyComm<C> {
-        PolyComm {
-            elems: self.elems.iter().map(|g| g.mul(c).into_affine()).collect(),
+    #[must_use]
+    pub fn scale(&self, c: C::ScalarField) -> Self {
+        Self {
+            chunks: self.chunks.iter().map(|g| g.mul(c).into_affine()).collect(),
         }
     }
 
-    /// Performs a multi-scalar multiplication between scalars `elm` and commitments `com`.
-    /// If both are empty, returns a commitment of length 1 containing the point at infinity.
+    /// Performs a multi-scalar multiplication between scalars `elm` and
+    /// commitments `com`.
+    ///
+    /// If both are empty, returns a commitment of length 1
+    /// containing the point at infinity.
     ///
     /// ## Panics
     ///
     /// Panics if `com` and `elm` are not of the same size.
-    pub fn multi_scalar_mul(com: &[&PolyComm<C>], elm: &[C::ScalarField]) -> Self {
+    #[must_use]
+    pub fn multi_scalar_mul(com: &[&Self], elm: &[C::ScalarField]) -> Self {
         assert_eq!(com.len(), elm.len());
 
         if com.is_empty() || elm.is_empty() {
@@ -210,36 +352,65 @@ impl<C: AffineRepr> PolyComm<C> {
 
         let all_scalars: Vec<_> = elm.iter().map(|s| s.into_bigint()).collect();
 
-        let elems_size = Iterator::max(com.iter().map(|c| c.elems.len())).unwrap();
-        let mut elems = Vec::with_capacity(elems_size);
+        let elems_size = Iterator::max(com.iter().map(|c| c.chunks.len())).unwrap();
 
-        for chunk in 0..elems_size {
-            let (points, scalars): (Vec<_>, Vec<_>) = com
-                .iter()
-                .zip(&all_scalars)
-                // get rid of scalars that don't have an associated chunk
-                .filter_map(|(com, scalar)| com.elems.get(chunk).map(|c| (c, scalar)))
-                .unzip();
+        let chunks = (0..elems_size)
+            .map(|chunk| {
+                let (points, scalars): (Vec<_>, Vec<_>) = com
+                    .iter()
+                    .zip(&all_scalars)
+                    // get rid of scalars that don't have an associated chunk
+                    .filter_map(|(com, scalar)| com.chunks.get(chunk).map(|c| (c, scalar)))
+                    .unzip();
 
-            let chunk_msm = C::Group::msm_bigint(&points, &scalars);
-            elems.push(chunk_msm.into_affine());
-        }
-        Self::new(elems)
+                // Splitting into 2 chunks seems optimal; but in
+                // practice elems_size is almost always 1
+                //
+                // (see the comment to the `benchmark_msm_parallel_vesta` MSM benchmark)
+                let subchunk_size = std::cmp::max(points.len() / 2, 1);
+
+                points
+                    .into_par_iter()
+                    .chunks(subchunk_size)
+                    .zip(scalars.into_par_iter().chunks(subchunk_size))
+                    .map(|(psc, ssc)| C::Group::msm_bigint(&psc, &ssc).into_affine())
+                    .reduce(C::zero, |x, y| (x + y).into())
+            })
+            .collect();
+
+        Self::new(chunks)
     }
 }
 
-/// Returns the product of all the field elements belonging to an iterator.
-pub fn product<F: Field>(xs: impl Iterator<Item = F>) -> F {
-    let mut res = F::one();
-    for x in xs {
-        res *= &x;
-    }
-    res
-}
-
-/// Returns (1 + chal[-1] x)(1 + chal[-2] x^2)(1 + chal[-3] x^4) ...
-/// It's "step 8: Define the univariate polynomial" of
-/// appendix A.2 of <https://eprint.iacr.org/2020/499>
+/// Evaluates the challenge polynomial `b(X)` at point `x`.
+///
+/// The challenge polynomial is defined as:
+/// ```text
+/// b(X) = prod_{i=0}^{k-1} (1 + u_{k-i} * X^{2^i})
+/// ```
+/// where `chals = [u_1, ..., u_k]` are the IPA challenges.
+///
+/// This polynomial was introduced in Section 3.2 of the
+/// [Halo paper](https://eprint.iacr.org/2019/1021.pdf) as part of the Inner Product
+/// Argument. It efficiently encodes the folded evaluation point: after `k` rounds
+/// of IPA, the evaluation point vector is reduced to a single value `b(x)`.
+///
+/// The polynomial has degree `2^k - 1` and can be evaluated in `O(k)` field
+/// operations using the product form above. Its coefficients can be computed
+/// using [`b_poly_coefficients`].
+///
+/// # Usage
+///
+/// - In the verifier (`ipa.rs`), `b_poly` is called to compute evaluations at
+///   the challenge points (e.g., `zeta`, `zeta * omega`).
+/// - In `RecursionChallenge::evals`, it computes evaluations for the batched
+///   polynomial commitment check.
+///
+/// # References
+/// - [Halo paper, Section 3.2](https://eprint.iacr.org/2019/1021.pdf) - original
+///   definition of the challenge polynomial
+/// - [PCD paper, Appendix A.2, Step 8](https://eprint.iacr.org/2020/499) - use in
+///   accumulation context
 pub fn b_poly<F: Field>(chals: &[F], x: F) -> F {
     let k = chals.len();
 
@@ -249,9 +420,35 @@ pub fn b_poly<F: Field>(chals: &[F], x: F) -> F {
         pow_twos.push(pow_twos[i - 1].square());
     }
 
-    product((0..k).map(|i| (F::one() + (chals[i] * pow_twos[k - 1 - i]))))
+    product((0..k).map(|i| F::one() + (chals[i] * pow_twos[k - 1 - i])))
 }
 
+/// Computes the coefficients of the challenge polynomial `b(X)`.
+///
+/// Given IPA challenges `chals = [u_1, ..., u_k]`, returns a vector
+/// `[s_0, s_1, ..., s_{2^k - 1}]` such that:
+/// ```text
+/// b(X) = sum_{i=0}^{2^k - 1} s_i * X^i
+/// ```
+///
+/// The coefficients have a closed form: for each index `i` with bit decomposition
+/// `i = sum_j b_j * 2^j`, the coefficient is `s_i = prod_{j: b_j = 1} u_{k-j}`.
+///
+/// # Usage
+///
+/// This function is used when the full coefficient vector is needed:
+/// - In `SRS::verify` (`ipa.rs`): the coefficients are computed and included in
+///   the batched MSM to verify the accumulated commitment `<s, G>`.
+/// - In `RecursionChallenge::evals`: for chunked polynomial evaluation when the
+///   degree exceeds `max_poly_size`.
+///
+/// # Complexity
+///
+/// Returns `2^k` coefficients. The MSM `<s, G>` using these coefficients is the
+/// expensive operation that gets deferred in recursive proof composition.
+///
+/// # References
+/// - [Halo paper, Section 3.2](https://eprint.iacr.org/2019/1021.pdf)
 pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
     let rounds = chals.len();
     let s_length = 1 << rounds;
@@ -259,45 +456,53 @@ pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
     let mut k: usize = 0;
     let mut pow: usize = 1;
     for i in 1..s_length {
-        k += if i == pow { 1 } else { 0 };
-        pow <<= if i == pow { 1 } else { 0 };
+        k += usize::from(i == pow);
+        pow <<= u32::from(i == pow);
         s[i] = s[i - (pow >> 1)] * chals[rounds - 1 - (k - 1)];
     }
     s
 }
 
-/// `pows(d, x)` returns a vector containing the first `d` powers of the field element `x` (from `1` to `x^(d-1)`).
-pub fn pows<F: Field>(d: usize, x: F) -> Vec<F> {
-    let mut acc = F::one();
-    let mut res = vec![];
-    for _ in 1..=d {
-        res.push(acc);
-        acc *= x;
-    }
-    res
-}
-
-pub fn squeeze_prechallenge<Fq: Field, G, Fr: Field, EFqSponge: FqSponge<Fq, G, Fr>>(
+pub fn squeeze_prechallenge<
+    const FULL_ROUNDS: usize,
+    Fq: Field,
+    G,
+    Fr: Field,
+    EFqSponge: FqSponge<Fq, G, Fr, FULL_ROUNDS>,
+>(
     sponge: &mut EFqSponge,
 ) -> ScalarChallenge<Fr> {
-    ScalarChallenge(sponge.challenge())
+    ScalarChallenge::new(sponge.challenge())
 }
 
-pub fn squeeze_challenge<Fq: Field, G, Fr: PrimeField, EFqSponge: FqSponge<Fq, G, Fr>>(
+pub fn squeeze_challenge<
+    const FULL_ROUNDS: usize,
+    Fq: Field,
+    G,
+    Fr: PrimeField,
+    EFqSponge: FqSponge<Fq, G, Fr, FULL_ROUNDS>,
+>(
     endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
     squeeze_prechallenge(sponge).to_field(endo_r)
 }
 
-pub fn absorb_commitment<Fq: Field, G: Clone, Fr: PrimeField, EFqSponge: FqSponge<Fq, G, Fr>>(
+pub fn absorb_commitment<
+    const FULL_ROUNDS: usize,
+    Fq: Field,
+    G: Clone,
+    Fr: PrimeField,
+    EFqSponge: FqSponge<Fq, G, Fr, FULL_ROUNDS>,
+>(
     sponge: &mut EFqSponge,
     commitment: &PolyComm<G>,
 ) {
-    sponge.absorb_g(&commitment.elems);
+    sponge.absorb_g(&commitment.chunks);
 }
 
-/// A useful trait extending AffineRepr for commitments.
+/// A useful trait extending [`AffineRepr`] for commitments.
+///
 /// Unfortunately, we can't specify that `AffineRepr<BaseField : PrimeField>`,
 /// so usage of this traits must manually bind `G::BaseField: PrimeField`.
 pub trait CommitmentCurve: AffineRepr + Sub<Output = Self::Group> {
@@ -308,8 +513,9 @@ pub trait CommitmentCurve: AffineRepr + Sub<Output = Self::Group> {
     fn of_coordinates(x: Self::BaseField, y: Self::BaseField) -> Self;
 }
 
-/// A trait extending CommitmentCurve for endomorphisms.
-/// Unfortunately, we can't specify that `AffineCurve<BaseField : PrimeField>`,
+/// A trait extending [`CommitmentCurve`] for endomorphisms.
+///
+/// Unfortunately, we can't specify that `AffineRepr<BaseField : PrimeField>`,
 /// so usage of this traits must manually bind `G::BaseField: PrimeField`.
 pub trait EndoCurve: CommitmentCurve {
     /// Combine where x1 = one
@@ -323,7 +529,7 @@ pub trait EndoCurve: CommitmentCurve {
         _endo_q: Self::BaseField,
         g1: &[Self],
         g2: &[Self],
-        x2: ScalarChallenge<Self::ScalarField>,
+        x2: &ScalarChallenge<Self::ScalarField>,
     ) -> Vec<Self> {
         crate::combine::window_combine(g1, g2, Self::ScalarField::one(), x2.to_field(&endo_r))
     }
@@ -350,8 +556,8 @@ impl<P: SWCurveConfig + Clone> CommitmentCurve for SWJAffine<P> {
         }
     }
 
-    fn of_coordinates(x: P::BaseField, y: P::BaseField) -> SWJAffine<P> {
-        SWJAffine::<P>::new_unchecked(x, y)
+    fn of_coordinates(x: P::BaseField, y: P::BaseField) -> Self {
+        Self::new_unchecked(x, y)
     }
 }
 
@@ -365,7 +571,7 @@ impl<P: SWCurveConfig + Clone> EndoCurve for SWJAffine<P> {
         endo_q: Self::BaseField,
         g1: &[Self],
         g2: &[Self],
-        x2: ScalarChallenge<Self::ScalarField>,
+        x2: &ScalarChallenge<Self::ScalarField>,
     ) -> Vec<Self> {
         crate::combine::affine_window_combine_one_endo(endo_q, g1, g2, x2)
     }
@@ -380,14 +586,26 @@ impl<P: SWCurveConfig + Clone> EndoCurve for SWJAffine<P> {
     }
 }
 
-pub fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineRepr>::BaseField) -> G {
-    let (x, y) = m.to_group(t);
-    G::of_coordinates(x, y)
-}
-
-/// Computes the linearization of the evaluations of a (potentially split) polynomial.
-/// Each given `poly` is associated to a matrix where the rows represent the number of evaluated points,
-/// and the columns represent potential segments (if a polynomial was split in several parts).
+/// Computes the linearization of evaluations.
+///
+/// Handles a (potentially split) polynomial.
+/// Each polynomial in `polys` is represented by a matrix where the
+/// rows correspond to evaluated points, and the columns represent
+/// potential segments (if a polynomial was split in several parts).
+///
+/// Elements in `evaluation_points` are several discrete points on which
+/// we evaluate polynomials, e.g. `[zeta,zeta*w]`. See `PointEvaluations`.
+///
+/// Note that if one of the polynomial comes specified with a degree
+/// bound, the evaluation for the last segment is potentially shifted
+/// to meet the proof.
+///
+/// Returns
+/// ```text
+/// |polys| |segments[k]|
+///    Σ         Σ         polyscale^{k*n+i} (Σ polys[k][j][i] * evalscale^j)
+///  k = 1     i = 1                          j
+/// ```
 #[allow(clippy::type_complexity)]
 pub fn combined_inner_product<F: PrimeField>(
     polyscale: &F,
@@ -395,21 +613,32 @@ pub fn combined_inner_product<F: PrimeField>(
     // TODO(mimoo): needs a type that can get you evaluations or segments
     polys: &[Vec<Vec<F>>],
 ) -> F {
+    // final combined evaluation result
     let mut res = F::zero();
-    let mut xi_i = F::one();
+    // polyscale^i
+    let mut polyscale_i = F::one();
 
     for evals_tr in polys.iter().filter(|evals_tr| !evals_tr[0].is_empty()) {
-        // transpose the evaluations
-        let evals = (0..evals_tr[0].len())
+        // Transpose the evaluations.
+        // evals[i] = {evals_tr[j][i]}_j now corresponds to a column in
+        // evals_tr, representing a segment.
+        let evals: Vec<_> = (0..evals_tr[0].len())
             .map(|i| evals_tr.iter().map(|v| v[i]).collect::<Vec<_>>())
-            .collect::<Vec<_>>();
+            .collect();
 
-        // iterating over the polynomial segments
+        // Iterating over the polynomial segments.
+        // Each segment gets its own polyscale^i, each segment element j is
+        // multiplied by evalscale^j. Given that polyscale_i = polyscale^i0 at
+        // this point, after this loop we have:
+        //
+        //    res += Σ polyscale^{i0+i} ( Σ evals_tr[j][i] * evalscale^j )
+        //           i                    j
+        //
         for eval in &evals {
+            // p_i(evalscale)
             let term = DensePolynomial::<F>::eval_polynomial(eval, *evalscale);
-
-            res += &(xi_i * term);
-            xi_i *= polyscale;
+            res += &(polyscale_i * term);
+            polyscale_i *= polyscale;
         }
     }
     res
@@ -420,33 +649,66 @@ pub struct Evaluation<G>
 where
     G: AffineRepr,
 {
-    /// The commitment of the polynomial being evaluated
+    /// The commitment of the polynomial being evaluated.
+    ///
+    /// Note that [`PolyComm`] contains a vector of commitments, which handles
+    /// the case when chunking is used, i.e. when the polynomial degree is
+    /// higher than the SRS size.
     pub commitment: PolyComm<G>,
 
-    /// Contains an evaluation table
+    /// Contains an evaluation table.
+    ///
+    /// For instance, for vanilla `PlonK`, it would be a vector of (chunked)
+    /// evaluations at zeta and zeta*omega. The outer vector would be the
+    /// evaluations at the different points (e.g. zeta and zeta*omega for
+    /// vanilla `PlonK`) and the inner vector would be the chunks of the
+    /// polynomial.
     pub evaluations: Vec<Vec<G::ScalarField>>,
 }
 
 /// Contains the batch evaluation
-// TODO: I think we should really change this name to something more correct
-pub struct BatchEvaluationProof<'a, G, EFqSponge, OpeningProof>
+pub struct BatchEvaluationProof<'a, G, EFqSponge, OpeningProof, const FULL_ROUNDS: usize>
 where
     G: AffineRepr,
-    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
+    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
 {
+    /// Sponge used to coin and absorb values and simulate
+    /// non-interactivity using the Fiat-Shamir transformation.
     pub sponge: EFqSponge,
+    /// A list of evaluations, each supposed to correspond to a different
+    /// polynomial.
     pub evaluations: Vec<Evaluation<G>>,
-    /// vector of evaluation points
+    /// The actual evaluation points. Each field `evaluations` of each structure
+    /// of `Evaluation` should have the same (outer) length.
     pub evaluation_points: Vec<G::ScalarField>,
-    /// scaling factor for evaluation point powers
+    /// A challenge to combine polynomials. Powers of this point will be used,
+    /// hence the name.
     pub polyscale: G::ScalarField,
-    /// scaling factor for polynomials
+    /// A challenge to aggregate multiple evaluation points.
     pub evalscale: G::ScalarField,
-    /// batched opening proof
+    /// The opening proof.
     pub opening: &'a OpeningProof,
     pub combined_inner_product: G::ScalarField,
 }
 
+/// Populates the parameters `scalars` and `points`.
+///
+/// It iterates over the evaluations and adds each commitment to the
+/// vector `points`.
+/// The parameter `scalars` is populated with the values:
+/// `rand_base * polyscale^i` for each commitment.
+/// For instance, if we have 3 commitments, the `scalars` vector will
+/// contain the values
+/// ```text
+/// [rand_base, rand_base * polyscale, rand_base * polyscale^2]
+/// ```
+/// and the vector `points` will contain the commitments.
+///
+/// Note that the function skips the commitments that are empty.
+///
+/// If more than one commitment is present in a single evaluation (i.e. if
+/// `elems` is larger than one), it means that probably chunking was used (i.e.
+/// it is a commitment to a polynomial larger than the SRS).
 pub fn combine_commitments<G: CommitmentCurve>(
     evaluations: &[Evaluation<G>],
     scalars: &mut Vec<G::ScalarField>,
@@ -454,571 +716,27 @@ pub fn combine_commitments<G: CommitmentCurve>(
     polyscale: G::ScalarField,
     rand_base: G::ScalarField,
 ) {
-    let mut xi_i = G::ScalarField::one();
+    // will contain the power of polyscale
+    let mut polyscale_i = G::ScalarField::one();
 
-    for Evaluation { commitment, .. } in evaluations
-        .iter()
-        .filter(|x| !x.commitment.elems.is_empty())
-    {
+    for Evaluation { commitment, .. } in evaluations.iter().filter(|x| !x.commitment.is_empty()) {
         // iterating over the polynomial segments
-        for comm_ch in &commitment.elems {
-            scalars.push(rand_base * xi_i);
+        for comm_ch in &commitment.chunks {
+            scalars.push(rand_base * polyscale_i);
             points.push(*comm_ch);
 
-            xi_i *= polyscale;
+            // compute next power of polyscale
+            polyscale_i *= polyscale;
         }
     }
 }
-
-pub fn combine_evaluations<G: CommitmentCurve>(
-    evaluations: &Vec<Evaluation<G>>,
-    polyscale: G::ScalarField,
-) -> Vec<G::ScalarField> {
-    let mut xi_i = G::ScalarField::one();
-    let mut acc = {
-        let num_evals = if !evaluations.is_empty() {
-            evaluations[0].evaluations.len()
-        } else {
-            0
-        };
-        vec![G::ScalarField::zero(); num_evals]
-    };
-
-    for Evaluation { evaluations, .. } in evaluations
-        .iter()
-        .filter(|x| !x.commitment.elems.is_empty())
-    {
-        // iterating over the polynomial segments
-        for j in 0..evaluations[0].len() {
-            for i in 0..evaluations.len() {
-                acc[i] += evaluations[i][j] * xi_i;
-            }
-            xi_i *= polyscale;
-        }
-    }
-
-    acc
-}
-
-impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
-    /// The maximum polynomial degree that can be committed to
-    fn max_poly_size(&self) -> usize {
-        self.g.len()
-    }
-
-    fn get_lagrange_basis(&self, domain_size: usize) -> &Vec<PolyComm<G>> {
-        self.get_lagrange_basis_from_domain_size(domain_size)
-    }
-
-    fn blinding_commitment(&self) -> G {
-        self.h
-    }
-
-    /// Commits a polynomial, potentially splitting the result in multiple commitments.
-    fn commit(
-        &self,
-        plnm: &DensePolynomial<G::ScalarField>,
-        num_chunks: usize,
-        rng: &mut (impl RngCore + CryptoRng),
-    ) -> BlindedCommitment<G> {
-        self.mask(self.commit_non_hiding(plnm, num_chunks), rng)
-    }
-
-    /// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with a random `w` per commitment.
-    fn mask(
-        &self,
-        comm: PolyComm<G>,
-        rng: &mut (impl RngCore + CryptoRng),
-    ) -> BlindedCommitment<G> {
-        let blinders = comm.map(|_| G::ScalarField::rand(rng));
-        self.mask_custom(comm, &blinders).unwrap()
-    }
-
-    /// Same as [SRS::mask] except that you can pass the blinders manually.
-    fn mask_custom(
-        &self,
-        com: PolyComm<G>,
-        blinders: &PolyComm<G::ScalarField>,
-    ) -> Result<BlindedCommitment<G>, CommitmentError> {
-        let commitment = com
-            .zip(blinders)
-            .ok_or_else(|| CommitmentError::BlindersDontMatch(blinders.len(), com.len()))?
-            .map(|(g, b)| {
-                let mut g_masked = self.h.mul(b);
-                g_masked.add_assign(&g);
-                g_masked.into_affine()
-            });
-        Ok(BlindedCommitment {
-            commitment,
-            blinders: blinders.clone(),
-        })
-    }
-
-    /// This function commits a polynomial using the SRS' basis of size `n`.
-    /// - `plnm`: polynomial to commit to with max size of sections
-    /// - `num_chunks`: the number of commitments to be included in the output polynomial commitment
-    /// The function returns an unbounded commitment vector
-    /// (which splits the commitment into several commitments of size at most `n`).
-    fn commit_non_hiding(
-        &self,
-        plnm: &DensePolynomial<G::ScalarField>,
-        num_chunks: usize,
-    ) -> PolyComm<G> {
-        let is_zero = plnm.is_zero();
-
-        let coeffs: Vec<_> = plnm.iter().map(|c| c.into_bigint()).collect();
-
-        // chunk while commiting
-        let mut elems = vec![];
-        if is_zero {
-            elems.push(G::zero());
-        } else {
-            coeffs.chunks(self.g.len()).for_each(|coeffs_chunk| {
-                let chunk = G::Group::msm_bigint(&self.g, coeffs_chunk);
-                elems.push(chunk.into_affine());
-            });
-        }
-
-        for _ in elems.len()..num_chunks {
-            elems.push(G::zero());
-        }
-
-        PolyComm::<G> { elems }
-    }
-
-    fn commit_evaluations_non_hiding(
-        &self,
-        domain: D<G::ScalarField>,
-        plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
-    ) -> PolyComm<G> {
-        let basis = self.get_lagrange_basis(domain);
-        let commit_evaluations = |evals: &Vec<G::ScalarField>, basis: &Vec<PolyComm<G>>| {
-            PolyComm::<G>::multi_scalar_mul(&basis.iter().collect::<Vec<_>>()[..], &evals[..])
-        };
-        match domain.size.cmp(&plnm.domain().size) {
-            std::cmp::Ordering::Less => {
-                let s = (plnm.domain().size / domain.size) as usize;
-                let v: Vec<_> = (0..(domain.size())).map(|i| plnm.evals[s * i]).collect();
-                commit_evaluations(&v, basis)
-            }
-            std::cmp::Ordering::Equal => commit_evaluations(&plnm.evals, basis),
-            std::cmp::Ordering::Greater => {
-                panic!("desired commitment domain size greater than evaluations' domain size")
-            }
-        }
-    }
-
-    fn commit_evaluations(
-        &self,
-        domain: D<G::ScalarField>,
-        plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
-        rng: &mut (impl RngCore + CryptoRng),
-    ) -> BlindedCommitment<G> {
-        self.mask(self.commit_evaluations_non_hiding(domain, plnm), rng)
-    }
-}
-
-impl<G: CommitmentCurve> SRS<G> {
-    /// This function verifies batch of batched polynomial commitment opening proofs
-    ///     batch: batch of batched polynomial commitment opening proofs
-    ///          vector of evaluation points
-    ///          polynomial scaling factor for this batched openinig proof
-    ///          eval scaling factor for this batched openinig proof
-    ///          batch/vector of polycommitments (opened in this batch), evaluation vectors and, optionally, max degrees
-    ///          opening proof for this batched opening
-    ///     oracle_params: parameters for the random oracle argument
-    ///     randomness source context
-    ///     RETURN: verification status
-    pub fn verify<EFqSponge, RNG>(
-        &self,
-        group_map: &G::Map,
-        batch: &mut [BatchEvaluationProof<G, EFqSponge, OpeningProof<G>>],
-        rng: &mut RNG,
-    ) -> bool
-    where
-        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
-        RNG: RngCore + CryptoRng,
-        G::BaseField: PrimeField,
-    {
-        // Verifier checks for all i,
-        // c_i Q_i + delta_i = z1_i (G_i + b_i U_i) + z2_i H
-        //
-        // if we sample evalscale at random, it suffices to check
-        //
-        // 0 == sum_i evalscale^i (c_i Q_i + delta_i - ( z1_i (G_i + b_i U_i) + z2_i H ))
-        //
-        // and because each G_i is a multiexp on the same array self.g, we
-        // can batch the multiexp across proofs.
-        //
-        // So for each proof in the batch, we add onto our big multiexp the following terms
-        // evalscale^i c_i Q_i
-        // evalscale^i delta_i
-        // - (evalscale^i z1_i) G_i
-        // - (evalscale^i z2_i) H
-        // - (evalscale^i z1_i b_i) U_i
-
-        // We also check that the sg component of the proof is equal to the polynomial commitment
-        // to the "s" array
-
-        let nonzero_length = self.g.len();
-
-        let max_rounds = math::ceil_log2(nonzero_length);
-
-        let padded_length = 1 << max_rounds;
-
-        let (_, endo_r) = endos::<G>();
-
-        // TODO: This will need adjusting
-        let padding = padded_length - nonzero_length;
-        let mut points = vec![self.h];
-        points.extend(self.g.clone());
-        points.extend(vec![G::zero(); padding]);
-
-        let mut scalars = vec![G::ScalarField::zero(); padded_length + 1];
-        assert_eq!(scalars.len(), points.len());
-
-        // sample randomiser to scale the proofs with
-        let rand_base = G::ScalarField::rand(rng);
-        let sg_rand_base = G::ScalarField::rand(rng);
-
-        let mut rand_base_i = G::ScalarField::one();
-        let mut sg_rand_base_i = G::ScalarField::one();
-
-        for BatchEvaluationProof {
-            sponge,
-            evaluation_points,
-            polyscale,
-            evalscale,
-            evaluations,
-            opening,
-            combined_inner_product,
-        } in batch.iter_mut()
-        {
-            sponge.absorb_fr(&[shift_scalar::<G>(*combined_inner_product)]);
-
-            let t = sponge.challenge_fq();
-            let u: G = to_group(group_map, t);
-
-            let Challenges { chal, chal_inv } = opening.challenges::<EFqSponge>(&endo_r, sponge);
-
-            sponge.absorb_g(&[opening.delta]);
-            let c = ScalarChallenge(sponge.challenge()).to_field(&endo_r);
-
-            // < s, sum_i evalscale^i pows(evaluation_point[i]) >
-            // ==
-            // sum_i evalscale^i < s, pows(evaluation_point[i]) >
-            let b0 = {
-                let mut scale = G::ScalarField::one();
-                let mut res = G::ScalarField::zero();
-                for &e in evaluation_points.iter() {
-                    let term = b_poly(&chal, e);
-                    res += &(scale * term);
-                    scale *= *evalscale;
-                }
-                res
-            };
-
-            let s = b_poly_coefficients(&chal);
-
-            let neg_rand_base_i = -rand_base_i;
-
-            // TERM
-            // - rand_base_i z1 G
-            //
-            // we also add -sg_rand_base_i * G to check correctness of sg.
-            points.push(opening.sg);
-            scalars.push(neg_rand_base_i * opening.z1 - sg_rand_base_i);
-
-            // Here we add
-            // sg_rand_base_i * ( < s, self.g > )
-            // =
-            // < sg_rand_base_i s, self.g >
-            //
-            // to check correctness of the sg component.
-            {
-                let terms: Vec<_> = s.par_iter().map(|s| sg_rand_base_i * s).collect();
-
-                for (i, term) in terms.iter().enumerate() {
-                    scalars[i + 1] += term;
-                }
-            }
-
-            // TERM
-            // - rand_base_i * z2 * H
-            scalars[0] -= &(rand_base_i * opening.z2);
-
-            // TERM
-            // -rand_base_i * (z1 * b0 * U)
-            scalars.push(neg_rand_base_i * (opening.z1 * b0));
-            points.push(u);
-
-            // TERM
-            // rand_base_i c_i Q_i
-            // = rand_base_i c_i
-            //   (sum_j (chal_invs[j] L_j + chals[j] R_j) + P_prime)
-            // where P_prime = combined commitment + combined_inner_product * U
-            let rand_base_i_c_i = c * rand_base_i;
-            for ((l, r), (u_inv, u)) in opening.lr.iter().zip(chal_inv.iter().zip(chal.iter())) {
-                points.push(*l);
-                scalars.push(rand_base_i_c_i * u_inv);
-
-                points.push(*r);
-                scalars.push(rand_base_i_c_i * u);
-            }
-
-            // TERM
-            // sum_j evalscale^j (sum_i polyscale^i f_i) (elm_j)
-            // == sum_j sum_i evalscale^j polyscale^i f_i(elm_j)
-            // == sum_i polyscale^i sum_j evalscale^j f_i(elm_j)
-            combine_commitments(
-                evaluations,
-                &mut scalars,
-                &mut points,
-                *polyscale,
-                rand_base_i_c_i,
-            );
-
-            scalars.push(rand_base_i_c_i * *combined_inner_product);
-            points.push(u);
-
-            scalars.push(rand_base_i);
-            points.push(opening.delta);
-
-            rand_base_i *= &rand_base;
-            sg_rand_base_i *= &sg_rand_base;
-        }
-
-        // verify the equation
-        let scalars: Vec<_> = scalars.iter().map(|x| x.into_bigint()).collect();
-        G::Group::msm_bigint(&points, &scalars) == G::Group::zero()
-    }
-}
-
-pub fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
-    let mut res = F::zero();
-    for (&x, y) in xs.iter().zip(ys) {
-        res += &(x * y);
-    }
-    res
-}
-
-//
-// Tests
-//
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use crate::srs::SRS;
-    use ark_poly::{DenseUVPolynomial, Polynomial, Radix2EvaluationDomain};
-    use mina_curves::pasta::{Fp, Vesta as VestaG};
-    use mina_poseidon::{constants::PlonkSpongeConstantsKimchi as SC, sponge::DefaultFqSponge};
-    use std::array;
-
-    #[test]
-    fn test_lagrange_commitments() {
-        let n = 64;
-        let domain = D::<Fp>::new(n).unwrap();
-
-        let srs = SRS::<VestaG>::create(n);
-        srs.get_lagrange_basis(domain);
-
-        let num_chunks = domain.size() / srs.g.len();
-
-        let expected_lagrange_commitments: Vec<_> = (0..n)
-            .map(|i| {
-                let mut e = vec![Fp::zero(); n];
-                e[i] = Fp::one();
-                let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
-                srs.commit_non_hiding(&p, num_chunks)
-            })
-            .collect();
-
-        let computed_lagrange_commitments = srs.get_lagrange_basis_from_domain_size(domain.size());
-        for i in 0..n {
-            assert_eq!(
-                computed_lagrange_commitments[i],
-                expected_lagrange_commitments[i],
-            );
-        }
-    }
-
-    #[test]
-    // This tests with two chunks.
-    fn test_chunked_lagrange_commitments() {
-        let n = 64;
-        let divisor = 4;
-        let domain = D::<Fp>::new(n).unwrap();
-
-        let srs = SRS::<VestaG>::create(n / divisor);
-        srs.get_lagrange_basis(domain);
-
-        let num_chunks = domain.size() / srs.g.len();
-        assert!(num_chunks == divisor);
-
-        let expected_lagrange_commitments: Vec<_> = (0..n)
-            .map(|i| {
-                let mut e = vec![Fp::zero(); n];
-                e[i] = Fp::one();
-                let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
-                srs.commit_non_hiding(&p, num_chunks)
-            })
-            .collect();
-
-        let computed_lagrange_commitments = srs.get_lagrange_basis_from_domain_size(domain.size());
-        for i in 0..n {
-            assert_eq!(
-                computed_lagrange_commitments[i],
-                expected_lagrange_commitments[i],
-            );
-        }
-    }
-
-    #[test]
-    // TODO @volhovm I don't understand what this test does and
-    // whether it is worth leaving.
-    /// Same as test_chunked_lagrange_commitments, but with a slight
-    /// offset in the SRS
-    fn test_offset_chunked_lagrange_commitments() {
-        let n = 64;
-        let domain = D::<Fp>::new(n).unwrap();
-
-        let srs = SRS::<VestaG>::create(n / 2 + 1);
-        srs.get_lagrange_basis(domain);
-
-        // Is this even taken into account?...
-        let num_chunks = (domain.size() + srs.g.len() - 1) / srs.g.len();
-        assert!(num_chunks == 2);
-
-        let expected_lagrange_commitments: Vec<_> = (0..n)
-            .map(|i| {
-                let mut e = vec![Fp::zero(); n];
-                e[i] = Fp::one();
-                let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
-                srs.commit_non_hiding(&p, num_chunks) // this requires max = Some(64)
-            })
-            .collect();
-
-        let computed_lagrange_commitments = srs.get_lagrange_basis_from_domain_size(domain.size());
-        for i in 0..n {
-            assert_eq!(
-                computed_lagrange_commitments[i],
-                expected_lagrange_commitments[i],
-            );
-        }
-    }
-
-    #[test]
-    fn test_opening_proof() {
-        // create two polynomials
-        let coeffs: [Fp; 10] = array::from_fn(|i| Fp::from(i as u32));
-        let poly1 = DensePolynomial::<Fp>::from_coefficients_slice(&coeffs);
-        let poly2 = DensePolynomial::<Fp>::from_coefficients_slice(&coeffs[..5]);
-
-        // create an SRS
-        let srs = SRS::<VestaG>::create(20);
-        let rng = &mut o1_utils::tests::make_test_rng(None);
-
-        // commit the two polynomials
-        let commitment1 = srs.commit(&poly1, 1, rng);
-        let commitment2 = srs.commit(&poly2, 1, rng);
-
-        // create an aggregated opening proof
-        let (u, v) = (Fp::rand(rng), Fp::rand(rng));
-        let group_map = <VestaG as CommitmentCurve>::Map::setup();
-        let sponge =
-            DefaultFqSponge::<_, SC>::new(mina_poseidon::pasta::fq_kimchi::static_params());
-
-        let polys: Vec<(
-            DensePolynomialOrEvaluations<_, Radix2EvaluationDomain<_>>,
-            PolyComm<_>,
-        )> = vec![
-            (
-                DensePolynomialOrEvaluations::DensePolynomial(&poly1),
-                commitment1.blinders,
-            ),
-            (
-                DensePolynomialOrEvaluations::DensePolynomial(&poly2),
-                commitment2.blinders,
-            ),
-        ];
-        let elm = vec![Fp::rand(rng), Fp::rand(rng)];
-
-        let opening_proof = srs.open(&group_map, &polys, &elm, v, u, sponge.clone(), rng);
-
-        // evaluate the polynomials at these two points
-        let poly1_chunked_evals = vec![
-            poly1
-                .to_chunked_polynomial(1, srs.g.len())
-                .evaluate_chunks(elm[0]),
-            poly1
-                .to_chunked_polynomial(1, srs.g.len())
-                .evaluate_chunks(elm[1]),
-        ];
-
-        fn sum(c: &[Fp]) -> Fp {
-            c.iter().fold(Fp::zero(), |a, &b| a + b)
-        }
-
-        assert_eq!(sum(&poly1_chunked_evals[0]), poly1.evaluate(&elm[0]));
-        assert_eq!(sum(&poly1_chunked_evals[1]), poly1.evaluate(&elm[1]));
-
-        let poly2_chunked_evals = vec![
-            poly2
-                .to_chunked_polynomial(1, srs.g.len())
-                .evaluate_chunks(elm[0]),
-            poly2
-                .to_chunked_polynomial(1, srs.g.len())
-                .evaluate_chunks(elm[1]),
-        ];
-
-        assert_eq!(sum(&poly2_chunked_evals[0]), poly2.evaluate(&elm[0]));
-        assert_eq!(sum(&poly2_chunked_evals[1]), poly2.evaluate(&elm[1]));
-
-        let evaluations = vec![
-            Evaluation {
-                commitment: commitment1.commitment,
-                evaluations: poly1_chunked_evals,
-            },
-            Evaluation {
-                commitment: commitment2.commitment,
-                evaluations: poly2_chunked_evals,
-            },
-        ];
-
-        let combined_inner_product = {
-            let es: Vec<_> = evaluations
-                .iter()
-                .map(|Evaluation { evaluations, .. }| evaluations.clone())
-                .collect();
-            combined_inner_product(&v, &u, &es)
-        };
-
-        // verify the proof
-        let mut batch = vec![BatchEvaluationProof {
-            sponge,
-            evaluation_points: elm.clone(),
-            polyscale: v,
-            evalscale: u,
-            evaluations,
-            opening: &opening_proof,
-            combined_inner_product,
-        }];
-
-        assert!(srs.verify(&group_map, &mut batch, rng));
-    }
-}
-
-//
-// OCaml types
-//
 
 #[cfg(feature = "ocaml_types")]
+#[allow(non_local_definitions)]
 pub mod caml {
-    use super::*;
-
     // polynomial commitment
+    use super::PolyComm;
+    use ark_ec::AffineRepr;
 
     #[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlPolyComm<CamlG> {
@@ -1035,7 +753,7 @@ pub mod caml {
     {
         fn from(polycomm: PolyComm<G>) -> Self {
             Self {
-                unshifted: polycomm.elems.into_iter().map(CamlG::from).collect(),
+                unshifted: polycomm.chunks.into_iter().map(CamlG::from).collect(),
                 shifted: None,
             }
         }
@@ -1048,7 +766,7 @@ pub mod caml {
     {
         fn from(polycomm: &'a PolyComm<G>) -> Self {
             Self {
-                unshifted: polycomm.elems.iter().map(Into::<CamlG>::into).collect(),
+                unshifted: polycomm.chunks.iter().map(Into::<CamlG>::into).collect(),
                 shifted: None,
             }
         }
@@ -1058,13 +776,13 @@ pub mod caml {
     where
         G: AffineRepr + From<CamlG>,
     {
-        fn from(camlpolycomm: CamlPolyComm<CamlG>) -> PolyComm<G> {
+        fn from(camlpolycomm: CamlPolyComm<CamlG>) -> Self {
             assert!(
                 camlpolycomm.shifted.is_none(),
                 "mina#14628: Shifted commitments are deprecated and must not be used"
             );
-            PolyComm {
-                elems: camlpolycomm
+            Self {
+                chunks: camlpolycomm
                     .unshifted
                     .into_iter()
                     .map(Into::<G>::into)
@@ -1077,69 +795,134 @@ pub mod caml {
     where
         G: AffineRepr + From<&'a CamlG> + From<CamlG>,
     {
-        fn from(camlpolycomm: &'a CamlPolyComm<CamlG>) -> PolyComm<G> {
+        fn from(camlpolycomm: &'a CamlPolyComm<CamlG>) -> Self {
             assert!(
                 camlpolycomm.shifted.is_none(),
                 "mina#14628: Shifted commitments are deprecated and must not be used"
             );
-            PolyComm {
+            Self {
                 //FIXME something with as_ref()
-                elems: camlpolycomm.unshifted.iter().map(Into::into).collect(),
+                chunks: camlpolycomm.unshifted.iter().map(Into::into).collect(),
             }
         }
     }
+}
 
-    // opening proof
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mina_curves::pasta::Fp;
+    use std::str::FromStr;
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlOpeningProof<G, F> {
-        /// vector of rounds of L & R commitments
-        pub lr: Vec<(G, G)>,
-        pub delta: G,
-        pub z1: F,
-        pub z2: F,
-        pub sg: G,
+    /// Regression test for `b_poly` evaluation.
+    ///
+    /// The challenge polynomial b(X) is defined as:
+    /// ```text
+    /// b(X) = prod_{i=0}^{k-1} (1 + u_{k-i} * X^{2^i})
+    /// ```
+    /// See Section 3.2 of the [Halo paper](https://eprint.iacr.org/2019/1021.pdf).
+    #[test]
+    fn test_b_poly_regression() {
+        // 15 challenges (typical for domain size 2^15)
+        let chals: Vec<Fp> = (2u64..=16).map(Fp::from).collect();
+
+        let zeta = Fp::from(17u64);
+        let zeta_omega = Fp::from(19u64);
+
+        let b_at_zeta = b_poly(&chals, zeta);
+        let b_at_zeta_omega = b_poly(&chals, zeta_omega);
+
+        // Expected values (computed and verified)
+        let expected_at_zeta = Fp::from_str(
+            "21115683812642620361045381629886583866877919362491419134086003378733605776328",
+        )
+        .unwrap();
+        let expected_at_zeta_omega = Fp::from_str(
+            "2298325069360593860729719174291433577456794311517767070156020442825391962511",
+        )
+        .unwrap();
+
+        assert_eq!(b_at_zeta, expected_at_zeta, "b(zeta) mismatch");
+        assert_eq!(
+            b_at_zeta_omega, expected_at_zeta_omega,
+            "b(zeta*omega) mismatch"
+        );
     }
 
-    impl<G, CamlF, CamlG> From<OpeningProof<G>> for CamlOpeningProof<CamlG, CamlF>
-    where
-        G: AffineRepr,
-        CamlG: From<G>,
-        CamlF: From<G::ScalarField>,
-    {
-        fn from(opening_proof: OpeningProof<G>) -> Self {
-            Self {
-                lr: opening_proof
-                    .lr
-                    .into_iter()
-                    .map(|(g1, g2)| (CamlG::from(g1), CamlG::from(g2)))
-                    .collect(),
-                delta: CamlG::from(opening_proof.delta),
-                z1: opening_proof.z1.into(),
-                z2: opening_proof.z2.into(),
-                sg: CamlG::from(opening_proof.sg),
-            }
-        }
+    /// Regression test for `b_poly_coefficients`.
+    ///
+    /// Verifies that the coefficients satisfy: `b(x) = sum_i s_i * x^i`
+    /// where `s_i = prod_{j: bit_j(i) = 1} u_{k-j}`
+    #[test]
+    fn test_b_poly_coefficients_regression() {
+        // Use 4 challenges for manageable output (2^4 = 16 coefficients)
+        let chals: Vec<Fp> = vec![
+            Fp::from(2u64),
+            Fp::from(3u64),
+            Fp::from(5u64),
+            Fp::from(7u64),
+        ];
+
+        let coeffs = b_poly_coefficients(&chals);
+
+        assert_eq!(coeffs.len(), 16, "Should have 2^4 = 16 coefficients");
+
+        // Expected coefficients (computed and verified)
+        // s_i = prod_{j: bit_j(i) = 1} u_{k-j}
+        // chals = [2, 3, 5, 7] means u_1=2, u_2=3, u_3=5, u_4=7
+        // Index 0 (0000): 1
+        // Index 1 (0001): u_4 = 7
+        // Index 2 (0010): u_3 = 5
+        // Index 3 (0011): u_3 * u_4 = 35
+        // etc.
+        let expected: Vec<Fp> = vec![
+            Fp::from(1u64),   // 0: 1
+            Fp::from(7u64),   // 1: u_4
+            Fp::from(5u64),   // 2: u_3
+            Fp::from(35u64),  // 3: u_3 * u_4
+            Fp::from(3u64),   // 4: u_2
+            Fp::from(21u64),  // 5: u_2 * u_4
+            Fp::from(15u64),  // 6: u_2 * u_3
+            Fp::from(105u64), // 7: u_2 * u_3 * u_4
+            Fp::from(2u64),   // 8: u_1
+            Fp::from(14u64),  // 9: u_1 * u_4
+            Fp::from(10u64),  // 10: u_1 * u_3
+            Fp::from(70u64),  // 11: u_1 * u_3 * u_4
+            Fp::from(6u64),   // 12: u_1 * u_2
+            Fp::from(42u64),  // 13: u_1 * u_2 * u_4
+            Fp::from(30u64),  // 14: u_1 * u_2 * u_3
+            Fp::from(210u64), // 15: u_1 * u_2 * u_3 * u_4
+        ];
+
+        assert_eq!(coeffs, expected, "Coefficients mismatch");
     }
 
-    impl<G, CamlF, CamlG> From<CamlOpeningProof<CamlG, CamlF>> for OpeningProof<G>
-    where
-        G: AffineRepr,
-        CamlG: Into<G>,
-        CamlF: Into<G::ScalarField>,
-    {
-        fn from(caml: CamlOpeningProof<CamlG, CamlF>) -> Self {
-            Self {
-                lr: caml
-                    .lr
-                    .into_iter()
-                    .map(|(g1, g2)| (g1.into(), g2.into()))
-                    .collect(),
-                delta: caml.delta.into(),
-                z1: caml.z1.into(),
-                z2: caml.z2.into(),
-                sg: caml.sg.into(),
+    /// Test that `b_poly` and `b_poly_coefficients` are consistent:
+    /// evaluating b(x) via the product form should equal evaluating via coefficients.
+    #[test]
+    fn test_b_poly_consistency() {
+        let chals: Vec<Fp> = (2u64..=10).map(Fp::from).collect();
+        let coeffs = b_poly_coefficients(&chals);
+
+        // Test at several points
+        for x_val in [1u64, 7, 13, 42, 100] {
+            let x = Fp::from(x_val);
+
+            // Evaluate via product form
+            let b_product = b_poly(&chals, x);
+
+            // Evaluate via coefficients: sum_i s_i * x^i
+            let mut b_coeffs = Fp::zero();
+            let mut x_pow = Fp::one();
+            for coeff in &coeffs {
+                b_coeffs += *coeff * x_pow;
+                x_pow *= x;
             }
+
+            assert_eq!(
+                b_product, b_coeffs,
+                "b_poly and b_poly_coefficients inconsistent at x={x_val}"
+            );
         }
     }
 }

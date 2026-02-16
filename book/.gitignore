@@ -1,1 +1,20 @@
-book
+# Docusaurus build artifacts
+build/
+.docusaurus/
+
+# Generated specifications (built by cargo-spec during CI)
+docs/specs/kimchi.md
+docs/specs/poly-commitment.md
+
+# Dependencies
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store

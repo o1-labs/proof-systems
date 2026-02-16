@@ -1,13 +1,13 @@
 [package]
 name = "kimchi-visu"
-version = "0.1.0"
 description = "A tool to visualize circuits in HTML"
-repository = "https://github.com/o1-labs/proof-systems"
-homepage = "https://o1-labs.github.io/proof-systems/"
-documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+documentation.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
 readme = "README.md"
-edition = "2021"
-license = "Apache-2.0"
+repository.workspace = true
+version.workspace = true
 
 [lib]
 path = "src/lib.rs"
@@ -20,8 +20,8 @@ serde_json.workspace = true
 serde_with.workspace = true
 tinytemplate.workspace = true
 
-mina-curves.workspace = true
 kimchi.workspace = true
-o1-utils.workspace = true
+mina-curves.workspace = true
 mina-poseidon.workspace = true
+o1-utils.workspace = true
 poly-commitment.workspace = true

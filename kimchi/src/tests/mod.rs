@@ -1,3 +1,4 @@
+// IMPROVEME: move all tests in top-level directory tests
 mod and;
 mod chunked;
 mod ec;
@@ -7,6 +8,8 @@ mod foreign_field_add;
 mod foreign_field_mul;
 mod framework;
 mod generic;
+mod keccak;
+mod lazy_mode;
 mod lookup;
 mod not;
 mod poseidon;
@@ -14,6 +17,5 @@ mod range_check;
 mod recursion;
 mod rot;
 mod serde;
-mod turshi;
 mod varbasemul;
 mod xor;

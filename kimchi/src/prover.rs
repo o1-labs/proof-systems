@@ -3,8 +3,9 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
+        berkeley_columns::{BerkeleyChallenges, Environment, LookupEnvironment},
         constraints::zk_rows_strict_lower_bound,
-        expr::{self, l0_1, Constants, Environment, LookupEnvironment},
+        expr::{self, l0_1, Constants},
         gate::GateType,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
@@ -38,22 +39,23 @@ use ark_poly::{
     univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as D,
 };
+use core::array;
 use itertools::Itertools;
-use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use mina_poseidon::{poseidon::ArithmeticSpongeParams, sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial as _;
 use poly_commitment::{
     commitment::{
         absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
     },
-    evaluation_proof::DensePolynomialOrEvaluations,
+    utils::DensePolynomialOrEvaluations,
     OpenProof, SRS as _,
 };
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
-use std::{array, collections::HashMap};
+use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
-type Result<T> = std::result::Result<T, ProverError>;
+type Result<T> = core::result::Result<T, ProverError>;
 
 /// Helper to quickly test if a witness satisfies a constraint
 macro_rules! check_constraint {
@@ -64,8 +66,7 @@ macro_rules! check_constraint {
         if cfg!(debug_assertions) {
             let (_, res) = $evaluation
                 .interpolate_by_ref()
-                .divide_by_vanishing_poly($index.cs.domain.d1)
-                .unwrap();
+                .divide_by_vanishing_poly($index.cs.domain.d1);
             if !res.is_zero() {
                 panic!("couldn't divide by vanishing polynomial: {}", $label);
             }
@@ -122,28 +123,30 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: KimchiCurve, OpeningProof: OpenProof<G>> ProverProof<G, OpeningProof>
+impl<G, OpeningProof, const FULL_ROUNDS: usize> ProverProof<G, OpeningProof, FULL_ROUNDS>
 where
+    G: KimchiCurve<FULL_ROUNDS>,
     G::BaseField: PrimeField,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
 {
     /// This function constructs prover's zk-proof from the witness & the `ProverIndex` against SRS instance
     ///
     /// # Errors
     ///
     /// Will give error if `create_recursive` process fails.
-    pub fn create<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
-        RNG: RngCore + CryptoRng,
-    >(
+    pub fn create<EFqSponge, EFrSponge, RNG>(
         groupmap: &G::Map,
         witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G, OpeningProof>,
+        index: &ProverIndex<FULL_ROUNDS, G, OpeningProof::SRS>,
         rng: &mut RNG,
     ) -> Result<Self>
     where
-        VerifierIndex<G, OpeningProof>: Clone,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
+        EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
+        RNG: RngCore + CryptoRng,
+        VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
     {
         Self::create_recursive::<EFqSponge, EFrSponge, RNG>(
             groupmap,
@@ -156,30 +159,32 @@ where
         )
     }
 
-    /// This function constructs prover's recursive zk-proof from the witness & the `ProverIndex` against SRS instance
+    /// This function constructs prover's recursive zk-proof from the witness &
+    /// the `ProverIndex` against SRS instance
     ///
     /// # Errors
     ///
-    /// Will give error if inputs(like `lookup_context.joint_lookup_table_d8`) are None.
+    /// Will give error if inputs(like `lookup_context.joint_lookup_table_d8`)
+    /// are None.
     ///
     /// # Panics
     ///
     /// Will panic if `lookup_context.joint_lookup_table_d8` is None.
-    pub fn create_recursive<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
-        RNG: RngCore + CryptoRng,
-    >(
+    pub fn create_recursive<EFqSponge, EFrSponge, RNG>(
         group_map: &G::Map,
         mut witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G, OpeningProof>,
+        index: &ProverIndex<FULL_ROUNDS, G, OpeningProof::SRS>,
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
         rng: &mut RNG,
     ) -> Result<Self>
     where
-        VerifierIndex<G, OpeningProof>: Clone,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
+        EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
+        RNG: RngCore + CryptoRng,
+        VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
     {
         internal_tracing::checkpoint!(internal_traces; create_recursive);
         let d1_size = index.cs.domain.d1.size();
@@ -238,7 +243,7 @@ where
             }
 
             // padding
-            w.extend(std::iter::repeat(G::ScalarField::zero()).take(length_padding));
+            w.extend(std::iter::repeat_n(G::ScalarField::zero(), length_padding));
 
             // zk-rows
             for row in w.iter_mut().rev().take(index.cs.zk_rows as usize) {
@@ -289,40 +294,51 @@ where
         //~    This is why we need to absorb the commitment to the public polynomial at this point.
         absorb_commitment(&mut fq_sponge, &public_comm);
 
-        //~ 1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
+        //~ 1. Commit to the witness columns by creating `COLUMNS` hiding commitments.
         //~
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
         internal_tracing::checkpoint!(internal_traces; commit_to_witness_columns);
-        let mut w_comm = vec![];
-        for col in 0..COLUMNS {
-            // witness coeff -> witness eval
-            let witness_eval =
-                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                    witness[col].clone(),
-                    index.cs.domain.d1,
-                );
+        // generate blinders if not given externally
+        let blinders_final: Vec<PolyComm<G::ScalarField>> = match blinders {
+            None => (0..COLUMNS)
+                .map(|_| PolyComm::new(vec![UniformRand::rand(rng); num_chunks]))
+                .collect(),
+            Some(blinders_arr) => blinders_arr
+                .into_iter()
+                .map(|blinder_el| match blinder_el {
+                    None => PolyComm::new(vec![UniformRand::rand(rng); num_chunks]),
+                    Some(blinder_el_some) => blinder_el_some,
+                })
+                .collect(),
+        };
+        let w_comm_opt_res: Vec<Result<_>> = witness
+            .clone()
+            .into_par_iter()
+            .zip(blinders_final.into_par_iter())
+            .map(|(witness, blinder)| {
+                let witness_eval =
+                    Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                        witness,
+                        index.cs.domain.d1,
+                    );
 
-            let com = match blinders.as_ref().and_then(|b| b[col].as_ref()) {
-                // no blinders: blind the witness
-                None => index
+                // TODO: make this a function rather no? mask_with_custom()
+                let witness_com = index
                     .srs
-                    .commit_evaluations(index.cs.domain.d1, &witness_eval, rng),
-                // blinders: blind the witness with them
-                Some(blinder) => {
-                    // TODO: make this a function rather no? mask_with_custom()
-                    let witness_com = index
-                        .srs
-                        .commit_evaluations_non_hiding(index.cs.domain.d1, &witness_eval);
-                    index
-                        .srs
-                        .mask_custom(witness_com, blinder)
-                        .map_err(ProverError::WrongBlinders)?
-                }
-            };
+                    .commit_evaluations_non_hiding(index.cs.domain.d1, &witness_eval);
+                let com = index
+                    .srs
+                    .mask_custom(witness_com, &blinder)
+                    .map_err(ProverError::WrongBlinders)?;
 
-            w_comm.push(com);
-        }
+                Ok(com)
+            })
+            .collect();
+
+        let w_comm_res: Result<Vec<BlindedCommitment<G>>> = w_comm_opt_res.into_iter().collect();
+
+        let w_comm = w_comm_res?;
 
         let w_comm: [BlindedCommitment<G>; COLUMNS] = w_comm
             .try_into()
@@ -337,18 +353,28 @@ where
         //~    As mentioned above, we commit using the evaluations form rather than the coefficients
         //~    form so we can take advantage of the sparsity of the evaluations (i.e., there are many
         //~    0 entries and entries that have less-than-full-size field elemnts.)
-        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array::from_fn(|i| {
-            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                witness[i].clone(),
-                index.cs.domain.d1,
-            )
-            .interpolate()
-        });
+        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = (0..COLUMNS)
+            .into_par_iter()
+            .map(|i| {
+                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                    witness[i].clone(),
+                    index.cs.domain.d1,
+                )
+                .interpolate()
+            })
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
 
         let mut lookup_context = LookupContext::default();
 
         //~ 1. If using lookup:
-        if let Some(lcs) = &index.cs.lookup_constraint_system {
+        let lookup_constraint_system = index
+            .cs
+            .lookup_constraint_system
+            .try_get_or_err()
+            .map_err(ProverError::from)?;
+        if let Some(lcs) = lookup_constraint_system {
             internal_tracing::checkpoint!(internal_traces; use_lookup, {
                 "uses_lookup": true,
                 "uses_runtime_tables": lcs.runtime_tables.is_some(),
@@ -433,8 +459,9 @@ where
                 G::ScalarField::zero()
             };
 
-            //~~ * Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
-            let joint_combiner: G::ScalarField = ScalarChallenge(joint_combiner).to_field(endo_r);
+            //~~ * Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TODO: specify)
+            let joint_combiner: G::ScalarField =
+                ScalarChallenge::new(joint_combiner).to_field(endo_r);
 
             //~~ * If multiple lookup tables are involved,
             //~~   set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
@@ -573,7 +600,7 @@ where
         let gamma = fq_sponge.challenge();
 
         //~ 1. If using lookup:
-        if let Some(lcs) = &index.cs.lookup_constraint_system {
+        if let Some(lcs) = lookup_constraint_system {
             //~~ * Compute the lookup aggregation polynomial.
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
@@ -612,18 +639,20 @@ where
             lookup_context.aggreg8 = Some(aggreg8);
         }
 
+        let column_evaluations = index.column_evaluations.get();
+
         //~ 1. Compute the permutation aggregation polynomial $z$.
         internal_tracing::checkpoint!(internal_traces; z_permutation_aggregation_polynomial);
         let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
 
-        //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
+        //~ 1. Commit (hiding) to the permutation aggregation polynomial $z$.
         let z_comm = index.srs.commit(&z_poly, num_chunks, rng);
 
         //~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &z_comm.commitment);
 
         //~ 1. Sample $\alpha'$ with the Fq-Sponge.
-        let alpha_chal = ScalarChallenge(fq_sponge.challenge());
+        let alpha_chal = ScalarChallenge::new(fq_sponge.challenge());
 
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
         let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
@@ -640,7 +669,7 @@ where
         //~~ * the negated public polynomial
         //~    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
         //~    TODO: specify the split of the permutation polynomial into perm and bnd?
-        let lookup_env = if let Some(lcs) = &index.cs.lookup_constraint_system {
+        let lookup_env = if let Some(lcs) = lookup_constraint_system {
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
             Some(LookupEnvironment {
@@ -661,69 +690,58 @@ where
         let env = {
             let mut index_evals = HashMap::new();
             use GateType::*;
-            index_evals.insert(Generic, &index.column_evaluations.generic_selector4);
-            index_evals.insert(Poseidon, &index.column_evaluations.poseidon_selector8);
-            index_evals.insert(
-                CompleteAdd,
-                &index.column_evaluations.complete_add_selector4,
-            );
-            index_evals.insert(VarBaseMul, &index.column_evaluations.mul_selector8);
-            index_evals.insert(EndoMul, &index.column_evaluations.emul_selector8);
-            index_evals.insert(
-                EndoMulScalar,
-                &index.column_evaluations.endomul_scalar_selector8,
-            );
+            index_evals.insert(Generic, &column_evaluations.generic_selector4);
+            index_evals.insert(Poseidon, &column_evaluations.poseidon_selector8);
+            index_evals.insert(CompleteAdd, &column_evaluations.complete_add_selector4);
+            index_evals.insert(VarBaseMul, &column_evaluations.mul_selector8);
+            index_evals.insert(EndoMul, &column_evaluations.emul_selector8);
+            index_evals.insert(EndoMulScalar, &column_evaluations.endomul_scalar_selector8);
 
-            if let Some(selector) = &index.column_evaluations.range_check0_selector8.as_ref() {
+            if let Some(selector) = &column_evaluations.range_check0_selector8 {
                 index_evals.insert(GateType::RangeCheck0, selector);
             }
 
-            if let Some(selector) = &index.column_evaluations.range_check1_selector8.as_ref() {
+            if let Some(selector) = &column_evaluations.range_check1_selector8 {
                 index_evals.insert(GateType::RangeCheck1, selector);
             }
 
-            if let Some(selector) = index
-                .column_evaluations
-                .foreign_field_add_selector8
-                .as_ref()
-            {
+            if let Some(selector) = &column_evaluations.foreign_field_add_selector8 {
                 index_evals.insert(GateType::ForeignFieldAdd, selector);
             }
 
-            if let Some(selector) = index
-                .column_evaluations
-                .foreign_field_mul_selector8
-                .as_ref()
-            {
+            if let Some(selector) = &column_evaluations.foreign_field_mul_selector8 {
                 index_evals.extend(
                     foreign_field_mul::gadget::circuit_gates()
                         .iter()
-                        .enumerate()
-                        .map(|(_, gate_type)| (*gate_type, selector)),
+                        .map(|gate_type| (*gate_type, selector)),
                 );
             }
 
-            if let Some(selector) = index.column_evaluations.xor_selector8.as_ref() {
+            if let Some(selector) = &column_evaluations.xor_selector8 {
                 index_evals.insert(GateType::Xor16, selector);
             }
 
-            if let Some(selector) = index.column_evaluations.rot_selector8.as_ref() {
+            if let Some(selector) = &column_evaluations.rot_selector8 {
                 index_evals.insert(GateType::Rot64, selector);
             }
 
             let mds = &G::sponge_params().mds;
             Environment {
                 constants: Constants {
-                    alpha,
-                    beta,
-                    gamma,
-                    joint_combiner: lookup_context.joint_combiner,
                     endo_coefficient: index.cs.endo,
                     mds,
                     zk_rows: index.cs.zk_rows,
                 },
+                challenges: BerkeleyChallenges {
+                    alpha,
+                    beta,
+                    gamma,
+                    joint_combiner: lookup_context
+                        .joint_combiner
+                        .unwrap_or(G::ScalarField::zero()),
+                },
                 witness: &lagrange.d8.this.w,
-                coefficient: &index.column_evaluations.coefficients8,
+                coefficient: &column_evaluations.coefficients8,
                 vanishes_on_zero_knowledge_and_previous_rows: &index
                     .cs
                     .precomputations()
@@ -756,6 +774,7 @@ where
 
                 generic4
             };
+
             // permutation
             let (mut t8, bnd) = {
                 let alphas =
@@ -770,20 +789,14 @@ where
             {
                 use crate::circuits::argument::DynArgument;
 
-                let range_check0_enabled =
-                    index.column_evaluations.range_check0_selector8.is_some();
-                let range_check1_enabled =
-                    index.column_evaluations.range_check1_selector8.is_some();
-                let foreign_field_addition_enabled = index
-                    .column_evaluations
-                    .foreign_field_add_selector8
-                    .is_some();
-                let foreign_field_multiplication_enabled = index
-                    .column_evaluations
-                    .foreign_field_mul_selector8
-                    .is_some();
-                let xor_enabled = index.column_evaluations.xor_selector8.is_some();
-                let rot_enabled = index.column_evaluations.rot_selector8.is_some();
+                let range_check0_enabled = column_evaluations.range_check0_selector8.is_some();
+                let range_check1_enabled = column_evaluations.range_check1_selector8.is_some();
+                let foreign_field_addition_enabled =
+                    column_evaluations.foreign_field_add_selector8.is_some();
+                let foreign_field_multiplication_enabled =
+                    column_evaluations.foreign_field_mul_selector8.is_some();
+                let xor_enabled = column_evaluations.xor_selector8.is_some();
+                let rot_enabled = column_evaluations.rot_selector8.is_some();
 
                 for gate in [
                     (
@@ -827,7 +840,7 @@ where
 
             // lookup
             {
-                if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
+                if let Some(lcs) = lookup_constraint_system {
                     let constraints = lookup::constraints::constraints(&lcs.configuration, false);
                     let constraints_len = u32::try_from(constraints.len())
                         .expect("not expecting a large amount of constraints");
@@ -862,9 +875,7 @@ where
             f += &public_poly;
 
             // divide contributions with vanishing polynomial
-            let (mut quotient, res) = f
-                .divide_by_vanishing_poly(index.cs.domain.d1)
-                .ok_or(ProverError::Prover("division by vanishing polynomial"))?;
+            let (mut quotient, res) = f.divide_by_vanishing_poly(index.cs.domain.d1);
             if !res.is_zero() {
                 return Err(ProverError::Prover(
                     "rest of division by vanishing polynomial",
@@ -878,11 +889,11 @@ where
         //~ 1. commit (hiding) to the quotient polynomial $t$
         let t_comm = { index.srs.commit(&quotient_poly, 7 * num_chunks, rng) };
 
-        //~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
+        //~ 1. Absorb the commitment of the quotient polynomial with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &t_comm.commitment);
 
         //~ 1. Sample $\zeta'$ with the Fq-Sponge.
-        let zeta_chal = ScalarChallenge(fq_sponge.challenge());
+        let zeta_chal = ScalarChallenge::new(fq_sponge.challenge());
 
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
         let zeta = zeta_chal.to_field(endo_r);
@@ -891,7 +902,7 @@ where
         let zeta_omega = zeta * omega;
 
         //~ 1. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
-        if index.cs.lookup_constraint_system.is_some() {
+        if lookup_constraint_system.is_some() {
             //~~ * the aggregation polynomial
             let aggreg = lookup_context
                 .aggreg_coeffs
@@ -959,7 +970,7 @@ where
         //~
         //~    $$(f_0(x), f_1(x), f_2(x), \ldots)$$
         //~
-        //~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
+        //~    TODO: do we want to specify more on that? It seems unnecessary except for the t polynomial (or if for some reason someone sets that to a low value)
 
         internal_tracing::checkpoint!(internal_traces; lagrange_basis_eval_zeta_poly);
         let zeta_evals =
@@ -990,12 +1001,10 @@ where
                 })
             },
             s: array::from_fn(|i| {
-                chunked_evals_for_evaluations(
-                    &index.column_evaluations.permutation_coefficients8[i],
-                )
+                chunked_evals_for_evaluations(&column_evaluations.permutation_coefficients8[i])
             }),
             coefficients: array::from_fn(|i| {
-                chunked_evals_for_evaluations(&index.column_evaluations.coefficients8[i])
+                chunked_evals_for_evaluations(&column_evaluations.coefficients8[i])
             }),
             w: array::from_fn(|i| {
                 let chunked =
@@ -1018,89 +1027,71 @@ where
             lookup_table: lookup_context.lookup_table_eval.take(),
             lookup_sorted: array::from_fn(|i| lookup_context.lookup_sorted_eval[i].take()),
             runtime_lookup_table: lookup_context.runtime_lookup_table_eval.take(),
-            generic_selector: chunked_evals_for_selector(
-                &index.column_evaluations.generic_selector4,
-            ),
-            poseidon_selector: chunked_evals_for_selector(
-                &index.column_evaluations.poseidon_selector8,
-            ),
+            generic_selector: chunked_evals_for_selector(&column_evaluations.generic_selector4),
+            poseidon_selector: chunked_evals_for_selector(&column_evaluations.poseidon_selector8),
             complete_add_selector: chunked_evals_for_selector(
-                &index.column_evaluations.complete_add_selector4,
+                &column_evaluations.complete_add_selector4,
             ),
-            mul_selector: chunked_evals_for_selector(&index.column_evaluations.mul_selector8),
-            emul_selector: chunked_evals_for_selector(&index.column_evaluations.emul_selector8),
+            mul_selector: chunked_evals_for_selector(&column_evaluations.mul_selector8),
+            emul_selector: chunked_evals_for_selector(&column_evaluations.emul_selector8),
             endomul_scalar_selector: chunked_evals_for_selector(
-                &index.column_evaluations.endomul_scalar_selector8,
+                &column_evaluations.endomul_scalar_selector8,
             ),
 
-            range_check0_selector: index
-                .column_evaluations
+            range_check0_selector: column_evaluations
                 .range_check0_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
-            range_check1_selector: index
-                .column_evaluations
+            range_check1_selector: column_evaluations
                 .range_check1_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
-            foreign_field_add_selector: index
-                .column_evaluations
+            foreign_field_add_selector: column_evaluations
                 .foreign_field_add_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
-            foreign_field_mul_selector: index
-                .column_evaluations
+            foreign_field_mul_selector: column_evaluations
                 .foreign_field_mul_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
-            xor_selector: index
-                .column_evaluations
+            xor_selector: column_evaluations
                 .xor_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
-            rot_selector: index
-                .column_evaluations
+            rot_selector: column_evaluations
                 .rot_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
 
-            runtime_lookup_table_selector: index.cs.lookup_constraint_system.as_ref().and_then(
-                |lcs| {
-                    lcs.runtime_selector
-                        .as_ref()
-                        .map(chunked_evals_for_selector)
-                },
-            ),
-            xor_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(|lcs| {
+            runtime_lookup_table_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
+                lcs.runtime_selector
+                    .as_ref()
+                    .map(chunked_evals_for_selector)
+            }),
+            xor_lookup_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
                 lcs.lookup_selectors
                     .xor
                     .as_ref()
                     .map(chunked_evals_for_selector)
             }),
-            lookup_gate_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
-                |lcs| {
-                    lcs.lookup_selectors
-                        .lookup
-                        .as_ref()
-                        .map(chunked_evals_for_selector)
-                },
-            ),
-            range_check_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
-                |lcs| {
-                    lcs.lookup_selectors
-                        .range_check
-                        .as_ref()
-                        .map(chunked_evals_for_selector)
-                },
-            ),
-            foreign_field_mul_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
-                |lcs| {
-                    lcs.lookup_selectors
-                        .ffmul
-                        .as_ref()
-                        .map(chunked_evals_for_selector)
-                },
-            ),
+            lookup_gate_lookup_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
+                lcs.lookup_selectors
+                    .lookup
+                    .as_ref()
+                    .map(chunked_evals_for_selector)
+            }),
+            range_check_lookup_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
+                lcs.lookup_selectors
+                    .range_check
+                    .as_ref()
+                    .map(chunked_evals_for_selector)
+            }),
+            foreign_field_mul_lookup_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
+                lcs.lookup_selectors
+                    .ffmul
+                    .as_ref()
+                    .map(chunked_evals_for_selector)
+            }),
         };
 
         let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);
@@ -1109,7 +1100,7 @@ where
 
         //~ 1. Evaluate the same polynomials without chunking them
         //~    (so that each polynomial should correspond to a single value this time).
-        let evals = {
+        let evals: ProofEvaluations<PointEvaluations<G::ScalarField>> = {
             let powers_of_eval_points_for_chunks = PointEvaluations {
                 zeta: zeta_to_srs_len,
                 zeta_omega: zeta_omega_to_srs_len,
@@ -1118,7 +1109,7 @@ where
         };
 
         //~ 1. Compute the ft polynomial.
-        //~    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
+        //~    This is to implement [Maller's optimization](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html).
         internal_tracing::checkpoint!(internal_traces; compute_ft_poly);
         let ft: DensePolynomial<G::ScalarField> = {
             let f_chunked = {
@@ -1141,7 +1132,7 @@ where
 
                 drop(env);
 
-                // see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-prover-side
+                // see https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#the-prover-side
                 f.to_chunked_polynomial(num_chunks, index.max_poly_size)
                     .linearize(zeta_to_srs_len)
             };
@@ -1154,14 +1145,14 @@ where
         };
 
         //~ 1. construct the blinding part of the ft polynomial commitment
-        //~    [see this section](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors)
+        //~    [see this section](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#evaluation-proof-and-blinding-factors)
         let blinding_ft = {
             let blinding_t = t_comm.blinders.chunk_blinding(zeta_to_srs_len);
             let blinding_f = G::ScalarField::zero();
 
             PolyComm {
                 // blinding_f - Z_H(zeta) * blinding_t
-                elems: vec![
+                chunks: vec![
                     blinding_f - (zeta_to_domain_size - G::ScalarField::one()) * blinding_t,
                 ],
             }
@@ -1173,7 +1164,7 @@ where
 
         //~ 1. Setup the Fr-Sponge
         let fq_sponge_before_evaluations = fq_sponge.clone();
-        let mut fr_sponge = EFrSponge::new(G::sponge_params());
+        let mut fr_sponge = EFrSponge::from(G::sponge_params());
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&fq_sponge.digest());
@@ -1182,7 +1173,7 @@ where
         let prev_challenge_digest = {
             // Note: we absorb in a new sponge here to limit the scope in which we need the
             // more-expensive 'optional sponge'.
-            let mut fr_sponge = EFrSponge::new(G::sponge_params());
+            let mut fr_sponge = EFrSponge::from(G::sponge_params());
             for RecursionChallenge { chals, .. } in &prev_challenges {
                 fr_sponge.absorb_multiple(chals);
             }
@@ -1197,7 +1188,7 @@ where
             .map(|RecursionChallenge { chals, comm }| {
                 (
                     DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
-                    comm.elems.len(),
+                    comm.len(),
                 )
             })
             .collect::<Vec<_>>();
@@ -1231,8 +1222,12 @@ where
         //~ 1. Create a list of all polynomials that will require evaluations
         //~    (and evaluation proofs) in the protocol.
         //~    First, include the previous challenges, in case we are in a recursive prover.
-        let non_hiding = |d1_size: usize| PolyComm {
-            elems: vec![G::ScalarField::zero(); d1_size],
+        let non_hiding = |n_chunks: usize| PolyComm {
+            chunks: vec![G::ScalarField::zero(); n_chunks],
+        };
+
+        let fixed_hiding = |n_chunks: usize| PolyComm {
+            chunks: vec![G::ScalarField::one(); n_chunks],
         };
 
         let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
@@ -1240,12 +1235,8 @@ where
 
         let mut polynomials = polys
             .iter()
-            .map(|(p, d1_size)| (coefficients_form(p), non_hiding(*d1_size)))
+            .map(|(p, n_chunks)| (coefficients_form(p), non_hiding(*n_chunks)))
             .collect::<Vec<_>>();
-
-        let fixed_hiding = |d1_size: usize| PolyComm {
-            elems: vec![G::ScalarField::one(); d1_size],
-        };
 
         //~ 1. Then, include:
         //~~ * the negated public polynomial
@@ -1259,27 +1250,27 @@ where
         polynomials.push((coefficients_form(&ft), blinding_ft));
         polynomials.push((coefficients_form(&z_poly), z_comm.blinders));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.generic_selector4),
+            evaluations_form(&column_evaluations.generic_selector4),
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.poseidon_selector8),
+            evaluations_form(&column_evaluations.poseidon_selector8),
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.complete_add_selector4),
+            evaluations_form(&column_evaluations.complete_add_selector4),
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.mul_selector8),
+            evaluations_form(&column_evaluations.mul_selector8),
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.emul_selector8),
+            evaluations_form(&column_evaluations.emul_selector8),
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
-            evaluations_form(&index.column_evaluations.endomul_scalar_selector8),
+            evaluations_form(&column_evaluations.endomul_scalar_selector8),
             fixed_hiding(num_chunks),
         ));
         polynomials.extend(
@@ -1290,67 +1281,54 @@ where
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
-            index
-                .column_evaluations
+            column_evaluations
                 .coefficients8
                 .iter()
                 .map(|coefficientm| (evaluations_form(coefficientm), non_hiding(num_chunks)))
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
-            index.column_evaluations.permutation_coefficients8[0..PERMUTS - 1]
+            column_evaluations.permutation_coefficients8[0..PERMUTS - 1]
                 .iter()
                 .map(|w| (evaluations_form(w), non_hiding(num_chunks)))
                 .collect::<Vec<_>>(),
         );
 
         //~~ * the optional gates
-        if let Some(range_check0_selector8) =
-            index.column_evaluations.range_check0_selector8.as_ref()
-        {
+        if let Some(range_check0_selector8) = &column_evaluations.range_check0_selector8 {
             polynomials.push((
                 evaluations_form(range_check0_selector8),
                 non_hiding(num_chunks),
             ));
         }
-        if let Some(range_check1_selector8) =
-            index.column_evaluations.range_check1_selector8.as_ref()
-        {
+        if let Some(range_check1_selector8) = &column_evaluations.range_check1_selector8 {
             polynomials.push((
                 evaluations_form(range_check1_selector8),
                 non_hiding(num_chunks),
             ));
         }
-        if let Some(foreign_field_add_selector8) = index
-            .column_evaluations
-            .foreign_field_add_selector8
-            .as_ref()
-        {
+        if let Some(foreign_field_add_selector8) = &column_evaluations.foreign_field_add_selector8 {
             polynomials.push((
                 evaluations_form(foreign_field_add_selector8),
                 non_hiding(num_chunks),
             ));
         }
-        if let Some(foreign_field_mul_selector8) = index
-            .column_evaluations
-            .foreign_field_mul_selector8
-            .as_ref()
-        {
+        if let Some(foreign_field_mul_selector8) = &column_evaluations.foreign_field_mul_selector8 {
             polynomials.push((
                 evaluations_form(foreign_field_mul_selector8),
                 non_hiding(num_chunks),
             ));
         }
-        if let Some(xor_selector8) = index.column_evaluations.xor_selector8.as_ref() {
+        if let Some(xor_selector8) = &column_evaluations.xor_selector8 {
             polynomials.push((evaluations_form(xor_selector8), non_hiding(num_chunks)));
         }
-        if let Some(rot_selector8) = index.column_evaluations.rot_selector8.as_ref() {
+        if let Some(rot_selector8) = &column_evaluations.rot_selector8 {
             polynomials.push((evaluations_form(rot_selector8), non_hiding(num_chunks)));
         }
 
         //~~ * optionally, the runtime table
         //~ 1. if using lookup:
-        if let Some(lcs) = &index.cs.lookup_constraint_system {
+        if let Some(lcs) = lookup_constraint_system {
             //~~ * add the lookup sorted polynomials
             let sorted_poly = lookup_context.sorted_coeffs.as_ref().unwrap();
             let sorted_comms = lookup_context.sorted_comms.as_ref().unwrap();
@@ -1391,17 +1369,16 @@ where
                 if lcs.runtime_selector.is_some() {
                     let runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
 
-                    let elems = runtime_comm
+                    let chunks = runtime_comm
                         .blinders
-                        .elems
-                        .iter()
-                        .map(|blinding| *joint_combiner * blinding + base_blinding)
+                        .into_iter()
+                        .map(|blinding| *joint_combiner * *blinding + base_blinding)
                         .collect();
 
-                    PolyComm { elems }
+                    PolyComm::new(chunks)
                 } else {
-                    let elems = vec![base_blinding; num_chunks];
-                    PolyComm { elems }
+                    let chunks = vec![base_blinding; num_chunks];
+                    PolyComm::new(chunks)
                 }
             };
 
@@ -1422,22 +1399,22 @@ where
 
             //~~ * the lookup selectors
 
-            if let Some(runtime_lookup_table_selector) = lcs.runtime_selector.as_ref() {
+            if let Some(runtime_lookup_table_selector) = &lcs.runtime_selector {
                 polynomials.push((
                     evaluations_form(runtime_lookup_table_selector),
                     non_hiding(1),
                 ))
             }
-            if let Some(xor_lookup_selector) = lcs.lookup_selectors.xor.as_ref() {
+            if let Some(xor_lookup_selector) = &lcs.lookup_selectors.xor {
                 polynomials.push((evaluations_form(xor_lookup_selector), non_hiding(1)))
             }
-            if let Some(lookup_gate_selector) = lcs.lookup_selectors.lookup.as_ref() {
+            if let Some(lookup_gate_selector) = &lcs.lookup_selectors.lookup {
                 polynomials.push((evaluations_form(lookup_gate_selector), non_hiding(1)))
             }
-            if let Some(range_check_lookup_selector) = lcs.lookup_selectors.range_check.as_ref() {
+            if let Some(range_check_lookup_selector) = &lcs.lookup_selectors.range_check {
                 polynomials.push((evaluations_form(range_check_lookup_selector), non_hiding(1)))
             }
-            if let Some(foreign_field_mul_lookup_selector) = lcs.lookup_selectors.ffmul.as_ref() {
+            if let Some(foreign_field_mul_lookup_selector) = &lcs.lookup_selectors.ffmul {
                 polynomials.push((
                     evaluations_form(foreign_field_mul_lookup_selector),
                     non_hiding(1),
@@ -1446,7 +1423,7 @@ where
         }
 
         //~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
-        internal_tracing::checkpoint!(internal_traces; create_aggregated_evaluation_proof);
+        internal_tracing::checkpoint!(internal_traces; create_aggregated_ipa);
         let proof = OpenProof::open(
             &*index.srs,
             group_map,
@@ -1481,6 +1458,7 @@ where
         };
 
         internal_tracing::checkpoint!(internal_traces; create_recursive_done);
+
         Ok(proof)
     }
 }
@@ -1503,7 +1481,7 @@ internal_tracing::decl_traces!(internal_traces;
     compute_ft_poly,
     ft_eval_zeta_omega,
     build_polynomials,
-    create_aggregated_evaluation_proof,
+    create_aggregated_ipa,
     create_recursive_done);
 
 #[cfg(feature = "ocaml_types")]
@@ -1512,8 +1490,8 @@ pub mod caml {
     use crate::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
     use ark_ec::AffineRepr;
     use poly_commitment::{
-        commitment::caml::{CamlOpeningProof, CamlPolyComm},
-        evaluation_proof::OpeningProof,
+        commitment::caml::CamlPolyComm,
+        ipa::{caml::CamlOpeningProof, OpeningProof},
     };
 
     #[cfg(feature = "internal_tracing")]
@@ -1537,7 +1515,8 @@ pub mod caml {
         pub evals: CamlProofEvaluations<CamlF>,
         pub ft_eval1: CamlF,
         pub public: Vec<CamlF>,
-        pub prev_challenges: Vec<CamlRecursionChallenge<CamlG, CamlF>>, //Vec<(Vec<CamlF>, CamlPolyComm<CamlG>)>,
+        //Vec<(Vec<CamlF>, CamlPolyComm<CamlG>)>,
+        pub prev_challenges: Vec<CamlRecursionChallenge<CamlG, CamlF>>,
     }
 
     //
@@ -1589,8 +1568,10 @@ pub mod caml {
     // ProverCommitments<G> -> CamlProverCommitments<CamlG>
     // we need to know how to convert G to CamlG.
     // we don't know that information, unless we implemented some trait (e.g. ToCaml)
-    // we can do that, but instead we implemented the From trait for the reverse operations (From<G> for CamlG).
-    // it reduces the complexity, but forces us to do the conversion in two phases instead of one.
+    // we can do that, but instead we implemented the From trait for the reverse
+    // operations (From<G> for CamlG).
+    // it reduces the complexity, but forces us to do the conversion in two
+    // phases instead of one.
 
     //
     // CamlLookupCommitments<CamlG> <-> LookupCommitments<G>
@@ -1725,14 +1706,24 @@ pub mod caml {
     // ProverProof<G> <-> CamlProofWithPublic<CamlG, CamlF>
     //
 
-    impl<G, CamlG, CamlF> From<(ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)>
+    // this is just used to simplify the type signatures below
+    // the bound does not need to be enforced
+    #[allow(type_alias_bounds)]
+    type ProofTuple<const FULL_ROUNDS: usize, G: AffineRepr> = (
+        ProverProof<G, OpeningProof<G, FULL_ROUNDS>, FULL_ROUNDS>,
+        Vec<<G as AffineRepr>::ScalarField>,
+    );
+
+    impl<const FULL_ROUNDS: usize, G, CamlG, CamlF> From<ProofTuple<FULL_ROUNDS, G>>
         for CamlProofWithPublic<CamlG, CamlF>
     where
         G: AffineRepr,
+        G::BaseField: PrimeField,
+        G: poly_commitment::commitment::EndoCurve,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
-        fn from(pp: (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)) -> Self {
+        fn from(pp: ProofTuple<FULL_ROUNDS, G>) -> Self {
             let (public_evals, evals) = pp.0.evals.into();
             CamlProofWithPublic {
                 public_evals,
@@ -1748,16 +1739,16 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG, CamlF> From<CamlProofWithPublic<CamlG, CamlF>>
-        for (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)
+    impl<const FULL_ROUNDS: usize, G, CamlG, CamlF> From<CamlProofWithPublic<CamlG, CamlF>>
+        for ProofTuple<FULL_ROUNDS, G>
     where
         CamlF: Clone,
         G: AffineRepr + From<CamlG>,
+        G::BaseField: PrimeField,
+        G: poly_commitment::commitment::EndoCurve,
         G::ScalarField: From<CamlF>,
     {
-        fn from(
-            caml_pp: CamlProofWithPublic<CamlG, CamlF>,
-        ) -> (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>) {
+        fn from(caml_pp: CamlProofWithPublic<CamlG, CamlF>) -> Self {
             let CamlProofWithPublic {
                 public_evals,
                 proof: caml_pp,

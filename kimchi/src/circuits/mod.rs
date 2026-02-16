@@ -2,6 +2,7 @@
 pub mod macros;
 
 pub mod argument;
+pub mod berkeley_columns;
 pub mod constraints;
 pub mod domain_constant_evaluation;
 pub mod domains;

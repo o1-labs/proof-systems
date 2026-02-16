@@ -13,7 +13,7 @@ use kimchi::{
     curve::KimchiCurve,
     prover_index::ProverIndex,
 };
-use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof};
+use poly_commitment::{commitment::CommitmentCurve, SRS};
 use serde::Serialize;
 use std::{
     collections::HashMap,
@@ -56,7 +56,6 @@ where
 {
 }
 
-///
 pub fn latex_constraints<G>() -> HashMap<&'static str, Vec<Vec<String>>>
 where
     G: CommitmentCurve,
@@ -75,10 +74,12 @@ where
 /// # Panics
 ///
 /// Will panic if `TinyTemplate::render()` returns `Error` or `std::fs::File::create()` returns `Error`.
-pub fn visu<G: KimchiCurve>(
-    index: &ProverIndex<G, OpeningProof<G>>,
+pub fn visu<const FULL_ROUNDS: usize, G, Srs>(
+    index: &ProverIndex<FULL_ROUNDS, G, Srs>,
     witness: Option<Witness<G::ScalarField>>,
 ) where
+    Srs: SRS<G>,
+    G: KimchiCurve<FULL_ROUNDS>,
     G::BaseField: PrimeField,
 {
     // serialize index

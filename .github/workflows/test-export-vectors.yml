@@ -1,0 +1,143 @@
+name: Test Export Test Vectors
+
+on:
+  workflow_dispatch:
+  pull_request:
+  merge_group:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.ref }}-export-vectors
+  cancel-in-progress: true
+
+env:
+  RUSTFLAGS: -Coverflow-checks=y -Cdebug-assertions=y
+  CARGO_INCREMENTAL: 1
+  CARGO_TERM_COLOR: always
+  RUST_MIN_STACK: 31457280
+
+jobs:
+  test-export-vectors:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: "1.92"
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: "4.14.2"
+
+      - name: Build export_test_vectors binary
+        run: |
+          eval $(opam env)
+          cargo build --bin export_test_vectors
+
+      - name: Test export_test_vectors commands
+        run: |
+          # Test all valid command combinations
+          FORMATS="b10 hex"
+          MODES="legacy kimchi"
+          OUTPUT_FORMATS="json es5"
+
+          eval $(opam env)
+
+          for format in $FORMATS; do
+            for mode in $MODES; do
+              for output_format in $OUTPUT_FORMATS; do
+                echo "Testing $format $mode --format $output_format..."
+                if [ "$output_format" = "json" ]; then
+                  cargo run --bin export_test_vectors -- \
+                    $format $mode /tmp/test_${format}_${mode}.json \
+                    --format $output_format
+                else
+                  cargo run --bin export_test_vectors -- \
+                    $format $mode /tmp/test_${format}_${mode}.js \
+                    --format $output_format
+                fi
+              done
+            done
+          done
+
+          echo "Testing stdout output..."
+          cargo run --bin export_test_vectors -- b10 legacy - \
+            > /tmp/test_stdout.json
+
+      - name: Verify output files
+        run: |
+          # Check that output files exist and are valid
+          echo "Verifying output files..."
+
+          FORMATS="b10 hex"
+          MODES="legacy kimchi"
+          OUTPUT_FORMATS="json es5"
+
+          # Check all format/mode/output combinations
+          for format in $FORMATS; do
+            for mode in $MODES; do
+              for output_format in $OUTPUT_FORMATS; do
+                if [ "$output_format" = "json" ]; then
+                  file="/tmp/test_${format}_${mode}.json"
+                  if [ -f "$file" ]; then
+                    echo "✓ $file exists"
+                    # Verify it's valid JSON
+                    if jq empty "$file" 2>/dev/null; then
+                      echo "✓ $file is valid JSON"
+                    else
+                      echo "✗ $file is not valid JSON"
+                      exit 1
+                    fi
+                  else
+                    echo "✗ $file does not exist"
+                    exit 1
+                  fi
+                else
+                  file="/tmp/test_${format}_${mode}.js"
+                  if [ -f "$file" ]; then
+                    echo "✓ $file exists"
+                    # Basic syntax check for JavaScript
+                    if node -c "$file" 2>/dev/null; then
+                      echo "✓ $file is valid JavaScript"
+                    else
+                      echo "✗ $file is not valid JavaScript"
+                      exit 1
+                    fi
+                  else
+                    echo "✗ $file does not exist"
+                    exit 1
+                  fi
+                fi
+              done
+            done
+          done
+
+          # Check stdout output file
+          file="/tmp/test_stdout.json"
+          if [ -f "$file" ]; then
+            echo "✓ $file exists"
+            # Verify it's valid JSON
+            if jq empty "$file" 2>/dev/null; then
+              echo "✓ $file is valid JSON"
+            else
+              echo "✗ $file is not valid JSON"
+              exit 1
+            fi
+          else
+            echo "✗ $file does not exist"
+            exit 1
+          fi
+
+      - name: Run regression tests
+        run: |
+          eval $(opam env)
+          echo "Running regression tests..."
+          cargo test --bin export_test_vectors test_export_regression_all_formats

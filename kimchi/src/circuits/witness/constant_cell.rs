@@ -1,5 +1,4 @@
 use super::{variables::Variables, WitnessCell};
-use crate::circuits::polynomial::COLUMNS;
 use ark_ff::Field;
 
 /// Witness cell with constant value
@@ -14,8 +13,8 @@ impl<F: Field> ConstantCell<F> {
     }
 }
 
-impl<F: Field> WitnessCell<F> for ConstantCell<F> {
-    fn value(&self, _witness: &mut [Vec<F>; COLUMNS], _variables: &Variables<F>) -> F {
+impl<F: Field, const W: usize> WitnessCell<F, F, W> for ConstantCell<F> {
+    fn value(&self, _witness: &mut [Vec<F>; W], _variables: &Variables<F>, _index: usize) -> F {
         self.value
     }
 }

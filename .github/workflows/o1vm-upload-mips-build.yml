@@ -1,0 +1,28 @@
+name: Upload MIPS Binaries
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build_and_upload:
+    name: Build and Upload MIPS Programs
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v6
+        with:
+          submodules: 'recursive'
+
+      - name: Build MIPS binaries
+        uses: ./.github/actions/build-mips
+
+      - name: Create tar archive
+        run: |
+          cd o1vm/resources/programs/mips
+          tar -czf mips-binaries.tar.gz bin/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: mips-binaries
+          path: o1vm/resources/programs/mips/mips-binaries.tar.gz

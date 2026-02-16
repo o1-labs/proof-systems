@@ -9,22 +9,27 @@ use crate::circuits::{
     wires::Wire,
 };
 use ark_ff::{UniformRand, Zero};
+use core::array;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{prelude::*, Rng};
-use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
 fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_sizes: Vec<usize>) {
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
+
     let mut lookup_table_values: Vec<Vec<_>> = table_sizes
         .iter()
-        .map(|size| (0..*size).map(|_| rand::random()).collect())
+        .map(|size| (0..*size).map(|_| rng.gen()).collect())
         .collect();
     // Zero table must have a zero row
     lookup_table_values[0][0] = From::from(0);
@@ -56,16 +61,16 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
         let num_tables = table_sizes.len();
         let mut tables_used = std::collections::HashSet::new();
         for _ in 0..num_lookups {
-            let table_id = rand::random::<usize>() % num_tables;
+            let table_id = rng.gen::<usize>() % num_tables;
             tables_used.insert(table_id);
             let lookup_table_values: &Vec<Fp> = &lookup_table_values[table_id];
             lookup_table_ids.push((table_id as u64).into());
             for i in 0..3 {
-                let index = rand::random::<usize>() % lookup_table_values.len();
+                let index = rng.gen::<usize>() % lookup_table_values.len();
                 let value = if use_values_from_table {
                     lookup_table_values[index]
                 } else {
-                    rand::random()
+                    rng.gen()
                 };
                 lookup_indexes[i].push((index as u64).into());
                 lookup_values[i].push(value);
@@ -97,7 +102,7 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
         ]
     };
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(lookup_tables)
@@ -128,7 +133,7 @@ fn lookup_gate_rejects_bad_lookups_multiple_tables() {
     setup_lookup_proof(false, 500, vec![100, 50, 50, 2, 2])
 }
 
-fn setup_successfull_runtime_table_test(
+fn setup_successful_runtime_table_test(
     runtime_table_cfgs: Vec<RuntimeTableCfg<Fp>>,
     runtime_tables: Vec<RuntimeTable<Fp>>,
     lookups: Vec<i32>,
@@ -185,7 +190,7 @@ fn setup_successfull_runtime_table_test(
     };
 
     // run test
-    TestFramework::<Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(runtime_table_cfgs)
@@ -260,7 +265,7 @@ fn test_runtime_table() {
     print_witness(&witness, 0, 20);
 
     // run test
-    TestFramework::<Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(runtime_tables_setup)
@@ -316,7 +321,7 @@ fn test_negative_test_runtime_table_value_not_in_table() {
     };
 
     // run prover only as the error should be raised while creating the proof.
-    let err = TestFramework::<Vesta>::default()
+    let err = TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(vec![cfg])
@@ -378,7 +383,7 @@ fn test_negative_test_runtime_table_prover_with_undefined_id_in_index_and_witnes
     };
 
     // We only run the prover. No need to verify.
-    let err = TestFramework::<Vesta>::default()
+    let err = TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(vec![cfg])
@@ -438,7 +443,7 @@ fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnes
     };
 
     // We only run the prover. No need to verify.
-    let err = TestFramework::<Vesta>::default()
+    let err = TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(vec![cfg])
@@ -525,7 +530,7 @@ fn test_runtime_table_with_more_than_one_runtime_table_data_given_by_prover() {
     print_witness(&witness, 0, 20);
 
     // run test
-    let err = TestFramework::<Vesta>::default()
+    let err = TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(vec![cfg])
@@ -554,7 +559,7 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_fixed_va
 
     let lookups: Vec<i32> = [0; 20].into();
 
-    setup_successfull_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
+    setup_successful_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
 }
 
 #[test]
@@ -581,7 +586,7 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_v
 
     let lookups: Vec<i32> = [0; 20].into();
 
-    setup_successfull_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
+    setup_successful_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
 }
 
 // This test verifies that if there is a table with ID 0, it contains a row with only zeroes.
@@ -634,7 +639,7 @@ fn test_lookup_with_a_table_with_id_zero_but_no_zero_entry() {
     // lookups with (0, 0, 0).
     let witness = array::from_fn(|_col| vec![Fp::zero(); num_lookups]);
 
-    let _ = TestFramework::<Vesta>::default()
+    let _ = TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(lookup_tables)
@@ -679,7 +684,7 @@ fn test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id
     // lookups with (0, 0, 0).
     let witness = array::from_fn(|_col| vec![Fp::zero(); num_lookups]);
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(lookup_tables)
@@ -716,7 +721,7 @@ fn test_dummy_zero_entry_is_counted_while_computing_domain_size() {
         .collect();
     let witness = array::from_fn(|_col| vec![Fp::zero(); num_lookups]);
 
-    let setup = TestFramework::<Vesta>::default()
+    let setup = TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(vec![lt])

@@ -1,0 +1,45 @@
+name: Wasm
+
+on:
+  workflow_dispatch:
+  pull_request:
+  merge_group:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-wasm:
+    name: Build WebAssembly code
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust_toolchain_version: ['nightly-2025-12-11', 'nightly']
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+          targets: wasm32-unknown-unknown
+
+      - name: Add rust-src component
+        shell: bash
+        run: rustup component add rust-src --toolchain ${{ matrix.rust_toolchain_version }}
+
+      - name: Build the WebAssembly for the web
+        run: make build-web
+        env:
+          NIGHTLY_RUST_VERSION: ${{ matrix.rust_toolchain_version }}
+
+      - name: Build the WebAssembly for NodeJS
+        run: make build-nodejs
+        env:
+          NIGHTLY_RUST_VERSION: ${{ matrix.rust_toolchain_version }}

@@ -32,6 +32,7 @@ table_xor = "../../../kimchi/src/circuits/lookup/tables/xor.rs"
 table_12bit = "../../../kimchi/src/circuits/lookup/tables/range_check.rs"
 lookup = "../../../kimchi/src/circuits/lookup/constraints.rs"
 lookup_index = "../../../kimchi/src/circuits/lookup/index.rs"
+runtime_tables = "../../../kimchi/src/circuits/lookup/runtime_tables.rs"
 
 # setup
 constraint_system = "../../../kimchi/src/circuits/constraints.rs"

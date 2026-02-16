@@ -1,3 +1,4 @@
+use core::{mem, ptr};
 use std::env;
 
 use kimchi::bench::BenchmarkCtx;
@@ -6,8 +7,8 @@ use kimchi::bench::BenchmarkCtx;
 /// taken from <https://docs.rs/criterion/latest/src/criterion/lib.rs.html#171>
 pub fn black_box<T>(dummy: T) -> T {
     unsafe {
-        let ret = std::ptr::read_volatile(&dummy);
-        std::mem::forget(dummy);
+        let ret = ptr::read_volatile(&dummy);
+        mem::forget(dummy);
         ret
     }
 }
@@ -26,7 +27,7 @@ fn main() {
             let ctx = BenchmarkCtx::new(4);
             let proof_and_public = ctx.create_proof();
             loop {
-                ctx.batch_verification(black_box(&vec![proof_and_public.clone()]));
+                ctx.batch_verification(black_box(std::slice::from_ref(&proof_and_public)));
             }
         }
         _ => panic!("you must provide an argument (prove or verify)"),

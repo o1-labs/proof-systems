@@ -6,7 +6,8 @@ use crate::{
     alphas::Alphas,
     circuits::{
         argument::Argument,
-        expr::{Cache, E},
+        berkeley_columns::E,
+        expr::Cache,
         gate::{CircuitGate, Connect, GateType},
         lookup::{
             self,

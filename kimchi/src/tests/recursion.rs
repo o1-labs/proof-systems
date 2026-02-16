@@ -8,18 +8,19 @@ use crate::{
 };
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial};
+use core::array;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1_utils::math;
 use poly_commitment::{commitment::b_poly_coefficients, SRS as _};
-use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
 #[test]
 fn test_recursion() {
@@ -30,7 +31,7 @@ fn test_recursion() {
     fill_in_witness(0, &mut witness, &[]);
 
     // setup
-    let test_runner = TestFramework::<Vesta>::default()
+    let test_runner = TestFramework::<FULL_ROUNDS, Vesta>::default()
         .num_prev_challenges(1)
         .gates(gates)
         .witness(witness)

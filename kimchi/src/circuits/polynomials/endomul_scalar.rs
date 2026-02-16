@@ -4,6 +4,7 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
+        berkeley_columns::BerkeleyChallengeTerm,
         constraints::ConstraintSystem,
         expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, GateType},
@@ -12,7 +13,7 @@ use crate::{
     curve::KimchiCurve,
 };
 use ark_ff::{BitIteratorLE, Field, PrimeField};
-use std::{array, marker::PhantomData};
+use core::{array, marker::PhantomData};
 
 impl<F: PrimeField> CircuitGate<F> {
     /// Verify the `EndoMulscalar` gate.
@@ -20,7 +21,10 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `GateType::EndoMulScalar`, or there are errors in gate values.
-    pub fn verify_endomul_scalar<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_endomul_scalar<
+        const FULL_ROUNDS: usize,
+        G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    >(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
@@ -49,7 +53,7 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 }
 
-fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[F], x: &T) -> T {
+fn polynomial<F: Field, T: ExprOps<F, BerkeleyChallengeTerm>>(coeffs: &[F], x: &T) -> T {
     coeffs
         .iter()
         .rev()
@@ -166,7 +170,10 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+        env: &ArgumentEnv<F, T>,
+        cache: &mut Cache,
+    ) -> Vec<T> {
         let n0 = env.witness_curr(0);
         let n8 = env.witness_curr(1);
         let a0 = env.witness_curr(2);
@@ -217,7 +224,7 @@ where
 /// # Panics
 ///
 /// Will panic if `num_bits` length is not multiple of `bits_per_row` length.
-pub fn gen_witness<F: PrimeField + std::fmt::Display>(
+pub fn gen_witness<F: PrimeField + core::fmt::Display>(
     witness_cols: &mut [Vec<F>; COLUMNS],
     scalar: F,
     endo_scalar: F,

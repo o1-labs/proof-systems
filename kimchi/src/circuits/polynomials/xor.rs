@@ -4,6 +4,7 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
+        berkeley_columns::BerkeleyChallengeTerm,
         expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, Connect, GateType},
         lookup::{
@@ -17,20 +18,23 @@ use crate::{
     variable_map,
 };
 use ark_ff::PrimeField;
+use core::{array, marker::PhantomData};
 use num_bigint::BigUint;
 use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitwiseOps, FieldHelpers};
-use std::{array, marker::PhantomData};
 
 use super::generic::GenericGateSpec;
 
 impl<F: PrimeField> CircuitGate<F> {
     /// Extends a XOR gadget for `bits` length to a circuit
+    ///
     /// Includes:
     /// - num_xors Xor16 gates
     /// - 1 Generic gate to constrain the final row to be zero with itself
+    ///
     /// Input:
     /// - gates     : vector of circuit gates
     /// - bits      : length of the XOR gadget
+    ///
     /// Output:
     /// - new row index
     pub fn extend_xor_gadget(gates: &mut Vec<Self>, bits: usize) -> usize {
@@ -48,17 +52,21 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 
     /// Creates a XOR gadget for `bits` length
+    ///
     /// Includes:
     /// - num_xors Xor16 gates
     /// - 1 Generic gate to constrain the final row to be zero with itself
+    ///
     /// Input:
     /// - new_row   : row to start the XOR gadget
     /// - bits      : number of bits in the XOR
-    /// Outputs tuple (next_row, circuit_gates) where
+    ///   Outputs tuple (next_row, circuit_gates) where
     /// - next_row  : next row after this gate
     /// - gates     : vector of circuit gates comprising this gate
+    ///
     /// Warning:
-    /// - don't forget to check that the final row is all zeros as in `extend_xor_gadget`
+    /// - don't forget to check that the final row is all zeros as in
+    ///   `extend_xor_gadget`
     pub fn create_xor_gadget(new_row: usize, bits: usize) -> (usize, Vec<Self>) {
         let num_xors = num_xors(bits);
         let mut xor_gates = (0..num_xors)
@@ -150,7 +158,10 @@ where
     //   * Operates on Curr and Next rows
     //   * Constrain the decomposition of `in1`, `in2` and `out` of multiples of 16 bits
     //   * The actual XOR is performed thanks to the plookups of 4-bit XORs.
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+        env: &ArgumentEnv<F, T>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         let two = T::from(2u64);
         // in1 = in1_0 + in1_1 * 2^4 + in1_2 * 2^8 + in1_3 * 2^12 + next_in1 * 2^16
         // in2 = in2_0 + in2_1 * 2^4 + in2_2 * 2^8 + in2_3 * 2^12 + next_in2 * 2^16
@@ -169,7 +180,7 @@ where
 }
 
 // Witness layout
-fn layout<F: PrimeField>(curr_row: usize, bits: usize) -> Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> {
+fn layout<F: PrimeField>(curr_row: usize, bits: usize) -> Vec<Vec<Box<dyn WitnessCell<F>>>> {
     let num_xor = num_xors(bits);
     let mut layout = (0..num_xor)
         .map(|i| xor_row(i, curr_row + i))
@@ -178,9 +189,9 @@ fn layout<F: PrimeField>(curr_row: usize, bits: usize) -> Vec<[Box<dyn WitnessCe
     layout
 }
 
-fn xor_row<F: PrimeField>(nybble: usize, curr_row: usize) -> [Box<dyn WitnessCell<F>>; COLUMNS] {
+fn xor_row<F: PrimeField>(nybble: usize, curr_row: usize) -> Vec<Box<dyn WitnessCell<F>>> {
     let start = nybble * 16;
-    [
+    vec![
         VariableBitsCell::create("in1", start, None),
         VariableBitsCell::create("in2", start, None),
         VariableBitsCell::create("out", start, None),
@@ -199,8 +210,8 @@ fn xor_row<F: PrimeField>(nybble: usize, curr_row: usize) -> [Box<dyn WitnessCel
     ]
 }
 
-fn zero_row<F: PrimeField>() -> [Box<dyn WitnessCell<F>>; COLUMNS] {
-    [
+fn zero_row<F: PrimeField>() -> Vec<Box<dyn WitnessCell<F>>> {
+    vec![
         ConstantCell::create(F::zero()),
         ConstantCell::create(F::zero()),
         ConstantCell::create(F::zero()),

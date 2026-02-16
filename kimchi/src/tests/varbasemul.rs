@@ -6,19 +6,19 @@ use crate::{
     },
     tests::framework::TestFramework,
 };
-use ark_ec::{AffineRepr, CurveGroup};
+use ark_ec::{AdditiveGroup, AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
-use colored::Colorize;
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use std::{array, ops::Mul, time::Instant};
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type ScalarSponge = DefaultFrSponge<F, SpongeParams, FULL_ROUNDS>;
 
 #[test]
 fn varbase_mul_test() {
@@ -83,13 +83,9 @@ fn varbase_mul_test() {
         assert_eq!(x_.into_bigint(), res.n.into_bigint());
         assert_eq!((expected.x, expected.y), res.acc);
     }
-    println!(
-        "{}{:?}",
-        "Witness generation time: ".yellow(),
-        start.elapsed()
-    );
+    println!("Witness generation time: {:?}", start.elapsed());
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()

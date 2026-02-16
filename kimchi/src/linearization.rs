@@ -4,6 +4,7 @@ use crate::{
     alphas::Alphas,
     circuits::{
         argument::{Argument, ArgumentType},
+        berkeley_columns::BerkeleyChallengeTerm,
         expr, lookup,
         lookup::{
             constraints::LookupConfiguration,
@@ -26,8 +27,9 @@ use crate::{
 };
 
 use crate::circuits::{
+    berkeley_columns::Column,
     constraints::FeatureFlags,
-    expr::{Column, ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
+    expr::{ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
     gate::GateType,
     wires::COLUMNS,
 };
@@ -41,7 +43,10 @@ use ark_ff::{FftField, PrimeField, Zero};
 pub fn constraints_expr<F: PrimeField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
-) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
+) -> (
+    Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>,
+    Alphas<F>,
+) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
 
@@ -333,16 +338,20 @@ pub fn linearization_columns<F: FftField>(
 
 /// Linearize the `expr`.
 ///
-/// If the `feature_flags` argument is `None`, this will generate an expression using the
-/// `Expr::IfFeature` variant for each of the flags.
+/// If the `feature_flags` argument is `None`, this will generate an expression
+/// using the `Expr::IfFeature` variant for each of the flags.
 ///
 /// # Panics
 ///
 /// Will panic if the `linearization` process fails.
+#[allow(clippy::type_complexity)]
 pub fn expr_linearization<F: PrimeField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
-) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
+) -> (
+    Linearization<Vec<PolishToken<F, Column, BerkeleyChallengeTerm>>, Column>,
+    Alphas<F>,
+) {
     let evaluated_cols = linearization_columns::<F>(feature_flags);
 
     let (expr, powers_of_alpha) = constraints_expr(feature_flags, generic);

@@ -5,6 +5,7 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
+        berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges},
         constraints::ConstraintSystem,
         expr::{
             self,
@@ -18,7 +19,7 @@ use crate::{
     proof::{PointEvaluations, ProofEvaluations},
 };
 use ark_ff::{Field, PrimeField};
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 //~ We implement custom gate constraints for short Weierstrass curve
 //~ endomorphism optimised variable base scalar multiplication.
@@ -125,7 +126,10 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `GateType::EndoMul`, or `constraint evaluation` fails.
-    pub fn verify_endomul<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_endomul<
+        const FULL_ROUNDS: usize,
+        G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    >(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
@@ -133,19 +137,21 @@ impl<F: PrimeField> CircuitGate<F> {
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMul, "incorrect gate type");
 
-        let this: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row]);
-        let next: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row + 1]);
+        let this: [F; COLUMNS] = core::array::from_fn(|i| witness[i][row]);
+        let next: [F; COLUMNS] = core::array::from_fn(|i| witness[i][row + 1]);
 
         let pt = F::from(123456u64);
 
         let constants = expr::Constants {
-            alpha: F::zero(),
-            beta: F::zero(),
-            gamma: F::zero(),
-            joint_combiner: None,
             mds: &G::sponge_params().mds,
             endo_coefficient: cs.endo,
             zk_rows: cs.zk_rows,
+        };
+        let challenges = BerkeleyChallenges {
+            alpha: F::zero(),
+            beta: F::zero(),
+            gamma: F::zero(),
+            joint_combiner: F::zero(),
         };
 
         let evals: ProofEvaluations<PointEvaluations<G::ScalarField>> =
@@ -153,7 +159,7 @@ impl<F: PrimeField> CircuitGate<F> {
 
         let constraints = EndosclMul::constraints(&mut Cache::default());
         for (i, c) in constraints.iter().enumerate() {
-            match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
+            match c.evaluate_(cs.domain.d1, pt, &evals, &constants, &challenges) {
                 Ok(x) => {
                     if x != F::zero() {
                         return Err(format!("Bad endo equation {i}"));
@@ -186,7 +192,10 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+        env: &ArgumentEnv<F, T>,
+        cache: &mut Cache,
+    ) -> Vec<T> {
         let b1 = env.witness_curr(11);
         let b2 = env.witness_curr(12);
         let b3 = env.witness_curr(13);
@@ -270,7 +279,7 @@ pub struct EndoMulResult<F> {
 /// # Panics
 ///
 /// Will panic if `bits` length does not match the requirement.
-pub fn gen_witness<F: Field + std::fmt::Display>(
+pub fn gen_witness<F: Field + core::fmt::Display>(
     w: &mut [Vec<F>; COLUMNS],
     row0: usize,
     endo: F,

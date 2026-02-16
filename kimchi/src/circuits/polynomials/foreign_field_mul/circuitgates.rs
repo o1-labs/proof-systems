@@ -93,19 +93,20 @@ use crate::{
     auto_clone_array,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
+        berkeley_columns::BerkeleyChallengeTerm,
         expr::{constraints::ExprOps, Cache},
         gate::GateType,
     },
 };
 use ark_ff::PrimeField;
-use std::{array, marker::PhantomData};
+use core::{array, marker::PhantomData};
 
 /// Compute non-zero intermediate products
 ///
 /// For more details see the "Intermediate products" Section of
-/// the [Foreign Field Multiplication RFC](../rfcs/foreign_field_mul.md)
+/// the [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md)
 ///
-pub fn compute_intermediate_products<F: PrimeField, T: ExprOps<F>>(
+pub fn compute_intermediate_products<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(
     left_input: &[T; 3],
     right_input: &[T; 3],
     quotient: &[T; 3],
@@ -135,7 +136,7 @@ pub fn compute_intermediate_products<F: PrimeField, T: ExprOps<F>>(
 }
 
 // Compute native modulus values
-pub fn compute_native_modulus_values<F: PrimeField, T: ExprOps<F>>(
+pub fn compute_native_modulus_values<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(
     left_input: &[T; 3],
     right_input: &[T; 3],
     quotient: &[T; 3],
@@ -165,7 +166,7 @@ pub fn compute_native_modulus_values<F: PrimeField, T: ExprOps<F>>(
 }
 
 /// Composes the 91-bit carry1 value from its parts
-pub fn compose_carry<F: PrimeField, T: ExprOps<F>>(carry: &[T; 11]) -> T {
+pub fn compose_carry<F: PrimeField, T: ExprOps<F, BerkeleyChallengeTerm>>(carry: &[T; 11]) -> T {
     auto_clone_array!(carry);
     carry(0)
         + T::two_pow(12) * carry(1)
@@ -194,7 +195,10 @@ where
     const CONSTRAINTS: u32 = 11;
     // DEGREE is 4
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+        env: &ArgumentEnv<F, T>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         let mut constraints = vec![];
 
         //

@@ -4,6 +4,7 @@ use super::range_check::witness::range_check_0_row;
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
+        berkeley_columns::BerkeleyChallengeTerm,
         expr::{
             constraints::{crumb, ExprOps},
             Cache,
@@ -20,7 +21,7 @@ use crate::{
     variable_map,
 };
 use ark_ff::PrimeField;
-use std::{array, marker::PhantomData};
+use core::{array, marker::PhantomData};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum RotMode {
@@ -31,11 +32,18 @@ pub enum RotMode {
 impl<F: PrimeField> CircuitGate<F> {
     /// Creates a Rot64 gadget to rotate a word
     /// It will need:
-    /// - 1 Generic gate to constrain to zero the top 2 limbs of the shifted witness of the rotation
+    /// - 1 Generic gate to constrain to zero the top 2 limbs of the shifted and
+    ///   excess witness of the rotation
     ///
     /// It has:
     /// - 1 Rot64 gate to rotate the word
-    /// - 1 RangeCheck0 to constrain the size of the shifted witness of the rotation
+    /// - 1 RangeCheck0 to constrain the size of the shifted witness of the
+    ///   rotation
+    /// - 1 RangeCheck0 to constrain the size of the excess witness of the
+    ///   rotation
+    ///
+    /// Assumes:
+    /// - the witness word is 64-bits, otherwise, will need to append a new RangeCheck0 for the word
     pub fn create_rot64(new_row: usize, rot: u32) -> Vec<Self> {
         vec![
             CircuitGate {
@@ -48,34 +56,47 @@ impl<F: PrimeField> CircuitGate<F> {
                 wires: Wire::for_row(new_row + 1),
                 coeffs: vec![F::zero()],
             },
+            CircuitGate {
+                typ: GateType::RangeCheck0,
+                wires: Wire::for_row(new_row + 2),
+                coeffs: vec![F::zero()],
+            },
         ]
     }
 
     /// Extend one rotation
     /// Right now it only creates a Generic gate followed by the Rot64 gates
     /// It allows to configure left or right rotation.
+    ///
     /// Input:
     /// - gates : the full circuit
     /// - rot : the rotation offset
     /// - side : the rotation side
     /// - zero_row : the row of the Generic gate to constrain the 64-bit check of shifted word
+    ///
     /// Warning:
     /// - witness word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
     /// - same with rotated word
     pub fn extend_rot(gates: &mut Vec<Self>, rot: u32, side: RotMode, zero_row: usize) -> usize {
         let (new_row, mut rot_gates) = Self::create_rot(gates.len(), rot, side);
         gates.append(&mut rot_gates);
-        // Check that 2 most significant limbs of shifted are zero
+        // Check that 2 most significant limbs of shifted and excess are zero
+        gates.connect_64bit(zero_row, new_row - 2);
         gates.connect_64bit(zero_row, new_row - 1);
+        // Connect excess with the Rot64 gate
+        gates.connect_cell_pair((new_row - 3, 2), (new_row - 1, 0));
+
         gates.len()
     }
 
     /// Create one rotation
     /// Right now it only creates a Generic gate followed by the Rot64 gates
     /// It allows to configure left or right rotation.
+    ///
     /// Input:
     /// - rot : the rotation offset
     /// - side : the rotation side
+    ///
     /// Warning:
     /// - Word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
     /// - same with rotated word
@@ -140,25 +161,25 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ is almost empty, we can use it to perform the range check within the same gate. Then, using the following layout
 //~ and assuming that the gate has a coefficient storing the value $2^{rot}$, which is publicly known
 //~
-//~ | Gate   | `Rot64`             | `RangeCheck0`    |
-//~ | ------ | ------------------- | ---------------- |
-//~ | Column | `Curr`              | `Next`           |
-//~ | ------ | ------------------- | ---------------- |
-//~ |      0 | copy `word`         |`shifted`         |
-//~ |      1 | copy `rotated`      | 0                |
-//~ |      2 |      `excess`       | 0                |
-//~ |      3 |      `bound_limb0`  | `shifted_limb0`  |
-//~ |      4 |      `bound_limb1`  | `shifted_limb1`  |
-//~ |      5 |      `bound_limb2`  | `shifted_limb2`  |
-//~ |      6 |      `bound_limb3`  | `shifted_limb3`  |
-//~ |      7 |      `bound_crumb0` | `shifted_crumb0` |
-//~ |      8 |      `bound_crumb1` | `shifted_crumb1` |
-//~ |      9 |      `bound_crumb2` | `shifted_crumb2` |
-//~ |     10 |      `bound_crumb3` | `shifted_crumb3` |
-//~ |     11 |      `bound_crumb4` | `shifted_crumb4` |
-//~ |     12 |      `bound_crumb5` | `shifted_crumb5` |
-//~ |     13 |      `bound_crumb6` | `shifted_crumb6` |
-//~ |     14 |      `bound_crumb7` | `shifted_crumb7` |
+//~ | Gate   | `Rot64`             | `RangeCheck0` gadgets (designer's duty)                   |
+//~ | ------ | ------------------- | --------------------------------------------------------- |
+//~ | Column | `Curr`              | `Next`           | `Next` + 1      | `Next`+ 2, if needed |
+//~ | ------ | ------------------- | ---------------- | --------------- | -------------------- |
+//~ |      0 | copy `word`         |`shifted`         |   copy `excess` |    copy      `word`  |
+//~ |      1 | copy `rotated`      | 0                |              0  |                  0   |
+//~ |      2 |      `excess`       | 0                |              0  |                  0   |
+//~ |      3 |      `bound_limb0`  | `shifted_limb0`  |  `excess_limb0` |        `word_limb0`  |
+//~ |      4 |      `bound_limb1`  | `shifted_limb1`  |  `excess_limb1` |        `word_limb1`  |
+//~ |      5 |      `bound_limb2`  | `shifted_limb2`  |  `excess_limb2` |        `word_limb2`  |
+//~ |      6 |      `bound_limb3`  | `shifted_limb3`  |  `excess_limb3` |        `word_limb3`  |
+//~ |      7 |      `bound_crumb0` | `shifted_crumb0` | `excess_crumb0` |       `word_crumb0`  |
+//~ |      8 |      `bound_crumb1` | `shifted_crumb1` | `excess_crumb1` |       `word_crumb1`  |
+//~ |      9 |      `bound_crumb2` | `shifted_crumb2` | `excess_crumb2` |       `word_crumb2`  |
+//~ |     10 |      `bound_crumb3` | `shifted_crumb3` | `excess_crumb3` |       `word_crumb3`  |
+//~ |     11 |      `bound_crumb4` | `shifted_crumb4` | `excess_crumb4` |       `word_crumb4`  |
+//~ |     12 |      `bound_crumb5` | `shifted_crumb5` | `excess_crumb5` |       `word_crumb5`  |
+//~ |     13 |      `bound_crumb6` | `shifted_crumb6` | `excess_crumb6` |       `word_crumb6`  |
+//~ |     14 |      `bound_crumb7` | `shifted_crumb7` | `excess_crumb7` |       `word_crumb7`  |
 //~
 //~ In Keccak, rotations are performed over a 5x5 matrix state of w-bit words each cell. The values used
 //~ to perform the rotation are fixed, public, and known in advance, according to the following table,
@@ -201,7 +222,10 @@ where
     // (stored in coefficient as a power-of-two form)
     //   * Operates on Curr row
     //   * Shifts the words by `rot` bits and then adds the excess to obtain the rotated word.
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
+        env: &ArgumentEnv<F, T>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         // Check that the last 8 columns are 2-bit crumbs
         // C1..C8: x * (x - 1) * (x - 2) * (x - 3) = 0
         let mut constraints = (7..COLUMNS)
@@ -254,12 +278,16 @@ where
 
 // ROTATION WITNESS COMPUTATION
 
-fn layout_rot64<F: PrimeField>(curr_row: usize) -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
-    [rot_row(), range_check_0_row("shifted", curr_row + 1)]
+fn layout_rot64<F: PrimeField>(curr_row: usize) -> [Vec<Box<dyn WitnessCell<F>>>; 3] {
+    [
+        rot_row(),
+        range_check_0_row("shifted", curr_row + 1),
+        range_check_0_row("excess", curr_row + 2),
+    ]
 }
 
-fn rot_row<F: PrimeField>() -> [Box<dyn WitnessCell<F>>; COLUMNS] {
-    [
+fn rot_row<F: PrimeField>() -> Vec<Box<dyn WitnessCell<F>>> {
+    vec![
         VariableCell::create("word"),
         VariableCell::create("rotated"),
         VariableCell::create("excess"),
@@ -304,6 +332,7 @@ fn init_rot64<F: PrimeField>(
 /// - word: 64-bit word to be rotated
 /// - rot:  rotation offset
 /// - side: side of the rotation, either left or right
+///
 /// Warning:
 /// - don't forget to include a public input row with zero value
 pub fn extend_rot<F: PrimeField>(
@@ -312,8 +341,8 @@ pub fn extend_rot<F: PrimeField>(
     rot: u32,
     side: RotMode,
 ) {
-    assert!(rot < 64, "Rotation value must be less than 64");
-    assert_ne!(rot, 0, "Rotation value must be non-zero");
+    assert!(rot <= 64, "Rotation value must be less or equal than 64");
+
     let rot = if side == RotMode::Right {
         64 - rot
     } else {
@@ -327,15 +356,15 @@ pub fn extend_rot<F: PrimeField>(
     // shifted      [------] * 2^rot
     // rot    = [------|000]
     //        +        [---] excess
-    let shifted = (word as u128 * 2u128.pow(rot) % 2u128.pow(64)) as u64;
-    let excess = word / 2u64.pow(64 - rot);
+    let shifted = (word as u128) * 2u128.pow(rot) % 2u128.pow(64);
+    let excess = (word as u128) / 2u128.pow(64 - rot);
     let rotated = shifted + excess;
     // Value for the added value for the bound
     // Right input of the "FFAdd" for the bound equation
     let bound = 2u128.pow(64) - 2u128.pow(rot);
 
     let rot_row = witness[0].len();
-    let rot_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 2]);
+    let rot_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 3]);
     for col in 0..COLUMNS {
         witness[col].extend(rot_witness[col].iter());
     }

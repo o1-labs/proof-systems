@@ -13,15 +13,13 @@ use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
 };
-use itertools::repeat_n;
 use o1_utils::field_helpers::i32_to_field;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::iter;
 use thiserror::Error;
 
 /// Represents an error found when computing the lookup constraint system
-#[derive(Debug, Error, Clone)]
+#[derive(Debug, Error, Clone, Serialize, Deserialize)]
 pub enum LookupError {
     #[error("One of the lookup tables has columns of different lengths")]
     InconsistentTableLength,
@@ -101,7 +99,7 @@ impl<'de, F: FftField> serde_with::DeserializeAs<'de, LookupSelectors<E<F, D<F>>
     }
 }
 
-impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
+impl<T> core::ops::Index<LookupPattern> for LookupSelectors<T> {
     type Output = Option<T>;
 
     fn index(&self, index: LookupPattern) -> &Self::Output {
@@ -114,7 +112,7 @@ impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
     }
 }
 
-impl<T> std::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
+impl<T> core::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
     fn index_mut(&mut self, index: LookupPattern) -> &mut Self::Output {
         match index {
             LookupPattern::Xor => &mut self.xor,
@@ -287,12 +285,12 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
 
                             // it's 1 everywhere, except at the entries where
                             // the runtime table applies
-                            evals.extend(iter::repeat(F::one()).take(runtime_table_offset));
-                            evals.extend(iter::repeat(F::zero()).take(runtime_len));
-                            evals.extend(
-                                iter::repeat(F::one())
-                                    .take(d1_size - runtime_table_offset - runtime_len),
-                            );
+                            evals.extend(std::iter::repeat_n(F::one(), runtime_table_offset));
+                            evals.extend(std::iter::repeat_n(F::zero(), runtime_len));
+                            evals.extend(std::iter::repeat_n(
+                                F::one(),
+                                d1_size - runtime_table_offset - runtime_len,
+                            ));
 
                             // although the last zk_rows are fine
                             for e in evals.iter_mut().rev().take(zk_rows) {
@@ -337,7 +335,7 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
                     .max()
                     .unwrap_or(0);
 
-                let max_table_width = std::cmp::max(
+                let max_table_width = core::cmp::max(
                     max_table_width,
                     lookup_info.max_joint_size.try_into().unwrap(),
                 );
@@ -404,7 +402,7 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
                     //~~ * Update the corresponding entries in a table id vector (of size the domain as well)
                     //~    with the table ID of the table.
                     let table_id: F = i32_to_field(table.id);
-                    table_ids.extend(repeat_n(table_id, table_len));
+                    table_ids.extend(std::iter::repeat_n(table_id, table_len));
 
                     //~~ * Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
                     for (i, col) in table.data.iter().enumerate() {
@@ -417,7 +415,7 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
 
                     //~~ * Fill in any unused columns with 0 (to match the dummy value)
                     for lookup_table in lookup_table.iter_mut().skip(table.width()) {
-                        lookup_table.extend(repeat_n(F::zero(), table_len));
+                        lookup_table.extend(std::iter::repeat_n(F::zero(), table_len));
                     }
                 }
 
@@ -445,12 +443,15 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
                 //     table is defined with ID 0 without a row contain zeroes.
                 //     If no such table is used, we artificially add a dummy
                 //     table with ID 0 and a row containing only zeroes.
-                lookup_table
-                    .iter_mut()
-                    .for_each(|col| col.extend(repeat_n(F::zero(), max_num_entries - col.len())));
+                lookup_table.iter_mut().for_each(|col| {
+                    col.extend(std::iter::repeat_n(F::zero(), max_num_entries - col.len()))
+                });
 
                 //~ 7. Pad the end of the table id vector with 0s.
-                table_ids.extend(repeat_n(F::zero(), max_num_entries - table_ids.len()));
+                table_ids.extend(std::iter::repeat_n(
+                    F::zero(),
+                    max_num_entries - table_ids.len(),
+                ));
 
                 //~ 8. pre-compute polynomial and evaluation form for the look up tables
                 let mut lookup_table_polys: Vec<DP<F>> = vec![];

@@ -1,0 +1,43 @@
+[package]
+name = "kimchi-stubs"
+authors = ["opensource@o1labs.org"]
+description = "OCaml stubs for the plonk proof systems"
+edition.workspace = true
+license = "MIT/Apache-2.0"
+repository = "https://github.com/MinaProtocol/mina"
+version.workspace = true
+
+[lib]
+name = "kimchi_stubs"
+# Important: do not ask to build a dynamic library.
+# On MacOS arm64, ocaml-rs.v0.2.2 causes build issues.
+# On the Mina side, a fake and empty dllkimchi_stubs.so file is used.
+crate-type = ["lib", "staticlib"]
+
+[dependencies]
+libc.workspace = true
+num-bigint = { workspace = true, features = ["rand", "serde"] }
+# ocaml-specific
+ocaml = { workspace = true, features = ["no-caml-startup"] }
+ocaml-gen.workspace = true
+once_cell.workspace = true
+paste.workspace = true
+rand.workspace = true
+rayon.workspace = true
+rmp-serde.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+# arkworks
+ark-ec = { workspace = true, features = ["parallel"] }
+ark-ff = { workspace = true, features = ["parallel", "asm"] }
+ark-poly = { workspace = true, features = ["parallel"] }
+ark-serialize.workspace = true
+
+# proof-systems
+groupmap.workspace = true
+kimchi = { workspace = true, features = ["ocaml_types"] }
+mina-curves = { workspace = true }
+mina-poseidon = { workspace = true }
+o1-utils = { workspace = true }
+poly-commitment = { workspace = true, features = ["ocaml_types"] }

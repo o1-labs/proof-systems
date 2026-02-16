@@ -1,26 +1,43 @@
 name: "Shared Rust toolchain setting up steps"
 description: "Shared Rust toolchain setting up steps"
 inputs:
+  cache:
+    description: "to cache or not to cache, that is the question"
+    required: false
+    default: "true"
   rust_toolchain_version:
     description: "Rust toolchain version"
     required: true
-  shell:
-    description: "Shell to use"
+  targets:
+    description: "pass targets to the rust-toolchain installer"
     required: false
-    default: "bash"
+  components:
+    description: "additional components"
+    default: clippy, rustfmt
+    required: false
 runs:
   using: "composite"
   steps:
-    # As action-rs does not seem to be maintained anymore, building from
-    # scratch the environment using rustup
-    - name: Setup Rust toolchain ${{ inputs.rust_toolchain_version }}
+    - shell: bash
       run: |
-        curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
-        https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
-        chmod +x ./rustup-init
-        ./rustup-init -y --default-toolchain "${{ inputs.rust_toolchain_version }}" --profile default
-        rm ./rustup-init
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
         # overwriting default rust-toolchain
-        echo ${{ inputs.rust_toolchain_version }} > rust-toolchain
-      shell: ${{ inputs.shell }}
+        cat > rust-toolchain.toml << EOF
+        [toolchain]
+        channel = "${{ inputs.rust_toolchain_version }}"
+        EOF
+    - uses: dtolnay/rust-toolchain@master
+      id: toolchain
+      with:
+        toolchain: ${{ inputs.rust_toolchain_version }}
+        components: ${{ inputs.components }}
+        targets: ${{ inputs.targets }}
+    - if: ${{ inputs.cache == 'true' && inputs.targets != '' }}
+      uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: ${{ steps.toolchain.outputs.cachekey }}-${{ inputs.targets }}
+        # Some libraries are not often updated.
+        cache-workspace-crates: true
+    - if: ${{ inputs.cache == 'true' && inputs.targets == '' }}
+      uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: ${{ steps.toolchain.outputs.cachekey }}-native
