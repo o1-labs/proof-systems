@@ -168,7 +168,7 @@ impl TryFrom<SecKey> for Keypair {
     /// let keypair = Keypair::try_from(secret).unwrap();
     /// ```
     fn try_from(secret_key: SecKey) -> Result<Self> {
-        Keypair::from_secret_key_impl(secret_key)
+        Self::from_secret_key_impl(secret_key)
     }
 }
 
