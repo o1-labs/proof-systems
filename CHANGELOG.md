@@ -23,6 +23,7 @@ and this project adheres to
   ([#3460](https://github.com/o1-labs/proof-systems/pull/3460))
 - Bump thiserror from 2.0.12 to 2.0.18
   ([#3459](https://github.com/o1-labs/proof-systems/pull/3459))
+- Update `EndoSclMul` gate constraints to prevent degenerate cases
 
 ### Book
 

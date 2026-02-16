@@ -240,10 +240,10 @@ use core::marker::PhantomData;
 //~ scalar within a single EVBSM row. When the scalar is longer (which will
 //~ usually be the case), multiple EVBSM rows will be concatenated.
 //~
-//~ | Row | 0  | 1  | 2 | 3 | 4  |  5 | 6  | 7   | 8   | 9   | 10  | 11  | 12  | 13  | 14  | Type  |
-//~ |-----|----|----|---|---|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|-------|
-//~ |   i | xT | yT | Ø | Ø | xP | yP | n  | xR  | yR  | s1  | s3  | b1  | b2  | b3  | b4  | EVBSM |
-//~ | i+1 | =  | =  |   |   | xS | yS | n' | xR' | yR' | s1' | s3' | b1' | b2' | b3' | b4' | EVBSM |
+//~ | Row | 0  | 1  | 2    | 3 | 4  | 5  | 6  | 7   | 8   | 9   | 10  | 11  | 12  | 13  | 14  | Type  |
+//~ |-----|----|----|------|---|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|-------|
+//~ |   i | xT | yT | inv  | Ø | xP | yP | n  | xR  | yR  | s1  | s3  | b1  | b2  | b3  | b4  | EVBSM |
+//~ | i+1 | =  | =  | inv' |   | xS | yS | n' | xR' | yR' | s1' | s3' | b1' | b2' | b3' | b4' | EVBSM |
 //~
 //~ The gate performs two accumulator updates per row, each of the form
 //~ `A <- (A + Q) + A = 2A + Q`.
@@ -301,7 +301,7 @@ use core::marker::PhantomData;
 //~ | 1  | 0  | -\phi(T) | (`endo` \cdot x_t, -y_t) |
 //~ | 1  | 1  |  \phi(T) | (`endo` \cdot x_t,  y_t) |
 //~
-//~ These are the 11 constraints that correspond to each EVBSM gate,
+//~ These are the 12 constraints that correspond to each EVBSM gate,
 //~ which take care of 4 bits of the scalar within a single EVBSM row:
 //~
 //~ * First block:
@@ -319,6 +319,11 @@ use core::marker::PhantomData;
 //~   * Bit flag $b_4$: `0 = b4 * (b4 - 1)`
 //~ * Binary decomposition:
 //~   * Accumulated scalar: `n' = 16 * n + 8 * b1 + 4 * b2 + 2 * b3 + b4`
+//~ * Distinct point checks:
+//~   * `(xp - xr) * (xr - xs) * inv = 1`
+//~     - Note: if `xp = xr` (equiv `xr = xs`) then we see `(yr + yp)^2 = 0`
+//~       from constraint 3, and so we are necessarily in the disallowed
+//~       degenerate case `P=-R` (`xp = xr` and `yr = -yp`).
 //~
 //~ Note: in the EC derivation below, `R` and `S` are local symbols inside each
 //~ block's addition formulas. The witness columns still follow the row layout
@@ -464,7 +469,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
-    const CONSTRAINTS: u32 = 11;
+    const CONSTRAINTS: u32 = 12;
 
     fn constraint_checks<T: ExprOps<F, BerkeleyChallengeTerm>>(
         env: &ArgumentEnv<F, T>,
@@ -477,6 +482,8 @@ where
 
         let xt = env.witness_curr(0);
         let yt = env.witness_curr(1);
+
+        let inv = env.witness_curr(2);
 
         let xs = env.witness_next(4);
         let ys = env.witness_next(5);
@@ -527,7 +534,7 @@ where
                 * ((xp_xr.clone() * s1) + yr_yp.clone()))
                 - (yp.double() * xp_xr.clone()),
             // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
-            yr_yp.square() - (xp_xr.square() * ((s1_squared - xq1) + xr.clone())),
+            yr_yp.square() - (xp_xr.clone().square() * ((s1_squared - xq1) + xr.clone())),
             // (xq2 - xr) * s3 = yq2 - yr
             ((xq2.clone() - xr.clone()) * s3.clone()) - (yq2 - yr.clone()),
             // (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr - xs) * 2*yr
@@ -535,8 +542,10 @@ where
                 * ((xr_xs.clone() * s3) + ys_yr.clone()))
                 - (yr.double() * xr_xs.clone()),
             // (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
-            ys_yr.square() - (xr_xs.square() * ((s3_squared - xq2) + xs)),
+            ys_yr.square() - (xr_xs.clone().square() * ((s3_squared - xq2) + xs)),
             n_constraint,
+            // (xp - xr) * (xr - xs) * inv = 1
+            xp_xr * xr_xs * inv - T::one(),
         ]
     }
 }
@@ -637,7 +646,8 @@ pub fn gen_witness<F: Field + core::fmt::Display>(
 
         // (xr, yr)
         let xr = xq1 + s2.square() - s1_squared;
-        let yr = (xp - xr) * s2 - yp;
+        let xp_xr = xp - xr;
+        let yr = xp_xr * s2 - yp;
 
         let xq2 = (one + (endo - one) * b3) * xt;
         let yq2 = (b4.double() - one) * yt;
@@ -646,12 +656,18 @@ pub fn gen_witness<F: Field + core::fmt::Display>(
         let s4 = yr.double() / (xr.double() + xq2 - s3_squared) - s3;
 
         let xs = xq2 + s4.square() - s3_squared;
-        let ys = (xr - xs) * s4 - yr;
+        let xr_xs = xr - xs;
+        let ys = xr_xs * s4 - yr;
+
+        let inv = (xp_xr * xr_xs)
+            .inverse()
+            .expect("xr to be distinct from xp and xs");
 
         let row = i + row0;
 
         w[0][row] = base.0;
         w[1][row] = base.1;
+        w[2][row] = inv;
         w[4][row] = xp;
         w[5][row] = yp;
         w[6][row] = n_acc;
