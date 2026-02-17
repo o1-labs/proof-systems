@@ -26,6 +26,7 @@ resolver = "2"
 [workspace.package]
 version = "0.3.0"
 edition = "2021"
+rust-version = "1.92"
 license = "Apache-2.0"
 repository = "https://github.com/o1-labs/proof-systems"
 homepage = "https://o1-labs.github.io/proof-systems/"

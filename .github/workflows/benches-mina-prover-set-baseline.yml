@@ -12,9 +12,7 @@ on:
     types: [labeled]
 
 env:
-  OCAML_VERSION: "4.14.2"
-  RUST_TOOLCHAIN_VERSION: "1.92"
-
+  CARGO_TERM_COLOR: always
 
 jobs:
   bench-set-baseline:
@@ -24,18 +22,20 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: recursive
+
+      - name: Load versions
+        id: versions
+        uses: ./.github/actions/load-versions
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: ${{ env.RUST_TOOLCHAIN_VERSION }}
+          rust_toolchain_version: ${{ steps.versions.outputs.rust-msrv }}
 
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:
-          ocaml_version: ${{ env.OCAML_VERSION }}
+          ocaml_version: ${{ steps.versions.outputs.ocaml-version }}
 
       - name: Run criterion bench
         run: |
