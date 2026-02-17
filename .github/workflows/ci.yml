@@ -32,6 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       rust_msrv: ${{ steps.versions.outputs.rust-msrv }}
+      rust_stable: ${{ steps.versions.outputs.rust-stable }}
       ocaml_version: '["${{ steps.versions.outputs.ocaml-version }}"]'
       node: '["${{ steps.versions.outputs.node-version }}"]'
       matrix: ${{ steps.matrix.outputs.value }}
@@ -49,6 +50,8 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           REF: ${{ github.ref }}
           RUST_MSRV: ${{ steps.versions.outputs.rust-msrv }}
+          RUST_STABLE: ${{ steps.versions.outputs.rust-stable }}
+          RUST_BETA: ${{ steps.versions.outputs.rust-beta }}
         run: |
           # Build matrix: msrv/stable/beta for Ubuntu,
           # stable/beta for macOS.
@@ -58,30 +61,34 @@ jobs:
           if [[ "$EVENT_NAME" == "push" \
                 && "$REF" == "refs/heads/master" ]]; then
             VALUE=$(jq -nc \
-              --arg rs "$RUST_MSRV" \
+              --arg msrv "$RUST_MSRV" \
+              --arg stable "$RUST_STABLE" \
+              --arg beta "$RUST_BETA" \
               '{include: [
-                {rust_toolchain_version: $rs,
+                {rust_toolchain_version: $msrv,
                  os: "ubuntu-latest"},
-                {rust_toolchain_version: "stable",
+                {rust_toolchain_version: $stable,
                  os: "ubuntu-latest"},
-                {rust_toolchain_version: "beta",
+                {rust_toolchain_version: $beta,
                  os: "ubuntu-latest"},
-                {rust_toolchain_version: $rs,
+                {rust_toolchain_version: $msrv,
                  os: "macos-latest"},
-                {rust_toolchain_version: "stable",
+                {rust_toolchain_version: $stable,
                  os: "macos-latest"},
-                {rust_toolchain_version: "beta",
+                {rust_toolchain_version: $beta,
                  os: "macos-latest"}
               ]}')
           else
             VALUE=$(jq -nc \
-              --arg rs "$RUST_MSRV" \
+              --arg msrv "$RUST_MSRV" \
+              --arg stable "$RUST_STABLE" \
+              --arg beta "$RUST_BETA" \
               '{include: [
-                {rust_toolchain_version: $rs,
+                {rust_toolchain_version: $msrv,
                  os: "ubuntu-latest"},
-                {rust_toolchain_version: "stable",
+                {rust_toolchain_version: $stable,
                  os: "ubuntu-latest"},
-                {rust_toolchain_version: "beta",
+                {rust_toolchain_version: $beta,
                  os: "ubuntu-latest"}
               ]}')
           fi
@@ -224,7 +231,7 @@ jobs:
   # Tracking issue: https://github.com/o1-labs/mina-rust/issues/1984
   no-std-check:
     name: "no_std: ${{ matrix.crate.name }}"
-    needs: ['refresh-cache']
+    needs: ['define-matrix', 'refresh-cache']
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -243,7 +250,7 @@ jobs:
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: stable
+          rust_toolchain_version: ${{ needs.define-matrix.outputs.rust_stable }}
 
       - name: Check ${{ matrix.crate.name }} (no_std)
         run: |

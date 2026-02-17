@@ -7,6 +7,9 @@ outputs:
   rust-msrv:
     description: "Rust MSRV (Minimum Supported Rust Version)"
     value: ${{ steps.load.outputs.rust-msrv }}
+  rust-stable:
+    description: "Rust stable version"
+    value: ${{ steps.load.outputs.rust-stable }}
   rust-beta:
     description: "Rust beta version"
     value: ${{ steps.load.outputs.rust-beta }}
@@ -39,6 +42,7 @@ runs:
         VERSIONS_FILE="${GITHUB_WORKSPACE}/.github/config/versions.yaml"
 
         RUST_MSRV=$(yq eval '.rust.msrv' "$VERSIONS_FILE")
+        RUST_STABLE=$(yq eval '.rust.stable' "$VERSIONS_FILE")
         RUST_BETA=$(yq eval '.rust.beta' "$VERSIONS_FILE")
         RUST_NIGHTLY=$(yq eval '.rust.nightly' "$VERSIONS_FILE")
         RUST_NIGHTLY_PINNED=$(yq eval '.rust.nightly-pinned' "$VERSIONS_FILE")
@@ -48,6 +52,7 @@ runs:
         GO_VERSION=$(yq eval '.go.version' "$VERSIONS_FILE")
 
         echo "rust-msrv=$RUST_MSRV" >> "$GITHUB_OUTPUT"
+        echo "rust-stable=$RUST_STABLE" >> "$GITHUB_OUTPUT"
         echo "rust-beta=$RUST_BETA" >> "$GITHUB_OUTPUT"
         echo "rust-nightly=$RUST_NIGHTLY" >> "$GITHUB_OUTPUT"
         echo "rust-nightly-pinned=$RUST_NIGHTLY_PINNED" >> "$GITHUB_OUTPUT"
@@ -58,6 +63,7 @@ runs:
 
         echo "Loaded versions:"
         echo "  Rust MSRV: $RUST_MSRV"
+        echo "  Rust stable: $RUST_STABLE"
         echo "  Rust beta: $RUST_BETA"
         echo "  Rust nightly: $RUST_NIGHTLY"
         echo "  Rust nightly (pinned): $RUST_NIGHTLY_PINNED"

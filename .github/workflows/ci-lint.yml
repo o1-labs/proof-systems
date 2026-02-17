@@ -29,6 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       rust-msrv: ${{ steps.versions.outputs.rust-msrv }}
+      rust-stable: ${{ steps.versions.outputs.rust-stable }}
+      rust-beta: ${{ steps.versions.outputs.rust-beta }}
       ocaml-version: ${{ steps.versions.outputs.ocaml-version }}
     steps:
       - uses: actions/checkout@v6
@@ -48,8 +50,8 @@ jobs:
       matrix:
         rust_toolchain:
           - ${{ needs.load-versions.outputs.rust-msrv }}
-          - stable
-          - beta
+          - ${{ needs.load-versions.outputs.rust-stable }}
+          - ${{ needs.load-versions.outputs.rust-beta }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
