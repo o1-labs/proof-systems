@@ -120,8 +120,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: recursive
 
       - name: Set up NodeJS
         uses: actions/setup-node@v6
@@ -177,8 +175,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: recursive
 
       - name: Set up NodeJS
         uses: actions/setup-node@v6
@@ -261,8 +257,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: recursive
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
@@ -298,8 +292,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: recursive
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
@@ -318,10 +310,6 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: nextest@0.9.67, grcov@0.8.13
-
-      - name: Build the MIPS binaries
-        if: runner.os == 'Linux'
-        uses: ./.github/actions/build-mips
 
       - name: Run non-heavy tests without the code coverage
         run: |
