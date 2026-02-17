@@ -19,6 +19,48 @@ env:
   RUST_MIN_STACK: 31457280
 
 jobs:
+  clippy-o1vm:
+    name: Clippy o1vm (${{ matrix.rust_toolchain }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rust_toolchain:
+          - stable
+          - beta
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Load versions
+        id: versions
+        uses: ./.github/actions/load-versions
+
+      - name: Use shared OCaml setting up steps
+        uses: ./.github/actions/ocaml-shared
+        with:
+          ocaml_version: ${{ steps.versions.outputs.ocaml-version }}
+
+      - name: Install Rust ${{ matrix.rust_toolchain }}
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust_toolchain }}
+          components: clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: o1vm-${{ matrix.rust_toolchain }}
+
+      - name: Run clippy on o1vm (${{ matrix.rust_toolchain }})
+        env:
+          RUSTUP_TOOLCHAIN: ${{ matrix.rust_toolchain }}
+        run: |
+          eval $(opam env)
+          make lint-all
+
   run_o1vm_with_cached_data:
     name: Run o1vm with cached data
     runs-on: ["ubuntu-latest"]
