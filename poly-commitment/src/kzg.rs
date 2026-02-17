@@ -146,7 +146,7 @@ impl<
     ///
     /// # Security
     ///
-    /// The caller must ensure that `toxic_waste` is securely destroyed
+    /// The caller must ensure that `toxic_waste` is securely zeroized
     /// after use. Leaking it compromises the soundness of the proof system.
     pub fn create_trusted_setup_with_toxic_waste(toxic_waste: F, depth: usize) -> Self {
         let full_srs = SRS::create_trusted_setup_with_toxic_waste(toxic_waste, depth);
@@ -334,8 +334,10 @@ impl<
 
     fn create(depth: usize) -> Self {
         let mut rng = thread_rng();
-        let toxic_waste = G::ScalarField::rand(&mut rng);
-        Self::create_trusted_setup_with_toxic_waste(toxic_waste, depth)
+        let mut toxic_waste = G::ScalarField::rand(&mut rng);
+        let result = Self::create_trusted_setup_with_toxic_waste(toxic_waste, depth);
+        toxic_waste.zeroize();
+        result
     }
 
     fn size(&self) -> usize {

@@ -33,6 +33,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::{cmp::min, iter::Iterator, ops::AddAssign};
+use zeroize::Zeroize;
 
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -389,8 +390,9 @@ impl<G: CommitmentCurve> SRS<G> {
     ///
     /// # Security
     ///
-    /// The caller must ensure that the toxic waste `x` is securely destroyed
-    /// after use. Leaking `x` compromises the soundness of the proof system.
+    /// The internal accumulator `x_pow` is zeroized before returning.
+    /// The caller must ensure that `x` is securely zeroized after use.
+    /// Leaking `x` compromises the soundness of the proof system.
     pub fn create_trusted_setup_with_toxic_waste(x: G::ScalarField, depth: usize) -> Self {
         let m = G::Map::setup();
 
@@ -402,6 +404,9 @@ impl<G: CommitmentCurve> SRS<G> {
                 res.into_affine()
             })
             .collect();
+
+        // Zeroize internal accumulator derived from toxic waste
+        x_pow.zeroize();
 
         // Compute a blinder
         let h = {
