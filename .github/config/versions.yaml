@@ -4,11 +4,13 @@
 # used across GitHub Actions workflows.
 #
 # When updating versions here, also update:
-# - rust-toolchain.toml (for rust.stable)
+# - rust-toolchain.toml (for rust.msrv)
 # - Makefile (for NIGHTLY_RUST_VERSION)
 
 rust:
-  stable: "1.92"
+  # Minimum Supported Rust Version, matching mina-rust and
+  # MinaProtocol/mina.
+  msrv: "1.92"
   beta: "beta"
   nightly: "nightly"
   # Pinned nightly for wasm builds. Must match NIGHTLY_RUST_VERSION

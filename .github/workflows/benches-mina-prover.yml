@@ -31,7 +31,7 @@ jobs:
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: ${{ steps.versions.outputs.rust-stable }}
+          rust_toolchain_version: ${{ steps.versions.outputs.rust-msrv }}
 
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared

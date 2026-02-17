@@ -39,7 +39,7 @@ jobs:
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: ${{ steps.versions.outputs.rust-stable }}
+          rust_toolchain_version: ${{ steps.versions.outputs.rust-msrv }}
 
       # FIXME: currently not available for 5.0.0.
       # It might be related to boxroot dependency, and we would need

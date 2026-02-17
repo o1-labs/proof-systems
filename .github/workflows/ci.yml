@@ -31,7 +31,7 @@ jobs:
   define-matrix:
     runs-on: ubuntu-latest
     outputs:
-      rust_stable: ${{ steps.versions.outputs.rust-stable }}
+      rust_msrv: ${{ steps.versions.outputs.rust-msrv }}
       ocaml_version: ${{ steps.versions.outputs.ocaml-version }}
       node: ${{ steps.versions.outputs.node-version }}
       matrix: ${{ steps.matrix.outputs.value }}
@@ -48,9 +48,9 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           REF: ${{ github.ref }}
-          RUST_STABLE: ${{ steps.versions.outputs.rust-stable }}
+          RUST_MSRV: ${{ steps.versions.outputs.rust-msrv }}
         run: |
-          # Build matrix: stable-pinned/stable/beta for Ubuntu,
+          # Build matrix: msrv/stable/beta for Ubuntu,
           # stable/beta for macOS.
           # Skip macOS on PRs to improve CI velocity (macOS
           # runners are limited). macOS runs on master pushes
@@ -58,7 +58,7 @@ jobs:
           if [[ "$EVENT_NAME" == "push" \
                 && "$REF" == "refs/heads/master" ]]; then
             VALUE=$(jq -nc \
-              --arg rs "$RUST_STABLE" \
+              --arg rs "$RUST_MSRV" \
               '{include: [
                 {rust_toolchain_version: $rs,
                  os: "ubuntu-latest"},
@@ -75,7 +75,7 @@ jobs:
               ]}')
           else
             VALUE=$(jq -nc \
-              --arg rs "$RUST_STABLE" \
+              --arg rs "$RUST_MSRV" \
               '{include: [
                 {rust_toolchain_version: $rs,
                  os: "ubuntu-latest"},
@@ -186,7 +186,7 @@ jobs:
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: ${{ needs.define-matrix.outputs.rust_stable }}
+          rust_toolchain_version: ${{ needs.define-matrix.outputs.rust_msrv }}
 
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared

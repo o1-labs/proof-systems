@@ -22,7 +22,7 @@ jobs:
   load-versions:
     runs-on: ubuntu-latest
     outputs:
-      rust-stable: ${{ steps.versions.outputs.rust-stable }}
+      rust-msrv: ${{ steps.versions.outputs.rust-msrv }}
       rust-beta: ${{ steps.versions.outputs.rust-beta }}
       ocaml-version: ${{ steps.versions.outputs.ocaml-version }}
       python-version: ${{ steps.versions.outputs.python-version }}
@@ -44,7 +44,7 @@ jobs:
       fail-fast: false
       matrix:
         rust_toolchain:
-          - ${{ needs.load-versions.outputs.rust-stable }}
+          - ${{ needs.load-versions.outputs.rust-msrv }}
           - stable
           - ${{ needs.load-versions.outputs.rust-beta }}
     steps:
@@ -94,7 +94,7 @@ jobs:
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: ${{ needs.load-versions.outputs.rust-stable }}
+          rust_toolchain_version: ${{ needs.load-versions.outputs.rust-msrv }}
 
       # FIXME: currently not available for 5.0.0.
       # It might be related to boxroot dependency, and we would need
