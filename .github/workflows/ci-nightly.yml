@@ -25,30 +25,29 @@ env:
 jobs:
   run_tests:
     name: Run all tests with the code coverage
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        rust_toolchain_version: ["1.92"]
-        # FIXME: currently not available for 5.0.0.
-        # It might be related to boxroot dependency, and we would need to bump
-        # up the ocaml-rs dependency
-        ocaml_version: ["4.14.2"]
-        os: ["hetzner-1"]
+    runs-on: hetzner-1
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           submodules: recursive
 
+      - name: Load versions
+        id: versions
+        uses: ./.github/actions/load-versions
+
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+          rust_toolchain_version: ${{ steps.versions.outputs.rust-stable }}
 
+      # FIXME: currently not available for 5.0.0.
+      # It might be related to boxroot dependency, and we would need
+      # to bump up the ocaml-rs dependency
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:
-          ocaml_version: ${{ matrix.ocaml_version }}
+          ocaml_version: ${{ steps.versions.outputs.ocaml-version }}
 
       - name: Install test dependencies
         run: |
@@ -73,7 +72,7 @@ jobs:
         if: always()
         with:
           if-no-files-found: ignore
-          name: test-coverage-html-report-${{ matrix.rust_toolchain_version }}-${{ matrix.os }}
+          name: test-coverage-html-report
           path: target/coverage/
           retention-days: 30
 

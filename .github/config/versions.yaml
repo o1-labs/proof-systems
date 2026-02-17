@@ -1,0 +1,19 @@
+# Centralized version definitions for CI workflows
+#
+# This file serves as the single source of truth for all version numbers
+# used across GitHub Actions workflows.
+#
+# When updating versions here, also update:
+# - rust-toolchain.toml (for rust.stable)
+# - Makefile (for NIGHTLY_RUST_VERSION)
+
+rust:
+  stable: "1.92"
+  beta: "beta"
+  nightly: "nightly"
+
+ocaml:
+  version: "4.14.2"
+
+node:
+  version: "24"

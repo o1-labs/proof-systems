@@ -24,18 +24,20 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: recursive
+
+      - name: Load versions
+        id: versions
+        uses: ./.github/actions/load-versions
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: "1.92"
+          rust_toolchain_version: ${{ steps.versions.outputs.rust-stable }}
 
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:
-          ocaml_version: "4.14.2"
+          ocaml_version: ${{ steps.versions.outputs.ocaml-version }}
 
       - name: Build export_test_vectors binary
         run: |

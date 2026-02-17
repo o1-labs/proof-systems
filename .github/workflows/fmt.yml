@@ -15,8 +15,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: recursive
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
@@ -37,10 +35,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Load versions
+        id: versions
+        uses: ./.github/actions/load-versions
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "24"
+          node-version: ${{ steps.versions.outputs.node-version }}
           cache: "npm"
 
       - name: Install dependencies

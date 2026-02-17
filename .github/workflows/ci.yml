@@ -31,57 +31,61 @@ jobs:
   define-matrix:
     runs-on: ubuntu-latest
     outputs:
-      ocaml_version: ${{ steps.ocaml.outputs.version }}
-      node: ${{ steps.node.outputs.version }}
+      rust_stable: ${{ steps.versions.outputs.rust-stable }}
+      ocaml_version: ${{ steps.versions.outputs.ocaml-version }}
+      node: ${{ steps.versions.outputs.node-version }}
       matrix: ${{ steps.matrix.outputs.value }}
-      default_rust_version: ${{ steps.defaults.outputs.rust_version }}
-      default_os: ${{ steps.defaults.outputs.os }}
     steps:
-      # FIXME: currently not available for 5.0.0.
-      # It might be related to boxroot dependency, and we would need to bump
-      # up the ocaml-rs dependency
-      - id: ocaml
-        run: echo 'version=["4.14.2"]' >> "$GITHUB_OUTPUT"
-      - id: node
-        run: echo 'version=["24"]' >> "$GITHUB_OUTPUT"
-      - id: defaults
-        run: |
-          echo 'rust_version=1.92' >> "$GITHUB_OUTPUT"
-          echo 'os=ubuntu-latest' >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+
+      - name: Load versions
+        id: versions
+        uses: ./.github/actions/load-versions
+
       - id: matrix
         env:
           EVENT_NAME: ${{ github.event_name }}
           REF: ${{ github.ref }}
+          RUST_STABLE: ${{ steps.versions.outputs.rust-stable }}
         run: |
-          # Build matrix: 1.92/stable/beta for Ubuntu, stable/beta for macOS
-          # We keep 1.92 to match mina-rust and MinaProtocol/mina.
-          # Skip macOS on PRs to improve CI velocity (macOS runners are limited)
-          # macOS runs on master pushes only
-          if [[ "$EVENT_NAME" == "push" && "$REF" == "refs/heads/master" ]]; then
-            cat > matrix.json << 'EOF'
-          {
-            "include": [
-              {"rust_toolchain_version": "1.92", "os": "ubuntu-latest"},
-              {"rust_toolchain_version": "stable", "os": "ubuntu-latest"},
-              {"rust_toolchain_version": "beta", "os": "ubuntu-latest"},
-              {"rust_toolchain_version": "1.92", "os": "macos-latest"},
-              {"rust_toolchain_version": "stable", "os": "macos-latest"},
-              {"rust_toolchain_version": "beta", "os": "macos-latest"}
-            ]
-          }
-          EOF
+          # Build matrix: stable-pinned/stable/beta for Ubuntu,
+          # stable/beta for macOS.
+          # Skip macOS on PRs to improve CI velocity (macOS
+          # runners are limited). macOS runs on master pushes
+          # only.
+          if [[ "$EVENT_NAME" == "push" \
+                && "$REF" == "refs/heads/master" ]]; then
+            VALUE=$(jq -nc \
+              --arg rs "$RUST_STABLE" \
+              '{include: [
+                {rust_toolchain_version: $rs,
+                 os: "ubuntu-latest"},
+                {rust_toolchain_version: "stable",
+                 os: "ubuntu-latest"},
+                {rust_toolchain_version: "beta",
+                 os: "ubuntu-latest"},
+                {rust_toolchain_version: $rs,
+                 os: "macos-latest"},
+                {rust_toolchain_version: "stable",
+                 os: "macos-latest"},
+                {rust_toolchain_version: "beta",
+                 os: "macos-latest"}
+              ]}')
           else
-            cat > matrix.json << 'EOF'
-          {
-            "include": [
-              {"rust_toolchain_version": "1.92", "os": "ubuntu-latest"},
-              {"rust_toolchain_version": "stable", "os": "ubuntu-latest"},
-              {"rust_toolchain_version": "beta", "os": "ubuntu-latest"}
-            ]
-          }
-          EOF
+            VALUE=$(jq -nc \
+              --arg rs "$RUST_STABLE" \
+              '{include: [
+                {rust_toolchain_version: $rs,
+                 os: "ubuntu-latest"},
+                {rust_toolchain_version: "stable",
+                 os: "ubuntu-latest"},
+                {rust_toolchain_version: "beta",
+                 os: "ubuntu-latest"}
+              ]}')
           fi
-          echo "value=$(cat matrix.json | jq -c .)" >> "$GITHUB_OUTPUT"
+          echo "value=$VALUE" >> "$GITHUB_OUTPUT"
 
   refresh-cache:
     needs: ['define-matrix']
@@ -114,8 +118,6 @@ jobs:
     strategy:
       matrix:
         rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
-        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
-        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
     runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository
@@ -124,7 +126,7 @@ jobs:
       - name: Set up NodeJS
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node }}
+          node-version: ${{ needs.define-matrix.outputs.node }}
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
@@ -134,7 +136,7 @@ jobs:
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:
-          ocaml_version: ${{ matrix.ocaml_version }}
+          ocaml_version: ${{ needs.define-matrix.outputs.ocaml_version }}
 
       #
       # Doc & Spec
@@ -179,17 +181,17 @@ jobs:
       - name: Set up NodeJS
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ fromJSON(needs.define-matrix.outputs.node)[0] }}
+          node-version: ${{ needs.define-matrix.outputs.node }}
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: ${{ needs.define-matrix.outputs.default_rust_version }}
+          rust_toolchain_version: ${{ needs.define-matrix.outputs.rust_stable }}
 
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:
-          ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version)[0] }}
+          ocaml_version: ${{ needs.define-matrix.outputs.ocaml_version }}
 
       - name: Generate rustdoc
         run: |
@@ -251,8 +253,6 @@ jobs:
     strategy:
       matrix:
         rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
-        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
-        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
     runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository
@@ -266,7 +266,7 @@ jobs:
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:
-          ocaml_version: ${{ matrix.ocaml_version }}
+          ocaml_version: ${{ needs.define-matrix.outputs.ocaml_version }}
       #
       # Build
       #
@@ -286,8 +286,6 @@ jobs:
     strategy:
       matrix:
         rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
-        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
-        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
     runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository
@@ -302,7 +300,7 @@ jobs:
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:
-          ocaml_version: ${{ matrix.ocaml_version }}
+          ocaml_version: ${{ needs.define-matrix.outputs.ocaml_version }}
       #
       # Tests
       #

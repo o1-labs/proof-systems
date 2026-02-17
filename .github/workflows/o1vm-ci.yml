@@ -21,18 +21,7 @@ env:
 jobs:
   run_o1vm_with_cached_data:
     name: Run o1vm with cached data
-    # We run only one of the matrix options on the toffee `hetzner-1`
-    # self-hosted GitHub runner.
-    # Only in this configuration we enable tests with the code coverage data
-    # gathering.
     runs-on: ["ubuntu-latest"]
-    strategy:
-      matrix:
-        rust_toolchain_version: ["1.92"]
-        # FIXME: currently not available for 5.0.0.
-        # It might be related to boxroot dependency, and we would need to bump
-        # up the ocaml-rs dependency
-        ocaml_version: ["4.14.2"]
     services:
       o1vm-e2e-testing-cache:
         image: o1labs/proof-systems:o1vm-e2e-testing-cache
@@ -44,15 +33,22 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Load versions
+        id: versions
+        uses: ./.github/actions/load-versions
+
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+          rust_toolchain_version: ${{ steps.versions.outputs.rust-stable }}
 
+      # FIXME: currently not available for 5.0.0.
+      # It might be related to boxroot dependency, and we would need
+      # to bump up the ocaml-rs dependency
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:
-          ocaml_version: ${{ matrix.ocaml_version }}
+          ocaml_version: ${{ steps.versions.outputs.ocaml-version }}
 
       - name: Install the Python
         uses: actions/setup-python@v6
