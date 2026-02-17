@@ -32,8 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       rust_msrv: ${{ steps.versions.outputs.rust-msrv }}
-      ocaml_version: ${{ steps.versions.outputs.ocaml-version }}
-      node: ${{ steps.versions.outputs.node-version }}
+      ocaml_version: '["${{ steps.versions.outputs.ocaml-version }}"]'
+      node: '["${{ steps.versions.outputs.node-version }}"]'
       matrix: ${{ steps.matrix.outputs.value }}
     steps:
       - uses: actions/checkout@v6
@@ -118,6 +118,8 @@ jobs:
     strategy:
       matrix:
         rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
+        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
+        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
     runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository
@@ -126,7 +128,7 @@ jobs:
       - name: Set up NodeJS
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ needs.define-matrix.outputs.node }}
+          node-version: ${{ matrix.node }}
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
@@ -136,7 +138,7 @@ jobs:
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:
-          ocaml_version: ${{ needs.define-matrix.outputs.ocaml_version }}
+          ocaml_version: ${{ matrix.ocaml_version }}
 
       #
       # Doc & Spec
@@ -181,7 +183,7 @@ jobs:
       - name: Set up NodeJS
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ needs.define-matrix.outputs.node }}
+          node-version: ${{ fromJSON(needs.define-matrix.outputs.node)[0] }}
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
@@ -191,7 +193,7 @@ jobs:
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:
-          ocaml_version: ${{ needs.define-matrix.outputs.ocaml_version }}
+          ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version)[0] }}
 
       - name: Generate rustdoc
         run: |
@@ -253,6 +255,8 @@ jobs:
     strategy:
       matrix:
         rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
+        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
+        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
     runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository
@@ -266,7 +270,7 @@ jobs:
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:
-          ocaml_version: ${{ needs.define-matrix.outputs.ocaml_version }}
+          ocaml_version: ${{ matrix.ocaml_version }}
       #
       # Build
       #
@@ -286,6 +290,8 @@ jobs:
     strategy:
       matrix:
         rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
+        ocaml_version: ${{ fromJSON(needs.define-matrix.outputs.ocaml_version) }}
+        node: ${{ fromJSON(needs.define-matrix.outputs.node) }}
     runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository
@@ -300,7 +306,7 @@ jobs:
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:
-          ocaml_version: ${{ needs.define-matrix.outputs.ocaml_version }}
+          ocaml_version: ${{ matrix.ocaml_version }}
       #
       # Tests
       #
