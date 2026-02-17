@@ -6,7 +6,7 @@ extern crate alloc;
 
 use crate::{pubkey::PubKeyError, seckey::SecKeyError, CurvePoint, PubKey, ScalarField, SecKey};
 use alloc::{string::String, vec::Vec};
-use core::fmt;
+use core::{convert::TryFrom, fmt};
 use rand::{self, CryptoRng, RngCore};
 use thiserror::Error;
 
@@ -68,7 +68,22 @@ impl Keypair {
     ///
     /// Returns [`KeypairError`] if the public key cannot be derived from
     /// the secret key.
+    ///
+    /// # Deprecated
+    ///
+    /// Use [`Keypair::try_from`] instead for idiomatic Rust conversions.
+    /// This method will be removed in version 0.5.0.
+    #[deprecated(
+        since = "0.4.0",
+        note = "use `Keypair::try_from(secret_key)` instead; will be removed in 0.5.0"
+    )]
     pub fn from_secret_key(secret_key: SecKey) -> Result<Self> {
+        Self::from_secret_key_impl(secret_key)
+    }
+
+    /// Internal implementation of keypair creation from secret key.
+    /// Used by both `TryFrom` impl and the deprecated `from_secret_key`.
+    fn from_secret_key_impl(secret_key: SecKey) -> Result<Self> {
         let public = PubKey::from_secret_key(&secret_key)?;
 
         // Safe now because PubKey::from_secret_key() checked point is on the curve
@@ -86,7 +101,7 @@ impl Keypair {
     /// invalid public key.
     pub fn rand(rng: &mut (impl RngCore + CryptoRng)) -> Result<Self> {
         let sec_key: SecKey = SecKey::rand(rng);
-        Self::from_secret_key(sec_key)
+        Self::from_secret_key_impl(sec_key)
     }
 
     /// Deserialize keypair from secret key bytes
@@ -96,7 +111,7 @@ impl Keypair {
     /// Will give error if `bytes` do not match certain requirements.
     pub fn from_bytes(secret_bytes: &[u8]) -> Result<Self> {
         let secret = SecKey::from_bytes(secret_bytes)?;
-        Self::from_secret_key(secret)
+        Self::from_secret_key_impl(secret)
     }
 
     /// Deserialize keypair from secret key hex
@@ -106,7 +121,7 @@ impl Keypair {
     /// Will give error if `hex` string does not match certain requirements.
     pub fn from_hex(secret_hex: &str) -> Result<Self> {
         let secret = SecKey::from_hex(secret_hex)?;
-        Self::from_secret_key(secret)
+        Self::from_secret_key_impl(secret)
     }
 
     /// Obtain the Mina address corresponding to the keypair's public key
@@ -125,6 +140,35 @@ impl Keypair {
     #[must_use]
     pub fn to_hex(&self) -> String {
         hex::encode(self.to_bytes())
+    }
+}
+
+impl TryFrom<SecKey> for Keypair {
+    type Error = KeypairError;
+
+    /// Create a keypair from a secret key.
+    ///
+    /// This is the idiomatic way to convert a [`SecKey`] into a [`Keypair`].
+    /// It derives the corresponding public key from the secret key.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`KeypairError::PublicKey`] if the secret key is zero or
+    /// the derived point is not on the curve.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::convert::TryFrom;
+    /// use mina_signer::{Keypair, SecKey};
+    ///
+    /// let secret = SecKey::from_hex(
+    ///     "164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718"
+    /// ).unwrap();
+    /// let keypair = Keypair::try_from(secret).unwrap();
+    /// ```
+    fn try_from(secret_key: SecKey) -> Result<Self> {
+        Self::from_secret_key_impl(secret_key)
     }
 }
 
