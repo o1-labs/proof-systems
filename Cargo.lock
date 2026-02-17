@@ -1711,6 +1711,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "thiserror 2.0.18",
+ "zeroize",
 ]
 
 [[package]]
@@ -2351,6 +2352,7 @@ dependencies = [
  "serde",
  "serde_with",
  "thiserror 2.0.18",
+ "zeroize",
 ]
 
 [[package]]

@@ -38,3 +38,4 @@ serde_with.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
 thiserror.workspace = true
+zeroize.workspace = true

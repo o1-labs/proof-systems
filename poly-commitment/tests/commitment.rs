@@ -20,6 +20,7 @@ use poly_commitment::{
 };
 use rand::{CryptoRng, Rng, SeedableRng};
 use std::time::{Duration, Instant};
+use zeroize::Zeroize;
 
 // Note: Because the current API uses large tuples of types, I re-create types
 // in this test to facilitate aggregated proofs and batch verification of proofs.
@@ -291,8 +292,9 @@ pub fn ser_regression_canonical_srs() {
 
     let rng = &mut o1_utils::tests::make_test_rng(Some([0u8; 32]));
 
-    let td1 = Fp::rand(rng);
-    let data_expected = unsafe { SRS::<Vesta>::create_trusted_setup(td1, 1 << 3) };
+    let mut td1 = Fp::rand(rng);
+    let data_expected = SRS::<Vesta>::create_trusted_setup_with_toxic_waste(td1, 1 << 3);
+    td1.zeroize();
     // Generated with commit 1494cf973d40fb276465929eb7db1952c5de7bdc
     let buf_expected: Vec<u8> = vec![
         146, 152, 196, 33, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -316,8 +318,9 @@ pub fn ser_regression_canonical_srs() {
 
     test_generic_serialization_regression_serde(data_expected, buf_expected);
 
-    let td2 = Fq::rand(rng);
-    let data_expected = unsafe { SRS::<Pallas>::create_trusted_setup(td2, 1 << 3) };
+    let mut td2 = Fq::rand(rng);
+    let data_expected = SRS::<Pallas>::create_trusted_setup_with_toxic_waste(td2, 1 << 3);
+    td2.zeroize();
     // Generated with commit 1494cf973d40fb276465929eb7db1952c5de7bdc
     let buf_expected: Vec<u8> = vec![
         146, 152, 196, 33, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

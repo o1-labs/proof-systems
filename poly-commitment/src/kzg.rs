@@ -123,7 +123,7 @@ impl<Pair: Pairing> Clone for KZGProof<Pair> {
 /// for some toxic waste `x`.
 ///
 /// The SRS is formed using what we call a "trusted setup". For now, the setup
-/// is created using the method `create_trusted_setup`.
+/// is created using the method `create_trusted_setup_with_toxic_waste`.
 #[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct PairingSRS<Pair: Pairing> {
@@ -143,12 +143,14 @@ impl<
     > PairingSRS<Pair>
 {
     /// Create a trusted setup for the KZG protocol.
-    /// The setup is created using a toxic waste `toxic_waste` and a depth
-    /// `depth`.
-    #[allow(unsafe_code)]
-    pub fn create_trusted_setup(toxic_waste: F, depth: usize) -> Self {
-        let full_srs = unsafe { SRS::create_trusted_setup(toxic_waste, depth) };
-        let verifier_srs = unsafe { SRS::create_trusted_setup(toxic_waste, 3) };
+    ///
+    /// # Security
+    ///
+    /// The caller must ensure that `toxic_waste` is securely zeroized
+    /// after use. Leaking it compromises the soundness of the proof system.
+    pub fn create_trusted_setup_with_toxic_waste(toxic_waste: F, depth: usize) -> Self {
+        let full_srs = SRS::create_trusted_setup_with_toxic_waste(toxic_waste, depth);
+        let verifier_srs = SRS::create_trusted_setup_with_toxic_waste(toxic_waste, 3);
         Self {
             full_srs,
             verifier_srs,
@@ -332,8 +334,10 @@ impl<
 
     fn create(depth: usize) -> Self {
         let mut rng = thread_rng();
-        let toxic_waste = G::ScalarField::rand(&mut rng);
-        Self::create_trusted_setup(toxic_waste, depth)
+        let mut toxic_waste = G::ScalarField::rand(&mut rng);
+        let result = Self::create_trusted_setup_with_toxic_waste(toxic_waste, depth);
+        toxic_waste.zeroize();
+        result
     }
 
     fn size(&self) -> usize {

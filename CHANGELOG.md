@@ -197,6 +197,12 @@ and this project adheres to
   ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 - Pass `ScalarChallenge` by reference in `combine_one_endo`
   ([#3484](https://github.com/o1-labs/proof-systems/pull/3484))
+- Rename `create_trusted_setup` to `create_trusted_setup_with_toxic_waste` and
+  remove misuse of `unsafe fn` — the risk is cryptographic, not memory-safety
+  ([#3482](https://github.com/o1-labs/proof-systems/pull/3482))
+- Zeroize toxic waste scalars and internal accumulators after SRS computation
+  using `zeroize` crate to prevent secret material from lingering in memory
+  ([#3482](https://github.com/o1-labs/proof-systems/pull/3482))
 
 ### [turshi](./turshi)
 
