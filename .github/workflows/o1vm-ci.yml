@@ -23,7 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       rust-stable: ${{ steps.versions.outputs.rust-stable }}
+      rust-beta: ${{ steps.versions.outputs.rust-beta }}
       ocaml-version: ${{ steps.versions.outputs.ocaml-version }}
+      python-version: ${{ steps.versions.outputs.python-version }}
+      go-version: ${{ steps.versions.outputs.go-version }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -43,7 +46,7 @@ jobs:
         rust_toolchain:
           - ${{ needs.load-versions.outputs.rust-stable }}
           - stable
-          - beta
+          - ${{ needs.load-versions.outputs.rust-beta }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -104,13 +107,13 @@ jobs:
       - name: Install the Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: ${{ needs.load-versions.outputs.python-version }}
           check-latest: true
 
       - name: Install the Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.21.0"
+          go-version: ${{ needs.load-versions.outputs.go-version }}
 
       - name: Install the Foundry
         uses: foundry-rs/foundry-toolchain@v1

@@ -6,12 +6,24 @@ on:
   merge_group:
 
 jobs:
+  load-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      rust-nightly: ${{ steps.versions.outputs.rust-nightly }}
+      node-version: ${{ steps.versions.outputs.node-version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+
+      - name: Load versions
+        id: versions
+        uses: ./.github/actions/load-versions
+
   run_rust_formatting:
     name: Formatting Rust related code
+    needs: ['load-versions']
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust_toolchain_version: ["nightly"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -19,7 +31,7 @@ jobs:
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
+          rust_toolchain_version: ${{ needs.load-versions.outputs.rust-nightly }}
 
       - uses: taiki-e/install-action@v2
         with:
@@ -30,19 +42,16 @@ jobs:
 
   run_markdown_formatting:
     name: Formatting Markdown files
+    needs: ['load-versions']
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Load versions
-        id: versions
-        uses: ./.github/actions/load-versions
-
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ steps.versions.outputs.node-version }}
+          node-version: ${{ needs.load-versions.outputs.node-version }}
           cache: "npm"
 
       - name: Install dependencies

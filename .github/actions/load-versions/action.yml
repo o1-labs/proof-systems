@@ -13,12 +13,21 @@ outputs:
   rust-nightly:
     description: "Rust nightly version"
     value: ${{ steps.load.outputs.rust-nightly }}
+  rust-nightly-pinned:
+    description: "Pinned Rust nightly version (for wasm builds)"
+    value: ${{ steps.load.outputs.rust-nightly-pinned }}
   ocaml-version:
     description: "OCaml version"
     value: ${{ steps.load.outputs.ocaml-version }}
   node-version:
     description: "Node.js version"
     value: ${{ steps.load.outputs.node-version }}
+  python-version:
+    description: "Python version"
+    value: ${{ steps.load.outputs.python-version }}
+  go-version:
+    description: "Go version"
+    value: ${{ steps.load.outputs.go-version }}
 
 runs:
   using: composite
@@ -32,18 +41,27 @@ runs:
         RUST_STABLE=$(yq eval '.rust.stable' "$VERSIONS_FILE")
         RUST_BETA=$(yq eval '.rust.beta' "$VERSIONS_FILE")
         RUST_NIGHTLY=$(yq eval '.rust.nightly' "$VERSIONS_FILE")
+        RUST_NIGHTLY_PINNED=$(yq eval '.rust.nightly-pinned' "$VERSIONS_FILE")
         OCAML_VERSION=$(yq eval '.ocaml.version' "$VERSIONS_FILE")
         NODE_VERSION=$(yq eval '.node.version' "$VERSIONS_FILE")
+        PYTHON_VERSION=$(yq eval '.python.version' "$VERSIONS_FILE")
+        GO_VERSION=$(yq eval '.go.version' "$VERSIONS_FILE")
 
         echo "rust-stable=$RUST_STABLE" >> "$GITHUB_OUTPUT"
         echo "rust-beta=$RUST_BETA" >> "$GITHUB_OUTPUT"
         echo "rust-nightly=$RUST_NIGHTLY" >> "$GITHUB_OUTPUT"
+        echo "rust-nightly-pinned=$RUST_NIGHTLY_PINNED" >> "$GITHUB_OUTPUT"
         echo "ocaml-version=$OCAML_VERSION" >> "$GITHUB_OUTPUT"
         echo "node-version=$NODE_VERSION" >> "$GITHUB_OUTPUT"
+        echo "python-version=$PYTHON_VERSION" >> "$GITHUB_OUTPUT"
+        echo "go-version=$GO_VERSION" >> "$GITHUB_OUTPUT"
 
         echo "Loaded versions:"
         echo "  Rust stable: $RUST_STABLE"
         echo "  Rust beta: $RUST_BETA"
         echo "  Rust nightly: $RUST_NIGHTLY"
+        echo "  Rust nightly (pinned): $RUST_NIGHTLY_PINNED"
         echo "  OCaml: $OCAML_VERSION"
         echo "  Node.js: $NODE_VERSION"
+        echo "  Python: $PYTHON_VERSION"
+        echo "  Go: $GO_VERSION"

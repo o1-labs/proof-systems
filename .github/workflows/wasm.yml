@@ -9,12 +9,29 @@ on:
       - master
 
 jobs:
+  load-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      rust-nightly: ${{ steps.versions.outputs.rust-nightly }}
+      rust-nightly-pinned: ${{ steps.versions.outputs.rust-nightly-pinned }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+
+      - name: Load versions
+        id: versions
+        uses: ./.github/actions/load-versions
+
   build-wasm:
     name: Build WebAssembly code
+    needs: ['load-versions']
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        rust_toolchain_version: ['nightly-2025-12-11', 'nightly']
+        rust_toolchain_version:
+          - ${{ needs.load-versions.outputs.rust-nightly-pinned }}
+          - ${{ needs.load-versions.outputs.rust-nightly }}
 
     runs-on: ${{ matrix.os }}
 
