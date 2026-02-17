@@ -19,13 +19,29 @@ env:
   RUST_MIN_STACK: 31457280
 
 jobs:
+  load-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      rust-stable: ${{ steps.versions.outputs.rust-stable }}
+      ocaml-version: ${{ steps.versions.outputs.ocaml-version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+
+      - name: Load versions
+        id: versions
+        uses: ./.github/actions/load-versions
+
   clippy-o1vm:
     name: Clippy o1vm (${{ matrix.rust_toolchain }})
+    needs: ['load-versions']
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         rust_toolchain:
+          - ${{ needs.load-versions.outputs.rust-stable }}
           - stable
           - beta
     steps:
@@ -34,14 +50,10 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Load versions
-        id: versions
-        uses: ./.github/actions/load-versions
-
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:
-          ocaml_version: ${{ steps.versions.outputs.ocaml-version }}
+          ocaml_version: ${{ needs.load-versions.outputs.ocaml-version }}
 
       - name: Install Rust ${{ matrix.rust_toolchain }}
         uses: dtolnay/rust-toolchain@master
@@ -63,6 +75,7 @@ jobs:
 
   run_o1vm_with_cached_data:
     name: Run o1vm with cached data
+    needs: ['load-versions']
     runs-on: ["ubuntu-latest"]
     services:
       o1vm-e2e-testing-cache:
@@ -75,14 +88,10 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Load versions
-        id: versions
-        uses: ./.github/actions/load-versions
-
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
         with:
-          rust_toolchain_version: ${{ steps.versions.outputs.rust-stable }}
+          rust_toolchain_version: ${{ needs.load-versions.outputs.rust-stable }}
 
       # FIXME: currently not available for 5.0.0.
       # It might be related to boxroot dependency, and we would need
@@ -90,7 +99,7 @@ jobs:
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:
-          ocaml_version: ${{ steps.versions.outputs.ocaml-version }}
+          ocaml_version: ${{ needs.load-versions.outputs.ocaml-version }}
 
       - name: Install the Python
         uses: actions/setup-python@v6
