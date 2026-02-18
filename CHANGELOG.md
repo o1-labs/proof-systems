@@ -135,6 +135,8 @@ and this project adheres to
 - Add check that the state input length of `poseidon_block_cipher` is
   `SC::SPONGE_WIDTH` (e.g. 3)
   ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
+- Add `hash_prefixes` module with all Mina Poseidon domain separation prefixes
+  ([#3498](https://github.com/o1-labs/proof-systems/pull/3498))
 
 #### Changed
 
