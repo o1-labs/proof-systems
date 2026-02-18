@@ -33,6 +33,7 @@ extern crate alloc;
 
 pub mod constants;
 pub mod dummy_values;
+pub mod hash_prefixes;
 pub mod pasta;
 pub mod permutation;
 pub mod poseidon;
