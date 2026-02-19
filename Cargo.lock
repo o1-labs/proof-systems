@@ -3265,7 +3265,7 @@ dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "winnow",
+ "winnow 0.5.40",
 ]
 
 [[package]]
@@ -3279,6 +3279,7 @@ dependencies = [
  "serde_spanned",
  "toml_datetime",
  "toml_write",
+ "winnow 0.7.14",
 ]
 
 [[package]]
@@ -3717,6 +3718,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "winnow"
+version = "0.7.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a5364e9d77fcdeeaa6062ced926ee3381faa2ee02d3eb83a5c27a8825540829"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "wit-bindgen-rt"
 version = "0.39.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3764,6 +3774,8 @@ dependencies = [
  "anyhow",
  "clap",
  "raw-cpuid",
+ "semver",
+ "toml_edit 0.22.26",
  "wasm-pack",
 ]
 
