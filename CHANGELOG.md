@@ -91,6 +91,8 @@ and this project adheres to
   parameter in `Signer::sign()`, aligned with OCaml `Message.Legacy` and
   `Message.Chunked` naming
   ([#3474](https://github.com/o1-labs/proof-systems/pull/3474))
+- Add `TryFrom<SecKey>` implementation for `Keypair` for idiomatic Rust
+  conversions ([#3473](https://github.com/o1-labs/proof-systems/pull/3473))
 
 #### Changed
 
@@ -105,6 +107,12 @@ and this project adheres to
 - Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
   `unsafe_code`) and fix all warnings
   ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
+
+#### Deprecated
+
+- Deprecate `Keypair::from_secret_key()` in favor of `Keypair::try_from()`, will
+  be removed in 0.5.0
+  ([#3473](https://github.com/o1-labs/proof-systems/pull/3473))
 
 ### [mina-poseidon](./poseidon)
 
@@ -189,6 +197,12 @@ and this project adheres to
   ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 - Pass `ScalarChallenge` by reference in `combine_one_endo`
   ([#3484](https://github.com/o1-labs/proof-systems/pull/3484))
+- Rename `create_trusted_setup` to `create_trusted_setup_with_toxic_waste` and
+  remove misuse of `unsafe fn` — the risk is cryptographic, not memory-safety
+  ([#3482](https://github.com/o1-labs/proof-systems/pull/3482))
+- Zeroize toxic waste scalars and internal accumulators after SRS computation
+  using `zeroize` crate to prevent secret material from lingering in memory
+  ([#3482](https://github.com/o1-labs/proof-systems/pull/3482))
 
 ### [turshi](./turshi)
 

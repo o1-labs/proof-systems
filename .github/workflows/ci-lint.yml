@@ -4,8 +4,8 @@
 # optionally other versions). It uses a matrix strategy to run all versions
 # in parallel.
 #
-# To add a new Rust version, simply add it to the rust_toolchain matrix.
-# Examples: "stable", "beta", "nightly", "1.92"
+# Versions are loaded from .github/config/versions.yaml via the
+# load-versions action.
 #
 # Tracking issue: https://github.com/o1-labs/mina-rust/issues/1926
 # Sub-issues for each crate: #1927-#1949
@@ -23,29 +23,43 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  OCAML_VERSION: "4.14.2"
 
 jobs:
+  load-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      rust-msrv: ${{ steps.versions.outputs.rust-msrv }}
+      rust-stable: ${{ steps.versions.outputs.rust-stable }}
+      rust-beta: ${{ steps.versions.outputs.rust-beta }}
+      ocaml-version: ${{ steps.versions.outputs.ocaml-version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+
+      - name: Load versions
+        id: versions
+        uses: ./.github/actions/load-versions
+
   clippy:
     name: Clippy (${{ matrix.rust_toolchain }})
+    needs: ['load-versions']
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        # Add or remove Rust versions as needed.
-        # Supported values: "stable", "beta", "nightly", or specific versions like "1.92"
-        # We keep 1.92 to match mina-rust and MinaProtocol/mina.
-        rust_toolchain: ["1.92", stable, beta]
+        rust_toolchain:
+          - ${{ needs.load-versions.outputs.rust-msrv }}
+          - ${{ needs.load-versions.outputs.rust-stable }}
+          - ${{ needs.load-versions.outputs.rust-beta }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: recursive
 
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
         with:
-          ocaml_version: ${{ env.OCAML_VERSION }}
+          ocaml_version: ${{ needs.load-versions.outputs.ocaml-version }}
 
       - name: Install Rust ${{ matrix.rust_toolchain }}
         uses: dtolnay/rust-toolchain@master
@@ -62,7 +76,6 @@ jobs:
         env:
           RUSTUP_TOOLCHAIN: ${{ matrix.rust_toolchain }}
         run: |
-          # Load OCaml environment
           eval $(opam env)
           echo "Rust toolchain: ${{ matrix.rust_toolchain }}"
           make lint

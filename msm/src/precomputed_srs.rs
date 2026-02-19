@@ -9,6 +9,7 @@ use poly_commitment::{kzg::PairingSRS, precomputed_srs::TestSRS, SRS as _};
 use rand::{rngs::StdRng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::{fs::File, io::BufReader, path::PathBuf};
+use zeroize::Zeroize;
 
 /// A clone of the `PairingSRS` that is serialized in a test-optimised way.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -74,8 +75,9 @@ fn create_and_store_srs_with_path(
 ) -> PairingSRS<BN254> {
     // We generate with a fixed-seed RNG, only used for testing.
     let mut rng = &mut StdRng::from_seed([42u8; 32]);
-    let trapdoor = Fp::rand(&mut rng);
-    let srs = PairingSRS::create_trusted_setup(trapdoor, domain_size);
+    let mut trapdoor = Fp::rand(&mut rng);
+    let srs = PairingSRS::create_trusted_setup_with_toxic_waste(trapdoor, domain_size);
+    trapdoor.zeroize();
 
     for sub_domain_size in 1..=domain_size {
         let domain = EvaluationDomains::<Fp>::create(sub_domain_size).unwrap();
