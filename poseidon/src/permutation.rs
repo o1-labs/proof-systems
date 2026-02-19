@@ -129,10 +129,17 @@ pub fn half_rounds<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize>(
 /// states of length [`SpongeConstants::SPONGE_WIDTH`], the function will not
 /// incur in trailing-zeros padding type of collisions.
 ///
+/// # Panics
+///
+/// The function will panic if the length of the input state is not equal to the
+/// sponge width defined in the sponge constants.
+///
 pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants, const FULL_ROUNDS: usize>(
     params: &ArithmeticSpongeParams<F, FULL_ROUNDS>,
     state: &mut [F],
 ) {
+    assert!(state.len() == SC::SPONGE_WIDTH);
+
     if SC::PERM_HALF_ROUNDS_FULL == 0 {
         if SC::PERM_INITIAL_ARK {
             state

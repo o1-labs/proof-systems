@@ -134,7 +134,7 @@ and this project adheres to
   ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
 - Add check that the state input length of `poseidon_block_cipher` is
   `SC::SPONGE_WIDTH` (e.g. 3)
-  ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
+  ([#3499](https://github.com/o1-labs/proof-systems/pull/3499))
 
 #### Changed
 
