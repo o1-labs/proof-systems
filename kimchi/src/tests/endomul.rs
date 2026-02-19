@@ -117,3 +117,67 @@ fn endomul_test() {
         .prove_and_verify::<BaseSponge, ScalarSponge>()
         .unwrap();
 }
+
+/// Regression test for EndoMul gate with fixed scalar values.
+/// This test uses hardcoded expected outputs to detect any changes in the
+/// gate's behavior.
+#[test]
+fn test_endomul_regression() {
+    use std::str::FromStr;
+
+    let num_bits = 16; // Small scalar for readable test
+    let chunks = num_bits / 4;
+
+    let (endo_q, _) = endos::<Other>();
+    let base = Other::generator();
+
+    // Initial accumulator: acc0 = 2 * (base + phi(base))
+    let acc0 = {
+        let phi_base = Other::new_unchecked(endo_q * base.x, base.y);
+        let p = phi_base + base;
+        let acc: Other = (p + p).into();
+        (acc.x, acc.y)
+    };
+
+    // Fixed 16-bit scalar in MSB-first order: 0b1010_0011_1100_0101 = 41925
+    let bits_msb: Vec<bool> = vec![
+        true, false, true, false, // 0xA
+        false, false, true, true, // 0x3
+        true, true, false, false, // 0xC
+        false, true, false, true, // 0x5
+    ];
+
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); chunks + 1]);
+
+    let res = endosclmul::gen_witness(&mut witness, 0, endo_q, (base.x, base.y), &bits_msb, acc0);
+
+    // Expected values (computed once and hardcoded for regression testing)
+    let expected_acc_x = F::from_str(
+        "13451015727828487409105090745067382573284440950068981965830848908350988424768",
+    )
+    .unwrap();
+    let expected_acc_y =
+        F::from_str("9969116504129436059100105870338261105816321160161624462757629802673790029360")
+            .unwrap();
+    let expected_n = F::from(41925u64);
+
+    assert_eq!(
+        res.acc.0, expected_acc_x,
+        "Accumulated x-coordinate mismatch"
+    );
+    assert_eq!(
+        res.acc.1, expected_acc_y,
+        "Accumulated y-coordinate mismatch"
+    );
+    assert_eq!(res.n, expected_n, "Accumulated scalar mismatch");
+
+    // Also verify intermediate witness values for first row
+    // Row 0: processes bits [1,0,1,0] -> b1=1, b2=0, b3=1, b4=0
+    assert_eq!(witness[11][0], F::one(), "b1 should be 1");
+    assert_eq!(witness[12][0], F::zero(), "b2 should be 0");
+    assert_eq!(witness[13][0], F::one(), "b3 should be 1");
+    assert_eq!(witness[14][0], F::zero(), "b4 should be 0");
+
+    // Verify scalar accumulation: after row 0, n = 8*1 + 4*0 + 2*1 + 0 = 10
+    assert_eq!(witness[6][1], F::from(10u64), "n after row 0 should be 10");
+}
