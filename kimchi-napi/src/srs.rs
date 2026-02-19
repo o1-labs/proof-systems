@@ -2,7 +2,7 @@ use crate::vector::NapiVector;
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
 use core::ops::Deref;
 use napi::bindgen_prelude::{
-    sys, ClassInstance, Error, External, FromNapiValue, Result, Status, Uint8Array,
+    sys, ClassInstance, Error, FromNapiValue, Result, Status, Uint8Array,
 };
 use napi_derive::napi;
 use paste::paste;
@@ -171,7 +171,7 @@ macro_rules! impl_srs {
                 Ok(basis[i as usize].clone().into())
             }
 
-            // Fake overwrite of the plonk_wasm equivalent, but without pointers.
+            // Fake overwrite of the kimchi_wasm equivalent, but without pointers.
             // In the srs bindings, the same symbol will be used to either provide
             // the pointer for wasm, or the actual data for napi
             #[napi(js_name = [<"caml_" $name:snake "_srs_lagrange_commitments_whole_domain_ptr">])]
@@ -332,20 +332,9 @@ pub fn caml_fp_srs_to_bytes(srs: &fp::NapiFpSrs) -> Result<Uint8Array> {
     srs.serialize()
 }
 
-#[napi(js_name = "caml_fp_srs_to_bytes_external")]
-pub fn caml_fp_srs_to_bytes_external(srs: &External<fp::NapiFpSrs>) -> Uint8Array {
-    caml_fp_srs_to_bytes(srs).expect("failed to serialize external fp srs")
-}
-
 #[napi(js_name = "caml_fp_srs_from_bytes")]
 pub fn caml_fp_srs_from_bytes(bytes: Uint8Array) -> Result<fp::NapiFpSrs> {
     fp::NapiFpSrs::deserialize(bytes)
-}
-
-#[napi(js_name = "caml_fp_srs_from_bytes_external")]
-pub fn caml_fp_srs_from_bytes_external(bytes: Uint8Array) -> External<fp::NapiFpSrs> {
-    let srs = caml_fp_srs_from_bytes(bytes).unwrap();
-    External::new(srs)
 }
 
 #[napi(js_name = "caml_fq_srs_to_bytes")]
@@ -353,20 +342,9 @@ pub fn caml_fq_srs_to_bytes(srs: &fq::NapiFqSrs) -> Result<Uint8Array> {
     srs.serialize()
 }
 
-#[napi(js_name = "caml_fq_srs_to_bytes_external")]
-pub fn caml_fq_srs_to_bytes_external(srs: &External<fq::NapiFqSrs>) -> Uint8Array {
-    caml_fq_srs_to_bytes(srs).expect("failed to serialize external fq srs")
-}
-
 #[napi(js_name = "caml_fq_srs_from_bytes")]
 pub fn caml_fq_srs_from_bytes(bytes: Uint8Array) -> Result<fq::NapiFqSrs> {
     fq::NapiFqSrs::deserialize(bytes)
-}
-
-#[napi(js_name = "caml_fq_srs_from_bytes_external")]
-pub fn caml_fq_srs_from_bytes_external(bytes: Uint8Array) -> External<fq::NapiFqSrs> {
-    let srs = caml_fq_srs_from_bytes(bytes).unwrap();
-    External::new(srs)
 }
 
 pub mod fp {

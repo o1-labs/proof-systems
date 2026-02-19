@@ -31,8 +31,8 @@ O1VM_MIPS_BIN_FILES = $(patsubst ${O1VM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIPS_BIN_D
 # In addition to that, the version in the CI (see file
 # .github/workflows/wasm.yml) should be changed accordingly.
 NIGHTLY_RUST_VERSION = "nightly-2024-09-05"
-PLONK_WASM_NODEJS_OUTDIR ?= target/nodejs
-PLONK_WASM_WEB_OUTDIR ?= target/web
+KIMCHI_WASM_NODEJS_OUTDIR ?= target/nodejs
+KIMCHI_WASM_WEB_OUTDIR ?= target/web
 
 # Default target
 all: release
@@ -88,11 +88,11 @@ clean: ## Clean the project
 
 
 build: ## Build the project
-		cargo build --all-targets --all-features --workspace --exclude plonk_wasm --exclude xtask
+		cargo build --all-targets --all-features --workspace --exclude kimchi_wasm --exclude xtask
 
 
 release: ## Build the project in release mode
-		cargo build --release --all-targets --all-features --workspace --exclude plonk_wasm --exclude xtask
+		cargo build --release --all-targets --all-features --workspace --exclude kimchi_wasm --exclude xtask
 
 
 test-doc: ## Test the project's docs comments
@@ -237,14 +237,14 @@ fclean: clean ## Clean the tooling artefacts in addition to running clean
 build-nodejs: ## Compile the Kimchi library into WebAssembly to be used in NodeJS
 		cargo +nightly run --package xtask -- build-wasm \
 		--target nodejs \
-		--out-dir ${PLONK_WASM_NODEJS_OUTDIR} \
+		--out-dir ${KIMCHI_WASM_NODEJS_OUTDIR} \
 		--rust-version ${NIGHTLY_RUST_VERSION}
 
 .PHONY: build-web
 build-web: ## Compile the Kimchi library into WebAssembly to be used in the browser
 		cargo +nightly run --package xtask -- build-wasm \
 		--target web \
-		--out-dir ${PLONK_WASM_WEB_OUTDIR} \
+		--out-dir ${KIMCHI_WASM_WEB_OUTDIR} \
 		--rust-version ${NIGHTLY_RUST_VERSION}
 
 .PHONY: all setup install-test-deps clean build release test-doc test-doc-with-coverage test test-with-coverage test-heavy test-heavy-with-coverage test-all test-all-with-coverage nextest nextest-with-coverage nextest-heavy nextest-heavy-with-coverage nextest-all nextest-all-with-coverage format lint generate-test-coverage-report generate-doc setup-riscv32-toolchain help fclean build-riscv32-programs build-mips-programs check-format

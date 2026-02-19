@@ -14,9 +14,8 @@ members = [
   "msm",
   "mvpoly",
   "o1vm",
-  "plonk-neon",
-  "plonk-napi",
-  "plonk-wasm",
+  "kimchi-napi",
+  "kimchi-wasm",
   "poly-commitment",
   "poseidon",
   "poseidon/export_test_vectors",
@@ -62,8 +61,12 @@ libflate = "2"
 log = "0.4.20"
 num-bigint = { version = "0.4.4", features = ["rand", "serde"] }
 num-integer = "0.1.45"
-napi = { git = "https://github.com/o1-labs/napi-rs.git", rev = "023d1d4f31bd75e8ab55c95b5077a319b5208cdf", version = "3.3.0", default-features = false, features = ["napi7"] }
-napi-derive = { git="https://github.com/o1-labs/napi-rs.git", rev = "023d1d4f31bd75e8ab55c95b5077a319b5208cdf", version = "3.3.0", features = ["type-def"] }
+napi = { git = "https://github.com/o1-labs/napi-rs.git", rev = "023d1d4f31bd75e8ab55c95b5077a319b5208cdf", version = "3.3.0", default-features = false, features = [
+  "napi7",
+] }
+napi-derive = { git = "https://github.com/o1-labs/napi-rs.git", rev = "023d1d4f31bd75e8ab55c95b5077a319b5208cdf", version = "3.3.0", features = [
+  "type-def",
+] }
 napi-build = "2.1.0"
 ocaml = { version = "0.22.2" }
 ocaml-gen = { version = "1.0.0" }
@@ -111,7 +114,7 @@ mvpoly = { path = "./mvpoly", version = "0.1.0" }
 o1-utils = { path = "./utils", version = "0.1.0" }
 o1vm = { path = "./o1vm", version = "0.1.0" }
 optimism = { path = "./optimism", version = "0.1.0" }
-plonk_wasm = { path = "./plonk-wasm", version = "0.1.0" }
+kimchi_wasm = { path = "./kimchi-wasm", version = "0.1.0" }
 poly-commitment = { path = "./poly-commitment", version = "0.1.0" }
 saffron = { path = "./saffron", version = "0.1.0" }
 signer = { path = "./signer", version = "0.1.0" }
@@ -124,5 +127,5 @@ lto = true
 panic = 'abort'
 # codegen-units = 1
 
-[profile.release.package.plonk_wasm]
+[profile.release.package.kimchi_wasm]
 debug = true

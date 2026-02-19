@@ -2055,6 +2055,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "kimchi-napi"
+version = "0.1.0"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-poly",
+ "ark-serialize",
+ "arkworks",
+ "base64 0.21.7",
+ "getrandom 0.2.15",
+ "kimchi",
+ "kimchi_wasm",
+ "libc",
+ "mina-curves",
+ "mina-poseidon",
+ "napi",
+ "napi-build 2.2.3",
+ "napi-derive",
+ "num-bigint",
+ "o1-utils",
+ "once_cell",
+ "paste",
+ "poly-commitment",
+ "rand",
+ "rayon",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "wasm-types",
+]
+
+[[package]]
 name = "kimchi-stubs"
 version = "0.1.0"
 dependencies = [
@@ -2096,6 +2129,42 @@ dependencies = [
  "serde_json",
  "serde_with",
  "tinytemplate",
+]
+
+[[package]]
+name = "kimchi_wasm"
+version = "0.1.0"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-poly",
+ "ark-serialize",
+ "arkworks",
+ "base64 0.21.7",
+ "console_error_panic_hook",
+ "getrandom 0.2.15",
+ "groupmap",
+ "js-sys",
+ "kimchi",
+ "libc",
+ "mina-curves",
+ "mina-poseidon",
+ "num-bigint",
+ "o1-utils",
+ "once_cell",
+ "paste",
+ "poly-commitment",
+ "rand",
+ "rayon",
+ "rmp-serde",
+ "serde",
+ "serde-wasm-bindgen",
+ "serde_json",
+ "serde_with",
+ "spmc",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
+ "wasm-types",
 ]
 
 [[package]]
@@ -2481,32 +2550,6 @@ version = "3.0.1"
 source = "git+https://github.com/o1-labs/napi-rs.git?rev=023d1d4f31bd75e8ab55c95b5077a319b5208cdf#023d1d4f31bd75e8ab55c95b5077a319b5208cdf"
 dependencies = [
  "libloading",
-]
-
-[[package]]
-name = "neon"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d75440242411c87dc39847b0e33e961ec1f10326a9d8ecf9c1ea64a3b3c13dc"
-dependencies = [
- "getrandom 0.2.15",
- "libloading",
- "neon-macros",
- "once_cell",
- "semver",
- "send_wrapper",
- "smallvec",
-]
-
-[[package]]
-name = "neon-macros"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6813fde79b646e47e7ad75f480aa80ef76a5d9599e2717407961531169ee38b"
-dependencies = [
- "quote",
- "syn 2.0.100",
- "syn-mid",
 ]
 
 [[package]]
@@ -2968,102 +3011,6 @@ dependencies = [
  "quick-xml",
  "serde",
  "time",
-]
-
-[[package]]
-name = "plonk-napi"
-version = "0.1.0"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-poly",
- "ark-serialize",
- "arkworks",
- "base64 0.21.7",
- "getrandom 0.2.15",
- "kimchi",
- "libc",
- "mina-curves",
- "mina-poseidon",
- "napi",
- "napi-build 2.2.3",
- "napi-derive",
- "num-bigint",
- "o1-utils",
- "once_cell",
- "paste",
- "plonk_wasm",
- "poly-commitment",
- "rand",
- "rayon",
- "rmp-serde",
- "serde",
- "serde_json",
- "serde_with",
- "wasm-types",
-]
-
-[[package]]
-name = "plonk_neon"
-version = "0.1.0"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-poly",
- "ark-serialize",
- "arkworks",
- "getrandom 0.2.15",
- "libc",
- "mina-curves",
- "mina-poseidon",
- "neon",
- "num-bigint",
- "o1-utils",
- "once_cell",
- "paste",
- "rand",
- "rayon",
- "rmp-serde",
- "serde",
- "serde_with",
- "wasm-bindgen",
- "wasm-types",
-]
-
-[[package]]
-name = "plonk_wasm"
-version = "0.1.0"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-poly",
- "ark-serialize",
- "arkworks",
- "base64 0.21.7",
- "console_error_panic_hook",
- "getrandom 0.2.15",
- "groupmap",
- "js-sys",
- "kimchi",
- "libc",
- "mina-curves",
- "mina-poseidon",
- "num-bigint",
- "o1-utils",
- "once_cell",
- "paste",
- "poly-commitment",
- "rand",
- "rayon",
- "rmp-serde",
- "serde",
- "serde-wasm-bindgen",
- "serde_json",
- "serde_with",
- "spmc",
- "wasm-bindgen",
- "wasm-bindgen-test",
- "wasm-types",
 ]
 
 [[package]]
@@ -3602,12 +3549,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "send_wrapper"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
-
-[[package]]
 name = "serde"
 version = "1.0.219"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3893,17 +3834,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "syn-mid"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5dc35bb08dd1ca3dfb09dce91fd2d13294d6711c88897d9a9d60acf39bce049"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.100",
 ]
 
 [[package]]
