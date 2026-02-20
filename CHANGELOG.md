@@ -9,6 +9,8 @@ and this project adheres to
 
 ## Unreleased
 
+## 0.4.0
+
 ### Dependencies
 
 #### Changed
