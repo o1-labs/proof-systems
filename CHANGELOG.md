@@ -319,6 +319,21 @@ and this project adheres to
   [o1-labs/mina-rust#1824](https://github.com/o1-labs/mina-rust/issues/1824).
 - Currency types: `Amount`, `Fee`, `Signed<T>`, `Sign`, `Magnitude` trait
 - Transaction types: `Coinbase`, `CoinbaseFeeTransfer`
+- Signed command types: `SignedCommand`, `PaymentPayload`,
+  `StakeDelegationPayload`, `SignedCommandPayload`
+- zkApp command types: `ZkAppCommand`, `AccountUpdate`, `AccountUpdateTree`,
+  `FeePayer`, `Update`, `Control`, `VerificationKey`, `Event`, `Events`,
+  `Actions`, `Timing`
+- Fee transfer types: `FeeTransfer`, `SingleFeeTransfer`
+- Top-level enums: `Transaction`, `UserCommand`
+- Common utility types: `SetOrKeep`, `OrIgnore`, `ClosedInterval`, `OneOrTwo`
+- Primitive types: `TokenId`, `Memo`, `AccountId`, `VotingFor`, `ZkAppUri`,
+  `TokenSymbol`
+- Permission types: `AuthRequired`, `Permissions`, `SetVerificationKey`
+- Precondition types: `Preconditions`, `NetworkPreconditions`,
+  `AccountPrecondition`, `EpochData`
+- Currency types: `Balance`, `Nonce`, `Slot`, `SlotSpan`, `Length`, `TxnVersion`
+  (u32-based via `impl_number_u32!` macro)
 
 ### [mvpoly](./mvpoly)
 
