@@ -9,6 +9,8 @@ and this project adheres to
 
 ## Unreleased
 
+## 0.4.0
+
 ### Dependencies
 
 #### Changed
@@ -83,37 +85,6 @@ and this project adheres to
 - Added test for the behavior of padding inside Poseidon circuits
   ([#3467](https://github.com/o1-labs/proof-systems/pull/3467))
 
-### [mina-signer](./signer)
-
-#### Added
-
-- Add `NonceMode` enum (`Legacy`, `Chunked`) to replace boolean `packed`
-  parameter in `Signer::sign()`, aligned with OCaml `Message.Legacy` and
-  `Message.Chunked` naming
-  ([#3474](https://github.com/o1-labs/proof-systems/pull/3474))
-- Add `TryFrom<SecKey>` implementation for `Keypair` for idiomatic Rust
-  conversions ([#3473](https://github.com/o1-labs/proof-systems/pull/3473))
-
-#### Changed
-
-- **Breaking**: Replace boolean `packed` parameter with `NonceMode` enum in
-  `Signer::sign()` method
-  ([#3474](https://github.com/o1-labs/proof-systems/pull/3474))
-- Rename internal nonce derivation methods: `derive_nonce_compatible` →
-  `derive_nonce_chunked`, `derive_nonce` → `derive_nonce_legacy`
-  ([#3474](https://github.com/o1-labs/proof-systems/pull/3474))
-- Replace `.unwrap()` with `.expect()` in BLAKE2b hasher creation for better
-  error messages ([#3472](https://github.com/o1-labs/proof-systems/pull/3472))
-- Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
-  `unsafe_code`) and fix all warnings
-  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
-
-#### Deprecated
-
-- Deprecate `Keypair::from_secret_key()` in favor of `Keypair::try_from()`, will
-  be removed in 0.5.0
-  ([#3473](https://github.com/o1-labs/proof-systems/pull/3473))
-
 ### [mina-poseidon](./poseidon)
 
 #### Added
@@ -146,21 +117,44 @@ and this project adheres to
 
 #### Added
 
+- Add `NonceMode` enum (`Legacy`, `Chunked`) to replace boolean `packed`
+  parameter in `Signer::sign()`, aligned with OCaml `Message.Legacy` and
+  `Message.Chunked` naming
+  ([#3474](https://github.com/o1-labs/proof-systems/pull/3474))
+- Add `TryFrom<SecKey>` implementation for `Keypair` for idiomatic Rust
+  conversions ([#3473](https://github.com/o1-labs/proof-systems/pull/3473))
 - Add documentation for the internal `Message` struct explaining its role in
   Schnorr signature hash computation
   ([#3477](https://github.com/o1-labs/proof-systems/pull/3477))
-
+  
 #### Changed
 
+- **Breaking**: Replace boolean `packed` parameter with `NonceMode` enum in
+  `Signer::sign()` method
+  ([#3474](https://github.com/o1-labs/proof-systems/pull/3474))
 - **Breaking**: Make `secret` field in `Keypair` private to prevent accidental
   exposure; use `secret_key()` accessor instead
   ([#3475](https://github.com/o1-labs/proof-systems/pull/3475))
 - **Breaking**: `PubKey::from_secret_key` now takes `&SecKey` instead of
   `SecKey` to avoid unnecessary cloning
   ([#3476](https://github.com/o1-labs/proof-systems/pull/3476))
+- Rename internal nonce derivation methods: `derive_nonce_compatible` →
+  `derive_nonce_chunked`, `derive_nonce` → `derive_nonce_legacy`
+  ([#3474](https://github.com/o1-labs/proof-systems/pull/3474))
+- Replace `.unwrap()` with `.expect()` in BLAKE2b hasher creation for better
+  error messages ([#3472](https://github.com/o1-labs/proof-systems/pull/3472))
+- Add strict clippy lints (`clippy::all`, `clippy::pedantic`, `clippy::nursery`,
+  `unsafe_code`) and fix all warnings
+  ([#3480](https://github.com/o1-labs/proof-systems/pull/3480))
 - Add `BLAKE2B_OUTPUT_SIZE` constant and replace `.unwrap()` with `.expect()` in
   nonce derivation functions
   ([#3476](https://github.com/o1-labs/proof-systems/pull/3476))
+  
+#### Deprecated
+
+- Deprecate `Keypair::from_secret_key()` in favor of `Keypair::try_from()`, will
+  be removed in 0.5.0
+  ([#3473](https://github.com/o1-labs/proof-systems/pull/3473))
 
 ### plonk_neon
 
