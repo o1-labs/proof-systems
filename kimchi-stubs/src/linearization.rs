@@ -133,7 +133,9 @@ where
         }
         PolishToken::Constant(ConstantTerm::Literal(f)) => {
             let bigint: num_bigint::BigUint = (*f).into_bigint().into();
-            format!("Constant (Literal \"0x{:X}\")", bigint)
+            let hex_str = format!("{:X}", bigint);
+            let padded = format!("{:0>64}", hex_str);
+            format!("Constant (Literal \"0x{}\")", padded)
         }
         PolishToken::Challenge(BerkeleyChallengeTerm::Alpha) => "Challenge Alpha".to_string(),
         PolishToken::Challenge(BerkeleyChallengeTerm::Beta) => "Challenge Beta".to_string(),
