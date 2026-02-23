@@ -9,11 +9,13 @@ and this project adheres to
 
 ## Unreleased
 
+## 0.5.0
+
 ### [kimchi](./kimchi)
 
 #### Changed
 
-- Update `EndoSclMul` gate constraints
+- Update `EndoSclMul` gate
   ([#3514](https://github.com/o1-labs/proof-systems/pull/3514))
 
 ## 0.4.0
