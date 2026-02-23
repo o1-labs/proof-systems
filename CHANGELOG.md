@@ -126,7 +126,7 @@ and this project adheres to
 - Add documentation for the internal `Message` struct explaining its role in
   Schnorr signature hash computation
   ([#3477](https://github.com/o1-labs/proof-systems/pull/3477))
-  
+
 #### Changed
 
 - **Breaking**: Replace boolean `packed` parameter with `NonceMode` enum in
@@ -149,7 +149,7 @@ and this project adheres to
 - Add `BLAKE2B_OUTPUT_SIZE` constant and replace `.unwrap()` with `.expect()` in
   nonce derivation functions
   ([#3476](https://github.com/o1-labs/proof-systems/pull/3476))
-  
+
 #### Deprecated
 
 - Deprecate `Keypair::from_secret_key()` in favor of `Keypair::try_from()`, will
