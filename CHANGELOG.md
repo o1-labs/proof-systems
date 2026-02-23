@@ -9,6 +9,15 @@ and this project adheres to
 
 ## Unreleased
 
+## 0.4.1
+
+### [poly-commitment](./poly-commitment)
+
+#### Changed
+
+- Remove the constant from `len` and `is_empty` functions
+  ([#](https://github.com/o1-labs/proof-systems/pull/)).
+
 ## 0.4.0
 
 ### Dependencies
