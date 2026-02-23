@@ -140,7 +140,10 @@ fn release(bump: BumpType) -> Result<()> {
     );
     fs::write(changelog_path, new_changelog_content).context("Failed to write CHANGELOG.md")?;
 
-    // 3. Update Cargo.lock
+    // 3. Regenerate poseidon test vectors snapshots
+    refresh_poseidon_test_vectors()?;
+
+    // 4. Update Cargo.lock
     println!("Updating Cargo.lock...");
     let status = Command::new("cargo")
         .arg("check")
@@ -151,6 +154,59 @@ fn release(bump: BumpType) -> Result<()> {
     }
 
     println!("Release preparation for version {} complete!", new_version);
+
+    Ok(())
+}
+
+fn refresh_poseidon_test_vectors() -> Result<()> {
+    println!("Regenerating poseidon export_test_vectors snapshots...");
+
+    let cases = [
+        ("b10", "legacy", "json", false),
+        ("b10", "kimchi", "json", false),
+        ("hex", "legacy", "json", false),
+        ("hex", "kimchi", "json", false),
+        ("b10", "legacy", "es5", true),
+        ("b10", "kimchi", "es5", true),
+        ("hex", "legacy", "es5", true),
+        ("hex", "kimchi", "es5", true),
+    ];
+
+    for (mode, param_type, format, deterministic) in cases {
+        let extension = if format == "json" { "json" } else { "js" };
+        let output_file = format!(
+            "poseidon/export_test_vectors/test_vectors/{}_{}.{}",
+            mode, param_type, extension
+        );
+
+        let mut cmd = Command::new("cargo");
+        cmd.args([
+            "run",
+            "--bin",
+            "export_test_vectors",
+            "--",
+            mode,
+            param_type,
+            &output_file,
+            "--format",
+            format,
+        ]);
+
+        if deterministic {
+            cmd.arg("--deterministic");
+        }
+
+        let status = cmd.status().with_context(|| {
+            format!(
+                "Failed to run export_test_vectors for mode={mode}, param_type={param_type}, format={format}"
+            )
+        })?;
+        if !status.success() {
+            anyhow::bail!(
+                "export_test_vectors failed for mode={mode}, param_type={param_type}, format={format}"
+            );
+        }
+    }
 
     Ok(())
 }
