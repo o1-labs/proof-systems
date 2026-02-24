@@ -417,14 +417,16 @@ macro_rules! impl_verification_key {
                 }
             }
 
-            impl From<&VerifierIndex<$G, OpeningProof<$G>>> for NapiPlonkVerifierIndex {
-                fn from(index: &VerifierIndex<$G, OpeningProof<$G>>) -> Self {
+            impl From<(&VerifierIndex<$G, OpeningProof<$G>>, &$NapiSrs)> for NapiPlonkVerifierIndex {
+                // This is used to obtain a NapiPlonkVerifierIndex with a reference to the SRS,
+                // because while cacheing the index may not carry the full SRS `g` points otherwise
+                fn from((index, srs): (&VerifierIndex<$G, OpeningProof<$G>>, &$NapiSrs)) -> Self {
                     Self {
                         domain: (&index.domain).into(),
                         max_poly_size: index.max_poly_size as i32,
                         public_: index.public as i32,
                         prev_challenges: index.prev_challenges as i32,
-                        srs: (&index.srs).into(),
+                        srs: srs.clone(),
                         evals: index.into(),
                         shifts: (&index.shift).into(),
                         lookup_index: index.lookup_index.as_ref().map(Into::into),
@@ -455,7 +457,7 @@ macro_rules! impl_verification_key {
                 path: String,
             ) -> napi::Result<NapiPlonkVerifierIndex> {
                 let vi = read_raw(offset, srs, path)?;
-                Ok(NapiPlonkVerifierIndex::from(&vi))
+                Ok(NapiPlonkVerifierIndex::from((&vi, srs)))
             }
 
             #[napi(js_name = [<caml_pasta_ $field_name:snake _plonk_verifier_index_write>])]
@@ -481,11 +483,11 @@ macro_rules! impl_verification_key {
 
             #[napi(js_name = [<caml_pasta_ $field_name:snake _plonk_verifier_index_deserialize>])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_verifier_index_deserialize>](
-                _srs: &$NapiSrs,
+                srs: &$NapiSrs,
                 index: String,
             ) -> napi::Result<NapiPlonkVerifierIndex> {
                 match serde_json::from_str::<VerifierIndex<$G, OpeningProof<$G>>>(&index) {
-                    Ok(vi) => Ok(NapiPlonkVerifierIndex::from(&vi)),
+                    Ok(vi) => Ok(NapiPlonkVerifierIndex::from((&vi, srs))),
                     Err(e) => Err(Error::new(Status::GenericFailure, e.to_string())),
                 }
             }
@@ -496,13 +498,8 @@ macro_rules! impl_verification_key {
             ) -> NapiPlonkVerifierIndex {
                 index.0.srs.get_lagrange_basis(index.0.as_ref().cs.domain.d1);
                 let verifier_index = index.0.as_ref().verifier_index();
-                // `VerifierIndex::verifier_index()` may not carry the full SRS `g` points
-                // (it can be trimmed for verifier-only usage). We need the full SRS here
-                // because OCaml calls `SRS.lagrange_commitments_whole_domain vk.srs ...`,
-                // which computes Lagrange commitments from `srs.g`.
-                let mut napi_index = NapiPlonkVerifierIndex::from(&verifier_index);
-                napi_index.srs = (&index.0.srs).into();
-                napi_index
+                let srs: $NapiSrs = (&index.0.srs).into();
+                NapiPlonkVerifierIndex::from((&verifier_index, &srs))
             }
 
             #[napi(js_name = [<caml_pasta_ $field_name:snake _plonk_verifier_index_shifts>])]
