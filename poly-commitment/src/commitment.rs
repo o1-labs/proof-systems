@@ -196,13 +196,13 @@ impl<A: Copy + Clone + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
 
     /// Returns the number of chunks.
     #[must_use]
-    pub const fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.chunks.len()
     }
 
     /// Returns `true` if the commitment is empty.
     #[must_use]
-    pub const fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.chunks.is_empty()
     }
 
