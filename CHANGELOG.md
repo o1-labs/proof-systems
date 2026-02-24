@@ -203,6 +203,8 @@ and this project adheres to
 - Zeroize toxic waste scalars and internal accumulators after SRS computation
   using `zeroize` crate to prevent secret material from lingering in memory
   ([#3482](https://github.com/o1-labs/proof-systems/pull/3482))
+- Remove the constant from `len` and `is_empty` functions
+  ([#3512](https://github.com/o1-labs/proof-systems/pull/3512)).
 
 ### [turshi](./turshi)
 
