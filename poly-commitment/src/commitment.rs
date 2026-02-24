@@ -196,12 +196,14 @@ impl<A: Copy + Clone + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
 
     /// Returns the number of chunks.
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn len(&self) -> usize {
         self.chunks.len()
     }
 
     /// Returns `true` if the commitment is empty.
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn is_empty(&self) -> bool {
         self.chunks.is_empty()
     }
