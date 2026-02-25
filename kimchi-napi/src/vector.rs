@@ -143,7 +143,7 @@ where
 {
     unsafe fn to_napi_value(env: sys::napi_env, val: Self) -> Result<sys::napi_value> {
         let bytes = val.into_bytes();
-        <Vec<u8> as ToNapiValue>::to_napi_value(env, bytes)
+        <Uint8Array as ToNapiValue>::to_napi_value(env, Uint8Array::from(bytes))
     }
 }
 
@@ -158,7 +158,7 @@ where
             .into_iter()
             .flat_map(FlatVectorElem::flatten)
             .collect::<Vec<_>>();
-        <Vec<u8> as ToNapiValue>::to_napi_value(env, bytes)
+        <Uint8Array as ToNapiValue>::to_napi_value(env, Uint8Array::from(bytes))
     }
 }
 
@@ -173,7 +173,7 @@ where
             .into_iter()
             .flat_map(FlatVectorElem::flatten)
             .collect::<Vec<_>>();
-        <Vec<u8> as ToNapiValue>::to_napi_value(env, bytes)
+        <Uint8Array as ToNapiValue>::to_napi_value(env, Uint8Array::from(bytes))
     }
 }
 
