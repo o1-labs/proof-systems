@@ -209,7 +209,7 @@ pub fn caml_pasta_fp_plonk_index_decode(
 #[napi(js_name = "caml_pasta_fp_plonk_index_encode")]
 pub fn caml_pasta_fp_plonk_index_encode(
     index: &External<WasmPastaFpPlonkIndex>,
-) -> Result<Vec<u8>, Error> {
+) -> Result<Uint8Array, Error> {
     let mut buffer = Vec::new();
     let mut serializer = rmp_serde::Serializer::new(&mut buffer);
     index.0.serialize(&mut serializer).map_err(|e| {
@@ -218,7 +218,7 @@ pub fn caml_pasta_fp_plonk_index_encode(
             &format!("caml_pasta_fp_plonk_index_encode: {}", e),
         )
     })?;
-    Ok(buffer)
+    Ok(Uint8Array::from(buffer))
 }
 
 #[napi(js_name = "caml_pasta_fp_plonk_index_write")]
