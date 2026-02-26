@@ -839,12 +839,12 @@ where
         let lgr_comm = verifier_index
             .srs()
             .get_lagrange_basis(verifier_index.domain);
-        let com: Vec<_> = lgr_comm.iter().take(verifier_index.public).collect();
+        let com = &lgr_comm[..verifier_index.public];
         if public_input.is_empty() {
             PolyComm::new(vec![verifier_index.srs().blinding_commitment(); chunk_size])
         } else {
             let elm: Vec<_> = public_input.iter().map(|s| -*s).collect();
-            let public_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
+            let public_comm = PolyComm::<G>::multi_scalar_mul(com, &elm);
             verifier_index
                 .srs()
                 .mask_custom(
