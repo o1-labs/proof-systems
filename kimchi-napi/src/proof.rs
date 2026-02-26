@@ -17,6 +17,7 @@ use kimchi::{
 };
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use napi::{
@@ -493,7 +494,7 @@ macro_rules! impl_proof {
                 }
             }
 
-            impl From<NapiOpeningProof> for OpeningProof<$G> {
+            impl From<NapiOpeningProof> for OpeningProof<$G, FULL_ROUNDS> {
                 fn from(x: NapiOpeningProof) -> Self {
                     let NapiOpeningProof {lr_0, lr_1, delta, z1, z2, sg} = x;
                     OpeningProof {
@@ -506,8 +507,8 @@ macro_rules! impl_proof {
                 }
             }
 
-            impl From<OpeningProof<$G>> for NapiOpeningProof {
-                fn from(x: OpeningProof<$G>) -> Self {
+            impl From<OpeningProof<$G, FULL_ROUNDS>> for NapiOpeningProof {
+                fn from(x: OpeningProof<$G, FULL_ROUNDS>) -> Self {
                     let (lr_0, lr_1) = x.lr.clone().into_iter().map(|(x, y)| (x.into(), y.into())).unzip();
                     NapiOpeningProof {
                         lr_0,
@@ -552,7 +553,7 @@ macro_rules! impl_proof {
 
             type NapiProverProof = [<Napi $field_name:camel ProverProof>];
 
-            impl From<&NapiProverProof> for (ProverProof<$G, OpeningProof<$G>>, Vec<$F>) {
+            impl From<&NapiProverProof> for (ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS>, Vec<$F>) {
                 fn from(x: &NapiProverProof) -> Self {
                     let proof = ProverProof {
                         commitments: x.commitments.clone().into(),
@@ -570,7 +571,7 @@ macro_rules! impl_proof {
                 }
             }
 
-            impl From<NapiProverProof> for (ProverProof<$G, OpeningProof<$G>>, Vec<$F>) {
+            impl From<NapiProverProof> for (ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS>, Vec<$F>) {
                 fn from(x: NapiProverProof) -> Self {
                     let proof = ProverProof {
                         commitments: x.commitments.into(),
@@ -596,8 +597,8 @@ macro_rules! impl_proof {
 
             // Map native proof + public input into a NapiProverProof wrapper so it can
             // be returned directly to JS without an External.
-            impl From<(&ProverProof<$G, OpeningProof<$G>>, &Vec<$F>)> for NapiProverProof {
-                fn from((proof, public): (&ProverProof<$G, OpeningProof<$G>>, &Vec<$F>)) -> Self {
+            impl From<(&ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS>, &Vec<$F>)> for NapiProverProof {
+                fn from((proof, public): (&ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS>, &Vec<$F>)) -> Self {
                     let (scalars, comms): (Vec<Vec<$F>>, Vec<$NapiPolyComm>) = proof
                         .prev_challenges
                         .iter()
@@ -616,8 +617,8 @@ macro_rules! impl_proof {
                 }
             }
 
-            impl From<(ProverProof<$G, OpeningProof<$G>>, Vec<$F>)> for NapiProverProof {
-                fn from((proof, public): (ProverProof<$G, OpeningProof<$G>>, Vec<$F>)) -> Self {
+            impl From<(ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS>, Vec<$F>)> for NapiProverProof {
+                fn from((proof, public): (ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS>, Vec<$F>)) -> Self {
                     let (scalars, comms): (Vec<Vec<$F>>, Vec<$NapiPolyComm>) = proof
                         .prev_challenges
                         .into_iter()
@@ -783,15 +784,15 @@ macro_rules! impl_proof {
                         .try_into()
                         .expect("the witness should be a column of 15 vectors");
 
-                    let index: &ProverIndex<$G, OpeningProof<$G>> = &index.0.as_ref();
+                    let index: &ProverIndex<FULL_ROUNDS, $G, <OpeningProof<$G, FULL_ROUNDS> as poly_commitment::OpenProof<$G, FULL_ROUNDS>>::SRS> = &index.0.as_ref();
 
                     let public_input = witness[0][0..index.cs.public].to_vec();
 
                     // Release the runtime lock so that other threads can run using it while we generate the proof.
                     let group_map = GroupMap::<_>::setup();
                     let maybe_proof = ProverProof::create_recursive::<
-                        DefaultFqSponge<_, PlonkSpongeConstantsKimchi>,
-                        DefaultFrSponge<_, PlonkSpongeConstantsKimchi>,
+                        DefaultFqSponge<_, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+                        DefaultFrSponge<_, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
                         _,
                     >(
                         &group_map,
@@ -818,14 +819,15 @@ macro_rules! impl_proof {
             ) -> bool {
                     let group_map = <$G as CommitmentCurve>::Map::setup();
                     let verifier_index = &index.into();
-                    let proof_with_public: (ProverProof<$G, OpeningProof<$G>>, Vec<$F>) =
+                    let proof_with_public: (ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS>, Vec<$F>) =
                         proof.into();
                     let (proof, public_input) = (&proof_with_public.0, &proof_with_public.1);
                     batch_verify::<
+                        FULL_ROUNDS,
                         $G,
-                        DefaultFqSponge<_, PlonkSpongeConstantsKimchi>,
-                        DefaultFrSponge<_, PlonkSpongeConstantsKimchi>,
-                        OpeningProof<$G>
+                        DefaultFqSponge<_, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+                        DefaultFrSponge<_, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+                        OpeningProof<$G, FULL_ROUNDS>
                     >(
                         &group_map,
                         &[Context { verifier_index, proof, public_input }]
@@ -839,7 +841,7 @@ macro_rules! impl_proof {
                 proofs: NapiVector<NapiProofF>,
             ) -> bool {
                 let indexes: Vec<_> = indexes.into_iter().map(Into::into).collect();
-                let proofs_native: Vec<(ProverProof<$G, OpeningProof<$G>>, Vec<$F>)> =
+                let proofs_native: Vec<(ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS>, Vec<$F>)> =
                     proofs.into_iter().map(Into::into).collect();
 
                 if indexes.len() != proofs_native.len() {
@@ -859,10 +861,11 @@ macro_rules! impl_proof {
                 let group_map = GroupMap::<_>::setup();
 
                 batch_verify::<
-                    $G,
-                    DefaultFqSponge<_, PlonkSpongeConstantsKimchi>,
-                    DefaultFrSponge<_, PlonkSpongeConstantsKimchi>,
-                    OpeningProof<$G>
+                        FULL_ROUNDS,
+                        $G,
+                    DefaultFqSponge<_, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+                    DefaultFrSponge<_, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+                    OpeningProof<$G, FULL_ROUNDS>
                 >(&group_map, &contexts)
                 .is_ok()
             }

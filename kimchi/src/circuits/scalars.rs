@@ -20,7 +20,7 @@ pub struct RandomOracles<F: Field> {
 
 impl<F: Field> Default for RandomOracles<F> {
     fn default() -> Self {
-        let c = ScalarChallenge(F::zero());
+        let c = ScalarChallenge::new(F::zero());
         Self {
             beta: F::zero(),
             gamma: F::zero(),

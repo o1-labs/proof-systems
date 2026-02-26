@@ -4,6 +4,7 @@ This library offers implementations of different Polynomial Commitment Scheme
 (PCS) that can be used in Polynomial Interactive Oracle Proof (PIOP) like PlonK.
 
 Currently, the following polynomial commitment schemes are implemented:
+
 - [KZG10](./src/kzg.rs)
 - [Inner Product Argument](./src/ipa.rs)
 

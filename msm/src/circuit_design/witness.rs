@@ -4,12 +4,11 @@ use crate::{
     },
     columns::{Column, ColumnIndexer},
     logup::{Logup, LogupWitness, LookupTableID},
-    proof::ProofInputs,
     witness::Witness,
 };
 use ark_ff::PrimeField;
 use log::debug;
-use std::{collections::BTreeMap, iter, marker::PhantomData};
+use std::{collections::BTreeMap, marker::PhantomData};
 
 /// Witness builder environment. Operates on multiple rows at the same
 /// time. `CIx::N_COL` must be equal to `N_WIT + N_FSEL`; passing these two
@@ -345,9 +344,8 @@ impl<
             );
             if table_id.length() < domain_size {
                 let n_repeated_dummy_value: usize = domain_size - table_id.length() - 1;
-                let repeated_dummy_value: Vec<F> = iter::repeat(-F::one())
-                    .take(n_repeated_dummy_value)
-                    .collect();
+                let repeated_dummy_value: Vec<F> =
+                    std::iter::repeat_n(-F::one(), n_repeated_dummy_value).collect();
                 m.extend(repeated_dummy_value);
                 m.push(F::from(n_repeated_dummy_value as u64));
             }
@@ -658,20 +656,5 @@ impl<
                 }
             })
             .collect()
-    }
-
-    /// Generates proof inputs, repacking/collecting internal witness builder state.
-    pub fn get_proof_inputs(
-        &self,
-        domain_size: usize,
-        lookup_tables_data: BTreeMap<LT, Vec<Vec<Vec<F>>>>,
-    ) -> ProofInputs<N_WIT, F, LT> {
-        let evaluations = self.get_relation_witness(domain_size);
-        let logups = self.get_logup_witness(domain_size, lookup_tables_data);
-
-        ProofInputs {
-            evaluations,
-            logups,
-        }
     }
 }

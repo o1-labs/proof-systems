@@ -4,8 +4,8 @@
 //! Different representations are provided in the sub-modules:
 //! - `monomials`: a representation based on monomials
 //! - `prime`: a representation based on a mapping from variables to prime
-//!    numbers. This representation is unmaintained for now. We leave it
-//!    for interested users.
+//!   numbers. This representation is unmaintained for now. We leave it
+//!   for interested users.
 //!
 //! "Expressions", as defined in the [kimchi] crate, can be converted into a
 //! multi-variate polynomial using the `from_expr` method.

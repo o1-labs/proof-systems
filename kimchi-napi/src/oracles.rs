@@ -10,6 +10,7 @@ use kimchi::{
 use mina_poseidon::{
     self,
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
     FqSponge,
 };
@@ -18,7 +19,7 @@ use napi_derive::napi;
 use paste::paste;
 use poly_commitment::{
     commitment::{shift_scalar, PolyComm},
-    ipa::OpeningProof,
+    ipa::{OpeningProof, SRS as IPA_SRS},
     SRS,
 };
 
@@ -98,18 +99,18 @@ macro_rules! impl_oracles {
             {
                 fn from(ro: RandomOracles<$F>) -> Self {
                     Self {
-                        joint_combiner_chal: ro.joint_combiner.as_ref().map(|x| x.0.0.into()),
+                        joint_combiner_chal: ro.joint_combiner.as_ref().map(|x| x.0.inner().into()),
                         joint_combiner: ro.joint_combiner.as_ref().map(|x| x.1.into()),
                         beta: ro.beta.into(),
                         gamma: ro.gamma.into(),
-                        alpha_chal: ro.alpha_chal.0.into(),
+                        alpha_chal: ro.alpha_chal.inner().into(),
                         alpha: ro.alpha.into(),
                         zeta: ro.zeta.into(),
                         v: ro.v.into(),
                         u: ro.u.into(),
-                        zeta_chal: ro.zeta_chal.0.into(),
-                        v_chal: ro.v_chal.0.into(),
-                        u_chal: ro.u_chal.0.into(),
+                        zeta_chal: ro.zeta_chal.inner().into(),
+                        v_chal: ro.v_chal.inner().into(),
+                        u_chal: ro.u_chal.inner().into(),
                     }
                 }
             }
@@ -119,18 +120,18 @@ macro_rules! impl_oracles {
                 fn from(ro: NapiRandomOracles) -> Self {
                     Self {
                         joint_combiner: ro.joint_combiner_chal.and_then(|x| {
-                            ro.joint_combiner.map(|y| (ScalarChallenge(x.into()), y.into()))
+                            ro.joint_combiner.map(|y| (ScalarChallenge::new(x.into()), y.into()))
                         }),
                         beta: ro.beta.into(),
                         gamma: ro.gamma.into(),
-                        alpha_chal: ScalarChallenge(ro.alpha_chal.into()),
+                        alpha_chal: ScalarChallenge::new(ro.alpha_chal.into()),
                         alpha: ro.alpha.into(),
                         zeta: ro.zeta.into(),
                         v: ro.v.into(),
                         u: ro.u.into(),
-                        zeta_chal: ScalarChallenge(ro.zeta_chal.into()),
-                        v_chal: ScalarChallenge(ro.v_chal.into()),
-                        u_chal: ScalarChallenge(ro.u_chal.into()),
+                        zeta_chal: ScalarChallenge::new(ro.zeta_chal.into()),
+                        v_chal: ScalarChallenge::new(ro.v_chal.into()),
+                        u_chal: ScalarChallenge::new(ro.u_chal.into()),
                     }
                 }
             }
@@ -199,7 +200,7 @@ macro_rules! impl_oracles {
             ) -> Result<[<Napi $field_name:camel Oracles>]> {
                 // conversions
                 let result: Result<(RandomOracles<$F>, [Vec<$F>; 2], NapiFlatVector<$NapiF>, $F), String> = {
-                    let index: DlogVerifierIndex<$G, OpeningProof<$G>> = index.into();
+                    let index: DlogVerifierIndex<FULL_ROUNDS, $G, IPA_SRS<$G>> = index.into();
 
                     let lgr_comm: Vec<PolyComm<$G>> = lgr_comm
                         .into_iter()
@@ -228,12 +229,13 @@ macro_rules! impl_oracles {
                             .commitment
                     };
 
-                    let (proof, public_input): (ProverProof<$G, OpeningProof<$G>>, Vec<$F>) = proof.into();
+                    let (proof, public_input): (ProverProof<$G, OpeningProof<$G, FULL_ROUNDS>, FULL_ROUNDS>, Vec<$F>) = proof.into();
 
                     let oracles_result =
                         proof.oracles::<
-                            DefaultFqSponge<$curve_params, PlonkSpongeConstantsKimchi>,
-                            DefaultFrSponge<$F, PlonkSpongeConstantsKimchi>
+                            DefaultFqSponge<$curve_params, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+                            DefaultFrSponge<$F, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+                            IPA_SRS<$G>
                         >(&index, &p_comm, Some(&public_input));
                     let oracles_result = match oracles_result {
                         Err(e) => {
@@ -256,7 +258,7 @@ macro_rules! impl_oracles {
                         .proof
                         .prechallenges(&mut sponge)
                         .into_iter()
-                        .map(|x| x.0.into())
+                        .map(|x| x.inner().into())
                         .collect();
 
                     Ok((oracles, p_eval, opening_prechallenges, digest))

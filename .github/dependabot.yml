@@ -17,3 +17,11 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+
+  - package-ecosystem: "npm"
+    directory: "/book"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "documentation"

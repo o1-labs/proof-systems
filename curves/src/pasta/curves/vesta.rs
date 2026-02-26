@@ -1,15 +1,15 @@
-use crate::pasta::*;
+use crate::pasta::{Fp, Fq};
 use ark_ec::{
     models::short_weierstrass::{Affine, Projective, SWCurveConfig},
     CurveConfig,
 };
 use ark_ff::{MontFp, Zero};
 
-/// G_GENERATOR_X =
+/// `G_GENERATOR_X` =
 /// 1
 pub const G_GENERATOR_X: Fq = MontFp!("1");
 
-/// G1_GENERATOR_Y =
+/// `G1_GENERATOR_Y` =
 /// 11426906929455361843568202299992114520848200991084027513389447476559454104162
 pub const G_GENERATOR_Y: Fq =
     MontFp!("11426906929455361843568202299992114520848200991084027513389447476559454104162");
@@ -24,7 +24,7 @@ impl CurveConfig for VestaParameters {
     /// COFACTOR = 1
     const COFACTOR: &'static [u64] = &[0x1];
 
-    /// COFACTOR_INV = 1
+    /// `COFACTOR_INV` = 1
     const COFACTOR_INV: Fp = MontFp!("1");
 }
 
@@ -32,22 +32,21 @@ pub type Vesta = Affine<VestaParameters>;
 pub type ProjectiveVesta = Projective<VestaParameters>;
 
 impl SWCurveConfig for VestaParameters {
-    /// COEFF_A = 0
+    /// `COEFF_A` = 0
     const COEFF_A: Fq = MontFp!("0");
 
-    /// COEFF_B = 5
+    /// `COEFF_B` = 5
     const COEFF_B: Fq = MontFp!("5");
 
-    /// AFFINE_GENERATOR_COEFFS = (G1_GENERATOR_X, G1_GENERATOR_Y)
+    /// `AFFINE_GENERATOR_COEFFS` = (`G1_GENERATOR_X`, `G1_GENERATOR_Y`)
     const GENERATOR: Affine<Self> = Affine::new_unchecked(G_GENERATOR_X, G_GENERATOR_Y);
 }
 
 impl VestaParameters {
-    #[inline(always)]
-    pub fn mul_by_a(
-        _: &<VestaParameters as CurveConfig>::BaseField,
-    ) -> <VestaParameters as CurveConfig>::BaseField {
-        <VestaParameters as CurveConfig>::BaseField::zero()
+    #[inline]
+    #[must_use]
+    pub fn mul_by_a(_: &<Self as CurveConfig>::BaseField) -> <Self as CurveConfig>::BaseField {
+        <Self as CurveConfig>::BaseField::zero()
     }
 }
 

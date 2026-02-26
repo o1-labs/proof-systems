@@ -489,7 +489,7 @@ pub mod prover {
     use ark_ff::{FftField, Zero};
     use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
     use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
-    use mina_poseidon::FqSponge;
+    use mina_poseidon::{pasta::FULL_ROUNDS, FqSponge};
     use poly_commitment::{
         commitment::{absorb_commitment, PolyComm},
         OpenProof, SRS as _,
@@ -512,7 +512,7 @@ pub mod prover {
     }
 
     /// Represents the environment for the logup argument.
-    pub struct Env<G: KimchiCurve, ID: LookupTableID> {
+    pub struct Env<G: KimchiCurve<FULL_ROUNDS>, ID: LookupTableID> {
         /// The polynomial of the multiplicities, indexed by the table ID.
         pub lookup_counters_poly_d1: BTreeMap<ID, Vec<DensePolynomial<G::ScalarField>>>,
         /// The commitments to the multiplicities, indexed by the table ID.
@@ -549,15 +549,15 @@ pub mod prover {
         pub beta: G::ScalarField,
     }
 
-    impl<G: KimchiCurve, ID: LookupTableID> Env<G, ID> {
+    impl<G: KimchiCurve<FULL_ROUNDS>, ID: LookupTableID> Env<G, ID> {
         /// Create an environment for the prover to create a proof for the Logup protocol.
         /// The protocol does suppose that the individual lookup terms are
         /// committed as part of the columns.
         /// Therefore, the protocol only focus on committing to the "grand
         /// product sum" and the "row-accumulated" values.
         pub fn create<
-            OpeningProof: OpenProof<G>,
-            Sponge: FqSponge<G::BaseField, G, G::ScalarField>,
+            OpeningProof: OpenProof<G, FULL_ROUNDS>,
+            Sponge: FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         >(
             lookups: BTreeMap<ID, LogupWitness<G::ScalarField, ID>>,
             domain: EvaluationDomains<G::ScalarField>,

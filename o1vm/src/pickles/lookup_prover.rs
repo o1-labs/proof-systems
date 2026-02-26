@@ -1,10 +1,10 @@
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain};
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_sponge::FrSponge};
-use mina_poseidon::FqSponge;
+use mina_poseidon::{poseidon::ArithmeticSpongeParams, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{commitment::absorb_commitment, ipa::SRS, OpenProof, SRS as _};
-//TODO Parralelize
+//TODO Parallelize
 //use rayon::prelude::*;
 use super::lookup_columns::{ELookup, LookupChallenges, LookupEvalEnvironment};
 use crate::pickles::lookup_columns::*;
@@ -12,16 +12,10 @@ use kimchi::{circuits::expr::l0_1, groupmap::GroupMap};
 use poly_commitment::{ipa::OpeningProof, utils::DensePolynomialOrEvaluations, PolyComm};
 use rand::{CryptoRng, RngCore};
 
-/// This prover takes one Public Input and one Public Output
+/// This prover takes one Public Input and one Public Output.
 /// It then proves that the sum 1/(beta + table) = PI - PO
 /// where the table term are term from fixed lookup or RAMLookup
-
-pub fn lookup_prove<
-    G: KimchiCurve,
-    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField> + Clone,
-    EFrSponge: FrSponge<G::ScalarField>,
-    RNG,
->(
+pub fn lookup_prove<const FULL_ROUNDS: usize, G, EFqSponge, EFrSponge, RNG>(
     input: LookupProofInput<G::ScalarField>,
     acc_init: G::ScalarField,
     srs: &SRS<G>,
@@ -29,8 +23,12 @@ pub fn lookup_prove<
     mut fq_sponge: EFqSponge,
     constraint: &ELookup<G::ScalarField>,
     rng: &mut RNG,
-) -> (Proof<G>, G::ScalarField)
+) -> (Proof<FULL_ROUNDS, G>, G::ScalarField)
 where
+    G: KimchiCurve<FULL_ROUNDS>,
+    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS> + Clone,
+    EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
     G::BaseField: PrimeField,
     RNG: RngCore + CryptoRng,
 {
@@ -54,7 +52,7 @@ where
     };
 
     // Compute the 1/beta+sum_i gamma^i value_i for each lookup term
-    // The inversions is commputed in batch in the end
+    // The inversions is computed in batch in the end
     let mut inverses: Vec<Vec<G::ScalarField>> = wires
         .iter()
         .zip(arity)
@@ -101,7 +99,7 @@ where
         .interpolate()
     };
     let columns_poly = columns.my_map(interpolate_col);
-    // Commiting
+    // Committing
     // TODO avoid cloning
     let columns_com = columns_poly
         .clone()
@@ -113,7 +111,7 @@ where
     let columns_eval_d8 = columns_poly
         .clone()
         .my_map(|poly| poly.evaluate_over_domain_by_ref(domain.d8));
-    // abosrbing commit
+    // absorbing commit
     // TODO don't absorb the wires which already have been
     // TODO avoid cloning
     columns_com
@@ -175,7 +173,7 @@ where
     };
     let fq_sponge_before_evaluations = fq_sponge.clone();
     // Creating fr_sponge, absorbing eval to create challenges for IPA
-    let mut fr_sponge = EFrSponge::new(G::sponge_params());
+    let mut fr_sponge = EFrSponge::from(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
     // TODO avoid cloning
     evaluations

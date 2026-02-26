@@ -1,7 +1,7 @@
 use ark_ff::{Field, PrimeField};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi as SC,
-    poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
+    poseidon::Sponge,
     sponge::{DefaultFrSponge, ScalarChallenge},
 };
 
@@ -13,9 +13,6 @@ use crate::proof::{PointEvaluations, ProofEvaluations};
 /// [`FqSponge`](mina_poseidon::FqSponge) can *also* operate on the
 /// scalar field by the means of a specific encoding technique.
 pub trait FrSponge<Fr: Field> {
-    /// Creates a new Fr-Sponge.
-    fn new(p: &'static ArithmeticSpongeParams<Fr>) -> Self;
-
     /// Absorbs the field element into the sponge.
     fn absorb(&mut self, x: &Fr);
 
@@ -33,14 +30,9 @@ pub trait FrSponge<Fr: Field> {
     fn absorb_evaluations(&mut self, e: &ProofEvaluations<PointEvaluations<Vec<Fr>>>);
 }
 
-impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
-    fn new(params: &'static ArithmeticSpongeParams<Fr>) -> DefaultFrSponge<Fr, SC> {
-        DefaultFrSponge {
-            sponge: ArithmeticSponge::new(params),
-            last_squeezed: vec![],
-        }
-    }
-
+impl<const FULL_ROUNDS: usize, Fr: PrimeField> FrSponge<Fr>
+    for DefaultFrSponge<Fr, SC, FULL_ROUNDS>
+{
     fn absorb(&mut self, x: &Fr) {
         self.last_squeezed = vec![];
         self.sponge.absorb(&[*x]);
@@ -52,7 +44,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
     }
 
     fn challenge(&mut self) -> ScalarChallenge<Fr> {
-        ScalarChallenge(self.squeeze(mina_poseidon::sponge::CHALLENGE_LENGTH_IN_LIMBS))
+        ScalarChallenge::new(self.squeeze(mina_poseidon::sponge::CHALLENGE_LENGTH_IN_LIMBS))
     }
 
     fn digest(mut self) -> Fr {

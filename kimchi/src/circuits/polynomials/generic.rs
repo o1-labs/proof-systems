@@ -48,7 +48,6 @@ use crate::{
 use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::univariate::DensePolynomial;
 use core::{array, marker::PhantomData};
-use poly_commitment::OpenProof;
 
 /// Number of constraints produced by the gate.
 pub const CONSTRAINTS: u32 = 2;
@@ -214,7 +213,6 @@ impl<F: PrimeField> CircuitGate<F> {
                 coeffs[9] = -cst;
             }
             Some(GenericGateSpec::Pub) => {
-                coeffs[5] = F::one();
                 unimplemented!();
             }
             Some(GenericGateSpec::Plus(cst)) => {
@@ -314,8 +312,11 @@ pub mod testing {
         }
     }
 
-    impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
-        ProverIndex<G, OpeningProof>
+    impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
+    where
+        F: PrimeField,
+        G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+        Srs: poly_commitment::SRS<G>,
     {
         /// Function to verify the generic polynomials with a witness.
         pub fn verify_generic(
