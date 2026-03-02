@@ -9,6 +9,8 @@ and this project adheres to
 
 ## Unreleased
 
+## 0.4.1
+
 ### [kimchi](./kimchi)
 
 #### Deprecated
