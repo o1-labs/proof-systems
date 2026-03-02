@@ -209,13 +209,6 @@ and this project adheres to
 - Remove the constant from `len` and `is_empty` functions
   ([#3512](https://github.com/o1-labs/proof-systems/pull/3512)).
 
-### [turshi](./turshi)
-
-#### Changed
-
-- Remove crate as it will never be used
-  ([#3466](https://github.com/o1-labs/proof-systems/pull/3466))
-
 ## 0.3.0
 
 ### CI
