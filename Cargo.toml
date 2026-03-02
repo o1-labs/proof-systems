@@ -18,6 +18,7 @@ members = [
   "poseidon/export_test_vectors",
   "signer",
   "tools/kimchi-visu",
+  "turshi",
   "utils",
   "xtask",
 ]
@@ -119,6 +120,7 @@ optimism = { path = "./optimism" }
 plonk_wasm = { path = "./plonk-wasm" }
 poly-commitment = { path = "./poly-commitment" }
 signer = { path = "./signer" }
+turshi = { path = "./turshi" }
 utils = { path = "./utils" }
 wasm-types = { path = "./crates/wasm-types" }
 
