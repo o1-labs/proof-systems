@@ -9,7 +9,6 @@ pub use mina_curves;
 pub use mina_poseidon;
 pub use o1_utils;
 pub use poly_commitment;
-pub use turshi;
 
 pub mod alphas;
 pub mod bench;
