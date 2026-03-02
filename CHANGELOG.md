@@ -15,7 +15,7 @@ and this project adheres to
 
 - Reintroduced Cairo dummy variants in `GateType` enum for vk backwards
   compatibility. To be completely removed whenever keys must change for other
-  reasons. ([#3517](https://github.com/o1-labs/proof-systems/pull/3517))
+  reasons. ([#3519](https://github.com/o1-labs/proof-systems/pull/3519))
 
 ## 0.4.0
 
