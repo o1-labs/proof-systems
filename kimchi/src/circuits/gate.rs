@@ -84,13 +84,9 @@ pub enum GateType {
     Lookup,
     // TODO: remove Cairo gate types
     /// Cairo
-    #[deprecated(note = "Cairo gates are deprecated and will be removed in a future release")]
     CairoClaim,
-    #[deprecated(note = "Cairo gates are deprecated and will be removed in a future release")]
     CairoInstruction,
-    #[deprecated(note = "Cairo gates are deprecated and will be removed in a future release")]
     CairoFlags,
-    #[deprecated(note = "Cairo gates are deprecated and will be removed in a future release")]
     CairoTransition,
     /// Range check
     RangeCheck0,
