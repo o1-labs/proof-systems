@@ -11,28 +11,43 @@
 //! The pairing friendly curve requirement is hidden in the Pairing trait
 //! parameter.
 
+#[cfg(feature = "std")]
+use alloc::vec;
+#[cfg(feature = "std")]
+use alloc::vec::Vec;
+use crate::ipa::SRS;
+#[cfg(feature = "std")]
 use crate::{
     commitment::{
         combine_commitments, BatchEvaluationProof, BlindedCommitment, CommitmentCurve, Evaluation,
         PolyComm,
     },
-    ipa::SRS,
+    error::CommitmentError,
     utils::combine_polys,
-    CommitmentError, PolynomialsToCombine, SRS as SRSTrait,
+    PolynomialsToCombine, SRS as SRSTrait,
 };
 
-use ark_ec::{pairing::Pairing, AffineRepr, VariableBaseMSM};
-use ark_ff::{One, PrimeField, Zero};
+use ark_ec::{pairing::Pairing, AffineRepr};
+#[cfg(feature = "std")]
+use ark_ec::VariableBaseMSM;
+use ark_ff::Zero;
+#[cfg(feature = "std")]
+use ark_ff::{One, PrimeField};
+#[cfg(feature = "std")]
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
     DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D,
 };
+#[cfg(feature = "std")]
+use core::ops::Neg;
+#[cfg(feature = "std")]
 use mina_poseidon::FqSponge;
+#[cfg(feature = "std")]
 use rand::thread_rng;
+#[cfg(feature = "std")]
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::ops::Neg;
 
 /// Combine the (chunked) evaluations of multiple polynomials.
 ///
@@ -58,6 +73,7 @@ use std::ops::Neg;
 /// P1_1(ζ) + P1_2(ζ) * polyscale + P1_1(ζω) polyscale^2 + P1_2(ζω) * polyscale^3
 /// P2_1(ζ) + P2_2(ζ) * polyscale + P2_1(ζω) polyscale^2 + P2_2(ζω) * polyscale^3
 /// ```
+#[cfg(feature = "std")]
 pub fn combine_evaluations<G: CommitmentCurve>(
     evaluations: &[Evaluation<G>],
     polyscale: G::ScalarField,
@@ -135,6 +151,7 @@ pub struct PairingSRS<Pair: Pairing> {
     pub verifier_srs: SRS<Pair::G2Affine>,
 }
 
+#[cfg(feature = "std")]
 impl<
         F: PrimeField,
         G: CommitmentCurve<ScalarField = F>,
@@ -176,6 +193,7 @@ impl<Pair: Pairing> Clone for PairingSRS<Pair> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<
         F: PrimeField,
         G: CommitmentCurve<ScalarField = F>,
@@ -239,6 +257,7 @@ impl<
     }
 }
 
+#[cfg(feature = "std")]
 impl<
         F: PrimeField,
         G: CommitmentCurve<ScalarField = F>,
@@ -349,6 +368,7 @@ impl<
 /// For now, only works for 2 evaluations points.
 /// `elm` is the vector of evaluation points and `evals` is the vector of
 /// evaluations at those points.
+#[cfg(feature = "std")]
 fn eval_polynomial<F: PrimeField>(elm: &[F], evals: &[F]) -> DensePolynomial<F> {
     assert_eq!(elm.len(), evals.len());
     let (zeta, zeta_omega) = if elm.len() == 2 {
@@ -380,6 +400,7 @@ fn eval_polynomial<F: PrimeField>(elm: &[F], evals: &[F]) -> DensePolynomial<F> 
 }
 
 /// The polynomial that evaluates to `0` at the evaluation points.
+#[cfg(feature = "std")]
 fn divisor_polynomial<F: PrimeField>(elm: &[F]) -> DensePolynomial<F> {
     elm.iter()
         .map(|value| DensePolynomial::from_coefficients_slice(&[-(*value), F::one()]))
@@ -387,6 +408,7 @@ fn divisor_polynomial<F: PrimeField>(elm: &[F]) -> DensePolynomial<F> {
         .unwrap()
 }
 
+#[cfg(feature = "std")]
 impl<
         F: PrimeField,
         G: CommitmentCurve<ScalarField = F>,
