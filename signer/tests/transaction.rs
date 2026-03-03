@@ -51,13 +51,7 @@ impl Hashable for Transaction {
     }
 
     fn domain_string(network_id: NetworkId) -> Option<String> {
-        // Domain strings must have length <= 20
-        match network_id {
-            NetworkId::MAINNET => "MinaSignatureMainnet",
-            NetworkId::TESTNET => "CodaSignature",
-        }
-        .to_string()
-        .into()
+        Some(network_id.into_domain_string())
     }
 }
 
@@ -123,7 +117,7 @@ impl Transaction {
 }
 
 #[test]
-fn transaction_domain() {
+fn test_transaction_domain() {
     assert_eq!(
         Transaction::domain_string(NetworkId::MAINNET).expect("missing domain string"),
         "MinaSignatureMainnet"
@@ -135,7 +129,7 @@ fn transaction_domain() {
 }
 
 #[test]
-fn transaction_memo() {
+fn test_transaction_memo() {
     let kp = Keypair::from_hex("164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718")
         .expect("failed to create keypair");
 
@@ -176,7 +170,7 @@ fn transaction_memo() {
 }
 
 #[test]
-fn transaction_memo_str() {
+fn test_transaction_memo_str() {
     let kp = Keypair::from_hex("164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718")
         .expect("failed to create keypair");
 

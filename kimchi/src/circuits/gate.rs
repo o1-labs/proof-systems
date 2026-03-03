@@ -7,7 +7,7 @@ use crate::{
         constraints::ConstraintSystem,
         polynomials::{
             complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
-            poseidon, range_check, rot, turshi, varbasemul, xor,
+            poseidon, range_check, rot, varbasemul, xor,
         },
         wires::*,
     },
@@ -16,7 +16,6 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use o1_utils::hasher::CryptoDigest;
-use poly_commitment::OpenProof;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use thiserror::Error;
@@ -83,6 +82,7 @@ pub enum GateType {
     EndoMulScalar,
     // Lookup
     Lookup,
+    // TODO: remove Cairo gate types
     /// Cairo
     CairoClaim,
     CairoInstruction,
@@ -160,48 +160,53 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if verify process returns error.
-    pub fn verify<G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>(
+    pub fn verify<
+        const FULL_ROUNDS: usize,
+        G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+        Srs: poly_commitment::SRS<G>,
+    >(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        index: &ProverIndex<G, OpeningProof>,
+        index: &ProverIndex<FULL_ROUNDS, G, Srs>,
         public: &[F],
     ) -> Result<(), String> {
         use GateType::*;
         match self.typ {
             Zero => Ok(()),
             Generic => self.verify_generic(row, witness, public),
-            Poseidon => self.verify_poseidon::<G>(row, witness),
+            Poseidon => self.verify_poseidon::<FULL_ROUNDS, G>(row, witness),
             CompleteAdd => self.verify_complete_add(row, witness),
             VarBaseMul => self.verify_vbmul(row, witness),
-            EndoMul => self.verify_endomul::<G>(row, witness, &index.cs),
-            EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, &index.cs),
+            EndoMul => self.verify_endomul::<FULL_ROUNDS, G>(row, witness, &index.cs),
+            EndoMulScalar => self.verify_endomul_scalar::<FULL_ROUNDS, G>(row, witness, &index.cs),
             // TODO: implement the verification for the lookup gate
             // See https://github.com/MinaProtocol/mina/issues/14011
             Lookup => Ok(()),
-            CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
-                self.verify_cairo_gate::<G>(row, witness, &index.cs)
-            }
+            CairoClaim | CairoInstruction | CairoFlags | CairoTransition => Ok(()),
             RangeCheck0 | RangeCheck1 => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldAdd => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldMul => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             Xor16 => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             Rot64 => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
         }
     }
 
     /// Verify the witness against the constraints
-    pub fn verify_witness<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_witness<
+        const FULL_ROUNDS: usize,
+        G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    >(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
@@ -277,10 +282,13 @@ impl<F: PrimeField> CircuitGate<F> {
                 // See https://github.com/MinaProtocol/mina/issues/14011
                 vec![]
             }
-            GateType::CairoClaim => turshi::Claim::constraint_checks(&env, &mut cache),
-            GateType::CairoInstruction => turshi::Instruction::constraint_checks(&env, &mut cache),
-            GateType::CairoFlags => turshi::Flags::constraint_checks(&env, &mut cache),
-            GateType::CairoTransition => turshi::Transition::constraint_checks(&env, &mut cache),
+            // TODO: remove Cairo gate types
+            GateType::CairoClaim
+            | GateType::CairoInstruction
+            | GateType::CairoFlags
+            | GateType::CairoTransition => {
+                vec![]
+            }
             GateType::RangeCheck0 => {
                 range_check::circuitgates::RangeCheck0::constraint_checks(&env, &mut cache)
             }

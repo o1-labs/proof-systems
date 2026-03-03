@@ -1,4 +1,4 @@
-//! `impl_shared_reference1 implements an OCaml
+//! `impl_shared_reference1` implements an OCaml
 //! custom type that wraps around a shared reference to a Rust object.
 
 macro_rules! impl_shared_reference {

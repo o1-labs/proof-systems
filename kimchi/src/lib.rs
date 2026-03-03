@@ -1,11 +1,14 @@
 #![doc = include_str!("../README.md")]
+// Allow non_local_definitions from derive macros (proptest_derive, ocaml)
+// until upstream crates are updated.
+// See https://github.com/o1-labs/mina-rust/issues/1954
+#![allow(non_local_definitions)]
 
 pub use groupmap;
 pub use mina_curves;
 pub use mina_poseidon;
 pub use o1_utils;
 pub use poly_commitment;
-pub use turshi;
 
 pub mod alphas;
 pub mod bench;

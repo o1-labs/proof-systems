@@ -1,7 +1,4 @@
-use crate::{
-    arkworks::CamlFq, gate_vector::fq::CamlPastaFqPlonkGateVectorPtr, srs::fq::CamlFqSrs,
-    WithLagrangeBasis,
-};
+use crate::{arkworks::CamlFq, gate_vector::fq::CamlPastaFqPlonkGateVectorPtr, srs::fq::CamlFqSrs};
 use ark_poly::EvaluationDomain;
 use kimchi::{
     circuits::{
@@ -16,17 +13,22 @@ use kimchi::{
     prover_index::ProverIndex,
 };
 use mina_curves::pasta::{Fq, Pallas, PallasParameters, Vesta};
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
-use poly_commitment::{ipa::OpeningProof, SRS as _};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi, pasta::FULL_ROUNDS, sponge::DefaultFqSponge,
+};
+use poly_commitment::{ipa::OpeningProof, lagrange_basis::WithLagrangeBasis, SRS as _};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter, Seek, SeekFrom::Start},
 };
 
+type Srs =
+    <OpeningProof<Pallas, FULL_ROUNDS> as poly_commitment::OpenProof<Pallas, FULL_ROUNDS>>::SRS;
+
 /// Boxed so that we don't store large proving indexes in the OCaml heap.
 #[derive(ocaml_gen::CustomType)]
-pub struct CamlPastaFqPlonkIndex(pub Box<ProverIndex<Pallas, OpeningProof<Pallas>>>);
+pub struct CamlPastaFqPlonkIndex(pub Box<ProverIndex<FULL_ROUNDS, Pallas, Srs>>);
 pub type CamlPastaFqPlonkIndexPtr<'a> = ocaml::Pointer<'a, CamlPastaFqPlonkIndex>;
 
 extern "C" fn caml_pasta_fq_plonk_index_finalize(v: ocaml::Raw) {
@@ -76,7 +78,7 @@ pub fn caml_pasta_fq_plonk_index_create(
     let lookup_tables: Vec<LookupTable<Fq>> = lookup_tables.into_iter().map(Into::into).collect();
 
     // create constraint system
-    let cs = match ConstraintSystem::<Fq>::create(gates)
+    let cs = ConstraintSystem::<Fq>::create(gates)
         .public(public as usize)
         .prev_challenges(prev_challenges as usize)
         .lookup(lookup_tables)
@@ -86,11 +88,7 @@ pub fn caml_pasta_fq_plonk_index_create(
             Some(runtime_tables)
         })
         .lazy_mode(lazy_mode)
-        .build()
-    {
-        Err(e) => return Err(e.into()),
-        Ok(cs) => cs,
-    };
+        .build()?;
 
     // endo
     let (endo_q, _endo_r) = poly_commitment::ipa::endos::<Vesta>();
@@ -99,9 +97,13 @@ pub fn caml_pasta_fq_plonk_index_create(
 
     // create index
     let mut index =
-        ProverIndex::<Pallas, OpeningProof<Pallas>>::create(cs, endo_q, srs.clone(), lazy_mode);
+        ProverIndex::<FULL_ROUNDS, Pallas, Srs>::create(cs, endo_q, srs.clone(), lazy_mode);
     // Compute and cache the verifier index digest
-    index.compute_verifier_index_digest::<DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>>();
+    index.compute_verifier_index_digest::<DefaultFqSponge<
+        PallasParameters,
+        PlonkSpongeConstantsKimchi,
+        FULL_ROUNDS,
+    >>();
 
     Ok(CamlPastaFqPlonkIndex(Box::new(index)))
 }
@@ -162,9 +164,8 @@ pub fn caml_pasta_fq_plonk_index_read(
     }
 
     // deserialize the index
-    let mut t = ProverIndex::<Pallas, OpeningProof<Pallas>>::deserialize(
-        &mut rmp_serde::Deserializer::new(r),
-    )?;
+    let mut t =
+        ProverIndex::<FULL_ROUNDS, Pallas, Srs>::deserialize(&mut rmp_serde::Deserializer::new(r))?;
     t.srs = srs.clone();
 
     let (linearization, powers_of_alpha) = expr_linearization(Some(&t.cs.feature_flags), true);

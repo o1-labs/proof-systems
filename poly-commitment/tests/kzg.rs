@@ -143,8 +143,8 @@ fn test_kzg_proof() {
     let mut rng = o1_utils::tests::make_test_rng(None);
     let x = ScalarField::rand(&mut rng);
 
-    let srs = unsafe { SRS::<G1>::create_trusted_setup(x, n) };
-    let verifier_srs = unsafe { SRS::<G2>::create_trusted_setup(x, 3) };
+    let srs = SRS::<G1>::create_trusted_setup_with_toxic_waste(x, n);
+    let verifier_srs = SRS::<G2>::create_trusted_setup_with_toxic_waste(x, 3);
     srs.get_lagrange_basis(domain);
 
     let srs = PairingSRS {

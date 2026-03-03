@@ -5,11 +5,16 @@ use kimchi::{
     prover_index::ProverIndex,
 };
 use mina_curves::pasta::{Fq, Pallas as GAffine, PallasParameters, Vesta as GAffineOther};
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
+    sponge::DefaultFqSponge,
+};
 use napi::bindgen_prelude::{Error, External, Status, Uint8Array};
 use napi_derive::napi;
 use poly_commitment::{
     ipa::{OpeningProof, SRS as IPA_SRS},
+    OpenProof,
     SRS,
 };
 use serde::{Deserialize, Serialize};
@@ -22,9 +27,15 @@ use std::{
 use crate::tables::{
     lookup_table_fq_from_js, runtime_table_cfg_fq_from_js, JsLookupTableFq, JsRuntimeTableCfgFq,
 };
+
+type ProverIndexType = ProverIndex<
+    FULL_ROUNDS,
+    GAffine,
+    <OpeningProof<GAffine, FULL_ROUNDS> as OpenProof<GAffine, FULL_ROUNDS>>::SRS,
+>;
 #[napi(js_name = "WasmPastaFqPlonkIndex")]
 pub struct WasmPastaFqPlonkIndex(
-    #[napi(skip)] pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>,
+    #[napi(skip)] pub Box<ProverIndexType>,
 );
 
 #[derive(Serialize, Deserialize)]
@@ -52,7 +63,7 @@ impl WasmPastaFqPlonkIndex {
         let serialized: SerializedProverIndex =
             rmp_serde::from_slice(bytes).map_err(|e| e.to_string())?;
 
-        let mut index: ProverIndex<GAffine, OpeningProof<GAffine>> = ProverIndex::deserialize(
+        let mut index: ProverIndexType = ProverIndex::deserialize(
             &mut rmp_serde::Deserializer::new(Cursor::new(serialized.prover_index)),
         )
         .map_err(|e| e.to_string())?;
@@ -70,7 +81,7 @@ impl WasmPastaFqPlonkIndex {
         index.powers_of_alpha = powers_of_alpha;
 
         index.compute_verifier_index_digest::<
-            DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>,
+            DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
         >();
 
         Ok(WasmPastaFqPlonkIndex(Box::new(index)))
@@ -170,13 +181,13 @@ pub fn caml_pasta_fq_plonk_index_create(
 
     srs.0.get_lagrange_basis(cs.domain.d1);
 
-    let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::create(
+    let mut index = ProverIndex::<FULL_ROUNDS, GAffine, IPA_SRS<GAffine>>::create(
         cs,
         endo_q,
         srs.0.clone(),
         lazy_mode,
     );
-    index.compute_verifier_index_digest::<DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>>();
+    index.compute_verifier_index_digest::<DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>>();
 
     Ok(External::new(WasmPastaFqPlonkIndex(Box::new(index))))
 }
@@ -187,7 +198,7 @@ pub fn caml_pasta_fq_plonk_index_decode(
     srs: &WasmFqSrs,
 ) -> Result<External<WasmPastaFqPlonkIndex>, Error> {
     let mut deserializer = rmp_serde::Deserializer::new(bytes);
-    let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
+    let mut index = ProverIndex::<FULL_ROUNDS, GAffine, IPA_SRS<GAffine>>::deserialize(&mut deserializer)
         .map_err(|e| {
         Error::new(
             Status::InvalidArg,
@@ -268,7 +279,7 @@ pub fn caml_pasta_fq_plonk_index_read(
     }
 
     // deserialize the index
-    let mut t = ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(
+    let mut t = ProverIndex::<FULL_ROUNDS, GAffine, IPA_SRS<GAffine>>::deserialize(
         &mut rmp_serde::Deserializer::new(r),
     )
     .map_err(|err| {

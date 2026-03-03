@@ -1,9 +1,9 @@
-use crate::lagrange_basis::WithLagrangeBasis;
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
 use paste::paste;
 use poly_commitment::{
     commitment::{b_poly_coefficients, caml::CamlPolyComm},
     ipa::SRS,
+    lagrange_basis::WithLagrangeBasis,
     SRS as _,
 };
 use serde::{Deserialize, Serialize};

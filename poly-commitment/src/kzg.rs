@@ -1,3 +1,5 @@
+//! KZG polynomial commitment scheme (KZG10).
+//!
 //! This module implements the KZG protocol described in the paper
 //! [Constant-Size Commitments to Polynomials and Their
 //! Applications](https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf)
@@ -10,8 +12,13 @@
 //! parameter.
 
 use crate::{
-    commitment::*, ipa::SRS, utils::combine_polys, CommitmentError, PolynomialsToCombine,
-    SRS as SRSTrait,
+    commitment::{
+        combine_commitments, BatchEvaluationProof, BlindedCommitment, CommitmentCurve, Evaluation,
+        PolyComm,
+    },
+    ipa::SRS,
+    utils::combine_polys,
+    CommitmentError, PolynomialsToCombine, SRS as SRSTrait,
 };
 
 use ark_ec::{pairing::Pairing, AffineRepr, VariableBaseMSM};
@@ -28,6 +35,7 @@ use serde_with::serde_as;
 use std::ops::Neg;
 
 /// Combine the (chunked) evaluations of multiple polynomials.
+///
 /// This function returns the accumulation of the evaluations, scaled by
 /// `polyscale`.
 /// If no evaluation is given, the function returns an empty vector.
@@ -36,7 +44,7 @@ use std::ops::Neg;
 /// one list has not the same size, it will be shrunk to the size of the first
 /// element of the list.
 /// For instance, if we have 3 polynomials P1, P2, P3 evaluated at the points
-/// ζ and ζω (like in vanilla PlonK), and for each polynomial, we have two
+/// ζ and ζω (like in vanilla `PlonK`), and for each polynomial, we have two
 /// chunks, i.e. we have
 /// ```text
 ///         2 chunks of P1
@@ -56,11 +64,7 @@ pub fn combine_evaluations<G: CommitmentCurve>(
 ) -> Vec<G::ScalarField> {
     let mut polyscale_i = G::ScalarField::one();
     let mut acc = {
-        let num_evals = if !evaluations.is_empty() {
-            evaluations[0].evaluations.len()
-        } else {
-            0
-        };
+        let num_evals = evaluations.first().map_or(0, |e| e.evaluations.len());
         vec![G::ScalarField::zero(); num_evals]
     };
 
@@ -113,12 +117,15 @@ impl<Pair: Pairing> Clone for KZGProof<Pair> {
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-/// Define a structured reference string (i.e. SRS) for the KZG protocol.
-/// The SRS consists of powers of an element `g^x` for some toxic waste `x`.
+/// Define a structured reference string for the KZG protocol.
+///
+/// The SRS (i.e. [`PairingSRS`]) consists of powers of an element `g^x`
+/// for some toxic waste `x`.
 ///
 /// The SRS is formed using what we call a "trusted setup". For now, the setup
-/// is created using the method `create_trusted_setup`.
+/// is created using the method `create_trusted_setup_with_toxic_waste`.
+#[allow(clippy::unsafe_derive_deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct PairingSRS<Pair: Pairing> {
     /// The full SRS is the one used by the prover. Can be seen as the "proving
     /// key"/"secret key"
@@ -136,11 +143,14 @@ impl<
     > PairingSRS<Pair>
 {
     /// Create a trusted setup for the KZG protocol.
-    /// The setup is created using a toxic waste `toxic_waste` and a depth
-    /// `depth`.
-    pub fn create_trusted_setup(toxic_waste: F, depth: usize) -> Self {
-        let full_srs = unsafe { SRS::create_trusted_setup(toxic_waste, depth) };
-        let verifier_srs = unsafe { SRS::create_trusted_setup(toxic_waste, 3) };
+    ///
+    /// # Security
+    ///
+    /// The caller must ensure that `toxic_waste` is securely zeroized
+    /// after use. Leaking it compromises the soundness of the proof system.
+    pub fn create_trusted_setup_with_toxic_waste(toxic_waste: F, depth: usize) -> Self {
+        let full_srs = SRS::create_trusted_setup_with_toxic_waste(toxic_waste, depth);
+        let verifier_srs = SRS::create_trusted_setup_with_toxic_waste(toxic_waste, 3);
         Self {
             full_srs,
             verifier_srs,
@@ -171,7 +181,8 @@ impl<
         G: CommitmentCurve<ScalarField = F>,
         G2: CommitmentCurve<ScalarField = F>,
         Pair: Pairing<G1Affine = G, G2Affine = G2>,
-    > crate::OpenProof<G> for KZGProof<Pair>
+        const FULL_ROUNDS: usize,
+    > crate::OpenProof<G, FULL_ROUNDS> for KZGProof<Pair>
 {
     type SRS = PairingSRS<Pair>;
 
@@ -181,8 +192,8 @@ impl<
     ///   commitment randomness
     /// - `elm`: vector of evaluation points
     /// - `polyscale`: scaling factor for polynoms
-    ///   group_maps, sponge, rng and evalscale are not used. The parameters are
-    ///   kept to fit the trait and to be used generically.
+    ///   `group_maps`, `sponge`, `rng` and `evalscale` are not used. The
+    ///   parameters are kept to fit the trait and to be used generically.
     fn open<EFqSponge, RNG, D: EvaluationDomain<F>>(
         srs: &Self::SRS,
         _group_map: &<G as CommitmentCurve>::Map,
@@ -194,20 +205,20 @@ impl<
         _rng: &mut RNG,
     ) -> Self
     where
-        EFqSponge: Clone + FqSponge<<G as AffineRepr>::BaseField, G, F>,
+        EFqSponge: Clone + FqSponge<<G as AffineRepr>::BaseField, G, F, FULL_ROUNDS>,
         RNG: RngCore + CryptoRng,
     {
-        KZGProof::create(srs, plnms, elm, polyscale).unwrap()
+        Self::create(srs, plnms, elm, polyscale).unwrap()
     }
 
     fn verify<EFqSponge, RNG>(
         srs: &Self::SRS,
         _group_map: &G::Map,
-        batch: &mut [BatchEvaluationProof<G, EFqSponge, Self>],
+        batch: &mut [BatchEvaluationProof<G, EFqSponge, Self, FULL_ROUNDS>],
         _rng: &mut RNG,
     ) -> bool
     where
-        EFqSponge: FqSponge<G::BaseField, G, F>,
+        EFqSponge: FqSponge<G::BaseField, G, F, FULL_ROUNDS>,
         RNG: RngCore + CryptoRng,
     {
         for BatchEvaluationProof {
@@ -323,8 +334,10 @@ impl<
 
     fn create(depth: usize) -> Self {
         let mut rng = thread_rng();
-        let toxic_waste = G::ScalarField::rand(&mut rng);
-        Self::create_trusted_setup(toxic_waste, depth)
+        let mut toxic_waste = G::ScalarField::rand(&mut rng);
+        let result = Self::create_trusted_setup_with_toxic_waste(toxic_waste, depth);
+        toxic_waste.zeroize();
+        result
     }
 
     fn size(&self) -> usize {
@@ -420,7 +433,7 @@ impl<
             .commit_non_hiding(&quotient_poly, 1)
             .get_first_chunk();
 
-        Some(KZGProof {
+        Some(Self {
             quotient,
             blinding: blinding_factor,
         })
@@ -470,7 +483,7 @@ impl<
             .into_group();
         let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
         // We compute the result of the multiplication of two miller loop, to
-        // apply only one final exponentation
+        // apply only one final exponentiation
         let to_loop_left = [
             ark_ec::pairing::prepare_g1::<Pair>(numerator_commitment),
             // Note that we do a neagtion here, to put everything on the same

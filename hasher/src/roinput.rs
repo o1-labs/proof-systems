@@ -3,29 +3,35 @@
 //! Definition of random oracle input structure and
 //! methods for serializing into bytes and field elements
 
+use alloc::{vec, vec::Vec};
 use core::fmt::Error;
 
 use super::Hashable;
-use alloc::{vec, vec::Vec};
 use ark_ff::{BigInteger, PrimeField};
 use bitvec::{prelude::*, view::AsBits};
 use mina_curves::pasta::{Fp, Fq};
 use o1_utils::FieldHelpers;
 
-const SER_HEADER_SIZE: usize = 8; // total number of bytes for the header of the serialized ROInput
-const SINGLE_HEADER_SIZE: usize = 4; // number of bytes for each part of the header of the serialized ROInput
+/// Total number of bytes for the header of the serialized [`ROInput`].
+const SER_HEADER_SIZE: usize = 8;
+/// Number of bytes for each part of the header of the serialized [`ROInput`].
+const SINGLE_HEADER_SIZE: usize = 4;
 
 /// Random oracle input structure
 ///
-/// The random oracle input encapsulates the serialization format and methods using during hashing.
+/// The random oracle input encapsulates the serialization format and methods
+/// using during hashing.
 ///
-/// When implementing the [`Hashable`] trait to enable hashing for a type, you must implement
-/// its `to_roinput()` serialization method using the [`ROInput`] functions below.
+/// When implementing the [`Hashable`] trait to enable hashing for a type, you
+/// must implement its `to_roinput()` serialization method using the [`ROInput`]
+/// functions below.
 ///
-/// The random oracle input structure is used (by generic code) to serialize the object into
-/// both a vector of `pasta::Fp` field elements and into a vector of bytes, depending on the situation.
+/// The random oracle input structure is used (by generic code) to serialize the
+/// object into both a vector of `pasta::Fp` field elements and into a vector of
+/// bytes, depending on the situation.
 ///
-/// Here is an example of how `ROInput` is used during the definition of the `Hashable` trait.
+/// Here is an example of how `ROInput` is used during the definition of the
+/// `Hashable` trait.
 ///
 /// ```rust
 /// use mina_hasher::{Hashable, ROInput};
@@ -53,11 +59,12 @@ const SINGLE_HEADER_SIZE: usize = 4; // number of bytes for each part of the hea
 ///     }
 /// }
 /// ```
-/// **Details:** For technical reasons related to our proof system and performance,
-/// non-field-element members are serialized for signing differently than other types.
-/// Additionally, during signing all members of the random oracle input get serialized
-/// together in two different ways: both as *bytes* and as a vector of *field elements*.
-/// The random oracle input automates and encapsulates this complexity.
+/// **Details:** For technical reasons related to our proof system and
+/// performance, non-field-element members are serialized for signing
+/// differently than other types. Additionally, during signing all members of
+/// the random oracle input get serialized together in two different ways: both
+/// as *bytes* and as a vector of *field elements*. The random oracle input
+/// automates and encapsulates this complexity.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct ROInput {
     fields: Vec<Fp>,
@@ -66,34 +73,78 @@ pub struct ROInput {
 
 impl ROInput {
     /// Create a new empty random oracle input
+    #[must_use]
     pub fn new() -> Self {
-        ROInput {
+        Self {
             fields: vec![],
             bits: BitVec::new(),
         }
     }
 
-    /// Append a `Hashable` input
+    /// Append a [`Hashable`] input
+    #[must_use]
     pub fn append_hashable(self, input: &impl Hashable) -> Self {
         self.append_roinput(input.to_roinput())
     }
 
     /// Append another random oracle input
-    pub fn append_roinput(mut self, mut roi: ROInput) -> Self {
+    #[must_use]
+    pub fn append_roinput(mut self, mut roi: Self) -> Self {
         self.fields.append(&mut roi.fields);
         self.bits.extend(roi.bits);
         self
     }
 
     /// Append a base field element
+    #[must_use]
     pub fn append_field(mut self, f: Fp) -> Self {
         self.fields.push(f);
         self
     }
 
-    /// Append a scalar field element
+    /// Append a scalar field element by converting it to bits.
+    ///
+    /// This method converts the scalar field element to its byte representation,
+    /// then extracts exactly [`Fq::MODULUS_BIT_SIZE`] bits (255 bits for Pallas curve)
+    /// in little-endian bit order and appends them to the bits vector.
+    ///
+    /// # Bit Representation
+    ///
+    /// - Uses little-endian bit ordering within bytes (LSB first)
+    /// - Extracts exactly 255 bits from the 32-byte scalar representation
+    /// - The scalar field modulus is 255 bits, so the MSB of the 32nd byte is unused
+    ///
+    /// # Differences from [`Self::append_field`]
+    ///
+    /// - [`Self::append_scalar`]: Converts scalar to 255 bits and adds to the `bits` vector
+    /// - [`Self::append_field`]: Adds base field element directly to the `fields` vector
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use mina_hasher::ROInput;
+    /// use mina_curves::pasta::Fq;
+    ///
+    /// // Regular scalar value
+    /// let scalar = Fq::from(42u64);
+    /// let roi = ROInput::new().append_scalar(scalar);
+    /// let bytes = roi.to_bytes();
+    /// assert_eq!(bytes.len(), 32); // 255 bits rounded up to 32 bytes
+    ///
+    /// // Maximum scalar value (modulus - 1)
+    /// let max_scalar = Fq::from(0u64) - Fq::from(1u64);
+    /// let roi = ROInput::new().append_scalar(max_scalar);
+    /// let bytes = roi.to_bytes();
+    /// assert_eq!(bytes.len(), 32); // 255 bits rounded up to 32 bytes
+    /// ```
+    ///
+    /// # Note
+    ///
+    /// All scalar field values, including the maximum value (modulus - 1),
+    /// will fit exactly in 255 bits and can be safely appended.
+    #[must_use]
     pub fn append_scalar(mut self, s: Fq) -> Self {
-        // mina scalars are 255 bytes
+        // mina scalars are 255 bits
         let bytes = s.to_bytes();
         let bits = &bytes.as_bits::<Lsb0>()[..Fq::MODULUS_BIT_SIZE as usize];
         self.bits.extend(bits);
@@ -101,28 +152,33 @@ impl ROInput {
     }
 
     /// Append a single bit
+    #[must_use]
     pub fn append_bool(mut self, b: bool) -> Self {
         self.bits.push(b);
         self
     }
 
     /// Append bytes
+    #[must_use]
     pub fn append_bytes(mut self, bytes: &[u8]) -> Self {
         self.bits.extend_from_bitslice(bytes.as_bits::<Lsb0>());
         self
     }
 
     /// Append a 32-bit unsigned integer
+    #[must_use]
     pub fn append_u32(self, x: u32) -> Self {
         self.append_bytes(&x.to_le_bytes())
     }
 
     /// Append a 64-bit unsigned integer
+    #[must_use]
     pub fn append_u64(self, x: u64) -> Self {
         self.append_bytes(&x.to_le_bytes())
     }
 
     /// Serialize random oracle input to bytes
+    #[must_use]
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bits: BitVec<u8> = self.fields.iter().fold(BitVec::new(), |mut acc, fe| {
             acc.extend_from_bitslice(
@@ -137,7 +193,14 @@ impl ROInput {
         bits.into()
     }
 
-    /// Serialize random oracle input to vector of base field elements
+    /// Convert the random oracle input to a vector of packed field elements
+    /// by packing the bits into field elements and appending them to the fields.
+    /// The bits are packed by taking chunks of size `Fp::MODULUS_BIT_SIZE - 1`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a bit chunk cannot be converted to a valid base field element.
+    #[must_use]
     pub fn to_fields(&self) -> Vec<Fp> {
         let mut fields: Vec<Fp> = self.fields.clone();
 
@@ -178,9 +241,12 @@ impl ROInput {
         fields
     }
 
-    /// Serialize the ROInput into bytes
+    /// Serialize the [`ROInput`](Self) into bytes
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
     pub fn serialize(&self) -> Vec<u8> {
         // 4-byte LE field count, 4-byte LE bit count, then payload
+        // Truncation is safe: field/bit counts cannot realistically exceed u32::MAX
         let fields_len = self.fields.len() as u32;
         let bits_len = self.bits.len() as u32;
 
@@ -191,7 +257,18 @@ impl ROInput {
         bytes
     }
 
-    /// Deserialize a `ROInput` from bytes
+    /// Deserialize a [`ROInput`](Self) from bytes
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error`] if the input is too short, the header lengths are
+    /// inconsistent with the payload size, or a field element cannot be
+    /// reconstructed from the bits.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the header slice conversion to a fixed-size array fails
+    /// (unreachable after the length check).
     pub fn deserialize(input: &[u8]) -> Result<Self, Error> {
         if input.len() < SER_HEADER_SIZE {
             return Err(Error);
@@ -212,7 +289,7 @@ impl ROInput {
         // Check that the number of bytes is consistent with the expected lengths
         let expected_len_bits = fields_len * Fp::MODULUS_BIT_SIZE as usize + bits_len;
         // Round up to nearest multiple of 8
-        let expected_len = (expected_len_bits + 7) / 8 + SER_HEADER_SIZE;
+        let expected_len = expected_len_bits.div_ceil(8) + SER_HEADER_SIZE;
         if input.len() != expected_len {
             return Err(Error);
         }
@@ -233,7 +310,7 @@ impl ROInput {
         // Delete the final bits according to the bits length
         let bits = remainder.iter().take(bits_len).collect::<BitVec<u8>>();
 
-        let roi = ROInput { fields, bits };
+        let roi = Self { fields, bits };
 
         Ok(roi)
     }
@@ -384,6 +461,48 @@ mod tests {
     }
 
     #[test]
+    fn test_append_scalar_max_value() {
+        // Test with the maximum scalar field value (modulus - 1)
+        let max_scalar = Fq::from(0u64) - Fq::from(1u64); // Fq modulus - 1
+        let roi = ROInput::new().append_scalar(max_scalar);
+
+        // Should add 255 bits (Fq::MODULUS_BIT_SIZE)
+        assert_eq!(roi.bits.len(), 255);
+        assert_eq!(roi.fields.len(), 0);
+
+        // Verify the bits represent the maximum scalar value
+        let reconstructed_bytes = roi.bits.as_raw_slice();
+        let expected_bytes = max_scalar.to_bytes();
+
+        // Compare the first 31 bytes (255 bits = 31 bytes + 7 bits)
+        assert_eq!(&reconstructed_bytes[..31], &expected_bytes[..31]);
+
+        // Check the last partial byte (7 bits from the 32nd byte)
+        let last_byte_mask = 0x7F; // Mask for 7 bits: 0111_1111
+        assert_eq!(
+            reconstructed_bytes[31] & last_byte_mask,
+            expected_bytes[31] & last_byte_mask
+        );
+
+        // Test serialization to bytes
+        let serialized_bytes = roi.to_bytes();
+        assert_eq!(serialized_bytes.len(), 32); // 255 bits rounded up to 32 bytes
+
+        // Test that max scalar converts to proper field elements
+        let fields = roi.to_fields();
+        assert_eq!(fields.len(), 2); // Should pack into 2 field elements
+
+        // Verify we can append multiple max scalars
+        let roi_double = ROInput::new()
+            .append_scalar(max_scalar)
+            .append_scalar(max_scalar);
+        assert_eq!(roi_double.bits.len(), 510); // 2 * 255 bits
+
+        let fields_double = roi_double.to_fields();
+        assert_eq!(fields_double.len(), 3); // Should pack into 3 field elements
+    }
+
+    #[test]
     fn append_u32() {
         let roi = ROInput::new().append_u32(1984u32);
         assert!(roi.bits.len() == 32);
@@ -432,14 +551,14 @@ mod tests {
                 Fq::from_hex("01d1755db21c8cd2a9cf5a3436178da3d70f484cd4b4c8834b799921e7d7a102")
                     .expect("failed to create scalar"),
             )
-            .append_u64(18446744073709551557)
+            .append_u64(18_446_744_073_709_551_557)
             .append_bytes(&[0xba, 0xdc, 0x0f, 0xfe])
             .append_scalar(
                 Fq::from_hex("e70187e9b125524489d0433da76fd8287fa652eaebde147b45fa0cd86f171810")
                     .expect("failed to create scalar"),
             )
             .append_bool(false)
-            .append_u32(2147483647)
+            .append_u32(2_147_483_647)
             .append_bool(true);
 
         assert!(roi.bits.len() == 641);
@@ -460,7 +579,7 @@ mod tests {
     #[test]
     fn transaction_bits() {
         let roi = ROInput::new()
-            .append_u64(1000000) // fee
+            .append_u64(1_000_000) // fee
             .append_u64(1) // fee token
             .append_bool(true) // fee payer pk odd
             .append_u32(0) // nonce
@@ -472,7 +591,7 @@ mod tests {
             .append_bool(true) // sender pk odd
             .append_bool(false) // receiver pk odd
             .append_u64(1) // token_id
-            .append_u64(10000000000) // amount
+            .append_u64(10_000_000_000) // amount
             .append_bool(false) // token_locked
             .append_scalar(
                 Fq::from_hex("de217a3017ca0b7a278e75f63c09890e3894be532d8dbadd30a7d450055f6d2d")
@@ -492,7 +611,7 @@ mod tests {
                 0xc7, 0x3a, 0x7b, 0x9e, 0x84, 0x44, 0x07, 0x1c, 0x4a, 0xdf, 0xa9, 0x96, 0x46, 0xdd,
                 0x6e, 0x98, 0x53, 0x6a, 0xa8, 0x82, 0xaf, 0xb6, 0x56, 0x00
             ]
-        )
+        );
     }
 
     #[test]
@@ -750,7 +869,7 @@ mod tests {
                 Fq::from_hex("689634de233b06251a80ac7df64483922727757eea1adc6f0c8f184441cfe10d")
                     .expect("failed to create scalar"),
             )
-            .append_u32(834803);
+            .append_u32(834_803);
 
         assert_eq!(
             roi.to_bytes(),
@@ -825,7 +944,7 @@ mod tests {
                 Fp::from_hex("3fba4fa71bce0dfdf709d827463036d6291458dfef772ff65e87bd6d1b1e062a")
                     .expect("failed to create field"),
             ) // receiver
-            .append_u64(1000000) // fee
+            .append_u64(1_000_000) // fee
             .append_u64(1) // fee token
             .append_bool(true) // fee payer pk odd
             .append_u32(0) // nonce
@@ -837,7 +956,7 @@ mod tests {
             .append_bool(true) // sender pk odd
             .append_bool(false) // receiver pk odd
             .append_u64(1) // token_id
-            .append_u64(10000000000) // amount
+            .append_u64(10_000_000_000) // amount
             .append_bool(false); // token_locked
         assert_eq!(roi.bits.len() + roi.fields.len() * 255, 1364);
         assert_eq!(
@@ -897,7 +1016,7 @@ mod tests {
                     .append_u32(self.z)
             }
 
-            fn domain_string(_: Self::D) -> Option<String> {
+            fn domain_string((): Self::D) -> Option<String> {
                 "A".to_string().into()
             }
         }
@@ -916,7 +1035,7 @@ mod tests {
                 self.a.to_roinput().append_u64(self.b).append_bool(self.c)
             }
 
-            fn domain_string(_: Self::D) -> Option<String> {
+            fn domain_string((): Self::D) -> Option<String> {
                 "B".to_string().into()
             }
         }
@@ -937,19 +1056,19 @@ mod tests {
                     .append_roinput(ROInput::new().append_u64(self.b).append_bool(self.c))
             }
 
-            fn domain_string(_: Self::D) -> Option<String> {
+            fn domain_string((): Self::D) -> Option<String> {
                 "B".to_string().into()
             }
         }
 
         let a = A {
-            x: 16830533,
+            x: 16_830_533,
             y: false,
-            z: 39827791,
+            z: 39_827_791,
         };
         let b1 = B1 {
             a,
-            b: 124819,
+            b: 124_819,
             c: true,
         };
         let b2 = B2 {
@@ -1026,7 +1145,7 @@ mod tests {
             roi,
             ROInput::deserialize(&serialized).expect("Failed to deserialize ROInput"),
             "Serialized and deserialized ROInput do not match"
-        )
+        );
     }
 
     #[test]
@@ -1069,8 +1188,7 @@ mod tests {
                 ROInput::deserialize(&serialized).expect("Failed to deserialize ROInput");
             assert_eq!(
                 roi, deserialized_roi,
-                "Serialized and deserialized ROInput do not match for i={}",
-                i
+                "Serialized and deserialized ROInput do not match for i={i}"
             );
         }
     }
@@ -1143,7 +1261,7 @@ mod tests {
                 Fp::from_hex("3fba4fa71bce0dfdf709d827463036d6291458dfef772ff65e87bd6d1b1e062a")
                     .expect("failed to create field"),
             ) // receiver
-            .append_u64(1000000) // fee
+            .append_u64(1_000_000) // fee
             .append_u64(1) // fee token
             .append_bool(true) // fee payer pk odd
             .append_u32(0) // nonce
@@ -1155,7 +1273,7 @@ mod tests {
             .append_bool(true) // sender pk odd
             .append_bool(false) // receiver pk odd
             .append_u64(1) // token_id
-            .append_u64(10000000000) // amount
+            .append_u64(10_000_000_000) // amount
             .append_bool(false); // token_locked
 
         let tx_bytes = tx_roi.serialize();

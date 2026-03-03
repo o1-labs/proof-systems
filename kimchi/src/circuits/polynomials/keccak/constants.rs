@@ -1,4 +1,4 @@
-/// Constants for each witness' index offsets and lengths
+//! Constants for each witness' index offsets and lengths
 
 // KECCAK PARAMETERS
 /// The dimension of the Keccak state

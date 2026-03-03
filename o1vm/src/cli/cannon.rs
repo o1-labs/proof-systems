@@ -1,5 +1,5 @@
 use crate::cannon::*;
-use clap::{arg, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug, Clone)]
 pub struct MipsVmConfigurationArgs {

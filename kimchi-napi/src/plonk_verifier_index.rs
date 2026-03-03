@@ -15,12 +15,13 @@ use kimchi::{
     linearization::expr_linearization,
     verifier_index::{LookupVerifierIndex, VerifierIndex},
 };
+use mina_poseidon::pasta::FULL_ROUNDS;
 use napi::{bindgen_prelude::*, Error, Status};
 use napi_derive::napi;
 use paste::paste;
 use poly_commitment::{
     commitment::PolyComm,
-    ipa::{OpeningProof, SRS},
+    ipa::SRS,
     SRS as _,
 };
 use serde::{Deserialize, Serialize};
@@ -101,8 +102,8 @@ macro_rules! impl_verification_key {
             }
             type NapiPlonkVerificationEvals = [<Napi $field_name:camel PlonkVerificationEvals>];
 
-            impl From<&VerifierIndex<$G, OpeningProof<$G>>> for NapiPlonkVerificationEvals {
-                fn from(index: &VerifierIndex<$G, OpeningProof<$G>>) -> Self {
+            impl From<&VerifierIndex<FULL_ROUNDS, $G, SRS<$G>>> for NapiPlonkVerificationEvals {
+                fn from(index: &VerifierIndex<FULL_ROUNDS, $G, SRS<$G>>) -> Self {
                     Self {
                         sigma_comm: index.sigma_comm.iter().map(Into::into).collect(),
                         coefficients_comm: index.coefficients_comm.iter().map(Into::into).collect(),
@@ -340,7 +341,7 @@ macro_rules! impl_verification_key {
                 }
             }
 
-            impl From<NapiPlonkVerifierIndex> for VerifierIndex<$G, OpeningProof<$G>> {
+            impl From<NapiPlonkVerifierIndex> for VerifierIndex<FULL_ROUNDS, $G, SRS<$G>> {
                 fn from(index: NapiPlonkVerifierIndex) -> Self {
                     let max_poly_size = index.max_poly_size;
                     let public_ = index.public_;
@@ -417,10 +418,10 @@ macro_rules! impl_verification_key {
                 }
             }
 
-            impl From<(&VerifierIndex<$G, OpeningProof<$G>>, &$NapiSrs)> for NapiPlonkVerifierIndex {
+            impl From<(&VerifierIndex<FULL_ROUNDS, $G, SRS<$G>>, &$NapiSrs)> for NapiPlonkVerifierIndex {
                 // This is used to obtain a NapiPlonkVerifierIndex with a reference to the SRS,
                 // because while cacheing the index may not carry the full SRS `g` points otherwise
-                fn from((index, srs): (&VerifierIndex<$G, OpeningProof<$G>>, &$NapiSrs)) -> Self {
+                fn from((index, srs): (&VerifierIndex<FULL_ROUNDS, $G, SRS<$G>>, &$NapiSrs)) -> Self {
                     Self {
                         domain: (&index.domain).into(),
                         max_poly_size: index.max_poly_size as i32,
@@ -439,10 +440,10 @@ macro_rules! impl_verification_key {
                 offset: Option<i32>,
                 srs: &$NapiSrs,
                 path: String,
-            ) -> napi::Result<VerifierIndex<$G, OpeningProof<$G>>> {
+            ) -> napi::Result<VerifierIndex<FULL_ROUNDS, $G, SRS<$G>>> {
                 let path = Path::new(&path);
                 let (endo_q, _endo_r) = poly_commitment::ipa::endos::<$GOther>();
-                VerifierIndex::<$G, OpeningProof<$G>>::from_file(
+                VerifierIndex::<FULL_ROUNDS, $G, SRS<$G>>::from_file(
                     srs.0.clone(),
                     path,
                     offset.map(|x| x as u64),
@@ -466,7 +467,7 @@ macro_rules! impl_verification_key {
                 index: NapiPlonkVerifierIndex,
                 path: String,
             ) -> napi::Result<()> {
-                let index: VerifierIndex<$G, OpeningProof<$G>> = index.into();
+                let index: VerifierIndex<FULL_ROUNDS, $G, SRS<$G>> = index.into();
                 let path = Path::new(&path);
                 index
                     .to_file(path, append)
@@ -477,7 +478,7 @@ macro_rules! impl_verification_key {
             pub fn [<caml_pasta_ $field_name:snake _plonk_verifier_index_serialize>](
                 index: NapiPlonkVerifierIndex,
             ) -> String {
-                let index: VerifierIndex<$G, OpeningProof<$G>> = index.into();
+                let index: VerifierIndex<FULL_ROUNDS, $G, SRS<$G>> = index.into();
                 serde_json::to_string(&index).unwrap()
             }
 
@@ -486,7 +487,7 @@ macro_rules! impl_verification_key {
                 srs: &$NapiSrs,
                 index: String,
             ) -> napi::Result<NapiPlonkVerifierIndex> {
-                match serde_json::from_str::<VerifierIndex<$G, OpeningProof<$G>>>(&index) {
+                match serde_json::from_str::<VerifierIndex<FULL_ROUNDS, $G, SRS<$G>>>(&index) {
                     Ok(vi) => Ok(NapiPlonkVerifierIndex::from((&vi, srs))),
                     Err(e) => Err(Error::new(Status::GenericFailure, e.to_string())),
                 }

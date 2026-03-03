@@ -1,0 +1,31 @@
+# Centralized version definitions for CI workflows
+#
+# This file serves as the single source of truth for all version numbers
+# used across GitHub Actions workflows.
+#
+# When updating versions here, also update:
+# - rust-toolchain.toml (for rust.msrv)
+# - Makefile (for NIGHTLY_RUST_VERSION)
+
+rust:
+  # Minimum Supported Rust Version, matching mina-rust and
+  # MinaProtocol/mina.
+  msrv: "1.92"
+  stable: "stable"
+  beta: "beta"
+  nightly: "nightly"
+  # Pinned nightly for wasm builds. Must match NIGHTLY_RUST_VERSION
+  # in the Makefile.
+  nightly-pinned: "nightly-2025-12-11"
+
+ocaml:
+  version: "4.14.2"
+
+node:
+  version: "24"
+
+python:
+  version: "3.13"
+
+go:
+  version: "1.21.0"
