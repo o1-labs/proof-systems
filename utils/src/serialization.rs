@@ -2,9 +2,10 @@
 //!
 //! Supports types that implement [`CanonicalSerialize`] and [`CanonicalDeserialize`].
 
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Write};
+use alloc::vec;
+use alloc::vec::Vec;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use serde_with::Bytes;
-use std::io::BufReader;
 
 //
 // Serialization with serde
@@ -16,6 +17,8 @@ pub mod ser {
     //! Simply use the following attribute on your field:
     //! `#[serde(with = "o1_utils::serialization::ser") attribute"]`
 
+    use alloc::vec;
+    use alloc::vec::Vec;
     use super::{Bytes, CanonicalDeserialize, CanonicalSerialize};
     use serde_with::{DeserializeAs, SerializeAs};
 
@@ -149,13 +152,17 @@ where
 ///
 /// Panics if serialization or deserialization fails, or if the results
 /// do not match the expected values.
+#[cfg(feature = "std")]
 #[allow(clippy::needless_pass_by_value)]
 pub fn test_generic_serialization_regression_canonical<
-    T: CanonicalSerialize + CanonicalDeserialize + std::cmp::PartialEq + std::fmt::Debug,
+    T: CanonicalSerialize + CanonicalDeserialize + core::cmp::PartialEq + core::fmt::Debug,
 >(
     data_expected: T,
     buf_expected: Vec<u8>,
 ) {
+    use ark_serialize::Write;
+    use std::io::BufReader;
+
     // Step 1: serialize `data_expected` and check if it's equal to `buf_expected`
 
     let mut buf_written: Vec<u8> = vec![];
@@ -188,13 +195,17 @@ pub fn test_generic_serialization_regression_canonical<
 ///
 /// Panics if serialization or deserialization fails, or if the results
 /// do not match the expected values.
+#[cfg(feature = "std")]
 #[allow(clippy::needless_pass_by_value)]
 pub fn test_generic_serialization_regression_serde<
-    T: serde::Serialize + for<'a> serde::Deserialize<'a> + std::cmp::PartialEq + std::fmt::Debug,
+    T: serde::Serialize + for<'a> serde::Deserialize<'a> + core::cmp::PartialEq + core::fmt::Debug,
 >(
     data_expected: T,
     buf_expected: Vec<u8>,
 ) {
+    use ark_serialize::Write;
+    use std::io::BufReader;
+
     // Step 1: serialize `data_expected` and check if it's equal to `buf_expected`
 
     let mut buf_written: Vec<u8> = vec![0; buf_expected.len()];
