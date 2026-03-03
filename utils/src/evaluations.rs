@@ -1,7 +1,9 @@
 //! This adds a few utility functions for the [`Evaluations`] arkworks type.
 
+use alloc::vec::Vec;
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 /// An extension for the [`Evaluations`] type.
@@ -27,13 +29,13 @@ pub trait ExtendedEvaluations<F: FftField> {
 impl<F: FftField> ExtendedEvaluations<F> for Evaluations<F, Radix2EvaluationDomain<F>> {
     fn scale(&self, elm: F) -> Self {
         let mut result = self.clone();
-        result.evals.par_iter_mut().for_each(|coeff| *coeff *= &elm);
+        cfg_iter_mut!(result.evals).for_each(|coeff| *coeff *= &elm);
         result
     }
 
     fn square(&self) -> Self {
         let mut result = self.clone();
-        result.evals.par_iter_mut().for_each(|e| {
+        cfg_iter_mut!(result.evals).for_each(|e| {
             let _ = e.square_in_place();
         });
         result
@@ -41,10 +43,7 @@ impl<F: FftField> ExtendedEvaluations<F> for Evaluations<F, Radix2EvaluationDoma
 
     fn pow(&self, pow: usize) -> Self {
         let mut result = self.clone();
-        result
-            .evals
-            .par_iter_mut()
-            .for_each(|e| *e = e.pow([pow as u64]));
+        cfg_iter_mut!(result.evals).for_each(|e| *e = e.pow([pow as u64]));
         result
     }
 

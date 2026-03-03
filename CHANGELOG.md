@@ -18,6 +18,13 @@ and this project adheres to
 - Update `EndoSclMul` gate
   ([#3514](https://github.com/o1-labs/proof-systems/pull/3514))
 
+### [o1-utils](./utils)
+
+#### Changed
+
+- Add `std` feature flag to support `no_std` environments
+  ([f53c3fe](https://github.com/o1-labs/proof-systems/commit/f53c3fe9ea))
+
 ## 0.4.1
 
 ### [kimchi](./kimchi)
