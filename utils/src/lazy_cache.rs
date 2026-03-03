@@ -5,15 +5,20 @@
 //! use the official `LazyLock`, and [`LazyCache`] as a wrapper around `LazyLock`
 //! to allow for custom serialization definitions.
 
+use core::{cell::UnsafeCell, fmt, ops::Deref};
 use serde::{de::DeserializeOwned, Deserialize, Serialize, Serializer};
-use std::{cell::UnsafeCell, fmt, ops::Deref, sync::Once};
 
+#[cfg(feature = "std")]
+use alloc::boxed::Box;
+#[cfg(feature = "std")]
 type LazyFn<T> = Box<dyn FnOnce() -> T + Send + Sync + 'static>;
 
 /// A thread-safe, lazily-initialized value.
 pub struct LazyCache<T> {
-    pub(crate) once: Once,
+    #[cfg(feature = "std")]
+    pub(crate) once: std::sync::Once,
     pub(crate) value: UnsafeCell<Option<T>>,
+    #[cfg(feature = "std")]
     pub(crate) init: UnsafeCell<Option<LazyFn<T>>>,
 }
 
@@ -35,29 +40,16 @@ pub enum LazyCacheErrorOr<E> {
 unsafe impl<T: Send + Sync> Sync for LazyCache<T> {}
 unsafe impl<T: Send> Send for LazyCache<T> {}
 
-// auto-derived `Send` impl is OK.
-//unsafe impl<T: Send, F: Send> Send for LazyCache<T, F> {}
-
+#[cfg(feature = "std")]
 impl<T> LazyCache<T> {
     pub fn new<F>(f: F) -> Self
     where
         F: FnOnce() -> T + Send + Sync + 'static,
     {
         Self {
-            once: Once::new(),
+            once: std::sync::Once::new(),
             value: UnsafeCell::new(None),
             init: UnsafeCell::new(Some(Box::new(f))),
-        }
-    }
-
-    /// Creates a new lazy value that is already initialized.
-    pub fn preinit(value: T) -> Self {
-        let once = Once::new();
-        once.call_once(|| {});
-        Self {
-            once,
-            value: UnsafeCell::new(Some(value)),
-            init: UnsafeCell::new(None),
         }
     }
 
@@ -115,6 +107,42 @@ impl<T> LazyCache<T> {
     }
 }
 
+impl<T> LazyCache<T> {
+    /// Creates a new lazy value that is already initialized.
+    pub fn preinit(value: T) -> Self {
+        #[cfg(feature = "std")]
+        {
+            let once = std::sync::Once::new();
+            once.call_once(|| {});
+            Self {
+                once,
+                value: UnsafeCell::new(Some(value)),
+                init: UnsafeCell::new(None),
+            }
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            Self {
+                value: UnsafeCell::new(Some(value)),
+            }
+        }
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl<T> LazyCache<T> {
+    /// # Panics
+    ///
+    /// Panics if the cache has not been pre-initialized.
+    pub fn get(&self) -> &T {
+        unsafe {
+            (*self.value.get())
+                .as_ref()
+                .expect("LazyCache not initialized (no_std mode requires preinit)")
+        }
+    }
+}
+
 // Wrapper to support cases where the init function might return an error that
 // needs to be handled separately (for example, LookupConstraintSystem::crate())
 impl<T, E: Clone> LazyCache<Result<T, E>> {
@@ -122,7 +150,16 @@ impl<T, E: Clone> LazyCache<Result<T, E>> {
     ///
     /// Returns `LazyCacheErrorOr` if initialization fails or the inner result is an error.
     pub fn try_get_or_err(&self) -> Result<&T, LazyCacheErrorOr<E>> {
-        match self.try_get() {
+        #[cfg(feature = "std")]
+        let result = self.try_get();
+        #[cfg(not(feature = "std"))]
+        let result = unsafe {
+            (*self.value.get())
+                .as_ref()
+                .ok_or(LazyCacheError::UninitializedCache)
+        };
+
+        match result {
             Ok(Ok(v)) => Ok(v),
             Ok(Err(e)) => Err(LazyCacheErrorOr::Inner(e.clone())),
             Err(_) => Err(LazyCacheErrorOr::Outer(LazyCacheError::LockPoisoned)),
@@ -175,12 +212,12 @@ where
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 // Unit tests for LazyCache
 mod test {
     use super::*;
     use std::{
-        sync::{Arc, Mutex},
+        sync::{Arc, Mutex, Once},
         thread,
     };
 

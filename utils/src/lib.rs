@@ -4,10 +4,52 @@
 // Enable unstable `is_multiple_of` on nightly for Wasm builds until nightly is updated
 // See: https://github.com/o1-labs/mina-rust/issues/1997
 #![cfg_attr(target_arch = "wasm32", feature(unsigned_is_multiple_of))]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(unsafe_code)]
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]
 #![deny(clippy::nursery)]
+
+extern crate alloc;
+
+/// Returns a parallel iterator when the `parallel` feature is enabled,
+/// otherwise returns a sequential iterator.
+#[macro_export]
+macro_rules! cfg_iter {
+    ($e:expr) => {{
+        #[cfg(feature = "parallel")]
+        let result = $e.par_iter();
+        #[cfg(not(feature = "parallel"))]
+        let result = $e.iter();
+        result
+    }};
+}
+
+/// Returns a parallel mutable iterator when the `parallel` feature is enabled,
+/// otherwise returns a sequential mutable iterator.
+#[macro_export]
+macro_rules! cfg_iter_mut {
+    ($e:expr) => {{
+        #[cfg(feature = "parallel")]
+        let result = $e.par_iter_mut();
+        #[cfg(not(feature = "parallel"))]
+        let result = $e.iter_mut();
+        result
+    }};
+}
+
+/// Returns a parallel consuming iterator when the `parallel` feature is enabled,
+/// otherwise returns a sequential consuming iterator.
+#[macro_export]
+macro_rules! cfg_into_iter {
+    ($e:expr) => {{
+        #[cfg(feature = "parallel")]
+        let result = $e.into_par_iter();
+        #[cfg(not(feature = "parallel"))]
+        let result = $e.into_iter();
+        result
+    }};
+}
 
 pub mod adjacent_pairs;
 pub mod biguint_helpers;
@@ -28,10 +70,13 @@ pub use bitwise_operations::BitwiseOps;
 pub use chunked_evaluations::ChunkedEvaluations;
 pub use dense_polynomial::ExtendedDensePolynomial;
 pub use evaluations::ExtendedEvaluations;
-pub use field_helpers::{BigUintFieldHelpers, FieldHelpers, RandomField, Two};
+#[cfg(feature = "std")]
+pub use field_helpers::RandomField;
+pub use field_helpers::{BigUintFieldHelpers, FieldHelpers, Two};
 pub use foreign_field::ForeignElement;
 
 /// Utils only for testing
+#[cfg(feature = "std")]
 pub mod tests {
     use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 

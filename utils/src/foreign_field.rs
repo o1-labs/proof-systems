@@ -3,13 +3,15 @@
 //! - `B` is a bit length of one limb
 //! - `N` is a number of limbs that is used to represent one foreign field element
 
+use alloc::vec;
+use alloc::vec::Vec;
 use crate::field_helpers::FieldHelpers;
 use ark_ff::{Field, PrimeField};
-use num_bigint::BigUint;
-use std::{
+use core::{
     fmt::{Debug, Formatter},
     ops::{Index, IndexMut},
 };
+use num_bigint::BigUint;
 
 /// Represents a foreign field element
 #[derive(Clone, PartialEq, Eq)]
@@ -153,7 +155,7 @@ impl<F: Field, const B: usize, const N: usize> IndexMut<usize> for ForeignElemen
 }
 
 impl<F: Field, const B: usize, const N: usize> Debug for ForeignElement<F, B, N> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(f, "ForeignElement(")?;
         for i in 0..self.len {
             write!(f, "{:?}", self.limbs[i].to_hex())?;
