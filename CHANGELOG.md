@@ -9,6 +9,16 @@ and this project adheres to
 
 ## Unreleased
 
+## 0.4.1
+
+### [kimchi](./kimchi)
+
+#### Deprecated
+
+- Reintroduced Cairo dummy variants in `GateType` enum for vk backwards
+  compatibility. To be completely removed whenever keys must change for other
+  reasons. ([#3519](https://github.com/o1-labs/proof-systems/pull/3519))
+
 ## 0.4.0
 
 ### Dependencies
@@ -199,13 +209,6 @@ and this project adheres to
   ([#3482](https://github.com/o1-labs/proof-systems/pull/3482))
 - Remove the constant from `len` and `is_empty` functions
   ([#3512](https://github.com/o1-labs/proof-systems/pull/3512)).
-
-### [turshi](./turshi)
-
-#### Changed
-
-- Remove crate as it will never be used
-  ([#3466](https://github.com/o1-labs/proof-systems/pull/3466))
 
 ## 0.3.0
 

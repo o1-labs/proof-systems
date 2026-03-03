@@ -82,6 +82,12 @@ pub enum GateType {
     EndoMulScalar,
     // Lookup
     Lookup,
+    // TODO: remove Cairo gate types
+    /// Cairo
+    CairoClaim,
+    CairoInstruction,
+    CairoFlags,
+    CairoTransition,
     /// Range check
     RangeCheck0,
     RangeCheck1,
@@ -177,6 +183,7 @@ impl<F: PrimeField> CircuitGate<F> {
             // TODO: implement the verification for the lookup gate
             // See https://github.com/MinaProtocol/mina/issues/14011
             Lookup => Ok(()),
+            CairoClaim | CairoInstruction | CairoFlags | CairoTransition => Ok(()),
             RangeCheck0 | RangeCheck1 => self
                 .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
@@ -273,6 +280,13 @@ impl<F: PrimeField> CircuitGate<F> {
             GateType::Lookup => {
                 // TODO: implement the verification for the lookup gate
                 // See https://github.com/MinaProtocol/mina/issues/14011
+                vec![]
+            }
+            // TODO: remove Cairo gate types
+            GateType::CairoClaim
+            | GateType::CairoInstruction
+            | GateType::CairoFlags
+            | GateType::CairoTransition => {
                 vec![]
             }
             GateType::RangeCheck0 => {
