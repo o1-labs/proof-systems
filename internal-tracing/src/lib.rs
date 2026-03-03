@@ -1,23 +1,30 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "std")]
 use std::time::SystemTime;
 
 #[cfg(feature = "enabled")]
 pub use serde_json::{json, to_writer as json_to_writer, Value as JsonValue};
 
+#[cfg(feature = "std")]
 pub fn time_to_micros(time: SystemTime) -> u64 {
     time.duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
         .as_micros() as u64
 }
 
+#[cfg(feature = "std")]
 pub fn now_micros() -> u64 {
     time_to_micros(SystemTime::now())
 }
 
+#[cfg(feature = "std")]
 pub enum TimeInput {
     Microseconds(u64),
     SystemTime(SystemTime),
 }
 
+#[cfg(feature = "std")]
 impl TimeInput {
     pub fn micros(self) -> u64 {
         match self {
@@ -27,12 +34,14 @@ impl TimeInput {
     }
 }
 
+#[cfg(feature = "std")]
 impl From<u64> for TimeInput {
     fn from(value: u64) -> Self {
         Self::Microseconds(value)
     }
 }
 
+#[cfg(feature = "std")]
 impl From<SystemTime> for TimeInput {
     fn from(value: SystemTime) -> Self {
         Self::SystemTime(value)
