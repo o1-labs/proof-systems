@@ -11,5 +11,7 @@ serde = { workspace = true, features = ["derive"], optional = true }
 serde_json = { workspace = true, optional = true }
 
 [features]
-enabled = ["serde", "serde_json"]
+default = ["std"]
+std = []
+enabled = ["std", "serde", "serde_json"]
 ocaml_types = ["ocaml", "ocaml-gen"]

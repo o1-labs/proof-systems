@@ -25,6 +25,13 @@ and this project adheres to
 - Add `std` feature flag to support `no_std` environments
   ([f53c3fe](https://github.com/o1-labs/proof-systems/commit/f53c3fe9ea))
 
+### [internal-tracing](./internal-tracing)
+
+#### Changed
+
+- Add `no_std` support to `internal-tracing`
+  ([ce71b0c](https://github.com/o1-labs/proof-systems/commit/ce71b0c403))
+
 ## 0.4.1
 
 ### [kimchi](./kimchi)
