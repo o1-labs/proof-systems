@@ -21,8 +21,8 @@ itertools.workspace = true
 num-bigint.workspace = true
 rand.workspace = true
 rand_core.workspace = true
-rayon.workspace = true
-rmp-serde.workspace = true
+rayon = { workspace = true, optional = true }
+rmp-serde = { workspace = true, optional = true }
 serde.workspace = true
 serde_with.workspace = true
 thiserror.workspace = true
@@ -42,6 +42,9 @@ rand_chacha.workspace = true
 ark-bn254.workspace = true
 
 [features]
+default = ["std", "parallel"]
+std = ["rmp-serde", "o1-utils/std"]
+parallel = ["std", "rayon", "o1-utils/parallel"]
 ocaml_types = ["ocaml", "ocaml-gen"]
 
 [[bench]]

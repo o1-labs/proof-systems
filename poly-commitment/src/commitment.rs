@@ -6,6 +6,8 @@
 //!    scaling factor scalar producing the batched opening proof
 //! 3. Verify batch of batched opening proofs
 
+use alloc::vec;
+use alloc::vec::Vec;
 use ark_ec::{
     models::short_weierstrass::Affine as SWJAffine, short_weierstrass::SWCurveConfig, AffineRepr,
     CurveGroup, VariableBaseMSM,
@@ -13,18 +15,19 @@ use ark_ec::{
 use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 use ark_poly::univariate::DensePolynomial;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use core::{
+    iter::Iterator,
+    marker::PhantomData,
+    ops::{Add, AddAssign, Sub},
+};
 use groupmap::{BWParameters, GroupMap};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::{field_helpers::product, ExtendedDensePolynomial as _};
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 use serde::{de::Visitor, Deserialize, Serialize};
 use serde_with::{
     de::DeserializeAsWrap, ser::SerializeAsWrap, serde_as, DeserializeAs, SerializeAs,
-};
-use std::{
-    iter::Iterator,
-    marker::PhantomData,
-    ops::{Add, AddAssign, Sub},
 };
 
 /// Represent a polynomial commitment when the type is instantiated with a
@@ -89,14 +92,14 @@ where
 
 impl<G> PolyComm<G> {
     /// Returns an iterator over the chunks.
-    pub fn iter(&self) -> std::slice::Iter<'_, G> {
+    pub fn iter(&self) -> core::slice::Iter<'_, G> {
         self.chunks.iter()
     }
 }
 
 impl<'a, G> IntoIterator for &'a PolyComm<G> {
     type Item = &'a G;
-    type IntoIter = std::slice::Iter<'a, G>;
+    type IntoIter = core::slice::Iter<'a, G>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.chunks.iter()
@@ -292,7 +295,7 @@ impl<'a, C: AffineRepr> Add<&'a PolyComm<C>> for &PolyComm<C> {
         let mut chunks = vec![];
         let n1 = self.chunks.len();
         let n2 = other.chunks.len();
-        for i in 0..std::cmp::max(n1, n2) {
+        for i in 0..core::cmp::max(n1, n2) {
             let pt = if i < n1 && i < n2 {
                 (self.chunks[i] + other.chunks[i]).into_affine()
             } else if i < n1 {
@@ -313,7 +316,7 @@ impl<'a, C: AffineRepr + Sub<Output = C::Group>> Sub<&'a PolyComm<C>> for &PolyC
         let mut chunks = vec![];
         let n1 = self.chunks.len();
         let n2 = other.chunks.len();
-        for i in 0..std::cmp::max(n1, n2) {
+        for i in 0..core::cmp::max(n1, n2) {
             let pt = if i < n1 && i < n2 {
                 (self.chunks[i] - other.chunks[i]).into_affine()
             } else if i < n1 {
@@ -369,14 +372,22 @@ impl<C: AffineRepr> PolyComm<C> {
                 // practice elems_size is almost always 1
                 //
                 // (see the comment to the `benchmark_msm_parallel_vesta` MSM benchmark)
-                let subchunk_size = std::cmp::max(points.len() / 2, 1);
-
-                points
-                    .into_par_iter()
-                    .chunks(subchunk_size)
-                    .zip(scalars.into_par_iter().chunks(subchunk_size))
-                    .map(|(psc, ssc)| C::Group::msm_bigint(&psc, &ssc).into_affine())
-                    .reduce(C::zero, |x, y| (x + y).into())
+                {
+                    #[cfg(feature = "parallel")]
+                    {
+                        let subchunk_size = core::cmp::max(points.len() / 2, 1);
+                        points
+                            .into_par_iter()
+                            .chunks(subchunk_size)
+                            .zip(scalars.into_par_iter().chunks(subchunk_size))
+                            .map(|(psc, ssc)| C::Group::msm_bigint(&psc, &ssc).into_affine())
+                            .reduce(C::zero, |x, y| (x + y).into())
+                    }
+                    #[cfg(not(feature = "parallel"))]
+                    {
+                        C::Group::msm_bigint(&points, &scalars).into_affine()
+                    }
+                }
             })
             .collect();
 
@@ -813,8 +824,8 @@ pub mod caml {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::str::FromStr;
     use mina_curves::pasta::Fp;
-    use std::str::FromStr;
 
     /// Regression test for `b_poly` evaluation.
     ///

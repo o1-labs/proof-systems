@@ -15,15 +15,18 @@
 //! is a scratch array used for performing inversions. It is passed around to
 //! avoid re-allocating such a scratch array within each algorithm.
 
+use alloc::vec;
+use alloc::vec::Vec;
 use ark_ec::{
     models::short_weierstrass::Affine as SWJAffine, short_weierstrass::SWCurveConfig,
     AdditiveGroup, AffineRepr, CurveGroup,
 };
 use ark_ff::{BitIteratorBE, Field, One, PrimeField, Zero};
+use core::ops::AddAssign;
 use itertools::Itertools;
 use mina_poseidon::sponge::ScalarChallenge;
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
-use std::ops::AddAssign;
 
 fn add_pairs_in_place<P: SWCurveConfig>(pairs: &mut Vec<SWJAffine<P>>) {
     let len = if pairs.len().is_multiple_of(2) {
@@ -92,8 +95,7 @@ fn batch_add_assign_no_branch<P: SWCurveConfig>(
     v0: &mut [SWJAffine<P>],
     v1: &[SWJAffine<P>],
 ) {
-    denominators
-        .par_iter_mut()
+    o1_utils::cfg_iter_mut!(denominators)
         .enumerate()
         .for_each(|(i, denom)| {
             let p0 = v0[i];
@@ -104,10 +106,9 @@ fn batch_add_assign_no_branch<P: SWCurveConfig>(
 
     ark_ff::batch_inversion::<P::BaseField>(denominators);
 
-    denominators
-        .par_iter()
-        .zip(v0.par_iter_mut())
-        .zip(v1.par_iter())
+    o1_utils::cfg_iter!(denominators)
+        .zip(o1_utils::cfg_iter_mut!(v0))
+        .zip(o1_utils::cfg_iter!(v1))
         .for_each(|((d, p0), p1)| {
             let s = (p0.y - p1.y) * d;
             let x = s.square() - p0.x - p1.x;
@@ -123,10 +124,9 @@ pub fn batch_add_assign<P: SWCurveConfig>(
     v0: &mut [SWJAffine<P>],
     v1: &[SWJAffine<P>],
 ) {
-    denominators
-        .par_iter_mut()
-        .zip(v0.par_iter())
-        .zip(v1.par_iter())
+    o1_utils::cfg_iter_mut!(denominators)
+        .zip(o1_utils::cfg_iter!(v0))
+        .zip(o1_utils::cfg_iter!(v1))
         .for_each(|((denom, p0), p1)| {
             let d = if p0.x == p1.x {
                 if p1.y.is_zero() {
@@ -142,10 +142,9 @@ pub fn batch_add_assign<P: SWCurveConfig>(
 
     ark_ff::batch_inversion::<P::BaseField>(denominators);
 
-    denominators
-        .par_iter()
-        .zip(v0.par_iter_mut())
-        .zip(v1.par_iter())
+    o1_utils::cfg_iter!(denominators)
+        .zip(o1_utils::cfg_iter_mut!(v0))
+        .zip(o1_utils::cfg_iter!(v1))
         .for_each(|((d, p0), p1)| {
             if p1.is_zero() {
             } else if p0.is_zero() {
@@ -277,11 +276,11 @@ fn affine_window_combine_base<P: SWCurveConfig>(
 }
 
 fn batch_endo_in_place<P: SWCurveConfig>(endo_coeff: P::BaseField, ps: &mut [SWJAffine<P>]) {
-    ps.par_iter_mut().for_each(|p| p.x *= endo_coeff);
+    o1_utils::cfg_iter_mut!(ps).for_each(|p| p.x *= endo_coeff);
 }
 
 fn batch_negate_in_place<P: SWCurveConfig>(ps: &mut [SWJAffine<P>]) {
-    ps.par_iter_mut().for_each(|p| {
+    o1_utils::cfg_iter_mut!(ps).for_each(|p| {
         p.y = -p.y;
     });
 }
@@ -346,18 +345,16 @@ fn batch_double_in_place<P: SWCurveConfig>(
     denominators: &mut Vec<P::BaseField>,
     points: &mut [SWJAffine<P>],
 ) {
-    denominators
-        .par_iter_mut()
-        .zip(points.par_iter())
+    o1_utils::cfg_iter_mut!(denominators)
+        .zip(o1_utils::cfg_iter!(points))
         .for_each(|(d, p)| {
             *d = p.y.double();
         });
     ark_ff::batch_inversion::<P::BaseField>(denominators);
 
     // TODO: Use less memory
-    denominators
-        .par_iter()
-        .zip(points.par_iter_mut())
+    o1_utils::cfg_iter!(denominators)
+        .zip(o1_utils::cfg_iter_mut!(points))
         .for_each(|(d, p)| {
             let sq = p.x.square();
             let s = (sq.double() + sq + P::COEFF_A) * d;
@@ -424,8 +421,7 @@ pub fn affine_window_combine<P: SWCurveConfig>(
 ) -> Vec<SWJAffine<P>> {
     const CHUNK_SIZE: usize = 10_000;
     let b: Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
-    let v: Vec<_> = b
-        .into_par_iter()
+    let v: Vec<_> = o1_utils::cfg_into_iter!(b)
         .map(|(v1, v2)| affine_window_combine_base(v1, v2, x1, x2))
         .collect();
     v.concat()
@@ -443,8 +439,7 @@ pub fn affine_window_combine_one_endo<P: SWCurveConfig>(
 ) -> Vec<SWJAffine<P>> {
     const CHUNK_SIZE: usize = 4096;
     let b: Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
-    let v: Vec<_> = b
-        .into_par_iter()
+    let v: Vec<_> = o1_utils::cfg_into_iter!(b)
         .map(|(v1, v2)| affine_window_combine_one_endo_base(endo_coeff, v1, v2, chal))
         .collect();
     v.concat()
@@ -456,8 +451,7 @@ pub fn affine_window_combine_one<P: SWCurveConfig>(
 ) -> Vec<SWJAffine<P>> {
     const CHUNK_SIZE: usize = 10_000;
     let b: Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
-    let v: Vec<_> = b
-        .into_par_iter()
+    let v: Vec<_> = o1_utils::cfg_into_iter!(b)
         .map(|(v1, v2)| affine_window_combine_one_base(v1, v2, x2))
         .collect();
     v.concat()
@@ -471,8 +465,7 @@ pub fn window_combine<G: AffineRepr>(
 ) -> Vec<G> {
     let mut g_proj: Vec<G::Group> = {
         let pairs: Vec<_> = g_lo.iter().zip(g_hi).collect();
-        pairs
-            .into_par_iter()
+        o1_utils::cfg_into_iter!(pairs)
             .map(|(lo, hi)| window_shamir::<G>(x_lo, *lo, x_hi, *hi))
             .collect()
     };

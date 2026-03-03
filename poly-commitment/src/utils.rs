@@ -1,12 +1,24 @@
+#[cfg(feature = "std")]
+use alloc::vec;
+#[cfg(feature = "std")]
+use alloc::vec::Vec;
+#[cfg(feature = "std")]
 use crate::{
     commitment::{b_poly_coefficients, CommitmentCurve},
     ipa::SRS,
     PolynomialsToCombine,
 };
+#[cfg(feature = "std")]
 use ark_ec::{CurveGroup, VariableBaseMSM};
-use ark_ff::{batch_inversion, FftField, Field, One, PrimeField, UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
+use ark_ff::FftField;
+#[cfg(feature = "std")]
+use ark_ff::{batch_inversion, Field, One, PrimeField, UniformRand, Zero};
+use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Evaluations};
+#[cfg(feature = "std")]
+use ark_poly::DenseUVPolynomial;
+#[cfg(feature = "std")]
 use o1_utils::ExtendedDensePolynomial;
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 /// Represent a polynomial either with its coefficients or its evaluations.
@@ -27,15 +39,18 @@ pub enum DensePolynomialOrEvaluations<'a, F: FftField, D: EvaluationDomain<F>> {
 /// `p_i`, even though we could treat it as the evaluations.
 ///
 /// This hypothesis is important if `to_dense_polynomial` is called.
+#[cfg(feature = "std")]
 #[derive(Default)]
 struct ScaledChunkedPolynomial<F, P>(Vec<(F, P)>);
 
+#[cfg(feature = "std")]
 impl<F, P> ScaledChunkedPolynomial<F, P> {
     fn add_poly(&mut self, scale: F, p: P) {
         self.0.push((scale, p));
     }
 }
 
+#[cfg(feature = "std")]
 impl<F: Field> ScaledChunkedPolynomial<F, &[F]> {
     /// Compute the resulting scaled polynomial.
     /// Example:
@@ -48,15 +63,13 @@ impl<F: Field> ScaledChunkedPolynomial<F, &[F]> {
         // Note: using a reference to avoid reallocation of the result.
         let mut res = DensePolynomial::<F>::zero();
 
-        let scaled: Vec<_> = self
-            .0
-            .par_iter()
+        let scaled: Vec<_> = o1_utils::cfg_iter!(self.0)
             .map(|(scale, segment)| {
                 let scale = *scale;
                 // We simply scale each coefficients.
                 // It is simply because DensePolynomial doesn't have a method
                 // `scale`.
-                let v = segment.par_iter().map(|x| scale * *x).collect();
+                let v = o1_utils::cfg_iter!(segment).map(|x| scale * *x).collect();
                 DensePolynomial::from_coefficients_vec(v)
             })
             .collect();
@@ -100,6 +113,7 @@ impl<F: Field> ScaledChunkedPolynomial<F, &[F]> {
 /// ```
 ///
 /// Additional complexity is added to handle chunks.
+#[cfg(feature = "std")]
 pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
     plnms: PolynomialsToCombine<G, D>,
     polyscale: G::ScalarField,
@@ -149,8 +163,7 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
             DensePolynomialOrEvaluations::Evaluations(evals_i, sub_domain) => {
                 let stride = evals_i.evals.len() / sub_domain.size();
                 let evals = &evals_i.evals;
-                plnm_evals_part
-                    .par_iter_mut()
+                o1_utils::cfg_iter_mut!(plnm_evals_part)
                     .enumerate()
                     .for_each(|(i, x)| {
                         *x += polyscale_to_i * evals[i * stride];
@@ -166,8 +179,8 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                 let mut offset = 0;
                 // iterating over chunks of the polynomial
                 for comm_chunk in p_i_comm {
-                    let segment = &p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
-                        ..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
+                    let segment = &p_i.coeffs[core::cmp::min(offset, p_i.coeffs.len())
+                        ..core::cmp::min(offset + srs_length, p_i.coeffs.len())];
                     plnm_coefficients.add_poly(polyscale_to_i, segment);
 
                     combined_comm += &(*comm_chunk * polyscale_to_i);
@@ -209,6 +222,7 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
 /// Panics if `comms` is non-empty and `chals.len()` is not a
 /// multiple of `comms.len()`.
 // TODO: Not compatible with variable rounds
+#[cfg(feature = "std")]
 pub fn batch_dlog_accumulator_check<G: CommitmentCurve>(
     urs: &SRS<G>,
     comms: &[G],
@@ -278,6 +292,7 @@ pub fn batch_dlog_accumulator_check<G: CommitmentCurve>(
 ///
 /// Panics if `num_comms` is non-zero and `chals.len()` is not a
 /// multiple of the derived round count.
+#[cfg(feature = "std")]
 pub fn batch_dlog_accumulator_generate<G: CommitmentCurve>(
     urs: &SRS<G>,
     num_comms: usize,

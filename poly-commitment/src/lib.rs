@@ -1,39 +1,53 @@
 // Enable unstable `is_multiple_of` on nightly for Wasm builds until nightly is updated
 // See: https://github.com/o1-labs/mina-rust/issues/1997
 #![cfg_attr(target_arch = "wasm32", feature(unsigned_is_multiple_of))]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(unsafe_code)]
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]
 #![deny(clippy::nursery)]
 
+extern crate alloc;
+
 mod combine;
 pub mod commitment;
 pub mod error;
+#[cfg(feature = "std")]
 pub mod hash_map_cache;
 pub mod ipa;
 pub mod kzg;
+#[cfg(feature = "std")]
 pub mod lagrange_basis;
+#[cfg(feature = "std")]
 pub mod precomputed_srs;
 pub mod utils;
 
 // Exposing property based tests for the SRS trait
+#[cfg(feature = "std")]
 pub mod pbt_srs;
 
 pub use commitment::PolyComm;
 
+#[cfg(feature = "std")]
 use crate::{
     commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve},
     error::CommitmentError,
     utils::DensePolynomialOrEvaluations,
 };
+#[cfg(feature = "std")]
 use ark_ec::AffineRepr;
+#[cfg(feature = "std")]
 use ark_ff::UniformRand;
+#[cfg(feature = "std")]
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
+#[cfg(feature = "std")]
 use mina_poseidon::FqSponge;
+#[cfg(feature = "std")]
 use rand_core::{CryptoRng, RngCore};
 
+#[cfg(feature = "std")]
 pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     /// The maximum polynomial degree that can be committed to
     fn max_poly_size(&self) -> usize;
@@ -201,6 +215,7 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
     fn size(&self) -> usize;
 }
 
+#[cfg(feature = "std")]
 #[allow(type_alias_bounds)]
 /// An alias to represent a polynomial (in either coefficient or
 /// evaluation form), with a set of *scalar field* elements that
@@ -211,8 +226,9 @@ type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarF
     PolyComm<G::ScalarField>,
 )];
 
+#[cfg(feature = "std")]
 pub trait OpenProof<G: CommitmentCurve, const FULL_ROUNDS: usize>: Sized + Clone {
-    type SRS: SRS<G> + std::fmt::Debug;
+    type SRS: SRS<G> + core::fmt::Debug;
 
     /// Create an opening proof for a batch of polynomials. The parameters are
     /// the following:
