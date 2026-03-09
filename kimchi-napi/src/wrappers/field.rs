@@ -19,7 +19,7 @@ macro_rules! impl_field_wrapper {
                 Self(value)
             }
 
-            fn to_bytes(&self) -> Vec<u8> {
+            fn to_bytes(self) -> Vec<u8> {
                 let mut bytes = Vec::with_capacity(core::mem::size_of::<$field>());
                 self.0
                     .serialize_compressed(&mut bytes)
@@ -114,7 +114,7 @@ macro_rules! impl_field_wrapper {
             }
         }
 
-        impl<'a> ToNapiValue for &'a mut $name {
+        impl ToNapiValue for &mut $name {
             unsafe fn to_napi_value(env: sys::napi_env, val: Self) -> Result<sys::napi_value> {
                 let buffer = Buffer::from(val.to_bytes());
                 <Buffer as ToNapiValue>::to_napi_value(env, buffer)

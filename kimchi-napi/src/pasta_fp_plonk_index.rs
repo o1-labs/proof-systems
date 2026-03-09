@@ -226,7 +226,7 @@ pub fn caml_pasta_fp_plonk_index_encode(
     index.0.serialize(&mut serializer).map_err(|e| {
         Error::new(
             Status::InvalidArg,
-            &format!("caml_pasta_fp_plonk_index_encode: {}", e),
+            format!("caml_pasta_fp_plonk_index_encode: {}", e),
         )
     })?;
     Ok(Uint8Array::from(buffer))
@@ -249,7 +249,7 @@ pub fn caml_pasta_fp_plonk_index_write(
         .map_err(|e| {
             Error::new(
                 Status::InvalidArg,
-                &format!("caml_pasta_fp_plonk_index_write: {e}"),
+                format!("caml_pasta_fp_plonk_index_write: {e}"),
             )
         })
 }
@@ -277,7 +277,7 @@ pub fn caml_pasta_fp_plonk_index_read(
         r.seek(Start(offset as u64)).map_err(|err| {
             Error::new(
                 Status::InvalidArg,
-                &format!("caml_pasta_fp_plonk_index_read: {err}"),
+                format!("caml_pasta_fp_plonk_index_read: {err}"),
             )
         })?;
     }
@@ -289,7 +289,7 @@ pub fn caml_pasta_fp_plonk_index_read(
     .map_err(|err| {
         Error::new(
             Status::InvalidArg,
-            &format!("caml_pasta_fp_plonk_index_read: {err}"),
+            format!("caml_pasta_fp_plonk_index_read: {err}"),
         )
     })?;
     t.srs = srs.0.clone();

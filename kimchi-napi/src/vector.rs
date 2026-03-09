@@ -147,7 +147,7 @@ where
     }
 }
 
-impl<'a, T> ToNapiValue for &'a NapiFlatVector<T>
+impl<T> ToNapiValue for &NapiFlatVector<T>
 where
     T: FlatVectorElem + Clone,
 {
@@ -162,7 +162,7 @@ where
     }
 }
 
-impl<'a, T> ToNapiValue for &'a mut NapiFlatVector<T>
+impl<T> ToNapiValue for &mut NapiFlatVector<T>
 where
     T: FlatVectorElem + Clone,
 {
@@ -285,7 +285,7 @@ where
     }
 }
 
-impl<'a, T> ToNapiValue for &'a NapiVector<T>
+impl<T> ToNapiValue for &NapiVector<T>
 where
     Vec<T>: ToNapiValue,
     T: Clone,
@@ -296,7 +296,7 @@ where
     }
 }
 
-impl<'a, T> ToNapiValue for &'a mut NapiVector<T>
+impl<T> ToNapiValue for &mut NapiVector<T>
 where
     Vec<T>: ToNapiValue,
     T: Clone,

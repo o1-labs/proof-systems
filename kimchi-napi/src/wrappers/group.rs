@@ -105,6 +105,7 @@ impl From<&NapiGVesta> for AffineVesta {
     }
 }
 
+#[allow(dead_code)]
 #[napi(js_name = "caml_pallas_affine_one")]
 pub fn caml_pallas_affine_one() -> NapiGPallas {
     NapiGPallas {
@@ -114,6 +115,7 @@ pub fn caml_pallas_affine_one() -> NapiGPallas {
     }
 }
 
+#[allow(dead_code)]
 #[napi(js_name = "caml_vesta_affine_one")]
 pub fn caml_vesta_affine_one() -> NapiGVesta {
     NapiGVesta {
