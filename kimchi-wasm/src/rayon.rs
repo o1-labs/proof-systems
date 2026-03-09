@@ -25,10 +25,8 @@ where
     OP: FnOnce() -> R + Send,
     R: Send,
 {
-    match unsafe { THREAD_POOL.as_ref() } {
-        Some(pool) => pool.install(op),
-        None => op(),
-    }
+    let pool = unsafe { THREAD_POOL.as_ref().unwrap() };
+    pool.install(op)
 }
 
 #[wasm_bindgen]
