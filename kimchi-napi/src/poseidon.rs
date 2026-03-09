@@ -1,9 +1,7 @@
 use crate::wrappers::field::{NapiPastaFp, NapiPastaFq};
 use mina_curves::pasta::{Fp, Fq};
 use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    pasta::FULL_ROUNDS,
-    permutation::poseidon_block_cipher,
+    constants::PlonkSpongeConstantsKimchi, pasta::FULL_ROUNDS, permutation::poseidon_block_cipher,
 };
 use napi::bindgen_prelude::*;
 use napi_derive::napi;

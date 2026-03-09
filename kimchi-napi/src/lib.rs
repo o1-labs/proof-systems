@@ -87,8 +87,7 @@ pub use proof::{
     },
 };
 pub use srs::{
-    caml_fp_srs_from_bytes, caml_fp_srs_to_bytes,
-    caml_fq_srs_from_bytes, caml_fq_srs_to_bytes,
+    caml_fp_srs_from_bytes, caml_fp_srs_to_bytes, caml_fq_srs_from_bytes, caml_fq_srs_to_bytes,
     fp::NapiFpSrs as WasmFpSrs, fq::NapiFqSrs as WasmFqSrs, *,
 };
 pub use tables::{JsLookupTableFp, JsLookupTableFq, JsRuntimeTableCfgFp, JsRuntimeTableCfgFq};

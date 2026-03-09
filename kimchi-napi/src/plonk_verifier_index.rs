@@ -19,11 +19,7 @@ use mina_poseidon::pasta::FULL_ROUNDS;
 use napi::{bindgen_prelude::*, Error, Status};
 use napi_derive::napi;
 use paste::paste;
-use poly_commitment::{
-    commitment::PolyComm,
-    ipa::SRS,
-    SRS as _,
-};
+use poly_commitment::{commitment::PolyComm, ipa::SRS, SRS as _};
 use serde::{Deserialize, Serialize};
 use std::{path::Path, sync::Arc};
 

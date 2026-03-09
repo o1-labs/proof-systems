@@ -40,10 +40,7 @@ use wasm_types::FlatVector as WasmFlatVector;
 
 /// Boxed so that we don't store large proving indexes in the OCaml heap.
 #[wasm_bindgen]
-pub struct WasmPastaFpPlonkIndex(
-    #[wasm_bindgen(skip)]
-    pub Box<ProverIndexType>,
-);
+pub struct WasmPastaFpPlonkIndex(#[wasm_bindgen(skip)] pub Box<ProverIndexType>);
 
 // TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
 #[derive(Serialize, Deserialize)]
@@ -69,10 +66,9 @@ impl WasmPastaFpPlonkIndex {
     }
 }
 
-fn serialize_prover_index(
-    index: &ProverIndexType,
-) -> Result<Vec<u8>, String> {
-    let prover_index = rmp_serde::to_vec(index).map_err(|e: rmp_serde::encode::Error| e.to_string())?;
+fn serialize_prover_index(index: &ProverIndexType) -> Result<Vec<u8>, String> {
+    let prover_index =
+        rmp_serde::to_vec(index).map_err(|e: rmp_serde::encode::Error| e.to_string())?;
 
     let mut srs = Vec::new();
     index
@@ -85,15 +81,13 @@ fn serialize_prover_index(
     rmp_serde::to_vec(&serialized).map_err(|e| e.to_string())
 }
 
-fn deserialize_prover_index(
-    bytes: &[u8],
-) -> Result<Box<ProverIndexType>, String> {
+fn deserialize_prover_index(bytes: &[u8]) -> Result<Box<ProverIndexType>, String> {
     let serialized: SerializedProverIndex =
         rmp_serde::from_slice(bytes).map_err(|e| e.to_string())?;
 
-    let mut index: ProverIndexType = ProverIndex::deserialize(
-        &mut rmp_serde::Deserializer::new(Cursor::new(serialized.prover_index)),
-    )
+    let mut index: ProverIndexType = ProverIndex::deserialize(&mut rmp_serde::Deserializer::new(
+        Cursor::new(serialized.prover_index),
+    ))
     .map_err(|e| e.to_string())?;
 
     let srs = poly_commitment::ipa::SRS::<GAffine>::deserialize(&mut rmp_serde::Deserializer::new(
