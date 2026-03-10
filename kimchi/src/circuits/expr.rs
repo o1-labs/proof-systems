@@ -3126,7 +3126,7 @@ where
         let mut env: Vec<_> = env.into_iter().collect();
         // HashMap deliberately uses an unstable order; here we sort to ensure
         // that the output is consistent when printing.
-        env.sort_by(|(x, _), (y, _)| x.cmp(y));
+        env.sort_by_key(|(x, _)| *x);
 
         let mut res = vec![];
         for (k, v) in env {
@@ -3147,7 +3147,7 @@ where
         let mut env: Vec<_> = env.into_iter().collect();
         // HashMap deliberately uses an unstable order; here we sort to ensure
         // that the output is consistent when printing.
-        env.sort_by(|(x, _), (y, _)| x.cmp(y));
+        env.sort_by_key(|(x, _)| *x);
 
         let mut res = String::new();
         for (k, v) in env {
