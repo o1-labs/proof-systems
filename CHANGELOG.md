@@ -17,7 +17,7 @@ and this project adheres to
 
 - Update `EndoSclMul` gate
   ([#3514](https://github.com/o1-labs/proof-systems/pull/3514))
-  
+
 ## 0.4.1
 
 ### [kimchi](./kimchi)

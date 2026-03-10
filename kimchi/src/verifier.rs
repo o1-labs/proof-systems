@@ -555,7 +555,7 @@ where
                         .map(|li| {
                             (0..li.lookup_info.max_per_row + 1)
                                 .map(Column::LookupSorted)
-                                .chain([Column::LookupAggreg, Column::LookupTable].into_iter())
+                                .chain([Column::LookupAggreg, Column::LookupTable])
                                 .chain(
                                     li.runtime_tables_selector
                                         .as_ref()
@@ -1052,7 +1052,7 @@ where
                 (0..li.lookup_info.max_per_row + 1)
                     .map(Column::LookupSorted)
                     // add evaluations of the aggreg polynomial
-                    .chain([Column::LookupAggreg].into_iter())
+                    .chain([Column::LookupAggreg])
             })
             .into_iter()
             .flatten(),
