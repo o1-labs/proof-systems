@@ -60,7 +60,7 @@ jobs:
           git push origin "$BRANCH_NAME"
 
       - name: Create Pull Request
-        uses: actions/github-script@v6
+        uses: actions/github-script@v8
         with:
           script: |
             const version = require('fs').readFileSync('Cargo.toml', 'utf8').match(/^version = "(.*)"/m)[1];
