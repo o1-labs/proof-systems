@@ -1,3 +1,5 @@
+#![cfg(feature = "std")]
+
 use ark_ec::short_weierstrass::SWCurveConfig;
 use mina_curves::pasta::{Pallas, PallasParameters, Vesta, VestaParameters};
 use o1_utils::serialization::{
