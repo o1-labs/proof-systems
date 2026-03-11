@@ -10,9 +10,13 @@ use ark_ff::PrimeField;
 use kimchi::curve::{pallas_endos, vesta_endos};
 use mina_curves::pasta::curves::{pallas::PallasParameters, vesta::VestaParameters};
 use mina_poseidon::{
-    constants::SpongeConstants, poseidon::ArithmeticSpongeParams, sponge::DefaultFqSponge, FqSponge,
+    constants::SpongeConstants, poseidon::ArithmeticSpongeParams as SpongeParams, sponge, FqSponge,
 };
-use poly_commitment::commitment::{CommitmentCurve, EndoCurve};
+use poly_commitment::commitment::EndoCurve;
+
+const SPONGE_PARAM_FULL_ROUNDS: usize = 60;
+type ArithmeticSpongeParams<F> = SpongeParams<F, 60>;
+type DefaultFqSponge<P, SC> = sponge::DefaultFqSponge<P, SC, SPONGE_PARAM_FULL_ROUNDS>;
 
 #[derive(Clone)]
 pub struct PlonkSpongeConstants {}
@@ -32,9 +36,9 @@ impl SpongeConstants for PlonkSpongeConstants {
 /// Represents additional information that a curve needs in order to be used
 /// with Arrabbiata.
 ///
-/// The trait [CommitmentCurve] enforces the curve to be given in short
+/// The trait [CommitmentCurve](poly_commitment::commitment::CommitmentCurve) enforces the curve to be given in short
 /// Weierstrass form.
-pub trait ArrabbiataCurve: CommitmentCurve + EndoCurve
+pub trait ArrabbiataCurve: EndoCurve
 where
     Self::BaseField: PrimeField,
 {

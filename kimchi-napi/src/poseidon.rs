@@ -1,6 +1,8 @@
 use crate::wrappers::field::{NapiPastaFp, NapiPastaFq};
 use mina_curves::pasta::{Fp, Fq};
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, permutation::poseidon_block_cipher};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi, pasta::FULL_ROUNDS, permutation::poseidon_block_cipher,
+};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use wasm_types::{FlatVector, FlatVectorElem};
@@ -14,7 +16,7 @@ pub fn caml_pasta_fp_poseidon_block_cipher(state: Uint8Array) -> Result<Uint8Arr
         .map(Into::into)
         .collect();
 
-    poseidon_block_cipher::<Fp, PlonkSpongeConstantsKimchi>(
+    poseidon_block_cipher::<Fp, PlonkSpongeConstantsKimchi, FULL_ROUNDS>(
         mina_poseidon::pasta::fp_kimchi::static_params(),
         &mut state_vec,
     );
@@ -37,7 +39,7 @@ pub fn caml_pasta_fq_poseidon_block_cipher(state: Uint8Array) -> Result<Uint8Arr
         .map(Into::into)
         .collect();
 
-    poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi>(
+    poseidon_block_cipher::<Fq, PlonkSpongeConstantsKimchi, FULL_ROUNDS>(
         mina_poseidon::pasta::fq_kimchi::static_params(),
         &mut state_vec,
     );

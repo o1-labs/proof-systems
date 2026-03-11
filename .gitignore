@@ -53,3 +53,6 @@ o1vm/resources/programs/mips/src
 o1vm/resources/programs/mips/bin
 
 CLAUDE.md
+
+# Node.js
+node_modules/

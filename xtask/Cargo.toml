@@ -1,10 +1,13 @@
 [package]
 name = "xtask"
-version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 publish = false
+version.workspace = true
 
 [dependencies]
 anyhow = "1.0"
 clap = { version = "4.4.6", features = ["derive"] }
+raw-cpuid = "11.6.0"
+semver = "1.0"
+toml_edit = "0.22"
 wasm-pack = "=0.12.1"

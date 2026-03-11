@@ -1,9 +1,7 @@
 use crate::vector::NapiVector;
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
 use core::ops::Deref;
-use napi::bindgen_prelude::{
-    sys, ClassInstance, Error, FromNapiValue, Result, Status, Uint8Array,
-};
+use napi::bindgen_prelude::{sys, ClassInstance, Error, FromNapiValue, Result, Status, Uint8Array};
 use napi_derive::napi;
 use paste::paste;
 use poly_commitment::{

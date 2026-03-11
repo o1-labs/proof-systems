@@ -1,4 +1,6 @@
-//! To prover and verify proofs you need a [Structured Reference
+//! Pre-generated SRS (Structured Reference String) for proofs.
+//!
+//! To prove and verify proofs you need a [Structured Reference
 //! String](https://www.cryptologie.net/article/560/zk-faq-whats-a-trusted-setup-whats-a-structured-reference-string-whats-toxic-waste/)
 //! (SRS).
 //! The generation of this SRS is quite expensive, so we provide a pre-generated
@@ -50,7 +52,7 @@ pub struct TestSRS<G> {
 
 impl<G: Clone> From<SRS<G>> for TestSRS<G> {
     fn from(value: SRS<G>) -> Self {
-        TestSRS {
+        Self {
             g: value.g,
             h: value.h,
             lagrange_bases: value.lagrange_bases.into(),
@@ -60,7 +62,7 @@ impl<G: Clone> From<SRS<G>> for TestSRS<G> {
 
 impl<G> From<TestSRS<G>> for SRS<G> {
     fn from(value: TestSRS<G>) -> Self {
-        SRS {
+        Self {
             g: value.g,
             h: value.h,
             lagrange_bases: HashMapCache::new_from_hashmap(value.lagrange_bases),
@@ -85,13 +87,19 @@ fn get_srs_path<G: NamedCurve>(srs_type: StoredSRSType) -> PathBuf {
 }
 
 /// Generic SRS getter function.
+///
+/// # Panics
+///
+/// Panics if the SRS file does not exist on disk or cannot be
+/// deserialized.
+#[must_use]
 pub fn get_srs_generic<G>(srs_type: StoredSRSType) -> SRS<G>
 where
     G: NamedCurve + CommitmentCurve,
 {
     let srs_path = get_srs_path::<G>(srs_type);
-    let file =
-        File::open(srs_path.clone()).unwrap_or_else(|_| panic!("missing SRS file: {srs_path:?}"));
+    let file = File::open(srs_path.clone())
+        .unwrap_or_else(|_| panic!("missing SRS file: {}", srs_path.display()));
     let reader = BufReader::new(file);
     match srs_type {
         StoredSRSType::Test => {
@@ -103,7 +111,11 @@ where
 }
 
 /// Obtains an SRS for a specific curve from disk.
-/// Panics if the SRS does not exists.
+///
+/// # Panics
+///
+/// Panics if the SRS does not exist on disk or cannot be deserialized.
+#[must_use]
 pub fn get_srs<G>() -> SRS<G>
 where
     G: NamedCurve + CommitmentCurve,
@@ -112,7 +124,11 @@ where
 }
 
 /// Obtains a Test SRS for a specific curve from disk.
-/// Panics if the SRS does not exists.
+///
+/// # Panics
+///
+/// Panics if the SRS does not exist on disk or cannot be deserialized.
+#[must_use]
 pub fn get_srs_test<G>() -> SRS<G>
 where
     G: NamedCurve + CommitmentCurve,
@@ -132,7 +148,7 @@ mod tests {
     use hex;
     use mina_curves::pasta::{Pallas, Vesta};
 
-    fn test_regression_serialization_srs_with_generators<G: AffineRepr>(exp_output: String) {
+    fn test_regression_serialization_srs_with_generators<G: AffineRepr>(exp_output: &str) {
         let h = G::generator();
         let g = vec![h];
         let lagrange_bases = HashMapCache::new();
@@ -142,8 +158,8 @@ mod tests {
             lagrange_bases,
         };
         let srs_bytes = rmp_serde::to_vec(&srs).unwrap();
-        let output = hex::encode(srs_bytes.clone());
-        assert_eq!(output, exp_output)
+        let output = hex::encode(srs_bytes);
+        assert_eq!(output, exp_output);
     }
 
     #[test]
@@ -151,7 +167,7 @@ mod tests {
         // This is the same as Pallas as we encode the coordinate x only.
         // Generated with commit 4c69a4defdb109b94f1124fe93283e728f1d8758
         let exp_output = "9291c421010000000000000000000000000000000000000000000000000000000000000000c421010000000000000000000000000000000000000000000000000000000000000000";
-        test_regression_serialization_srs_with_generators::<Vesta>(exp_output.to_string())
+        test_regression_serialization_srs_with_generators::<Vesta>(exp_output);
     }
 
     #[test]
@@ -159,7 +175,7 @@ mod tests {
         // This is the same as Pallas as we encode the coordinate x only.
         // Generated with commit 4c69a4defdb109b94f1124fe93283e728f1d8758
         let exp_output = "9291c421010000000000000000000000000000000000000000000000000000000000000000c421010000000000000000000000000000000000000000000000000000000000000000";
-        test_regression_serialization_srs_with_generators::<Pallas>(exp_output.to_string())
+        test_regression_serialization_srs_with_generators::<Pallas>(exp_output);
     }
 
     fn create_or_check_srs<G>(log2_size: u32, srs_type: StoredSRSType)
@@ -212,25 +228,25 @@ mod tests {
     /// Checks if `get_srs` (prod) succeeds for Pallas. Can be used for time-profiling.
     #[test]
     pub fn heavy_check_get_srs_prod_pallas() {
-        get_srs::<Pallas>();
+        let _ = get_srs::<Pallas>();
     }
 
     /// Checks if `get_srs` (prod) succeeds for Vesta. Can be used for time-profiling.
     #[test]
     pub fn heavy_check_get_srs_prod_vesta() {
-        get_srs::<Vesta>();
+        let _ = get_srs::<Vesta>();
     }
 
     /// Checks if `get_srs` (test) succeeds for Pallas. Can be used for time-profiling.
     #[test]
     pub fn check_get_srs_test_pallas() {
-        get_srs_test::<Pallas>();
+        let _ = get_srs_test::<Pallas>();
     }
 
     /// Checks if `get_srs` (test) succeeds for Vesta. Can be used for time-profiling.
     #[test]
     pub fn check_get_srs_test_vesta() {
-        get_srs_test::<Vesta>();
+        let _ = get_srs_test::<Vesta>();
     }
 
     /// This test checks that the two serialized SRS on disk are correct.

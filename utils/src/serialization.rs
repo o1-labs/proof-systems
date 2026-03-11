@@ -1,5 +1,6 @@
-//! This adds a few utility functions for serializing and deserializing
-//! [arkworks](http://arkworks.rs/) types that implement [CanonicalSerialize] and [CanonicalDeserialize].
+//! Utility functions for serializing and deserializing arkworks types.
+//!
+//! Supports types that implement [`CanonicalSerialize`] and [`CanonicalDeserialize`].
 
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Write};
 use serde_with::Bytes;
@@ -10,15 +11,21 @@ use std::io::BufReader;
 //
 
 pub mod ser {
-    //! You can use this module for serialization and deserializing arkworks types with [serde].
+    //! You can use this module for serialization and deserializing arkworks types with [`serde`].
+    //!
     //! Simply use the following attribute on your field:
     //! `#[serde(with = "o1_utils::serialization::ser") attribute"]`
 
-    use super::*;
+    use super::{Bytes, CanonicalDeserialize, CanonicalSerialize};
     use serde_with::{DeserializeAs, SerializeAs};
 
-    /// You can use this to serialize an arkworks type with serde and the "serialize_with" attribute.
+    /// You can use this to serialize an arkworks type with serde and the `serialize_with` attribute.
     /// See <https://serde.rs/field-attrs.html>
+    ///
+    /// # Errors
+    ///
+    /// Returns error if serialization fails.
+    #[allow(clippy::needless_pass_by_value)]
     pub fn serialize<S>(val: impl CanonicalSerialize, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -30,8 +37,12 @@ pub mod ser {
         Bytes::serialize_as(&bytes, serializer)
     }
 
-    /// You can use this to deserialize an arkworks type with serde and the "deserialize_with" attribute.
+    /// You can use this to deserialize an arkworks type with serde and the `deserialize_with` attribute.
     /// See <https://serde.rs/field-attrs.html>
+    ///
+    /// # Errors
+    ///
+    /// Returns error if deserialization fails.
     pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     where
         T: CanonicalDeserialize,
@@ -46,7 +57,9 @@ pub mod ser {
 // Serialization with [serde_with]
 //
 
-/// You can use [SerdeAs] with [serde_with] in order to serialize and deserialize types that implement [CanonicalSerialize] and [CanonicalDeserialize],
+/// Serde adapter for [`CanonicalSerialize`] and [`CanonicalDeserialize`] types.
+///
+/// You can use [`SerdeAs`] with `serde_with` in order to serialize and deserialize types,
 /// or containers of types that implement these traits (Vec, arrays, etc.)
 /// Simply add annotations like `#[serde_as(as = "o1_utils::serialization::SerdeAs")]`
 /// See <https://docs.rs/serde_with/1.10.0/serde_with/guide/serde_as/index.html#switching-from-serdes-with-to-serde_as>
@@ -131,6 +144,12 @@ where
 
 /// A generic regression serialization test for serialization via
 /// `CanonicalSerialize` and `CanonicalDeserialize`.
+///
+/// # Panics
+///
+/// Panics if serialization or deserialization fails, or if the results
+/// do not match the expected values.
+#[allow(clippy::needless_pass_by_value)]
 pub fn test_generic_serialization_regression_canonical<
     T: CanonicalSerialize + CanonicalDeserialize + std::cmp::PartialEq + std::fmt::Debug,
 >(
@@ -164,6 +183,12 @@ pub fn test_generic_serialization_regression_canonical<
 }
 
 /// A generic regression serialization test for serialization via `serde`.
+///
+/// # Panics
+///
+/// Panics if serialization or deserialization fails, or if the results
+/// do not match the expected values.
+#[allow(clippy::needless_pass_by_value)]
 pub fn test_generic_serialization_regression_serde<
     T: serde::Serialize + for<'a> serde::Deserialize<'a> + std::cmp::PartialEq + std::fmt::Debug,
 >(

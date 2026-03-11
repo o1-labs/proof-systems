@@ -393,6 +393,7 @@ impl PiRho {
         let aux = grid!(100, rotation_e.expand_rot);
         for y in 0..DIM {
             for x in 0..DIM {
+                #[allow(clippy::needless_range_loop)]
                 for q in 0..QUARTERS {
                     state_b[(2 * x + 3 * y) % DIM][y][q] = aux(y, x, q);
                 }

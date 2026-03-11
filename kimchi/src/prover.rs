@@ -41,7 +41,7 @@ use ark_poly::{
 };
 use core::array;
 use itertools::Itertools;
-use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use mina_poseidon::{poseidon::ArithmeticSpongeParams, sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial as _;
 use poly_commitment::{
     commitment::{
@@ -123,28 +123,30 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: KimchiCurve, OpeningProof: OpenProof<G>> ProverProof<G, OpeningProof>
+impl<G, OpeningProof, const FULL_ROUNDS: usize> ProverProof<G, OpeningProof, FULL_ROUNDS>
 where
+    G: KimchiCurve<FULL_ROUNDS>,
     G::BaseField: PrimeField,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
 {
     /// This function constructs prover's zk-proof from the witness & the `ProverIndex` against SRS instance
     ///
     /// # Errors
     ///
     /// Will give error if `create_recursive` process fails.
-    pub fn create<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
-        RNG: RngCore + CryptoRng,
-    >(
+    pub fn create<EFqSponge, EFrSponge, RNG>(
         groupmap: &G::Map,
         witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G, OpeningProof>,
+        index: &ProverIndex<FULL_ROUNDS, G, OpeningProof::SRS>,
         rng: &mut RNG,
     ) -> Result<Self>
     where
-        VerifierIndex<G, OpeningProof>: Clone,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
+        EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
+        RNG: RngCore + CryptoRng,
+        VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
     {
         Self::create_recursive::<EFqSponge, EFrSponge, RNG>(
             groupmap,
@@ -168,21 +170,21 @@ where
     /// # Panics
     ///
     /// Will panic if `lookup_context.joint_lookup_table_d8` is None.
-    pub fn create_recursive<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
-        RNG: RngCore + CryptoRng,
-    >(
+    pub fn create_recursive<EFqSponge, EFrSponge, RNG>(
         group_map: &G::Map,
         mut witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G, OpeningProof>,
+        index: &ProverIndex<FULL_ROUNDS, G, OpeningProof::SRS>,
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
         rng: &mut RNG,
     ) -> Result<Self>
     where
-        VerifierIndex<G, OpeningProof>: Clone,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
+        EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
+        RNG: RngCore + CryptoRng,
+        VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
     {
         internal_tracing::checkpoint!(internal_traces; create_recursive);
         let d1_size = index.cs.domain.d1.size();
@@ -241,7 +243,7 @@ where
             }
 
             // padding
-            w.extend(core::iter::repeat(G::ScalarField::zero()).take(length_padding));
+            w.extend(std::iter::repeat_n(G::ScalarField::zero(), length_padding));
 
             // zk-rows
             for row in w.iter_mut().rev().take(index.cs.zk_rows as usize) {
@@ -292,7 +294,7 @@ where
         //~    This is why we need to absorb the commitment to the public polynomial at this point.
         absorb_commitment(&mut fq_sponge, &public_comm);
 
-        //~ 1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
+        //~ 1. Commit to the witness columns by creating `COLUMNS` hiding commitments.
         //~
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
@@ -458,7 +460,8 @@ where
             };
 
             //~~ * Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TODO: specify)
-            let joint_combiner: G::ScalarField = ScalarChallenge(joint_combiner).to_field(endo_r);
+            let joint_combiner: G::ScalarField =
+                ScalarChallenge::new(joint_combiner).to_field(endo_r);
 
             //~~ * If multiple lookup tables are involved,
             //~~   set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
@@ -642,14 +645,14 @@ where
         internal_tracing::checkpoint!(internal_traces; z_permutation_aggregation_polynomial);
         let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
 
-        //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
+        //~ 1. Commit (hiding) to the permutation aggregation polynomial $z$.
         let z_comm = index.srs.commit(&z_poly, num_chunks, rng);
 
         //~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &z_comm.commitment);
 
         //~ 1. Sample $\alpha'$ with the Fq-Sponge.
-        let alpha_chal = ScalarChallenge(fq_sponge.challenge());
+        let alpha_chal = ScalarChallenge::new(fq_sponge.challenge());
 
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
         let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
@@ -890,7 +893,7 @@ where
         absorb_commitment(&mut fq_sponge, &t_comm.commitment);
 
         //~ 1. Sample $\zeta'$ with the Fq-Sponge.
-        let zeta_chal = ScalarChallenge(fq_sponge.challenge());
+        let zeta_chal = ScalarChallenge::new(fq_sponge.challenge());
 
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
         let zeta = zeta_chal.to_field(endo_r);
@@ -1161,7 +1164,7 @@ where
 
         //~ 1. Setup the Fr-Sponge
         let fq_sponge_before_evaluations = fq_sponge.clone();
-        let mut fr_sponge = EFrSponge::new(G::sponge_params());
+        let mut fr_sponge = EFrSponge::from(G::sponge_params());
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&fq_sponge.digest());
@@ -1170,7 +1173,7 @@ where
         let prev_challenge_digest = {
             // Note: we absorb in a new sponge here to limit the scope in which we need the
             // more-expensive 'optional sponge'.
-            let mut fr_sponge = EFrSponge::new(G::sponge_params());
+            let mut fr_sponge = EFrSponge::from(G::sponge_params());
             for RecursionChallenge { chals, .. } in &prev_challenges {
                 fr_sponge.absorb_multiple(chals);
             }
@@ -1703,14 +1706,24 @@ pub mod caml {
     // ProverProof<G> <-> CamlProofWithPublic<CamlG, CamlF>
     //
 
-    impl<G, CamlG, CamlF> From<(ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)>
+    // this is just used to simplify the type signatures below
+    // the bound does not need to be enforced
+    #[allow(type_alias_bounds)]
+    type ProofTuple<const FULL_ROUNDS: usize, G: AffineRepr> = (
+        ProverProof<G, OpeningProof<G, FULL_ROUNDS>, FULL_ROUNDS>,
+        Vec<<G as AffineRepr>::ScalarField>,
+    );
+
+    impl<const FULL_ROUNDS: usize, G, CamlG, CamlF> From<ProofTuple<FULL_ROUNDS, G>>
         for CamlProofWithPublic<CamlG, CamlF>
     where
         G: AffineRepr,
+        G::BaseField: PrimeField,
+        G: poly_commitment::commitment::EndoCurve,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
-        fn from(pp: (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)) -> Self {
+        fn from(pp: ProofTuple<FULL_ROUNDS, G>) -> Self {
             let (public_evals, evals) = pp.0.evals.into();
             CamlProofWithPublic {
                 public_evals,
@@ -1726,16 +1739,16 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG, CamlF> From<CamlProofWithPublic<CamlG, CamlF>>
-        for (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)
+    impl<const FULL_ROUNDS: usize, G, CamlG, CamlF> From<CamlProofWithPublic<CamlG, CamlF>>
+        for ProofTuple<FULL_ROUNDS, G>
     where
         CamlF: Clone,
         G: AffineRepr + From<CamlG>,
+        G::BaseField: PrimeField,
+        G: poly_commitment::commitment::EndoCurve,
         G::ScalarField: From<CamlF>,
     {
-        fn from(
-            caml_pp: CamlProofWithPublic<CamlG, CamlF>,
-        ) -> (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>) {
+        fn from(caml_pp: CamlProofWithPublic<CamlG, CamlF>) -> Self {
             let CamlProofWithPublic {
                 public_evals,
                 proof: caml_pp,

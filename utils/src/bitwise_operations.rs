@@ -1,5 +1,5 @@
 //! This module provides a set of functions to perform bit operations on big integers.
-//! In particular, it gives XOR and NOT for BigUint.
+//! In particular, it gives XOR and NOT for `BigUint`.
 use num_bigint::BigUint;
 use std::cmp::{max, Ordering};
 
@@ -7,10 +7,10 @@ use crate::BigUintHelpers;
 
 /// Bitwise operations
 pub trait BitwiseOps<Rhs = Self> {
-    /// Bitwise XOR of two BigUint inputs
+    /// Bitwise XOR of two `BigUint` inputs
     fn bitwise_xor(input1: &Rhs, input: &Rhs) -> Rhs;
 
-    /// Conjunction of the bits of two BigUint inputs for a given number of bytes
+    /// Conjunction of the bits of two `BigUint` inputs for a given number of bytes
     fn bitwise_and(input1: &Rhs, input: &Rhs, bytes: usize) -> Rhs;
 
     /// Negate the bits of a Self input
@@ -20,13 +20,13 @@ pub trait BitwiseOps<Rhs = Self> {
 }
 
 impl BitwiseOps for BigUint {
-    fn bitwise_xor(input1: &BigUint, input2: &BigUint) -> BigUint {
+    fn bitwise_xor(input1: &Self, input2: &Self) -> Self {
         // Pad to equal size in bytes
         let bytes1 = input1.to_bytes_le().len();
         let bytes2 = input2.to_bytes_le().len();
         let in1 = to_padded_bytes(input1, bytes2);
         let in2 = to_padded_bytes(input2, bytes1);
-        BigUint::from_bytes_le(
+        Self::from_bytes_le(
             &in1.iter()
                 .zip(in2.iter())
                 .map(|(b1, b2)| b1 ^ b2)
@@ -34,7 +34,8 @@ impl BitwiseOps for BigUint {
         )
     }
 
-    fn bitwise_not(input: &BigUint, bits: Option<usize>) -> BigUint {
+    #[allow(clippy::cast_possible_truncation)]
+    fn bitwise_not(input: &Self, bits: Option<usize>) -> Self {
         // pad if needed / desired
         // first get the number of bits of the input,
         // take into account that BigUint::bits() returns 0 if the input is 0
@@ -47,10 +48,10 @@ impl BitwiseOps for BigUint {
         ToBigUint::to_biguint(&bit_vec)
     }
 
-    fn bitwise_and(input1: &BigUint, input2: &BigUint, bytes: usize) -> BigUint {
+    fn bitwise_and(input1: &Self, input2: &Self, bytes: usize) -> Self {
         let in1 = to_padded_bytes(input1, bytes);
         let in2 = to_padded_bytes(input2, bytes);
-        BigUint::from_bytes_le(
+        Self::from_bytes_le(
             &in1.iter()
                 .zip(in2.iter())
                 .map(|(b1, b2)| b1 & b2)
@@ -71,23 +72,23 @@ fn to_padded_bytes(input: &BigUint, bytes: usize) -> Vec<u8> {
 
 // Pads an input with a number of bytes
 fn pad(input: &BigUint, bytes: usize) -> Vec<u8> {
-    let mut padded = input.to_bytes_le().to_vec();
+    let mut padded = input.to_bytes_le();
     padded.resize(bytes + padded.len(), 0u8);
     padded
 }
 
 // Returns the bit value of a BigUint input at a certain position or zero
 fn bit_at(input: &BigUint, index: u32) -> bool {
-    if input.bit(index as u64) {
+    if input.bit(u64::from(index)) {
         ((input / BigUint::from(2u8).pow(index)) % BigUint::from(2u32)) == BigUint::from(1u32)
     } else {
         false
     }
 }
 
-/// Converts types to a BigUint
+/// Converts types to a `BigUint`
 trait ToBigUint {
-    /// Converts a vector of bits in little endian to a BigUint
+    /// Converts a vector of bits in little endian to a `BigUint`
     fn to_biguint(&self) -> BigUint;
 }
 
@@ -96,7 +97,7 @@ impl ToBigUint for Vec<bool> {
         let mut bigvalue = BigUint::from(0u8);
         let mut power = BigUint::from(1u8);
         for bit in self {
-            bigvalue += power.clone() * BigUint::from(*bit as u8);
+            bigvalue += power.clone() * BigUint::from(u8::from(*bit));
             power *= BigUint::from(2u8);
         }
         bigvalue

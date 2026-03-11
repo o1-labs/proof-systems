@@ -16,7 +16,15 @@ use kimchi::{
     prover_index::ProverIndex,
 };
 use mina_curves::pasta::{Fp, Pallas as GAffineOther, Vesta as GAffine, VestaParameters};
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi, pasta::FULL_ROUNDS, sponge::DefaultFqSponge,
+};
+use poly_commitment::OpenProof;
+type ProverIndexType = ProverIndex<
+    FULL_ROUNDS,
+    GAffine,
+    <OpeningProof<GAffine, FULL_ROUNDS> as OpenProof<GAffine, FULL_ROUNDS>>::SRS,
+>;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{File, OpenOptions},
@@ -32,9 +40,7 @@ use wasm_types::FlatVector as WasmFlatVector;
 
 /// Boxed so that we don't store large proving indexes in the OCaml heap.
 #[wasm_bindgen]
-pub struct WasmPastaFpPlonkIndex(
-    #[wasm_bindgen(skip)] pub Box<ProverIndex<GAffine, OpeningProof<GAffine>>>,
-);
+pub struct WasmPastaFpPlonkIndex(#[wasm_bindgen(skip)] pub Box<ProverIndexType>);
 
 // TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
 #[derive(Serialize, Deserialize)]
@@ -60,10 +66,9 @@ impl WasmPastaFpPlonkIndex {
     }
 }
 
-fn serialize_prover_index(
-    index: &ProverIndex<GAffine, OpeningProof<GAffine>>,
-) -> Result<Vec<u8>, String> {
-    let prover_index = rmp_serde::to_vec(index).map_err(|e| e.to_string())?;
+fn serialize_prover_index(index: &ProverIndexType) -> Result<Vec<u8>, String> {
+    let prover_index =
+        rmp_serde::to_vec(index).map_err(|e: rmp_serde::encode::Error| e.to_string())?;
 
     let mut srs = Vec::new();
     index
@@ -76,15 +81,13 @@ fn serialize_prover_index(
     rmp_serde::to_vec(&serialized).map_err(|e| e.to_string())
 }
 
-fn deserialize_prover_index(
-    bytes: &[u8],
-) -> Result<Box<ProverIndex<GAffine, OpeningProof<GAffine>>>, String> {
+fn deserialize_prover_index(bytes: &[u8]) -> Result<Box<ProverIndexType>, String> {
     let serialized: SerializedProverIndex =
         rmp_serde::from_slice(bytes).map_err(|e| e.to_string())?;
 
-    let mut index: ProverIndex<GAffine, OpeningProof<GAffine>> = ProverIndex::deserialize(
-        &mut rmp_serde::Deserializer::new(Cursor::new(serialized.prover_index)),
-    )
+    let mut index: ProverIndexType = ProverIndex::deserialize(&mut rmp_serde::Deserializer::new(
+        Cursor::new(serialized.prover_index),
+    ))
     .map_err(|e| e.to_string())?;
 
     let srs = poly_commitment::ipa::SRS::<GAffine>::deserialize(&mut rmp_serde::Deserializer::new(
@@ -220,14 +223,13 @@ pub fn caml_pasta_fp_plonk_index_create(
 
         srs.0.get_lagrange_basis(cs.domain.d1);
 
-        let mut index = ProverIndex::<GAffine, OpeningProof<GAffine>>::create(
-            cs,
-            endo_q,
-            srs.0.clone(),
-            lazy_mode,
-        );
+        let mut index = ProverIndex::<
+            55,
+            GAffine,
+            <OpeningProof<GAffine, FULL_ROUNDS> as OpenProof<GAffine, FULL_ROUNDS>>::SRS,
+        >::create(cs, endo_q, srs.0.clone(), lazy_mode);
         // Compute and cache the verifier index digest
-        index.compute_verifier_index_digest::<DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>>();
+        index.compute_verifier_index_digest::<DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>>();
         Ok(index)
     });
 
@@ -269,9 +271,12 @@ pub fn caml_pasta_fp_plonk_index_decode(
     srs: &WasmSrs,
 ) -> Result<WasmPastaFpPlonkIndex, JsError> {
     let mut deserializer = rmp_serde::Deserializer::new(bytes);
-    let mut index =
-        ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(&mut deserializer)
-            .map_err(|e| JsError::new(&format!("caml_pasta_fp_plonk_index_decode: {}", e)))?;
+    let mut index = ProverIndex::<
+        55,
+        GAffine,
+        <OpeningProof<GAffine, FULL_ROUNDS> as OpenProof<GAffine, FULL_ROUNDS>>::SRS,
+    >::deserialize(&mut deserializer)
+    .map_err(|e| JsError::new(&format!("caml_pasta_fp_plonk_index_decode: {}", e)))?;
 
     index.srs = srs.0.clone();
     let (linearization, powers_of_alpha) = expr_linearization(Some(&index.cs.feature_flags), true);
@@ -312,9 +317,11 @@ pub fn caml_pasta_fp_plonk_index_read(
     }
 
     // deserialize the index
-    let mut t = ProverIndex::<GAffine, OpeningProof<GAffine>>::deserialize(
-        &mut rmp_serde::Deserializer::new(r),
-    )
+    let mut t = ProverIndex::<
+        55,
+        GAffine,
+        <OpeningProof<GAffine, FULL_ROUNDS> as OpenProof<GAffine, FULL_ROUNDS>>::SRS,
+    >::deserialize(&mut rmp_serde::Deserializer::new(r))
     .map_err(|err| JsValue::from_str(&format!("caml_pasta_fp_plonk_index_read: {err}")))?;
     t.srs = srs.0.clone();
     let (linearization, powers_of_alpha) = expr_linearization(Some(&t.cs.feature_flags), true);

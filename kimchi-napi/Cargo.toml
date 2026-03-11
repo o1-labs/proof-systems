@@ -2,7 +2,7 @@
 name = "kimchi-napi"
 version = "0.1.0"
 authors = ["opensource@o1labs.org"]
-description = "Node-API bindings for plonk proof systems"
+description = "Node-API bindings for kimchi proof systems"
 repository = "https://github.com/MinaProtocol/mina"
 license = "MIT/Apache-2.0"
 edition = "2021"
@@ -23,10 +23,10 @@ ark-serialize.workspace = true
 arkworks.workspace = true
 
 # proof-systems
+kimchi_wasm.workspace = true
 mina-curves = { path = "../curves" }
 mina-poseidon = { path = "../poseidon" }
 o1-utils = { path = "../utils" }
-kimchi_wasm.workspace = true
 poly-commitment = { path = "../poly-commitment" }
 
 base64.workspace = true

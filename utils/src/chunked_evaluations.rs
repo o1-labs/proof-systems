@@ -1,4 +1,4 @@
-//! This module contains a type [ChunkedEvaluations],
+//! This module contains a type [`ChunkedEvaluations`],
 
 use ark_ff::PrimeField;
 use serde::{Deserialize, Serialize};

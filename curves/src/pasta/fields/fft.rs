@@ -20,8 +20,8 @@ pub trait FftParameters: 'static + Send + Sync + Sized {
     /// of size `Self::SMALL_SUBGROUP_BASE^k`.
     const SMALL_SUBGROUP_BASE_ADICITY: Option<u32> = None;
 
-    /// GENERATOR^((MODULUS-1) / (2^s *
-    /// SMALL_SUBGROUP_BASE^SMALL_SUBGROUP_BASE_ADICITY)) Used for mixed-radix FFT.
+    /// `GENERATOR^((MODULUS-1) / (2^s *`
+    /// `SMALL_SUBGROUP_BASE^SMALL_SUBGROUP_BASE_ADICITY))` Used for mixed-radix FFT.
     const LARGE_SUBGROUP_ROOT_OF_UNITY: Option<Self::BigInt> = None;
 }
 
@@ -41,7 +41,7 @@ pub trait FpParameters: FftParameters {
     /// `R = M % Self::MODULUS`.
     const R: Self::BigInt;
 
-    /// R2 = R^2 % Self::MODULUS
+    /// R2 = R^2 % `Self::MODULUS`
     const R2: Self::BigInt;
 
     /// INV = -MODULUS^{-1} mod 2^64
@@ -62,7 +62,7 @@ pub trait FpParameters: FftParameters {
     /// (t - 1) / 2
     const T_MINUS_ONE_DIV_TWO: Self::BigInt;
 
-    /// (Self::MODULUS - 1) / 2
+    /// (`Self::MODULUS` - 1) / 2
     const MODULUS_MINUS_ONE_DIV_TWO: Self::BigInt;
 }
 

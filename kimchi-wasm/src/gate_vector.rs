@@ -148,6 +148,10 @@ pub mod shared {
             self.gates.len()
         }
 
+        pub fn is_empty(&self) -> bool {
+            self.gates.is_empty()
+        }
+
         pub fn get_gate(&self, index: usize) -> Option<Gate<F>> {
             self.gates.get(index).map(Gate::from)
         }

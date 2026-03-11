@@ -1,2 +1,20 @@
 [alias]
 xtask = "run --package xtask --"
+
+# See https://zshipko.github.io/ocaml-rs/#initial-setup
+# Required to avoid undefined symbols when building dylib on MacOS
+# (e.g. required for at the time of writing).
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-args=-Wl,-undefined,dynamic_lookup"]
+
+[target.wasm32-unknown-unknown]
+rustflags = [
+  "-C", "target-feature=+atomics,+bulk-memory,+mutable-globals",
+  "-C", "link-arg=--import-memory",
+  "-C", "link-arg=--shared-memory",
+  "-C", "link-arg=--export=__wasm_init_tls",
+  "-C", "link-arg=--export=__tls_base",
+  "-C", "link-arg=--export=__tls_size",
+  "-C", "link-arg=--export=__tls_align",
+  "-C", "link-arg=--max-memory=4294967296",
+]

@@ -1,0 +1,6 @@
+# Generated spec files (built from source code comments via cargo-spec)
+book/src/specs/kimchi.md
+book/src/specs/poly-commitment.md
+
+# Spec template with exact formatting required by tests
+book/specifications/kimchi/template.md

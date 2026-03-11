@@ -24,13 +24,14 @@ use core::array;
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use num_bigint::{BigUint, RandBigInt};
 use o1_utils::{foreign_field::ForeignElement, tests::make_test_rng, FieldHelpers, Two};
 use poly_commitment::{
     ipa::{endos, OpeningProof, SRS},
-    SRS as _,
+    OpenProof, SRS as _,
 };
 use rand::{rngs::StdRng, Rng};
 use std::sync::Arc;
@@ -40,8 +41,8 @@ type VestaField = <Vesta as AffineRepr>::BaseField;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
 // The secp256k1 base field modulus
 fn secp256k1_modulus() -> BigUint {
@@ -312,7 +313,11 @@ fn create_test_constraint_system_ffadd(
     opcodes: &[FFOps],
     foreign_field_modulus: BigUint,
     full: bool,
-) -> ProverIndex<Vesta, OpeningProof<Vesta>> {
+) -> ProverIndex<
+    FULL_ROUNDS,
+    Vesta,
+    <OpeningProof<Vesta, FULL_ROUNDS> as OpenProof<Vesta, FULL_ROUNDS>>::SRS,
+> {
     let (_next_row, gates) = if full {
         full_circuit(opcodes, &foreign_field_modulus)
     } else {
@@ -325,7 +330,7 @@ fn create_test_constraint_system_ffadd(
     let srs = Arc::new(srs);
 
     let (endo_q, _endo_r) = endos::<Pallas>();
-    ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs, false)
+    ProverIndex::create(cs, endo_q, srs, false)
 }
 
 // helper to reduce lines of code in repetitive test structure
@@ -336,7 +341,7 @@ fn test_ffadd(
     full: bool,
 ) -> (
     [Vec<PallasField>; COLUMNS],
-    ProverIndex<Vesta, OpeningProof<Vesta>>,
+    ProverIndex<FULL_ROUNDS, Vesta, poly_commitment::ipa::SRS<Vesta>>,
 ) {
     let index = create_test_constraint_system_ffadd(opcodes, foreign_field_modulus.clone(), full);
 
@@ -350,7 +355,7 @@ fn test_ffadd(
 
     for row in 0..all_rows {
         assert_eq!(
-            index.cs.gates[row].verify_witness::<Vesta>(
+            index.cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
                 row,
                 &witness,
                 &index.cs,
@@ -466,7 +471,7 @@ fn test_zero_sum_native() {
     );
 
     // Check result is the native modulus
-    let native_limbs = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(native_modulus);
+    let native_limbs = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(&native_modulus);
     check_result(witness, vec![native_limbs]);
 }
 
@@ -496,7 +501,7 @@ fn test_max_number() {
     // compute result in the foreign field after taking care of the exceeding bits
     let sum = secp256k1_max() + secp256k1_max();
     let sum_mod = sum - secp256k1_modulus();
-    let sum_mod_limbs = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(sum_mod);
+    let sum_mod_limbs = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(&sum_mod);
     check_ovf(witness.clone(), PallasField::one());
     check_result(witness, vec![sum_mod_limbs]);
 }
@@ -508,11 +513,11 @@ fn test_max_number() {
 // and it is checked that in both cases the result is the same
 fn test_zero_minus_one() {
     // FIRST AS NEG
-    let right_be_neg = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(One::one())
+    let right_be_neg = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(&One::one())
         .neg(&secp256k1_modulus())
         .to_biguint();
     let right_for_neg: ForeignElement<PallasField, LIMB_BITS, 3> =
-        ForeignElement::from_biguint(right_be_neg.clone());
+        ForeignElement::from_biguint(&right_be_neg);
     let (witness_neg, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![BigUint::zero(), right_be_neg],
@@ -535,7 +540,7 @@ fn test_zero_minus_one() {
 // test 1 - 1 + 1 where (-1) is in the foreign field
 // the first check is done with sub(1, 1) and then with add(neg(neg(1)))
 fn test_one_minus_one_plus_one() {
-    let neg_neg_one = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(One::one())
+    let neg_neg_one = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(&One::one())
         .neg(&secp256k1_modulus())
         .neg(&secp256k1_modulus())
         .to_biguint();
@@ -551,7 +556,7 @@ fn test_one_minus_one_plus_one() {
         witness,
         vec![
             ForeignElement::zero(),
-            ForeignElement::from_biguint(One::one()),
+            ForeignElement::from_biguint(&One::one()),
         ],
     );
 }
@@ -562,12 +567,12 @@ fn test_one_minus_one_plus_one() {
 // then tested as 0 - 1 - 1 )
 // TODO: tested as 0 - ( 1 + 1) -> put sign in front of left instead (perhaps in the future we want this)
 fn test_minus_minus() {
-    let neg_one_for = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(One::one())
+    let neg_one_for = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(&One::one())
         .neg(&secp256k1_modulus());
     let neg_one = neg_one_for.to_biguint();
     let two = BigUint::from(2u32);
     let neg_two =
-        ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(two).neg(&secp256k1_modulus());
+        ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(&two).neg(&secp256k1_modulus());
     let (witness_neg, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![neg_one.clone(), neg_one],
@@ -759,7 +764,7 @@ fn test_wrong_sum() {
     witness[0][12] = all_ones_limb;
 
     assert_eq!(
-        index.cs.gates[1].verify_witness::<Vesta>(
+        index.cs.gates[1].verify_witness::<FULL_ROUNDS, Vesta>(
             1,
             &witness,
             &index.cs,
@@ -783,7 +788,7 @@ fn test_wrong_dif() {
     witness[0][12] = PallasField::zero();
 
     assert_eq!(
-        index.cs.gates[1].verify_witness::<Vesta>(
+        index.cs.gates[1].verify_witness::<FULL_ROUNDS, Vesta>(
             1,
             &witness,
             &index.cs,
@@ -815,7 +820,7 @@ fn test_zero_sub_fmax() {
         &[FFOps::Sub],
         false,
     );
-    let negated = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(secp256k1_max())
+    let negated = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(&secp256k1_max())
         .neg(&secp256k1_modulus());
     check_result(witness, vec![negated]);
 }
@@ -835,7 +840,7 @@ fn test_pasta_add_max_vesta() {
         false,
     );
     let right = right_input % vesta_modulus;
-    let right_foreign = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(right);
+    let right_foreign = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(&right);
     check_result(witness, vec![right_foreign]);
 }
 
@@ -851,7 +856,7 @@ fn test_pasta_sub_max_vesta() {
         false,
     );
     let neg_max_vesta =
-        ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(right_input).neg(&vesta_modulus);
+        ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(&right_input).neg(&vesta_modulus);
     check_result(witness, vec![neg_max_vesta]);
 }
 
@@ -867,7 +872,7 @@ fn test_pasta_add_max_pallas() {
         false,
     );
     let right = right_input % vesta_modulus;
-    let foreign_right = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(right);
+    let foreign_right = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(&right);
     check_result(witness, vec![foreign_right]);
 }
 
@@ -883,7 +888,7 @@ fn test_pasta_sub_max_pallas() {
         false,
     );
     let neg_max_pallas =
-        ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(right_input).neg(&vesta_modulus);
+        ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(&right_input).neg(&vesta_modulus);
     check_result(witness, vec![neg_max_pallas]);
 }
 
@@ -903,7 +908,7 @@ fn test_random_add() {
         false,
     );
     let result = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(
-        (left_big + right_big) % foreign_mod,
+        &((left_big + right_big) % foreign_mod),
     );
     check_result(witness, vec![result]);
 }
@@ -925,10 +930,10 @@ fn test_random_sub() {
     );
     let result = if left_big < right_big {
         ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(
-            left_big + foreign_mod - right_big,
+            &(left_big + foreign_mod - right_big),
         )
     } else {
-        ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(left_big - right_big)
+        ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(&(left_big - right_big))
     };
     check_result(witness, vec![result]);
 }
@@ -951,7 +956,7 @@ fn test_foreign_is_native_add() {
     );
     // check result was computed correctly
     let sum_big = compute_sum(pallas, &left_input, &right_input);
-    let result = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(sum_big.clone());
+    let result = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(&sum_big);
     check_result(witness, vec![result.clone()]);
     // check result is in the native field
     let two_to_limb = PallasField::from(TWO_TO_LIMB);
@@ -984,7 +989,7 @@ fn test_foreign_is_native_sub() {
     );
     // check result was computed correctly
     let dif_big = compute_dif(pallas, &left_input, &right_input);
-    let result = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(dif_big.clone());
+    let result = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(&dif_big);
     check_result(witness, vec![result.clone()]);
     // check result is in the native field
     let two_to_limb = PallasField::from(TWO_TO_LIMB);
@@ -1022,7 +1027,7 @@ fn test_random_small_add() {
     check_result(
         witness,
         vec![ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(
-            result,
+            &result,
         )],
     );
 }
@@ -1051,7 +1056,7 @@ fn test_random_small_sub() {
     check_result(
         witness,
         vec![ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(
-            result,
+            &result,
         )],
     );
 }
@@ -1085,7 +1090,12 @@ fn test_bad_bound() {
     witness[6][2] = -PallasField::one();
     cs.gates = Arc::new(gates);
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[2].verify_witness::<FULL_ROUNDS, Vesta>(
+            2,
+            &witness,
+            &cs,
+            &witness[0][0..cs.public]
+        ),
         Err(CircuitGateError::CopyConstraint {
             typ: GateType::ForeignFieldAdd,
             src: Wire { row: 2, col: 6 },
@@ -1094,13 +1104,23 @@ fn test_bad_bound() {
     );
     witness[0][0] = -PallasField::one();
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[2].verify_witness::<FULL_ROUNDS, Vesta>(
+            2,
+            &witness,
+            &cs,
+            &witness[0][0..cs.public]
+        ),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 1)),
     );
     witness[6][2] = PallasField::one();
     witness[0][0] = PallasField::one();
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[2].verify_witness::<FULL_ROUNDS, Vesta>(
+            2,
+            &witness,
+            &cs,
+            &witness[0][0..cs.public]
+        ),
         Ok(()),
     );
 }
@@ -1124,7 +1144,7 @@ fn test_random_bad_input() {
     // First modify left input only to cause an invalid copy constraint
     witness[0][1] += PallasField::one();
     assert_eq!(
-        index.cs.gates[1].verify_witness::<Vesta>(
+        index.cs.gates[1].verify_witness::<FULL_ROUNDS, Vesta>(
             1,
             &witness,
             &index.cs,
@@ -1139,7 +1159,7 @@ fn test_random_bad_input() {
     // then modify the value in the range check to cause an invalid FFAdd constraint
     witness[0][4] += PallasField::one();
     assert_eq!(
-        index.cs.gates[1].verify_witness::<Vesta>(
+        index.cs.gates[1].verify_witness::<FULL_ROUNDS, Vesta>(
             1,
             &witness,
             &index.cs,
@@ -1175,14 +1195,14 @@ fn test_random_bad_parameters() {
     // Modify bot carry
     witness[7][1] += PallasField::one();
     assert_eq!(
-        gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
+        gates[1].verify_witness::<FULL_ROUNDS, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 3)),
     );
     witness[7][1] -= PallasField::one();
     // Modify overflow
     witness[6][1] += PallasField::one();
     assert_eq!(
-        gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
+        gates[1].verify_witness::<FULL_ROUNDS, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 3)),
     );
     witness[6][1] -= PallasField::one();
@@ -1190,7 +1210,7 @@ fn test_random_bad_parameters() {
     gates[1].coeffs[3] = PallasField::zero() - gates[1].coeffs[3];
     cs.gates = Arc::new(gates.clone());
     assert_eq!(
-        gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
+        gates[1].verify_witness::<FULL_ROUNDS, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 3)),
     );
 
@@ -1198,7 +1218,7 @@ fn test_random_bad_parameters() {
     cs.gates = Arc::new(gates.clone());
     // Check back to normal
     assert_eq!(
-        gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
+        gates[1].verify_witness::<FULL_ROUNDS, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Ok(()),
     );
 }
@@ -1230,7 +1250,7 @@ fn test_random_chain() {
                 FFOps::Sub => compute_dif(foreign_mod.clone(), &left[i], &inputs[i + 1]),
             };
             left.push(result.to_bytes_be());
-            ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(result)
+            ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(&result)
         })
         .collect();
     check_result(witness, results);
@@ -1260,7 +1280,7 @@ fn prove_and_verify(operation_count: usize) {
     // Create witness
     let witness = short_witness(&inputs, &operations, foreign_field_modulus);
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(vec![PallasField::one()])
@@ -1332,7 +1352,12 @@ fn test_ffadd_no_rc() {
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<Vesta>(row, &witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public]
+            ),
             Ok(())
         );
     }
@@ -1343,33 +1368,33 @@ fn test_ffadd_no_rc() {
 #[test]
 // Tests targeting each custom constraint with Vesta (foreign field modulus) on Pallas (native field modulus)
 fn test_vesta_on_pallas() {
-    let test = run_test::<Pallas>(&VestaField::modulus_biguint());
+    let test = run_test::<FULL_ROUNDS, Pallas>(&VestaField::modulus_biguint());
     assert_eq!(test.0, Ok(()));
 }
 
 #[test]
 // Tests targeting each custom constraint with Pallas (foreign field modulus) on Vesta (native field modulus)
 fn test_pallas_on_vesta() {
-    let test = run_test::<Vesta>(&PallasField::modulus_biguint());
+    let test = run_test::<FULL_ROUNDS, Vesta>(&PallasField::modulus_biguint());
     assert_eq!(test.0, Ok(()));
 }
 
 #[test]
 // Tests targeting each custom constraint with Vesta (foreign field modulus) on Vesta (native field modulus)
 fn test_vesta_on_vesta() {
-    let test = run_test::<Vesta>(&VestaField::modulus_biguint());
+    let test = run_test::<FULL_ROUNDS, Vesta>(&VestaField::modulus_biguint());
     assert_eq!(test.0, Ok(()));
 }
 
 #[test]
 // Tests targeting each custom constraint with Pallas (foreign field modulus) on Pallas (native field modulus)
 fn test_pallas_on_pallas() {
-    let test = run_test::<Pallas>(&PallasField::modulus_biguint());
+    let test = run_test::<FULL_ROUNDS, Pallas>(&PallasField::modulus_biguint());
     assert_eq!(test.0, Ok(()));
 }
 
 // Boilerplate for tests
-fn run_test<G: KimchiCurve>(
+fn run_test<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     foreign_field_modulus: &BigUint,
 ) -> (CircuitGateResult<()>, [Vec<G::ScalarField>; COLUMNS])
 where
@@ -1399,7 +1424,8 @@ where
 
     // Perform witness verification that everything is ok before invalidation (quick checks)
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
-        let result = gate.verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]);
+        let result =
+            gate.verify_witness::<FULL_ROUNDS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
         if result.is_err() {
             return (result, witness);
         }
@@ -1488,12 +1514,12 @@ fn test_ffadd_finalization() {
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs, false)
+        ProverIndex::create(cs, endo_q, srs, false)
     };
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            index.cs.gates[row].verify_witness::<Vesta>(
+            index.cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
                 row,
                 &witness,
                 &index.cs,
@@ -1503,7 +1529,7 @@ fn test_ffadd_finalization() {
         );
     }
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness.clone())
         .public_inputs(vec![witness[0][0]])

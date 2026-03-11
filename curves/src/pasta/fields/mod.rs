@@ -7,7 +7,7 @@ pub use self::fq::*;
 
 pub mod fft;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum LegendreSymbol {
     Zero = 0,
     QuadraticResidue = 1,
@@ -15,16 +15,19 @@ pub enum LegendreSymbol {
 }
 
 impl LegendreSymbol {
+    #[must_use]
     pub fn is_zero(&self) -> bool {
-        *self == LegendreSymbol::Zero
+        *self == Self::Zero
     }
 
+    #[must_use]
     pub fn is_qnr(&self) -> bool {
-        *self == LegendreSymbol::QuadraticNonResidue
+        *self == Self::QuadraticNonResidue
     }
 
+    #[must_use]
     pub fn is_qr(&self) -> bool {
-        *self == LegendreSymbol::QuadraticResidue
+        *self == Self::QuadraticResidue
     }
 }
 

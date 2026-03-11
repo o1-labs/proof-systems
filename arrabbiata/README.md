@@ -8,31 +8,30 @@ argument based on folding schemes (initially defined in
 [pasta](https://github.com/zcash/pasta_curves) curves and using the IPA
 polynomial commitment.
 
-The end goal of this repository is to implement a Nova-like prover, and have a zkApp
-on the Mina blockchain verifying the recursive proof*. This way, any user can run
-arbitrarily large computation on their machine, make a proof, and rely on the
-SNARK workers to verify the proof is correct and include it on-chains.
+The end goal of this repository is to implement a Nova-like prover, and have a
+zkApp on the Mina blockchain verifying the recursive proof\*. This way, any user
+can run arbitrarily large computation on their machine, make a proof, and rely
+on the SNARK workers to verify the proof is correct and include it on-chains.
 
-The first iteration of the project will allow to fold a polynomial
-`f` (which can be, in a near future, a zkApp), of degree 2**. No generic lookup
-argument will be implemented in the first version, even though a "runtime"
-lookup/permutation argument will be required
-for cross-cells referencing. The implementation leverages different
-constructions and ideas described in papers like
-[ProtoGalaxy](https://eprint.iacr.org/2023/1106),
+The first iteration of the project will allow to fold a polynomial `f` (which
+can be, in a near future, a zkApp), of degree 2\*\*. No generic lookup argument
+will be implemented in the first version, even though a "runtime"
+lookup/permutation argument will be required for cross-cells referencing. The
+implementation leverages different constructions and ideas described in papers
+like [ProtoGalaxy](https://eprint.iacr.org/2023/1106),
 [ProtoStar](https://eprint.iacr.org/2023/620), etc.
 
-*This might need changes to the Mina blockchain, with a possible new hardfork.
+\*This might need changes to the Mina blockchain, with a possible new hardfork.
 Not even sure it is possible right now.
 
-**This will change. We might go up to degree 6 or 7, as we're building the
+\*\*This will change. We might go up to degree 6 or 7, as we're building the
 different gadgets (EC addition, EC scalar multiplication, Poseidon).
 
 ## Implementation details
 
-We provide a binary to run arbitrarily large computation.
-The implementation of the circuits will follow the one used by the o1vm
-interpreter. An interpreter will be implemented over an abstract environment.
+We provide a binary to run arbitrarily large computation. The implementation of
+the circuits will follow the one used by the o1vm interpreter. An interpreter
+will be implemented over an abstract environment.
 
 The environment used for the witness will contain all the information required
 to make an IVC proof, i.e. the current witness in addition to the oracle, the
@@ -53,13 +52,13 @@ activated gate on each row.
 ## Examples
 
 Different built-in examples are provided. For instance:
+
 ```
 RUST_LOG=debug cargo run --bin arrabbiata --release -- execute -n 10 --zkapp "square-root" --srs-size 16
 ```
 
-will generate 10 full folding iterations of the function `f(X, Y) =
-X^2 - Y` and for each witness, generates random values, and make an IVC proof at
-the end.
+will generate 10 full folding iterations of the function `f(X, Y) = X^2 - Y` and
+for each witness, generates random values, and make an IVC proof at the end.
 
 You can also activate logging which contains benchmarking by using the
 environment variable `RUST_LOG=debug`.
@@ -72,8 +71,7 @@ cargo nextest run --all-features --release --nocapture -p arrabbiata
 
 ## Registry of zkApps
 
-A registry of zkApps is already preconfigured.
-To write a zkApp, check TODO.
+A registry of zkApps is already preconfigured. To write a zkApp, check TODO.
 
 The zkApp registry can be found in TODO
 
