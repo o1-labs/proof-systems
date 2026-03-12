@@ -14,7 +14,7 @@ use ark_poly::{EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D};
 use o1_utils::field_helpers::i32_to_field;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashSet,
+    collections::BTreeSet,
     ops::{Mul, Neg},
 };
 use strum_macros::EnumIter;
@@ -243,7 +243,7 @@ impl LookupInfo {
             selector_values[kind] = Some(vec![F::zero(); n]);
         }
 
-        let mut gate_tables = HashSet::new();
+        let mut gate_tables = BTreeSet::new();
 
         let mut update_selector = |lookup_pattern, i| {
             let selector = selector_values[lookup_pattern]
