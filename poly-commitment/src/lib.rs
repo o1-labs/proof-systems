@@ -1,22 +1,31 @@
 // Enable unstable `is_multiple_of` on nightly for Wasm builds until nightly is updated
 // See: https://github.com/o1-labs/mina-rust/issues/1997
 #![cfg_attr(target_arch = "wasm32", feature(unsigned_is_multiple_of))]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(unsafe_code)]
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]
 #![deny(clippy::nursery)]
 
+extern crate alloc;
+
+use alloc::vec::Vec;
+
 mod combine;
 pub mod commitment;
 pub mod error;
+#[cfg(feature = "std")]
 pub mod hash_map_cache;
 pub mod ipa;
 pub mod kzg;
+#[cfg(feature = "std")]
 pub mod lagrange_basis;
+#[cfg(feature = "std")]
 pub mod precomputed_srs;
 pub mod utils;
 
 // Exposing property based tests for the SRS trait
+#[cfg(feature = "std")]
 pub mod pbt_srs;
 
 pub use commitment::PolyComm;
@@ -212,7 +221,7 @@ type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarF
 )];
 
 pub trait OpenProof<G: CommitmentCurve, const FULL_ROUNDS: usize>: Sized + Clone {
-    type SRS: SRS<G> + std::fmt::Debug;
+    type SRS: SRS<G> + core::fmt::Debug;
 
     /// Create an opening proof for a batch of polynomials. The parameters are
     /// the following:

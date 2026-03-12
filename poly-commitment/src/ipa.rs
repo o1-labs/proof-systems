@@ -5,16 +5,19 @@
 //! Zero-Knowledge Arguments for Arithmetic Circuits in the Discrete Log
 //! Setting](https://eprint.iacr.org/2016/263).
 
-use crate::{
-    commitment::{
-        b_poly, b_poly_coefficients, combine_commitments, shift_scalar, squeeze_challenge,
-        squeeze_prechallenge, BatchEvaluationProof, CommitmentCurve, EndoCurve,
-    },
-    error::CommitmentError,
-    hash_map_cache::HashMapCache,
-    utils::combine_polys,
-    BlindedCommitment, PolyComm, PolynomialsToCombine, SRS as SRSTrait,
+use crate::commitment::{
+    b_poly, b_poly_coefficients, combine_commitments, shift_scalar, squeeze_challenge,
+    squeeze_prechallenge, BatchEvaluationProof, CommitmentCurve,
 };
+use crate::{
+    commitment::{BlindedCommitment, EndoCurve, PolyComm},
+    error::CommitmentError,
+    utils::combine_polys,
+    PolynomialsToCombine, SRS as SRSTrait,
+};
+#[cfg(feature = "std")]
+use crate::hash_map_cache::HashMapCache;
+use alloc::{vec, vec::Vec};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::{BigInteger, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
@@ -22,17 +25,17 @@ use ark_poly::{
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use blake2::{Blake2b512, Digest};
+use core::cmp::min;
+use core::ops::AddAssign;
 use groupmap::GroupMap;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use o1_utils::{
-    field_helpers::{inner_prod, pows},
-    math,
-};
-use rand::{CryptoRng, RngCore};
+use o1_utils::field_helpers::{inner_prod, pows};
+use o1_utils::math;
+use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{cmp::min, iter::Iterator, ops::AddAssign};
 use zeroize::Zeroize;
 
 #[serde_as]
@@ -51,6 +54,7 @@ pub struct SRS<G> {
     // TODO: the following field should be separated, as they are optimization
     // values
     /// Commitments to Lagrange bases, per domain size
+    #[cfg(feature = "std")]
     #[serde(skip)]
     pub lagrange_bases: HashMapCache<usize, Vec<PolyComm<G>>>,
 }
@@ -192,6 +196,7 @@ impl<G: CommitmentCurve> SRS<G> {
     /// Panics if the number of scalars does not match the number of points.
     ///
     /// Returns `true` if verification succeeds, `false` otherwise.
+    #[allow(clippy::too_many_lines)]
     pub fn verify<EFqSponge, RNG, const FULL_ROUNDS: usize>(
         &self,
         group_map: &G::Map,
@@ -311,7 +316,7 @@ impl<G: CommitmentCurve> SRS<G> {
             //
             // to check correctness of the sg component.
             {
-                let terms: Vec<_> = s.par_iter().map(|s| sg_rand_base_i * s).collect();
+                let terms: Vec<_> = o1_utils::cfg_iter!(s).map(|s| sg_rand_base_i * s).collect();
 
                 for (i, term) in terms.iter().enumerate() {
                     scalars[i + 1] += term;
@@ -365,26 +370,39 @@ impl<G: CommitmentCurve> SRS<G> {
 
         // Verify the equation in two chunks, which is optimal for our SRS size.
         // (see the comment to the `benchmark_msm_parallel_vesta` MSM benchmark)
-        let chunk_size = points.len() / 2;
-        let msm_res = points
-            .into_par_iter()
-            .chunks(chunk_size)
-            .zip(scalars.into_par_iter().chunks(chunk_size))
-            .map(|(bases, coeffs)| {
-                let coeffs_bigint = coeffs
-                    .into_iter()
-                    .map(ark_ff::PrimeField::into_bigint)
-                    .collect::<Vec<_>>();
-                G::Group::msm_bigint(&bases, &coeffs_bigint)
-            })
-            .reduce(G::Group::zero, |mut l, r| {
-                l += r;
-                l
-            });
+        let msm_res = {
+            #[cfg(feature = "parallel")]
+            {
+                let chunk_size = points.len() / 2;
+                points
+                    .into_par_iter()
+                    .chunks(chunk_size)
+                    .zip(scalars.into_par_iter().chunks(chunk_size))
+                    .map(|(bases, coeffs)| {
+                        let coeffs_bigint = coeffs
+                            .into_iter()
+                            .map(ark_ff::PrimeField::into_bigint)
+                            .collect::<Vec<_>>();
+                        G::Group::msm_bigint(&bases, &coeffs_bigint)
+                    })
+                    .reduce(G::Group::zero, |mut l, r| {
+                        l += r;
+                        l
+                    })
+            }
+            #[cfg(not(feature = "parallel"))]
+            {
+                let scalars_bigint: Vec<_> = scalars.iter().map(|x| x.into_bigint()).collect();
+                G::Group::msm_bigint(&points, &scalars_bigint)
+            }
+        };
 
         msm_res == G::Group::zero()
     }
+}
 
+#[cfg(feature = "std")]
+impl<G: CommitmentCurve> SRS<G> {
     /// This function creates a trusted-setup SRS instance for circuits with
     /// number of rows up to `depth`.
     ///
@@ -426,6 +444,7 @@ impl<G: CommitmentCurve> SRS<G> {
     }
 }
 
+#[cfg(feature = "parallel")]
 impl<G: CommitmentCurve> SRS<G>
 where
     <G as CommitmentCurve>::Map: Sync,
@@ -469,6 +488,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<G> SRSTrait<G> for SRS<G>
 where
     G: CommitmentCurve,
@@ -589,14 +609,14 @@ where
             PolyComm::<G>::multi_scalar_mul(&basis_refs, evals)
         };
         match domain.size.cmp(&plnm.domain().size) {
-            std::cmp::Ordering::Less => {
+            core::cmp::Ordering::Less => {
                 #[allow(clippy::cast_possible_truncation)]
                 let s = (plnm.domain().size / domain.size) as usize;
                 let v: Vec<_> = (0..(domain.size())).map(|i| plnm.evals[s * i]).collect();
                 commit_evaluations(&v, basis)
             }
-            std::cmp::Ordering::Equal => commit_evaluations(&plnm.evals, basis),
-            std::cmp::Ordering::Greater => {
+            core::cmp::Ordering::Equal => commit_evaluations(&plnm.evals, basis),
+            core::cmp::Ordering::Greater => {
                 panic!("desired commitment domain size ({}) greater than evaluations' domain size ({}):", domain.size, plnm.domain().size)
             }
         }
@@ -841,8 +861,7 @@ impl<G: CommitmentCurve> SRS<G> {
             chal_invs.push(u_inv);
 
             // IPA-folding polynomial coefficients
-            a = a_hi
-                .par_iter()
+            a = o1_utils::cfg_iter!(a_hi)
                 .zip(a_lo)
                 .map(|(&hi, &lo)| {
                     // lo + u_inv * hi
@@ -856,8 +875,7 @@ impl<G: CommitmentCurve> SRS<G> {
             // IPA-folding evaluation points.
             // This folding implicitly constructs the challenge polynomial b(X):
             // after all rounds, b[0] = b_poly(chals, evaluation_point).
-            b = b_lo
-                .par_iter()
+            b = o1_utils::cfg_iter!(b_lo)
                 .zip(b_hi)
                 .map(|(&lo, &hi)| {
                     // lo + u * hi
@@ -1054,6 +1072,7 @@ pub struct OpeningProof<G: AffineRepr, const FULL_ROUNDS: usize> {
     pub sg: G,
 }
 
+#[cfg(feature = "std")]
 impl<
         BaseField: PrimeField,
         G: AffineRepr<BaseField = BaseField> + CommitmentCurve + EndoCurve,

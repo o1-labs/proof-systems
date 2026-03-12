@@ -36,6 +36,13 @@ and this project adheres to
 - Add `no_std` support to `internal-tracing`
   ([ce71b0c](https://github.com/o1-labs/proof-systems/commit/ce71b0c403))
 
+### [poly-commitment](./poly-commitment)
+
+#### Changed
+
+- Add `no_std` support to `poly-commitment`
+  ([258ddae](https://github.com/o1-labs/proof-systems/commit/258ddae098))
+
 ## 0.4.1
 
 ### [kimchi](./kimchi)
