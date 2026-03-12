@@ -9,6 +9,10 @@ and this project adheres to
 
 ## Unreleased
 
+- Enforce deterministic ordering of gate lookup tables by replacing `HashSet`
+  with  
+  `BTreeSet` ([#3539](https://github.com/o1-labs/proof-systems/pull/3539))
+
 ## 0.5.0
 
 ### [kimchi](./kimchi)
