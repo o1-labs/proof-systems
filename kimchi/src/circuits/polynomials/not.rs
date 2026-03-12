@@ -10,6 +10,7 @@ use crate::circuits::{
     polynomial::COLUMNS,
     wires::Wire,
 };
+use alloc::{format, string::String, vec, vec::Vec};
 use ark_ff::PrimeField;
 use core::{array, cmp::max};
 use num_bigint::BigUint;

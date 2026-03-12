@@ -1,4 +1,6 @@
+use alloc::{vec, vec::Vec};
 use ark_ff::{FftField, One, Zero};
+use core::cmp::Ordering;
 use poly_commitment::PolyComm;
 use serde::{Deserialize, Serialize};
 
@@ -26,13 +28,13 @@ pub enum GateLookupTable {
 /// Canonical ordering for deterministic lookup table construction,
 /// enforces RangeCheck before Xor to achieve determinism and backwards compatibility with existing orderings
 impl PartialOrd for GateLookupTable {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for GateLookupTable {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         fn sort_key(t: &GateLookupTable) -> u8 {
             match t {
                 GateLookupTable::RangeCheck => 0,
@@ -72,7 +74,7 @@ impl core::ops::IndexMut<GateLookupTable> for GateLookupTables {
 
 impl IntoIterator for GateLookupTables {
     type Item = GateLookupTable;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
+    type IntoIter = alloc::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
         // Destructor pattern to make sure we add new lookup patterns.

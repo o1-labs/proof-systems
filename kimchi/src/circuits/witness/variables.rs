@@ -1,3 +1,4 @@
+use crate::collections::HashMap;
 /// Layout variable handling
 ///
 ///   First, you use "anchor" names for the variables when specifying
@@ -39,10 +40,7 @@
 ///     );
 ///```
 ///
-use std::{
-    collections::HashMap,
-    ops::{Index, IndexMut},
-};
+use core::ops::{Index, IndexMut};
 
 /// Layout variables mapping - these values are substituted
 /// into the witness layout when creating the witness instance.

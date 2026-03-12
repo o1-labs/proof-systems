@@ -1,3 +1,4 @@
+use alloc::{vec, vec::Vec};
 use ark_ff::{Field, PrimeField};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi as SC,

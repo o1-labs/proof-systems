@@ -1,4 +1,5 @@
 //! This module implements the double generic gate.
+use alloc::{string::String, vec, vec::Vec};
 
 //~ The double generic gate contains two generic gates.
 //~
@@ -33,19 +34,22 @@
 //~ and c1 (resp. c2) the constant selector for the first (resp. second) gate.
 //~
 
-use crate::{
-    circuits::{
-        argument::{Argument, ArgumentEnv, ArgumentType},
-        berkeley_columns::BerkeleyChallengeTerm,
-        expr::{constraints::ExprOps, Cache},
-        gate::{CircuitGate, GateType},
-        polynomial::COLUMNS,
-        wires::GateWires,
-    },
-    curve::KimchiCurve,
-    prover_index::ProverIndex,
+use crate::circuits::{
+    argument::{Argument, ArgumentEnv, ArgumentType},
+    berkeley_columns::BerkeleyChallengeTerm,
+    expr::{constraints::ExprOps, Cache},
+    gate::{CircuitGate, GateType},
+    polynomial::COLUMNS,
+    wires::GateWires,
 };
-use ark_ff::{FftField, PrimeField, Zero};
+#[cfg(feature = "prover")]
+use crate::curve::KimchiCurve;
+#[cfg(feature = "prover")]
+use crate::prover_index::ProverIndex;
+#[cfg(feature = "prover")]
+use ark_ff::Zero;
+use ark_ff::{FftField, PrimeField};
+#[cfg(feature = "prover")]
 use ark_poly::univariate::DensePolynomial;
 use core::{array, marker::PhantomData};
 
@@ -312,6 +316,7 @@ pub mod testing {
         }
     }
 
+    #[cfg(feature = "prover")]
     impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
     where
         F: PrimeField,

@@ -1,6 +1,7 @@
 //! This contains the [DomainConstantEvaluations] which is used to provide precomputations to a [ConstraintSystem](super::constraints::ConstraintSystem).
 
 use crate::circuits::domains::EvaluationDomains;
+use alloc::vec;
 use ark_ff::FftField;
 use ark_poly::{
     univariate::DensePolynomial as DP, DenseUVPolynomial, EvaluationDomain, Evaluations as E,

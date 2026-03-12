@@ -1,3 +1,5 @@
+#[cfg(feature = "std")]
+use crate::error::ProverError;
 use crate::{
     circuits::{
         berkeley_columns::{BerkeleyChallengeTerm, Column},
@@ -8,15 +10,17 @@ use crate::{
         },
         wires::COLUMNS,
     },
-    error::ProverError,
+    collections::HashMap,
 };
+use alloc::{boxed::Box, vec, vec::Vec};
 use ark_ff::{FftField, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+#[cfg(feature = "std")]
 use o1_utils::adjacent_pairs::AdjacentPairs;
+#[cfg(feature = "std")]
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::collections::HashMap;
 use CurrOrNext::{Curr, Next};
 
 use super::runtime_tables;
@@ -30,6 +34,7 @@ pub const CONSTRAINTS: u32 = 7;
 /// # Panics
 ///
 /// Will panic if `evaluation` and `domain` length do not meet the requirement.
+#[cfg(feature = "std")]
 pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
     mut e: Vec<F>,
     d: D<F>,
@@ -84,6 +89,7 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 ///
 /// Will panic if `value(s)` are missing from the `table`.
 #[allow(clippy::too_many_arguments)]
+#[cfg(feature = "std")]
 pub fn sorted<F: PrimeField>(
     dummy_lookup_value: F,
     joint_lookup_table_d8: &Evaluations<F, D<F>>,
@@ -225,6 +231,7 @@ pub fn sorted<F: PrimeField>(
 /// # Panics
 ///
 /// Will panic if final evaluation is not 1.
+#[cfg(feature = "std")]
 #[allow(clippy::too_many_arguments)]
 pub fn aggregation<R, F>(
     dummy_lookup_value: F,

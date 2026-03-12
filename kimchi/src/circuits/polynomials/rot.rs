@@ -1,3 +1,4 @@
+use alloc::{boxed::Box, vec, vec::Vec};
 //~ Rotation of a 64-bit word by a known offset
 
 use super::range_check::witness::range_check_0_row;

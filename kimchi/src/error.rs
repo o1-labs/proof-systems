@@ -1,4 +1,5 @@
 //! This module implements the [`ProverError`] type.
+use alloc::string::String;
 
 use crate::circuits::lookup::index::LookupError; // not sure about hierarchy
 use o1_utils::lazy_cache::{LazyCacheError, LazyCacheErrorOr};

@@ -1,5 +1,8 @@
 //! This module implements Plonk constraint gate primitive.
+use alloc::{vec, vec::Vec};
 
+#[cfg(feature = "prover")]
+use crate::prover_index::ProverIndex;
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv},
@@ -12,7 +15,6 @@ use crate::{
         wires::*,
     },
     curve::KimchiCurve,
-    prover_index::ProverIndex,
 };
 use ark_ff::PrimeField;
 use o1_utils::hasher::CryptoDigest;
@@ -31,7 +33,7 @@ use super::{argument::ArgumentWitness, expr};
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
-#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+#[cfg_attr(all(test, feature = "std"), derive(proptest_derive::Arbitrary))]
 pub enum CurrOrNext {
     Curr,
     Next,
@@ -63,7 +65,7 @@ impl CurrOrNext {
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
-#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+#[cfg_attr(all(test, feature = "std"), derive(proptest_derive::Arbitrary))]
 pub enum GateType {
     #[default]
     /// Zero gate
@@ -160,6 +162,7 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if verify process returns error.
+    #[cfg(feature = "prover")]
     pub fn verify<
         const FULL_ROUNDS: usize,
         G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
@@ -562,7 +565,7 @@ pub mod caml {
 // Tests
 //
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
     use ark_ff::UniformRand as _;

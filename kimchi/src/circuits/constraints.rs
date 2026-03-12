@@ -1,5 +1,12 @@
 //! This module implements Plonk circuit constraint primitive.
 use super::lookup::runtime_tables::RuntimeTableCfg;
+#[cfg(feature = "prover")]
+use crate::prover_index::ProverIndex;
+#[cfg(feature = "prover")]
+use crate::{
+    circuits::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
+    curve::KimchiCurve,
+};
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
@@ -10,27 +17,27 @@ use crate::{
             lookups::{LookupFeatures, LookupPatterns},
             tables::{GateLookupTables, LookupTable},
         },
-        polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::Shifts,
         wires::*,
     },
-    curve::KimchiCurve,
     error::{DomainCreationError, SetupError},
     o1_utils::lazy_cache::LazyCache,
-    prover_index::ProverIndex,
 };
+use alloc::{string::String, sync::Arc, vec, vec::Vec};
 use ark_ff::{PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
 };
 use core::{array, default::Default};
+#[cfg(feature = "prover")]
 use o1_utils::ExtendedEvaluations;
+#[cfg(feature = "prover")]
 use poly_commitment::SRS;
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::sync::Arc;
 
 //
 // ConstraintSystem
@@ -395,6 +402,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
+#[cfg(feature = "prover")]
 impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
 where
     F: PrimeField,
@@ -453,6 +461,7 @@ where
     }
 }
 
+#[cfg(feature = "prover")]
 impl<F: PrimeField> ConstraintSystem<F> {
     /// evaluate witness polynomials over domains
     pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {

@@ -18,6 +18,11 @@
 //! contains the former.
 //! The trait [ColumnEnvironment] is then defined to provide the necessary
 //! primitives used to evaluate the quotient polynomial.
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec::Vec,
+};
 
 use crate::{
     circuits::{
@@ -30,12 +35,12 @@ use crate::{
         lookup::{index::LookupSelectors, lookups::LookupPattern},
         wires::COLUMNS,
     },
+    collections::HashMap,
     proof::{PointEvaluations, ProofEvaluations},
 };
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// The challenge terms used in Berkeley.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
