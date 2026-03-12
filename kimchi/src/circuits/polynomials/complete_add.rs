@@ -1,4 +1,5 @@
 //! This module implements a complete EC addition gate.
+use alloc::{format, string::String, vec, vec::Vec};
 
 //~ The layout is
 //~

@@ -1,4 +1,5 @@
 //! This module implements the linearization.
+use alloc::{boxed::Box, vec::Vec};
 
 use crate::{
     alphas::Alphas,
@@ -244,8 +245,8 @@ pub fn constraints_expr<F: PrimeField>(
 /// for the linearization to work.
 pub fn linearization_columns<F: FftField>(
     feature_flags: Option<&FeatureFlags>,
-) -> std::collections::HashSet<Column> {
-    let mut h = std::collections::HashSet::new();
+) -> hashbrown::HashSet<Column> {
+    let mut h = hashbrown::HashSet::new();
     use Column::*;
 
     let feature_flags = match feature_flags {

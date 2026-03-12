@@ -1,3 +1,4 @@
+use alloc::{vec, vec::Vec};
 use ark_ff::{FftField, One, Zero};
 use poly_commitment::PolyComm;
 use serde::{Deserialize, Serialize};
@@ -52,7 +53,7 @@ impl core::ops::IndexMut<GateLookupTable> for GateLookupTables {
 
 impl IntoIterator for GateLookupTables {
     type Item = GateLookupTable;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
+    type IntoIter = alloc::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
         // Destructor pattern to make sure we add new lookup patterns.

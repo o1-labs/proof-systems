@@ -39,10 +39,8 @@
 ///     );
 ///```
 ///
-use std::{
-    collections::HashMap,
-    ops::{Index, IndexMut},
-};
+use core::ops::{Index, IndexMut};
+use hashbrown::HashMap;
 
 /// Layout variables mapping - these values are substituted
 /// into the witness layout when creating the witness instance.

@@ -1,6 +1,7 @@
 //! This type and logic only exists for the OCaml side.
 //! As we move more code to the Rust side,
 //! we hope to be able to remove this code in the future.
+use alloc::vec::Vec;
 
 use crate::{alphas::Alphas, circuits::scalars::RandomOracles, proof::PointEvaluations};
 use mina_poseidon::FqSponge;

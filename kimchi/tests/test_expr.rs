@@ -1,6 +1,9 @@
+#![cfg(feature = "prover")]
+
 use ark_ff::{Field, One, UniformRand, Zero};
 use ark_poly::{domain::EvaluationDomain, univariate::DensePolynomial};
 use core::array;
+use hashbrown::{HashMap, HashSet};
 use kimchi::{
     circuits::{
         berkeley_columns::{
@@ -22,10 +25,7 @@ use poly_commitment::{
     SRS as _,
 };
 use rand::{prelude::StdRng, SeedableRng};
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 #[test]
 #[should_panic]

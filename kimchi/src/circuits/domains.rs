@@ -1,5 +1,6 @@
 //! This module describes the evaluation domains that can be used by the
 //! polynomials.
+use alloc::string::ToString;
 
 use ark_ff::FftField;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};

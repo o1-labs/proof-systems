@@ -19,18 +19,18 @@
 //! For this to work, we use the type [Alphas] to register ranges of powers of alpha,
 //! for the various [ArgumentType]s.
 //!
+use alloc::{format, string::ToString, vec::Vec};
 
 use crate::circuits::{argument::ArgumentType, gate::GateType};
 use ark_ff::Field;
-use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
+use core::{
     fmt::Display,
     iter::{Cloned, Skip, Take},
     ops::Range,
     slice::Iter,
-    thread,
 };
+use hashbrown::HashMap;
+use serde::{Deserialize, Serialize};
 
 // ------------------------------------------
 
@@ -224,20 +224,21 @@ where
 {
     fn drop(&mut self) {
         if let Some(v) = self.inner.next() {
-            if thread::panicking() {
+            #[cfg(feature = "std")]
+            if std::thread::panicking() {
                 eprintln!("the registered number of powers of alpha for {:?} is too large, you haven't used alpha^{} (absolute power of alpha)", self.debug_info,
                 v);
-            } else {
-                panic!("the registered number of powers of alpha for {:?} is too large, you haven't used alpha^{} (absolute power of alpha)", self.debug_info,
-                v);
+                return;
             }
+            panic!("the registered number of powers of alpha for {:?} is too large, you haven't used alpha^{} (absolute power of alpha)", self.debug_info,
+                v);
         }
     }
 }
 
 // ------------------------------------------
 
-#[cfg(test)]
+#[cfg(all(test, feature = "prover"))]
 mod tests {
     use super::*;
     use crate::circuits::gate::GateType;

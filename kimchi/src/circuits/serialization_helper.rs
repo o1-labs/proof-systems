@@ -1,11 +1,12 @@
 use crate::circuits::lookup::lookups::{JointLookup, JointLookupValue};
+use alloc::vec::Vec;
+use core::{fmt::Formatter, marker::PhantomData};
 use serde::{
     de::{Error, IgnoredAny, MapAccess, SeqAccess},
     ser::SerializeStruct,
     Deserialize, Deserializer, Serializer,
 };
 use serde_with::{de::DeserializeAsWrap, ser::SerializeAsWrap, DeserializeAs, SerializeAs};
-use std::{fmt::Formatter, marker::PhantomData};
 
 impl<F, G> SerializeAs<JointLookupValue<F>> for JointLookupValue<G>
 where

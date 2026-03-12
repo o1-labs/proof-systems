@@ -1,4 +1,5 @@
 //! Range check gate
+use alloc::{vec, vec::Vec};
 
 use ark_ff::{FftField, PrimeField};
 

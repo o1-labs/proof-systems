@@ -9,14 +9,13 @@ use crate::circuits::{
         },
     },
 };
+use alloc::{vec, vec::Vec};
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D};
+use core::ops::{Mul, Neg};
+use hashbrown::HashSet;
 use o1_utils::field_helpers::i32_to_field;
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashSet,
-    ops::{Mul, Neg},
-};
 use strum_macros::EnumIter;
 
 type Evaluations<Field> = E<Field, D<Field>>;
@@ -66,7 +65,7 @@ pub struct LookupPatterns {
 
 impl IntoIterator for LookupPatterns {
     type Item = LookupPattern;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
+    type IntoIter = alloc::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
         // Destructor pattern to make sure we add new lookup patterns.

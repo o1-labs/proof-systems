@@ -9,6 +9,7 @@
 //!
 //! See <https://github.com/zcash/zcash/issues/3924>
 //! and 3.1 of <https://arxiv.org/pdf/math/0208038.pdf> for details.
+use alloc::{string::String, vec, vec::Vec};
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},

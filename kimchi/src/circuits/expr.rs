@@ -12,6 +12,13 @@ use crate::{
     },
     proof::PointEvaluations,
 };
+use alloc::{
+    boxed::Box,
+    format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
@@ -23,11 +30,12 @@ use core::{
     iter::FromIterator,
     ops::{Add, AddAssign, Index, Mul, MulAssign, Neg, Sub},
 };
+use hashbrown::{HashMap, HashSet};
 use itertools::Itertools;
 use o1_utils::{field_helpers::pows, foreign_field::ForeignFieldHelpers, FieldHelpers};
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
 
@@ -1139,7 +1147,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
     ) -> Evaluations<F, D<F>> {
         let n = res_domain.1.size();
         Evaluations::<F, D<F>>::from_vec_and_domain(
-            (0..n).into_par_iter().map(g).collect(),
+            o1_utils::cfg_into_iter!(0..n).map(g).collect(),
             res_domain.1,
         )
     }
@@ -1159,7 +1167,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (Constant(x), Constant(y)) => Constant(x + y),
             (Evals { domain, mut evals }, Constant(x))
             | (Constant(x), Evals { domain, mut evals }) => {
-                evals.evals.par_iter_mut().for_each(|e| *e += x);
+                o1_utils::cfg_iter_mut!(evals.evals).for_each(|e| *e += x);
                 Evals { domain, evals }
             }
             (
@@ -1186,8 +1194,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
-                let v: Vec<_> = (0..n)
-                    .into_par_iter()
+                let v: Vec<_> = o1_utils::cfg_into_iter!(0..n)
                     .map(|i| {
                         x + evals.evals[(scale * i + (domain as usize) * shift) % evals.evals.len()]
                     })
@@ -1243,9 +1250,11 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
-                evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
-                    *e += es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
-                });
+                o1_utils::cfg_iter_mut!(evals.evals)
+                    .enumerate()
+                    .for_each(|(i, e)| {
+                        *e += es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
+                    });
                 Evals { evals, domain: d }
             }
             (
@@ -1275,8 +1284,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
                 let n = res_domain.1.size();
-                let v: Vec<_> = (0..n)
-                    .into_par_iter()
+                let v: Vec<_> = o1_utils::cfg_into_iter!(0..n)
                     .map(|i| {
                         es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
                             + es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
@@ -1296,11 +1304,11 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x - y),
             (Evals { domain, mut evals }, Constant(x)) => {
-                evals.evals.par_iter_mut().for_each(|e| *e -= x);
+                o1_utils::cfg_iter_mut!(evals.evals).for_each(|e| *e -= x);
                 Evals { domain, evals }
             }
             (Constant(x), Evals { domain, mut evals }) => {
-                evals.evals.par_iter_mut().for_each(|e| *e = x - *e);
+                o1_utils::cfg_iter_mut!(evals.evals).for_each(|e| *e = x - *e);
                 Evals { domain, evals }
             }
             (
@@ -1378,9 +1386,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
 
-                evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
-                    *e = es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()] - *e;
-                });
+                o1_utils::cfg_iter_mut!(evals.evals)
+                    .enumerate()
+                    .for_each(|(i, e)| {
+                        *e = es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()]
+                            - *e;
+                    });
                 Evals { evals, domain: d }
             }
             (
@@ -1401,9 +1412,11 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
-                evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
-                    *e -= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
-                });
+                o1_utils::cfg_iter_mut!(evals.evals)
+                    .enumerate()
+                    .for_each(|(i, e)| {
+                        *e -= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
+                    });
                 Evals { evals, domain: d }
             }
             (
@@ -1459,7 +1472,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         match self {
             Constant(x) => Constant(x.square()),
             Evals { domain, mut evals } => {
-                evals.evals.par_iter_mut().for_each(|e| {
+                o1_utils::cfg_iter_mut!(evals.evals).for_each(|e| {
                     e.square_in_place();
                 });
                 Evals { domain, evals }
@@ -1489,7 +1502,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (Constant(x), Constant(y)) => Constant(x * y),
             (Evals { domain, mut evals }, Constant(x))
             | (Constant(x), Evals { domain, mut evals }) => {
-                evals.evals.par_iter_mut().for_each(|e| *e *= x);
+                o1_utils::cfg_iter_mut!(evals.evals).for_each(|e| *e *= x);
                 Evals { domain, evals }
             }
             (
@@ -1566,9 +1579,11 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
 
-                evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
-                    *e *= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
-                });
+                o1_utils::cfg_iter_mut!(evals.evals)
+                    .enumerate()
+                    .for_each(|(i, e)| {
+                        *e *= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
+                    });
                 Evals { evals, domain: d }
             }
             (
@@ -2005,7 +2020,7 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
                     Either::Left(x) => {
                         let x = match x {
                             EvalResult::Evals { domain, mut evals } => {
-                                evals.evals.par_iter_mut().for_each(|x| {
+                                o1_utils::cfg_iter_mut!(evals.evals).for_each(|x| {
                                     x.double_in_place();
                                 });
                                 return Either::Left(EvalResult::Evals { domain, evals });
@@ -2221,7 +2236,7 @@ impl<F: FftField, Column: Copy + Debug, ChallengeTerm: Copy>
                 .get_column(idx)
                 .unwrap_or_else(|| panic!("Index polynomial {idx:?} not found"));
             let scale = e.evals.len() / n;
-            res.par_iter_mut()
+            o1_utils::cfg_iter_mut!(res)
                 .enumerate()
                 .for_each(|(i, r)| *r += c * e.evals[scale * i]);
         });
@@ -2260,7 +2275,7 @@ impl<F: FftField, Column: Debug + PartialEq + Copy, ChallengeTerm: Copy>
                 .get_column(idx)
                 .unwrap_or_else(|| panic!("Index polynomial {idx:?} not found"));
             let scale = e.evals.len() / n;
-            res.par_iter_mut()
+            o1_utils::cfg_iter_mut!(res)
                 .enumerate()
                 .for_each(|(i, r)| *r += c * e.evals[scale * i])
         });

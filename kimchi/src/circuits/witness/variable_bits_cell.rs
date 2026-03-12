@@ -1,4 +1,5 @@
 use super::{variables::Variables, WitnessCell};
+use alloc::{boxed::Box, vec::Vec};
 use ark_ff::Field;
 use o1_utils::FieldHelpers;
 

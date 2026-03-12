@@ -1,5 +1,6 @@
 //! Implementation of the `EndomulScalar` gate for the endomul scalar multiplication.
 //! This gate checks 8 rounds of the Algorithm 2 in the [Halo paper](https://eprint.iacr.org/2019/1021.pdf) per row.
+use alloc::{string::String, vec, vec::Vec};
 
 use crate::{
     circuits::{

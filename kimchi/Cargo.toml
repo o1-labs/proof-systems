@@ -24,16 +24,17 @@ ark-ff.workspace = true
 ark-poly.workspace = true
 ark-serialize.workspace = true
 blake2.workspace = true
+hashbrown.workspace = true
 hex.workspace = true
 itertools.workspace = true
 log.workspace = true
 num-bigint.workspace = true
 num-integer.workspace = true
 once_cell.workspace = true
-rand = { workspace = true, features = ["std_rng"] }
+rand = { workspace = true, features = ["std_rng"], optional = true }
 rand_core.workspace = true
-rayon.workspace = true
-rmp-serde.workspace = true
+rayon = { workspace = true, optional = true }
+rmp-serde = { workspace = true, optional = true }
 serde.workspace = true
 serde_with.workspace = true
 strum.workspace = true
@@ -52,7 +53,7 @@ groupmap.workspace = true
 mina-curves.workspace = true
 mina-poseidon.workspace = true
 o1-utils.workspace = true
-poly-commitment.workspace = true
+poly-commitment = { workspace = true, features = ["std"] }
 
 
 [dev-dependencies]
@@ -65,6 +66,10 @@ secp256k1.workspace = true
 # benchmarks
 criterion.workspace = true
 iai.workspace = true
+
+[[bin]]
+name = "flamegraph"
+required-features = ["prover"]
 
 [[bench]]
 name = "proof_criterion"
@@ -83,7 +88,10 @@ name = "amortization"
 harness = false
 
 [features]
-default = []
+default = ["prover"]
+std = ["rand", "rmp-serde", "o1-utils/std", "internal-tracing/std", "poly-commitment/std"]
+parallel = ["std", "rayon", "o1-utils/parallel", "poly-commitment/parallel"]
+prover = ["parallel"]
 internal_tracing = ["internal-tracing/enabled"]
 ocaml_types = [
   "ocaml",
