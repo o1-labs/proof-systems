@@ -1,5 +1,6 @@
 //! Range check table
 
+use alloc::vec;
 //~ The range check table is a single-column table containing the numbers from 0 to 2^12 (excluded).
 //~ This is used to check that the value fits in 12 bits.
 

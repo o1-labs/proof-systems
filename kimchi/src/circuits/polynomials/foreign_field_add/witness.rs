@@ -1,4 +1,5 @@
 //! This module computes the witness of a foreign field addition circuit.
+use alloc::{boxed::Box, vec, vec::Vec};
 
 use crate::{
     circuits::{
@@ -156,7 +157,7 @@ pub fn create_chain<F: PrimeField>(
     for i in 0..num {
         // Create foreign field addition row
         for w in &mut witness {
-            w.extend(std::iter::repeat_n(F::zero(), 1));
+            w.extend(core::iter::repeat_n(F::zero(), 1));
         }
         let right = ForeignElement::from_biguint(&inputs[i + 1]);
         let (output, _sign, ovf, carry) =
@@ -298,7 +299,7 @@ pub fn extend_witness_bound_addition<F: PrimeField>(
     // Extend the witness for the add gate
     let offset = witness[0].len();
     for col in witness.iter_mut().take(COLUMNS) {
-        col.extend(std::iter::repeat_n(F::zero(), 2))
+        col.extend(core::iter::repeat_n(F::zero(), 2))
     }
 
     init_bound_rows(

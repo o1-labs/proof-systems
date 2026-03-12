@@ -1,4 +1,5 @@
 //! Range check witness computation
+use alloc::{boxed::Box, vec, vec::Vec};
 
 use ark_ff::PrimeField;
 use core::array;

@@ -8,6 +8,12 @@ use crate::circuits::{
         tables::LookupTable,
     },
 };
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 use ark_ff::{FftField, PrimeField};
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
@@ -285,9 +291,9 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
 
                             // it's 1 everywhere, except at the entries where
                             // the runtime table applies
-                            evals.extend(std::iter::repeat_n(F::one(), runtime_table_offset));
-                            evals.extend(std::iter::repeat_n(F::zero(), runtime_len));
-                            evals.extend(std::iter::repeat_n(
+                            evals.extend(core::iter::repeat_n(F::one(), runtime_table_offset));
+                            evals.extend(core::iter::repeat_n(F::zero(), runtime_len));
+                            evals.extend(core::iter::repeat_n(
                                 F::one(),
                                 d1_size - runtime_table_offset - runtime_len,
                             ));
@@ -402,7 +408,7 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
                     //~~ * Update the corresponding entries in a table id vector (of size the domain as well)
                     //~    with the table ID of the table.
                     let table_id: F = i32_to_field(table.id);
-                    table_ids.extend(std::iter::repeat_n(table_id, table_len));
+                    table_ids.extend(core::iter::repeat_n(table_id, table_len));
 
                     //~~ * Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
                     for (i, col) in table.data.iter().enumerate() {
@@ -415,7 +421,7 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
 
                     //~~ * Fill in any unused columns with 0 (to match the dummy value)
                     for lookup_table in lookup_table.iter_mut().skip(table.width()) {
-                        lookup_table.extend(std::iter::repeat_n(F::zero(), table_len));
+                        lookup_table.extend(core::iter::repeat_n(F::zero(), table_len));
                     }
                 }
 
@@ -444,11 +450,11 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
                 //     If no such table is used, we artificially add a dummy
                 //     table with ID 0 and a row containing only zeroes.
                 lookup_table.iter_mut().for_each(|col| {
-                    col.extend(std::iter::repeat_n(F::zero(), max_num_entries - col.len()))
+                    col.extend(core::iter::repeat_n(F::zero(), max_num_entries - col.len()))
                 });
 
                 //~ 7. Pad the end of the table id vector with 0s.
-                table_ids.extend(std::iter::repeat_n(
+                table_ids.extend(core::iter::repeat_n(
                     F::zero(),
                     max_num_entries - table_ids.len(),
                 ));
@@ -496,7 +502,7 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
 
     use super::{LookupError, LookupTable, RuntimeTableCfg};

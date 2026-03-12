@@ -1,6 +1,8 @@
 //! This module implements the verifier index as [`VerifierIndex`].
 //! You can derive this struct from the [`ProverIndex`] struct.
 
+#[cfg(feature = "prover")]
+use crate::prover_index::ProverIndex;
 use crate::{
     alphas::Alphas,
     circuits::{
@@ -11,10 +13,13 @@ use crate::{
         wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
-    prover_index::ProverIndex,
 };
-use ark_ff::{One, PrimeField};
+use alloc::{sync::Arc, vec::Vec};
+#[cfg(feature = "prover")]
+use ark_ff::One;
+use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
+#[cfg(feature = "prover")]
 use core::array;
 use mina_poseidon::FqSponge;
 use once_cell::sync::OnceCell;
@@ -24,11 +29,11 @@ use poly_commitment::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+#[cfg(feature = "std")]
 use std::{
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter, Seek, SeekFrom::Start},
     path::Path,
-    sync::Arc,
 };
 
 //~spec:startcode
@@ -152,6 +157,7 @@ pub struct VerifierIndex<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, 
 }
 //~spec:endcode
 
+#[cfg(feature = "prover")]
 impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, Srs: SRS<G>>
     ProverIndex<FULL_ROUNDS, G, Srs>
 where
@@ -342,6 +348,7 @@ impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, Srs>
     /// # Errors
     ///
     /// Will give error if it fails to deserialize from file or unable to set `srs` in `verifier_index`.
+    #[cfg(feature = "std")]
     pub fn from_file(
         srs: Arc<Srs>,
         path: &Path,
@@ -381,6 +388,7 @@ impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, Srs>
     /// # Panics
     ///
     /// Will panic if `path` is invalid or `file serialization` has issue.
+    #[cfg(feature = "std")]
     pub fn to_file(&self, path: &Path, append: Option<bool>) -> Result<(), String> {
         let append = append.unwrap_or(true);
         let file = OpenOptions::new()

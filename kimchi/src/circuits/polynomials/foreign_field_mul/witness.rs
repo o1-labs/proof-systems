@@ -1,4 +1,5 @@
 //! Foreign field multiplication witness computation
+use alloc::{boxed::Box, vec, vec::Vec};
 
 use crate::{
     auto_clone_array,
@@ -198,7 +199,7 @@ pub fn create<F: PrimeField>(
 
     // Extend the witness by two rows for foreign field multiplication
     for w in &mut witness {
-        w.extend(std::iter::repeat_n(F::zero(), 2));
+        w.extend(core::iter::repeat_n(F::zero(), 2));
     }
 
     // Create the foreign field multiplication witness rows
@@ -329,7 +330,7 @@ impl<F: PrimeField> ExternalChecks<F> {
         for chunk in self.high_bounds.clone().chunks(2) {
             // Extend the witness for the generic gate
             for col in witness.iter_mut().take(COLUMNS) {
-                col.extend(std::iter::repeat_n(F::zero(), 1))
+                col.extend(core::iter::repeat_n(F::zero(), 1))
             }
             let last_row = witness[0].len() - 1;
             // Fill in with dummy if it is an odd number of bounds

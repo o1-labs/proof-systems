@@ -1,4 +1,5 @@
 //! Foreign field addition gate.
+use alloc::{vec, vec::Vec};
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},

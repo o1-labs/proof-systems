@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use kimchi::collections::HashMap;
 
 use kimchi::circuits::expr::{CacheId, FormattedOutput};
 

@@ -1,4 +1,5 @@
 //! Common parameters and functions for kimchi's foreign field circuits.
+use alloc::vec::Vec;
 
 use o1_utils::{
     field_helpers::FieldHelpers,

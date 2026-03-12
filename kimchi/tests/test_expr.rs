@@ -1,3 +1,5 @@
+#![cfg(feature = "prover")]
+
 use ark_ff::{Field, One, UniformRand, Zero};
 use ark_poly::{domain::EvaluationDomain, univariate::DensePolynomial};
 use core::array;
@@ -13,6 +15,7 @@ use kimchi::{
         polynomials::generic::GenericGateSpec,
         wires::{Wire, COLUMNS},
     },
+    collections::{HashMap, HashSet},
     curve::KimchiCurve,
     prover_index::ProverIndex,
 };
@@ -22,10 +25,7 @@ use poly_commitment::{
     SRS as _,
 };
 use rand::{prelude::StdRng, SeedableRng};
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 #[test]
 #[should_panic]

@@ -1,4 +1,5 @@
 use crate::circuits::lookup::tables::{LookupTable, XOR_TABLE_ID};
+use alloc::vec;
 use ark_ff::Field;
 
 //~ The lookup table for 4-bit xor.

@@ -23,6 +23,7 @@ use crate::{
         },
         wires::{COLUMNS, PERMUTS},
     },
+    collections::HashMap,
     curve::KimchiCurve,
     error::ProverError,
     lagrange_basis_evaluations::LagrangeBasisEvaluations,
@@ -52,7 +53,6 @@ use poly_commitment::{
 };
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
-use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
 type Result<T> = core::result::Result<T, ProverError>;

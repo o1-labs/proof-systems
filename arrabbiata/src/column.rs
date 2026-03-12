@@ -1,6 +1,8 @@
 use crate::{challenge::ChallengeTerm, interpreter::Instruction};
-use kimchi::circuits::expr::{CacheId, ConstantExpr, Expr, FormattedOutput};
-use std::collections::HashMap;
+use kimchi::{
+    circuits::expr::{CacheId, ConstantExpr, Expr, FormattedOutput},
+    collections::HashMap,
+};
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
 use crate::NUMBER_OF_COLUMNS;
