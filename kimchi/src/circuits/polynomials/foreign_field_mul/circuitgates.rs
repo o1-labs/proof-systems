@@ -1,4 +1,5 @@
 //! Foreign field multiplication
+use alloc::{vec, vec::Vec};
 
 //~ This gadget is used to constrain that
 //~

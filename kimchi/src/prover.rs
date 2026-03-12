@@ -40,6 +40,7 @@ use ark_poly::{
     Radix2EvaluationDomain as D,
 };
 use core::array;
+use hashbrown::HashMap;
 use itertools::Itertools;
 use mina_poseidon::{poseidon::ArithmeticSpongeParams, sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial as _;
@@ -52,7 +53,6 @@ use poly_commitment::{
 };
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
-use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
 type Result<T> = core::result::Result<T, ProverError>;

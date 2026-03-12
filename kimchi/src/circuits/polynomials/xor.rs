@@ -17,6 +17,7 @@ use crate::{
     },
     variable_map,
 };
+use alloc::{boxed::Box, vec, vec::Vec};
 use ark_ff::PrimeField;
 use core::{array, marker::PhantomData};
 use num_bigint::BigUint;

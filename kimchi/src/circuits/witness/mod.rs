@@ -1,3 +1,4 @@
+use alloc::{boxed::Box, vec::Vec};
 use ark_ff::{Field, PrimeField};
 
 mod constant_cell;
@@ -86,7 +87,7 @@ pub fn init<F: PrimeField, T, const W: usize>(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use core::array;
 

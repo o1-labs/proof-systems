@@ -1,3 +1,5 @@
+#![cfg(feature = "prover")]
+
 use ark_ff::Zero;
 use kimchi::circuits::{
     constraints::ConstraintSystem,

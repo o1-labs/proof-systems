@@ -4,6 +4,7 @@
 //! Gates can be seen as filtered arguments,
 //! which apply only in some points (rows) of the domain.
 //! For more info, read book/src/kimchi/arguments.md
+use alloc::vec::Vec;
 
 use core::marker::PhantomData;
 

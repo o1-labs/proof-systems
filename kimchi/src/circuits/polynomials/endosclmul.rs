@@ -191,6 +191,7 @@
 //!
 //! - Halo paper, Section 6.2: <https://eprint.iacr.org/2019/1021>
 //! - GLV method: <https://www.iacr.org/archive/crypto2001/21390189.pdf>
+use alloc::{format, string::String, vec, vec::Vec};
 
 use crate::{
     circuits::{
