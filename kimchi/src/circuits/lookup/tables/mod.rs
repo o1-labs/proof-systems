@@ -23,6 +23,26 @@ pub enum GateLookupTable {
     RangeCheck,
 }
 
+/// Canonical ordering for deterministic lookup table construction,
+/// enforces RangeCheck before Xor to achieve determinism and backwards compatibility with existing orderings
+impl PartialOrd for GateLookupTable {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for GateLookupTable {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        fn sort_key(t: &GateLookupTable) -> u8 {
+            match t {
+                GateLookupTable::RangeCheck => 0,
+                GateLookupTable::Xor => 1,
+            }
+        }
+        sort_key(self).cmp(&sort_key(other))
+    }
+}
+
 /// Enumerates the different 'fixed' lookup tables used by individual gates
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GateLookupTables {
