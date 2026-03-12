@@ -446,8 +446,9 @@ impl<F: Copy, ChallengeTerm: Copy> Operations<ConstantExprInner<F, ChallengeTerm
                 }
 
                 {
-                    // False branch
-                    let tok = PolishToken::SkipIfNot(*feature, 0);
+                    // False branch — use SkipIf (opposite polarity) so that
+                    // exactly one branch evaluates per IfFeature.
+                    let tok = PolishToken::SkipIf(*feature, 0);
                     res.push(tok);
                     let len_before = res.len();
                     /* Clone the cache, to make sure we don't try to access cached statements later
@@ -455,7 +456,7 @@ impl<F: Copy, ChallengeTerm: Copy> Operations<ConstantExprInner<F, ChallengeTerm
                     let mut cache = cache.clone();
                     if_false.to_polish(&mut cache, res);
                     let len_after = res.len();
-                    res[len_before - 1] = PolishToken::SkipIfNot(*feature, len_after - len_before);
+                    res[len_before - 1] = PolishToken::SkipIf(*feature, len_after - len_before);
                 }
             }
         }
@@ -1711,8 +1712,9 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> Expr<ConstantExpr<F, Challe
                 }
 
                 {
-                    // False branch
-                    let tok = PolishToken::SkipIfNot(*feature, 0);
+                    // False branch — use SkipIf (opposite polarity) so that
+                    // exactly one branch evaluates per IfFeature.
+                    let tok = PolishToken::SkipIf(*feature, 0);
                     res.push(tok);
                     let len_before = res.len();
                     /* Clone the cache, to make sure we don't try to access cached statements later
@@ -1720,7 +1722,7 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> Expr<ConstantExpr<F, Challe
                     let mut cache = cache.clone();
                     e2.to_polish_(&mut cache, res);
                     let len_after = res.len();
-                    res[len_before - 1] = PolishToken::SkipIfNot(*feature, len_after - len_before);
+                    res[len_before - 1] = PolishToken::SkipIf(*feature, len_after - len_before);
                 }
             }
         }
