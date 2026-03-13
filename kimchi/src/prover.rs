@@ -1406,13 +1406,22 @@ where
                 ))
             }
             if let Some(xor_lookup_selector) = &lcs.lookup_selectors.xor {
-                polynomials.push((evaluations_form(xor_lookup_selector), non_hiding(num_chunks)))
+                polynomials.push((
+                    evaluations_form(xor_lookup_selector),
+                    non_hiding(num_chunks),
+                ))
             }
             if let Some(lookup_gate_selector) = &lcs.lookup_selectors.lookup {
-                polynomials.push((evaluations_form(lookup_gate_selector), non_hiding(num_chunks)))
+                polynomials.push((
+                    evaluations_form(lookup_gate_selector),
+                    non_hiding(num_chunks),
+                ))
             }
             if let Some(range_check_lookup_selector) = &lcs.lookup_selectors.range_check {
-                polynomials.push((evaluations_form(range_check_lookup_selector), non_hiding(num_chunks)))
+                polynomials.push((
+                    evaluations_form(range_check_lookup_selector),
+                    non_hiding(num_chunks),
+                ))
             }
             if let Some(foreign_field_mul_lookup_selector) = &lcs.lookup_selectors.ffmul {
                 polynomials.push((
