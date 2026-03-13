@@ -9,9 +9,16 @@ and this project adheres to
 
 ## Unreleased
 
+### Changed
+
 - Enforce deterministic ordering of gate lookup tables by replacing `HashSet`
   with  
   `BTreeSet` ([#3539](https://github.com/o1-labs/proof-systems/pull/3539))
+
+### Fixed
+
+- Fix lookup selector polynomials to work correctly when chunking is in place
+  ([#3541](https://github.com/o1-labs/proof-systems/pull/3541))
 
 ## 0.5.0
 
