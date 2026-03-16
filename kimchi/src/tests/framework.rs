@@ -75,6 +75,7 @@ pub(crate) struct TestFramework<
     verifier_index: Option<VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>>,
 
     with_logs: bool,
+    fixture_name: Option<&'static str>,
 }
 
 #[derive(Clone)]
@@ -154,6 +155,12 @@ where
 
     pub(crate) fn with_logs(mut self, with_logs: bool) -> Self {
         self.with_logs = with_logs;
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn fixture_name(mut self, name: &'static str) -> Self {
+        self.fixture_name = Some(name);
         self
     }
 
@@ -315,8 +322,11 @@ where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         EFrSponge: FrSponge<G::ScalarField>
             + From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
+        ProverProof<G, OpeningProof, FULL_ROUNDS>: serde::Serialize,
+        VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: serde::Serialize,
     {
         let prover = self.0.prover_index.unwrap();
+        let verifier_index = self.0.verifier_index.unwrap();
         let witness = self.0.witness.unwrap();
 
         if !self.0.disable_gates_checks {
@@ -364,7 +374,7 @@ where
         let start = Instant::now();
         verify::<FULL_ROUNDS, G, EFqSponge, EFrSponge, OpeningProof>(
             &group_map,
-            &self.0.verifier_index.unwrap(),
+            &verifier_index,
             &proof,
             &self.0.public_inputs,
         )
@@ -376,6 +386,33 @@ where
                 "- heap after verifying proof: {:?} MB",
                 bytes / (1024 * 1024)
             );
+        }
+
+        #[cfg(feature = "save-test-proofs")]
+        if let Some(name) = self.0.fixture_name {
+            use super::fixtures::RawFixture;
+            use ark_serialize::CanonicalSerialize;
+
+            let mut public_inputs_buf = Vec::new();
+            for fp in &self.0.public_inputs {
+                fp.serialize_compressed(&mut public_inputs_buf).unwrap();
+            }
+
+            let fixture = RawFixture {
+                proof_bytes: rmp_serde::to_vec(&proof).unwrap(),
+                verifier_index_bytes: rmp_serde::to_vec(&verifier_index).unwrap(),
+                public_inputs_bytes: public_inputs_buf,
+                num_public_inputs: self.0.public_inputs.len(),
+                feature_flags: prover.cs.feature_flags,
+            };
+
+            let bytes = rmp_serde::to_vec(&fixture).unwrap();
+            let fixtures_dir =
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/tests/fixtures");
+            std::fs::create_dir_all(&fixtures_dir).unwrap();
+            let path = fixtures_dir.join(format!("{name}.bin"));
+            std::fs::write(&path, &bytes).unwrap();
+            println!("Fixture written to {}", path.display());
         }
 
         Ok(())

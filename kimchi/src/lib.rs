@@ -60,7 +60,7 @@ pub mod prover_index;
 pub mod verifier;
 pub mod verifier_index;
 
-#[cfg(all(test, feature = "prover"))]
+#[cfg(test)]
 mod tests;
 
 /// Handy macro to return the filename and line number of a place in the code.

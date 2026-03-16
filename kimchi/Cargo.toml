@@ -59,6 +59,8 @@ poly-commitment = { workspace = true, features = ["std"] }
 [dev-dependencies]
 proptest.workspace = true
 proptest-derive.workspace = true
+rand.workspace = true
+rmp-serde.workspace = true
 serde_json.workspace = true
 num-bigint.workspace = true
 secp256k1.workspace = true
@@ -108,5 +110,6 @@ ocaml_types = [
 ]
 bn254 = ["ark-bn254"]
 wasm_types = ["wasm-bindgen"]
+save-test-proofs = ["prover"]
 check_feature_flags = []
 diagnostics = ["tikv-jemalloc-ctl", "tikv-jemallocator"]
