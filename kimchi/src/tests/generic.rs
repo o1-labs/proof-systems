@@ -18,6 +18,9 @@ use mina_poseidon::{
 };
 
 #[cfg(not(feature = "prover"))]
+use mina_curves::pasta::{Fq, Pallas, PallasParameters};
+
+#[cfg(not(feature = "prover"))]
 use {
     super::fixtures::RawFixture,
     crate::{
@@ -80,6 +83,47 @@ pub(super) fn load_and_verify_fixture(fixture_bytes: &[u8]) {
         BaseSponge<VestaParameters>,
         ScalarSponge<Fp>,
         OpeningProof<Vesta, FULL_ROUNDS>,
+        _,
+    >(
+        &group_map,
+        &vi,
+        &proof,
+        &public_inputs,
+        &mut rand::rngs::OsRng,
+    )
+    .unwrap();
+}
+
+#[cfg(not(feature = "prover"))]
+pub(super) fn load_and_verify_fixture_pallas(fixture_bytes: &[u8]) {
+    let fixture: RawFixture = rmp_serde::from_slice(fixture_bytes).unwrap();
+    let proof: ProverProof<Pallas, OpeningProof<Pallas, FULL_ROUNDS>, FULL_ROUNDS> =
+        rmp_serde::from_slice(&fixture.proof_bytes).unwrap();
+    let mut vi: VerifierIndex<FULL_ROUNDS, Pallas, SRS<Pallas>> =
+        rmp_serde::from_slice(&fixture.verifier_index_bytes).unwrap();
+
+    let mut public_inputs = Vec::with_capacity(fixture.num_public_inputs);
+    let mut cursor = &fixture.public_inputs_bytes[..];
+    for _ in 0..fixture.num_public_inputs {
+        public_inputs.push(Fq::deserialize_compressed(&mut cursor).unwrap());
+    }
+
+    // Reconstruct serde(skip) fields
+    let srs = SRS::<Pallas>::create(vi.max_poly_size);
+    srs.get_lagrange_basis(vi.domain);
+    vi.srs = Arc::new(srs);
+    vi.endo = endos::<Vesta>().0;
+    let (linearization, powers_of_alpha) = expr_linearization(Some(&fixture.feature_flags), true);
+    vi.linearization = linearization;
+    vi.powers_of_alpha = powers_of_alpha;
+
+    let group_map = <Pallas as CommitmentCurve>::Map::setup();
+    verify_with_rng::<
+        FULL_ROUNDS,
+        Pallas,
+        BaseSponge<PallasParameters>,
+        ScalarSponge<Fq>,
+        OpeningProof<Pallas, FULL_ROUNDS>,
         _,
     >(
         &group_map,

@@ -1,4 +1,6 @@
+#[cfg(feature = "prover")]
 use super::framework::TestFramework;
+#[cfg(feature = "prover")]
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
@@ -17,136 +19,175 @@ use crate::{
     curve::KimchiCurve,
     prover_index::ProverIndex,
 };
+#[cfg(feature = "prover")]
 use ark_ec::AffineRepr;
+#[cfg(feature = "prover")]
 use ark_ff::{One, PrimeField, Zero};
+#[cfg(feature = "prover")]
 use ark_poly::EvaluationDomain;
+#[cfg(feature = "prover")]
 use core::array;
+#[cfg(feature = "prover")]
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
+#[cfg(feature = "prover")]
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+#[cfg(feature = "prover")]
 use num_bigint::{BigUint, RandBigInt};
+#[cfg(feature = "prover")]
 use o1_utils::{foreign_field::ForeignElement, tests::make_test_rng, FieldHelpers, Two};
+#[cfg(feature = "prover")]
 use poly_commitment::{
     ipa::{endos, OpeningProof, SRS},
     OpenProof, SRS as _,
 };
+#[cfg(feature = "prover")]
 use rand::{rngs::StdRng, Rng};
+#[cfg(feature = "prover")]
 use std::sync::Arc;
 
+#[cfg(not(feature = "prover"))]
+use super::generic::load_and_verify_fixture;
+
+#[cfg(feature = "prover")]
 type PallasField = <Pallas as AffineRepr>::BaseField;
+#[cfg(feature = "prover")]
 type VestaField = <Vesta as AffineRepr>::BaseField;
 
+#[cfg(feature = "prover")]
 type SpongeParams = PlonkSpongeConstantsKimchi;
 
+#[cfg(feature = "prover")]
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
+#[cfg(feature = "prover")]
 // The secp256k1 base field modulus
 fn secp256k1_modulus() -> BigUint {
     BigUint::from_bytes_be(&secp256k1::constants::FIELD_SIZE)
 }
 
+#[cfg(feature = "prover")]
 // Maximum value in the foreign field of secp256k1
 fn secp256k1_max() -> BigUint {
     secp256k1_modulus() - BigUint::from(1u32)
 }
 
+#[cfg(feature = "prover")]
 // A value that produces a negative low carry when added to itself
 static OVF_NEG_LO: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
+#[cfg(feature = "prover")]
 // A value that produces a negative middle carry when added to itself
 static OVF_NEG_MI: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2E,
 ];
 
+#[cfg(feature = "prover")]
 // A value that produces overflow but the high limb of the result is smaller than the high limb of the modulus
 static OVF_LESS_HI_LEFT: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2E,
 ];
+#[cfg(feature = "prover")]
 static OVF_LESS_HI_RIGHT: &[u8] = &[
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x03, 0xD1,
 ];
 
+#[cfg(feature = "prover")]
 // A value that produces two negative carries when added together with [OVF_ZERO_MI_NEG_LO]
 static OVF_NEG_BOTH: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
+#[cfg(feature = "prover")]
 // A value that produces two negative carries when added to itself with a middle limb that is all zeros
 static OVF_ZERO_MI_NEG_LO: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
+#[cfg(feature = "prover")]
 // All 0x55 bytes meaning [0101 0101]
 static TIC: &[u8] = &[
     0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
     0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
 ];
 
+#[cfg(feature = "prover")]
 // Prefix 0xAA bytes but fits in foreign field (suffix is zeros)
 static TOC: &[u8] = &[
     0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
     0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
+#[cfg(feature = "prover")]
 // Bytestring that produces carry in low limb when added to TIC
 static TOC_LO: &[u8] = &[
     0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
     0xAA, 0xAA, 0xAA, 0xAA, 0xA9, 0xBA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
+#[cfg(feature = "prover")]
 // Bytestring that produces carry in mid limb when added to TIC
 static TOC_MI: &[u8] = &[
     0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xA9, 0xBA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
     0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
+#[cfg(feature = "prover")]
 // Bytestring that produces carry in low and mid limb when added to TIC
 static TOC_TWO: &[u8] = &[
     0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xA9, 0xBA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
     0xAA, 0xAA, 0xAA, 0xAA, 0xA9, 0xBA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
+#[cfg(feature = "prover")]
 //  Bottom half of the secp256k1 base field modulus
 fn secp256k1_modulus_bottom() -> BigUint {
     BigUint::from_bytes_be(&secp256k1::constants::FIELD_SIZE[16..])
 }
 
+#[cfg(feature = "prover")]
 // Top half of the secp256k1 base field modulus
 fn secp256k1_modulus_top() -> BigUint {
     let bytes = [&secp256k1::constants::FIELD_SIZE[0..16], &[0; 16]].concat();
     BigUint::from_bytes_be(&bytes)
 }
 
+#[cfg(feature = "prover")]
 // returns the maximum value for a field of modulus size
 fn field_max(modulus: BigUint) -> BigUint {
     modulus - 1u32
 }
 
+#[cfg(feature = "prover")]
 // Value that performs a + - 1 low carry when added to [MAX]
 static NULL_CARRY_LO: &[u8] = &[0x01, 0x00, 0x00, 0x03, 0xD2];
 
+#[cfg(feature = "prover")]
 // Value that performs a + - 1 middle carry when added to [MAX]
 static NULL_CARRY_MI: &[u8] = &[
     0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
 ];
 
+#[cfg(feature = "prover")]
 // Value that performs two + - 1 carries when added to [MAX]
 static NULL_CARRY_BOTH: &[u8] = &[
     0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x03, 0xD2,
 ];
 
+#[cfg(feature = "prover")]
 impl<F: PrimeField> CircuitGate<F> {
     /// Check if a given circuit gate is a given foreign field operation
     pub fn check_ffadd_sign(&self, sign: FFOps) -> Result<(), String> {
@@ -169,6 +210,7 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 }
 
+#[cfg(feature = "prover")]
 // Creates a circuit including the public input, chain of additions only
 // Inputs
 //  operations
@@ -202,6 +244,7 @@ fn short_circuit<F: PrimeField>(
     (curr_row, gates)
 }
 
+#[cfg(feature = "prover")]
 // Creates a circuit including the public input, chain of additions and rangechecks for all of the involved values
 // Inputs
 //  operations
@@ -258,6 +301,7 @@ fn full_circuit<F: PrimeField>(
     (next_row, gates)
 }
 
+#[cfg(feature = "prover")]
 // Creates the witness with the public input for FFAdd containing the 1 value
 fn short_witness<F: PrimeField>(
     inputs: &[BigUint],
@@ -275,6 +319,7 @@ fn short_witness<F: PrimeField>(
 
 // Creates a long witness including the chain of additions and rangechecks for all of the involved values
 // inputs: list of all inputs to the chain of additions/subtractions
+#[cfg(feature = "prover")]
 // opcode: true for addition, false for subtraction
 // modulus: modulus of the foreign field
 fn long_witness<F: PrimeField>(
@@ -309,6 +354,7 @@ fn long_witness<F: PrimeField>(
     witness
 }
 
+#[cfg(feature = "prover")]
 fn create_test_constraint_system_ffadd(
     opcodes: &[FFOps],
     foreign_field_modulus: BigUint,
@@ -333,6 +379,7 @@ fn create_test_constraint_system_ffadd(
     ProverIndex::create(cs, endo_q, srs, false)
 }
 
+#[cfg(feature = "prover")]
 // helper to reduce lines of code in repetitive test structure
 fn test_ffadd(
     foreign_field_modulus: BigUint,
@@ -368,6 +415,7 @@ fn test_ffadd(
     (witness, index)
 }
 
+#[cfg(feature = "prover")]
 // checks that the result cells of the witness are computed as expected
 fn check_result(
     witness: [Vec<PallasField>; COLUMNS],
@@ -381,16 +429,19 @@ fn check_result(
 }
 
 // checks the result of the overflow bit for one addition
+#[cfg(feature = "prover")]
 fn check_ovf(witness: [Vec<PallasField>; COLUMNS], ovf: PallasField) {
     assert_eq!(witness[6][1], ovf);
 }
 
 // checks the result of the carry bits for one addition
+#[cfg(feature = "prover")]
 fn check_carry(witness: [Vec<PallasField>; COLUMNS], carry: PallasField) {
     assert_eq!(witness[7][1], carry);
 }
 
 // computes the result of an addition
+#[cfg(feature = "prover")]
 fn compute_sum(modulus: BigUint, left: &[u8], right: &[u8]) -> BigUint {
     let left_big = BigUint::from_bytes_be(left);
     let right_big = BigUint::from_bytes_be(right);
@@ -398,6 +449,7 @@ fn compute_sum(modulus: BigUint, left: &[u8], right: &[u8]) -> BigUint {
 }
 
 // computes the result of a subtraction
+#[cfg(feature = "prover")]
 fn compute_dif(modulus: BigUint, left: &[u8], right: &[u8]) -> BigUint {
     let left_big = BigUint::from_bytes_be(left);
     let right_big = BigUint::from_bytes_be(right);
@@ -409,6 +461,7 @@ fn compute_dif(modulus: BigUint, left: &[u8], right: &[u8]) -> BigUint {
 }
 
 // obtains a random input of 32 bytes that fits in the foreign modulus
+#[cfg(feature = "prover")]
 fn random_input(rng: &mut StdRng, modulus: BigUint, large: bool) -> Vec<u8> {
     let mut random_str = vec![];
     let two = BigUint::from(2u32);
@@ -425,6 +478,7 @@ fn random_input(rng: &mut StdRng, modulus: BigUint, large: bool) -> Vec<u8> {
 }
 
 // obtains a random operation
+#[cfg(feature = "prover")]
 fn random_operation(rng: &mut StdRng) -> FFOps {
     let op: u32 = rng.gen_range(0..2);
     match op {
@@ -434,6 +488,7 @@ fn random_operation(rng: &mut StdRng) -> FFOps {
     }
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Add zero to zero. This checks that small amounts also get packed into limbs
 fn test_zero_add() {
@@ -445,6 +500,7 @@ fn test_zero_add() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Adding terms that are zero modulo the foreign field
 fn test_zero_sum_foreign() {
@@ -457,6 +513,7 @@ fn test_zero_sum_foreign() {
     check_result(witness, vec![ForeignElement::zero()]);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Adding terms that are zero modulo the native field
 fn test_zero_sum_native() {
@@ -475,6 +532,7 @@ fn test_zero_sum_native() {
     check_result(witness, vec![native_limbs]);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_one_plus_one() {
     let (witness, _index) = test_ffadd(
@@ -488,6 +546,7 @@ fn test_one_plus_one() {
     check_result(witness, vec![two]);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Adds two terms that are the maximum value in the foreign field
 fn test_max_number() {
@@ -506,6 +565,7 @@ fn test_max_number() {
     check_result(witness, vec![sum_mod_limbs]);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // test 0 - 1 where (-1) is in the foreign field
 // this is tested first as 0 + neg(1)
@@ -536,6 +596,7 @@ fn test_zero_minus_one() {
     check_result(witness_sub, vec![right_for_neg]);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // test 1 - 1 + 1 where (-1) is in the foreign field
 // the first check is done with sub(1, 1) and then with add(neg(neg(1)))
@@ -561,6 +622,7 @@ fn test_one_minus_one_plus_one() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // test -1-1 where (-1) is in the foreign field
 // first tested as neg(1) + neg(1)
@@ -590,6 +652,7 @@ fn test_minus_minus() {
     check_result(witness_sub, vec![neg_one_for, neg_two]);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // test when the low carry is minus one
 fn test_neg_carry_lo() {
@@ -605,6 +668,7 @@ fn test_neg_carry_lo() {
     check_carry(witness, PallasField::zero());
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // test when the middle carry is minus one
 fn test_neg_carry_mi() {
@@ -620,6 +684,7 @@ fn test_neg_carry_mi() {
     check_carry(witness, -PallasField::one());
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // test when there is negative low carry and 0 middle limb (carry bit propagates)
 fn test_propagate_carry() {
@@ -635,6 +700,7 @@ fn test_propagate_carry() {
     check_carry(witness, -PallasField::one());
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // test when the both carries are minus one
 fn test_neg_carries() {
@@ -650,6 +716,7 @@ fn test_neg_carries() {
     check_carry(witness, -PallasField::one());
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // test the upperbound of the result
 fn test_upperbound() {
@@ -664,6 +731,7 @@ fn test_upperbound() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // test a carry that nullifies in the low limb
 fn test_null_lo_carry() {
@@ -676,6 +744,7 @@ fn test_null_lo_carry() {
     check_carry(witness, PallasField::zero());
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // test a carry that nullifies in the mid limb
 fn test_null_mi_carry() {
@@ -688,6 +757,7 @@ fn test_null_mi_carry() {
     check_carry(witness, PallasField::zero());
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // test a carry that nullifies in the mid limb
 fn test_null_both_carry() {
@@ -700,6 +770,7 @@ fn test_null_both_carry() {
     check_carry(witness, PallasField::zero());
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // test sums without carry bits in any limb
 fn test_no_carry_limbs() {
@@ -715,6 +786,7 @@ fn test_no_carry_limbs() {
     assert_eq!(witness[1][2], all_one_limb);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // test sum with carry only in low part
 fn test_pos_carry_limb_lo() {
@@ -727,6 +799,7 @@ fn test_pos_carry_limb_lo() {
     check_carry(witness, PallasField::zero());
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_pos_carry_limb_mid() {
     let (witness, _index) = test_ffadd(
@@ -738,6 +811,7 @@ fn test_pos_carry_limb_mid() {
     check_carry(witness, PallasField::one());
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_pos_carry_limb_lo_mid() {
     let (witness, _index) = test_ffadd(
@@ -749,6 +823,7 @@ fn test_pos_carry_limb_lo_mid() {
     check_carry(witness, PallasField::one());
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Check it fails if given a wrong result (sum)
 fn test_wrong_sum() {
@@ -774,6 +849,7 @@ fn test_wrong_sum() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Check it fails if given a wrong result (difference)
 fn test_wrong_dif() {
@@ -798,6 +874,7 @@ fn test_wrong_dif() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test subtraction of the foreign field
 fn test_zero_sub_fmod() {
@@ -811,6 +888,7 @@ fn test_zero_sub_fmod() {
     check_result(witness, vec![ForeignElement::zero()]);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test subtraction of the foreign field maximum value
 fn test_zero_sub_fmax() {
@@ -828,6 +906,7 @@ fn test_zero_sub_fmax() {
 // The order of the Pallas curve is 0x40000000000000000000000000000000224698fc0994a8dd8c46eb2100000001.
 // The order of the Vesta curve is  0x40000000000000000000000000000000224698fc094cf91b992d30ed00000001.
 
+#[cfg(feature = "prover")]
 #[test]
 // Test with Pasta curves where foreign field is smaller than the native field
 fn test_pasta_add_max_vesta() {
@@ -844,6 +923,7 @@ fn test_pasta_add_max_vesta() {
     check_result(witness, vec![right_foreign]);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test with Pasta curves where foreign field is smaller than the native field
 fn test_pasta_sub_max_vesta() {
@@ -860,6 +940,7 @@ fn test_pasta_sub_max_vesta() {
     check_result(witness, vec![neg_max_vesta]);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test with Pasta curves where foreign field is smaller than the native field
 fn test_pasta_add_max_pallas() {
@@ -876,6 +957,7 @@ fn test_pasta_add_max_pallas() {
     check_result(witness, vec![foreign_right]);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test with Pasta curves where foreign field is smaller than the native field
 fn test_pasta_sub_max_pallas() {
@@ -892,6 +974,7 @@ fn test_pasta_sub_max_pallas() {
     check_result(witness, vec![neg_max_pallas]);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test with a random addition
 fn test_random_add() {
@@ -913,6 +996,7 @@ fn test_random_add() {
     check_result(witness, vec![result]);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test with a random subtraction
 fn test_random_sub() {
@@ -938,6 +1022,7 @@ fn test_random_sub() {
     check_result(witness, vec![result]);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Random test with foreign field being the native field add
 fn test_foreign_is_native_add() {
@@ -971,6 +1056,7 @@ fn test_foreign_is_native_add() {
     assert_eq!(result, sum_from);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Random test with foreign field being the native field add
 fn test_foreign_is_native_sub() {
@@ -1004,6 +1090,7 @@ fn test_foreign_is_native_sub() {
     assert_eq!(result, dif_from);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test with a random addition
 fn test_random_small_add() {
@@ -1032,6 +1119,7 @@ fn test_random_small_add() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test with a random subtraction
 fn test_random_small_sub() {
@@ -1061,6 +1149,7 @@ fn test_random_small_sub() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test with bad parameters in bound check
 fn test_bad_bound() {
@@ -1125,6 +1214,7 @@ fn test_bad_bound() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test with bad left input
 fn test_random_bad_input() {
@@ -1169,6 +1259,7 @@ fn test_random_bad_input() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test with bad parameters
 fn test_random_bad_parameters() {
@@ -1223,6 +1314,7 @@ fn test_random_bad_parameters() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test with chain of random operations
 fn test_random_chain() {
@@ -1256,6 +1348,7 @@ fn test_random_chain() {
     check_result(witness, results);
 }
 
+#[cfg(feature = "prover")]
 // Prove and verify used for end-to-end tests
 fn prove_and_verify(operation_count: usize) {
     let rng = &mut make_test_rng(None);
@@ -1284,6 +1377,7 @@ fn prove_and_verify(operation_count: usize) {
         .gates(gates)
         .witness(witness)
         .public_inputs(vec![PallasField::one()])
+        .fixture_name("prove_and_verify_1")
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
         .unwrap();
@@ -1292,15 +1386,23 @@ fn prove_and_verify(operation_count: usize) {
 // Prove and verify a randomly generated operation (only ffadd)
 #[test]
 fn prove_and_verify_1() {
-    prove_and_verify(1);
+    #[cfg(feature = "prover")]
+    {
+        prove_and_verify(1);
+    }
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!("fixtures/prove_and_verify_1.bin"));
 }
 
 // Prove and verify a chain of 50 randomly generated operations (only ffadd)
+#[cfg(feature = "prover")]
 #[test]
 fn prove_and_verify_50() {
     prove_and_verify(50);
 }
 
+#[cfg(feature = "prover")]
 // Extends a gate with the final bound range check
 fn extend_gate_bound_rc(gates: &mut Vec<CircuitGate<PallasField>>) -> usize {
     let bound_row = gates.len() - 2;
@@ -1310,6 +1412,7 @@ fn extend_gate_bound_rc(gates: &mut Vec<CircuitGate<PallasField>>) -> usize {
     new_row
 }
 
+#[cfg(feature = "prover")]
 // Extends a witness with the final bound range check
 fn extend_witness_bound_rc(witness: &mut [Vec<PallasField>; COLUMNS]) {
     let bound_row = witness[0].len() - 1;
@@ -1320,6 +1423,7 @@ fn extend_witness_bound_rc(witness: &mut [Vec<PallasField>; COLUMNS]) {
 }
 
 // Test with FFAdd gates without range checks
+#[cfg(feature = "prover")]
 #[test]
 fn test_ffadd_no_rc() {
     let operation_count = 3;
@@ -1365,6 +1469,7 @@ fn test_ffadd_no_rc() {
 
 // TESTS CHANGING NATIVE FIELD
 
+#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint with Vesta (foreign field modulus) on Pallas (native field modulus)
 fn test_vesta_on_pallas() {
@@ -1372,6 +1477,7 @@ fn test_vesta_on_pallas() {
     assert_eq!(test.0, Ok(()));
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint with Pallas (foreign field modulus) on Vesta (native field modulus)
 fn test_pallas_on_vesta() {
@@ -1379,6 +1485,7 @@ fn test_pallas_on_vesta() {
     assert_eq!(test.0, Ok(()));
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint with Vesta (foreign field modulus) on Vesta (native field modulus)
 fn test_vesta_on_vesta() {
@@ -1386,6 +1493,7 @@ fn test_vesta_on_vesta() {
     assert_eq!(test.0, Ok(()));
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint with Pallas (foreign field modulus) on Pallas (native field modulus)
 fn test_pallas_on_pallas() {
@@ -1393,6 +1501,7 @@ fn test_pallas_on_pallas() {
     assert_eq!(test.0, Ok(()));
 }
 
+#[cfg(feature = "prover")]
 // Boilerplate for tests
 fn run_test<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     foreign_field_modulus: &BigUint,
@@ -1434,6 +1543,7 @@ where
     (Ok(()), witness)
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Finalization test
 fn test_ffadd_finalization() {
@@ -1538,6 +1648,7 @@ fn test_ffadd_finalization() {
         .unwrap();
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_gate_max_foreign_field_modulus() {
     CircuitGate::<PallasField>::create_single_ffadd(
@@ -1547,6 +1658,7 @@ fn test_gate_max_foreign_field_modulus() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 #[should_panic]
 fn test_gate_invalid_foreign_field_modulus() {
@@ -1557,6 +1669,7 @@ fn test_gate_invalid_foreign_field_modulus() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_witness_max_foreign_field_modulus() {
     short_witness::<PallasField>(
@@ -1566,6 +1679,7 @@ fn test_witness_max_foreign_field_modulus() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 #[should_panic]
 fn test_witness_invalid_foreign_field_modulus() {

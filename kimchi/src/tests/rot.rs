@@ -1,48 +1,74 @@
+use alloc::{vec, vec::Vec};
+#[cfg(feature = "prover")]
 use super::framework::TestFramework;
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
-        gate::{CircuitGate, CircuitGateError, Connect, GateType},
+        gate::{CircuitGate, CircuitGateError, GateType},
         polynomial::COLUMNS,
         polynomials::{
             generic::GenericGateSpec,
-            keccak::{constants::DIM, OFF},
             rot::{self, RotMode},
         },
         wires::Wire,
     },
     curve::KimchiCurve,
+};
+#[cfg(feature = "prover")]
+use crate::{
+    circuits::{
+        gate::Connect,
+        polynomials::keccak::{constants::DIM, OFF},
+    },
     plonk_sponge::FrSponge,
     prover_index::ProverIndex,
 };
 use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, Zero};
+#[cfg(feature = "prover")]
 use ark_poly::EvaluationDomain;
 use core::array;
-use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
+use mina_curves::pasta::{Pallas, Vesta};
+#[cfg(feature = "prover")]
+use mina_curves::pasta::Fp;
+#[cfg(feature = "prover")]
+use mina_curves::pasta::{Fq, PallasParameters, VestaParameters};
+use mina_poseidon::pasta::FULL_ROUNDS;
+#[cfg(feature = "prover")]
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
-    pasta::FULL_ROUNDS,
     poseidon::ArithmeticSpongeParams,
     sponge::{DefaultFqSponge, DefaultFrSponge},
     FqSponge,
 };
 use o1_utils::Two;
+#[cfg(feature = "prover")]
 use poly_commitment::{
     ipa::{endos, SRS},
     SRS as _,
 };
 use rand::Rng;
+#[cfg(feature = "prover")]
 use std::sync::Arc;
 
+#[cfg(not(feature = "prover"))]
+use super::generic::{load_and_verify_fixture, load_and_verify_fixture_pallas};
+
 type PallasField = <Pallas as AffineRepr>::BaseField;
+#[cfg(feature = "prover")]
 type SpongeParams = PlonkSpongeConstantsKimchi;
+#[cfg(feature = "prover")]
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams, FULL_ROUNDS>;
 
+#[cfg(feature = "prover")]
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
 fn create_rot_gadget<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
@@ -90,9 +116,11 @@ where
     ConstraintSystem::create(gates).build().unwrap()
 }
 
+#[cfg(feature = "prover")]
 // Function to create a prover and verifier to test the ROT circuit
-fn prove_and_verify<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, EFqSponge, EFrSponge>()
-where
+fn prove_and_verify<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, EFqSponge, EFrSponge>(
+    fixture_name: &'static str,
+) where
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
@@ -112,6 +140,7 @@ where
     TestFramework::<FULL_ROUNDS, G>::default()
         .gates(gates)
         .witness(witness)
+        .fixture_name(fixture_name)
         .setup()
         .prove_and_verify::<EFqSponge, EFrSponge>()
         .unwrap();
@@ -120,8 +149,23 @@ where
 #[test]
 // End-to-end test
 fn test_prove_and_verify() {
-    prove_and_verify::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>();
-    prove_and_verify::<FULL_ROUNDS, Pallas, PallasBaseSponge, PallasScalarSponge>();
+    #[cfg(feature = "prover")]
+    {
+        prove_and_verify::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
+            "rot_prove_and_verify_vesta",
+        );
+        prove_and_verify::<FULL_ROUNDS, Pallas, PallasBaseSponge, PallasScalarSponge>(
+            "rot_prove_and_verify_pallas",
+        );
+    }
+
+    #[cfg(not(feature = "prover"))]
+    {
+        load_and_verify_fixture(include_bytes!("fixtures/rot_prove_and_verify_vesta.bin"));
+        load_and_verify_fixture_pallas(include_bytes!(
+            "fixtures/rot_prove_and_verify_pallas.bin"
+        ));
+    }
 }
 
 fn test_rot<const FULL_ROUNDS: usize, G>(word: u64, rot: u32, side: RotMode)
@@ -379,6 +423,7 @@ fn test_bad_constraints() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Finalization test
 fn test_rot_finalization() {
@@ -453,6 +498,7 @@ fn test_rot_finalization() {
         .unwrap();
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test that all of the offsets in the rotation table work fine
 fn test_keccak_table() {

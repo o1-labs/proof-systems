@@ -1,4 +1,6 @@
+#[cfg(feature = "prover")]
 use super::framework::{print_witness, TestFramework};
+#[cfg(feature = "prover")]
 use crate::circuits::{
     gate::{CircuitGate, GateType},
     lookup::{
@@ -8,20 +10,32 @@ use crate::circuits::{
     polynomial::COLUMNS,
     wires::Wire,
 };
+#[cfg(feature = "prover")]
 use ark_ff::{UniformRand, Zero};
+#[cfg(feature = "prover")]
 use core::array;
+#[cfg(feature = "prover")]
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+#[cfg(feature = "prover")]
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+#[cfg(feature = "prover")]
 use rand::{prelude::*, Rng};
 
+#[cfg(not(feature = "prover"))]
+use super::generic::load_and_verify_fixture;
+
+#[cfg(feature = "prover")]
 type SpongeParams = PlonkSpongeConstantsKimchi;
+#[cfg(feature = "prover")]
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
+#[cfg(feature = "prover")]
 fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_sizes: Vec<usize>) {
     let seed: [u8; 32] = thread_rng().gen();
     eprintln!("Seed: {:?}", seed);
@@ -106,6 +120,7 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
         .gates(gates)
         .witness(witness)
         .lookup_tables(lookup_tables)
+        .fixture_name("lookup_gate_proving_works")
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
         .unwrap();
@@ -113,26 +128,36 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
 
 #[test]
 fn lookup_gate_proving_works() {
-    setup_lookup_proof(true, 500, vec![256])
+    #[cfg(feature = "prover")]
+    {
+        setup_lookup_proof(true, 500, vec![256])
+    }
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!("fixtures/lookup_gate_proving_works.bin"));
 }
 
+#[cfg(feature = "prover")]
 #[test]
 #[should_panic]
 fn lookup_gate_rejects_bad_lookups() {
     setup_lookup_proof(false, 500, vec![256])
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn lookup_gate_proving_works_multiple_tables() {
     setup_lookup_proof(true, 500, vec![100, 50, 50, 2, 2])
 }
 
+#[cfg(feature = "prover")]
 #[test]
 #[should_panic]
 fn lookup_gate_rejects_bad_lookups_multiple_tables() {
     setup_lookup_proof(false, 500, vec![100, 50, 50, 2, 2])
 }
 
+#[cfg(feature = "prover")]
 fn setup_successful_runtime_table_test(
     runtime_table_cfgs: Vec<RuntimeTableCfg<Fp>>,
     runtime_tables: Vec<RuntimeTable<Fp>>,
@@ -200,6 +225,7 @@ fn setup_successful_runtime_table_test(
         .unwrap();
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_runtime_table() {
     let num = 5;
@@ -275,6 +301,7 @@ fn test_runtime_table() {
         .unwrap();
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_negative_test_runtime_table_value_not_in_table() {
     // We create 1 runtime table cfg
@@ -335,6 +362,7 @@ fn test_negative_test_runtime_table_value_not_in_table() {
     assert_eq!(err, "the lookup failed to find a match in the table: row=0");
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_negative_test_runtime_table_prover_with_undefined_id_in_index_and_witnesses_uses_correct_id(
 ) {
@@ -397,6 +425,7 @@ fn test_negative_test_runtime_table_prover_with_undefined_id_in_index_and_witnes
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnesses_too() {
     // We create 1 runtime table cfg with ID 1
@@ -457,6 +486,7 @@ fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnes
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_runtime_table_with_more_than_one_runtime_table_data_given_by_prover() {
     let seed: [u8; 32] = thread_rng().gen();
@@ -544,6 +574,7 @@ fn test_runtime_table_with_more_than_one_runtime_table_data_given_by_prover() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_fixed_values() {
     let first_column = [0, 1, 2, 3, 4, 5];
@@ -562,6 +593,7 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_fixed_va
     setup_successful_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_values() {
     let seed: [u8; 32] = thread_rng().gen();
@@ -594,6 +626,7 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_v
 // FIXME: see https://github.com/o1-labs/proof-systems/issues/1460
 // We should test the error message, "expected" argument of the macro won't be
 // allowed anymore in future release, see clippy output.
+#[cfg(feature = "prover")]
 #[test]
 #[should_panic]
 fn test_lookup_with_a_table_with_id_zero_but_no_zero_entry() {
@@ -646,6 +679,7 @@ fn test_lookup_with_a_table_with_id_zero_but_no_zero_entry() {
         .setup();
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id_0() {
     let seed: [u8; 32] = thread_rng().gen();
@@ -693,6 +727,7 @@ fn test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id
         .unwrap();
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_dummy_zero_entry_is_counted_while_computing_domain_size() {
     let seed: [u8; 32] = thread_rng().gen();

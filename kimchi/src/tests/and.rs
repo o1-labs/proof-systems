@@ -1,3 +1,4 @@
+use alloc::{vec, vec::Vec};
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
@@ -7,15 +8,23 @@ use crate::{
         wires::Wire,
     },
     curve::KimchiCurve,
-    plonk_sponge::FrSponge,
 };
+#[cfg(feature = "prover")]
+use crate::plonk_sponge::FrSponge;
 
 use ark_ec::AffineRepr;
-use ark_ff::{One, PrimeField, Zero};
-use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
+use ark_ff::{One, PrimeField};
+#[cfg(feature = "prover")]
+use ark_ff::Zero;
+use mina_curves::pasta::{Pallas, Vesta};
+#[cfg(feature = "prover")]
+use mina_curves::pasta::Fp;
+#[cfg(feature = "prover")]
+use mina_curves::pasta::{Fq, PallasParameters, VestaParameters};
+use mina_poseidon::pasta::FULL_ROUNDS;
+#[cfg(feature = "prover")]
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
-    pasta::FULL_ROUNDS,
     poseidon::ArithmeticSpongeParams,
     sponge::{DefaultFqSponge, DefaultFrSponge},
     FqSponge,
@@ -23,14 +32,23 @@ use mina_poseidon::{
 use num_bigint::BigUint;
 use o1_utils::{BitwiseOps, FieldHelpers, RandomField};
 
+#[cfg(feature = "prover")]
 use super::framework::TestFramework;
+
+#[cfg(not(feature = "prover"))]
+use super::generic::{load_and_verify_fixture, load_and_verify_fixture_pallas};
 
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type VestaField = <Vesta as AffineRepr>::BaseField;
+#[cfg(feature = "prover")]
 type SpongeParams = PlonkSpongeConstantsKimchi;
+#[cfg(feature = "prover")]
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams, FULL_ROUNDS>;
 
 fn create_test_gates_and<const FULL_ROUNDS: usize, G>(
@@ -121,9 +139,11 @@ where
     witness
 }
 
+#[cfg(feature = "prover")]
 // Function to create a prover and verifier to test the AND circuit
 fn prove_and_verify<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, EFqSponge, EFrSponge>(
     bytes: usize,
+    fixture_name: &'static str,
 ) where
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
@@ -146,11 +166,13 @@ fn prove_and_verify<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, EFqSp
     TestFramework::<FULL_ROUNDS, G>::default()
         .gates(gates)
         .witness(witness)
+        .fixture_name(fixture_name)
         .setup()
         .prove_and_verify::<EFqSponge, EFrSponge>()
         .unwrap();
 }
 
+#[cfg(feature = "prover")]
 /// Generic test for checking serialization & regression of AND circuit.
 fn prove_and_check_serialization_regression<const FULL_ROUNDS: usize, G, EFqSponge, EFrSponge>(
     bytes: usize,
@@ -190,8 +212,17 @@ fn prove_and_check_serialization_regression<const FULL_ROUNDS: usize, G, EFqSpon
 #[test]
 // End-to-end test
 fn test_prove_and_verify() {
-    prove_and_verify::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(8);
-    prove_and_verify::<FULL_ROUNDS, Pallas, PallasBaseSponge, PallasScalarSponge>(8);
+    #[cfg(feature = "prover")]
+    {
+        prove_and_verify::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(8, "and_prove_and_verify_vesta");
+        prove_and_verify::<FULL_ROUNDS, Pallas, PallasBaseSponge, PallasScalarSponge>(8, "and_prove_and_verify_pallas");
+    }
+
+    #[cfg(not(feature = "prover"))]
+    {
+        load_and_verify_fixture(include_bytes!("fixtures/and_prove_and_verify_vesta.bin"));
+        load_and_verify_fixture_pallas(include_bytes!("fixtures/and_prove_and_verify_pallas.bin"));
+    }
 }
 
 #[test]
@@ -354,6 +385,7 @@ fn test_and_bad_decomposition() {
     verify_bad_and_decomposition::<FULL_ROUNDS, Vesta>(&mut witness, cs);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test AND when the decomposition of the inner XOR is incorrect
 fn test_bad_and() {
@@ -388,6 +420,7 @@ fn test_bad_and() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_serialization_regression() {
     // Generated with commit 1494cf973d40fb276465929eb7db1952c5de7bdc

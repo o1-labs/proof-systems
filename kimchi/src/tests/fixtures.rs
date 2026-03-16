@@ -1,5 +1,8 @@
+#[cfg(any(feature = "save-test-proofs", not(feature = "prover")))]
 use crate::circuits::constraints::FeatureFlags;
+#[cfg(any(feature = "save-test-proofs", not(feature = "prover")))]
 use alloc::vec::Vec;
+#[cfg(any(feature = "save-test-proofs", not(feature = "prover")))]
 use serde::{Deserialize, Serialize};
 
 /// A serializable fixture that bundles a proof, verifier index, public inputs,
@@ -8,6 +11,7 @@ use serde::{Deserialize, Serialize};
 /// `proof_bytes` and `verifier_index_bytes` are msgpack-serialized.
 /// `public_inputs_bytes` uses ark's `CanonicalSerialize` since field elements
 /// don't implement serde's `Serialize`/`Deserialize` directly.
+#[cfg(any(feature = "save-test-proofs", not(feature = "prover")))]
 #[derive(Serialize, Deserialize)]
 pub struct RawFixture {
     pub proof_bytes: Vec<u8>,
