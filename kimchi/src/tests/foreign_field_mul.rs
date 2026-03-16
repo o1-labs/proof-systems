@@ -1,3 +1,4 @@
+#[cfg(feature = "prover")]
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
@@ -14,9 +15,13 @@ use crate::{
     plonk_sponge::FrSponge,
     tests::framework::TestFramework,
 };
+#[cfg(feature = "prover")]
 use ark_ec::AffineRepr;
+#[cfg(feature = "prover")]
 use ark_ff::{Field, One, PrimeField, Zero};
+#[cfg(feature = "prover")]
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
+#[cfg(feature = "prover")]
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     pasta::FULL_ROUNDS,
@@ -24,44 +29,63 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
     FqSponge,
 };
+#[cfg(feature = "prover")]
 use num_bigint::{BigUint, RandBigInt};
+#[cfg(feature = "prover")]
 use o1_utils::{FieldHelpers, Two};
+#[cfg(feature = "prover")]
 use std::sync::Arc;
 
+#[cfg(not(feature = "prover"))]
+use super::generic::load_and_verify_fixture;
+
+#[cfg(feature = "prover")]
 type PallasField = <Pallas as AffineRepr>::BaseField;
+#[cfg(feature = "prover")]
 type VestaField = <Vesta as AffineRepr>::BaseField;
 
+#[cfg(feature = "prover")]
 type SpongeParams = PlonkSpongeConstantsKimchi;
+#[cfg(feature = "prover")]
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams, FULL_ROUNDS>;
 
+#[cfg(feature = "prover")]
 // The secp256k1 base field modulus
 fn secp256k1_modulus() -> BigUint {
     BigUint::from_bytes_be(&secp256k1::constants::FIELD_SIZE)
 }
 
+#[cfg(feature = "prover")]
 // Maximum value in the secp256k1 base field
 fn secp256k1_max() -> BigUint {
     secp256k1_modulus() - BigUint::from(1u32)
 }
 
+#[cfg(feature = "prover")]
 // Maximum value whose square fits in secp256k1 base field
 fn secp256k1_sqrt() -> BigUint {
     secp256k1_max().sqrt()
 }
 
+#[cfg(feature = "prover")]
 // Maximum value in the pallas base field
 fn pallas_max() -> BigUint {
     PallasField::modulus_biguint() - BigUint::from(1u32)
 }
 
+#[cfg(feature = "prover")]
 // Maximum value whose square fits in the pallas base field
 fn pallas_sqrt() -> BigUint {
     pallas_max().sqrt()
 }
 
+#[cfg(feature = "prover")]
 // Boilerplate for tests
 fn run_test<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, EFqSponge, EFrSponge>(
     full: bool,
@@ -191,6 +215,7 @@ where
             TestFramework::<FULL_ROUNDS, G>::default()
                 .disable_gates_checks(disable_gates_checks)
                 .gates(gates.clone())
+                .fixture_name("test_zero_mul")
                 .setup(),
         )
     } else {
@@ -285,6 +310,7 @@ where
     (Ok(()), witness)
 }
 
+#[cfg(feature = "prover")]
 // Test targeting each custom constraint (positive and negative tests for each)
 fn test_custom_constraints<
     const FULL_ROUNDS: usize,
@@ -503,27 +529,34 @@ fn test_custom_constraints<
 // Test the multiplication of two zeros.
 // This checks that small amounts get packed into limbs
 fn test_zero_mul() {
-    let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-        true,
-        true,
-        false,
-        &BigUint::zero(),
-        &BigUint::zero(),
-        &secp256k1_modulus(),
-        vec![],
-    );
-    assert_eq!(result, Ok(()));
+    #[cfg(feature = "prover")]
+    {
+        let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
+            true,
+            true,
+            false,
+            &BigUint::zero(),
+            &BigUint::zero(),
+            &secp256k1_modulus(),
+            vec![],
+        );
+        assert_eq!(result, Ok(()));
 
-    // Check remainder is zero
-    assert_eq!(witness[0][1], PallasField::zero()); // remainder01
-    assert_eq!(witness[1][1], PallasField::zero()); // remainder2
+        // Check remainder is zero
+        assert_eq!(witness[0][1], PallasField::zero()); // remainder01
+        assert_eq!(witness[1][1], PallasField::zero()); // remainder2
 
-    // Check quotient is zero
-    assert_eq!(witness[2][1], PallasField::zero());
-    assert_eq!(witness[3][1], PallasField::zero());
-    assert_eq!(witness[4][1], PallasField::zero());
+        // Check quotient is zero
+        assert_eq!(witness[2][1], PallasField::zero());
+        assert_eq!(witness[3][1], PallasField::zero());
+        assert_eq!(witness[4][1], PallasField::zero());
+    }
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!("fixtures/test_zero_mul.bin"));
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test the multiplication of largest foreign element and 1
 fn test_one_mul() {
@@ -549,6 +582,7 @@ fn test_one_mul() {
     assert_eq!(witness[4][1], PallasField::zero());
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test the maximum value m whose square fits in the native field
 //    m^2 = q * f + r -> q should be 0 and r should be m^2 < n < f
@@ -577,6 +611,7 @@ fn test_max_native_square() {
     assert_eq!(witness[4][1], PallasField::zero());
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test the maximum value g whose square fits in the foreign field
 //     g^2 = q * f + r -> q should be 0 and r should be g^2 < f
@@ -605,6 +640,7 @@ fn test_max_foreign_square() {
     assert_eq!(witness[4][1], PallasField::zero());
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test squaring the maximum native field elements
 //     (n - 1) * (n - 1) = q * f + r
@@ -625,6 +661,7 @@ fn test_max_native_multiplicands() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test squaring the maximum foreign field elements
 //     (f - 1) * (f - 1) = f^2 - 2f + 1 = f * (f - 2) + 1
@@ -645,6 +682,7 @@ fn test_max_foreign_multiplicands() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test with nonzero carry0 bits
 fn test_nonzero_carry0() {
@@ -701,6 +739,7 @@ fn test_nonzero_carry0() {
     }
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test with nonzero carry10 (this targets only the limbs and the first crumb of carry1)
 fn test_nonzero_carry10() {
@@ -763,6 +802,7 @@ fn test_nonzero_carry10() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test with nonzero carry1_hi (this targets only carry1_crumb2 and carry1_bit)
 fn test_nonzero_carry1_hi() {
@@ -811,6 +851,7 @@ fn test_nonzero_carry1_hi() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test with nonzero second bit of carry1_hi
 fn test_nonzero_second_bit_carry1_hi() {
@@ -860,6 +901,7 @@ fn test_nonzero_second_bit_carry1_hi() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test invalid carry1_hi range bit
 fn test_invalid_carry1_bit() {
@@ -884,6 +926,7 @@ fn test_invalid_carry1_bit() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // This is no longer a lookup test since the 3-bit check is now a crumb + a bit
 fn test_invalid_wraparound_carry1_hi() {
@@ -948,6 +991,7 @@ fn test_invalid_wraparound_carry1_hi() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test witness with invalid quotient fails verification
 fn test_zero_mul_invalid_quotient() {
@@ -1036,6 +1080,7 @@ fn test_zero_mul_invalid_quotient() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test witness with invalid remainder fails
 fn test_mul_invalid_remainder() {
@@ -1068,6 +1113,7 @@ fn test_mul_invalid_remainder() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test multiplying some random values and invalidating carry1_lo
 fn test_random_multiplicands_carry1_lo() {
@@ -1233,6 +1279,7 @@ fn test_random_multiplicands_carry1_lo() {
     }
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test multiplying some random values with secp256k1 foreign modulus
 fn test_random_multiplicands_valid() {
@@ -1259,6 +1306,7 @@ fn test_random_multiplicands_valid() {
     }
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Test multiplying some random values with foreign modulus smaller than native modulus
 fn test_smaller_foreign_field_modulus() {
@@ -1287,6 +1335,7 @@ fn test_smaller_foreign_field_modulus() {
     }
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint with secp256k1 (foreign field modulus)
 // on Vesta (native field modulus)
@@ -1296,6 +1345,7 @@ fn test_custom_constraints_secp256k1_on_vesta() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint with secp256k1 (foreign field modulus)
 // on Pallas (native field modulus)
@@ -1305,6 +1355,7 @@ fn test_custom_constraints_secp256k1_on_pallas() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint with Vesta (foreign field modulus) on Pallas (native field modulus)
 fn test_custom_constraints_vesta_on_pallas() {
@@ -1313,6 +1364,7 @@ fn test_custom_constraints_vesta_on_pallas() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint with Pallas (foreign field modulus) on Vesta (native field modulus)
 fn test_custom_constraints_pallas_on_vesta() {
@@ -1321,6 +1373,7 @@ fn test_custom_constraints_pallas_on_vesta() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint with Vesta (foreign field modulus) on Vesta (native field modulus)
 fn test_custom_constraints_vesta_on_vesta() {
@@ -1329,6 +1382,7 @@ fn test_custom_constraints_vesta_on_vesta() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint with Pallas (foreign field modulus) on Pallas (native field modulus)
 fn test_custom_constraints_pallas_on_pallas() {
@@ -1337,6 +1391,7 @@ fn test_custom_constraints_pallas_on_pallas() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint (foreign modulus smaller than native vesta)
 fn test_custom_constraints_small_foreign_field_modulus_on_vesta() {
@@ -1345,6 +1400,7 @@ fn test_custom_constraints_small_foreign_field_modulus_on_vesta() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint (foreign modulus smaller than native pallas)
 fn test_custom_constraints_small_foreign_field_modulus_on_pallas() {
@@ -1353,6 +1409,7 @@ fn test_custom_constraints_small_foreign_field_modulus_on_pallas() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_native_modulus_constraint() {
     let rng = &mut o1_utils::tests::make_test_rng(None);
@@ -1392,6 +1449,7 @@ fn test_native_modulus_constraint() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_gates_max_foreign_field_modulus() {
     CircuitGate::<PallasField>::create_foreign_field_mul(
@@ -1400,6 +1458,7 @@ fn test_gates_max_foreign_field_modulus() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_witness_max_foreign_field_modulus() {
     foreign_field_mul::witness::create::<PallasField>(
@@ -1409,6 +1468,7 @@ fn test_witness_max_foreign_field_modulus() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Checks that the high bound check includes when q2 is exactly f2 and not just up to f2-1
 fn test_q2_exactly_f2() {
@@ -1432,6 +1492,7 @@ fn test_q2_exactly_f2() {
     assert_eq!(result, Ok(()),);
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_carry_plookups() {
     let left_input = secp256k1_max() - BigUint::from(4u32);

@@ -1,3 +1,4 @@
+#[cfg(feature = "prover")]
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
@@ -17,33 +18,52 @@ use crate::{
     prover_index::{testing::new_index_for_test_with_lookups, ProverIndex},
     verifier::verify,
 };
+#[cfg(feature = "prover")]
 use ark_ec::AffineRepr;
+#[cfg(feature = "prover")]
 use ark_ff::{Field, One, Zero};
+#[cfg(feature = "prover")]
 use ark_poly::EvaluationDomain;
+#[cfg(feature = "prover")]
 use core::array;
+#[cfg(feature = "prover")]
 use groupmap::GroupMap;
+#[cfg(feature = "prover")]
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
+#[cfg(feature = "prover")]
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+#[cfg(feature = "prover")]
 use num_bigint::{BigUint, RandBigInt};
+#[cfg(feature = "prover")]
 use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
+#[cfg(feature = "prover")]
 use poly_commitment::{
     commitment::CommitmentCurve,
     ipa::{endos, OpeningProof, SRS},
     OpenProof, SRS as _,
 };
+#[cfg(feature = "prover")]
 use std::sync::Arc;
 
+#[cfg(feature = "prover")]
 use super::framework::TestFramework;
 
+#[cfg(not(feature = "prover"))]
+use super::generic::load_and_verify_fixture;
+
+#[cfg(feature = "prover")]
 type BaseSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type ScalarSponge = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi, FULL_ROUNDS>;
 
+#[cfg(feature = "prover")]
 type PallasField = <Pallas as AffineRepr>::BaseField;
 
+#[cfg(feature = "prover")]
 fn create_test_prover_index(
     public_size: usize,
     compact: bool,
@@ -61,6 +81,7 @@ fn create_test_prover_index(
     new_index_for_test_with_lookups(gates, public_size, 0, vec![], None, false, None, false)
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check0_zero_valid_witness() {
     let index = create_test_prover_index(0, false);
@@ -89,6 +110,7 @@ fn verify_range_check0_zero_valid_witness() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check0_one_invalid_witness() {
     let index = create_test_prover_index(0, false);
@@ -117,6 +139,7 @@ fn verify_range_check0_one_invalid_witness() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check0_valid_witness() {
     let index = create_test_prover_index(0, false);
@@ -184,6 +207,7 @@ fn verify_range_check0_valid_witness() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check0_invalid_witness() {
     let index = create_test_prover_index(0, false);
@@ -271,6 +295,7 @@ fn verify_range_check0_invalid_witness() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check0_valid_v0_in_range() {
     let index = create_test_prover_index(0, false);
@@ -344,6 +369,7 @@ fn verify_range_check0_valid_v0_in_range() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check0_valid_v1_in_range() {
     let index = create_test_prover_index(0, false);
@@ -417,6 +443,7 @@ fn verify_range_check0_valid_v1_in_range() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check0_invalid_v0_not_in_range() {
     let index = create_test_prover_index(0, false);
@@ -456,6 +483,7 @@ fn verify_range_check0_invalid_v0_not_in_range() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check0_invalid_v1_not_in_range() {
     let index = create_test_prover_index(0, false);
@@ -495,6 +523,7 @@ fn verify_range_check0_invalid_v1_not_in_range() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check0_test_copy_constraints() {
     let index = create_test_prover_index(0, false);
@@ -542,6 +571,7 @@ fn verify_range_check0_test_copy_constraints() {
     }
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check0_v0_test_lookups() {
     let index = create_test_prover_index(0, false);
@@ -600,6 +630,7 @@ fn verify_range_check0_v0_test_lookups() {
     }
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check0_v1_test_lookups() {
     let index = create_test_prover_index(0, false);
@@ -658,6 +689,7 @@ fn verify_range_check0_v1_test_lookups() {
     }
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check1_zero_valid_witness() {
     let index = create_test_prover_index(0, false);
@@ -675,6 +707,7 @@ fn verify_range_check1_zero_valid_witness() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check1_one_invalid_witness() {
     let index = create_test_prover_index(0, false);
@@ -692,6 +725,7 @@ fn verify_range_check1_one_invalid_witness() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check1_valid_witness() {
     let index = create_test_prover_index(0, false);
@@ -737,6 +771,7 @@ fn verify_range_check1_valid_witness() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check1_invalid_witness() {
     let index = create_test_prover_index(0, false);
@@ -788,6 +823,7 @@ fn verify_range_check1_invalid_witness() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check1_valid_v2_in_range() {
     let index = create_test_prover_index(0, false);
@@ -861,6 +897,7 @@ fn verify_range_check1_valid_v2_in_range() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check1_invalid_v2_not_in_range() {
     let index = create_test_prover_index(0, false);
@@ -900,6 +937,7 @@ fn verify_range_check1_invalid_v2_not_in_range() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check1_test_copy_constraints() {
     let index = create_test_prover_index(0, false);
@@ -960,6 +998,7 @@ fn verify_range_check1_test_copy_constraints() {
     }
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check1_test_curr_row_lookups() {
     let index = create_test_prover_index(0, false);
@@ -1015,6 +1054,7 @@ fn verify_range_check1_test_curr_row_lookups() {
     }
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check1_test_next_row_lookups() {
     let index = create_test_prover_index(0, false);
@@ -1075,6 +1115,7 @@ fn verify_range_check1_test_next_row_lookups() {
     }
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_64_bit_range_check() {
     // Test circuit layout
@@ -1158,6 +1199,7 @@ fn verify_64_bit_range_check() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn compact_multi_range_check() {
     let rng = &mut o1_utils::tests::make_test_rng(None);
@@ -1201,6 +1243,7 @@ fn compact_multi_range_check() {
     }
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn verify_range_check_valid_proof1() {
     // Create prover index
@@ -1248,21 +1291,28 @@ fn verify_range_check_valid_proof1() {
 
 #[test]
 fn verify_compact_multi_range_check_proof() {
-    let rng = &mut o1_utils::tests::make_test_rng(None);
+    #[cfg(feature = "prover")]
+    {
+        let rng = &mut o1_utils::tests::make_test_rng(None);
 
-    let limbs: [PallasField; 3] =
-        array::from_fn(|_| rng.gen_biguint_below(&BigUint::two_to_limb())).to_fields();
-    let limbs = limbs.to_compact_limbs();
+        let limbs: [PallasField; 3] =
+            array::from_fn(|_| rng.gen_biguint_below(&BigUint::two_to_limb())).to_fields();
+        let limbs = limbs.to_compact_limbs();
 
-    // Create witness
-    let witness = range_check::witness::create_multi_compact_limbs::<PallasField>(&limbs);
+        // Create witness
+        let witness = range_check::witness::create_multi_compact_limbs::<PallasField>(&limbs);
 
-    let (_next_row, gates) = CircuitGate::<Fp>::create_compact_multi_range_check(0);
+        let (_next_row, gates) = CircuitGate::<Fp>::create_compact_multi_range_check(0);
 
-    TestFramework::<FULL_ROUNDS, Vesta>::default()
-        .gates(gates)
-        .witness(witness)
-        .setup()
-        .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .unwrap();
+        TestFramework::<FULL_ROUNDS, Vesta>::default()
+            .gates(gates)
+            .witness(witness)
+            .fixture_name("verify_compact_multi_range_check_proof")
+            .setup()
+            .prove_and_verify::<BaseSponge, ScalarSponge>()
+            .unwrap();
+    }
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!("fixtures/verify_compact_multi_range_check_proof.bin"));
 }

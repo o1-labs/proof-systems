@@ -1,3 +1,5 @@
+use alloc::{vec, vec::Vec};
+#[cfg(feature = "prover")]
 use super::framework::TestFramework;
 use crate::{
     circuits::{
@@ -8,32 +10,47 @@ use crate::{
         wires::Wire,
     },
     curve::KimchiCurve,
-    prover_index::ProverIndex,
 };
+#[cfg(feature = "prover")]
+use crate::prover_index::ProverIndex;
 use ark_ec::AffineRepr;
 use ark_ff::{Field, One, PrimeField, Zero};
+#[cfg(feature = "prover")]
 use ark_poly::EvaluationDomain;
 use core::{array, cmp::max};
-use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp, Pallas, Vesta};
+#[cfg(feature = "prover")]
+use mina_curves::pasta::VestaParameters;
+use mina_poseidon::pasta::FULL_ROUNDS;
+#[cfg(feature = "prover")]
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
-    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
+#[cfg(feature = "prover")]
 use poly_commitment::{
     ipa::{endos, SRS},
     SRS as _,
 };
+#[cfg(feature = "prover")]
 use std::sync::Arc;
 
+#[cfg(not(feature = "prover"))]
+use super::generic::load_and_verify_fixture;
+
 type PallasField = <Pallas as AffineRepr>::BaseField;
+#[cfg(feature = "prover")]
 type SpongeParams = PlonkSpongeConstantsKimchi;
+#[cfg(feature = "prover")]
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
+#[cfg(feature = "prover")]
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
 const XOR: bool = true;
@@ -154,25 +171,32 @@ where
 #[test]
 // End-to-end test of XOR
 fn test_prove_and_verify_xor() {
-    let rng = &mut o1_utils::tests::make_test_rng(None);
+    #[cfg(feature = "prover")]
+    {
+        let rng = &mut o1_utils::tests::make_test_rng(None);
 
-    let bits = 64;
-    // Create
-    let mut gates = vec![];
-    let _next_row = CircuitGate::<Fp>::extend_xor_gadget(&mut gates, bits);
+        let bits = 64;
+        // Create
+        let mut gates = vec![];
+        let _next_row = CircuitGate::<Fp>::extend_xor_gadget(&mut gates, bits);
 
-    let input1 = rng.gen_field_with_bits(bits);
-    let input2 = rng.gen_field_with_bits(bits);
+        let input1 = rng.gen_field_with_bits(bits);
+        let input2 = rng.gen_field_with_bits(bits);
 
-    // Create witness and random inputs
-    let witness = xor::create_xor_witness(input1, input2, bits);
+        // Create witness and random inputs
+        let witness = xor::create_xor_witness(input1, input2, bits);
 
-    TestFramework::<FULL_ROUNDS, Vesta>::default()
-        .gates(gates)
-        .witness(witness)
-        .setup()
-        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
-        .unwrap();
+        TestFramework::<FULL_ROUNDS, Vesta>::default()
+            .gates(gates)
+            .witness(witness)
+            .fixture_name("test_prove_and_verify_xor")
+            .setup()
+            .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
+            .unwrap();
+    }
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!("fixtures/test_prove_and_verify_xor.bin"));
 }
 
 #[test]
@@ -326,6 +350,7 @@ fn test_extend_xor() {
     }
 }
 
+#[cfg(feature = "prover")]
 #[test]
 fn test_bad_xor() {
     let bits = Some(16);
@@ -363,6 +388,7 @@ fn test_bad_xor() {
     );
 }
 
+#[cfg(feature = "prover")]
 #[test]
 // Finalization test
 fn test_xor_finalization() {
