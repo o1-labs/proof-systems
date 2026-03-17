@@ -326,3 +326,6 @@ jobs:
         run: |
           eval $(opam env)
           make nextest
+
+      - name: Run kimchi verifier-only tests (no-prover mode)
+        run: make test-kimchi-verifier-only
