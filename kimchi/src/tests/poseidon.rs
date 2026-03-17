@@ -160,69 +160,103 @@ fn build_poseidon_instance(
 //
 // Test that Poseidon in circuit treats an extra zero block as a distinct input,
 // i.e. different circuit structure / vk.
-#[cfg(feature = "prover")]
 #[test]
 fn test_poseidon_in_circuit_extra_zero_block() {
-    // 1 block vs 2 blocks (second is all zeros)
-    let (gates1, witness1) =
-        build_poseidon_instance(vec![[Fp::from(1u32), Fp::from(2u32), Fp::from(3u32)]]);
-    let (gates2, witness2) = build_poseidon_instance(vec![
-        [Fp::from(1u32), Fp::from(2u32), Fp::from(3u32)],
-        [Fp::zero(), Fp::zero(), Fp::zero()],
-    ]);
+    #[cfg(feature = "prover")]
+    {
+        // 1 block vs 2 blocks (second is all zeros)
+        let (gates1, witness1) =
+            build_poseidon_instance(vec![[Fp::from(1u32), Fp::from(2u32), Fp::from(3u32)]]);
+        let (gates2, witness2) = build_poseidon_instance(vec![
+            [Fp::from(1u32), Fp::from(2u32), Fp::from(3u32)],
+            [Fp::zero(), Fp::zero(), Fp::zero()],
+        ]);
 
-    assert!(gates2.len() > gates1.len());
+        assert!(gates2.len() > gates1.len());
 
-    let index1 = new_index_for_test::<FULL_ROUNDS, Vesta>(gates1, 0);
-    let index2 = new_index_for_test::<FULL_ROUNDS, Vesta>(gates2, 0);
+        let index1 = new_index_for_test::<FULL_ROUNDS, Vesta>(gates1, 0);
+        let index2 = new_index_for_test::<FULL_ROUNDS, Vesta>(gates2, 0);
 
-    let group_map = <Vesta as CommitmentCurve>::Map::setup();
+        let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
-    let proof1: ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS> =
-        ProverProof::create::<BaseSponge, ScalarSponge, _>(
+        let proof1: ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS> =
+            ProverProof::create::<BaseSponge, ScalarSponge, _>(
+                &group_map,
+                witness1,
+                &[],
+                &index1,
+                &mut OsRng,
+            )
+            .unwrap();
+
+        let vi1 = index1.verifier_index();
+        verify::<FULL_ROUNDS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta, FULL_ROUNDS>>(
             &group_map,
-            witness1,
+            &vi1,
+            &proof1,
             &[],
-            &index1,
-            &mut OsRng,
         )
-        .unwrap();
+        .expect("single-block circuit proof should verify with its vk");
 
-    verify::<FULL_ROUNDS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta, FULL_ROUNDS>>(
-        &group_map,
-        &index1.verifier_index(),
-        &proof1,
-        &[],
-    )
-    .expect("single-block circuit proof should verify with its vk");
+        #[cfg(feature = "save-test-proofs")]
+        {
+            use super::fixtures::RawFixture;
+            use ark_serialize::CanonicalSerialize;
 
-    let proof2: ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS> =
-        ProverProof::create::<BaseSponge, ScalarSponge, _>(
+            let mut endo_buf = Vec::new();
+            vi1.endo.serialize_compressed(&mut endo_buf).unwrap();
+
+            let fixture = RawFixture {
+                proof_bytes: rmp_serde::to_vec(&proof1).unwrap(),
+                verifier_index_bytes: rmp_serde::to_vec(&vi1).unwrap(),
+                public_inputs_bytes: Vec::new(),
+                num_public_inputs: 0,
+                feature_flags: index1.cs.feature_flags,
+                endo: Some(endo_buf),
+            };
+
+            let bytes = rmp_serde::to_vec(&fixture).unwrap();
+            let fixtures_dir =
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/tests/fixtures");
+            std::fs::create_dir_all(&fixtures_dir).unwrap();
+            let path = fixtures_dir.join("test_poseidon_in_circuit_extra_zero_block.bin");
+            std::fs::write(&path, &bytes).unwrap();
+            println!("Fixture written to {}", path.display());
+        }
+
+        let proof2: ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS> =
+            ProverProof::create::<BaseSponge, ScalarSponge, _>(
+                &group_map,
+                witness2,
+                &[],
+                &index2,
+                &mut OsRng,
+            )
+            .unwrap();
+
+        verify::<FULL_ROUNDS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta, FULL_ROUNDS>>(
             &group_map,
-            witness2,
+            &index2.verifier_index(),
+            &proof2,
             &[],
-            &index2,
-            &mut OsRng,
         )
-        .unwrap();
+        .expect("two-block circuit proof should verify with its vk");
 
-    verify::<FULL_ROUNDS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta, FULL_ROUNDS>>(
-        &group_map,
-        &index2.verifier_index(),
-        &proof2,
-        &[],
-    )
-    .expect("two-block circuit proof should verify with its vk");
+        let bad = verify::<
+            FULL_ROUNDS,
+            Vesta,
+            BaseSponge,
+            ScalarSponge,
+            OpeningProof<Vesta, FULL_ROUNDS>,
+        >(&group_map, &vi1, &proof2, &[]);
+        assert!(
+            bad.is_err(),
+            "two-block proof must not verify with single-block vk"
+        );
+    }
 
-    let bad = verify::<
-        FULL_ROUNDS,
-        Vesta,
-        BaseSponge,
-        ScalarSponge,
-        OpeningProof<Vesta, FULL_ROUNDS>,
-    >(&group_map, &index1.verifier_index(), &proof2, &[]);
-    assert!(
-        bad.is_err(),
-        "two-block proof must not verify with single-block vk"
-    );
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!(
+        "fixtures/test_poseidon_in_circuit_extra_zero_block.bin"
+    ));
 }

@@ -1,6 +1,4 @@
-use alloc::{vec, vec::Vec};
-#[cfg(feature = "prover")]
-use super::framework::TestFramework;
+use super::framework::{include_fixture, TestFramework};
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
@@ -11,47 +9,23 @@ use crate::{
     },
     curve::KimchiCurve,
 };
-#[cfg(feature = "prover")]
-use crate::prover_index::ProverIndex;
+use alloc::{vec, vec::Vec};
 use ark_ec::AffineRepr;
 use ark_ff::{Field, One, PrimeField, Zero};
-#[cfg(feature = "prover")]
-use ark_poly::EvaluationDomain;
 use core::{array, cmp::max};
-use mina_curves::pasta::{Fp, Pallas, Vesta};
-#[cfg(feature = "prover")]
-use mina_curves::pasta::VestaParameters;
-use mina_poseidon::pasta::FULL_ROUNDS;
-#[cfg(feature = "prover")]
+use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
-#[cfg(feature = "prover")]
-use poly_commitment::{
-    ipa::{endos, SRS},
-    SRS as _,
-};
-#[cfg(feature = "prover")]
-use std::sync::Arc;
-
-#[cfg(not(feature = "prover"))]
-use super::generic::load_and_verify_fixture;
 
 type PallasField = <Pallas as AffineRepr>::BaseField;
-#[cfg(feature = "prover")]
 type SpongeParams = PlonkSpongeConstantsKimchi;
-#[cfg(feature = "prover")]
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
-#[cfg(feature = "prover")]
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
-
-#[cfg(feature = "prover")]
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
-#[cfg(feature = "prover")]
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
 const XOR: bool = true;
 
@@ -171,32 +145,24 @@ where
 #[test]
 // End-to-end test of XOR
 fn test_prove_and_verify_xor() {
-    #[cfg(feature = "prover")]
-    {
-        let rng = &mut o1_utils::tests::make_test_rng(None);
+    let rng = &mut o1_utils::tests::make_test_rng(None);
 
-        let bits = 64;
-        // Create
-        let mut gates = vec![];
-        let _next_row = CircuitGate::<Fp>::extend_xor_gadget(&mut gates, bits);
+    let bits = 64;
+    let mut gates = vec![];
+    let _next_row = CircuitGate::<Fp>::extend_xor_gadget(&mut gates, bits);
 
-        let input1 = rng.gen_field_with_bits(bits);
-        let input2 = rng.gen_field_with_bits(bits);
+    let input1 = rng.gen_field_with_bits(bits);
+    let input2 = rng.gen_field_with_bits(bits);
 
-        // Create witness and random inputs
-        let witness = xor::create_xor_witness(input1, input2, bits);
+    let witness = xor::create_xor_witness(input1, input2, bits);
 
-        TestFramework::<FULL_ROUNDS, Vesta>::default()
-            .gates(gates)
-            .witness(witness)
-            .fixture_name("test_prove_and_verify_xor")
-            .setup()
-            .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
-            .unwrap();
-    }
-
-    #[cfg(not(feature = "prover"))]
-    load_and_verify_fixture(include_bytes!("fixtures/test_prove_and_verify_xor.bin"));
+    TestFramework::<FULL_ROUNDS, Vesta>::default()
+        .gates(gates)
+        .witness(witness)
+        .fixture(include_fixture!("test_prove_and_verify_xor"))
+        .setup()
+        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
+        .unwrap();
 }
 
 #[test]
@@ -350,7 +316,6 @@ fn test_extend_xor() {
     }
 }
 
-#[cfg(feature = "prover")]
 #[test]
 fn test_bad_xor() {
     let bits = Some(16);
@@ -365,30 +330,26 @@ fn test_bad_xor() {
     let bits = bits.map_or(0, |b| b); // 0 or bits
     let bits = max(bits, max(bits1, bits2));
 
-    let mut gates = vec![];
-    let _next_row = CircuitGate::<PallasField>::extend_xor_gadget(&mut gates, bits);
+    let cs = create_test_constraint_system_xor::<FULL_ROUNDS, Vesta>(bits);
 
     let mut witness = xor::create_xor_witness(input1, input2, bits);
 
-    // modify the output to be all zero
-    witness[2][0] = PallasField::zero();
-    for i in 1..=4 {
-        witness[COLUMNS - i][0] = PallasField::zero();
-    }
+    // Corrupt the output without updating the nybble decomposition, breaking the
+    // decomposition constraint (constraint 3 of the Xor16 gate).
+    witness[2][0] += PallasField::one();
 
-    assert_eq!(
-        TestFramework::<FULL_ROUNDS, Vesta>::default()
-            .gates(gates)
-            .witness(witness)
-            .setup()
-            .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>(),
-        Err(String::from(
-            "the lookup failed to find a match in the table: row=0"
-        ))
+    // Verify that at least one row fails constraint checks with the bad witness
+    let has_error = (0..witness[0].len()).any(|row| {
+        cs.gates[row]
+            .verify_witness::<FULL_ROUNDS, Vesta>(row, &witness, &cs, &witness[0][0..cs.public])
+            .is_err()
+    });
+    assert!(
+        has_error,
+        "Expected at least one constraint to fail with bad witness"
     );
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Finalization test
 fn test_xor_finalization() {
@@ -427,26 +388,18 @@ fn test_xor_finalization() {
         cols
     };
 
-    let index = {
-        let cs = ConstraintSystem::create(gates.clone())
-            .public(num_inputs)
-            .build()
-            .unwrap();
-        let srs = SRS::<Vesta>::create(cs.domain.d1.size());
-        srs.get_lagrange_basis(cs.domain.d1);
-        let srs = Arc::new(srs);
-
-        let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::create(cs, endo_q, srs, false)
-    };
+    let cs = ConstraintSystem::create(gates.clone())
+        .public(num_inputs)
+        .build()
+        .unwrap();
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            index.cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
+            cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
                 row,
                 &witness,
-                &index.cs,
-                &witness[0][0..index.cs.public]
+                &cs,
+                &witness[0][0..cs.public]
             ),
             Ok(())
         );
@@ -456,7 +409,8 @@ fn test_xor_finalization() {
         .gates(gates)
         .witness(witness.clone())
         .public_inputs(vec![witness[0][0], witness[0][1]])
+        .fixture(include_fixture!("test_xor_finalization"))
         .setup()
-        .prove_and_verify::<BaseSponge, ScalarSponge>()
+        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
         .unwrap();
 }

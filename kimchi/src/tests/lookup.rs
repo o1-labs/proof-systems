@@ -144,10 +144,100 @@ fn lookup_gate_rejects_bad_lookups() {
     setup_lookup_proof(false, 500, vec![256])
 }
 
-#[cfg(feature = "prover")]
 #[test]
 fn lookup_gate_proving_works_multiple_tables() {
-    setup_lookup_proof(true, 500, vec![100, 50, 50, 2, 2])
+    #[cfg(feature = "prover")]
+    {
+        let seed: [u8; 32] = thread_rng().gen();
+        eprintln!("Seed: {:?}", seed);
+        let mut rng = StdRng::from_seed(seed);
+
+        let table_sizes = [100, 50, 50, 2, 2];
+        let num_lookups = 500;
+
+        let mut lookup_table_values: Vec<Vec<_>> = table_sizes
+            .iter()
+            .map(|size| (0..*size).map(|_| rng.gen()).collect())
+            .collect();
+        // Zero table must have a zero row
+        lookup_table_values[0][0] = From::from(0);
+        let lookup_tables = lookup_table_values
+            .iter()
+            .enumerate()
+            .map(|(id, lookup_table_values)| {
+                let index_column = (0..lookup_table_values.len() as u64)
+                    .map(Into::into)
+                    .collect();
+                LookupTable {
+                    id: id as i32,
+                    data: vec![index_column, lookup_table_values.clone()],
+                }
+            })
+            .collect();
+
+        // circuit gates
+        let gates = (0..num_lookups)
+            .map(|i| CircuitGate::new(GateType::Lookup, Wire::for_row(i), vec![]))
+            .collect();
+
+        let witness = {
+            let mut lookup_table_ids = Vec::with_capacity(num_lookups);
+            let mut lookup_indexes: [_; 3] = array::from_fn(|_| Vec::with_capacity(num_lookups));
+            let mut lookup_values: [_; 3] = array::from_fn(|_| Vec::with_capacity(num_lookups));
+            let unused = || vec![Fp::zero(); num_lookups];
+
+            let num_tables = table_sizes.len();
+            let mut tables_used = std::collections::HashSet::new();
+            for _ in 0..num_lookups {
+                let table_id = rng.gen::<usize>() % num_tables;
+                tables_used.insert(table_id);
+                let lookup_table_values: &Vec<Fp> = &lookup_table_values[table_id];
+                lookup_table_ids.push((table_id as u64).into());
+                for i in 0..3 {
+                    let index = rng.gen::<usize>() % lookup_table_values.len();
+                    let value = lookup_table_values[index];
+                    lookup_indexes[i].push((index as u64).into());
+                    lookup_values[i].push(value);
+                }
+            }
+
+            assert!(tables_used.len() >= 2 || table_sizes.len() <= 1);
+
+            let [lookup_indexes0, lookup_indexes1, lookup_indexes2] = lookup_indexes;
+            let [lookup_values0, lookup_values1, lookup_values2] = lookup_values;
+            [
+                lookup_table_ids,
+                lookup_indexes0,
+                lookup_values0,
+                lookup_indexes1,
+                lookup_values1,
+                lookup_indexes2,
+                lookup_values2,
+                unused(),
+                unused(),
+                unused(),
+                unused(),
+                unused(),
+                unused(),
+                unused(),
+                unused(),
+            ]
+        };
+
+        TestFramework::<FULL_ROUNDS, Vesta>::default()
+            .gates(gates)
+            .witness(witness)
+            .lookup_tables(lookup_tables)
+            .fixture_name("lookup_gate_proving_works_multiple_tables")
+            .setup()
+            .prove_and_verify::<BaseSponge, ScalarSponge>()
+            .unwrap();
+    }
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!(
+        "fixtures/lookup_gate_proving_works_multiple_tables.bin"
+    ));
 }
 
 #[cfg(feature = "prover")]
@@ -159,6 +249,7 @@ fn lookup_gate_rejects_bad_lookups_multiple_tables() {
 
 #[cfg(feature = "prover")]
 fn setup_successful_runtime_table_test(
+    fixture_name: &'static str,
     runtime_table_cfgs: Vec<RuntimeTableCfg<Fp>>,
     runtime_tables: Vec<RuntimeTable<Fp>>,
     lookups: Vec<i32>,
@@ -219,86 +310,93 @@ fn setup_successful_runtime_table_test(
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(runtime_table_cfgs)
+        .fixture_name(fixture_name)
         .setup()
         .runtime_tables(runtime_tables)
         .prove_and_verify::<BaseSponge, ScalarSponge>()
         .unwrap();
 }
 
-#[cfg(feature = "prover")]
 #[test]
 fn test_runtime_table() {
-    let num = 5;
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let rng = &mut o1_utils::tests::make_test_rng(None);
+    #[cfg(feature = "prover")]
+    {
+        let num = 5;
+        let seed: [u8; 32] = thread_rng().gen();
+        eprintln!("Seed: {:?}", seed);
+        let rng = &mut o1_utils::tests::make_test_rng(None);
 
-    let first_column = [8u32, 9, 8, 7, 1];
-    let len = first_column.len();
+        let first_column = [8u32, 9, 8, 7, 1];
+        let len = first_column.len();
 
-    let mut runtime_tables_setup = vec![];
-    for table_id in 1..num + 1 {
-        let cfg = RuntimeTableCfg {
-            id: table_id,
-            first_column: first_column.into_iter().map(Into::into).collect(),
-        };
-        runtime_tables_setup.push(cfg);
-    }
-
-    let data: Vec<Fp> = [0u32, 2, 3, 4, 5].into_iter().map(Into::into).collect();
-    let runtime_tables: Vec<RuntimeTable<Fp>> = runtime_tables_setup
-        .iter()
-        .map(|cfg| RuntimeTable {
-            id: cfg.id(),
-            data: data.clone(),
-        })
-        .collect();
-
-    // circuit
-    let mut gates = vec![];
-    for row in 0..20 {
-        gates.push(CircuitGate::new(
-            GateType::Lookup,
-            Wire::for_row(row),
-            vec![],
-        ));
-    }
-
-    // witness
-    let witness = {
-        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); gates.len()]);
-
-        // only the first 7 registers are used in the lookup gate
-        let (lookup_cols, _rest) = cols.split_at_mut(7);
-
-        for row in 0..20 {
-            // the first register is the table id. We pick one random table.
-            lookup_cols[0][row] = (rng.gen_range(1..num + 1) as u32).into();
-
-            // create queries into our runtime lookup table.
-            // We will set [w1, w2], [w3, w4] and [w5, w6] to randon indexes and
-            // the corresponding values
-            let lookup_cols = &mut lookup_cols[1..];
-            for chunk in lookup_cols.chunks_mut(2) {
-                let idx = rng.gen_range(0..len);
-                chunk[0][row] = first_column[idx].into();
-                chunk[1][row] = data[idx];
-            }
+        let mut runtime_tables_setup = vec![];
+        for table_id in 1..num + 1 {
+            let cfg = RuntimeTableCfg {
+                id: table_id,
+                first_column: first_column.into_iter().map(Into::into).collect(),
+            };
+            runtime_tables_setup.push(cfg);
         }
-        cols
-    };
 
-    print_witness(&witness, 0, 20);
+        let data: Vec<Fp> = [0u32, 2, 3, 4, 5].into_iter().map(Into::into).collect();
+        let runtime_tables: Vec<RuntimeTable<Fp>> = runtime_tables_setup
+            .iter()
+            .map(|cfg| RuntimeTable {
+                id: cfg.id(),
+                data: data.clone(),
+            })
+            .collect();
 
-    // run test
-    TestFramework::<FULL_ROUNDS, Vesta>::default()
-        .gates(gates)
-        .witness(witness)
-        .runtime_tables_setup(runtime_tables_setup)
-        .setup()
-        .runtime_tables(runtime_tables)
-        .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .unwrap();
+        // circuit
+        let mut gates = vec![];
+        for row in 0..20 {
+            gates.push(CircuitGate::new(
+                GateType::Lookup,
+                Wire::for_row(row),
+                vec![],
+            ));
+        }
+
+        // witness
+        let witness = {
+            let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); gates.len()]);
+
+            // only the first 7 registers are used in the lookup gate
+            let (lookup_cols, _rest) = cols.split_at_mut(7);
+
+            for row in 0..20 {
+                // the first register is the table id. We pick one random table.
+                lookup_cols[0][row] = (rng.gen_range(1..num + 1) as u32).into();
+
+                // create queries into our runtime lookup table.
+                // We will set [w1, w2], [w3, w4] and [w5, w6] to randon indexes and
+                // the corresponding values
+                let lookup_cols = &mut lookup_cols[1..];
+                for chunk in lookup_cols.chunks_mut(2) {
+                    let idx = rng.gen_range(0..len);
+                    chunk[0][row] = first_column[idx].into();
+                    chunk[1][row] = data[idx];
+                }
+            }
+            cols
+        };
+
+        print_witness(&witness, 0, 20);
+
+        // run test
+        TestFramework::<FULL_ROUNDS, Vesta>::default()
+            .gates(gates)
+            .witness(witness)
+            .runtime_tables_setup(runtime_tables_setup)
+            .fixture_name("test_runtime_table")
+            .setup()
+            .runtime_tables(runtime_tables)
+            .prove_and_verify::<BaseSponge, ScalarSponge>()
+            .unwrap();
+    }
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!("fixtures/test_runtime_table.bin"));
 }
 
 #[cfg(feature = "prover")]
@@ -574,51 +672,75 @@ fn test_runtime_table_with_more_than_one_runtime_table_data_given_by_prover() {
     );
 }
 
-#[cfg(feature = "prover")]
 #[test]
 fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_fixed_values() {
-    let first_column = [0, 1, 2, 3, 4, 5];
-    let table_id = 0;
+    #[cfg(feature = "prover")]
+    {
+        let first_column = [0, 1, 2, 3, 4, 5];
+        let table_id = 0;
 
-    let cfg = RuntimeTableCfg {
-        id: table_id,
-        first_column: first_column.into_iter().map(Into::into).collect(),
-    };
+        let cfg = RuntimeTableCfg {
+            id: table_id,
+            first_column: first_column.into_iter().map(Into::into).collect(),
+        };
 
-    let data: Vec<Fp> = [0u32, 1, 2, 3, 4, 5].into_iter().map(Into::into).collect();
-    let runtime_table = RuntimeTable { id: table_id, data };
+        let data: Vec<Fp> = [0u32, 1, 2, 3, 4, 5].into_iter().map(Into::into).collect();
+        let runtime_table = RuntimeTable { id: table_id, data };
 
-    let lookups: Vec<i32> = [0; 20].into();
+        let lookups: Vec<i32> = [0; 20].into();
 
-    setup_successful_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
+        setup_successful_runtime_table_test(
+            "test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_fixed_values",
+            vec![cfg],
+            vec![runtime_table],
+            lookups,
+        );
+    }
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!(
+        "fixtures/test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_fixed_values.bin"
+    ));
 }
 
-#[cfg(feature = "prover")]
 #[test]
 fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_values() {
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let rng = &mut o1_utils::tests::make_test_rng(None);
+    #[cfg(feature = "prover")]
+    {
+        let seed: [u8; 32] = thread_rng().gen();
+        eprintln!("Seed: {:?}", seed);
+        let rng = &mut o1_utils::tests::make_test_rng(None);
 
-    let len = rng.gen_range(1usize..1000);
-    let first_column: Vec<i32> = (0..len as i32).collect();
+        let len = rng.gen_range(1usize..1000);
+        let first_column: Vec<i32> = (0..len as i32).collect();
 
-    let table_id = 0;
+        let table_id = 0;
 
-    let cfg = RuntimeTableCfg {
-        id: table_id,
-        first_column: first_column.clone().into_iter().map(Into::into).collect(),
-    };
+        let cfg = RuntimeTableCfg {
+            id: table_id,
+            first_column: first_column.clone().into_iter().map(Into::into).collect(),
+        };
 
-    let data: Vec<Fp> = first_column
-        .into_iter()
-        .map(|_| UniformRand::rand(rng))
-        .collect();
-    let runtime_table = RuntimeTable { id: table_id, data };
+        let data: Vec<Fp> = first_column
+            .into_iter()
+            .map(|_| UniformRand::rand(rng))
+            .collect();
+        let runtime_table = RuntimeTable { id: table_id, data };
 
-    let lookups: Vec<i32> = [0; 20].into();
+        let lookups: Vec<i32> = [0; 20].into();
 
-    setup_successful_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
+        setup_successful_runtime_table_test(
+            "test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_values",
+            vec![cfg],
+            vec![runtime_table],
+            lookups,
+        );
+    }
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!(
+        "fixtures/test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_values.bin"
+    ));
 }
 
 // This test verifies that if there is a table with ID 0, it contains a row with only zeroes.
@@ -679,52 +801,62 @@ fn test_lookup_with_a_table_with_id_zero_but_no_zero_entry() {
         .setup();
 }
 
-#[cfg(feature = "prover")]
 #[test]
 fn test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id_0() {
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let rng = &mut o1_utils::tests::make_test_rng(None);
-    let max_len: u32 = 100u32;
-    let max_table_id: i32 = 100;
+    #[cfg(feature = "prover")]
+    {
+        let seed: [u8; 32] = thread_rng().gen();
+        eprintln!("Seed: {:?}", seed);
+        let rng = &mut o1_utils::tests::make_test_rng(None);
+        let max_len: u32 = 100u32;
+        let max_table_id: i32 = 100;
 
-    // No zero-length table
-    let len = rng.gen_range(1u32..max_len);
-    // No table of ID 0
-    let table_id: i32 = rng.gen_range(1i32..max_table_id);
-    // No index 0 in the table.
-    let indices: Vec<Fp> = (0..len)
-        .map(|_| rng.gen_range(1u32..max_len))
-        .map(Into::into)
-        .collect();
-    // No zero value
-    let values: Vec<Fp> = (0..len)
-        .map(|_| rng.gen_range(1u32..max_len))
-        .map(Into::into)
-        .collect();
-    let lookup_table = LookupTable {
-        id: table_id,
-        data: vec![indices, values],
-    };
-    let lookup_tables = vec![lookup_table];
-    let num_lookups = 20;
+        // No zero-length table
+        let len = rng.gen_range(1u32..max_len);
+        // No table of ID 0
+        let table_id: i32 = rng.gen_range(1i32..max_table_id);
+        // No index 0 in the table.
+        let indices: Vec<Fp> = (0..len)
+            .map(|_| rng.gen_range(1u32..max_len))
+            .map(Into::into)
+            .collect();
+        // No zero value
+        let values: Vec<Fp> = (0..len)
+            .map(|_| rng.gen_range(1u32..max_len))
+            .map(Into::into)
+            .collect();
+        let lookup_table = LookupTable {
+            id: table_id,
+            data: vec![indices, values],
+        };
+        let lookup_tables = vec![lookup_table];
+        let num_lookups = 20;
 
-    // circuit gates
-    let gates = (0..num_lookups)
-        .map(|i| CircuitGate::new(GateType::Lookup, Wire::for_row(i), vec![]))
-        .collect();
+        // circuit gates
+        let gates = (0..num_lookups)
+            .map(|i| CircuitGate::new(GateType::Lookup, Wire::for_row(i), vec![]))
+            .collect();
 
-    // 0 everywhere, it should handle the case (0, 0, 0). We simulate a lot of
-    // lookups with (0, 0, 0).
-    let witness = array::from_fn(|_col| vec![Fp::zero(); num_lookups]);
+        // 0 everywhere, it should handle the case (0, 0, 0). We simulate a lot of
+        // lookups with (0, 0, 0).
+        let witness = array::from_fn(|_col| vec![Fp::zero(); num_lookups]);
 
-    TestFramework::<FULL_ROUNDS, Vesta>::default()
-        .gates(gates)
-        .witness(witness)
-        .lookup_tables(lookup_tables)
-        .setup()
-        .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .unwrap();
+        TestFramework::<FULL_ROUNDS, Vesta>::default()
+            .gates(gates)
+            .witness(witness)
+            .lookup_tables(lookup_tables)
+            .fixture_name(
+                "test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id_0",
+            )
+            .setup()
+            .prove_and_verify::<BaseSponge, ScalarSponge>()
+            .unwrap();
+    }
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!(
+        "fixtures/test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id_0.bin"
+    ));
 }
 
 #[cfg(feature = "prover")]

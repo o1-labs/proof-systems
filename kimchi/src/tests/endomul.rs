@@ -1,28 +1,33 @@
+use crate::circuits::{polynomials::endosclmul, wires::COLUMNS};
+use alloc::vec::Vec;
+use ark_ec::AffineRepr;
+use ark_ff::{One, Zero};
+use core::{array, str::FromStr};
+use mina_curves::pasta::{Fp as F, Pallas as Other};
+use poly_commitment::ipa::endos;
+
 #[cfg(feature = "prover")]
 use crate::{
     circuits::{
         gate::{CircuitGate, GateType},
-        polynomials::endosclmul,
-        wires::*,
+        wires::Wire,
     },
     tests::framework::TestFramework,
 };
 #[cfg(feature = "prover")]
-use ark_ec::{AdditiveGroup, AffineRepr, CurveGroup};
+use ark_ec::{AdditiveGroup, CurveGroup};
 #[cfg(feature = "prover")]
-use ark_ff::{BigInteger, BitIteratorLE, One, PrimeField, UniformRand, Zero};
+use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
 #[cfg(feature = "prover")]
-use core::{array, ops::Mul};
+use core::ops::Mul;
 #[cfg(feature = "prover")]
-use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
+use mina_curves::pasta::{Vesta, VestaParameters};
 #[cfg(feature = "prover")]
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
-#[cfg(feature = "prover")]
-use poly_commitment::ipa::endos;
 
 #[cfg(not(feature = "prover"))]
 use super::generic::load_and_verify_fixture;
@@ -141,11 +146,8 @@ fn endomul_test() {
 /// Regression test for EndoMul gate with fixed scalar values.
 /// This test uses hardcoded expected outputs to detect any changes in the
 /// gate's behavior.
-#[cfg(feature = "prover")]
 #[test]
 fn test_endomul_regression() {
-    use std::str::FromStr;
-
     let num_bits = 16; // Small scalar for readable test
     let chunks = num_bits / 4;
 
@@ -161,14 +163,14 @@ fn test_endomul_regression() {
     };
 
     // Fixed 16-bit scalar in MSB-first order: 0b1010_0011_1100_0101 = 41925
-    let bits_msb: Vec<bool> = vec![
+    let bits_msb: Vec<bool> = alloc::vec![
         true, false, true, false, // 0xA
         false, false, true, true, // 0x3
         true, true, false, false, // 0xC
         false, true, false, true, // 0x5
     ];
 
-    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); chunks + 1]);
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| alloc::vec![F::zero(); chunks + 1]);
 
     let res = endosclmul::gen_witness(&mut witness, 0, endo_q, (base.x, base.y), &bits_msb, acc0);
 

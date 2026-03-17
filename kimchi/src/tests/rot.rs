@@ -1,38 +1,30 @@
-use alloc::{vec, vec::Vec};
 #[cfg(feature = "prover")]
 use super::framework::TestFramework;
+#[cfg(feature = "prover")]
+use crate::plonk_sponge::FrSponge;
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
-        gate::{CircuitGate, CircuitGateError, GateType},
+        gate::{CircuitGate, CircuitGateError, Connect, GateType},
         polynomial::COLUMNS,
         polynomials::{
             generic::GenericGateSpec,
+            keccak::{constants::DIM, OFF},
             rot::{self, RotMode},
         },
         wires::Wire,
     },
     curve::KimchiCurve,
 };
-#[cfg(feature = "prover")]
-use crate::{
-    circuits::{
-        gate::Connect,
-        polynomials::keccak::{constants::DIM, OFF},
-    },
-    plonk_sponge::FrSponge,
-    prover_index::ProverIndex,
-};
+use alloc::{vec, vec::Vec};
 use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, Zero};
-#[cfg(feature = "prover")]
-use ark_poly::EvaluationDomain;
 use core::array;
-use mina_curves::pasta::{Pallas, Vesta};
 #[cfg(feature = "prover")]
 use mina_curves::pasta::Fp;
 #[cfg(feature = "prover")]
 use mina_curves::pasta::{Fq, PallasParameters, VestaParameters};
+use mina_curves::pasta::{Pallas, Vesta};
 use mina_poseidon::pasta::FULL_ROUNDS;
 #[cfg(feature = "prover")]
 use mina_poseidon::{
@@ -42,14 +34,7 @@ use mina_poseidon::{
     FqSponge,
 };
 use o1_utils::Two;
-#[cfg(feature = "prover")]
-use poly_commitment::{
-    ipa::{endos, SRS},
-    SRS as _,
-};
 use rand::Rng;
-#[cfg(feature = "prover")]
-use std::sync::Arc;
 
 #[cfg(not(feature = "prover"))]
 use super::generic::{load_and_verify_fixture, load_and_verify_fixture_pallas};
@@ -162,9 +147,7 @@ fn test_prove_and_verify() {
     #[cfg(not(feature = "prover"))]
     {
         load_and_verify_fixture(include_bytes!("fixtures/rot_prove_and_verify_vesta.bin"));
-        load_and_verify_fixture_pallas(include_bytes!(
-            "fixtures/rot_prove_and_verify_pallas.bin"
-        ));
+        load_and_verify_fixture_pallas(include_bytes!("fixtures/rot_prove_and_verify_pallas.bin"));
     }
 }
 
@@ -423,7 +406,6 @@ fn test_bad_constraints() {
     );
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Finalization test
 fn test_rot_finalization() {
@@ -438,13 +420,13 @@ fn test_rot_finalization() {
         let mut gates = vec![];
         // public inputs
         for row in 0..num_public_inputs {
-            gates.push(CircuitGate::<Fp>::create_generic_gadget(
+            gates.push(CircuitGate::<PallasField>::create_generic_gadget(
                 Wire::for_row(row),
                 GenericGateSpec::Pub,
                 None,
             ));
         }
-        CircuitGate::<Fp>::extend_rot(&mut gates, rot, mode, 1);
+        CircuitGate::<PallasField>::extend_rot(&mut gates, rot, mode, 1);
         // connect first public input to the word of the ROT
         gates.connect_cell_pair((0, 0), (2, 0));
 
@@ -454,51 +436,47 @@ fn test_rot_finalization() {
     // witness
     let witness = {
         // create one row for the public word
-        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); 2]);
+        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![PallasField::zero(); 2]);
 
         // initialize the public input containing the word to be rotated
         let input = 0xDC811727DAF22EC1u64;
         cols[0][0] = input.into();
-        rot::extend_rot::<Fp>(&mut cols, input, rot, mode);
+        rot::extend_rot::<PallasField>(&mut cols, input, rot, mode);
 
         cols
     };
 
-    let index = {
-        let cs = ConstraintSystem::create(gates.clone())
-            .public(num_public_inputs)
-            .build()
-            .unwrap();
-        let srs = SRS::<Vesta>::create(cs.domain.d1.size());
-        srs.get_lagrange_basis(cs.domain.d1);
-        let srs = Arc::new(srs);
-
-        let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::create(cs, endo_q, srs, false)
-    };
+    let cs = ConstraintSystem::create(gates.clone())
+        .public(num_public_inputs)
+        .build()
+        .unwrap();
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            index.cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
+            cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
                 row,
                 &witness,
-                &index.cs,
-                &witness[0][0..index.cs.public]
+                &cs,
+                &witness[0][0..cs.public]
             ),
             Ok(())
         );
     }
 
+    #[cfg(feature = "prover")]
     TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness.clone())
         .public_inputs(vec![witness[0][0], witness[0][1]])
+        .fixture_name("test_rot_finalization")
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
         .unwrap();
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!("fixtures/test_rot_finalization.bin"));
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Test that all of the offsets in the rotation table work fine
 fn test_keccak_table() {
@@ -525,9 +503,9 @@ fn test_keccak_table() {
     }
     let cs = ConstraintSystem::create(gates).build().unwrap();
 
-    let state: [[u64; DIM]; DIM] = array::from_fn(|_| {
-        array::from_fn(|_| rand::thread_rng().gen_range(0..2u128.pow(64)) as u64)
-    });
+    let rng = &mut o1_utils::tests::make_test_rng(None);
+    let state: [[u64; DIM]; DIM] =
+        array::from_fn(|_| array::from_fn(|_| rng.gen_range(0..2u128.pow(64)) as u64));
     let mut witness: [Vec<PallasField>; COLUMNS] = array::from_fn(|_| vec![PallasField::zero()]);
     for (y, col) in OFF.iter().enumerate() {
         for (x, &rot) in col.iter().enumerate() {

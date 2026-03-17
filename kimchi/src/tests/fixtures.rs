@@ -19,4 +19,8 @@ pub struct RawFixture {
     pub public_inputs_bytes: Vec<u8>,
     pub num_public_inputs: usize,
     pub feature_flags: FeatureFlags,
+    /// Serialized endo scalar (G::ScalarField via CanonicalSerialize).
+    /// Optional for backward compatibility with old fixtures.
+    #[serde(default)]
+    pub endo: Option<Vec<u8>>,
 }
