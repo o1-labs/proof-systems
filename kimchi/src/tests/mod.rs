@@ -9,7 +9,6 @@ mod endomul;
 mod endomul_scalar;
 mod foreign_field_add;
 mod foreign_field_mul;
-#[cfg(feature = "prover")]
 mod framework;
 mod generic;
 mod keccak;

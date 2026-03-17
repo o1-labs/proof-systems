@@ -24,8 +24,8 @@ use mina_curves::pasta::{Fq, Pallas, PallasParameters};
 use {
     super::fixtures::RawFixture,
     crate::{
-        linearization::expr_linearization, proof::ProverProof,
-        verifier::verify_with_rng, verifier_index::VerifierIndex,
+        linearization::expr_linearization, proof::ProverProof, verifier::verify_with_rng,
+        verifier_index::VerifierIndex,
     },
     alloc::{sync::Arc, vec::Vec},
     ark_serialize::CanonicalDeserialize,
@@ -158,64 +158,84 @@ fn test_generic_gate() {
     load_and_verify_fixture(include_bytes!("fixtures/test_generic_gate.bin"));
 }
 
-#[cfg(feature = "prover")]
 #[test]
 fn test_generic_gate_pub() {
-    let public = vec![Fp::from(3u8); 5];
-    let gates = create_circuit(0, public.len());
+    #[cfg(feature = "prover")]
+    {
+        let public = vec![Fp::from(3u8); 5];
+        let gates = create_circuit(0, public.len());
 
-    // create witness
-    let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
-    fill_in_witness(0, &mut witness, &public);
+        // create witness
+        let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
+        fill_in_witness(0, &mut witness, &public);
 
-    // create and verify proof based on the witness
-    TestFramework::<FULL_ROUNDS, Vesta>::default()
-        .gates(gates)
-        .witness(witness)
-        .public_inputs(public)
-        .setup()
-        .prove_and_verify::<BaseSponge<VestaParameters>, ScalarSponge<Fp>>()
-        .unwrap();
+        // create and verify proof based on the witness
+        TestFramework::<FULL_ROUNDS, Vesta>::default()
+            .gates(gates)
+            .witness(witness)
+            .public_inputs(public)
+            .fixture_name("test_generic_gate_pub")
+            .setup()
+            .prove_and_verify::<BaseSponge<VestaParameters>, ScalarSponge<Fp>>()
+            .unwrap();
+    }
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!("fixtures/test_generic_gate_pub.bin"));
 }
 
-#[cfg(feature = "prover")]
 #[test]
 fn test_generic_gate_pub_all_zeros() {
-    let public = vec![Fp::from(0u8); 5];
-    let gates = create_circuit(0, public.len());
+    #[cfg(feature = "prover")]
+    {
+        let public = vec![Fp::from(0u8); 5];
+        let gates = create_circuit(0, public.len());
 
-    // create witness
-    let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
-    fill_in_witness(0, &mut witness, &public);
+        // create witness
+        let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
+        fill_in_witness(0, &mut witness, &public);
 
-    // create and verify proof based on the witness
-    TestFramework::<FULL_ROUNDS, Vesta>::default()
-        .gates(gates)
-        .witness(witness)
-        .public_inputs(public)
-        .setup()
-        .prove_and_verify::<BaseSponge<VestaParameters>, ScalarSponge<Fp>>()
-        .unwrap();
+        // create and verify proof based on the witness
+        TestFramework::<FULL_ROUNDS, Vesta>::default()
+            .gates(gates)
+            .witness(witness)
+            .public_inputs(public)
+            .fixture_name("test_generic_gate_pub_all_zeros")
+            .setup()
+            .prove_and_verify::<BaseSponge<VestaParameters>, ScalarSponge<Fp>>()
+            .unwrap();
+    }
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!(
+        "fixtures/test_generic_gate_pub_all_zeros.bin"
+    ));
 }
 
-#[cfg(feature = "prover")]
 #[test]
 fn test_generic_gate_pub_empty() {
-    let public = vec![];
-    let gates = create_circuit(0, public.len());
+    #[cfg(feature = "prover")]
+    {
+        let public = vec![];
+        let gates = create_circuit(0, public.len());
 
-    // create witness
-    let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
-    fill_in_witness(0, &mut witness, &public);
+        // create witness
+        let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
+        fill_in_witness(0, &mut witness, &public);
 
-    // create and verify proof based on the witness
-    TestFramework::<FULL_ROUNDS, Vesta>::default()
-        .gates(gates)
-        .witness(witness)
-        .public_inputs(public)
-        .setup()
-        .prove_and_verify::<BaseSponge<VestaParameters>, ScalarSponge<Fp>>()
-        .unwrap();
+        // create and verify proof based on the witness
+        TestFramework::<FULL_ROUNDS, Vesta>::default()
+            .gates(gates)
+            .witness(witness)
+            .public_inputs(public)
+            .fixture_name("test_generic_gate_pub_empty")
+            .setup()
+            .prove_and_verify::<BaseSponge<VestaParameters>, ScalarSponge<Fp>>()
+            .unwrap();
+    }
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!("fixtures/test_generic_gate_pub_empty.bin"));
 }
 
 #[cfg(all(feature = "bn254", feature = "prover"))]

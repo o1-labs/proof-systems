@@ -1,4 +1,3 @@
-#[cfg(feature = "prover")]
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
@@ -12,36 +11,30 @@ use crate::{
         },
     },
     curve::KimchiCurve,
-    plonk_sponge::FrSponge,
-    tests::framework::TestFramework,
 };
 #[cfg(feature = "prover")]
+use crate::{plonk_sponge::FrSponge, tests::framework::TestFramework};
+use alloc::{sync::Arc, vec, vec::Vec};
 use ark_ec::AffineRepr;
-#[cfg(feature = "prover")]
 use ark_ff::{Field, One, PrimeField, Zero};
 #[cfg(feature = "prover")]
-use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp, Fq, PallasParameters, VestaParameters};
+use mina_curves::pasta::{Pallas, Vesta};
+use mina_poseidon::pasta::FULL_ROUNDS;
 #[cfg(feature = "prover")]
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
-    pasta::FULL_ROUNDS,
     poseidon::ArithmeticSpongeParams,
     sponge::{DefaultFqSponge, DefaultFrSponge},
     FqSponge,
 };
-#[cfg(feature = "prover")]
 use num_bigint::{BigUint, RandBigInt};
-#[cfg(feature = "prover")]
 use o1_utils::{FieldHelpers, Two};
-#[cfg(feature = "prover")]
-use std::sync::Arc;
 
 #[cfg(not(feature = "prover"))]
 use super::generic::load_and_verify_fixture;
 
-#[cfg(feature = "prover")]
 type PallasField = <Pallas as AffineRepr>::BaseField;
-#[cfg(feature = "prover")]
 type VestaField = <Vesta as AffineRepr>::BaseField;
 
 #[cfg(feature = "prover")]
@@ -55,31 +48,26 @@ type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams, FULL_ROU
 #[cfg(feature = "prover")]
 type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams, FULL_ROUNDS>;
 
-#[cfg(feature = "prover")]
 // The secp256k1 base field modulus
 fn secp256k1_modulus() -> BigUint {
     BigUint::from_bytes_be(&secp256k1::constants::FIELD_SIZE)
 }
 
-#[cfg(feature = "prover")]
 // Maximum value in the secp256k1 base field
 fn secp256k1_max() -> BigUint {
     secp256k1_modulus() - BigUint::from(1u32)
 }
 
-#[cfg(feature = "prover")]
 // Maximum value whose square fits in secp256k1 base field
 fn secp256k1_sqrt() -> BigUint {
     secp256k1_max().sqrt()
 }
 
-#[cfg(feature = "prover")]
 // Maximum value in the pallas base field
 fn pallas_max() -> BigUint {
     PallasField::modulus_biguint() - BigUint::from(1u32)
 }
 
-#[cfg(feature = "prover")]
 // Maximum value whose square fits in the pallas base field
 fn pallas_sqrt() -> BigUint {
     pallas_max().sqrt()
@@ -95,6 +83,7 @@ fn run_test<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, EFqSponge, EF
     right_input: &BigUint,
     foreign_field_modulus: &BigUint,
     invalidations: Vec<((usize, usize), G::ScalarField)>,
+    fixture_name: &'static str,
 ) -> (CircuitGateResult<()>, [Vec<G::ScalarField>; COLUMNS])
 where
     G::BaseField: PrimeField,
@@ -215,7 +204,7 @@ where
             TestFramework::<FULL_ROUNDS, G>::default()
                 .disable_gates_checks(disable_gates_checks)
                 .gates(gates.clone())
-                .fixture_name("test_zero_mul")
+                .fixture_name(fixture_name)
                 .setup(),
         )
     } else {
@@ -310,6 +299,136 @@ where
     (Ok(()), witness)
 }
 
+// Non-prover version of run_test (constraint system only, no ProverIndex)
+#[cfg(not(feature = "prover"))]
+fn run_test_cs<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
+    external_gates: bool,
+    left_input: &BigUint,
+    right_input: &BigUint,
+    foreign_field_modulus: &BigUint,
+    invalidations: Vec<((usize, usize), G::ScalarField)>,
+) -> (CircuitGateResult<()>, [Vec<G::ScalarField>; COLUMNS])
+where
+    G::BaseField: PrimeField,
+{
+    // Create foreign field multiplication gates
+    let (mut next_row, mut gates) =
+        CircuitGate::<G::ScalarField>::create_foreign_field_mul(0, foreign_field_modulus);
+
+    // Compute multiplication witness
+    let (mut witness, mut external_checks) =
+        foreign_field_mul::witness::create(left_input, right_input, foreign_field_modulus);
+
+    // Optionally also add external gate checks to circuit
+    if external_gates {
+        // Result compact-multi-range-check
+        CircuitGate::extend_compact_multi_range_check(&mut gates, &mut next_row);
+        gates.connect_cell_pair((1, 0), (4, 1));
+        gates.connect_cell_pair((1, 1), (2, 0));
+        external_checks.extend_witness_compact_multi_range_checks(&mut witness);
+
+        // Constant single Generic gate for result bound
+        CircuitGate::extend_high_bounds(&mut gates, &mut next_row, foreign_field_modulus);
+        gates.connect_cell_pair((6, 0), (1, 1));
+        external_checks.extend_witness_high_bounds_computation(&mut witness, foreign_field_modulus);
+
+        // Quotient multi-range-check
+        CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
+        gates.connect_cell_pair((1, 2), (7, 0));
+        gates.connect_cell_pair((1, 3), (8, 0));
+        gates.connect_cell_pair((1, 4), (9, 0));
+
+        // Multiplication witness value quotient_bound, product1_lo, product1_hi_0 multi-range-check
+        CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
+        gates.connect_cell_pair((1, 5), (11, 0));
+        gates.connect_cell_pair((0, 6), (12, 0));
+        gates.connect_cell_pair((1, 6), (13, 0));
+
+        // Add witness for external multi-range checks
+        external_checks.extend_witness_multi_range_checks(&mut witness);
+
+        // DESIGNER CHOICE: left and right (and result bound from before)
+        let left_limbs = left_input.to_field_limbs();
+        let right_limbs = right_input.to_field_limbs();
+        external_checks.add_high_bound_computation(&left_limbs[2]);
+        external_checks.add_high_bound_computation(&right_limbs[2]);
+        CircuitGate::extend_high_bounds(&mut gates, &mut next_row, foreign_field_modulus);
+        gates.connect_cell_pair((15, 0), (0, 2));
+        gates.connect_cell_pair((15, 3), (0, 5));
+        external_checks.extend_witness_high_bounds_computation(&mut witness, foreign_field_modulus);
+
+        // Left input multi-range-check
+        external_checks.add_multi_range_check(&left_limbs);
+        CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
+        gates.connect_cell_pair((0, 0), (16, 0));
+        gates.connect_cell_pair((0, 1), (17, 0));
+        gates.connect_cell_pair((0, 2), (18, 0));
+
+        // Right input multi-range-check
+        external_checks.add_multi_range_check(&right_limbs);
+        CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
+        gates.connect_cell_pair((0, 3), (20, 0));
+        gates.connect_cell_pair((0, 4), (21, 0));
+        gates.connect_cell_pair((0, 5), (22, 0));
+
+        // Add witness for external multi-range checks: left and right limbs
+        external_checks.extend_witness_multi_range_checks(&mut witness);
+
+        // Bounds for result limb range checks
+        CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
+        gates.connect_cell_pair((6, 2), (24, 0));
+
+        // Multi-range check bounds for left and right inputs
+        let left_hi_bound =
+            foreign_field_mul::witness::compute_high_bound(left_input, foreign_field_modulus);
+        let right_hi_bound =
+            foreign_field_mul::witness::compute_high_bound(right_input, foreign_field_modulus);
+        external_checks.add_limb_check(&left_hi_bound.into());
+        external_checks.add_limb_check(&right_hi_bound.into());
+        gates.connect_cell_pair((15, 2), (25, 0));
+        gates.connect_cell_pair((15, 5), (26, 0));
+
+        external_checks.extend_witness_limb_checks(&mut witness);
+    }
+
+    let cs = Arc::new(ConstraintSystem::create(gates.clone()).build().unwrap());
+
+    // Perform witness verification that everything is ok before invalidation (quick checks)
+    for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
+        let result =
+            gate.verify_witness::<FULL_ROUNDS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
+        if result.is_err() {
+            return (result, witness);
+        }
+    }
+
+    if !invalidations.is_empty() {
+        for ((row, col), mut value) in invalidations {
+            // Invalidate witness
+            if witness[col][row] == value {
+                assert_ne!(value, G::ScalarField::zero());
+                value -= G::ScalarField::one();
+            }
+            witness[col][row] = value;
+        }
+
+        // Check witness verification fails
+        for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
+            let result = gate.verify_witness::<FULL_ROUNDS, G>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public],
+            );
+            if result.is_err() {
+                return (result, witness);
+            }
+        }
+    }
+
+    (Ok(()), witness)
+}
+
 #[cfg(feature = "prover")]
 // Test targeting each custom constraint (positive and negative tests for each)
 fn test_custom_constraints<
@@ -340,6 +459,7 @@ fn test_custom_constraints<
             &right_input,
             foreign_field_modulus,
             vec![((1, 7), G::ScalarField::from(4u32))], // Invalidate product1_hi_1
+            "",
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -359,6 +479,7 @@ fn test_custom_constraints<
             &right_input,
             foreign_field_modulus,
             vec![((1, 11), G::ScalarField::from(4u32))], // Invalidate carry0
+            "",
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -378,6 +499,7 @@ fn test_custom_constraints<
             &right_input,
             foreign_field_modulus,
             vec![((0, 6), G::ScalarField::one())], // Invalidate product1_lo
+            "",
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -397,6 +519,7 @@ fn test_custom_constraints<
             &right_input,
             foreign_field_modulus,
             vec![((1, 11), G::ScalarField::from(3u32))], // Invalidate carry0
+            "",
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -420,6 +543,7 @@ fn test_custom_constraints<
             &right_input,
             foreign_field_modulus,
             vec![((0, 11), G::ScalarField::from(8u32))], // Invalidate carry1_crumb0
+            "",
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -438,6 +562,7 @@ fn test_custom_constraints<
             &right_input,
             foreign_field_modulus,
             vec![((0, 12), G::ScalarField::from(8u32))], // Invalidate carry1_crumb0
+            "",
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -456,6 +581,7 @@ fn test_custom_constraints<
             &right_input,
             foreign_field_modulus,
             vec![((0, 13), G::ScalarField::from(8u32))], // Invalidate carry1_crumb0
+            "",
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -475,6 +601,7 @@ fn test_custom_constraints<
             &right_input,
             foreign_field_modulus,
             vec![((0, 14), G::ScalarField::from(3u32))], // Invalidate carry1_crumb0
+            "",
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -494,6 +621,7 @@ fn test_custom_constraints<
             &right_input,
             foreign_field_modulus,
             vec![((0, 7), G::ScalarField::one())], // Invalidate carry1_0_11
+            "",
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -508,6 +636,194 @@ fn test_custom_constraints<
         let (result, witness) = run_test::<FULL_ROUNDS, G, EFqSponge, EFrSponge>(
             false,
             false,
+            false,
+            &left_input,
+            &right_input,
+            foreign_field_modulus,
+            vec![((1, 5), G::ScalarField::one())], // Invalidate quotient_bound
+            "",
+        );
+        assert_eq!(
+            (&left_input * &right_input) % foreign_field_modulus,
+            [witness[0][1], witness[1][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 11)),
+        );
+    }
+}
+
+// Non-prover version of test_custom_constraints
+#[cfg(not(feature = "prover"))]
+fn test_custom_constraints_cs<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
+    foreign_field_modulus: &BigUint,
+) where
+    G::BaseField: PrimeField,
+{
+    let rng = &mut o1_utils::tests::make_test_rng(None);
+
+    for _ in 0..3 {
+        let left_input = rng.gen_biguint_range(&BigUint::zero(), foreign_field_modulus);
+        let right_input = rng.gen_biguint_range(&BigUint::zero(), foreign_field_modulus);
+
+        // Test constraint (C1): invalidate product1_hi_1 is in [0, 2^2)
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, G>(
+            false,
+            &left_input,
+            &right_input,
+            foreign_field_modulus,
+            vec![((1, 7), G::ScalarField::from(4u32))], // Invalidate product1_hi_1
+        );
+        assert_eq!(
+            (&left_input * &right_input) % foreign_field_modulus,
+            [witness[0][1], witness[1][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 1)),
+        );
+
+        // Test constraint (C2): invalidate carry0 in [0, 2^2)
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, G>(
+            false,
+            &left_input,
+            &right_input,
+            foreign_field_modulus,
+            vec![((1, 11), G::ScalarField::from(4u32))], // Invalidate carry0
+        );
+        assert_eq!(
+            (&left_input * &right_input) % foreign_field_modulus,
+            [witness[0][1], witness[1][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 2)),
+        );
+
+        // Test constraint (C3): invalidate middle intermediate product p1 decomposition
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, G>(
+            false,
+            &left_input,
+            &right_input,
+            foreign_field_modulus,
+            vec![((0, 6), G::ScalarField::one())], // Invalidate product1_lo
+        );
+        assert_eq!(
+            (&left_input * &right_input) % foreign_field_modulus,
+            [witness[0][1], witness[1][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 3)),
+        );
+
+        // Test constraint (C4): invalidate carry0
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, G>(
+            false,
+            &left_input,
+            &right_input,
+            foreign_field_modulus,
+            vec![((1, 11), G::ScalarField::from(3u32))], // Invalidate carry0
+        );
+        assert_eq!(
+            (&left_input * &right_input) % foreign_field_modulus,
+            [witness[0][1], witness[1][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4)),
+        );
+
+        // Test constraint (C5): invalid native modulus check but binary modulus checks ok
+        //     Triggering constraint C4 is challenging, so this is done with
+        //     the test_native_modulus_constraint() test below
+
+        // Test constraint (C6): invalidate carry1_crumb0
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, G>(
+            false,
+            &left_input,
+            &right_input,
+            foreign_field_modulus,
+            vec![((0, 11), G::ScalarField::from(8u32))], // Invalidate carry1_crumb0
+        );
+        assert_eq!(
+            (&left_input * &right_input) % foreign_field_modulus,
+            [witness[0][1], witness[1][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6)),
+        );
+        // Test constraint (C7): invalidate carry1_crumb1
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, G>(
+            false,
+            &left_input,
+            &right_input,
+            foreign_field_modulus,
+            vec![((0, 12), G::ScalarField::from(8u32))], // Invalidate carry1_crumb0
+        );
+        assert_eq!(
+            (&left_input * &right_input) % foreign_field_modulus,
+            [witness[0][1], witness[1][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 7)),
+        );
+        // Test constraint (C8): invalidate carry1_crumb2
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, G>(
+            false,
+            &left_input,
+            &right_input,
+            foreign_field_modulus,
+            vec![((0, 13), G::ScalarField::from(8u32))], // Invalidate carry1_crumb0
+        );
+        assert_eq!(
+            (&left_input * &right_input) % foreign_field_modulus,
+            [witness[0][1], witness[1][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 8)),
+        );
+
+        // Test constraint (C9): invalidate carry1_bit
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, G>(
+            false,
+            &left_input,
+            &right_input,
+            foreign_field_modulus,
+            vec![((0, 14), G::ScalarField::from(3u32))], // Invalidate carry1_crumb0
+        );
+        assert_eq!(
+            (&left_input * &right_input) % foreign_field_modulus,
+            [witness[0][1], witness[1][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 9)),
+        );
+
+        // Test constraint (C10): invalidate zero check
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, G>(
+            false,
+            &left_input,
+            &right_input,
+            foreign_field_modulus,
+            vec![((0, 7), G::ScalarField::one())], // Invalidate carry1_0_11
+        );
+        assert_eq!(
+            (&left_input * &right_input) % foreign_field_modulus,
+            [witness[0][1], witness[1][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
+        );
+
+        // Test constraint (C11): invalidate quotient high bound
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, G>(
             false,
             &left_input,
             &right_input,
@@ -539,6 +855,7 @@ fn test_zero_mul() {
             &BigUint::zero(),
             &secp256k1_modulus(),
             vec![],
+            "test_zero_mul",
         );
         assert_eq!(result, Ok(()));
 
@@ -553,136 +870,284 @@ fn test_zero_mul() {
     }
 
     #[cfg(not(feature = "prover"))]
-    load_and_verify_fixture(include_bytes!("fixtures/test_zero_mul.bin"));
+    {
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, Vesta>(
+            true,
+            &BigUint::zero(),
+            &BigUint::zero(),
+            &secp256k1_modulus(),
+            vec![],
+        );
+        assert_eq!(result, Ok(()));
+
+        // Check remainder is zero
+        assert_eq!(witness[0][1], PallasField::zero()); // remainder01
+        assert_eq!(witness[1][1], PallasField::zero()); // remainder2
+
+        // Check quotient is zero
+        assert_eq!(witness[2][1], PallasField::zero());
+        assert_eq!(witness[3][1], PallasField::zero());
+        assert_eq!(witness[4][1], PallasField::zero());
+
+        load_and_verify_fixture(include_bytes!("fixtures/test_zero_mul.bin"));
+    }
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Test the multiplication of largest foreign element and 1
 fn test_one_mul() {
-    let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-        true,
-        true,
-        false,
-        &secp256k1_max(),
-        &One::one(),
-        &secp256k1_modulus(),
-        vec![],
-    );
-    assert_eq!(result, Ok(()));
+    #[cfg(feature = "prover")]
+    {
+        let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
+            true,
+            true,
+            false,
+            &secp256k1_max(),
+            &One::one(),
+            &secp256k1_modulus(),
+            vec![],
+            "test_one_mul",
+        );
+        assert_eq!(result, Ok(()));
 
-    // Check remainder is secp256k1_max()
-    let target = secp256k1_max().to_compact_field_limbs();
-    assert_eq!(witness[0][1], target[0]);
-    assert_eq!(witness[1][1], target[1]);
+        // Check remainder is secp256k1_max()
+        let target = secp256k1_max().to_compact_field_limbs();
+        assert_eq!(witness[0][1], target[0]);
+        assert_eq!(witness[1][1], target[1]);
 
-    // Check quotient is zero
-    assert_eq!(witness[2][1], PallasField::zero());
-    assert_eq!(witness[3][1], PallasField::zero());
-    assert_eq!(witness[4][1], PallasField::zero());
+        // Check quotient is zero
+        assert_eq!(witness[2][1], PallasField::zero());
+        assert_eq!(witness[3][1], PallasField::zero());
+        assert_eq!(witness[4][1], PallasField::zero());
+    }
+
+    #[cfg(not(feature = "prover"))]
+    {
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, Vesta>(
+            true,
+            &secp256k1_max(),
+            &One::one(),
+            &secp256k1_modulus(),
+            vec![],
+        );
+        assert_eq!(result, Ok(()));
+
+        // Check remainder is secp256k1_max()
+        let target = secp256k1_max().to_compact_field_limbs();
+        assert_eq!(witness[0][1], target[0]);
+        assert_eq!(witness[1][1], target[1]);
+
+        // Check quotient is zero
+        assert_eq!(witness[2][1], PallasField::zero());
+        assert_eq!(witness[3][1], PallasField::zero());
+        assert_eq!(witness[4][1], PallasField::zero());
+
+        load_and_verify_fixture(include_bytes!("fixtures/test_one_mul.bin"));
+    }
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Test the maximum value m whose square fits in the native field
 //    m^2 = q * f + r -> q should be 0 and r should be m^2 < n < f
 fn test_max_native_square() {
-    let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-        true,
-        true,
-        false,
-        &pallas_sqrt(),
-        &pallas_sqrt(),
-        &secp256k1_modulus(),
-        vec![],
-    );
-    assert_eq!(result, Ok(()));
+    #[cfg(feature = "prover")]
+    {
+        let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
+            true,
+            true,
+            false,
+            &pallas_sqrt(),
+            &pallas_sqrt(),
+            &secp256k1_modulus(),
+            vec![],
+            "test_max_native_square",
+        );
+        assert_eq!(result, Ok(()));
 
-    // Check remainder is the square
-    let multiplicand = pallas_sqrt();
-    let square = multiplicand.pow(2u32);
-    let product = square.to_compact_field_limbs();
-    assert_eq!(witness[0][1], product[0]);
-    assert_eq!(witness[1][1], product[1]);
+        // Check remainder is the square
+        let multiplicand = pallas_sqrt();
+        let square = multiplicand.pow(2u32);
+        let product = square.to_compact_field_limbs();
+        assert_eq!(witness[0][1], product[0]);
+        assert_eq!(witness[1][1], product[1]);
 
-    // Check quotient is zero
-    assert_eq!(witness[2][1], PallasField::zero());
-    assert_eq!(witness[3][1], PallasField::zero());
-    assert_eq!(witness[4][1], PallasField::zero());
+        // Check quotient is zero
+        assert_eq!(witness[2][1], PallasField::zero());
+        assert_eq!(witness[3][1], PallasField::zero());
+        assert_eq!(witness[4][1], PallasField::zero());
+    }
+
+    #[cfg(not(feature = "prover"))]
+    {
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, Vesta>(
+            true,
+            &pallas_sqrt(),
+            &pallas_sqrt(),
+            &secp256k1_modulus(),
+            vec![],
+        );
+        assert_eq!(result, Ok(()));
+
+        // Check remainder is the square
+        let multiplicand = pallas_sqrt();
+        let square = multiplicand.pow(2u32);
+        let product = square.to_compact_field_limbs();
+        assert_eq!(witness[0][1], product[0]);
+        assert_eq!(witness[1][1], product[1]);
+
+        // Check quotient is zero
+        assert_eq!(witness[2][1], PallasField::zero());
+        assert_eq!(witness[3][1], PallasField::zero());
+        assert_eq!(witness[4][1], PallasField::zero());
+
+        load_and_verify_fixture(include_bytes!("fixtures/test_max_native_square.bin"));
+    }
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Test the maximum value g whose square fits in the foreign field
 //     g^2 = q * f + r -> q should be 0 and r should be g^2 < f
 fn test_max_foreign_square() {
-    let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-        true,
-        true,
-        false,
-        &secp256k1_sqrt(),
-        &secp256k1_sqrt(),
-        &secp256k1_modulus(),
-        vec![],
-    );
-    assert_eq!(result, Ok(()));
+    #[cfg(feature = "prover")]
+    {
+        let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
+            true,
+            true,
+            false,
+            &secp256k1_sqrt(),
+            &secp256k1_sqrt(),
+            &secp256k1_modulus(),
+            vec![],
+            "test_max_foreign_square",
+        );
+        assert_eq!(result, Ok(()));
 
-    // Check remainder is the square
-    let multiplicand = secp256k1_sqrt();
-    let square = multiplicand.pow(2u32);
-    let product = square.to_compact_field_limbs();
-    assert_eq!(witness[0][1], product[0]);
-    assert_eq!(witness[1][1], product[1]);
+        // Check remainder is the square
+        let multiplicand = secp256k1_sqrt();
+        let square = multiplicand.pow(2u32);
+        let product = square.to_compact_field_limbs();
+        assert_eq!(witness[0][1], product[0]);
+        assert_eq!(witness[1][1], product[1]);
 
-    // Check quotient is zero
-    assert_eq!(witness[2][1], PallasField::zero());
-    assert_eq!(witness[3][1], PallasField::zero());
-    assert_eq!(witness[4][1], PallasField::zero());
+        // Check quotient is zero
+        assert_eq!(witness[2][1], PallasField::zero());
+        assert_eq!(witness[3][1], PallasField::zero());
+        assert_eq!(witness[4][1], PallasField::zero());
+    }
+
+    #[cfg(not(feature = "prover"))]
+    {
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, Vesta>(
+            true,
+            &secp256k1_sqrt(),
+            &secp256k1_sqrt(),
+            &secp256k1_modulus(),
+            vec![],
+        );
+        assert_eq!(result, Ok(()));
+
+        // Check remainder is the square
+        let multiplicand = secp256k1_sqrt();
+        let square = multiplicand.pow(2u32);
+        let product = square.to_compact_field_limbs();
+        assert_eq!(witness[0][1], product[0]);
+        assert_eq!(witness[1][1], product[1]);
+
+        // Check quotient is zero
+        assert_eq!(witness[2][1], PallasField::zero());
+        assert_eq!(witness[3][1], PallasField::zero());
+        assert_eq!(witness[4][1], PallasField::zero());
+
+        load_and_verify_fixture(include_bytes!("fixtures/test_max_foreign_square.bin"));
+    }
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Test squaring the maximum native field elements
 //     (n - 1) * (n - 1) = q * f + r
 fn test_max_native_multiplicands() {
-    let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-        true,
-        true,
-        false,
-        &pallas_max(),
-        &pallas_max(),
-        &secp256k1_modulus(),
-        vec![],
-    );
-    assert_eq!(result, Ok(()));
-    assert_eq!(
-        pallas_max() * pallas_max() % secp256k1_modulus(),
-        [witness[0][1], witness[1][1]].compose()
-    );
+    #[cfg(feature = "prover")]
+    {
+        let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
+            true,
+            true,
+            false,
+            &pallas_max(),
+            &pallas_max(),
+            &secp256k1_modulus(),
+            vec![],
+            "test_max_native_multiplicands",
+        );
+        assert_eq!(result, Ok(()));
+        assert_eq!(
+            pallas_max() * pallas_max() % secp256k1_modulus(),
+            [witness[0][1], witness[1][1]].compose()
+        );
+    }
+
+    #[cfg(not(feature = "prover"))]
+    {
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, Vesta>(
+            true,
+            &pallas_max(),
+            &pallas_max(),
+            &secp256k1_modulus(),
+            vec![],
+        );
+        assert_eq!(result, Ok(()));
+        assert_eq!(
+            pallas_max() * pallas_max() % secp256k1_modulus(),
+            [witness[0][1], witness[1][1]].compose()
+        );
+
+        load_and_verify_fixture(include_bytes!("fixtures/test_max_native_multiplicands.bin"));
+    }
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Test squaring the maximum foreign field elements
 //     (f - 1) * (f - 1) = f^2 - 2f + 1 = f * (f - 2) + 1
 fn test_max_foreign_multiplicands() {
-    let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-        true,
-        true,
-        false,
-        &secp256k1_max(),
-        &secp256k1_max(),
-        &secp256k1_modulus(),
-        vec![],
-    );
-    assert_eq!(result, Ok(()));
-    assert_eq!(
-        secp256k1_max() * secp256k1_max() % secp256k1_modulus(),
-        [witness[0][1], witness[1][1]].compose()
-    );
+    #[cfg(feature = "prover")]
+    {
+        let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
+            true,
+            true,
+            false,
+            &secp256k1_max(),
+            &secp256k1_max(),
+            &secp256k1_modulus(),
+            vec![],
+            "test_max_foreign_multiplicands",
+        );
+        assert_eq!(result, Ok(()));
+        assert_eq!(
+            secp256k1_max() * secp256k1_max() % secp256k1_modulus(),
+            [witness[0][1], witness[1][1]].compose()
+        );
+    }
+
+    #[cfg(not(feature = "prover"))]
+    {
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, Vesta>(
+            true,
+            &secp256k1_max(),
+            &secp256k1_max(),
+            &secp256k1_modulus(),
+            vec![],
+        );
+        assert_eq!(result, Ok(()));
+        assert_eq!(
+            secp256k1_max() * secp256k1_max() % secp256k1_modulus(),
+            [witness[0][1], witness[1][1]].compose()
+        );
+
+        load_and_verify_fixture(include_bytes!(
+            "fixtures/test_max_foreign_multiplicands.bin"
+        ));
+    }
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Test with nonzero carry0 bits
 fn test_nonzero_carry0() {
@@ -701,6 +1166,7 @@ fn test_nonzero_carry0() {
         assert!(b < secp256k1_modulus());
 
         // Valid witness test
+        #[cfg(feature = "prover")]
         let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             true,
@@ -709,7 +1175,11 @@ fn test_nonzero_carry0() {
             &b,
             &secp256k1_modulus(),
             vec![],
+            "",
         );
+        #[cfg(not(feature = "prover"))]
+        let (result, witness) =
+            run_test_cs::<FULL_ROUNDS, Vesta>(true, &a, &b, &secp256k1_modulus(), vec![]);
         assert_eq!(result, Ok(()));
         assert_ne!(witness[11][1], PallasField::zero()); // carry0 is not zero
         assert_eq!(
@@ -718,10 +1188,20 @@ fn test_nonzero_carry0() {
         );
 
         // Invalid carry0 witness test
+        #[cfg(feature = "prover")]
         let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             true,
             false,
+            &a,
+            &b,
+            &secp256k1_modulus(),
+            vec![((1, 11), PallasField::zero())], // Invalidate carry0
+            "",
+        );
+        #[cfg(not(feature = "prover"))]
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, Vesta>(
+            true,
             &a,
             &b,
             &secp256k1_modulus(),
@@ -739,7 +1219,6 @@ fn test_nonzero_carry0() {
     }
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Test with nonzero carry10 (this targets only the limbs and the first crumb of carry1)
 fn test_nonzero_carry10() {
@@ -756,6 +1235,7 @@ fn test_nonzero_carry10() {
     let b = ((&q * &foreign_field_modulus) / &a) % &foreign_field_modulus;
 
     // Valid witness test
+    #[cfg(feature = "prover")]
     let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         true,
@@ -764,7 +1244,11 @@ fn test_nonzero_carry10() {
         &b,
         &foreign_field_modulus,
         vec![],
+        "",
     );
+    #[cfg(not(feature = "prover"))]
+    let (result, witness) =
+        run_test_cs::<FULL_ROUNDS, Vesta>(true, &a, &b, &foreign_field_modulus, vec![]);
     assert_eq!(result, Ok(()));
     let carry10 = witness[7][0]
         + witness[8][0] * PallasField::two_pow(12)
@@ -782,10 +1266,20 @@ fn test_nonzero_carry10() {
     );
 
     // Invalid carry0 witness test
+    #[cfg(feature = "prover")]
     let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         false, // Disable copy constraints so we can catch carry10 custom constraint failure
         false,
+        &a,
+        &b,
+        &foreign_field_modulus,
+        vec![((0, 10), PallasField::zero())], // Invalidate carry10
+        "",
+    );
+    #[cfg(not(feature = "prover"))]
+    let (result, witness) = run_test_cs::<FULL_ROUNDS, Vesta>(
+        false, // Disable copy constraints so we can catch carry10 custom constraint failure
         &a,
         &b,
         &foreign_field_modulus,
@@ -802,7 +1296,6 @@ fn test_nonzero_carry10() {
     );
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Test with nonzero carry1_hi (this targets only carry1_crumb2 and carry1_bit)
 fn test_nonzero_carry1_hi() {
@@ -813,6 +1306,7 @@ fn test_nonzero_carry1_hi() {
     let a = &foreign_field_modulus - BigUint::one();
 
     // Valid witness test
+    #[cfg(feature = "prover")]
     let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         true,
@@ -821,7 +1315,11 @@ fn test_nonzero_carry1_hi() {
         &a,
         &foreign_field_modulus,
         vec![],
+        "",
     );
+    #[cfg(not(feature = "prover"))]
+    let (result, witness) =
+        run_test_cs::<FULL_ROUNDS, Vesta>(true, &a, &a, &foreign_field_modulus, vec![]);
     assert_eq!(result, Ok(()));
     let carry1_hi = witness[13][0] + witness[14][0] * PallasField::from(4u32);
     assert_ne!(carry1_hi, PallasField::zero()); // carry1_hi is definitely not zero
@@ -831,10 +1329,20 @@ fn test_nonzero_carry1_hi() {
     );
 
     // Invalid carry1_hi witness test
+    #[cfg(feature = "prover")]
     let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         false, // Disable copy constraints so we can catch carry1_hi custom constraint failure
         false,
+        &a,
+        &a,
+        &foreign_field_modulus,
+        vec![((0, 7), PallasField::zero())], // Invalidate carry1_hi
+        "",
+    );
+    #[cfg(not(feature = "prover"))]
+    let (result, witness) = run_test_cs::<FULL_ROUNDS, Vesta>(
+        false, // Disable copy constraints so we can catch carry1_hi custom constraint failure
         &a,
         &a,
         &foreign_field_modulus,
@@ -851,7 +1359,6 @@ fn test_nonzero_carry1_hi() {
     );
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Test with nonzero second bit of carry1_hi
 fn test_nonzero_second_bit_carry1_hi() {
@@ -863,6 +1370,7 @@ fn test_nonzero_second_bit_carry1_hi() {
     let b = secp256k1_max();
 
     // Valid witness test
+    #[cfg(feature = "prover")]
     let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         true,
@@ -871,7 +1379,11 @@ fn test_nonzero_second_bit_carry1_hi() {
         &b,
         &secp256k1_modulus(),
         vec![],
+        "",
     );
+    #[cfg(not(feature = "prover"))]
+    let (result, witness) =
+        run_test_cs::<FULL_ROUNDS, Vesta>(true, &a, &b, &secp256k1_modulus(), vec![]);
     assert_eq!(result, Ok(()));
     let carry1_hi = witness[13][0] + witness[14][0] * PallasField::from(4u32);
     assert_eq!(carry1_hi, PallasField::from(2u32)); // carry1_hi is not zero
@@ -881,10 +1393,20 @@ fn test_nonzero_second_bit_carry1_hi() {
     );
 
     // Invalid carry1_hi witness test
+    #[cfg(feature = "prover")]
     let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         false, // Disable copy constraints so we can catch carry1_hi custom constraint failure
         false,
+        &a,
+        &b,
+        &secp256k1_modulus(),
+        vec![((0, 13), PallasField::two())], // Invalidate carry1_hi
+        "",
+    );
+    #[cfg(not(feature = "prover"))]
+    let (result, witness) = run_test_cs::<FULL_ROUNDS, Vesta>(
+        false, // Disable copy constraints so we can catch carry1_hi custom constraint failure
         &a,
         &b,
         &secp256k1_modulus(),
@@ -901,7 +1423,6 @@ fn test_nonzero_second_bit_carry1_hi() {
     );
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Test invalid carry1_hi range bit
 fn test_invalid_carry1_bit() {
@@ -909,10 +1430,22 @@ fn test_invalid_carry1_bit() {
     let b = BigUint::zero();
 
     // Invalid carry1_hi witness test
+    #[cfg(feature = "prover")]
     let (result, _) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         true,
         false, // Disable external checks so we can catch carry1_hi plookup failure
         false,
+        &a,
+        &b,
+        &secp256k1_modulus(),
+        vec![
+            ((0, 14), PallasField::from(2u32)), // carry1_hi > 3 bits (invalid)
+        ],
+        "test_invalid_carry1_bit",
+    );
+    #[cfg(not(feature = "prover"))]
+    let (result, _) = run_test_cs::<FULL_ROUNDS, Vesta>(
+        false, // Disable external checks so we can catch carry1_hi plookup failure
         &a,
         &b,
         &secp256k1_modulus(),
@@ -926,7 +1459,6 @@ fn test_invalid_carry1_bit() {
     );
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // This is no longer a lookup test since the 3-bit check is now a crumb + a bit
 fn test_invalid_wraparound_carry1_hi() {
@@ -963,6 +1495,7 @@ fn test_invalid_wraparound_carry1_hi() {
     let carry1_crumb2 = value % BigUint::from(4u32);
 
     // Invalid carry1_hi witness that causes wrap around to something less than 3-bits
+    #[cfg(feature = "prover")]
     let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         true,
         false, // Disable external checks so we can catch carry1_hi plookup failure
@@ -973,6 +1506,19 @@ fn test_invalid_wraparound_carry1_hi() {
         vec![
             // Invalidate carry1_hi by wrapping
             // carry1_hi > 12 bits > 3 bits, but wraps around < 12-bits when scaled by 2^9
+            ((0, 14), carry1_bit.into()),
+            ((0, 13), carry1_crumb2.into()),
+        ],
+        "test_invalid_wraparound_carry1_hi",
+    );
+    #[cfg(not(feature = "prover"))]
+    let (result, witness) = run_test_cs::<FULL_ROUNDS, Vesta>(
+        false, // Disable external checks so we can catch carry1_hi plookup failure
+        &a,
+        &b,
+        &secp256k1_modulus(),
+        vec![
+            // Invalidate carry1_hi by wrapping
             ((0, 14), carry1_bit.into()),
             ((0, 13), carry1_crumb2.into()),
         ],
@@ -991,88 +1537,87 @@ fn test_invalid_wraparound_carry1_hi() {
     );
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Test witness with invalid quotient fails verification
 fn test_zero_mul_invalid_quotient() {
-    let (result, _) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-        false,
+    macro_rules! run {
+        ($ext:expr, $left:expr, $right:expr, $mod:expr, $inv:expr) => {{
+            #[cfg(feature = "prover")]
+            let r = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
+                false, $ext, false, $left, $right, $mod, $inv, "",
+            );
+            #[cfg(not(feature = "prover"))]
+            let r = run_test_cs::<FULL_ROUNDS, Vesta>($ext, $left, $right, $mod, $inv);
+            r
+        }};
+    }
+
+    let (result, _) = run!(
         true,
-        false,
         &BigUint::zero(),
         &BigUint::zero(),
         &secp256k1_modulus(),
-        vec![((1, 2), PallasField::one())], // Invalidate q0
+        vec![((1, 2), PallasField::one())] // Invalidate q0
     );
     assert_eq!(
         result,
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4)),
     );
 
-    let (result, _) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-        false,
+    let (result, _) = run!(
         true,
-        false,
         &BigUint::zero(),
         &BigUint::zero(),
         &secp256k1_modulus(),
-        vec![((1, 3), PallasField::one())], // Invalidate q1
+        vec![((1, 3), PallasField::one())] // Invalidate q1
     );
     assert_eq!(
         result,
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 3)),
     );
 
-    let (result, _) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-        false,
+    let (result, _) = run!(
         true,
-        false,
         &BigUint::zero(),
         &BigUint::zero(),
         &secp256k1_modulus(),
-        vec![((1, 4), PallasField::one())], // Invalidate q2
+        vec![((1, 4), PallasField::one())] // Invalidate q2
     );
     assert_eq!(
         result,
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5))
     );
 
-    let (result, _) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-        false,
+    let (result, _) = run!(
         true,
-        false,
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
-        vec![((1, 2), PallasField::one())], // Invalidate q0
+        vec![((1, 2), PallasField::one())] // Invalidate q0
     );
     assert_eq!(
         result,
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4))
     );
 
-    let (result, _) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-        false,
+    let (result, _) = run!(
         true,
-        false,
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
-        vec![((1, 3), PallasField::one())], // Invalidate q1
+        vec![((1, 3), PallasField::one())] // Invalidate q1
     );
     assert_eq!(
         result,
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 3))
     );
 
-    let (result, _) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-        false,
+    let (result, _) = run!(
         true,
-        false,
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
-        vec![((1, 4), PallasField::one())], // Invalidate q2
+        vec![((1, 4), PallasField::one())] // Invalidate q2
     );
     assert_eq!(
         result,
@@ -1080,13 +1625,22 @@ fn test_zero_mul_invalid_quotient() {
     );
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Test witness with invalid remainder fails
 fn test_mul_invalid_remainder() {
+    #[cfg(feature = "prover")]
     let (result, _) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         false,
+        false,
+        &secp256k1_sqrt(),
+        &secp256k1_sqrt(),
+        &secp256k1_modulus(),
+        vec![((1, 0), PallasField::zero())], // Invalidate r01
+        "",
+    );
+    #[cfg(not(feature = "prover"))]
+    let (result, _) = run_test_cs::<FULL_ROUNDS, Vesta>(
         false,
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
@@ -1098,9 +1652,19 @@ fn test_mul_invalid_remainder() {
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4))
     );
 
+    #[cfg(feature = "prover")]
     let (result, _) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         false,
+        false,
+        &secp256k1_sqrt(),
+        &secp256k1_sqrt(),
+        &secp256k1_modulus(),
+        vec![((1, 1), PallasField::one())], // Invalidate r2
+        "",
+    );
+    #[cfg(not(feature = "prover"))]
+    let (result, _) = run_test_cs::<FULL_ROUNDS, Vesta>(
         false,
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
@@ -1113,173 +1677,56 @@ fn test_mul_invalid_remainder() {
     );
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Test multiplying some random values and invalidating carry1_lo
 fn test_random_multiplicands_carry1_lo() {
+    macro_rules! run {
+        ($left:expr, $right:expr, $mod:expr, $inv:expr) => {{
+            #[cfg(feature = "prover")]
+            let r = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
+                false, false, false, $left, $right, $mod, $inv, "",
+            );
+            #[cfg(not(feature = "prover"))]
+            let r = run_test_cs::<FULL_ROUNDS, Vesta>(false, $left, $right, $mod, $inv);
+            r
+        }};
+    }
+
     let rng = &mut o1_utils::tests::make_test_rng(None);
 
     for _ in 0..10 {
         let left_input = rng.gen_biguint_range(&BigUint::zero(), &secp256k1_max());
         let right_input = rng.gen_biguint_range(&BigUint::zero(), &secp256k1_max());
 
-        let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-            false,
-            false,
-            false,
-            &left_input,
-            &right_input,
-            &secp256k1_modulus(),
-            vec![((0, 7), PallasField::one())], // Invalidate carry1_lo
-        );
-        assert_eq!(
-            (&left_input * &right_input) % secp256k1_modulus(),
-            [witness[0][1], witness[1][1]].compose()
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
-        );
-        let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-            false,
-            false,
-            false,
-            &left_input,
-            &right_input,
-            &secp256k1_modulus(),
-            vec![((0, 8), PallasField::one())], // Invalidate carry1_lo
-        );
-        assert_eq!(
-            (&left_input * &right_input) % secp256k1_modulus(),
-            [witness[0][1], witness[1][1]].compose()
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
-        );
-        let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-            false,
-            false,
-            false,
-            &left_input,
-            &right_input,
-            &secp256k1_modulus(),
-            vec![((0, 9), PallasField::one())], // Invalidate carry1_lo
-        );
-        assert_eq!(
-            (&left_input * &right_input) % secp256k1_modulus(),
-            [witness[0][1], witness[1][1]].compose()
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
-        );
-        let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-            false,
-            false,
-            false,
-            &left_input,
-            &right_input,
-            &secp256k1_modulus(),
-            vec![((0, 10), PallasField::one())], // Invalidate carry1_lo
-        );
-        assert_eq!(
-            (&left_input * &right_input) % secp256k1_modulus(),
-            [witness[0][1], witness[1][1]].compose()
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
-        );
-        let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-            false,
-            false,
-            false,
-            &left_input,
-            &right_input,
-            &secp256k1_modulus(),
-            vec![((1, 8), PallasField::one())], // Invalidate carry1_lo
-        );
-        assert_eq!(
-            (&left_input * &right_input) % secp256k1_modulus(),
-            [witness[0][1], witness[1][1]].compose()
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
-        );
-        let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-            false,
-            false,
-            false,
-            &left_input,
-            &right_input,
-            &secp256k1_modulus(),
-            vec![((1, 9), PallasField::one())], // Invalidate carry1_lo
-        );
-        assert_eq!(
-            (&left_input * &right_input) % secp256k1_modulus(),
-            [witness[0][1], witness[1][1]].compose()
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
-        );
-        let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-            false,
-            false,
-            false,
-            &left_input,
-            &right_input,
-            &secp256k1_modulus(),
-            vec![((1, 10), PallasField::one())], // Invalidate carry1_lo
-        );
-        assert_eq!(
-            (&left_input * &right_input) % secp256k1_modulus(),
-            [witness[0][1], witness[1][1]].compose()
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
-        );
-        let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-            false,
-            false,
-            false,
-            &left_input,
-            &right_input,
-            &secp256k1_modulus(),
-            vec![((0, 11), PallasField::one())], // Invalidate carry1_lo
-        );
-        assert_eq!(
-            (&left_input * &right_input) % secp256k1_modulus(),
-            [witness[0][1], witness[1][1]].compose()
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
-        );
-        let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-            false,
-            false,
-            false,
-            &left_input,
-            &right_input,
-            &secp256k1_modulus(),
-            vec![((0, 12), PallasField::one())], // Invalidate carry1_lo
-        );
-        assert_eq!(
-            (&left_input * &right_input) % secp256k1_modulus(),
-            [witness[0][1], witness[1][1]].compose()
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
-        );
+        for (row, col) in [
+            (0, 7),
+            (0, 8),
+            (0, 9),
+            (0, 10),
+            (1, 8),
+            (1, 9),
+            (1, 10),
+            (0, 11),
+            (0, 12),
+        ] {
+            let (result, witness) = run!(
+                &left_input,
+                &right_input,
+                &secp256k1_modulus(),
+                vec![((row, col), PallasField::one())] // Invalidate carry1_lo
+            );
+            assert_eq!(
+                (&left_input * &right_input) % secp256k1_modulus(),
+                [witness[0][1], witness[1][1]].compose()
+            );
+            assert_eq!(
+                result,
+                Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
+            );
+        }
     }
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Test multiplying some random values with secp256k1 foreign modulus
 fn test_random_multiplicands_valid() {
@@ -1289,10 +1736,20 @@ fn test_random_multiplicands_valid() {
         let left_input = rng.gen_biguint_range(&BigUint::zero(), &secp256k1_max());
         let right_input = rng.gen_biguint_range(&BigUint::zero(), &secp256k1_max());
 
+        #[cfg(feature = "prover")]
         let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             true,
             false,
+            &left_input,
+            &right_input,
+            &secp256k1_modulus(),
+            vec![],
+            "",
+        );
+        #[cfg(not(feature = "prover"))]
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, Vesta>(
+            true,
             &left_input,
             &right_input,
             &secp256k1_modulus(),
@@ -1306,7 +1763,6 @@ fn test_random_multiplicands_valid() {
     }
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Test multiplying some random values with foreign modulus smaller than native modulus
 fn test_smaller_foreign_field_modulus() {
@@ -1318,10 +1774,20 @@ fn test_smaller_foreign_field_modulus() {
         let left_input = rng.gen_biguint_range(&BigUint::zero(), &foreign_field_modulus);
         let right_input = rng.gen_biguint_range(&BigUint::zero(), &foreign_field_modulus);
 
+        #[cfg(feature = "prover")]
         let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             true,
             false,
+            &left_input,
+            &right_input,
+            &foreign_field_modulus,
+            vec![],
+            "",
+        );
+        #[cfg(not(feature = "prover"))]
+        let (result, witness) = run_test_cs::<FULL_ROUNDS, Vesta>(
+            true,
             &left_input,
             &right_input,
             &foreign_field_modulus,
@@ -1335,81 +1801,100 @@ fn test_smaller_foreign_field_modulus() {
     }
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint with secp256k1 (foreign field modulus)
 // on Vesta (native field modulus)
 fn test_custom_constraints_secp256k1_on_vesta() {
+    #[cfg(feature = "prover")]
     test_custom_constraints::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         &secp256k1_modulus(),
     );
+    #[cfg(not(feature = "prover"))]
+    test_custom_constraints_cs::<FULL_ROUNDS, Vesta>(&secp256k1_modulus());
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint with secp256k1 (foreign field modulus)
 // on Pallas (native field modulus)
 fn test_custom_constraints_secp256k1_on_pallas() {
+    #[cfg(feature = "prover")]
     test_custom_constraints::<FULL_ROUNDS, Pallas, PallasBaseSponge, PallasScalarSponge>(
         &secp256k1_modulus(),
     );
+    #[cfg(not(feature = "prover"))]
+    test_custom_constraints_cs::<FULL_ROUNDS, Pallas>(&secp256k1_modulus());
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint with Vesta (foreign field modulus) on Pallas (native field modulus)
 fn test_custom_constraints_vesta_on_pallas() {
+    #[cfg(feature = "prover")]
     test_custom_constraints::<FULL_ROUNDS, Pallas, PallasBaseSponge, PallasScalarSponge>(
         &VestaField::modulus_biguint(),
     );
+    #[cfg(not(feature = "prover"))]
+    test_custom_constraints_cs::<FULL_ROUNDS, Pallas>(&VestaField::modulus_biguint());
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint with Pallas (foreign field modulus) on Vesta (native field modulus)
 fn test_custom_constraints_pallas_on_vesta() {
+    #[cfg(feature = "prover")]
     test_custom_constraints::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         &PallasField::modulus_biguint(),
     );
+    #[cfg(not(feature = "prover"))]
+    test_custom_constraints_cs::<FULL_ROUNDS, Vesta>(&PallasField::modulus_biguint());
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint with Vesta (foreign field modulus) on Vesta (native field modulus)
 fn test_custom_constraints_vesta_on_vesta() {
+    #[cfg(feature = "prover")]
     test_custom_constraints::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         &VestaField::modulus_biguint(),
     );
+    #[cfg(not(feature = "prover"))]
+    test_custom_constraints_cs::<FULL_ROUNDS, Vesta>(&VestaField::modulus_biguint());
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint with Pallas (foreign field modulus) on Pallas (native field modulus)
 fn test_custom_constraints_pallas_on_pallas() {
+    #[cfg(feature = "prover")]
     test_custom_constraints::<FULL_ROUNDS, Pallas, PallasBaseSponge, PallasScalarSponge>(
         &PallasField::modulus_biguint(),
     );
+    #[cfg(not(feature = "prover"))]
+    test_custom_constraints_cs::<FULL_ROUNDS, Pallas>(&PallasField::modulus_biguint());
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Tests targeting each custom constraint (foreign modulus smaller than native vesta)
 fn test_custom_constraints_small_foreign_field_modulus_on_vesta() {
+    #[cfg(feature = "prover")]
     test_custom_constraints::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         &(BigUint::two().pow(252u32) - BigUint::one()),
     );
-}
-
-#[cfg(feature = "prover")]
-#[test]
-// Tests targeting each custom constraint (foreign modulus smaller than native pallas)
-fn test_custom_constraints_small_foreign_field_modulus_on_pallas() {
-    test_custom_constraints::<FULL_ROUNDS, Pallas, PallasBaseSponge, PallasScalarSponge>(
+    #[cfg(not(feature = "prover"))]
+    test_custom_constraints_cs::<FULL_ROUNDS, Vesta>(
         &(BigUint::two().pow(252u32) - BigUint::one()),
     );
 }
 
-#[cfg(feature = "prover")]
+#[test]
+// Tests targeting each custom constraint (foreign modulus smaller than native pallas)
+fn test_custom_constraints_small_foreign_field_modulus_on_pallas() {
+    #[cfg(feature = "prover")]
+    test_custom_constraints::<FULL_ROUNDS, Pallas, PallasBaseSponge, PallasScalarSponge>(
+        &(BigUint::two().pow(252u32) - BigUint::one()),
+    );
+    #[cfg(not(feature = "prover"))]
+    test_custom_constraints_cs::<FULL_ROUNDS, Pallas>(
+        &(BigUint::two().pow(252u32) - BigUint::one()),
+    );
+}
+
 #[test]
 fn test_native_modulus_constraint() {
     let rng = &mut o1_utils::tests::make_test_rng(None);
@@ -1422,6 +1907,21 @@ fn test_native_modulus_constraint() {
         &secp256k1_modulus(),
     );
 
+    let invalidations = vec![
+        // Targeted attack on constraint 1. Make carry1_hi to be 8
+        ((0, 13), PallasField::zero()),
+        ((0, 14), PallasField::from(2u32)),
+        (
+            (1, 1),
+            PallasField::from_bytes(&[
+                89, 18, 0, 0, 237, 48, 45, 153, 27, 249, 76, 9, 252, 152, 70, 34, 0, 0, 0, 0, 0, 0,
+                249, 255, 255, 255, 255, 255, 255, 255, 255, 63,
+            ])
+            .unwrap(),
+        ),
+    ];
+
+    #[cfg(feature = "prover")]
     let (result, _) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         false,
@@ -1429,19 +1929,16 @@ fn test_native_modulus_constraint() {
         &left_input,
         &right_input,
         &secp256k1_modulus(),
-        vec![
-            // Targeted attack on constraint 1. Make carry1_hi to be 8
-            ((0, 13), PallasField::zero()),
-            ((0, 14), PallasField::from(2u32)),
-            (
-                (1, 1),
-                PallasField::from_bytes(&[
-                    89, 18, 0, 0, 237, 48, 45, 153, 27, 249, 76, 9, 252, 152, 70, 34, 0, 0, 0, 0,
-                    0, 0, 249, 255, 255, 255, 255, 255, 255, 255, 255, 63,
-                ])
-                .unwrap(),
-            ),
-        ],
+        invalidations,
+        "",
+    );
+    #[cfg(not(feature = "prover"))]
+    let (result, _) = run_test_cs::<FULL_ROUNDS, Vesta>(
+        false,
+        &left_input,
+        &right_input,
+        &secp256k1_modulus(),
+        invalidations,
     );
     assert_eq!(
         result,
@@ -1449,7 +1946,6 @@ fn test_native_modulus_constraint() {
     );
 }
 
-#[cfg(feature = "prover")]
 #[test]
 fn test_gates_max_foreign_field_modulus() {
     CircuitGate::<PallasField>::create_foreign_field_mul(
@@ -1458,7 +1954,6 @@ fn test_gates_max_foreign_field_modulus() {
     );
 }
 
-#[cfg(feature = "prover")]
 #[test]
 fn test_witness_max_foreign_field_modulus() {
     foreign_field_mul::witness::create::<PallasField>(
@@ -1468,17 +1963,26 @@ fn test_witness_max_foreign_field_modulus() {
     );
 }
 
-#[cfg(feature = "prover")]
 #[test]
 // Checks that the high bound check includes when q2 is exactly f2 and not just up to f2-1
 fn test_q2_exactly_f2() {
     let left_input = secp256k1_max() - BigUint::from(4u32);
     let right_input = secp256k1_max() - BigUint::from(1u32);
 
+    #[cfg(feature = "prover")]
     let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         true,
         false,
+        &left_input,
+        &right_input,
+        &secp256k1_modulus(),
+        vec![],
+        "",
+    );
+    #[cfg(not(feature = "prover"))]
+    let (result, witness) = run_test_cs::<FULL_ROUNDS, Vesta>(
+        true,
         &left_input,
         &right_input,
         &secp256k1_modulus(),
@@ -1492,7 +1996,6 @@ fn test_q2_exactly_f2() {
     assert_eq!(result, Ok(()),);
 }
 
-#[cfg(feature = "prover")]
 #[test]
 fn test_carry_plookups() {
     let left_input = secp256k1_max() - BigUint::from(4u32);
@@ -1506,9 +2009,19 @@ fn test_carry_plookups() {
     // carry1_48 = 0xFFF
     // carry1_60 = 0xFFF
     // carry1_72 = 0xFF
+    #[cfg(feature = "prover")]
     let (result, witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
         false,
+        false,
+        &left_input,
+        &right_input,
+        &secp256k1_modulus(),
+        vec![],
+        "",
+    );
+    #[cfg(not(feature = "prover"))]
+    let (result, witness) = run_test_cs::<FULL_ROUNDS, Vesta>(
         false,
         &left_input,
         &right_input,
@@ -1520,23 +2033,47 @@ fn test_carry_plookups() {
         [witness[0][1], witness[1][1]].compose()
     );
     assert_eq!(result, Ok(()),);
+
     // Adds 1 bit to carry1_36 (obtaining 0x1FFF) and removing 1 from carry1_48 (obtaining 0xFFE)
-    let (result, _witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
-        true,
-        false,
-        false,
-        &left_input,
-        &right_input,
-        &secp256k1_modulus(),
-        vec![
-            ((0, 10), PallasField::from(0x1FFFu32)),
-            ((1, 8), PallasField::from(0xFFEu32)),
-        ],
-    );
-    assert_eq!(
-        result,
-        Err(CircuitGateError::InvalidLookupConstraint(
-            GateType::ForeignFieldMul
-        ))
-    );
+    // In prover mode, this is caught by prove_and_verify as a lookup failure.
+    // In no-prover mode, verify_witness passes since the constraint equations still hold.
+    #[cfg(feature = "prover")]
+    {
+        let (result, _witness) = run_test::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
+            true,
+            false,
+            false,
+            &left_input,
+            &right_input,
+            &secp256k1_modulus(),
+            vec![
+                ((0, 10), PallasField::from(0x1FFFu32)),
+                ((1, 8), PallasField::from(0xFFEu32)),
+            ],
+            "test_carry_plookups",
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::InvalidLookupConstraint(
+                GateType::ForeignFieldMul
+            ))
+        );
+    }
+
+    #[cfg(not(feature = "prover"))]
+    {
+        let (result, _witness) = run_test_cs::<FULL_ROUNDS, Vesta>(
+            false,
+            &left_input,
+            &right_input,
+            &secp256k1_modulus(),
+            vec![
+                ((0, 10), PallasField::from(0x1FFFu32)),
+                ((1, 8), PallasField::from(0xFFEu32)),
+            ],
+        );
+        // In no-prover mode, verify_witness passes (the lookup failure is only
+        // detected by prove_and_verify which requires the prover)
+        assert_eq!(result, Ok(()));
+    }
 }

@@ -1,25 +1,24 @@
-#[cfg(feature = "prover")]
-use crate::{
-    circuits::{
-        constraints::ConstraintSystem,
-        gate::{CircuitGate, GateType},
-        polynomials::endomul_scalar,
-        wires::{Wire, COLUMNS},
-    },
-    tests::framework::TestFramework,
+use crate::circuits::{
+    constraints::ConstraintSystem,
+    gate::{CircuitGate, GateType},
+    wires::{Wire, COLUMNS},
 };
-#[cfg(feature = "prover")]
+use alloc::vec::Vec;
 use ark_ec::AffineRepr;
-#[cfg(feature = "prover")]
-use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
-#[cfg(feature = "prover")]
+use ark_ff::{Field, One, Zero};
 use core::array;
+use mina_curves::pasta::{Fp, Pallas as Other, Vesta};
+use mina_poseidon::pasta::FULL_ROUNDS;
+
 #[cfg(feature = "prover")]
-use mina_curves::pasta::{Fp as F, Fp, Pallas as Other, Vesta, VestaParameters};
+use crate::{circuits::polynomials::endomul_scalar, tests::framework::TestFramework};
+#[cfg(feature = "prover")]
+use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
+#[cfg(feature = "prover")]
+use mina_curves::pasta::{Fp as F, VestaParameters};
 #[cfg(feature = "prover")]
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
-    pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
 #[cfg(feature = "prover")]
@@ -94,12 +93,11 @@ fn endomul_scalar_test() {
     load_and_verify_fixture(include_bytes!("fixtures/endomul_scalar_test.bin"));
 }
 
-#[cfg(feature = "prover")]
 #[test]
 fn test_degenerate_case() {
-    let gate = CircuitGate::new(GateType::EndoMul, Wire::for_row(0), vec![]);
-    let zero_gate = CircuitGate::new(GateType::Zero, Wire::for_row(1), vec![]);
-    let gates = vec![gate.clone(), zero_gate];
+    let gate = CircuitGate::new(GateType::EndoMul, Wire::for_row(0), alloc::vec![]);
+    let zero_gate = CircuitGate::new(GateType::Zero, Wire::for_row(1), alloc::vec![]);
+    let gates = alloc::vec![gate.clone(), zero_gate];
     let cs = ConstraintSystem::<Fp>::create(gates).build().unwrap();
 
     let b1 = Fp::zero();
@@ -130,7 +128,7 @@ fn test_degenerate_case() {
     let n = Fp::zero();
     let n_next = Fp::from(7u64);
 
-    let mut witness: [Vec<Fp>; COLUMNS] = core::array::from_fn(|_| vec![Fp::zero(); 2]);
+    let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| alloc::vec![Fp::zero(); 2]);
 
     witness[0][0] = xt;
     witness[1][0] = yt;

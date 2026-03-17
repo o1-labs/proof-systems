@@ -1,15 +1,15 @@
 use alloc::{vec, vec::Vec};
 use core::array;
 
+#[cfg(feature = "std")]
+use crate::circuits::polynomials::keccak::Keccak;
 use crate::{
     circuits::polynomials::keccak::{constants::KECCAK_COLS, witness::extend_keccak_witness},
     curve::KimchiCurve,
 };
 #[cfg(feature = "std")]
-use crate::circuits::polynomials::keccak::Keccak;
-use ark_ff::{PrimeField, Zero};
-#[cfg(feature = "std")]
 use ark_ff::Field;
+use ark_ff::{PrimeField, Zero};
 use mina_curves::pasta::Pallas;
 use mina_poseidon::pasta::FULL_ROUNDS;
 use num_bigint::BigUint;
