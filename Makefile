@@ -157,6 +157,15 @@ release-all: ## Build in release mode including o1vm
 			--release \
 			--workspace
 
+.PHONY: test-kimchi-verifier-only
+test-kimchi-verifier-only: ## Test kimchi verifier without the prover feature (no-std verification path)
+		cargo nextest run \
+			-p kimchi \
+			--no-default-features \
+			--features internal_tracing \
+			--release \
+			--lib
+
 .PHONY: test-doc
 test-doc: ## Test the project's docs comments (without o1vm)
 		cargo test \
