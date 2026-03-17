@@ -9,11 +9,32 @@ and this project adheres to
 
 ## Unreleased
 
+### [kimchi](./kimchi)
+
+#### Added
+
+- Add `no_std` support with `prover` feature gate: verification can run without
+  `std` or prover dependencies. Modules gated behind `prover` feature: proving,
+  bench, snarky, permutation prover functions. Uses `core`/`alloc` equivalents
+  for `std` types and `hashbrown` for `HashMap`/`HashSet`.
+- Add no-prover verification tests for all test modules. Tests run in both
+  prover mode (full `ProverIndex` + `prove_and_verify`) and no-prover mode
+  (`ConstraintSystem` + `verify_witness` or fixture-based verification). Modules
+  covered: and, ec, endomul, endomul_scalar, generic, keccak, recursion,
+  varbasemul, xor, poseidon, rot, not, range_check, lookup, foreign_field_add,
+  foreign_field_mul.
+- Add `TestFramework` dual-mode infrastructure: `include_fixture!` macro,
+  `.fixture()` method, and dual `prove_and_verify()` that creates proofs in
+  prover mode and loads fixture-based verification in no-prover mode.
+- Add `RawFixture` serialization with `endo` field for generic curve
+  verification in no-prover mode.
+- Add `test-kimchi-verifier-only` Makefile target and CI step for running kimchi
+  tests without the prover feature.
+
 ### Changed
 
 - Enforce deterministic ordering of gate lookup tables by replacing `HashSet`
-  with  
-  `BTreeSet` ([#3539](https://github.com/o1-labs/proof-systems/pull/3539))
+  with `BTreeSet` ([#3539](https://github.com/o1-labs/proof-systems/pull/3539))
 
 ### Fixed
 
