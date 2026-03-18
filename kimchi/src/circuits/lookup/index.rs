@@ -234,12 +234,15 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
                     iter: I,
                     msg: &str,
                 ) -> Result<(), LookupError> {
-                    use itertools::Itertools;
-                    match iter.duplicates().collect::<Vec<_>>() {
-                        dups if !dups.is_empty() => Err(LookupError::LookupTableIdCollision {
+                    let mut seen = alloc::collections::BTreeSet::new();
+                    let dups: Vec<_> =
+                        iter.filter(|x| !seen.insert(*x)).collect();
+                    if !dups.is_empty() {
+                        Err(LookupError::LookupTableIdCollision {
                             collision_type: format!("{}: {:?}", msg, dups).to_string(),
-                        }),
-                        _ => Ok(()),
+                        })
+                    } else {
+                        Ok(())
                     }
                 }
 

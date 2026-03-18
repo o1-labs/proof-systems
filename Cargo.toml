@@ -62,7 +62,7 @@ hex = { version = "0.4", default-features = false, features = [
   "serde",
 ] }
 iai = "0.1"
-itertools = "0.12.1"
+itertools = { version = "0.12.1", default-features = false, features = ["use_alloc"] }
 js-sys = "=0.3.64"
 libc = "=0.2.169"
 libflate = "2"
@@ -88,6 +88,7 @@ rmp-serde = "1.2.0"
 rustversion = "1.0"
 secp256k1 = "0.31.1"
 serde = { version = "1.0.219", default-features = false, features = [
+  "alloc",
   "derive",
   "rc",
 ] }
@@ -113,16 +114,16 @@ zeroize = "1"
 
 arkworks = { path = "crates/arkworks" }
 arrabbiata = { path = "./arrabbiata" }
-groupmap = { path = "./groupmap" }
+groupmap = { path = "./groupmap", default-features = false }
 internal-tracing = { path = "./internal-tracing" }
 kimchi = { path = "./kimchi", features = ["bn254"] }
 kimchi-msm = { path = "./msm" }
 kimchi-stubs = { path = "./kimchi-stubs" }
 kimchi-visu = { path = "./tools/kimchi-visu" }
 mina-base58 = { path = "./crates/mina-base58" }
-mina-curves = { path = "./curves", features = ["asm"] }
+mina-curves = { path = "./curves", default-features = false, features = ["asm"] }
 mina-hasher = { path = "./hasher" }
-mina-poseidon = { path = "./poseidon" }
+mina-poseidon = { path = "./poseidon", default-features = false }
 mina-signer = { path = "./signer" }
 mina-tx-type = { path = "./mina-tx-type" }
 mvpoly = { path = "./mvpoly" }

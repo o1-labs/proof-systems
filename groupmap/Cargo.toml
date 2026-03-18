@@ -16,9 +16,13 @@ version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ark-ec = { workspace = true, features = ["parallel"] }
-ark-ff = { workspace = true, features = ["parallel"] }
+ark-ec.workspace = true
+ark-ff.workspace = true
 
 [dev-dependencies]
-mina-curves.workspace = true
+mina-curves = { workspace = true, features = ["parallel"] }
 rand.workspace = true
+
+[features]
+default = ["parallel"]
+parallel = ["ark-ec/parallel", "ark-ff/parallel"]
