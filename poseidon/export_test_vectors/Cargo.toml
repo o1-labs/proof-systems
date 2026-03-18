@@ -10,7 +10,7 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
-ark-ff.workspace = true
+ark-ff = { workspace = true, features = ["parallel"] }
 ark-serialize.workspace = true
 clap = { workspace = true, features = ["derive"] }
 hex.workspace = true

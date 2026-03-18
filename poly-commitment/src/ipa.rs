@@ -5,8 +5,12 @@
 //! Zero-Knowledge Arguments for Arithmetic Circuits in the Discrete Log
 //! Setting](https://eprint.iacr.org/2016/263).
 
+#[cfg(not(feature = "std"))]
+use crate::collections::HashMap;
 #[cfg(feature = "std")]
 use crate::hash_map_cache::HashMapCache;
+#[cfg(feature = "std")]
+use crate::precomputed_srs::TestSRS;
 use crate::{
     commitment::{
         b_poly, b_poly_coefficients, combine_commitments, shift_scalar, squeeze_challenge,
@@ -14,29 +18,33 @@ use crate::{
         PolyComm,
     },
     error::CommitmentError,
-    utils::combine_polys,
-    PolynomialsToCombine, SRS as SRSTrait,
+    SRS as SRSTrait,
 };
+#[cfg(feature = "std")]
+use crate::{utils::combine_polys, PolynomialsToCombine};
 use alloc::{vec, vec::Vec};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
-use ark_ff::{BigInteger, Field, One, PrimeField, UniformRand, Zero};
-use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
-};
+#[cfg(feature = "std")]
+use ark_ff::{BigInteger, Field};
+use ark_ff::{One, PrimeField, UniformRand, Zero};
+#[cfg(feature = "std")]
+use ark_poly::{univariate::DensePolynomial, Evaluations};
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+#[cfg(feature = "std")]
 use blake2::{Blake2b512, Digest};
 use core::{cmp::min, ops::AddAssign};
 use groupmap::GroupMap;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use o1_utils::{
-    field_helpers::{inner_prod, pows},
-    math,
-};
+#[cfg(feature = "std")]
+use o1_utils::field_helpers::{inner_prod, pows};
+use o1_utils::math;
 use rand_core::{CryptoRng, RngCore};
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+#[cfg(feature = "std")]
 use zeroize::Zeroize;
 
 #[serde_as]
@@ -57,7 +65,91 @@ pub struct SRS<G> {
     /// Commitments to Lagrange bases, per domain size
     #[cfg(feature = "std")]
     #[serde(skip)]
-    pub lagrange_bases: HashMapCache<usize, Vec<PolyComm<G>>>,
+    lagrange_bases: HashMapCache<usize, Vec<PolyComm<G>>>,
+    #[cfg(not(feature = "std"))]
+    #[serde(skip)]
+    lagrange_bases: alloc::rc::Rc<core::cell::RefCell<HashMap<usize, Vec<PolyComm<G>>>>>,
+}
+
+#[cfg(not(feature = "std"))]
+trait GetOrGenExt<G> {
+    fn get_or_generate<F: FnOnce() -> Vec<PolyComm<G>>>(
+        &self,
+        key: usize,
+        generator: F,
+    ) -> &Vec<PolyComm<G>>;
+}
+
+#[cfg(not(feature = "std"))]
+#[allow(unsafe_code)]
+impl<G> GetOrGenExt<G> for alloc::rc::Rc<core::cell::RefCell<HashMap<usize, Vec<PolyComm<G>>>>> {
+    fn get_or_generate<F: FnOnce() -> Vec<PolyComm<G>>>(
+        &self,
+        key: usize,
+        generator: F,
+    ) -> &Vec<PolyComm<G>> {
+        let mut map = self.borrow_mut();
+        if !map.contains_key(&key) {
+            map.insert(key, generator());
+        }
+        drop(map);
+
+        // SAFETY: We never remove entries from the map, and the Rc<RefCell<HashMap>>
+        // lives as long as the SRS. The reference is valid as long as the entry exists.
+        let map = self.borrow();
+        let ptr = map.get(&key).unwrap() as *const Vec<PolyComm<G>>;
+        unsafe { &*ptr }
+    }
+}
+
+// SAFETY: In no-std context there is no threading. Rc<RefCell<...>> is the only
+// non-Send/Sync field, and it is only accessed from a single thread.
+#[cfg(not(feature = "std"))]
+#[allow(unsafe_code)]
+unsafe impl<G: Send> Send for SRS<G> {}
+#[cfg(not(feature = "std"))]
+#[allow(unsafe_code)]
+unsafe impl<G: Sync> Sync for SRS<G> {}
+
+#[cfg(feature = "std")]
+impl<G> From<TestSRS<G>> for SRS<G> {
+    fn from(value: TestSRS<G>) -> Self {
+        Self {
+            g: value.g,
+            h: value.h,
+            #[cfg(feature = "std")]
+            lagrange_bases: HashMapCache::new_from_hashmap(value.lagrange_bases),
+            #[cfg(not(feature = "std"))]
+            lagrange_bases: value.lagrange_bases,
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<G: Clone> From<SRS<G>> for TestSRS<G> {
+    fn from(value: SRS<G>) -> Self {
+        let lagrange_basis = value.lagrange_bases().clone();
+
+        Self {
+            g: value.g,
+            h: value.h,
+            lagrange_bases: lagrange_basis.into(),
+        }
+    }
+}
+
+impl<G> SRS<G> {
+    #[cfg(feature = "std")]
+    pub fn lagrange_bases(&self) -> &HashMapCache<usize, Vec<PolyComm<G>>> {
+        &self.lagrange_bases
+    }
+
+    #[cfg(not(feature = "std"))]
+    pub fn lagrange_bases(
+        &self,
+    ) -> &alloc::rc::Rc<core::cell::RefCell<HashMap<usize, Vec<PolyComm<G>>>>> {
+        &self.lagrange_bases
+    }
 }
 
 impl<G> PartialEq for SRS<G>
@@ -131,6 +223,7 @@ where
     (endo_q, endo_r)
 }
 
+#[cfg(feature = "std")]
 fn point_of_random_bytes<G: CommitmentCurve>(map: &G::Map, random_bytes: &[u8]) -> G
 where
     G::BaseField: Field,
@@ -489,30 +582,16 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 impl<G> SRSTrait<G> for SRS<G>
 where
     G: CommitmentCurve,
 {
-    /// The maximum polynomial degree that can be committed to
     fn max_poly_size(&self) -> usize {
         self.g.len()
     }
 
     fn blinding_commitment(&self) -> G {
         self.h
-    }
-
-    /// Turns a non-hiding polynomial commitment into a hiding polynomial
-    /// commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with
-    /// a random `w` per commitment.
-    fn mask(
-        &self,
-        comm: PolyComm<G>,
-        rng: &mut (impl RngCore + CryptoRng),
-    ) -> BlindedCommitment<G> {
-        let blinders = comm.map(|_| G::ScalarField::rand(rng));
-        self.mask_custom(comm, &blinders).unwrap()
     }
 
     fn mask_custom(
@@ -534,6 +613,17 @@ where
         })
     }
 
+    #[cfg(feature = "std")]
+    fn mask(
+        &self,
+        comm: PolyComm<G>,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> BlindedCommitment<G> {
+        let blinders = comm.map(|_| G::ScalarField::rand(rng));
+        self.mask_custom(comm, &blinders).unwrap()
+    }
+
+    #[cfg(feature = "std")]
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
@@ -581,6 +671,7 @@ where
         PolyComm::<G>::new(chunks)
     }
 
+    #[cfg(feature = "std")]
     fn commit(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
@@ -590,6 +681,7 @@ where
         self.mask(self.commit_non_hiding(plnm, num_chunks), rng)
     }
 
+    #[cfg(feature = "std")]
     fn commit_custom(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
@@ -599,6 +691,7 @@ where
         self.mask_custom(self.commit_non_hiding(plnm, num_chunks), blinders)
     }
 
+    #[cfg(feature = "std")]
     fn commit_evaluations_non_hiding(
         &self,
         domain: D<G::ScalarField>,
@@ -623,6 +716,7 @@ where
         }
     }
 
+    #[cfg(feature = "std")]
     fn commit_evaluations(
         &self,
         domain: D<G::ScalarField>,
@@ -632,6 +726,7 @@ where
         self.mask(self.commit_evaluations_non_hiding(domain, plnm), rng)
     }
 
+    #[cfg(feature = "std")]
     fn commit_evaluations_custom(
         &self,
         domain: D<G::ScalarField>,
@@ -641,6 +736,7 @@ where
         self.mask_custom(self.commit_evaluations_non_hiding(domain, plnm), blinders)
     }
 
+    #[cfg(feature = "std")]
     fn create(depth: usize) -> Self {
         let m = G::Map::setup();
 
@@ -670,6 +766,7 @@ where
         }
     }
 
+    #[cfg(feature = "std")]
     fn get_lagrange_basis_from_domain_size(&self, domain_size: usize) -> &Vec<PolyComm<G>> {
         self.lagrange_bases.get_or_generate(domain_size, || {
             self.lagrange_basis(D::new(domain_size).unwrap())
@@ -681,11 +778,13 @@ where
             .get_or_generate(domain.size(), || self.lagrange_basis(domain))
     }
 
+    #[cfg(feature = "std")]
     fn size(&self) -> usize {
         self.g.len()
     }
 }
 
+#[cfg(feature = "std")]
 impl<G: CommitmentCurve> SRS<G> {
     /// Creates an opening proof for a batch of polynomial commitments.
     ///
@@ -944,7 +1043,9 @@ impl<G: CommitmentCurve> SRS<G> {
             sg: g0,
         }
     }
+}
 
+impl<G: CommitmentCurve> SRS<G> {
     fn lagrange_basis(&self, domain: D<G::ScalarField>) -> Vec<PolyComm<G>> {
         let n = domain.size();
 
@@ -1073,7 +1174,6 @@ pub struct OpeningProof<G: AffineRepr, const FULL_ROUNDS: usize> {
     pub sg: G,
 }
 
-#[cfg(feature = "std")]
 impl<
         BaseField: PrimeField,
         G: AffineRepr<BaseField = BaseField> + CommitmentCurve + EndoCurve,
@@ -1082,6 +1182,7 @@ impl<
 {
     type SRS = SRS<G>;
 
+    #[cfg(feature = "std")]
     fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineRepr>::ScalarField>>(
         srs: &Self::SRS,
         group_map: &<G as CommitmentCurve>::Map,

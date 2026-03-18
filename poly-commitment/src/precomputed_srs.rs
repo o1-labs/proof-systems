@@ -11,7 +11,7 @@
 //! If you modify the SRS, you will need to regenerate the SRS by passing the
 //! `SRS_OVERWRITE` env var.
 
-use crate::{hash_map_cache::HashMapCache, ipa::SRS, CommitmentCurve, PolyComm};
+use crate::{ipa::SRS, CommitmentCurve, PolyComm};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use mina_curves::named::NamedCurve;
 use serde::{Deserialize, Serialize};
@@ -48,26 +48,6 @@ pub struct TestSRS<G> {
     /// Commitments to Lagrange bases, per domain size
     #[serde_as(as = "HashMap<_,Vec<PolyComm<o1_utils::serialization::SerdeAsUnchecked>>>")]
     pub lagrange_bases: HashMap<usize, Vec<PolyComm<G>>>,
-}
-
-impl<G: Clone> From<SRS<G>> for TestSRS<G> {
-    fn from(value: SRS<G>) -> Self {
-        Self {
-            g: value.g,
-            h: value.h,
-            lagrange_bases: value.lagrange_bases.into(),
-        }
-    }
-}
-
-impl<G> From<TestSRS<G>> for SRS<G> {
-    fn from(value: TestSRS<G>) -> Self {
-        Self {
-            g: value.g,
-            h: value.h,
-            lagrange_bases: HashMapCache::new_from_hashmap(value.lagrange_bases),
-        }
-    }
 }
 
 /// The size of the SRS that we serialize.

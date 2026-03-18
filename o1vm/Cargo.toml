@@ -21,9 +21,9 @@ open_mips = []
 
 [dependencies]
 ark-bn254.workspace = true
-ark-ec.workspace = true
-ark-ff.workspace = true
-ark-poly.workspace = true
+ark-ec = { workspace = true, features = ["parallel"] }
+ark-ff = { workspace = true, features = ["parallel"] }
+ark-poly = { workspace = true, features = ["parallel"] }
 base64.workspace = true
 clap = { workspace = true, features = ["derive"] }
 command-fds.workspace = true

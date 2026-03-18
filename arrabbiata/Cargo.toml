@@ -12,9 +12,9 @@ name = "arrabbiata"
 path = "src/main.rs"
 
 [dependencies]
-ark-ec.workspace = true
-ark-ff.workspace = true
-ark-poly.workspace = true
+ark-ec = { workspace = true, features = ["parallel"] }
+ark-ff = { workspace = true, features = ["parallel"] }
+ark-poly = { workspace = true, features = ["parallel"] }
 clap = { workspace = true, features = ["derive"] }
 env_logger.workspace = true
 groupmap.workspace = true

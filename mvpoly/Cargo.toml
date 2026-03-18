@@ -17,7 +17,7 @@ name = "bench-cross-terms"
 path = "src/lib.rs"
 
 [dependencies]
-ark-ff.workspace = true
+ark-ff = { workspace = true, features = ["parallel"] }
 kimchi.workspace = true
 log.workspace = true
 mina-curves.workspace = true

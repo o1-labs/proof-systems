@@ -10,9 +10,9 @@ std = []
 
 [dependencies]
 # arkworks
-ark-ec.workspace = true
-ark-ff.workspace = true
-ark-poly.workspace = true
+ark-ec = { workspace = true, features = ["parallel"] }
+ark-ff = { workspace = true, features = ["parallel"] }
+ark-poly = { workspace = true, features = ["parallel"] }
 ark-serialize.workspace = true
 
 # proof-systems

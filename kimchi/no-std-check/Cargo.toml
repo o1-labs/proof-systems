@@ -1,0 +1,14 @@
+[package]
+name = "no-std-check"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "no-std-check"
+path = "src/main.rs"
+
+[dependencies]
+kimchi = { path = "..", default-features = false }
+
+[workspace]
