@@ -20,6 +20,7 @@ members = [
   "tools/kimchi-visu",
   "utils",
   "xtask",
+  "risc0-test",
 ]
 resolver = "2"
 
