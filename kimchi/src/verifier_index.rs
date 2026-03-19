@@ -22,7 +22,10 @@ use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
 #[cfg(feature = "prover")]
 use core::array;
 use mina_poseidon::FqSponge;
-use once_cell::sync::OnceCell;
+#[cfg(feature = "std")]
+use std::sync::OnceLock;
+#[cfg(not(feature = "std"))]
+use core::cell::OnceCell as OnceLock;
 use poly_commitment::{
     commitment::{absorb_commitment, CommitmentCurve, PolyComm},
     SRS,
@@ -136,11 +139,11 @@ pub struct VerifierIndex<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, 
     pub shift: [G::ScalarField; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub permutation_vanishing_polynomial_m: OnceCell<DensePolynomial<G::ScalarField>>,
+    pub permutation_vanishing_polynomial_m: OnceLock<DensePolynomial<G::ScalarField>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
-    pub w: OnceCell<G::ScalarField>,
+    pub w: OnceLock<G::ScalarField>,
     /// endoscalar coefficient
     #[serde(skip)]
     pub endo: G::ScalarField,
@@ -298,7 +301,7 @@ where
 
             shift: self.cs.shift,
             permutation_vanishing_polynomial_m: {
-                let cell = OnceCell::new();
+                let cell = OnceLock::new();
                 cell.set(
                     self.cs
                         .precomputations()
@@ -309,7 +312,7 @@ where
                 cell
             },
             w: {
-                let cell = OnceCell::new();
+                let cell = OnceLock::new();
                 cell.set(zk_w(self.cs.domain.d1, self.cs.zk_rows)).unwrap();
                 cell
             },

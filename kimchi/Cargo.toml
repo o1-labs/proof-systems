@@ -29,7 +29,6 @@ itertools.workspace = true
 log.workspace = true
 num-bigint.workspace = true
 num-integer.workspace = true
-once_cell.workspace = true
 rand = { workspace = true, features = ["std_rng"], optional = true }
 rand_core.workspace = true
 rayon = { workspace = true, optional = true }

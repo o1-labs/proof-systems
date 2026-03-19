@@ -10,7 +10,6 @@ use mina_curves::{
     },
 };
 use mina_poseidon::{pasta::FULL_ROUNDS, poseidon::ArithmeticSpongeParams};
-use once_cell::sync::Lazy;
 use poly_commitment::{
     commitment::{CommitmentCurve, EndoCurve},
     ipa::endos,
@@ -38,28 +37,33 @@ pub trait KimchiCurve<const FULL_ROUNDS: usize>: EndoCurve + NamedCurve {
     fn other_curve_generator() -> (Self::ScalarField, Self::ScalarField);
 }
 
+#[cfg(feature = "std")]
 pub fn vesta_endos() -> &'static (
     <VestaParameters as CurveConfig>::BaseField,
     <VestaParameters as CurveConfig>::ScalarField,
 ) {
-    static VESTA_ENDOS: Lazy<(
+    use std::sync::LazyLock;
+    static VESTA_ENDOS: LazyLock<(
         <VestaParameters as CurveConfig>::BaseField,
         <VestaParameters as CurveConfig>::ScalarField,
-    )> = Lazy::new(endos::<Affine<VestaParameters>>);
+    )> = LazyLock::new(endos::<Affine<VestaParameters>>);
     &VESTA_ENDOS
 }
 
+#[cfg(feature = "std")]
 pub fn pallas_endos() -> &'static (
     <PallasParameters as CurveConfig>::BaseField,
     <PallasParameters as CurveConfig>::ScalarField,
 ) {
-    static PALLAS_ENDOS: Lazy<(
+    use std::sync::LazyLock;
+    static PALLAS_ENDOS: LazyLock<(
         <PallasParameters as CurveConfig>::BaseField,
         <PallasParameters as CurveConfig>::ScalarField,
-    )> = Lazy::new(endos::<Affine<PallasParameters>>);
+    )> = LazyLock::new(endos::<Affine<PallasParameters>>);
     &PALLAS_ENDOS
 }
 
+#[cfg(feature = "std")]
 impl KimchiCurve<FULL_ROUNDS> for Affine<VestaParameters> {
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField, FULL_ROUNDS> {
         mina_poseidon::pasta::fp_kimchi::static_params()
@@ -85,6 +89,7 @@ impl KimchiCurve<FULL_ROUNDS> for Affine<VestaParameters> {
     }
 }
 
+#[cfg(feature = "std")]
 impl KimchiCurve<FULL_ROUNDS> for Affine<PallasParameters> {
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField, FULL_ROUNDS> {
         mina_poseidon::pasta::fq_kimchi::static_params()
@@ -114,6 +119,7 @@ impl KimchiCurve<FULL_ROUNDS> for Affine<PallasParameters> {
 // Legacy curves
 //
 
+#[cfg(feature = "std")]
 impl KimchiCurve<{ mina_poseidon::pasta::LEGACY_ROUNDS }> for Affine<LegacyVestaParameters> {
     fn sponge_params(
     ) -> &'static ArithmeticSpongeParams<Self::ScalarField, { mina_poseidon::pasta::LEGACY_ROUNDS }>
@@ -142,6 +148,7 @@ impl KimchiCurve<{ mina_poseidon::pasta::LEGACY_ROUNDS }> for Affine<LegacyVesta
     }
 }
 
+#[cfg(feature = "std")]
 impl KimchiCurve<{ mina_poseidon::pasta::LEGACY_ROUNDS }> for Affine<LegacyPallasParameters> {
     fn sponge_params(
     ) -> &'static ArithmeticSpongeParams<Self::ScalarField, { mina_poseidon::pasta::LEGACY_ROUNDS }>
@@ -176,29 +183,33 @@ use mina_poseidon::dummy_values::kimchi_dummy;
 #[cfg(feature = "bn254")]
 impl KimchiCurve<FULL_ROUNDS> for Affine<ark_bn254::g1::Config> {
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField, FULL_ROUNDS> {
+        use std::sync::LazyLock;
         // TODO: Generate some params
-        static PARAMS: Lazy<ArithmeticSpongeParams<ark_bn254::Fr, FULL_ROUNDS>> =
-            Lazy::new(kimchi_dummy);
+        static PARAMS: LazyLock<ArithmeticSpongeParams<ark_bn254::Fr, FULL_ROUNDS>> =
+            LazyLock::new(kimchi_dummy);
         &PARAMS
     }
 
     fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField, FULL_ROUNDS>
     {
+        use std::sync::LazyLock;
         // TODO: Generate some params
-        static PARAMS: Lazy<ArithmeticSpongeParams<ark_bn254::Fq, FULL_ROUNDS>> =
-            Lazy::new(kimchi_dummy);
+        static PARAMS: LazyLock<ArithmeticSpongeParams<ark_bn254::Fq, FULL_ROUNDS>> =
+            LazyLock::new(kimchi_dummy);
         &PARAMS
     }
 
     fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
-        static ENDOS: Lazy<(ark_bn254::Fq, ark_bn254::Fr)> =
-            Lazy::new(endos::<ark_bn254::G1Affine>);
+        use std::sync::LazyLock;
+        static ENDOS: LazyLock<(ark_bn254::Fq, ark_bn254::Fr)> =
+            LazyLock::new(endos::<ark_bn254::G1Affine>);
         &ENDOS
     }
 
     fn other_curve_endo() -> &'static Self::ScalarField {
+        use std::sync::LazyLock;
         // TODO: Dummy value, this is definitely not right
-        static ENDO: Lazy<ark_bn254::Fr> = Lazy::new(|| 13u64.into());
+        static ENDO: LazyLock<ark_bn254::Fr> = LazyLock::new(|| 13u64.into());
         &ENDO
     }
 

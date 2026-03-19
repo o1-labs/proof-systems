@@ -153,7 +153,7 @@ impl From<CamlPastaFpPlonkVerifierIndex> for VerifierIndex<FULL_ROUNDS, Vesta, S
 
             shift,
             permutation_vanishing_polynomial_m: {
-                let res = once_cell::sync::OnceCell::new();
+                let res = std::sync::OnceLock::new();
                 res.set(permutation_vanishing_polynomial(
                     domain,
                     index.zk_rows as u64,
@@ -162,7 +162,7 @@ impl From<CamlPastaFpPlonkVerifierIndex> for VerifierIndex<FULL_ROUNDS, Vesta, S
                 res
             },
             w: {
-                let res = once_cell::sync::OnceCell::new();
+                let res = std::sync::OnceLock::new();
                 res.set(zk_w(domain, index.zk_rows as u64)).unwrap();
                 res
             },

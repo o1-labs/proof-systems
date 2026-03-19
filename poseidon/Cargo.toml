@@ -21,7 +21,6 @@ mina-curves = { workspace = true, default-features = false }
 o1-utils.workspace = true
 ocaml = { workspace = true, optional = true }
 ocaml-gen = { workspace = true, optional = true }
-once_cell.workspace = true
 rand.workspace = true
 rayon = { workspace = true, optional = true }
 serde.workspace = true
@@ -34,7 +33,9 @@ serde_json.workspace = true
 
 [features]
 default = ["parallel"]
+std = []
 parallel = [
+  "std",
   "rayon",
   "ark-ec/parallel",
   "ark-ff/parallel",

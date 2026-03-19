@@ -20,7 +20,6 @@ num-bigint = { workspace = true, features = ["rand", "serde"] }
 # ocaml-specific
 ocaml = { workspace = true, features = ["no-caml-startup"] }
 ocaml-gen.workspace = true
-once_cell.workspace = true
 paste.workspace = true
 rand.workspace = true
 rayon.workspace = true
