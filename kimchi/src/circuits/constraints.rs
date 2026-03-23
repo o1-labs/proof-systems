@@ -276,9 +276,18 @@ where
         let cs = ConstraintSystemSerde::<F>::deserialize(deserializer)?;
 
         let precomputations = Arc::new({
-            LazyCache::new(move || {
-                Arc::new(DomainConstantEvaluations::create(cs.domain, cs.zk_rows).unwrap())
-            })
+            #[cfg(feature = "std")]
+            {
+                LazyCache::new(move || {
+                    Arc::new(DomainConstantEvaluations::create(cs.domain, cs.zk_rows).unwrap())
+                })
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                LazyCache::preinit(Arc::new(
+                    DomainConstantEvaluations::create(cs.domain, cs.zk_rows).unwrap(),
+                ))
+            }
         });
 
         Ok(ConstraintSystem {
@@ -1062,15 +1071,30 @@ impl<F: PrimeField> Builder<F> {
         // ------
         let gates = Arc::new(gates);
         let gates_clone = Arc::clone(&gates);
-        let lookup_constraint_system = LazyCache::new(move || {
-            LookupConstraintSystem::create(
-                &gates_clone,
-                self.lookup_tables,
-                self.runtime_tables,
-                &domain,
-                zk_rows as usize,
-            )
-        });
+        let lookup_constraint_system = {
+            #[cfg(feature = "std")]
+            {
+                LazyCache::new(move || {
+                    LookupConstraintSystem::create(
+                        &gates_clone,
+                        self.lookup_tables,
+                        self.runtime_tables,
+                        &domain,
+                        zk_rows as usize,
+                    )
+                })
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                LazyCache::preinit(LookupConstraintSystem::create(
+                    &gates_clone,
+                    self.lookup_tables,
+                    self.runtime_tables,
+                    &domain,
+                    zk_rows as usize,
+                ))
+            }
+        };
         if !self.lazy_mode {
             // Precompute and map setup error
             lookup_constraint_system
@@ -1091,9 +1115,18 @@ impl<F: PrimeField> Builder<F> {
                 )),
             }
         } else {
-            LazyCache::new(move || {
-                Arc::new(DomainConstantEvaluations::create(domain, zk_rows).unwrap())
-            })
+            #[cfg(feature = "std")]
+            {
+                LazyCache::new(move || {
+                    Arc::new(DomainConstantEvaluations::create(domain, zk_rows).unwrap())
+                })
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                LazyCache::preinit(Arc::new(
+                    DomainConstantEvaluations::create(domain, zk_rows).unwrap(),
+                ))
+            }
         };
 
         let constraints = ConstraintSystem {

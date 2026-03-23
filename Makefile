@@ -110,6 +110,7 @@ install-test-deps: ## Install test dependencies
 		@echo ""
 		rustup component add llvm-tools-preview
 		cargo install cargo-nextest@=0.9.67 --locked
+		cargo install cargo-no-std --git https://github.com/o1-labs/cargo-no-std --rev 16901db8 --locked
 		cargo install grcov@=0.8.13 --locked
 		@echo ""
 		@echo "Test dependencies installed."
@@ -181,6 +182,15 @@ test-kimchi-verifier-only: check-kimchi-test-parity ## Test kimchi verifier with
 			--features internal_tracing \
 			--release \
 			--lib
+
+.PHONY: no-std-check-kimchi
+no-std-check-kimchi: ## Check kimchi compiles in no-std mode
+		cargo no-std \
+			-p kimchi \
+			--no-default-features \
+			--target x86_64-unknown-none \
+			--alloc \
+			--features sha2-force-soft
 
 .PHONY: test-doc
 test-doc: ## Test the project's docs comments (without o1vm)

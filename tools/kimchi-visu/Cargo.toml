@@ -13,15 +13,15 @@ version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-ark-ec.workspace = true
-ark-ff.workspace = true
+ark-ec = { workspace = true, features = ["parallel"] }
+ark-ff = { workspace = true, features = ["parallel"] }
 serde.workspace = true
 serde_json.workspace = true
 serde_with.workspace = true
 tinytemplate.workspace = true
 
 kimchi.workspace = true
-mina-curves.workspace = true
-mina-poseidon.workspace = true
+mina-curves = { workspace = true, features = ["parallel"] }
+mina-poseidon = { workspace = true, features = ["parallel"] }
 o1-utils.workspace = true
 poly-commitment.workspace = true

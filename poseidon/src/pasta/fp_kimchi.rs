@@ -1,7 +1,8 @@
 use crate::poseidon::ArithmeticSpongeParams;
 use core::str::FromStr;
 use mina_curves::pasta::Fp;
-use once_cell::sync::Lazy;
+#[cfg(feature = "std")]
+use std::sync::LazyLock;
 
 type Params = ArithmeticSpongeParams<Fp, { super::FULL_ROUNDS }>;
 
@@ -837,8 +838,9 @@ pub fn params() -> Params {
 }
 
 /// The Fp sponge params (lazily initialized).
+#[cfg(feature = "std")]
 #[must_use]
 pub fn static_params() -> &'static Params {
-    static PARAMS: Lazy<Params> = Lazy::new(params);
+    static PARAMS: LazyLock<Params> = LazyLock::new(params);
     &PARAMS
 }

@@ -17,13 +17,12 @@ ark-ec.workspace = true
 ark-ff.workspace = true
 ark-poly.workspace = true
 ark-serialize.workspace = true
-mina-curves.workspace = true
+mina-curves = { workspace = true, default-features = false }
 o1-utils.workspace = true
 ocaml = { workspace = true, optional = true }
 ocaml-gen = { workspace = true, optional = true }
-once_cell.workspace = true
 rand.workspace = true
-rayon.workspace = true
+rayon = { workspace = true, optional = true }
 serde.workspace = true
 serde_with.workspace = true
 
@@ -33,6 +32,16 @@ hex.workspace = true
 serde_json.workspace = true
 
 [features]
+default = ["std", "parallel"]
+std = []
+parallel = [
+  "std",
+  "rayon",
+  "ark-ec/parallel",
+  "ark-ff/parallel",
+  "ark-poly/parallel",
+  "mina-curves/parallel",
+]
 ocaml_types = ["ocaml", "ocaml-gen"]
 
 [[bench]]

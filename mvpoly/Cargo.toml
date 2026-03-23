@@ -17,16 +17,16 @@ name = "bench-cross-terms"
 path = "src/lib.rs"
 
 [dependencies]
-ark-ff.workspace = true
+ark-ff = { workspace = true, features = ["parallel"] }
 kimchi.workspace = true
 log.workspace = true
-mina-curves.workspace = true
+mina-curves = { workspace = true, features = ["parallel"] }
 num-integer.workspace = true
 o1-utils.workspace = true
 rand.workspace = true
 
 [dev-dependencies]
-mina-curves.workspace = true
+mina-curves = { workspace = true, features = ["parallel"] }
 rand.workspace = true
 criterion = { version = "0.5.1", features = ["html_reports"] }
 

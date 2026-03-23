@@ -330,7 +330,6 @@ dependencies = [
  "num-bigint",
  "num-integer",
  "o1-utils",
- "once_cell",
  "poly-commitment",
  "rand 0.8.5",
  "rayon",
@@ -398,11 +397,10 @@ checksum = "89e25b6adfb930f02d1981565a6e5d9c547ac15a96606256d3b59040e5cd4ca3"
 [[package]]
 name = "bcs"
 version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85b6598a2f5d564fb7855dc6b06fd1c38cff5a72bd8b863a4d021938497b440a"
+source = "git+https://github.com/o1-labs/bcs?rev=d9c996b0#d9c996b04d84a6e4333a1b75201ecf91257c67fa"
 dependencies = [
  "serde",
- "thiserror 1.0.56",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -724,6 +722,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "const-oid"
+version = "0.9.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
+
+[[package]]
 name = "const-random"
 version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -944,6 +948,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
 dependencies = [
  "block-buffer",
+ "const-oid",
  "crypto-common",
  "subtle",
 ]
@@ -1660,7 +1665,6 @@ dependencies = [
  "blake2",
  "criterion",
  "groupmap",
- "hashbrown 0.15.3",
  "hex",
  "iai",
  "internal-tracing",
@@ -1673,7 +1677,6 @@ dependencies = [
  "o1-utils",
  "ocaml",
  "ocaml-gen",
- "once_cell",
  "poly-commitment",
  "proptest",
  "proptest-derive",
@@ -1685,6 +1688,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
+ "sha2",
  "strum",
  "strum_macros",
  "thiserror 2.0.18",
@@ -1742,7 +1746,6 @@ dependencies = [
  "o1-utils",
  "ocaml",
  "ocaml-gen",
- "once_cell",
  "paste",
  "poly-commitment",
  "rand 0.8.5",
@@ -1914,7 +1917,6 @@ dependencies = [
  "o1-utils",
  "ocaml",
  "ocaml-gen",
- "once_cell",
  "rand 0.8.5",
  "rayon",
  "serde",
@@ -2034,7 +2036,6 @@ dependencies = [
  "num-bigint",
  "num-integer",
  "rand 0.8.5",
- "rand_core 0.6.4",
  "rayon",
  "rmp-serde",
  "rustversion",
@@ -2291,7 +2292,6 @@ dependencies = [
  "mina-poseidon",
  "num-bigint",
  "o1-utils",
- "once_cell",
  "paste",
  "poly-commitment",
  "rand 0.8.5",
@@ -2347,6 +2347,7 @@ dependencies = [
  "blake2",
  "criterion",
  "groupmap",
+ "hashbrown 0.15.3",
  "hex",
  "itertools 0.12.1",
  "mina-curves",
@@ -2914,6 +2915,16 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest",
+ "sha2-asm",
+]
+
+[[package]]
+name = "sha2-asm"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b845214d6175804686b2bd482bcffe96651bb2d1200742b712003504a2dac1ab"
+dependencies = [
+ "cc",
 ]
 
 [[package]]

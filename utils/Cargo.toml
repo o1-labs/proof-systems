@@ -14,7 +14,7 @@ tikv-jemalloc-ctl = { workspace = true, optional = true }
 tikv-jemallocator = { workspace = true, optional = true }
 
 [dependencies]
-ark-ec.workspace = true
+# ark-ec.workspace = true
 ark-ff.workspace = true
 ark-poly.workspace = true
 ark-serialize.workspace = true
@@ -23,7 +23,6 @@ hex.workspace = true
 num-bigint.workspace = true
 num-integer.workspace = true
 rand.workspace = true
-rand_core.workspace = true
 rayon = { workspace = true, optional = true }
 rmp-serde = { workspace = true, optional = true }
 rustversion.workspace = true
@@ -34,13 +33,19 @@ sha2.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
-ark-ec.workspace = true
-mina-curves.workspace = true
+ark-ec = { workspace = true, features = ["parallel"] }
+mina-curves = { workspace = true, features = ["parallel"] }
 serde_json.workspace = true
 secp256k1.workspace = true
 
 [features]
 default = ["std", "parallel"]
-std = ["rmp-serde", "serde_json"]
-parallel = ["std", "rayon"]
+std = ["rmp-serde", "serde_json", "rand/std"]
+parallel = [
+  "std",
+  "rayon",
+  "ark-ff/parallel",
+  "ark-ec/parallel",
+  "ark-poly/parallel",
+]
 diagnostics = ["tikv-jemalloc-ctl", "tikv-jemallocator"]

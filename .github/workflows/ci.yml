@@ -329,3 +329,6 @@ jobs:
 
       - name: Run kimchi verifier-only tests (no-prover mode)
         run: make test-kimchi-verifier-only
+
+      - name: Check kimchi no-std compatibility
+        run: make no-std-check-kimchi

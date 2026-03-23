@@ -2,9 +2,7 @@ use crate::wasm_vector::WasmVector;
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
 use core::ops::Deref;
 use paste::paste;
-use poly_commitment::{
-    commitment::b_poly_coefficients, hash_map_cache::HashMapCache, ipa::SRS, SRS as ISRS,
-};
+use poly_commitment::{commitment::b_poly_coefficients, ipa::SRS, SRS as ISRS};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{File, OpenOptions},
@@ -272,11 +270,7 @@ pub mod fp {
         let mut h_and_gs: Vec<G> = h_and_gs.into_iter().map(|x| x.into()).collect();
         let h = h_and_gs.remove(0);
         let g = h_and_gs;
-        let srs = SRS::<G> {
-            h,
-            g,
-            lagrange_bases: HashMapCache::new(),
-        };
+        let srs = SRS::new(g, h);
         Arc::new(srs).into()
     }
 
@@ -287,7 +281,7 @@ pub mod fp {
         domain_size: i32,
         i: i32,
     ) -> Option<WasmPolyComm> {
-        if !(srs.0.lagrange_bases.contains_key(&(domain_size as usize))) {
+        if !(srs.0.lagrange_bases().contains_key(&(domain_size as usize))) {
             return None;
         }
         let basis = srs.get_lagrange_basis_from_domain_size(domain_size as usize);
@@ -301,7 +295,7 @@ pub mod fp {
         domain_size: i32,
         input_bases: WasmVector<WasmPolyComm>,
     ) {
-        srs.lagrange_bases
+        srs.lagrange_bases()
             .get_or_generate(domain_size as usize, || {
                 input_bases.into_iter().map(Into::into).collect()
             });
@@ -352,11 +346,7 @@ pub mod fq {
         let mut h_and_gs: Vec<G> = h_and_gs.into_iter().map(|x| x.into()).collect();
         let h = h_and_gs.remove(0);
         let g = h_and_gs;
-        let srs = SRS::<G> {
-            h,
-            g,
-            lagrange_bases: HashMapCache::new(),
-        };
+        let srs = SRS::new(g, h);
         Arc::new(srs).into()
     }
 
@@ -367,7 +357,7 @@ pub mod fq {
         domain_size: i32,
         i: i32,
     ) -> Option<WasmPolyComm> {
-        if !(srs.0.lagrange_bases.contains_key(&(domain_size as usize))) {
+        if !(srs.0.lagrange_bases().contains_key(&(domain_size as usize))) {
             return None;
         }
         let basis = srs.get_lagrange_basis_from_domain_size(domain_size as usize);
@@ -381,7 +371,7 @@ pub mod fq {
         domain_size: i32,
         input_bases: WasmVector<WasmPolyComm>,
     ) {
-        srs.lagrange_bases
+        srs.lagrange_bases()
             .get_or_generate(domain_size as usize, || {
                 input_bases.into_iter().map(Into::into).collect()
             });

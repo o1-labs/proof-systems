@@ -24,13 +24,11 @@ ark-ff.workspace = true
 ark-poly.workspace = true
 ark-serialize.workspace = true
 blake2.workspace = true
-hashbrown.workspace = true
 hex.workspace = true
 itertools.workspace = true
 log.workspace = true
 num-bigint.workspace = true
 num-integer.workspace = true
-once_cell.workspace = true
 rand = { workspace = true, features = ["std_rng"], optional = true }
 rand_core.workspace = true
 rayon = { workspace = true, optional = true }
@@ -46,14 +44,16 @@ ocaml-gen = { workspace = true, optional = true }
 
 wasm-bindgen = { workspace = true, optional = true }
 
+sha2 = { workspace = true, optional = true }
+
 internal-tracing.workspace = true
 
 # Internal dependencies
-groupmap.workspace = true
-mina-curves.workspace = true
-mina-poseidon.workspace = true
+groupmap = { workspace = true, default-features = false }
+mina-curves = { workspace = true, default-features = false }
+mina-poseidon = { workspace = true, default-features = false }
 o1-utils.workspace = true
-poly-commitment = { workspace = true, features = ["std"] }
+poly-commitment.workspace = true
 
 
 [dev-dependencies]
@@ -64,6 +64,8 @@ rmp-serde.workspace = true
 serde_json.workspace = true
 num-bigint.workspace = true
 secp256k1.workspace = true
+o1-utils = { workspace = true, features = ["parallel"] }
+poly-commitment = { workspace = true, features = ["parallel"] }
 
 # benchmarks
 criterion.workspace = true
@@ -97,8 +99,20 @@ std = [
   "o1-utils/std",
   "internal-tracing/std",
   "poly-commitment/std",
+  "sha2/std",
 ]
-parallel = ["std", "rayon", "o1-utils/parallel", "poly-commitment/parallel"]
+parallel = [
+  "std",
+  "rayon",
+  "o1-utils/parallel",
+  "poly-commitment/parallel",
+  "ark-ff/parallel",
+  "ark-ec/parallel",
+  "ark-poly/parallel",
+  "groupmap/parallel",
+  "mina-curves/parallel",
+  "mina-poseidon/parallel",
+]
 prover = ["parallel"]
 internal_tracing = ["internal-tracing/enabled"]
 ocaml_types = [
@@ -113,3 +127,9 @@ wasm_types = ["wasm-bindgen"]
 save-test-proofs = ["prover"]
 check_feature_flags = []
 diagnostics = ["tikv-jemalloc-ctl", "tikv-jemallocator"]
+sha2-asm = ["sha2/asm"]
+sha2-asm-aarch64 = ["sha2/asm-aarch64"]
+sha2-compress = ["sha2/compress"]
+sha2-force-soft = ["sha2/force-soft"]
+sha2-loongarch64_asm = ["sha2/loongarch64_asm"]
+sha2-oid = ["sha2/oid"]

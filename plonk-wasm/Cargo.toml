@@ -20,7 +20,6 @@ getrandom = { workspace = true, features = ["js"] }
 js-sys.workspace = true
 libc.workspace = true
 num-bigint.workspace = true
-once_cell.workspace = true
 paste.workspace = true
 rand.workspace = true
 rayon.workspace = true
@@ -40,10 +39,10 @@ ark-serialize.workspace = true
 
 # proof-systems
 arkworks.workspace = true
-groupmap.workspace = true
+groupmap = { workspace = true, features = ["parallel"] }
 kimchi = { workspace = true, features = ["wasm_types"] }
-mina-curves = { workspace = true }
-mina-poseidon = { workspace = true }
+mina-curves = { workspace = true, features = ["parallel"] }
+mina-poseidon = { workspace = true, features = ["default"] }
 o1-utils = { workspace = true }
 poly-commitment = { workspace = true }
 wasm-types.workspace = true

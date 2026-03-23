@@ -26,14 +26,7 @@ mod prelude {
 #[allow(unused_imports)]
 use prelude::*;
 
-pub mod collections {
-    #[cfg(not(feature = "std"))]
-    pub use alloc::collections::*;
-    #[cfg(not(feature = "std"))]
-    pub use hashbrown::{HashMap, HashSet};
-    #[cfg(feature = "std")]
-    pub use std::collections::*;
-}
+pub use poly_commitment::collections;
 
 pub use groupmap;
 pub use mina_curves;

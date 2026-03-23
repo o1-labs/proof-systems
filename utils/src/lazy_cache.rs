@@ -108,6 +108,7 @@ impl<T> LazyCache<T> {
 }
 
 impl<T> LazyCache<T> {
+    #[allow(clippy::nursery)]
     /// Creates a new lazy value that is already initialized.
     pub fn preinit(value: T) -> Self {
         #[cfg(feature = "std")]

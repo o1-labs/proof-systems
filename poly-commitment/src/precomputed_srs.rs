@@ -11,7 +11,7 @@
 //! If you modify the SRS, you will need to regenerate the SRS by passing the
 //! `SRS_OVERWRITE` env var.
 
-use crate::{hash_map_cache::HashMapCache, ipa::SRS, CommitmentCurve, PolyComm};
+use crate::{ipa::SRS, CommitmentCurve, PolyComm};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use mina_curves::named::NamedCurve;
 use serde::{Deserialize, Serialize};
@@ -48,26 +48,6 @@ pub struct TestSRS<G> {
     /// Commitments to Lagrange bases, per domain size
     #[serde_as(as = "HashMap<_,Vec<PolyComm<o1_utils::serialization::SerdeAsUnchecked>>>")]
     pub lagrange_bases: HashMap<usize, Vec<PolyComm<G>>>,
-}
-
-impl<G: Clone> From<SRS<G>> for TestSRS<G> {
-    fn from(value: SRS<G>) -> Self {
-        Self {
-            g: value.g,
-            h: value.h,
-            lagrange_bases: value.lagrange_bases.into(),
-        }
-    }
-}
-
-impl<G> From<TestSRS<G>> for SRS<G> {
-    fn from(value: TestSRS<G>) -> Self {
-        Self {
-            g: value.g,
-            h: value.h,
-            lagrange_bases: HashMapCache::new_from_hashmap(value.lagrange_bases),
-        }
-    }
 }
 
 /// The size of the SRS that we serialize.
@@ -140,7 +120,7 @@ where
 mod tests {
     use super::*;
 
-    use crate::{hash_map_cache::HashMapCache, SRS as _};
+    use crate::SRS as _;
     use ark_ec::AffineRepr;
     use ark_ff::PrimeField;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
@@ -151,12 +131,7 @@ mod tests {
     fn test_regression_serialization_srs_with_generators<G: AffineRepr>(exp_output: &str) {
         let h = G::generator();
         let g = vec![h];
-        let lagrange_bases = HashMapCache::new();
-        let srs = SRS::<G> {
-            g,
-            h,
-            lagrange_bases,
-        };
+        let srs = SRS::new(g, h);
         let srs_bytes = rmp_serde::to_vec(&srs).unwrap();
         let output = hex::encode(srs_bytes);
         assert_eq!(output, exp_output);

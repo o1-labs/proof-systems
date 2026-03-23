@@ -35,16 +35,16 @@ documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
 [workspace.dependencies]
 ark-algebra-test-templates = "0.5"
 ark-bn254 = { version = "0.5" }
-ark-ec = { version = "0.5", features = ["parallel"] }
-ark-ff = { version = "0.5", features = ["parallel", "asm"] }
-ark-poly = { version = "0.5", features = ["parallel"] }
-ark-serialize = "0.5"
-ark-std = { version = "0.5", features = ["parallel"] }
+ark-ec = { version = "0.5", default-features = false }
+ark-ff = { version = "0.5", default-features = false, features = ["asm"] }
+ark-poly = { version = "0.5", default-features = false }
+ark-serialize = { version = "0.5", default-features = false }
+ark-std = { version = "0.5", default-features = false }
 ark-test-curves = { version = "0.5", features = ["parallel", "asm"] }
 base64 = "0.21.5"
-bcs = "0.1.3"
+bcs = { version = "0.1.3", default-features = false }
 bitvec = "1.0.0"
-blake2 = "0.10.0"
+blake2 = { version = "0.10.0", default-features = false }
 bs58 = "0.5.0"
 clap = "4.4.6"
 command-fds = "0.3"
@@ -57,23 +57,30 @@ elf = "0.7.2"
 env_logger = "0.11.6"
 getrandom = { version = "0.2.15", features = ["js"] }
 hashbrown = { version = "0.15", features = ["serde"] }
-hex = { version = "0.4", features = ["serde"] }
+hex = { version = "0.4", default-features = false, features = [
+  "alloc",
+  "serde",
+] }
 iai = "0.1"
-itertools = "0.12.1"
+itertools = { version = "0.12.1", default-features = false, features = [
+  "use_alloc",
+] }
 js-sys = "=0.3.77"
 libc = "=0.2.169"
 libflate = "2"
 log = "0.4.20"
-num-bigint = { version = "0.4.6", features = ["rand", "serde"] }
-num-integer = "0.1.45"
+num-bigint = { version = "0.4.6", default-features = false, features = [
+  "rand",
+  "serde",
+] }
+num-integer = { version = "0.1.45", default-features = false }
 ocaml = { version = "0.22.2" }
 ocaml-gen = { version = "1.0.0" }
-once_cell = "=1.21.3"
 os_pipe = { version = "1.1.4", features = ["io_safety"] }
 paste = "1.0.15"
 proptest = "1.0.0"
 proptest-derive = "0.6.0"
-rand = { version = "0.8.5", features = ["std_rng"] }
+rand = { version = "0.8.5", default-features = false }
 rand_chacha = { version = "0.3.0" }
 rand_core = { version = "0.6.3" }
 rayon = "=1.10.0"
@@ -81,14 +88,21 @@ regex = "1.10.2"
 rmp-serde = "1.2.0"
 rustversion = "1.0"
 secp256k1 = "0.31.1"
-serde = { version = "1.0.219", features = ["derive", "rc"] }
+serde = { version = "1.0.219", default-features = false, features = [
+  "alloc",
+  "derive",
+  "rc",
+] }
 serde-wasm-bindgen = "0.6.5"
 serde_json = "^1.0.109"
-serde_with = "3.12"
-sha2 = "0.10.0"
+serde_with = { version = "3.12", default-features = false, features = [
+  "alloc",
+  "macros",
+] }
+sha2 = { version = "0.10.0", default-features = false }
 sha3 = "0.10.8"
 spmc = "=0.3.0"
-strum = "0.27.2"
+strum = { version = "0.27.2", default-features = false }
 strum_macros = "0.26.1"
 subtle = { version = "2.5", default-features = false }
 thiserror = { version = "2", default-features = false }
@@ -101,27 +115,32 @@ zeroize = "1"
 
 arkworks = { path = "crates/arkworks" }
 arrabbiata = { path = "./arrabbiata" }
-groupmap = { path = "./groupmap" }
-internal-tracing = { path = "./internal-tracing" }
+groupmap = { path = "./groupmap", default-features = false }
+internal-tracing = { path = "./internal-tracing", default-features = false }
 kimchi = { path = "./kimchi", features = ["bn254"] }
 kimchi-msm = { path = "./msm" }
 kimchi-stubs = { path = "./kimchi-stubs" }
 kimchi-visu = { path = "./tools/kimchi-visu" }
 mina-base58 = { path = "./crates/mina-base58" }
-mina-curves = { path = "./curves", features = ["asm"] }
+mina-curves = { path = "./curves", default-features = false, features = [
+  "asm",
+] }
 mina-hasher = { path = "./hasher" }
-mina-poseidon = { path = "./poseidon" }
+mina-poseidon = { path = "./poseidon", default-features = false }
 mina-signer = { path = "./signer" }
 mina-tx-type = { path = "./mina-tx-type" }
 mvpoly = { path = "./mvpoly" }
-o1-utils = { path = "./utils" }
+o1-utils = { path = "./utils", default-features = false }
 o1vm = { path = "./o1vm" }
 optimism = { path = "./optimism" }
 plonk_wasm = { path = "./plonk-wasm" }
-poly-commitment = { path = "./poly-commitment" }
+poly-commitment = { path = "./poly-commitment", default-features = false }
 signer = { path = "./signer" }
 utils = { path = "./utils" }
 wasm-types = { path = "./crates/wasm-types" }
+
+[patch.crates-io]
+bcs = { git = "https://github.com/o1-labs/bcs", rev = "d9c996b0" }
 
 [profile.release]
 lto = true

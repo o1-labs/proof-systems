@@ -10,12 +10,12 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
-ark-ff.workspace = true
+ark-ff = { workspace = true, features = ["parallel"] }
 ark-serialize.workspace = true
 clap = { workspace = true, features = ["derive"] }
 hex.workspace = true
-mina-curves.workspace = true
-mina-poseidon.workspace = true
+mina-curves = { workspace = true, features = ["parallel"] }
+mina-poseidon = { workspace = true, features = ["parallel"] }
 num-bigint.workspace = true
 o1-utils.workspace = true
 rand.workspace = true

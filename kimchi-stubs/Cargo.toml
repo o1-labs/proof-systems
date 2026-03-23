@@ -20,7 +20,6 @@ num-bigint = { workspace = true, features = ["rand", "serde"] }
 # ocaml-specific
 ocaml = { workspace = true, features = ["no-caml-startup"] }
 ocaml-gen.workspace = true
-once_cell.workspace = true
 paste.workspace = true
 rand.workspace = true
 rayon.workspace = true
@@ -35,9 +34,9 @@ ark-poly = { workspace = true, features = ["parallel"] }
 ark-serialize.workspace = true
 
 # proof-systems
-groupmap.workspace = true
+groupmap = { workspace = true, features = ["parallel"] }
 kimchi = { workspace = true, features = ["ocaml_types"] }
-mina-curves = { workspace = true }
-mina-poseidon = { workspace = true }
+mina-curves = { workspace = true, features = ["parallel"] }
+mina-poseidon = { workspace = true, features = ["parallel"] }
 o1-utils = { workspace = true }
 poly-commitment = { workspace = true, features = ["ocaml_types"] }
