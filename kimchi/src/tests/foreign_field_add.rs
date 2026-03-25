@@ -325,33 +325,6 @@ fn long_witness<F: PrimeField>(
 }
 
 #[cfg(feature = "prover")]
-#[allow(dead_code)]
-fn create_test_constraint_system_ffadd(
-    opcodes: &[FFOps],
-    foreign_field_modulus: BigUint,
-    full: bool,
-) -> ProverIndex<
-    FULL_ROUNDS,
-    Vesta,
-    <OpeningProof<Vesta, FULL_ROUNDS> as OpenProof<Vesta, FULL_ROUNDS>>::SRS,
-> {
-    let (_next_row, gates) = if full {
-        full_circuit(opcodes, &foreign_field_modulus)
-    } else {
-        short_circuit(opcodes, &foreign_field_modulus)
-    };
-
-    let cs = ConstraintSystem::create(gates).public(1).build().unwrap();
-    let srs = SRS::<Vesta>::create(cs.domain.d1.size());
-    srs.get_lagrange_basis(cs.domain.d1);
-    let srs = Arc::new(srs);
-
-    let (endo_q, _endo_r) = endos::<Pallas>();
-    ProverIndex::create(cs, endo_q, srs, false)
-}
-
-#[cfg(feature = "prover")]
-#[allow(dead_code)]
 // helper to reduce lines of code in repetitive test structure
 fn test_ffadd(
     foreign_field_modulus: BigUint,
@@ -362,7 +335,22 @@ fn test_ffadd(
     [Vec<PallasField>; COLUMNS],
     ProverIndex<FULL_ROUNDS, Vesta, poly_commitment::ipa::SRS<Vesta>>,
 ) {
-    let index = create_test_constraint_system_ffadd(opcodes, foreign_field_modulus.clone(), full);
+    let index = {
+        let foreign_field_modulus = foreign_field_modulus.clone();
+        let (_next_row, gates) = if full {
+            full_circuit(opcodes, &foreign_field_modulus)
+        } else {
+            short_circuit(opcodes, &foreign_field_modulus)
+        };
+
+        let cs = ConstraintSystem::create(gates).public(1).build().unwrap();
+        let srs = SRS::<Vesta>::create(cs.domain.d1.size());
+        srs.get_lagrange_basis(cs.domain.d1);
+        let srs = Arc::new(srs);
+
+        let (endo_q, _endo_r) = endos::<Pallas>();
+        ProverIndex::create(cs, endo_q, srs, false)
+    };
 
     let witness = if full {
         long_witness(&inputs, opcodes, foreign_field_modulus)
