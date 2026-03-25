@@ -3,6 +3,16 @@
 // === Macro ===
 
 macro_rules! include_fixture {
+    ("") => {{
+        #[cfg(feature = "prover")]
+        {
+            ""
+        }
+        #[cfg(not(feature = "prover"))]
+        {
+            b"" as &[u8]
+        }
+    }};
     ($name:expr) => {{
         #[cfg(feature = "prover")]
         {
@@ -129,6 +139,9 @@ pub(crate) struct TestFramework<
 
     #[cfg(not(feature = "prover"))]
     fixture_bytes: Option<&'static [u8]>,
+
+    #[cfg(not(feature = "prover"))]
+    cs: Option<crate::circuits::constraints::ConstraintSystem<G::ScalarField>>,
 }
 
 // === TestRunner ===
@@ -352,7 +365,24 @@ where
     G::BaseField: PrimeField,
 {
     #[must_use]
-    pub(crate) fn setup(self) -> TestRunner<FULL_ROUNDS, G> {
+    pub(crate) fn setup(mut self) -> TestRunner<FULL_ROUNDS, G> {
+        use crate::circuits::constraints::testing::create_constraint_system;
+
+        let gates = self.gates.take().unwrap();
+        let lookup_tables = core::mem::take(&mut self.lookup_tables);
+        let runtime_tables_setup = self.runtime_tables_setup.take();
+
+        self.cs = Some(create_constraint_system(
+            gates,
+            self.public_inputs.len(),
+            self.num_prev_challenges,
+            lookup_tables,
+            runtime_tables_setup,
+            self.disable_gates_checks,
+            self.override_srs_size,
+            self.lazy_mode,
+        ));
+
         TestRunner(self)
     }
 }
@@ -387,6 +417,22 @@ where
     pub(crate) fn witness(mut self, witness: [Vec<G::ScalarField>; COLUMNS]) -> Self {
         self.0.witness = Some(witness);
         self
+    }
+}
+
+// === No-prover TestRunner methods ===
+
+#[cfg(not(feature = "prover"))]
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, OpeningProof>
+    TestRunner<FULL_ROUNDS, G, OpeningProof>
+where
+    G::ScalarField: PrimeField + Clone,
+    G::BaseField: PrimeField + Clone,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
+{
+    pub(crate) fn cs(&self) -> &crate::circuits::constraints::ConstraintSystem<G::ScalarField> {
+        self.0.cs.as_ref().unwrap()
     }
 }
 

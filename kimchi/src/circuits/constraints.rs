@@ -1114,3 +1114,39 @@ impl<F: PrimeField> Builder<F> {
         Ok(constraints)
     }
 }
+
+// TODO: "testing" modules should be cleaned up and removed. They only exist
+// because bench.rs does not use #[cfg(test)] and needs access to test helpers.
+pub(crate) mod testing {
+    use super::ConstraintSystem;
+    use crate::circuits::{
+        gate::CircuitGate,
+        lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
+    };
+    use alloc::vec::Vec;
+    use ark_ff::PrimeField;
+
+    #[allow(clippy::too_many_arguments)]
+    #[allow(dead_code)]
+    pub(crate) fn create_constraint_system<F: PrimeField>(
+        gates: Vec<CircuitGate<F>>,
+        public: usize,
+        prev_challenges: usize,
+        lookup_tables: Vec<LookupTable<F>>,
+        runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
+        disable_gates_checks: bool,
+        override_srs_size: Option<usize>,
+        lazy_mode: bool,
+    ) -> ConstraintSystem<F> {
+        ConstraintSystem::<F>::create(gates)
+            .lookup(lookup_tables)
+            .runtime(runtime_tables)
+            .public(public)
+            .prev_challenges(prev_challenges)
+            .disable_gates_checks(disable_gates_checks)
+            .max_poly_size(override_srs_size)
+            .lazy_mode(lazy_mode)
+            .build()
+            .unwrap()
+    }
+}
