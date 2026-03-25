@@ -14,7 +14,7 @@ use crate::{
 use alloc::{vec, vec::Vec};
 
 use ark_ec::AffineRepr;
-use ark_ff::{One, PrimeField};
+use ark_ff::{One, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -364,6 +364,9 @@ fn test_and_bad_decomposition() {
 #[test]
 // Test AND when the decomposition of the inner XOR is incorrect
 fn test_bad_and() {
+    use alloc::{fmt::format, string::String};
+    use core::format_args;
+
     let rng = &mut o1_utils::tests::make_test_rng(None);
 
     let bytes = 2;
@@ -377,19 +380,22 @@ fn test_bad_and() {
     // Create witness
     let mut witness = and::create_and_witness(input1, input2, bytes);
 
-    // Corrupt the output without updating the nybble decomposition, breaking the
-    // decomposition constraint (constraint 3 of the Xor16 gate).
-    witness[2][0] += PallasField::one();
+    // Corrupt the witness: modify the output to be all zero
+    witness[2][0] = PallasField::zero();
+    for i in 1..=4 {
+        witness[COLUMNS - i][0] = PallasField::zero();
+    }
+    witness[4][2] = PallasField::zero();
 
-    // Verify that at least one row fails constraint checks with the bad witness
-    let has_error = (0..witness[0].len()).any(|row| {
-        cs.gates[row]
-            .verify_witness::<FULL_ROUNDS, Vesta>(row, &witness, &cs, &witness[0][0..cs.public])
-            .is_err()
-    });
-    assert!(
-        has_error,
-        "Expected at least one constraint to fail with bad witness"
+    let res = cs
+        .verify_witness::<FULL_ROUNDS, Vesta>(&witness, &[])
+        .map_err(|e| format(format_args!("{e:?}")));
+
+    assert_eq!(
+        res,
+        Err(String::from(
+            "Custom { row: 2, err: \"generic: incorrect gate\" }"
+        ))
     );
 }
 

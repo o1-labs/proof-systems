@@ -36,8 +36,6 @@ use mina_poseidon::{
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
 #[cfg(feature = "prover")]
-use poly_commitment::{ipa::OpeningProof, OpenProof};
-#[cfg(feature = "prover")]
 use std::sync::Arc;
 
 #[cfg(not(feature = "prover"))]
@@ -452,7 +450,7 @@ fn test_bad_not_gnrc() {
     #[cfg(feature = "prover")]
     {
         witness[0][1] += PallasField::one();
-        let index = new_index_for_test_with_lookups(
+        let index = new_index_for_test_with_lookups::<FULL_ROUNDS, Vesta>(
             Arc::try_unwrap(cs.gates).unwrap(),
             1,
             0,
@@ -463,12 +461,7 @@ fn test_bad_not_gnrc() {
             false,
         );
 
-        let result = index.cs.gates[1].verify::<FULL_ROUNDS, Vesta, <OpeningProof<Vesta, FULL_ROUNDS> as OpenProof<Vesta, FULL_ROUNDS>>::SRS>(
-                1,
-                &witness,
-                &index,
-                &[]
-            );
+        let result = index.cs.gates[1].verify::<FULL_ROUNDS, Vesta>(1, &witness, &index.cs, &[]);
         assert_eq!(result, Err(("generic: incorrect gate").to_string()));
     }
 }

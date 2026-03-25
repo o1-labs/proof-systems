@@ -1,12 +1,9 @@
 //! This module implements Plonk circuit constraint primitive.
 use super::lookup::runtime_tables::RuntimeTableCfg;
 #[cfg(feature = "prover")]
-use crate::prover_index::ProverIndex;
+use crate::circuits::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts};
 #[cfg(feature = "prover")]
-use crate::{
-    circuits::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
-    curve::KimchiCurve,
-};
+use crate::prover_index::ProverIndex;
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
@@ -20,10 +17,11 @@ use crate::{
         polynomials::permutation::Shifts,
         wires::*,
     },
+    curve::KimchiCurve,
     error::{DomainCreationError, SetupError},
     o1_utils::lazy_cache::LazyCache,
 };
-use alloc::{string::String, sync::Arc, vec, vec::Vec};
+use alloc::{format, string::String, sync::Arc, vec, vec::Vec};
 use ark_ff::{PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
@@ -402,20 +400,19 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-#[cfg(feature = "prover")]
-impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
-where
-    F: PrimeField,
-    G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
-    Srs: SRS<G>,
-{
+impl<F: PrimeField> ConstraintSystem<F> {
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
-    ///     witness: wire assignment witness
-    ///     RETURN: verification status
-    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], public: &[F]) -> Result<(), GateError> {
+    pub fn verify_witness<
+        const FULL_ROUNDS: usize,
+        G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    >(
+        &self,
+        witness: &[Vec<F>; COLUMNS],
+        public: &[F],
+    ) -> Result<(), GateError> {
         // pad the witness
-        let pad = vec![F::zero(); self.cs.domain.d1.size() - witness[0].len()];
+        let pad = vec![F::zero(); self.domain.d1.size() - witness[0].len()];
         let witness: [Vec<F>; COLUMNS] = array::from_fn(|i| {
             let mut w = witness[i].to_vec();
             w.extend_from_slice(&pad);
@@ -423,7 +420,7 @@ where
         });
 
         // check each rows' wiring
-        for (row, gate) in self.cs.gates.iter().enumerate() {
+        for (row, gate) in self.gates.iter().enumerate() {
             // check if wires are connected
             for col in 0..PERMUTS {
                 let wire = gate.wires[col];
@@ -447,17 +444,31 @@ where
             }
 
             // for public gates, only the left wire is toggled
-            if row < self.cs.public && gate.coeffs.first() != Some(&F::one()) {
+            if row < self.public && gate.coeffs.first() != Some(&F::one()) {
                 return Err(GateError::IncorrectPublic(row));
             }
 
             // check the gate's satisfiability
-            gate.verify(row, &witness, self, public)
+            gate.verify::<FULL_ROUNDS, G>(row, &witness, self, public)
                 .map_err(|err| GateError::Custom { row, err })?;
         }
 
         // all good!
         Ok(())
+    }
+}
+
+#[cfg(feature = "prover")]
+impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
+where
+    F: PrimeField,
+    G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    Srs: SRS<G>,
+{
+    /// This function verifies the consistency of the wire
+    /// assignments (witness) against the constraints
+    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], public: &[F]) -> Result<(), GateError> {
+        self.cs.verify_witness::<FULL_ROUNDS, G>(witness, public)
     }
 }
 

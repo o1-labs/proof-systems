@@ -1,8 +1,10 @@
 //! This module implements Plonk constraint gate primitive.
-use alloc::{vec, vec::Vec};
+use alloc::{
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 
-#[cfg(feature = "prover")]
-use crate::prover_index::ProverIndex;
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv},
@@ -156,16 +158,11 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if verify process returns error.
-    #[cfg(feature = "prover")]
-    pub fn verify<
-        const FULL_ROUNDS: usize,
-        G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
-        Srs: poly_commitment::SRS<G>,
-    >(
+    pub fn verify<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS, ScalarField = F>>(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        index: &ProverIndex<FULL_ROUNDS, G, Srs>,
+        cs: &ConstraintSystem<F>,
         public: &[F],
     ) -> Result<(), String> {
         use GateType::*;
@@ -175,25 +172,25 @@ impl<F: PrimeField> CircuitGate<F> {
             Poseidon => self.verify_poseidon::<FULL_ROUNDS, G>(row, witness),
             CompleteAdd => self.verify_complete_add(row, witness),
             VarBaseMul => self.verify_vbmul(row, witness),
-            EndoMul => self.verify_endomul::<FULL_ROUNDS, G>(row, witness, &index.cs),
-            EndoMulScalar => self.verify_endomul_scalar::<FULL_ROUNDS, G>(row, witness, &index.cs),
+            EndoMul => self.verify_endomul::<FULL_ROUNDS, G>(row, witness, cs),
+            EndoMulScalar => self.verify_endomul_scalar::<FULL_ROUNDS, G>(row, witness, cs),
             // TODO: implement the verification for the lookup gate
             // See https://github.com/MinaProtocol/mina/issues/14011
             Lookup => Ok(()),
             RangeCheck0 | RangeCheck1 => self
-                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldAdd => self
-                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldMul => self
-                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, cs, public)
                 .map_err(|e| e.to_string()),
             Xor16 => self
-                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, cs, public)
                 .map_err(|e| e.to_string()),
             Rot64 => self
-                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, cs, public)
                 .map_err(|e| e.to_string()),
         }
     }
