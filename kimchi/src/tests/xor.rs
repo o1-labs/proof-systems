@@ -316,8 +316,18 @@ fn test_extend_xor() {
     }
 }
 
+#[cfg(not(feature = "prover"))]
 #[test]
 fn test_bad_xor() {
+    // This test was intentionally left blank
+    // It fails on proof-creation, not verification.
+}
+
+#[cfg(feature = "prover")]
+#[test]
+fn test_bad_xor() {
+    use alloc::string::String;
+
     let bits = Some(16);
     let rng = &mut o1_utils::tests::make_test_rng(None);
     let input1: PallasField = rng.gen(None, bits);
@@ -330,23 +340,26 @@ fn test_bad_xor() {
     let bits = bits.map_or(0, |b| b); // 0 or bits
     let bits = max(bits, max(bits1, bits2));
 
-    let cs = create_test_constraint_system_xor::<FULL_ROUNDS, Vesta>(bits);
+    let mut gates = vec![];
+    let _next_row = CircuitGate::<PallasField>::extend_xor_gadget(&mut gates, bits);
 
     let mut witness = xor::create_xor_witness(input1, input2, bits);
 
-    // Corrupt the output without updating the nybble decomposition, breaking the
-    // decomposition constraint (constraint 3 of the Xor16 gate).
-    witness[2][0] += PallasField::one();
+    // modify the output to be all zero
+    witness[2][0] = PallasField::zero();
+    for i in 1..=4 {
+        witness[COLUMNS - i][0] = PallasField::zero();
+    }
 
-    // Verify that at least one row fails constraint checks with the bad witness
-    let has_error = (0..witness[0].len()).any(|row| {
-        cs.gates[row]
-            .verify_witness::<FULL_ROUNDS, Vesta>(row, &witness, &cs, &witness[0][0..cs.public])
-            .is_err()
-    });
-    assert!(
-        has_error,
-        "Expected at least one constraint to fail with bad witness"
+    assert_eq!(
+        TestFramework::<FULL_ROUNDS, Vesta>::default()
+            .gates(gates)
+            .witness(witness)
+            .setup()
+            .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>(),
+        Err(String::from(
+            "the lookup failed to find a match in the table: row=0"
+        ))
     );
 }
 
