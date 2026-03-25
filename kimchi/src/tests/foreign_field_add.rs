@@ -1,32 +1,29 @@
-use crate::circuits::{
-    constraints::ConstraintSystem,
-    gate::{CircuitGate, CircuitGateError, Connect, GateType},
-    polynomial::COLUMNS,
-    polynomials::{
-        foreign_field_add::witness::{self, FFOps},
-        foreign_field_common::{BigUintForeignFieldHelpers, HI, LIMB_BITS, LO, MI},
-        generic::GenericGateSpec,
-        range_check,
+use crate::{
+    circuits::{
+        constraints::ConstraintSystem,
+        gate::{CircuitGate, CircuitGateError, Connect, GateType},
+        polynomial::COLUMNS,
+        polynomials::{
+            foreign_field_add::witness::{self, FFOps},
+            foreign_field_common::{
+                BigUintForeignFieldHelpers, HI, LIMB_BITS, LO, MI, TWO_TO_LIMB,
+            },
+            generic::GenericGateSpec,
+            range_check,
+            range_check::witness::extend_multi,
+        },
+        wires::Wire,
     },
-    wires::Wire,
+    curve::KimchiCurve,
 };
-use alloc::{string::ToString, vec, vec::Vec};
+use alloc::{string::ToString, sync::Arc, vec, vec::Vec};
 use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, Zero};
 use core::array;
 use mina_curves::pasta::{Fp, Pallas, Vesta};
 use mina_poseidon::pasta::FULL_ROUNDS;
 use num_bigint::BigUint;
-use o1_utils::{foreign_field::ForeignElement, FieldHelpers, Two};
-
-use crate::{
-    circuits::polynomials::{
-        foreign_field_common::TWO_TO_LIMB, range_check::witness::extend_multi,
-    },
-    curve::KimchiCurve,
-};
-use alloc::sync::Arc;
-use o1_utils::tests::make_test_rng;
+use o1_utils::{foreign_field::ForeignElement, tests::make_test_rng, FieldHelpers, Two};
 use rand::{rngs::StdRng, Rng};
 
 #[cfg(feature = "prover")]
