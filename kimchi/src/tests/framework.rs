@@ -463,6 +463,8 @@ where
         let witness = self.0.witness.unwrap();
 
         if !self.0.disable_gates_checks {
+            // Note: this is already done by ProverProof::create_recursive::()
+            // not sure why we do it here
             prover
                 .verify(&witness, &self.0.public_inputs)
                 .map_err(|e| format!("{e:?}"))?;
