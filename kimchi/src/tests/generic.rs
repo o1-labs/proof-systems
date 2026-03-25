@@ -1,14 +1,13 @@
 #[cfg(feature = "prover")]
-use super::framework::TestFramework;
-#[cfg(feature = "prover")]
-use crate::circuits::{
-    polynomials::generic::testing::{create_circuit, fill_in_witness},
-    wires::COLUMNS,
+use {
+    super::framework::TestFramework,
+    crate::circuits::{
+        polynomials::generic::testing::{create_circuit, fill_in_witness},
+        wires::COLUMNS,
+    },
+    ark_ff::Zero,
+    core::array,
 };
-#[cfg(feature = "prover")]
-use ark_ff::Zero;
-#[cfg(feature = "prover")]
-use core::array;
 
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{

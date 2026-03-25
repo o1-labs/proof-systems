@@ -22,30 +22,24 @@ use crate::circuits::polynomials::foreign_field_common::{
 use num_bigint::{BigUint, RandBigInt};
 
 #[cfg(feature = "prover")]
-use crate::{
-    circuits::polynomials::foreign_field_common::KimchiForeignElement,
-    proof::ProverProof,
-    prover_index::{testing::new_index_for_test_with_lookups, ProverIndex},
-    verifier::verify,
+use {
+    super::framework::TestFramework,
+    crate::{
+        circuits::polynomials::foreign_field_common::KimchiForeignElement,
+        proof::ProverProof,
+        prover_index::{testing::new_index_for_test_with_lookups, ProverIndex},
+        verifier::verify,
+    },
+    groupmap::GroupMap,
+    mina_curves::pasta::VestaParameters,
+    mina_poseidon::{
+        constants::PlonkSpongeConstantsKimchi,
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+    },
+    o1_utils::foreign_field::ForeignFieldHelpers,
+    poly_commitment::{commitment::CommitmentCurve, ipa::OpeningProof, OpenProof},
+    std::sync::Arc,
 };
-#[cfg(feature = "prover")]
-use groupmap::GroupMap;
-#[cfg(feature = "prover")]
-use mina_curves::pasta::VestaParameters;
-#[cfg(feature = "prover")]
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
-#[cfg(feature = "prover")]
-use o1_utils::foreign_field::ForeignFieldHelpers;
-#[cfg(feature = "prover")]
-use poly_commitment::{commitment::CommitmentCurve, ipa::OpeningProof, OpenProof};
-#[cfg(feature = "prover")]
-use std::sync::Arc;
-
-#[cfg(feature = "prover")]
-use super::framework::TestFramework;
 
 #[cfg(not(feature = "prover"))]
 use super::generic::load_and_verify_fixture;

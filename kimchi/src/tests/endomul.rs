@@ -7,26 +7,23 @@ use mina_curves::pasta::{Fp as F, Pallas as Other};
 use poly_commitment::ipa::endos;
 
 #[cfg(feature = "prover")]
-use crate::{
-    circuits::{
-        gate::{CircuitGate, GateType},
-        wires::Wire,
+use {
+    crate::{
+        circuits::{
+            gate::{CircuitGate, GateType},
+            wires::Wire,
+        },
+        tests::framework::TestFramework,
     },
-    tests::framework::TestFramework,
-};
-#[cfg(feature = "prover")]
-use ark_ec::{AdditiveGroup, CurveGroup};
-#[cfg(feature = "prover")]
-use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
-#[cfg(feature = "prover")]
-use core::ops::Mul;
-#[cfg(feature = "prover")]
-use mina_curves::pasta::{Vesta, VestaParameters};
-#[cfg(feature = "prover")]
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    pasta::FULL_ROUNDS,
-    sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
+    ark_ec::{AdditiveGroup, CurveGroup},
+    ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand},
+    core::ops::Mul,
+    mina_curves::pasta::{Vesta, VestaParameters},
+    mina_poseidon::{
+        constants::PlonkSpongeConstantsKimchi,
+        pasta::FULL_ROUNDS,
+        sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
+    },
 };
 
 #[cfg(not(feature = "prover"))]

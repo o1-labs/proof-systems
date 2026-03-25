@@ -27,22 +27,19 @@ use o1_utils::{foreign_field::ForeignElement, tests::make_test_rng, FieldHelpers
 use rand::{rngs::StdRng, Rng};
 
 #[cfg(feature = "prover")]
-use super::framework::TestFramework;
-#[cfg(feature = "prover")]
-use crate::prover_index::ProverIndex;
-#[cfg(feature = "prover")]
-use ark_poly::EvaluationDomain;
-#[cfg(feature = "prover")]
-use mina_curves::pasta::VestaParameters;
-#[cfg(feature = "prover")]
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
-#[cfg(feature = "prover")]
-use poly_commitment::{
-    ipa::{endos, SRS},
-    SRS as _,
+use {
+    super::framework::TestFramework,
+    crate::prover_index::ProverIndex,
+    ark_poly::EvaluationDomain,
+    mina_curves::pasta::VestaParameters,
+    mina_poseidon::{
+        constants::PlonkSpongeConstantsKimchi,
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+    },
+    poly_commitment::{
+        ipa::{endos, SRS},
+        SRS as _,
+    },
 };
 
 #[cfg(not(feature = "prover"))]

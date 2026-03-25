@@ -1,5 +1,3 @@
-#[cfg(feature = "std")]
-use crate::error::ProverError;
 use crate::{
     circuits::{
         berkeley_columns::{BerkeleyChallengeTerm, Column},
@@ -15,13 +13,12 @@ use crate::{
 use alloc::{boxed::Box, vec, vec::Vec};
 use ark_ff::{FftField, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
-#[cfg(feature = "std")]
-use o1_utils::adjacent_pairs::AdjacentPairs;
-#[cfg(feature = "std")]
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use CurrOrNext::{Curr, Next};
+
+#[cfg(feature = "std")]
+use {crate::error::ProverError, o1_utils::adjacent_pairs::AdjacentPairs, rand::Rng};
 
 use super::runtime_tables;
 

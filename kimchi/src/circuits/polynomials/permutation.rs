@@ -43,32 +43,30 @@ use crate::{
     circuits::{constraints::ConstraintSystem, wires::PERMUTS},
     proof::{PointEvaluations, ProofEvaluations},
 };
-#[cfg(feature = "prover")]
-use crate::{
-    circuits::{
-        polynomial::WitnessOverDomains,
-        wires::{Wire, COLUMNS},
-    },
-    curve::KimchiCurve,
-    error::ProverError,
-    prover_index::ProverIndex,
-};
-#[cfg(feature = "prover")]
-use ark_ff::Zero;
 use ark_ff::{FftField, PrimeField};
-#[cfg(feature = "prover")]
-use ark_poly::univariate::DenseOrSparsePolynomial;
 use ark_poly::{
     univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Radix2EvaluationDomain as D,
 };
-#[cfg(feature = "prover")]
-use ark_poly::{Evaluations, Polynomial};
 use blake2::{Blake2b512, Digest};
 use core::array;
+
 #[cfg(feature = "prover")]
-use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
-#[cfg(feature = "prover")]
-use rand::{CryptoRng, RngCore};
+use {
+    crate::{
+        circuits::{
+            polynomial::WitnessOverDomains,
+            wires::{Wire, COLUMNS},
+        },
+        curve::KimchiCurve,
+        error::ProverError,
+        prover_index::ProverIndex,
+    },
+    ark_ff::Zero,
+    ark_poly::{univariate::DenseOrSparsePolynomial, Evaluations, Polynomial},
+    o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations},
+    rand::{CryptoRng, RngCore},
+};
+
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 

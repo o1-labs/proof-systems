@@ -1,9 +1,5 @@
 //! This module implements Plonk circuit constraint primitive.
 use super::lookup::runtime_tables::RuntimeTableCfg;
-#[cfg(feature = "prover")]
-use crate::circuits::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts};
-#[cfg(feature = "prover")]
-use crate::prover_index::ProverIndex;
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
@@ -28,14 +24,19 @@ use ark_poly::{
     Radix2EvaluationDomain as D,
 };
 use core::{array, default::Default};
-#[cfg(feature = "prover")]
-use o1_utils::ExtendedEvaluations;
-#[cfg(feature = "prover")]
-use poly_commitment::SRS;
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+
+#[cfg(feature = "prover")]
+use {
+    crate::circuits::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
+    crate::prover_index::ProverIndex,
+    o1_utils::ExtendedEvaluations,
+    poly_commitment::SRS,
+};
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 //
 // ConstraintSystem

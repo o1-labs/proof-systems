@@ -1,38 +1,31 @@
 #[cfg(feature = "prover")]
-use crate::tests::framework::TestFramework;
-#[cfg(feature = "prover")]
-use crate::{
-    circuits::{
-        gate::CircuitGate,
-        polynomials,
-        polynomials::poseidon::{ROUNDS_PER_ROW, SPONGE_WIDTH},
-        wires::{Wire, COLUMNS},
+use {
+    crate::{
+        circuits::{
+            gate::CircuitGate,
+            polynomials,
+            polynomials::poseidon::{ROUNDS_PER_ROW, SPONGE_WIDTH},
+            wires::{Wire, COLUMNS},
+        },
+        curve::KimchiCurve,
+        proof::ProverProof,
+        prover_index::testing::new_index_for_test,
+        tests::framework::TestFramework,
+        verifier::verify,
     },
-    curve::KimchiCurve,
-    proof::ProverProof,
-    prover_index::testing::new_index_for_test,
-    verifier::verify,
+    ark_ff::Zero,
+    core::array,
+    groupmap::GroupMap,
+    mina_curves::pasta::{Fp, Vesta, VestaParameters},
+    mina_poseidon::{
+        constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
+        pasta::FULL_ROUNDS,
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+    },
+    o1_utils::math,
+    poly_commitment::{commitment::CommitmentCurve, ipa::OpeningProof},
+    rand::rngs::OsRng,
 };
-#[cfg(feature = "prover")]
-use ark_ff::Zero;
-#[cfg(feature = "prover")]
-use core::array;
-#[cfg(feature = "prover")]
-use groupmap::GroupMap;
-#[cfg(feature = "prover")]
-use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-#[cfg(feature = "prover")]
-use mina_poseidon::{
-    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
-    pasta::FULL_ROUNDS,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
-#[cfg(feature = "prover")]
-use o1_utils::math;
-#[cfg(feature = "prover")]
-use poly_commitment::{commitment::CommitmentCurve, ipa::OpeningProof};
-#[cfg(feature = "prover")]
-use rand::rngs::OsRng;
 
 #[cfg(not(feature = "prover"))]
 use super::generic::load_and_verify_fixture;

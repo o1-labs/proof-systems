@@ -1,23 +1,19 @@
 #[cfg(feature = "prover")]
-use super::framework::TestFramework;
-#[cfg(feature = "prover")]
-use crate::circuits::{
-    gate::{CircuitGate, GateType},
-    wires::*,
-};
-#[cfg(feature = "prover")]
-use ark_ec::{AdditiveGroup, AffineRepr, CurveGroup};
-#[cfg(feature = "prover")]
-use ark_ff::{Field, One, UniformRand, Zero};
-#[cfg(feature = "prover")]
-use core::{array, ops::Mul};
-#[cfg(feature = "prover")]
-use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
-#[cfg(feature = "prover")]
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    pasta::FULL_ROUNDS,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
+use {
+    super::framework::TestFramework,
+    crate::circuits::{
+        gate::{CircuitGate, GateType},
+        wires::*,
+    },
+    ark_ec::{AdditiveGroup, AffineRepr, CurveGroup},
+    ark_ff::{Field, One, UniformRand, Zero},
+    core::{array, ops::Mul},
+    mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters},
+    mina_poseidon::{
+        constants::PlonkSpongeConstantsKimchi,
+        pasta::FULL_ROUNDS,
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+    },
 };
 
 #[cfg(not(feature = "prover"))]

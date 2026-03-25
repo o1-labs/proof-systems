@@ -1,7 +1,3 @@
-#[cfg(feature = "prover")]
-use super::framework::TestFramework;
-#[cfg(feature = "prover")]
-use crate::plonk_sponge::FrSponge;
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
@@ -20,21 +16,23 @@ use alloc::{vec, vec::Vec};
 use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, Zero};
 use core::array;
-#[cfg(feature = "prover")]
-use mina_curves::pasta::Fp;
-#[cfg(feature = "prover")]
-use mina_curves::pasta::{Fq, PallasParameters, VestaParameters};
 use mina_curves::pasta::{Pallas, Vesta};
 use mina_poseidon::pasta::FULL_ROUNDS;
-#[cfg(feature = "prover")]
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    poseidon::ArithmeticSpongeParams,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-    FqSponge,
-};
 use o1_utils::Two;
 use rand::Rng;
+
+#[cfg(feature = "prover")]
+use {
+    super::framework::TestFramework,
+    crate::plonk_sponge::FrSponge,
+    mina_curves::pasta::{Fp, Fq, PallasParameters, VestaParameters},
+    mina_poseidon::{
+        constants::PlonkSpongeConstantsKimchi,
+        poseidon::ArithmeticSpongeParams,
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+        FqSponge,
+    },
+};
 
 #[cfg(not(feature = "prover"))]
 use super::generic::{load_and_verify_fixture, load_and_verify_fixture_pallas};

@@ -1,5 +1,3 @@
-#[cfg(feature = "prover")]
-use crate::circuits::polynomials::xor;
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
@@ -12,31 +10,26 @@ use crate::{
     tests::xor::{all_ones, check_xor},
 };
 use alloc::{vec, vec::Vec};
-use core::{array, cmp::max};
-
-#[cfg(feature = "prover")]
-use super::framework::TestFramework;
-#[cfg(feature = "prover")]
-use crate::prover_index::testing::new_index_for_test_with_lookups;
 use ark_ec::AffineRepr;
-#[cfg(feature = "prover")]
-use ark_ff::{Field, Zero};
 use ark_ff::{One, PrimeField};
-#[cfg(feature = "prover")]
-use mina_curves::pasta::Fp;
-#[cfg(feature = "prover")]
-use mina_curves::pasta::VestaParameters;
+use core::{array, cmp::max};
 use mina_curves::pasta::{Pallas, Vesta};
 use mina_poseidon::pasta::FULL_ROUNDS;
-#[cfg(feature = "prover")]
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
+
 #[cfg(feature = "prover")]
-use std::sync::Arc;
+use {
+    super::framework::TestFramework,
+    crate::{circuits::polynomials::xor, prover_index::testing::new_index_for_test_with_lookups},
+    ark_ff::{Field, Zero},
+    mina_curves::pasta::{Fp, VestaParameters},
+    mina_poseidon::{
+        constants::PlonkSpongeConstantsKimchi,
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+    },
+    std::sync::Arc,
+};
 
 #[cfg(not(feature = "prover"))]
 use super::generic::load_and_verify_fixture;

@@ -1,31 +1,28 @@
-#[cfg(feature = "prover")]
-use super::framework::{print_witness, TestFramework};
-#[cfg(feature = "prover")]
-use crate::circuits::{
-    gate::{CircuitGate, GateType},
-    lookup::{
-        runtime_tables::{RuntimeTable, RuntimeTableCfg},
-        tables::LookupTable,
-    },
-    polynomial::COLUMNS,
-    wires::Wire,
-};
 use crate::tests::framework::include_fixture;
 use alloc::{vec, vec::Vec};
+
 #[cfg(feature = "prover")]
-use ark_ff::{UniformRand, Zero};
-#[cfg(feature = "prover")]
-use core::array;
-#[cfg(feature = "prover")]
-use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-#[cfg(feature = "prover")]
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    pasta::FULL_ROUNDS,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
+use {
+    super::framework::{print_witness, TestFramework},
+    crate::circuits::{
+        gate::{CircuitGate, GateType},
+        lookup::{
+            runtime_tables::{RuntimeTable, RuntimeTableCfg},
+            tables::LookupTable,
+        },
+        polynomial::COLUMNS,
+        wires::Wire,
+    },
+    ark_ff::{UniformRand, Zero},
+    core::array,
+    mina_curves::pasta::{Fp, Vesta, VestaParameters},
+    mina_poseidon::{
+        constants::PlonkSpongeConstantsKimchi,
+        pasta::FULL_ROUNDS,
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+    },
+    rand::{prelude::*, Rng},
 };
-#[cfg(feature = "prover")]
-use rand::{prelude::*, Rng};
 
 #[cfg(not(feature = "prover"))]
 use super::generic::load_and_verify_fixture;

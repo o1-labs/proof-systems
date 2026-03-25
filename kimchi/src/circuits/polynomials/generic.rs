@@ -42,16 +42,15 @@ use crate::circuits::{
     polynomial::COLUMNS,
     wires::GateWires,
 };
-#[cfg(feature = "prover")]
-use crate::curve::KimchiCurve;
-#[cfg(feature = "prover")]
-use crate::prover_index::ProverIndex;
-#[cfg(feature = "prover")]
-use ark_ff::Zero;
 use ark_ff::{FftField, PrimeField};
-#[cfg(feature = "prover")]
-use ark_poly::univariate::DensePolynomial;
 use core::{array, marker::PhantomData};
+
+#[cfg(feature = "prover")]
+use {
+    crate::{curve::KimchiCurve, prover_index::ProverIndex},
+    ark_ff::Zero,
+    ark_poly::univariate::DensePolynomial,
+};
 
 /// Number of constraints produced by the gate.
 pub const CONSTRAINTS: u32 = 2;

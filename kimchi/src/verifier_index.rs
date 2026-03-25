@@ -1,8 +1,6 @@
 //! This module implements the verifier index as [`VerifierIndex`].
 //! You can derive this struct from the [`ProverIndex`] struct.
 
-#[cfg(feature = "prover")]
-use crate::prover_index::ProverIndex;
 use crate::{
     alphas::Alphas,
     circuits::{
@@ -15,12 +13,8 @@ use crate::{
     curve::KimchiCurve,
 };
 use alloc::{sync::Arc, vec::Vec};
-#[cfg(feature = "prover")]
-use ark_ff::One;
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
-#[cfg(feature = "prover")]
-use core::array;
 use mina_poseidon::FqSponge;
 use once_cell::sync::OnceCell;
 use poly_commitment::{
@@ -29,6 +23,10 @@ use poly_commitment::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+
+#[cfg(feature = "prover")]
+use {crate::prover_index::ProverIndex, ark_ff::One, core::array};
+
 #[cfg(feature = "std")]
 use std::{
     fs::{File, OpenOptions},

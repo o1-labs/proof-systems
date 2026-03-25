@@ -11,18 +11,16 @@ use mina_curves::pasta::{Fp, Pallas as Other, Vesta};
 use mina_poseidon::pasta::FULL_ROUNDS;
 
 #[cfg(feature = "prover")]
-use crate::{circuits::polynomials::endomul_scalar, tests::framework::TestFramework};
-#[cfg(feature = "prover")]
-use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
-#[cfg(feature = "prover")]
-use mina_curves::pasta::{Fp as F, VestaParameters};
-#[cfg(feature = "prover")]
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
+use {
+    crate::{circuits::polynomials::endomul_scalar, tests::framework::TestFramework},
+    ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand},
+    mina_curves::pasta::{Fp as F, VestaParameters},
+    mina_poseidon::{
+        constants::PlonkSpongeConstantsKimchi,
+        sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
+    },
+    poly_commitment::ipa::endos,
 };
-#[cfg(feature = "prover")]
-use poly_commitment::ipa::endos;
 
 #[cfg(not(feature = "prover"))]
 use super::generic::load_and_verify_fixture;

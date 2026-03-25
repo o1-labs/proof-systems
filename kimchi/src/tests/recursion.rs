@@ -1,31 +1,25 @@
 #[cfg(feature = "prover")]
-use super::framework::TestFramework;
-#[cfg(feature = "prover")]
-use crate::{
-    circuits::{
-        polynomials::generic::testing::{create_circuit, fill_in_witness},
-        wires::COLUMNS,
+use {
+    super::framework::TestFramework,
+    crate::{
+        circuits::{
+            polynomials::generic::testing::{create_circuit, fill_in_witness},
+            wires::COLUMNS,
+        },
+        proof::RecursionChallenge,
     },
-    proof::RecursionChallenge,
+    ark_ff::{UniformRand, Zero},
+    ark_poly::{univariate::DensePolynomial, DenseUVPolynomial},
+    core::array,
+    mina_curves::pasta::{Fp, Vesta, VestaParameters},
+    mina_poseidon::{
+        constants::PlonkSpongeConstantsKimchi,
+        pasta::FULL_ROUNDS,
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+    },
+    o1_utils::math,
+    poly_commitment::{commitment::b_poly_coefficients, SRS as _},
 };
-#[cfg(feature = "prover")]
-use ark_ff::{UniformRand, Zero};
-#[cfg(feature = "prover")]
-use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial};
-#[cfg(feature = "prover")]
-use core::array;
-#[cfg(feature = "prover")]
-use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-#[cfg(feature = "prover")]
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    pasta::FULL_ROUNDS,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
-#[cfg(feature = "prover")]
-use o1_utils::math;
-#[cfg(feature = "prover")]
-use poly_commitment::{commitment::b_poly_coefficients, SRS as _};
 
 #[cfg(not(feature = "prover"))]
 use super::generic::load_and_verify_fixture;

@@ -1,26 +1,23 @@
 #[cfg(feature = "prover")]
-use crate::{
-    circuits::{
-        gate::{CircuitGate, GateType},
-        polynomials::varbasemul,
-        wires::*,
+use {
+    crate::{
+        circuits::{
+            gate::{CircuitGate, GateType},
+            polynomials::varbasemul,
+            wires::*,
+        },
+        tests::framework::TestFramework,
     },
-    tests::framework::TestFramework,
+    ark_ec::{AdditiveGroup, AffineRepr, CurveGroup},
+    ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero},
+    mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters},
+    mina_poseidon::{
+        constants::PlonkSpongeConstantsKimchi,
+        pasta::FULL_ROUNDS,
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+    },
+    std::{array, ops::Mul, time::Instant},
 };
-#[cfg(feature = "prover")]
-use ark_ec::{AdditiveGroup, AffineRepr, CurveGroup};
-#[cfg(feature = "prover")]
-use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
-#[cfg(feature = "prover")]
-use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
-#[cfg(feature = "prover")]
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    pasta::FULL_ROUNDS,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
-#[cfg(feature = "prover")]
-use std::{array, ops::Mul, time::Instant};
 
 #[cfg(not(feature = "prover"))]
 use super::generic::load_and_verify_fixture;

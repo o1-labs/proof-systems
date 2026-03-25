@@ -1,19 +1,18 @@
 use alloc::{vec, vec::Vec};
 use core::array;
 
-#[cfg(feature = "std")]
-use crate::circuits::polynomials::keccak::Keccak;
 use crate::{
     circuits::polynomials::keccak::{constants::KECCAK_COLS, witness::extend_keccak_witness},
     curve::KimchiCurve,
 };
-#[cfg(feature = "std")]
-use ark_ff::Field;
 use ark_ff::{PrimeField, Zero};
+
 use mina_curves::pasta::Pallas;
 use mina_poseidon::pasta::FULL_ROUNDS;
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, FieldHelpers};
+#[cfg(feature = "std")]
+use {crate::circuits::polynomials::keccak::Keccak, ark_ff::Field};
 
 fn create_keccak_witness<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     message: BigUint,

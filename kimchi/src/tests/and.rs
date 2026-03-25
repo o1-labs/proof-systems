@@ -1,6 +1,4 @@
 use super::framework::{include_fixture, TestFramework};
-#[cfg(feature = "prover")]
-use crate::plonk_sponge::FrSponge;
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
@@ -12,7 +10,6 @@ use crate::{
     curve::KimchiCurve,
 };
 use alloc::{vec, vec::Vec};
-
 use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
@@ -21,10 +18,14 @@ use mina_poseidon::{
     pasta::FULL_ROUNDS,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-#[cfg(feature = "prover")]
-use mina_poseidon::{poseidon::ArithmeticSpongeParams, FqSponge};
 use num_bigint::BigUint;
 use o1_utils::{BitwiseOps, FieldHelpers, RandomField};
+
+#[cfg(feature = "prover")]
+use {
+    crate::plonk_sponge::FrSponge,
+    mina_poseidon::{poseidon::ArithmeticSpongeParams, FqSponge},
+};
 
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type VestaField = <Vesta as AffineRepr>::BaseField;
