@@ -10,6 +10,8 @@ use crate::circuits::{
     polynomial::COLUMNS,
     wires::Wire,
 };
+use crate::tests::framework::include_fixture;
+use alloc::{vec, vec::Vec};
 #[cfg(feature = "prover")]
 use ark_ff::{UniformRand, Zero};
 #[cfg(feature = "prover")]
@@ -35,133 +37,28 @@ type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
 #[cfg(feature = "prover")]
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
-#[cfg(feature = "prover")]
-fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_sizes: Vec<usize>) {
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
-
-    let mut lookup_table_values: Vec<Vec<_>> = table_sizes
-        .iter()
-        .map(|size| (0..*size).map(|_| rng.gen()).collect())
-        .collect();
-    // Zero table must have a zero row
-    lookup_table_values[0][0] = From::from(0);
-    let lookup_tables = lookup_table_values
-        .iter()
-        .enumerate()
-        .map(|(id, lookup_table_values)| {
-            let index_column = (0..lookup_table_values.len() as u64)
-                .map(Into::into)
-                .collect();
-            LookupTable {
-                id: id as i32,
-                data: vec![index_column, lookup_table_values.clone()],
-            }
-        })
-        .collect();
-
-    // circuit gates
-    let gates = (0..num_lookups)
-        .map(|i| CircuitGate::new(GateType::Lookup, Wire::for_row(i), vec![]))
-        .collect();
-
-    let witness = {
-        let mut lookup_table_ids = Vec::with_capacity(num_lookups);
-        let mut lookup_indexes: [_; 3] = array::from_fn(|_| Vec::with_capacity(num_lookups));
-        let mut lookup_values: [_; 3] = array::from_fn(|_| Vec::with_capacity(num_lookups));
-        let unused = || vec![Fp::zero(); num_lookups];
-
-        let num_tables = table_sizes.len();
-        let mut tables_used = std::collections::HashSet::new();
-        for _ in 0..num_lookups {
-            let table_id = rng.gen::<usize>() % num_tables;
-            tables_used.insert(table_id);
-            let lookup_table_values: &Vec<Fp> = &lookup_table_values[table_id];
-            lookup_table_ids.push((table_id as u64).into());
-            for i in 0..3 {
-                let index = rng.gen::<usize>() % lookup_table_values.len();
-                let value = if use_values_from_table {
-                    lookup_table_values[index]
-                } else {
-                    rng.gen()
-                };
-                lookup_indexes[i].push((index as u64).into());
-                lookup_values[i].push(value);
-            }
-        }
-
-        // Sanity check: if we were given multiple tables, we should have used multiple tables,
-        // assuming we're generating enough gates.
-        assert!(tables_used.len() >= 2 || table_sizes.len() <= 1);
-
-        let [lookup_indexes0, lookup_indexes1, lookup_indexes2] = lookup_indexes;
-        let [lookup_values0, lookup_values1, lookup_values2] = lookup_values;
-        [
-            lookup_table_ids,
-            lookup_indexes0,
-            lookup_values0,
-            lookup_indexes1,
-            lookup_values1,
-            lookup_indexes2,
-            lookup_values2,
-            unused(),
-            unused(),
-            unused(),
-            unused(),
-            unused(),
-            unused(),
-            unused(),
-            unused(),
-        ]
-    };
-
-    TestFramework::<FULL_ROUNDS, Vesta>::default()
-        .gates(gates)
-        .witness(witness)
-        .lookup_tables(lookup_tables)
-        .fixture_name("lookup_gate_proving_works")
-        .setup()
-        .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .unwrap();
-}
-
-#[test]
-fn lookup_gate_proving_works() {
-    #[cfg(feature = "prover")]
-    {
-        setup_lookup_proof(true, 500, vec![256])
-    }
-
+#[cfg_attr(not(feature = "prover"), allow(unused_variables))]
+fn setup_lookup_proof(
+    use_values_from_table: bool,
+    num_lookups: usize,
+    table_sizes: Vec<usize>,
+    #[cfg(feature = "prover")] fixture: &'static str,
+    #[cfg(not(feature = "prover"))] fixture: &'static [u8],
+) {
     #[cfg(not(feature = "prover"))]
-    load_and_verify_fixture(include_bytes!("fixtures/lookup_gate_proving_works.bin"));
-}
-
-#[cfg(feature = "prover")]
-#[test]
-#[should_panic]
-fn lookup_gate_rejects_bad_lookups() {
-    setup_lookup_proof(false, 500, vec![256])
-}
-
-#[cfg(not(feature = "prover"))]
-#[test]
-fn lookup_gate_rejects_bad_lookups() {
-    // This test has been intentionally left empty.
-    // The prover-mode version expects a panic from invalid lookup values;
-    // without the prover there is no proving step to reject them.
-}
-
-#[test]
-fn lookup_gate_proving_works_multiple_tables() {
+    {
+        if fixture.is_empty() {
+            // This is intentionally left blankj for verification only
+            // as that means this test is expected to fail on setup
+        } else {
+            load_and_verify_fixture(fixture);
+        }
+    }
     #[cfg(feature = "prover")]
     {
         let seed: [u8; 32] = thread_rng().gen();
         eprintln!("Seed: {:?}", seed);
         let mut rng = StdRng::from_seed(seed);
-
-        let table_sizes = [100, 50, 50, 2, 2];
-        let num_lookups = 500;
 
         let mut lookup_table_values: Vec<Vec<_>> = table_sizes
             .iter()
@@ -203,12 +100,18 @@ fn lookup_gate_proving_works_multiple_tables() {
                 lookup_table_ids.push((table_id as u64).into());
                 for i in 0..3 {
                     let index = rng.gen::<usize>() % lookup_table_values.len();
-                    let value = lookup_table_values[index];
+                    let value = if use_values_from_table {
+                        lookup_table_values[index]
+                    } else {
+                        rng.gen()
+                    };
                     lookup_indexes[i].push((index as u64).into());
                     lookup_values[i].push(value);
                 }
             }
 
+            // Sanity check: if we were given multiple tables, we should have used multiple tables,
+            // assuming we're generating enough gates.
             assert!(tables_used.len() >= 2 || table_sizes.len() <= 1);
 
             let [lookup_indexes0, lookup_indexes1, lookup_indexes2] = lookup_indexes;
@@ -236,31 +139,43 @@ fn lookup_gate_proving_works_multiple_tables() {
             .gates(gates)
             .witness(witness)
             .lookup_tables(lookup_tables)
-            .fixture_name("lookup_gate_proving_works_multiple_tables")
+            .fixture(fixture)
             .setup()
             .prove_and_verify::<BaseSponge, ScalarSponge>()
             .unwrap();
     }
-
-    #[cfg(not(feature = "prover"))]
-    load_and_verify_fixture(include_bytes!(
-        "fixtures/lookup_gate_proving_works_multiple_tables.bin"
-    ));
 }
 
-#[cfg(feature = "prover")]
 #[test]
-#[should_panic]
-fn lookup_gate_rejects_bad_lookups_multiple_tables() {
-    setup_lookup_proof(false, 500, vec![100, 50, 50, 2, 2])
+fn lookup_gate_proving_works() {
+    setup_lookup_proof(
+        true,
+        500,
+        vec![256],
+        include_fixture!("lookup_gate_proving_works"),
+    )
 }
 
-#[cfg(not(feature = "prover"))]
 #[test]
+#[cfg_attr(feature = "prover", should_panic)]
+fn lookup_gate_rejects_bad_lookups() {
+    setup_lookup_proof(false, 500, vec![256], include_fixture!(""))
+}
+
+#[test]
+fn lookup_gate_proving_works_multiple_tables() {
+    setup_lookup_proof(
+        true,
+        500,
+        vec![100, 50, 50, 2, 2],
+        include_fixture!("lookup_gate_proving_works_multiple_tables"),
+    )
+}
+
+#[test]
+#[cfg_attr(feature = "prover", should_panic)]
 fn lookup_gate_rejects_bad_lookups_multiple_tables() {
-    // This test has been intentionally left empty.
-    // The prover-mode version expects a panic from invalid multi-table lookup values;
-    // without the prover there is no proving step to reject them.
+    setup_lookup_proof(false, 500, vec![100, 50, 50, 2, 2], include_fixture!(""))
 }
 
 #[cfg(feature = "prover")]
@@ -335,6 +250,8 @@ fn setup_successful_runtime_table_test(
 
 #[test]
 fn test_runtime_table() {
+    let fixture = include_fixture!("test_runtime_table");
+
     #[cfg(feature = "prover")]
     {
         let num = 5;
@@ -404,7 +321,7 @@ fn test_runtime_table() {
             .gates(gates)
             .witness(witness)
             .runtime_tables_setup(runtime_tables_setup)
-            .fixture_name("test_runtime_table")
+            .fixture(fixture)
             .setup()
             .runtime_tables(runtime_tables)
             .prove_and_verify::<BaseSponge, ScalarSponge>()
@@ -412,7 +329,7 @@ fn test_runtime_table() {
     }
 
     #[cfg(not(feature = "prover"))]
-    load_and_verify_fixture(include_bytes!("fixtures/test_runtime_table.bin"));
+    load_and_verify_fixture(fixture);
 }
 
 #[cfg(feature = "prover")]
@@ -727,6 +644,10 @@ fn test_runtime_table_with_more_than_one_runtime_table_data_given_by_prover() {
 
 #[test]
 fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_fixed_values() {
+    let fixture = include_fixture!(
+        "test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_fixed_values"
+    );
+
     #[cfg(feature = "prover")]
     {
         let first_column = [0, 1, 2, 3, 4, 5];
@@ -742,22 +663,19 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_fixed_va
 
         let lookups: Vec<i32> = [0; 20].into();
 
-        setup_successful_runtime_table_test(
-            "test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_fixed_values",
-            vec![cfg],
-            vec![runtime_table],
-            lookups,
-        );
+        setup_successful_runtime_table_test(fixture, vec![cfg], vec![runtime_table], lookups);
     }
 
     #[cfg(not(feature = "prover"))]
-    load_and_verify_fixture(include_bytes!(
-        "fixtures/test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_fixed_values.bin"
-    ));
+    load_and_verify_fixture(fixture);
 }
 
 #[test]
 fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_values() {
+    let fixture = include_fixture!(
+        "test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_values"
+    );
+
     #[cfg(feature = "prover")]
     {
         let seed: [u8; 32] = thread_rng().gen();
@@ -782,18 +700,11 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_v
 
         let lookups: Vec<i32> = [0; 20].into();
 
-        setup_successful_runtime_table_test(
-            "test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_values",
-            vec![cfg],
-            vec![runtime_table],
-            lookups,
-        );
+        setup_successful_runtime_table_test(fixture, vec![cfg], vec![runtime_table], lookups);
     }
 
     #[cfg(not(feature = "prover"))]
-    load_and_verify_fixture(include_bytes!(
-        "fixtures/test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_values.bin"
-    ));
+    load_and_verify_fixture(fixture);
 }
 
 // This test verifies that if there is a table with ID 0, it contains a row with only zeroes.
@@ -865,6 +776,10 @@ fn test_lookup_with_a_table_with_id_zero_but_no_zero_entry() {
 
 #[test]
 fn test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id_0() {
+    let fixture = include_fixture!(
+        "test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id_0"
+    );
+
     #[cfg(feature = "prover")]
     {
         let seed: [u8; 32] = thread_rng().gen();
@@ -907,18 +822,14 @@ fn test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id
             .gates(gates)
             .witness(witness)
             .lookup_tables(lookup_tables)
-            .fixture_name(
-                "test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id_0",
-            )
+            .fixture(fixture)
             .setup()
             .prove_and_verify::<BaseSponge, ScalarSponge>()
             .unwrap();
     }
 
     #[cfg(not(feature = "prover"))]
-    load_and_verify_fixture(include_bytes!(
-        "fixtures/test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id_0.bin"
-    ));
+    load_and_verify_fixture(fixture);
 }
 
 #[cfg(feature = "prover")]
