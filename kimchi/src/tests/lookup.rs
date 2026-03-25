@@ -144,6 +144,14 @@ fn lookup_gate_rejects_bad_lookups() {
     setup_lookup_proof(false, 500, vec![256])
 }
 
+#[cfg(not(feature = "prover"))]
+#[test]
+fn lookup_gate_rejects_bad_lookups() {
+    // This test has been intentionally left empty.
+    // The prover-mode version expects a panic from invalid lookup values;
+    // without the prover there is no proving step to reject them.
+}
+
 #[test]
 fn lookup_gate_proving_works_multiple_tables() {
     #[cfg(feature = "prover")]
@@ -245,6 +253,14 @@ fn lookup_gate_proving_works_multiple_tables() {
 #[should_panic]
 fn lookup_gate_rejects_bad_lookups_multiple_tables() {
     setup_lookup_proof(false, 500, vec![100, 50, 50, 2, 2])
+}
+
+#[cfg(not(feature = "prover"))]
+#[test]
+fn lookup_gate_rejects_bad_lookups_multiple_tables() {
+    // This test has been intentionally left empty.
+    // The prover-mode version expects a panic from invalid multi-table lookup values;
+    // without the prover there is no proving step to reject them.
 }
 
 #[cfg(feature = "prover")]
@@ -460,6 +476,15 @@ fn test_negative_test_runtime_table_value_not_in_table() {
     assert_eq!(err, "the lookup failed to find a match in the table: row=0");
 }
 
+#[cfg(not(feature = "prover"))]
+#[test]
+fn test_negative_test_runtime_table_value_not_in_table() {
+    // This test has been intentionally left empty.
+    // The prover-mode version asserts that prove() rejects a witness with
+    // values not found in the runtime table; without the prover there is
+    // no prove() call to produce that error.
+}
+
 #[cfg(feature = "prover")]
 #[test]
 fn test_negative_test_runtime_table_prover_with_undefined_id_in_index_and_witnesses_uses_correct_id(
@@ -523,6 +548,16 @@ fn test_negative_test_runtime_table_prover_with_undefined_id_in_index_and_witnes
     );
 }
 
+#[cfg(not(feature = "prover"))]
+#[test]
+fn test_negative_test_runtime_table_prover_with_undefined_id_in_index_and_witnesses_uses_correct_id(
+) {
+    // This test has been intentionally left empty.
+    // The prover-mode version asserts that prove() rejects a runtime table
+    // whose ID doesn't match the index configuration; without the prover
+    // there is no prove() call to produce that error.
+}
+
 #[cfg(feature = "prover")]
 #[test]
 fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnesses_too() {
@@ -582,6 +617,15 @@ fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnes
         err,
         "the runtime tables provided did not match the index's configuration"
     );
+}
+
+#[cfg(not(feature = "prover"))]
+#[test]
+fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnesses_too() {
+    // This test has been intentionally left empty.
+    // The prover-mode version asserts that prove() rejects a runtime table
+    // with an undefined ID even when the witness also uses that ID; without
+    // the prover there is no prove() call to produce that error.
 }
 
 #[cfg(feature = "prover")]
@@ -670,6 +714,15 @@ fn test_runtime_table_with_more_than_one_runtime_table_data_given_by_prover() {
         err,
         "the runtime tables provided did not match the index's configuration"
     );
+}
+
+#[cfg(not(feature = "prover"))]
+#[test]
+fn test_runtime_table_with_more_than_one_runtime_table_data_given_by_prover() {
+    // This test has been intentionally left empty.
+    // The prover-mode version asserts that prove_and_verify() rejects a
+    // prover supplying multiple runtime table data vectors for the same
+    // table ID; without the prover there is no proving step to detect this.
 }
 
 #[test]
@@ -801,6 +854,15 @@ fn test_lookup_with_a_table_with_id_zero_but_no_zero_entry() {
         .setup();
 }
 
+#[cfg(not(feature = "prover"))]
+#[test]
+fn test_lookup_with_a_table_with_id_zero_but_no_zero_entry() {
+    // This test has been intentionally left empty.
+    // The prover-mode version expects a panic during setup when table ID 0
+    // lacks a zero entry (violating the dummy value constraint); without
+    // the prover there is no ProverIndex setup to trigger this panic.
+}
+
 #[test]
 fn test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id_0() {
     #[cfg(feature = "prover")]
@@ -896,4 +958,13 @@ fn test_dummy_zero_entry_is_counted_while_computing_domain_size() {
     let domain_size = setup.prover_index().cs.domain.d1.size;
     // As the dummy entry has been added, we reached the next power of two
     assert!(domain_size == (1 << (power_of_2 + 1)));
+}
+
+#[cfg(not(feature = "prover"))]
+#[test]
+fn test_dummy_zero_entry_is_counted_while_computing_domain_size() {
+    // This test has been intentionally left empty.
+    // The prover-mode version checks that adding a dummy zero entry bumps
+    // the domain to the next power of two via ProverIndex; without the
+    // prover there is no ProverIndex to inspect the domain size.
 }

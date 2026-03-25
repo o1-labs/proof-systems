@@ -157,8 +157,24 @@ release-all: ## Build in release mode including o1vm
 			--release \
 			--workspace
 
+.PHONY: check-kimchi-test-parity
+check-kimchi-test-parity: ## Check that kimchi prover and verifier-only modes have the same test list
+		@echo "Listing prover-mode tests..."
+		@cargo test -p kimchi --lib -- tests:: --list 2>/dev/null \
+			| grep '::' | sed 's/: test$$//' | grep '^tests::' | sort > /tmp/kimchi_prover_tests.txt
+		@echo "Listing verifier-only-mode tests..."
+		@cargo test -p kimchi --no-default-features --features internal_tracing --lib -- tests:: --list 2>/dev/null \
+			| grep '::' | sed 's/: test$$//' | grep '^tests::' | sort > /tmp/kimchi_no_prover_tests.txt
+		@echo "Comparing (excluding prover-only modules: chunked, lazy_mode, serde)..."
+		@grep -v 'tests::chunked::' /tmp/kimchi_prover_tests.txt \
+			| grep -v 'tests::lazy_mode::' \
+			| grep -v 'tests::serde::' > /tmp/kimchi_prover_tests_filtered.txt
+		@diff /tmp/kimchi_prover_tests_filtered.txt /tmp/kimchi_no_prover_tests.txt \
+			&& echo "Test parity OK" \
+			|| (echo "ERROR: test list mismatch between prover and verifier-only modes" && exit 1)
+
 .PHONY: test-kimchi-verifier-only
-test-kimchi-verifier-only: ## Test kimchi verifier without the prover feature (no-std verification path)
+test-kimchi-verifier-only: check-kimchi-test-parity ## Test kimchi verifier without the prover feature (no-std verification path)
 		cargo nextest run \
 			-p kimchi \
 			--no-default-features \
