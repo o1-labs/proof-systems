@@ -228,21 +228,6 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
                 let (lookup_selectors, gate_lookup_tables) =
                     lookup_info.selector_polynomials_and_tables(domain, gates);
 
-                // Checks whether an iterator contains any duplicates, and if yes, raises
-                // a corresponding LookupTableIdCollision error.
-                fn check_id_duplicates<'a, I: Iterator<Item = &'a i32>>(
-                    iter: I,
-                    msg: &str,
-                ) -> Result<(), LookupError> {
-                    use itertools::Itertools;
-                    match iter.duplicates().collect::<Vec<_>>() {
-                        dups if !dups.is_empty() => Err(LookupError::LookupTableIdCollision {
-                            collision_type: format!("{}: {:?}", msg, dups).to_string(),
-                        }),
-                        _ => Ok(()),
-                    }
-                }
-
                 // If there is a gate using a lookup table, this table must not be added
                 // explicitly to the constraint system.
                 let fixed_gate_joint_ids: Vec<i32> = fixed_lookup_tables
@@ -502,10 +487,25 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
     }
 }
 
+// Checks whether an iterator contains any duplicates, and if yes, raises
+// a corresponding LookupTableIdCollision error.
+fn check_id_duplicates<'a, I: Iterator<Item = &'a i32>>(
+    iter: I,
+    msg: &str,
+) -> Result<(), LookupError> {
+    use itertools::Itertools;
+    match iter.duplicates().collect::<Vec<_>>() {
+        dups if !dups.is_empty() => Err(LookupError::LookupTableIdCollision {
+            collision_type: format!("{}: {:?}", msg, dups).to_string(),
+        }),
+        _ => Ok(()),
+    }
+}
+
 #[cfg(all(test, feature = "std"))]
 mod tests {
 
-    use super::{LookupError, LookupTable, RuntimeTableCfg};
+    use super::{check_id_duplicates, LookupError, LookupTable, RuntimeTableCfg};
     use crate::{
         circuits::{
             constraints::ConstraintSystem, gate::CircuitGate, lookup::tables::xor,
@@ -514,6 +514,27 @@ mod tests {
         error::SetupError,
     };
     use mina_curves::pasta::Fp;
+
+    #[test]
+    fn test_check_id_duplicates() {
+        // no duplicates
+        let ids = vec![1, 2, 3];
+        assert!(
+            check_id_duplicates(ids.iter(), "test no duplicates").is_ok(),
+            "check_id_duplicates should not find duplicates when there are none"
+        );
+
+        let msg = "test-with-dups";
+
+        let ids = vec![1, 2, 3, 2, 4, 1];
+
+        let error = match check_id_duplicates(ids.iter(), msg) {
+            Err(LookupError::LookupTableIdCollision { collision_type }) => collision_type,
+            _ => panic!("check_id_duplicates should find duplicates when they exist"),
+        };
+
+        assert_eq!(error, format!("{}: [2, 1]", msg));
+    }
 
     #[test]
     fn test_colliding_table_ids() {
