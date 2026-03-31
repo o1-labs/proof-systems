@@ -53,6 +53,13 @@ and this project adheres to
   `std::sync::LazyLock`. Delegates to `std` when available; falls back to
   `spin::Lazy` in `no_std` environments.
 
+#### Changed
+
+- Refactor `LazyCache` to use `std::sync::LazyLock` internally, removing
+  hand-rolled `Once` + `UnsafeCell` synchronization. In `no_std` mode, values
+  are eagerly initialized at construction.
+  ([#3535](https://github.com/o1-labs/proof-systems/pull/3535))
+
 ### [poly-commitment](./poly-commitment)
 
 #### Changed

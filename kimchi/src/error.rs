@@ -2,7 +2,7 @@
 use alloc::string::String;
 
 use crate::circuits::lookup::index::LookupError; // not sure about hierarchy
-use o1_utils::lazy_cache::{LazyCacheError, LazyCacheErrorOr};
+use o1_utils::lazy_cache::LazyCacheError;
 use poly_commitment::error::CommitmentError;
 use thiserror::Error;
 
@@ -122,17 +122,14 @@ pub enum VerifierIndexError {
 }
 
 // Handling of lookup errors happening inside creation of LookupConstraintSystem
-impl From<LazyCacheErrorOr<LookupError>> for SetupError {
-    fn from(e: LazyCacheErrorOr<LookupError>) -> Self {
-        match e {
-            LazyCacheErrorOr::Inner(inner) => SetupError::LookupCreation(inner.clone()),
-            LazyCacheErrorOr::Outer(err) => SetupError::LazyEvaluation(err),
-        }
+impl From<LookupError> for SetupError {
+    fn from(e: LookupError) -> Self {
+        SetupError::LookupCreation(e)
     }
 }
 
-impl From<LazyCacheErrorOr<LookupError>> for ProverError {
-    fn from(e: LazyCacheErrorOr<LookupError>) -> Self {
+impl From<LookupError> for ProverError {
+    fn from(e: LookupError) -> Self {
         ProverError::LazySetup(SetupError::from(e))
     }
 }

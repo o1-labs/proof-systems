@@ -5,21 +5,27 @@
 //! use the official `LazyLock`, and [`LazyCache`] as a wrapper around `LazyLock`
 //! to allow for custom serialization definitions.
 
-use core::{cell::UnsafeCell, fmt, ops::Deref};
+use core::{fmt, ops::Deref};
 use serde::{de::DeserializeOwned, Deserialize, Serialize, Serializer};
 
 #[cfg(feature = "std")]
 use alloc::boxed::Box;
 #[cfg(feature = "std")]
 type LazyFn<T> = Box<dyn FnOnce() -> T + Send + Sync + 'static>;
+#[cfg(feature = "std")]
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    LazyLock,
+};
 
 /// A thread-safe, lazily-initialized value.
 pub struct LazyCache<T> {
+    #[cfg(not(feature = "std"))]
+    value: T,
     #[cfg(feature = "std")]
-    once: std::sync::Once,
-    value: UnsafeCell<Option<T>>,
+    initialized: AtomicBool,
     #[cfg(feature = "std")]
-    init: UnsafeCell<Option<LazyFn<T>>>,
+    lazy_value: LazyLock<T, LazyFn<T>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -40,131 +46,61 @@ pub enum LazyCacheErrorOr<E> {
 unsafe impl<T: Send + Sync> Sync for LazyCache<T> {}
 unsafe impl<T: Send> Send for LazyCache<T> {}
 
-#[cfg(feature = "std")]
 impl<T> LazyCache<T> {
     pub fn new<F>(f: F) -> Self
     where
         F: FnOnce() -> T + Send + Sync + 'static,
     {
-        Self {
-            once: std::sync::Once::new(),
-            value: UnsafeCell::new(None),
-            init: UnsafeCell::new(Some(Box::new(f))),
-        }
-    }
-
-    fn try_initialize(&self) -> Result<(), LazyCacheError> {
-        let mut error = None;
-
-        self.once.call_once_force(|state| {
-            if state.is_poisoned() {
-                error = Some(LazyCacheError::LockPoisoned);
-                return;
-            }
-
-            let init_fn = unsafe { (*self.init.get()).take() };
-            match init_fn {
-                Some(f) => {
-                    let value = f();
-                    unsafe {
-                        *self.value.get() = Some(value);
-                    }
-                }
-                None => {
-                    error = Some(LazyCacheError::MissingFunctionOrInitializedTwice);
-                }
-            }
-        });
-
-        if let Some(e) = error {
-            return Err(e);
-        }
-
-        if self.once.is_completed() {
-            Ok(())
-        } else {
-            Err(LazyCacheError::LockPoisoned)
-        }
-    }
-
-    /// # Errors
-    ///
-    /// Returns `LazyCacheError` if initialization fails or the cache is poisoned.
-    fn try_get(&self) -> Result<&T, LazyCacheError> {
-        self.try_initialize()?;
-        unsafe {
-            (*self.value.get())
-                .as_ref()
-                .ok_or(LazyCacheError::UninitializedCache)
-        }
-    }
-
-    /// # Panics
-    ///
-    /// Panics if initialization fails or the cache is poisoned.
-    pub fn get(&self) -> &T {
-        self.try_get().unwrap()
-    }
-}
-
-impl<T> LazyCache<T> {
-    #[allow(clippy::nursery)]
-    /// Creates a new lazy value that is already initialized.
-    pub fn preinit(value: T) -> Self {
         #[cfg(feature = "std")]
         {
-            let once = std::sync::Once::new();
-            once.call_once(|| {});
             Self {
-                once,
-                value: UnsafeCell::new(Some(value)),
-                init: UnsafeCell::new(None),
+                initialized: false.into(),
+                lazy_value: LazyLock::new(Box::new(f)),
             }
         }
         #[cfg(not(feature = "std"))]
         {
-            Self {
-                value: UnsafeCell::new(Some(value)),
-            }
+            Self { value: f() }
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T> LazyCache<T> {
+    /// # Panics
+    ///
+    /// Panics if initialization fails or the cache is poisoned.
+    pub fn get(&self) -> &T {
+        // best effort
+        self.initialized.store(true, Ordering::Relaxed);
+        LazyLock::force(&self.lazy_value)
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T: Send + Sync + 'static> LazyCache<T> {
+    #[allow(clippy::nursery)]
+    /// Creates a new lazy value that is already initialized.
+    pub fn preinit(value: T) -> Self {
+        let lazy_value = LazyLock::new(Box::new(move || value) as LazyFn<T>);
+        LazyLock::force(&lazy_value);
+        Self {
+            initialized: true.into(),
+            lazy_value,
         }
     }
 }
 
 #[cfg(not(feature = "std"))]
 impl<T> LazyCache<T> {
-    /// # Panics
-    ///
-    /// Panics if the cache has not been pre-initialized.
-    pub fn get(&self) -> &T {
-        unsafe {
-            (*self.value.get())
-                .as_ref()
-                .expect("LazyCache not initialized (no_std mode requires preinit)")
-        }
+    #[allow(clippy::nursery)]
+    /// Creates a new lazy value that is already initialized.
+    pub fn preinit(value: T) -> Self {
+        Self { value }
     }
-}
 
-// Wrapper to support cases where the init function might return an error that
-// needs to be handled separately (for example, LookupConstraintSystem::crate())
-impl<T, E: Clone> LazyCache<Result<T, E>> {
-    /// # Errors
-    ///
-    /// Returns `LazyCacheErrorOr` if initialization fails or the inner result is an error.
-    pub fn try_get_or_err(&self) -> Result<&T, LazyCacheErrorOr<E>> {
-        #[cfg(feature = "std")]
-        let result = self.try_get();
-        #[cfg(not(feature = "std"))]
-        let result = unsafe {
-            (*self.value.get())
-                .as_ref()
-                .ok_or(LazyCacheError::UninitializedCache)
-        };
-
-        match result {
-            Ok(Ok(v)) => Ok(v),
-            Ok(Err(e)) => Err(LazyCacheErrorOr::Inner(e.clone())),
-            Err(_) => Err(LazyCacheErrorOr::Outer(LazyCacheError::LockPoisoned)),
-        }
+    pub const fn get(&self) -> &T {
+        &self.value
     }
 }
 
@@ -178,12 +114,13 @@ impl<T> Deref for LazyCache<T> {
 
 impl<T: fmt::Debug> fmt::Debug for LazyCache<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // SAFETY: It's safe to access self.value here, read-only
-        let value = unsafe { &*self.value.get() };
-        match value {
-            Some(v) => f.debug_tuple("LazyCache").field(v).finish(),
-            None => f.write_str("LazyCache(<uninitialized>)"),
+        #[cfg(feature = "std")]
+        // best effort
+        if !self.initialized.load(Ordering::Relaxed) {
+            return f.write_str("LazyCache(<uninitialized>)");
         }
+
+        f.debug_tuple("LazyCache").field(self.get()).finish()
     }
 }
 
@@ -217,10 +154,7 @@ where
 // Unit tests for LazyCache
 mod test {
     use super::*;
-    use std::{
-        sync::{Arc, Mutex, Once},
-        thread,
-    };
+    use std::sync::{Arc, Mutex};
 
     #[cfg(all(not(target_arch = "wasm32"), feature = "diagnostics"))]
     fn print_heap_usage(label: &str) {
@@ -231,86 +165,55 @@ mod test {
         println!("[{label}] Heap allocated: {} kilobytes", allocated / 1024);
     }
 
-    /// Test creating and getting `LazyCache` values
     #[test]
-    fn test_lazy_cache() {
-        // get
-        {
-            // Cached variant
-            let cache = LazyCache::preinit(100);
-            assert_eq!(*cache.get(), 100);
+    fn test_preinit_get() {
+        let cache = LazyCache::preinit(100);
+        assert_eq!(*cache.get(), 100);
+    }
 
-            // Lazy variant
-            let lazy = LazyCache::new(|| {
-                let a = 10;
-                let b = 20;
-                a + b
-            });
-            assert_eq!(*lazy.get(), 30);
-            // Ensure the value is cached and can be accessed multiple times
-            assert_eq!(*lazy.get(), 30);
-        }
+    #[test]
+    fn test_lazy_get() {
+        let lazy = LazyCache::new(|| {
+            let a = 10;
+            let b = 20;
+            a + b
+        });
+        assert_eq!(*lazy.get(), 30);
+        // Ensure the value is cached and can be accessed multiple times
+        assert_eq!(*lazy.get(), 30);
+    }
 
-        // function called only once
-        {
-            let counter = Arc::new(Mutex::new(0));
-            let counter_clone = Arc::clone(&counter);
+    #[test]
+    fn test_function_called_only_once() {
+        let counter = Arc::new(Mutex::new(0));
+        let counter_clone = Arc::clone(&counter);
 
-            let cache = LazyCache::new(move || {
-                let mut count = counter_clone.lock().unwrap();
-                *count += 1;
-                // counter_clone will be dropped here
-                99
-            });
+        let cache = LazyCache::new(move || {
+            let mut count = counter_clone.lock().unwrap();
+            *count += 1;
+            99
+        });
 
-            assert_eq!(*cache.get(), 99);
-            assert_eq!(*cache.get(), 99); // Ensure cached
-            assert_eq!(*counter.lock().unwrap(), 1); // Function was called exactly once
-        }
-        // serde
-        {
-            let cache = LazyCache::preinit(10);
-            let serialized = serde_json::to_string(&cache).unwrap();
-            let deserialized: LazyCache<i32> = serde_json::from_str(&serialized).unwrap();
-            assert_eq!(*deserialized.get(), 10);
-        }
-        // debug
-        {
-            let cache = LazyCache::preinit(10);
-            assert_eq!(format!("{cache:?}"), "LazyCache(10)");
+        assert_eq!(*cache.get(), 99);
+        assert_eq!(*cache.get(), 99); // Ensure cached
+        assert_eq!(*counter.lock().unwrap(), 1); // Function was called exactly once
+    }
 
-            let lazy = LazyCache::new(|| 20);
-            assert_eq!(format!("{lazy:?}"), "LazyCache(<uninitialized>)");
-        }
-        // LazyCacheError::MissingFunctionOrInitializedTwice
-        {
-            let cache: LazyCache<i32> = LazyCache {
-                once: Once::new(),
-                value: UnsafeCell::new(None),
-                init: UnsafeCell::new(None), // No function set
-            };
-            let err = cache.try_get();
-            assert_eq!(
-                err.unwrap_err(),
-                LazyCacheError::MissingFunctionOrInitializedTwice
-            );
-        }
-        // LazyCacheError::LockPoisoned
-        {
-            let lazy = Arc::new(LazyCache::<()>::new(|| {
-                panic!("poison the lock");
-            }));
+    #[test]
+    fn test_serde() {
+        let cache = LazyCache::preinit(10);
+        let serialized = serde_json::to_string(&cache).unwrap();
+        let deserialized: LazyCache<i32> = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(*deserialized.get(), 10);
+    }
 
-            let lazy_clone = Arc::clone(&lazy);
-            let _ = thread::spawn(move || {
-                let _ = lazy_clone.try_initialize();
-            })
-            .join(); // triggers panic inside init
+    #[test]
+    fn test_debug() {
+        let cache = LazyCache::preinit(10);
+        assert_eq!(format!("{cache:?}"), "LazyCache(10)");
 
-            // Now the Once is poisoned
-            let result = lazy.try_initialize();
-            assert_eq!(result, Err(LazyCacheError::LockPoisoned));
-        }
+        let lazy = LazyCache::new(|| 20);
+        assert_eq!(format!("{lazy:?}"), "LazyCache(<uninitialized>)");
     }
 
     #[cfg(all(not(target_arch = "wasm32"), feature = "diagnostics"))]
