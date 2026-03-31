@@ -16,10 +16,10 @@ type LazyFn<T> = Box<dyn FnOnce() -> T + Send + Sync + 'static>;
 /// A thread-safe, lazily-initialized value.
 pub struct LazyCache<T> {
     #[cfg(feature = "std")]
-    pub(crate) once: std::sync::Once,
-    pub(crate) value: UnsafeCell<Option<T>>,
+    once: std::sync::Once,
+    value: UnsafeCell<Option<T>>,
     #[cfg(feature = "std")]
-    pub(crate) init: UnsafeCell<Option<LazyFn<T>>>,
+    init: UnsafeCell<Option<LazyFn<T>>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -90,7 +90,7 @@ impl<T> LazyCache<T> {
     /// # Errors
     ///
     /// Returns `LazyCacheError` if initialization fails or the cache is poisoned.
-    pub(crate) fn try_get(&self) -> Result<&T, LazyCacheError> {
+    fn try_get(&self) -> Result<&T, LazyCacheError> {
         self.try_initialize()?;
         unsafe {
             (*self.value.get())
