@@ -57,9 +57,11 @@ poly-commitment.workspace = true
 
 
 [dev-dependencies]
+base64.workspace = true
 proptest.workspace = true
 proptest-derive.workspace = true
 rand.workspace = true
+rand_chacha.workspace = true
 rmp-serde.workspace = true
 serde_json.workspace = true
 num-bigint.workspace = true
