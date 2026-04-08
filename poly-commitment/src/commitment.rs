@@ -340,6 +340,8 @@ impl<C: AffineRepr> PolyComm<C> {
     /// Performs a multi-scalar multiplication between scalars `elm` and
     /// commitments `com`.
     ///
+    /// Accepts both `&[PolyComm<C>]` and `&[&PolyComm<C>]` via `Borrow`.
+    ///
     /// If both are empty, returns a commitment of length 1
     /// containing the point at infinity.
     ///
@@ -347,7 +349,10 @@ impl<C: AffineRepr> PolyComm<C> {
     ///
     /// Panics if `com` and `elm` are not of the same size.
     #[must_use]
-    pub fn multi_scalar_mul(com: &[&Self], elm: &[C::ScalarField]) -> Self {
+    pub fn multi_scalar_mul<B: std::borrow::Borrow<Self>>(
+        com: &[B],
+        elm: &[C::ScalarField],
+    ) -> Self {
         assert_eq!(com.len(), elm.len());
 
         if com.is_empty() || elm.is_empty() {
@@ -356,7 +361,7 @@ impl<C: AffineRepr> PolyComm<C> {
 
         let all_scalars: Vec<_> = elm.iter().map(|s| s.into_bigint()).collect();
 
-        let elems_size = Iterator::max(com.iter().map(|c| c.chunks.len())).unwrap();
+        let elems_size = Iterator::max(com.iter().map(|c| c.borrow().chunks.len())).unwrap();
 
         let chunks = (0..elems_size)
             .map(|chunk| {
@@ -364,7 +369,7 @@ impl<C: AffineRepr> PolyComm<C> {
                     .iter()
                     .zip(&all_scalars)
                     // get rid of scalars that don't have an associated chunk
-                    .filter_map(|(com, scalar)| com.chunks.get(chunk).map(|c| (c, scalar)))
+                    .filter_map(|(com, scalar)| com.borrow().chunks.get(chunk).map(|c| (c, scalar)))
                     .unzip();
 
                 // Splitting into 2 chunks seems optimal; but in
