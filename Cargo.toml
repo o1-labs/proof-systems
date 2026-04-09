@@ -78,7 +78,7 @@ ocaml = { version = "0.22.2" }
 ocaml-gen = { version = "1.0.0" }
 os_pipe = { version = "1.1.4", features = ["io_safety"] }
 paste = "1.0.15"
-proptest = "1.0.0"
+proptest = "1.10.0"
 proptest-derive = "0.6.0"
 rand = { version = "0.8.5", default-features = false }
 rand_chacha = { version = "0.3.0" }
