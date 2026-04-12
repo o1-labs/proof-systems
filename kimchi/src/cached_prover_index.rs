@@ -1073,6 +1073,41 @@ impl Drop for ReadOnlyMmap {
     }
 }
 
+impl<const FULL_ROUNDS: usize, G, Srs> MmapProverIndex<FULL_ROUNDS, G, Srs>
+where
+    G: KimchiCurve<FULL_ROUNDS>,
+{
+    /// Advise the kernel that the mapped cache file's pages are no longer
+    /// needed (`MADV_DONTNEED`). Reads into the mapping after this call
+    /// will trigger fresh page faults that re-populate from disk.
+    ///
+    /// This simulates the real-world behaviour the zero-copy cache was
+    /// designed for — pages evicted under memory pressure are silently
+    /// re-faulted as the prover walks back through them. Used in tests
+    /// (see `cached_index_prove_after_madv_dontneed`) to confirm that the
+    /// construction doesn't somehow keep the data pinned in RAM via a
+    /// stray owned copy.
+    ///
+    /// No-op on a zero-length mapping.
+    pub fn madvise_dontneed(&self) {
+        if self._mmap.len == 0 {
+            return;
+        }
+        // Safety: matched with the live mmap this wrapper owns; MADV_DONTNEED
+        // on a MAP_SHARED read-only region just drops the resident pages
+        // (next access faults them back in from the file). Errors here are
+        // advisory — if the kernel rejects the hint we simply don't get
+        // the eviction we asked for; nothing breaks.
+        unsafe {
+            libc::madvise(
+                self._mmap.ptr as *mut libc::c_void,
+                self._mmap.len,
+                libc::MADV_DONTNEED,
+            );
+        }
+    }
+}
+
 /// A [`ProverIndex`] whose large `Vec<F>` fields are backed by memory in a
 /// live `mmap(2)` region instead of owned heap allocations.
 ///

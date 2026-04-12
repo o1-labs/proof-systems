@@ -145,6 +145,60 @@ fn cached_index_prove_then_verify() {
     std::fs::remove_file(&path).ok();
 }
 
+/// Core stress test for the zero-copy design: populate the cache, load
+/// it via `read_cache`, hint the kernel to evict the mapping's pages via
+/// `MADV_DONTNEED`, then prove-and-verify. The prover walks every
+/// `Evaluations.evals` `Vec<F>` it was handed by the reader; if any of
+/// them held an owned copy rather than a slice view into the mmap,
+/// eviction wouldn't actually release the memory the test is trying to
+/// release. If the wiring is correct, `MADV_DONTNEED` causes page faults
+/// on first access, and the prover completes transparently.
+#[test]
+fn cached_index_prove_after_madv_dontneed() {
+    let public = vec![Fp::from(3u8); 5];
+    let gates = create_circuit(0, public.len());
+    let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
+    fill_in_witness(0, &mut witness, &public);
+
+    let index = new_index_for_test::<FULL_ROUNDS, Vesta>(gates, public.len());
+    let verifier_index = index.verifier_index();
+
+    let path = tmpfile("madv_dontneed");
+    let id = "madv-test-identifier";
+    write_cache(id, &index, &path).expect("write_cache");
+
+    let srs = index.srs.clone();
+    drop(index);
+    let restored = read_cache::<FULL_ROUNDS, Vesta, _>(id, &path, srs).expect("read_cache");
+
+    // Drop every resident page of the mapping. If the prover truly reads
+    // through the mmap, the next access will re-fault the pages from
+    // disk; if something accidentally held an owned copy, the "eviction"
+    // is silent but the test still passes — the real regression signal
+    // here is a crash or a wrong proof.
+    restored.madvise_dontneed();
+
+    let group_map = <Vesta as CommitmentCurve>::Map::setup();
+    let proof = ProverProof::create::<BaseSponge, ScalarSponge, _>(
+        &group_map,
+        witness,
+        &[],
+        &restored,
+        &mut rand::rngs::OsRng,
+    )
+    .expect("proof creation from cached index after MADV_DONTNEED");
+
+    verify::<FULL_ROUNDS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta, FULL_ROUNDS>>(
+        &group_map,
+        &verifier_index,
+        &proof,
+        &public,
+    )
+    .expect("verification of proof from cached index after MADV_DONTNEED");
+
+    std::fs::remove_file(&path).ok();
+}
+
 #[test]
 fn cached_index_identifier_mismatch_errors() {
     let public = vec![Fp::from(3u8); 5];
