@@ -1654,6 +1654,7 @@ dependencies = [
  "iai",
  "internal-tracing",
  "itertools 0.12.1",
+ "libc",
  "log",
  "mina-curves",
  "mina-poseidon",

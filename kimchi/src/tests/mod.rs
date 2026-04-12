@@ -1,5 +1,7 @@
 // IMPROVEME: move all tests in top-level directory tests
 mod and;
+#[cfg(feature = "mmap_cache")]
+mod cached_index;
 mod chunked;
 mod ec;
 mod endomul;
