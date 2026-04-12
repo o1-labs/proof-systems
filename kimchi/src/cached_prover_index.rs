@@ -93,17 +93,25 @@ pub enum SectionTag {
     XorSelector8 = 0x44,
     /// Optional Rot64 selector over domain d8.
     RotSelector8 = 0x45,
-    /// Lookup tables (`lookup_table8`, variable-length).
+    /// Concatenated `lookup_table8` payload: `u32` count prefix, then
+    /// `count × d8_size × 32` bytes of field elements.
     LookupTable8 = 0x50,
-    /// Optional lookup table ids over domain d8.
+    /// `table_ids8` over d8. Present iff `LookupSelectorBits::TABLE_IDS8`.
     TableIds8 = 0x51,
-    /// Lookup selectors (xor/chacha/lookup_gate/range_check/ffmul), bitmap
-    /// of presence stored inside `ScalarHeader`.
-    LookupSelectorsBase = 0x52,
-    /// Optional runtime-table selector over domain d8.
-    RuntimeSelector8 = 0x5a,
-    /// Lookup configuration (POD flags + runtime-table spec).
-    LookupConfig = 0x5b,
+    /// `lookup_selectors.xor` over d8. Presence per `LookupSelectorBits`.
+    LookupSelectorXor = 0x52,
+    /// `lookup_selectors.lookup` over d8.
+    LookupSelectorLookup = 0x53,
+    /// `lookup_selectors.range_check` over d8.
+    LookupSelectorRangeCheck = 0x54,
+    /// `lookup_selectors.ffmul` over d8.
+    LookupSelectorFfmul = 0x55,
+    /// `runtime_selector` over d8.
+    RuntimeSelector8 = 0x56,
+    /// `runtime_tables` spec: `u32` count, then `count × (id:i32, len:u32)`.
+    RuntimeTablesSpec = 0x57,
+    /// `runtime_table_offset`: 8-byte little-endian u64.
+    RuntimeTableOffset = 0x58,
 }
 
 impl SectionTag {
@@ -205,6 +213,20 @@ impl OptionalSelectorBits {
     pub const FOREIGN_FIELD_MUL: u32 = 1 << 3;
     pub const XOR: u32 = 1 << 4;
     pub const ROT: u32 = 1 << 5;
+}
+
+/// Bits indicating which optional `LookupConstraintSystem` sections are
+/// stored, packed into `ScalarHeader::lookup_selectors_present`.
+pub struct LookupSelectorBits;
+impl LookupSelectorBits {
+    pub const TABLE_IDS8: u32 = 1 << 0;
+    pub const SELECTOR_XOR: u32 = 1 << 1;
+    pub const SELECTOR_LOOKUP: u32 = 1 << 2;
+    pub const SELECTOR_RANGE_CHECK: u32 = 1 << 3;
+    pub const SELECTOR_FFMUL: u32 = 1 << 4;
+    pub const RUNTIME_SELECTOR: u32 = 1 << 5;
+    pub const RUNTIME_TABLES: u32 = 1 << 6;
+    pub const RUNTIME_TABLE_OFFSET: u32 = 1 << 7;
 }
 
 /// A gate record stripped down to the fields the prover reads at prove
@@ -897,6 +919,10 @@ fn read_pruned_gate<F: PrimeField>(bytes: &[u8]) -> Result<CircuitGate<F>, Cache
 
 use crate::circuits::constraints::{ColumnEvaluations, ConstraintSystem};
 use crate::circuits::domains::EvaluationDomains;
+use crate::circuits::lookup::constraints::LookupConfiguration;
+use crate::circuits::lookup::index::{LookupConstraintSystem, LookupSelectors};
+use crate::circuits::lookup::lookups::LookupInfo;
+use crate::circuits::lookup::runtime_tables::RuntimeTableSpec;
 use crate::circuits::wires::COLUMNS;
 use crate::curve::KimchiCurve;
 use crate::linearization::expr_linearization;
@@ -1077,15 +1103,15 @@ where
     }
 
     let cs = &index.cs;
-    // The lookup path is not yet supported by this cache. Reject circuits
-    // that require it rather than silently producing an index missing
-    // lookup data.
-    let lcs = cs.lookup_constraint_system.get();
-    if let Ok(Some(_)) = lcs {
-        return Err(CacheError::MissingSection {
-            tag: SectionTag::LookupConfig as u32,
-        });
-    }
+    // Grab the materialised LookupConstraintSystem (if any) once, up front.
+    // A `Some(_)` here triggers emission of sections 0x50..0x58; `None` or a
+    // `LookupError` leaves them out and keeps the file backward-compatible
+    // with non-lookup readers.
+    let lcs_result = cs.lookup_constraint_system.get();
+    let lcs: Option<&LookupConstraintSystem<G::ScalarField>> = match lcs_result {
+        Ok(opt) => opt.as_ref(),
+        Err(_) => None,
+    };
 
     // Build scalar header.
     let (vkd_limbs, has_vkd) = match index.verifier_index_digest.as_ref() {
@@ -1125,6 +1151,40 @@ where
         bits
     };
 
+    // Compute the lookup-presence bitmap up front so we can stamp it into
+    // the header; the actual section payloads are emitted further below.
+    let lookup_selectors_present = match lcs {
+        None => 0,
+        Some(lcs) => {
+            let mut bits = 0u32;
+            if lcs.table_ids8.is_some() {
+                bits |= LookupSelectorBits::TABLE_IDS8;
+            }
+            if lcs.lookup_selectors.xor.is_some() {
+                bits |= LookupSelectorBits::SELECTOR_XOR;
+            }
+            if lcs.lookup_selectors.lookup.is_some() {
+                bits |= LookupSelectorBits::SELECTOR_LOOKUP;
+            }
+            if lcs.lookup_selectors.range_check.is_some() {
+                bits |= LookupSelectorBits::SELECTOR_RANGE_CHECK;
+            }
+            if lcs.lookup_selectors.ffmul.is_some() {
+                bits |= LookupSelectorBits::SELECTOR_FFMUL;
+            }
+            if lcs.runtime_selector.is_some() {
+                bits |= LookupSelectorBits::RUNTIME_SELECTOR;
+            }
+            if lcs.runtime_tables.is_some() {
+                bits |= LookupSelectorBits::RUNTIME_TABLES;
+            }
+            if lcs.runtime_table_offset.is_some() {
+                bits |= LookupSelectorBits::RUNTIME_TABLE_OFFSET;
+            }
+            bits
+        }
+    };
+
     let header = ScalarHeader {
         public: cs.public as u32,
         prev_challenges: cs.prev_challenges as u32,
@@ -1134,7 +1194,7 @@ where
         domain_d1_size: cs.domain.d1.size() as u64,
         feature_flags: pack_feature_flags(&cs.feature_flags),
         optional_selectors_present,
-        lookup_selectors_present: 0,
+        lookup_selectors_present,
         has_verifier_index_digest: has_vkd,
         endo_limbs: field_to_limbs(&cs.endo),
         shift_limbs,
@@ -1235,6 +1295,75 @@ where
         SectionTag::RotSelector8 as u32,
         &column_evaluations.rot_selector8,
     );
+
+    // Lookup sections, only emitted when a LookupConstraintSystem was
+    // materialised on the constraint system. The reader gates its lookup
+    // reconstruction on the same `lookup_selectors_present` bitmap that
+    // was just stamped into the header, so leaving any of these out when
+    // lcs is None is correct — the reader will skip them.
+    if let Some(lcs) = lcs {
+        // lookup_table8: one section containing a u32 count of inner
+        // arrays followed by each array's d8-sized field payload.
+        {
+            let n = lcs.lookup_table8.len() as u32;
+            let inner_len = d8_size as usize * FIELD_ELEMENT_BYTES;
+            let mut bytes = Vec::with_capacity(4 + (n as usize) * inner_len);
+            bytes.extend_from_slice(&n.to_le_bytes());
+            for e in lcs.lookup_table8.iter() {
+                write_field_slice(&mut bytes, &e.evals);
+            }
+            ctx.push_raw_section(SectionTag::LookupTable8 as u32, &bytes);
+        }
+        if let Some(e) = &lcs.table_ids8 {
+            ctx.push_field_section::<G::ScalarField>(
+                SectionTag::TableIds8 as u32,
+                d8_size,
+                &e.evals,
+            );
+        }
+        push_optional(
+            &mut ctx,
+            SectionTag::LookupSelectorXor as u32,
+            &lcs.lookup_selectors.xor,
+        );
+        push_optional(
+            &mut ctx,
+            SectionTag::LookupSelectorLookup as u32,
+            &lcs.lookup_selectors.lookup,
+        );
+        push_optional(
+            &mut ctx,
+            SectionTag::LookupSelectorRangeCheck as u32,
+            &lcs.lookup_selectors.range_check,
+        );
+        push_optional(
+            &mut ctx,
+            SectionTag::LookupSelectorFfmul as u32,
+            &lcs.lookup_selectors.ffmul,
+        );
+        push_optional(
+            &mut ctx,
+            SectionTag::RuntimeSelector8 as u32,
+            &lcs.runtime_selector,
+        );
+        if let Some(rts) = &lcs.runtime_tables {
+            // Encoding: u32 count, then count × (id: i32 LE, len: u32 LE).
+            // RuntimeTableSpec.len is usize in memory; we truncate to u32,
+            // which is ample given real circuit sizes. The reader widens
+            // it back to usize during reconstruction.
+            let mut bytes = Vec::with_capacity(4 + rts.len() * 8);
+            bytes.extend_from_slice(&(rts.len() as u32).to_le_bytes());
+            for spec in rts {
+                bytes.extend_from_slice(&(spec.id as i32).to_le_bytes());
+                bytes.extend_from_slice(&(spec.len as u32).to_le_bytes());
+            }
+            ctx.push_raw_section(SectionTag::RuntimeTablesSpec as u32, &bytes);
+        }
+        if let Some(off) = lcs.runtime_table_offset {
+            let bytes = (off as u64).to_le_bytes();
+            ctx.push_raw_section(SectionTag::RuntimeTableOffset as u32, &bytes);
+        }
+    }
 
     // Once we know how many sections there are, we can compute the file
     // layout and patch section offsets to absolute file positions.
@@ -1497,7 +1626,157 @@ where
             )
         }
     }));
-    let lookup_constraint_system = Arc::new(LazyCache::new(|| Ok(None)));
+    // Reconstruct LookupConstraintSystem from sections 0x50..0x58 when the
+    // presence bitmap indicates lookup data was written. The bitmap is the
+    // same one we computed at write time (see `lookup_selectors_present`),
+    // so an empty bitmap => no lookup sections and the read path short-
+    // circuits to Ok(None) exactly as before.
+    let lookup_constraint_system: Arc<
+        LazyCache<Result<Option<LookupConstraintSystem<G::ScalarField>>, crate::circuits::lookup::index::LookupError>>,
+    > = if header.lookup_selectors_present == 0
+        && !sections.contains_key(&(SectionTag::LookupTable8 as u32))
+    {
+        Arc::new(LazyCache::new(|| Ok(None)))
+    } else {
+        // lookup_table8: parse `u32 count` prefix, then `count × d8_size`
+        // field elements. count == 0 is valid (empty lookup table).
+        let lt_bytes = section_bytes(SectionTag::LookupTable8 as u32)?;
+        if lt_bytes.len() < 4 {
+            return Err(CacheError::TruncatedFile);
+        }
+        let mut count_buf = [0u8; 4];
+        count_buf.copy_from_slice(&lt_bytes[..4]);
+        let n = u32::from_le_bytes(count_buf) as usize;
+        let d8_size_usize = d8.size() as usize;
+        let inner_bytes = d8_size_usize * FIELD_ELEMENT_BYTES;
+        let expected_total = 4 + n * inner_bytes;
+        if lt_bytes.len() != expected_total {
+            return Err(CacheError::SectionLengthMismatch {
+                tag: SectionTag::LookupTable8 as u32,
+                expected: expected_total as u64,
+                found: lt_bytes.len() as u64,
+            });
+        }
+        let mut lookup_table8: Vec<Evaluations<G::ScalarField, _>> = Vec::with_capacity(n);
+        for i in 0..n {
+            let start = 4 + i * inner_bytes;
+            let end = start + inner_bytes;
+            let evals = read_field_vec::<G::ScalarField>(&lt_bytes[start..end], d8_size_usize)?;
+            lookup_table8.push(Evaluations::from_vec_and_domain(evals, d8));
+        }
+
+        // Optional sections gated by LookupSelectorBits.
+        let read_optional_evals = |tag: u32, bit: u32| -> Result<
+            Option<Evaluations<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>>,
+            CacheError,
+        > {
+            if header.lookup_selectors_present & bit != 0 {
+                let entry = sections
+                    .get(&tag)
+                    .ok_or(CacheError::MissingSection { tag })?;
+                let count = entry.elem_domain_size as usize;
+                let evals =
+                    read_field_vec::<G::ScalarField>(section_bytes(tag)?, count)?;
+                Ok(Some(Evaluations::from_vec_and_domain(evals, d8)))
+            } else {
+                Ok(None)
+            }
+        };
+        let table_ids8 =
+            read_optional_evals(SectionTag::TableIds8 as u32, LookupSelectorBits::TABLE_IDS8)?;
+        let selector_xor = read_optional_evals(
+            SectionTag::LookupSelectorXor as u32,
+            LookupSelectorBits::SELECTOR_XOR,
+        )?;
+        let selector_lookup = read_optional_evals(
+            SectionTag::LookupSelectorLookup as u32,
+            LookupSelectorBits::SELECTOR_LOOKUP,
+        )?;
+        let selector_range_check = read_optional_evals(
+            SectionTag::LookupSelectorRangeCheck as u32,
+            LookupSelectorBits::SELECTOR_RANGE_CHECK,
+        )?;
+        let selector_ffmul = read_optional_evals(
+            SectionTag::LookupSelectorFfmul as u32,
+            LookupSelectorBits::SELECTOR_FFMUL,
+        )?;
+        let runtime_selector = read_optional_evals(
+            SectionTag::RuntimeSelector8 as u32,
+            LookupSelectorBits::RUNTIME_SELECTOR,
+        )?;
+
+        let runtime_tables: Option<Vec<RuntimeTableSpec>> =
+            if header.lookup_selectors_present & LookupSelectorBits::RUNTIME_TABLES != 0 {
+                let rt_bytes = section_bytes(SectionTag::RuntimeTablesSpec as u32)?;
+                if rt_bytes.len() < 4 {
+                    return Err(CacheError::TruncatedFile);
+                }
+                let mut count_buf = [0u8; 4];
+                count_buf.copy_from_slice(&rt_bytes[..4]);
+                let n = u32::from_le_bytes(count_buf) as usize;
+                let expected = 4 + n * 8;
+                if rt_bytes.len() != expected {
+                    return Err(CacheError::SectionLengthMismatch {
+                        tag: SectionTag::RuntimeTablesSpec as u32,
+                        expected: expected as u64,
+                        found: rt_bytes.len() as u64,
+                    });
+                }
+                let mut out = Vec::with_capacity(n);
+                for i in 0..n {
+                    let base = 4 + i * 8;
+                    let mut id_buf = [0u8; 4];
+                    let mut len_buf = [0u8; 4];
+                    id_buf.copy_from_slice(&rt_bytes[base..base + 4]);
+                    len_buf.copy_from_slice(&rt_bytes[base + 4..base + 8]);
+                    out.push(RuntimeTableSpec {
+                        id: i32::from_le_bytes(id_buf),
+                        len: u32::from_le_bytes(len_buf) as usize,
+                    });
+                }
+                Some(out)
+            } else {
+                None
+            };
+
+        let runtime_table_offset: Option<usize> =
+            if header.lookup_selectors_present & LookupSelectorBits::RUNTIME_TABLE_OFFSET != 0 {
+                let off_bytes = section_bytes(SectionTag::RuntimeTableOffset as u32)?;
+                if off_bytes.len() != 8 {
+                    return Err(CacheError::SectionLengthMismatch {
+                        tag: SectionTag::RuntimeTableOffset as u32,
+                        expected: 8,
+                        found: off_bytes.len() as u64,
+                    });
+                }
+                let mut buf = [0u8; 8];
+                buf.copy_from_slice(off_bytes);
+                Some(u64::from_le_bytes(buf) as usize)
+            } else {
+                None
+            };
+
+        // LookupInfo is a pure function of `feature_flags.lookup_features`;
+        // we reconstruct it here rather than caching it separately.
+        let lookup_info = LookupInfo::create(feature_flags.lookup_features);
+        let lcs = LookupConstraintSystem {
+            lookup_table: Vec::new(),
+            lookup_table8,
+            table_ids: None,
+            table_ids8,
+            lookup_selectors: LookupSelectors {
+                xor: selector_xor,
+                lookup: selector_lookup,
+                range_check: selector_range_check,
+                ffmul: selector_ffmul,
+            },
+            runtime_selector,
+            runtime_tables,
+            runtime_table_offset,
+            configuration: LookupConfiguration::new(lookup_info),
+        };
+        Arc::new(LazyCache::new(move || Ok(Some(lcs))))
+    };
     let cs = ConstraintSystem {
         public: header.public as usize,
         prev_challenges: header.prev_challenges as usize,
