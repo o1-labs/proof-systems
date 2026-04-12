@@ -197,3 +197,56 @@ pub fn caml_pasta_fp_plonk_index_write(
         .serialize(&mut rmp_serde::Serializer::new(w))
         .map_err(|e| e.into())
 }
+
+/// Writes the proving index to `path` in the mmap-backed cache format.
+///
+/// `identifier` is a caller-supplied string (bounded at 512 bytes) that is
+/// round-tripped through the file header. Reads must pass the same
+/// identifier; mismatches return a descriptive error instead of loading
+/// the wrong key.
+///
+/// Writes are atomic: the file is staged at `path.tmp` then renamed into
+/// place so concurrent readers never observe a half-written file.
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fp_plonk_index_write_cached(
+    identifier: String,
+    index: CamlPastaFpPlonkIndexPtr<'static>,
+    path: String,
+) -> Result<(), ocaml::Error> {
+    kimchi::cached_prover_index::write_cache(
+        &identifier,
+        &index.as_ref().0,
+        std::path::Path::new(&path),
+    )
+    .map_err(|e| {
+        ocaml::Error::Message(Box::leak(
+            format!("caml_pasta_fp_plonk_index_write_cached: {e}").into_boxed_str(),
+        ))
+    })
+}
+
+/// Reads a proving index from `path` in the mmap-backed cache format,
+/// binding the supplied `srs` onto the reconstructed index.
+///
+/// `identifier` must match the value used at write time or the call fails
+/// without loading the key.
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fp_plonk_index_read_cached(
+    identifier: String,
+    srs: CamlFpSrs,
+    path: String,
+) -> Result<CamlPastaFpPlonkIndex, ocaml::Error> {
+    let index = kimchi::cached_prover_index::read_cache::<FULL_ROUNDS, Vesta, Srs>(
+        &identifier,
+        std::path::Path::new(&path),
+        srs.clone(),
+    )
+    .map_err(|e| {
+        ocaml::Error::Message(Box::leak(
+            format!("caml_pasta_fp_plonk_index_read_cached: {e}").into_boxed_str(),
+        ))
+    })?;
+    Ok(CamlPastaFpPlonkIndex(Box::new(index)))
+}

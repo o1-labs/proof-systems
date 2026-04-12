@@ -16,6 +16,7 @@ bench = false       # needed for criterion (https://bheisler.github.io/criterion
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tikv-jemalloc-ctl = { workspace = true, optional = true }
 tikv-jemallocator = { workspace = true, optional = true }
+libc = { workspace = true, optional = true }
 
 [dependencies]
 ark-bn254 = { workspace = true, optional = true }
@@ -133,3 +134,4 @@ sha2-compress = ["sha2/compress"]
 sha2-force-soft = ["sha2/force-soft"]
 sha2-loongarch64_asm = ["sha2/loongarch64_asm"]
 sha2-oid = ["sha2/oid"]
+mmap_cache = ["libc"]

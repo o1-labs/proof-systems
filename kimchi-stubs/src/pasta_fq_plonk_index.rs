@@ -197,3 +197,47 @@ pub fn caml_pasta_fq_plonk_index_write(
         .serialize(&mut rmp_serde::Serializer::new(w))
         .map_err(|e| e.into())
 }
+
+/// Writes the proving index to `path` in the mmap-backed cache format.
+/// See the Fp variant for full documentation; this is the Pallas/Fq
+/// companion used by the Wrap side of pickles.
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fq_plonk_index_write_cached(
+    identifier: String,
+    index: CamlPastaFqPlonkIndexPtr<'static>,
+    path: String,
+) -> Result<(), ocaml::Error> {
+    kimchi::cached_prover_index::write_cache(
+        &identifier,
+        &index.as_ref().0,
+        std::path::Path::new(&path),
+    )
+    .map_err(|e| {
+        ocaml::Error::Message(Box::leak(
+            format!("caml_pasta_fq_plonk_index_write_cached: {e}").into_boxed_str(),
+        ))
+    })
+}
+
+/// Reads a proving index from `path` in the mmap-backed cache format.
+/// See the Fp variant for full documentation.
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fq_plonk_index_read_cached(
+    identifier: String,
+    srs: CamlFqSrs,
+    path: String,
+) -> Result<CamlPastaFqPlonkIndex, ocaml::Error> {
+    let index = kimchi::cached_prover_index::read_cache::<FULL_ROUNDS, Pallas, Srs>(
+        &identifier,
+        std::path::Path::new(&path),
+        srs.clone(),
+    )
+    .map_err(|e| {
+        ocaml::Error::Message(Box::leak(
+            format!("caml_pasta_fq_plonk_index_read_cached: {e}").into_boxed_str(),
+        ))
+    })?;
+    Ok(CamlPastaFqPlonkIndex(Box::new(index)))
+}

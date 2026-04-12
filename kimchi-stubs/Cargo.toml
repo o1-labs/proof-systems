@@ -35,7 +35,7 @@ ark-serialize.workspace = true
 
 # proof-systems
 groupmap = { workspace = true, features = ["parallel"] }
-kimchi = { workspace = true, features = ["ocaml_types"] }
+kimchi = { workspace = true, features = ["ocaml_types", "mmap_cache"] }
 mina-curves = { workspace = true, features = ["parallel"] }
 mina-poseidon = { workspace = true, features = ["parallel"] }
 o1-utils = { workspace = true }

@@ -2,6 +2,8 @@ mod fixtures;
 
 // IMPROVEME: move all tests in top-level directory tests
 mod and;
+#[cfg(feature = "mmap_cache")]
+mod cached_index;
 #[cfg(feature = "prover")]
 mod chunked;
 mod ec;
