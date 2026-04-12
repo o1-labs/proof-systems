@@ -1,6 +1,7 @@
 use crate::{arkworks::CamlFp, gate_vector::fp::CamlPastaFpPlonkGateVectorPtr, srs::fp::CamlFpSrs};
 use ark_poly::EvaluationDomain;
 use kimchi::{
+    cached_prover_index::MmapProverIndex,
     circuits::{
         constraints::ConstraintSystem,
         gate::CircuitGate,
@@ -26,9 +27,37 @@ use std::{
 type Srs =
     <OpeningProof<Vesta, FULL_ROUNDS> as poly_commitment::OpenProof<Vesta, FULL_ROUNDS>>::SRS;
 
+/// Holds a prover index behind one of two backing stores. The enum
+/// variants both [`Deref`] to the same `&ProverIndex`, so all existing
+/// `.0.cs…` / `.0.srs…` field-access patterns in this file continue to
+/// work via auto-deref. Concretely:
+///
+/// - [`IndexHandle::Owned`] is the classic path: a heap-allocated
+///   `ProverIndex` whose `Vec<F>` fields are Rust-owned. Populated by
+///   `caml_pasta_fp_plonk_index_create` / `_read`.
+/// - [`IndexHandle::Mmap`] wraps an [`MmapProverIndex`] whose bulk
+///   `Vec<F>` fields point into an mmap'd cache file. Populated by
+///   `caml_pasta_fp_plonk_index_read_cached`. Dropping an `Mmap` variant
+///   skips the inner `Vec<F>`s' destructors (they would otherwise call
+///   `dealloc` on mmap memory — UB) and unmaps the file.
+pub enum IndexHandle {
+    Owned(Box<ProverIndex<FULL_ROUNDS, Vesta, Srs>>),
+    Mmap(Box<MmapProverIndex<FULL_ROUNDS, Vesta, Srs>>),
+}
+
+impl core::ops::Deref for IndexHandle {
+    type Target = ProverIndex<FULL_ROUNDS, Vesta, Srs>;
+    fn deref(&self) -> &Self::Target {
+        match self {
+            IndexHandle::Owned(b) => b,
+            IndexHandle::Mmap(b) => b,
+        }
+    }
+}
+
 /// Boxed so that we don't store large proving indexes in the OCaml heap.
 #[derive(ocaml_gen::CustomType)]
-pub struct CamlPastaFpPlonkIndex(pub Box<ProverIndex<FULL_ROUNDS, Vesta, Srs>>);
+pub struct CamlPastaFpPlonkIndex(pub IndexHandle);
 pub type CamlPastaFpPlonkIndexPtr<'a> = ocaml::Pointer<'a, CamlPastaFpPlonkIndex>;
 
 extern "C" fn caml_pasta_fp_plonk_index_finalize(v: ocaml::Raw) {
@@ -105,7 +134,7 @@ pub fn caml_pasta_fp_plonk_index_create(
         FULL_ROUNDS,
     >>();
 
-    Ok(CamlPastaFpPlonkIndex(Box::new(index)))
+    Ok(CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index))))
 }
 
 #[ocaml_gen::func]
@@ -172,7 +201,7 @@ pub fn caml_pasta_fp_plonk_index_read(
     t.linearization = linearization;
     t.powers_of_alpha = powers_of_alpha;
 
-    Ok(CamlPastaFpPlonkIndex(Box::new(t)))
+    Ok(CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(t))))
 }
 
 #[ocaml_gen::func]
@@ -191,11 +220,19 @@ pub fn caml_pasta_fp_plonk_index_write(
                 .unwrap()
         })?;
     let w = BufWriter::new(file);
-    index
-        .as_ref()
-        .0
-        .serialize(&mut rmp_serde::Serializer::new(w))
-        .map_err(|e| e.into())
+    // Legacy rmp_serde write only supports the fully-owned `ProverIndex`
+    // backing; serialising an mmap-backed index would require copying
+    // every Vec<F> back through serde, which defeats its purpose.
+    match &index.as_ref().0 {
+        IndexHandle::Owned(b) => b
+            .serialize(&mut rmp_serde::Serializer::new(w))
+            .map_err(|e| e.into()),
+        IndexHandle::Mmap(_) => Err(ocaml::Error::Message(
+            "caml_pasta_fp_plonk_index_write: legacy serde write is not \
+             supported for mmap-backed indexes; use \
+             caml_pasta_fp_plonk_index_write_cached instead",
+        )),
+    }
 }
 
 /// Writes the proving index to `path` in the mmap-backed cache format.
@@ -214,9 +251,11 @@ pub fn caml_pasta_fp_plonk_index_write_cached(
     index: CamlPastaFpPlonkIndexPtr<'static>,
     path: String,
 ) -> Result<(), ocaml::Error> {
+    // Both `IndexHandle` variants Deref to `&ProverIndex`, which is what
+    // `write_cache` consumes; a double-borrow (`&*`) forces the coercion.
     kimchi::cached_prover_index::write_cache(
         &identifier,
-        &index.as_ref().0,
+        &*index.as_ref().0,
         std::path::Path::new(&path),
     )
     .map_err(|e| {
@@ -248,5 +287,5 @@ pub fn caml_pasta_fp_plonk_index_read_cached(
             format!("caml_pasta_fp_plonk_index_read_cached: {e}").into_boxed_str(),
         ))
     })?;
-    Ok(CamlPastaFpPlonkIndex(Box::new(index)))
+    Ok(CamlPastaFpPlonkIndex(IndexHandle::Mmap(Box::new(index))))
 }

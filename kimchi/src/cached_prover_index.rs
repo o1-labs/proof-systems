@@ -26,7 +26,13 @@ use crate::circuits::wires::PERMUTS;
 pub const FILE_MAGIC: [u8; 8] = *b"MINAPK01";
 
 /// Current on-disk layout version. Bump on any incompatible change.
-pub const FORMAT_VERSION: u32 = 1;
+///
+/// Version 2 switched field-element encoding from canonical form to
+/// Montgomery form so that the on-disk bytes match `Fp`'s in-memory
+/// layout exactly. That lets the reader construct `Vec<F>` via
+/// `Vec::from_raw_parts` pointing into the mmap (zero-copy), instead of
+/// running a per-element Montgomery reduction on load.
+pub const FORMAT_VERSION: u32 = 2;
 
 /// Maximum length (in bytes) of the caller-supplied identifier stored in the
 /// file header. Sized to comfortably accommodate sha512 hex (128 bytes) plus
@@ -93,8 +99,10 @@ pub enum SectionTag {
     XorSelector8 = 0x44,
     /// Optional Rot64 selector over domain d8.
     RotSelector8 = 0x45,
-    /// Concatenated `lookup_table8` payload: `u32` count prefix, then
-    /// `count × d8_size × 32` bytes of field elements.
+    /// Concatenated `lookup_table8` payload: `count × d8_size × 32` bytes
+    /// of field elements. The count of inner arrays is stored in the
+    /// section-table entry's `elem_domain_size`, keeping the payload
+    /// 32-byte aligned for zero-copy slice construction.
     LookupTable8 = 0x50,
     /// `table_ids8` over d8. Present iff `LookupSelectorBits::TABLE_IDS8`.
     TableIds8 = 0x51,
@@ -398,27 +406,59 @@ pub fn alignment_padding(n: usize) -> usize {
     align_up(n) - n
 }
 
-/// Converts a `PrimeField` element into its four LE u64 Montgomery limbs.
+/// Returns the four LE u64 Montgomery-form limbs underlying `f`.
 ///
-/// Works for any `ark-ff 0.5` `Fp256<MontBackend<_>>` because the backing
-/// representation is `BigInt<4>(pub [u64; 4])`.
+/// `ark-ff 0.5` defines `Fp<P, 4>(pub BigInt<4>, pub PhantomData<P>)` and
+/// `BigInt<4>(pub [u64; 4])`. Rust's default layout for a struct with one
+/// non-ZST field lays those out identically to `[u64; 4]`, and the
+/// `.0.0` path exposes the Montgomery limbs directly. `PrimeField`
+/// doesn't expose that path generically, so we do the reinterpretation
+/// via raw-pointer read after asserting the size and alignment invariants
+/// the cache relies on everywhere.
+///
+/// Reading Montgomery limbs is crucial for zero-copy: the on-disk bytes
+/// stored by [`write_field_slice`] must match `Fp`'s in-memory layout
+/// exactly so [`mmap_field_vec`] can reinterpret the mapped bytes
+/// directly. If we stored the canonical form (via `into_bigint`) the
+/// mmap-backed Vec would contain values that look like canonical but
+/// the prover would treat as Montgomery — silent corruption.
 pub fn field_to_limbs<F: PrimeField>(f: &F) -> [u64; 4] {
-    let bigint = f.into_bigint();
-    let slice = bigint.as_ref();
-    debug_assert_eq!(slice.len(), 4, "expected BigInt<4> backing storage");
-    [slice[0], slice[1], slice[2], slice[3]]
+    debug_assert_eq!(
+        core::mem::size_of::<F>(),
+        FIELD_ELEMENT_BYTES,
+        "field_to_limbs assumes F has the memory layout of [u64; 4]"
+    );
+    debug_assert_eq!(
+        core::mem::align_of::<F>(),
+        core::mem::align_of::<[u64; 4]>(),
+        "field_to_limbs assumes F shares alignment with [u64; 4]"
+    );
+    // SAFETY: F is `Fp<MontBackend<..., 4>, 4>` in the Pasta stack, which
+    // has the exact memory layout of `[u64; 4]` (see docstring). The
+    // size + alignment debug asserts above protect against accidental
+    // instantiations with a different layout.
+    unsafe { core::ptr::read(f as *const F as *const [u64; 4]) }
 }
 
-/// Reconstructs a field element from its four LE u64 Montgomery limbs.
+/// Reconstructs a field element from its four LE u64 Montgomery-form
+/// limbs. Inverse of [`field_to_limbs`]; see that function's docstring
+/// for the layout assumptions.
 pub fn limbs_to_field<F: PrimeField>(limbs: &[u64; 4]) -> F {
-    let mut repr = F::BigInt::default();
-    let dst = repr.as_mut();
-    debug_assert_eq!(dst.len(), 4, "expected BigInt<4> backing storage");
-    dst[0] = limbs[0];
-    dst[1] = limbs[1];
-    dst[2] = limbs[2];
-    dst[3] = limbs[3];
-    F::from_bigint(repr).expect("Montgomery limbs should always decode to a field element")
+    debug_assert_eq!(
+        core::mem::size_of::<F>(),
+        FIELD_ELEMENT_BYTES,
+        "limbs_to_field assumes F has the memory layout of [u64; 4]"
+    );
+    debug_assert_eq!(
+        core::mem::align_of::<F>(),
+        core::mem::align_of::<[u64; 4]>(),
+        "limbs_to_field assumes F shares alignment with [u64; 4]"
+    );
+    // SAFETY: see `field_to_limbs`. `read` performs a bitwise copy; any
+    // trailing padding in F's layout (there is none for Fp<P, 4>) would
+    // be uninitialised, but since the Pasta Fp has no padding this is a
+    // full-bytes read.
+    unsafe { core::ptr::read(limbs as *const [u64; 4] as *const F) }
 }
 
 // Runtime assertion that the field-element layout assumption holds. Cheap
@@ -793,9 +833,36 @@ fn write_field_slice<F: PrimeField>(out: &mut Vec<u8>, elements: &[F]) {
     }
 }
 
-/// Decodes `bytes` as a `Vec<F>` of `count` elements. Returns an error if
-/// `bytes.len()` is not exactly `count * FIELD_ELEMENT_BYTES`.
-fn read_field_vec<F: PrimeField>(bytes: &[u8], count: usize) -> Result<Vec<F>, CacheError> {
+/// Zero-copy: constructs a `Vec<F>` whose backing storage is the mmap
+/// region itself, via `Vec::from_raw_parts(mmap_ptr, len, len)`.
+///
+/// # Safety
+///
+/// The returned `Vec<F>` **must never be dropped normally**. Vec's `Drop`
+/// calls `Global::dealloc` on its pointer, which for this value points
+/// into mmap memory — calling `dealloc` on that pointer is undefined
+/// behaviour (it would try to free non-heap memory). Callers must keep
+/// the returned `Vec<F>` inside a container whose own `Drop` either:
+///
+/// 1. Wraps the whole thing in [`core::mem::ManuallyDrop`] so the Vec's
+///    `Drop` never runs (the approach used by [`MmapProverIndex`]), or
+/// 2. Manually `mem::forget`s the Vec before the container drops.
+///
+/// The returned Vec also **must never grow**: a reallocation would call
+/// the allocator to allocate and then copy-from/dealloc the old pointer.
+/// Since the prover only reads field elements, this is fine in practice
+/// but worth stating.
+///
+/// The caller is responsible for ensuring `bytes` is aligned for `F`
+/// (8-byte aligned is sufficient for `BigInt<4>` — 32-byte section
+/// alignment in the cache format covers this), and for keeping the
+/// underlying mmap alive for the lifetime of the returned `Vec<F>`.
+///
+/// The byte slice must be exactly `count × FIELD_ELEMENT_BYTES` long.
+unsafe fn mmap_field_vec<F: PrimeField>(
+    bytes: &[u8],
+    count: usize,
+) -> Result<Vec<F>, CacheError> {
     let expected = count
         .checked_mul(FIELD_ELEMENT_BYTES)
         .ok_or(CacheError::TruncatedFile)?;
@@ -805,17 +872,18 @@ fn read_field_vec<F: PrimeField>(bytes: &[u8], count: usize) -> Result<Vec<F>, C
             length: bytes.len() as u64,
         });
     }
-    let mut out = Vec::with_capacity(count);
-    for chunk in bytes.chunks_exact(FIELD_ELEMENT_BYTES) {
-        let mut limbs = [0u64; 4];
-        for (i, limb) in limbs.iter_mut().enumerate() {
-            let mut buf = [0u8; 8];
-            buf.copy_from_slice(&chunk[i * 8..(i + 1) * 8]);
-            *limb = u64::from_le_bytes(buf);
-        }
-        out.push(limbs_to_field::<F>(&limbs));
-    }
-    Ok(out)
+    // Alignment check: `BigInt<4>` = `[u64; 4]` needs 8-byte alignment.
+    // Section offsets are 32-byte aligned in the cache format so this
+    // should always hold; assert it defensively.
+    let align = core::mem::align_of::<F>();
+    debug_assert!(
+        (bytes.as_ptr() as usize) % align == 0,
+        "mmap section pointer not aligned for F"
+    );
+    let ptr = bytes.as_ptr() as *mut F;
+    // SAFETY: the caller contract forbids dropping or growing the
+    // returned Vec; its lifetime must be bounded by the mmap's.
+    Ok(Vec::from_raw_parts(ptr, count, count))
 }
 
 // ---------------------------------------------------------------------------
@@ -1005,6 +1073,79 @@ impl Drop for ReadOnlyMmap {
     }
 }
 
+/// A [`ProverIndex`] whose large `Vec<F>` fields are backed by memory in a
+/// live `mmap(2)` region instead of owned heap allocations.
+///
+/// The wrapper [`Deref`]s to `ProverIndex`, so anywhere the existing prover
+/// takes `&ProverIndex` (e.g. `ProverProof::create`) it transparently
+/// accepts an `MmapProverIndex` as well. The file pages can be evicted by
+/// the kernel under memory pressure and re-faulted on demand.
+///
+/// # Lifetime and drop
+///
+/// The inner `ProverIndex` is stored in a [`ManuallyDrop`] because its
+/// `Vec<F>` fields (sid; every `Evaluations.evals`; lookup data when
+/// present) are constructed via `Vec::from_raw_parts(mmap_ptr, len, len)`
+/// and point into the mapping. Running `Vec::drop` on them would call
+/// `dealloc` on mmap memory, which is undefined behaviour.
+///
+/// Consequently, when `MmapProverIndex` is dropped, the inner
+/// `ProverIndex`'s owned sub-allocations (the owned `gates` vector,
+/// `linearization`, `powers_of_alpha`, and any LazyCache/Arc machinery)
+/// leak. This is acceptable for Mina's usage pattern — proving keys are
+/// loaded once at daemon startup and held for the life of the process,
+/// so cumulative leakage is bounded and the OS reclaims everything on
+/// exit. The `Arc<ReadOnlyMmap>` held alongside is dropped normally,
+/// which calls `munmap` and releases the bulk of the key's memory.
+///
+/// A future refinement could replace the bulk leak with a manual per-
+/// field tear-down: pattern-destructure the `ProverIndex`, drop the
+/// owned fields explicitly, and `mem::forget` only the mmap-backed
+/// Vecs. That's about 50 lines of `unsafe` and can be added without
+/// affecting the on-disk format or the public API.
+pub struct MmapProverIndex<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, Srs> {
+    index: core::mem::ManuallyDrop<ProverIndex<FULL_ROUNDS, G, Srs>>,
+    _mmap: Arc<ReadOnlyMmap>,
+}
+
+impl<const FULL_ROUNDS: usize, G, Srs> core::ops::Deref
+    for MmapProverIndex<FULL_ROUNDS, G, Srs>
+where
+    G: KimchiCurve<FULL_ROUNDS>,
+{
+    type Target = ProverIndex<FULL_ROUNDS, G, Srs>;
+    fn deref(&self) -> &Self::Target {
+        &self.index
+    }
+}
+
+impl<const FULL_ROUNDS: usize, G, Srs> core::fmt::Debug
+    for MmapProverIndex<FULL_ROUNDS, G, Srs>
+where
+    G: KimchiCurve<FULL_ROUNDS>,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("MmapProverIndex")
+            .field("mmap_len", &self._mmap.len)
+            .finish_non_exhaustive()
+    }
+}
+
+// The wrapper's thread-safety mirrors the wrapped ProverIndex. The mmap
+// is read-only, so aliased reads from multiple threads are fine.
+unsafe impl<const FULL_ROUNDS: usize, G, Srs> Send for MmapProverIndex<FULL_ROUNDS, G, Srs>
+where
+    G: KimchiCurve<FULL_ROUNDS>,
+    ProverIndex<FULL_ROUNDS, G, Srs>: Send,
+{
+}
+unsafe impl<const FULL_ROUNDS: usize, G, Srs> Sync for MmapProverIndex<FULL_ROUNDS, G, Srs>
+where
+    G: KimchiCurve<FULL_ROUNDS>,
+    ProverIndex<FULL_ROUNDS, G, Srs>: Sync,
+{
+}
+
 /// Context tracked during a cache-write to record sections in parallel with
 /// the growing payload buffer.
 struct WriteContext {
@@ -1049,6 +1190,20 @@ impl WriteContext {
     }
 
     fn push_raw_section(&mut self, tag: u32, payload: &[u8]) {
+        self.push_raw_section_with_elem_count(tag, 0, payload);
+    }
+
+    /// Like [`push_raw_section`] but records a caller-supplied value in the
+    /// section-table entry's `elem_domain_size`. Used by `lookup_table8`,
+    /// which encodes the count of inner evaluation arrays there rather
+    /// than inline in the payload (inline would break the 32-byte
+    /// alignment required for zero-copy field-element reads).
+    fn push_raw_section_with_elem_count(
+        &mut self,
+        tag: u32,
+        elem_domain_size: u32,
+        payload: &[u8],
+    ) {
         let section_offset = self.payload_base + self.payload.len() as u64;
         self.payload.extend_from_slice(payload);
         let length = payload.len() as u64;
@@ -1056,7 +1211,7 @@ impl WriteContext {
             tag,
             offset: section_offset,
             length,
-            elem_domain_size: 0,
+            elem_domain_size,
             _reserved: 0,
         });
         let pad = alignment_padding(self.payload.len());
@@ -1302,17 +1457,23 @@ where
     // was just stamped into the header, so leaving any of these out when
     // lcs is None is correct — the reader will skip them.
     if let Some(lcs) = lcs {
-        // lookup_table8: one section containing a u32 count of inner
-        // arrays followed by each array's d8-sized field payload.
+        // lookup_table8: one section containing the concatenated inner
+        // arrays, each d8-sized. The count of inner arrays is stored in
+        // the section-table entry's `elem_domain_size`; the payload
+        // itself is pure field data so it stays 32-byte aligned for
+        // zero-copy slice construction at read time.
         {
             let n = lcs.lookup_table8.len() as u32;
             let inner_len = d8_size as usize * FIELD_ELEMENT_BYTES;
-            let mut bytes = Vec::with_capacity(4 + (n as usize) * inner_len);
-            bytes.extend_from_slice(&n.to_le_bytes());
+            let mut bytes = Vec::with_capacity((n as usize) * inner_len);
             for e in lcs.lookup_table8.iter() {
                 write_field_slice(&mut bytes, &e.evals);
             }
-            ctx.push_raw_section(SectionTag::LookupTable8 as u32, &bytes);
+            ctx.push_raw_section_with_elem_count(
+                SectionTag::LookupTable8 as u32,
+                n,
+                &bytes,
+            );
         }
         if let Some(e) = &lcs.table_ids8 {
             ctx.push_field_section::<G::ScalarField>(
@@ -1415,13 +1576,28 @@ where
     Ok(())
 }
 
-/// Reads a cache file produced by [`write_cache`] and materializes a fully
-/// owned [`ProverIndex`].
+/// Reads a cache file produced by [`write_cache`] and returns an
+/// [`MmapProverIndex`]: a [`ProverIndex`]-compatible wrapper whose bulk
+/// `Vec<F>` fields are backed by the mmap'd file rather than heap copies.
 ///
-/// Fast path: the file is mmap'd, the POD bytes are copied into owned
-/// `Vec<F>` field arrays, and `linearization` + `powers_of_alpha` are
-/// rebuilt from `feature_flags`. The returned index contains no references
-/// into the mapping; it is self-contained.
+/// Reading is a single `mmap(2)` syscall; the prover reads field elements
+/// directly from page-cache pages which the kernel can evict under
+/// memory pressure and re-fault on demand. This is the "OS can evict
+/// cached keys" behaviour the cache was designed for.
+///
+/// The returned `MmapProverIndex` [`Deref`]s to `&ProverIndex`, so existing
+/// callers that pass `&ProverIndex<...>` into the prover continue to work
+/// unchanged.
+///
+/// # Safety of the construction
+///
+/// This function constructs `Vec<F>` values via
+/// `Vec::from_raw_parts(mmap_ptr, len, len)`, pointing directly into the
+/// mmap. Those Vecs are bound by the lifetime of the mmap — which
+/// [`MmapProverIndex`] guarantees by holding an `Arc<ReadOnlyMmap>`
+/// alongside the wrapped index, and by wrapping the inner `ProverIndex`
+/// in `ManuallyDrop` so `Vec::drop` can never run on them. See the
+/// docstring on [`MmapProverIndex`] for the full invariant.
 ///
 /// Identifier and ark-ff version must match the values the file was
 /// produced with, otherwise a descriptive error is returned.
@@ -1429,7 +1605,7 @@ pub fn read_cache<const FULL_ROUNDS: usize, G, Srs>(
     identifier: &str,
     path: &Path,
     srs: Arc<Srs>,
-) -> Result<ProverIndex<FULL_ROUNDS, G, Srs>, CacheError>
+) -> Result<MmapProverIndex<FULL_ROUNDS, G, Srs>, CacheError>
 where
     G: KimchiCurve<FULL_ROUNDS>,
     Srs: SRS<G>,
@@ -1442,7 +1618,12 @@ where
     // external writers while the mapping is live. We document this
     // constraint in `key_cache.mli`. Concurrent writers use atomic rename,
     // which keeps the original inode alive for existing readers.
-    let mmap = ReadOnlyMmap::map_file(&file)?;
+    let mmap = Arc::new(ReadOnlyMmap::map_file(&file)?);
+    // SAFETY: we hold `mmap` in an Arc for the lifetime of the returned
+    // MmapProverIndex; the `bytes` slice is therefore valid for as long as
+    // the constructed `Vec<F>` views remain reachable. Since the returned
+    // index lives inside `ManuallyDrop`, those Vecs never drop on their
+    // own, so we never attempt to dealloc this mmap memory.
     let bytes: &[u8] = mmap.as_slice();
 
     // Preamble + identifier validation.
@@ -1503,7 +1684,12 @@ where
             tag: SectionTag::Sid as u32,
         })?;
     let sid_count = sid_entry.elem_domain_size as usize;
-    let sid = read_field_vec::<G::ScalarField>(section_bytes(SectionTag::Sid as u32)?, sid_count)?;
+    let sid = unsafe {
+        mmap_field_vec::<G::ScalarField>(
+            section_bytes(SectionTag::Sid as u32)?,
+            sid_count,
+        )?
+    };
 
     // Gates.
     let gates_bytes = section_bytes(SectionTag::Gates as u32)?;
@@ -1526,14 +1712,19 @@ where
         gate.coeffs = vec![G::ScalarField::from(1u64)];
     }
 
-    // Column evaluations.
+    // Column evaluations. Each `Evaluations.evals` Vec points directly
+    // into the mmap via `mmap_field_vec`; the `unsafe` block is sound so
+    // long as the returned MmapProverIndex keeps the mmap alive and
+    // wraps the ProverIndex in ManuallyDrop so Vec::drop never runs.
     let read_evals_d =
         |tag: u32, d: Radix2EvaluationDomain<G::ScalarField>| -> Result<Evaluations<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>, CacheError> {
             let entry = sections
                 .get(&tag)
                 .ok_or(CacheError::MissingSection { tag })?;
             let count = entry.elem_domain_size as usize;
-            let evals = read_field_vec::<G::ScalarField>(section_bytes(tag)?, count)?;
+            let evals = unsafe {
+                mmap_field_vec::<G::ScalarField>(section_bytes(tag)?, count)?
+            };
             Ok(Evaluations::<G::ScalarField, _>::from_vec_and_domain(evals, d))
         };
 
@@ -1638,18 +1829,19 @@ where
     {
         Arc::new(LazyCache::new(|| Ok(None)))
     } else {
-        // lookup_table8: parse `u32 count` prefix, then `count × d8_size`
-        // field elements. count == 0 is valid (empty lookup table).
-        let lt_bytes = section_bytes(SectionTag::LookupTable8 as u32)?;
-        if lt_bytes.len() < 4 {
-            return Err(CacheError::TruncatedFile);
-        }
-        let mut count_buf = [0u8; 4];
-        count_buf.copy_from_slice(&lt_bytes[..4]);
-        let n = u32::from_le_bytes(count_buf) as usize;
+        // lookup_table8: count of inner arrays is carried in the section
+        // entry's `elem_domain_size`; the payload is pure field data.
+        // count == 0 is valid (empty lookup table).
+        let lt_entry = sections
+            .get(&(SectionTag::LookupTable8 as u32))
+            .ok_or(CacheError::MissingSection {
+                tag: SectionTag::LookupTable8 as u32,
+            })?;
+        let n = lt_entry.elem_domain_size as usize;
         let d8_size_usize = d8.size() as usize;
         let inner_bytes = d8_size_usize * FIELD_ELEMENT_BYTES;
-        let expected_total = 4 + n * inner_bytes;
+        let lt_bytes = section_bytes(SectionTag::LookupTable8 as u32)?;
+        let expected_total = n * inner_bytes;
         if lt_bytes.len() != expected_total {
             return Err(CacheError::SectionLengthMismatch {
                 tag: SectionTag::LookupTable8 as u32,
@@ -1659,9 +1851,11 @@ where
         }
         let mut lookup_table8: Vec<Evaluations<G::ScalarField, _>> = Vec::with_capacity(n);
         for i in 0..n {
-            let start = 4 + i * inner_bytes;
+            let start = i * inner_bytes;
             let end = start + inner_bytes;
-            let evals = read_field_vec::<G::ScalarField>(&lt_bytes[start..end], d8_size_usize)?;
+            let evals = unsafe {
+                mmap_field_vec::<G::ScalarField>(&lt_bytes[start..end], d8_size_usize)?
+            };
             lookup_table8.push(Evaluations::from_vec_and_domain(evals, d8));
         }
 
@@ -1675,8 +1869,9 @@ where
                     .get(&tag)
                     .ok_or(CacheError::MissingSection { tag })?;
                 let count = entry.elem_domain_size as usize;
-                let evals =
-                    read_field_vec::<G::ScalarField>(section_bytes(tag)?, count)?;
+                let evals = unsafe {
+                    mmap_field_vec::<G::ScalarField>(section_bytes(tag)?, count)?
+                };
                 Ok(Some(Evaluations::from_vec_and_domain(evals, d8)))
             } else {
                 Ok(None)
@@ -1801,9 +1996,6 @@ where
         None
     };
 
-    // Drop the mmap now that owned copies exist.
-    drop(mmap);
-
     let cs = Arc::new(cs);
     let column_evaluations_cache = Arc::new(LazyCache::new({
         let ce = column_evaluations;
@@ -1813,7 +2005,7 @@ where
     // call `.get()` without checking status).
     column_evaluations_cache.get();
 
-    Ok(ProverIndex {
+    let index = ProverIndex {
         cs,
         linearization,
         powers_of_alpha,
@@ -1822,5 +2014,9 @@ where
         column_evaluations: column_evaluations_cache,
         verifier_index: None,
         verifier_index_digest,
+    };
+    Ok(MmapProverIndex {
+        index: core::mem::ManuallyDrop::new(index),
+        _mmap: mmap,
     })
 }
