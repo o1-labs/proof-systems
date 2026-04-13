@@ -53,6 +53,9 @@ pub mod pasta_fq_poseidon;
 /// Linearization helpers
 pub mod linearization;
 
+/// Deterministic RNG (KIMCHI_DETERMINISTIC_SEED env var) for fixture-driven tests.
+pub mod deterministic_rng;
+
 /// Handy re-exports
 pub use {
     kimchi::circuits::{

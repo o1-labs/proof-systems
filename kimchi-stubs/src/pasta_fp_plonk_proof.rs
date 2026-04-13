@@ -103,7 +103,7 @@ pub fn caml_pasta_fp_plonk_proof_create(
             index,
             prev,
             None,
-            &mut rand::rngs::OsRng,
+            &mut crate::deterministic_rng::make_rng(),
         )
         .map_err(|e| ocaml::Error::Error(e.into()))?;
         Ok((proof, public_input).into())
@@ -171,7 +171,7 @@ pub fn caml_pasta_fp_plonk_proof_create_and_verify(
             index,
             prev,
             None,
-            &mut rand::rngs::OsRng,
+            &mut crate::deterministic_rng::make_rng(),
         )
         .map_err(|e| ocaml::Error::Error(e.into()))?;
 
@@ -301,7 +301,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_lookup(
         &index,
         vec![],
         None,
-        &mut rand::rngs::OsRng,
+        &mut crate::deterministic_rng::make_rng(),
     )
     .unwrap();
 
@@ -467,7 +467,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_foreign_field_mul(
         &index,
         vec![],
         None,
-        &mut rand::rngs::OsRng,
+        &mut crate::deterministic_rng::make_rng(),
     )
     .unwrap();
     (
@@ -539,7 +539,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_range_check(
         &index,
         vec![],
         None,
-        &mut rand::rngs::OsRng,
+        &mut crate::deterministic_rng::make_rng(),
     )
     .unwrap();
     (
@@ -615,7 +615,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_range_check0(
         &index,
         vec![],
         None,
-        &mut rand::rngs::OsRng,
+        &mut crate::deterministic_rng::make_rng(),
     )
     .unwrap();
     (
@@ -744,7 +744,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_ffadd(
         &index,
         vec![],
         None,
-        &mut rand::rngs::OsRng,
+        &mut crate::deterministic_rng::make_rng(),
     )
     .unwrap();
     (
@@ -837,7 +837,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_xor(
         &index,
         vec![],
         None,
-        &mut rand::rngs::OsRng,
+        &mut crate::deterministic_rng::make_rng(),
     )
     .unwrap();
     (
@@ -933,7 +933,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_rot(
         &index,
         vec![],
         None,
-        &mut rand::rngs::OsRng,
+        &mut crate::deterministic_rng::make_rng(),
     )
     .unwrap();
     (
