@@ -185,6 +185,57 @@ where
         VerifierIndex<G, OpeningProof>: Clone,
     {
         internal_tracing::checkpoint!(internal_traces; create_recursive);
+
+        // === TEMP TRACE: dump witness columns to file on proof creation ===
+        // Gated on `KIMCHI_WITNESS_DUMP` env var. When set, the env var
+        // value is interpreted as a filename template: the literal `%c`
+        // is replaced with a monotonic counter (so successive proofs
+        // in the same process write to different files). Both
+        // kimchi-stubs (OCaml step/wrap provers) and crypto-provider
+        // (PS step/wrap provers) funnel through this same function,
+        // so a single edit here dumps witnesses on both sides for
+        // byte-level diff via `simple_chain_trace_diff.sh`.
+        //
+        // Disambiguators emitted as `#` comments:
+        //   #side          — value of env `KIMCHI_WITNESS_DUMP_SIDE`
+        //                    (e.g. "ps" or "oc"); caller sets this
+        //   #counter       — monotonic across the process
+        //   #d1_size       — index.cs.domain.d1.size()
+        //   #public        — index.cs.public
+        //   #max_poly_size — index.max_poly_size
+        //
+        // Rows are emitted `<col> <row> <decimal>`. File is flushed
+        // on drop (end of the block).
+        if let Ok(path_tmpl) = std::env::var("KIMCHI_WITNESS_DUMP") {
+            use ark_ff::PrimeField;
+            use std::io::Write;
+            use std::sync::atomic::{AtomicUsize, Ordering};
+            static COUNTER: AtomicUsize = AtomicUsize::new(0);
+            let counter = COUNTER.fetch_add(1, Ordering::SeqCst);
+            let path = path_tmpl.replace("%c", &counter.to_string());
+            let side = std::env::var("KIMCHI_WITNESS_DUMP_SIDE")
+                .unwrap_or_else(|_| "unknown".to_string());
+            if let Ok(mut f) = std::fs::File::create(&path) {
+                let _ = writeln!(f, "#side {}", side);
+                let _ = writeln!(f, "#counter {}", counter);
+                let _ = writeln!(f, "#d1_size {}", index.cs.domain.d1.size());
+                let _ = writeln!(f, "#public {}", index.cs.public);
+                let _ = writeln!(f, "#max_poly_size {}", index.max_poly_size);
+                let _ = writeln!(f, "#columns {}", COLUMNS);
+                for col in 0..COLUMNS {
+                    for row in 0..witness[col].len() {
+                        let _ = writeln!(
+                            f,
+                            "{} {} {}",
+                            col,
+                            row,
+                            witness[col][row].into_bigint()
+                        );
+                    }
+                }
+            }
+        }
+
         let d1_size = index.cs.domain.d1.size();
 
         let (_, endo_r) = G::endos();
