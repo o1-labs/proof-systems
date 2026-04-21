@@ -222,6 +222,38 @@ where
                 let _ = writeln!(f, "#public {}", index.cs.public);
                 let _ = writeln!(f, "#max_poly_size {}", index.max_poly_size);
                 let _ = writeln!(f, "#columns {}", COLUMNS);
+                let _ = writeln!(f, "#zk_rows {}", index.cs.zk_rows);
+                let _ = writeln!(f, "#endo {}", index.cs.endo.into_bigint());
+                let _ = writeln!(f, "#prev_challenges {}", prev_challenges.len());
+                for (i, rc) in prev_challenges.iter().enumerate() {
+                    if let Some(first_chunk) = rc.comm.chunks.first() {
+                        if let Some((x, y)) = first_chunk.xy() {
+                            let _ = writeln!(
+                                f,
+                                "#prev_challenges.{}.sg.x {}",
+                                i,
+                                x.into_bigint()
+                            );
+                            let _ = writeln!(
+                                f,
+                                "#prev_challenges.{}.sg.y {}",
+                                i,
+                                y.into_bigint()
+                            );
+                        }
+                    }
+                    for (j, c) in rc.chals.iter().enumerate() {
+                        let _ = writeln!(
+                            f,
+                            "#prev_challenges.{}.chals.{} {}",
+                            i,
+                            j,
+                            c.into_bigint()
+                        );
+                    }
+                }
+                let _ = writeln!(f, "#blinders_set {}", blinders.is_some());
+                let _ = writeln!(f, "#runtime_tables {}", runtime_tables.len());
                 for col in 0..COLUMNS {
                     for row in 0..witness[col].len() {
                         let _ = writeln!(

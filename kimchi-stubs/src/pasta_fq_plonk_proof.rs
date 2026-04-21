@@ -96,6 +96,21 @@ pub fn caml_pasta_fq_plonk_proof_create(
     // generate the proof.
     runtime.releasing_runtime(|| {
         let group_map = GroupMap::<Fp>::setup();
+        if let Ok(path) = std::env::var("KIMCHI_WITNESS_DUMP") {
+            use std::io::Write;
+            if let Ok(mut f) = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&path)
+            {
+                let n_rows = witness[0].len();
+                for row in 0..n_rows {
+                    for (col, column) in witness.iter().enumerate() {
+                        writeln!(f, "{}\t{}\t{}", row, col, column[row]).ok();
+                    }
+                }
+            }
+        }
         let proof = ProverProof::create_recursive::<
             DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>,
             DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>,
