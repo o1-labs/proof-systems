@@ -213,8 +213,8 @@ where
             static COUNTER: AtomicUsize = AtomicUsize::new(0);
             let counter = COUNTER.fetch_add(1, Ordering::SeqCst);
             let path = path_tmpl.replace("%c", &counter.to_string());
-            let side = std::env::var("KIMCHI_WITNESS_DUMP_SIDE")
-                .unwrap_or_else(|_| "unknown".to_string());
+            let side =
+                std::env::var("KIMCHI_WITNESS_DUMP_SIDE").unwrap_or_else(|_| "unknown".to_string());
             if let Ok(mut f) = std::fs::File::create(&path) {
                 let _ = writeln!(f, "#side {}", side);
                 let _ = writeln!(f, "#counter {}", counter);
@@ -228,41 +228,20 @@ where
                 for (i, rc) in prev_challenges.iter().enumerate() {
                     if let Some(first_chunk) = rc.comm.chunks.first() {
                         if let Some((x, y)) = first_chunk.xy() {
-                            let _ = writeln!(
-                                f,
-                                "#prev_challenges.{}.sg.x {}",
-                                i,
-                                x.into_bigint()
-                            );
-                            let _ = writeln!(
-                                f,
-                                "#prev_challenges.{}.sg.y {}",
-                                i,
-                                y.into_bigint()
-                            );
+                            let _ = writeln!(f, "#prev_challenges.{}.sg.x {}", i, x.into_bigint());
+                            let _ = writeln!(f, "#prev_challenges.{}.sg.y {}", i, y.into_bigint());
                         }
                     }
                     for (j, c) in rc.chals.iter().enumerate() {
-                        let _ = writeln!(
-                            f,
-                            "#prev_challenges.{}.chals.{} {}",
-                            i,
-                            j,
-                            c.into_bigint()
-                        );
+                        let _ =
+                            writeln!(f, "#prev_challenges.{}.chals.{} {}", i, j, c.into_bigint());
                     }
                 }
                 let _ = writeln!(f, "#blinders_set {}", blinders.is_some());
                 let _ = writeln!(f, "#runtime_tables {}", runtime_tables.len());
                 for col in 0..COLUMNS {
                     for row in 0..witness[col].len() {
-                        let _ = writeln!(
-                            f,
-                            "{} {} {}",
-                            col,
-                            row,
-                            witness[col][row].into_bigint()
-                        );
+                        let _ = writeln!(f, "{} {} {}", col, row, witness[col][row].into_bigint());
                     }
                 }
             }
