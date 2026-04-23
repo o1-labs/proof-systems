@@ -32,6 +32,11 @@ use poly_commitment::{
     ipa::OpeningProof,
     lagrange_basis::WithLagrangeBasis,
 };
+use serde::Serialize;
+use std::{
+    fs::{File, OpenOptions},
+    io::{BufReader, BufWriter},
+};
 
 type Srs =
     <OpeningProof<Pallas, FULL_ROUNDS> as poly_commitment::OpenProof<Pallas, FULL_ROUNDS>>::SRS;
@@ -262,4 +267,55 @@ pub fn caml_pasta_fq_plonk_proof_deep_copy(
     x: CamlProofWithPublic<CamlGPallas, CamlFq>,
 ) -> CamlProofWithPublic<CamlGPallas, CamlFq> {
     x
+}
+
+/// Serialize a Pallas `ProverProof` to a file via `rmp_serde` (msgpack).
+/// Mirrors [`caml_pasta_fq_plonk_verifier_index_write`]: the caller is
+/// expected to create/truncate the file beforehand, because
+/// `OpenOptions::new().append(true).open(..)` does not create missing files.
+/// The `public_input` half of the input `CamlProofWithPublic` is discarded —
+/// public inputs travel separately.
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fq_plonk_proof_write(
+    append: Option<bool>,
+    proof: CamlProofWithPublic<CamlGPallas, CamlFq>,
+    path: String,
+) -> Result<(), ocaml::Error> {
+    let (proof, _public_input): (
+        ProverProof<Pallas, OpeningProof<Pallas, FULL_ROUNDS>, FULL_ROUNDS>,
+        Vec<Fq>,
+    ) = proof.into();
+    let file = OpenOptions::new()
+        .append(append.unwrap_or(true))
+        .open(path)
+        .map_err(|_| {
+            ocaml::Error::invalid_argument("caml_pasta_fq_plonk_proof_write")
+                .err()
+                .unwrap()
+        })?;
+    let writer = BufWriter::new(file);
+    proof
+        .serialize(&mut rmp_serde::Serializer::new(writer))
+        .map_err(|e| e.into())
+}
+
+/// Deserialize a Pallas `ProverProof` previously written by
+/// [`caml_pasta_fq_plonk_proof_write`]. The returned `CamlProofWithPublic`
+/// carries an empty `public_input` vector; pair with a separately-loaded
+/// statement before verifying.
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fq_plonk_proof_read(
+    path: String,
+) -> Result<CamlProofWithPublic<CamlGPallas, CamlFq>, ocaml::Error> {
+    let file = File::open(path).map_err(|_| {
+        ocaml::Error::invalid_argument("caml_pasta_fq_plonk_proof_read")
+            .err()
+            .unwrap()
+    })?;
+    let reader = BufReader::new(file);
+    let proof: ProverProof<Pallas, OpeningProof<Pallas, FULL_ROUNDS>, FULL_ROUNDS> =
+        rmp_serde::from_read(reader).map_err(|e| -> ocaml::Error { e.into() })?;
+    Ok((proof, Vec::<Fq>::new()).into())
 }
