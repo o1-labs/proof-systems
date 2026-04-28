@@ -519,7 +519,7 @@ fn read_u64_le(bytes: &[u8]) -> Result<(u64, &[u8]), CacheError> {
     Ok((u64::from_le_bytes(buf), tail))
 }
 
-fn read_exact<'a>(bytes: &'a [u8], n: usize) -> Result<(&'a [u8], &'a [u8]), CacheError> {
+fn read_exact(bytes: &[u8], n: usize) -> Result<(&[u8], &[u8]), CacheError> {
     if bytes.len() < n {
         return Err(CacheError::TruncatedFile);
     }
@@ -877,7 +877,7 @@ unsafe fn mmap_field_vec<F: PrimeField>(
     // should always hold; assert it defensively.
     let align = core::mem::align_of::<F>();
     debug_assert!(
-        (bytes.as_ptr() as usize) % align == 0,
+        (bytes.as_ptr() as usize).is_multiple_of(align),
         "mmap section pointer not aligned for F"
     );
     let ptr = bytes.as_ptr() as *mut F;
@@ -1213,7 +1213,7 @@ impl WriteContext {
             _reserved: 0,
         });
         let pad = alignment_padding(self.payload.len());
-        self.payload.extend(std::iter::repeat(0u8).take(pad));
+        self.payload.extend(std::iter::repeat_n(0u8, pad));
     }
 
     fn push_raw_section(&mut self, tag: u32, payload: &[u8]) {
@@ -1242,7 +1242,7 @@ impl WriteContext {
             _reserved: 0,
         });
         let pad = alignment_padding(self.payload.len());
-        self.payload.extend(std::iter::repeat(0u8).take(pad));
+        self.payload.extend(std::iter::repeat_n(0u8, pad));
     }
 }
 
@@ -1542,7 +1542,7 @@ where
             let mut bytes = Vec::with_capacity(4 + rts.len() * 8);
             bytes.extend_from_slice(&(rts.len() as u32).to_le_bytes());
             for spec in rts {
-                bytes.extend_from_slice(&(spec.id as i32).to_le_bytes());
+                bytes.extend_from_slice(&spec.id.to_le_bytes());
                 bytes.extend_from_slice(&(spec.len as u32).to_le_bytes());
             }
             ctx.push_raw_section(SectionTag::RuntimeTablesSpec as u32, &bytes);
@@ -1574,7 +1574,7 @@ where
         + ScalarHeader::SERIALIZED_SIZE
         + num_sections * SectionEntry::SERIALIZED_SIZE;
     let pad = align_up(fixed_region_end) - fixed_region_end;
-    file.extend(std::iter::repeat(0u8).take(pad));
+    file.extend(std::iter::repeat_n(0u8, pad));
     debug_assert_eq!(file.len() as u64, payload_base);
     file.extend_from_slice(&ctx.payload);
 
@@ -1865,7 +1865,7 @@ where
                 tag: SectionTag::LookupTable8 as u32,
             })?;
         let n = lt_entry.elem_domain_size as usize;
-        let d8_size_usize = d8.size() as usize;
+        let d8_size_usize = d8.size();
         let inner_bytes = d8_size_usize * FIELD_ELEMENT_BYTES;
         let lt_bytes = section_bytes(SectionTag::LookupTable8 as u32)?;
         let expected_total = n * inner_bytes;
