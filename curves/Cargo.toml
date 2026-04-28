@@ -10,10 +10,11 @@ repository.workspace = true
 version.workspace = true
 
 [features]
-default = ["asm"]
+default = ["asm", "parallel"]
 # The MontConfig derive macro from ark_ff generates code with cfg(feature = "asm").
 # This feature enables assembly optimizations in ark_ff.
 asm = []
+parallel = ["ark-ec/parallel", "ark-ff/parallel", "ark-std/parallel"]
 
 [dependencies]
 ark-bn254.workspace = true

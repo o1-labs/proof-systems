@@ -1,3 +1,4 @@
+use alloc::{vec, vec::Vec};
 //~ The multi range check gadget is comprised of three circuit gates (`RangeCheck0`,
 //~ `RangeCheck1` and `Zero`) and can perform range checks on three values ($v_0,
 //~ v_1$ and $v_2$) of up to 88 bits each.

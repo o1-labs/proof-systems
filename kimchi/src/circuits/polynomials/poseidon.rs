@@ -1,4 +1,5 @@
 //! This module implements the Poseidon constraint polynomials.
+use alloc::{format, string::String, vec, vec::Vec};
 
 //~ The poseidon gate encodes 5 rounds of the poseidon permutation.
 //~ A state is represented by 3 field elements. For example,

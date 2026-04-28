@@ -8,6 +8,7 @@ use crate::circuits::{
         tables::LookupTable,
     },
 };
+use alloc::{format, string::String, vec, vec::Vec};
 use ark_ff::{FftField, PrimeField};
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
@@ -222,21 +223,6 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
                 let (lookup_selectors, gate_lookup_tables) =
                     lookup_info.selector_polynomials_and_tables(domain, gates);
 
-                // Checks whether an iterator contains any duplicates, and if yes, raises
-                // a corresponding LookupTableIdCollision error.
-                fn check_id_duplicates<'a, I: Iterator<Item = &'a i32>>(
-                    iter: I,
-                    msg: &str,
-                ) -> Result<(), LookupError> {
-                    use itertools::Itertools;
-                    match iter.duplicates().collect::<Vec<_>>() {
-                        dups if !dups.is_empty() => Err(LookupError::LookupTableIdCollision {
-                            collision_type: format!("{}: {:?}", msg, dups).to_string(),
-                        }),
-                        _ => Ok(()),
-                    }
-                }
-
                 // If there is a gate using a lookup table, this table must not be added
                 // explicitly to the constraint system.
                 let fixed_gate_joint_ids: Vec<i32> = fixed_lookup_tables
@@ -245,7 +231,7 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
                     .chain(gate_lookup_tables.iter().map(|lt| lt.id))
                     .collect();
                 check_id_duplicates(
-                    fixed_gate_joint_ids.iter(),
+                    &fixed_gate_joint_ids,
                     "duplicates between fixed given and fixed from-gate tables",
                 )?;
 
@@ -263,7 +249,7 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
                         // Check duplicates in runtime table ids
                         let runtime_tables_ids: Vec<i32> =
                             runtime_tables.iter().map(|rt| rt.id).collect();
-                        check_id_duplicates(runtime_tables_ids.iter(), "runtime table duplicates")?;
+                        check_id_duplicates(&runtime_tables_ids, "runtime table duplicates")?;
                         // Runtime table IDs /may/ collide with lookup
                         // table IDs, so we intentionally do not perform another potential check.
 
@@ -285,9 +271,9 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
 
                             // it's 1 everywhere, except at the entries where
                             // the runtime table applies
-                            evals.extend(std::iter::repeat_n(F::one(), runtime_table_offset));
-                            evals.extend(std::iter::repeat_n(F::zero(), runtime_len));
-                            evals.extend(std::iter::repeat_n(
+                            evals.extend(core::iter::repeat_n(F::one(), runtime_table_offset));
+                            evals.extend(core::iter::repeat_n(F::zero(), runtime_len));
+                            evals.extend(core::iter::repeat_n(
                                 F::one(),
                                 d1_size - runtime_table_offset - runtime_len,
                             ));
@@ -402,7 +388,7 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
                     //~~ * Update the corresponding entries in a table id vector (of size the domain as well)
                     //~    with the table ID of the table.
                     let table_id: F = i32_to_field(table.id);
-                    table_ids.extend(std::iter::repeat_n(table_id, table_len));
+                    table_ids.extend(core::iter::repeat_n(table_id, table_len));
 
                     //~~ * Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
                     for (i, col) in table.data.iter().enumerate() {
@@ -415,7 +401,7 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
 
                     //~~ * Fill in any unused columns with 0 (to match the dummy value)
                     for lookup_table in lookup_table.iter_mut().skip(table.width()) {
-                        lookup_table.extend(std::iter::repeat_n(F::zero(), table_len));
+                        lookup_table.extend(core::iter::repeat_n(F::zero(), table_len));
                     }
                 }
 
@@ -444,11 +430,11 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
                 //     If no such table is used, we artificially add a dummy
                 //     table with ID 0 and a row containing only zeroes.
                 lookup_table.iter_mut().for_each(|col| {
-                    col.extend(std::iter::repeat_n(F::zero(), max_num_entries - col.len()))
+                    col.extend(core::iter::repeat_n(F::zero(), max_num_entries - col.len()))
                 });
 
                 //~ 7. Pad the end of the table id vector with 0s.
-                table_ids.extend(std::iter::repeat_n(
+                table_ids.extend(core::iter::repeat_n(
                     F::zero(),
                     max_num_entries - table_ids.len(),
                 ));
@@ -496,10 +482,29 @@ impl<F: PrimeField> LookupConstraintSystem<F> {
     }
 }
 
-#[cfg(test)]
+// Checks whether an iterator contains any duplicates, and if yes, raises
+// a corresponding LookupTableIdCollision error.
+fn check_id_duplicates(ids: &[i32], msg: &str) -> Result<(), LookupError> {
+    let mut set = crate::collections::HashSet::new();
+    let mut dups = Vec::new();
+    for id in ids {
+        if !set.insert(*id) {
+            dups.push(*id);
+        }
+    }
+
+    match dups.as_slice() {
+        [] => Ok(()),
+        _ => Err(LookupError::LookupTableIdCollision {
+            collision_type: format!("{}: {:?}", msg, dups),
+        }),
+    }
+}
+
+#[cfg(all(test, feature = "std"))]
 mod tests {
 
-    use super::{LookupError, LookupTable, RuntimeTableCfg};
+    use super::{check_id_duplicates, LookupError, LookupTable, RuntimeTableCfg};
     use crate::{
         circuits::{
             constraints::ConstraintSystem, gate::CircuitGate, lookup::tables::xor,
@@ -508,6 +513,27 @@ mod tests {
         error::SetupError,
     };
     use mina_curves::pasta::Fp;
+
+    #[test]
+    fn test_check_id_duplicates() {
+        // no duplicates
+        let ids = &[1, 2, 3];
+        assert!(
+            check_id_duplicates(ids, "test no duplicates").is_ok(),
+            "check_id_duplicates should not find duplicates when there are none"
+        );
+
+        let msg = "test-with-dups";
+
+        let ids = &[1, 2, 3, 2, 4, 1];
+
+        let error = match check_id_duplicates(ids, msg) {
+            Err(LookupError::LookupTableIdCollision { collision_type }) => collision_type,
+            _ => panic!("check_id_duplicates should find duplicates when they exist"),
+        };
+
+        assert_eq!(error, format!("{}: [2, 1]", msg));
+    }
 
     #[test]
     fn test_colliding_table_ids() {

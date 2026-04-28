@@ -20,10 +20,16 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi, pasta::FULL_ROUNDS, sponge::DefaultFqSponge,
 };
 use poly_commitment::OpenProof;
+type ProverIndexType = ProverIndex<
+    FULL_ROUNDS,
+    GAffine,
+    <OpeningProof<GAffine, FULL_ROUNDS> as OpenProof<GAffine, FULL_ROUNDS>>::SRS,
+>;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{File, OpenOptions},
-    io::{BufReader, BufWriter, Seek, SeekFrom::Start},
+    io::{BufReader, BufWriter, Cursor, Seek, SeekFrom::Start},
+    sync::Arc,
 };
 use wasm_bindgen::prelude::*;
 use wasm_types::FlatVector as WasmFlatVector;
@@ -34,16 +40,69 @@ use wasm_types::FlatVector as WasmFlatVector;
 
 /// Boxed so that we don't store large proving indexes in the OCaml heap.
 #[wasm_bindgen]
-pub struct WasmPastaFqPlonkIndex(
-    #[wasm_bindgen(skip)]
-    pub  Box<
-        ProverIndex<
-            FULL_ROUNDS,
-            GAffine,
-            <OpeningProof<GAffine, FULL_ROUNDS> as OpenProof<GAffine, FULL_ROUNDS>>::SRS,
-        >,
-    >,
-);
+pub struct WasmPastaFqPlonkIndex(#[wasm_bindgen(skip)] pub Box<ProverIndexType>);
+
+// TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
+#[derive(Serialize, Deserialize)]
+struct SerializedProverIndex {
+    prover_index: Vec<u8>,
+    srs: Vec<u8>,
+}
+
+// TOOD: remove incl all dependencies when no longer needed and we only pass napi objects around
+#[wasm_bindgen]
+impl WasmPastaFqPlonkIndex {
+    #[wasm_bindgen(js_name = "serialize")]
+    pub fn serialize(&self) -> Result<Vec<u8>, JsError> {
+        serialize_prover_index(self.0.as_ref())
+            .map_err(|e| JsError::new(&format!("WasmPastaFqPlonkIndex::serialize: {e}")))
+    }
+
+    #[wasm_bindgen(js_name = "deserialize")]
+    pub fn deserialize(bytes: &[u8]) -> Result<WasmPastaFqPlonkIndex, JsError> {
+        deserialize_prover_index(bytes)
+            .map(WasmPastaFqPlonkIndex)
+            .map_err(|e| JsError::new(&format!("WasmPastaFqPlonkIndex::deserialize: {e}")))
+    }
+}
+
+fn serialize_prover_index(index: &ProverIndexType) -> Result<Vec<u8>, String> {
+    let prover_index =
+        rmp_serde::to_vec(index).map_err(|e: rmp_serde::encode::Error| e.to_string())?;
+
+    let mut srs = Vec::new();
+    index
+        .srs
+        .serialize(&mut rmp_serde::Serializer::new(&mut srs))
+        .map_err(|e| e.to_string())?;
+
+    let serialized = SerializedProverIndex { prover_index, srs };
+
+    rmp_serde::to_vec(&serialized).map_err(|e| e.to_string())
+}
+
+fn deserialize_prover_index(bytes: &[u8]) -> Result<Box<ProverIndexType>, String> {
+    let serialized: SerializedProverIndex =
+        rmp_serde::from_slice(bytes).map_err(|e| e.to_string())?;
+
+    let mut index: ProverIndexType = ProverIndex::deserialize(&mut rmp_serde::Deserializer::new(
+        Cursor::new(serialized.prover_index),
+    ))
+    .map_err(|e| e.to_string())?;
+
+    let srs = poly_commitment::ipa::SRS::<GAffine>::deserialize(&mut rmp_serde::Deserializer::new(
+        Cursor::new(serialized.srs),
+    ))
+    .map_err(|e| e.to_string())?;
+
+    index.srs = Arc::new(srs);
+
+    let (linearization, powers_of_alpha) = expr_linearization(Some(&index.cs.feature_flags), true);
+    index.linearization = linearization;
+    index.powers_of_alpha = powers_of_alpha;
+
+    Ok(Box::new(index))
+}
 
 #[wasm_bindgen]
 pub struct WasmPastaFqLookupTable {
@@ -274,12 +333,4 @@ pub fn caml_pasta_fq_plonk_index_write(
         .0
         .serialize(&mut rmp_serde::Serializer::new(w))
         .map_err(|e| JsValue::from_str(&format!("caml_pasta_fq_plonk_index_read: {e}")))
-}
-
-#[allow(deprecated)]
-#[wasm_bindgen]
-pub fn caml_pasta_fq_plonk_index_serialize(index: &WasmPastaFqPlonkIndex) -> String {
-    let serialized = rmp_serde::to_vec(&index.0).unwrap();
-    // Deprecated used on purpose: updating this leads to a bug in o1js
-    base64::encode(serialized)
 }

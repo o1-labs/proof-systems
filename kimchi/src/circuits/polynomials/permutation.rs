@@ -1,4 +1,5 @@
 //! This module implements permutation constraint polynomials.
+use alloc::vec::Vec;
 
 //~ The permutation constraints are the following 4 constraints:
 //~
@@ -39,25 +40,34 @@
 //~ You can read more about why it looks like that in [this post](https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk).
 //~
 use crate::{
-    circuits::{
-        constraints::ConstraintSystem,
-        polynomial::WitnessOverDomains,
-        wires::{Wire, COLUMNS, PERMUTS},
-    },
-    curve::KimchiCurve,
-    error::ProverError,
+    circuits::{constraints::ConstraintSystem, wires::PERMUTS},
     proof::{PointEvaluations, ProofEvaluations},
-    prover_index::ProverIndex,
 };
-use ark_ff::{FftField, PrimeField, Zero};
+use ark_ff::{FftField, PrimeField};
 use ark_poly::{
-    univariate::{DenseOrSparsePolynomial, DensePolynomial},
-    DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D,
+    univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Radix2EvaluationDomain as D,
 };
 use blake2::{Blake2b512, Digest};
 use core::array;
-use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
-use rand::{CryptoRng, RngCore};
+
+#[cfg(feature = "prover")]
+use {
+    crate::{
+        circuits::{
+            polynomial::WitnessOverDomains,
+            wires::{Wire, COLUMNS},
+        },
+        curve::KimchiCurve,
+        error::ProverError,
+        prover_index::ProverIndex,
+    },
+    ark_ff::Zero,
+    ark_poly::{univariate::DenseOrSparsePolynomial, Evaluations, Polynomial},
+    o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations},
+    rand::{CryptoRng, RngCore},
+};
+
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 /// Number of constraints produced by the argument.
@@ -187,11 +197,13 @@ where
     }
 
     /// Returns the field element that represents a position
+    #[cfg(feature = "prover")]
     pub(crate) fn cell_to_field(&self, &Wire { row, col }: &Wire) -> F {
         self.map[col][row]
     }
 }
 
+#[cfg(feature = "prover")]
 impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
 where
     F: PrimeField,
@@ -418,6 +430,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
+#[cfg(feature = "prover")]
 impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
 where
     F: PrimeField,

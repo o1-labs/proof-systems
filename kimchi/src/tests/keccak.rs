@@ -1,16 +1,18 @@
+use alloc::{vec, vec::Vec};
 use core::array;
 
 use crate::{
-    circuits::polynomials::keccak::{
-        constants::KECCAK_COLS, witness::extend_keccak_witness, Keccak,
-    },
+    circuits::polynomials::keccak::{constants::KECCAK_COLS, witness::extend_keccak_witness},
     curve::KimchiCurve,
 };
-use ark_ff::{Field, PrimeField, Zero};
+use ark_ff::{PrimeField, Zero};
+
 use mina_curves::pasta::Pallas;
 use mina_poseidon::pasta::FULL_ROUNDS;
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, FieldHelpers};
+#[cfg(feature = "std")]
+use {crate::circuits::polynomials::keccak::Keccak, ark_ff::Field};
 
 fn create_keccak_witness<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
     message: BigUint,
@@ -29,6 +31,7 @@ where
     witness
 }
 
+#[cfg(feature = "std")]
 fn eprint_witness<F: Field>(witness: &[Vec<F>; KECCAK_COLS], round: usize) {
     fn to_u64<F: Field>(elem: F) -> u64 {
         let mut bytes = FieldHelpers::<F>::to_bytes(&elem);
@@ -74,21 +77,16 @@ where
 {
     let witness = create_keccak_witness::<FULL_ROUNDS, G>(message);
 
+    #[cfg(feature = "std")]
     for r in 1..=24 {
         eprint_witness::<G::ScalarField>(&witness, r);
     }
 
     let mut hash = vec![];
     let hash_row = witness[0].len() - 2; // Hash row is dummy row
-    eprintln!();
-    eprintln!("----------------------------------------");
-    eprint!("Hash: ");
     for b in 0..32 {
         hash.push(FieldHelpers::to_bytes(&witness[200 + b][hash_row])[0]);
-        eprint!("{:02x}", hash[b]);
     }
-    eprintln!();
-    eprintln!();
 
     BigUint::from_bytes_be(&hash)
 }

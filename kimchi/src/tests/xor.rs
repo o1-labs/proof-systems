@@ -1,4 +1,4 @@
-use super::framework::TestFramework;
+use super::framework::{include_fixture, TestFramework};
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
@@ -8,11 +8,10 @@ use crate::{
         wires::Wire,
     },
     curve::KimchiCurve,
-    prover_index::ProverIndex,
 };
+use alloc::{vec, vec::Vec};
 use ark_ec::AffineRepr;
 use ark_ff::{Field, One, PrimeField, Zero};
-use ark_poly::EvaluationDomain;
 use core::{array, cmp::max};
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -22,19 +21,11 @@ use mina_poseidon::{
 };
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
-use poly_commitment::{
-    ipa::{endos, SRS},
-    SRS as _,
-};
-use std::sync::Arc;
 
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
-
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
 const XOR: bool = true;
 
@@ -157,19 +148,18 @@ fn test_prove_and_verify_xor() {
     let rng = &mut o1_utils::tests::make_test_rng(None);
 
     let bits = 64;
-    // Create
     let mut gates = vec![];
     let _next_row = CircuitGate::<Fp>::extend_xor_gadget(&mut gates, bits);
 
     let input1 = rng.gen_field_with_bits(bits);
     let input2 = rng.gen_field_with_bits(bits);
 
-    // Create witness and random inputs
     let witness = xor::create_xor_witness(input1, input2, bits);
 
     TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness)
+        .fixture(include_fixture!("test_prove_and_verify_xor"))
         .setup()
         .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
         .unwrap();
@@ -326,8 +316,18 @@ fn test_extend_xor() {
     }
 }
 
+#[cfg(not(feature = "prover"))]
 #[test]
 fn test_bad_xor() {
+    // This test was intentionally left blank
+    // It fails on proof-creation, not verification.
+}
+
+#[cfg(feature = "prover")]
+#[test]
+fn test_bad_xor() {
+    use alloc::string::String;
+
     let bits = Some(16);
     let rng = &mut o1_utils::tests::make_test_rng(None);
     let input1: PallasField = rng.gen(None, bits);
@@ -401,26 +401,18 @@ fn test_xor_finalization() {
         cols
     };
 
-    let index = {
-        let cs = ConstraintSystem::create(gates.clone())
-            .public(num_inputs)
-            .build()
-            .unwrap();
-        let srs = SRS::<Vesta>::create(cs.domain.d1.size());
-        srs.get_lagrange_basis(cs.domain.d1);
-        let srs = Arc::new(srs);
-
-        let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::create(cs, endo_q, srs, false)
-    };
+    let cs = ConstraintSystem::create(gates.clone())
+        .public(num_inputs)
+        .build()
+        .unwrap();
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            index.cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
+            cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
                 row,
                 &witness,
-                &index.cs,
-                &witness[0][0..index.cs.public]
+                &cs,
+                &witness[0][0..cs.public]
             ),
             Ok(())
         );
@@ -430,7 +422,8 @@ fn test_xor_finalization() {
         .gates(gates)
         .witness(witness.clone())
         .public_inputs(vec![witness[0][0], witness[0][1]])
+        .fixture(include_fixture!("test_xor_finalization"))
         .setup()
-        .prove_and_verify::<BaseSponge, ScalarSponge>()
+        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
         .unwrap();
 }

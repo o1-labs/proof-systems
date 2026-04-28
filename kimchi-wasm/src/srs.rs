@@ -2,13 +2,11 @@ use crate::wasm_vector::WasmVector;
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
 use core::ops::Deref;
 use paste::paste;
-use poly_commitment::{
-    commitment::b_poly_coefficients, hash_map_cache::HashMapCache, ipa::SRS, SRS as ISRS,
-};
+use poly_commitment::{commitment::b_poly_coefficients, ipa::SRS, SRS as ISRS};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{File, OpenOptions},
-    io::{BufReader, BufWriter, Seek, SeekFrom::Start},
+    io::{BufReader, BufWriter, Cursor, Seek, SeekFrom::Start},
     sync::Arc,
 };
 use wasm_bindgen::prelude::*;
@@ -28,6 +26,25 @@ macro_rules! impl_srs {
             pub struct [<Wasm $field_name:camel Srs>](
                 #[wasm_bindgen(skip)]
                 pub Arc<SRS<$G>>);
+
+            #[wasm_bindgen]
+            impl [<Wasm $field_name:camel Srs>] {
+                #[wasm_bindgen(js_name = "serialize")]
+                pub fn serialize(&self) -> Result<Vec<u8>, JsValue> {
+                    let mut buffer = Vec::new();
+                    self.0
+                        .serialize(&mut rmp_serde::Serializer::new(&mut buffer))
+                        .map_err(|e| JsValue::from_str(&format!("srs serialize failed: {e}")))?;
+                    Ok(buffer)
+                }
+
+                #[wasm_bindgen(js_name = "deserialize")]
+                pub fn deserialize(bytes: &[u8]) -> Result<[<Wasm $field_name:camel Srs>], JsValue> {
+                    let srs = SRS::<$G>::deserialize(&mut rmp_serde::Deserializer::new(Cursor::new(bytes)))
+                        .map_err(|e| JsValue::from_str(&format!("srs deserialize failed: {e}")))?;
+                    Ok(Arc::new(srs).into())
+                }
+            }
 
             impl Deref for [<Wasm $field_name:camel Srs>] {
                 type Target = Arc<SRS<$G>>;
@@ -272,11 +289,7 @@ pub mod fp {
         let mut h_and_gs: Vec<G> = h_and_gs.into_iter().map(|x| x.into()).collect();
         let h = h_and_gs.remove(0);
         let g = h_and_gs;
-        let srs = SRS::<G> {
-            h,
-            g,
-            lagrange_bases: HashMapCache::new(),
-        };
+        let srs = SRS::new(g, h);
         Arc::new(srs).into()
     }
 
@@ -287,7 +300,7 @@ pub mod fp {
         domain_size: i32,
         i: i32,
     ) -> Option<WasmPolyComm> {
-        if !(srs.0.lagrange_bases.contains_key(&(domain_size as usize))) {
+        if !(srs.0.lagrange_bases().contains_key(&(domain_size as usize))) {
             return None;
         }
         let basis = srs.get_lagrange_basis_from_domain_size(domain_size as usize);
@@ -301,10 +314,10 @@ pub mod fp {
         domain_size: i32,
         input_bases: WasmVector<WasmPolyComm>,
     ) {
-        srs.lagrange_bases
-            .get_or_generate(domain_size as usize, || {
-                input_bases.into_iter().map(Into::into).collect()
-            });
+        srs.lagrange_bases().set_once(
+            domain_size as usize,
+            input_bases.into_iter().map(Into::into).collect(),
+        );
     }
 
     // compute & add lagrange basis internally, return the entire basis
@@ -352,11 +365,7 @@ pub mod fq {
         let mut h_and_gs: Vec<G> = h_and_gs.into_iter().map(|x| x.into()).collect();
         let h = h_and_gs.remove(0);
         let g = h_and_gs;
-        let srs = SRS::<G> {
-            h,
-            g,
-            lagrange_bases: HashMapCache::new(),
-        };
+        let srs = SRS::new(g, h);
         Arc::new(srs).into()
     }
 
@@ -367,7 +376,7 @@ pub mod fq {
         domain_size: i32,
         i: i32,
     ) -> Option<WasmPolyComm> {
-        if !(srs.0.lagrange_bases.contains_key(&(domain_size as usize))) {
+        if !(srs.0.lagrange_bases().contains_key(&(domain_size as usize))) {
             return None;
         }
         let basis = srs.get_lagrange_basis_from_domain_size(domain_size as usize);
@@ -381,10 +390,10 @@ pub mod fq {
         domain_size: i32,
         input_bases: WasmVector<WasmPolyComm>,
     ) {
-        srs.lagrange_bases
-            .get_or_generate(domain_size as usize, || {
-                input_bases.into_iter().map(Into::into).collect()
-            });
+        srs.lagrange_bases().set_once(
+            domain_size as usize,
+            input_bases.into_iter().map(Into::into).collect(),
+        );
     }
 
     // compute & add lagrange basis internally, return the entire basis

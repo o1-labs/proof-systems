@@ -46,7 +46,7 @@ where
 
     // HashMap deliberately uses an unstable order; here we sort to ensure that
     // the output is consistent when printing.
-    index_terms.sort_by(|(x, _), (y, _)| x.cmp(y));
+    index_terms.sort_by_key(|(x, _)| *x);
 
     let constant = constant_term.ocaml_str();
     let other_terms = index_terms

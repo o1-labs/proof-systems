@@ -13,10 +13,10 @@ version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-ark-ff.workspace = true
+ark-ff = { workspace = true, features = ["parallel"] }
 bitvec.workspace = true
-mina-curves.workspace = true
-mina-poseidon.workspace = true
+mina-curves = { workspace = true, features = ["parallel"] }
+mina-poseidon = { workspace = true, features = ["parallel"] }
 o1-utils.workspace = true
 serde.workspace = true
 

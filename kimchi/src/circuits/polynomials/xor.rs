@@ -17,6 +17,7 @@ use crate::{
     },
     variable_map,
 };
+use alloc::{boxed::Box, vec, vec::Vec};
 use ark_ff::PrimeField;
 use core::{array, marker::PhantomData};
 use num_bigint::BigUint;
@@ -286,5 +287,5 @@ pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: usize) -> [
 
 /// Returns the number of XOR rows needed for inputs of usize bits
 pub fn num_xors(bits: usize) -> usize {
-    (bits as f64 / 16.0).ceil() as usize
+    bits.div_ceil(16)
 }

@@ -1,14 +1,14 @@
 [package]
-name = "plonk_wasm"
+name = "kimchi_wasm"
 authors = ["opensource@o1labs.org"]
-description = "WASM stubs for plonk proof systems"
+description = "WASM stubs for Kimchi proof systems"
 edition = "2018"
 license = "MIT/Apache-2.0"
 repository = "https://github.com/MinaProtocol/mina"
 version.workspace = true
 
 [lib]
-name = "plonk_wasm"
+name = "kimchi_wasm"
 crate-type = ["cdylib", "rlib"]
 
 ################################# Dependencies ################################
@@ -20,7 +20,6 @@ getrandom = { workspace = true, features = ["js"] }
 js-sys.workspace = true
 libc.workspace = true
 num-bigint.workspace = true
-once_cell.workspace = true
 paste.workspace = true
 rand.workspace = true
 rayon.workspace = true
@@ -40,10 +39,10 @@ ark-serialize.workspace = true
 
 # proof-systems
 arkworks.workspace = true
-groupmap.workspace = true
+groupmap = { workspace = true, features = ["parallel"] }
 kimchi = { workspace = true, features = ["wasm_types"] }
-mina-curves = { workspace = true }
-mina-poseidon = { workspace = true }
+mina-curves = { workspace = true, features = ["parallel"] }
+mina-poseidon = { workspace = true, features = ["default"] }
 o1-utils = { workspace = true }
 poly-commitment = { workspace = true }
 wasm-types.workspace = true

@@ -70,7 +70,6 @@ The project is organized in the following way:
 - [poseidon/](poseidon/). Implementation of the poseidon hash function.
 - [signer/](signer/). Interfaces for mina signature schemes.
 - [tools/](tools/). Various tooling to help us work on kimchi.
-- [turshi/](turshi/). A Cairo runner written in rust.
 - [utils/](utils/). Collection of useful functions and traits.
 
 ## Contributing

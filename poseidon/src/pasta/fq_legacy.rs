@@ -3,7 +3,7 @@ extern crate alloc;
 use crate::poseidon::ArithmeticSpongeParams;
 use core::str::FromStr;
 use mina_curves::pasta::Fq;
-use once_cell::sync::Lazy;
+use o1_utils::lazy_lock::LazyLock;
 
 type Params = ArithmeticSpongeParams<Fq, { super::LEGACY_ROUNDS }>;
 
@@ -1464,6 +1464,6 @@ fn params() -> Params {
 /// The legacy Fq sponge params (lazily initialized).
 #[must_use]
 pub fn static_params() -> &'static Params {
-    static PARAMS: Lazy<Params> = Lazy::new(params);
+    static PARAMS: LazyLock<Params> = LazyLock::new(params);
     &PARAMS
 }

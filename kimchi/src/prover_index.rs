@@ -144,9 +144,12 @@ where
     }
 }
 
+// TODO: "testing" modules should be cleaned up and removed. They only exist
+// because bench.rs does not use #[cfg(test)] and needs access to test helpers.
 pub mod testing {
     use super::*;
     use crate::circuits::{
+        constraints::testing::create_constraint_system,
         gate::CircuitGate,
         lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     };
@@ -173,17 +176,16 @@ pub mod testing {
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField,
     {
-        // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-        let cs = ConstraintSystem::<G::ScalarField>::create(gates)
-            .lookup(lookup_tables)
-            .runtime(runtime_tables)
-            .public(public)
-            .prev_challenges(prev_challenges)
-            .disable_gates_checks(disable_gates_checks)
-            .max_poly_size(override_srs_size)
-            .lazy_mode(lazy_mode)
-            .build()
-            .unwrap();
+        let cs = create_constraint_system(
+            gates,
+            public,
+            prev_challenges,
+            lookup_tables,
+            runtime_tables,
+            disable_gates_checks,
+            override_srs_size,
+            lazy_mode,
+        );
 
         let srs_size = override_srs_size.unwrap_or_else(|| cs.domain.d1.size());
         let srs = get_srs(cs.domain.d1, srs_size);

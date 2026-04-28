@@ -9,6 +9,120 @@ and this project adheres to
 
 ## Unreleased
 
+### Added
+
+- Add `kimchi-napi` crate for native Node-API access to Kimchi from Node.js
+  ([#3546](https://github.com/o1-labs/proof-systems/pull/3546))
+
+## 0.6.0
+
+### [kimchi](./kimchi)
+
+#### Added
+
+- Add `no_std` support with `prover` feature gate: verification can run without
+  `std` or prover dependencies. Modules gated behind `prover` feature: proving,
+  bench, snarky, permutation prover functions. Uses `core`/`alloc` equivalents
+  for `std` types and `hashbrown` for `HashMap`/`HashSet`.
+- Add no-prover verification tests for all test modules. Tests run in both
+  prover mode (full `ProverIndex` + `prove_and_verify`) and no-prover mode
+  (`ConstraintSystem` + `verify_witness` or fixture-based verification). Modules
+  covered: and, ec, endomul, endomul_scalar, generic, keccak, recursion,
+  varbasemul, xor, poseidon, rot, not, range_check, lookup, foreign_field_add,
+  foreign_field_mul.
+- Add `TestFramework` dual-mode infrastructure: `include_fixture!` macro,
+  `.fixture()` method, and dual `prove_and_verify()` that creates proofs in
+  prover mode and loads fixture-based verification in no-prover mode.
+- Add `RawFixture` serialization with `endo` field for generic curve
+  verification in no-prover mode.
+- Add `test-kimchi-verifier-only` Makefile target and CI step for running kimchi
+  tests without the prover feature.
+
+#### Changed
+
+- Make all workspace dependencies `no_std`-compatible by setting
+  `default-features = false` at the workspace level and opting into features
+  per-crate. Crates on the `no_std` path propagate `std`/`parallel` features
+  through their own feature flags.
+- Replace `once_cell::sync::Lazy` with `o1_utils::lazy_lock::LazyLock`, making
+  `KimchiCurve` trait impls available without `std`.
+- Use integer APIs instead of floating-point conversion in `not` and `xor`
+  circuit polynomials.
+
+- Enforce deterministic ordering of gate lookup tables by replacing `HashSet`
+  with `BTreeSet` ([#3539](https://github.com/o1-labs/proof-systems/pull/3539))
+- Update wasm-bindgen to 0.2.100 and js-sys to 0.3.77 to restore compatibility
+  with Rust nightly 2025-12-11 after the toolchain upgrade from 2024-09-05
+  ([#3544](https://github.com/o1-labs/proof-systems/pull/3544))
+- Bumped `wasm-bindgen` dependency from `0.2.100` to `0.2.106` for better
+  interoperability with `mina-rust`
+  ([#3558](https://github.com/o1-labs/proof-systems/pull/3558))
+
+### [o1-utils](./utils)
+
+#### Added
+
+- Add `lazy_lock::LazyLock`, a `no_std`-compatible drop-in for
+  `std::sync::LazyLock`. Delegates to `std` when available; falls back to
+  `spin::Lazy` in `no_std` environments.
+
+### [poly-commitment](./poly-commitment)
+
+#### Changed
+
+- Gate prover-only `SRS` trait methods behind `#[cfg(feature = "std")]` so the
+  core trait and IPA implementation compile in `no_std`.
+- Add a thread-safe no-std lagrange basis cache using a spinlock and `Arc`,
+  replacing the previous `Rc<RefCell<HashMap>>` approach that required
+  `unsafe impl Send/Sync` on `SRS`.
+
+### [mina-poseidon](./poseidon)
+
+#### Changed
+
+- Replace `std::sync::LazyLock` with `o1_utils::lazy_lock::LazyLock` in pasta
+  sponge parameter modules, making `static_params()` available in `no_std`.
+
+### Fixed
+
+- Fix lookup selector polynomials to work correctly when chunking is in place
+  ([#3541](https://github.com/o1-labs/proof-systems/pull/3541))
+
+### Removed
+
+- Fully remove Cairo gate variants in `GateType`
+  ([#3543](https://github.com/o1-labs/proof-systems/pull/3543))
+
+## 0.5.0
+
+### [kimchi](./kimchi)
+
+#### Changed
+
+- Update `EndoSclMul` gate
+  ([#3514](https://github.com/o1-labs/proof-systems/pull/3514))
+
+### [o1-utils](./utils)
+
+#### Changed
+
+- Add `std` feature flag to support `no_std` environments
+  ([f53c3fe](https://github.com/o1-labs/proof-systems/commit/f53c3fe9ea))
+
+### [internal-tracing](./internal-tracing)
+
+#### Changed
+
+- Add `no_std` support to `internal-tracing`
+  ([ce71b0c](https://github.com/o1-labs/proof-systems/commit/ce71b0c403))
+
+### [poly-commitment](./poly-commitment)
+
+#### Changed
+
+- Add `no_std` support to `poly-commitment`
+  ([258ddae](https://github.com/o1-labs/proof-systems/commit/258ddae098))
+
 ## 0.4.1
 
 ### [kimchi](./kimchi)

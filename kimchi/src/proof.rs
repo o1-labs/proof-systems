@@ -1,4 +1,5 @@
 //! This module implements the data structures of a proof.
+use alloc::{vec, vec::Vec};
 
 use crate::circuits::{
     berkeley_columns::Column,
@@ -1091,7 +1092,7 @@ pub mod caml {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
     use ark_ec::{CurveGroup, VariableBaseMSM};

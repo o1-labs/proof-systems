@@ -1,3 +1,5 @@
+#![cfg(feature = "prover")]
+
 use ark_ff::Field;
 use kimchi::circuits::domains::EvaluationDomains;
 use mina_curves::pasta::Fp;

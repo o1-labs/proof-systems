@@ -37,8 +37,8 @@ MIPS_LD ?= mips-linux-gnu-ld
 # Can be overridden via environment variable, e.g.:
 #   NIGHTLY_RUST_VERSION=nightly make build-web
 NIGHTLY_RUST_VERSION ?= nightly-2025-12-11
-PLONK_WASM_NODEJS_OUTDIR ?= target/nodejs
-PLONK_WASM_WEB_OUTDIR ?= target/web
+KIMCHI_WASM_NODEJS_OUTDIR ?= target/nodejs
+KIMCHI_WASM_WEB_OUTDIR ?= target/web
 
 # Feature flags for building with all features except no-std.
 # The no-std feature conflicts with std-dependent code.
@@ -110,6 +110,7 @@ install-test-deps: ## Install test dependencies
 		@echo ""
 		rustup component add llvm-tools-preview
 		cargo install cargo-nextest@=0.9.67 --locked
+		cargo install cargo-no-std --git https://github.com/o1-labs/cargo-no-std --rev 16901db8 --locked
 		cargo install grcov@=0.8.13 --locked
 		@echo ""
 		@echo "Test dependencies installed."
@@ -126,7 +127,7 @@ build: ## Build the project (without o1vm)
 		cargo build \
 			--all-targets \
 			--features "$(WORKSPACE_FEATURES)" \
-			--exclude plonk_wasm \
+			--exclude kimchi_wasm \
 			--exclude o1vm \
 			--workspace
 
@@ -135,7 +136,7 @@ build-all: ## Build the project including o1vm
 		cargo build \
 			--all-targets \
 			--features "$(O1VM_FEATURES)" \
-			--exclude plonk_wasm \
+			--exclude kimchi_wasm \
 			--workspace
 
 .PHONY: release
@@ -143,7 +144,7 @@ release: ## Build the project in release mode (without o1vm)
 		cargo build \
 			--all-targets \
 			--features "$(WORKSPACE_FEATURES)" \
-			--exclude plonk_wasm \
+			--exclude kimchi_wasm \
 			--exclude o1vm \
 			--release \
 			--workspace
@@ -153,16 +154,50 @@ release-all: ## Build in release mode including o1vm
 		cargo build \
 			--all-targets \
 			--features "$(O1VM_FEATURES)" \
-			--exclude plonk_wasm \
+			--exclude kimchi_wasm \
 			--release \
 			--workspace
+
+.PHONY: check-kimchi-test-parity
+check-kimchi-test-parity: ## Check that kimchi prover and verifier-only modes have the same test list
+		@echo "Listing prover-mode tests..."
+		@cargo test -p kimchi --lib -- tests:: --list 2>/dev/null \
+			| grep '::' | sed 's/: test$$//' | grep '^tests::' | sort > /tmp/kimchi_prover_tests.txt
+		@echo "Listing verifier-only-mode tests..."
+		@cargo test -p kimchi --no-default-features --features internal_tracing --lib -- tests:: --list 2>/dev/null \
+			| grep '::' | sed 's/: test$$//' | grep '^tests::' | sort > /tmp/kimchi_no_prover_tests.txt
+		@echo "Comparing (excluding prover-only modules: chunked, lazy_mode, serde)..."
+		@grep -v 'tests::chunked::' /tmp/kimchi_prover_tests.txt \
+			| grep -v 'tests::lazy_mode::' \
+			| grep -v 'tests::serde::' > /tmp/kimchi_prover_tests_filtered.txt
+		@diff /tmp/kimchi_prover_tests_filtered.txt /tmp/kimchi_no_prover_tests.txt \
+			&& echo "Test parity OK" \
+			|| (echo "ERROR: test list mismatch between prover and verifier-only modes" && exit 1)
+
+.PHONY: test-kimchi-verifier-only
+test-kimchi-verifier-only: check-kimchi-test-parity ## Test kimchi verifier without the prover feature (no-std verification path)
+		cargo nextest run \
+			-p kimchi \
+			--no-default-features \
+			--features internal_tracing \
+			--release \
+			--lib
+
+.PHONY: no-std-check-kimchi
+no-std-check-kimchi: ## Check kimchi compiles in no-std mode
+		cargo no-std \
+			-p kimchi \
+			--no-default-features \
+			--target x86_64-unknown-none \
+			--alloc \
+			--features sha2-force-soft
 
 .PHONY: test-doc
 test-doc: ## Test the project's docs comments (without o1vm)
 		cargo test \
 			--features "$(WORKSPACE_FEATURES)" \
 			--doc \
-			--exclude plonk_wasm \
+			--exclude kimchi_wasm \
 			--exclude o1vm \
 			--release \
 			--workspace
@@ -175,7 +210,7 @@ test-doc-with-coverage:
 test: ## Test the project with non-heavy tests (without o1vm)
 		cargo test \
 			--features "$(WORKSPACE_FEATURES)" \
-			--exclude plonk_wasm \
+			--exclude kimchi_wasm \
 			--exclude o1vm \
 			--release $(CARGO_EXTRA_ARGS) \
 			-- --nocapture \
@@ -189,7 +224,7 @@ test-with-coverage:
 test-heavy: ## Test the project with heavy tests (without o1vm)
 		cargo test \
 			--features "$(WORKSPACE_FEATURES)" \
-			--exclude plonk_wasm \
+			--exclude kimchi_wasm \
 			--exclude o1vm \
 			--release $(CARGO_EXTRA_ARGS) \
 			-- --nocapture heavy $(BIN_EXTRA_ARGS)
@@ -202,7 +237,7 @@ test-heavy-with-coverage:
 test-all: ## Test the project with all tests (without o1vm)
 		cargo test \
 			--features "$(WORKSPACE_FEATURES)" \
-			--exclude plonk_wasm \
+			--exclude kimchi_wasm \
 			--exclude o1vm \
 			--release $(CARGO_EXTRA_ARGS) \
 			-- --nocapture $(BIN_EXTRA_ARGS)
@@ -216,7 +251,7 @@ nextest: ## Test with non-heavy tests using nextest (without o1vm)
 		cargo nextest run \
 			--all \
 			--features "$(WORKSPACE_FEATURES)" \
-			--exclude plonk_wasm \
+			--exclude kimchi_wasm \
 			--exclude o1vm \
 			--release $(CARGO_EXTRA_ARGS) \
 			--profile ci \
@@ -230,7 +265,7 @@ nextest-with-coverage:
 nextest-heavy: ## Test with heavy tests using nextest (without o1vm)
 		cargo nextest run \
 			--features "$(WORKSPACE_FEATURES)" \
-			--exclude plonk_wasm \
+			--exclude kimchi_wasm \
 			--exclude o1vm \
 			--release $(CARGO_EXTRA_ARGS) \
 			--profile ci \
@@ -245,7 +280,7 @@ nextest-all: ## Test with all tests using nextest (without o1vm)
 		cargo nextest run \
 			--workspace \
 			--features "$(WORKSPACE_FEATURES)" \
-			--exclude plonk_wasm \
+			--exclude kimchi_wasm \
 			--exclude o1vm \
 			--release $(CARGO_EXTRA_ARGS) \
 			--profile ci $(BIN_EXTRA_ARGS)
@@ -314,7 +349,7 @@ generate-doc: ## Generate the Rust documentation (without o1vm)
 			--document-private-items \
 			--features "$(WORKSPACE_FEATURES)" \
 			--no-deps \
-			--exclude plonk_wasm \
+			--exclude kimchi_wasm \
 			--exclude o1vm \
 			--workspace
 		@echo ""
@@ -384,12 +419,12 @@ fclean: clean ## Clean the tooling artefacts in addition to running clean
 build-nodejs: ## Compile the Kimchi library into WebAssembly to be used in NodeJS
 		cargo +$(NIGHTLY_RUST_VERSION) run --package xtask -- build-wasm \
 		--target nodejs \
-		--out-dir ${PLONK_WASM_NODEJS_OUTDIR} \
+		--out-dir ${KIMCHI_WASM_NODEJS_OUTDIR} \
 		--rust-version $(NIGHTLY_RUST_VERSION)
 
 .PHONY: build-web
 build-web: ## Compile the Kimchi library into WebAssembly to be used in the browser
 		cargo +$(NIGHTLY_RUST_VERSION) run --package xtask -- build-wasm \
 		--target web \
-		--out-dir ${PLONK_WASM_WEB_OUTDIR} \
+		--out-dir ${KIMCHI_WASM_WEB_OUTDIR} \
 		--rust-version $(NIGHTLY_RUST_VERSION)

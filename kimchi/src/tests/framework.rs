@@ -1,5 +1,33 @@
 //! Test Framework
 
+// === Macro ===
+
+macro_rules! include_fixture {
+    ("") => {{
+        #[cfg(feature = "prover")]
+        {
+            ""
+        }
+        #[cfg(not(feature = "prover"))]
+        {
+            b"" as &[u8]
+        }
+    }};
+    ($name:expr) => {{
+        #[cfg(feature = "prover")]
+        {
+            $name
+        }
+        #[cfg(not(feature = "prover"))]
+        {
+            include_bytes!(concat!("fixtures/", $name, ".bin"))
+        }
+    }};
+}
+pub(crate) use include_fixture;
+
+// === Common imports ===
+
 use crate::{
     circuits::{
         gate::CircuitGate,
@@ -12,42 +40,71 @@ use crate::{
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
     proof::{ProverProof, RecursionChallenge},
-    prover_index::{
-        testing::{
-            new_index_for_test_with_lookups, new_index_for_test_with_lookups_and_custom_srs,
-        },
-        ProverIndex,
-    },
-    verifier::verify,
     verifier_index::VerifierIndex,
 };
+use alloc::string::{String, ToString};
 use ark_ff::PrimeField;
-use ark_poly::Radix2EvaluationDomain as D;
-use core::fmt::Write;
+use core::marker::PhantomData;
 use groupmap::GroupMap;
 use mina_poseidon::{poseidon::ArithmeticSpongeParams, sponge::FqSponge};
-use num_bigint::BigUint;
 use poly_commitment::{
     commitment::CommitmentCurve, ipa::OpeningProof as DlogOpeningProof, OpenProof,
 };
-use rand_core::{CryptoRng, RngCore};
-use std::time::Instant;
 
-// Returns the number of bytes allocated by the heap at a given point in time
-#[cfg(all(not(target_arch = "wasm32"), feature = "diagnostics"))]
+// === Prover-only imports ===
+
+#[cfg(feature = "prover")]
+use {
+    crate::{
+        prover_index::{
+            testing::{
+                new_index_for_test_with_lookups, new_index_for_test_with_lookups_and_custom_srs,
+            },
+            ProverIndex,
+        },
+        verifier::verify,
+    },
+    ark_poly::Radix2EvaluationDomain as D,
+    core::fmt::Write,
+    num_bigint::BigUint,
+    rand_core::{CryptoRng, RngCore},
+    std::time::Instant,
+};
+
+// === No-prover imports ===
+
+#[cfg(not(feature = "prover"))]
+use {
+    super::fixtures::RawFixture,
+    crate::{linearization::expr_linearization, verifier::verify_with_rng},
+    alloc::{sync::Arc, vec::Vec},
+    ark_serialize::CanonicalDeserialize,
+    poly_commitment::SRS as SrsTrait,
+};
+
+// === Heap diagnostics (prover-only) ===
+
+#[cfg(all(
+    feature = "prover",
+    not(target_arch = "wasm32"),
+    feature = "diagnostics"
+))]
 fn heap_allocated() -> usize {
     use tikv_jemalloc_ctl::{epoch, stats};
 
-    epoch::advance().unwrap(); // refresh internal stats!
+    epoch::advance().unwrap();
     stats::allocated::read().unwrap()
 }
 
-#[cfg(any(target_arch = "wasm32", not(feature = "diagnostics")))]
+#[cfg(all(
+    feature = "prover",
+    any(target_arch = "wasm32", not(feature = "diagnostics"))
+))]
 fn heap_allocated() -> usize {
     0
 }
 
-// aliases
+// === TestFramework ===
 
 #[derive(Default, Clone)]
 pub(crate) struct TestFramework<
@@ -70,12 +127,24 @@ pub(crate) struct TestFramework<
     disable_gates_checks: bool,
     override_srs_size: Option<usize>,
     lazy_mode: bool,
-
-    prover_index: Option<ProverIndex<FULL_ROUNDS, G, OpeningProof::SRS>>,
-    verifier_index: Option<VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>>,
-
     with_logs: bool,
+    _opening_proof: PhantomData<OpeningProof>,
+
+    #[cfg(feature = "prover")]
+    prover_index: Option<ProverIndex<FULL_ROUNDS, G, OpeningProof::SRS>>,
+    #[cfg(feature = "prover")]
+    verifier_index: Option<VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>>,
+    #[cfg(feature = "prover")]
+    fixture_name: Option<&'static str>,
+
+    #[cfg(not(feature = "prover"))]
+    fixture_bytes: Option<&'static [u8]>,
+
+    #[cfg(not(feature = "prover"))]
+    cs: Option<crate::circuits::constraints::ConstraintSystem<G::ScalarField>>,
 }
+
+// === TestRunner ===
 
 #[derive(Clone)]
 pub(crate) struct TestRunner<
@@ -88,6 +157,9 @@ where
     OpeningProof: OpenProof<G, FULL_ROUNDS>,
     VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone;
 
+// === Builder methods (both modes) ===
+
+#[allow(dead_code)]
 impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, OpeningProof>
     TestFramework<FULL_ROUNDS, G, OpeningProof>
 where
@@ -157,6 +229,48 @@ where
         self
     }
 
+    /// Set the fixture for dual-mode prove_and_verify.
+    ///
+    /// Use with `include_fixture!`:
+    /// ```ignore
+    /// .fixture(include_fixture!("test_name"))
+    /// ```
+    ///
+    /// With prover: stores the fixture name (for saving).
+    /// Without prover: stores the fixture bytes (for loading).
+    #[cfg(feature = "prover")]
+    #[must_use]
+    pub(crate) fn fixture(mut self, name: &'static str) -> Self {
+        self.fixture_name = Some(name);
+        self
+    }
+
+    #[cfg(not(feature = "prover"))]
+    #[must_use]
+    pub(crate) fn fixture(mut self, bytes: &'static [u8]) -> Self {
+        self.fixture_bytes = Some(bytes);
+        self
+    }
+
+    /// Legacy alias for `.fixture()` in prover mode.
+    #[cfg(feature = "prover")]
+    #[must_use]
+    pub(crate) fn fixture_name(mut self, name: &'static str) -> Self {
+        self.fixture_name = Some(name);
+        self
+    }
+}
+
+// === setup() — prover mode ===
+
+#[cfg(feature = "prover")]
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, OpeningProof>
+    TestFramework<FULL_ROUNDS, G, OpeningProof>
+where
+    G::BaseField: PrimeField,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
+{
     // Re allow(dead_code): this method is used in tests; without the annotation it warns unnecessarily.
     /// creates the indexes
     #[must_use]
@@ -200,6 +314,7 @@ where
     }
 }
 
+#[cfg(feature = "prover")]
 impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>> TestFramework<FULL_ROUNDS, G>
 where
     G::BaseField: PrimeField,
@@ -242,6 +357,39 @@ where
     }
 }
 
+// === setup() — no-prover mode (pass-through) ===
+
+#[cfg(not(feature = "prover"))]
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>> TestFramework<FULL_ROUNDS, G>
+where
+    G::BaseField: PrimeField,
+{
+    #[must_use]
+    pub(crate) fn setup(mut self) -> TestRunner<FULL_ROUNDS, G> {
+        use crate::circuits::constraints::testing::create_constraint_system;
+
+        let gates = self.gates.take().unwrap();
+        let lookup_tables = core::mem::take(&mut self.lookup_tables);
+        let runtime_tables_setup = self.runtime_tables_setup.take();
+
+        self.cs = Some(create_constraint_system(
+            gates,
+            self.public_inputs.len(),
+            self.num_prev_challenges,
+            lookup_tables,
+            runtime_tables_setup,
+            self.disable_gates_checks,
+            self.override_srs_size,
+            self.lazy_mode,
+        ));
+
+        TestRunner(self)
+    }
+}
+
+// === TestRunner methods (both modes) ===
+
+#[allow(dead_code)]
 impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, OpeningProof>
     TestRunner<FULL_ROUNDS, G, OpeningProof>
 where
@@ -270,7 +418,35 @@ where
         self.0.witness = Some(witness);
         self
     }
+}
 
+// === No-prover TestRunner methods ===
+
+#[cfg(not(feature = "prover"))]
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, OpeningProof>
+    TestRunner<FULL_ROUNDS, G, OpeningProof>
+where
+    G::ScalarField: PrimeField + Clone,
+    G::BaseField: PrimeField + Clone,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
+{
+    pub(crate) fn cs(&self) -> &crate::circuits::constraints::ConstraintSystem<G::ScalarField> {
+        self.0.cs.as_ref().unwrap()
+    }
+}
+
+// === Prover-only TestRunner methods ===
+
+#[cfg(feature = "prover")]
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, OpeningProof>
+    TestRunner<FULL_ROUNDS, G, OpeningProof>
+where
+    G::ScalarField: PrimeField + Clone,
+    G::BaseField: PrimeField + Clone,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
+{
     pub(crate) fn prover_index(&self) -> &ProverIndex<FULL_ROUNDS, G, OpeningProof::SRS> {
         self.0.prover_index.as_ref().unwrap()
     }
@@ -288,7 +464,7 @@ where
 
         if !self.0.disable_gates_checks {
             // Note: this is already done by ProverProof::create_recursive::()
-            //       not sure why we do it here
+            // not sure why we do it here
             prover
                 .verify(&witness, &self.0.public_inputs)
                 .map_err(|e| format!("{e:?}"))?;
@@ -315,8 +491,11 @@ where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         EFrSponge: FrSponge<G::ScalarField>
             + From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
+        ProverProof<G, OpeningProof, FULL_ROUNDS>: serde::Serialize,
+        VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: serde::Serialize,
     {
         let prover = self.0.prover_index.unwrap();
+        let verifier_index = self.0.verifier_index.unwrap();
         let witness = self.0.witness.unwrap();
 
         if !self.0.disable_gates_checks {
@@ -327,9 +506,7 @@ where
                 .map_err(|e| format!("{e:?}"))?;
         }
 
-        // add the proof to the batch
         let start = Instant::now();
-
         let group_map = <G as CommitmentCurve>::Map::setup();
 
         if self.0.with_logs {
@@ -364,7 +541,7 @@ where
         let start = Instant::now();
         verify::<FULL_ROUNDS, G, EFqSponge, EFrSponge, OpeningProof>(
             &group_map,
-            &self.0.verifier_index.unwrap(),
+            &verifier_index,
             &proof,
             &self.0.public_inputs,
         )
@@ -378,10 +555,116 @@ where
             );
         }
 
+        #[cfg(feature = "save-test-proofs")]
+        if let Some(name) = self.0.fixture_name {
+            use super::fixtures::RawFixture;
+            use ark_serialize::CanonicalSerialize;
+
+            let mut public_inputs_buf = Vec::new();
+            for fp in &self.0.public_inputs {
+                fp.serialize_compressed(&mut public_inputs_buf).unwrap();
+            }
+
+            let mut endo_buf = Vec::new();
+            verifier_index
+                .endo
+                .serialize_compressed(&mut endo_buf)
+                .unwrap();
+
+            let fixture = RawFixture {
+                proof_bytes: rmp_serde::to_vec(&proof).unwrap(),
+                verifier_index_bytes: rmp_serde::to_vec(&verifier_index).unwrap(),
+                public_inputs_bytes: public_inputs_buf,
+                num_public_inputs: self.0.public_inputs.len(),
+                feature_flags: prover.cs.feature_flags,
+                endo: Some(endo_buf),
+            };
+
+            let bytes = rmp_serde::to_vec(&fixture).unwrap();
+            let fixtures_dir =
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/tests/fixtures");
+            std::fs::create_dir_all(&fixtures_dir).unwrap();
+            let path = fixtures_dir.join(format!("{name}.bin"));
+            std::fs::write(&path, &bytes).unwrap();
+            println!("Fixture written to {}", path.display());
+        }
+
         Ok(())
     }
 }
 
+// === No-prover prove_and_verify ===
+
+#[cfg(not(feature = "prover"))]
+impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, OpeningProof>
+    TestRunner<FULL_ROUNDS, G, OpeningProof>
+where
+    G::ScalarField: PrimeField + Clone,
+    G::BaseField: PrimeField + Clone,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+    OpeningProof::SRS: SrsTrait<G>,
+    VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
+{
+    /// Load a fixture and verify the proof
+    pub(crate) fn prove_and_verify<EFqSponge, EFrSponge>(self) -> Result<(), String>
+    where
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
+        EFrSponge: FrSponge<G::ScalarField>
+            + From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
+        ProverProof<G, OpeningProof, FULL_ROUNDS>: for<'a> serde::Deserialize<'a>,
+        VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: for<'a> serde::Deserialize<'a>,
+    {
+        let bytes = self
+            .0
+            .fixture_bytes
+            .expect("fixture() is required when prover feature is disabled");
+
+        let fixture: RawFixture = rmp_serde::from_slice(bytes).map_err(|e| e.to_string())?;
+        let proof: ProverProof<G, OpeningProof, FULL_ROUNDS> =
+            rmp_serde::from_slice(&fixture.proof_bytes).map_err(|e| e.to_string())?;
+        let mut vi: VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS> =
+            rmp_serde::from_slice(&fixture.verifier_index_bytes).map_err(|e| e.to_string())?;
+
+        let mut public_inputs = Vec::with_capacity(fixture.num_public_inputs);
+        let mut cursor = &fixture.public_inputs_bytes[..];
+        for _ in 0..fixture.num_public_inputs {
+            public_inputs.push(
+                G::ScalarField::deserialize_compressed(&mut cursor).map_err(|e| e.to_string())?,
+            );
+        }
+
+        // Reconstruct serde(skip) fields
+        let srs = OpeningProof::SRS::create(vi.max_poly_size);
+        srs.get_lagrange_basis(vi.domain);
+        vi.srs = Arc::new(srs);
+
+        if let Some(endo_bytes) = &fixture.endo {
+            vi.endo = G::ScalarField::deserialize_compressed(&endo_bytes[..])
+                .map_err(|e| e.to_string())?;
+        }
+
+        let (linearization, powers_of_alpha) =
+            expr_linearization(Some(&fixture.feature_flags), true);
+        vi.linearization = linearization;
+        vi.powers_of_alpha = powers_of_alpha;
+
+        let group_map = <G as CommitmentCurve>::Map::setup();
+        verify_with_rng::<FULL_ROUNDS, G, EFqSponge, EFrSponge, OpeningProof, _>(
+            &group_map,
+            &vi,
+            &proof,
+            &public_inputs,
+            &mut rand::rngs::OsRng,
+        )
+        .map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+}
+
+// === Prover-only serialization regression ===
+
+#[cfg(feature = "prover")]
 impl<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, OpeningProof>
     TestRunner<FULL_ROUNDS, G, OpeningProof>
 where
@@ -447,6 +730,9 @@ where
     }
 }
 
+// === print_witness (both modes) ===
+
+#[cfg(feature = "prover")]
 pub fn print_witness<F>(cols: &[Vec<F>; COLUMNS], start_row: usize, end_row: usize)
 where
     F: PrimeField,

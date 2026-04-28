@@ -20,5 +20,9 @@ ark-ec.workspace = true
 ark-ff.workspace = true
 
 [dev-dependencies]
-mina-curves.workspace = true
+mina-curves = { workspace = true, features = ["parallel"] }
 rand.workspace = true
+
+[features]
+default = ["parallel"]
+parallel = ["ark-ec/parallel", "ark-ff/parallel"]

@@ -3,33 +3,44 @@ use crate::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateError, GateType},
         polynomial::COLUMNS,
-        polynomials::{generic::GenericGateSpec, not, xor},
+        polynomials::{generic::GenericGateSpec, not},
         wires::Wire,
     },
     curve::KimchiCurve,
-    prover_index::testing::new_index_for_test_with_lookups,
     tests::xor::{all_ones, check_xor},
 };
-use core::{array, cmp::max};
-
-use super::framework::TestFramework;
+use alloc::{vec, vec::Vec};
 use ark_ec::AffineRepr;
-use ark_ff::{Field, One, PrimeField, Zero};
-use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    pasta::FULL_ROUNDS,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
+use ark_ff::{One, PrimeField};
+use core::{array, cmp::max};
+use mina_curves::pasta::{Pallas, Vesta};
+use mina_poseidon::pasta::FULL_ROUNDS;
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
-use poly_commitment::{ipa::OpeningProof, OpenProof};
-use std::sync::Arc;
+
+#[cfg(feature = "prover")]
+use {
+    super::framework::TestFramework,
+    crate::{circuits::polynomials::xor, prover_index::testing::new_index_for_test_with_lookups},
+    ark_ff::{Field, Zero},
+    mina_curves::pasta::{Fp, VestaParameters},
+    mina_poseidon::{
+        constants::PlonkSpongeConstantsKimchi,
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+    },
+    std::sync::Arc,
+};
+
+#[cfg(not(feature = "prover"))]
+use super::generic::load_and_verify_fixture;
 
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type VestaField = <Vesta as AffineRepr>::BaseField;
+#[cfg(feature = "prover")]
 type SpongeParams = PlonkSpongeConstantsKimchi;
+#[cfg(feature = "prover")]
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
 const NOT: bool = false;
@@ -260,70 +271,89 @@ fn check_not_gnrc<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
 #[test]
 // End-to-end test of NOT using XOR gadget
 fn test_prove_and_verify_not_xor() {
-    let bits = 64;
-    let rng = &mut o1_utils::tests::make_test_rng(None);
+    #[cfg(feature = "prover")]
+    {
+        let bits = 64;
+        let rng = &mut o1_utils::tests::make_test_rng(None);
 
-    // Create circuit
-    let gates = {
-        let mut gates = vec![CircuitGate::<Fp>::create_generic_gadget(
-            Wire::for_row(0),
-            GenericGateSpec::Pub,
-            None,
-        )];
-        let _next_row = CircuitGate::<Fp>::extend_not_gadget_checked_length(&mut gates, 0, bits);
-        gates
-    };
+        // Create circuit
+        let gates = {
+            let mut gates = vec![CircuitGate::<Fp>::create_generic_gadget(
+                Wire::for_row(0),
+                GenericGateSpec::Pub,
+                None,
+            )];
+            let _next_row =
+                CircuitGate::<Fp>::extend_not_gadget_checked_length(&mut gates, 0, bits);
+            gates
+        };
 
-    // Create witness and random inputs
+        // Create witness and random inputs
 
-    let witness =
-        create_not_witness_checked_length::<PallasField>(rng.gen_field_with_bits(bits), Some(bits));
+        let witness = create_not_witness_checked_length::<PallasField>(
+            rng.gen_field_with_bits(bits),
+            Some(bits),
+        );
 
-    TestFramework::<FULL_ROUNDS, Vesta>::default()
-        .gates(gates)
-        .witness(witness)
-        .public_inputs(vec![
-            PallasField::from(2u32).pow([bits as u64]) - PallasField::one(),
-        ])
-        .setup()
-        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
-        .unwrap();
+        TestFramework::<FULL_ROUNDS, Vesta>::default()
+            .gates(gates)
+            .witness(witness)
+            .public_inputs(vec![
+                PallasField::from(2u32).pow([bits as u64]) - PallasField::one(),
+            ])
+            .fixture_name("test_prove_and_verify_not_xor")
+            .setup()
+            .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
+            .unwrap();
+    }
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!("fixtures/test_prove_and_verify_not_xor.bin"));
 }
 
 #[test]
 // End-to-end test of NOT using generic gadget
 fn test_prove_and_verify_five_not_gnrc() {
-    let bits = 64;
-    let rng = &mut o1_utils::tests::make_test_rng(None);
+    #[cfg(feature = "prover")]
+    {
+        let bits = 64;
+        let rng = &mut o1_utils::tests::make_test_rng(None);
 
-    // Create circuit
-    let gates = {
-        let mut gates = vec![CircuitGate::<Fp>::create_generic_gadget(
-            Wire::for_row(0),
-            GenericGateSpec::Pub,
-            None,
-        )];
-        let _next_row = CircuitGate::<Fp>::extend_not_gadget_unchecked_length(&mut gates, 5, 0);
-        gates
-    };
+        // Create circuit
+        let gates = {
+            let mut gates = vec![CircuitGate::<Fp>::create_generic_gadget(
+                Wire::for_row(0),
+                GenericGateSpec::Pub,
+                None,
+            )];
+            let _next_row = CircuitGate::<Fp>::extend_not_gadget_unchecked_length(&mut gates, 5, 0);
+            gates
+        };
 
-    // Create witness and random inputs
-    let witness: [Vec<PallasField>; 15] = create_not_witness_unchecked_length::<PallasField>(
-        &(0..5)
-            .map(|_| rng.gen_field_with_bits(bits))
-            .collect::<Vec<PallasField>>(),
-        bits,
-    );
+        // Create witness and random inputs
+        let witness: [Vec<PallasField>; 15] = create_not_witness_unchecked_length::<PallasField>(
+            &(0..5)
+                .map(|_| rng.gen_field_with_bits(bits))
+                .collect::<Vec<PallasField>>(),
+            bits,
+        );
 
-    TestFramework::<FULL_ROUNDS, Vesta>::default()
-        .gates(gates)
-        .witness(witness)
-        .public_inputs(vec![
-            PallasField::from(2u32).pow([bits as u64]) - PallasField::one(),
-        ])
-        .setup()
-        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
-        .unwrap();
+        TestFramework::<FULL_ROUNDS, Vesta>::default()
+            .gates(gates)
+            .witness(witness)
+            .public_inputs(vec![
+                PallasField::from(2u32).pow([bits as u64]) - PallasField::one(),
+            ])
+            .fixture_name("test_prove_and_verify_five_not_gnrc")
+            .setup()
+            .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
+            .unwrap();
+    }
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!(
+        "fixtures/test_prove_and_verify_five_not_gnrc.bin"
+    ));
 }
 
 #[test]
@@ -409,25 +439,24 @@ fn test_bad_not_gnrc() {
             dst: Wire { row: 1, col: 0 }
         })
     );
-    witness[0][1] += PallasField::one();
-    let index = new_index_for_test_with_lookups(
-        Arc::try_unwrap(cs.gates).unwrap(),
-        1,
-        0,
-        vec![xor::lookup_table()],
-        None,
-        false,
-        None,
-        false,
-    );
 
-    let result = index.cs.gates[1].verify::<FULL_ROUNDS, Vesta, <OpeningProof<Vesta, FULL_ROUNDS> as OpenProof<Vesta, FULL_ROUNDS>>::SRS>(
+    #[cfg(feature = "prover")]
+    {
+        witness[0][1] += PallasField::one();
+        let index = new_index_for_test_with_lookups::<FULL_ROUNDS, Vesta>(
+            Arc::try_unwrap(cs.gates).unwrap(),
             1,
-            &witness,
-            &index,
-            &[]
+            0,
+            vec![xor::lookup_table()],
+            None,
+            false,
+            None,
+            false,
         );
-    assert_eq!(result, Err(("generic: incorrect gate").to_string()));
+
+        let result = index.cs.gates[1].verify::<FULL_ROUNDS, Vesta>(1, &witness, &index.cs, &[]);
+        assert_eq!(result, Err(("generic: incorrect gate").to_string()));
+    }
 }
 
 #[test]
@@ -460,22 +489,26 @@ fn test_bad_not_xor() {
         ),
         Err(CircuitGateError::Constraint(GateType::Xor16, 2))
     );
-    // Make the second input zero with correct decomposition to make sure XOR table fails
-    witness[0][0] = PallasField::zero();
-    witness[1][1] = PallasField::zero();
-    witness[7][1] = PallasField::zero();
-    witness[8][1] = PallasField::zero();
-    witness[9][1] = PallasField::zero();
-    witness[10][1] = PallasField::zero();
 
-    assert_eq!(
-        TestFramework::<FULL_ROUNDS, Vesta>::default()
-            .gates(Arc::try_unwrap(cs.gates).unwrap())
-            .witness(witness)
-            .setup()
-            .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>(),
-        Err(String::from(
-            "the lookup failed to find a match in the table: row=1"
-        ))
-    );
+    // Make the second input zero with correct decomposition to make sure XOR table fails
+    #[cfg(feature = "prover")]
+    {
+        witness[0][0] = PallasField::zero();
+        witness[1][1] = PallasField::zero();
+        witness[7][1] = PallasField::zero();
+        witness[8][1] = PallasField::zero();
+        witness[9][1] = PallasField::zero();
+        witness[10][1] = PallasField::zero();
+
+        assert_eq!(
+            TestFramework::<FULL_ROUNDS, Vesta>::default()
+                .gates(Arc::try_unwrap(cs.gates).unwrap())
+                .witness(witness)
+                .setup()
+                .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>(),
+            Err(String::from(
+                "the lookup failed to find a match in the table: row=1"
+            ))
+        );
+    }
 }

@@ -1,4 +1,9 @@
 //! This module implements Plonk constraint gate primitive.
+use alloc::{
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 
 use crate::{
     circuits::{
@@ -12,7 +17,6 @@ use crate::{
         wires::*,
     },
     curve::KimchiCurve,
-    prover_index::ProverIndex,
 };
 use ark_ff::PrimeField;
 use o1_utils::hasher::CryptoDigest;
@@ -31,7 +35,7 @@ use super::{argument::ArgumentWitness, expr};
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
-#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+#[cfg_attr(all(test, feature = "std"), derive(proptest_derive::Arbitrary))]
 pub enum CurrOrNext {
     Curr,
     Next,
@@ -63,7 +67,7 @@ impl CurrOrNext {
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
-#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+#[cfg_attr(all(test, feature = "std"), derive(proptest_derive::Arbitrary))]
 pub enum GateType {
     #[default]
     /// Zero gate
@@ -82,12 +86,6 @@ pub enum GateType {
     EndoMulScalar,
     // Lookup
     Lookup,
-    // TODO: remove Cairo gate types
-    /// Cairo
-    CairoClaim,
-    CairoInstruction,
-    CairoFlags,
-    CairoTransition,
     /// Range check
     RangeCheck0,
     RangeCheck1,
@@ -160,15 +158,11 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if verify process returns error.
-    pub fn verify<
-        const FULL_ROUNDS: usize,
-        G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
-        Srs: poly_commitment::SRS<G>,
-    >(
+    pub fn verify<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS, ScalarField = F>>(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        index: &ProverIndex<FULL_ROUNDS, G, Srs>,
+        cs: &ConstraintSystem<F>,
         public: &[F],
     ) -> Result<(), String> {
         use GateType::*;
@@ -178,26 +172,25 @@ impl<F: PrimeField> CircuitGate<F> {
             Poseidon => self.verify_poseidon::<FULL_ROUNDS, G>(row, witness),
             CompleteAdd => self.verify_complete_add(row, witness),
             VarBaseMul => self.verify_vbmul(row, witness),
-            EndoMul => self.verify_endomul::<FULL_ROUNDS, G>(row, witness, &index.cs),
-            EndoMulScalar => self.verify_endomul_scalar::<FULL_ROUNDS, G>(row, witness, &index.cs),
+            EndoMul => self.verify_endomul::<FULL_ROUNDS, G>(row, witness, cs),
+            EndoMulScalar => self.verify_endomul_scalar::<FULL_ROUNDS, G>(row, witness, cs),
             // TODO: implement the verification for the lookup gate
             // See https://github.com/MinaProtocol/mina/issues/14011
             Lookup => Ok(()),
-            CairoClaim | CairoInstruction | CairoFlags | CairoTransition => Ok(()),
             RangeCheck0 | RangeCheck1 => self
-                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldAdd => self
-                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldMul => self
-                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, cs, public)
                 .map_err(|e| e.to_string()),
             Xor16 => self
-                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, cs, public)
                 .map_err(|e| e.to_string()),
             Rot64 => self
-                .verify_witness::<FULL_ROUNDS, G>(row, witness, &index.cs, public)
+                .verify_witness::<FULL_ROUNDS, G>(row, witness, cs, public)
                 .map_err(|e| e.to_string()),
         }
     }
@@ -280,13 +273,6 @@ impl<F: PrimeField> CircuitGate<F> {
             GateType::Lookup => {
                 // TODO: implement the verification for the lookup gate
                 // See https://github.com/MinaProtocol/mina/issues/14011
-                vec![]
-            }
-            // TODO: remove Cairo gate types
-            GateType::CairoClaim
-            | GateType::CairoInstruction
-            | GateType::CairoFlags
-            | GateType::CairoTransition => {
                 vec![]
             }
             GateType::RangeCheck0 => {
@@ -562,7 +548,7 @@ pub mod caml {
 // Tests
 //
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
     use ark_ff::UniformRand as _;

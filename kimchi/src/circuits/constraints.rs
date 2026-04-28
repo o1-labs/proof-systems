@@ -10,27 +10,33 @@ use crate::{
             lookups::{LookupFeatures, LookupPatterns},
             tables::{GateLookupTables, LookupTable},
         },
-        polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::Shifts,
         wires::*,
     },
     curve::KimchiCurve,
     error::{DomainCreationError, SetupError},
     o1_utils::lazy_cache::LazyCache,
-    prover_index::ProverIndex,
 };
+use alloc::{format, string::String, sync::Arc, vec, vec::Vec};
 use ark_ff::{PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
 };
 use core::{array, default::Default};
-use o1_utils::ExtendedEvaluations;
-use poly_commitment::SRS;
-use rayon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::sync::Arc;
+
+#[cfg(feature = "prover")]
+use {
+    crate::circuits::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
+    crate::prover_index::ProverIndex,
+    o1_utils::ExtendedEvaluations,
+    poly_commitment::SRS,
+};
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 //
 // ConstraintSystem
@@ -270,9 +276,18 @@ where
         let cs = ConstraintSystemSerde::<F>::deserialize(deserializer)?;
 
         let precomputations = Arc::new({
-            LazyCache::new(move || {
-                Arc::new(DomainConstantEvaluations::create(cs.domain, cs.zk_rows).unwrap())
-            })
+            #[cfg(feature = "std")]
+            {
+                LazyCache::new(move || {
+                    Arc::new(DomainConstantEvaluations::create(cs.domain, cs.zk_rows).unwrap())
+                })
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                LazyCache::preinit(Arc::new(
+                    DomainConstantEvaluations::create(cs.domain, cs.zk_rows).unwrap(),
+                ))
+            }
         });
 
         Ok(ConstraintSystem {
@@ -395,19 +410,19 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
-where
-    F: PrimeField,
-    G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
-    Srs: SRS<G>,
-{
+impl<F: PrimeField> ConstraintSystem<F> {
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
-    ///     witness: wire assignment witness
-    ///     RETURN: verification status
-    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], public: &[F]) -> Result<(), GateError> {
+    pub fn verify_witness<
+        const FULL_ROUNDS: usize,
+        G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    >(
+        &self,
+        witness: &[Vec<F>; COLUMNS],
+        public: &[F],
+    ) -> Result<(), GateError> {
         // pad the witness
-        let pad = vec![F::zero(); self.cs.domain.d1.size() - witness[0].len()];
+        let pad = vec![F::zero(); self.domain.d1.size() - witness[0].len()];
         let witness: [Vec<F>; COLUMNS] = array::from_fn(|i| {
             let mut w = witness[i].to_vec();
             w.extend_from_slice(&pad);
@@ -415,7 +430,7 @@ where
         });
 
         // check each rows' wiring
-        for (row, gate) in self.cs.gates.iter().enumerate() {
+        for (row, gate) in self.gates.iter().enumerate() {
             // check if wires are connected
             for col in 0..PERMUTS {
                 let wire = gate.wires[col];
@@ -439,12 +454,12 @@ where
             }
 
             // for public gates, only the left wire is toggled
-            if row < self.cs.public && gate.coeffs.first() != Some(&F::one()) {
+            if row < self.public && gate.coeffs.first() != Some(&F::one()) {
                 return Err(GateError::IncorrectPublic(row));
             }
 
             // check the gate's satisfiability
-            gate.verify(row, &witness, self, public)
+            gate.verify::<FULL_ROUNDS, G>(row, &witness, self, public)
                 .map_err(|err| GateError::Custom { row, err })?;
         }
 
@@ -453,6 +468,21 @@ where
     }
 }
 
+#[cfg(feature = "prover")]
+impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
+where
+    F: PrimeField,
+    G: KimchiCurve<FULL_ROUNDS, ScalarField = F>,
+    Srs: SRS<G>,
+{
+    /// This function verifies the consistency of the wire
+    /// assignments (witness) against the constraints
+    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], public: &[F]) -> Result<(), GateError> {
+        self.cs.verify_witness::<FULL_ROUNDS, G>(witness, public)
+    }
+}
+
+#[cfg(feature = "prover")]
 impl<F: PrimeField> ConstraintSystem<F> {
     /// evaluate witness polynomials over domains
     pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
@@ -1041,15 +1071,30 @@ impl<F: PrimeField> Builder<F> {
         // ------
         let gates = Arc::new(gates);
         let gates_clone = Arc::clone(&gates);
-        let lookup_constraint_system = LazyCache::new(move || {
-            LookupConstraintSystem::create(
-                &gates_clone,
-                self.lookup_tables,
-                self.runtime_tables,
-                &domain,
-                zk_rows as usize,
-            )
-        });
+        let lookup_constraint_system = {
+            #[cfg(feature = "std")]
+            {
+                LazyCache::new(move || {
+                    LookupConstraintSystem::create(
+                        &gates_clone,
+                        self.lookup_tables,
+                        self.runtime_tables,
+                        &domain,
+                        zk_rows as usize,
+                    )
+                })
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                LazyCache::preinit(LookupConstraintSystem::create(
+                    &gates_clone,
+                    self.lookup_tables,
+                    self.runtime_tables,
+                    &domain,
+                    zk_rows as usize,
+                ))
+            }
+        };
         if !self.lazy_mode {
             // Precompute and map setup error
             lookup_constraint_system
@@ -1070,9 +1115,18 @@ impl<F: PrimeField> Builder<F> {
                 )),
             }
         } else {
-            LazyCache::new(move || {
-                Arc::new(DomainConstantEvaluations::create(domain, zk_rows).unwrap())
-            })
+            #[cfg(feature = "std")]
+            {
+                LazyCache::new(move || {
+                    Arc::new(DomainConstantEvaluations::create(domain, zk_rows).unwrap())
+                })
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                LazyCache::preinit(Arc::new(
+                    DomainConstantEvaluations::create(domain, zk_rows).unwrap(),
+                ))
+            }
         };
 
         let constraints = ConstraintSystem {
@@ -1092,5 +1146,41 @@ impl<F: PrimeField> Builder<F> {
         };
 
         Ok(constraints)
+    }
+}
+
+// TODO: "testing" modules should be cleaned up and removed. They only exist
+// because bench.rs does not use #[cfg(test)] and needs access to test helpers.
+pub(crate) mod testing {
+    use super::ConstraintSystem;
+    use crate::circuits::{
+        gate::CircuitGate,
+        lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
+    };
+    use alloc::vec::Vec;
+    use ark_ff::PrimeField;
+
+    #[allow(clippy::too_many_arguments)]
+    #[allow(dead_code)]
+    pub(crate) fn create_constraint_system<F: PrimeField>(
+        gates: Vec<CircuitGate<F>>,
+        public: usize,
+        prev_challenges: usize,
+        lookup_tables: Vec<LookupTable<F>>,
+        runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
+        disable_gates_checks: bool,
+        override_srs_size: Option<usize>,
+        lazy_mode: bool,
+    ) -> ConstraintSystem<F> {
+        ConstraintSystem::<F>::create(gates)
+            .lookup(lookup_tables)
+            .runtime(runtime_tables)
+            .public(public)
+            .prev_challenges(prev_challenges)
+            .disable_gates_checks(disable_gates_checks)
+            .max_poly_size(override_srs_size)
+            .lazy_mode(lazy_mode)
+            .build()
+            .unwrap()
     }
 }

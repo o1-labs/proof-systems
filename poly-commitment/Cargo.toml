@@ -16,21 +16,22 @@ ark-poly.workspace = true
 ark-serialize.workspace = true
 
 blake2.workspace = true
+hashbrown.workspace = true
 hex.workspace = true
 itertools.workspace = true
 num-bigint.workspace = true
 rand.workspace = true
 rand_core.workspace = true
-rayon.workspace = true
-rmp-serde.workspace = true
+rayon = { workspace = true, optional = true }
+rmp-serde = { workspace = true, optional = true }
 serde.workspace = true
 serde_with.workspace = true
 thiserror.workspace = true
 zeroize.workspace = true
 
-groupmap.workspace = true
-mina-curves.workspace = true
-mina-poseidon.workspace = true
+groupmap = { workspace = true, default-features = false }
+mina-curves = { workspace = true, default-features = false }
+mina-poseidon = { workspace = true, default-features = false }
 o1-utils.workspace = true
 
 ocaml = { workspace = true, optional = true }
@@ -42,6 +43,19 @@ rand_chacha.workspace = true
 ark-bn254.workspace = true
 
 [features]
+default = ["std", "parallel"]
+std = ["rmp-serde", "o1-utils/std", "serde_with/std"]
+parallel = [
+  "std",
+  "rayon",
+  "o1-utils/parallel",
+  "ark-ff/parallel",
+  "ark-ec/parallel",
+  "ark-poly/parallel",
+  "groupmap/parallel",
+  "mina-curves/parallel",
+  "mina-poseidon/parallel",
+]
 ocaml_types = ["ocaml", "ocaml-gen"]
 
 [[bench]]

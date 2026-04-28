@@ -1,4 +1,5 @@
 //! This module obtains the gates of a foreign field addition circuit.
+use alloc::{vec, vec::Vec};
 
 use ark_ff::PrimeField;
 use num_bigint::BigUint;

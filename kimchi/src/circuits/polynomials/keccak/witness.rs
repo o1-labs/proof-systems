@@ -1,4 +1,5 @@
 //! Keccak witness computation
+use alloc::{boxed::Box, vec, vec::Vec};
 
 use crate::{
     auto_clone,

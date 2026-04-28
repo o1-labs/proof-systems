@@ -16,10 +16,12 @@ use crate::{
         combine_commitments, BatchEvaluationProof, BlindedCommitment, CommitmentCurve, Evaluation,
         PolyComm,
     },
+    error::CommitmentError,
     ipa::SRS,
     utils::combine_polys,
-    CommitmentError, PolynomialsToCombine, SRS as SRSTrait,
+    PolynomialsToCombine, SRS as SRSTrait,
 };
+use alloc::{vec, vec::Vec};
 
 use ark_ec::{pairing::Pairing, AffineRepr, VariableBaseMSM};
 use ark_ff::{One, PrimeField, Zero};
@@ -27,12 +29,15 @@ use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
     DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D,
 };
+use core::ops::Neg;
 use mina_poseidon::FqSponge;
+#[cfg(feature = "std")]
 use rand::thread_rng;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::ops::Neg;
+#[cfg(feature = "std")]
+use std::ops::Deref;
 
 /// Combine the (chunked) evaluations of multiple polynomials.
 ///
@@ -124,7 +129,6 @@ impl<Pair: Pairing> Clone for KZGProof<Pair> {
 ///
 /// The SRS is formed using what we call a "trusted setup". For now, the setup
 /// is created using the method `create_trusted_setup_with_toxic_waste`.
-#[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct PairingSRS<Pair: Pairing> {
     /// The full SRS is the one used by the prover. Can be seen as the "proving
@@ -135,6 +139,7 @@ pub struct PairingSRS<Pair: Pairing> {
     pub verifier_srs: SRS<Pair::G2Affine>,
 }
 
+#[cfg(feature = "std")]
 impl<
         F: PrimeField,
         G: CommitmentCurve<ScalarField = F>,
@@ -176,6 +181,7 @@ impl<Pair: Pairing> Clone for PairingSRS<Pair> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<
         F: PrimeField,
         G: CommitmentCurve<ScalarField = F>,
@@ -239,6 +245,7 @@ impl<
     }
 }
 
+#[cfg(feature = "std")]
 impl<
         F: PrimeField,
         G: CommitmentCurve<ScalarField = F>,
@@ -250,11 +257,17 @@ impl<
         self.full_srs.max_poly_size()
     }
 
-    fn get_lagrange_basis(&self, domain: D<G::ScalarField>) -> &Vec<PolyComm<G>> {
+    fn get_lagrange_basis(
+        &self,
+        domain: D<G::ScalarField>,
+    ) -> impl Deref<Target = Vec<PolyComm<G>>> + '_ {
         self.full_srs.get_lagrange_basis(domain)
     }
 
-    fn get_lagrange_basis_from_domain_size(&self, domain_size: usize) -> &Vec<PolyComm<G>> {
+    fn get_lagrange_basis_from_domain_size(
+        &self,
+        domain_size: usize,
+    ) -> impl Deref<Target = Vec<PolyComm<G>>> + '_ {
         self.full_srs
             .get_lagrange_basis_from_domain_size(domain_size)
     }
@@ -387,6 +400,7 @@ fn divisor_polynomial<F: PrimeField>(elm: &[F]) -> DensePolynomial<F> {
         .unwrap()
 }
 
+#[cfg(feature = "std")]
 impl<
         F: PrimeField,
         G: CommitmentCurve<ScalarField = F>,

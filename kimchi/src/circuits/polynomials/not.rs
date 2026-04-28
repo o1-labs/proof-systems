@@ -10,6 +10,7 @@ use crate::circuits::{
     polynomial::COLUMNS,
     wires::Wire,
 };
+use alloc::{format, string::String, vec, vec::Vec};
 use ark_ff::PrimeField;
 use core::{array, cmp::max};
 use num_bigint::BigUint;
@@ -243,7 +244,7 @@ pub fn extend_not_witness_unchecked_length<F: PrimeField>(
         }
     }
     let all_ones = F::from(2u8).pow([bits as u64]) - F::one();
-    let rows = (inputs.len() as f64 / 2.0).ceil() as usize;
+    let rows = inputs.len().div_ceil(2);
     let mut not_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); rows]);
     for (i, input) in inputs.iter().enumerate().step_by(2) {
         let row = i / 2;

@@ -1,7 +1,9 @@
 //! This adds a few utility functions for the [`DensePolynomial`] arkworks type.
 
+use alloc::{vec, vec::Vec};
 use ark_ff::Field;
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Polynomial};
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 use crate::chunked_polynomial::ChunkedPolynomial;
@@ -31,10 +33,7 @@ pub trait ExtendedDensePolynomial<F: Field> {
 impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
     fn scale(&self, elm: F) -> Self {
         let mut result = self.clone();
-        result
-            .coeffs
-            .par_iter_mut()
-            .for_each(|coeff: &mut F| *coeff *= &elm);
+        cfg_iter_mut!(result.coeffs).for_each(|coeff: &mut F| *coeff *= &elm);
         result
     }
 

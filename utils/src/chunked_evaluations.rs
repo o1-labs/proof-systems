@@ -1,5 +1,6 @@
 //! This module contains a type [`ChunkedEvaluations`],
 
+use alloc::vec::Vec;
 use ark_ff::PrimeField;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;

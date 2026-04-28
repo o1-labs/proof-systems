@@ -1,4 +1,5 @@
 //! This module implements the linearization.
+use alloc::{boxed::Box, vec::Vec};
 
 use crate::{
     alphas::Alphas,
@@ -24,6 +25,7 @@ use crate::{
             xor,
         },
     },
+    collections::HashSet,
 };
 
 use crate::circuits::{
@@ -242,10 +244,8 @@ pub fn constraints_expr<F: PrimeField>(
 
 /// Adds the polynomials that are evaluated as part of the proof
 /// for the linearization to work.
-pub fn linearization_columns<F: FftField>(
-    feature_flags: Option<&FeatureFlags>,
-) -> std::collections::HashSet<Column> {
-    let mut h = std::collections::HashSet::new();
+pub fn linearization_columns<F: FftField>(feature_flags: Option<&FeatureFlags>) -> HashSet<Column> {
+    let mut h = HashSet::new();
     use Column::*;
 
     let feature_flags = match feature_flags {

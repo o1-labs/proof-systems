@@ -1,4 +1,3 @@
-use super::framework::TestFramework;
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
@@ -12,37 +11,47 @@ use crate::{
         wires::Wire,
     },
     curve::KimchiCurve,
-    plonk_sponge::FrSponge,
-    prover_index::ProverIndex,
 };
+use alloc::{vec, vec::Vec};
 use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, Zero};
-use ark_poly::EvaluationDomain;
 use core::array;
-use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    pasta::FULL_ROUNDS,
-    poseidon::ArithmeticSpongeParams,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-    FqSponge,
-};
+use mina_curves::pasta::{Pallas, Vesta};
+use mina_poseidon::pasta::FULL_ROUNDS;
 use o1_utils::Two;
-use poly_commitment::{
-    ipa::{endos, SRS},
-    SRS as _,
-};
 use rand::Rng;
-use std::sync::Arc;
+
+#[cfg(feature = "prover")]
+use {
+    super::framework::TestFramework,
+    crate::plonk_sponge::FrSponge,
+    mina_curves::pasta::{Fp, Fq, PallasParameters, VestaParameters},
+    mina_poseidon::{
+        constants::PlonkSpongeConstantsKimchi,
+        poseidon::ArithmeticSpongeParams,
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+        FqSponge,
+    },
+};
+
+#[cfg(not(feature = "prover"))]
+use super::generic::{load_and_verify_fixture, load_and_verify_fixture_pallas};
 
 type PallasField = <Pallas as AffineRepr>::BaseField;
+#[cfg(feature = "prover")]
 type SpongeParams = PlonkSpongeConstantsKimchi;
+#[cfg(feature = "prover")]
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams, FULL_ROUNDS>;
 
+#[cfg(feature = "prover")]
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams, FULL_ROUNDS>;
+#[cfg(feature = "prover")]
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams, FULL_ROUNDS>;
 
 fn create_rot_gadget<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>>(
@@ -90,9 +99,11 @@ where
     ConstraintSystem::create(gates).build().unwrap()
 }
 
+#[cfg(feature = "prover")]
 // Function to create a prover and verifier to test the ROT circuit
-fn prove_and_verify<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, EFqSponge, EFrSponge>()
-where
+fn prove_and_verify<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>, EFqSponge, EFrSponge>(
+    fixture_name: &'static str,
+) where
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
     EFrSponge: FrSponge<G::ScalarField>,
@@ -112,6 +123,7 @@ where
     TestFramework::<FULL_ROUNDS, G>::default()
         .gates(gates)
         .witness(witness)
+        .fixture_name(fixture_name)
         .setup()
         .prove_and_verify::<EFqSponge, EFrSponge>()
         .unwrap();
@@ -120,8 +132,21 @@ where
 #[test]
 // End-to-end test
 fn test_prove_and_verify() {
-    prove_and_verify::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>();
-    prove_and_verify::<FULL_ROUNDS, Pallas, PallasBaseSponge, PallasScalarSponge>();
+    #[cfg(feature = "prover")]
+    {
+        prove_and_verify::<FULL_ROUNDS, Vesta, VestaBaseSponge, VestaScalarSponge>(
+            "rot_prove_and_verify_vesta",
+        );
+        prove_and_verify::<FULL_ROUNDS, Pallas, PallasBaseSponge, PallasScalarSponge>(
+            "rot_prove_and_verify_pallas",
+        );
+    }
+
+    #[cfg(not(feature = "prover"))]
+    {
+        load_and_verify_fixture(include_bytes!("fixtures/rot_prove_and_verify_vesta.bin"));
+        load_and_verify_fixture_pallas(include_bytes!("fixtures/rot_prove_and_verify_pallas.bin"));
+    }
 }
 
 fn test_rot<const FULL_ROUNDS: usize, G>(word: u64, rot: u32, side: RotMode)
@@ -393,13 +418,13 @@ fn test_rot_finalization() {
         let mut gates = vec![];
         // public inputs
         for row in 0..num_public_inputs {
-            gates.push(CircuitGate::<Fp>::create_generic_gadget(
+            gates.push(CircuitGate::<PallasField>::create_generic_gadget(
                 Wire::for_row(row),
                 GenericGateSpec::Pub,
                 None,
             ));
         }
-        CircuitGate::<Fp>::extend_rot(&mut gates, rot, mode, 1);
+        CircuitGate::<PallasField>::extend_rot(&mut gates, rot, mode, 1);
         // connect first public input to the word of the ROT
         gates.connect_cell_pair((0, 0), (2, 0));
 
@@ -409,48 +434,45 @@ fn test_rot_finalization() {
     // witness
     let witness = {
         // create one row for the public word
-        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); 2]);
+        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![PallasField::zero(); 2]);
 
         // initialize the public input containing the word to be rotated
         let input = 0xDC811727DAF22EC1u64;
         cols[0][0] = input.into();
-        rot::extend_rot::<Fp>(&mut cols, input, rot, mode);
+        rot::extend_rot::<PallasField>(&mut cols, input, rot, mode);
 
         cols
     };
 
-    let index = {
-        let cs = ConstraintSystem::create(gates.clone())
-            .public(num_public_inputs)
-            .build()
-            .unwrap();
-        let srs = SRS::<Vesta>::create(cs.domain.d1.size());
-        srs.get_lagrange_basis(cs.domain.d1);
-        let srs = Arc::new(srs);
-
-        let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::create(cs, endo_q, srs, false)
-    };
+    let cs = ConstraintSystem::create(gates.clone())
+        .public(num_public_inputs)
+        .build()
+        .unwrap();
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            index.cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
+            cs.gates[row].verify_witness::<FULL_ROUNDS, Vesta>(
                 row,
                 &witness,
-                &index.cs,
-                &witness[0][0..index.cs.public]
+                &cs,
+                &witness[0][0..cs.public]
             ),
             Ok(())
         );
     }
 
+    #[cfg(feature = "prover")]
     TestFramework::<FULL_ROUNDS, Vesta>::default()
         .gates(gates)
         .witness(witness.clone())
         .public_inputs(vec![witness[0][0], witness[0][1]])
+        .fixture_name("test_rot_finalization")
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
         .unwrap();
+
+    #[cfg(not(feature = "prover"))]
+    load_and_verify_fixture(include_bytes!("fixtures/test_rot_finalization.bin"));
 }
 
 #[test]
@@ -479,9 +501,9 @@ fn test_keccak_table() {
     }
     let cs = ConstraintSystem::create(gates).build().unwrap();
 
-    let state: [[u64; DIM]; DIM] = array::from_fn(|_| {
-        array::from_fn(|_| rand::thread_rng().gen_range(0..2u128.pow(64)) as u64)
-    });
+    let rng = &mut o1_utils::tests::make_test_rng(None);
+    let state: [[u64; DIM]; DIM] =
+        array::from_fn(|_| array::from_fn(|_| rng.gen_range(0..2u128.pow(64)) as u64));
     let mut witness: [Vec<PallasField>; COLUMNS] = array::from_fn(|_| vec![PallasField::zero()]);
     for (y, col) in OFF.iter().enumerate() {
         for (x, &rot) in col.iter().enumerate() {

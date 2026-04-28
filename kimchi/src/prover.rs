@@ -23,6 +23,7 @@ use crate::{
         },
         wires::{COLUMNS, PERMUTS},
     },
+    collections::HashMap,
     curve::KimchiCurve,
     error::ProverError,
     lagrange_basis_evaluations::LagrangeBasisEvaluations,
@@ -52,7 +53,6 @@ use poly_commitment::{
 };
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
-use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
 type Result<T> = core::result::Result<T, ProverError>;
@@ -1402,22 +1402,31 @@ where
             if let Some(runtime_lookup_table_selector) = &lcs.runtime_selector {
                 polynomials.push((
                     evaluations_form(runtime_lookup_table_selector),
-                    non_hiding(1),
+                    non_hiding(num_chunks),
                 ))
             }
             if let Some(xor_lookup_selector) = &lcs.lookup_selectors.xor {
-                polynomials.push((evaluations_form(xor_lookup_selector), non_hiding(1)))
+                polynomials.push((
+                    evaluations_form(xor_lookup_selector),
+                    non_hiding(num_chunks),
+                ))
             }
             if let Some(lookup_gate_selector) = &lcs.lookup_selectors.lookup {
-                polynomials.push((evaluations_form(lookup_gate_selector), non_hiding(1)))
+                polynomials.push((
+                    evaluations_form(lookup_gate_selector),
+                    non_hiding(num_chunks),
+                ))
             }
             if let Some(range_check_lookup_selector) = &lcs.lookup_selectors.range_check {
-                polynomials.push((evaluations_form(range_check_lookup_selector), non_hiding(1)))
+                polynomials.push((
+                    evaluations_form(range_check_lookup_selector),
+                    non_hiding(num_chunks),
+                ))
             }
             if let Some(foreign_field_mul_lookup_selector) = &lcs.lookup_selectors.ffmul {
                 polynomials.push((
                     evaluations_form(foreign_field_mul_lookup_selector),
-                    non_hiding(1),
+                    non_hiding(num_chunks),
                 ))
             }
         }

@@ -57,6 +57,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::{vec, vec::Vec};
 
     #[test]
     fn test_normal_sequence() {

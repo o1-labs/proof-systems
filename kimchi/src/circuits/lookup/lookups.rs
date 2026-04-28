@@ -1,22 +1,23 @@
-use crate::circuits::{
-    domains::EvaluationDomains,
-    gate::{CircuitGate, CurrOrNext, GateType},
-    lookup::{
-        index::LookupSelectors,
-        tables::{
-            combine_table_entry, get_table, GateLookupTable, LookupTable, RANGE_CHECK_TABLE_ID,
-            XOR_TABLE_ID,
+use crate::{
+    circuits::{
+        domains::EvaluationDomains,
+        gate::{CircuitGate, CurrOrNext, GateType},
+        lookup::{
+            index::LookupSelectors,
+            tables::{
+                combine_table_entry, get_table, GateLookupTable, LookupTable, RANGE_CHECK_TABLE_ID,
+                XOR_TABLE_ID,
+            },
         },
     },
+    collections::BTreeSet,
 };
+use alloc::{vec, vec::Vec};
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D};
+use core::ops::{Mul, Neg};
 use o1_utils::field_helpers::i32_to_field;
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashSet,
-    ops::{Mul, Neg},
-};
 use strum_macros::EnumIter;
 
 type Evaluations<Field> = E<Field, D<Field>>;
@@ -66,7 +67,7 @@ pub struct LookupPatterns {
 
 impl IntoIterator for LookupPatterns {
     type Item = LookupPattern;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
+    type IntoIter = alloc::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
         // Destructor pattern to make sure we add new lookup patterns.
@@ -243,7 +244,7 @@ impl LookupInfo {
             selector_values[kind] = Some(vec![F::zero(); n]);
         }
 
-        let mut gate_tables = HashSet::new();
+        let mut gate_tables = BTreeSet::new();
 
         let mut update_selector = |lookup_pattern, i| {
             let selector = selector_values[lookup_pattern]

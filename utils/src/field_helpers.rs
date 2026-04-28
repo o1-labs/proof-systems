@@ -1,10 +1,15 @@
 //! Useful helper methods to extend [`ark_ff::Field`].
 
+use alloc::{string::String, vec, vec::Vec};
 use ark_ff::{BigInteger, Field, PrimeField};
-use num_bigint::{BigInt, BigUint, RandBigInt, Sign};
-use rand::rngs::StdRng;
-use std::ops::Neg;
+use core::ops::Neg;
+use num_bigint::{BigInt, BigUint, Sign};
 use thiserror::Error;
+
+#[cfg(feature = "std")]
+use num_bigint::RandBigInt;
+#[cfg(feature = "std")]
+use rand::rngs::StdRng;
 
 /// Field helpers error
 #[allow(missing_docs)]
@@ -21,9 +26,10 @@ pub enum FieldHelpersError {
 }
 
 /// Result alias using [`FieldHelpersError`]
-pub type Result<T> = std::result::Result<T, FieldHelpersError>;
+pub type Result<T> = core::result::Result<T, FieldHelpersError>;
 
 /// Helper to generate random field elements
+#[cfg(feature = "std")]
 pub trait RandomField<F> {
     /// Generates a random field element of up to a given number of bits
     fn gen_field_with_bits(&mut self, bits: usize) -> F;
@@ -32,6 +38,7 @@ pub trait RandomField<F> {
     fn gen(&mut self, input: Option<F>, bits: Option<usize>) -> F;
 }
 
+#[cfg(feature = "std")]
 impl<F: PrimeField> RandomField<F> for StdRng {
     #[allow(clippy::cast_possible_truncation)]
     fn gen_field_with_bits(&mut self, bits: usize) -> F {

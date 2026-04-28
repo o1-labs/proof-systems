@@ -1,4 +1,5 @@
 //! Keccak hash module
+use alloc::{format, vec, vec::Vec};
 pub mod constants;
 pub mod witness;
 
@@ -203,7 +204,7 @@ impl Keccak {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
 
     use rand::{rngs::StdRng, thread_rng, Rng};

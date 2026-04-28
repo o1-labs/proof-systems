@@ -25,7 +25,7 @@ env:
   CARGO_TERM_COLOR: always
   # 30 MB of stack for Keccak tests
   RUST_MIN_STACK: 31457280
-  CARGO_EXTRA_ARGS: '--workspace'
+  CARGO_EXTRA_ARGS: "--workspace"
 
 jobs:
   define-matrix:
@@ -95,7 +95,7 @@ jobs:
           echo "value=$VALUE" >> "$GITHUB_OUTPUT"
 
   refresh-cache:
-    needs: ['define-matrix']
+    needs: ["define-matrix"]
     strategy:
       matrix: ${{ fromJSON(needs.define-matrix.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
@@ -121,7 +121,7 @@ jobs:
         run: echo 'no need to refresh'
 
   doc-and-spec:
-    needs: ['define-matrix', 'refresh-cache']
+    needs: ["define-matrix", "refresh-cache"]
     strategy:
       matrix:
         rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
@@ -173,7 +173,7 @@ jobs:
 
   deploy-pages:
     name: Deploy to GitHub Pages
-    needs: ['define-matrix', 'doc-and-spec']
+    needs: ["define-matrix", "doc-and-spec"]
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
@@ -231,7 +231,7 @@ jobs:
   # Tracking issue: https://github.com/o1-labs/mina-rust/issues/1984
   no-std-check:
     name: "no_std: ${{ matrix.crate.name }}"
-    needs: ['define-matrix', 'refresh-cache']
+    needs: ["define-matrix", "refresh-cache"]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -258,7 +258,7 @@ jobs:
           cargo check --no-default-features
 
   build:
-    needs: ['define-matrix', 'refresh-cache', 'no-std-check']
+    needs: ["define-matrix", "refresh-cache", "no-std-check"]
     strategy:
       matrix:
         rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
@@ -293,7 +293,7 @@ jobs:
           cargo run -p xtask -- build-kimchi-stubs
 
   tests:
-    needs: ['define-matrix', 'refresh-cache']
+    needs: ["define-matrix", "refresh-cache"]
     strategy:
       matrix:
         rust_and_os: ${{ fromJSON(needs.define-matrix.outputs.matrix).include }}
@@ -326,3 +326,12 @@ jobs:
         run: |
           eval $(opam env)
           make nextest
+
+      - name: Run kimchi verifier-only tests (no-prover mode)
+        run: make test-kimchi-verifier-only
+
+      - name: Check kimchi no-std compatibility
+        run: |
+          cargo install cargo-no-std --git https://github.com/o1-labs/cargo-no-std --rev 16901db8 --locked
+          rustup target add x86_64-unknown-none
+          make no-std-check-kimchi

@@ -10,7 +10,6 @@ use mina_curves::{
     },
 };
 use mina_poseidon::{pasta::FULL_ROUNDS, poseidon::ArithmeticSpongeParams};
-use once_cell::sync::Lazy;
 use poly_commitment::{
     commitment::{CommitmentCurve, EndoCurve},
     ipa::endos,
@@ -42,10 +41,10 @@ pub fn vesta_endos() -> &'static (
     <VestaParameters as CurveConfig>::BaseField,
     <VestaParameters as CurveConfig>::ScalarField,
 ) {
-    static VESTA_ENDOS: Lazy<(
+    static VESTA_ENDOS: o1_utils::lazy_lock::LazyLock<(
         <VestaParameters as CurveConfig>::BaseField,
         <VestaParameters as CurveConfig>::ScalarField,
-    )> = Lazy::new(endos::<Affine<VestaParameters>>);
+    )> = o1_utils::lazy_lock::LazyLock::new(endos::<Affine<VestaParameters>>);
     &VESTA_ENDOS
 }
 
@@ -53,10 +52,10 @@ pub fn pallas_endos() -> &'static (
     <PallasParameters as CurveConfig>::BaseField,
     <PallasParameters as CurveConfig>::ScalarField,
 ) {
-    static PALLAS_ENDOS: Lazy<(
+    static PALLAS_ENDOS: o1_utils::lazy_lock::LazyLock<(
         <PallasParameters as CurveConfig>::BaseField,
         <PallasParameters as CurveConfig>::ScalarField,
-    )> = Lazy::new(endos::<Affine<PallasParameters>>);
+    )> = o1_utils::lazy_lock::LazyLock::new(endos::<Affine<PallasParameters>>);
     &PALLAS_ENDOS
 }
 
@@ -176,29 +175,32 @@ use mina_poseidon::dummy_values::kimchi_dummy;
 #[cfg(feature = "bn254")]
 impl KimchiCurve<FULL_ROUNDS> for Affine<ark_bn254::g1::Config> {
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField, FULL_ROUNDS> {
+        use o1_utils::lazy_lock::LazyLock;
         // TODO: Generate some params
-        static PARAMS: Lazy<ArithmeticSpongeParams<ark_bn254::Fr, FULL_ROUNDS>> =
-            Lazy::new(kimchi_dummy);
+        static PARAMS: LazyLock<ArithmeticSpongeParams<ark_bn254::Fr, FULL_ROUNDS>> =
+            LazyLock::new(kimchi_dummy);
         &PARAMS
     }
 
     fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField, FULL_ROUNDS>
     {
+        use o1_utils::lazy_lock::LazyLock;
         // TODO: Generate some params
-        static PARAMS: Lazy<ArithmeticSpongeParams<ark_bn254::Fq, FULL_ROUNDS>> =
-            Lazy::new(kimchi_dummy);
+        static PARAMS: LazyLock<ArithmeticSpongeParams<ark_bn254::Fq, FULL_ROUNDS>> =
+            LazyLock::new(kimchi_dummy);
         &PARAMS
     }
 
     fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
-        static ENDOS: Lazy<(ark_bn254::Fq, ark_bn254::Fr)> =
-            Lazy::new(endos::<ark_bn254::G1Affine>);
+        use o1_utils::lazy_lock::LazyLock;
+        static ENDOS: LazyLock<(ark_bn254::Fq, ark_bn254::Fr)> =
+            LazyLock::new(endos::<ark_bn254::G1Affine>);
         &ENDOS
     }
 
     fn other_curve_endo() -> &'static Self::ScalarField {
-        // TODO: Dummy value, this is definitely not right
-        static ENDO: Lazy<ark_bn254::Fr> = Lazy::new(|| 13u64.into());
+        use o1_utils::lazy_lock::LazyLock;
+        static ENDO: LazyLock<ark_bn254::Fr> = LazyLock::new(|| 13u64.into());
         &ENDO
     }
 
