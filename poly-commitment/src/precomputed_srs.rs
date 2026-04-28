@@ -45,8 +45,17 @@ pub struct TestSRS<G> {
     #[serde_as(as = "o1_utils::serialization::SerdeAsUnchecked")]
     pub h: G,
 
-    /// Commitments to Lagrange bases, per domain size
+    /// Commitments to Lagrange bases, per domain size.
+    ///
+    /// Defaultable so `TestSRS::deserialize` accepts bytes produced by
+    /// the prod `SRS<G>` path (which marks the equivalent field
+    /// `#[serde(skip)]` and writes nothing). Lets a single
+    /// `TestSRS`-typed deserializer consume both the test and prod
+    /// on-disk shapes — useful when downstream code wants to read a
+    /// prod-emitted SRS without paying for `is_on_curve` per
+    /// generator.
     #[serde_as(as = "HashMap<_,Vec<PolyComm<o1_utils::serialization::SerdeAsUnchecked>>>")]
+    #[serde(default)]
     pub lagrange_bases: HashMap<usize, Vec<PolyComm<G>>>,
 }
 
