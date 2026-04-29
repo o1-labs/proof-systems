@@ -72,6 +72,62 @@ where
         let max_poly_size = srs.max_poly_size();
         cs.endo = endo_q;
 
+        // === TEMP TRACE: dump CS gates list to file on index creation ===
+        // Gated on `KIMCHI_CS_DUMP` env var. Filename template same shape
+        // as `KIMCHI_WITNESS_DUMP`: `%c` is replaced with a monotonic
+        // counter (so successive index builds in the same process write
+        // to different files). Both kimchi-stubs (OCaml step/wrap
+        // compile) and crypto-provider (PS step/wrap compile) funnel
+        // through this `ProverIndex::create`, so a single edit here
+        // dumps constraint systems on both sides for byte-level diff.
+        //
+        // Format mirrors the JSON used by circuit-diff fixtures (gates +
+        // wires + coeffs + public_input_size). One file per CS.
+        if let Ok(path_tmpl) = std::env::var("KIMCHI_CS_DUMP") {
+            use ark_poly::EvaluationDomain;
+            use std::io::Write;
+            use std::sync::atomic::{AtomicUsize, Ordering};
+            static COUNTER: AtomicUsize = AtomicUsize::new(0);
+            let counter = COUNTER.fetch_add(1, Ordering::SeqCst);
+            let path = path_tmpl.replace("%c", &counter.to_string());
+            let side =
+                std::env::var("KIMCHI_CS_DUMP_SIDE").unwrap_or_else(|_| "unknown".to_string());
+            if let Ok(mut f) = std::fs::File::create(&path) {
+                let _ = writeln!(f, "#side {}", side);
+                let _ = writeln!(f, "#counter {}", counter);
+                let _ = writeln!(f, "#public_input_size {}", cs.public);
+                let _ = writeln!(f, "#prev_challenges {}", cs.prev_challenges);
+                let _ = writeln!(f, "#d1_size {}", cs.domain.d1.size());
+                let _ = writeln!(f, "#zk_rows {}", cs.zk_rows);
+                let _ = writeln!(f, "#max_poly_size {}", max_poly_size);
+                let _ = writeln!(f, "#num_gates {}", cs.gates.len());
+                // Per-gate dump: kind, wires (col,row pairs), coeffs.
+                // One line per gate. Wires are 7 entries (one per
+                // permutable column).
+                use ark_ff::PrimeField;
+                for (i, g) in cs.gates.iter().enumerate() {
+                    let wires_str = g
+                        .wires
+                        .iter()
+                        .map(|w| format!("{},{}", w.col, w.row))
+                        .collect::<Vec<_>>()
+                        .join(";");
+                    let coeffs_str = g
+                        .coeffs
+                        .iter()
+                        .map(|c| c.into_bigint().to_string())
+                        .collect::<Vec<_>>()
+                        .join(",");
+                    let _ = writeln!(
+                        f,
+                        "g {} kind={:?} wires={} coeffs={}",
+                        i, g.typ, wires_str, coeffs_str
+                    );
+                }
+                let _ = f.flush();
+            }
+        }
+
         // pre-compute the linearization
         let (linearization, powers_of_alpha) = expr_linearization(Some(&cs.feature_flags), true);
 
