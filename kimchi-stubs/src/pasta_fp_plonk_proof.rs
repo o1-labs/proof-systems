@@ -1084,3 +1084,36 @@ pub fn caml_pasta_fp_plonk_proof_deep_copy(
 ) -> CamlProofWithPublic<CamlGVesta, CamlFp> {
     x
 }
+
+// Serialize/deserialize the kimchi `ProverProof` only. The public input is
+// not part of the JSON here — callers emit it alongside via the field type's
+// own JSON encoder. On deserialize, callers supply the public input vector
+// to reconstruct the full `CamlProofWithPublic`.
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fp_plonk_proof_to_serde_json(
+    proof: CamlProofWithPublic<CamlGVesta, CamlFp>,
+) -> Result<String, ocaml::Error> {
+    let (proof, _public): (ProverProof<Vesta, OpeningProof<Vesta>>, Vec<Fp>) = proof.into();
+    serde_json::to_string(&proof).map_err(|_e| {
+        ocaml::Error::invalid_argument("caml_pasta_fp_plonk_proof_to_serde_json")
+            .err()
+            .unwrap()
+    })
+}
+
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fp_plonk_proof_of_serde_json(
+    public: Vec<CamlFp>,
+    json: String,
+) -> Result<CamlProofWithPublic<CamlGVesta, CamlFp>, ocaml::Error> {
+    let proof: ProverProof<Vesta, OpeningProof<Vesta>> =
+        serde_json::from_str(&json).map_err(|_e| {
+            ocaml::Error::invalid_argument("caml_pasta_fp_plonk_proof_of_serde_json")
+                .err()
+                .unwrap()
+        })?;
+    let public: Vec<Fp> = public.into_iter().map(Into::into).collect();
+    Ok((proof, public).into())
+}
