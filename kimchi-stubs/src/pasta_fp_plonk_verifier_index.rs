@@ -299,3 +299,32 @@ pub fn caml_pasta_fp_plonk_verifier_index_deep_copy(
 ) -> CamlPastaFpPlonkVerifierIndex {
     x
 }
+
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fp_plonk_verifier_index_to_serde_json(
+    index: CamlPastaFpPlonkVerifierIndex,
+) -> Result<String, ocaml::Error> {
+    let index: VerifierIndex<Vesta, OpeningProof<Vesta>> = index.into();
+    serde_json::to_string(&index).map_err(|_e| {
+        ocaml::Error::invalid_argument("caml_pasta_fp_plonk_verifier_index_to_serde_json")
+            .err()
+            .unwrap()
+    })
+}
+
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fp_plonk_verifier_index_of_serde_json(
+    srs: CamlFpSrs,
+    json: String,
+) -> Result<CamlPastaFpPlonkVerifierIndex, ocaml::Error> {
+    let mut index: VerifierIndex<Vesta, OpeningProof<Vesta>> = serde_json::from_str(&json)
+        .map_err(|_e| {
+            ocaml::Error::invalid_argument("caml_pasta_fp_plonk_verifier_index_of_serde_json")
+                .err()
+                .unwrap()
+        })?;
+    index.srs = Arc::clone(&srs.0);
+    Ok(index.into())
+}
