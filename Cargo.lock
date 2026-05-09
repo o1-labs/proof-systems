@@ -2485,6 +2485,7 @@ dependencies = [
  "groupmap",
  "hex",
  "itertools 0.12.1",
+ "js-sys",
  "mina-curves",
  "mina-poseidon",
  "num-bigint",
@@ -2499,6 +2500,7 @@ dependencies = [
  "serde",
  "serde_with",
  "thiserror 2.0.18",
+ "wasm-bindgen",
  "zeroize",
 ]
 

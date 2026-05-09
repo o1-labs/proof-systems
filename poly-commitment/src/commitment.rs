@@ -327,7 +327,7 @@ impl<'a, C: AffineRepr + Sub<Output = C::Group>> Sub<&'a PolyComm<C>> for &PolyC
     }
 }
 
-impl<C: AffineRepr> PolyComm<C> {
+impl<C: CommitmentCurve> PolyComm<C> {
     #[must_use]
     pub fn scale(&self, c: C::ScalarField) -> Self {
         Self {
@@ -358,12 +358,23 @@ impl<C: AffineRepr> PolyComm<C> {
 
         let chunks = (0..elems_size)
             .map(|chunk| {
-                let (points, scalars): (Vec<_>, Vec<_>) = com
+                let (points, scalar_fields): (Vec<_>, Vec<_>) = com
+                    .iter()
+                    .zip(elm)
+                    // get rid of scalars that don't have an associated chunk
+                    .filter_map(|(com, scalar)| com.chunks.get(chunk).map(|c| (c, scalar)))
+                    .unzip();
+                if let Some(point) = crate::montgomery_msm::msm_refs::<C>(&points, &scalar_fields) {
+                    return point;
+                }
+
+                let scalars: Vec<_> = com
                     .iter()
                     .zip(&all_scalars)
                     // get rid of scalars that don't have an associated chunk
                     .filter_map(|(com, scalar)| com.chunks.get(chunk).map(|c| (c, scalar)))
-                    .unzip();
+                    .map(|(_, scalar)| scalar)
+                    .collect();
 
                 // Splitting into 2 chunks seems optimal; but in
                 // practice elems_size is almost always 1
@@ -375,7 +386,15 @@ impl<C: AffineRepr> PolyComm<C> {
                     .into_par_iter()
                     .chunks(subchunk_size)
                     .zip(scalars.into_par_iter().chunks(subchunk_size))
-                    .map(|(psc, ssc)| C::Group::msm_bigint(&psc, &ssc).into_affine())
+                    .map(|(psc, ssc)| {
+                        let psc: Vec<_> = psc.into_iter().cloned().collect();
+                        let ssc: Vec<_> = ssc.into_iter().cloned().collect();
+                        crate::msm_profiler::measure::<C, _>(
+                            "poly_comm.multi_scalar_mul",
+                            psc.len(),
+                            || C::Group::msm_bigint(&psc, &ssc).into_affine(),
+                        )
+                    })
                     .reduce(C::zero, |x, y| (x + y).into())
             })
             .collect();

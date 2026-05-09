@@ -1,9 +1,12 @@
 use crate::wasm_vector::WasmVector;
+use ark_ec::AffineRepr;
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::ops::Deref;
+use js_sys::Uint8Array;
 use paste::paste;
 use poly_commitment::{
-    commitment::b_poly_coefficients, hash_map_cache::HashMapCache, ipa::SRS, SRS as ISRS,
+    commitment::b_poly_coefficients, hash_map_cache::HashMapCache, ipa::SRS, PolyComm, SRS as ISRS,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -14,6 +17,19 @@ use std::{
 use wasm_bindgen::prelude::*;
 use wasm_types::FlatVector as WasmFlatVector;
 
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_name = o1jsMontgomerySrsMsmEnabled)]
+    fn o1js_montgomery_srs_msm_enabled() -> bool;
+
+    #[wasm_bindgen(catch, js_name = o1jsMontgomerySrsMsm)]
+    fn o1js_montgomery_srs_msm(
+        curve: &str,
+        point_bytes: &[u8],
+        scalar_bytes: &[u8],
+    ) -> Result<JsValue, JsValue>;
+}
+
 macro_rules! impl_srs {
     ($name: ident,
      $WasmF: ty,
@@ -21,7 +37,8 @@ macro_rules! impl_srs {
      $F: ty,
      $G: ty,
      $WasmPolyComm: ty,
-     $field_name: ident) => {
+     $field_name: ident,
+     $montgomery_curve: expr) => {
         paste! {
             #[wasm_bindgen]
             #[derive(Clone)]
@@ -207,7 +224,64 @@ macro_rules! impl_srs {
                 let evals = evals.into_iter().map(Into::into).collect();
                 let p = Evaluations::<$F>::from_vec_and_domain(evals, x_domain).interpolate();
 
+                if let Some(commitment) =
+                    [<$name:snake _commit_non_hiding_montgomery>](&srs.0, &p.coeffs)
+                {
+                    return Ok(commitment.into());
+                }
+
                 Ok(srs.commit_non_hiding(&p, 1).into())
+            }
+
+            fn [<$name:snake _commit_non_hiding_montgomery>](
+                srs: &Arc<SRS<$G>>,
+                coeffs: &[$F],
+            ) -> Option<PolyComm<$G>> {
+                if !o1js_montgomery_srs_msm_enabled() {
+                    return None;
+                }
+                if coeffs.is_empty() || coeffs.len() > srs.g.len() {
+                    return None;
+                }
+
+                let mut point_bytes = Vec::with_capacity(coeffs.len() * 64);
+                let mut scalar_bytes = Vec::with_capacity(coeffs.len() * 32);
+
+                for point in &srs.g[..coeffs.len()] {
+                    if point.is_zero() {
+                        return None;
+                    }
+                    serialize_32(&point.x, &mut point_bytes)?;
+                    serialize_32(&point.y, &mut point_bytes)?;
+                }
+                for scalar in coeffs {
+                    serialize_32(scalar, &mut scalar_bytes)?;
+                }
+
+                let result = o1js_montgomery_srs_msm(
+                    $montgomery_curve,
+                    &point_bytes,
+                    &scalar_bytes,
+                )
+                .ok()?;
+                if result.is_undefined() || result.is_null() {
+                    return None;
+                }
+                let result = Uint8Array::new(&result).to_vec();
+                if result.len() != 64 {
+                    return None;
+                }
+
+                let x =
+                    <$G as AffineRepr>::BaseField::deserialize_compressed(&mut &result[..32]).ok()?;
+                let y =
+                    <$G as AffineRepr>::BaseField::deserialize_compressed(&mut &result[32..]).ok()?;
+                let point: $G = $G {
+                    x,
+                    y,
+                    infinity: false,
+                };
+                Some(PolyComm::<$G>::new(vec![point]))
             }
 
             #[wasm_bindgen]
@@ -259,6 +333,16 @@ macro_rules! impl_srs {
     }
 }
 
+fn serialize_32<T: CanonicalSerialize>(value: &T, out: &mut Vec<u8>) -> Option<()> {
+    let offset = out.len();
+    value.serialize_compressed(&mut *out).ok()?;
+    if out.len() == offset + 32 {
+        Some(())
+    } else {
+        None
+    }
+}
+
 //
 // Fp
 //
@@ -269,7 +353,16 @@ pub mod fp {
     use arkworks::{WasmGVesta as WasmG, WasmPastaFp};
     use mina_curves::pasta::{Fp, Vesta as G};
 
-    impl_srs!(caml_fp_srs, WasmPastaFp, WasmG, Fp, G, WasmPolyComm, Fp);
+    impl_srs!(
+        caml_fp_srs,
+        WasmPastaFp,
+        WasmG,
+        Fp,
+        G,
+        WasmPolyComm,
+        Fp,
+        "vesta"
+    );
     #[wasm_bindgen]
     pub fn caml_fp_srs_create_parallel(depth: i32) -> WasmFpSrs {
         crate::rayon::run_in_pool(|| Arc::new(SRS::<G>::create_parallel(depth as usize)).into())
@@ -348,7 +441,16 @@ pub mod fq {
     use arkworks::{WasmGPallas as WasmG, WasmPastaFq};
     use mina_curves::pasta::{Fq, Pallas as G};
 
-    impl_srs!(caml_fq_srs, WasmPastaFq, WasmG, Fq, G, WasmPolyComm, Fq);
+    impl_srs!(
+        caml_fq_srs,
+        WasmPastaFq,
+        WasmG,
+        Fq,
+        G,
+        WasmPolyComm,
+        Fq,
+        "pallas"
+    );
 
     #[wasm_bindgen]
     pub fn caml_fq_srs_create_parallel(depth: i32) -> WasmFqSrs {

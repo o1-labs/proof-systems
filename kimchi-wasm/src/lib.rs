@@ -109,6 +109,21 @@ pub fn get_memory_byte_length() -> usize {
     buffer.unchecked_into::<js_sys::ArrayBuffer>().byte_length() as usize
 }
 
+#[wasm_bindgen]
+pub fn caml_msm_profiler_reset() {
+    poly_commitment::msm_profiler::reset();
+}
+
+#[wasm_bindgen]
+pub fn caml_msm_profiler_stop() {
+    poly_commitment::msm_profiler::stop();
+}
+
+#[wasm_bindgen]
+pub fn caml_msm_profiler_snapshot() -> String {
+    poly_commitment::msm_profiler::snapshot_json()
+}
+
 pub mod rayon;
 
 /// Vectors

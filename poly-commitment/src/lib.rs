@@ -13,6 +13,8 @@ pub mod hash_map_cache;
 pub mod ipa;
 pub mod kzg;
 pub mod lagrange_basis;
+pub mod montgomery_msm;
+pub mod msm_profiler;
 pub mod precomputed_srs;
 pub mod utils;
 

@@ -36,6 +36,10 @@ o1-utils.workspace = true
 ocaml = { workspace = true, optional = true }
 ocaml-gen = { workspace = true, optional = true }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys.workspace = true
+wasm-bindgen.workspace = true
+
 [dev-dependencies]
 criterion.workspace = true
 rand_chacha.workspace = true
