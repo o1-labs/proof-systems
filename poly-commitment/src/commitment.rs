@@ -354,7 +354,8 @@ impl<C: CommitmentCurve> PolyComm<C> {
             return Self::new(vec![C::zero()]);
         }
 
-        if let Some(mut commitments) = Self::multi_scalar_mul_batch(com, &[elm]) {
+        if let Some(mut commitments) = Self::multi_scalar_mul_batch(com, &[elm], "poly_comm.single")
+        {
             if let Some(commitment) = commitments.pop() {
                 return commitment;
             }
@@ -411,7 +412,11 @@ impl<C: CommitmentCurve> PolyComm<C> {
     }
 
     #[must_use]
-    pub fn multi_scalar_mul_batch(com: &[&Self], elms: &[&[C::ScalarField]]) -> Option<Vec<Self>> {
+    pub fn multi_scalar_mul_batch(
+        com: &[&Self],
+        elms: &[&[C::ScalarField]],
+        label: &str,
+    ) -> Option<Vec<Self>> {
         if elms.iter().any(|elm| com.len() != elm.len()) {
             return None;
         }
@@ -465,7 +470,7 @@ impl<C: CommitmentCurve> PolyComm<C> {
             .map(|(points, scalars)| (points.as_slice(), scalars.as_slice()))
             .collect::<Vec<_>>();
 
-        crate::montgomery_msm::msm_refs_batch::<C>(&batches).map(|points| {
+        crate::montgomery_msm::msm_refs_batch::<C>(&batches, label).map(|points| {
             for ((elm_idx, chunk), point) in batch_owners.into_iter().zip(points) {
                 chunks[elm_idx][chunk] = point;
             }

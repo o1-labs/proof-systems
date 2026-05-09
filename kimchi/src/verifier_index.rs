@@ -255,7 +255,11 @@ where
 
         let verifier_index_comms = self
             .srs
-            .commit_evaluations_non_hiding_batch(domain, &verifier_index_evals)
+            .commit_evaluations_non_hiding_batch(
+                domain,
+                &verifier_index_evals,
+                "verifier_index.columns",
+            )
             .unwrap_or_else(|| {
                 verifier_index_evals
                     .iter()

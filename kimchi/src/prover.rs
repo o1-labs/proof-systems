@@ -327,7 +327,11 @@ where
         let witness_eval_refs = witness_evals.iter().collect::<Vec<_>>();
         let witness_comms = index
             .srs
-            .commit_evaluations_non_hiding_batch(index.cs.domain.d1, &witness_eval_refs)
+            .commit_evaluations_non_hiding_batch(
+                index.cs.domain.d1,
+                &witness_eval_refs,
+                "prover.witness",
+            )
             .unwrap_or_else(|| {
                 witness_evals
                     .iter()

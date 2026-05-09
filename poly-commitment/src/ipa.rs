@@ -35,6 +35,15 @@ use serde_with::serde_as;
 use std::{cmp::min, iter::Iterator, ops::AddAssign};
 use zeroize::Zeroize;
 
+const MIN_MONTGOMERY_PROVER_WITNESS_BATCH_DOMAIN_SIZE: usize = 8_192;
+
+fn min_montgomery_evaluation_batch_domain_size(label: &str) -> Option<usize> {
+    match label {
+        "prover.witness" => Some(MIN_MONTGOMERY_PROVER_WITNESS_BATCH_DOMAIN_SIZE),
+        _ => None,
+    }
+}
+
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(bound = "G: CanonicalDeserialize + CanonicalSerialize")]
@@ -651,7 +660,13 @@ where
         &self,
         domain: D<G::ScalarField>,
         plnms: &[&Evaluations<G::ScalarField, D<G::ScalarField>>],
+        label: &str,
     ) -> Option<Vec<PolyComm<G>>> {
+        let min_domain_size = min_montgomery_evaluation_batch_domain_size(label)?;
+        if plnms.len() < 2 || domain.size() < min_domain_size {
+            return None;
+        }
+
         let domain_size = domain.size;
         let domain_size_usize = domain.size();
         let basis = self.get_lagrange_basis(domain);
@@ -671,7 +686,7 @@ where
             .collect::<Option<Vec<Vec<_>>>>()?;
         let eval_refs = evals.iter().map(Vec::as_slice).collect::<Vec<_>>();
 
-        PolyComm::<G>::multi_scalar_mul_batch(&basis_refs, &eval_refs)
+        PolyComm::<G>::multi_scalar_mul_batch(&basis_refs, &eval_refs, label)
     }
 
     fn commit_evaluations(

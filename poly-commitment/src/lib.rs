@@ -150,6 +150,7 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
         &self,
         _domain: D<G::ScalarField>,
         _plnms: &[&Evaluations<G::ScalarField, D<G::ScalarField>>],
+        _label: &str,
     ) -> Option<Vec<PolyComm<G>>> {
         None
     }

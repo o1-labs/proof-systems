@@ -9,6 +9,7 @@ mod wasm {
     use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
     use js_sys::Uint8Array;
     use std::any::type_name;
+    use std::time::Instant;
     use wasm_bindgen::prelude::*;
 
     #[wasm_bindgen]
@@ -29,6 +30,7 @@ mod wasm {
             point_bytes: &[u8],
             scalar_bytes: &[u8],
             sizes: &[u32],
+            label: &str,
         ) -> Result<JsValue, JsValue>;
     }
 
@@ -60,7 +62,7 @@ mod wasm {
         )
     }
 
-    pub fn msm_refs_batch<G>(batches: &[(&[&G], &[&G::ScalarField])]) -> Option<Vec<G>>
+    pub fn msm_refs_batch<G>(batches: &[(&[&G], &[&G::ScalarField])], label: &str) -> Option<Vec<G>>
     where
         G: CommitmentCurve,
         G::BaseField: CanonicalDeserialize + CanonicalSerialize,
@@ -73,13 +75,16 @@ mod wasm {
         {
             return None;
         }
-        msm_batch_inner(batches.iter().map(|(points, scalars)| {
-            (
-                points.iter().copied(),
-                scalars.iter().copied(),
-                points.len(),
-            )
-        }))
+        msm_batch_inner(
+            batches.iter().map(|(points, scalars)| {
+                (
+                    points.iter().copied(),
+                    scalars.iter().copied(),
+                    points.len(),
+                )
+            }),
+            label,
+        )
     }
 
     pub fn msm_batch<G>(batches: &[(&[G], &[G::ScalarField])]) -> Option<Vec<G>>
@@ -99,6 +104,7 @@ mod wasm {
             batches
                 .iter()
                 .map(|(points, scalars)| (points.iter(), scalars.iter(), points.len())),
+            "ipa.commit_non_hiding.chunks",
         )
     }
 
@@ -117,23 +123,33 @@ mod wasm {
         }
         let curve = curve_name::<G>()?;
 
-        let mut point_bytes = Vec::with_capacity(len * 64);
-        let mut scalar_bytes = Vec::with_capacity(len * 32);
+        let start = Instant::now();
+        let result = (|| {
+            let mut point_bytes = Vec::with_capacity(len * 64);
+            let mut scalar_bytes = Vec::with_capacity(len * 32);
 
-        for point in points {
-            let (x, y) = point.to_coordinates()?;
-            serialize_32(&x, &mut point_bytes)?;
-            serialize_32(&y, &mut point_bytes)?;
-        }
-        for scalar in scalars {
-            serialize_32(scalar, &mut scalar_bytes)?;
-        }
+            for point in points {
+                let (x, y) = point.to_coordinates()?;
+                serialize_32(&x, &mut point_bytes)?;
+                serialize_32(&y, &mut point_bytes)?;
+            }
+            for scalar in scalars {
+                serialize_32(scalar, &mut scalar_bytes)?;
+            }
 
-        deserialize_result(o1js_montgomery_srs_msm(curve, &point_bytes, &scalar_bytes).ok()?)
+            deserialize_result(o1js_montgomery_srs_msm(curve, &point_bytes, &scalar_bytes).ok()?)
+        })();
+        crate::msm_profiler::record_micros::<G>(
+            "montgomery.single",
+            len,
+            start.elapsed().as_micros(),
+        );
+        result
     }
 
     fn msm_batch_inner<'a, G, PointIter, ScalarIter>(
         batches: impl IntoIterator<Item = (PointIter, ScalarIter, usize)>,
+        label: &str,
     ) -> Option<Vec<G>>
     where
         G: CommitmentCurve + 'a,
@@ -147,13 +163,16 @@ mod wasm {
         }
         let curve = curve_name::<G>()?;
 
+        let start = Instant::now();
         let mut point_bytes = Vec::new();
         let mut scalar_bytes = Vec::new();
         let mut sizes = Vec::new();
+        let mut total_len = 0usize;
 
         for (points, scalars, len) in batches {
             let len = u32::try_from(len).ok()?;
             sizes.push(len);
+            total_len += len as usize;
 
             point_bytes.reserve(len as usize * 64);
             scalar_bytes.reserve(len as usize * 32);
@@ -168,9 +187,16 @@ mod wasm {
             }
         }
 
-        deserialize_batch_result(
-            o1js_montgomery_srs_msm_batch(curve, &point_bytes, &scalar_bytes, &sizes).ok()?,
-        )
+        let result = deserialize_batch_result(
+            o1js_montgomery_srs_msm_batch(curve, &point_bytes, &scalar_bytes, &sizes, label)
+                .ok()?,
+        );
+        crate::msm_profiler::record_micros::<G>(
+            profiler_label(label),
+            total_len,
+            start.elapsed().as_micros(),
+        );
+        result
     }
 
     fn deserialize_result<G>(result: JsValue) -> Option<G>
@@ -234,6 +260,16 @@ mod wasm {
             None
         }
     }
+
+    fn profiler_label(label: &str) -> &'static str {
+        match label {
+            "ipa.commit_non_hiding.chunks" => "montgomery.ipa.commit_non_hiding.chunks",
+            "poly_comm.single" => "montgomery.poly_comm.single",
+            "prover.witness" => "montgomery.prover.witness",
+            "verifier_index.columns" => "montgomery.verifier_index.columns",
+            _ => "montgomery.batch",
+        }
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -256,7 +292,7 @@ where
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn msm_refs_batch<G>(_batches: &[(&[&G], &[&G::ScalarField])]) -> Option<Vec<G>>
+pub fn msm_refs_batch<G>(_batches: &[(&[&G], &[&G::ScalarField])], _label: &str) -> Option<Vec<G>>
 where
     G: CommitmentCurve,
 {

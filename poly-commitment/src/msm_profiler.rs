@@ -4,6 +4,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Mutex, OnceLock,
     },
+    time::Instant,
 };
 
 #[derive(Clone)]
@@ -11,6 +12,7 @@ struct Entry {
     label: &'static str,
     curve: &'static str,
     n: usize,
+    micros: u128,
 }
 
 static ENABLED: AtomicBool = AtomicBool::new(false);
@@ -31,7 +33,19 @@ pub fn measure<G, R>(label: &'static str, n: usize, run: impl FnOnce() -> R) -> 
         return run();
     }
 
+    let start = Instant::now();
     let result = run();
+    let micros = start.elapsed().as_micros();
+
+    record_micros::<G>(label, n, micros);
+
+    result
+}
+
+pub fn record_micros<G>(label: &'static str, n: usize, micros: u128) {
+    if !ENABLED.load(Ordering::Relaxed) {
+        return;
+    }
 
     entries()
         .lock()
@@ -40,9 +54,8 @@ pub fn measure<G, R>(label: &'static str, n: usize, run: impl FnOnce() -> R) -> 
             label,
             curve: type_name::<G>(),
             n,
+            micros,
         });
-
-    result
 }
 
 pub fn snapshot_json() -> String {
@@ -59,7 +72,7 @@ pub fn snapshot_json() -> String {
         out.push_str("\",\"n\":");
         out.push_str(&entry.n.to_string());
         out.push_str(",\"micros\":");
-        out.push('0');
+        out.push_str(&entry.micros.to_string());
         out.push('}');
     }
     out.push(']');

@@ -266,37 +266,15 @@ macro_rules! impl_srs {
                     serialize_32(scalar, &mut scalar_bytes)?;
                 }
 
-                #[allow(clippy::cast_possible_truncation)]
-                let sizes = [coeffs.len() as u32];
-                let result = o1js_montgomery_srs_msm_batch(
-                    $montgomery_curve,
-                    &point_bytes,
-                    &scalar_bytes,
-                    &sizes,
-                )
-                .ok()
-                .and_then(|result| {
-                    if result.is_undefined() || result.is_null() {
-                        None
-                    } else {
-                        let bytes = Uint8Array::new(&result).to_vec();
-                        (bytes.len() == 64).then_some(bytes)
-                    }
-                })
-                .or_else(|| {
-                    let result = o1js_montgomery_srs_msm(
-                        $montgomery_curve,
-                        &point_bytes,
-                        &scalar_bytes,
-                    )
-                    .ok()?;
-                    if result.is_undefined() || result.is_null() {
-                        None
-                    } else {
-                        let bytes = Uint8Array::new(&result).to_vec();
-                        (bytes.len() == 64).then_some(bytes)
-                    }
-                })?;
+                let result =
+                    o1js_montgomery_srs_msm($montgomery_curve, &point_bytes, &scalar_bytes).ok()?;
+                if result.is_undefined() || result.is_null() {
+                    return None;
+                }
+                let result = Uint8Array::new(&result).to_vec();
+                if result.len() != 64 {
+                    return None;
+                }
 
                 let x =
                     <$G as AffineRepr>::BaseField::deserialize_compressed(&mut &result[..32]).ok()?;
