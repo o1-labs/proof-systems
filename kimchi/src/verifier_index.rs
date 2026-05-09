@@ -211,6 +211,58 @@ where
 
         // Defined as variable for convenience to avoid verbosity
         let column_evaluations = self.column_evaluations.get();
+        let mut verifier_index_evals = Vec::new();
+        let mut push_eval = |eval| {
+            let idx = verifier_index_evals.len();
+            verifier_index_evals.push(eval);
+            idx
+        };
+
+        let sigma_idx: [usize; PERMUTS] =
+            array::from_fn(|i| push_eval(&column_evaluations.permutation_coefficients8[i]));
+        let coefficients_idx: [usize; COLUMNS] =
+            array::from_fn(|i| push_eval(&column_evaluations.coefficients8[i]));
+        let generic_idx = push_eval(&column_evaluations.generic_selector4);
+        let psm_idx = push_eval(&column_evaluations.poseidon_selector8);
+        let complete_add_idx = push_eval(&column_evaluations.complete_add_selector4);
+        let mul_idx = push_eval(&column_evaluations.mul_selector8);
+        let emul_idx = push_eval(&column_evaluations.emul_selector8);
+        let endomul_scalar_idx = push_eval(&column_evaluations.endomul_scalar_selector8);
+        let range_check0_idx = column_evaluations
+            .range_check0_selector8
+            .as_ref()
+            .map(&mut push_eval);
+        let range_check1_idx = column_evaluations
+            .range_check1_selector8
+            .as_ref()
+            .map(&mut push_eval);
+        let foreign_field_add_idx = column_evaluations
+            .foreign_field_add_selector8
+            .as_ref()
+            .map(&mut push_eval);
+        let foreign_field_mul_idx = column_evaluations
+            .foreign_field_mul_selector8
+            .as_ref()
+            .map(&mut push_eval);
+        let xor_idx = column_evaluations
+            .xor_selector8
+            .as_ref()
+            .map(&mut push_eval);
+        let rot_idx = column_evaluations
+            .rot_selector8
+            .as_ref()
+            .map(&mut push_eval);
+
+        let verifier_index_comms = self
+            .srs
+            .commit_evaluations_non_hiding_batch(domain, &verifier_index_evals)
+            .unwrap_or_else(|| {
+                verifier_index_evals
+                    .iter()
+                    .map(|eval| self.srs.commit_evaluations_non_hiding(domain, eval))
+                    .collect()
+            });
+        let commitment = |idx: usize| verifier_index_comms[idx].clone();
 
         // TODO: Switch to commit_evaluations for all index polys
         VerifierIndex {
@@ -222,73 +274,27 @@ where
             prev_challenges: self.cs.prev_challenges,
             srs: Arc::clone(&self.srs),
 
-            sigma_comm: array::from_fn(|i| {
-                self.srs.commit_evaluations_non_hiding(
-                    domain,
-                    &column_evaluations.permutation_coefficients8[i],
-                )
-            }),
-            coefficients_comm: array::from_fn(|i| {
-                self.srs
-                    .commit_evaluations_non_hiding(domain, &column_evaluations.coefficients8[i])
-            }),
-            generic_comm: mask_fixed(
-                self.srs
-                    .commit_evaluations_non_hiding(domain, &column_evaluations.generic_selector4),
-            ),
+            sigma_comm: array::from_fn(|i| commitment(sigma_idx[i])),
+            coefficients_comm: array::from_fn(|i| commitment(coefficients_idx[i])),
+            generic_comm: mask_fixed(commitment(generic_idx)),
 
-            psm_comm: mask_fixed(
-                self.srs
-                    .commit_evaluations_non_hiding(domain, &column_evaluations.poseidon_selector8),
-            ),
+            psm_comm: mask_fixed(commitment(psm_idx)),
 
-            complete_add_comm: mask_fixed(
-                self.srs.commit_evaluations_non_hiding(
-                    domain,
-                    &column_evaluations.complete_add_selector4,
-                ),
-            ),
-            mul_comm: mask_fixed(
-                self.srs
-                    .commit_evaluations_non_hiding(domain, &column_evaluations.mul_selector8),
-            ),
-            emul_comm: mask_fixed(
-                self.srs
-                    .commit_evaluations_non_hiding(domain, &column_evaluations.emul_selector8),
-            ),
+            complete_add_comm: mask_fixed(commitment(complete_add_idx)),
+            mul_comm: mask_fixed(commitment(mul_idx)),
+            emul_comm: mask_fixed(commitment(emul_idx)),
 
-            endomul_scalar_comm: mask_fixed(self.srs.commit_evaluations_non_hiding(
-                domain,
-                &column_evaluations.endomul_scalar_selector8,
-            )),
+            endomul_scalar_comm: mask_fixed(commitment(endomul_scalar_idx)),
 
-            range_check0_comm: column_evaluations
-                .range_check0_selector8
-                .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+            range_check0_comm: range_check0_idx.map(commitment),
 
-            range_check1_comm: column_evaluations
-                .range_check1_selector8
-                .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+            range_check1_comm: range_check1_idx.map(commitment),
 
-            foreign_field_add_comm: column_evaluations
-                .foreign_field_add_selector8
-                .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+            foreign_field_add_comm: foreign_field_add_idx.map(commitment),
 
-            foreign_field_mul_comm: column_evaluations
-                .foreign_field_mul_selector8
-                .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
-            xor_comm: column_evaluations
-                .xor_selector8
-                .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
-            rot_comm: column_evaluations
-                .rot_selector8
-                .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+            foreign_field_mul_comm: foreign_field_mul_idx.map(commitment),
+            xor_comm: xor_idx.map(commitment),
+            rot_comm: rot_idx.map(commitment),
 
             shift: self.cs.shift,
             permutation_vanishing_polynomial_m: {

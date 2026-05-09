@@ -27,6 +27,8 @@ use std::{
     ops::{Add, AddAssign, Sub},
 };
 
+const MIN_MONTGOMERY_POLY_COMM_BATCH_POINTS: usize = 4_096;
+
 /// Represent a polynomial commitment when the type is instantiated with a
 /// curve.
 ///
@@ -352,6 +354,12 @@ impl<C: CommitmentCurve> PolyComm<C> {
             return Self::new(vec![C::zero()]);
         }
 
+        if let Some(mut commitments) = Self::multi_scalar_mul_batch(com, &[elm]) {
+            if let Some(commitment) = commitments.pop() {
+                return commitment;
+            }
+        }
+
         let all_scalars: Vec<_> = elm.iter().map(|s| s.into_bigint()).collect();
 
         let elems_size = Iterator::max(com.iter().map(|c| c.chunks.len())).unwrap();
@@ -400,6 +408,69 @@ impl<C: CommitmentCurve> PolyComm<C> {
             .collect();
 
         Self::new(chunks)
+    }
+
+    #[must_use]
+    pub fn multi_scalar_mul_batch(com: &[&Self], elms: &[&[C::ScalarField]]) -> Option<Vec<Self>> {
+        if elms.iter().any(|elm| com.len() != elm.len()) {
+            return None;
+        }
+
+        if com.is_empty() {
+            return Some(
+                elms.iter()
+                    .map(|_| Self::new(vec![C::zero()]))
+                    .collect::<Vec<_>>(),
+            );
+        }
+
+        let elems_size = Iterator::max(com.iter().map(|c| c.chunks.len())).unwrap();
+        let mut chunks = vec![vec![C::zero(); elems_size]; elms.len()];
+        let mut batch_owners = Vec::with_capacity(elms.len() * elems_size);
+        let mut batch_point_refs: Vec<Vec<&C>> = Vec::with_capacity(elms.len() * elems_size);
+        let mut batch_scalar_refs: Vec<Vec<&C::ScalarField>> =
+            Vec::with_capacity(elms.len() * elems_size);
+
+        for (elm_idx, elm) in elms.iter().enumerate() {
+            for chunk in 0..elems_size {
+                let (points, scalars): (Vec<_>, Vec<_>) = com
+                    .iter()
+                    .zip(*elm)
+                    .filter_map(|(com, scalar)| com.chunks.get(chunk).map(|point| (point, scalar)))
+                    .unzip();
+
+                if points.len() >= MIN_MONTGOMERY_POLY_COMM_BATCH_POINTS {
+                    batch_owners.push((elm_idx, chunk));
+                    batch_point_refs.push(points);
+                    batch_scalar_refs.push(scalars);
+                } else if !points.is_empty() {
+                    let point_values = points.iter().copied().cloned().collect::<Vec<_>>();
+                    let scalar_bigints = scalars
+                        .iter()
+                        .map(|scalar| scalar.into_bigint())
+                        .collect::<Vec<_>>();
+                    chunks[elm_idx][chunk] =
+                        C::Group::msm_bigint(&point_values, &scalar_bigints).into();
+                }
+            }
+        }
+
+        if batch_owners.is_empty() {
+            return None;
+        }
+
+        let batches = batch_point_refs
+            .iter()
+            .zip(&batch_scalar_refs)
+            .map(|(points, scalars)| (points.as_slice(), scalars.as_slice()))
+            .collect::<Vec<_>>();
+
+        crate::montgomery_msm::msm_refs_batch::<C>(&batches).map(|points| {
+            for ((elm_idx, chunk), point) in batch_owners.into_iter().zip(points) {
+                chunks[elm_idx][chunk] = point;
+            }
+            chunks.into_iter().map(Self::new).collect()
+        })
     }
 }
 

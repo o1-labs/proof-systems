@@ -567,12 +567,16 @@ where
                 vec![(r1 + r2).into_affine()]
             }
         } else {
-            if let Some(chunks) = plnm
-                .coeffs
-                .chunks(self.g.len())
-                .map(|coeffs| crate::montgomery_msm::msm::<G>(&self.g[..coeffs.len()], coeffs))
-                .collect::<Option<Vec<_>>>()
-            {
+            let montgomery_chunks = {
+                let coeff_chunks = plnm.coeffs.chunks(self.g.len()).collect::<Vec<_>>();
+                let msm_batches = coeff_chunks
+                    .iter()
+                    .map(|coeffs| (&self.g[..coeffs.len()], *coeffs))
+                    .collect::<Vec<_>>();
+                crate::montgomery_msm::msm_batch::<G>(&msm_batches)
+            };
+
+            if let Some(chunks) = montgomery_chunks {
                 chunks
             } else {
                 // otherwise it's better to parallelise horizontally along chunks
@@ -641,6 +645,33 @@ where
                 panic!("desired commitment domain size ({}) greater than evaluations' domain size ({}):", domain.size, plnm.domain().size)
             }
         }
+    }
+
+    fn commit_evaluations_non_hiding_batch(
+        &self,
+        domain: D<G::ScalarField>,
+        plnms: &[&Evaluations<G::ScalarField, D<G::ScalarField>>],
+    ) -> Option<Vec<PolyComm<G>>> {
+        let domain_size = domain.size;
+        let domain_size_usize = domain.size();
+        let basis = self.get_lagrange_basis(domain);
+        let basis_refs: Vec<_> = basis.iter().collect();
+
+        let evals = plnms
+            .iter()
+            .map(|plnm| match domain_size.cmp(&plnm.domain().size) {
+                std::cmp::Ordering::Less => {
+                    #[allow(clippy::cast_possible_truncation)]
+                    let s = (plnm.domain().size / domain_size) as usize;
+                    Some((0..domain_size_usize).map(|i| plnm.evals[s * i]).collect())
+                }
+                std::cmp::Ordering::Equal => Some(plnm.evals.clone()),
+                std::cmp::Ordering::Greater => None,
+            })
+            .collect::<Option<Vec<Vec<_>>>>()?;
+        let eval_refs = evals.iter().map(Vec::as_slice).collect::<Vec<_>>();
+
+        PolyComm::<G>::multi_scalar_mul_batch(&basis_refs, &eval_refs)
     }
 
     fn commit_evaluations(

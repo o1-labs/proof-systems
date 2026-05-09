@@ -22,6 +22,14 @@ mod wasm {
             point_bytes: &[u8],
             scalar_bytes: &[u8],
         ) -> Result<JsValue, JsValue>;
+
+        #[wasm_bindgen(catch, js_name = o1jsMontgomerySrsMsmBatch)]
+        fn o1js_montgomery_srs_msm_batch(
+            curve: &str,
+            point_bytes: &[u8],
+            scalar_bytes: &[u8],
+            sizes: &[u32],
+        ) -> Result<JsValue, JsValue>;
     }
 
     pub fn msm<G>(points: &[G], scalars: &[G::ScalarField]) -> Option<G>
@@ -49,6 +57,48 @@ mod wasm {
             points.iter().copied(),
             scalars.iter().copied(),
             points.len(),
+        )
+    }
+
+    pub fn msm_refs_batch<G>(batches: &[(&[&G], &[&G::ScalarField])]) -> Option<Vec<G>>
+    where
+        G: CommitmentCurve,
+        G::BaseField: CanonicalDeserialize + CanonicalSerialize,
+        G::ScalarField: CanonicalSerialize,
+    {
+        if batches.is_empty()
+            || batches.iter().any(|(points, scalars)| {
+                points.len() < MIN_POLY_COMM_FAST_PATH_POINTS || points.len() != scalars.len()
+            })
+        {
+            return None;
+        }
+        msm_batch_inner(batches.iter().map(|(points, scalars)| {
+            (
+                points.iter().copied(),
+                scalars.iter().copied(),
+                points.len(),
+            )
+        }))
+    }
+
+    pub fn msm_batch<G>(batches: &[(&[G], &[G::ScalarField])]) -> Option<Vec<G>>
+    where
+        G: CommitmentCurve,
+        G::BaseField: CanonicalDeserialize + CanonicalSerialize,
+        G::ScalarField: CanonicalSerialize,
+    {
+        if batches.is_empty()
+            || batches.iter().any(|(points, scalars)| {
+                points.len() < MIN_SRS_FAST_PATH_POINTS || points.len() != scalars.len()
+            })
+        {
+            return None;
+        }
+        msm_batch_inner(
+            batches
+                .iter()
+                .map(|(points, scalars)| (points.iter(), scalars.iter(), points.len())),
         )
     }
 
@@ -82,6 +132,47 @@ mod wasm {
         deserialize_result(o1js_montgomery_srs_msm(curve, &point_bytes, &scalar_bytes).ok()?)
     }
 
+    fn msm_batch_inner<'a, G, PointIter, ScalarIter>(
+        batches: impl IntoIterator<Item = (PointIter, ScalarIter, usize)>,
+    ) -> Option<Vec<G>>
+    where
+        G: CommitmentCurve + 'a,
+        G::BaseField: CanonicalDeserialize + CanonicalSerialize,
+        G::ScalarField: CanonicalSerialize + 'a,
+        PointIter: IntoIterator<Item = &'a G>,
+        ScalarIter: IntoIterator<Item = &'a G::ScalarField>,
+    {
+        if !o1js_montgomery_prover_msm_enabled() {
+            return None;
+        }
+        let curve = curve_name::<G>()?;
+
+        let mut point_bytes = Vec::new();
+        let mut scalar_bytes = Vec::new();
+        let mut sizes = Vec::new();
+
+        for (points, scalars, len) in batches {
+            let len = u32::try_from(len).ok()?;
+            sizes.push(len);
+
+            point_bytes.reserve(len as usize * 64);
+            scalar_bytes.reserve(len as usize * 32);
+
+            for point in points {
+                let (x, y) = point.to_coordinates()?;
+                serialize_32(&x, &mut point_bytes)?;
+                serialize_32(&y, &mut point_bytes)?;
+            }
+            for scalar in scalars {
+                serialize_32(scalar, &mut scalar_bytes)?;
+            }
+        }
+
+        deserialize_batch_result(
+            o1js_montgomery_srs_msm_batch(curve, &point_bytes, &scalar_bytes, &sizes).ok()?,
+        )
+    }
+
     fn deserialize_result<G>(result: JsValue) -> Option<G>
     where
         G: CommitmentCurve,
@@ -98,6 +189,29 @@ mod wasm {
         let x = G::BaseField::deserialize_compressed(&mut &result[..32]).ok()?;
         let y = G::BaseField::deserialize_compressed(&mut &result[32..]).ok()?;
         Some(G::of_coordinates(x, y))
+    }
+
+    fn deserialize_batch_result<G>(result: JsValue) -> Option<Vec<G>>
+    where
+        G: CommitmentCurve,
+        G::BaseField: CanonicalDeserialize,
+    {
+        if result.is_undefined() || result.is_null() {
+            return None;
+        }
+        let result = Uint8Array::new(&result).to_vec();
+        if result.len() % 64 != 0 {
+            return None;
+        }
+
+        result
+            .chunks_exact(64)
+            .map(|chunk| {
+                let x = G::BaseField::deserialize_compressed(&mut &chunk[..32]).ok()?;
+                let y = G::BaseField::deserialize_compressed(&mut &chunk[32..]).ok()?;
+                Some(G::of_coordinates(x, y))
+            })
+            .collect()
     }
 
     fn curve_name<G>() -> Option<&'static str> {
@@ -123,7 +237,7 @@ mod wasm {
 }
 
 #[cfg(target_arch = "wasm32")]
-pub use wasm::{msm, msm_refs};
+pub use wasm::{msm, msm_batch, msm_refs, msm_refs_batch};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn msm<G>(_points: &[G], _scalars: &[G::ScalarField]) -> Option<G>
@@ -135,6 +249,22 @@ where
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn msm_refs<G>(_points: &[&G], _scalars: &[&G::ScalarField]) -> Option<G>
+where
+    G: CommitmentCurve,
+{
+    None
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn msm_refs_batch<G>(_batches: &[(&[&G], &[&G::ScalarField])]) -> Option<Vec<G>>
+where
+    G: CommitmentCurve,
+{
+    None
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn msm_batch<G>(_batches: &[(&[G], &[G::ScalarField])]) -> Option<Vec<G>>
 where
     G: CommitmentCurve,
 {

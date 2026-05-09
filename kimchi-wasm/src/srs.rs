@@ -28,6 +28,14 @@ extern "C" {
         point_bytes: &[u8],
         scalar_bytes: &[u8],
     ) -> Result<JsValue, JsValue>;
+
+    #[wasm_bindgen(catch, js_name = o1jsMontgomerySrsMsmBatch)]
+    fn o1js_montgomery_srs_msm_batch(
+        curve: &str,
+        point_bytes: &[u8],
+        scalar_bytes: &[u8],
+        sizes: &[u32],
+    ) -> Result<JsValue, JsValue>;
 }
 
 macro_rules! impl_srs {
@@ -258,19 +266,37 @@ macro_rules! impl_srs {
                     serialize_32(scalar, &mut scalar_bytes)?;
                 }
 
-                let result = o1js_montgomery_srs_msm(
+                #[allow(clippy::cast_possible_truncation)]
+                let sizes = [coeffs.len() as u32];
+                let result = o1js_montgomery_srs_msm_batch(
                     $montgomery_curve,
                     &point_bytes,
                     &scalar_bytes,
+                    &sizes,
                 )
-                .ok()?;
-                if result.is_undefined() || result.is_null() {
-                    return None;
-                }
-                let result = Uint8Array::new(&result).to_vec();
-                if result.len() != 64 {
-                    return None;
-                }
+                .ok()
+                .and_then(|result| {
+                    if result.is_undefined() || result.is_null() {
+                        None
+                    } else {
+                        let bytes = Uint8Array::new(&result).to_vec();
+                        (bytes.len() == 64).then_some(bytes)
+                    }
+                })
+                .or_else(|| {
+                    let result = o1js_montgomery_srs_msm(
+                        $montgomery_curve,
+                        &point_bytes,
+                        &scalar_bytes,
+                    )
+                    .ok()?;
+                    if result.is_undefined() || result.is_null() {
+                        None
+                    } else {
+                        let bytes = Uint8Array::new(&result).to_vec();
+                        (bytes.len() == 64).then_some(bytes)
+                    }
+                })?;
 
                 let x =
                     <$G as AffineRepr>::BaseField::deserialize_compressed(&mut &result[..32]).ok()?;

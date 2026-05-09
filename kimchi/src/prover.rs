@@ -312,21 +312,38 @@ where
                 })
                 .collect(),
         };
-        let w_comm_opt_res: Vec<Result<_>> = witness
-            .clone()
-            .into_par_iter()
-            .zip(blinders_final.into_par_iter())
-            .map(|(witness, blinder)| {
+        let witness_evals = witness
+            .iter()
+            .map(|witness| {
                 let witness_eval =
                     Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                        witness,
+                        witness.clone(),
                         index.cs.domain.d1,
                     );
 
+                witness_eval
+            })
+            .collect::<Vec<_>>();
+        let witness_eval_refs = witness_evals.iter().collect::<Vec<_>>();
+        let witness_comms = index
+            .srs
+            .commit_evaluations_non_hiding_batch(index.cs.domain.d1, &witness_eval_refs)
+            .unwrap_or_else(|| {
+                witness_evals
+                    .iter()
+                    .map(|witness_eval| {
+                        index
+                            .srs
+                            .commit_evaluations_non_hiding(index.cs.domain.d1, witness_eval)
+                    })
+                    .collect()
+            });
+
+        let w_comm_opt_res: Vec<Result<_>> = witness_comms
+            .into_par_iter()
+            .zip(blinders_final.into_par_iter())
+            .map(|(witness_com, blinder)| {
                 // TODO: make this a function rather no? mask_with_custom()
-                let witness_com = index
-                    .srs
-                    .commit_evaluations_non_hiding(index.cs.domain.d1, &witness_eval);
                 let com = index
                     .srs
                     .mask_custom(witness_com, &blinder)

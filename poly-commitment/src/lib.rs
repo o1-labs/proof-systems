@@ -146,6 +146,14 @@ pub trait SRS<G: CommitmentCurve>: Clone + Sized + Sync + Send {
         plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
     ) -> PolyComm<G>;
 
+    fn commit_evaluations_non_hiding_batch(
+        &self,
+        _domain: D<G::ScalarField>,
+        _plnms: &[&Evaluations<G::ScalarField, D<G::ScalarField>>],
+    ) -> Option<Vec<PolyComm<G>>> {
+        None
+    }
+
     /// Commit to evaluations with blinding factors.
     ///
     /// Generated using the random number generator `rng`.
