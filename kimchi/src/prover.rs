@@ -587,9 +587,28 @@ where
                 .collect();
 
             //~~ * Commit each of the sorted polynomials.
-            let sorted_comms: Vec<_> = sorted
-                .iter()
-                .map(|v| index.srs.commit_evaluations(index.cs.domain.d1, v, rng))
+            let sorted_eval_refs = sorted.iter().collect::<Vec<_>>();
+            let sorted_non_hiding_comms = index
+                .srs
+                .commit_evaluations_non_hiding_batch(
+                    index.cs.domain.d1,
+                    &sorted_eval_refs,
+                    "prover.lookup.sorted",
+                )
+                .unwrap_or_else(|| {
+                    sorted
+                        .iter()
+                        .map(|v| {
+                            index
+                                .srs
+                                .commit_evaluations_non_hiding(index.cs.domain.d1, v)
+                        })
+                        .collect()
+                });
+
+            let sorted_comms: Vec<_> = sorted_non_hiding_comms
+                .into_iter()
+                .map(|comm| index.srs.mask(comm, rng))
                 .collect();
 
             //~~ * Absorb each commitments to the sorted polynomials.

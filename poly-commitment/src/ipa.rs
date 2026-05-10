@@ -40,6 +40,7 @@ const MIN_MONTGOMERY_PROVER_WITNESS_BATCH_DOMAIN_SIZE: usize = 8_192;
 fn min_montgomery_evaluation_batch_domain_size(label: &str) -> Option<usize> {
     match label {
         "prover.witness" => Some(MIN_MONTGOMERY_PROVER_WITNESS_BATCH_DOMAIN_SIZE),
+        "prover.lookup.sorted" => Some(MIN_MONTGOMERY_PROVER_WITNESS_BATCH_DOMAIN_SIZE),
         _ => None,
     }
 }

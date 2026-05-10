@@ -17,6 +17,12 @@ mod wasm {
         #[wasm_bindgen(js_name = o1jsMontgomeryProverMsmEnabled)]
         fn o1js_montgomery_prover_msm_enabled() -> bool;
 
+        #[wasm_bindgen(js_name = o1jsMontgomeryCommitMsmEnabled)]
+        fn o1js_montgomery_commit_msm_enabled() -> bool;
+
+        #[wasm_bindgen(js_name = o1jsMontgomeryProverBatchMsmEnabled)]
+        fn o1js_montgomery_prover_batch_msm_enabled() -> bool;
+
         #[wasm_bindgen(catch, js_name = o1jsMontgomerySrsMsm)]
         fn o1js_montgomery_srs_msm(
             curve: &str,
@@ -40,6 +46,9 @@ mod wasm {
         G::BaseField: CanonicalDeserialize + CanonicalSerialize,
         G::ScalarField: CanonicalSerialize,
     {
+        if !o1js_montgomery_commit_msm_enabled() {
+            return None;
+        }
         if points.len() < MIN_SRS_FAST_PATH_POINTS || points.len() != scalars.len() {
             return None;
         }
@@ -68,6 +77,9 @@ mod wasm {
         G::BaseField: CanonicalDeserialize + CanonicalSerialize,
         G::ScalarField: CanonicalSerialize,
     {
+        if !o1js_montgomery_prover_batch_msm_enabled() {
+            return None;
+        }
         if batches.is_empty()
             || batches.iter().any(|(points, scalars)| {
                 points.len() < MIN_POLY_COMM_FAST_PATH_POINTS || points.len() != scalars.len()
@@ -93,6 +105,9 @@ mod wasm {
         G::BaseField: CanonicalDeserialize + CanonicalSerialize,
         G::ScalarField: CanonicalSerialize,
     {
+        if !o1js_montgomery_commit_msm_enabled() {
+            return None;
+        }
         if batches.is_empty()
             || batches.iter().any(|(points, scalars)| {
                 points.len() < MIN_SRS_FAST_PATH_POINTS || points.len() != scalars.len()
@@ -266,6 +281,7 @@ mod wasm {
             "ipa.commit_non_hiding.chunks" => "montgomery.ipa.commit_non_hiding.chunks",
             "poly_comm.single" => "montgomery.poly_comm.single",
             "prover.witness" => "montgomery.prover.witness",
+            "prover.lookup.sorted" => "montgomery.prover.lookup.sorted",
             "verifier_index.columns" => "montgomery.verifier_index.columns",
             _ => "montgomery.batch",
         }
