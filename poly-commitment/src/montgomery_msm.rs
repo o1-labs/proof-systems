@@ -61,6 +61,9 @@ mod wasm {
         G::BaseField: CanonicalDeserialize + CanonicalSerialize,
         G::ScalarField: CanonicalSerialize,
     {
+        if !o1js_montgomery_prover_msm_enabled() {
+            return None;
+        }
         if points.len() < MIN_POLY_COMM_FAST_PATH_POINTS || points.len() != scalars.len() {
             return None;
         }
@@ -77,7 +80,7 @@ mod wasm {
         G::BaseField: CanonicalDeserialize + CanonicalSerialize,
         G::ScalarField: CanonicalSerialize,
     {
-        if !o1js_montgomery_prover_batch_msm_enabled() {
+        if !o1js_montgomery_prover_batch_msm_enabled() || !is_prover_batch_label(label) {
             return None;
         }
         if batches.is_empty()
@@ -133,9 +136,6 @@ mod wasm {
         G::BaseField: CanonicalDeserialize + CanonicalSerialize,
         G::ScalarField: CanonicalSerialize + 'a,
     {
-        if !o1js_montgomery_prover_msm_enabled() {
-            return None;
-        }
         let curve = curve_name::<G>()?;
 
         let start = Instant::now();
@@ -173,9 +173,6 @@ mod wasm {
         PointIter: IntoIterator<Item = &'a G>,
         ScalarIter: IntoIterator<Item = &'a G::ScalarField>,
     {
-        if !o1js_montgomery_prover_msm_enabled() {
-            return None;
-        }
         let curve = curve_name::<G>()?;
 
         let start = Instant::now();
@@ -285,6 +282,10 @@ mod wasm {
             "verifier_index.columns" => "montgomery.verifier_index.columns",
             _ => "montgomery.batch",
         }
+    }
+
+    fn is_prover_batch_label(label: &str) -> bool {
+        matches!(label, "prover.witness" | "prover.lookup.sorted")
     }
 }
 
