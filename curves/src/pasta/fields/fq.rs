@@ -64,6 +64,42 @@ impl MontConfig<4> for FrConfig {
         let b = *a;
         Self::mul_assign(a, &b);
     }
+
+    // See fp.rs for the math. M + 1 precompile calls instead of 2M.
+    #[cfg(target_os = "zkvm")]
+    #[inline]
+    fn sum_of_products<const M: usize>(
+        a: &[Fp256<MontBackend<Self, 4>>; M],
+        b: &[Fp256<MontBackend<Self, 4>>; M],
+    ) -> Fp256<MontBackend<Self, 4>> {
+        const R_INV: [u64; 4] = [
+            0x6119a3dd8e1a6f7f,
+            0xc68de1279dc601eb,
+            0x5790be58c050df13,
+            0x1f7a89dd17647953,
+        ];
+        let mut acc = Fp256::<MontBackend<Self, 4>>::ZERO;
+        for i in 0..M {
+            let mut tmp = [0u64; 4];
+            sp1_zkvm::syscalls::sys_bigint(
+                &mut tmp,
+                0,
+                &(a[i].0).0,
+                &(b[i].0).0,
+                &Self::MODULUS.0,
+            );
+            acc += Fp256::<MontBackend<Self, 4>>::new_unchecked(BigInt::new(tmp));
+        }
+        let mut result = [0u64; 4];
+        sp1_zkvm::syscalls::sys_bigint(
+            &mut result,
+            0,
+            &(acc.0).0,
+            &R_INV,
+            &Self::MODULUS.0,
+        );
+        Fp256::<MontBackend<Self, 4>>::new_unchecked(BigInt::new(result))
+    }
 }
 
 pub type Fq = Fp256<MontBackend<FrConfig, 4>>;

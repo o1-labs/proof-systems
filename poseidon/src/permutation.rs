@@ -27,14 +27,21 @@ fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
     }
 
     let mut new_state = [F::zero(); MDS_WIDTH];
+    // Convert the state slice into a fixed-size array reference for
+    // sum_of_products. Width is constrained by the upstream assert in
+    // poseidon_block_cipher; this conversion is infallible there.
+    let state_arr: &[F; MDS_WIDTH] = (&*state)
+        .try_into()
+        .expect("state width must equal MDS_WIDTH");
 
-    for (new_state, mds) in new_state.iter_mut().zip(mds.iter()) {
-        *new_state = mds
-            .iter()
-            .copied()
-            .zip(state.iter())
-            .map(|(md, state)| md * state)
-            .sum();
+    for (new_state, mds_row) in new_state.iter_mut().zip(mds.iter()) {
+        // Σ mdsᵢ · stateᵢ. Routes through MontConfig::sum_of_products,
+        // which (a) the #[derive(MontConfig)] macro specializes to do
+        // one Montgomery reduction at the end instead of one per
+        // multiply, and (b) the SP1 zkVM override can amortize the
+        // *R⁻¹ step over the whole sum (one sys_bigint instead of one
+        // per multiply).
+        *new_state = F::sum_of_products(mds_row, state_arr);
     }
 
     new_state
