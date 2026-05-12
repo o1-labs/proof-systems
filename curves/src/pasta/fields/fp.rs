@@ -68,6 +68,47 @@ impl MontConfig<4> for FqConfig {
         let b = *a;
         Self::mul_assign(a, &b);
     }
+
+    // Σ aᵢ · bᵢ on Montgomery-form inputs. Each sys_bigint of two
+    // Montgomery values yields aᵢ·bᵢ·R² mod m; summing those still in
+    // R²-scale and applying *R⁻¹ once at the end gives the Montgomery
+    // product of the sum. That's M + 1 precompile calls instead of 2M
+    // for the naive `.map().sum()` over `mul_assign`.
+    #[cfg(target_os = "zkvm")]
+    #[inline]
+    fn sum_of_products<const M: usize>(
+        a: &[Fp256<MontBackend<Self, 4>>; M],
+        b: &[Fp256<MontBackend<Self, 4>>; M],
+    ) -> Fp256<MontBackend<Self, 4>> {
+        // Same value as mul_assign's R_INV.
+        const R_INV: [u64; 4] = [
+            0xcf3f8e8753a769a9,
+            0xac9fba6a4077fc57,
+            0x70cb2996efc89a65,
+            0x21f1c4ff1e2278d5,
+        ];
+        let mut acc = Fp256::<MontBackend<Self, 4>>::ZERO;
+        for i in 0..M {
+            let mut tmp = [0u64; 4];
+            sp1_zkvm::syscalls::sys_bigint(
+                &mut tmp,
+                0,
+                &(a[i].0).0,
+                &(b[i].0).0,
+                &Self::MODULUS.0,
+            );
+            acc += Fp256::<MontBackend<Self, 4>>::new_unchecked(BigInt::new(tmp));
+        }
+        let mut result = [0u64; 4];
+        sp1_zkvm::syscalls::sys_bigint(
+            &mut result,
+            0,
+            &(acc.0).0,
+            &R_INV,
+            &Self::MODULUS.0,
+        );
+        Fp256::<MontBackend<Self, 4>>::new_unchecked(BigInt::new(result))
+    }
 }
 
 pub type Fp = Fp256<MontBackend<FqConfig, 4>>;
