@@ -88,6 +88,7 @@ regex = "1.10.2"
 rmp-serde = "1.2.0"
 rustversion = "1.0"
 secp256k1 = "0.31.1"
+sp1-zkvm = { git = "https://github.com/succinctlabs/sp1", tag = "v6.0.2" }
 serde = { version = "1.0.219", default-features = false, features = [
   "alloc",
   "derive",
