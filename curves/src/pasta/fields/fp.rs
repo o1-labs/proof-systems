@@ -87,7 +87,8 @@ impl MontConfig<4> for FqConfig {
             0x70cb2996efc89a65,
             0x21f1c4ff1e2278d5,
         ];
-        let mut acc = Fp256::<MontBackend<Self, 4>>::ZERO;
+        let mut acc =
+            Fp256::<MontBackend<Self, 4>>::new_unchecked(BigInt::new([0u64; 4]));
         for i in 0..M {
             let mut tmp = [0u64; 4];
             sp1_zkvm::syscalls::sys_bigint(
