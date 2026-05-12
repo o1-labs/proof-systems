@@ -46,22 +46,20 @@ impl MontConfig<4> for FqConfig {
             0x21f1c4ff1e2278d5,
         ];
         let mut tmp = [0u64; 4];
-        unsafe {
-            sp1_zkvm::syscalls::sys_bigint(
-                &mut tmp,
-                0,
-                &(a.0).0,
-                &(b.0).0,
-                &Self::MODULUS.0,
-            );
-            sp1_zkvm::syscalls::sys_bigint(
-                &mut (a.0).0,
-                0,
-                &tmp,
-                &R_INV,
-                &Self::MODULUS.0,
-            );
-        }
+        sp1_zkvm::syscalls::sys_bigint(
+            &mut tmp,
+            0,
+            &(a.0).0,
+            &(b.0).0,
+            &Self::MODULUS.0,
+        );
+        sp1_zkvm::syscalls::sys_bigint(
+            &mut (a.0).0,
+            0,
+            &tmp,
+            &R_INV,
+            &Self::MODULUS.0,
+        );
     }
 
     #[cfg(target_os = "zkvm")]

@@ -42,22 +42,20 @@ impl MontConfig<4> for FrConfig {
             0x1f7a89dd17647953,
         ];
         let mut tmp = [0u64; 4];
-        unsafe {
-            sp1_zkvm::syscalls::sys_bigint(
-                &mut tmp,
-                0,
-                &(a.0).0,
-                &(b.0).0,
-                &Self::MODULUS.0,
-            );
-            sp1_zkvm::syscalls::sys_bigint(
-                &mut (a.0).0,
-                0,
-                &tmp,
-                &R_INV,
-                &Self::MODULUS.0,
-            );
-        }
+        sp1_zkvm::syscalls::sys_bigint(
+            &mut tmp,
+            0,
+            &(a.0).0,
+            &(b.0).0,
+            &Self::MODULUS.0,
+        );
+        sp1_zkvm::syscalls::sys_bigint(
+            &mut (a.0).0,
+            0,
+            &tmp,
+            &R_INV,
+            &Self::MODULUS.0,
+        );
     }
 
     #[cfg(target_os = "zkvm")]
