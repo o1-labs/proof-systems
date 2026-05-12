@@ -14,6 +14,10 @@ default = ["asm"]
 # The MontConfig derive macro from ark_ff generates code with cfg(feature = "asm").
 # This feature enables assembly optimizations in ark_ff.
 asm = []
+# Routes Pasta Fp/Fq Montgomery multiplication through the SP1 zkVM
+# `sys_bigint` precompile when compiled for the SP1 zkVM target.
+# Off-target it falls back to the trait default (correct, not specialized).
+sp1 = ["dep:sp1-zkvm"]
 
 [dependencies]
 ark-bn254.workspace = true
@@ -21,6 +25,13 @@ ark-ec.workspace = true
 ark-ff.workspace = true
 ark-std.workspace = true
 num-bigint.workspace = true
+
+# sp1-zkvm is only pulled in when (a) the `sp1` feature is enabled and
+# (b) we're actually building for the SP1 zkVM target. Host builds with
+# `sp1` on never see this dep — the override falls back to the trait
+# default impl via cfg(target_os = "zkvm") inside the source.
+[target.'cfg(target_os = "zkvm")'.dependencies]
+sp1-zkvm = { workspace = true, optional = true }
 
 [dev-dependencies]
 rand.workspace = true

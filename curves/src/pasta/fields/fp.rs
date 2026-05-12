@@ -4,11 +4,74 @@ use ark_ff::{
     fields::{MontBackend, MontConfig},
     Fp256,
 };
+#[cfg(feature = "sp1")]
+use ark_ff::BigInt;
 
 #[derive(MontConfig)]
 #[modulus = "28948022309329048855892746252171976963363056481941560715954676764349967630337"]
 #[generator = "5"]
+pub struct FqConfigDerived;
+
+#[cfg(not(feature = "sp1"))]
+pub use FqConfigDerived as FqConfig;
+
+#[cfg(feature = "sp1")]
 pub struct FqConfig;
+
+#[cfg(feature = "sp1")]
+impl MontConfig<4> for FqConfig {
+    const MODULUS: BigInt<4> = <FqConfigDerived as MontConfig<4>>::MODULUS;
+
+    const GENERATOR: Fp256<MontBackend<Self, 4>> =
+        Fp256::new_unchecked(<FqConfigDerived as MontConfig<4>>::GENERATOR.0);
+
+    const TWO_ADIC_ROOT_OF_UNITY: Fp256<MontBackend<Self, 4>> =
+        Fp256::new_unchecked(<FqConfigDerived as MontConfig<4>>::TWO_ADIC_ROOT_OF_UNITY.0);
+
+    // SP1 zkVM precompile path: replace Montgomery multiplication with two
+    // sys_bigint calls — `a·b mod m` followed by multiplication by R⁻¹ to
+    // strip the extra factor of R introduced when the inputs are already
+    // in Montgomery form. R_INV is precomputed for this modulus.
+    #[cfg(target_os = "zkvm")]
+    #[inline(always)]
+    fn mul_assign(
+        a: &mut Fp256<MontBackend<Self, 4>>,
+        b: &Fp256<MontBackend<Self, 4>>,
+    ) {
+        // R_INV = (2^256)^-1 mod MODULUS, little-endian u64 limbs.
+        const R_INV: [u64; 4] = [
+            0xcf3f8e8753a769a9,
+            0xac9fba6a4077fc57,
+            0x70cb2996efc89a65,
+            0x21f1c4ff1e2278d5,
+        ];
+        let mut tmp = [0u64; 4];
+        unsafe {
+            sp1_zkvm::syscalls::sys_bigint(
+                &mut tmp,
+                0,
+                &(a.0).0,
+                &(b.0).0,
+                &Self::MODULUS.0,
+            );
+            sp1_zkvm::syscalls::sys_bigint(
+                &mut (a.0).0,
+                0,
+                &tmp,
+                &R_INV,
+                &Self::MODULUS.0,
+            );
+        }
+    }
+
+    #[cfg(target_os = "zkvm")]
+    #[inline(always)]
+    fn square_in_place(a: &mut Fp256<MontBackend<Self, 4>>) {
+        let b = *a;
+        Self::mul_assign(a, &b);
+    }
+}
+
 pub type Fp = Fp256<MontBackend<FqConfig, 4>>;
 
 pub struct FpParameters;
