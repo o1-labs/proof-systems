@@ -1,5 +1,6 @@
 mod build_info;
 mod circuit;
+mod deterministic_rng;
 mod gate_vector;
 mod oracles;
 mod pasta_fp_plonk_index;

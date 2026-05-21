@@ -579,6 +579,41 @@ macro_rules! impl_verification_key {
                 x.clone()
             }
 
+            // serde_json codec for the kimchi `VerifierIndex<G>` shape —
+            // used by Mina-Pickles `Sideload/FFI` to round-trip OCaml-
+            // emitted VKs. Cross-stack-compatible by construction: same
+            // upstream struct, same serde derive. The SRS is NOT part of
+            // the `VerifierIndex` serde derive (its `#[serde(skip)]`); on
+            // `from_json` we reattach the caller-supplied SRS. Likewise,
+            // the `linearization`, `powers_of_alpha`, `w`, and
+            // `permutation_vanishing_polynomial_m` caches are not in the
+            // serde derive — they're recomputed automatically by the
+            // existing `From<NapiPlonkVerifierIndex> for VerifierIndex`
+            // conversion when downstream code consumes the result, so no
+            // explicit `hydrate` step is needed.
+            #[napi(js_name = [<caml_pasta_ $field_name:snake _plonk_verifier_index_to_json>])]
+            pub fn [<caml_pasta_ $field_name:snake _plonk_verifier_index_to_json>](
+                vi: NapiPlonkVerifierIndex,
+            ) -> Result<String> {
+                let kimchi_vi: VerifierIndex<FULL_ROUNDS, $G, SRS<$G>> = vi.into();
+                serde_json::to_string(&kimchi_vi)
+                    .map_err(|e| Error::new(Status::GenericFailure,
+                        format!("plonk_verifier_index_to_json: {e}")))
+            }
+
+            #[napi(js_name = [<caml_pasta_ $field_name:snake _plonk_verifier_index_from_json>])]
+            pub fn [<caml_pasta_ $field_name:snake _plonk_verifier_index_from_json>](
+                json: String,
+                srs: &$NapiSrs,
+            ) -> Result<NapiPlonkVerifierIndex> {
+                let mut kimchi_vi: VerifierIndex<FULL_ROUNDS, $G, SRS<$G>> =
+                    serde_json::from_str(&json)
+                        .map_err(|e| Error::new(Status::InvalidArg,
+                            format!("plonk_verifier_index_from_json: {e}")))?;
+                kimchi_vi.srs = srs.0.clone();
+                Ok(NapiPlonkVerifierIndex::from((&kimchi_vi, srs)))
+            }
+
         }
     }
 }

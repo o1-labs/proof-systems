@@ -813,7 +813,11 @@ macro_rules! impl_proof {
                         index,
                         prev,
                         None,
-                        &mut rand::rngs::OsRng,
+                        // Deterministic blinders seeded by KIMCHI_DETERMINISTIC_SEED
+                        // (default 42) — matches the OCaml kimchi-stubs RNG so
+                        // proofs (and their commitments) are byte-reproducible.
+                        // Was `OsRng`, which broke witness-parity downstream.
+                        &mut crate::deterministic_rng::make_rng(),
                     );
                     (maybe_proof, public_input)
                 };
@@ -960,6 +964,38 @@ macro_rules! impl_proof {
                 x: NapiProofF
             ) -> NapiProofF {
                 x.clone()
+            }
+
+            // serde_json codec for the kimchi `ProverProof<G>` shape — used
+            // by Mina-Pickles `Sideload/FFI.{js,purs}` to round-trip wire
+            // proofs against the OCaml side. The wire format is exactly
+            // what `serde_json::{to_string,from_str}` emits on the
+            // upstream `ProverProof` derive — same struct, same serde
+            // derive, so cross-stack-compatible by construction.
+            //
+            // Public input is NOT part of `ProverProof`'s serde derive;
+            // it travels separately on the JS side (the OCaml fixture's
+            // statement file). After `from_json`, the returned proof has
+            // `public = vec![]`; callers populate via `set_public_` or
+            // `withInjectedInputs` (see Pickles `ProofFFI.js`).
+            #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_to_json">])]
+            pub fn [<caml_pasta_ $field_name:snake _plonk_proof_to_json>](
+                proof: NapiProofF
+            ) -> Result<String> {
+                let (proof, _public): KimchiProofWithPublic = proof.into();
+                serde_json::to_string(&proof)
+                    .map_err(|e| NapiError::new(Status::GenericFailure,
+                        format!("plonk_proof_to_json: {e}")))
+            }
+
+            #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_from_json">])]
+            pub fn [<caml_pasta_ $field_name:snake _plonk_proof_from_json>](
+                json: String
+            ) -> Result<NapiProofF> {
+                let proof: KimchiProverProof = serde_json::from_str(&json)
+                    .map_err(|e| NapiError::new(Status::InvalidArg,
+                        format!("plonk_proof_from_json: {e}")))?;
+                Ok((proof, Vec::<$F>::new()).into())
             }
         }
     };

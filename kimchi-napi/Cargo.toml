@@ -37,6 +37,7 @@ num-bigint.workspace = true
 once_cell.workspace = true
 paste.workspace = true
 rand.workspace = true
+rand_chacha.workspace = true
 rayon.workspace = true
 rmp-serde.workspace = true
 serde.workspace = true
