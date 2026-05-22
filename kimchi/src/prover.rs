@@ -187,6 +187,58 @@ where
         VerifierIndex<FULL_ROUNDS, G, OpeningProof::SRS>: Clone,
     {
         internal_tracing::checkpoint!(internal_traces; create_recursive);
+
+        // === Witness dump for byte-level convergence debugging ===
+        // Gated on `KIMCHI_WITNESS_DUMP` env var. When set, its value is a
+        // filename template: the literal `%c` is replaced with a monotonic
+        // counter (so successive proofs in the same process write different
+        // files). Both kimchi-stubs (OCaml step/wrap provers) and the PS
+        // step/wrap provers funnel through this function, so a single hook
+        // here dumps witnesses on both sides for byte-level diff via
+        // `tools/*witness_diff.sh`. `KIMCHI_WITNESS_DUMP_SIDE` ("oc"/"ps")
+        // tags the side. Rows are `<col> <row> <decimal>`; `#`-prefixed
+        // lines carry context (domain size, public, zk_rows, endo, …).
+        if let Ok(path_tmpl) = std::env::var("KIMCHI_WITNESS_DUMP") {
+            use ark_ff::PrimeField;
+            use std::io::Write;
+            use std::sync::atomic::{AtomicUsize, Ordering};
+            static COUNTER: AtomicUsize = AtomicUsize::new(0);
+            let counter = COUNTER.fetch_add(1, Ordering::SeqCst);
+            let path = path_tmpl.replace("%c", &counter.to_string());
+            let side =
+                std::env::var("KIMCHI_WITNESS_DUMP_SIDE").unwrap_or_else(|_| "unknown".to_string());
+            if let Ok(mut f) = std::fs::File::create(&path) {
+                let _ = writeln!(f, "#side {}", side);
+                let _ = writeln!(f, "#counter {}", counter);
+                let _ = writeln!(f, "#d1_size {}", index.cs.domain.d1.size());
+                let _ = writeln!(f, "#public {}", index.cs.public);
+                let _ = writeln!(f, "#max_poly_size {}", index.max_poly_size);
+                let _ = writeln!(f, "#columns {}", COLUMNS);
+                let _ = writeln!(f, "#zk_rows {}", index.cs.zk_rows);
+                let _ = writeln!(f, "#endo {}", index.cs.endo.into_bigint());
+                let _ = writeln!(f, "#prev_challenges {}", prev_challenges.len());
+                for (i, rc) in prev_challenges.iter().enumerate() {
+                    if let Some(first_chunk) = rc.comm.chunks.first() {
+                        if let Some((x, y)) = first_chunk.xy() {
+                            let _ = writeln!(f, "#prev_challenges.{}.sg.x {}", i, x.into_bigint());
+                            let _ = writeln!(f, "#prev_challenges.{}.sg.y {}", i, y.into_bigint());
+                        }
+                    }
+                    for (j, c) in rc.chals.iter().enumerate() {
+                        let _ =
+                            writeln!(f, "#prev_challenges.{}.chals.{} {}", i, j, c.into_bigint());
+                    }
+                }
+                let _ = writeln!(f, "#blinders_set {}", blinders.is_some());
+                let _ = writeln!(f, "#runtime_tables {}", runtime_tables.len());
+                for col in 0..COLUMNS {
+                    for row in 0..witness[col].len() {
+                        let _ = writeln!(f, "{} {} {}", col, row, witness[col][row].into_bigint());
+                    }
+                }
+            }
+        }
+
         let d1_size = index.cs.domain.d1.size();
 
         let (_, endo_r) = G::endos();
