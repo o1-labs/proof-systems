@@ -55,15 +55,17 @@ pub use plonk_verifier_index::{
     fp::{
         caml_pasta_fp_plonk_verifier_index_create, caml_pasta_fp_plonk_verifier_index_deep_copy,
         caml_pasta_fp_plonk_verifier_index_deserialize, caml_pasta_fp_plonk_verifier_index_dummy,
-        caml_pasta_fp_plonk_verifier_index_read, caml_pasta_fp_plonk_verifier_index_serialize,
-        caml_pasta_fp_plonk_verifier_index_shifts, caml_pasta_fp_plonk_verifier_index_write,
+        caml_pasta_fp_plonk_verifier_index_from_json, caml_pasta_fp_plonk_verifier_index_read,
+        caml_pasta_fp_plonk_verifier_index_serialize, caml_pasta_fp_plonk_verifier_index_shifts,
+        caml_pasta_fp_plonk_verifier_index_to_json, caml_pasta_fp_plonk_verifier_index_write,
         NapiFpLookupVerifierIndex, NapiFpPlonkVerifierIndex,
     },
     fq::{
         caml_pasta_fq_plonk_verifier_index_create, caml_pasta_fq_plonk_verifier_index_deep_copy,
         caml_pasta_fq_plonk_verifier_index_deserialize, caml_pasta_fq_plonk_verifier_index_dummy,
-        caml_pasta_fq_plonk_verifier_index_read, caml_pasta_fq_plonk_verifier_index_serialize,
-        caml_pasta_fq_plonk_verifier_index_shifts, caml_pasta_fq_plonk_verifier_index_write,
+        caml_pasta_fq_plonk_verifier_index_from_json, caml_pasta_fq_plonk_verifier_index_read,
+        caml_pasta_fq_plonk_verifier_index_serialize, caml_pasta_fq_plonk_verifier_index_shifts,
+        caml_pasta_fq_plonk_verifier_index_to_json, caml_pasta_fq_plonk_verifier_index_write,
         NapiFqLookupVerifierIndex, NapiFqPlonkVerifierIndex,
     },
 };
@@ -76,12 +78,14 @@ pub use proof::{
     fp::{
         caml_pasta_fp_plonk_proof_batch_verify, caml_pasta_fp_plonk_proof_create,
         caml_pasta_fp_plonk_proof_deep_copy, caml_pasta_fp_plonk_proof_dummy,
+        caml_pasta_fp_plonk_proof_from_json, caml_pasta_fp_plonk_proof_to_json,
         caml_pasta_fp_plonk_proof_verify, NapiFpLookupCommitments, NapiFpOpeningProof,
         NapiFpProofEvaluations, NapiFpProverCommitments, NapiFpProverProof,
     },
     fq::{
         caml_pasta_fq_plonk_proof_batch_verify, caml_pasta_fq_plonk_proof_create,
         caml_pasta_fq_plonk_proof_deep_copy, caml_pasta_fq_plonk_proof_dummy,
+        caml_pasta_fq_plonk_proof_from_json, caml_pasta_fq_plonk_proof_to_json,
         caml_pasta_fq_plonk_proof_verify, NapiFqLookupCommitments, NapiFqOpeningProof,
         NapiFqProofEvaluations, NapiFqProverCommitments, NapiFqProverProof,
     },

@@ -489,6 +489,29 @@ macro_rules! impl_verification_key {
                 }
             }
 
+            // OCaml-stub-style codec names (`to_json`/`from_json`) matching the
+            // proof codecs and the names PS's `Sideload/FFI.js` calls.
+            // `to_json` == `serialize`; `from_json` == `deserialize` but with
+            // the `(json, srs)` argument order the PS side uses.
+            #[napi(js_name = [<caml_pasta_ $field_name:snake _plonk_verifier_index_to_json>])]
+            pub fn [<caml_pasta_ $field_name:snake _plonk_verifier_index_to_json>](
+                index: NapiPlonkVerifierIndex,
+            ) -> String {
+                let index: VerifierIndex<FULL_ROUNDS, $G, SRS<$G>> = index.into();
+                serde_json::to_string(&index).unwrap()
+            }
+
+            #[napi(js_name = [<caml_pasta_ $field_name:snake _plonk_verifier_index_from_json>])]
+            pub fn [<caml_pasta_ $field_name:snake _plonk_verifier_index_from_json>](
+                json: String,
+                srs: &$NapiSrs,
+            ) -> napi::Result<NapiPlonkVerifierIndex> {
+                match serde_json::from_str::<VerifierIndex<FULL_ROUNDS, $G, SRS<$G>>>(&json) {
+                    Ok(vi) => Ok(NapiPlonkVerifierIndex::from((&vi, srs))),
+                    Err(e) => Err(Error::new(Status::GenericFailure, e.to_string())),
+                }
+            }
+
             #[napi(js_name = [<caml_pasta_ $field_name:snake _plonk_verifier_index_create>])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_verifier_index_create>](
                 index: &External<$NapiIndex>,

@@ -961,6 +961,33 @@ macro_rules! impl_proof {
             ) -> NapiProofF {
                 x.clone()
             }
+
+            // Serialize a proof to serde-JSON (just the `ProverProof`; the
+            // public input is injected PS-side). Mirrors the OCaml
+            // kimchi-stubs `caml_pasta_*_plonk_proof_to_serde_json` and the
+            // former crypto-provider `*_proof_to_serde_json` — both ends use
+            // the same kimchi crate, so the wire shape is identical. Used by
+            // the disk proof-cache and the side-loaded VK/proof round-trip.
+            #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_to_json">])]
+            pub fn [<caml_pasta_ $field_name:snake _plonk_proof_to_json>](
+                proof: NapiProofF,
+            ) -> Result<String> {
+                let proof_with_public: KimchiProofWithPublic = proof.into();
+                serde_json::to_string(&proof_with_public.0)
+                    .map_err(|e| NapiError::new(Status::GenericFailure, e.to_string()))
+            }
+
+            // Inverse of `_to_json`: deserialize a `ProverProof`. The public
+            // input is left empty (PS injects it via `set_public_`).
+            #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_from_json">])]
+            pub fn [<caml_pasta_ $field_name:snake _plonk_proof_from_json>](
+                json: String,
+            ) -> Result<NapiProofF> {
+                let proof: KimchiProverProof = serde_json::from_str(&json)
+                    .map_err(|e| NapiError::new(Status::GenericFailure, e.to_string()))?;
+                let proof_with_public: KimchiProofWithPublic = (proof, Vec::new());
+                Ok(proof_with_public.into())
+            }
         }
     };
 }
