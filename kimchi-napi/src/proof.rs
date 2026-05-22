@@ -813,7 +813,12 @@ macro_rules! impl_proof {
                         index,
                         prev,
                         None,
-                        &mut rand::rngs::OsRng,
+                        // Deterministic blinders seeded by KIMCHI_DETERMINISTIC_SEED
+                        // (default 42) — matches the OCaml kimchi-stubs RNG so
+                        // proofs (and their commitments) are byte-reproducible.
+                        // Was `OsRng`, which broke witness-parity downstream
+                        // (a wrap proof absorbs the step proof's commitments).
+                        &mut crate::deterministic_rng::make_rng(),
                     );
                     (maybe_proof, public_input)
                 };

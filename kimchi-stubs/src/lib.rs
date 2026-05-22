@@ -47,6 +47,9 @@ pub mod pasta_fq_plonk_verifier_index;
 /// Oracles
 pub mod oracles;
 
+/// Deterministic RNG (KIMCHI_DETERMINISTIC_SEED env var) for fixture-driven tests.
+pub mod deterministic_rng;
+
 /// Proofs
 pub mod pasta_fp_plonk_proof;
 pub mod pasta_fq_plonk_proof;
