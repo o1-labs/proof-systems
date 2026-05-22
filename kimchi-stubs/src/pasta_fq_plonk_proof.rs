@@ -263,3 +263,37 @@ pub fn caml_pasta_fq_plonk_proof_deep_copy(
 ) -> CamlProofWithPublic<CamlGPallas, CamlFq> {
     x
 }
+
+// serde-JSON codec for the wrap (Pallas-commitment) proof. See the fp
+// variant for rationale. Adapted to the FULL_ROUNDS proof type.
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fq_plonk_proof_to_serde_json(
+    proof: CamlProofWithPublic<CamlGPallas, CamlFq>,
+) -> Result<String, ocaml::Error> {
+    let (proof, _public): (
+        ProverProof<Pallas, OpeningProof<Pallas, FULL_ROUNDS>, FULL_ROUNDS>,
+        Vec<Fq>,
+    ) = proof.into();
+    serde_json::to_string(&proof).map_err(|_e| {
+        ocaml::Error::invalid_argument("caml_pasta_fq_plonk_proof_to_serde_json")
+            .err()
+            .unwrap()
+    })
+}
+
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fq_plonk_proof_of_serde_json(
+    public: Vec<CamlFq>,
+    json: String,
+) -> Result<CamlProofWithPublic<CamlGPallas, CamlFq>, ocaml::Error> {
+    let proof: ProverProof<Pallas, OpeningProof<Pallas, FULL_ROUNDS>, FULL_ROUNDS> =
+        serde_json::from_str(&json).map_err(|_e| {
+            ocaml::Error::invalid_argument("caml_pasta_fq_plonk_proof_of_serde_json")
+                .err()
+                .unwrap()
+        })?;
+    let public: Vec<Fq> = public.into_iter().map(Into::into).collect();
+    Ok((proof, public).into())
+}

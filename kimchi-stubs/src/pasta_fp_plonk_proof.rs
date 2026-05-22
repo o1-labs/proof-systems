@@ -1091,3 +1091,39 @@ pub fn caml_pasta_fp_plonk_proof_deep_copy(
 ) -> CamlProofWithPublic<CamlGVesta, CamlFp> {
     x
 }
+
+// serde-JSON codec for the step (Vesta-commitment) proof. Mirrors the
+// pre-bump-base `b5b3dd9` codec, adapted to the FULL_ROUNDS proof type.
+// The public input is dropped on serialize (re-supplied on deserialize),
+// matching OCaml `Backend.Tick.Proof.{to,of}_yojson`.
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fp_plonk_proof_to_serde_json(
+    proof: CamlProofWithPublic<CamlGVesta, CamlFp>,
+) -> Result<String, ocaml::Error> {
+    let (proof, _public): (
+        ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS>,
+        Vec<Fp>,
+    ) = proof.into();
+    serde_json::to_string(&proof).map_err(|_e| {
+        ocaml::Error::invalid_argument("caml_pasta_fp_plonk_proof_to_serde_json")
+            .err()
+            .unwrap()
+    })
+}
+
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fp_plonk_proof_of_serde_json(
+    public: Vec<CamlFp>,
+    json: String,
+) -> Result<CamlProofWithPublic<CamlGVesta, CamlFp>, ocaml::Error> {
+    let proof: ProverProof<Vesta, OpeningProof<Vesta, FULL_ROUNDS>, FULL_ROUNDS> =
+        serde_json::from_str(&json).map_err(|_e| {
+            ocaml::Error::invalid_argument("caml_pasta_fp_plonk_proof_of_serde_json")
+                .err()
+                .unwrap()
+        })?;
+    let public: Vec<Fp> = public.into_iter().map(Into::into).collect();
+    Ok((proof, public).into())
+}
