@@ -3,11 +3,12 @@
 use std::fmt::Debug;
 
 use crate::{
+    alphas::Alphas,
     circuits::{
         argument::ArgumentType,
-        berkeley_columns::{BerkeleyChallenges, Column},
+        berkeley_columns::{BerkeleyChallengeTerm, BerkeleyChallenges, Column},
         constraints::ConstraintSystem,
-        expr::{Constants, PolishToken},
+        expr::{Constants, Linearization, PolishToken},
         gate::GateType,
         lookup::{lookups::LookupPattern, tables::combine_table},
         polynomials::permutation,
@@ -23,12 +24,13 @@ use crate::{
 };
 use ark_ec::AffineRepr;
 use ark_ff::{Field, One, PrimeField, Zero};
-use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Polynomial};
+use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain};
 use mina_poseidon::{poseidon::ArithmeticSpongeParams, sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
     commitment::{
-        absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
+        absorb_commitment, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
+        Evaluation, PolyComm,
     },
     OpenProof, SRS,
 };
@@ -108,6 +110,344 @@ impl<
     }
 }
 
+/// The subset of [`OraclesResult`] reconstructed by [`oracles_from_digest`] —
+/// everything *except* the `fq_sponge` and the `combined_inner_product`. The
+/// out-of-circuit Pickles verifier carries the `fq_sponge` digest and the
+/// Fq-derived challenges directly, so it replays only this post-digest tail of
+/// the oracle protocol; [`ProverProof::oracles`] delegates to it and then
+/// reattaches `fq_sponge` and computes `combined_inner_product`.
+pub struct DigestOracles<const FULL_ROUNDS: usize, G>
+where
+    G: CommitmentCurve,
+{
+    /// the last evaluation of the Fq-Sponge (echoed back through unchanged)
+    pub digest: G::ScalarField,
+    /// the challenges produced in the protocol (the Fq-derived ones passed in,
+    /// plus the Fr-sponge `v`/`u` sampled here)
+    pub oracles: RandomOracles<G::ScalarField>,
+    /// the computed powers of alpha
+    pub all_alphas: Alphas<G::ScalarField>,
+    /// public polynomial evaluations
+    pub public_evals: [Vec<G::ScalarField>; 2],
+    /// zeta^n and (zeta * omega)^n
+    pub powers_of_eval_points_for_chunks: PointEvaluations<G::ScalarField>,
+    /// recursion data
+    #[allow(clippy::type_complexity)]
+    pub polys: Vec<(PolyComm<G>, Vec<Vec<G::ScalarField>>)>,
+    /// pre-computed zeta^n
+    pub zeta1: G::ScalarField,
+    /// The evaluation f(zeta) - t(zeta) * Z_H(zeta)
+    pub ft_eval0: G::ScalarField,
+}
+
+/// Replay the post-digest tail of the oracle protocol from a precomputed
+/// `fq_sponge.digest()` and the Fq-derived challenges
+/// (`alpha`/`beta`/`gamma`/`zeta` with their `ScalarChallenge` pre-images, plus
+/// the optional `joint_combiner`).
+///
+/// This is the second half of [`ProverProof::oracles`] — everything after
+/// `let digest = fq_sponge.clone().digest()` and *excluding* the
+/// `combined_inner_product` computation, which stays in `oracles` because it is
+/// coupled to the (optional-gate) verifier index and proof evaluations. The
+/// out-of-circuit Pickles verifier carries the digest and challenges directly,
+/// so it replays this tail without the proof commitments the Fq half consumes.
+///
+/// The verifier-index dependencies are passed as loose parameters so the caller
+/// need not hold a [`VerifierIndex`]: `domain`, `max_poly_size`, `zk_rows`,
+/// `shift`, `endo_coefficient` (the scalar constants) and `linearization` +
+/// `powers_of_alpha` (the `ft_eval0` ingredients).
+///
+/// # Errors
+///
+/// As `oracles`: a missing public-input evaluation for a chunked proof.
+///
+/// # Panics
+///
+/// As `oracles`: an invalid `PolishToken` evaluation.
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
+pub fn oracles_from_digest<const FULL_ROUNDS: usize, G, EFrSponge>(
+    domain: Radix2EvaluationDomain<G::ScalarField>,
+    max_poly_size: usize,
+    zk_rows: u64,
+    shift: &[G::ScalarField; PERMUTS],
+    endo_coefficient: G::ScalarField,
+    linearization: &Linearization<
+        Vec<PolishToken<G::ScalarField, Column, BerkeleyChallengeTerm>>,
+        Column,
+    >,
+    powers_of_alpha: &Alphas<G::ScalarField>,
+    digest: G::ScalarField,
+    alpha: G::ScalarField,
+    beta: G::ScalarField,
+    gamma: G::ScalarField,
+    zeta: G::ScalarField,
+    alpha_chal: ScalarChallenge<G::ScalarField>,
+    zeta_chal: ScalarChallenge<G::ScalarField>,
+    joint_combiner: Option<(ScalarChallenge<G::ScalarField>, G::ScalarField)>,
+    prev_challenges: &[RecursionChallenge<G>],
+    evals: &ProofEvaluations<PointEvaluations<Vec<G::ScalarField>>>,
+    ft_eval1: G::ScalarField,
+    public_input: Option<&[G::ScalarField]>,
+) -> Result<DigestOracles<FULL_ROUNDS, G>>
+where
+    G: KimchiCurve<FULL_ROUNDS>,
+    EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
+{
+    let n = domain.size;
+    let (_, endo_r) = G::endos();
+
+    let chunk_size = {
+        let d1_size = domain.size();
+        if d1_size < max_poly_size {
+            1
+        } else {
+            d1_size / max_poly_size
+        }
+    };
+
+    let mut fr_sponge = EFrSponge::from(G::sponge_params());
+
+    //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+    fr_sponge.absorb(&digest);
+
+    //~ 1. Absorb the previous recursion challenges.
+    let prev_challenge_digest = {
+        // Note: we absorb in a new sponge here to limit the scope in which we need the
+        // more-expensive 'optional sponge'.
+        let mut fr_sponge = EFrSponge::from(G::sponge_params());
+        for RecursionChallenge { chals, .. } in prev_challenges {
+            fr_sponge.absorb_multiple(chals);
+        }
+        fr_sponge.digest()
+    };
+    fr_sponge.absorb(&prev_challenge_digest);
+
+    // prepare some often used values
+    let zeta1 = zeta.pow([n]);
+    let zetaw = zeta * domain.group_gen;
+    let evaluation_points = [zeta, zetaw];
+    let powers_of_eval_points_for_chunks = PointEvaluations {
+        zeta: zeta.pow([max_poly_size as u64]),
+        zeta_omega: zetaw.pow([max_poly_size as u64]),
+    };
+
+    //~ 1. Compute evaluations for the previous recursion challenges.
+    let polys: Vec<(PolyComm<G>, _)> = prev_challenges
+        .iter()
+        .map(|challenge| {
+            let evals = challenge.evals(
+                max_poly_size,
+                &evaluation_points,
+                &[
+                    powers_of_eval_points_for_chunks.zeta,
+                    powers_of_eval_points_for_chunks.zeta_omega,
+                ],
+            );
+            let RecursionChallenge { chals: _, comm } = challenge;
+            (comm.clone(), evals)
+        })
+        .collect();
+
+    // retrieve ranges for the powers of alphas
+    let mut all_alphas = powers_of_alpha.clone();
+    all_alphas.instantiate(alpha);
+
+    let public_evals = if let Some(public_evals) = &evals.public {
+        [public_evals.zeta.clone(), public_evals.zeta_omega.clone()]
+    } else if chunk_size > 1 {
+        return Err(VerifyError::MissingPublicInputEvaluation);
+    } else if let Some(public_input) = public_input {
+        // compute Lagrange base evaluation denominators
+        let w: Vec<_> = domain.elements().take(public_input.len()).collect();
+
+        let mut zeta_minus_x: Vec<_> = w.iter().map(|w| zeta - w).collect();
+
+        w.iter()
+            .take(public_input.len())
+            .for_each(|w| zeta_minus_x.push(zetaw - w));
+
+        ark_ff::fields::batch_inversion::<G::ScalarField>(&mut zeta_minus_x);
+
+        //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+        //~
+        //~    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
+        if public_input.is_empty() {
+            [vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
+        } else {
+            [
+                vec![
+                    (public_input
+                        .iter()
+                        .zip(zeta_minus_x.iter())
+                        .zip(domain.elements())
+                        .map(|((p, l), w)| -*l * p * w)
+                        .fold(G::ScalarField::zero(), |x, y| x + y))
+                        * (zeta1 - G::ScalarField::one())
+                        * domain.size_inv,
+                ],
+                vec![
+                    (public_input
+                        .iter()
+                        .zip(zeta_minus_x[public_input.len()..].iter())
+                        .zip(domain.elements())
+                        .map(|((p, l), w)| -*l * p * w)
+                        .fold(G::ScalarField::zero(), |x, y| x + y))
+                        * domain.size_inv
+                        * (zetaw.pow([n]) - G::ScalarField::one()),
+                ],
+            ]
+        }
+    } else {
+        return Err(VerifyError::MissingPublicInputEvaluation);
+    };
+
+    //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+    fr_sponge.absorb(&ft_eval1);
+
+    //~ 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+    //~~ * the public polynomial
+    //~~ * z
+    //~~ * generic selector
+    //~~ * poseidon selector
+    //~~ * the 15 register/witness
+    //~~ * 6 sigmas evaluations (the last one is not evaluated)
+    fr_sponge.absorb_multiple(&public_evals[0]);
+    fr_sponge.absorb_multiple(&public_evals[1]);
+    fr_sponge.absorb_evaluations(evals);
+
+    //~ 1. Sample the "polyscale" $v'$ with the Fr-Sponge.
+    let v_chal = fr_sponge.challenge();
+
+    //~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
+    let v = v_chal.to_field(endo_r);
+
+    //~ 1. Sample the "evalscale" $u'$ with the Fr-Sponge.
+    let u_chal = fr_sponge.challenge();
+
+    //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
+    let u = u_chal.to_field(endo_r);
+
+    //~ 1. Create a list of all polynomials that have an evaluation proof.
+
+    let combined_evals = evals.combine(&powers_of_eval_points_for_chunks);
+
+    //~ 1. Compute the evaluation of $ft(\zeta)$.
+    let ft_eval0 = {
+        // The verifier index pre-sets `permutation_vanishing_polynomial_m` from
+        // the constraint system's precomputation, which is the 3-factor
+        // `permutation_vanishing_polynomial(domain, zk_rows)` =
+        // `(x - w^{n-zk_rows})(x - w^{n-zk_rows+1})(x - w^{n-1})` — NOT the
+        // `zk_rows`-factor `vanishes_on_last_n_rows` (the never-reached lazy
+        // fallback in `permutation_vanishing_polynomial_m()`). They coincide at
+        // `zk_rows = 3` but diverge for chunked proofs (`zk_rows = (16·nc+5)/7`).
+        let permutation_vanishing_polynomial =
+            permutation::permutation_vanishing_polynomial(domain, zk_rows).evaluate(&zeta);
+        let zeta1m1 = zeta1 - G::ScalarField::one();
+
+        let mut alpha_powers =
+            all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
+        let alpha0 = alpha_powers
+            .next()
+            .expect("missing power of alpha for permutation");
+        let alpha1 = alpha_powers
+            .next()
+            .expect("missing power of alpha for permutation");
+        let alpha2 = alpha_powers
+            .next()
+            .expect("missing power of alpha for permutation");
+
+        let init = (combined_evals.w[PERMUTS - 1].zeta + gamma)
+            * combined_evals.z.zeta_omega
+            * alpha0
+            * permutation_vanishing_polynomial;
+        let mut ft_eval0 = combined_evals
+            .w
+            .iter()
+            .zip(combined_evals.s.iter())
+            .map(|(w, s)| (beta * s.zeta) + w.zeta + gamma)
+            .fold(init, |x, y| x * y);
+
+        ft_eval0 -= DensePolynomial::eval_polynomial(
+            &public_evals[0],
+            powers_of_eval_points_for_chunks.zeta,
+        );
+
+        ft_eval0 -= combined_evals
+            .w
+            .iter()
+            .zip(shift.iter())
+            .map(|(w, s)| gamma + (beta * zeta * s) + w.zeta)
+            .fold(
+                alpha0 * permutation_vanishing_polynomial * combined_evals.z.zeta,
+                |x, y| x * y,
+            );
+
+        // `index.w()` (verifier_index) caches `zk_w(domain, zk_rows)`.
+        let zk_w = permutation::zk_w(domain, zk_rows);
+        let numerator = ((zeta1m1 * alpha1 * (zeta - zk_w))
+            + (zeta1m1 * alpha2 * (zeta - G::ScalarField::one())))
+            * (G::ScalarField::one() - combined_evals.z.zeta);
+
+        let denominator = (zeta - zk_w) * (zeta - G::ScalarField::one());
+        let denominator = denominator.inverse().expect("negligible probability");
+
+        ft_eval0 += numerator * denominator;
+
+        let constants = Constants {
+            endo_coefficient,
+            mds: &G::sponge_params().mds,
+            zk_rows,
+        };
+        let challenges = BerkeleyChallenges {
+            alpha,
+            beta,
+            gamma,
+            joint_combiner: joint_combiner
+                .as_ref()
+                .map(|j| j.1)
+                .unwrap_or(G::ScalarField::zero()),
+        };
+
+        ft_eval0 -= PolishToken::evaluate(
+            &linearization.constant_term,
+            domain,
+            zeta,
+            &combined_evals,
+            &constants,
+            &challenges,
+        )
+        .unwrap();
+
+        ft_eval0
+    };
+
+    let oracles = RandomOracles {
+        joint_combiner,
+        beta,
+        gamma,
+        alpha_chal,
+        alpha,
+        zeta,
+        v,
+        u,
+        zeta_chal,
+        v_chal,
+        u_chal,
+    };
+
+    Ok(DigestOracles {
+        digest,
+        oracles,
+        all_alphas,
+        public_evals,
+        powers_of_eval_points_for_chunks,
+        polys,
+        zeta1,
+        ft_eval0,
+    })
+}
+
 impl<const FULL_ROUNDS: usize, G, OpeningProof> ProverProof<G, OpeningProof, FULL_ROUNDS>
 where
     G: KimchiCurve<FULL_ROUNDS>,
@@ -139,7 +479,6 @@ where
         //~
         //~ We run the following algorithm:
         //~
-        let n = index.domain.size;
         let (_, endo_r) = G::endos();
 
         let chunk_size = {
@@ -150,8 +489,6 @@ where
                 d1_size / index.max_poly_size
             }
         };
-
-        let zk_rows = index.zk_rows;
 
         //~ 1. Setup the Fq-Sponge. This sponge mostly absorbs group
         // elements (points as tuples over the base field), but it
@@ -281,213 +618,42 @@ where
         // of the field. The squeeze result is the same as with the
         // `fq_sponge`.
         let digest = fq_sponge.clone().digest();
-        let mut fr_sponge = EFrSponge::from(G::sponge_params());
-
-        //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
-        fr_sponge.absorb(&digest);
-
-        //~ 1. Absorb the previous recursion challenges.
-        let prev_challenge_digest = {
-            // Note: we absorb in a new sponge here to limit the scope in which we need the
-            // more-expensive 'optional sponge'.
-            let mut fr_sponge = EFrSponge::from(G::sponge_params());
-            for RecursionChallenge { chals, .. } in &self.prev_challenges {
-                fr_sponge.absorb_multiple(chals);
-            }
-            fr_sponge.digest()
-        };
-        fr_sponge.absorb(&prev_challenge_digest);
-
-        // prepare some often used values
-        let zeta1 = zeta.pow([n]);
-        let zetaw = zeta * index.domain.group_gen;
-        let evaluation_points = [zeta, zetaw];
-        let powers_of_eval_points_for_chunks = PointEvaluations {
-            zeta: zeta.pow([index.max_poly_size as u64]),
-            zeta_omega: zetaw.pow([index.max_poly_size as u64]),
-        };
-
-        //~ 1. Compute evaluations for the previous recursion challenges.
-        let polys: Vec<(PolyComm<G>, _)> = self
-            .prev_challenges
-            .iter()
-            .map(|challenge| {
-                let evals = challenge.evals(
-                    index.max_poly_size,
-                    &evaluation_points,
-                    &[
-                        powers_of_eval_points_for_chunks.zeta,
-                        powers_of_eval_points_for_chunks.zeta_omega,
-                    ],
-                );
-                let RecursionChallenge { chals: _, comm } = challenge;
-                (comm.clone(), evals)
-            })
-            .collect();
-
-        // retrieve ranges for the powers of alphas
-        let mut all_alphas = index.powers_of_alpha.clone();
-        all_alphas.instantiate(alpha);
-
-        let public_evals = if let Some(public_evals) = &self.evals.public {
-            [public_evals.zeta.clone(), public_evals.zeta_omega.clone()]
-        } else if chunk_size > 1 {
-            return Err(VerifyError::MissingPublicInputEvaluation);
-        } else if let Some(public_input) = public_input {
-            // compute Lagrange base evaluation denominators
-            let w: Vec<_> = index.domain.elements().take(public_input.len()).collect();
-
-            let mut zeta_minus_x: Vec<_> = w.iter().map(|w| zeta - w).collect();
-
-            w.iter()
-                .take(public_input.len())
-                .for_each(|w| zeta_minus_x.push(zetaw - w));
-
-            ark_ff::fields::batch_inversion::<G::ScalarField>(&mut zeta_minus_x);
-
-            //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
-            //~
-            //~    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
-            if public_input.is_empty() {
-                [vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
-            } else {
-                [
-                    vec![
-                        (public_input
-                            .iter()
-                            .zip(zeta_minus_x.iter())
-                            .zip(index.domain.elements())
-                            .map(|((p, l), w)| -*l * p * w)
-                            .fold(G::ScalarField::zero(), |x, y| x + y))
-                            * (zeta1 - G::ScalarField::one())
-                            * index.domain.size_inv,
-                    ],
-                    vec![
-                        (public_input
-                            .iter()
-                            .zip(zeta_minus_x[public_input.len()..].iter())
-                            .zip(index.domain.elements())
-                            .map(|((p, l), w)| -*l * p * w)
-                            .fold(G::ScalarField::zero(), |x, y| x + y))
-                            * index.domain.size_inv
-                            * (zetaw.pow([n]) - G::ScalarField::one()),
-                    ],
-                ]
-            }
-        } else {
-            return Err(VerifyError::MissingPublicInputEvaluation);
-        };
-
-        //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
-        fr_sponge.absorb(&self.ft_eval1);
-
-        //~ 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
-        //~~ * the public polynomial
-        //~~ * z
-        //~~ * generic selector
-        //~~ * poseidon selector
-        //~~ * the 15 register/witness
-        //~~ * 6 sigmas evaluations (the last one is not evaluated)
-        fr_sponge.absorb_multiple(&public_evals[0]);
-        fr_sponge.absorb_multiple(&public_evals[1]);
-        fr_sponge.absorb_evaluations(&self.evals);
-
-        //~ 1. Sample the "polyscale" $v'$ with the Fr-Sponge.
-        let v_chal = fr_sponge.challenge();
-
-        //~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
-        let v = v_chal.to_field(endo_r);
-
-        //~ 1. Sample the "evalscale" $u'$ with the Fr-Sponge.
-        let u_chal = fr_sponge.challenge();
-
-        //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
-        let u = u_chal.to_field(endo_r);
-
-        //~ 1. Create a list of all polynomials that have an evaluation proof.
-
-        let evals = self.evals.combine(&powers_of_eval_points_for_chunks);
-
-        //~ 1. Compute the evaluation of $ft(\zeta)$.
-        let ft_eval0 = {
-            let permutation_vanishing_polynomial =
-                index.permutation_vanishing_polynomial_m().evaluate(&zeta);
-            let zeta1m1 = zeta1 - G::ScalarField::one();
-
-            let mut alpha_powers =
-                all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-            let alpha0 = alpha_powers
-                .next()
-                .expect("missing power of alpha for permutation");
-            let alpha1 = alpha_powers
-                .next()
-                .expect("missing power of alpha for permutation");
-            let alpha2 = alpha_powers
-                .next()
-                .expect("missing power of alpha for permutation");
-
-            let init = (evals.w[PERMUTS - 1].zeta + gamma)
-                * evals.z.zeta_omega
-                * alpha0
-                * permutation_vanishing_polynomial;
-            let mut ft_eval0 = evals
-                .w
-                .iter()
-                .zip(evals.s.iter())
-                .map(|(w, s)| (beta * s.zeta) + w.zeta + gamma)
-                .fold(init, |x, y| x * y);
-
-            ft_eval0 -= DensePolynomial::eval_polynomial(
-                &public_evals[0],
-                powers_of_eval_points_for_chunks.zeta,
-            );
-
-            ft_eval0 -= evals
-                .w
-                .iter()
-                .zip(index.shift.iter())
-                .map(|(w, s)| gamma + (beta * zeta * s) + w.zeta)
-                .fold(
-                    alpha0 * permutation_vanishing_polynomial * evals.z.zeta,
-                    |x, y| x * y,
-                );
-
-            let numerator = ((zeta1m1 * alpha1 * (zeta - index.w()))
-                + (zeta1m1 * alpha2 * (zeta - G::ScalarField::one())))
-                * (G::ScalarField::one() - evals.z.zeta);
-
-            let denominator = (zeta - index.w()) * (zeta - G::ScalarField::one());
-            let denominator = denominator.inverse().expect("negligible probability");
-
-            ft_eval0 += numerator * denominator;
-
-            let constants = Constants {
-                endo_coefficient: index.endo,
-                mds: &G::sponge_params().mds,
-                zk_rows,
-            };
-            let challenges = BerkeleyChallenges {
-                alpha,
-                beta,
-                gamma,
-                joint_combiner: joint_combiner
-                    .as_ref()
-                    .map(|j| j.1)
-                    .unwrap_or(G::ScalarField::zero()),
-            };
-
-            ft_eval0 -= PolishToken::evaluate(
-                &index.linearization.constant_term,
-                index.domain,
-                zeta,
-                &evals,
-                &constants,
-                &challenges,
-            )
-            .unwrap();
-
-            ft_eval0
-        };
+        //~ 1. Replay the post-digest tail of the oracle protocol (Fr-sponge,
+        //~    public evaluations, `ft_eval0`) from the digest + the Fq-derived
+        //~    challenges. Extracted so the out-of-circuit Pickles verifier can
+        //~    call it with carried challenges instead of a `VerifierIndex`.
+        let DigestOracles {
+            digest,
+            oracles,
+            all_alphas,
+            public_evals,
+            powers_of_eval_points_for_chunks,
+            polys,
+            zeta1,
+            ft_eval0,
+        } = oracles_from_digest::<FULL_ROUNDS, G, EFrSponge>(
+            index.domain,
+            index.max_poly_size,
+            index.zk_rows,
+            &index.shift,
+            index.endo,
+            &index.linearization,
+            &index.powers_of_alpha,
+            digest,
+            alpha,
+            beta,
+            gamma,
+            zeta,
+            alpha_chal,
+            zeta_chal,
+            joint_combiner,
+            &self.prev_challenges,
+            &self.evals,
+            self.ft_eval1,
+            public_input,
+        )?;
+        let v = oracles.v;
+        let u = oracles.u;
 
         let combined_inner_product =
             {
@@ -604,20 +770,6 @@ where
 
                 combined_inner_product(&v, &u, &es)
             };
-
-        let oracles = RandomOracles {
-            joint_combiner,
-            beta,
-            gamma,
-            alpha_chal,
-            alpha,
-            zeta,
-            v,
-            u,
-            zeta_chal,
-            v_chal,
-            u_chal,
-        };
 
         Ok(OraclesResult {
             fq_sponge,
