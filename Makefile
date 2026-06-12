@@ -282,7 +282,7 @@ nextest-all: ## Test with all tests using nextest (without o1vm)
 			--features "$(WORKSPACE_FEATURES)" \
 			--exclude kimchi_wasm \
 			--exclude o1vm \
-			--release $(CARGO_EXTRA_ARGS) \
+			--release \
 			--profile ci $(BIN_EXTRA_ARGS)
 
 .PHONY: nextest-all-with-coverage
