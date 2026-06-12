@@ -253,7 +253,7 @@ nextest: ## Test with non-heavy tests using nextest (without o1vm)
 			--features "$(WORKSPACE_FEATURES)" \
 			--exclude kimchi_wasm \
 			--exclude o1vm \
-			--release $(CARGO_EXTRA_ARGS) \
+			--release \
 			--profile ci \
 			-E "not test(heavy)" $(BIN_EXTRA_ARGS)
 
