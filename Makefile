@@ -249,7 +249,7 @@ test-all-with-coverage:
 .PHONY: nextest
 nextest: ## Test with non-heavy tests using nextest (without o1vm)
 		cargo nextest run \
-			--all \
+			--workspace \
 			--features "$(WORKSPACE_FEATURES)" \
 			--exclude kimchi_wasm \
 			--exclude o1vm \
