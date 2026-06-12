@@ -309,18 +309,18 @@ format-md: ## Format markdown files
 
 .PHONY: lint
 lint: ## Lint the code (without o1vm)
-		cargo clippy --all \
+		cargo clippy --workspace \
 			--features "$(WORKSPACE_FEATURES)" \
-			--all-targets --tests \
+			--all-targets \
 			--exclude o1vm \
 			$(CARGO_EXTRA_ARGS) \
 			-- -W clippy::all -D warnings
 
 .PHONY: lint-all
 lint-all: ## Lint the code including o1vm
-		cargo clippy --all \
+		cargo clippy --workspace \
 			--features "$(O1VM_FEATURES)" \
-			--all-targets --tests \
+			--all-targets \
 			$(CARGO_EXTRA_ARGS) \
 			-- -W clippy::all -D warnings
 
