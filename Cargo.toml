@@ -136,5 +136,13 @@ lto = true
 panic = 'abort'
 # codegen-units = 1
 
+# wasm-targeted release: single codegen unit on top of fat LTO (worth
+# a few % at much longer build time). Used only by kimchi-napi's
+# `npm run build:wasm`; the native build keeps the plain release
+# profile so its build times and baselines are unaffected.
+[profile.release-wasm]
+inherits = "release"
+codegen-units = 1
+
 [profile.release.package.kimchi_wasm]
 debug = true
