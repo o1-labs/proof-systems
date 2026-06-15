@@ -130,50 +130,10 @@ fn features(uses_custom_gates: bool) -> Option<FeatureFlags> {
     }
 }
 
-/// Converts the linearization of the kimchi circuit polynomial into a printable string.
-pub fn linearization_strings<F: ark_ff::PrimeField>(
-    uses_custom_gates: bool,
-) -> (String, Vec<(String, String)>)
-where
-    num_bigint::BigUint: From<F::BigInt>,
-{
-    let features = features(uses_custom_gates);
-    let evaluated_cols = linearization_columns::<F>(features.as_ref());
-    let (linearization, _powers_of_alpha) = constraints_expr::<F>(features.as_ref(), true);
-
-    let Linearization {
-        constant_term,
-        mut index_terms,
-    } = linearization.linearize(evaluated_cols).unwrap();
-
-    // HashMap deliberately uses an unstable order; here we sort to ensure that
-    // the output is consistent when printing.
-    index_terms.sort_by_key(|(x, _)| *x);
-
-    let constant = constant_term.ocaml_str();
-    let other_terms = index_terms
-        .iter()
-        .map(|(col, expr)| (format!("{:?}", col), expr.ocaml_str()))
-        .collect();
-
-    (constant, other_terms)
-}
-
-#[ocaml::func]
-pub fn fp_linearization_strings() -> (String, Vec<(String, String)>) {
-    linearization_strings::<mina_curves::pasta::Fp>(true)
-}
-
-#[ocaml::func]
-pub fn fq_linearization_strings() -> (String, Vec<(String, String)>) {
-    linearization_strings::<mina_curves::pasta::Fq>(false)
-}
-
 /// The linearization of the kimchi circuit polynomial as RPN token streams, in
 /// OCaml evaluation order (see [`PolishToken`] / `Expr::to_ocaml_ordered_polish`).
 /// The constant term comes first, followed by the index terms keyed by their
-/// column (rendered as the column's `Debug` string, matching
-/// [`linearization_strings`]).
+/// column (rendered as the column's `Debug` string).
 pub fn linearization_tokens<F: ark_ff::PrimeField>(
     uses_custom_gates: bool,
 ) -> (Tokens<F>, Vec<(String, Tokens<F>)>) {
