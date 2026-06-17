@@ -5,7 +5,10 @@ use napi::bindgen_prelude::{sys, ClassInstance, Error, FromNapiValue, Result, St
 use napi_derive::napi;
 use paste::paste;
 use poly_commitment::{
-    commitment::b_poly_coefficients, hash_map_cache::HashMapCache, ipa::SRS, SRS as ISRS,
+    commitment::{b_poly_coefficients, PolyComm},
+    hash_map_cache::HashMapCache,
+    ipa::SRS,
+    SRS as ISRS,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -243,6 +246,45 @@ macro_rules! impl_srs {
                       .ok_or_else(invalid_domain_error)?;
                   let basis = srs.0.get_lagrange_basis(domain);
                   Ok(basis.iter().cloned().map(Into::into).collect())
+              }
+
+              // Serialize the Lagrange basis for the domain of size `2^log2_size`
+              // (computing it if not yet cached) to a compact byte blob — the
+              // out-of-band carrier the SRS cache manager persists, since the
+              // SRS `Serialize` impl `#[serde(skip)]`s the bases. Mirrors the
+              // generator serde (`*_srs_to_bytes`), using rmp_serde.
+              #[napi(js_name = [<"caml_" $name:snake "_srs_lagrange_basis_to_bytes">])]
+              pub fn [<caml_ $name:snake _srs_lagrange_basis_to_bytes>](
+                  srs: &[<Napi $name:camel Srs>],
+                  log2_size: i32,
+              ) -> Result<Uint8Array> {
+                  let size = 1usize << (log2_size as usize);
+                  let domain = EvaluationDomain::<$F>::new(size).ok_or_else(invalid_domain_error)?;
+                  let basis = srs.get_lagrange_basis(domain);
+                  let mut buf = Vec::new();
+                  basis
+                      .serialize(&mut rmp_serde::Serializer::new(&mut buf))
+                      .map_err(|e| map_error("srs_lagrange_basis_to_bytes", e))?;
+                  Ok(Uint8Array::from(buf))
+              }
+
+              // Inverse of `*_srs_lagrange_basis_to_bytes`: deserialize a basis blob
+              // and inject it into this SRS's cache for the domain of size
+              // `2^log2_size`, so later index/proof creation over that domain hits
+              // the cache instead of running the FFT. Idempotent: a no-op if the
+              // domain is already populated (same `get_or_generate` the structured
+              // `set_lagrange_basis` uses).
+              #[napi(js_name = [<"caml_" $name:snake "_srs_set_lagrange_basis_from_bytes">])]
+              pub fn [<caml_ $name:snake _srs_set_lagrange_basis_from_bytes>](
+                  srs: &[<Napi $name:camel Srs>],
+                  log2_size: i32,
+                  bytes: Uint8Array,
+              ) -> Result<()> {
+                  let size = 1usize << (log2_size as usize);
+                  let basis: Vec<PolyComm<$G>> = rmp_serde::from_slice(bytes.as_ref())
+                      .map_err(|e| map_error("srs_set_lagrange_basis_from_bytes", e))?;
+                  srs.0.lagrange_bases.get_or_generate(size, || basis);
+                  Ok(())
               }
 
 
