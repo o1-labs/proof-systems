@@ -1143,10 +1143,56 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         g: G,
     ) -> Evaluations<F, D<F>> {
         let n = res_domain.1.size();
+        // For a satisfying witness every constraint vanishes on the d1 rows, so
+        // the honest prover computes zeros there; we skip the work and write the
+        // zeros directly.
+        //
+        // We only do this in the d8 domain: every degree-d8 constraint is zero on
+        // all of d1, but the generic (d4) constraint equals the public input on
+        // the public-input rows -- it is cancelled there by the public-input
+        // polynomial added later in coefficient form -- so it must be evaluated in
+        // full.
+        //
+        // The d1 rows of a d8 evaluation sit at indices that are multiples of 8;
+        // since that is a power of two we test with a mask (`i & 7`) rather than
+        // `%`, which the compiler cannot lower to a mask given a runtime divisor.
+        // Results that bypass this path get the same treatment via
+        // `zero_d1_rows`, which keeps the quotient numerator divisible by Z_H.
+        let stride = res_domain.0 as usize;
+        let skip_d1 = stride == 8;
+        let mask = stride - 1;
         Evaluations::<F, D<F>>::from_vec_and_domain(
-            o1_utils::cfg_into_iter!(0..n).map(g).collect(),
+            o1_utils::cfg_into_iter!(0..n)
+                .map(|i| {
+                    if skip_d1 && (i & mask) == 0 {
+                        F::zero()
+                    } else {
+                        g(i)
+                    }
+                })
+                .collect(),
             res_domain.1,
         )
+    }
+
+    /// Zero the d1 rows of an evaluation over `domain`. Every constraint is
+    /// identically zero on those rows for a satisfying witness, so forcing them
+    /// to zero is a no-op on a correct proof while letting the materialisation
+    /// paths above skip computing them. See [`Expr::evaluations`].
+    fn zero_d1_rows(evals: &mut Evaluations<F, D<F>>, domain: Domain) {
+        let stride = domain as usize;
+        // Only d8 constraints are skipped (see `init_`), so only they need their
+        // d1 rows forced to zero; d4 results (the generic constraint) are kept.
+        if stride == 8 {
+            let mask = stride - 1;
+            o1_utils::cfg_iter_mut!(evals.evals)
+                .enumerate()
+                .for_each(|(i, e)| {
+                    if (i & mask) == 0 {
+                        *e = F::zero();
+                    }
+                });
+        }
     }
 
     /// Call the internal function `init_` and return the computed evaluation as
@@ -1963,7 +2009,7 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
             Either::Right(id) => cache.get(&id).unwrap().clone(),
         };
 
-        match evals {
+        let mut result = match evals {
             EvalResult::Evals { evals, domain } => {
                 assert_eq!(domain, d);
                 evals
@@ -1986,7 +2032,12 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
                     evals.evals[(scale * i + (d_sub as usize) * s) % evals.evals.len()]
                 })
             }
-        }
+        };
+        // The materialisation paths skip the d1 rows; enforce zero there for any
+        // result that did not (e.g. a borrowed `Evals` returned directly), so the
+        // numerator stays divisible by Z_H regardless of which path produced it.
+        EvalResult::<'_, F>::zero_d1_rows(&mut result, d);
+        result
     }
 
     fn evaluations_helper<
