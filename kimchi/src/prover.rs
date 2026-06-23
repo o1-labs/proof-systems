@@ -870,6 +870,19 @@ where
                 }
             }
 
+            // The generic constraint equals the public input on the
+            // public-input rows, but those (d1) rows were skipped while
+            // evaluating it. Add the public input back onto t4 here so
+            // interpolation recovers the generic gate exactly; the public-input
+            // polynomial (added below in coefficient form) then cancels it on d1,
+            // keeping the numerator divisible by Z_H.
+            {
+                let stride = (index.cs.domain.d4.size / index.cs.domain.d1.size) as usize;
+                for (row, p) in witness[0][..index.cs.public].iter().enumerate() {
+                    t4.evals[stride * row] += p;
+                }
+            }
+
             // public polynomial
             let mut f = t4.interpolate() + t8.interpolate();
             f += &public_poly;
