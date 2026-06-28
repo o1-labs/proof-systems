@@ -2198,9 +2198,22 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
                                 }
                                 FOp::Pow(p) => {
                                     let t0 = (sp - 1) * B;
-                                    for l in lstart..blk {
-                                        let v = st.get_unchecked(t0 + l).pow([*p]);
-                                        *st.get_unchecked_mut(t0 + l) = v;
+                                    if *p == 7 {
+                                        // x^7 = (x^2)^2 * x^2 * x -- the Poseidon
+                                        // S-box, evaluated ~4M times/proof over d8.
+                                        // A fixed 2-square/2-mul chain avoids the
+                                        // generic bigint exponentiation in [pow].
+                                        for l in lstart..blk {
+                                            let x = *st.get_unchecked(t0 + l);
+                                            let x2 = x.square();
+                                            let x4 = x2.square();
+                                            *st.get_unchecked_mut(t0 + l) = x4 * x2 * x;
+                                        }
+                                    } else {
+                                        for l in lstart..blk {
+                                            let v = st.get_unchecked(t0 + l).pow([*p]);
+                                            *st.get_unchecked_mut(t0 + l) = v;
+                                        }
                                     }
                                 }
                                 FOp::StoreReg(r) => {
