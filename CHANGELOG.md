@@ -9,6 +9,14 @@ and this project adheres to
 
 ## Unreleased
 
+### [kimchi](./kimchi)
+
+#### Added
+
+- Add an optional mmap-backed prover-index cache for loading proving keys from
+  disk while allowing the OS page cache to evict unused pages
+  ([#3569](https://github.com/o1-labs/proof-systems/pull/3569))
+
 ### [kimchi-napi](./kimchi-napi)
 
 #### Fixed
