@@ -14,6 +14,7 @@ use kimchi::{
         lookup::runtime_tables::{caml::CamlRuntimeTable, RuntimeTable},
         polynomial::COLUMNS,
     },
+    oracles::caml::CamlOracles,
     proof::{
         PointEvaluations, ProofEvaluations, ProverCommitments, ProverProof, RecursionChallenge,
     },
@@ -111,6 +112,87 @@ pub fn caml_pasta_fp_plonk_proof_create(
         .map_err(|e| ocaml::Error::Error(e.into()))?
         .proof;
         Ok((proof, public_input).into())
+    })
+}
+
+/// Like [`caml_pasta_fp_plonk_proof_create`], but also returns the oracle
+/// challenges the prover already computed, so the caller (the wrap) can skip
+/// recomputing them via `caml_pasta_fp_plonk_oracles_create`.
+///
+/// The OCaml binding is hand-written (see `kimchi_bindings_extra.ml`): ocaml_gen
+/// cannot emit a signature mentioning `CamlOracles` from this module's scope, so
+/// `#[ocaml_gen::func]` is intentionally omitted.
+#[ocaml::func]
+pub fn caml_pasta_fp_plonk_proof_create_with_oracles(
+    index: CamlPastaFpPlonkIndexPtr<'static>,
+    witness: Vec<CamlFpVector>,
+    runtime_tables: Vec<CamlRuntimeTable<CamlFp>>,
+    prev_challenges: Vec<CamlFp>,
+    prev_sgs: Vec<CamlGVesta>,
+) -> Result<(CamlProofWithPublic<CamlGVesta, CamlFp>, CamlOracles<CamlFp>), ocaml::Error> {
+    {
+        index
+            .as_ref()
+            .0
+            .srs
+            .with_lagrange_basis(index.as_ref().0.cs.domain.d1);
+    }
+
+    let prev = if prev_challenges.is_empty() {
+        Vec::new()
+    } else {
+        let challenges_per_sg = prev_challenges.len() / prev_sgs.len();
+        prev_sgs
+            .into_iter()
+            .map(Into::<Vesta>::into)
+            .enumerate()
+            .map(|(i, sg)| {
+                let chals = prev_challenges[(i * challenges_per_sg)..(i + 1) * challenges_per_sg]
+                    .iter()
+                    .map(Into::<Fp>::into)
+                    .collect();
+                let comm = PolyComm::<Vesta> { chunks: vec![sg] };
+                RecursionChallenge { chals, comm }
+            })
+            .collect()
+    };
+
+    let witness: Vec<Vec<_>> = witness.iter().map(|x| (**x).clone()).collect();
+    let witness: [Vec<_>; COLUMNS] = witness
+        .try_into()
+        .map_err(|_| ocaml::Error::Message("the witness should be a column of 15 vectors"))?;
+    let index: &ProverIndex<FULL_ROUNDS, Vesta, Srs> = &index.as_ref().0;
+    let runtime_tables: Vec<RuntimeTable<Fp>> =
+        runtime_tables.into_iter().map(Into::into).collect();
+
+    let public_input = witness[0][0..index.cs.public].to_vec();
+
+    let runtime = unsafe { ocaml::Runtime::recover_handle() };
+
+    runtime.releasing_runtime(|| {
+        let group_map = GroupMap::<Fq>::setup();
+        let fat = ProverProof::create_recursive::<EFqSponge, EFrSponge, _>(
+            &group_map,
+            witness,
+            &runtime_tables,
+            index,
+            prev,
+            None,
+            &mut rand::rngs::OsRng,
+        )
+        .map_err(|e| ocaml::Error::Error(e.into()))?;
+        let fo = fat.fat_oracles;
+        let oracles = CamlOracles {
+            o: fo.oracles.into(),
+            public_evals: (fo.public_evals[0][0].into(), fo.public_evals[1][0].into()),
+            opening_prechallenges: fo
+                .opening_prechallenges
+                .iter()
+                .map(|x| (*x).into())
+                .collect(),
+            digest_before_evaluations: fo.digest.into(),
+        };
+        Ok(((fat.proof, public_input).into(), oracles))
     })
 }
 
