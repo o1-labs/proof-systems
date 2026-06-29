@@ -1439,7 +1439,7 @@ where
 
         //~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
         internal_tracing::checkpoint!(internal_traces; create_aggregated_ipa);
-        let proof = OpenProof::open(
+        let opening_fat = OpenProof::open(
             &*index.srs,
             group_map,
             &polynomials,
@@ -1449,6 +1449,10 @@ where
             fq_sponge_before_evaluations,
             rng,
         );
+        // The IPA folding prechallenges, surfaced for the fat proof so the wrap
+        // need not recompute them.
+        let opening_prechallenges = opening_fat.challenges().to_vec();
+        let proof = opening_fat.inner();
 
         let lookup = lookup_context
             .aggreg_comm
@@ -1498,6 +1502,7 @@ where
                 None => [vec![], vec![]],
             },
             digest: fq_digest_before_evaluations,
+            opening_prechallenges,
         };
 
         Ok(crate::proof::FatProverProof { proof, fat_oracles })

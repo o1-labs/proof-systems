@@ -209,12 +209,16 @@ impl<
         _evalscale: <G as AffineRepr>::ScalarField,
         _sponge: EFqSponge,
         _rng: &mut RNG,
-    ) -> Self
+    ) -> crate::OpeningProofFat<Self, F>
     where
         EFqSponge: Clone + FqSponge<<G as AffineRepr>::BaseField, G, F, FULL_ROUNDS>,
         RNG: RngCore + CryptoRng,
     {
-        Self::create(srs, plnms, elm, polyscale).unwrap()
+        // KZG has no folding rounds, so there are no prechallenges to surface.
+        crate::OpeningProofFat {
+            proof: Self::create(srs, plnms, elm, polyscale).unwrap(),
+            challenges: vec![],
+        }
     }
 
     fn verify<EFqSponge, RNG>(

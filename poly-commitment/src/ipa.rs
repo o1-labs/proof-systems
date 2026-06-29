@@ -829,7 +829,7 @@ impl<G: CommitmentCurve> SRS<G> {
         evalscale: G::ScalarField,
         mut sponge: EFqSponge,
         rng: &mut RNG,
-    ) -> OpeningProof<G, FULL_ROUNDS>
+    ) -> crate::OpeningProofFat<OpeningProof<G, FULL_ROUNDS>, G::ScalarField>
     where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         RNG: RngCore + CryptoRng,
@@ -924,6 +924,9 @@ impl<G: CommitmentCurve> SRS<G> {
 
         let mut chals = vec![];
         let mut chal_invs = vec![];
+        // Folding prechallenges, surfaced in the fat opening so the prover can
+        // hand them to a downstream wrap (which would otherwise recompute them).
+        let mut prechals = vec![];
 
         // The main IPA folding loop that has log iterations.
         for _ in 0..rounds {
@@ -975,6 +978,7 @@ impl<G: CommitmentCurve> SRS<G> {
 
             chals.push(u);
             chal_invs.push(u_inv);
+            prechals.push(u_pre.inner());
 
             // IPA-folding polynomial coefficients
             a = o1_utils::cfg_iter!(a_hi)
@@ -1051,12 +1055,15 @@ impl<G: CommitmentCurve> SRS<G> {
         let z1 = a0 * c + d;
         let z2 = r_prime * c + r_delta;
 
-        OpeningProof {
-            delta,
-            lr,
-            z1,
-            z2,
-            sg: g0,
+        crate::OpeningProofFat {
+            proof: OpeningProof {
+                delta,
+                lr,
+                z1,
+                z2,
+                sg: g0,
+            },
+            challenges: prechals,
         }
     }
 }
@@ -1208,7 +1215,7 @@ impl<
         evalscale: <G as AffineRepr>::ScalarField,
         sponge: EFqSponge,
         rng: &mut RNG,
-    ) -> Self
+    ) -> crate::OpeningProofFat<Self, <G as AffineRepr>::ScalarField>
     where
         EFqSponge: Clone
             + FqSponge<<G as AffineRepr>::BaseField, G, <G as AffineRepr>::ScalarField, FULL_ROUNDS>,

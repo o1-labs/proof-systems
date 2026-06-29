@@ -470,7 +470,8 @@ where
         u,
         fq_sponge_before_evaluations,
         rng,
-    );
+    )
+    .inner();
 
     Ok(Proof {
         commitments,

@@ -212,7 +212,8 @@ pub fn generate_random_opening_proof<RNG: Rng + CryptoRng>(
                 evalmask,
                 fq_sponge.clone(),
                 &mut rng,
-            );
+            )
+            .proof;
         time_open += timer.elapsed();
 
         // prepare for batch verification

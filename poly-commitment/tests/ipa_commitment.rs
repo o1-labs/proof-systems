@@ -156,7 +156,9 @@ fn test_opening_proof() {
     // Generate a random number of evaluation point
     let nb_elem: u32 = rng.gen_range(1..7);
     let elm: Vec<Fp> = (0..nb_elem).map(|_| Fp::rand(&mut rng)).collect();
-    let opening_proof = srs.open(&group_map, &polys, &elm, v, u, sponge.clone(), rng);
+    let opening_proof = srs
+        .open(&group_map, &polys, &elm, v, u, sponge.clone(), rng)
+        .proof;
 
     // evaluate the polynomials at the points
     let poly1_chunked_evals: Vec<Vec<Fp>> = elm
@@ -332,7 +334,8 @@ fn test_dlog_commitment() {
                     evalmask,
                     sponge.clone(),
                     rng,
-                );
+                )
+                .proof;
             open += start.elapsed();
 
             let combined_inner_product = {

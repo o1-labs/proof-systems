@@ -197,12 +197,15 @@ where
 /// Oracle challenges the prover already computed during proving. The wrap
 /// recomputes these from the proof (`O.create`, ~52ms); the step prover can hand
 /// them over instead. This is the subset the wrap consumes -- the challenges,
-/// the public-input evaluations, and the Fq-sponge digest.
+/// the public-input evaluations, the Fq-sponge digest, and the IPA opening
+/// prechallenges.
 #[derive(Debug, Clone)]
 pub struct FatOracles<F: ark_ff::Field> {
     pub oracles: crate::circuits::scalars::RandomOracles<F>,
     pub public_evals: [Vec<F>; 2],
     pub digest: F,
+    /// The IPA folding prechallenges (the wrap's `opening_prechallenges`).
+    pub opening_prechallenges: Vec<F>,
 }
 
 /// A [`ProverProof`] plus the prover's [`FatOracles`]. The step (Vesta) prover
