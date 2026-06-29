@@ -194,6 +194,29 @@ where
     pub prev_challenges: Vec<RecursionChallenge<G>>,
 }
 
+/// Oracle challenges the prover already computed during proving. The wrap
+/// recomputes these from the proof (`O.create`, ~52ms); the step prover can hand
+/// them over instead. This is the subset the wrap consumes -- the challenges,
+/// the public-input evaluations, and the Fq-sponge digest.
+#[derive(Debug, Clone)]
+pub struct FatOracles<F: ark_ff::Field> {
+    pub oracles: crate::circuits::scalars::RandomOracles<F>,
+    pub public_evals: [Vec<F>; 2],
+    pub digest: F,
+}
+
+/// A [`ProverProof`] plus the prover's [`FatOracles`]. The step (Vesta) prover
+/// returns this; existing callers that only want the proof extract `.proof`,
+/// leaving the cryptographic proof type and its API untouched.
+pub struct FatProverProof<G, OpeningProof, const FULL_ROUNDS: usize>
+where
+    G: CommitmentCurve,
+    OpeningProof: OpenProof<G, FULL_ROUNDS>,
+{
+    pub proof: ProverProof<G, OpeningProof, FULL_ROUNDS>,
+    pub fat_oracles: FatOracles<G::ScalarField>,
+}
+
 /// Stores the accumulator from a previously verified IPA (Inner Product Argument).
 ///
 /// In recursive proof composition, when we verify a proof, the IPA verification

@@ -710,7 +710,7 @@ macro_rules! impl_proof {
                 });
 
                 return match maybe_proof {
-                    Ok(proof) => Ok((proof, public_input).into()),
+                    Ok(fat) => Ok((fat.proof, public_input).into()),
                     Err(err) => Err(JsError::from(err))
                 }
             }

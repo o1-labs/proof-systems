@@ -819,7 +819,7 @@ macro_rules! impl_proof {
                 };
 
                 match maybe_proof {
-                    Ok(proof) => Ok((proof, public_input).into()),
+                    Ok(fat) => Ok((fat.proof, public_input).into()),
                     Err(err) => Err(NapiError::new(Status::GenericFailure, err.to_string())),
                 }
             }
