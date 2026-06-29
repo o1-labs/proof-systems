@@ -1,8 +1,5 @@
 //! Round-trip and prove-then-verify tests for the mmap-backed proving-key
 //! cache.
-
-#![cfg(feature = "mmap_cache")]
-
 use crate::{
     cached_prover_index::{read_cache, write_cache, CacheError},
     circuits::{
@@ -48,7 +45,7 @@ fn tmpfile(label: &str) -> std::path::PathBuf {
 /// structural equality of every field the cache claims to preserve.
 #[test]
 fn cached_index_roundtrip_basic_fields() {
-    let public = vec![Fp::from(3u8); 5];
+    let public = [Fp::from(3u8); 5];
     let gates = create_circuit(0, public.len());
     let index = new_index_for_test::<FULL_ROUNDS, Vesta>(gates, public.len());
 
@@ -69,7 +66,13 @@ fn cached_index_roundtrip_basic_fields() {
     assert_eq!(restored.cs.shift, index.cs.shift);
     assert_eq!(restored.cs.sid, index.cs.sid);
     assert_eq!(restored.cs.gates.len(), index.cs.gates.len());
-    for (row, (a, b)) in restored.cs.gates.iter().zip(index.cs.gates.iter()).enumerate() {
+    for (row, (a, b)) in restored
+        .cs
+        .gates
+        .iter()
+        .zip(index.cs.gates.iter())
+        .enumerate()
+    {
         assert_eq!(a.typ, b.typ);
         assert_eq!(a.wires, b.wires);
         // coeffs are intentionally dropped; the restored index has empty
@@ -94,8 +97,7 @@ fn cached_index_roundtrip_basic_fields() {
         "generic_selector4 must round-trip exactly"
     );
     assert_eq!(
-        dst.permutation_coefficients8[0].evals,
-        src.permutation_coefficients8[0].evals,
+        dst.permutation_coefficients8[0].evals, src.permutation_coefficients8[0].evals,
         "permutation_coefficients8[0] must round-trip exactly"
     );
 
@@ -201,7 +203,7 @@ fn cached_index_prove_after_madv_dontneed() {
 
 #[test]
 fn cached_index_identifier_mismatch_errors() {
-    let public = vec![Fp::from(3u8); 5];
+    let public = [Fp::from(3u8); 5];
     let gates = create_circuit(0, public.len());
     let index = new_index_for_test::<FULL_ROUNDS, Vesta>(gates, public.len());
 
@@ -259,25 +261,32 @@ fn cached_index_lookup_prove_then_verify() {
     // in the three triple-lookup cells kimchi's lookup gate consumes.
     let witness = {
         let mut cols: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); num_lookups]);
-        for row in 0..num_lookups {
+        let (table_id_cols, rest) = cols.split_at_mut(1);
+        for (row, table_id) in table_id_cols[0].iter_mut().enumerate().take(num_lookups) {
             let idx = rng.gen::<usize>() % table_size;
             let value = lookup_table_values[idx];
             // Columns 1/3/5 carry indexes, 2/4/6 carry the looked-up values.
-            cols[0][row] = Fp::zero(); // table id 0
-            cols[1][row] = Fp::from(idx as u64);
-            cols[2][row] = value;
-            cols[3][row] = Fp::from(idx as u64);
-            cols[4][row] = value;
-            cols[5][row] = Fp::from(idx as u64);
-            cols[6][row] = value;
+            *table_id = Fp::zero(); // table id 0
+            rest[0][row] = Fp::from(idx as u64);
+            rest[1][row] = value;
+            rest[2][row] = Fp::from(idx as u64);
+            rest[3][row] = value;
+            rest[4][row] = Fp::from(idx as u64);
+            rest[5][row] = value;
         }
         cols
     };
 
-    let index =
-        new_index_for_test_with_lookups::<FULL_ROUNDS, Vesta>(
-            gates, 0, 0, lookup_tables, None, false, None, false,
-        );
+    let index = new_index_for_test_with_lookups::<FULL_ROUNDS, Vesta>(
+        gates,
+        0,
+        0,
+        lookup_tables,
+        None,
+        false,
+        None,
+        false,
+    );
     let verifier_index = index.verifier_index();
 
     // Sanity: the test framework must have produced a materialised

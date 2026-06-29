@@ -303,24 +303,54 @@ impl SectionEntry {
 #[derive(Debug)]
 pub enum CacheError {
     Io(std::io::Error),
-    BadMagic { found: [u8; 8] },
-    UnsupportedFormatVersion { found: u32, supported: u32 },
-    ArkFfVersionMismatch { found: String, expected: String },
-    IdentifierTooLong { len: usize, max: usize },
-    IdentifierMismatch { found: String, expected: String },
+    BadMagic {
+        found: [u8; 8],
+    },
+    UnsupportedFormatVersion {
+        found: u32,
+        supported: u32,
+    },
+    ArkFfVersionMismatch {
+        found: String,
+        expected: String,
+    },
+    IdentifierTooLong {
+        len: usize,
+        max: usize,
+    },
+    IdentifierMismatch {
+        found: String,
+        expected: String,
+    },
     IdentifierInvalidUtf8,
-    DuplicateSectionTag { tag: u32 },
-    MissingSection { tag: u32 },
-    SectionLengthMismatch { tag: u32, expected: u64, found: u64 },
-    MisalignedSection { tag: u32, offset: u64 },
+    DuplicateSectionTag {
+        tag: u32,
+    },
+    MissingSection {
+        tag: u32,
+    },
+    SectionLengthMismatch {
+        tag: u32,
+        expected: u64,
+        found: u64,
+    },
+    MisalignedSection {
+        tag: u32,
+        offset: u64,
+    },
     TruncatedFile,
     /// Field element count in a payload does not divide the payload length
     /// cleanly.
-    PayloadNotFieldAligned { tag: u32, length: u64 },
+    PayloadNotFieldAligned {
+        tag: u32,
+        length: u64,
+    },
     /// `ark_ff::BigInt<4>` size assumption was violated at runtime.
     BigIntSizeMismatch,
     /// `ConstraintSystem::feature_flags` bitmap had an unknown bit set.
-    UnknownFeatureFlagBits { bits: u32 },
+    UnknownFeatureFlagBits {
+        bits: u32,
+    },
 }
 
 impl fmt::Display for CacheError {
@@ -530,10 +560,7 @@ fn read_exact(bytes: &[u8], n: usize) -> Result<(&[u8], &[u8]), CacheError> {
 /// than `max`.
 fn pad_string(out: &mut Vec<u8>, s: &str, max: usize) -> Result<(), CacheError> {
     if s.len() > max {
-        return Err(CacheError::IdentifierTooLong {
-            len: s.len(),
-            max,
-        });
+        return Err(CacheError::IdentifierTooLong { len: s.len(), max });
     }
     out.extend_from_slice(s.as_bytes());
     out.resize(out.len() + (max - s.len()), 0);
@@ -737,8 +764,10 @@ fn read_preamble(bytes: &[u8]) -> Result<(Preamble, &[u8]), CacheError> {
 // Feature-flag bitmap round-trip
 // ---------------------------------------------------------------------------
 
-use crate::circuits::constraints::FeatureFlags;
-use crate::circuits::lookup::lookups::{LookupFeatures, LookupPatterns};
+use crate::circuits::{
+    constraints::FeatureFlags,
+    lookup::lookups::{LookupFeatures, LookupPatterns},
+};
 
 fn pack_feature_flags(flags: &FeatureFlags) -> u32 {
     let mut bits = 0u32;
@@ -859,10 +888,7 @@ fn write_field_slice<F: PrimeField>(out: &mut Vec<u8>, elements: &[F]) {
 /// underlying mmap alive for the lifetime of the returned `Vec<F>`.
 ///
 /// The byte slice must be exactly `count × FIELD_ELEMENT_BYTES` long.
-unsafe fn mmap_field_vec<F: PrimeField>(
-    bytes: &[u8],
-    count: usize,
-) -> Result<Vec<F>, CacheError> {
+unsafe fn mmap_field_vec<F: PrimeField>(bytes: &[u8], count: usize) -> Result<Vec<F>, CacheError> {
     let expected = count
         .checked_mul(FIELD_ELEMENT_BYTES)
         .ok_or(CacheError::TruncatedFile)?;
@@ -890,8 +916,10 @@ unsafe fn mmap_field_vec<F: PrimeField>(
 // GateType discriminant round-trip
 // ---------------------------------------------------------------------------
 
-use crate::circuits::gate::{CircuitGate, GateType};
-use crate::circuits::wires::{GateWires, Wire};
+use crate::circuits::{
+    gate::{CircuitGate, GateType},
+    wires::{GateWires, Wire},
+};
 
 fn gate_type_to_tag(t: GateType) -> u16 {
     // Matches the order declared in circuits/gate.rs. Kept in sync manually
@@ -956,16 +984,17 @@ fn read_pruned_gate<F: PrimeField>(bytes: &[u8]) -> Result<CircuitGate<F>, Cache
     let mut typ_bytes = [0u8; 2];
     typ_bytes.copy_from_slice(&bytes[0..2]);
     let typ_tag = u16::from_le_bytes(typ_bytes);
-    let typ = gate_type_from_tag(typ_tag)
-        .ok_or(CacheError::UnknownFeatureFlagBits { bits: typ_tag as u32 })?;
+    let typ = gate_type_from_tag(typ_tag).ok_or(CacheError::UnknownFeatureFlagBits {
+        bits: typ_tag as u32,
+    })?;
     let mut wires: GateWires = [Wire::default(); PERMUTS];
-    for i in 0..PERMUTS {
+    for (i, wire) in wires.iter_mut().enumerate() {
         let base = 4 + i * 8;
         let mut row_bytes = [0u8; 4];
         let mut col_bytes = [0u8; 4];
         row_bytes.copy_from_slice(&bytes[base..base + 4]);
         col_bytes.copy_from_slice(&bytes[base + 4..base + 8]);
-        wires[i] = Wire {
+        *wire = Wire {
             row: u32::from_le_bytes(row_bytes) as usize,
             col: u32::from_le_bytes(col_bytes) as usize,
         };
@@ -977,24 +1006,26 @@ fn read_pruned_gate<F: PrimeField>(bytes: &[u8]) -> Result<CircuitGate<F>, Cache
 // write_cache / read_cache
 // ---------------------------------------------------------------------------
 
-use crate::circuits::constraints::{ColumnEvaluations, ConstraintSystem};
-use crate::circuits::domains::EvaluationDomains;
-use crate::circuits::lookup::constraints::LookupConfiguration;
-use crate::circuits::lookup::index::{LookupConstraintSystem, LookupSelectors};
-use crate::circuits::lookup::lookups::LookupInfo;
-use crate::circuits::lookup::runtime_tables::RuntimeTableSpec;
-use crate::circuits::wires::COLUMNS;
-use crate::curve::KimchiCurve;
-use crate::linearization::expr_linearization;
-use crate::o1_utils::lazy_cache::LazyCache;
-use crate::prover_index::ProverIndex;
+use crate::{
+    circuits::{
+        constraints::{ColumnEvaluations, ConstraintSystem},
+        domains::EvaluationDomains,
+        lookup::{
+            constraints::LookupConfiguration,
+            index::{LookupConstraintSystem, LookupSelectors},
+            lookups::LookupInfo,
+            runtime_tables::RuntimeTableSpec,
+        },
+        wires::COLUMNS,
+    },
+    curve::KimchiCurve,
+    linearization::expr_linearization,
+    o1_utils::lazy_cache::LazyCache,
+    prover_index::ProverIndex,
+};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use poly_commitment::SRS;
-use std::fs::OpenOptions;
-use std::io::Write as _;
-use std::os::unix::io::AsRawFd;
-use std::path::Path;
-use std::sync::Arc;
+use std::{fs::OpenOptions, io::Write as _, os::unix::io::AsRawFd, path::Path, sync::Arc};
 
 /// Minimal read-only `MAP_SHARED` mmap wrapper built on libc. Keeps the
 /// feature flag self-contained (no external `memmap2` crate required in
@@ -1135,8 +1166,7 @@ pub struct MmapProverIndex<const FULL_ROUNDS: usize, G: KimchiCurve<FULL_ROUNDS>
     _mmap: Arc<ReadOnlyMmap>,
 }
 
-impl<const FULL_ROUNDS: usize, G, Srs> core::ops::Deref
-    for MmapProverIndex<FULL_ROUNDS, G, Srs>
+impl<const FULL_ROUNDS: usize, G, Srs> core::ops::Deref for MmapProverIndex<FULL_ROUNDS, G, Srs>
 where
     G: KimchiCurve<FULL_ROUNDS>,
 {
@@ -1146,8 +1176,7 @@ where
     }
 }
 
-impl<const FULL_ROUNDS: usize, G, Srs> core::fmt::Debug
-    for MmapProverIndex<FULL_ROUNDS, G, Srs>
+impl<const FULL_ROUNDS: usize, G, Srs> core::fmt::Debug for MmapProverIndex<FULL_ROUNDS, G, Srs>
 where
     G: KimchiCurve<FULL_ROUNDS>,
 {
@@ -1195,12 +1224,7 @@ impl WriteContext {
     /// Append a field-slice payload, record a `SectionEntry`, and apply
     /// trailing alignment padding so the next section starts 32-byte
     /// aligned.
-    fn push_field_section<F: PrimeField>(
-        &mut self,
-        tag: u32,
-        domain_size: u32,
-        data: &[F],
-    ) {
+    fn push_field_section<F: PrimeField>(&mut self, tag: u32, domain_size: u32, data: &[F]) {
         let section_offset = self.payload_base + self.payload.len() as u64;
         let start = self.payload.len();
         write_field_slice(&mut self.payload, data);
@@ -1249,7 +1273,9 @@ impl WriteContext {
 /// Computes the total bytes consumed by the fixed preamble + `ScalarHeader`
 /// + section-table-for-`n`-sections + trailing alignment pad.
 fn fixed_region_size(num_sections: usize) -> usize {
-    let raw = PREAMBLE_SIZE + ScalarHeader::SERIALIZED_SIZE + num_sections * SectionEntry::SERIALIZED_SIZE;
+    let raw = PREAMBLE_SIZE
+        + ScalarHeader::SERIALIZED_SIZE
+        + num_sections * SectionEntry::SERIALIZED_SIZE;
     align_up(raw)
 }
 
@@ -1389,11 +1415,7 @@ where
     let mut ctx = WriteContext::new();
 
     // sid as a field-slice section (elem_domain_size = sid length).
-    ctx.push_field_section::<G::ScalarField>(
-        SectionTag::Sid as u32,
-        cs.sid.len() as u32,
-        &cs.sid,
-    );
+    ctx.push_field_section::<G::ScalarField>(SectionTag::Sid as u32, cs.sid.len() as u32, &cs.sid);
 
     // Pruned gates.
     let mut gates_bytes = Vec::with_capacity(cs.gates.len() * PRUNED_GATE_SIZE);
@@ -1408,7 +1430,11 @@ where
     for (i, e) in column_evaluations.coefficients8.iter().enumerate() {
         ctx.push_field_section::<G::ScalarField>(coefficient_tag(i), d8_size, &e.evals);
     }
-    for (i, e) in column_evaluations.permutation_coefficients8.iter().enumerate() {
+    for (i, e) in column_evaluations
+        .permutation_coefficients8
+        .iter()
+        .enumerate()
+    {
         ctx.push_field_section::<G::ScalarField>(permutation_coefficient_tag(i), d8_size, &e.evals);
     }
     ctx.push_field_section::<G::ScalarField>(
@@ -1442,11 +1468,12 @@ where
         &column_evaluations.endomul_scalar_selector8.evals,
     );
     // Column evaluations: optional arrays.
-    let push_optional = |ctx: &mut WriteContext, tag, opt: &Option<Evaluations<G::ScalarField, _>>| {
-        if let Some(e) = opt {
-            ctx.push_field_section::<G::ScalarField>(tag, d8_size, &e.evals);
-        }
-    };
+    let push_optional =
+        |ctx: &mut WriteContext, tag, opt: &Option<Evaluations<G::ScalarField, _>>| {
+            if let Some(e) = opt {
+                ctx.push_field_section::<G::ScalarField>(tag, d8_size, &e.evals);
+            }
+        };
     push_optional(
         &mut ctx,
         SectionTag::RangeCheck0Selector8 as u32,
@@ -1496,11 +1523,7 @@ where
             for e in lcs.lookup_table8.iter() {
                 write_field_slice(&mut bytes, &e.evals);
             }
-            ctx.push_raw_section_with_elem_count(
-                SectionTag::LookupTable8 as u32,
-                n,
-                &bytes,
-            );
+            ctx.push_raw_section_with_elem_count(SectionTag::LookupTable8 as u32, n, &bytes);
         }
         if let Some(e) = &lcs.table_ids8 {
             ctx.push_field_section::<G::ScalarField>(
@@ -1581,10 +1604,7 @@ where
     // Atomic write: write to .tmp, fsync, rename into place.
     let tmp_path = {
         let mut p = path.to_path_buf();
-        let name = p
-            .file_name()
-            .map(|f| f.to_owned())
-            .unwrap_or_default();
+        let name = p.file_name().map(|f| f.to_owned()).unwrap_or_default();
         let mut tmp_name = name;
         tmp_name.push(".tmp");
         p.set_file_name(tmp_name);
@@ -1712,10 +1732,7 @@ where
         })?;
     let sid_count = sid_entry.elem_domain_size as usize;
     let sid = unsafe {
-        mmap_field_vec::<G::ScalarField>(
-            section_bytes(SectionTag::Sid as u32)?,
-            sid_count,
-        )?
+        mmap_field_vec::<G::ScalarField>(section_bytes(SectionTag::Sid as u32)?, sid_count)?
     };
 
     // Gates.
@@ -1743,17 +1760,21 @@ where
     // into the mmap via `mmap_field_vec`; the `unsafe` block is sound so
     // long as the returned MmapProverIndex keeps the mmap alive and
     // wraps the ProverIndex in ManuallyDrop so Vec::drop never runs.
-    let read_evals_d =
-        |tag: u32, d: Radix2EvaluationDomain<G::ScalarField>| -> Result<Evaluations<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>, CacheError> {
-            let entry = sections
-                .get(&tag)
-                .ok_or(CacheError::MissingSection { tag })?;
-            let count = entry.elem_domain_size as usize;
-            let evals = unsafe {
-                mmap_field_vec::<G::ScalarField>(section_bytes(tag)?, count)?
-            };
-            Ok(Evaluations::<G::ScalarField, _>::from_vec_and_domain(evals, d))
-        };
+    let read_evals_d = |tag: u32,
+                        d: Radix2EvaluationDomain<G::ScalarField>|
+     -> Result<
+        Evaluations<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>,
+        CacheError,
+    > {
+        let entry = sections
+            .get(&tag)
+            .ok_or(CacheError::MissingSection { tag })?;
+        let count = entry.elem_domain_size as usize;
+        let evals = unsafe { mmap_field_vec::<G::ScalarField>(section_bytes(tag)?, count)? };
+        Ok(Evaluations::<G::ScalarField, _>::from_vec_and_domain(
+            evals, d,
+        ))
+    };
 
     let mut coefficients8: Vec<Evaluations<G::ScalarField, _>> = Vec::with_capacity(COLUMNS);
     for i in 0..COLUMNS {
@@ -1763,13 +1784,15 @@ where
         .try_into()
         .map_err(|_| CacheError::TruncatedFile)?;
 
-    let mut permutation_coefficients8: Vec<Evaluations<G::ScalarField, _>> = Vec::with_capacity(PERMUTS);
+    let mut permutation_coefficients8: Vec<Evaluations<G::ScalarField, _>> =
+        Vec::with_capacity(PERMUTS);
     for i in 0..PERMUTS {
         permutation_coefficients8.push(read_evals_d(permutation_coefficient_tag(i), d8)?);
     }
-    let permutation_coefficients8: [Evaluations<G::ScalarField, _>; PERMUTS] = permutation_coefficients8
-        .try_into()
-        .map_err(|_| CacheError::TruncatedFile)?;
+    let permutation_coefficients8: [Evaluations<G::ScalarField, _>; PERMUTS] =
+        permutation_coefficients8
+            .try_into()
+            .map_err(|_| CacheError::TruncatedFile)?;
 
     let generic_selector4 = read_evals_d(SectionTag::GenericSelector4 as u32, d4)?;
     let poseidon_selector8 = read_evals_d(SectionTag::PoseidonSelector8 as u32, d8)?;
@@ -1778,17 +1801,22 @@ where
     let emul_selector8 = read_evals_d(SectionTag::EmulSelector8 as u32, d8)?;
     let endomul_scalar_selector8 = read_evals_d(SectionTag::EndomulScalarSelector8 as u32, d8)?;
 
-    let read_optional = |tag: u32, mask: u32| -> Result<Option<Evaluations<G::ScalarField, _>>, CacheError> {
-        if header.optional_selectors_present & mask != 0 {
-            Ok(Some(read_evals_d(tag, d8)?))
-        } else {
-            Ok(None)
-        }
-    };
-    let range_check0_selector8 =
-        read_optional(SectionTag::RangeCheck0Selector8 as u32, OptionalSelectorBits::RANGE_CHECK_0)?;
-    let range_check1_selector8 =
-        read_optional(SectionTag::RangeCheck1Selector8 as u32, OptionalSelectorBits::RANGE_CHECK_1)?;
+    let read_optional =
+        |tag: u32, mask: u32| -> Result<Option<Evaluations<G::ScalarField, _>>, CacheError> {
+            if header.optional_selectors_present & mask != 0 {
+                Ok(Some(read_evals_d(tag, d8)?))
+            } else {
+                Ok(None)
+            }
+        };
+    let range_check0_selector8 = read_optional(
+        SectionTag::RangeCheck0Selector8 as u32,
+        OptionalSelectorBits::RANGE_CHECK_0,
+    )?;
+    let range_check1_selector8 = read_optional(
+        SectionTag::RangeCheck1Selector8 as u32,
+        OptionalSelectorBits::RANGE_CHECK_1,
+    )?;
     let foreign_field_add_selector8 = read_optional(
         SectionTag::ForeignFieldAddSelector8 as u32,
         OptionalSelectorBits::FOREIGN_FIELD_ADD,
@@ -1833,12 +1861,13 @@ where
     // builder (which recomputes many fields we already have on disk), fill
     // it manually. This is equivalent to the `Deserialize` impl.
     let precomputations = Arc::new(LazyCache::new({
-        let domain = domain;
+        let precomputations_domain = domain;
         let zk_rows = header.zk_rows;
         move || {
             Arc::new(
                 crate::circuits::domain_constant_evaluation::DomainConstantEvaluations::create(
-                    domain, zk_rows,
+                    precomputations_domain,
+                    zk_rows,
                 )
                 .expect("domain constant evaluations"),
             )
@@ -1849,21 +1878,25 @@ where
     // same one we computed at write time (see `lookup_selectors_present`),
     // so an empty bitmap => no lookup sections and the read path short-
     // circuits to Ok(None) exactly as before.
-    let lookup_constraint_system: Arc<
-        LazyCache<Result<Option<LookupConstraintSystem<G::ScalarField>>, crate::circuits::lookup::index::LookupError>>,
-    > = if header.lookup_selectors_present == 0
+    let lookup_constraint_system = if header.lookup_selectors_present == 0
         && !sections.contains_key(&(SectionTag::LookupTable8 as u32))
     {
-        Arc::new(LazyCache::new(|| Ok(None)))
+        Arc::new(LazyCache::new(|| {
+            Ok::<
+                Option<LookupConstraintSystem<G::ScalarField>>,
+                crate::circuits::lookup::index::LookupError,
+            >(None)
+        }))
     } else {
         // lookup_table8: count of inner arrays is carried in the section
         // entry's `elem_domain_size`; the payload is pure field data.
         // count == 0 is valid (empty lookup table).
-        let lt_entry = sections
-            .get(&(SectionTag::LookupTable8 as u32))
-            .ok_or(CacheError::MissingSection {
-                tag: SectionTag::LookupTable8 as u32,
-            })?;
+        let lt_entry =
+            sections
+                .get(&(SectionTag::LookupTable8 as u32))
+                .ok_or(CacheError::MissingSection {
+                    tag: SectionTag::LookupTable8 as u32,
+                })?;
         let n = lt_entry.elem_domain_size as usize;
         let d8_size_usize = d8.size();
         let inner_bytes = d8_size_usize * FIELD_ELEMENT_BYTES;
@@ -1880,30 +1913,27 @@ where
         for i in 0..n {
             let start = i * inner_bytes;
             let end = start + inner_bytes;
-            let evals = unsafe {
-                mmap_field_vec::<G::ScalarField>(&lt_bytes[start..end], d8_size_usize)?
-            };
+            let evals =
+                unsafe { mmap_field_vec::<G::ScalarField>(&lt_bytes[start..end], d8_size_usize)? };
             lookup_table8.push(Evaluations::from_vec_and_domain(evals, d8));
         }
 
         // Optional sections gated by LookupSelectorBits.
-        let read_optional_evals = |tag: u32, bit: u32| -> Result<
-            Option<Evaluations<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>>,
-            CacheError,
-        > {
-            if header.lookup_selectors_present & bit != 0 {
-                let entry = sections
-                    .get(&tag)
-                    .ok_or(CacheError::MissingSection { tag })?;
-                let count = entry.elem_domain_size as usize;
-                let evals = unsafe {
-                    mmap_field_vec::<G::ScalarField>(section_bytes(tag)?, count)?
-                };
-                Ok(Some(Evaluations::from_vec_and_domain(evals, d8)))
-            } else {
-                Ok(None)
-            }
-        };
+        type DomainEvaluations<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
+        let read_optional_evals =
+            |tag: u32, bit: u32| -> Result<Option<DomainEvaluations<G::ScalarField>>, CacheError> {
+                if header.lookup_selectors_present & bit != 0 {
+                    let entry = sections
+                        .get(&tag)
+                        .ok_or(CacheError::MissingSection { tag })?;
+                    let count = entry.elem_domain_size as usize;
+                    let evals =
+                        unsafe { mmap_field_vec::<G::ScalarField>(section_bytes(tag)?, count)? };
+                    Ok(Some(Evaluations::from_vec_and_domain(evals, d8)))
+                } else {
+                    Ok(None)
+                }
+            };
         let table_ids8 =
             read_optional_evals(SectionTag::TableIds8 as u32, LookupSelectorBits::TABLE_IDS8)?;
         let selector_xor = read_optional_evals(
@@ -2018,7 +2048,9 @@ where
     let (linearization, powers_of_alpha) = expr_linearization(Some(&cs.feature_flags), true);
 
     let verifier_index_digest = if header.has_verifier_index_digest {
-        Some(limbs_to_field::<G::BaseField>(&header.verifier_index_digest_limbs))
+        Some(limbs_to_field::<G::BaseField>(
+            &header.verifier_index_digest_limbs,
+        ))
     } else {
         None
     };
