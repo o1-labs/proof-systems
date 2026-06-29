@@ -187,7 +187,7 @@ fn affine_window_combine_base<P: SWCurveConfig>(
         add_pairs_in_place(&mut v);
         v
     };
-    assert!(g1g2.len() == g1.len());
+    assert_eq!(g1g2.len(), g1.len());
 
     let windows1 = BitIteratorBE::new(x1.into_bigint()).tuples();
     let windows2 = BitIteratorBE::new(x2.into_bigint()).tuples();
