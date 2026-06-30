@@ -76,6 +76,18 @@ pub use {
     poly_commitment::{commitment::caml::CamlPolyComm, ipa::caml::CamlOpeningProof},
 };
 
+/// Per-thread-count freelist of warm rayon pools, reused across proves so a
+/// long-running worker does not pay thread-spawn + cold-cache cost on every
+/// compression proof.
+fn prove_pool_cache() -> &'static std::sync::Mutex<
+    std::collections::HashMap<usize, Vec<std::sync::Arc<rayon::ThreadPool>>>,
+> {
+    static CACHE: std::sync::OnceLock<
+        std::sync::Mutex<std::collections::HashMap<usize, Vec<std::sync::Arc<rayon::ThreadPool>>>>,
+    > = std::sync::OnceLock::new();
+    CACHE.get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+}
+
 /// Run a proving closure in a scoped rayon thread pool sized by
 /// `KIMCHI_PROVE_THREADS`, falling back to the global pool when unset. Lets a
 /// long-running worker prove different tasks at different thread counts -- e.g.
@@ -83,16 +95,39 @@ pub use {
 /// low-concurrency compression proofs -- without rebuilding its global pool.
 ///
 /// The thread count does not affect the proof, so this is VK-preserving.
+///
+/// Pools are checked out of a per-N freelist and returned after use: warm
+/// threads are reused, but concurrent proves of the same N each get their own
+/// pool (the freelist grows to the peak concurrency for that N), so parallelism
+/// is preserved.
 pub(crate) fn with_prove_pool<R: Send>(f: impl FnOnce() -> R + Send) -> R {
-    match std::env::var("KIMCHI_PROVE_THREADS")
+    let n = match std::env::var("KIMCHI_PROVE_THREADS")
         .ok()
         .and_then(|s| s.parse::<usize>().ok())
     {
-        Some(n) if n >= 1 => rayon::ThreadPoolBuilder::new()
-            .num_threads(n)
-            .build()
-            .expect("KIMCHI_PROVE_THREADS thread pool")
-            .install(f),
-        _ => f(),
-    }
+        Some(n) if n >= 1 => n,
+        _ => return f(),
+    };
+    let pool = {
+        let mut cache = prove_pool_cache().lock().unwrap();
+        cache
+            .get_mut(&n)
+            .and_then(|free| free.pop())
+            .unwrap_or_else(|| {
+                std::sync::Arc::new(
+                    rayon::ThreadPoolBuilder::new()
+                        .num_threads(n)
+                        .build()
+                        .expect("KIMCHI_PROVE_THREADS thread pool"),
+                )
+            })
+    };
+    let result = pool.install(f);
+    prove_pool_cache()
+        .lock()
+        .unwrap()
+        .entry(n)
+        .or_default()
+        .push(pool);
+    result
 }
