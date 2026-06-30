@@ -123,11 +123,20 @@ pub(crate) fn with_prove_pool<R: Send>(f: impl FnOnce() -> R + Send) -> R {
             })
     };
     let result = pool.install(f);
-    prove_pool_cache()
-        .lock()
-        .unwrap()
-        .entry(n)
-        .or_default()
-        .push(pool);
+    // Return the warm pool for reuse, but bound the freelist (default 2 per N,
+    // override with KIMCHI_PROVE_POOL_CAP) so idle pools do not accumulate
+    // unbounded resident memory across a long conversion; overflow pools are
+    // dropped, joining their threads.
+    let cap = std::env::var("KIMCHI_PROVE_POOL_CAP")
+        .ok()
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(2);
+    {
+        let mut cache = prove_pool_cache().lock().unwrap();
+        let free = cache.entry(n).or_default();
+        if free.len() < cap {
+            free.push(pool);
+        }
+    }
     result
 }
