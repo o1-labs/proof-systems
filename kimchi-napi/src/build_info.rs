@@ -14,6 +14,10 @@ pub const OS_NAME: &str = "Linux";
 #[napi]
 pub const OS_NAME: &str = "macOS";
 
+#[cfg(target_os = "wasi")]
+#[napi]
+pub const OS_NAME: &str = "WASI";
+
 #[cfg(target_arch = "x86_64")]
 #[napi]
 pub const ARCH_NAME: &str = "x86_64";
@@ -26,8 +30,17 @@ pub const ARCH_NAME: &str = "ARM";
 #[napi]
 pub const ARCH_NAME: &str = "AArch64";
 
+#[cfg(target_arch = "wasm32")]
+#[napi]
+pub const ARCH_NAME: &str = "wasm32";
+
+#[cfg(not(target_arch = "wasm32"))]
 #[napi]
 pub const BACKING: &str = "native";
+
+#[cfg(target_arch = "wasm32")]
+#[napi]
+pub const BACKING: &str = "wasm";
 
 static NATIVE_CALLS: AtomicU64 = AtomicU64::new(0);
 

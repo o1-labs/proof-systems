@@ -23,7 +23,6 @@ ark-serialize.workspace = true
 arkworks.workspace = true
 
 # proof-systems
-kimchi_wasm.workspace = true
 mina-curves = { path = "../curves" }
 mina-poseidon = { path = "../poseidon" }
 o1-utils = { path = "../utils" }
