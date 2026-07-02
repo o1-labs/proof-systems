@@ -9,7 +9,6 @@ members = [
   "kimchi",
   "kimchi-napi",
   "kimchi-stubs",
-  "kimchi-wasm",
   "mina-tx-type",
   "msm",
   "mvpoly",
@@ -76,7 +75,6 @@ kimchi-msm = { path = "./msm" }
 kimchi-stubs = { path = "./kimchi-stubs" }
 kimchi-visu = { path = "./tools/kimchi-visu" }
 kimchi_napi = { path = "./kimchi-napi" }
-kimchi_wasm = { path = "./kimchi-wasm" }
 libc = "=0.2.169"
 libflate = "2"
 log = "0.4.20"
@@ -156,5 +154,3 @@ lto = true
 panic = 'abort'
 # codegen-units = 1
 
-[profile.release.package.kimchi_wasm]
-debug = true

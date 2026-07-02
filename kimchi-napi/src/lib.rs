@@ -13,7 +13,9 @@ mod tables;
 mod vector;
 mod wrappers;
 
-pub use build_info::{get_native_calls, ARCH_NAME, BACKING, OS_NAME};
+pub use build_info::{
+    caml_rayon_init_single_threaded, get_native_calls, ARCH_NAME, BACKING, OS_NAME,
+};
 
 pub use circuit::prover_to_json;
 pub use gate_vector::{
