@@ -1,5 +1,6 @@
 use crate::vector::NapiVector;
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::ops::Deref;
 use napi::bindgen_prelude::{sys, ClassInstance, Error, FromNapiValue, Result, Status, Uint8Array};
 use napi_derive::napi;
@@ -104,6 +105,38 @@ macro_rules! impl_srs {
                 }
               }
 
+              // raw uncompressed, validation-free codec for the local srs cache —
+              // the serde path compresses + validates every point (a sqrt each on
+              // load, 65k of them); a local cache blob deserves the same trust as
+              // the old raw-coordinate JSON format it replaces
+              #[napi(js_name = [<"caml_" $name:snake "_srs_to_raw_bytes">])]
+              pub fn [<caml_ $name:snake _srs_to_raw_bytes>](
+                  srs: &[<Napi $name:camel Srs>],
+              ) -> Result<Uint8Array> {
+                  let mut buf = Vec::new();
+                  srs.0
+                      .g
+                      .serialize_uncompressed(&mut buf)
+                      .map_err(|e| map_error("srs_to_raw_bytes", e))?;
+                  srs.0
+                      .h
+                      .serialize_uncompressed(&mut buf)
+                      .map_err(|e| map_error("srs_to_raw_bytes", e))?;
+                  Ok(Uint8Array::from(buf))
+              }
+
+              #[napi(js_name = [<"caml_" $name:snake "_srs_from_raw_bytes">])]
+              pub fn [<caml_ $name:snake _srs_from_raw_bytes>](
+                  bytes: Uint8Array,
+              ) -> Result<[<Napi $name:camel Srs>]> {
+                  let mut reader = bytes.as_ref();
+                  let g = Vec::<$G>::deserialize_uncompressed_unchecked(&mut reader)
+                      .map_err(|e| map_error("srs_from_raw_bytes", e))?;
+                  let h = <$G>::deserialize_uncompressed_unchecked(&mut reader)
+                      .map_err(|e| map_error("srs_from_raw_bytes", e))?;
+                  Ok(Arc::new(SRS::<$G>::new(g, h)).into())
+              }
+
               #[napi(js_name = [<"caml_" $name:snake "_srs_create">])]
               pub fn [<caml_ $name:snake _srs_create>](depth: i32) -> [<Napi $name:camel Srs>]  {
                   Arc::new(SRS::<$G>::create(depth as usize)).into()
@@ -188,6 +221,13 @@ macro_rules! impl_srs {
 
                 Ok(basis.iter().cloned().map(Into::into).collect())
             }
+
+              // cheap size probe — callers previously round-tripped the whole
+              // SRS through `srs_get` (65k point conversions) just to check length
+              #[napi(js_name = [<"caml_" $name:snake "_srs_length">])]
+              pub fn [<caml_ $name:snake _srs_length>](srs: &[<Napi $name:camel Srs>]) -> i32 {
+                  srs.0.g.len() as i32
+              }
 
               #[napi(js_name = [<"caml_" $name:snake "_srs_get">])]
               pub fn [<caml_ $name:snake _srs_get>](srs: &[<Napi $name:camel Srs>]) -> Vec<$NapiG> {
