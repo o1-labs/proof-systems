@@ -14,7 +14,8 @@ mod vector;
 mod wrappers;
 
 pub use build_info::{
-    caml_rayon_init_single_threaded, get_native_calls, ARCH_NAME, BACKING, OS_NAME,
+    caml_rayon_init_single_threaded, caml_rayon_spawn_pool, caml_rayon_started_threads,
+    get_native_calls, ARCH_NAME, BACKING, OS_NAME,
 };
 
 pub use circuit::prover_to_json;

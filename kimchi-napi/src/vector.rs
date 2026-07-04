@@ -320,6 +320,14 @@ macro_rules! impl_vec_vec {
                 $name(Vec::with_capacity(capacity as usize))
             }
 
+            /// Drop the contents (potentially tens of MB of witness data)
+            /// deterministically instead of waiting for the JS GC finalizer —
+            /// see o1js AGENT_LOG.md, wasm32 memory exhaustion.
+            #[napi]
+            pub fn free(&mut self) {
+                std::mem::take(&mut self.0);
+            }
+
             #[napi]
             pub fn push(&mut self, vector: Uint8Array) -> Result<()> {
                 let flattened = vector.as_ref().to_vec();

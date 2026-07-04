@@ -305,19 +305,6 @@ macro_rules! impl_gate_support {
             }
 
             impl [<Napi $field_name:camel Gate>] {
-                fn into_inner(self) -> Result<CircuitGate<$F>> {
-                    let coeffs = WasmFlatVector::<$WasmF>::from_bytes(self.coeffs)
-                        .into_iter()
-                        .map(Into::into)
-                        .collect();
-
-                    Ok(CircuitGate {
-                        typ: gate_type_from_i32(self.typ)?,
-                        wires: self.wires.into_inner(),
-                        coeffs,
-                    })
-                }
-
                 fn from_inner(value: &CircuitGate<$F>) -> Self {
                     let coeffs = value
                         .coeffs
@@ -415,12 +402,43 @@ macro_rules! impl_gate_support {
             }
 
             #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_gate_vector_add">])]
+            // flat encoding (typ + 14 wire ints + coeff bytes) instead of a nested
+            // gate object: plain-object property reads go through emnapi one napi
+            // call at a time, which made this ~0.1ms per gate on wasm — ~1s of
+            // pure call overhead per circuit compile
             pub fn [<caml_pasta_ $field_name:snake _plonk_gate_vector_add>](
                 vector: &mut [<Napi $field_name:camel GateVector>],
-                gate: [<Napi $field_name:camel Gate>],
+                typ: i32,
+                wires: Int32Array,
+                coeffs: Uint8Array,
             ) -> Result<()> {
-                let gate = gate.into_inner()?;
-                vector.inner_mut().push_gate(gate);
+                let w = wires.as_ref();
+                if w.len() != 2 * shared::WIRE_COUNT {
+                    return Err(Error::new(
+                        Status::InvalidArg,
+                        format!(
+                            "gate_vector_add: expected {} wire ints, got {}",
+                            2 * shared::WIRE_COUNT,
+                            w.len()
+                        ),
+                    ));
+                }
+                let mut gate_wires = [Wire { row: 0, col: 0 }; shared::WIRE_COUNT];
+                for i in 0..shared::WIRE_COUNT {
+                    gate_wires[i] = Wire {
+                        row: w[2 * i] as usize,
+                        col: w[2 * i + 1] as usize,
+                    };
+                }
+                let coeffs = WasmFlatVector::<$WasmF>::from_bytes(coeffs.as_ref().to_vec())
+                    .into_iter()
+                    .map(Into::into)
+                    .collect();
+                vector.inner_mut().push_gate(CircuitGate {
+                    typ: gate_type_from_i32(typ)?,
+                    wires: gate_wires,
+                    coeffs,
+                });
                 Ok(())
             }
 

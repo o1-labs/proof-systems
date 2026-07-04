@@ -15,15 +15,18 @@ crate-type = ["cdylib"] # to generate a dynamic library that is loadable by Node
 napi = { workspace = true, features = ["napi7"] }
 napi-derive.workspace = true
 
-# arkworks
-ark-ec.workspace = true
-ark-ff.workspace = true
-ark-poly.workspace = true
+# arkworks — the `parallel` features matter: without them MSM/FFT inside
+# arkworks run sequentially and proving is several times slower (the old
+# kimchi-wasm crate enabled them too)
+ark-ec = { workspace = true, features = ["parallel"] }
+ark-ff = { workspace = true, features = ["parallel", "asm"] }
+ark-poly = { workspace = true, features = ["parallel"] }
 ark-serialize.workspace = true
 arkworks.workspace = true
 
 # proof-systems
-mina-curves = { path = "../curves" }
+groupmap = { path = "../groupmap", features = ["parallel"] }
+mina-curves = { path = "../curves", features = ["parallel"] }
 mina-poseidon = { path = "../poseidon" }
 o1-utils = { path = "../utils" }
 poly-commitment = { path = "../poly-commitment" }

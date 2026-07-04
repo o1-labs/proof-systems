@@ -661,6 +661,16 @@ macro_rules! impl_proof {
 
             #[napi]
             impl [<Napi $field_name:camel ProverProof>] {
+                /// Drop the heavy proof contents by replacing them with a small
+                /// dummy. Rust memory behind napi objects is normally freed only
+                /// when the JS GC runs the wrapper's finalizer, which on wasm32
+                /// can be far too late (4 GiB ceiling, see o1js AGENT_LOG.md) —
+                /// callers that are done with a proof free it deterministically.
+                #[napi]
+                pub fn free(&mut self) {
+                    *self = [<caml_pasta_ $field_name:snake _plonk_proof_dummy>]();
+                }
+
                 #[napi(constructor)]
                 pub fn new(
                     commitments: NapiProverCommitments, // maybe remove FromNapiValue trait implementation and wrap it in External instead
@@ -755,7 +765,9 @@ macro_rules! impl_proof {
             #[napi(js_name = [<"caml_pasta_" $field_name:snake "_plonk_proof_create">])]
             pub fn [<caml_pasta_ $field_name:snake _plonk_proof_create>](
                 index: &External<$NapiIndex>,
-                witness: $NapiVecVec,
+                // &mut so the witness data (tens of MB) can be stolen instead of
+                // deep-cloned — the JS side frees the witness right after this call
+                witness: &mut $NapiVecVec,
                 runtime_tables: NapiVector<$NapiRuntimeTable>,
                 prev_challenges: NapiFlatVector<$NapiF>,
                 prev_sgs: NapiVector<$NapiG>,
@@ -791,8 +803,7 @@ macro_rules! impl_proof {
                     };
                     let rust_runtime_tables: Vec<RuntimeTable<$F>> = runtime_tables.into_iter().map(Into::into).collect();
 
-                    let witness: [Vec<_>; COLUMNS] = witness
-                        .0
+                    let witness: [Vec<_>; COLUMNS] = std::mem::take(&mut witness.0)
                         .try_into()
                         .expect("the witness should be a column of 15 vectors");
 

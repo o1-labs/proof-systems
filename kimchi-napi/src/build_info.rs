@@ -38,17 +38,10 @@ pub const ARCH_NAME: &str = "wasm32";
 #[napi]
 pub const BACKING: &str = "native";
 
-<<<<<<< Updated upstream
-=======
-<<<<<<< Updated upstream
-=======
->>>>>>> Stashed changes
 #[cfg(target_arch = "wasm32")]
 #[napi]
 pub const BACKING: &str = "wasm";
 
-<<<<<<< Updated upstream
-=======
 // Initialize the global rayon pool to run everything inline on the calling
 // thread. Needed on browser main threads, which cannot block: with real
 // thread support, rayon's join points call Atomics.wait and trap. rayon's
@@ -66,8 +59,40 @@ pub fn caml_rayon_init_single_threaded() -> bool {
         .is_ok()
 }
 
->>>>>>> Stashed changes
->>>>>>> Stashed changes
+// Build the global rayon pool with the given number of threads, counting
+// each worker thread as it starts running. On the web, the module is hosted
+// in a Web Worker whose nested (thread) workers cannot finish loading while
+// the host is blocked inside a wasm call — so the pool must be spawned while
+// the host's event loop is idle, and the loader polls
+// `caml_rayon_started_threads` until the pool is actually up before
+// accepting FFI calls.
+static STARTED_POOL_THREADS: AtomicU64 = AtomicU64::new(0);
+
+#[napi]
+pub fn caml_rayon_spawn_pool(num_threads: u32) -> bool {
+    // build_global blocks in wait_until_primed until every pool thread runs.
+    // on the web the calling (host worker) thread must NOT block: its nested
+    // workers only start while its event loop is responsive, and their own
+    // spawn requests are serviced by it. so run the blocking build on a
+    // helper thread and let the caller poll caml_rayon_started_threads.
+    std::thread::Builder::new()
+        .name("rayon-pool-builder".into())
+        .spawn(move || {
+            let _ = rayon::ThreadPoolBuilder::new()
+                .num_threads(num_threads as usize)
+                .start_handler(|_| {
+                    STARTED_POOL_THREADS.fetch_add(1, Ordering::SeqCst);
+                })
+                .build_global();
+        })
+        .is_ok()
+}
+
+#[napi]
+pub fn caml_rayon_started_threads() -> u32 {
+    STARTED_POOL_THREADS.load(Ordering::SeqCst) as u32
+}
+
 static NATIVE_CALLS: AtomicU64 = AtomicU64::new(0);
 
 #[napi]

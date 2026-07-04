@@ -1282,6 +1282,7 @@ dependencies = [
  "arkworks",
  "base64 0.21.7",
  "getrandom 0.2.15",
+ "groupmap",
  "kimchi",
  "libc",
  "mina-curves",
