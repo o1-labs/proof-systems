@@ -298,3 +298,101 @@ impl From<Fee> for Amount {
         Self::new(fee.inner())
     }
 }
+
+impl_number!(
+    Balance,
+    "An account balance in nanomina (1 MINA = 1e9 nanomina).\n\n\
+     This type represents the balance of a Mina account."
+);
+
+impl From<Amount> for Balance {
+    fn from(amount: Amount) -> Self {
+        Self::new(amount.inner())
+    }
+}
+
+impl From<Balance> for Amount {
+    fn from(balance: Balance) -> Self {
+        Self::new(balance.inner())
+    }
+}
+
+/// Macro to implement common numeric type functionality for u32-based types.
+///
+/// This generates a newtype wrapper around `u32` with the [`Magnitude`]
+/// trait implemented.
+macro_rules! impl_number_u32 {
+    ($name:ident, $doc:expr) => {
+        #[doc = $doc]
+        #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        pub struct $name(u32);
+
+        impl $name {
+            /// The minimum value (zero).
+            pub const MIN: Self = Self(0);
+
+            /// The maximum value.
+            pub const MAX: Self = Self(u32::MAX);
+
+            /// Creates a new value from a `u32`.
+            #[must_use]
+            pub const fn new(value: u32) -> Self {
+                Self(value)
+            }
+
+            /// Returns the inner `u32` value.
+            #[must_use]
+            pub const fn inner(&self) -> u32 {
+                self.0
+            }
+        }
+
+        impl Magnitude for $name {
+            const ZERO: Self = Self(0);
+
+            fn is_zero(self) -> bool {
+                self.0 == 0
+            }
+
+            fn abs_diff(self, other: Self) -> Self {
+                Self(self.0.abs_diff(other.0))
+            }
+
+            fn checked_add(self, other: Self) -> Option<Self> {
+                self.0.checked_add(other.0).map(Self)
+            }
+
+            fn checked_sub(self, other: Self) -> Option<Self> {
+                self.0.checked_sub(other.0).map(Self)
+            }
+        }
+
+        impl From<u32> for $name {
+            fn from(value: u32) -> Self {
+                Self(value)
+            }
+        }
+
+        impl From<$name> for u32 {
+            fn from(value: $name) -> u32 {
+                value.0
+            }
+        }
+
+        impl fmt::Display for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "{}", self.0)
+            }
+        }
+    };
+}
+
+impl_number_u32!(Nonce, "An account nonce for transaction replay protection.");
+
+impl_number_u32!(Slot, "A global slot number since genesis.");
+
+impl_number_u32!(SlotSpan, "A span of slots (duration).");
+
+impl_number_u32!(Length, "A blockchain length (block height).");
+
+impl_number_u32!(TxnVersion, "A transaction version number.");
