@@ -480,6 +480,56 @@ fn cached_index_corrupt_after_first_vec_errors_cleanly() {
     std::fs::remove_file(&path).ok();
 }
 
+/// A section whose recorded element count is internally consistent (its byte
+/// length matches its `elem_domain_size`) but does not match the domain it is
+/// paired with must be rejected. Here we halve both the length and the
+/// `elem_domain_size` of `coefficients8[0]`, which passes the byte-length
+/// check but yields an `Evaluations` of the wrong size for domain `d8` —
+/// a wrong-proof / out-of-bounds hazard the reader should catch up front.
+#[test]
+fn cached_index_wrong_element_count_errors() {
+    use crate::cached_prover_index::{PREAMBLE_SIZE, SECTION_TABLE_OFFSET};
+
+    let public = [Fp::from(3u8); 5];
+    let gates = create_circuit(0, public.len());
+    let index = new_index_for_test::<FULL_ROUNDS, Vesta>(gates, public.len());
+
+    let path = tmpfile("wrong_count");
+    let id = "wrong-count-id";
+    write_cache(id, &index, &path).expect("write_cache");
+
+    let mut bytes = std::fs::read(&path).unwrap();
+    let num_sections = {
+        let o = PREAMBLE_SIZE - 4;
+        u32::from_le_bytes(bytes[o..o + 4].try_into().unwrap()) as usize
+    };
+    const ENTRY: usize = 28; // SectionEntry::SERIALIZED_SIZE
+    let mut patched = false;
+    for i in 0..num_sections {
+        let e = SECTION_TABLE_OFFSET + i * ENTRY;
+        let tag = u32::from_le_bytes(bytes[e..e + 4].try_into().unwrap());
+        if tag == 0x10 {
+            // SectionEntry layout: tag(4) offset(8) length(8) elem_domain_size(4) _reserved(4)
+            let len = u64::from_le_bytes(bytes[e + 12..e + 20].try_into().unwrap());
+            let eds = u32::from_le_bytes(bytes[e + 20..e + 24].try_into().unwrap());
+            bytes[e + 12..e + 20].copy_from_slice(&(len / 2).to_le_bytes());
+            bytes[e + 20..e + 24].copy_from_slice(&(eds / 2).to_le_bytes());
+            patched = true;
+        }
+    }
+    assert!(patched, "did not find coefficients8[0] section to corrupt");
+    std::fs::write(&path, &bytes).unwrap();
+
+    let srs = index.srs.clone();
+    let err = read_cache::<FULL_ROUNDS, Vesta, _>(id, &path, srs).expect_err("should fail");
+    assert!(
+        matches!(err, CacheError::WrongElementCount { .. }),
+        "expected WrongElementCount, got {err}"
+    );
+
+    std::fs::remove_file(&path).ok();
+}
+
 #[test]
 fn cached_index_bad_magic_errors() {
     let path = tmpfile("badmagic");

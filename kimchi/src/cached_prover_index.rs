@@ -364,6 +364,14 @@ pub enum CacheError {
     /// write time (e.g. a lookup-table id collision or an over-long table).
     /// The wrapped string is the underlying `LookupError`'s message.
     LookupConstraintSystem(String),
+    /// A section's recorded element count does not match the domain size it
+    /// is paired with (`d1`/`d4`/`d8`). Catches a corrupt file whose section
+    /// lengths are self-consistent but describe the wrong-size evaluations.
+    WrongElementCount {
+        tag: u32,
+        expected: u64,
+        found: u64,
+    },
 }
 
 impl fmt::Display for CacheError {
@@ -417,6 +425,10 @@ impl fmt::Display for CacheError {
             CacheError::LookupConstraintSystem(msg) => {
                 write!(f, "failed to build lookup constraint system for cache: {msg}")
             }
+            CacheError::WrongElementCount { tag, expected, found } => write!(
+                f,
+                "section {tag:#x} element count {found} does not match expected domain size {expected}"
+            ),
         }
     }
 }
