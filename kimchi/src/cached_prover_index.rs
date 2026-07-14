@@ -351,6 +351,10 @@ pub enum CacheError {
     UnknownFeatureFlagBits {
         bits: u32,
     },
+    /// The lazily-built `LookupConstraintSystem` failed to materialise at
+    /// write time (e.g. a lookup-table id collision or an over-long table).
+    /// The wrapped string is the underlying `LookupError`'s message.
+    LookupConstraintSystem(String),
 }
 
 impl fmt::Display for CacheError {
@@ -400,6 +404,9 @@ impl fmt::Display for CacheError {
             }
             CacheError::UnknownFeatureFlagBits { bits } => {
                 write!(f, "unknown bits {bits:#x} in feature-flags bitmap")
+            }
+            CacheError::LookupConstraintSystem(msg) => {
+                write!(f, "failed to build lookup constraint system for cache: {msg}")
             }
         }
     }
