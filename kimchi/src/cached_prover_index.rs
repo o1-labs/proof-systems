@@ -32,7 +32,12 @@ pub const FILE_MAGIC: [u8; 8] = *b"MINAPK01";
 /// layout exactly. That lets the reader construct `Vec<F>` via
 /// `Vec::from_raw_parts` pointing into the mmap (zero-copy), instead of
 /// running a per-element Montgomery reduction on load.
-pub const FORMAT_VERSION: u32 = 2;
+///
+/// Version 3 added the `GateCoeffs` section. The prover never reads
+/// `CircuitGate::coeffs` (they are folded into `coefficients8`), but the
+/// debug-build `ProverIndex::verify` gate check does, so they must be
+/// preserved for a cached index to prove under `debug_assertions`.
+pub const FORMAT_VERSION: u32 = 3;
 
 /// Maximum length (in bytes) of the caller-supplied identifier stored in the
 /// file header. Sized to comfortably accommodate sha512 hex (128 bytes) plus
@@ -71,6 +76,10 @@ pub enum SectionTag {
     Sid = 0x01,
     /// Packed `[PrunedGate]` array.
     Gates = 0x02,
+    /// Per-gate coefficient vectors, in gate order: for each gate a `u32`
+    /// count followed by `count` field elements (four LE `u64` limbs each).
+    /// Needed only by the debug-build gate sanity check, not by the prover.
+    GateCoeffs = 0x03,
     /// Coefficients 0..14 over domain d8 (one tag per column).
     Coefficients8Base = 0x10,
     /// Generic-gate selector over domain d4.
@@ -1435,6 +1444,15 @@ where
     }
     ctx.push_raw_section(SectionTag::Gates as u32, &gates_bytes);
 
+    // Gate coefficients (see `SectionTag::GateCoeffs`). Encoded per gate as a
+    // u32 count followed by that many field elements.
+    let mut coeffs_bytes = Vec::new();
+    for gate in cs.gates.iter() {
+        write_u32_le(&mut coeffs_bytes, gate.coeffs.len() as u32);
+        write_field_slice(&mut coeffs_bytes, &gate.coeffs);
+    }
+    ctx.push_raw_section(SectionTag::GateCoeffs as u32, &coeffs_bytes);
+
     // Column evaluations: mandatory arrays.
     let d4_size = cs.domain.d4.size() as u32;
     let d8_size = cs.domain.d8.size() as u32;
@@ -1758,13 +1776,28 @@ where
     for chunk in gates_bytes.chunks_exact(PRUNED_GATE_SIZE) {
         gates.push(read_pruned_gate::<G::ScalarField>(chunk)?);
     }
-    // Restore the single-element coeff stub `[F::one()]` on the first
-    // `public` gates. `ProverIndex::verify` (run under `debug_assertions`)
-    // reads `gate.coeffs.first()` to confirm each public row is tagged
-    // correctly; without this stub, debug builds would fail that check
-    // even though the column-evaluation selectors are valid.
-    for gate in gates.iter_mut().take(header.public as usize) {
-        gate.coeffs = vec![G::ScalarField::from(1u64)];
+    // Restore each gate's coefficient vector from the GateCoeffs section.
+    // The prover doesn't read these, but the debug-build `ProverIndex::verify`
+    // gate check does (per-gate `verify()` reads `gate.coeffs`, and the
+    // public-row check reads `gate.coeffs.first()`), so they must round-trip.
+    {
+        let mut cursor = section_bytes(SectionTag::GateCoeffs as u32)?;
+        for gate in gates.iter_mut() {
+            let (count, rest) = read_u32_le(cursor)?;
+            let (fields, rest) = read_exact(rest, count as usize * FIELD_ELEMENT_BYTES)?;
+            let mut coeffs = Vec::with_capacity(count as usize);
+            for chunk in fields.chunks_exact(FIELD_ELEMENT_BYTES) {
+                let mut limbs = [0u64; 4];
+                for (i, limb) in limbs.iter_mut().enumerate() {
+                    let mut b = [0u8; 8];
+                    b.copy_from_slice(&chunk[i * 8..i * 8 + 8]);
+                    *limb = u64::from_le_bytes(b);
+                }
+                coeffs.push(limbs_to_field::<G::ScalarField>(&limbs));
+            }
+            gate.coeffs = coeffs;
+            cursor = rest;
+        }
     }
 
     // Column evaluations. Each `Evaluations.evals` Vec points directly

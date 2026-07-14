@@ -75,14 +75,8 @@ fn cached_index_roundtrip_basic_fields() {
     {
         assert_eq!(a.typ, b.typ);
         assert_eq!(a.wires, b.wires);
-        // coeffs are intentionally dropped; the restored index has empty
-        // coeffs except for public rows, which carry `[F::one()]` so the
-        // debug-build `index.verify` sanity check still passes.
-        if row < index.cs.public {
-            assert_eq!(a.coeffs, vec![Fp::from(1u64)]);
-        } else {
-            assert!(a.coeffs.is_empty());
-        }
+        // coeffs are preserved verbatim (needed by the debug-build gate check).
+        assert_eq!(a.coeffs, b.coeffs, "gate {row} coeffs must round-trip");
     }
 
     // Column evaluations: spot-check the heaviest selector arrays.
@@ -381,6 +375,10 @@ fn cached_index_lookup_error_fails_write() {
 #[test]
 fn cached_index_coeff_gate_prove_from_cache() {
     let (_, gates) = CircuitGate::<Fp>::create_multi_range_check(0);
+    // Witness is the length of the (unpadded) circuit; the constraint system
+    // pads `cs.gates` up to the domain, so size the witness from the raw gate
+    // count, not from `index.cs.gates.len()`.
+    let circuit_size = gates.len();
     let index = new_index_for_test_with_lookups::<FULL_ROUNDS, Vesta>(
         gates,
         0,
@@ -394,8 +392,7 @@ fn cached_index_coeff_gate_prove_from_cache() {
     let verifier_index = index.verifier_index();
 
     // All-zero witness: 0 is a valid multi-range-check input.
-    let n = index.cs.gates.len();
-    let witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); n]);
+    let witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); circuit_size]);
 
     let path = tmpfile("coeff_gate");
     let id = "coeff-gate-identifier";
@@ -426,6 +423,8 @@ fn cached_index_coeff_gate_prove_from_cache() {
 
     std::fs::remove_file(&path).ok();
 }
+
+
 
 #[test]
 fn cached_index_bad_magic_errors() {
