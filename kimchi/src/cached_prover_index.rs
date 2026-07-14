@@ -1791,6 +1791,8 @@ where
     })?;
     let d4 = domain.d4;
     let d8 = domain.d8;
+    let d4_size = d4.size();
+    let d8_size = d8.size();
 
     // --- Validation phase -------------------------------------------------
     // Everything below that can fail runs BEFORE any mmap-backed `Vec<F>` is
@@ -1801,28 +1803,40 @@ where
     // existed would drop it and free mmap memory through the global allocator
     // (observed as a `free(): invalid pointer` process abort).
 
-    // Fetches a section and validates it holds exactly `elem_domain_size`
-    // field elements, returning the raw bytes + count. Constructs no Vec.
-    let field_section = |tag: u32| -> Result<(&[u8], usize), CacheError> {
+    // Fetches a section and validates it holds exactly `expected` field
+    // elements — both that its recorded `elem_domain_size` matches the domain
+    // it will be paired with, and that its byte length matches that count.
+    // Returns the raw bytes + count; constructs no Vec.
+    let field_section = |tag: u32, expected: usize| -> Result<(&[u8], usize), CacheError> {
         let entry = sections
             .get(&tag)
             .ok_or(CacheError::MissingSection { tag })?;
         let count = entry.elem_domain_size as usize;
+        if count != expected {
+            return Err(CacheError::WrongElementCount {
+                tag,
+                expected: expected as u64,
+                found: count as u64,
+            });
+        }
         let b = section_bytes(tag)?;
         validate_field_section(tag, b, count)?;
         Ok((b, count))
     };
-    let optional_field_section =
-        |tag: u32, mask: u32, present: u32| -> Result<Option<(&[u8], usize)>, CacheError> {
-            if present & mask != 0 {
-                Ok(Some(field_section(tag)?))
-            } else {
-                Ok(None)
-            }
-        };
+    let optional_field_section = |tag: u32,
+                                  mask: u32,
+                                  present: u32,
+                                  expected: usize|
+     -> Result<Option<(&[u8], usize)>, CacheError> {
+        if present & mask != 0 {
+            Ok(Some(field_section(tag, expected)?))
+        } else {
+            Ok(None)
+        }
+    };
 
-    // sid.
-    let sid_desc = field_section(SectionTag::Sid as u32)?;
+    // sid (length == d1 size).
+    let sid_desc = field_section(SectionTag::Sid as u32, d1_size)?;
 
     // Gates (owned Vec, not mmap-backed — safe to build/drop fallibly here).
     let gates_bytes = section_bytes(SectionTag::Gates as u32)?;
@@ -1863,7 +1877,7 @@ where
     // Column-evaluation descriptors (validated, not yet materialised).
     let mut coeff_descs: Vec<(&[u8], usize)> = Vec::with_capacity(COLUMNS);
     for i in 0..COLUMNS {
-        coeff_descs.push(field_section(coefficient_tag(i))?);
+        coeff_descs.push(field_section(coefficient_tag(i), d8_size)?);
     }
     let coeff_descs: [(&[u8], usize); COLUMNS] = coeff_descs
         .try_into()
@@ -1871,49 +1885,57 @@ where
 
     let mut perm_descs: Vec<(&[u8], usize)> = Vec::with_capacity(PERMUTS);
     for i in 0..PERMUTS {
-        perm_descs.push(field_section(permutation_coefficient_tag(i))?);
+        perm_descs.push(field_section(permutation_coefficient_tag(i), d8_size)?);
     }
     let perm_descs: [(&[u8], usize); PERMUTS] = perm_descs
         .try_into()
         .map_err(|_| CacheError::TruncatedFile)?;
 
-    let generic_selector4_desc = field_section(SectionTag::GenericSelector4 as u32)?;
-    let poseidon_selector8_desc = field_section(SectionTag::PoseidonSelector8 as u32)?;
-    let complete_add_selector4_desc = field_section(SectionTag::CompleteAddSelector4 as u32)?;
-    let mul_selector8_desc = field_section(SectionTag::MulSelector8 as u32)?;
-    let emul_selector8_desc = field_section(SectionTag::EmulSelector8 as u32)?;
-    let endomul_scalar_selector8_desc = field_section(SectionTag::EndomulScalarSelector8 as u32)?;
+    let generic_selector4_desc = field_section(SectionTag::GenericSelector4 as u32, d4_size)?;
+    let poseidon_selector8_desc = field_section(SectionTag::PoseidonSelector8 as u32, d8_size)?;
+    let complete_add_selector4_desc =
+        field_section(SectionTag::CompleteAddSelector4 as u32, d4_size)?;
+    let mul_selector8_desc = field_section(SectionTag::MulSelector8 as u32, d8_size)?;
+    let emul_selector8_desc = field_section(SectionTag::EmulSelector8 as u32, d8_size)?;
+    let endomul_scalar_selector8_desc =
+        field_section(SectionTag::EndomulScalarSelector8 as u32, d8_size)?;
 
     let opt = header.optional_selectors_present;
     let range_check0_desc = optional_field_section(
         SectionTag::RangeCheck0Selector8 as u32,
         OptionalSelectorBits::RANGE_CHECK_0,
         opt,
+        d8_size,
     )?;
     let range_check1_desc = optional_field_section(
         SectionTag::RangeCheck1Selector8 as u32,
         OptionalSelectorBits::RANGE_CHECK_1,
         opt,
+        d8_size,
     )?;
     let ffadd_desc = optional_field_section(
         SectionTag::ForeignFieldAddSelector8 as u32,
         OptionalSelectorBits::FOREIGN_FIELD_ADD,
         opt,
+        d8_size,
     )?;
     let ffmul_desc = optional_field_section(
         SectionTag::ForeignFieldMulSelector8 as u32,
         OptionalSelectorBits::FOREIGN_FIELD_MUL,
         opt,
+        d8_size,
     )?;
     let xor_desc = optional_field_section(
         SectionTag::XorSelector8 as u32,
         OptionalSelectorBits::XOR,
         opt,
+        d8_size,
     )?;
     let rot_desc = optional_field_section(
         SectionTag::RotSelector8 as u32,
         OptionalSelectorBits::ROT,
         opt,
+        d8_size,
     )?;
 
     let feature_flags = unpack_feature_flags(header.feature_flags)?;
@@ -1959,31 +1981,37 @@ where
             SectionTag::TableIds8 as u32,
             LookupSelectorBits::TABLE_IDS8,
             lp,
+            d8_size,
         )?;
         let sel_xor_desc = optional_field_section(
             SectionTag::LookupSelectorXor as u32,
             LookupSelectorBits::SELECTOR_XOR,
             lp,
+            d8_size,
         )?;
         let sel_lookup_desc = optional_field_section(
             SectionTag::LookupSelectorLookup as u32,
             LookupSelectorBits::SELECTOR_LOOKUP,
             lp,
+            d8_size,
         )?;
         let sel_range_check_desc = optional_field_section(
             SectionTag::LookupSelectorRangeCheck as u32,
             LookupSelectorBits::SELECTOR_RANGE_CHECK,
             lp,
+            d8_size,
         )?;
         let sel_ffmul_desc = optional_field_section(
             SectionTag::LookupSelectorFfmul as u32,
             LookupSelectorBits::SELECTOR_FFMUL,
             lp,
+            d8_size,
         )?;
         let runtime_selector_desc = optional_field_section(
             SectionTag::RuntimeSelector8 as u32,
             LookupSelectorBits::RUNTIME_SELECTOR,
             lp,
+            d8_size,
         )?;
 
         let runtime_tables: Option<Vec<RuntimeTableSpec>> =
