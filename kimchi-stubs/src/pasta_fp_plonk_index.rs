@@ -258,11 +258,7 @@ pub fn caml_pasta_fp_plonk_index_write_cached(
         &*index.as_ref().0,
         std::path::Path::new(&path),
     )
-    .map_err(|e| {
-        ocaml::Error::Message(Box::leak(
-            format!("caml_pasta_fp_plonk_index_write_cached: {e}").into_boxed_str(),
-        ))
-    })
+    .map_err(|e| ocaml::Error::Error(format!("caml_pasta_fp_plonk_index_write_cached: {e}").into()))
 }
 
 /// Reads a proving index from `path` in the mmap-backed cache format,
@@ -283,9 +279,7 @@ pub fn caml_pasta_fp_plonk_index_read_cached(
         srs.clone(),
     )
     .map_err(|e| {
-        ocaml::Error::Message(Box::leak(
-            format!("caml_pasta_fp_plonk_index_read_cached: {e}").into_boxed_str(),
-        ))
+        ocaml::Error::Error(format!("caml_pasta_fp_plonk_index_read_cached: {e}").into())
     })?;
     Ok(CamlPastaFpPlonkIndex(IndexHandle::Mmap(Box::new(index))))
 }
