@@ -240,8 +240,8 @@ pub fn caml_pasta_fq_plonk_index_write_cached(
         std::path::Path::new(&path),
     )
     .map_err(|e| {
-        ocaml::Error::Message(Box::leak(
-            format!("caml_pasta_fq_plonk_index_write_cached: {e}").into_boxed_str(),
+        crate::cache_error::CacheFfiError::wrap(format!(
+            "caml_pasta_fq_plonk_index_write_cached: {e}"
         ))
     })
 }
@@ -261,8 +261,8 @@ pub fn caml_pasta_fq_plonk_index_read_cached(
         srs.clone(),
     )
     .map_err(|e| {
-        ocaml::Error::Message(Box::leak(
-            format!("caml_pasta_fq_plonk_index_read_cached: {e}").into_boxed_str(),
+        crate::cache_error::CacheFfiError::wrap(format!(
+            "caml_pasta_fq_plonk_index_read_cached: {e}"
         ))
     })?;
     Ok(CamlPastaFqPlonkIndex(IndexHandle::Mmap(Box::new(index))))

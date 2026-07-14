@@ -259,8 +259,8 @@ pub fn caml_pasta_fp_plonk_index_write_cached(
         std::path::Path::new(&path),
     )
     .map_err(|e| {
-        ocaml::Error::Message(Box::leak(
-            format!("caml_pasta_fp_plonk_index_write_cached: {e}").into_boxed_str(),
+        crate::cache_error::CacheFfiError::wrap(format!(
+            "caml_pasta_fp_plonk_index_write_cached: {e}"
         ))
     })
 }
@@ -283,9 +283,35 @@ pub fn caml_pasta_fp_plonk_index_read_cached(
         srs.clone(),
     )
     .map_err(|e| {
-        ocaml::Error::Message(Box::leak(
-            format!("caml_pasta_fp_plonk_index_read_cached: {e}").into_boxed_str(),
+        crate::cache_error::CacheFfiError::wrap(format!(
+            "caml_pasta_fp_plonk_index_read_cached: {e}"
         ))
     })?;
     Ok(CamlPastaFpPlonkIndex(IndexHandle::Mmap(Box::new(index))))
+}
+
+#[cfg(test)]
+mod tests {
+    /// ocaml-rs raises `ocaml::Error::Error` by calling `caml_failwith` on
+    /// `format!("{:?}", e)` — the boxed error's Debug rendering. Whatever the
+    /// read_cached/write_cached wrappers box must therefore Debug-render as
+    /// the plain message, or OCaml sees the text wrapped in literal quotes
+    /// with inner escapes (`Failure "\"caml_...: ...\""`), garbling logs and
+    /// breaking any caller that matches on the failure string.
+    #[test]
+    fn cached_ffi_failure_text_is_the_plain_message() {
+        // Same construction as the map_err sites on the cached-index FFI
+        // paths.
+        let err = crate::cache_error::CacheFfiError::wrap(format!(
+            "caml_pasta_fp_plonk_index_write_cached: {}",
+            "boom"
+        ));
+        let ocaml::Error::Error(boxed) = err else {
+            unreachable!()
+        };
+        assert_eq!(
+            format!("{boxed:?}"),
+            "caml_pasta_fp_plonk_index_write_cached: boom"
+        );
+    }
 }
