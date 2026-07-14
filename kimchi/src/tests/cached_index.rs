@@ -369,6 +369,73 @@ fn cached_index_lookup_error_fails_write() {
     std::fs::remove_file(&path).ok();
 }
 
+/// A proof built from a cached index must survive the debug-build gate
+/// sanity check (`ProverProof::create` runs `index.verify(..)` under
+/// `cfg!(debug_assertions)`). That check calls each gate's `verify()`,
+/// which for RangeCheck / Poseidon / foreign-field / xor / rot gates reads
+/// `gate.coeffs`. The cache used to drop every gate's coeffs, so this path
+/// panicked with an out-of-bounds index on the empty coeff vector for any
+/// circuit containing such a gate. (The other tests dodge this because
+/// generic gates use `coeffs.get(i).unwrap_or(zero)` and lookup gates don't
+/// read coeffs at all.)
+///
+/// The guarded gate check exists only under `debug_assertions`; the repo's
+/// CI test targets all pass `--release`, which compiles it out. Run this
+/// test in the dev profile or it exercises nothing:
+///
+///   cargo test -p kimchi --features mmap_cache cached_index_coeff_gate_prove_from_cache
+#[test]
+fn cached_index_coeff_gate_prove_from_cache() {
+    let (_, gates) = CircuitGate::<Fp>::create_multi_range_check(0);
+    // Witness is the length of the (unpadded) circuit; the constraint system
+    // pads `cs.gates` up to the domain, so size the witness from the raw gate
+    // count, not from `index.cs.gates.len()`.
+    let circuit_size = gates.len();
+    let index = new_index_for_test_with_lookups::<FULL_ROUNDS, Vesta>(
+        gates,
+        0,
+        0,
+        vec![],
+        None,
+        false,
+        None,
+        false,
+    );
+    let verifier_index = index.verifier_index();
+
+    // All-zero witness: 0 is a valid multi-range-check input.
+    let witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); circuit_size]);
+
+    let path = tmpfile("coeff_gate");
+    let id = "coeff-gate-identifier";
+    write_cache(id, &index, &path).expect("write_cache");
+
+    let srs = index.srs.clone();
+    drop(index);
+    let restored = read_cache::<FULL_ROUNDS, Vesta, _>(id, &path, srs).expect("read_cache");
+
+    let group_map = <Vesta as CommitmentCurve>::Map::setup();
+    // In a debug build this exercises `index.verify()` -> per-gate coeff reads.
+    let proof = ProverProof::create::<BaseSponge, ScalarSponge, _>(
+        &group_map,
+        witness,
+        &[],
+        &restored,
+        &mut rand::rngs::OsRng,
+    )
+    .expect("proof creation from cached range-check index");
+
+    verify::<FULL_ROUNDS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta, FULL_ROUNDS>>(
+        &group_map,
+        &verifier_index,
+        &proof,
+        &[],
+    )
+    .expect("verification of proof from cached range-check index");
+
+    std::fs::remove_file(&path).ok();
+}
+
 #[test]
 fn cached_index_bad_magic_errors() {
     let path = tmpfile("badmagic");
