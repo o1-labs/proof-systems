@@ -1325,7 +1325,11 @@ where
     let lcs_result = cs.lookup_constraint_system.get();
     let lcs: Option<&LookupConstraintSystem<G::ScalarField>> = match lcs_result {
         Ok(opt) => opt.as_ref(),
-        Err(_) => None,
+        // A lazily-built lookup system that failed to materialise must abort
+        // the write. Mapping it to `None` (the previous behaviour) would emit
+        // a lookup-free cache file for a lookup circuit, silently converting a
+        // hard prover error into a wrong proving key on the next read.
+        Err(e) => return Err(CacheError::LookupConstraintSystem(e.to_string())),
     };
 
     // Build scalar header.
