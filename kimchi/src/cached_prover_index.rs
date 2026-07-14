@@ -1344,9 +1344,10 @@ fn fixed_region_size(num_sections: usize) -> usize {
 /// bytes) and must be supplied again on read for validation. Callers
 /// typically pass a hash of the circuit's identifying key.
 ///
-/// Writes are atomic: the file is staged at `path.tmp` and renamed into
-/// place, so concurrent readers of an existing `path` see either the old
-/// content or the new content but never a half-written file.
+/// Writes are atomic: the file is staged at a unique per-writer temp path
+/// (`path.tmp.<pid>.<n>`) and renamed into place, so concurrent readers of an
+/// existing `path` see either the old or new content but never a half-written
+/// file, and two concurrent writers cannot corrupt each other's staging file.
 ///
 /// This function requires the four-64-bit-Montgomery-limb layout for both
 /// `G::ScalarField` (the bulk field data) and `G::BaseField` (the
@@ -1675,12 +1676,16 @@ where
     debug_assert_eq!(file.len() as u64, payload_base);
     file.extend_from_slice(&ctx.payload);
 
-    // Atomic write: write to .tmp, fsync, rename into place.
+    // Atomic write: write to a per-writer temp file, fsync, rename into place.
+    // The temp name is unique (pid + process-local counter) so two concurrent
+    // writers of the same `path` never share a staging file — a fixed
+    // `path.tmp` would let one writer's truncate/rename corrupt the other's.
     let tmp_path = {
+        static TMP_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let uniq = TMP_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let mut p = path.to_path_buf();
-        let name = p.file_name().map(|f| f.to_owned()).unwrap_or_default();
-        let mut tmp_name = name;
-        tmp_name.push(".tmp");
+        let mut tmp_name = p.file_name().map(|f| f.to_owned()).unwrap_or_default();
+        tmp_name.push(format!(".tmp.{}.{uniq}", std::process::id()));
         p.set_file_name(tmp_name);
         p
     };
@@ -1694,6 +1699,16 @@ where
         f.sync_all()?;
     }
     std::fs::rename(&tmp_path, path)?;
+    // Best-effort: fsync the containing directory so the rename (the entry
+    // that makes the new content visible) survives a crash. Failures here are
+    // non-fatal — some filesystems reject directory fsync.
+    let dir = match path.parent() {
+        Some(d) if !d.as_os_str().is_empty() => d,
+        _ => Path::new("."),
+    };
+    if let Ok(d) = std::fs::File::open(dir) {
+        let _ = d.sync_all();
+    }
     Ok(())
 }
 
