@@ -464,7 +464,7 @@ pub fn alignment_padding(n: usize) -> usize {
 ///
 /// Reading Montgomery limbs is crucial for zero-copy: the on-disk bytes
 /// stored by [`write_field_slice`] must match `Fp`'s in-memory layout
-/// exactly so [`mmap_field_vec`] can reinterpret the mapped bytes
+/// exactly so [`mmap_field_vec_unchecked`] can reinterpret the mapped bytes
 /// directly. If we stored the canonical form (via `into_bigint`) the
 /// mmap-backed Vec would contain values that look like canonical but
 /// the prover would treat as Montgomery — silent corruption.
@@ -878,54 +878,59 @@ fn write_field_slice<F: PrimeField>(out: &mut Vec<u8>, elements: &[F]) {
     }
 }
 
-/// Zero-copy: constructs a `Vec<F>` whose backing storage is the mmap
-/// region itself, via `Vec::from_raw_parts(mmap_ptr, len, len)`.
-///
-/// # Safety
-///
-/// The returned `Vec<F>` **must never be dropped normally**. Vec's `Drop`
-/// calls `Global::dealloc` on its pointer, which for this value points
-/// into mmap memory — calling `dealloc` on that pointer is undefined
-/// behaviour (it would try to free non-heap memory). Callers must keep
-/// the returned `Vec<F>` inside a container whose own `Drop` either:
-///
-/// 1. Wraps the whole thing in [`core::mem::ManuallyDrop`] so the Vec's
-///    `Drop` never runs (the approach used by [`MmapProverIndex`]), or
-/// 2. Manually `mem::forget`s the Vec before the container drops.
-///
-/// The returned Vec also **must never grow**: a reallocation would call
-/// the allocator to allocate and then copy-from/dealloc the old pointer.
-/// Since the prover only reads field elements, this is fine in practice
-/// but worth stating.
-///
-/// The caller is responsible for ensuring `bytes` is aligned for `F`
-/// (8-byte aligned is sufficient for `BigInt<4>` — 32-byte section
-/// alignment in the cache format covers this), and for keeping the
-/// underlying mmap alive for the lifetime of the returned `Vec<F>`.
-///
-/// The byte slice must be exactly `count × FIELD_ELEMENT_BYTES` long.
-unsafe fn mmap_field_vec<F: PrimeField>(bytes: &[u8], count: usize) -> Result<Vec<F>, CacheError> {
+/// Validates that `bytes` holds exactly `count` field elements, i.e. that
+/// `bytes.len() == count * FIELD_ELEMENT_BYTES`. Purely a check — constructs
+/// nothing — so it is safe to call in the reader's fallible validation phase
+/// before any mmap-backed `Vec` exists. `tag` is only used for the error.
+fn validate_field_section(tag: u32, bytes: &[u8], count: usize) -> Result<(), CacheError> {
     let expected = count
         .checked_mul(FIELD_ELEMENT_BYTES)
         .ok_or(CacheError::TruncatedFile)?;
     if bytes.len() != expected {
         return Err(CacheError::PayloadNotFieldAligned {
-            tag: 0,
+            tag,
             length: bytes.len() as u64,
         });
     }
+    Ok(())
+}
+
+/// Zero-copy: constructs a `Vec<F>` whose backing storage is the mmap
+/// region itself, via `Vec::from_raw_parts(mmap_ptr, len, len)`.
+///
+/// This is **infallible by design**: it performs no validation and simply
+/// reinterprets the bytes. All length/alignment validation must be done up
+/// front (see [`validate_field_section`]) so that this constructor — and
+/// therefore the first live mmap-backed `Vec` — is only ever reached once the
+/// entire file is known to be well-formed. That ordering is what makes the
+/// reader panic-free: an `Err` returned *after* one of these Vecs existed
+/// would drop it, calling the global allocator on mmap memory (undefined
+/// behaviour, observed as a `free(): invalid pointer` abort).
+///
+/// # Safety
+///
+/// - `bytes.len()` **must** equal `count * FIELD_ELEMENT_BYTES` (caller
+///   guarantees this via [`validate_field_section`]).
+/// - The returned `Vec<F>` **must never be dropped normally** and **must
+///   never grow**: both would call `dealloc`/`realloc` on the mmap pointer.
+///   Callers keep it inside a [`core::mem::ManuallyDrop`] container (see
+///   [`MmapProverIndex`]) so `Vec::drop` never runs.
+/// - `bytes` must be aligned for `F` (8-byte alignment suffices for
+///   `BigInt<4>`; the format's 32-byte section alignment covers this) and the
+///   underlying mmap must outlive the returned `Vec<F>`.
+unsafe fn mmap_field_vec_unchecked<F: PrimeField>(bytes: &[u8], count: usize) -> Vec<F> {
+    debug_assert_eq!(bytes.len(), count * FIELD_ELEMENT_BYTES);
     // Alignment check: `BigInt<4>` = `[u64; 4]` needs 8-byte alignment.
     // Section offsets are 32-byte aligned in the cache format so this
     // should always hold; assert it defensively.
-    let align = core::mem::align_of::<F>();
     debug_assert!(
-        (bytes.as_ptr() as usize).is_multiple_of(align),
+        (bytes.as_ptr() as usize).is_multiple_of(core::mem::align_of::<F>()),
         "mmap section pointer not aligned for F"
     );
     let ptr = bytes.as_ptr() as *mut F;
     // SAFETY: the caller contract forbids dropping or growing the
     // returned Vec; its lifetime must be bounded by the mmap's.
-    Ok(Vec::from_raw_parts(ptr, count, count))
+    Vec::from_raw_parts(ptr, count, count)
 }
 
 // ---------------------------------------------------------------------------
@@ -1677,6 +1682,28 @@ where
 ///
 /// Identifier and ark-ff version must match the values the file was
 /// produced with, otherwise a descriptive error is returned.
+/// Validated, not-yet-materialised lookup sections gathered during the
+/// reader's validation phase. The `&[u8]` descriptors borrow the mmap; the
+/// owned runtime-table data is parsed eagerly (it is not mmap-backed). All of
+/// this is turned into a `LookupConstraintSystem` in the infallible
+/// materialisation phase so no mmap-backed `Vec` is built before validation
+/// completes. `_desc` fields are `(bytes, element_count)`.
+struct LookupParts<'a> {
+    lt_bytes: &'a [u8],
+    /// Number of inner d8-sized arrays packed into `lt_bytes`.
+    n: usize,
+    d8_size: usize,
+    inner_bytes: usize,
+    table_ids8_desc: Option<(&'a [u8], usize)>,
+    sel_xor_desc: Option<(&'a [u8], usize)>,
+    sel_lookup_desc: Option<(&'a [u8], usize)>,
+    sel_range_check_desc: Option<(&'a [u8], usize)>,
+    sel_ffmul_desc: Option<(&'a [u8], usize)>,
+    runtime_selector_desc: Option<(&'a [u8], usize)>,
+    runtime_tables: Option<Vec<RuntimeTableSpec>>,
+    runtime_table_offset: Option<usize>,
+}
+
 pub fn read_cache<const FULL_ROUNDS: usize, G, Srs>(
     identifier: &str,
     path: &Path,
@@ -1753,18 +1780,39 @@ where
     let d4 = domain.d4;
     let d8 = domain.d8;
 
-    // sid.
-    let sid_entry = sections
-        .get(&(SectionTag::Sid as u32))
-        .ok_or(CacheError::MissingSection {
-            tag: SectionTag::Sid as u32,
-        })?;
-    let sid_count = sid_entry.elem_domain_size as usize;
-    let sid = unsafe {
-        mmap_field_vec::<G::ScalarField>(section_bytes(SectionTag::Sid as u32)?, sid_count)?
-    };
+    // --- Validation phase -------------------------------------------------
+    // Everything below that can fail runs BEFORE any mmap-backed `Vec<F>` is
+    // constructed. We only collect validated `(bytes, count)` descriptors
+    // here; the actual `Vec::from_raw_parts` views are built in the
+    // infallible materialisation phase further down. This ordering is a
+    // memory-safety requirement: an early `?` return once a mmap-backed Vec
+    // existed would drop it and free mmap memory through the global allocator
+    // (observed as a `free(): invalid pointer` process abort).
 
-    // Gates.
+    // Fetches a section and validates it holds exactly `elem_domain_size`
+    // field elements, returning the raw bytes + count. Constructs no Vec.
+    let field_section = |tag: u32| -> Result<(&[u8], usize), CacheError> {
+        let entry = sections
+            .get(&tag)
+            .ok_or(CacheError::MissingSection { tag })?;
+        let count = entry.elem_domain_size as usize;
+        let b = section_bytes(tag)?;
+        validate_field_section(tag, b, count)?;
+        Ok((b, count))
+    };
+    let optional_field_section =
+        |tag: u32, mask: u32, present: u32| -> Result<Option<(&[u8], usize)>, CacheError> {
+            if present & mask != 0 {
+                Ok(Some(field_section(tag)?))
+            } else {
+                Ok(None)
+            }
+        };
+
+    // sid.
+    let sid_desc = field_section(SectionTag::Sid as u32)?;
+
+    // Gates (owned Vec, not mmap-backed — safe to build/drop fallibly here).
     let gates_bytes = section_bytes(SectionTag::Gates as u32)?;
     if gates_bytes.len() % PRUNED_GATE_SIZE != 0 {
         return Err(CacheError::PayloadNotFieldAligned {
@@ -1777,9 +1825,9 @@ where
         gates.push(read_pruned_gate::<G::ScalarField>(chunk)?);
     }
     // Restore each gate's coefficient vector from the GateCoeffs section.
-    // The prover doesn't read these, but the debug-build `ProverIndex::verify`
-    // gate check does (per-gate `verify()` reads `gate.coeffs`, and the
-    // public-row check reads `gate.coeffs.first()`), so they must round-trip.
+    // These are owned Vecs, so parsing them fallibly is safe. The prover
+    // doesn't read coeffs, but the debug-build `ProverIndex::verify` gate
+    // check does (per-gate `verify()` reads `gate.coeffs`).
     {
         let mut cursor = section_bytes(SectionTag::GateCoeffs as u32)?;
         for gate in gates.iter_mut() {
@@ -1800,98 +1848,62 @@ where
         }
     }
 
-    // Column evaluations. Each `Evaluations.evals` Vec points directly
-    // into the mmap via `mmap_field_vec`; the `unsafe` block is sound so
-    // long as the returned MmapProverIndex keeps the mmap alive and
-    // wraps the ProverIndex in ManuallyDrop so Vec::drop never runs.
-    let read_evals_d = |tag: u32,
-                        d: Radix2EvaluationDomain<G::ScalarField>|
-     -> Result<
-        Evaluations<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>,
-        CacheError,
-    > {
-        let entry = sections
-            .get(&tag)
-            .ok_or(CacheError::MissingSection { tag })?;
-        let count = entry.elem_domain_size as usize;
-        let evals = unsafe { mmap_field_vec::<G::ScalarField>(section_bytes(tag)?, count)? };
-        Ok(Evaluations::<G::ScalarField, _>::from_vec_and_domain(
-            evals, d,
-        ))
-    };
-
-    let mut coefficients8: Vec<Evaluations<G::ScalarField, _>> = Vec::with_capacity(COLUMNS);
+    // Column-evaluation descriptors (validated, not yet materialised).
+    let mut coeff_descs: Vec<(&[u8], usize)> = Vec::with_capacity(COLUMNS);
     for i in 0..COLUMNS {
-        coefficients8.push(read_evals_d(coefficient_tag(i), d8)?);
+        coeff_descs.push(field_section(coefficient_tag(i))?);
     }
-    let coefficients8: [Evaluations<G::ScalarField, _>; COLUMNS] = coefficients8
+    let coeff_descs: [(&[u8], usize); COLUMNS] = coeff_descs
         .try_into()
         .map_err(|_| CacheError::TruncatedFile)?;
 
-    let mut permutation_coefficients8: Vec<Evaluations<G::ScalarField, _>> =
-        Vec::with_capacity(PERMUTS);
+    let mut perm_descs: Vec<(&[u8], usize)> = Vec::with_capacity(PERMUTS);
     for i in 0..PERMUTS {
-        permutation_coefficients8.push(read_evals_d(permutation_coefficient_tag(i), d8)?);
+        perm_descs.push(field_section(permutation_coefficient_tag(i))?);
     }
-    let permutation_coefficients8: [Evaluations<G::ScalarField, _>; PERMUTS] =
-        permutation_coefficients8
-            .try_into()
-            .map_err(|_| CacheError::TruncatedFile)?;
+    let perm_descs: [(&[u8], usize); PERMUTS] = perm_descs
+        .try_into()
+        .map_err(|_| CacheError::TruncatedFile)?;
 
-    let generic_selector4 = read_evals_d(SectionTag::GenericSelector4 as u32, d4)?;
-    let poseidon_selector8 = read_evals_d(SectionTag::PoseidonSelector8 as u32, d8)?;
-    let complete_add_selector4 = read_evals_d(SectionTag::CompleteAddSelector4 as u32, d4)?;
-    let mul_selector8 = read_evals_d(SectionTag::MulSelector8 as u32, d8)?;
-    let emul_selector8 = read_evals_d(SectionTag::EmulSelector8 as u32, d8)?;
-    let endomul_scalar_selector8 = read_evals_d(SectionTag::EndomulScalarSelector8 as u32, d8)?;
+    let generic_selector4_desc = field_section(SectionTag::GenericSelector4 as u32)?;
+    let poseidon_selector8_desc = field_section(SectionTag::PoseidonSelector8 as u32)?;
+    let complete_add_selector4_desc = field_section(SectionTag::CompleteAddSelector4 as u32)?;
+    let mul_selector8_desc = field_section(SectionTag::MulSelector8 as u32)?;
+    let emul_selector8_desc = field_section(SectionTag::EmulSelector8 as u32)?;
+    let endomul_scalar_selector8_desc = field_section(SectionTag::EndomulScalarSelector8 as u32)?;
 
-    let read_optional =
-        |tag: u32, mask: u32| -> Result<Option<Evaluations<G::ScalarField, _>>, CacheError> {
-            if header.optional_selectors_present & mask != 0 {
-                Ok(Some(read_evals_d(tag, d8)?))
-            } else {
-                Ok(None)
-            }
-        };
-    let range_check0_selector8 = read_optional(
+    let opt = header.optional_selectors_present;
+    let range_check0_desc = optional_field_section(
         SectionTag::RangeCheck0Selector8 as u32,
         OptionalSelectorBits::RANGE_CHECK_0,
+        opt,
     )?;
-    let range_check1_selector8 = read_optional(
+    let range_check1_desc = optional_field_section(
         SectionTag::RangeCheck1Selector8 as u32,
         OptionalSelectorBits::RANGE_CHECK_1,
+        opt,
     )?;
-    let foreign_field_add_selector8 = read_optional(
+    let ffadd_desc = optional_field_section(
         SectionTag::ForeignFieldAddSelector8 as u32,
         OptionalSelectorBits::FOREIGN_FIELD_ADD,
+        opt,
     )?;
-    let foreign_field_mul_selector8 = read_optional(
+    let ffmul_desc = optional_field_section(
         SectionTag::ForeignFieldMulSelector8 as u32,
         OptionalSelectorBits::FOREIGN_FIELD_MUL,
+        opt,
     )?;
-    let xor_selector8 = read_optional(SectionTag::XorSelector8 as u32, OptionalSelectorBits::XOR)?;
-    let rot_selector8 = read_optional(SectionTag::RotSelector8 as u32, OptionalSelectorBits::ROT)?;
+    let xor_desc = optional_field_section(
+        SectionTag::XorSelector8 as u32,
+        OptionalSelectorBits::XOR,
+        opt,
+    )?;
+    let rot_desc = optional_field_section(
+        SectionTag::RotSelector8 as u32,
+        OptionalSelectorBits::ROT,
+        opt,
+    )?;
 
-    let column_evaluations = ColumnEvaluations::<G::ScalarField> {
-        permutation_coefficients8,
-        coefficients8,
-        generic_selector4,
-        poseidon_selector8,
-        complete_add_selector4,
-        mul_selector8,
-        emul_selector8,
-        endomul_scalar_selector8,
-        range_check0_selector8,
-        range_check1_selector8,
-        foreign_field_add_selector8,
-        foreign_field_mul_selector8,
-        xor_selector8,
-        rot_selector8,
-    };
-
-    // Rebuild ConstraintSystem by going through its builder. The builder
-    // recomputes sid and friends from the gates + public count, which is
-    // exactly what we want.
     let feature_flags = unpack_feature_flags(header.feature_flags)?;
     let shift: [G::ScalarField; PERMUTS] = {
         let mut arr = [G::ScalarField::from(0u64); PERMUTS];
@@ -1901,39 +1913,14 @@ where
         arr
     };
     let endo = limbs_to_field::<G::ScalarField>(&header.endo_limbs);
-    // We need a fully-populated ConstraintSystem. Rather than calling the
-    // builder (which recomputes many fields we already have on disk), fill
-    // it manually. This is equivalent to the `Deserialize` impl.
-    let precomputations = Arc::new(LazyCache::new({
-        let precomputations_domain = domain;
-        let zk_rows = header.zk_rows;
-        move || {
-            Arc::new(
-                crate::circuits::domain_constant_evaluation::DomainConstantEvaluations::create(
-                    precomputations_domain,
-                    zk_rows,
-                )
-                .expect("domain constant evaluations"),
-            )
-        }
-    }));
-    // Reconstruct LookupConstraintSystem from sections 0x50..0x58 when the
-    // presence bitmap indicates lookup data was written. The bitmap is the
-    // same one we computed at write time (see `lookup_selectors_present`),
-    // so an empty bitmap => no lookup sections and the read path short-
-    // circuits to Ok(None) exactly as before.
-    let lookup_constraint_system = if header.lookup_selectors_present == 0
-        && !sections.contains_key(&(SectionTag::LookupTable8 as u32))
-    {
-        Arc::new(LazyCache::new(|| {
-            Ok::<
-                Option<LookupConstraintSystem<G::ScalarField>>,
-                crate::circuits::lookup::index::LookupError,
-            >(None)
-        }))
-    } else {
-        // lookup_table8: count of inner arrays is carried in the section
-        // entry's `elem_domain_size`; the payload is pure field data.
+
+    // Lookup descriptors, gated on the same presence bitmap stamped at write
+    // time. Owned data (runtime tables / offset) is parsed here; field arrays
+    // stay as validated descriptors until materialisation.
+    let lp = header.lookup_selectors_present;
+    let has_lookup = lp != 0 || sections.contains_key(&(SectionTag::LookupTable8 as u32));
+    let lookup: Option<LookupParts> = if has_lookup {
+        // lookup_table8: `n` inner arrays of d8 size packed in one section.
         // count == 0 is valid (empty lookup table).
         let lt_entry =
             sections
@@ -1942,10 +1929,12 @@ where
                     tag: SectionTag::LookupTable8 as u32,
                 })?;
         let n = lt_entry.elem_domain_size as usize;
-        let d8_size_usize = d8.size();
-        let inner_bytes = d8_size_usize * FIELD_ELEMENT_BYTES;
+        let d8_size = d8.size();
+        let inner_bytes = d8_size * FIELD_ELEMENT_BYTES;
         let lt_bytes = section_bytes(SectionTag::LookupTable8 as u32)?;
-        let expected_total = n * inner_bytes;
+        let expected_total = n
+            .checked_mul(inner_bytes)
+            .ok_or(CacheError::TruncatedFile)?;
         if lt_bytes.len() != expected_total {
             return Err(CacheError::SectionLengthMismatch {
                 tag: SectionTag::LookupTable8 as u32,
@@ -1953,64 +1942,48 @@ where
                 found: lt_bytes.len() as u64,
             });
         }
-        let mut lookup_table8: Vec<Evaluations<G::ScalarField, _>> = Vec::with_capacity(n);
-        for i in 0..n {
-            let start = i * inner_bytes;
-            let end = start + inner_bytes;
-            let evals =
-                unsafe { mmap_field_vec::<G::ScalarField>(&lt_bytes[start..end], d8_size_usize)? };
-            lookup_table8.push(Evaluations::from_vec_and_domain(evals, d8));
-        }
 
-        // Optional sections gated by LookupSelectorBits.
-        type DomainEvaluations<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
-        let read_optional_evals =
-            |tag: u32, bit: u32| -> Result<Option<DomainEvaluations<G::ScalarField>>, CacheError> {
-                if header.lookup_selectors_present & bit != 0 {
-                    let entry = sections
-                        .get(&tag)
-                        .ok_or(CacheError::MissingSection { tag })?;
-                    let count = entry.elem_domain_size as usize;
-                    let evals =
-                        unsafe { mmap_field_vec::<G::ScalarField>(section_bytes(tag)?, count)? };
-                    Ok(Some(Evaluations::from_vec_and_domain(evals, d8)))
-                } else {
-                    Ok(None)
-                }
-            };
-        let table_ids8 =
-            read_optional_evals(SectionTag::TableIds8 as u32, LookupSelectorBits::TABLE_IDS8)?;
-        let selector_xor = read_optional_evals(
+        let table_ids8_desc = optional_field_section(
+            SectionTag::TableIds8 as u32,
+            LookupSelectorBits::TABLE_IDS8,
+            lp,
+        )?;
+        let sel_xor_desc = optional_field_section(
             SectionTag::LookupSelectorXor as u32,
             LookupSelectorBits::SELECTOR_XOR,
+            lp,
         )?;
-        let selector_lookup = read_optional_evals(
+        let sel_lookup_desc = optional_field_section(
             SectionTag::LookupSelectorLookup as u32,
             LookupSelectorBits::SELECTOR_LOOKUP,
+            lp,
         )?;
-        let selector_range_check = read_optional_evals(
+        let sel_range_check_desc = optional_field_section(
             SectionTag::LookupSelectorRangeCheck as u32,
             LookupSelectorBits::SELECTOR_RANGE_CHECK,
+            lp,
         )?;
-        let selector_ffmul = read_optional_evals(
+        let sel_ffmul_desc = optional_field_section(
             SectionTag::LookupSelectorFfmul as u32,
             LookupSelectorBits::SELECTOR_FFMUL,
+            lp,
         )?;
-        let runtime_selector = read_optional_evals(
+        let runtime_selector_desc = optional_field_section(
             SectionTag::RuntimeSelector8 as u32,
             LookupSelectorBits::RUNTIME_SELECTOR,
+            lp,
         )?;
 
         let runtime_tables: Option<Vec<RuntimeTableSpec>> =
-            if header.lookup_selectors_present & LookupSelectorBits::RUNTIME_TABLES != 0 {
+            if lp & LookupSelectorBits::RUNTIME_TABLES != 0 {
                 let rt_bytes = section_bytes(SectionTag::RuntimeTablesSpec as u32)?;
                 if rt_bytes.len() < 4 {
                     return Err(CacheError::TruncatedFile);
                 }
                 let mut count_buf = [0u8; 4];
                 count_buf.copy_from_slice(&rt_bytes[..4]);
-                let n = u32::from_le_bytes(count_buf) as usize;
-                let expected = 4 + n * 8;
+                let rn = u32::from_le_bytes(count_buf) as usize;
+                let expected = 4 + rn * 8;
                 if rt_bytes.len() != expected {
                     return Err(CacheError::SectionLengthMismatch {
                         tag: SectionTag::RuntimeTablesSpec as u32,
@@ -2018,8 +1991,8 @@ where
                         found: rt_bytes.len() as u64,
                     });
                 }
-                let mut out = Vec::with_capacity(n);
-                for i in 0..n {
+                let mut out = Vec::with_capacity(rn);
+                for i in 0..rn {
                     let base = 4 + i * 8;
                     let mut id_buf = [0u8; 4];
                     let mut len_buf = [0u8; 4];
@@ -2036,7 +2009,7 @@ where
             };
 
         let runtime_table_offset: Option<usize> =
-            if header.lookup_selectors_present & LookupSelectorBits::RUNTIME_TABLE_OFFSET != 0 {
+            if lp & LookupSelectorBits::RUNTIME_TABLE_OFFSET != 0 {
                 let off_bytes = section_bytes(SectionTag::RuntimeTableOffset as u32)?;
                 if off_bytes.len() != 8 {
                     return Err(CacheError::SectionLengthMismatch {
@@ -2052,27 +2025,127 @@ where
                 None
             };
 
-        // LookupInfo is a pure function of `feature_flags.lookup_features`;
-        // we reconstruct it here rather than caching it separately.
-        let lookup_info = LookupInfo::create(feature_flags.lookup_features);
-        let lcs = LookupConstraintSystem {
-            lookup_table: Vec::new(),
-            lookup_table8,
-            table_ids: None,
-            table_ids8,
-            lookup_selectors: LookupSelectors {
-                xor: selector_xor,
-                lookup: selector_lookup,
-                range_check: selector_range_check,
-                ffmul: selector_ffmul,
-            },
-            runtime_selector,
+        Some(LookupParts {
+            lt_bytes,
+            n,
+            d8_size,
+            inner_bytes,
+            table_ids8_desc,
+            sel_xor_desc,
+            sel_lookup_desc,
+            sel_range_check_desc,
+            sel_ffmul_desc,
+            runtime_selector_desc,
             runtime_tables,
             runtime_table_offset,
-            configuration: LookupConfiguration::new(lookup_info),
-        };
-        Arc::new(LazyCache::new(move || Ok(Some(lcs))))
+        })
+    } else {
+        None
     };
+
+    // --- Materialisation phase (infallible) -------------------------------
+    // Nothing below returns `Err`, so every mmap-backed `Vec<F>` built here is
+    // guaranteed to reach the `ManuallyDrop` index and never run its
+    // destructor. Each descriptor was length-validated above.
+    //
+    // SAFETY (applies to every `mmap_field_vec_unchecked` call below): the
+    // descriptor byte length was checked to equal `count * FIELD_ELEMENT_BYTES`;
+    // the mmap outlives the returned index (held via `_mmap`); and the index
+    // is stored in `ManuallyDrop` so these Vecs never drop or grow.
+    let make_eval = |(b, c): (&[u8], usize),
+                     d: Radix2EvaluationDomain<G::ScalarField>|
+     -> Evaluations<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>> {
+        Evaluations::<G::ScalarField, _>::from_vec_and_domain(
+            unsafe { mmap_field_vec_unchecked::<G::ScalarField>(b, c) },
+            d,
+        )
+    };
+    let make_opt_eval = |desc: Option<(&[u8], usize)>,
+                         d: Radix2EvaluationDomain<G::ScalarField>| {
+        desc.map(|x| make_eval(x, d))
+    };
+
+    let sid = unsafe { mmap_field_vec_unchecked::<G::ScalarField>(sid_desc.0, sid_desc.1) };
+
+    let coefficients8: [Evaluations<G::ScalarField, _>; COLUMNS] =
+        coeff_descs.map(|desc| make_eval(desc, d8));
+    let permutation_coefficients8: [Evaluations<G::ScalarField, _>; PERMUTS] =
+        perm_descs.map(|desc| make_eval(desc, d8));
+
+    let column_evaluations = ColumnEvaluations::<G::ScalarField> {
+        permutation_coefficients8,
+        coefficients8,
+        generic_selector4: make_eval(generic_selector4_desc, d4),
+        poseidon_selector8: make_eval(poseidon_selector8_desc, d8),
+        complete_add_selector4: make_eval(complete_add_selector4_desc, d4),
+        mul_selector8: make_eval(mul_selector8_desc, d8),
+        emul_selector8: make_eval(emul_selector8_desc, d8),
+        endomul_scalar_selector8: make_eval(endomul_scalar_selector8_desc, d8),
+        range_check0_selector8: make_opt_eval(range_check0_desc, d8),
+        range_check1_selector8: make_opt_eval(range_check1_desc, d8),
+        foreign_field_add_selector8: make_opt_eval(ffadd_desc, d8),
+        foreign_field_mul_selector8: make_opt_eval(ffmul_desc, d8),
+        xor_selector8: make_opt_eval(xor_desc, d8),
+        rot_selector8: make_opt_eval(rot_desc, d8),
+    };
+
+    let precomputations = Arc::new(LazyCache::new({
+        let precomputations_domain = domain;
+        let zk_rows = header.zk_rows;
+        move || {
+            Arc::new(
+                crate::circuits::domain_constant_evaluation::DomainConstantEvaluations::create(
+                    precomputations_domain,
+                    zk_rows,
+                )
+                .expect("domain constant evaluations"),
+            )
+        }
+    }));
+
+    let lookup_constraint_system = match lookup {
+        None => Arc::new(LazyCache::new(|| {
+            Ok::<
+                Option<LookupConstraintSystem<G::ScalarField>>,
+                crate::circuits::lookup::index::LookupError,
+            >(None)
+        })),
+        Some(parts) => {
+            let mut lookup_table8: Vec<Evaluations<G::ScalarField, _>> =
+                Vec::with_capacity(parts.n);
+            for i in 0..parts.n {
+                let start = i * parts.inner_bytes;
+                let end = start + parts.inner_bytes;
+                let evals = unsafe {
+                    mmap_field_vec_unchecked::<G::ScalarField>(
+                        &parts.lt_bytes[start..end],
+                        parts.d8_size,
+                    )
+                };
+                lookup_table8.push(Evaluations::from_vec_and_domain(evals, d8));
+            }
+            // LookupInfo is a pure function of `feature_flags.lookup_features`.
+            let lookup_info = LookupInfo::create(feature_flags.lookup_features);
+            let lcs = LookupConstraintSystem {
+                lookup_table: Vec::new(),
+                lookup_table8,
+                table_ids: None,
+                table_ids8: make_opt_eval(parts.table_ids8_desc, d8),
+                lookup_selectors: LookupSelectors {
+                    xor: make_opt_eval(parts.sel_xor_desc, d8),
+                    lookup: make_opt_eval(parts.sel_lookup_desc, d8),
+                    range_check: make_opt_eval(parts.sel_range_check_desc, d8),
+                    ffmul: make_opt_eval(parts.sel_ffmul_desc, d8),
+                },
+                runtime_selector: make_opt_eval(parts.runtime_selector_desc, d8),
+                runtime_tables: parts.runtime_tables,
+                runtime_table_offset: parts.runtime_table_offset,
+                configuration: LookupConfiguration::new(lookup_info),
+            };
+            Arc::new(LazyCache::new(move || Ok(Some(lcs))))
+        }
+    };
+
     let cs = ConstraintSystem {
         public: header.public as usize,
         prev_challenges: header.prev_challenges as usize,

@@ -424,8 +424,6 @@ fn cached_index_coeff_gate_prove_from_cache() {
     std::fs::remove_file(&path).ok();
 }
 
-
-
 /// A corrupt cache file whose error is only discovered *after* the reader
 /// has already built the first mmap-backed `Vec<F>` (here `sid`) must be
 /// rejected with a clean `Err`, not abort the process.
