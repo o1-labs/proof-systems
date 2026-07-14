@@ -426,6 +426,62 @@ fn cached_index_coeff_gate_prove_from_cache() {
 
 
 
+/// A corrupt cache file whose error is only discovered *after* the reader
+/// has already built the first mmap-backed `Vec<F>` (here `sid`) must be
+/// rejected with a clean `Err`, not abort the process.
+///
+/// The reader builds `Vec<F>` values via `Vec::from_raw_parts` pointing into
+/// the mmap. Those Vecs must never run their destructor (dropping one calls
+/// the global allocator on mmap memory → `munmap_chunk(): invalid pointer`
+/// abort). The success path parks them in a `ManuallyDrop` index, but an
+/// early `?` return after the first Vec is built used to drop it. Here we
+/// rename a coefficient section so the read fails with `MissingSection`
+/// after `sid` is mapped; the fix defers all `Vec` construction until every
+/// section has been validated, so this returns `Err` instead of aborting.
+#[test]
+fn cached_index_corrupt_after_first_vec_errors_cleanly() {
+    use crate::cached_prover_index::{PREAMBLE_SIZE, SECTION_TABLE_OFFSET};
+
+    let public = [Fp::from(3u8); 5];
+    let gates = create_circuit(0, public.len());
+    let index = new_index_for_test::<FULL_ROUNDS, Vesta>(gates, public.len());
+
+    let path = tmpfile("corrupt_after_vec");
+    let id = "corrupt-id";
+    write_cache(id, &index, &path).expect("write_cache");
+
+    // Rename the coefficients8[0] section (tag 0x10) to an unused tag so the
+    // read fails with MissingSection — which happens only after `sid` (tag
+    // 0x01) has already been mapped as a live mmap-backed Vec.
+    let mut bytes = std::fs::read(&path).unwrap();
+    let num_sections = {
+        let o = PREAMBLE_SIZE - 4;
+        u32::from_le_bytes(bytes[o..o + 4].try_into().unwrap()) as usize
+    };
+    const ENTRY: usize = 28; // SectionEntry::SERIALIZED_SIZE
+    let mut renamed = false;
+    for i in 0..num_sections {
+        let e = SECTION_TABLE_OFFSET + i * ENTRY;
+        let tag = u32::from_le_bytes(bytes[e..e + 4].try_into().unwrap());
+        if tag == 0x10 {
+            bytes[e..e + 4].copy_from_slice(&0x0BAD_u32.to_le_bytes());
+            renamed = true;
+        }
+    }
+    assert!(renamed, "did not find coefficients8[0] section to corrupt");
+    std::fs::write(&path, &bytes).unwrap();
+
+    let srs = index.srs.clone();
+    // Must return Err (previously: SIGABRT from dropping the mmap-backed sid).
+    let err = read_cache::<FULL_ROUNDS, Vesta, _>(id, &path, srs).expect_err("should fail");
+    assert!(
+        matches!(err, CacheError::MissingSection { .. }),
+        "expected MissingSection, got {err}"
+    );
+
+    std::fs::remove_file(&path).ok();
+}
+
 #[test]
 fn cached_index_bad_magic_errors() {
     let path = tmpfile("badmagic");
