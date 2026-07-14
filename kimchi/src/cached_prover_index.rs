@@ -373,6 +373,15 @@ pub enum CacheError {
         expected: u64,
         found: u64,
     },
+    /// A pruned gate carried a type tag with no corresponding `GateType`.
+    UnknownGateType {
+        tag: u16,
+    },
+    /// The stored `d1` domain size could not be turned into an evaluation
+    /// domain (not a power of two, or too large for the field's 2-adicity).
+    InvalidDomainSize {
+        size: u64,
+    },
 }
 
 impl fmt::Display for CacheError {
@@ -431,6 +440,12 @@ impl fmt::Display for CacheError {
                 f,
                 "section {tag:#x} element count {found} does not match expected domain size {expected}"
             ),
+            CacheError::UnknownGateType { tag } => {
+                write!(f, "unknown gate type tag {tag} in pruned gate")
+            }
+            CacheError::InvalidDomainSize { size } => {
+                write!(f, "stored d1 domain size {size} is not a valid evaluation domain")
+            }
         }
     }
 }
@@ -1030,9 +1045,7 @@ fn read_pruned_gate<F: PrimeField>(bytes: &[u8]) -> Result<CircuitGate<F>, Cache
     let mut typ_bytes = [0u8; 2];
     typ_bytes.copy_from_slice(&bytes[0..2]);
     let typ_tag = u16::from_le_bytes(typ_bytes);
-    let typ = gate_type_from_tag(typ_tag).ok_or(CacheError::UnknownFeatureFlagBits {
-        bits: typ_tag as u32,
-    })?;
+    let typ = gate_type_from_tag(typ_tag).ok_or(CacheError::UnknownGateType { tag: typ_tag })?;
     let mut wires: GateWires = [Wire::default(); PERMUTS];
     for (i, wire) in wires.iter_mut().enumerate() {
         let base = 4 + i * 8;
@@ -1803,7 +1816,9 @@ where
     // Rebuild EvaluationDomains from d1_size.
     let d1_size = header.domain_d1_size as usize;
     let domain = EvaluationDomains::<G::ScalarField>::create(d1_size).map_err(|_| {
-        CacheError::BadMagic { found: FILE_MAGIC } // surfaced as a format issue
+        CacheError::InvalidDomainSize {
+            size: header.domain_d1_size,
+        }
     })?;
     let d4 = domain.d4;
     let d8 = domain.d8;
