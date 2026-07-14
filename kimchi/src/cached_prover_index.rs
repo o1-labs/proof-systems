@@ -8,11 +8,9 @@
 //! 3. A section table pointing at variable-length POD payload sections
 //!    (sid, pruned gates, column evaluation arrays, lookup arrays).
 //!
-//! The readable side [`CachedProverIndex`] holds an `Arc<memmap2::Mmap>` plus
+//! The readable side [`MmapProverIndex`] holds an `Arc<ReadOnlyMmap>` plus
 //! precomputed slice references into the mapping. Field-element accesses do
 //! not allocate; the OS page cache handles eviction under pressure.
-//!
-//! See `CLAUDE.local.md` and the design doc for the full data bundle audit.
 //!
 //! Only available with the `mmap_cache` feature.
 
@@ -48,9 +46,10 @@ pub const IDENTIFIER_MAX_LEN: usize = 512;
 /// Maximum length of the ark-ff version string recorded in the header.
 pub const ARK_FF_VERSION_MAX_LEN: usize = 32;
 
-/// Alignment (in bytes) applied to every payload section. Chosen as 32 to
-/// match the natural alignment of an `ark_ff::BigInt<4>` (four `u64` limbs),
-/// allowing zero-copy `&[F]` casts via `from_raw_parts` without misalignment.
+/// Alignment (in bytes) applied to every payload section. `BigInt<4>` (four
+/// `u64` limbs) only needs 8-byte alignment for zero-copy `&[F]` casts via
+/// `from_raw_parts`; 32 is a conservative choice that comfortably covers it
+/// and matches the field element's on-disk size.
 pub const SECTION_ALIGNMENT: usize = 32;
 
 /// Size of one field element on disk: four little-endian `u64` limbs of
@@ -69,6 +68,12 @@ compile_error!(
 /// Tags identifying the different payload sections in the section table.
 /// Tag values are stable across format versions within the same major
 /// version and must never be reused for a different meaning.
+///
+/// The numbering is intentionally sparse: `Coefficients8Base` (0x10) and
+/// `PermutationCoefficients8Base` (0x30) are *bases* — the `i`-th column's tag
+/// is `base + i` (see [`coefficient_tag`] / [`permutation_coefficient_tag`]),
+/// so `0x11..=0x1E` and `0x31..=0x36` are implicitly reserved. The static
+/// assertions below guard the gaps up to the next explicit tag.
 #[repr(u32)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SectionTag {
@@ -80,7 +85,8 @@ pub enum SectionTag {
     /// count followed by `count` field elements (four LE `u64` limbs each).
     /// Needed only by the debug-build gate sanity check, not by the prover.
     GateCoeffs = 0x03,
-    /// Coefficients 0..14 over domain d8 (one tag per column).
+    /// Coefficients 0..=14 over domain d8 (one tag per column, sparse:
+    /// occupies 0x10..=0x1E).
     Coefficients8Base = 0x10,
     /// Generic-gate selector over domain d4.
     GenericSelector4 = 0x20,
@@ -94,7 +100,8 @@ pub enum SectionTag {
     EmulSelector8 = 0x24,
     /// Endo-mul-scalar selector over domain d8.
     EndomulScalarSelector8 = 0x25,
-    /// Permutation coefficients 0..6 over domain d8 (one tag per column).
+    /// Permutation coefficients 0..=6 over domain d8 (one tag per column,
+    /// sparse: occupies 0x30..=0x36).
     PermutationCoefficients8Base = 0x30,
     /// Optional RangeCheck0 selector over domain d8.
     RangeCheck0Selector8 = 0x40,
@@ -137,9 +144,23 @@ impl SectionTag {
     }
 }
 
-/// Returns the section tag for the `i`-th coefficient column (0..=14).
+// The coefficient tags occupy `0x10..0x10 + COLUMNS`; the next explicit tag is
+// `GenericSelector4 = 0x20`. Likewise permutation tags occupy `0x30..0x30 +
+// PERMUTS` before `RangeCheck0Selector8 = 0x40`. Turn a future increase of
+// COLUMNS/PERMUTS that would collide into a build error rather than a silent
+// tag clash.
+const _: () = assert!(
+    COLUMNS <= 0x20 - 0x10,
+    "coefficient section tags would collide with GenericSelector4 (0x20)"
+);
+const _: () = assert!(
+    PERMUTS <= 0x40 - 0x30,
+    "permutation-coefficient section tags would collide with RangeCheck0Selector8 (0x40)"
+);
+
+/// Returns the section tag for the `i`-th coefficient column (0..`COLUMNS`).
 pub fn coefficient_tag(i: usize) -> u32 {
-    assert!(i < 15, "coefficient index out of range");
+    assert!(i < COLUMNS, "coefficient index out of range");
     SectionTag::Coefficients8Base as u32 + i as u32
 }
 
@@ -1184,11 +1205,17 @@ where
 /// Consequently, when `MmapProverIndex` is dropped, the inner
 /// `ProverIndex`'s owned sub-allocations (the owned `gates` vector,
 /// `linearization`, `powers_of_alpha`, and any LazyCache/Arc machinery)
-/// leak. This is acceptable for Mina's usage pattern — proving keys are
-/// loaded once at daemon startup and held for the life of the process,
-/// so cumulative leakage is bounded and the OS reclaims everything on
-/// exit. The `Arc<ReadOnlyMmap>` held alongside is dropped normally,
-/// which calls `munmap` and releases the bulk of the key's memory.
+/// leak. This notably includes the **`Arc<Srs>` strong count**: it is never
+/// decremented, so the SRS is never freed for the life of the process even
+/// if the caller drops its own clone. The lazily-recomputed
+/// `precomputations` (the d4/d8 `DomainConstantEvaluations`, tens of MB) are
+/// likewise owned heap allocations that leak and are *not* reclaimed by
+/// `munmap`. This is acceptable for Mina's usage pattern — proving keys are
+/// loaded once at daemon startup and held for the life of the process, so
+/// cumulative leakage is bounded and the OS reclaims everything on exit. The
+/// `Arc<ReadOnlyMmap>` held alongside is dropped normally, which calls
+/// `munmap` and releases the mmap-backed field arrays (the bulk of the
+/// on-disk key), but not the recomputed/owned allocations above.
 ///
 /// A future refinement could replace the bulk leak with a manual per-
 /// field tear-down: pattern-destructure the `ProverIndex`, drop the
@@ -1755,10 +1782,10 @@ where
     assert_bigint_layout::<G::ScalarField>()?;
 
     let file = std::fs::File::open(path)?;
-    // The mmap requires that the underlying file not be mutated by
-    // external writers while the mapping is live. We document this
-    // constraint in `key_cache.mli`. Concurrent writers use atomic rename,
-    // which keeps the original inode alive for existing readers.
+    // The mmap requires that the underlying file not be mutated in place by
+    // external writers while the mapping is live. Callers must uphold this;
+    // [`write_cache`] does, by staging to a temp file and renaming, which
+    // keeps the original inode alive for existing readers.
     let mmap = Arc::new(ReadOnlyMmap::map_file(&file)?);
     // SAFETY: we hold `mmap` in an Arc for the lifetime of the returned
     // MmapProverIndex; the `bytes` slice is therefore valid for as long as
