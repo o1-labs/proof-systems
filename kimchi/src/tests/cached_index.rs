@@ -75,14 +75,8 @@ fn cached_index_roundtrip_basic_fields() {
     {
         assert_eq!(a.typ, b.typ);
         assert_eq!(a.wires, b.wires);
-        // coeffs are intentionally dropped; the restored index has empty
-        // coeffs except for public rows, which carry `[F::one()]` so the
-        // debug-build `index.verify` sanity check still passes.
-        if row < index.cs.public {
-            assert_eq!(a.coeffs, vec![Fp::from(1u64)]);
-        } else {
-            assert!(a.coeffs.is_empty());
-        }
+        // coeffs are preserved verbatim (needed by the debug-build gate check).
+        assert_eq!(a.coeffs, b.coeffs, "gate {row} coeffs must round-trip");
     }
 
     // Column evaluations: spot-check the heaviest selector arrays.
@@ -435,6 +429,8 @@ fn cached_index_coeff_gate_prove_from_cache() {
 
     std::fs::remove_file(&path).ok();
 }
+
+
 
 #[test]
 fn cached_index_bad_magic_errors() {
