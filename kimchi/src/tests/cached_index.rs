@@ -332,6 +332,43 @@ fn cached_index_lookup_prove_then_verify() {
     std::fs::remove_file(&path).ok();
 }
 
+/// Cache writes must surface a lookup-setup failure instead of silently
+/// serialising the index as if it had no lookup constraint system.
+///
+/// With `lazy_mode = true` the `LookupConstraintSystem` is built on first
+/// access rather than at index-construction time, so a table error (here an
+/// id collision between a from-gate table and an explicitly supplied table
+/// with the same id) only surfaces when `write_cache` forces the lazy cache.
+/// The buggy behaviour was `Err(_) => None`, which dropped the error and
+/// wrote a lookup-free cache file; a later `read_cache` would then hand the
+/// prover an index whose lookup argument had silently vanished.
+#[test]
+fn cached_index_lookup_error_fails_write() {
+    use crate::circuits::polynomials::range_check;
+
+    let (_, gates) = CircuitGate::<Fp>::create_multi_range_check(0);
+    let index = new_index_for_test_with_lookups::<FULL_ROUNDS, Vesta>(
+        gates,
+        0,
+        0,
+        // Same table id (0) as the range-check gates' own from-gate table.
+        vec![range_check::gadget::lookup_table()],
+        None,
+        false,
+        None,
+        true, // lazy_mode: defer the lookup error to write time
+    );
+
+    let path = tmpfile("lookup_error");
+    let err = write_cache("lookup-error", &index, &path).expect_err("write_cache should fail");
+    assert!(
+        matches!(err, CacheError::LookupConstraintSystem(_)),
+        "expected LookupConstraintSystem error, got {err}"
+    );
+
+    std::fs::remove_file(&path).ok();
+}
+
 #[test]
 fn cached_index_bad_magic_errors() {
     let path = tmpfile("badmagic");
