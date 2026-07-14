@@ -354,8 +354,9 @@ pub enum CacheError {
         tag: u32,
         length: u64,
     },
-    /// `ark_ff::BigInt<4>` size assumption was violated at runtime.
-    BigIntSizeMismatch,
+    /// The field-element type's in-memory layout is not the four 64-bit
+    /// Montgomery limbs the zero-copy path relies on (checked at runtime).
+    FieldLayoutMismatch,
     /// `ConstraintSystem::feature_flags` bitmap had an unknown bit set.
     UnknownFeatureFlagBits {
         bits: u32,
@@ -416,9 +417,10 @@ impl fmt::Display for CacheError {
                 f,
                 "section {tag:#x} payload length {length} is not a multiple of {FIELD_ELEMENT_BYTES}"
             ),
-            CacheError::BigIntSizeMismatch => {
-                write!(f, "ark_ff::BigInt<4> is not 32 bytes on this build")
-            }
+            CacheError::FieldLayoutMismatch => write!(
+                f,
+                "field-element layout is not compatible with four 64-bit Montgomery limbs on this build"
+            ),
             CacheError::UnknownFeatureFlagBits { bits } => {
                 write!(f, "unknown bits {bits:#x} in feature-flags bitmap")
             }
@@ -519,14 +521,25 @@ pub fn limbs_to_field<F: PrimeField>(limbs: &[u64; 4]) -> F {
     unsafe { core::ptr::read(limbs as *const [u64; 4] as *const F) }
 }
 
-// Runtime assertion that the field-element layout assumption holds. Cheap
-// and only paid once per process; protects against silently picking up an
-// ark-ff upgrade that changes the representation.
-pub(crate) fn assert_bigint_layout<F: PrimeField>() -> Result<(), CacheError> {
-    if core::mem::size_of::<F::BigInt>() == FIELD_ELEMENT_BYTES {
+// Runtime assertion that the field-element layout assumption holds. Cheap and
+// only paid once per process; protects against silently picking up an ark-ff
+// upgrade that changes the representation.
+//
+// Checks `F` itself, not just `F::BigInt`: `field_to_limbs` / `limbs_to_field`
+// / `mmap_field_vec_unchecked` reinterpret an `F` as `[u64; 4]`, so it's the
+// size and alignment of `F` that must match — and `size_of::<F::BigInt>() == 32`
+// does not imply `size_of::<F>() == 32` (that `Fp`'s `PhantomData` is a ZST is
+// exactly the assumption being guarded). The inner-`debug_assert`s in those
+// functions are compiled out in release, so this is the only release-mode
+// guard; it must run before any of them.
+pub(crate) fn assert_field_layout<F: PrimeField>() -> Result<(), CacheError> {
+    if core::mem::size_of::<F>() == FIELD_ELEMENT_BYTES
+        && core::mem::align_of::<F>() == core::mem::align_of::<[u64; 4]>()
+        && core::mem::size_of::<F::BigInt>() == FIELD_ELEMENT_BYTES
+    {
         Ok(())
     } else {
-        Err(CacheError::BigIntSizeMismatch)
+        Err(CacheError::FieldLayoutMismatch)
     }
 }
 
@@ -1322,9 +1335,10 @@ fn fixed_region_size(num_sections: usize) -> usize {
 /// place, so concurrent readers of an existing `path` see either the old
 /// content or the new content but never a half-written file.
 ///
-/// This function requires `G::ScalarField::BigInt` to be 32 bytes; the
-/// assumption is checked at runtime (returns `BigIntSizeMismatch` on
-/// violation).
+/// This function requires the four-64-bit-Montgomery-limb layout for both
+/// `G::ScalarField` (the bulk field data) and `G::BaseField` (the
+/// verifier-index digest); the assumption is checked at runtime (returns
+/// `FieldLayoutMismatch` on violation).
 pub fn write_cache<const FULL_ROUNDS: usize, G, Srs>(
     identifier: &str,
     index: &ProverIndex<FULL_ROUNDS, G, Srs>,
@@ -1335,7 +1349,8 @@ where
     Srs: SRS<G>,
     G::BaseField: PrimeField,
 {
-    assert_bigint_layout::<G::ScalarField>()?;
+    assert_field_layout::<G::ScalarField>()?;
+    assert_field_layout::<G::BaseField>()?;
     if identifier.len() > IDENTIFIER_MAX_LEN {
         return Err(CacheError::IdentifierTooLong {
             len: identifier.len(),
@@ -1726,7 +1741,8 @@ where
     Srs: SRS<G>,
     G::BaseField: ark_ff::PrimeField,
 {
-    assert_bigint_layout::<G::ScalarField>()?;
+    assert_field_layout::<G::ScalarField>()?;
+    assert_field_layout::<G::BaseField>()?;
 
     let file = std::fs::File::open(path)?;
     // The mmap requires that the underlying file not be mutated by
