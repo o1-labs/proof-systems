@@ -464,7 +464,7 @@ pub fn alignment_padding(n: usize) -> usize {
 ///
 /// Reading Montgomery limbs is crucial for zero-copy: the on-disk bytes
 /// stored by [`write_field_slice`] must match `Fp`'s in-memory layout
-/// exactly so [`mmap_field_vec`] can reinterpret the mapped bytes
+/// exactly so [`mmap_field_vec_unchecked`] can reinterpret the mapped bytes
 /// directly. If we stored the canonical form (via `into_bigint`) the
 /// mmap-backed Vec would contain values that look like canonical but
 /// the prover would treat as Montgomery — silent corruption.
@@ -931,21 +931,6 @@ unsafe fn mmap_field_vec_unchecked<F: PrimeField>(bytes: &[u8], count: usize) ->
     // SAFETY: the caller contract forbids dropping or growing the
     // returned Vec; its lifetime must be bounded by the mmap's.
     Vec::from_raw_parts(ptr, count, count)
-}
-
-/// Fallible convenience wrapper: [`validate_field_section`] followed by
-/// [`mmap_field_vec_unchecked`]. Callers of this validate-and-construct
-/// combination interleave fallible parsing with live mmap-backed Vecs; the
-/// reader is being migrated to call the two halves in separate phases, at
-/// which point this wrapper disappears.
-///
-/// # Safety
-///
-/// Same contract as [`mmap_field_vec_unchecked`], minus the length
-/// precondition (checked here).
-unsafe fn mmap_field_vec<F: PrimeField>(bytes: &[u8], count: usize) -> Result<Vec<F>, CacheError> {
-    validate_field_section(0, bytes, count)?;
-    Ok(mmap_field_vec_unchecked(bytes, count))
 }
 
 // ---------------------------------------------------------------------------
@@ -1795,18 +1780,39 @@ where
     let d4 = domain.d4;
     let d8 = domain.d8;
 
-    // sid.
-    let sid_entry = sections
-        .get(&(SectionTag::Sid as u32))
-        .ok_or(CacheError::MissingSection {
-            tag: SectionTag::Sid as u32,
-        })?;
-    let sid_count = sid_entry.elem_domain_size as usize;
-    let sid = unsafe {
-        mmap_field_vec::<G::ScalarField>(section_bytes(SectionTag::Sid as u32)?, sid_count)?
-    };
+    // --- Validation phase -------------------------------------------------
+    // Everything below that can fail runs BEFORE any mmap-backed `Vec<F>` is
+    // constructed. We only collect validated `(bytes, count)` descriptors
+    // here; the actual `Vec::from_raw_parts` views are built in the
+    // infallible materialisation phase further down. This ordering is a
+    // memory-safety requirement: an early `?` return once a mmap-backed Vec
+    // existed would drop it and free mmap memory through the global allocator
+    // (observed as a `free(): invalid pointer` process abort).
 
-    // Gates.
+    // Fetches a section and validates it holds exactly `elem_domain_size`
+    // field elements, returning the raw bytes + count. Constructs no Vec.
+    let field_section = |tag: u32| -> Result<(&[u8], usize), CacheError> {
+        let entry = sections
+            .get(&tag)
+            .ok_or(CacheError::MissingSection { tag })?;
+        let count = entry.elem_domain_size as usize;
+        let b = section_bytes(tag)?;
+        validate_field_section(tag, b, count)?;
+        Ok((b, count))
+    };
+    let optional_field_section =
+        |tag: u32, mask: u32, present: u32| -> Result<Option<(&[u8], usize)>, CacheError> {
+            if present & mask != 0 {
+                Ok(Some(field_section(tag)?))
+            } else {
+                Ok(None)
+            }
+        };
+
+    // sid.
+    let sid_desc = field_section(SectionTag::Sid as u32)?;
+
+    // Gates (owned Vec, not mmap-backed — safe to build/drop fallibly here).
     let gates_bytes = section_bytes(SectionTag::Gates as u32)?;
     if gates_bytes.len() % PRUNED_GATE_SIZE != 0 {
         return Err(CacheError::PayloadNotFieldAligned {
@@ -1819,9 +1825,9 @@ where
         gates.push(read_pruned_gate::<G::ScalarField>(chunk)?);
     }
     // Restore each gate's coefficient vector from the GateCoeffs section.
-    // The prover doesn't read these, but the debug-build `ProverIndex::verify`
-    // gate check does (per-gate `verify()` reads `gate.coeffs`, and the
-    // public-row check reads `gate.coeffs.first()`), so they must round-trip.
+    // These are owned Vecs, so parsing them fallibly is safe. The prover
+    // doesn't read coeffs, but the debug-build `ProverIndex::verify` gate
+    // check does (per-gate `verify()` reads `gate.coeffs`).
     {
         let mut cursor = section_bytes(SectionTag::GateCoeffs as u32)?;
         for gate in gates.iter_mut() {
@@ -1842,98 +1848,62 @@ where
         }
     }
 
-    // Column evaluations. Each `Evaluations.evals` Vec points directly
-    // into the mmap via `mmap_field_vec`; the `unsafe` block is sound so
-    // long as the returned MmapProverIndex keeps the mmap alive and
-    // wraps the ProverIndex in ManuallyDrop so Vec::drop never runs.
-    let read_evals_d = |tag: u32,
-                        d: Radix2EvaluationDomain<G::ScalarField>|
-     -> Result<
-        Evaluations<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>,
-        CacheError,
-    > {
-        let entry = sections
-            .get(&tag)
-            .ok_or(CacheError::MissingSection { tag })?;
-        let count = entry.elem_domain_size as usize;
-        let evals = unsafe { mmap_field_vec::<G::ScalarField>(section_bytes(tag)?, count)? };
-        Ok(Evaluations::<G::ScalarField, _>::from_vec_and_domain(
-            evals, d,
-        ))
-    };
-
-    let mut coefficients8: Vec<Evaluations<G::ScalarField, _>> = Vec::with_capacity(COLUMNS);
+    // Column-evaluation descriptors (validated, not yet materialised).
+    let mut coeff_descs: Vec<(&[u8], usize)> = Vec::with_capacity(COLUMNS);
     for i in 0..COLUMNS {
-        coefficients8.push(read_evals_d(coefficient_tag(i), d8)?);
+        coeff_descs.push(field_section(coefficient_tag(i))?);
     }
-    let coefficients8: [Evaluations<G::ScalarField, _>; COLUMNS] = coefficients8
+    let coeff_descs: [(&[u8], usize); COLUMNS] = coeff_descs
         .try_into()
         .map_err(|_| CacheError::TruncatedFile)?;
 
-    let mut permutation_coefficients8: Vec<Evaluations<G::ScalarField, _>> =
-        Vec::with_capacity(PERMUTS);
+    let mut perm_descs: Vec<(&[u8], usize)> = Vec::with_capacity(PERMUTS);
     for i in 0..PERMUTS {
-        permutation_coefficients8.push(read_evals_d(permutation_coefficient_tag(i), d8)?);
+        perm_descs.push(field_section(permutation_coefficient_tag(i))?);
     }
-    let permutation_coefficients8: [Evaluations<G::ScalarField, _>; PERMUTS] =
-        permutation_coefficients8
-            .try_into()
-            .map_err(|_| CacheError::TruncatedFile)?;
+    let perm_descs: [(&[u8], usize); PERMUTS] = perm_descs
+        .try_into()
+        .map_err(|_| CacheError::TruncatedFile)?;
 
-    let generic_selector4 = read_evals_d(SectionTag::GenericSelector4 as u32, d4)?;
-    let poseidon_selector8 = read_evals_d(SectionTag::PoseidonSelector8 as u32, d8)?;
-    let complete_add_selector4 = read_evals_d(SectionTag::CompleteAddSelector4 as u32, d4)?;
-    let mul_selector8 = read_evals_d(SectionTag::MulSelector8 as u32, d8)?;
-    let emul_selector8 = read_evals_d(SectionTag::EmulSelector8 as u32, d8)?;
-    let endomul_scalar_selector8 = read_evals_d(SectionTag::EndomulScalarSelector8 as u32, d8)?;
+    let generic_selector4_desc = field_section(SectionTag::GenericSelector4 as u32)?;
+    let poseidon_selector8_desc = field_section(SectionTag::PoseidonSelector8 as u32)?;
+    let complete_add_selector4_desc = field_section(SectionTag::CompleteAddSelector4 as u32)?;
+    let mul_selector8_desc = field_section(SectionTag::MulSelector8 as u32)?;
+    let emul_selector8_desc = field_section(SectionTag::EmulSelector8 as u32)?;
+    let endomul_scalar_selector8_desc = field_section(SectionTag::EndomulScalarSelector8 as u32)?;
 
-    let read_optional =
-        |tag: u32, mask: u32| -> Result<Option<Evaluations<G::ScalarField, _>>, CacheError> {
-            if header.optional_selectors_present & mask != 0 {
-                Ok(Some(read_evals_d(tag, d8)?))
-            } else {
-                Ok(None)
-            }
-        };
-    let range_check0_selector8 = read_optional(
+    let opt = header.optional_selectors_present;
+    let range_check0_desc = optional_field_section(
         SectionTag::RangeCheck0Selector8 as u32,
         OptionalSelectorBits::RANGE_CHECK_0,
+        opt,
     )?;
-    let range_check1_selector8 = read_optional(
+    let range_check1_desc = optional_field_section(
         SectionTag::RangeCheck1Selector8 as u32,
         OptionalSelectorBits::RANGE_CHECK_1,
+        opt,
     )?;
-    let foreign_field_add_selector8 = read_optional(
+    let ffadd_desc = optional_field_section(
         SectionTag::ForeignFieldAddSelector8 as u32,
         OptionalSelectorBits::FOREIGN_FIELD_ADD,
+        opt,
     )?;
-    let foreign_field_mul_selector8 = read_optional(
+    let ffmul_desc = optional_field_section(
         SectionTag::ForeignFieldMulSelector8 as u32,
         OptionalSelectorBits::FOREIGN_FIELD_MUL,
+        opt,
     )?;
-    let xor_selector8 = read_optional(SectionTag::XorSelector8 as u32, OptionalSelectorBits::XOR)?;
-    let rot_selector8 = read_optional(SectionTag::RotSelector8 as u32, OptionalSelectorBits::ROT)?;
+    let xor_desc = optional_field_section(
+        SectionTag::XorSelector8 as u32,
+        OptionalSelectorBits::XOR,
+        opt,
+    )?;
+    let rot_desc = optional_field_section(
+        SectionTag::RotSelector8 as u32,
+        OptionalSelectorBits::ROT,
+        opt,
+    )?;
 
-    let column_evaluations = ColumnEvaluations::<G::ScalarField> {
-        permutation_coefficients8,
-        coefficients8,
-        generic_selector4,
-        poseidon_selector8,
-        complete_add_selector4,
-        mul_selector8,
-        emul_selector8,
-        endomul_scalar_selector8,
-        range_check0_selector8,
-        range_check1_selector8,
-        foreign_field_add_selector8,
-        foreign_field_mul_selector8,
-        xor_selector8,
-        rot_selector8,
-    };
-
-    // Rebuild ConstraintSystem by going through its builder. The builder
-    // recomputes sid and friends from the gates + public count, which is
-    // exactly what we want.
     let feature_flags = unpack_feature_flags(header.feature_flags)?;
     let shift: [G::ScalarField; PERMUTS] = {
         let mut arr = [G::ScalarField::from(0u64); PERMUTS];
@@ -1943,41 +1913,6 @@ where
         arr
     };
     let endo = limbs_to_field::<G::ScalarField>(&header.endo_limbs);
-    // We need a fully-populated ConstraintSystem. Rather than calling the
-    // builder (which recomputes many fields we already have on disk), fill
-    // it manually. This is equivalent to the `Deserialize` impl.
-    let precomputations = Arc::new(LazyCache::new({
-        let precomputations_domain = domain;
-        let zk_rows = header.zk_rows;
-        move || {
-            Arc::new(
-                crate::circuits::domain_constant_evaluation::DomainConstantEvaluations::create(
-                    precomputations_domain,
-                    zk_rows,
-                )
-                .expect("domain constant evaluations"),
-            )
-        }
-    }));
-    // Fetches a section and validates it holds exactly `elem_domain_size`
-    // field elements, returning the raw bytes + count. Constructs no Vec.
-    let field_section = |tag: u32| -> Result<(&[u8], usize), CacheError> {
-        let entry = sections
-            .get(&tag)
-            .ok_or(CacheError::MissingSection { tag })?;
-        let count = entry.elem_domain_size as usize;
-        let b = section_bytes(tag)?;
-        validate_field_section(tag, b, count)?;
-        Ok((b, count))
-    };
-    let optional_field_section =
-        |tag: u32, mask: u32, present: u32| -> Result<Option<(&[u8], usize)>, CacheError> {
-            if present & mask != 0 {
-                Ok(Some(field_section(tag)?))
-            } else {
-                Ok(None)
-            }
-        };
 
     // Lookup descriptors, gated on the same presence bitmap stamped at write
     // time. Owned data (runtime tables / offset) is parsed here; field arrays
@@ -2106,23 +2041,66 @@ where
         None
     };
 
-    // Materialise the lookup constraint system from the validated parts.
-    // Every descriptor above was length-checked, so construction cannot
-    // fail. The plain field sections are still validated-and-built in one
-    // interleaved pass above, so the abort window is narrowed to them —
-    // closed when they move to the same two-phase structure.
+    // --- Materialisation phase (infallible) -------------------------------
+    // Nothing below returns `Err`, so every mmap-backed `Vec<F>` built here is
+    // guaranteed to reach the `ManuallyDrop` index and never run its
+    // destructor. Each descriptor was length-validated above.
+    //
+    // SAFETY (applies to every `mmap_field_vec_unchecked` call below): the
+    // descriptor byte length was checked to equal `count * FIELD_ELEMENT_BYTES`;
+    // the mmap outlives the returned index (held via `_mmap`); and the index
+    // is stored in `ManuallyDrop` so these Vecs never drop or grow.
+    let make_eval = |(b, c): (&[u8], usize),
+                     d: Radix2EvaluationDomain<G::ScalarField>|
+     -> Evaluations<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>> {
+        Evaluations::<G::ScalarField, _>::from_vec_and_domain(
+            unsafe { mmap_field_vec_unchecked::<G::ScalarField>(b, c) },
+            d,
+        )
+    };
     let make_opt_eval = |desc: Option<(&[u8], usize)>,
                          d: Radix2EvaluationDomain<G::ScalarField>| {
-        desc.map(|(b, c)| {
-            Evaluations::<G::ScalarField, _>::from_vec_and_domain(
-                // SAFETY: `b` was validated to hold exactly `c` field
-                // elements; the mmap outlives the returned index, which is
-                // stored in `ManuallyDrop` so the Vec never drops.
-                unsafe { mmap_field_vec_unchecked::<G::ScalarField>(b, c) },
-                d,
-            )
-        })
+        desc.map(|x| make_eval(x, d))
     };
+
+    let sid = unsafe { mmap_field_vec_unchecked::<G::ScalarField>(sid_desc.0, sid_desc.1) };
+
+    let coefficients8: [Evaluations<G::ScalarField, _>; COLUMNS] =
+        coeff_descs.map(|desc| make_eval(desc, d8));
+    let permutation_coefficients8: [Evaluations<G::ScalarField, _>; PERMUTS] =
+        perm_descs.map(|desc| make_eval(desc, d8));
+
+    let column_evaluations = ColumnEvaluations::<G::ScalarField> {
+        permutation_coefficients8,
+        coefficients8,
+        generic_selector4: make_eval(generic_selector4_desc, d4),
+        poseidon_selector8: make_eval(poseidon_selector8_desc, d8),
+        complete_add_selector4: make_eval(complete_add_selector4_desc, d4),
+        mul_selector8: make_eval(mul_selector8_desc, d8),
+        emul_selector8: make_eval(emul_selector8_desc, d8),
+        endomul_scalar_selector8: make_eval(endomul_scalar_selector8_desc, d8),
+        range_check0_selector8: make_opt_eval(range_check0_desc, d8),
+        range_check1_selector8: make_opt_eval(range_check1_desc, d8),
+        foreign_field_add_selector8: make_opt_eval(ffadd_desc, d8),
+        foreign_field_mul_selector8: make_opt_eval(ffmul_desc, d8),
+        xor_selector8: make_opt_eval(xor_desc, d8),
+        rot_selector8: make_opt_eval(rot_desc, d8),
+    };
+
+    let precomputations = Arc::new(LazyCache::new({
+        let precomputations_domain = domain;
+        let zk_rows = header.zk_rows;
+        move || {
+            Arc::new(
+                crate::circuits::domain_constant_evaluation::DomainConstantEvaluations::create(
+                    precomputations_domain,
+                    zk_rows,
+                )
+                .expect("domain constant evaluations"),
+            )
+        }
+    }));
+
     let lookup_constraint_system = match lookup {
         None => Arc::new(LazyCache::new(|| {
             Ok::<
