@@ -878,54 +878,74 @@ fn write_field_slice<F: PrimeField>(out: &mut Vec<u8>, elements: &[F]) {
     }
 }
 
-/// Zero-copy: constructs a `Vec<F>` whose backing storage is the mmap
-/// region itself, via `Vec::from_raw_parts(mmap_ptr, len, len)`.
-///
-/// # Safety
-///
-/// The returned `Vec<F>` **must never be dropped normally**. Vec's `Drop`
-/// calls `Global::dealloc` on its pointer, which for this value points
-/// into mmap memory — calling `dealloc` on that pointer is undefined
-/// behaviour (it would try to free non-heap memory). Callers must keep
-/// the returned `Vec<F>` inside a container whose own `Drop` either:
-///
-/// 1. Wraps the whole thing in [`core::mem::ManuallyDrop`] so the Vec's
-///    `Drop` never runs (the approach used by [`MmapProverIndex`]), or
-/// 2. Manually `mem::forget`s the Vec before the container drops.
-///
-/// The returned Vec also **must never grow**: a reallocation would call
-/// the allocator to allocate and then copy-from/dealloc the old pointer.
-/// Since the prover only reads field elements, this is fine in practice
-/// but worth stating.
-///
-/// The caller is responsible for ensuring `bytes` is aligned for `F`
-/// (8-byte aligned is sufficient for `BigInt<4>` — 32-byte section
-/// alignment in the cache format covers this), and for keeping the
-/// underlying mmap alive for the lifetime of the returned `Vec<F>`.
-///
-/// The byte slice must be exactly `count × FIELD_ELEMENT_BYTES` long.
-unsafe fn mmap_field_vec<F: PrimeField>(bytes: &[u8], count: usize) -> Result<Vec<F>, CacheError> {
+/// Validates that `bytes` holds exactly `count` field elements, i.e. that
+/// `bytes.len() == count * FIELD_ELEMENT_BYTES`. Purely a check — constructs
+/// nothing — so it is safe to call in the reader's fallible validation phase
+/// before any mmap-backed `Vec` exists. `tag` is only used for the error.
+fn validate_field_section(tag: u32, bytes: &[u8], count: usize) -> Result<(), CacheError> {
     let expected = count
         .checked_mul(FIELD_ELEMENT_BYTES)
         .ok_or(CacheError::TruncatedFile)?;
     if bytes.len() != expected {
         return Err(CacheError::PayloadNotFieldAligned {
-            tag: 0,
+            tag,
             length: bytes.len() as u64,
         });
     }
+    Ok(())
+}
+
+/// Zero-copy: constructs a `Vec<F>` whose backing storage is the mmap
+/// region itself, via `Vec::from_raw_parts(mmap_ptr, len, len)`.
+///
+/// This is **infallible by design**: it performs no validation and simply
+/// reinterprets the bytes. All length/alignment validation must be done up
+/// front (see [`validate_field_section`]) so that this constructor — and
+/// therefore the first live mmap-backed `Vec` — is only ever reached once the
+/// entire file is known to be well-formed. That ordering is what makes the
+/// reader panic-free: an `Err` returned *after* one of these Vecs existed
+/// would drop it, calling the global allocator on mmap memory (undefined
+/// behaviour, observed as a `free(): invalid pointer` abort).
+///
+/// # Safety
+///
+/// - `bytes.len()` **must** equal `count * FIELD_ELEMENT_BYTES` (caller
+///   guarantees this via [`validate_field_section`]).
+/// - The returned `Vec<F>` **must never be dropped normally** and **must
+///   never grow**: both would call `dealloc`/`realloc` on the mmap pointer.
+///   Callers keep it inside a [`core::mem::ManuallyDrop`] container (see
+///   [`MmapProverIndex`]) so `Vec::drop` never runs.
+/// - `bytes` must be aligned for `F` (8-byte alignment suffices for
+///   `BigInt<4>`; the format's 32-byte section alignment covers this) and the
+///   underlying mmap must outlive the returned `Vec<F>`.
+unsafe fn mmap_field_vec_unchecked<F: PrimeField>(bytes: &[u8], count: usize) -> Vec<F> {
+    debug_assert_eq!(bytes.len(), count * FIELD_ELEMENT_BYTES);
     // Alignment check: `BigInt<4>` = `[u64; 4]` needs 8-byte alignment.
     // Section offsets are 32-byte aligned in the cache format so this
     // should always hold; assert it defensively.
-    let align = core::mem::align_of::<F>();
     debug_assert!(
-        (bytes.as_ptr() as usize).is_multiple_of(align),
+        (bytes.as_ptr() as usize).is_multiple_of(core::mem::align_of::<F>()),
         "mmap section pointer not aligned for F"
     );
     let ptr = bytes.as_ptr() as *mut F;
     // SAFETY: the caller contract forbids dropping or growing the
     // returned Vec; its lifetime must be bounded by the mmap's.
-    Ok(Vec::from_raw_parts(ptr, count, count))
+    Vec::from_raw_parts(ptr, count, count)
+}
+
+/// Fallible convenience wrapper: [`validate_field_section`] followed by
+/// [`mmap_field_vec_unchecked`]. Callers of this validate-and-construct
+/// combination interleave fallible parsing with live mmap-backed Vecs; the
+/// reader is being migrated to call the two halves in separate phases, at
+/// which point this wrapper disappears.
+///
+/// # Safety
+///
+/// Same contract as [`mmap_field_vec_unchecked`], minus the length
+/// precondition (checked here).
+unsafe fn mmap_field_vec<F: PrimeField>(bytes: &[u8], count: usize) -> Result<Vec<F>, CacheError> {
+    validate_field_section(0, bytes, count)?;
+    Ok(mmap_field_vec_unchecked(bytes, count))
 }
 
 // ---------------------------------------------------------------------------
