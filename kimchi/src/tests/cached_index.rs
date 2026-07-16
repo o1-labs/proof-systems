@@ -75,8 +75,13 @@ fn cached_index_roundtrip_basic_fields() {
     {
         assert_eq!(a.typ, b.typ);
         assert_eq!(a.wires, b.wires);
-        // coeffs are preserved verbatim (needed by the debug-build gate check).
+        // Coeffs are only read by the debug-build gate check, so only debug
+        // builds materialise them (release builds must not pay the heap —
+        // see cached_index_release_skips_gate_coeffs).
+        #[cfg(debug_assertions)]
         assert_eq!(a.coeffs, b.coeffs, "gate {row} coeffs must round-trip");
+        #[cfg(not(debug_assertions))]
+        let _ = row;
     }
 
     // Column evaluations: spot-check the heaviest selector arrays.
@@ -503,6 +508,46 @@ fn cached_index_failed_write_leaves_no_staging_file() {
     );
 
     std::fs::remove_dir_all(&parent).ok();
+}
+
+/// Release builds must not materialise per-gate coefficient vectors from
+/// the GateCoeffs section. Their only consumer — the per-gate check in
+/// `ProverProof::create` via `index.verify()` — is compiled out under
+/// `cfg!(debug_assertions)`, so in release the decode is tens of MB of
+/// owned, never-read heap per key (e.g. ~31 MB for a 2^16-row circuit)
+/// that the `ManuallyDrop` design also leaks on drop, eroding exactly the
+/// memory savings the mmap cache exists to provide. The debug-build
+/// counterpart is the coeff round-trip assertion in
+/// `cached_index_roundtrip_basic_fields`.
+///
+/// Only exists in release builds (`cfg(not(debug_assertions))`) — plain
+/// `cargo test` does not even compile it. Run it with:
+///
+///   cargo test -p kimchi --features mmap_cache --release cached_index_release_skips_gate_coeffs
+#[cfg(not(debug_assertions))]
+#[test]
+fn cached_index_release_skips_gate_coeffs() {
+    let public = [Fp::from(3u8); 5];
+    let gates = create_circuit(0, public.len());
+    let index = new_index_for_test::<FULL_ROUNDS, Vesta>(gates, public.len());
+    // Sanity: the source circuit actually carries coefficients, otherwise
+    // "nothing materialised" would hold vacuously.
+    assert!(index.cs.gates.iter().any(|g| !g.coeffs.is_empty()));
+
+    let path = tmpfile("release_coeffs");
+    let id = "release-coeffs-id";
+    write_cache(id, &index, &path).expect("write_cache");
+
+    let srs = index.srs.clone();
+    let restored = read_cache::<FULL_ROUNDS, Vesta, _>(id, &path, srs).expect("read_cache");
+
+    let materialised: usize = restored.cs.gates.iter().map(|g| g.coeffs.len()).sum();
+    assert_eq!(
+        materialised, 0,
+        "release build materialised {materialised} gate coefficients nothing will read"
+    );
+
+    std::fs::remove_file(&path).ok();
 }
 
 #[test]
