@@ -473,6 +473,38 @@ fn cached_index_corrupt_after_first_vec_errors_cleanly() {
     std::fs::remove_file(&path).ok();
 }
 
+/// A failed atomic write must not leave the staging file behind: every
+/// error path in `write_cache` between creating the temp file and renaming
+/// it into place (`write_all`, `sync_all`, `rename`) bails with `?` and
+/// orphans a full-size staged copy of the proving key.
+#[test]
+fn cached_index_failed_write_leaves_no_staging_file() {
+    let public = [Fp::from(3u8); 5];
+    let gates = create_circuit(0, public.len());
+    let index = new_index_for_test::<FULL_ROUNDS, Vesta>(gates, public.len());
+
+    // Dedicated parent dir so the orphan scan only sees this test's files.
+    let parent = tmpfile("failed_write_dir");
+    std::fs::create_dir_all(&parent).unwrap();
+    let path = parent.join("cache.bin");
+    // Make the final rename fail: the destination exists as a directory.
+    std::fs::create_dir(&path).unwrap();
+
+    write_cache("failed-write-id", &index, &path).expect_err("rename onto a directory must fail");
+
+    let leftovers: Vec<_> = std::fs::read_dir(&parent)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .filter(|n| n != "cache.bin")
+        .collect();
+    assert!(
+        leftovers.is_empty(),
+        "failed write left staging files behind: {leftovers:?}"
+    );
+
+    std::fs::remove_dir_all(&parent).ok();
+}
+
 #[test]
 fn cached_index_bad_magic_errors() {
     let path = tmpfile("badmagic");
