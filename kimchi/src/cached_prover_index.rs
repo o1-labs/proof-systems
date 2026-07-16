@@ -1892,25 +1892,33 @@ where
         gates.push(read_pruned_gate::<G::ScalarField>(chunk)?);
     }
     // Restore each gate's coefficient vector from the GateCoeffs section.
-    // These are owned Vecs, so parsing them fallibly is safe. The prover
-    // doesn't read coeffs, but the debug-build `ProverIndex::verify` gate
-    // check does (per-gate `verify()` reads `gate.coeffs`).
+    // These are owned Vecs, so parsing them fallibly is safe. Their only
+    // consumer is the `cfg!(debug_assertions)` gate check in
+    // `ProverProof::create` (per-gate `verify()` reads `gate.coeffs`), so
+    // only debug builds materialise them — in release they would be tens of
+    // MB of never-read heap per key, leaked on drop by the `ManuallyDrop`
+    // design. The section is still fully validated in every build so a
+    // corrupt file is rejected identically; note that a release-loaded index
+    // re-exported through [`write_cache`] therefore writes empty coeffs,
+    // which only debug-build gate checks would miss.
     {
         let mut cursor = section_bytes(SectionTag::GateCoeffs as u32)?;
         for gate in gates.iter_mut() {
             let (count, rest) = read_u32_le(cursor)?;
             let (fields, rest) = read_exact(rest, count as usize * FIELD_ELEMENT_BYTES)?;
-            let mut coeffs = Vec::with_capacity(count as usize);
-            for chunk in fields.chunks_exact(FIELD_ELEMENT_BYTES) {
-                let mut limbs = [0u64; 4];
-                for (i, limb) in limbs.iter_mut().enumerate() {
-                    let mut b = [0u8; 8];
-                    b.copy_from_slice(&chunk[i * 8..i * 8 + 8]);
-                    *limb = u64::from_le_bytes(b);
+            if cfg!(debug_assertions) {
+                let mut coeffs = Vec::with_capacity(count as usize);
+                for chunk in fields.chunks_exact(FIELD_ELEMENT_BYTES) {
+                    let mut limbs = [0u64; 4];
+                    for (i, limb) in limbs.iter_mut().enumerate() {
+                        let mut b = [0u8; 8];
+                        b.copy_from_slice(&chunk[i * 8..i * 8 + 8]);
+                        *limb = u64::from_le_bytes(b);
+                    }
+                    coeffs.push(limbs_to_field::<G::ScalarField>(&limbs));
                 }
-                coeffs.push(limbs_to_field::<G::ScalarField>(&limbs));
+                gate.coeffs = coeffs;
             }
-            gate.coeffs = coeffs;
             cursor = rest;
         }
     }
