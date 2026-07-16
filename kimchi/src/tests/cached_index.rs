@@ -550,6 +550,46 @@ fn cached_index_release_skips_gate_coeffs() {
     std::fs::remove_file(&path).ok();
 }
 
+/// A cache file from an older format version must be rejected with a clean
+/// `UnsupportedFormatVersion` — never parsed as the current layout. The
+/// format has no migration path by design: FFI callers are expected to
+/// treat any read failure as a cache miss and regenerate, so after a
+/// version bump (e.g. the v2 -> v3 GateCoeffs addition) a stale cache from
+/// before an upgrade must surface as exactly this catchable error.
+#[test]
+fn cached_index_old_format_version_errors() {
+    use crate::cached_prover_index::FORMAT_VERSION;
+
+    let public = [Fp::from(3u8); 5];
+    let gates = create_circuit(0, public.len());
+    let index = new_index_for_test::<FULL_ROUNDS, Vesta>(gates, public.len());
+
+    let path = tmpfile("old_version");
+    let id = "old-version-id";
+    write_cache(id, &index, &path).expect("write_cache");
+
+    // The format version is the u32 le right after the 8-byte magic. Stamp
+    // the previous version onto an otherwise valid file.
+    let mut bytes = std::fs::read(&path).unwrap();
+    bytes[8..12].copy_from_slice(&(FORMAT_VERSION - 1).to_le_bytes());
+    std::fs::write(&path, &bytes).unwrap();
+
+    let srs = index.srs.clone();
+    let err = read_cache::<FULL_ROUNDS, Vesta, _>(id, &path, srs).expect_err("should fail");
+    assert!(
+        matches!(
+            err,
+            CacheError::UnsupportedFormatVersion {
+                found,
+                supported,
+            } if found == FORMAT_VERSION - 1 && supported == FORMAT_VERSION
+        ),
+        "expected UnsupportedFormatVersion, got {err}"
+    );
+
+    std::fs::remove_file(&path).ok();
+}
+
 #[test]
 fn cached_index_bad_magic_errors() {
     let path = tmpfile("badmagic");
