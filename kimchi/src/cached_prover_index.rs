@@ -1722,6 +1722,28 @@ where
     Ok(())
 }
 
+/// Validated, not-yet-materialised lookup sections gathered during the
+/// reader's validation phase. The `&[u8]` descriptors borrow the mmap; the
+/// owned runtime-table data is parsed eagerly (it is not mmap-backed). All of
+/// this is turned into a `LookupConstraintSystem` in the infallible
+/// materialisation phase so no mmap-backed `Vec` is built before validation
+/// completes. `_desc` fields are `(bytes, element_count)`.
+struct LookupParts<'a> {
+    lt_bytes: &'a [u8],
+    /// Number of inner d8-sized arrays packed into `lt_bytes`.
+    n: usize,
+    d8_size: usize,
+    inner_bytes: usize,
+    table_ids8_desc: Option<(&'a [u8], usize)>,
+    sel_xor_desc: Option<(&'a [u8], usize)>,
+    sel_lookup_desc: Option<(&'a [u8], usize)>,
+    sel_range_check_desc: Option<(&'a [u8], usize)>,
+    sel_ffmul_desc: Option<(&'a [u8], usize)>,
+    runtime_selector_desc: Option<(&'a [u8], usize)>,
+    runtime_tables: Option<Vec<RuntimeTableSpec>>,
+    runtime_table_offset: Option<usize>,
+}
+
 /// Reads a cache file produced by [`write_cache`] and returns an
 /// [`MmapProverIndex`]: a [`ProverIndex`]-compatible wrapper whose bulk
 /// `Vec<F>` fields are backed by the mmap'd file rather than heap copies.
@@ -1747,28 +1769,6 @@ where
 ///
 /// Identifier and ark-ff version must match the values the file was
 /// produced with, otherwise a descriptive error is returned.
-/// Validated, not-yet-materialised lookup sections gathered during the
-/// reader's validation phase. The `&[u8]` descriptors borrow the mmap; the
-/// owned runtime-table data is parsed eagerly (it is not mmap-backed). All of
-/// this is turned into a `LookupConstraintSystem` in the infallible
-/// materialisation phase so no mmap-backed `Vec` is built before validation
-/// completes. `_desc` fields are `(bytes, element_count)`.
-struct LookupParts<'a> {
-    lt_bytes: &'a [u8],
-    /// Number of inner d8-sized arrays packed into `lt_bytes`.
-    n: usize,
-    d8_size: usize,
-    inner_bytes: usize,
-    table_ids8_desc: Option<(&'a [u8], usize)>,
-    sel_xor_desc: Option<(&'a [u8], usize)>,
-    sel_lookup_desc: Option<(&'a [u8], usize)>,
-    sel_range_check_desc: Option<(&'a [u8], usize)>,
-    sel_ffmul_desc: Option<(&'a [u8], usize)>,
-    runtime_selector_desc: Option<(&'a [u8], usize)>,
-    runtime_tables: Option<Vec<RuntimeTableSpec>>,
-    runtime_table_offset: Option<usize>,
-}
-
 pub fn read_cache<const FULL_ROUNDS: usize, G, Srs>(
     identifier: &str,
     path: &Path,
