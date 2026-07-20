@@ -375,8 +375,6 @@ pub enum CacheError {
         tag: u32,
         length: u64,
     },
-    /// `ark_ff::BigInt<4>` size assumption was violated at runtime.
-    BigIntSizeMismatch,
     /// `ConstraintSystem::feature_flags` bitmap had an unknown bit set.
     UnknownFeatureFlagBits {
         bits: u32,
@@ -438,9 +436,6 @@ impl fmt::Display for CacheError {
                 f,
                 "section {tag:#x} payload length {length} is not a multiple of {FIELD_ELEMENT_BYTES}"
             ),
-            CacheError::BigIntSizeMismatch => {
-                write!(f, "ark_ff::BigInt<4> is not 32 bytes on this build")
-            }
             CacheError::UnknownFeatureFlagBits { bits } => {
                 write!(f, "unknown bits {bits:#x} in feature-flags bitmap")
             }
@@ -541,17 +536,6 @@ pub fn limbs_to_field<F: PrimeField>(limbs: &[u64; 4]) -> F {
     // be uninitialised, but since the Pasta Fp has no padding this is a
     // full-bytes read.
     unsafe { core::ptr::read(limbs as *const [u64; 4] as *const F) }
-}
-
-// Runtime assertion that the field-element layout assumption holds. Cheap
-// and only paid once per process; protects against silently picking up an
-// ark-ff upgrade that changes the representation.
-pub(crate) fn assert_bigint_layout<F: PrimeField>() -> Result<(), CacheError> {
-    if core::mem::size_of::<F::BigInt>() == FIELD_ELEMENT_BYTES {
-        Ok(())
-    } else {
-        Err(CacheError::BigIntSizeMismatch)
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1350,10 +1334,6 @@ fn fixed_region_size(num_sections: usize) -> usize {
 /// (`path.tmp.<pid>.<n>`) and renamed into place, so concurrent readers of an
 /// existing `path` see either the old or new content but never a half-written
 /// file, and two concurrent writers cannot corrupt each other's staging file.
-///
-/// This function requires `G::ScalarField::BigInt` to be 32 bytes; the
-/// assumption is checked at runtime (returns `BigIntSizeMismatch` on
-/// violation).
 pub fn write_cache<const FULL_ROUNDS: usize, G, Srs>(
     identifier: &str,
     index: &ProverIndex<FULL_ROUNDS, G, Srs>,
@@ -1364,7 +1344,6 @@ where
     Srs: SRS<G>,
     G::BaseField: PrimeField,
 {
-    assert_bigint_layout::<G::ScalarField>()?;
     if identifier.len() > IDENTIFIER_MAX_LEN {
         return Err(CacheError::IdentifierTooLong {
             len: identifier.len(),
@@ -1779,8 +1758,6 @@ where
     Srs: SRS<G>,
     G::BaseField: ark_ff::PrimeField,
 {
-    assert_bigint_layout::<G::ScalarField>()?;
-
     let file = std::fs::File::open(path)?;
     // The mmap requires that the underlying file not be mutated in place by
     // external writers while the mapping is live. Callers must uphold this;
