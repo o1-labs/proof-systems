@@ -9,10 +9,12 @@ version.workspace = true
 
 [lib]
 name = "kimchi_stubs"
-# Important: do not ask to build a dynamic library.
-# On MacOS arm64, ocaml-rs.v0.2.2 causes build issues.
-# On the Mina side, a fake and empty dllkimchi_stubs.so file is used.
-crate-type = ["lib", "staticlib"]
+# staticlib is linked statically into native binaries; cdylib becomes
+# dllkimchi_stubs.so, dlopened only by OCaml bytecode / utop builds. The cdylib
+# references undefined caml_* runtime symbols resolved at load time from the
+# host executable; on macOS the link needs -undefined dynamic_lookup, which the
+# Mina-side dune rule threads through RUSTFLAGS.
+crate-type = ["lib", "staticlib", "cdylib"]
 
 [dependencies]
 libc.workspace = true
