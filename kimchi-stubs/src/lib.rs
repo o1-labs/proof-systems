@@ -24,6 +24,9 @@ pub mod arkworks;
 /// Utils
 pub mod urs_utils; // TODO: move this logic to proof-systems
 
+/// Error plumbing for the cached-index FFI wrappers
+pub mod cache_error;
+
 /// Vectors
 pub mod field_vector;
 pub mod gate_vector;
