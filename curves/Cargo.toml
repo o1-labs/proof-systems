@@ -26,7 +26,7 @@ sp1 = ["dep:sp1-zkvm"]
 # OpenVM's core is riscv32, so 256-bit arithmetic is emulated over 32-bit words
 # unless it goes through a chip -- this feature matters more there than the SP1
 # equivalent does on riscv64.
-openvm = ["dep:openvm-algebra-guest", "dep:openvm", "dep:serde"]
+openvm = ["dep:openvm-algebra-guest", "dep:openvm-ecc-guest", "dep:openvm-ecc-sw-macros", "dep:openvm", "dep:serde"]
 
 [dependencies]
 ark-bn254.workspace = true
@@ -47,6 +47,10 @@ openvm-algebra-guest = { git = "https://github.com/openvm-org/openvm.git", tag =
 # `moduli_declare!` expands to code referencing `openvm` and `serde`, so the
 # declaring crate must carry both (openvm's own `k256` guest lib does the same).
 openvm = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.0.1", optional = true }
+# `sw_declare!` must live in the same crate as `moduli_declare!`: the generated
+# `from_const_bytes` it needs for the curve's `b` constant is private.
+openvm-ecc-guest = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.0.1", optional = true }
+openvm-ecc-sw-macros = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.0.1", optional = true }
 serde = { version = "1", default-features = false, features = ["derive", "alloc"], optional = true }
 
 [dev-dependencies]

@@ -24,6 +24,11 @@ pub mod collections {
 
 mod combine;
 pub mod commitment;
+
+// Pasta MSM through OpenVM's Weierstrass chips. zkVM-only: off-target, and for
+// any non-Pasta curve, the arkworks path is used unchanged.
+#[cfg(all(target_os = "zkvm", feature = "openvm"))]
+pub mod openvm_msm;
 pub mod error;
 #[cfg(feature = "std")]
 pub mod hash_map_cache;

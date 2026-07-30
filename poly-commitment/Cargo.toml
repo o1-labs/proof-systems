@@ -43,6 +43,8 @@ rand_chacha.workspace = true
 ark-bn254.workspace = true
 
 [features]
+# Pasta MSM through OpenVM's Weierstrass chips (`openvm_msm`). zkVM-only.
+openvm = ["mina-curves/openvm", "dep:openvm-algebra-guest", "dep:openvm-ecc-guest"]
 default = ["std", "parallel"]
 std = ["rmp-serde", "o1-utils/std", "serde_with/std"]
 parallel = [
@@ -69,3 +71,7 @@ harness = false
 [[bench]]
 name = "msm"
 harness = false
+
+[target.'cfg(target_os = "zkvm")'.dependencies]
+openvm-algebra-guest = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.0.1", optional = true }
+openvm-ecc-guest = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.0.1", optional = true }
