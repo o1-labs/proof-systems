@@ -4,21 +4,40 @@ use ark_ff::{
     fields::{MontBackend, MontConfig},
     Fp256,
 };
-#[cfg(feature = "sp1")]
+#[cfg(all(feature = "sp1", feature = "openvm"))]
+compile_error!(
+    "features `sp1` and `openvm` are mutually exclusive: each replaces Montgomery \
+     multiplication with a different zkVM's intrinsic"
+);
+
+#[cfg(any(feature = "sp1", feature = "openvm"))]
 use ark_ff::BigInt;
+
+// The OpenVM modular-arithmetic extension needs the modulus declared at compile
+// time; the *binary* then calls `openvm::init!()`, which emits the matching
+// `moduli_init!` from its openvm.toml. Declaring in a library and initialising
+// in the binary is the supported split (see openvm's own `k256` guest lib).
+//
+// The binary's openvm.toml MUST list this modulus under
+// `[app_vm_config.modular] supported_moduli`, or the guest traps at the first
+// modular op.
+#[cfg(all(target_os = "zkvm", feature = "openvm"))]
+openvm_algebra_guest::moduli_macros::moduli_declare! {
+    OpenVmFpMod { modulus = "28948022309329048855892746252171976963363056481941560715954676764349967630337" }
+}
 
 #[derive(MontConfig)]
 #[modulus = "28948022309329048855892746252171976963363056481941560715954676764349967630337"]
 #[generator = "5"]
 pub struct FqConfigDerived;
 
-#[cfg(not(feature = "sp1"))]
+#[cfg(not(any(feature = "sp1", feature = "openvm")))]
 pub use FqConfigDerived as FqConfig;
 
-#[cfg(feature = "sp1")]
+#[cfg(any(feature = "sp1", feature = "openvm"))]
 pub struct FqConfig;
 
-#[cfg(feature = "sp1")]
+#[cfg(any(feature = "sp1", feature = "openvm"))]
 impl MontConfig<4> for FqConfig {
     const MODULUS: BigInt<4> = <FqConfigDerived as MontConfig<4>>::MODULUS;
 
@@ -32,7 +51,7 @@ impl MontConfig<4> for FqConfig {
     // sys_bigint calls — `a·b mod m` followed by multiplication by R⁻¹ to
     // strip the extra factor of R introduced when the inputs are already
     // in Montgomery form. R_INV is precomputed for this modulus.
-    #[cfg(target_os = "zkvm")]
+    #[cfg(all(target_os = "zkvm", feature = "sp1"))]
     #[inline(always)]
     fn mul_assign(
         a: &mut Fp256<MontBackend<Self, 4>>,
@@ -62,7 +81,7 @@ impl MontConfig<4> for FqConfig {
         );
     }
 
-    #[cfg(target_os = "zkvm")]
+    #[cfg(all(target_os = "zkvm", feature = "sp1"))]
     #[inline(always)]
     fn square_in_place(a: &mut Fp256<MontBackend<Self, 4>>) {
         let b = *a;
@@ -74,7 +93,7 @@ impl MontConfig<4> for FqConfig {
     // R²-scale and applying *R⁻¹ once at the end gives the Montgomery
     // product of the sum. That's M + 1 precompile calls instead of 2M
     // for the naive `.map().sum()` over `mul_assign`.
-    #[cfg(target_os = "zkvm")]
+    #[cfg(all(target_os = "zkvm", feature = "sp1"))]
     #[inline]
     fn sum_of_products<const M: usize>(
         a: &[Fp256<MontBackend<Self, 4>>; M],
@@ -110,8 +129,81 @@ impl MontConfig<4> for FqConfig {
         );
         Fp256::<MontBackend<Self, 4>>::new_unchecked(BigInt::new(result))
     }
+    // OpenVM modular-extension path. Same arithmetic identity as the SP1 path:
+    // `IntMod`'s `*` is a plain modular multiply on canonical values, so two
+    // Montgomery-form inputs give `a·b·R²`; one more multiply by R⁻¹ brings it
+    // back to `a·b·R`, the Montgomery form of the product.
+    //
+    // The byte shuffling is free: arkworks stores `[u64; 4]` little-endian and
+    // `IntMod` stores 32 bytes little-endian, so the two layouts coincide and
+    // the casts below are reinterpretations, not conversions.
+    //
+    // `from_le_bytes_unchecked` skips the reduction check. That is sound here
+    // and only here: arkworks maintains `value < MODULUS` as an invariant on
+    // every `Fp256`, and R_INV is a constant below the modulus. Do not reuse
+    // this on values from outside the field.
+    #[cfg(all(target_os = "zkvm", feature = "openvm"))]
+    #[inline(always)]
+    fn mul_assign(a: &mut Fp256<MontBackend<Self, 4>>, b: &Fp256<MontBackend<Self, 4>>) {
+        use openvm_algebra_guest::IntMod;
+        // R_INV = (2^256)^-1 mod MODULUS, little-endian u64 limbs.
+        const R_INV: [u64; 4] = [0xcf3f8e8753a769a9,
+            0xac9fba6a4077fc57,
+            0x70cb2996efc89a65,
+            0x21f1c4ff1e2278d5];
+        let prod = &limbs_to_mod(&(a.0).0) * &limbs_to_mod(&(b.0).0);
+        let out = &prod * &limbs_to_mod(&R_INV);
+        (a.0).0 = mod_to_limbs(&out);
+    }
+
+    #[cfg(all(target_os = "zkvm", feature = "openvm"))]
+    #[inline(always)]
+    fn square_in_place(a: &mut Fp256<MontBackend<Self, 4>>) {
+        let b = *a;
+        Self::mul_assign(a, &b);
+    }
+
+    // Σ aᵢ·bᵢ. Each product stays in R²-scale; summing there and applying R⁻¹
+    // once at the end costs M + 1 modular multiplies instead of 2M.
+    #[cfg(all(target_os = "zkvm", feature = "openvm"))]
+    #[inline]
+    fn sum_of_products<const M: usize>(
+        a: &[Fp256<MontBackend<Self, 4>>; M],
+        b: &[Fp256<MontBackend<Self, 4>>; M],
+    ) -> Fp256<MontBackend<Self, 4>> {
+        use openvm_algebra_guest::IntMod;
+        const R_INV: [u64; 4] = [0xcf3f8e8753a769a9,
+            0xac9fba6a4077fc57,
+            0x70cb2996efc89a65,
+            0x21f1c4ff1e2278d5];
+        let mut acc = OpenVmFpMod::ZERO;
+        for i in 0..M {
+            acc += &limbs_to_mod(&(a[i].0).0) * &limbs_to_mod(&(b[i].0).0);
+        }
+        let out = &acc * &limbs_to_mod(&R_INV);
+        Fp256::<MontBackend<Self, 4>>::new_unchecked(BigInt::new(mod_to_limbs(&out)))
+    }
 }
 
+/// Reinterpret arkworks' little-endian `[u64; 4]` as the extension's modular
+/// type. Both sides are 32 little-endian bytes, so this is a bit-for-bit view.
+#[cfg(all(target_os = "zkvm", feature = "openvm"))]
+#[inline(always)]
+fn limbs_to_mod(limbs: &[u64; 4]) -> OpenVmFpMod {
+    use openvm_algebra_guest::IntMod;
+    let bytes: &[u8; 32] = unsafe { &*(limbs.as_ptr() as *const [u8; 32]) };
+    OpenVmFpMod::from_le_bytes_unchecked(bytes)
+}
+
+#[cfg(all(target_os = "zkvm", feature = "openvm"))]
+#[inline(always)]
+fn mod_to_limbs(x: &OpenVmFpMod) -> [u64; 4] {
+    use openvm_algebra_guest::IntMod;
+    let mut limbs = [0u64; 4];
+    let dst: &mut [u8; 32] = unsafe { &mut *(limbs.as_mut_ptr() as *mut [u8; 32]) };
+    dst.copy_from_slice(x.as_le_bytes());
+    limbs
+}
 pub type Fp = Fp256<MontBackend<FqConfig, 4>>;
 
 pub struct FpParameters;

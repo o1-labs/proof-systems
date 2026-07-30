@@ -19,6 +19,14 @@ parallel = ["ark-ec/parallel", "ark-ff/parallel", "ark-std/parallel"]
 # `sys_bigint` precompile when compiled for the SP1 zkVM target.
 # Off-target it falls back to the trait default (correct, not specialized).
 sp1 = ["dep:sp1-zkvm"]
+# Routes Pasta Fp/Fq Montgomery multiplication through the OpenVM modular
+# arithmetic extension when compiled for the OpenVM zkVM target. Same shape as
+# `sp1` above; off-target it falls back to the trait default.
+#
+# OpenVM's core is riscv32, so 256-bit arithmetic is emulated over 32-bit words
+# unless it goes through a chip -- this feature matters more there than the SP1
+# equivalent does on riscv64.
+openvm = ["dep:openvm-algebra-guest"]
 
 [dependencies]
 ark-bn254.workspace = true
@@ -33,6 +41,9 @@ num-bigint.workspace = true
 # default impl via cfg(target_os = "zkvm") inside the source.
 [target.'cfg(target_os = "zkvm")'.dependencies]
 sp1-zkvm = { workspace = true, optional = true }
+# Same target-gating rationale as sp1-zkvm: host builds with `openvm` on never
+# see this dep, the impl falls back via cfg(target_os = "zkvm") in the source.
+openvm-algebra-guest = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.0.1", optional = true }
 
 [dev-dependencies]
 rand.workspace = true

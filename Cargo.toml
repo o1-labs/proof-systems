@@ -137,7 +137,8 @@ sha3 = "0.10.8"
 signer = { path = "./signer" }
 spmc = "=0.3.0"
 strum = { version = "0.27.2", default-features = false }
-strum_macros = "0.26.1"
+# 0.26.4 is the floor openvm-algebra-guest needs; same minor, no API change.
+strum_macros = "0.26.4"
 subtle = { version = "2.5", default-features = false }
 thiserror = { version = "2", default-features = false }
 tikv-jemalloc-ctl = { version = "0.5" }
