@@ -6,9 +6,10 @@
 //! therefore dispatch on `TypeId` at runtime and fall back to arkworks for any
 //! curve that is not Pasta.
 //!
-//! No `unsafe`, which this crate forbids: `TypeId` only *selects the branch*.
-//! The conversion itself goes through the generic `to_coordinates()` /
-//! `of_coordinates()` pair and canonical byte encodings, never a slice cast.
+//! `TypeId` only *selects the branch*: the conversion goes through the generic
+//! `to_coordinates()` / `of_coordinates()` pair and canonical byte encodings,
+//! never a slice cast. This crate denies `unsafe_code` and there is exactly one
+//! exception, on `try_msm`, because OpenVM marks its point constructor `unsafe`.
 //!
 //! Points are rebuilt with the *checked* `from_xy`, which verifies the affine
 //! curve equation. That is deliberate: OpenVM's docs warn that
@@ -30,10 +31,23 @@ use crate::commitment::CommitmentCurve;
 
 /// Canonical little-endian 32 bytes. This is where arkworks' Montgomery form is
 /// reduced to the canonical representation the chip expects.
+///
+/// Reads the `[u64]` limbs via `BigInteger: AsRef<[u64]>` instead of
+/// `to_bytes_le()`, which allocates a `Vec` per call -- ~130k heap allocations on
+/// a 2^16 MSM, and the allocator is plain RISC-V in a zkVM. `.0` is unavailable:
+/// `F::BigInt` is an associated type, not the concrete `BigInt<4>`.
 fn le32<F: PrimeField>(x: &F) -> [u8; 32] {
     let mut out = [0u8; 32];
-    let bytes = x.into_bigint().to_bytes_le();
-    out[..bytes.len()].copy_from_slice(&bytes);
+    let bigint = x.into_bigint();
+    let limbs = bigint.as_ref();
+    // Bounded by `out`, not by the limb count: indexing `out[i*8..]` would panic
+    // for a field wider than 4 limbs, and nothing in the signature restricts `F`.
+    // Both Pasta fields are exactly 4 limbs, so nothing is dropped here; the
+    // assert states that rather than leaving it to the reader.
+    assert!(limbs.len() * 8 <= out.len(), "field wider than 32 bytes");
+    for (chunk, limb) in out.chunks_exact_mut(8).zip(limbs) {
+        chunk.copy_from_slice(&limb.to_le_bytes());
+    }
     out
 }
 
@@ -60,7 +74,13 @@ macro_rules! chip_msm {
             .map(|s| <$Scalar>::from_le_bytes_unchecked(&le32(s)))
             .collect();
         let acc = openvm_ecc_guest::msm(&coeffs, &pts);
-        (acc.is_identity(), le32_pair(&acc))
+        // Branch before reading coordinates: the identity has no affine
+        // representation, so `x()`/`y()` on it is unspecified rather than wrong.
+        if acc.is_identity() {
+            (true, ([0u8; 32], [0u8; 32]))
+        } else {
+            (false, le32_pair(&acc))
+        }
     }};
 }
 
@@ -81,23 +101,45 @@ where
 /// Callers keep their arkworks path as the fallback, so a non-Pasta curve --
 /// or a host build -- behaves exactly as before.
 ///
-/// # The `unsafe` exception
+/// # The `unsafe` exception, and why the checked constructor stays
 ///
-/// This crate denies `unsafe_code` and we keep it that way everywhere else. The
-/// exception is confined to the point construction below, because OpenVM marks
-/// even its *checking* constructor `unsafe`: `from_xy` validates the affine curve
-/// equation but not subgroup membership, so the API leaves that to the caller.
-/// Our bases are arkworks points, already on the curve and in the prime-order
-/// subgroup, so the obligation is discharged -- and we still call the checking
-/// variant rather than `from_xy_unchecked`, so a violated assumption fails loudly
-/// instead of silently yielding a wrong point.
+/// OpenVM marks even its *checking* constructor `unsafe`, so the one
+/// `#[allow(unsafe_code)]` in this crate lives here.
+///
+/// Do not replace `from_xy` with `from_xy_unchecked`. The bases arriving here are
+/// a mix of provenances, and most of them are prover-controlled:
+///
+/// | source | trusted? |
+/// |---|---|
+/// | `srs.g`, `srs.h` | yes -- protocol constants |
+/// | `opening.sg`, `opening.lr`, `opening.delta` | **no** -- from the proof |
+/// | commitments via `combine_commitments` | **no** -- proof and verification key |
+///
+/// Those untrusted points *are* validated before reaching us -- `SerdeAs`
+/// deserializes with `deserialize_compressed`, i.e. `Validate::Yes`, and
+/// `SideLoadedVk::parse` checks the wrap-index commitments -- but that is a
+/// property of code in two other crates. `from_xy` re-checks locally, so this
+/// function stays correct even if either of those changes. An off-curve point
+/// breaks the group law and opens twist attacks; at the cost of a few field
+/// operations against a chip call, this is not a trade worth making.
+///
+/// Pasta curves have prime order (cofactor 1), so the curve-equation check is
+/// *sufficient* -- no separate subgroup check is needed. Sufficient is not
+/// optional: it remains mandatory on any untrusted point.
 #[allow(unsafe_code)]
 pub fn try_msm<G>(bases: &[G], scalars: &[G::ScalarField]) -> Option<G::Group>
 where
     G: CommitmentCurve + 'static,
     G::BaseField: PrimeField,
 {
-    debug_assert_eq!(bases.len(), scalars.len());
+    // A real assert, not `debug_assert`: this is a release build in the guest, and
+    // `openvm_ecc_guest::msm` has unspecified behaviour on mismatched lengths. One
+    // comparison against that is not a trade-off.
+    assert_eq!(bases.len(), scalars.len(), "msm: base/scalar length mismatch");
+    // Only the Pallas arm is reachable today: the sole caller is the wrap proof's
+    // IPA verification, and the Vesta accumulator MSM goes through
+    // `pickles_verifier::openvm_ec` instead. The Vesta arm is kept so a future
+    // call site over Vesta is accelerated rather than silently falling back.
     let (is_id, (x, y)) = if TypeId::of::<G>() == TypeId::of::<Vesta>() {
         chip_msm!(bases, scalars, OpenVmVesta, OpenVmFqMod, OpenVmFpMod)
     } else if TypeId::of::<G>() == TypeId::of::<Pallas>() {
