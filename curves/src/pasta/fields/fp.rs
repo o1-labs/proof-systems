@@ -185,23 +185,30 @@ impl MontConfig<4> for FqConfig {
     }
 }
 
-/// Reinterpret arkworks' little-endian `[u64; 4]` as the extension's modular
-/// type. Both sides are 32 little-endian bytes, so this is a bit-for-bit view.
+/// arkworks' little-endian `[u64; 4]` -> the extension's modular type.
+/// Written as an explicit byte-wise conversion rather than a pointer cast: this
+/// crate denies `unsafe_code`, and the explicit form assumes nothing about
+/// memory layout. The cost is 32 byte copies against a chip call.
 #[cfg(all(target_os = "zkvm", feature = "openvm"))]
 #[inline(always)]
 fn limbs_to_mod(limbs: &[u64; 4]) -> OpenVmFpMod {
     use openvm_algebra_guest::IntMod;
-    let bytes: &[u8; 32] = unsafe { &*(limbs.as_ptr() as *const [u8; 32]) };
-    OpenVmFpMod::from_le_bytes_unchecked(bytes)
+    let mut bytes = [0u8; 32];
+    for (i, limb) in limbs.iter().enumerate() {
+        bytes[i * 8..(i + 1) * 8].copy_from_slice(&limb.to_le_bytes());
+    }
+    OpenVmFpMod::from_le_bytes_unchecked(&bytes)
 }
 
 #[cfg(all(target_os = "zkvm", feature = "openvm"))]
 #[inline(always)]
 fn mod_to_limbs(x: &OpenVmFpMod) -> [u64; 4] {
     use openvm_algebra_guest::IntMod;
+    let bytes = x.as_le_bytes();
     let mut limbs = [0u64; 4];
-    let dst: &mut [u8; 32] = unsafe { &mut *(limbs.as_mut_ptr() as *mut [u8; 32]) };
-    dst.copy_from_slice(x.as_le_bytes());
+    for (i, limb) in limbs.iter_mut().enumerate() {
+        *limb = u64::from_le_bytes(bytes[i * 8..(i + 1) * 8].try_into().unwrap());
+    }
     limbs
 }
 pub type Fp = Fp256<MontBackend<FqConfig, 4>>;

@@ -550,6 +550,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f30e7476521f6f8af1a1c4c0b8cc94f0bee37d91763d0ca2665f299b6cd8aec"
 
 [[package]]
+name = "bytemuck"
+version = "1.25.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95832e849adfb21180ccb6826a99da14e5d266ae5c2e668e1602cf234f153797"
+
+[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2236,8 +2242,10 @@ dependencies = [
  "ark-std",
  "ark-test-curves",
  "num-bigint 0.4.6",
+ "openvm",
  "openvm-algebra-guest",
  "rand 0.8.5",
+ "serde",
  "sp1-zkvm",
 ]
 
@@ -2641,6 +2649,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ab1bc2a289d34bd04a330323ac98a1b4bc82c9d9fcb1e66b63caa84da26b575"
 
 [[package]]
+name = "openvm"
+version = "2.0.1"
+source = "git+https://github.com/openvm-org/openvm.git?tag=v2.0.1#b820b25baab6c5d9b055f64e0286b6b1058e707c"
+dependencies = [
+ "bytemuck",
+ "getrandom 0.2.15",
+ "getrandom 0.3.4",
+ "num-bigint 0.4.6",
+ "openvm-custom-insn",
+ "openvm-platform",
+ "openvm-rv32im-guest",
+ "serde",
+]
+
+[[package]]
 name = "openvm-algebra-complex-macros"
 version = "2.0.1"
 source = "git+https://github.com/openvm-org/openvm.git?tag=v2.0.1#b820b25baab6c5d9b055f64e0286b6b1058e707c"
@@ -2693,6 +2716,16 @@ version = "2.0.1"
 source = "git+https://github.com/openvm-org/openvm.git?tag=v2.0.1#b820b25baab6c5d9b055f64e0286b6b1058e707c"
 dependencies = [
  "syn 2.0.100",
+]
+
+[[package]]
+name = "openvm-platform"
+version = "2.0.1"
+source = "git+https://github.com/openvm-org/openvm.git?tag=v2.0.1#b820b25baab6c5d9b055f64e0286b6b1058e707c"
+dependencies = [
+ "libm",
+ "openvm-custom-insn",
+ "openvm-rv32im-guest",
 ]
 
 [[package]]

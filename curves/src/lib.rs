@@ -7,5 +7,8 @@
 // reference implementations
 #![allow(clippy::unreadable_literal)]
 
+// `moduli_declare!` (the `openvm` feature) expands to code that allocates.
+extern crate alloc;
+
 pub mod named;
 pub mod pasta;
