@@ -271,30 +271,37 @@ impl MontConfig<4> for FqConfig {
 }
 
 /// arkworks' little-endian `[u64; 4]` -> the extension's modular type.
-/// Written as an explicit byte-wise conversion rather than a pointer cast: this
-/// crate denies `unsafe_code`, and the explicit form assumes nothing about
-/// memory layout. The cost is 32 byte copies against a chip call.
+///
+/// Both sides are little-endian with the same 32 bytes in the same order, so
+/// this is a reinterpretation. `bytemuck::cast_ref` performs it in safe Rust —
+/// a Pod-to-Pod cast, no `unsafe` and no layout assumption of our own — which
+/// matters because this crate denies `unsafe_code`.
+///
+/// What it removes is the intermediate buffer: the previous version built a
+/// `[u8; 32]` limb by limb and then let `from_le_bytes_unchecked` copy it, so
+/// every conversion paid a four-iteration loop plus a memcpy. Now it is the
+/// memcpy alone. The conversion is *not* incidental — it happens three times per
+/// multiplication, and the multiplication itself is one chip instruction.
 #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
 #[inline(always)]
 fn limbs_to_mod(limbs: &[u64; 4]) -> OpenVmFpMod {
     use openvm_algebra_guest::IntMod;
-    let mut bytes = [0u8; 32];
-    for (i, limb) in limbs.iter().enumerate() {
-        bytes[i * 8..(i + 1) * 8].copy_from_slice(&limb.to_le_bytes());
-    }
-    OpenVmFpMod::from_le_bytes_unchecked(&bytes)
+    let bytes: &[u8; 32] = bytemuck::cast_ref(limbs);
+    OpenVmFpMod::from_le_bytes_unchecked(bytes)
 }
 
+/// The extension's modular type -> arkworks' limbs.
+///
+/// `pod_read_unaligned` rather than `from_bytes`: it is one memcpy with no
+/// alignment precondition and no panic path. (`OpenVmFpMod` is `align(32)` so a
+/// borrowing cast would in fact succeed, but that is the macro's business, not
+/// ours.) The previous version ran four `from_le_bytes` with a `try_into`
+/// unwrap each.
 #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
 #[inline(always)]
 fn mod_to_limbs(x: &OpenVmFpMod) -> [u64; 4] {
     use openvm_algebra_guest::IntMod;
-    let bytes = x.as_le_bytes();
-    let mut limbs = [0u64; 4];
-    for (i, limb) in limbs.iter_mut().enumerate() {
-        *limb = u64::from_le_bytes(bytes[i * 8..(i + 1) * 8].try_into().unwrap());
-    }
-    limbs
+    bytemuck::pod_read_unaligned(x.as_le_bytes())
 }
 pub type Fp = Fp256<MontBackend<FqConfig, 4>>;
 

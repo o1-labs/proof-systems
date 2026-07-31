@@ -53,6 +53,8 @@ pub mod commitment;
 // any non-Pasta curve, the arkworks path is used unchanged.
 #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
 pub mod openvm_msm;
+#[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+pub mod openvm_pippenger;
 pub mod error;
 #[cfg(feature = "std")]
 pub mod hash_map_cache;

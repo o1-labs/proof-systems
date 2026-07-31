@@ -41,22 +41,16 @@ use crate::{constants::SpongeConstants, poseidon::ArithmeticSpongeParams};
 /// same accessor `mina-curves` uses.
 macro_rules! to_mod {
     ($x:expr, $M:ty) => {{
-        let limbs: [u64; 4] = ($x.0).0;
-        let mut bytes = [0u8; 32];
-        for (chunk, limb) in bytes.chunks_exact_mut(8).zip(limbs.iter()) {
-            chunk.copy_from_slice(&limb.to_le_bytes());
-        }
-        <$M>::from_le_bytes_unchecked(&bytes)
+        let limbs: &[u64; 4] = &($x.0).0;
+        // Reinterpretation, not a per-limb loop: same bytes, same order.
+        // `bytemuck` keeps it in safe Rust.
+        <$M>::from_le_bytes_unchecked(bytemuck::cast_ref::<[u64; 4], [u8; 32]>(limbs))
     }};
 }
 
 macro_rules! from_mod {
     ($m:expr, $F:ty) => {{
-        let bytes = $m.as_le_bytes();
-        let mut limbs = [0u64; 4];
-        for (limb, chunk) in limbs.iter_mut().zip(bytes.chunks_exact(8)) {
-            *limb = u64::from_le_bytes(chunk.try_into().expect("8 bytes"));
-        }
+        let limbs: [u64; 4] = bytemuck::pod_read_unaligned($m.as_le_bytes());
         <$F>::new_unchecked(ark_ff::BigInt::new(limbs))
     }};
 }

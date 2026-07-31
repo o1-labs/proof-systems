@@ -27,6 +27,9 @@ serde.workspace = true
 serde_with.workspace = true
 # Same source and tag as mina-curves: one version of the guest crates in the
 # graph, or the moduli declarations do not line up.
+# Zero-copy [u64; 4] <-> [u8; 32] reinterpretation on the chip boundary.
+# Pod-to-Pod casts, so no `unsafe` is introduced.
+bytemuck = { version = "1", default-features = false, optional = true }
 openvm-algebra-guest = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.1.0-preview", optional = true }
 
 [dev-dependencies]
@@ -49,7 +52,7 @@ ocaml_types = ["ocaml", "ocaml-gen"]
 # Runs the Poseidon permutation on OpenVM's modular chip for the Pasta fields
 # when compiled for a zkVM target. Off-target it is inert: the gate keys on
 # `target_os` too, matching mina-curves.
-openvm = ["mina-curves/openvm", "dep:openvm-algebra-guest"]
+openvm = ["mina-curves/openvm", "dep:openvm-algebra-guest", "dep:bytemuck"]
 
 [[bench]]
 name = "poseidon_bench"

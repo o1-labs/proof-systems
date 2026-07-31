@@ -37,18 +37,18 @@ use crate::commitment::CommitmentCurve;
 /// a 2^16 MSM, and the allocator is plain RISC-V in a zkVM. `.0` is unavailable:
 /// `F::BigInt` is an associated type, not the concrete `BigInt<4>`.
 fn le32<F: PrimeField>(x: &F) -> [u8; 32] {
-    let mut out = [0u8; 32];
     let bigint = x.into_bigint();
     let limbs = bigint.as_ref();
-    // Bounded by `out`, not by the limb count: indexing `out[i*8..]` would panic
-    // for a field wider than 4 limbs, and nothing in the signature restricts `F`.
-    // Both Pasta fields are exactly 4 limbs, so nothing is dropped here; the
-    // assert states that rather than leaving it to the reader.
-    assert!(limbs.len() * 8 <= out.len(), "field wider than 32 bytes");
-    for (chunk, limb) in out.chunks_exact_mut(8).zip(limbs) {
-        chunk.copy_from_slice(&limb.to_le_bytes());
-    }
-    out
+    // Bounded by the output, not by the limb count: a field wider than 4 limbs
+    // would silently lose its top limbs. Both Pasta fields are exactly 4, so
+    // nothing is dropped here; the assert states that rather than leaving it to
+    // the reader.
+    assert!(limbs.len() == 4, "expected a 4-limb field");
+    // Same bytes in the same order, so this is a reinterpretation rather than a
+    // per-limb loop. `bytemuck` does it in safe Rust (Pod to Pod), which this
+    // crate needs: it denies `unsafe_code`.
+    let limbs: &[u64; 4] = limbs.try_into().expect("checked just above");
+    *bytemuck::cast_ref::<[u64; 4], [u8; 32]>(limbs)
 }
 
 macro_rules! chip_msm {
@@ -73,7 +73,9 @@ macro_rules! chip_msm {
             .iter()
             .map(|s| <$Scalar>::from_le_bytes_unchecked(&le32(s)))
             .collect();
-        let acc = openvm_ecc_guest::msm(&coeffs, &pts);
+        // Our own windowed Pippenger: upstream sizes the window at
+        // `ilog2(n)`, which is well past the optimum. See `openvm_pippenger`.
+        let acc = crate::openvm_pippenger::msm(&coeffs, &pts);
         // Branch before reading coordinates: the identity has no affine
         // representation, so `x()`/`y()` on it is unspecified rather than wrong.
         if acc.is_identity() {

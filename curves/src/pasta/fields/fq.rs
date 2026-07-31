@@ -146,18 +146,14 @@ impl MontConfig<4> for FrConfig {
         );
         Fp256::<MontBackend<Self, 4>>::new_unchecked(BigInt::new(result))
     }
-    // OpenVM modular-extension path. Same arithmetic identity as the SP1 path:
-    // `IntMod`'s `*` is a plain modular multiply on canonical values, so two
-    // Montgomery-form inputs give `a·b·R²`; one more multiply by R⁻¹ brings it
-    // back to `a·b·R`, the Montgomery form of the product.
+    // OpenVM modular-extension path, on canonical values (see `R` / `R2` above,
+    // and `fp.rs` for the full reasoning). `IntMod`'s `*` on canonical inputs is
+    // already the answer: one chip instruction, where Montgomery storage needed
+    // two.
     //
-    // The byte shuffling is free: arkworks stores `[u64; 4]` little-endian and
-    // `IntMod` stores 32 bytes little-endian, so the two layouts coincide and
-    // the casts below are reinterpretations, not conversions.
-    //
-    // `from_le_bytes_unchecked` skips the reduction check. That is sound here
-    // and only here: arkworks maintains `value < MODULUS` as an invariant on
-    // every `Fp256`, and R_INV is a constant below the modulus. Do not reuse
+    // `from_le_bytes_unchecked` skips the reduction check. That is sound here:
+    // arkworks maintains `value < MODULUS` as an invariant on every `Fp256`, and
+    // canonical values are exactly the residues below the modulus. Do not reuse
     // this on values from outside the field.
     #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
     #[inline(always)]
@@ -226,30 +222,23 @@ impl MontConfig<4> for FrConfig {
 }
 
 /// arkworks' little-endian `[u64; 4]` -> the extension's modular type.
-/// Written as an explicit byte-wise conversion rather than a pointer cast: this
-/// crate denies `unsafe_code`, and the explicit form assumes nothing about
-/// memory layout. The cost is 32 byte copies against a chip call.
+///
+/// See `fp.rs` for why this is a `bytemuck` reinterpretation rather than a
+/// hand-rolled byte loop: same bytes, same order, and the conversion runs three
+/// times per multiplication against a single chip instruction.
 #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
 #[inline(always)]
 fn limbs_to_mod(limbs: &[u64; 4]) -> OpenVmFqMod {
     use openvm_algebra_guest::IntMod;
-    let mut bytes = [0u8; 32];
-    for (i, limb) in limbs.iter().enumerate() {
-        bytes[i * 8..(i + 1) * 8].copy_from_slice(&limb.to_le_bytes());
-    }
-    OpenVmFqMod::from_le_bytes_unchecked(&bytes)
+    let bytes: &[u8; 32] = bytemuck::cast_ref(limbs);
+    OpenVmFqMod::from_le_bytes_unchecked(bytes)
 }
 
 #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
 #[inline(always)]
 fn mod_to_limbs(x: &OpenVmFqMod) -> [u64; 4] {
     use openvm_algebra_guest::IntMod;
-    let bytes = x.as_le_bytes();
-    let mut limbs = [0u64; 4];
-    for (i, limb) in limbs.iter_mut().enumerate() {
-        *limb = u64::from_le_bytes(bytes[i * 8..(i + 1) * 8].try_into().unwrap());
-    }
-    limbs
+    bytemuck::pod_read_unaligned(x.as_le_bytes())
 }
 pub type Fq = Fp256<MontBackend<FrConfig, 4>>;
 

@@ -44,7 +44,7 @@ ark-bn254.workspace = true
 
 [features]
 # Pasta MSM through OpenVM's Weierstrass chips (`openvm_msm`). zkVM-only.
-openvm = ["mina-curves/openvm", "dep:openvm-algebra-guest", "dep:openvm-ecc-guest"]
+openvm = ["mina-curves/openvm", "dep:openvm-algebra-guest", "dep:openvm-ecc-guest", "dep:bytemuck"]
 default = ["std", "parallel"]
 std = ["rmp-serde", "o1-utils/std", "serde_with/std"]
 parallel = [
@@ -73,5 +73,8 @@ name = "msm"
 harness = false
 
 [target.'cfg(any(target_os = "zkvm", target_os = "openvm"))'.dependencies]
+# Zero-copy [u64; 4] <-> [u8; 32] reinterpretation on the chip boundary.
+# Pod-to-Pod casts, so no `unsafe` is introduced.
+bytemuck = { version = "1", default-features = false, optional = true }
 openvm-algebra-guest = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.1.0-preview", optional = true }
 openvm-ecc-guest = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.1.0-preview", optional = true }
