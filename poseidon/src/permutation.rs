@@ -147,6 +147,17 @@ pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants, const FULL_ROUNDS: u
 ) {
     assert!(state.len() == SC::SPONGE_WIDTH);
 
+    // Pasta fields run the whole permutation on OpenVM's modular chip, which
+    // keeps the arkworks <-> IntMod conversions at the boundary instead of three
+    // per multiplication. Every other field, and every sponge shape the fast
+    // path does not implement, falls through unchanged.
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+    {
+        if crate::openvm_perm::try_block_cipher::<F, SC, FULL_ROUNDS>(params, state) {
+            return;
+        }
+    }
+
     if SC::PERM_HALF_ROUNDS_FULL == 0 {
         if SC::PERM_INITIAL_ARK {
             state

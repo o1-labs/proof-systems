@@ -2347,6 +2347,7 @@ dependencies = [
  "o1-utils",
  "ocaml",
  "ocaml-gen",
+ "openvm-algebra-guest",
  "rand 0.8.5",
  "rayon",
  "serde",

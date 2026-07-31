@@ -34,6 +34,8 @@ extern crate alloc;
 pub mod constants;
 pub mod dummy_values;
 pub mod pasta;
+#[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+pub mod openvm_perm;
 pub mod permutation;
 pub mod poseidon;
 pub mod sponge;
