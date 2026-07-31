@@ -497,7 +497,7 @@ impl<G: CommitmentCurve> SRS<G> {
                 // `openvm` feature is on and we are building for the zkVM; every
                 // other case falls through to arkworks unchanged. This MSM is the
                 // bulk of an IPA verification, so it is where the chip pays.
-                #[cfg(all(target_os = "zkvm", feature = "openvm"))]
+                #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
                 {
                     match crate::openvm_msm::try_msm(&points, &scalars) {
                         Some(acc) => acc,
@@ -508,7 +508,7 @@ impl<G: CommitmentCurve> SRS<G> {
                         }
                     }
                 }
-                #[cfg(not(all(target_os = "zkvm", feature = "openvm")))]
+                #[cfg(not(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm")))]
                 {
                     let scalars_bigint: Vec<_> = scalars.iter().map(|x| x.into_bigint()).collect();
                     G::Group::msm_bigint(&points, &scalars_bigint)

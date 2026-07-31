@@ -39,18 +39,18 @@ num-bigint.workspace = true
 # (b) we're actually building for the SP1 zkVM target. Host builds with
 # `sp1` on never see this dep — the override falls back to the trait
 # default impl via cfg(target_os = "zkvm") inside the source.
-[target.'cfg(target_os = "zkvm")'.dependencies]
+[target.'cfg(any(target_os = "zkvm", target_os = "openvm"))'.dependencies]
 sp1-zkvm = { workspace = true, optional = true }
 # Same target-gating rationale as sp1-zkvm: host builds with `openvm` on never
 # see this dep, the impl falls back via cfg(target_os = "zkvm") in the source.
-openvm-algebra-guest = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.0.1", optional = true }
+openvm-algebra-guest = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.1.0-preview", optional = true }
 # `moduli_declare!` expands to code referencing `openvm` and `serde`, so the
 # declaring crate must carry both (openvm's own `k256` guest lib does the same).
-openvm = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.0.1", optional = true }
+openvm = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.1.0-preview", optional = true }
 # `sw_declare!` must live in the same crate as `moduli_declare!`: the generated
 # `from_const_bytes` it needs for the curve's `b` constant is private.
-openvm-ecc-guest = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.0.1", optional = true }
-openvm-ecc-sw-macros = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.0.1", optional = true }
+openvm-ecc-guest = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.1.0-preview", optional = true }
+openvm-ecc-sw-macros = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.1.0-preview", optional = true }
 serde = { version = "1", default-features = false, features = ["derive", "alloc"], optional = true }
 
 [dev-dependencies]

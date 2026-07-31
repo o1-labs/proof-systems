@@ -18,10 +18,10 @@ pub use fields::{Fp, Fq};
 ///
 /// `OpenVmFpMod` is Pallas's base / Vesta's scalar field; `OpenVmFqMod` is
 /// Vesta's base / Pallas's scalar field.
-#[cfg(all(target_os = "zkvm", feature = "openvm"))]
+#[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
 pub use fields::{OpenVmFpMod, OpenVmFqMod};
 
-#[cfg(all(target_os = "zkvm", feature = "openvm"))]
+#[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
 pub mod openvm_curves;
-#[cfg(all(target_os = "zkvm", feature = "openvm"))]
+#[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
 pub use openvm_curves::{OpenVmPallas, OpenVmVesta};

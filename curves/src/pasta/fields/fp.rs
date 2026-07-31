@@ -21,7 +21,7 @@ use ark_ff::BigInt;
 // The binary's openvm.toml MUST list this modulus under
 // `[app_vm_config.modular] supported_moduli`, or the guest traps at the first
 // modular op.
-#[cfg(all(target_os = "zkvm", feature = "openvm"))]
+#[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
 openvm_algebra_guest::moduli_macros::moduli_declare! {
     OpenVmFpMod { modulus = "28948022309329048855892746252171976963363056481941560715954676764349967630337" }
 }
@@ -142,7 +142,7 @@ impl MontConfig<4> for FqConfig {
     // and only here: arkworks maintains `value < MODULUS` as an invariant on
     // every `Fp256`, and R_INV is a constant below the modulus. Do not reuse
     // this on values from outside the field.
-    #[cfg(all(target_os = "zkvm", feature = "openvm"))]
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
     #[inline(always)]
     fn mul_assign(a: &mut Fp256<MontBackend<Self, 4>>, b: &Fp256<MontBackend<Self, 4>>) {
         use openvm_algebra_guest::IntMod;
@@ -156,7 +156,7 @@ impl MontConfig<4> for FqConfig {
         (a.0).0 = mod_to_limbs(&out);
     }
 
-    #[cfg(all(target_os = "zkvm", feature = "openvm"))]
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
     #[inline(always)]
     fn square_in_place(a: &mut Fp256<MontBackend<Self, 4>>) {
         let b = *a;
@@ -165,7 +165,7 @@ impl MontConfig<4> for FqConfig {
 
     // Σ aᵢ·bᵢ. Each product stays in R²-scale; summing there and applying R⁻¹
     // once at the end costs M + 1 modular multiplies instead of 2M.
-    #[cfg(all(target_os = "zkvm", feature = "openvm"))]
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
     #[inline]
     fn sum_of_products<const M: usize>(
         a: &[Fp256<MontBackend<Self, 4>>; M],
@@ -189,7 +189,7 @@ impl MontConfig<4> for FqConfig {
 /// Written as an explicit byte-wise conversion rather than a pointer cast: this
 /// crate denies `unsafe_code`, and the explicit form assumes nothing about
 /// memory layout. The cost is 32 byte copies against a chip call.
-#[cfg(all(target_os = "zkvm", feature = "openvm"))]
+#[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
 #[inline(always)]
 fn limbs_to_mod(limbs: &[u64; 4]) -> OpenVmFpMod {
     use openvm_algebra_guest::IntMod;
@@ -200,7 +200,7 @@ fn limbs_to_mod(limbs: &[u64; 4]) -> OpenVmFpMod {
     OpenVmFpMod::from_le_bytes_unchecked(&bytes)
 }
 
-#[cfg(all(target_os = "zkvm", feature = "openvm"))]
+#[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
 #[inline(always)]
 fn mod_to_limbs(x: &OpenVmFpMod) -> [u64; 4] {
     use openvm_algebra_guest::IntMod;
