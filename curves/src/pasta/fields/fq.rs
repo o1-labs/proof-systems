@@ -31,19 +31,45 @@ openvm_algebra_guest::moduli_macros::moduli_declare! {
 #[generator = "5"]
 pub struct FrConfigDerived;
 
-#[cfg(not(feature = "sp1"))]
+// These three gates said `sp1` alone, which silently disabled the whole OpenVM
+// path for Fq: `FrConfig` resolved to the derived config, and the `openvm`
+// `mul_assign` below — correctly gated in itself — sat inside an impl block that
+// was never compiled. Fq is Vesta's base field and Pallas's scalar field, so
+// that is every coordinate conversion on the chip boundary running on arkworks'
+// software Montgomery multiplication. `fp.rs` had the right gate all along;
+// this is fq.rs catching up.
+#[cfg(not(any(feature = "sp1", feature = "openvm")))]
 pub use FrConfigDerived as FrConfig;
 
-#[cfg(feature = "sp1")]
+#[cfg(any(feature = "sp1", feature = "openvm"))]
 pub struct FrConfig;
 
-#[cfg(feature = "sp1")]
+#[cfg(any(feature = "sp1", feature = "openvm"))]
 impl MontConfig<4> for FrConfig {
     const MODULUS: BigInt<4> = <FrConfigDerived as MontConfig<4>>::MODULUS;
 
+    // Canonical storage under OpenVM. See the long comment in `fp.rs`: `R = 1`
+    // makes `ONE` canonical, and `R2 = 2²⁵⁶ mod q` is what the const path behind
+    // `MontFp!` needs to stay the identity.
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+    const R: BigInt<4> = BigInt::one();
+
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+    const R2: BigInt<4> = Self::MODULUS.montgomery_r();
+
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+    const GENERATOR: Fp256<MontBackend<Self, 4>> = ark_ff::MontFp!("5");
+
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+    const TWO_ADIC_ROOT_OF_UNITY: Fp256<MontBackend<Self, 4>> = ark_ff::MontFp!(
+        "20761624379169977859705911634190121761503565370703356079647768903521299517535"
+    );
+
+    #[cfg(not(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm")))]
     const GENERATOR: Fp256<MontBackend<Self, 4>> =
         Fp256::new_unchecked(<FrConfigDerived as MontConfig<4>>::GENERATOR.0);
 
+    #[cfg(not(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm")))]
     const TWO_ADIC_ROOT_OF_UNITY: Fp256<MontBackend<Self, 4>> =
         Fp256::new_unchecked(<FrConfigDerived as MontConfig<4>>::TWO_ADIC_ROOT_OF_UNITY.0);
 
@@ -136,14 +162,7 @@ impl MontConfig<4> for FrConfig {
     #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
     #[inline(always)]
     fn mul_assign(a: &mut Fp256<MontBackend<Self, 4>>, b: &Fp256<MontBackend<Self, 4>>) {
-        use openvm_algebra_guest::IntMod;
-        // R_INV = (2^256)^-1 mod MODULUS, little-endian u64 limbs.
-        const R_INV: [u64; 4] = [0x6119a3dd8e1a6f7f,
-            0xc68de1279dc601eb,
-            0x5790be58c050df13,
-            0x1f7a89dd17647953];
-        let prod = &limbs_to_mod(&(a.0).0) * &limbs_to_mod(&(b.0).0);
-        let out = &prod * &limbs_to_mod(&R_INV);
+        let out = &limbs_to_mod(&(a.0).0) * &limbs_to_mod(&(b.0).0);
         (a.0).0 = mod_to_limbs(&out);
     }
 
@@ -154,8 +173,8 @@ impl MontConfig<4> for FrConfig {
         Self::mul_assign(a, &b);
     }
 
-    // Σ aᵢ·bᵢ. Each product stays in R²-scale; summing there and applying R⁻¹
-    // once at the end costs M + 1 modular multiplies instead of 2M.
+    // Σ aᵢ·bᵢ in M chip multiplies; canonical values accumulate directly, with
+    // no final rescaling by R⁻¹.
     #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
     #[inline]
     fn sum_of_products<const M: usize>(
@@ -163,16 +182,46 @@ impl MontConfig<4> for FrConfig {
         b: &[Fp256<MontBackend<Self, 4>>; M],
     ) -> Fp256<MontBackend<Self, 4>> {
         use openvm_algebra_guest::IntMod;
-        const R_INV: [u64; 4] = [0x6119a3dd8e1a6f7f,
-            0xc68de1279dc601eb,
-            0x5790be58c050df13,
-            0x1f7a89dd17647953];
         let mut acc = OpenVmFqMod::ZERO;
         for i in 0..M {
             acc += &limbs_to_mod(&(a[i].0).0) * &limbs_to_mod(&(b[i].0).0);
         }
-        let out = &acc * &limbs_to_mod(&R_INV);
-        Fp256::<MontBackend<Self, 4>>::new_unchecked(BigInt::new(mod_to_limbs(&out)))
+        Fp256::<MontBackend<Self, 4>>::new_unchecked(BigInt::new(mod_to_limbs(&acc)))
+    }
+
+    // One `DivMod` chip instruction instead of arkworks' software extended
+    // Euclid. `div_unsafe` is UB on a zero denominator, which the zero check
+    // rules out — and which is the `None` arm of the contract anyway.
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+    #[inline(always)]
+    fn inverse(a: &Fp256<MontBackend<Self, 4>>) -> Option<Fp256<MontBackend<Self, 4>>> {
+        use ark_ff::Zero;
+        use openvm_algebra_guest::{DivUnsafe, IntMod};
+        if a.is_zero() {
+            return None;
+        }
+        let out = OpenVmFqMod::ONE.div_unsafe(&limbs_to_mod(&(a.0).0));
+        Some(Fp256::<MontBackend<Self, 4>>::new_unchecked(BigInt::new(
+            mod_to_limbs(&out),
+        )))
+    }
+
+    // Canonical storage makes both conversions moves rather than a Montgomery
+    // reduction and a multiply by R2.
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+    #[inline(always)]
+    fn into_bigint(a: Fp256<MontBackend<Self, 4>>) -> BigInt<4> {
+        a.0
+    }
+
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+    #[inline(always)]
+    fn from_bigint(r: BigInt<4>) -> Option<Fp256<MontBackend<Self, 4>>> {
+        if r >= Self::MODULUS {
+            None
+        } else {
+            Some(Fp256::<MontBackend<Self, 4>>::new_unchecked(r))
+        }
     }
 }
 

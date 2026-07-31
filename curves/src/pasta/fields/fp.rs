@@ -41,9 +41,60 @@ pub struct FqConfig;
 impl MontConfig<4> for FqConfig {
     const MODULUS: BigInt<4> = <FqConfigDerived as MontConfig<4>>::MODULUS;
 
+    // ------------------------------------------------------------------
+    // OpenVM: canonical storage instead of Montgomery form.
+    //
+    // arkworks stores `aR mod p`. The chip's `IntMod` is canonical, so every
+    // Montgomery-form multiplication costs TWO chip instructions: `a·b` gives
+    // `abR²`, and a second multiply by `R⁻¹` brings it back to `abR`. Storing
+    // canonical values makes it one — and makes `into_bigint`, which the chip
+    // boundary calls on every coordinate and scalar, a move instead of a
+    // 16-mac Montgomery reduction.
+    //
+    // Representation is chosen by two constants, and they do NOT get the same
+    // value:
+    //
+    // * `R` is only read as `FpConfig::ONE = Fp::new_unchecked(R)`, so canonical
+    //   ONE means `R = 1`.
+    // * `R2` is read by the **const** constructor `Fp::new` — the one `MontFp!`
+    //   expands to — as `mont_mul(e, R2) = e·R2·2⁻²⁵⁶`. That path is const
+    //   arithmetic inside ark-ff and ignores every override below, so getting
+    //   `e` out requires `R2 = 2²⁵⁶ mod p`, i.e. the value `R` has by default.
+    //   The Pasta curve parameters (`COEFF_B`, the generators) are `MontFp!`
+    //   literals, so this is what keeps them correct.
+    //
+    // The other `R2` reader, `from_bigint`, is overridden below, and the third,
+    // the default `inverse`, is overridden too.
+    //
+    // Gated on the zkVM target, not just the feature: a host build with
+    // `openvm` on keeps arkworks' software Montgomery multiplication, which
+    // only agrees with Montgomery *storage*.
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+    const R: BigInt<4> = BigInt::one();
+
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+    const R2: BigInt<4> = Self::MODULUS.montgomery_r();
+
+    // Canonical constants for the canonical representation. `MontFp!` is exactly
+    // right here: with `R2` as set above its const path is the identity, so the
+    // decimal literal lands in the limbs unchanged. `fp_canonical_constants`
+    // pins both against the derived config.
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+    const GENERATOR: Fp256<MontBackend<Self, 4>> = ark_ff::MontFp!("5");
+
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+    const TWO_ADIC_ROOT_OF_UNITY: Fp256<MontBackend<Self, 4>> = ark_ff::MontFp!(
+        "19814229590243028906643993866117402072516588566294623396325693409366934201135"
+    );
+
+    // Montgomery storage everywhere else — the SP1 path and host builds. These
+    // are the original definitions: same representation as `FqConfigDerived`,
+    // so the raw limbs carry over.
+    #[cfg(not(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm")))]
     const GENERATOR: Fp256<MontBackend<Self, 4>> =
         Fp256::new_unchecked(<FqConfigDerived as MontConfig<4>>::GENERATOR.0);
 
+    #[cfg(not(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm")))]
     const TWO_ADIC_ROOT_OF_UNITY: Fp256<MontBackend<Self, 4>> =
         Fp256::new_unchecked(<FqConfigDerived as MontConfig<4>>::TWO_ADIC_ROOT_OF_UNITY.0);
 
@@ -129,30 +180,24 @@ impl MontConfig<4> for FqConfig {
         );
         Fp256::<MontBackend<Self, 4>>::new_unchecked(BigInt::new(result))
     }
-    // OpenVM modular-extension path. Same arithmetic identity as the SP1 path:
-    // `IntMod`'s `*` is a plain modular multiply on canonical values, so two
-    // Montgomery-form inputs give `a·b·R²`; one more multiply by R⁻¹ brings it
-    // back to `a·b·R`, the Montgomery form of the product.
+    // OpenVM modular-extension path, on canonical values (see `R` / `R2` above).
+    // `IntMod`'s `*` is a plain modular multiply, which on canonical inputs is
+    // already the answer: one chip instruction, where Montgomery storage needed
+    // two (the product, then a multiply by R⁻¹ to strip the extra factor of R).
     //
     // The byte shuffling is free: arkworks stores `[u64; 4]` little-endian and
     // `IntMod` stores 32 bytes little-endian, so the two layouts coincide and
-    // the casts below are reinterpretations, not conversions.
+    // the conversions below are reinterpretations, not arithmetic.
     //
-    // `from_le_bytes_unchecked` skips the reduction check. That is sound here
-    // and only here: arkworks maintains `value < MODULUS` as an invariant on
-    // every `Fp256`, and R_INV is a constant below the modulus. Do not reuse
-    // this on values from outside the field.
+    // `from_le_bytes_unchecked` skips the reduction check. That is sound here:
+    // arkworks maintains `value < MODULUS` as an invariant on every `Fp256`, and
+    // the representation change does not weaken it — canonical values are
+    // exactly the residues below the modulus. Do not reuse this on values from
+    // outside the field.
     #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
     #[inline(always)]
     fn mul_assign(a: &mut Fp256<MontBackend<Self, 4>>, b: &Fp256<MontBackend<Self, 4>>) {
-        use openvm_algebra_guest::IntMod;
-        // R_INV = (2^256)^-1 mod MODULUS, little-endian u64 limbs.
-        const R_INV: [u64; 4] = [0xcf3f8e8753a769a9,
-            0xac9fba6a4077fc57,
-            0x70cb2996efc89a65,
-            0x21f1c4ff1e2278d5];
-        let prod = &limbs_to_mod(&(a.0).0) * &limbs_to_mod(&(b.0).0);
-        let out = &prod * &limbs_to_mod(&R_INV);
+        let out = &limbs_to_mod(&(a.0).0) * &limbs_to_mod(&(b.0).0);
         (a.0).0 = mod_to_limbs(&out);
     }
 
@@ -163,8 +208,9 @@ impl MontConfig<4> for FqConfig {
         Self::mul_assign(a, &b);
     }
 
-    // Σ aᵢ·bᵢ. Each product stays in R²-scale; summing there and applying R⁻¹
-    // once at the end costs M + 1 modular multiplies instead of 2M.
+    // Σ aᵢ·bᵢ in M chip multiplies. The Montgomery version needed M + 1: the
+    // products accumulated in R²-scale and one final multiply by R⁻¹ brought the
+    // sum back. Canonical values accumulate directly.
     #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
     #[inline]
     fn sum_of_products<const M: usize>(
@@ -172,16 +218,55 @@ impl MontConfig<4> for FqConfig {
         b: &[Fp256<MontBackend<Self, 4>>; M],
     ) -> Fp256<MontBackend<Self, 4>> {
         use openvm_algebra_guest::IntMod;
-        const R_INV: [u64; 4] = [0xcf3f8e8753a769a9,
-            0xac9fba6a4077fc57,
-            0x70cb2996efc89a65,
-            0x21f1c4ff1e2278d5];
         let mut acc = OpenVmFpMod::ZERO;
         for i in 0..M {
             acc += &limbs_to_mod(&(a[i].0).0) * &limbs_to_mod(&(b[i].0).0);
         }
-        let out = &acc * &limbs_to_mod(&R_INV);
-        Fp256::<MontBackend<Self, 4>>::new_unchecked(BigInt::new(mod_to_limbs(&out)))
+        Fp256::<MontBackend<Self, 4>>::new_unchecked(BigInt::new(mod_to_limbs(&acc)))
+    }
+
+    // The modular extension has a division instruction (`ModArithBaseFunct7::
+    // DivMod`), so an inverse is one chip call. arkworks' default is a binary
+    // extended Euclid in software — hundreds of RISC-V instructions, each limb
+    // operation crossing the memory chip.
+    //
+    // `div_unsafe` is undefined behaviour on a non-invertible denominator, hence
+    // the zero check first — which is also the `None` arm of the contract.
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+    #[inline(always)]
+    fn inverse(a: &Fp256<MontBackend<Self, 4>>) -> Option<Fp256<MontBackend<Self, 4>>> {
+        use ark_ff::Zero;
+        use openvm_algebra_guest::{DivUnsafe, IntMod};
+        if a.is_zero() {
+            return None;
+        }
+        let out = OpenVmFpMod::ONE.div_unsafe(&limbs_to_mod(&(a.0).0));
+        Some(Fp256::<MontBackend<Self, 4>>::new_unchecked(BigInt::new(
+            mod_to_limbs(&out),
+        )))
+    }
+
+    // Canonical storage makes both conversions moves. The defaults are a
+    // 16-mac Montgomery reduction and a multiply by R2 respectively — and
+    // `into_bigint` is on the hot path twice over: every coordinate and every
+    // scalar crossing into the curve chip goes through it.
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+    #[inline(always)]
+    fn into_bigint(a: Fp256<MontBackend<Self, 4>>) -> BigInt<4> {
+        a.0
+    }
+
+    // Keeps the range check the default performs: `from_bigint` is the entry
+    // point for externally supplied values, and everything downstream — the
+    // chip's `from_le_bytes_unchecked` included — assumes `value < MODULUS`.
+    #[cfg(all(any(target_os = "zkvm", target_os = "openvm"), feature = "openvm"))]
+    #[inline(always)]
+    fn from_bigint(r: BigInt<4>) -> Option<Fp256<MontBackend<Self, 4>>> {
+        if r >= Self::MODULUS {
+            None
+        } else {
+            Some(Fp256::<MontBackend<Self, 4>>::new_unchecked(r))
+        }
     }
 }
 
