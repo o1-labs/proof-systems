@@ -159,10 +159,10 @@ macro_rules! impl_oracles {
             #[derive(Clone)]
             pub struct [<Napi $field_name:camel Oracles>] {
                 pub o: [<Napi $field_name:camel RandomOracles>],
-                #[napi(js_name = "p_eval0")]
-                pub p_eval0: $NapiF,
-                #[napi(js_name = "p_eval1")]
-                pub p_eval1: $NapiF,
+                #[napi(skip)]
+                pub p_eval0: NapiFlatVector<$NapiF>,
+                #[napi(skip)]
+                pub p_eval1: NapiFlatVector<$NapiF>,
                 #[napi(skip)]
                 pub opening_prechallenges: NapiFlatVector<$NapiF>,
                 #[napi(js_name = "digest_before_evaluations")]
@@ -174,11 +174,31 @@ macro_rules! impl_oracles {
                 #[napi(constructor)]
                 pub fn new(
                     o: NapiRandomOracles,
-                    p_eval0: $NapiF,
-                    p_eval1: $NapiF,
+                    p_eval0: NapiFlatVector<$NapiF>,
+                    p_eval1: NapiFlatVector<$NapiF>,
                     opening_prechallenges: NapiFlatVector<$NapiF>,
                     digest_before_evaluations: $NapiF) -> Self {
                     Self {o, p_eval0, p_eval1, opening_prechallenges, digest_before_evaluations}
+                }
+
+                #[napi(getter, js_name="p_eval0")]
+                pub fn p_eval0(&self) -> NapiFlatVector<$NapiF> {
+                    self.p_eval0.clone()
+                }
+
+                #[napi(setter, js_name="set_p_eval0")]
+                pub fn set_p_eval0(&mut self, x: NapiFlatVector<$NapiF>) {
+                    self.p_eval0 = x;
+                }
+
+                #[napi(getter, js_name="p_eval1")]
+                pub fn p_eval1(&self) -> NapiFlatVector<$NapiF> {
+                    self.p_eval1.clone()
+                }
+
+                #[napi(setter, js_name="set_p_eval1")]
+                pub fn set_p_eval1(&mut self, x: NapiFlatVector<$NapiF>) {
+                    self.p_eval1 = x;
                 }
 
                 #[napi(getter, js_name="opening_prechallenges")]
@@ -265,13 +285,16 @@ macro_rules! impl_oracles {
                 };
 
                 match result {
-                    Ok((oracles, p_eval, opening_prechallenges, digest)) => Ok([<Napi $field_name:camel Oracles>] {
-                        o: oracles.into(),
-                        p_eval0: p_eval[0][0].into(),
-                        p_eval1: p_eval[1][0].into(),
-                        opening_prechallenges,
-                        digest_before_evaluations: digest.into()
-                    }),
+                    Ok((oracles, p_eval, opening_prechallenges, digest)) => {
+                        let [pe0, pe1] = p_eval;
+                        Ok([<Napi $field_name:camel Oracles>] {
+                            o: oracles.into(),
+                            p_eval0: pe0.into_iter().map(Into::into).collect::<Vec<_>>().into(),
+                            p_eval1: pe1.into_iter().map(Into::into).collect::<Vec<_>>().into(),
+                            opening_prechallenges,
+                            digest_before_evaluations: digest.into()
+                        })
+                    },
                     Err(err) => Err(NapiError::new(Status::GenericFailure, err)),
                 }
             }
@@ -280,8 +303,8 @@ macro_rules! impl_oracles {
             pub fn [<$F:snake _oracles_dummy>]() -> [<Napi $field_name:camel Oracles>] {
                 [<Napi $field_name:camel Oracles>] {
                     o: RandomOracles::<$F>::default().into(),
-                    p_eval0: $F::zero().into(),
-                    p_eval1: $F::zero().into(),
+                    p_eval0: vec![$F::zero().into()].into(),
+                    p_eval1: vec![$F::zero().into()].into(),
                     opening_prechallenges: vec![].into(),
                     digest_before_evaluations: $F::zero().into(),
                 }

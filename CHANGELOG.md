@@ -9,9 +9,32 @@ and this project adheres to
 
 ## Unreleased
 
+### [kimchi-napi](./kimchi-napi)
+
+#### Fixed
+
+- Treat public evaluations of oracles as vectors for chunking coherence
+  ([#3577](https://github.com/o1-labs/proof-systems/pull/3577))
+
+### [kimchi-stubs](./kimchi-stubs)
+
+#### Fixed
+
+- Treat public evaluations of oracles as vectors for chunking coherence
+  ([#3577](https://github.com/o1-labs/proof-systems/pull/3577))
+
+### [kimchi-wasm](./kimchi-wasm)
+
+#### Fixed
+
+- Treat public evaluations of oracles as vectors for chunking coherence
+  ([#3577](https://github.com/o1-labs/proof-systems/pull/3577))
+
 ## 0.7.0
 
-### Added
+### [kimchi-napi](./kimchi-napi)
+
+#### Added
 
 - Add `kimchi-napi` crate for native Node-API access to Kimchi from Node.js
   ([#3546](https://github.com/o1-labs/proof-systems/pull/3546))

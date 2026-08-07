@@ -145,7 +145,7 @@ pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants, const FULL_ROUNDS: u
     params: &ArithmeticSpongeParams<F, FULL_ROUNDS>,
     state: &mut [F],
 ) {
-    assert!(state.len() == SC::SPONGE_WIDTH);
+    assert_eq!(state.len(), SC::SPONGE_WIDTH);
 
     // Pasta fields run the whole permutation on OpenVM's modular chip, which
     // keeps the arkworks <-> IntMod conversions at the boundary instead of three
