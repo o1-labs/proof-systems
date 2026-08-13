@@ -34,7 +34,9 @@ fn add_pairs_in_place<P: SWCurveConfig>(pairs: &mut Vec<SWJAffine<P>>) {
         pairs.len() - 1
     };
     let mut denominators = pairs
-        .as_chunks_mut::<2>().0.iter()
+        .as_chunks_mut::<2>()
+        .0
+        .iter()
         .map(|p| {
             if p[0].x == p[1].x {
                 if p[1].y.is_zero() {
