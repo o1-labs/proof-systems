@@ -271,16 +271,15 @@ fn test_bad_xor_decompsition() {
 #[test]
 // Tests that the extend xor function works as expected
 fn test_extend_xor() {
-    let bits = Some(16);
+    let bits = 16;
     let rng = &mut o1_utils::tests::make_test_rng(None);
-    let input1: PallasField = rng.gen(None, bits);
-    let input2: PallasField = rng.gen(None, bits);
+    let input1: PallasField = rng.gen(None, Some(bits));
+    let input2: PallasField = rng.gen(None, Some(bits));
 
     // If one specifies a concrete number of bits, use that (if they are sufficient to hold both inputs)
     // Otherwise, use the max number of bits required to hold both inputs (if only one, the other is zero)
     let bits1 = input1.to_biguint().bitlen();
     let bits2 = input2.to_biguint().bitlen();
-    let bits = bits.unwrap_or(0); // 0 or bits
     let bits = max(bits, max(bits1, bits2));
 
     let mut gates = vec![];
@@ -328,16 +327,15 @@ fn test_bad_xor() {
 fn test_bad_xor() {
     use alloc::string::String;
 
-    let bits = Some(16);
+    let bits = 16;
     let rng = &mut o1_utils::tests::make_test_rng(None);
-    let input1: PallasField = rng.gen(None, bits);
-    let input2: PallasField = rng.gen(None, bits);
+    let input1: PallasField = rng.gen(None, Some(bits));
+    let input2: PallasField = rng.gen(None, Some(bits));
 
     // If user specified a concrete number of bits, use that (if they are sufficient to hold both inputs)
     // Otherwise, use the max number of bits required to hold both inputs (if only one, the other is zero)
     let bits1 = input1.to_biguint().bitlen();
     let bits2 = input2.to_biguint().bitlen();
-    let bits = bits.unwrap_or(0); // 0 or bits
     let bits = max(bits, max(bits1, bits2));
 
     let mut gates = vec![];
