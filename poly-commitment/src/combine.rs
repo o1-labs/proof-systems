@@ -34,7 +34,7 @@ fn add_pairs_in_place<P: SWCurveConfig>(pairs: &mut Vec<SWJAffine<P>>) {
         pairs.len() - 1
     };
     let mut denominators = pairs
-        .chunks_exact_mut(2)
+        .as_chunks_mut::<2>().0.iter()
         .map(|p| {
             if p[0].x == p[1].x {
                 if p[1].y.is_zero() {
@@ -298,7 +298,7 @@ fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
         dst[..n].clone_from_slice(&src[..n]);
     }
 
-    fn get_bit(limbs_lsb: &[u64], i: u64) -> u64 {
+    const fn get_bit(limbs_lsb: &[u64], i: u64) -> u64 {
         let limb = i / 64;
         let j = i % 64;
         (limbs_lsb[limb as usize] >> j) & 1

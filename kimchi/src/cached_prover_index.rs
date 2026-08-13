@@ -1865,7 +1865,7 @@ where
         });
     }
     let mut gates = Vec::with_capacity(gates_bytes.len() / PRUNED_GATE_SIZE);
-    for chunk in gates_bytes.chunks_exact(PRUNED_GATE_SIZE) {
+    for chunk in gates_bytes.as_chunks::<PRUNED_GATE_SIZE>().0 {
         gates.push(read_pruned_gate::<G::ScalarField>(chunk)?);
     }
     // Restore each gate's coefficient vector from the GateCoeffs section.
@@ -1885,7 +1885,7 @@ where
             let (fields, rest) = read_exact(rest, count as usize * FIELD_ELEMENT_BYTES)?;
             if cfg!(debug_assertions) {
                 let mut coeffs = Vec::with_capacity(count as usize);
-                for chunk in fields.chunks_exact(FIELD_ELEMENT_BYTES) {
+                for chunk in fields.as_chunks::<FIELD_ELEMENT_BYTES>().0 {
                     let mut limbs = [0u64; 4];
                     for (i, limb) in limbs.iter_mut().enumerate() {
                         let mut b = [0u8; 8];
