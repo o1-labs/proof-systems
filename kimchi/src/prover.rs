@@ -1146,7 +1146,17 @@ where
                     lin.interpolate()
                 };
 
+                // The constraint environment and the d8 evaluations it borrows
+                // (`lagrange`, and the lookup table / sorted / aggregation
+                // evaluations) are not needed past this point -- everything
+                // below operates on d1-sized polynomials. Those d8 buffers
+                // dominate the prover's peak memory, so releasing them here
+                // rather than at end-of-proof materially lowers the peak.
                 drop(env);
+                drop(lagrange);
+                lookup_context.joint_lookup_table_d8 = None;
+                lookup_context.sorted8 = None;
+                lookup_context.aggreg8 = None;
 
                 // see https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#the-prover-side
                 f.to_chunked_polynomial(num_chunks, index.max_poly_size)
