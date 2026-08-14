@@ -17,6 +17,20 @@ and this project adheres to
   disk while allowing the OS page cache to evict unused pages
   ([#3569](https://github.com/o1-labs/proof-systems/pull/3569))
 
+#### Changed
+
+- Skip the d1 rows when evaluating constraints for the quotient. Every
+  constraint vanishes there for a satisfying witness, so the honest prover was
+  computing known zeros; the generic constraint's public-input rows are patched
+  back on afterwards. Proofs are unchanged
+  ([#3588](https://github.com/o1-labs/proof-systems/pull/3588))
+- As a consequence of the above, the prover's "rest of division by vanishing
+  polynomial" error can no longer fire: the quotient numerator is now divisible
+  by `Z_H` by construction. In release builds an unsatisfied witness produces a
+  proof that fails verification rather than an error from `create_recursive`.
+  Debug builds are unaffected, since `index.verify()` already rejects such a
+  witness earlier ([#3588](https://github.com/o1-labs/proof-systems/pull/3588))
+
 ### [kimchi-napi](./kimchi-napi)
 
 #### Fixed
