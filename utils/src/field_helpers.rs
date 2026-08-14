@@ -243,7 +243,7 @@ pub fn i32_to_field<F: From<u64> + Neg<Output = F>>(i: i32) -> F {
     if i >= 0 {
         F::from(i as u64)
     } else {
-        -F::from(-i as u64)
+        -F::from(u64::from(i.unsigned_abs()))
     }
 }
 
