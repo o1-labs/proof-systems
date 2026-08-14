@@ -16,6 +16,13 @@ and this project adheres to
 - Add an optional mmap-backed prover-index cache for loading proving keys from
   disk while allowing the OS page cache to evict unused pages
   ([#3569](https://github.com/o1-labs/proof-systems/pull/3569))
+- Add an opt-in fused row-wise constraint evaluator, which compiles the
+  constraint expression to a flat bytecode and walks the domain a block at a
+  time instead of materialising a full-domain `Evaluations` per sub-expression.
+  Off by default; selected via `KIMCHI_FUSED_EVAL` (`1` to use it, `verify` to
+  run both paths and assert they agree). Falls back to the vectorised path for
+  any expression it cannot compile
+  ([#3590](https://github.com/o1-labs/proof-systems/pull/3590))
 
 ### [kimchi-napi](./kimchi-napi)
 
