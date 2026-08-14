@@ -26,6 +26,20 @@ and this project adheres to
 
 ### [kimchi-stubs](./kimchi-stubs)
 
+#### Added
+
+- Add `<field>_vector_clear`, letting the caller eagerly release a consumed
+  vector's Rust-side allocation. OCaml only sees the pointer, so its GC never
+  feels the (potentially large) backing buffer
+  ([#3592](https://github.com/o1-labs/proof-systems/pull/3592))
+- Run proving inside a scoped rayon thread pool sized by `KIMCHI_PROVE_THREADS`,
+  falling back to the global pool when unset. Pools are reused across proves via
+  a per-thread-count freelist, bounded by `KIMCHI_PROVE_POOL_CAP` (default 2) so
+  idle pools do not accumulate. This lets a long-running worker prove different
+  tasks at different thread counts without rebuilding its global pool; the
+  thread count does not affect the proof
+  ([#3592](https://github.com/o1-labs/proof-systems/pull/3592))
+
 #### Fixed
 
 - Treat public evaluations of oracles as vectors for chunking coherence
