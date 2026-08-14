@@ -99,15 +99,17 @@ pub fn caml_pasta_fp_plonk_proof_create(
     // Release the runtime lock so that other threads can run using it while we generate the proof.
     runtime.releasing_runtime(|| {
         let group_map = GroupMap::<Fq>::setup();
-        let proof = ProverProof::create_recursive::<EFqSponge, EFrSponge, _>(
-            &group_map,
-            witness,
-            &runtime_tables,
-            index,
-            prev,
-            None,
-            &mut rand::rngs::OsRng,
-        )
+        let proof = crate::with_prove_pool(|| {
+            ProverProof::create_recursive::<EFqSponge, EFrSponge, _>(
+                &group_map,
+                witness,
+                &runtime_tables,
+                index,
+                prev,
+                None,
+                &mut rand::rngs::OsRng,
+            )
+        })
         .map_err(|e| ocaml::Error::Error(e.into()))?;
         Ok((proof, public_input).into())
     })

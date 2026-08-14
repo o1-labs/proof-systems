@@ -75,3 +75,24 @@ pub use {
     mina_poseidon::sponge::caml::CamlScalarChallenge,
     poly_commitment::{commitment::caml::CamlPolyComm, ipa::caml::CamlOpeningProof},
 };
+
+/// Run a proving closure in a scoped rayon thread pool sized by
+/// `KIMCHI_PROVE_THREADS`, falling back to the global pool when unset. Lets a
+/// long-running worker prove different tasks at different thread counts -- e.g.
+/// low rayon for the many parallel base proofs, high rayon for the
+/// low-concurrency compression proofs -- without rebuilding its global pool.
+///
+/// The thread count does not affect the proof, so this is VK-preserving.
+pub(crate) fn with_prove_pool<R: Send>(f: impl FnOnce() -> R + Send) -> R {
+    match std::env::var("KIMCHI_PROVE_THREADS")
+        .ok()
+        .and_then(|s| s.parse::<usize>().ok())
+    {
+        Some(n) if n >= 1 => rayon::ThreadPoolBuilder::new()
+            .num_threads(n)
+            .build()
+            .expect("KIMCHI_PROVE_THREADS thread pool")
+            .install(f),
+        _ => f(),
+    }
+}
