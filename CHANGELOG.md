@@ -38,6 +38,15 @@ and this project adheres to
 - Treat public evaluations of oracles as vectors for chunking coherence
   ([#3577](https://github.com/o1-labs/proof-systems/pull/3577))
 
+### [o1-utils](./utils)
+
+#### Added
+
+- Add `cfg_chunks_mut!`, the mutable-chunks counterpart to the existing
+  `cfg_iter!` family, so callers can chunk in parallel without depending on
+  `rayon` unconditionally
+  ([#3586](https://github.com/o1-labs/proof-systems/pull/3586))
+
 ## 0.7.0
 
 ### [kimchi-napi](./kimchi-napi)
