@@ -15,18 +15,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          # Full history so the merge base can be checked out and benchmarked on
+          # this same runner (see "Benchmark the baseline" below).
+          fetch-depth: 0
 
       - name: Load versions
         id: versions
         uses: ./.github/actions/load-versions
-
-      - name: Download artifact
-        id: download-artifact
-        uses: dawidd6/action-download-artifact@v14
-        with:
-          workflow: benches-mina-prover-set-baseline.yml
-          name: criterion-ps-mina-master-baseline
-          path: criterion-ps-mina-master-baseline/
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
@@ -38,32 +34,51 @@ jobs:
         with:
           ocaml_version: ${{ steps.versions.outputs.ocaml-version }}
 
+      # Recorded so that, if a comparison ever does look anomalous, the runner
+      # it happened on is visible in the log.
+      - name: Record the runner's CPU
+        run: lscpu || cat /proc/cpuinfo
+
+      - name: Resolve the revisions to compare
+        id: revs
+        run: |
+          set -x
+          BASE_SHA="${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}"
+          if [ -z "$BASE_SHA" ]; then
+            echo "could not determine a base revision to compare against" >&2
+            exit 1
+          fi
+          {
+            echo "head=$(git rev-parse HEAD)"
+            echo "base=$BASE_SHA"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Ensure that everything builds
         run: |
           eval $(opam env)
           cargo check --benches --examples
 
-      # 'sleep 1' are necessary because otherwise the outputs are intermixed.
-      - name: Copy previous baseline to target folder
-        run: |
-          set -x
-          pwd
-          sleep 1
-          ls .
-          sleep 1
-          tree criterion-ps-mina-master-baseline/
-          sleep 1
-          # This copies paths as follows... into ./target/
-          #   target/criterion/proof_creation/proof creation (SRS size 2_{16}, 1014 gates)/ci-master-latest/benchmark.json
-          #   target/criterion/proof_creation/proof creation (SRS size 2_{16}, 1014 gates)/ci-master-latest/estimates.json
-          #   target/criterion/proof_creation/proof creation (SRS size 2_{16}, 1014 gates)/ci-master-latest/sample.json
-          #   target/criterion/proof_creation/proof creation (SRS size 2_{16}, 1014 gates)/ci-master-latest/tukey.json
-          rsync -av $(realpath ./criterion-ps-mina-master-baseline/target) .
-          sleep 1
-          ls target/
-
-      - name: Run criterion bench
+      # Both halves of the comparison run on this one runner, back to back.
+      # Criterion keeps its measurements under target/, which is untracked, so
+      # the saved baseline survives the checkout of the PR revision below.
+      #
+      # This is the whole point of the job's shape: GitHub-hosted runners differ
+      # in CPU model and tenancy, so a baseline recorded on some *other* runner
+      # cannot be compared against this one. Doing so previously reported
+      # double-digit "regressions" for PRs that did not change the benchmarked
+      # code at all.
+      - name: Benchmark the baseline (merge base)
         run: |
           set -x
           eval $(opam env)
-          BASELINE_NAME=master-baseline-data bash scripts/bench-criterion-mina-circuits.sh cargo bench -p kimchi --bench proof_criterion
+          git checkout --detach ${{ steps.revs.outputs.base }}
+          SAVE_BASELINE_NAME=master-baseline-data \
+            bash scripts/bench-criterion-mina-circuits.sh
+
+      - name: Benchmark this revision and compare
+        run: |
+          set -x
+          eval $(opam env)
+          git checkout --detach ${{ steps.revs.outputs.head }}
+          BASELINE_NAME=master-baseline-data \
+            bash scripts/bench-criterion-mina-circuits.sh
