@@ -484,20 +484,21 @@ where
 
             //~~ * Compute the lookup table values as the combination of the lookup table entries.
             let joint_lookup_table_d8 = {
-                let mut evals = Vec::with_capacity(d1_size);
+                // Each row combines its own table entry independently of every
+                // other row, so this is a pure map over the d8 domain.
+                let evals = (0..(d1_size * 8))
+                    .into_par_iter()
+                    .map(|idx| {
+                        let table_id = match lcs.table_ids8.as_ref() {
+                            Some(table_ids8) => table_ids8.evals[idx],
+                            None =>
+                            // If there is no `table_ids8` in the constraint system,
+                            // every table ID is identically 0.
+                            {
+                                G::ScalarField::zero()
+                            }
+                        };
 
-                for idx in 0..(d1_size * 8) {
-                    let table_id = match lcs.table_ids8.as_ref() {
-                        Some(table_ids8) => table_ids8.evals[idx],
-                        None =>
-                        // If there is no `table_ids8` in the constraint system,
-                        // every table ID is identically 0.
-                        {
-                            G::ScalarField::zero()
-                        }
-                    };
-
-                    let combined_entry =
                         if !lcs.configuration.lookup_info.features.uses_runtime_tables {
                             let table_row = lcs.lookup_table8.iter().map(|e| &e.evals[idx]);
 
@@ -525,9 +526,9 @@ where
                                 table_row,
                                 &table_id,
                             )
-                        };
-                    evals.push(combined_entry);
-                }
+                        }
+                    })
+                    .collect();
 
                 Evaluations::from_vec_and_domain(evals, index.cs.domain.d8)
             };
@@ -592,9 +593,10 @@ where
 
             // precompute different forms of the sorted polynomials for later
             // TODO: We can avoid storing these coefficients.
-            let sorted_coeffs: Vec<_> = sorted.iter().map(|e| e.clone().interpolate()).collect();
+            let sorted_coeffs: Vec<_> =
+                sorted.par_iter().map(|e| e.clone().interpolate()).collect();
             let sorted8: Vec<_> = sorted_coeffs
-                .iter()
+                .par_iter()
                 .map(|v| v.evaluate_over_domain_by_ref(index.cs.domain.d8))
                 .collect();
 
