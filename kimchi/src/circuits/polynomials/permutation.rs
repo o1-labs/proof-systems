@@ -67,6 +67,30 @@ use {
     rand::{CryptoRng, RngCore},
 };
 
+/// The coset shifts of a domain, as sampled deterministically from it.
+///
+/// Split out of [`Shifts::new`] so that a caller wanting only the shifts does
+/// not pay for the cell map, which is domain-sized.
+pub fn coset_shifts<F: FftField>(domain: &D<F>) -> [F; PERMUTS] {
+    let mut shifts = [F::zero(); PERMUTS];
+
+    // first shift is the identity
+    shifts[0] = F::one();
+
+    // sample the other shifts
+    let mut i: u32 = 7;
+    for idx in 1..(PERMUTS) {
+        let mut shift = Shifts::sample(domain, &mut i);
+        // they have to be distincts
+        while shifts.contains(&shift) {
+            shift = Shifts::sample(domain, &mut i);
+        }
+        shifts[idx] = shift;
+    }
+
+    shifts
+}
+
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
@@ -147,21 +171,7 @@ where
 {
     /// Generates the shifts for a given domain
     pub fn new(domain: &D<F>) -> Self {
-        let mut shifts = [F::zero(); PERMUTS];
-
-        // first shift is the identity
-        shifts[0] = F::one();
-
-        // sample the other shifts
-        let mut i: u32 = 7;
-        for idx in 1..(PERMUTS) {
-            let mut shift = Self::sample(domain, &mut i);
-            // they have to be distincts
-            while shifts.contains(&shift) {
-                shift = Self::sample(domain, &mut i);
-            }
-            shifts[idx] = shift;
-        }
+        let shifts = coset_shifts(domain);
 
         // create a map of cells to their shifted value
         let map: [Vec<F>; PERMUTS] =
