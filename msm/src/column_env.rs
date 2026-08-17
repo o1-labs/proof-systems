@@ -171,6 +171,10 @@ impl<
         panic!("Not supposed to be used in MSM")
     }
 
+    fn permutation_vanishing_polynomial(&self) -> &'a Evaluations<F, Radix2EvaluationDomain<F>> {
+        panic!("Not supposed to be used in MSM")
+    }
+
     fn l0_1(&self) -> F {
         self.l0_1
     }

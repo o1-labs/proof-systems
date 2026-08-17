@@ -212,6 +212,10 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F, LookupChallengeTerm, LookupChalle
         panic!("no zk is supposed to be used in this protocol")
     }
 
+    fn permutation_vanishing_polynomial(&self) -> &'a Evaluations<F, D<F>> {
+        panic!("no zk is supposed to be used in this protocol")
+    }
+
     fn l0_1(&self) -> F {
         self.l0_1
     }

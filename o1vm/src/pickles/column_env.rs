@@ -131,6 +131,10 @@ impl<'a, F: FftField> TColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyC
         panic!("Not supposed to be used in MIPS. We do not support zero-knowledge for now")
     }
 
+    fn permutation_vanishing_polynomial(&self) -> &'a Evaluations<F, Radix2EvaluationDomain<F>> {
+        panic!("Not supposed to be used in MIPS. We do not support zero-knowledge for now")
+    }
+
     fn l0_1(&self) -> F {
         self.l0_1
     }

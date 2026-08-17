@@ -114,6 +114,14 @@ pub trait ColumnEnvironment<
 
     fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>>;
 
+    /// The polynomial vanishing on the zero-knowledge rows — one row fewer than
+    /// [`ColumnEnvironment::vanishes_on_zero_knowledge_and_previous_rows`].
+    ///
+    /// This is the multiplier the permutation argument uses. A protocol without
+    /// zero-knowledge rows has no such polynomial and may reject the call, as it
+    /// already may for the one above.
+    fn permutation_vanishing_polynomial(&self) -> &'a Evaluations<F, D<F>>;
+
     /// Return the value `prod_{j != 1} (1 - omega^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     fn l0_1(&self) -> F;
@@ -2226,12 +2234,15 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
                     }
                 }
             }
+            Expr::Atom(ExprInner::PermutationVanishingPolynomial) => EvalResult::SubEvals {
+                domain: Domain::D8,
+                shift: 0,
+                evals: env.permutation_vanishing_polynomial(),
+            },
             // These state quantities the verifier computes at a point. They
             // cannot appear in the quotient, which is what this evaluates, so
             // there is nothing to give a domain evaluation of.
-            Expr::Atom(ExprInner::PermutationVanishingPolynomial)
-            | Expr::Atom(ExprInner::EvaluationPoint)
-            | Expr::Atom(ExprInner::VanishingPolynomial) => {
+            Expr::Atom(ExprInner::EvaluationPoint) | Expr::Atom(ExprInner::VanishingPolynomial) => {
                 panic!("this atom states a verifier-side scalar, not a polynomial over the domain")
             }
             Expr::Atom(ExprInner::RootOfUnity(i)) => EvalResult::Constant(root_of_unity(

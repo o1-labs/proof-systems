@@ -287,6 +287,10 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F, BerkeleyChallengeTerm, BerkeleyCh
         self.vanishes_on_zero_knowledge_and_previous_rows
     }
 
+    fn permutation_vanishing_polynomial(&self) -> &'a Evaluations<F, D<F>> {
+        self.permutation_vanishing_polynomial
+    }
+
     fn l0_1(&self) -> F {
         self.l0_1
     }
@@ -321,6 +325,8 @@ pub struct Environment<'a, F: FftField> {
     pub coefficient: &'a [Evaluations<F, D<F>>; COLUMNS],
     /// The polynomial that vanishes on the zero-knowledge rows and the row before.
     pub vanishes_on_zero_knowledge_and_previous_rows: &'a Evaluations<F, D<F>>,
+    /// The polynomial that vanishes on the zero-knowledge rows.
+    pub permutation_vanishing_polynomial: &'a Evaluations<F, D<F>>,
     /// The permutation aggregation polynomial.
     pub z: &'a Evaluations<F, D<F>>,
     /// The index selector polynomials.
