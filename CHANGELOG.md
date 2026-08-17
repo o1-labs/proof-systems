@@ -17,6 +17,12 @@ and this project adheres to
   disk while allowing the OS page cache to evict unused pages
   ([#3569](https://github.com/o1-labs/proof-systems/pull/3569))
 
+#### Changed
+
+- Release the quotient polynomial once the `ft` polynomial has been built,
+  rather than holding it until the end of the proof
+  ([#3594](https://github.com/o1-labs/proof-systems/pull/3594))
+
 ### [kimchi-napi](./kimchi-napi)
 
 #### Fixed
