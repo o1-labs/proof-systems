@@ -37,6 +37,9 @@ and this project adheres to
 
 - Treat public evaluations of oracles as vectors for chunking coherence
   ([#3577](https://github.com/o1-labs/proof-systems/pull/3577))
+- Allow undefined OCaml runtime symbols when linking the cdylib for native macOS
+  targets, fixing the macOS CI build broken since
+  [#3546](https://github.com/o1-labs/proof-systems/pull/3546)
 
 ## 0.7.0
 
