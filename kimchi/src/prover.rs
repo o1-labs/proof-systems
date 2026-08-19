@@ -544,8 +544,11 @@ where
             // d1-sized iFFT over them recovers the coefficients exactly. This
             // avoids the full d8 iFFT the interpolation here used to perform.
             let joint_lookup_table = {
-                let d1_evals: Vec<G::ScalarField> = (0..d1_size)
-                    .map(|j| joint_lookup_table_d8.evals[8 * j])
+                let d1_evals: Vec<G::ScalarField> = joint_lookup_table_d8
+                    .evals
+                    .iter()
+                    .step_by(8)
+                    .copied()
                     .collect();
                 Evaluations::from_vec_and_domain(d1_evals, index.cs.domain.d1).interpolate()
             };

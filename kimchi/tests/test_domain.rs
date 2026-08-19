@@ -55,7 +55,7 @@ fn subsampling_d8_evals_to_d1_recovers_the_polynomial() {
 
         let evals_d8 = poly.evaluate_over_domain_by_ref(d.d8);
 
-        let subsampled: Vec<Fp> = (0..d.d1.size()).map(|j| evals_d8.evals[8 * j]).collect();
+        let subsampled: Vec<Fp> = evals_d8.evals.iter().step_by(8).copied().collect();
         let recovered = Evaluations::from_vec_and_domain(subsampled, d.d1).interpolate();
 
         assert_eq!(
