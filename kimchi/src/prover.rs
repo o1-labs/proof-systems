@@ -74,6 +74,20 @@ macro_rules! check_constraint {
     }};
 }
 
+/// The blinders masking one commitment: one per chunk, drawn independently.
+///
+/// Independently, because a commitment is masked chunk by chunk. Two chunks
+/// masked by the same blinder leave their difference unmasked — the shared term
+/// cancels — so a single blinder repeated across the chunks hides less than it
+/// appears to. With one chunk the distinction does not arise, which is why this
+/// is easy to get wrong and impossible to observe in a passing test.
+fn blinder<F: UniformRand, RNG: RngCore + CryptoRng>(
+    num_chunks: usize,
+    rng: &mut RNG,
+) -> PolyComm<F> {
+    PolyComm::new((0..num_chunks).map(|_| F::rand(rng)).collect())
+}
+
 /// Contains variables needed for lookup in the prover algorithm.
 #[derive(Default)]
 struct LookupContext<G, F>
@@ -302,12 +316,12 @@ where
         // generate blinders if not given externally
         let blinders_final: Vec<PolyComm<G::ScalarField>> = match blinders {
             None => (0..COLUMNS)
-                .map(|_| PolyComm::new(vec![UniformRand::rand(rng); num_chunks]))
+                .map(|_| blinder::<G::ScalarField, _>(num_chunks, rng))
                 .collect(),
             Some(blinders_arr) => blinders_arr
                 .into_iter()
                 .map(|blinder_el| match blinder_el {
-                    None => PolyComm::new(vec![UniformRand::rand(rng); num_chunks]),
+                    None => blinder::<G::ScalarField, _>(num_chunks, rng),
                     Some(blinder_el_some) => blinder_el_some,
                 })
                 .collect(),
@@ -1775,6 +1789,28 @@ pub mod caml {
             };
 
             (proof, caml_pp.public.into_iter().map(Into::into).collect())
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mina_curves::pasta::Fp;
+
+    /// Each chunk gets its own blinder. A commitment is masked chunk by chunk,
+    /// so repeating one blinder across the chunks would leave their differences
+    /// unmasked.
+    #[test]
+    fn blinders_are_drawn_per_chunk() {
+        let mut rng = o1_utils::tests::make_test_rng(None);
+        let blinder = blinder::<Fp, _>(4, &mut rng);
+
+        assert_eq!(blinder.chunks.len(), 4);
+        for (i, a) in blinder.chunks.iter().enumerate() {
+            for b in blinder.chunks.iter().skip(i + 1) {
+                assert_ne!(a, b, "two chunks share a blinder");
+            }
         }
     }
 }
