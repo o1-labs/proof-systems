@@ -74,6 +74,20 @@ macro_rules! check_constraint {
     }};
 }
 
+/// The blinders masking one commitment: one per chunk, drawn independently.
+///
+/// Independently, because a commitment is masked chunk by chunk. Two chunks
+/// masked by the same blinder leave their difference unmasked — the shared term
+/// cancels — so a single blinder repeated across the chunks hides less than it
+/// appears to. With one chunk the distinction does not arise, which is why this
+/// is easy to get wrong and impossible to observe in a passing test.
+fn blinder<F: UniformRand, RNG: RngCore + CryptoRng>(
+    num_chunks: usize,
+    rng: &mut RNG,
+) -> PolyComm<F> {
+    PolyComm::new((0..num_chunks).map(|_| F::rand(rng)).collect())
+}
+
 /// Contains variables needed for lookup in the prover algorithm.
 #[derive(Default)]
 struct LookupContext<G, F>
@@ -302,12 +316,12 @@ where
         // generate blinders if not given externally
         let blinders_final: Vec<PolyComm<G::ScalarField>> = match blinders {
             None => (0..COLUMNS)
-                .map(|_| PolyComm::new(vec![UniformRand::rand(rng); num_chunks]))
+                .map(|_| blinder::<G::ScalarField, _>(num_chunks, rng))
                 .collect(),
             Some(blinders_arr) => blinders_arr
                 .into_iter()
                 .map(|blinder_el| match blinder_el {
-                    None => PolyComm::new(vec![UniformRand::rand(rng); num_chunks]),
+                    None => blinder::<G::ScalarField, _>(num_chunks, rng),
                     Some(blinder_el_some) => blinder_el_some,
                 })
                 .collect(),
@@ -484,20 +498,21 @@ where
 
             //~~ * Compute the lookup table values as the combination of the lookup table entries.
             let joint_lookup_table_d8 = {
-                let mut evals = Vec::with_capacity(d1_size);
+                // Each row combines its own table entry independently of every
+                // other row, so this is a pure map over the d8 domain.
+                let evals = (0..(d1_size * 8))
+                    .into_par_iter()
+                    .map(|idx| {
+                        let table_id = match lcs.table_ids8.as_ref() {
+                            Some(table_ids8) => table_ids8.evals[idx],
+                            None =>
+                            // If there is no `table_ids8` in the constraint system,
+                            // every table ID is identically 0.
+                            {
+                                G::ScalarField::zero()
+                            }
+                        };
 
-                for idx in 0..(d1_size * 8) {
-                    let table_id = match lcs.table_ids8.as_ref() {
-                        Some(table_ids8) => table_ids8.evals[idx],
-                        None =>
-                        // If there is no `table_ids8` in the constraint system,
-                        // every table ID is identically 0.
-                        {
-                            G::ScalarField::zero()
-                        }
-                    };
-
-                    let combined_entry =
                         if !lcs.configuration.lookup_info.features.uses_runtime_tables {
                             let table_row = lcs.lookup_table8.iter().map(|e| &e.evals[idx]);
 
@@ -525,15 +540,32 @@ where
                                 table_row,
                                 &table_id,
                             )
-                        };
-                    evals.push(combined_entry);
-                }
+                        }
+                    })
+                    .collect();
 
                 Evaluations::from_vec_and_domain(evals, index.cs.domain.d8)
             };
 
-            // TODO: This interpolation is avoidable.
-            let joint_lookup_table = joint_lookup_table_d8.interpolate_by_ref();
+            // Recover the d1 coefficient form of the joint table.
+            //
+            // `combine_table_entry` is a Horner fold over the table columns with
+            // constant (challenge) coefficients, so the joint table is a fixed
+            // linear combination of the columns -- each of which is the d8
+            // evaluation of a polynomial of degree < d1 -- and so has degree < d1
+            // itself. d1 is a subgroup of d8 (d8 = 8*d1, Radix2), so the joint
+            // table's d1 evaluations are exactly every 8th d8 evaluation, and a
+            // d1-sized iFFT over them recovers the coefficients exactly. This
+            // avoids the full d8 iFFT the interpolation here used to perform.
+            let joint_lookup_table = {
+                let d1_evals: Vec<G::ScalarField> = joint_lookup_table_d8
+                    .evals
+                    .iter()
+                    .step_by(8)
+                    .copied()
+                    .collect();
+                Evaluations::from_vec_and_domain(d1_evals, index.cs.domain.d1).interpolate()
+            };
 
             //~~ * Compute the sorted evaluations.
             // TODO: Once we switch to committing using lagrange commitments,
@@ -578,9 +610,10 @@ where
 
             // precompute different forms of the sorted polynomials for later
             // TODO: We can avoid storing these coefficients.
-            let sorted_coeffs: Vec<_> = sorted.iter().map(|e| e.clone().interpolate()).collect();
+            let sorted_coeffs: Vec<_> =
+                sorted.par_iter().map(|e| e.clone().interpolate()).collect();
             let sorted8: Vec<_> = sorted_coeffs
-                .iter()
+                .par_iter()
                 .map(|v| v.evaluate_over_domain_by_ref(index.cs.domain.d8))
                 .collect();
 
@@ -1130,7 +1163,17 @@ where
                     lin.interpolate()
                 };
 
+                // The constraint environment and the d8 evaluations it borrows
+                // (`lagrange`, and the lookup table / sorted / aggregation
+                // evaluations) are not needed past this point -- everything
+                // below operates on d1-sized polynomials. Those d8 buffers
+                // dominate the prover's peak memory, so releasing them here
+                // rather than at end-of-proof materially lowers the peak.
                 drop(env);
+                drop(lagrange);
+                lookup_context.joint_lookup_table_d8 = None;
+                lookup_context.sorted8 = None;
+                lookup_context.aggreg8 = None;
 
                 // see https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#the-prover-side
                 f.to_chunked_polynomial(num_chunks, index.max_poly_size)
@@ -1777,6 +1820,28 @@ pub mod caml {
             };
 
             (proof, caml_pp.public.into_iter().map(Into::into).collect())
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mina_curves::pasta::Fp;
+
+    /// Each chunk gets its own blinder. A commitment is masked chunk by chunk,
+    /// so repeating one blinder across the chunks would leave their differences
+    /// unmasked.
+    #[test]
+    fn blinders_are_drawn_per_chunk() {
+        let mut rng = o1_utils::tests::make_test_rng(None);
+        let blinder = blinder::<Fp, _>(4, &mut rng);
+
+        assert_eq!(blinder.chunks.len(), 4);
+        for (i, a) in blinder.chunks.iter().enumerate() {
+            for b in blinder.chunks.iter().skip(i + 1) {
+                assert_ne!(a, b, "two chunks share a blinder");
+            }
         }
     }
 }
