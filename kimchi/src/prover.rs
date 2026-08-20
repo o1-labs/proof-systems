@@ -498,20 +498,21 @@ where
 
             //~~ * Compute the lookup table values as the combination of the lookup table entries.
             let joint_lookup_table_d8 = {
-                let mut evals = Vec::with_capacity(d1_size);
+                // Each row combines its own table entry independently of every
+                // other row, so this is a pure map over the d8 domain.
+                let evals = (0..(d1_size * 8))
+                    .into_par_iter()
+                    .map(|idx| {
+                        let table_id = match lcs.table_ids8.as_ref() {
+                            Some(table_ids8) => table_ids8.evals[idx],
+                            None =>
+                            // If there is no `table_ids8` in the constraint system,
+                            // every table ID is identically 0.
+                            {
+                                G::ScalarField::zero()
+                            }
+                        };
 
-                for idx in 0..(d1_size * 8) {
-                    let table_id = match lcs.table_ids8.as_ref() {
-                        Some(table_ids8) => table_ids8.evals[idx],
-                        None =>
-                        // If there is no `table_ids8` in the constraint system,
-                        // every table ID is identically 0.
-                        {
-                            G::ScalarField::zero()
-                        }
-                    };
-
-                    let combined_entry =
                         if !lcs.configuration.lookup_info.features.uses_runtime_tables {
                             let table_row = lcs.lookup_table8.iter().map(|e| &e.evals[idx]);
 
@@ -539,15 +540,32 @@ where
                                 table_row,
                                 &table_id,
                             )
-                        };
-                    evals.push(combined_entry);
-                }
+                        }
+                    })
+                    .collect();
 
                 Evaluations::from_vec_and_domain(evals, index.cs.domain.d8)
             };
 
-            // TODO: This interpolation is avoidable.
-            let joint_lookup_table = joint_lookup_table_d8.interpolate_by_ref();
+            // Recover the d1 coefficient form of the joint table.
+            //
+            // `combine_table_entry` is a Horner fold over the table columns with
+            // constant (challenge) coefficients, so the joint table is a fixed
+            // linear combination of the columns -- each of which is the d8
+            // evaluation of a polynomial of degree < d1 -- and so has degree < d1
+            // itself. d1 is a subgroup of d8 (d8 = 8*d1, Radix2), so the joint
+            // table's d1 evaluations are exactly every 8th d8 evaluation, and a
+            // d1-sized iFFT over them recovers the coefficients exactly. This
+            // avoids the full d8 iFFT the interpolation here used to perform.
+            let joint_lookup_table = {
+                let d1_evals: Vec<G::ScalarField> = joint_lookup_table_d8
+                    .evals
+                    .iter()
+                    .step_by(8)
+                    .copied()
+                    .collect();
+                Evaluations::from_vec_and_domain(d1_evals, index.cs.domain.d1).interpolate()
+            };
 
             //~~ * Compute the sorted evaluations.
             // TODO: Once we switch to committing using lagrange commitments,
@@ -592,9 +610,10 @@ where
 
             // precompute different forms of the sorted polynomials for later
             // TODO: We can avoid storing these coefficients.
-            let sorted_coeffs: Vec<_> = sorted.iter().map(|e| e.clone().interpolate()).collect();
+            let sorted_coeffs: Vec<_> =
+                sorted.par_iter().map(|e| e.clone().interpolate()).collect();
             let sorted8: Vec<_> = sorted_coeffs
-                .iter()
+                .par_iter()
                 .map(|v| v.evaluate_over_domain_by_ref(index.cs.domain.d8))
                 .collect();
 
@@ -1144,7 +1163,17 @@ where
                     lin.interpolate()
                 };
 
+                // The constraint environment and the d8 evaluations it borrows
+                // (`lagrange`, and the lookup table / sorted / aggregation
+                // evaluations) are not needed past this point -- everything
+                // below operates on d1-sized polynomials. Those d8 buffers
+                // dominate the prover's peak memory, so releasing them here
+                // rather than at end-of-proof materially lowers the peak.
                 drop(env);
+                drop(lagrange);
+                lookup_context.joint_lookup_table_d8 = None;
+                lookup_context.sorted8 = None;
+                lookup_context.aggreg8 = None;
 
                 // see https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#the-prover-side
                 f.to_chunked_polynomial(num_chunks, index.max_poly_size)
