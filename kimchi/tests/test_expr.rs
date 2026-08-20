@@ -91,13 +91,13 @@ fn test_degree_tracking() {
             gamma: one,
             joint_combiner: one,
         },
-        witness: &domain_evals.d8.this.w,
+        witness: &domain_evals.this.w,
         coefficient: &index.column_evaluations.get().coefficients8,
         vanishes_on_zero_knowledge_and_previous_rows: &index
             .cs
             .precomputations()
             .vanishes_on_zero_knowledge_and_previous_rows,
-        z: &domain_evals.d8.this.z,
+        z: &domain_evals.this.z,
         l0_1: l0_1(index.cs.domain.d1),
         domain: index.cs.domain,
         index: HashMap::new(),
