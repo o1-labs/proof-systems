@@ -1,6 +1,7 @@
 mod build_info;
 mod circuit;
 mod gate_vector;
+mod linearization;
 mod oracles;
 mod pasta_fp_plonk_index;
 mod pasta_fq_plonk_index;
@@ -16,6 +17,7 @@ mod wrappers;
 pub use build_info::{get_native_calls, ARCH_NAME, BACKING, OS_NAME};
 
 pub use circuit::prover_to_json;
+pub use linearization::{fp_linearization_tokens, fq_linearization_tokens};
 pub use gate_vector::{
     caml_pasta_fp_plonk_circuit_serialize, caml_pasta_fp_plonk_gate_vector_add,
     caml_pasta_fp_plonk_gate_vector_create, caml_pasta_fp_plonk_gate_vector_digest,

@@ -43,6 +43,7 @@ pub mod error;
 #[cfg(feature = "prover")]
 pub mod lagrange_basis_evaluations;
 pub mod linearization;
+pub mod linearization_tokens;
 pub mod oracles;
 pub mod plonk_sponge;
 pub mod proof;
