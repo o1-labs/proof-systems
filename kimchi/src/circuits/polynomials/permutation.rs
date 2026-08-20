@@ -203,6 +203,23 @@ where
     }
 }
 
+/// Multiply `l` by `r` element-wise over d8, skipping the d1 rows -- the indices
+/// that are multiples of 8, since d8 = 8 * d1. The permutation contribution
+/// vanishes on all of d1, so those rows are left at the zero that building the
+/// terms produced; only the non-d1 products need computing.
+#[cfg(feature = "prover")]
+fn mul_assign_skipping_d1<F: FftField>(l: &mut Evaluations<F, D<F>>, r: &Evaluations<F, D<F>>) {
+    l.evals
+        .par_iter_mut()
+        .enumerate()
+        .zip(r.evals.par_iter())
+        .for_each(|((i, a), b)| {
+            if i & 7 != 0 {
+                *a *= b;
+            }
+        });
+}
+
 #[cfg(feature = "prover")]
 impl<const FULL_ROUNDS: usize, F, G, Srs> ProverIndex<FULL_ROUNDS, G, Srs>
 where
@@ -233,9 +250,6 @@ where
         let alpha2 = alphas.next().expect("missing power of alpha");
 
         let zk_rows = self.cs.zk_rows as usize;
-
-        // constant gamma in evaluation form (in domain d8)
-        let gamma = &self.cs.precomputations().constant_1_d8.scale(gamma);
 
         //~ The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.
         //~ They will be used by the prover.
@@ -270,7 +284,9 @@ where
             // (w[0](x) + gamma + x * beta * shift[0]) *
             // (w[1](x) + gamma + x * beta * shift[1]) * ...
             // (w[6](x) + gamma + x * beta * shift[6])
-            // in evaluation form in d8
+            // in evaluation form in d8, computed in a single pass per element:
+            // gamma is a constant, so it needs no all-ones broadcast vector,
+            // and x is read straight off the cached d8 domain points.
             let shifts: Evaluations<F, D<F>> = &lagrange
                 .d8
                 .this
@@ -278,10 +294,26 @@ where
                 .par_iter()
                 .zip(self.cs.shift.par_iter())
                 .map(|(witness, shift)| {
-                    &(witness + gamma) + &self.cs.precomputations().poly_x_d1.scale(beta * shift)
+                    let beta_shift = beta * shift;
+                    let evals: Vec<F> = witness
+                        .evals
+                        .par_iter()
+                        .zip(self.cs.precomputations().poly_x_d1.evals.par_iter())
+                        .enumerate()
+                        .map(|(i, (w, x))| {
+                            // Skip the d1 rows (multiples of 8): the permutation
+                            // vanishes there, so the products land at zero.
+                            if i & 7 == 0 {
+                                F::zero()
+                            } else {
+                                *w + gamma + beta_shift * x
+                            }
+                        })
+                        .collect();
+                    Evaluations::<F, D<F>>::from_vec_and_domain(evals, self.cs.domain.d8)
                 })
                 .reduce_with(|mut l, r| {
-                    l *= &r;
+                    mul_assign_skipping_d1(&mut l, &r);
                     l
                 })
                 .unwrap()
@@ -291,7 +323,7 @@ where
             // (w8[0] + gamma + sigma[0] * beta) *
             // (w8[1] + gamma + sigma[1] * beta) * ...
             // (w8[6] + gamma + sigma[6] * beta)
-            // in evaluation form in d8
+            // in evaluation form in d8, computed in a single pass per element
             let sigmas = &lagrange
                 .d8
                 .this
@@ -303,9 +335,26 @@ where
                         .permutation_coefficients8
                         .par_iter(),
                 )
-                .map(|(witness, sigma)| witness + &(gamma + &sigma.scale(beta)))
+                .map(|(witness, sigma)| {
+                    let evals: Vec<F> = witness
+                        .evals
+                        .par_iter()
+                        .zip(sigma.evals.par_iter())
+                        .enumerate()
+                        .map(|(i, (w, s))| {
+                            // Skip the d1 rows (multiples of 8): the permutation
+                            // vanishes there, so the products land at zero.
+                            if i & 7 == 0 {
+                                F::zero()
+                            } else {
+                                *w + gamma + beta * s
+                            }
+                        })
+                        .collect();
+                    Evaluations::<F, D<F>>::from_vec_and_domain(evals, self.cs.domain.d8)
+                })
                 .reduce_with(|mut l, r| {
-                    l *= &r;
+                    mul_assign_skipping_d1(&mut l, &r);
                     l
                 })
                 .unwrap()
