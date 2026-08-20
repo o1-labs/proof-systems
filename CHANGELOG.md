@@ -27,6 +27,13 @@ and this project adheres to
   per-circuit precomputation cheaper and drops ~24 MB of resident memory per
   materialised prover index
   ([#3586](https://github.com/o1-labs/proof-systems/pull/3586))
+- Lower the prover's peak memory by releasing the d8 evaluations once the
+  linearization is done, rather than holding them to end-of-proof
+  ([#3587](https://github.com/o1-labs/proof-systems/pull/3587))
+- Recover the joint lookup table's coefficient form by subsampling the d8
+  evaluations to the d1 subdomain instead of running a full d8 iFFT, and
+  parallelise the d8 lookup-table and sorted-polynomial construction. Proofs are
+  unchanged ([#3587](https://github.com/o1-labs/proof-systems/pull/3587))
 
 ### [kimchi-napi](./kimchi-napi)
 
