@@ -19,6 +19,12 @@ and this project adheres to
 
 #### Changed
 
+- **Breaking:** `ProverProof::create_recursive` now returns a `FatProverProof`,
+  wrapping the proof together with the oracle challenges, public-input
+  evaluations and Fq-sponge digest the prover already computed, so a downstream
+  wrap can skip recomputing them. `ProverProof` and `OpeningProof` are
+  unchanged; existing callers take `.proof`
+  ([#3591](https://github.com/o1-labs/proof-systems/pull/3591))
 - Lower the prover's peak memory by releasing the d8 evaluations once the
   linearization is done, rather than holding them to end-of-proof
   ([#3587](https://github.com/o1-labs/proof-systems/pull/3587))
@@ -36,6 +42,15 @@ and this project adheres to
 
 ### [kimchi-stubs](./kimchi-stubs)
 
+#### Added
+
+- Add `caml_pasta_fp_plonk_proof_create_with_oracles`, a step-prover entry point
+  returning the proof together with the oracle challenges the prover already
+  computed, so the OCaml wrap can skip `caml_pasta_fp_plonk_oracles_create`. Its
+  OCaml binding is hand-written rather than generated, because `ocaml_gen`
+  cannot resolve `CamlOracles` from this module's scope
+  ([#3591](https://github.com/o1-labs/proof-systems/pull/3591))
+
 #### Fixed
 
 - Treat public evaluations of oracles as vectors for chunking coherence
@@ -47,6 +62,17 @@ and this project adheres to
 
 - Treat public evaluations of oracles as vectors for chunking coherence
   ([#3577](https://github.com/o1-labs/proof-systems/pull/3577))
+
+### [poly-commitment](./poly-commitment)
+
+#### Changed
+
+- **Breaking:** `OpenProof::open` now returns an `OpeningProofFat<Self, F>`,
+  carrying the opening proof together with the IPA folding prechallenges the
+  prover computes and previously discarded (empty for non-folding schemes such
+  as KZG). The thin `OpeningProof` type is unchanged; callers recover it via
+  `.inner()` / `.proof` and the challenges via `.challenges()`
+  ([#3591](https://github.com/o1-labs/proof-systems/pull/3591))
 
 ## 0.7.0
 

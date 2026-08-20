@@ -210,7 +210,8 @@ where
         eval_scale,
         fq_sponge_before_evaluations,
         rng,
-    );
+    )
+    .inner();
     (
         Proof {
             commitments,

@@ -98,6 +98,9 @@ where
     /// The joint combiner used to join the columns of lookup tables
     joint_combiner: Option<F>,
 
+    /// The joint-combiner prechallenge (kept for the fat-proof oracle).
+    joint_combiner_chal: Option<ScalarChallenge<F>>,
+
     /// The power of the joint_combiner that can be used to add a table_id column
     /// to the concatenated lookup tables.
     table_id_combiner: Option<F>,
@@ -171,6 +174,7 @@ where
             None,
             rng,
         )
+        .map(|fat| fat.proof)
     }
 
     /// This function constructs prover's recursive zk-proof from the witness &
@@ -192,7 +196,7 @@ where
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
         rng: &mut RNG,
-    ) -> Result<Self>
+    ) -> Result<crate::proof::FatProverProof<G, OpeningProof, FULL_ROUNDS>>
     where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         EFrSponge: FrSponge<G::ScalarField>,
@@ -474,8 +478,9 @@ where
             };
 
             //~~ * Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TODO: specify)
-            let joint_combiner: G::ScalarField =
-                ScalarChallenge::new(joint_combiner).to_field(endo_r);
+            let joint_combiner_chal = ScalarChallenge::new(joint_combiner);
+            lookup_context.joint_combiner_chal = Some(joint_combiner_chal.clone());
+            let joint_combiner: G::ScalarField = joint_combiner_chal.to_field(endo_r);
 
             //~~ * If multiple lookup tables are involved,
             //~~   set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
@@ -1207,10 +1212,11 @@ where
 
         //~ 1. Setup the Fr-Sponge
         let fq_sponge_before_evaluations = fq_sponge.clone();
+        let fq_digest_before_evaluations = fq_sponge.digest();
         let mut fr_sponge = EFrSponge::from(G::sponge_params());
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
-        fr_sponge.absorb(&fq_sponge.digest());
+        fr_sponge.absorb(&fq_digest_before_evaluations);
 
         //~ 1. Absorb the previous recursion challenges.
         let prev_challenge_digest = {
@@ -1476,7 +1482,7 @@ where
 
         //~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
         internal_tracing::checkpoint!(internal_traces; create_aggregated_ipa);
-        let proof = OpenProof::open(
+        let opening_fat = OpenProof::open(
             &*index.srs,
             group_map,
             &polynomials,
@@ -1486,6 +1492,10 @@ where
             fq_sponge_before_evaluations,
             rng,
         );
+        // The IPA folding prechallenges, surfaced for the fat proof so the wrap
+        // need not recompute them.
+        let opening_prechallenges = opening_fat.challenges().to_vec();
+        let proof = opening_fat.inner();
 
         let lookup = lookup_context
             .aggreg_comm
@@ -1511,7 +1521,34 @@ where
 
         internal_tracing::checkpoint!(internal_traces; create_recursive_done);
 
-        Ok(proof)
+        // Collect the oracle challenges the prover already computed, so the
+        // wrap can skip recomputing them (`O.create`). Side-data only.
+        let fat_oracles = crate::proof::FatOracles {
+            oracles: crate::circuits::scalars::RandomOracles {
+                joint_combiner: lookup_context
+                    .joint_combiner_chal
+                    .clone()
+                    .zip(lookup_context.joint_combiner),
+                beta,
+                gamma,
+                alpha_chal: alpha_chal.clone(),
+                alpha,
+                zeta,
+                v,
+                u,
+                zeta_chal: zeta_chal.clone(),
+                v_chal: v_chal.clone(),
+                u_chal: u_chal.clone(),
+            },
+            public_evals: match &proof.evals.public {
+                Some(p) => [p.zeta.clone(), p.zeta_omega.clone()],
+                None => [vec![], vec![]],
+            },
+            digest: fq_digest_before_evaluations,
+            opening_prechallenges,
+        };
+
+        Ok(crate::proof::FatProverProof { proof, fat_oracles })
     }
 }
 

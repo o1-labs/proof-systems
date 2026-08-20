@@ -251,6 +251,28 @@ type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarF
     PolyComm<G::ScalarField>,
 )];
 
+/// An opening proof together with the IPA folding prechallenges it produced.
+///
+/// For non-folding schemes (e.g. KZG) the challenges are empty. Returned by
+/// [`OpenProof::open`] so the prover can surface the challenges -- which the
+/// verifier would otherwise recompute -- without changing the thin proof type.
+pub struct OpeningProofFat<Proof, F> {
+    pub proof: Proof,
+    pub challenges: Vec<F>,
+}
+
+impl<Proof, F: Clone> OpeningProofFat<Proof, F> {
+    /// Recover the thin (cryptographic) opening proof.
+    pub fn inner(self) -> Proof {
+        self.proof
+    }
+
+    /// The IPA folding prechallenges (empty for non-folding schemes).
+    pub fn challenges(&self) -> &[F] {
+        &self.challenges
+    }
+}
+
 pub trait OpenProof<G: CommitmentCurve, const FULL_ROUNDS: usize>: Sized + Clone {
     type SRS: SRS<G> + core::fmt::Debug;
 
@@ -279,7 +301,7 @@ pub trait OpenProof<G: CommitmentCurve, const FULL_ROUNDS: usize>: Sized + Clone
         evalscale: <G as AffineRepr>::ScalarField,
         sponge: EFqSponge,
         rng: &mut RNG,
-    ) -> Self
+    ) -> OpeningProofFat<Self, <G as AffineRepr>::ScalarField>
     where
         EFqSponge: Clone
             + FqSponge<<G as AffineRepr>::BaseField, G, <G as AffineRepr>::ScalarField, FULL_ROUNDS>,

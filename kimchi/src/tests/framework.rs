@@ -526,7 +526,8 @@ where
             None,
             &mut rand::rngs::OsRng,
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?
+        .proof;
         println!("- time to create proof: {:?}s", start.elapsed().as_secs());
 
         if self.0.with_logs {
@@ -722,7 +723,8 @@ where
             None,
             rng,
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?
+        .proof;
 
         o1_utils::serialization::test_generic_serialization_regression_serde(proof, buf_expected);
 

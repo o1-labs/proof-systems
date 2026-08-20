@@ -113,7 +113,8 @@ pub fn caml_pasta_fq_plonk_proof_create(
             None,
             &mut rand::rngs::OsRng,
         )
-        .map_err(|e| ocaml::Error::Error(e.into()))?;
+        .map_err(|e| ocaml::Error::Error(e.into()))?
+        .proof;
         Ok((proof, public_input).into())
     })
 }
