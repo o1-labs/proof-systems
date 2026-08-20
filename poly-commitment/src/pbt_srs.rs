@@ -22,7 +22,7 @@ pub fn test_regression_commit_non_hiding_expected_number_of_chunks<
     G: CommitmentCurve,
     Srs: SRS<G>,
 >() {
-    let mut rng = &mut o1_utils::tests::make_test_rng(None);
+    let rng = &mut o1_utils::tests::make_test_rng(None);
     // maximum random srs size is 64
     let log2_srs_size = rng.gen_range(1..6);
     let srs_size = 1 << log2_srs_size;
@@ -33,7 +33,7 @@ pub fn test_regression_commit_non_hiding_expected_number_of_chunks<
     {
         // srs_size is the number of evaluation degree
         let poly_degree = srs_size - 1;
-        let poly = DensePolynomial::<G::ScalarField>::rand(poly_degree, &mut rng);
+        let poly = DensePolynomial::<G::ScalarField>::rand(poly_degree, rng);
         let commitment = srs.commit_non_hiding(&poly, 1);
         assert_eq!(commitment.len(), 1);
     }
@@ -45,7 +45,7 @@ pub fn test_regression_commit_non_hiding_expected_number_of_chunks<
         let poly_degree = srs_size - 1;
         // maximum 10 chunks for the test
         let k = rng.gen_range(2..10);
-        let poly = DensePolynomial::<G::ScalarField>::rand(poly_degree, &mut rng);
+        let poly = DensePolynomial::<G::ScalarField>::rand(poly_degree, rng);
         let commitment = srs.commit_non_hiding(&poly, k);
         assert_eq!(commitment.len(), k);
     }
@@ -64,7 +64,7 @@ pub fn test_regression_commit_non_hiding_expected_number_of_chunks<
     {
         let k = rng.gen_range(2..5);
         let poly_degree = k * srs_size - 1;
-        let poly = DensePolynomial::<G::ScalarField>::rand(poly_degree, &mut rng);
+        let poly = DensePolynomial::<G::ScalarField>::rand(poly_degree, rng);
         // if we request a number of chunks smaller than the multiple, we will
         // still get a number of chunks equals to the multiple.
         let requested_num_chunks = rng.gen_range(1..k);
