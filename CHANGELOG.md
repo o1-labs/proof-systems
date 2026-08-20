@@ -26,6 +26,13 @@ and this project adheres to
   division by vanishing polynomial" check in release builds; it produces a proof
   that fails verification instead. Debug builds still reject it earlier via
   `index.verify()` ([#3589](https://github.com/o1-labs/proof-systems/pull/3589))
+- Lower the prover's peak memory by releasing the d8 evaluations once the
+  linearization is done, rather than holding them to end-of-proof
+  ([#3587](https://github.com/o1-labs/proof-systems/pull/3587))
+- Recover the joint lookup table's coefficient form by subsampling the d8
+  evaluations to the d1 subdomain instead of running a full d8 iFFT, and
+  parallelise the d8 lookup-table and sorted-polynomial construction. Proofs are
+  unchanged ([#3587](https://github.com/o1-labs/proof-systems/pull/3587))
 
 ### [kimchi-napi](./kimchi-napi)
 
