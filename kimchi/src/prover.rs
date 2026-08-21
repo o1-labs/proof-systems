@@ -702,16 +702,20 @@ where
         //~~ * the negated public polynomial
         //~    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
         //~    TODO: specify the split of the permutation polynomial into perm and bnd?
-        let lookup_env = if let Some(lcs) = lookup_constraint_system {
-            let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
+        let (t_comm, zeta, zeta_omega, chunked_evals, ft, blinding_ft) = {
+            let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.take();
+            let sorted8 = lookup_context.sorted8.take();
+            let aggreg8 = lookup_context.aggreg8.take();
+            let runtime_table_d8 = lookup_context.runtime_table_d8.take();
 
+        let lookup_env = if let Some(lcs) = lookup_constraint_system {
             Some(LookupEnvironment {
-                aggreg: lookup_context.aggreg8.as_ref().unwrap(),
-                sorted: lookup_context.sorted8.as_ref().unwrap(),
+                aggreg: aggreg8.as_ref().unwrap(),
+                sorted: sorted8.as_ref().unwrap(),
                 selectors: &lcs.lookup_selectors,
-                table: joint_lookup_table_d8,
+                table: joint_lookup_table_d8.as_ref().unwrap(),
                 runtime_selector: lcs.runtime_selector.as_ref(),
-                runtime_table: lookup_context.runtime_table_d8.as_ref(),
+                runtime_table: runtime_table_d8.as_ref(),
             })
         } else {
             None
@@ -1163,18 +1167,6 @@ where
                     lin.interpolate()
                 };
 
-                // The constraint environment and the d8 evaluations it borrows
-                // (`lagrange`, and the lookup table / sorted / aggregation
-                // evaluations) are not needed past this point -- everything
-                // below operates on d1-sized polynomials. Those d8 buffers
-                // dominate the prover's peak memory, so releasing them here
-                // rather than at end-of-proof materially lowers the peak.
-                drop(env);
-                drop(lagrange);
-                lookup_context.joint_lookup_table_d8 = None;
-                lookup_context.sorted8 = None;
-                lookup_context.aggreg8 = None;
-
                 // see https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#the-prover-side
                 f.to_chunked_polynomial(num_chunks, index.max_poly_size)
                     .linearize(zeta_to_srs_len)
@@ -1199,6 +1191,9 @@ where
                     blinding_f - (zeta_to_domain_size - G::ScalarField::one()) * blinding_t,
                 ],
             }
+        };
+
+            (t_comm, zeta, zeta_omega, chunked_evals, ft, blinding_ft)
         };
 
         //~ 1. Evaluate the ft polynomial at $\zeta\omega$ only.
