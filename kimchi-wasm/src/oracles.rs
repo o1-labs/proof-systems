@@ -139,8 +139,10 @@ macro_rules! impl_oracles {
             #[derive(Clone)]
             pub struct [<Wasm $field_name:camel Oracles>] {
                 pub o: [<Wasm $field_name:camel RandomOracles>],
-                pub p_eval0: $WasmF,
-                pub p_eval1: $WasmF,
+                #[wasm_bindgen(skip)]
+                pub p_eval0: WasmFlatVector<$WasmF>,
+                #[wasm_bindgen(skip)]
+                pub p_eval1: WasmFlatVector<$WasmF>,
                 #[wasm_bindgen(skip)]
                 pub opening_prechallenges: WasmFlatVector<$WasmF>,
                 pub digest_before_evaluations: $WasmF,
@@ -151,11 +153,31 @@ macro_rules! impl_oracles {
                 #[wasm_bindgen(constructor)]
                 pub fn new(
                     o: WasmRandomOracles,
-                    p_eval0: $WasmF,
-                    p_eval1: $WasmF,
+                    p_eval0: WasmFlatVector<$WasmF>,
+                    p_eval1: WasmFlatVector<$WasmF>,
                     opening_prechallenges: WasmFlatVector<$WasmF>,
                     digest_before_evaluations: $WasmF) -> Self {
                     Self {o, p_eval0, p_eval1, opening_prechallenges, digest_before_evaluations}
+                }
+
+                #[wasm_bindgen(getter)]
+                pub fn p_eval0(&self) -> WasmFlatVector<$WasmF> {
+                    self.p_eval0.clone()
+                }
+
+                #[wasm_bindgen(setter)]
+                pub fn set_p_eval0(&mut self, x: WasmFlatVector<$WasmF>) {
+                    self.p_eval0 = x;
+                }
+
+                #[wasm_bindgen(getter)]
+                pub fn p_eval1(&self) -> WasmFlatVector<$WasmF> {
+                    self.p_eval1.clone()
+                }
+
+                #[wasm_bindgen(setter)]
+                pub fn set_p_eval1(&mut self, x: WasmFlatVector<$WasmF>) {
+                    self.p_eval1 = x;
                 }
 
                 #[wasm_bindgen(getter)]
@@ -242,13 +264,16 @@ macro_rules! impl_oracles {
                 });
 
                 match result {
-                    Ok((oracles, p_eval, opening_prechallenges, digest)) => Ok([<Wasm $field_name:camel Oracles>] {
-                        o: oracles.into(),
-                        p_eval0: p_eval[0][0].into(),
-                        p_eval1: p_eval[1][0].into(),
-                        opening_prechallenges,
-                        digest_before_evaluations: digest.into()
-                    }),
+                    Ok((oracles, p_eval, opening_prechallenges, digest)) => {
+                        let [pe0, pe1] = p_eval;
+                        Ok([<Wasm $field_name:camel Oracles>] {
+                            o: oracles.into(),
+                            p_eval0: pe0.into_iter().map(Into::into).collect::<Vec<_>>().into(),
+                            p_eval1: pe1.into_iter().map(Into::into).collect::<Vec<_>>().into(),
+                            opening_prechallenges,
+                            digest_before_evaluations: digest.into()
+                        })
+                    },
                     Err(err) => Err(JsError::new(&err))
                 }
             }
@@ -257,8 +282,8 @@ macro_rules! impl_oracles {
             pub fn [<$F:snake _oracles_dummy>]() -> [<Wasm $field_name:camel Oracles>] {
                 [<Wasm $field_name:camel Oracles>] {
                     o: RandomOracles::<$F>::default().into(),
-                    p_eval0: $F::zero().into(),
-                    p_eval1: $F::zero().into(),
+                    p_eval0: vec![$F::zero().into()].into(),
+                    p_eval1: vec![$F::zero().into()].into(),
                     opening_prechallenges: vec![].into(),
                     digest_before_evaluations: $F::zero().into(),
                 }

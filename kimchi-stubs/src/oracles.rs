@@ -23,7 +23,7 @@ use poly_commitment::{
 #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
 pub struct CamlOracles<F> {
     pub o: CamlRandomOracles<F>,
-    pub p_eval: (F, F),
+    pub p_eval: (Vec<F>, Vec<F>),
     pub opening_prechallenges: Vec<F>,
     pub digest_before_evaluations: F,
 }
@@ -95,9 +95,13 @@ macro_rules! impl_oracles {
                     .map(|x| x.inner().into())
                     .collect();
 
+                let [pe0, pe1] = p_eval;
                 Ok(CamlOracles {
                     o: oracles.into(),
-                    p_eval: (p_eval[0][0].into(), p_eval[1][0].into()),
+                    p_eval: (
+                        pe0.into_iter().map(Into::into).collect(),
+                        pe1.into_iter().map(Into::into).collect(),
+                    ),
                     opening_prechallenges,
                     digest_before_evaluations: digest.into(),
                 })
@@ -172,9 +176,13 @@ macro_rules! impl_oracles {
                     .map(|x| x.inner().into())
                     .collect();
 
+                let [pe0, pe1] = p_eval;
                 Ok(CamlOracles {
                     o: oracles.into(),
-                    p_eval: (p_eval[0][0].into(), p_eval[1][0].into()),
+                    p_eval: (
+                        pe0.into_iter().map(Into::into).collect(),
+                        pe1.into_iter().map(Into::into).collect(),
+                    ),
                     opening_prechallenges,
                     digest_before_evaluations: digest.into(),
                 })
