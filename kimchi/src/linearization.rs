@@ -31,9 +31,9 @@ use crate::{
 use crate::circuits::{
     berkeley_columns::Column,
     constraints::FeatureFlags,
-    expr::{ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
+    expr::{ConstantExpr, ConstantTerm, Expr, FeatureFlag, Linearization, PolishToken},
     gate::GateType,
-    wires::COLUMNS,
+    wires::{COLUMNS, PERMUTS},
 };
 use ark_ff::{FftField, PrimeField, Zero};
 
@@ -336,6 +336,154 @@ pub fn linearization_columns<F: FftField>(feature_flags: Option<&FeatureFlags>) 
     h
 }
 
+/// The permutation argument's contribution to the linearization: the scalar
+/// that multiplies the commitment to the last permutation polynomial, which is
+/// the one Maller's optimisation leaves unopened.
+///
+/// [`ConstraintSystem::perm_scalars`] computes the same value by hand, because
+/// the columns it reads — `Z` and the sigmas — are exactly the ones the
+/// linearization cannot mention. Stating it as an expression is what lets a
+/// verifier that already consumes the linearization as tokens consume this too,
+/// instead of carrying a second copy of it.
+///
+/// It is deliberately *not* folded into [`constraints_expr`]: doing that would
+/// move the permutation's terms into the constant term and change what every
+/// existing verifier computes. This is an additional statement about the same
+/// proof, not a change to the linearization.
+///
+/// The accumulator is cached at each step. Without the caches the tree would be
+/// re-emitted whole at every level, so a reader would compute all the factors
+/// before any of the products; with them the emitted stream alternates one
+/// factor, one multiplication, as the hand-written fold does.
+///
+/// [`ConstraintSystem::perm_scalars`]: crate::circuits::constraints::ConstraintSystem::perm_scalars
+pub fn permutation_scalar_expr<F: PrimeField>(
+    powers_of_alpha: &Alphas<F>,
+    cache: &mut expr::Cache,
+) -> Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column> {
+    use crate::circuits::gate::CurrOrNext::{Curr, Next};
+
+    type E<F> = Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>;
+
+    // The iterator insists on being drained: the permutation registers three
+    // powers, and the other two belong to the boundary condition on `z`, which
+    // lives in `ft_eval0_expr` rather than here.
+    let exponents: Vec<u32> = powers_of_alpha
+        .get_exponents(ArgumentType::Permutation, permutation::CONSTRAINTS)
+        .collect();
+
+    let alpha_pow = |n: u32| -> E<F> {
+        Expr::Pow(
+            Box::new(E::<F>::from(BerkeleyChallengeTerm::Alpha)),
+            u64::from(n),
+        )
+    };
+
+    let init = E::<F>::cell(Column::Z, Next)
+        * E::<F>::from(BerkeleyChallengeTerm::Beta)
+        * alpha_pow(exponents[0])
+        * Expr::Atom(expr::ExprInner::PermutationVanishingPolynomial);
+
+    let mut acc = cache.cache(init);
+    for i in 0..PERMUTS - 1 {
+        let factor = E::<F>::from(BerkeleyChallengeTerm::Gamma)
+            + E::<F>::from(BerkeleyChallengeTerm::Beta)
+                * E::<F>::cell(Column::Permutation(i), Curr)
+            + E::<F>::cell(Column::Witness(i), Curr);
+        acc = cache.cache(acc * factor);
+    }
+
+    E::<F>::zero() - acc
+}
+
+/// `ft(zeta)`, less the two things a verifier already has to hand: the
+/// linearization's constant term, and the public input's evaluation.
+///
+/// The verifier computes all of this by hand (`verifier.rs`, `let ft_eval0 =
+/// {...}`) for the same reason the permutation scalar is computed by hand: most
+/// of it reads `Z` and the sigmas, which the linearization cannot mention.
+///
+/// The two omissions are where the circuit stops and the proof begins. The
+/// constant term is already a token stream of its own. The public input's
+/// evaluation arrives with the proof, in chunks, and the verifier combines and
+/// subtracts it — an expression over the circuit's columns has nothing to say
+/// about it. A reader subtracts both.
+///
+/// As in [`permutation_scalar_expr`], each fold's accumulator is cached so that
+/// the emitted stream alternates one factor with one multiplication.
+pub fn ft_eval0_expr<F: PrimeField>(
+    powers_of_alpha: &Alphas<F>,
+    cache: &mut expr::Cache,
+) -> Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column> {
+    use crate::circuits::{
+        expr::{ExprInner, RowOffset},
+        gate::CurrOrNext::{Curr, Next},
+    };
+
+    type E<F> = Expr<ConstantExpr<F, BerkeleyChallengeTerm>, Column>;
+
+    let exponents: Vec<u32> = powers_of_alpha
+        .get_exponents(ArgumentType::Permutation, permutation::CONSTRAINTS)
+        .collect();
+    let alpha_pow = |n: u32| -> E<F> {
+        Expr::Pow(
+            Box::new(E::<F>::from(BerkeleyChallengeTerm::Alpha)),
+            u64::from(n),
+        )
+    };
+    let zk = || -> E<F> { Expr::Atom(ExprInner::PermutationVanishingPolynomial) };
+    let zeta = || -> E<F> { Expr::Atom(ExprInner::EvaluationPoint) };
+    let first_row = RowOffset {
+        zk_rows: false,
+        offset: 0,
+    };
+    let first_zk_row = RowOffset {
+        zk_rows: true,
+        offset: 0,
+    };
+    let root = |r: RowOffset| -> E<F> { Expr::Atom(ExprInner::RootOfUnity(r)) };
+
+    // The permutation's product over the sigmas.
+    let mut permuted = cache.cache(
+        (E::<F>::cell(Column::Witness(PERMUTS - 1), Curr)
+            + E::<F>::from(BerkeleyChallengeTerm::Gamma))
+            * E::<F>::cell(Column::Z, Next)
+            * alpha_pow(exponents[0])
+            * zk(),
+    );
+    for i in 0..PERMUTS - 1 {
+        let factor = E::<F>::from(BerkeleyChallengeTerm::Beta)
+            * E::<F>::cell(Column::Permutation(i), Curr)
+            + E::<F>::cell(Column::Witness(i), Curr)
+            + E::<F>::from(BerkeleyChallengeTerm::Gamma);
+        permuted = cache.cache(factor * permuted);
+    }
+
+    // The same product over the identity permutation.
+    let mut identity = cache.cache(alpha_pow(exponents[0]) * zk() * E::<F>::cell(Column::Z, Curr));
+    for i in 0..PERMUTS {
+        let factor = E::<F>::from(BerkeleyChallengeTerm::Gamma)
+            + E::<F>::from(BerkeleyChallengeTerm::Beta) * zeta() * Expr::Atom(ExprInner::Shift(i))
+            + E::<F>::cell(Column::Witness(i), Curr);
+        identity = cache.cache(identity * factor);
+    }
+
+    // The boundary condition holding `z` to one at the first row and again
+    // where the zero-knowledge rows begin. Each term carries the other's
+    // denominator, so the two Lagrange bases come out of a single division.
+    let boundary_term = |alpha_offset: usize, r: RowOffset| -> E<F> {
+        Expr::Atom(ExprInner::VanishingPolynomial)
+            * alpha_pow(exponents[alpha_offset])
+            * (zeta() - root(r))
+    };
+    let numerator = (boundary_term(1, first_zk_row) + boundary_term(2, first_row))
+        * (E::<F>::from(ConstantExpr::from(ConstantTerm::Literal(F::one())))
+            - E::<F>::cell(Column::Z, Curr));
+
+    permuted - identity
+        + Expr::DivideByVanishingOn(Box::new(numerator), vec![first_zk_row, first_row])
+}
+
 /// Linearize the `expr`.
 ///
 /// If the `feature_flags` argument is `None`, this will generate an expression
@@ -364,4 +512,141 @@ pub fn expr_linearization<F: PrimeField>(
     assert_eq!(linearization.index_terms.len(), 0);
 
     (linearization, powers_of_alpha)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        circuits::{
+            berkeley_columns::BerkeleyChallenges,
+            constraints::ConstraintSystem,
+            expr::{Constants, PolishToken},
+            polynomials::permutation::{coset_shifts, eval_permutation_vanishing_polynomial, zk_w},
+            wires::PERMUTS,
+        },
+        proof::{PointEvaluations, ProofEvaluations},
+    };
+    use ark_ff::{Field, One, UniformRand};
+    use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
+    use mina_curves::pasta::Fp;
+    use mina_poseidon::pasta::fp_kimchi;
+
+    /// What [`setup`] hands back: the evaluations, plus the domain, point and
+    /// challenges to read them against.
+    type SetupData = (
+        ProofEvaluations<PointEvaluations<Fp>>,
+        D<Fp>,
+        Fp,
+        u64,
+        Constants<Fp>,
+        BerkeleyChallenges<Fp>,
+    );
+
+    /// Evaluations chosen so that no term of either expression can vanish by
+    /// accident, with the domain, point and challenges to read them against.
+    fn setup() -> SetupData {
+        let mut rng = o1_utils::tests::make_test_rng(None);
+        let mut field = |i: u64| Fp::from(i) + Fp::rand(&mut rng);
+
+        let mut evals = ProofEvaluations::<PointEvaluations<Fp>>::dummy_with_witness_evaluations(
+            core::array::from_fn(|i| field(i as u64 + 1)),
+            core::array::from_fn(|i| field(i as u64 + 100)),
+        );
+        evals.z = PointEvaluations {
+            zeta: field(7),
+            zeta_omega: field(11),
+        };
+        evals.s = core::array::from_fn(|i| PointEvaluations {
+            zeta: field(i as u64 + 200),
+            zeta_omega: field(i as u64 + 300),
+        });
+
+        let domain = D::<Fp>::new(1 << 6).unwrap();
+        let zeta = field(13);
+        let zk_rows = 3;
+        let constants = Constants {
+            endo_coefficient: Fp::one(),
+            mds: &fp_kimchi::static_params().mds,
+            zk_rows,
+        };
+        let challenges = BerkeleyChallenges {
+            alpha: field(17),
+            beta: field(19),
+            gamma: field(23),
+            joint_combiner: Fp::one(),
+        };
+        (evals, domain, zeta, zk_rows, constants, challenges)
+    }
+
+    /// The expression and the hand-written scalar are two statements of the
+    /// same thing, so the only check worth making is that they agree.
+    #[test]
+    fn permutation_scalar_expr_agrees_with_perm_scalars() {
+        let (evals, domain, zeta, zk_rows, constants, challenges) = setup();
+
+        let (_, mut powers_of_alpha) = constraints_expr::<Fp>(None, true);
+        let mut cache = expr::Cache::default();
+        let tokens = permutation_scalar_expr::<Fp>(&powers_of_alpha, &mut cache).to_polish();
+
+        let interpreted =
+            PolishToken::evaluate(&tokens, domain, zeta, &evals, &constants, &challenges).unwrap();
+
+        powers_of_alpha.instantiate(challenges.alpha);
+        let by_hand = ConstraintSystem::<Fp>::perm_scalars(
+            &evals,
+            challenges.beta,
+            challenges.gamma,
+            powers_of_alpha.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS),
+            eval_permutation_vanishing_polynomial(domain, zk_rows, zeta),
+        );
+
+        assert_eq!(interpreted, by_hand);
+    }
+
+    /// The same check for `ft(zeta)`, against the formula transcribed from the
+    /// verifier — less the two terms the expression deliberately omits.
+    #[test]
+    fn ft_eval0_expr_agrees_with_the_verifier() {
+        let (evals, domain, zeta, zk_rows, constants, challenges) = setup();
+
+        let (_, mut powers_of_alpha) = constraints_expr::<Fp>(None, true);
+        let mut cache = expr::Cache::default();
+        let tokens = ft_eval0_expr::<Fp>(&powers_of_alpha, &mut cache).to_polish();
+
+        let interpreted =
+            PolishToken::evaluate(&tokens, domain, zeta, &evals, &constants, &challenges).unwrap();
+
+        powers_of_alpha.instantiate(challenges.alpha);
+        let alphas: Vec<Fp> = powers_of_alpha
+            .get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS)
+            .collect();
+        let (beta, gamma) = (challenges.beta, challenges.gamma);
+        let zkp = eval_permutation_vanishing_polynomial(domain, zk_rows, zeta);
+        let one = Fp::one();
+
+        let init = (evals.w[PERMUTS - 1].zeta + gamma) * evals.z.zeta_omega * alphas[0] * zkp;
+        let mut by_hand = evals
+            .w
+            .iter()
+            .zip(evals.s.iter())
+            .map(|(w, s)| (beta * s.zeta) + w.zeta + gamma)
+            .fold(init, |x, y| x * y);
+        by_hand -= evals
+            .w
+            .iter()
+            .zip(coset_shifts(&domain).iter())
+            .map(|(w, s)| gamma + (beta * zeta * s) + w.zeta)
+            .fold(alphas[0] * zkp * evals.z.zeta, |x, y| x * y);
+        let zeta1m1 = domain.evaluate_vanishing_polynomial(zeta);
+        let numerator = ((zeta1m1 * alphas[1] * (zeta - zk_w(domain, zk_rows)))
+            + (zeta1m1 * alphas[2] * (zeta - one)))
+            * (one - evals.z.zeta);
+        let denominator = ((zeta - zk_w(domain, zk_rows)) * (zeta - one))
+            .inverse()
+            .unwrap();
+        by_hand += numerator * denominator;
+
+        assert_eq!(interpreted, by_hand);
+    }
 }

@@ -7,7 +7,8 @@ use crate::{
         gate::CurrOrNext,
         lookup::lookups::{LookupPattern, LookupPatterns},
         polynomials::{
-            foreign_field_common::KimchiForeignElement, permutation::eval_vanishes_on_last_n_rows,
+            foreign_field_common::KimchiForeignElement,
+            permutation::{coset_shifts, eval_vanishes_on_last_n_rows},
         },
     },
     collections::{HashMap, HashSet},
@@ -113,6 +114,14 @@ pub trait ColumnEnvironment<
 
     fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>>;
 
+    /// The polynomial vanishing on the zero-knowledge rows — one row fewer than
+    /// [`ColumnEnvironment::vanishes_on_zero_knowledge_and_previous_rows`].
+    ///
+    /// This is the multiplier the permutation argument uses. A protocol without
+    /// zero-knowledge rows has no such polynomial and may reject the call, as it
+    /// already may for the one above.
+    fn permutation_vanishing_polynomial(&self) -> &'a Evaluations<F, D<F>>;
+
     /// Return the value `prod_{j != 1} (1 - omega^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     fn l0_1(&self) -> F;
@@ -134,6 +143,32 @@ pub fn l0_1<F: FftField>(d: D<F>) -> F {
     d.elements()
         .skip(1)
         .fold(F::one(), |acc, omega_j| acc * (F::one() - omega_j))
+}
+
+/// The root of unity a row offset names, `omega^i`.
+pub fn root_of_unity<F: FftField>(domain: &D<F>, zk_rows: u64, i: &RowOffset) -> F {
+    let offset = if i.zk_rows {
+        -(zk_rows as i32) + i.offset
+    } else {
+        i.offset
+    };
+    if offset < 0 {
+        domain
+            .group_gen
+            .pow([-offset as u64])
+            .inverse()
+            .expect("a root of unity is invertible")
+    } else {
+        domain.group_gen.pow([offset as u64])
+    }
+}
+
+/// The polynomial vanishing on the given rows, `prod_j (x - omega^i_j)`,
+/// evaluated at `pt`.
+pub fn vanishing_on_rows<F: FftField>(domain: D<F>, zk_rows: u64, rows: &[RowOffset], pt: F) -> F {
+    rows.iter().fold(F::one(), |acc, i| {
+        acc * (pt - root_of_unity(&domain, zk_rows, i))
+    })
 }
 
 // Compute the ith unnormalized lagrange basis
@@ -298,6 +333,21 @@ pub enum Operations<T> {
     Square(Box<Self>),
     Cache(CacheId, Box<Self>),
     IfFeature(FeatureFlag, Box<Self>, Box<Self>),
+    /// Divide by the polynomial vanishing on the given rows,
+    /// `prod_j (x - omega^i_j)`.
+    ///
+    /// There is no general division here, because an expression denotes a
+    /// polynomial and `f / g` is one only when `g` divides `f`. Naming the
+    /// divisor is what makes divisibility a property of the expression: this
+    /// says the operand vanishes on those rows, the same footing the quotient
+    /// polynomial stands on when it is divided by `x^n - 1`.
+    ///
+    /// It generalises [`ExprInner::UnnormalizedLagrangeBasis`], which is this
+    /// applied to [`ExprInner::VanishingPolynomial`] at a single row, to a set
+    /// of rows and any numerator that vanishes on them. That is what a
+    /// combination of Lagrange bases over their common denominator needs, and
+    /// what no tree of single-row atoms can express.
+    DivideByVanishingOn(Box<Self>, Vec<RowOffset>),
 }
 
 impl<T> From<T> for Operations<T> {
@@ -348,6 +398,9 @@ impl<T: Literal + Clone> Literal for Operations<T> {
             ),
             Self::Double(x) => Self::Double(Box::new(x.as_literal(constants))),
             Self::Square(x) => Self::Square(Box::new(x.as_literal(constants))),
+            Self::DivideByVanishingOn(x, rows) => {
+                Self::DivideByVanishingOn(Box::new(x.as_literal(constants)), rows.clone())
+            }
             Self::Cache(id, x) => Self::Cache(*id, Box::new(x.as_literal(constants))),
             Self::IfFeature(flag, if_true, if_false) => Self::IfFeature(
                 *flag,
@@ -423,6 +476,10 @@ impl<F: Copy, ChallengeTerm: Copy> Operations<ConstantExprInner<F, ChallengeTerm
                 x.to_polish(cache, res);
                 res.push(PolishToken::Dup);
                 res.push(PolishToken::Mul);
+            }
+            Operations::DivideByVanishingOn(x, rows) => {
+                x.to_polish(cache, res);
+                res.push(PolishToken::DivideByVanishingOn(rows.clone()));
             }
             Operations::Cache(id, x) => {
                 match cache.get(id) {
@@ -502,6 +559,9 @@ impl<F: Field, ChallengeTerm: Copy> ConstantExpr<F, ChallengeTerm> {
             Sub(x, y) => x.value(c, chals) - y.value(c, chals),
             Double(x) => x.value(c, chals).double(),
             Square(x) => x.value(c, chals).square(),
+            DivideByVanishingOn(_, _) => {
+                panic!("DivideByVanishingOn cannot occur in a constant expression")
+            }
             Cache(_, x) => {
                 // TODO: Use cache ID
                 x.value(c, chals)
@@ -594,7 +654,7 @@ impl FeatureFlag {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RowOffset {
     pub zk_rows: bool,
     pub offset: i32,
@@ -608,6 +668,28 @@ pub enum ExprInner<C, Column> {
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(RowOffset),
+    /// The polynomial vanishing on the zero-knowledge rows, evaluated at the
+    /// point the expression is evaluated at.
+    ///
+    /// Distinct from [`ExprInner::VanishesOnZeroKnowledgeAndPreviousRows`],
+    /// which vanishes on one row more. This is the multiplier the permutation
+    /// argument uses to confine itself to the rows that carry witness data.
+    PermutationVanishingPolynomial,
+    /// The point the expression is evaluated at.
+    ///
+    /// Ordinarily implicit — an expression denotes a polynomial and the point
+    /// is where you evaluate it. `ft(zeta)` is not such a polynomial: it is
+    /// something the verifier computes, and it mentions the point directly.
+    EvaluationPoint,
+    /// `x^n - 1`, the polynomial vanishing on the whole domain.
+    ///
+    /// [`ExprInner::UnnormalizedLagrangeBasis`] is this divided by a single
+    /// row's factor.
+    VanishingPolynomial,
+    /// `omega^i`, the root of unity a row offset names.
+    RootOfUnity(RowOffset),
+    /// The domain's `i`th coset shift, as sampled by `Shifts::new`.
+    Shift(usize),
 }
 
 /// An multi-variate polynomial over the base ring `C` with
@@ -675,7 +757,12 @@ impl<T: Literal, Column: Clone> Literal for ExprInner<T, Column> {
             ExprInner::Constant(x) => ExprInner::Constant(x.as_literal(constants)),
             ExprInner::Cell(_)
             | ExprInner::VanishesOnZeroKnowledgeAndPreviousRows
-            | ExprInner::UnnormalizedLagrangeBasis(_) => self.clone(),
+            | ExprInner::UnnormalizedLagrangeBasis(_)
+            | ExprInner::PermutationVanishingPolynomial
+            | ExprInner::EvaluationPoint
+            | ExprInner::VanishingPolynomial
+            | ExprInner::RootOfUnity(_)
+            | ExprInner::Shift(_) => self.clone(),
         }
     }
 }
@@ -761,6 +848,10 @@ where
                     (Pow(Box::new(c_reduced), *power), false)
                 }
             }
+            DivideByVanishingOn(x, rows) => {
+                let (x, is_zero) = x.apply_feature_flags_inner(features);
+                (DivideByVanishingOn(Box::new(x), rows.clone()), is_zero)
+            }
             Cache(cache_id, c) => {
                 let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
                 if reduce_further {
@@ -827,6 +918,15 @@ pub enum PolishToken<F, Column, ChallengeTerm> {
     Sub,
     VanishesOnZeroKnowledgeAndPreviousRows,
     UnnormalizedLagrangeBasis(RowOffset),
+    PermutationVanishingPolynomial,
+    EvaluationPoint,
+    VanishingPolynomial,
+    RootOfUnity(RowOffset),
+    Shift(usize),
+    /// Divide the top of the stack by the polynomial vanishing on these rows.
+    ///
+    /// See [`Operations::DivideByVanishingOn`].
+    DivideByVanishingOn(Vec<RowOffset>),
     Store,
     Load(usize),
     /// Skip the given number of tokens if the feature is enabled.
@@ -882,6 +982,17 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> PolishToken<F, Column, Chal
                 Constant(Mds { row, col }) => stack.push(c.mds[*row][*col]),
                 VanishesOnZeroKnowledgeAndPreviousRows => {
                     stack.push(eval_vanishes_on_last_n_rows(d, c.zk_rows + 1, pt))
+                }
+                PermutationVanishingPolynomial => {
+                    stack.push(eval_vanishes_on_last_n_rows(d, c.zk_rows, pt))
+                }
+                EvaluationPoint => stack.push(pt),
+                VanishingPolynomial => stack.push(d.evaluate_vanishing_polynomial(pt)),
+                RootOfUnity(i) => stack.push(root_of_unity(&d, c.zk_rows, i)),
+                Shift(i) => stack.push(coset_shifts(&d)[*i]),
+                DivideByVanishingOn(rows) => {
+                    let x = stack.pop().ok_or(ExprError::EmptyStack)?;
+                    stack.push(x / vanishing_on_rows(d, c.zk_rows, rows, pt));
                 }
                 UnnormalizedLagrangeBasis(i) => {
                     let offset = if i.zk_rows {
@@ -972,6 +1083,10 @@ impl<C, Column> Expr<C, Column> {
             Double(x) => x.degree(d1_size, zk_rows),
             Atom(Constant(_)) => 0,
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) => zk_rows + 1,
+            Atom(PermutationVanishingPolynomial) => zk_rows,
+            Atom(EvaluationPoint) => 1,
+            Atom(VanishingPolynomial) => d1_size,
+            Atom(RootOfUnity(_)) | Atom(Shift(_)) => 0,
             Atom(UnnormalizedLagrangeBasis(_)) => d1_size,
             Atom(Cell(_)) => d1_size,
             Square(x) => 2 * x.degree(d1_size, zk_rows),
@@ -980,6 +1095,7 @@ impl<C, Column> Expr<C, Column> {
                 core::cmp::max((*x).degree(d1_size, zk_rows), (*y).degree(d1_size, zk_rows))
             }
             Pow(e, d) => d * e.degree(d1_size, zk_rows),
+            DivideByVanishingOn(e, rows) => e.degree(d1_size, zk_rows) - rows.len() as u64,
             Cache(_, e) => e.degree(d1_size, zk_rows),
             IfFeature(_, e1, e2) => {
                 core::cmp::max(e1.degree(d1_size, zk_rows), e2.degree(d1_size, zk_rows))
@@ -1672,6 +1788,15 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> Expr<ConstantExpr<F, Challe
                 c.to_polish(cache, res);
             }
             Expr::Atom(ExprInner::Cell(v)) => res.push(PolishToken::Cell(*v)),
+            Expr::Atom(ExprInner::PermutationVanishingPolynomial) => {
+                res.push(PolishToken::PermutationVanishingPolynomial);
+            }
+            Expr::Atom(ExprInner::EvaluationPoint) => res.push(PolishToken::EvaluationPoint),
+            Expr::Atom(ExprInner::VanishingPolynomial) => {
+                res.push(PolishToken::VanishingPolynomial);
+            }
+            Expr::Atom(ExprInner::RootOfUnity(i)) => res.push(PolishToken::RootOfUnity(*i)),
+            Expr::Atom(ExprInner::Shift(i)) => res.push(PolishToken::Shift(*i)),
             Expr::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) => {
                 res.push(PolishToken::VanishesOnZeroKnowledgeAndPreviousRows);
             }
@@ -1692,6 +1817,10 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> Expr<ConstantExpr<F, Challe
                 x.to_polish_(cache, res);
                 y.to_polish_(cache, res);
                 res.push(PolishToken::Mul);
+            }
+            Expr::DivideByVanishingOn(e, rows) => {
+                e.to_polish_(cache, res);
+                res.push(PolishToken::DivideByVanishingOn(rows.clone()));
             }
             Expr::Cache(id, e) => {
                 match cache.get(id) {
@@ -1759,10 +1888,18 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) => {
                 Atom(VanishesOnZeroKnowledgeAndPreviousRows)
             }
+            Atom(PermutationVanishingPolynomial) => Atom(PermutationVanishingPolynomial),
+            Atom(EvaluationPoint) => Atom(EvaluationPoint),
+            Atom(VanishingPolynomial) => Atom(VanishingPolynomial),
+            Atom(RootOfUnity(i)) => Atom(RootOfUnity(*i)),
+            Atom(Shift(i)) => Atom(Shift(*i)),
             Atom(UnnormalizedLagrangeBasis(i)) => Atom(UnnormalizedLagrangeBasis(*i)),
             Add(x, y) => x.evaluate_constants_(c, chals) + y.evaluate_constants_(c, chals),
             Mul(x, y) => x.evaluate_constants_(c, chals) * y.evaluate_constants_(c, chals),
             Sub(x, y) => x.evaluate_constants_(c, chals) - y.evaluate_constants_(c, chals),
+            DivideByVanishingOn(e, rows) => {
+                DivideByVanishingOn(Box::new(e.evaluate_constants_(c, chals)), rows.clone())
+            }
             Cache(id, e) => Cache(*id, Box::new(e.evaluate_constants_(c, chals))),
             IfFeature(feature, e1, e2) => IfFeature(
                 *feature,
@@ -1822,6 +1959,13 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) => {
                 Ok(eval_vanishes_on_last_n_rows(d, c.zk_rows + 1, pt))
             }
+            Atom(PermutationVanishingPolynomial) => {
+                Ok(eval_vanishes_on_last_n_rows(d, c.zk_rows, pt))
+            }
+            Atom(EvaluationPoint) => Ok(pt),
+            Atom(VanishingPolynomial) => Ok(d.evaluate_vanishing_polynomial(pt)),
+            Atom(RootOfUnity(i)) => Ok(root_of_unity(&d, c.zk_rows, i)),
+            Atom(Shift(i)) => Ok(coset_shifts(&d)[*i]),
             Atom(UnnormalizedLagrangeBasis(i)) => {
                 let offset = if i.zk_rows {
                     -(c.zk_rows as i32) + i.offset
@@ -1831,6 +1975,10 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
                 Ok(unnormalized_lagrange_basis(&d, offset, &pt))
             }
             Atom(Cell(v)) => v.evaluate(evals),
+            DivideByVanishingOn(e, rows) => {
+                let x = e.evaluate_(d, pt, evals, c, chals)?;
+                Ok(x / vanishing_on_rows(d, c.zk_rows, rows, pt))
+            }
             Cache(_, e) => e.evaluate_(d, pt, evals, c, chals),
             IfFeature(feature, e1, e2) => {
                 if feature.is_enabled() {
@@ -1914,6 +2062,13 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) => {
                 Ok(eval_vanishes_on_last_n_rows(d, zk_rows + 1, pt))
             }
+            Atom(PermutationVanishingPolynomial) => {
+                Ok(eval_vanishes_on_last_n_rows(d, zk_rows, pt))
+            }
+            Atom(EvaluationPoint) => Ok(pt),
+            Atom(VanishingPolynomial) => Ok(d.evaluate_vanishing_polynomial(pt)),
+            Atom(RootOfUnity(i)) => Ok(root_of_unity(&d, zk_rows, i)),
+            Atom(Shift(i)) => Ok(coset_shifts(&d)[*i]),
             Atom(UnnormalizedLagrangeBasis(i)) => {
                 let offset = if i.zk_rows {
                     -(zk_rows as i32) + i.offset
@@ -1923,6 +2078,10 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
                 Ok(unnormalized_lagrange_basis(&d, offset, &pt))
             }
             Atom(Cell(v)) => v.evaluate(evals),
+            DivideByVanishingOn(e, rows) => {
+                let x = e.evaluate(d, pt, zk_rows, evals)?;
+                Ok(x / vanishing_on_rows(d, zk_rows, rows, pt))
+            }
             Cache(_, e) => e.evaluate(d, pt, zk_rows, evals),
             IfFeature(feature, e1, e2) => {
                 if feature.is_enabled() {
@@ -2051,6 +2210,9 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
                 };
                 return Either::Left(res);
             }
+            Expr::DivideByVanishingOn(_, _) => {
+                panic!("DivideByVanishingOn states a verifier-side scalar, not a polynomial over the domain")
+            }
             Expr::Cache(id, e) => match cache.get(id) {
                 Some(_) => return Either::Right(*id),
                 None => {
@@ -2071,6 +2233,25 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
                         id.get_from(cache).unwrap().pow(*p, (d, env.get_domain(d)))
                     }
                 }
+            }
+            Expr::Atom(ExprInner::PermutationVanishingPolynomial) => EvalResult::SubEvals {
+                domain: Domain::D8,
+                shift: 0,
+                evals: env.permutation_vanishing_polynomial(),
+            },
+            // These state quantities the verifier computes at a point. They
+            // cannot appear in the quotient, which is what this evaluates, so
+            // there is nothing to give a domain evaluation of.
+            Expr::Atom(ExprInner::EvaluationPoint) | Expr::Atom(ExprInner::VanishingPolynomial) => {
+                panic!("this atom states a verifier-side scalar, not a polynomial over the domain")
+            }
+            Expr::Atom(ExprInner::RootOfUnity(i)) => EvalResult::Constant(root_of_unity(
+                &env.get_domain(Domain::D1),
+                env.get_constants().zk_rows,
+                i,
+            )),
+            Expr::Atom(ExprInner::Shift(i)) => {
+                EvalResult::Constant(coset_shifts(&env.get_domain(Domain::D1))[*i])
             }
             Expr::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) => EvalResult::SubEvals {
                 domain: Domain::D8,
@@ -2337,8 +2518,14 @@ where
             Add(x, y) | Sub(x, y) | Mul(x, y) => {
                 x.is_constant(evaluated) && y.is_constant(evaluated)
             }
-            Atom(VanishesOnZeroKnowledgeAndPreviousRows) => true,
+            Atom(VanishesOnZeroKnowledgeAndPreviousRows)
+            | Atom(PermutationVanishingPolynomial)
+            | Atom(EvaluationPoint)
+            | Atom(VanishingPolynomial)
+            | Atom(RootOfUnity(_))
+            | Atom(Shift(_)) => true,
             Atom(UnnormalizedLagrangeBasis(_)) => true,
+            DivideByVanishingOn(x, _) => x.is_constant(evaluated),
             Cache(_, x) => x.is_constant(evaluated),
             IfFeature(_, e1, e2) => e1.is_constant(evaluated) && e2.is_constant(evaluated),
         }
@@ -2382,11 +2569,19 @@ where
             Double(e) => {
                 HashMap::from_iter(e.monomials(ev).into_iter().map(|(m, c)| (m, c.double())))
             }
+            DivideByVanishingOn(_, _) => {
+                panic!("DivideByVanishingOn is not supported by linearization")
+            }
             Cache(_, e) => e.monomials(ev),
             Atom(UnnormalizedLagrangeBasis(i)) => constant(Atom(UnnormalizedLagrangeBasis(*i))),
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) => {
                 constant(Atom(VanishesOnZeroKnowledgeAndPreviousRows))
             }
+            Atom(PermutationVanishingPolynomial) => constant(Atom(PermutationVanishingPolynomial)),
+            Atom(EvaluationPoint) => constant(Atom(EvaluationPoint)),
+            Atom(VanishingPolynomial) => constant(Atom(VanishingPolynomial)),
+            Atom(RootOfUnity(i)) => constant(Atom(RootOfUnity(*i))),
+            Atom(Shift(i)) => constant(Atom(Shift(*i))),
             Atom(Constant(c)) => constant(Atom(Constant(c.clone()))),
             Atom(Cell(var)) => sing(vec![*var], Atom(Constant(F::one()))),
             Add(e1, e2) => {
@@ -2902,6 +3097,9 @@ impl<T: FormattedOutput + Clone> FormattedOutput for Operations<T> {
             Sub(x, y) => format!("({} - {})", x.ocaml(cache), y.ocaml(cache)),
             Double(x) => format!("double({})", x.ocaml(cache)),
             Square(x) => format!("square({})", x.ocaml(cache)),
+            DivideByVanishingOn(x, rows) => {
+                format!("divide_by_vanishing_on({}, {rows:?})", x.ocaml(cache))
+            }
             Cache(id, e) => {
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
@@ -2934,6 +3132,9 @@ impl<T: FormattedOutput + Clone> FormattedOutput for Operations<T> {
             Sub(x, y) => format!("({} - {})", x.latex(cache), y.latex(cache)),
             Double(x) => format!("2 ({})", x.latex(cache)),
             Square(x) => format!("({})^2", x.latex(cache)),
+            DivideByVanishingOn(x, rows) => {
+                format!("\\frac{{{}}}{{{rows:?}}}", x.latex(cache))
+            }
             Cache(id, e) => {
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
@@ -2959,6 +3160,9 @@ impl<T: FormattedOutput + Clone> FormattedOutput for Operations<T> {
             Sub(x, y) => format!("({} - {})", x.text(cache), y.text(cache)),
             Double(x) => format!("double({})", x.text(cache)),
             Square(x) => format!("square({})", x.text(cache)),
+            DivideByVanishingOn(x, rows) => {
+                format!("divide_by_vanishing_on({}, {rows:?})", x.text(cache))
+            }
             Cache(id, e) => {
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
@@ -3008,11 +3212,19 @@ where
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) => {
                 "vanishes_on_zero_knowledge_and_previous_rows".to_string()
             }
+            Atom(PermutationVanishingPolynomial) => "permutation_vanishing_polynomial".to_string(),
+            Atom(EvaluationPoint) => "zeta".to_string(),
+            Atom(VanishingPolynomial) => "zeta_to_n_minus_1".to_string(),
+            Atom(RootOfUnity(i)) => format!("omega_to({}, {})", i.zk_rows, i.offset),
+            Atom(Shift(i)) => format!("shift({i})"),
             Add(x, y) => format!("({} + {})", x.ocaml(cache), y.ocaml(cache)),
             Mul(x, y) => format!("({} * {})", x.ocaml(cache), y.ocaml(cache)),
             Sub(x, y) => format!("({} - {})", x.ocaml(cache), y.ocaml(cache)),
             Pow(x, d) => format!("pow({}, {d})", x.ocaml(cache)),
             Square(x) => format!("square({})", x.ocaml(cache)),
+            DivideByVanishingOn(x, rows) => {
+                format!("divide_by_vanishing_on({}, {rows:?})", x.ocaml(cache))
+            }
             Cache(id, e) => {
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
@@ -3060,11 +3272,19 @@ where
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) => {
                 "vanishes\\_on\\_zero\\_knowledge\\_and\\_previous\\_row".to_string()
             }
+            Atom(PermutationVanishingPolynomial) => "permutation\\_vanishing".to_string(),
+            Atom(EvaluationPoint) => "\\zeta".to_string(),
+            Atom(VanishingPolynomial) => "(\\zeta^n - 1)".to_string(),
+            Atom(RootOfUnity(i)) => format!("\\omega^{{{}}}", i.offset),
+            Atom(Shift(i)) => format!("k_{{{i}}}"),
             Add(x, y) => format!("({} + {})", x.latex(cache), y.latex(cache)),
             Mul(x, y) => format!("({} \\cdot {})", x.latex(cache), y.latex(cache)),
             Sub(x, y) => format!("({} - {})", x.latex(cache), y.latex(cache)),
             Pow(x, d) => format!("{}^{{{d}}}", x.latex(cache)),
             Square(x) => format!("({})^2", x.latex(cache)),
+            DivideByVanishingOn(x, rows) => {
+                format!("\\frac{{{}}}{{{rows:?}}}", x.latex(cache))
+            }
             Cache(id, e) => {
                 cache.insert(*id, e.as_ref().clone());
                 id.latex_name()
@@ -3109,11 +3329,19 @@ where
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) => {
                 "vanishes_on_zero_knowledge_and_previous_rows".to_string()
             }
+            Atom(PermutationVanishingPolynomial) => "permutation_vanishing_polynomial".to_string(),
+            Atom(EvaluationPoint) => "zeta".to_string(),
+            Atom(VanishingPolynomial) => "zeta_to_n_minus_1".to_string(),
+            Atom(RootOfUnity(i)) => format!("omega_to({}, {})", i.zk_rows, i.offset),
+            Atom(Shift(i)) => format!("shift({i})"),
             Add(x, y) => format!("({} + {})", x.text(cache), y.text(cache)),
             Mul(x, y) => format!("({} * {})", x.text(cache), y.text(cache)),
             Sub(x, y) => format!("({} - {})", x.text(cache), y.text(cache)),
             Pow(x, d) => format!("pow({}, {d})", x.text(cache)),
             Square(x) => format!("square({})", x.text(cache)),
+            DivideByVanishingOn(x, rows) => {
+                format!("divide_by_vanishing_on({}, {rows:?})", x.text(cache))
+            }
             Cache(id, e) => {
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()

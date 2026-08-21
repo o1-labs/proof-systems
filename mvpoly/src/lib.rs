@@ -141,6 +141,9 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
             IfFeature(_c, _t, _f) => {
                 unimplemented!("The method is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
             }
+            DivideByVanishingOn(_, _) => {
+                unimplemented!("The method is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
         }
     }
 
@@ -167,7 +170,12 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
                     ExprInner::UnnormalizedLagrangeBasis(_) => {
                         unimplemented!("Not used in this context")
                     }
-                    ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
+                    ExprInner::VanishesOnZeroKnowledgeAndPreviousRows
+                    | ExprInner::PermutationVanishingPolynomial
+                    | ExprInner::EvaluationPoint
+                    | ExprInner::VanishingPolynomial
+                    | ExprInner::RootOfUnity(_)
+                    | ExprInner::Shift(_) => {
                         unimplemented!("Not used in this context")
                     }
                     ExprInner::Constant(c) => Self::from_constant(c),
@@ -212,6 +220,9 @@ pub trait MVPoly<F: PrimeField, const N: usize, const D: usize>:
                 unimplemented!("The method is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
             }
             IfFeature(_c, _t, _f) => {
+                unimplemented!("The method is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
+            }
+            DivideByVanishingOn(_, _) => {
                 unimplemented!("The method is supposed to be used for generic multivariate expressions, not tied to a specific use case like Kimchi with this constructor")
             }
         }
