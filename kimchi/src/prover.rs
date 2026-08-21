@@ -134,7 +134,6 @@ where
     runtime_table: Option<DensePolynomial<F>>,
     runtime_table_d8: Option<Evaluations<F, D<F>>>,
     runtime_table_comm: Option<BlindedCommitment<G>>,
-    runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
 impl<G, OpeningProof, const FULL_ROUNDS: usize> ProverProof<G, OpeningProof, FULL_ROUNDS>
@@ -394,7 +393,7 @@ where
                 "uses_runtime_tables": lcs.runtime_tables.is_some(),
             });
             //~~ * if using runtime table:
-            if let Some(cfg_runtime_tables) = &lcs.runtime_tables {
+            let runtime_second_col_d8 = if let Some(cfg_runtime_tables) = &lcs.runtime_tables {
                 //~~~ * check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
                 //~~~   we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
                 let expected_runtime: Vec<_> = cfg_runtime_tables
@@ -461,8 +460,10 @@ where
                 lookup_context.runtime_table = Some(runtime_table_contribution);
                 lookup_context.runtime_table_d8 = Some(runtime_table_contribution_d8);
                 lookup_context.runtime_table_comm = Some(runtime_table_comm);
-                lookup_context.runtime_second_col_d8 = Some(second_column_d8);
-            }
+                Some(second_column_d8)
+            } else {
+                None
+            };
 
             //~~ * If queries involve a lookup table with multiple columns
             //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
@@ -524,7 +525,7 @@ where
                             )
                         } else {
                             // if runtime table are used, the second row is modified
-                            let second_col = lookup_context.runtime_second_col_d8.as_ref().unwrap();
+                            let second_col = runtime_second_col_d8.as_ref().unwrap();
 
                             let table_row = lcs.lookup_table8.iter().enumerate().map(|(col, e)| {
                                 if col == 1 {
