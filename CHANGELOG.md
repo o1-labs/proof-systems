@@ -19,6 +19,9 @@ and this project adheres to
 
 #### Changed
 
+- Release the quotient polynomial once the `ft` polynomial has been built,
+  rather than holding it until the end of the proof
+  ([#3594](https://github.com/o1-labs/proof-systems/pull/3594))
 - Lower the prover's peak memory by releasing the d8 evaluations once the
   linearization is done, rather than holding them to end-of-proof
   ([#3587](https://github.com/o1-labs/proof-systems/pull/3587))

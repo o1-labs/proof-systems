@@ -1187,6 +1187,8 @@ where
             &f_chunked - &t_chunked.scale(zeta_to_domain_size - G::ScalarField::one())
         };
 
+        drop(quotient_poly);
+
         //~ 1. construct the blinding part of the ft polynomial commitment
         //~    [see this section](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#evaluation-proof-and-blinding-factors)
         let blinding_ft = {
