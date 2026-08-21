@@ -190,6 +190,7 @@ impl PubKey {
     }
 
     /// Borrow public key as curve point
+    #[must_use = "borrowed curve point must be used"]
     pub const fn point(&self) -> &CurvePoint {
         &self.0
     }
