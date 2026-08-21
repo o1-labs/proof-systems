@@ -32,8 +32,8 @@ and this project adheres to
 - Stop computing the witness evaluations that nothing reads.
   `ConstraintSystem::evaluate` built the witness over `d4` as well as `d8`, and
   a row-shifted copy of the witness over each, none of which had a reader:
-  constraints referring to the next row are evaluated by shifting the index
-  into the unshifted evaluations, and `ColumnEnvironment` has no accessor for a
+  constraints referring to the next row are evaluated by shifting the index into
+  the unshifted evaluations, and `ColumnEnvironment` has no accessor for a
   shifted column. `WitnessOverDomains` now holds only the witness and the
   permutation accumulator over `d8`, plus the shifted accumulator the
   permutation argument compares against, and `WitnessShifts` is gone.
