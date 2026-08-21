@@ -9,9 +9,50 @@ and this project adheres to
 
 ## Unreleased
 
+### [kimchi](./kimchi)
+
+#### Added
+
+- Add an optional mmap-backed prover-index cache for loading proving keys from
+  disk while allowing the OS page cache to evict unused pages
+  ([#3569](https://github.com/o1-labs/proof-systems/pull/3569))
+
+#### Changed
+
+- Lower the prover's peak memory by releasing the d8 evaluations once the
+  linearization is done, rather than holding them to end-of-proof
+  ([#3587](https://github.com/o1-labs/proof-systems/pull/3587))
+- Recover the joint lookup table's coefficient form by subsampling the d8
+  evaluations to the d1 subdomain instead of running a full d8 iFFT, and
+  parallelise the d8 lookup-table and sorted-polynomial construction. Proofs are
+  unchanged ([#3587](https://github.com/o1-labs/proof-systems/pull/3587))
+
+### [kimchi-napi](./kimchi-napi)
+
+#### Fixed
+
+- Treat public evaluations of oracles as vectors for chunking coherence
+  ([#3577](https://github.com/o1-labs/proof-systems/pull/3577))
+
+### [kimchi-stubs](./kimchi-stubs)
+
+#### Fixed
+
+- Treat public evaluations of oracles as vectors for chunking coherence
+  ([#3577](https://github.com/o1-labs/proof-systems/pull/3577))
+
+### [kimchi-wasm](./kimchi-wasm)
+
+#### Fixed
+
+- Treat public evaluations of oracles as vectors for chunking coherence
+  ([#3577](https://github.com/o1-labs/proof-systems/pull/3577))
+
 ## 0.7.0
 
-### Added
+### [kimchi-napi](./kimchi-napi)
+
+#### Added
 
 - Add `kimchi-napi` crate for native Node-API access to Kimchi from Node.js
   ([#3546](https://github.com/o1-labs/proof-systems/pull/3546))

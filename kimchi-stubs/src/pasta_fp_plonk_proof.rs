@@ -1,7 +1,7 @@
 use crate::{
     arkworks::{CamlFp, CamlGVesta},
     field_vector::fp::CamlFpVector,
-    pasta_fp_plonk_index::{CamlPastaFpPlonkIndex, CamlPastaFpPlonkIndexPtr},
+    pasta_fp_plonk_index::{CamlPastaFpPlonkIndex, CamlPastaFpPlonkIndexPtr, IndexHandle},
     pasta_fp_plonk_verifier_index::CamlPastaFpPlonkVerifierIndex,
     srs::fp::CamlFpSrs,
 };
@@ -311,7 +311,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_lookup(
     let caml_prover_proof = (proof, vec![public_input]).into();
 
     (
-        CamlPastaFpPlonkIndex(Box::new(index)),
+        CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index))),
         public_input.into(),
         caml_prover_proof,
     )
@@ -474,7 +474,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_foreign_field_mul(
     )
     .unwrap();
     (
-        CamlPastaFpPlonkIndex(Box::new(index)),
+        CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index))),
         (proof, vec![]).into(),
     )
 }
@@ -546,7 +546,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_range_check(
     )
     .unwrap();
     (
-        CamlPastaFpPlonkIndex(Box::new(index)),
+        CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index))),
         (proof, vec![]).into(),
     )
 }
@@ -622,7 +622,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_range_check0(
     )
     .unwrap();
     (
-        CamlPastaFpPlonkIndex(Box::new(index)),
+        CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index))),
         (proof, vec![]).into(),
     )
 }
@@ -751,7 +751,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_ffadd(
     )
     .unwrap();
     (
-        CamlPastaFpPlonkIndex(Box::new(index)),
+        CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index))),
         public_input.into(),
         (proof, vec![public_input]).into(),
     )
@@ -844,7 +844,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_xor(
     )
     .unwrap();
     (
-        CamlPastaFpPlonkIndex(Box::new(index)),
+        CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index))),
         (public_input.0.into(), public_input.1.into()),
         (proof, vec![public_input.0, public_input.1]).into(),
     )
@@ -940,7 +940,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_rot(
     )
     .unwrap();
     (
-        CamlPastaFpPlonkIndex(Box::new(index)),
+        CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index))),
         (public_input.0.into(), public_input.1.into()),
         (proof, vec![public_input.0, public_input.1]).into(),
     )
