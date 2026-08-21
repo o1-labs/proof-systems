@@ -27,6 +27,16 @@ macro_rules! impl_vector_old {
                 (*v).push(x.into());
             }
 
+            // Empty the vector and release its backing allocation. OCaml only
+            // sees the pointer, so its GC never feels the (potentially large)
+            // Rust buffer; this lets a caller free it eagerly when done.
+            #[ocaml_gen::func]
+            #[ocaml::func]
+            pub fn [<$name:snake _clear>](mut v: $name) {
+                (*v).clear();
+                (*v).shrink_to_fit();
+            }
+
             #[ocaml_gen::func]
             #[ocaml::func]
             pub fn [<$name:snake _get>](
