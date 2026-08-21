@@ -532,16 +532,20 @@ mod tests {
     use mina_curves::pasta::Fp;
     use mina_poseidon::pasta::fp_kimchi;
 
-    /// Evaluations chosen so that no term of either expression can vanish by
-    /// accident, with the domain, point and challenges to read them against.
-    fn setup() -> (
+    /// What [`setup`] hands back: the evaluations, plus the domain, point and
+    /// challenges to read them against.
+    type SetupData = (
         ProofEvaluations<PointEvaluations<Fp>>,
         D<Fp>,
         Fp,
         u64,
         Constants<Fp>,
         BerkeleyChallenges<Fp>,
-    ) {
+    );
+
+    /// Evaluations chosen so that no term of either expression can vanish by
+    /// accident, with the domain, point and challenges to read them against.
+    fn setup() -> SetupData {
         let mut rng = o1_utils::tests::make_test_rng(None);
         let mut field = |i: u64| Fp::from(i) + Fp::rand(&mut rng);
 

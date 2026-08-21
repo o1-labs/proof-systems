@@ -97,6 +97,10 @@ fn test_degree_tracking() {
             .cs
             .precomputations()
             .vanishes_on_zero_knowledge_and_previous_rows,
+        permutation_vanishing_polynomial: &index
+            .cs
+            .precomputations()
+            .permutation_vanishing_polynomial_l,
         z: &domain_evals.d8.this.z,
         l0_1: l0_1(index.cs.domain.d1),
         domain: index.cs.domain,
