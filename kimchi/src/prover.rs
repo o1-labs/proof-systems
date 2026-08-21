@@ -773,13 +773,13 @@ where
                         .joint_combiner
                         .unwrap_or(G::ScalarField::zero()),
                 },
-                witness: &lagrange.d8.this.w,
+                witness: &lagrange.this.w,
                 coefficient: &column_evaluations.coefficients8,
                 vanishes_on_zero_knowledge_and_previous_rows: &index
                     .cs
                     .precomputations()
                     .vanishes_on_zero_knowledge_and_previous_rows,
-                z: &lagrange.d8.this.z,
+                z: &lagrange.this.z,
                 l0_1: l0_1(index.cs.domain.d1),
                 domain: index.cs.domain,
                 index: index_evals,
