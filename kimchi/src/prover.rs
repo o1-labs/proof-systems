@@ -637,6 +637,7 @@ where
         if let Some(lcs) = lookup_constraint_system {
             //~~ * Compute the lookup aggregation polynomial.
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
+            let sorted = lookup_context.sorted.take().unwrap();
 
             let aggreg = lookup::constraints::aggregation::<_, G::ScalarField>(
                 lookup_context.dummy_lookup_value.unwrap(),
@@ -648,7 +649,7 @@ where
                 &lookup_context.table_id_combiner.unwrap(),
                 beta,
                 gamma,
-                lookup_context.sorted.as_ref().unwrap(),
+                &sorted,
                 rng,
                 &lcs.configuration.lookup_info,
                 index.cs.zk_rows as usize,
