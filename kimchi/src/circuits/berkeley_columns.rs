@@ -44,6 +44,10 @@ use serde::{Deserialize, Serialize};
 
 /// The challenge terms used in Berkeley.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+)]
 pub enum BerkeleyChallengeTerm {
     /// Used to combine constraints
     Alpha,
@@ -107,6 +111,10 @@ impl<F: ark_ff::Field> core::ops::Index<BerkeleyChallengeTerm> for BerkeleyChall
 ///   values. For instance, it is used for the Poseidon round constants.
 /// - ...
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+)]
 pub enum Column {
     Witness(usize),
     Z,
