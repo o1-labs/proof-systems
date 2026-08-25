@@ -37,9 +37,6 @@ pub struct DomainConstantEvaluations<F: FftField> {
     /// the polynomial `x` evaluated over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub poly_x_d1: E<F, D<F>>,
-    /// 0-th Lagrange evaluated over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub constant_1_d8: E<F, D<F>>,
     /// the polynomial that vanishes on the zero-knowledge rows and the row before
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub vanishes_on_zero_knowledge_and_previous_rows: E<F, D<F>>,
@@ -53,8 +50,6 @@ pub struct DomainConstantEvaluations<F: FftField> {
 impl<F: FftField> DomainConstantEvaluations<F> {
     pub fn create(domain: EvaluationDomains<F>, zk_rows: u64) -> Option<Self> {
         let poly_x_d1 = E::from_vec_and_domain(domain_points(domain.d8), domain.d8);
-        let constant_1_d8 =
-            E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d8.size()], domain.d8);
 
         let vanishes_on_zero_knowledge_and_previous_rows =
             vanishes_on_last_n_rows(domain.d1, zk_rows + 1).evaluate_over_domain(domain.d8);
@@ -69,7 +64,6 @@ impl<F: FftField> DomainConstantEvaluations<F> {
 
         Some(DomainConstantEvaluations {
             poly_x_d1,
-            constant_1_d8,
             vanishes_on_zero_knowledge_and_previous_rows,
             permutation_vanishing_polynomial_l,
             permutation_vanishing_polynomial_m,
