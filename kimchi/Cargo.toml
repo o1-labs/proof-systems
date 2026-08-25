@@ -135,3 +135,15 @@ sha2-compress = ["sha2/compress"]
 sha2-force-soft = ["sha2/force-soft"]
 sha2-loongarch64_asm = ["sha2/loongarch64_asm"]
 sha2-oid = ["sha2/oid"]
+
+[[bench]]
+name = "perm_quot"
+harness = false
+
+[[bench]]
+name = "constraint_evals"
+harness = false
+
+[[bench]]
+name = "dce_create"
+harness = false
