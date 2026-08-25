@@ -234,9 +234,6 @@ where
 
         let zk_rows = self.cs.zk_rows as usize;
 
-        // constant gamma in evaluation form (in domain d8)
-        let gamma = &self.cs.precomputations().constant_1_d8.scale(gamma);
-
         //~ The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.
         //~ They will be used by the prover.
         //~
@@ -277,7 +274,14 @@ where
                 .par_iter()
                 .zip(self.cs.shift.par_iter())
                 .map(|(witness, shift)| {
-                    &(witness + gamma) + &self.cs.precomputations().poly_x_d1.scale(beta * shift)
+                    let beta_shift = beta * shift;
+                    let evals: Vec<F> = witness
+                        .evals
+                        .par_iter()
+                        .zip(self.cs.precomputations().poly_x_d1.evals.par_iter())
+                        .map(|(w, x)| *w + gamma + beta_shift * x)
+                        .collect();
+                    Evaluations::<F, D<F>>::from_vec_and_domain(evals, self.cs.domain.d8)
                 })
                 .reduce_with(|mut l, r| {
                     l *= &r;
@@ -301,7 +305,15 @@ where
                         .permutation_coefficients8
                         .par_iter(),
                 )
-                .map(|(witness, sigma)| witness + &(gamma + &sigma.scale(beta)))
+                .map(|(witness, sigma)| {
+                    let evals: Vec<F> = witness
+                        .evals
+                        .par_iter()
+                        .zip(sigma.evals.par_iter())
+                        .map(|(w, s)| *w + gamma + beta * s)
+                        .collect();
+                    Evaluations::<F, D<F>>::from_vec_and_domain(evals, self.cs.domain.d8)
+                })
                 .reduce_with(|mut l, r| {
                     l *= &r;
                     l
