@@ -37,6 +37,18 @@ macro_rules! cfg_iter_mut {
     }};
 }
 
+/// Returns a parallel iterator over mutable chunks when `parallel` is enabled.
+#[macro_export]
+macro_rules! cfg_chunks_mut {
+    ($e:expr, $size:expr) => {{
+        #[cfg(feature = "parallel")]
+        let result = $e.par_chunks_mut($size);
+        #[cfg(not(feature = "parallel"))]
+        let result = $e.chunks_mut($size);
+        result
+    }};
+}
+
 /// Returns a parallel consuming iterator when the `parallel` feature is enabled,
 /// otherwise returns a sequential consuming iterator.
 #[macro_export]
