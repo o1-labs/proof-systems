@@ -19,6 +19,16 @@ and this project adheres to
 
 #### Changed
 
+- Build `poly_x_d1` by walking the d8 domain points instead of FFT-ing the
+  polynomial `x`, and drop the `constant_1_d4` / `constant_1_d8` all-ones
+  vectors (`gamma` is folded into the permutation argument per element). The
+  stored evaluations are unchanged and `precomputations` is `#[serde(skip)]`, so
+  proofs and the cached-key format are unaffected; this drops ~24 MB of resident
+  memory per materialised prover index
+  ([#3586](https://github.com/o1-labs/proof-systems/pull/3586))
+- Build the `perm_quot` shifts and sigmas terms in a single pass per element
+  rather than as three `Evaluations` temporaries each
+  ([#3586](https://github.com/o1-labs/proof-systems/pull/3586))
 - Lower the prover's peak memory by releasing the d8 evaluations once the
   linearization is done, rather than holding them to end-of-proof
   ([#3587](https://github.com/o1-labs/proof-systems/pull/3587))
@@ -73,6 +83,14 @@ and this project adheres to
 
 - Treat public evaluations of oracles as vectors for chunking coherence
   ([#3577](https://github.com/o1-labs/proof-systems/pull/3577))
+
+### [o1-utils](./utils)
+
+#### Added
+
+- Add `cfg_chunks_mut!`, the mutable-chunks counterpart to the existing
+  `cfg_iter!` family
+  ([#3586](https://github.com/o1-labs/proof-systems/pull/3586))
 
 ## 0.7.0
 
