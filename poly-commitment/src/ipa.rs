@@ -22,7 +22,7 @@ use crate::{
 };
 #[cfg(feature = "std")]
 use crate::{utils::combine_polys, PolynomialsToCombine};
-use alloc::{vec, vec::Vec};
+use alloc::{borrow::Cow, vec, vec::Vec};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 #[cfg(feature = "std")]
 use ark_ff::{BigInteger, Field};
@@ -850,8 +850,16 @@ impl<G: CommitmentCurve> SRS<G> {
         // practice. Therefore, padding equals zero, and this code can be
         // removed. Only a current test case uses a SRS with a non-power of 2.
         let padding = padded_length - self.g.len();
-        let mut g = self.g.clone();
-        g.extend(vec![G::zero(); padding]);
+        // In practice the SRS size is a power of two and padding is zero, so
+        // borrow the bases instead of cloning ~SRS-size points per opening;
+        // the first fold round replaces `g` with an owned folded vector.
+        let mut g: Cow<'_, [G]> = if padding == 0 {
+            Cow::Borrowed(&self.g)
+        } else {
+            let mut g = self.g.clone();
+            g.extend(vec![G::zero(); padding]);
+            Cow::Owned(g)
+        };
 
         // Combines polynomials roughly as follows: p(X) := ∑_i polyscale^i p_i(X)
         //
@@ -1023,10 +1031,10 @@ impl<G: CommitmentCurve> SRS<G> {
             );
 
             // IPA-folding bases
-            g = hotpath::measure_block!(
+            g = Cow::Owned(hotpath::measure_block!(
                 "ipa::fold::bases",
                 G::combine_one_endo(endo_r, endo_q, g_lo, g_hi, &u_pre)
-            );
+            ));
         }
 
         assert!(
