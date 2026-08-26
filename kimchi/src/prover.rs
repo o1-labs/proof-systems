@@ -678,6 +678,8 @@ where
         internal_tracing::checkpoint!(internal_traces; z_permutation_aggregation_polynomial);
         let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
 
+        drop(witness);
+
         //~ 1. Commit (hiding) to the permutation aggregation polynomial $z$.
         let z_comm = index.srs.commit(&z_poly, num_chunks, rng);
 
