@@ -375,11 +375,6 @@ fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
     g2: &[SWJAffine<P>],
     chal: &ScalarChallenge<P::ScalarField>,
 ) -> Vec<SWJAffine<P>> {
-    fn assign<A: Copy>(dst: &mut [A], src: &[A]) {
-        let n = dst.len();
-        dst[..n].clone_from_slice(&src[..n]);
-    }
-
     const fn get_bit(limbs_lsb: &[u64], i: u64) -> u64 {
         let limb = i / 64;
         let j = i % 64;
@@ -412,12 +407,8 @@ fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
         batch_double_in_place(&mut denominators, &mut points);
     });
 
-    let mut tmp_acc = g2.to_vec();
     hotpath::measure_block!("endo::ladder", {
         for i in (0..(128 / 2)).rev() {
-            // tmp = acc
-            assign(&mut tmp_acc, &points);
-
             // s = (-1)^(1 - r_2i) * phi^(r_2i1) (g2)
             let s: &[SWJAffine<P>] = match (get_bit(r, 2 * i + 1), get_bit(r, 2 * i)) {
                 (0, 1) => g2,
@@ -426,9 +417,10 @@ fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
                 (_, _) => &g2_endo_neg,
             };
 
-            // acc = (acc + s) + acc
+            // acc = 2 acc + s (same group element as the previous
+            // (acc + s) + acc form, without snapshotting acc first)
+            batch_double_in_place(&mut denominators, &mut points);
             batch_add_assign_no_branch(&mut denominators, &mut points, s);
-            batch_add_assign_no_branch(&mut denominators, &mut points, &tmp_acc);
         }
     });
     // acc += g1
