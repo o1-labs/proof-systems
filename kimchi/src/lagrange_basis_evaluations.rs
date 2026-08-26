@@ -252,6 +252,7 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
         LagrangeBasisEvaluations { evals }
     }
 
+    #[hotpath::measure]
     pub fn new(max_poly_size: usize, domain: D<F>, x: F) -> LagrangeBasisEvaluations<F> {
         if domain.size() <= max_poly_size {
             Self::new_with_segment_size_1(domain, x)

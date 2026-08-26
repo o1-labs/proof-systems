@@ -91,82 +91,96 @@ fn add_pairs_in_place<P: SWCurveConfig>(pairs: &mut Vec<SWJAffine<P>>) {
 /// assuming that for each `i`, `v0[i].x != v1[i].x` so we can use the ordinary
 /// addition formula and don't have to handle the edge cases of doubling and
 /// hitting the point at infinity.
+#[hotpath::measure]
 fn batch_add_assign_no_branch<P: SWCurveConfig>(
     denominators: &mut [P::BaseField],
     v0: &mut [SWJAffine<P>],
     v1: &[SWJAffine<P>],
 ) {
-    o1_utils::cfg_iter_mut!(denominators)
-        .enumerate()
-        .for_each(|(i, denom)| {
-            let p0 = v0[i];
-            let p1 = v1[i];
-            let d = p0.x - p1.x;
-            *denom = d;
-        });
+    hotpath::measure_block!("nobranch::denominators", {
+        o1_utils::cfg_iter_mut!(denominators)
+            .enumerate()
+            .for_each(|(i, denom)| {
+                let p0 = v0[i];
+                let p1 = v1[i];
+                let d = p0.x - p1.x;
+                *denom = d;
+            });
+    });
 
-    ark_ff::batch_inversion::<P::BaseField>(denominators);
+    hotpath::measure_block!("nobranch::inversion", {
+        ark_ff::batch_inversion::<P::BaseField>(denominators);
+    });
 
-    o1_utils::cfg_iter!(denominators)
-        .zip(o1_utils::cfg_iter_mut!(v0))
-        .zip(o1_utils::cfg_iter!(v1))
-        .for_each(|((d, p0), p1)| {
-            let s = (p0.y - p1.y) * d;
-            let x = s.square() - p0.x - p1.x;
-            let y = -p0.y - (s * (x - p0.x));
-            p0.x = x;
-            p0.y = y;
-        });
-}
-
-/// Given arrays of curve points `v0` and `v1` do `v0[i] += v1[i]` for each i.
-pub fn batch_add_assign<P: SWCurveConfig>(
-    denominators: &mut [P::BaseField],
-    v0: &mut [SWJAffine<P>],
-    v1: &[SWJAffine<P>],
-) {
-    o1_utils::cfg_iter_mut!(denominators)
-        .zip(o1_utils::cfg_iter!(v0))
-        .zip(o1_utils::cfg_iter!(v1))
-        .for_each(|((denom, p0), p1)| {
-            let d = if p0.x == p1.x {
-                if p1.y.is_zero() {
-                    P::BaseField::one()
-                } else {
-                    p1.y.double()
-                }
-            } else {
-                p0.x - p1.x
-            };
-            *denom = d;
-        });
-
-    ark_ff::batch_inversion::<P::BaseField>(denominators);
-
-    o1_utils::cfg_iter!(denominators)
-        .zip(o1_utils::cfg_iter_mut!(v0))
-        .zip(o1_utils::cfg_iter!(v1))
-        .for_each(|((d, p0), p1)| {
-            if p1.is_zero() {
-            } else if p0.is_zero() {
-                *p0 = *p1;
-            } else if p1.x == p0.x && (p1.y != p0.y || p1.y == P::BaseField::zero()) {
-                *p0 = SWJAffine::<P>::zero();
-            } else if p1.x == p0.x && p1.y == p0.y {
-                let sq = p0.x.square();
-                let s = (sq.double() + sq + P::COEFF_A) * d;
-                let x = s.square() - p0.x.double();
-                let y = -p0.y - (s * (x - p0.x));
-                p0.x = x;
-                p0.y = y;
-            } else {
+    hotpath::measure_block!("nobranch::add_formula", {
+        o1_utils::cfg_iter!(denominators)
+            .zip(o1_utils::cfg_iter_mut!(v0))
+            .zip(o1_utils::cfg_iter!(v1))
+            .for_each(|((d, p0), p1)| {
                 let s = (p0.y - p1.y) * d;
                 let x = s.square() - p0.x - p1.x;
                 let y = -p0.y - (s * (x - p0.x));
                 p0.x = x;
                 p0.y = y;
-            }
-        });
+            });
+    });
+}
+
+/// Given arrays of curve points `v0` and `v1` do `v0[i] += v1[i]` for each i.
+#[hotpath::measure]
+pub fn batch_add_assign<P: SWCurveConfig>(
+    denominators: &mut [P::BaseField],
+    v0: &mut [SWJAffine<P>],
+    v1: &[SWJAffine<P>],
+) {
+    hotpath::measure_block!("branch::denominators", {
+        o1_utils::cfg_iter_mut!(denominators)
+            .zip(o1_utils::cfg_iter!(v0))
+            .zip(o1_utils::cfg_iter!(v1))
+            .for_each(|((denom, p0), p1)| {
+                let d = if p0.x == p1.x {
+                    if p1.y.is_zero() {
+                        P::BaseField::one()
+                    } else {
+                        p1.y.double()
+                    }
+                } else {
+                    p0.x - p1.x
+                };
+                *denom = d;
+            });
+    });
+
+    hotpath::measure_block!("branch::inversion", {
+        ark_ff::batch_inversion::<P::BaseField>(denominators);
+    });
+
+    hotpath::measure_block!("branch::add_formula", {
+        o1_utils::cfg_iter!(denominators)
+            .zip(o1_utils::cfg_iter_mut!(v0))
+            .zip(o1_utils::cfg_iter!(v1))
+            .for_each(|((d, p0), p1)| {
+                if p1.is_zero() {
+                } else if p0.is_zero() {
+                    *p0 = *p1;
+                } else if p1.x == p0.x && (p1.y != p0.y || p1.y == P::BaseField::zero()) {
+                    *p0 = SWJAffine::<P>::zero();
+                } else if p1.x == p0.x && p1.y == p0.y {
+                    let sq = p0.x.square();
+                    let s = (sq.double() + sq + P::COEFF_A) * d;
+                    let x = s.square() - p0.x.double();
+                    let y = -p0.y - (s * (x - p0.x));
+                    p0.x = x;
+                    p0.y = y;
+                } else {
+                    let s = (p0.y - p1.y) * d;
+                    let x = s.square() - p0.x - p1.x;
+                    let y = -p0.y - (s * (x - p0.x));
+                    p0.x = x;
+                    p0.y = y;
+                }
+            });
+    });
 }
 
 fn affine_window_combine_base<P: SWCurveConfig>(
@@ -276,10 +290,12 @@ fn affine_window_combine_base<P: SWCurveConfig>(
     points
 }
 
+#[hotpath::measure]
 fn batch_endo_in_place<P: SWCurveConfig>(endo_coeff: P::BaseField, ps: &mut [SWJAffine<P>]) {
     o1_utils::cfg_iter_mut!(ps).for_each(|p| p.x *= endo_coeff);
 }
 
+#[hotpath::measure]
 fn batch_negate_in_place<P: SWCurveConfig>(ps: &mut [SWJAffine<P>]) {
     o1_utils::cfg_iter_mut!(ps).for_each(|p| {
         p.y = -p.y;
@@ -289,6 +305,7 @@ fn batch_negate_in_place<P: SWCurveConfig>(ps: &mut [SWJAffine<P>]) {
 /// Uses a batch version of Algorithm 1 of
 /// <https://eprint.iacr.org/2019/1021.pdf> (on page 19) to compute `g1 +
 /// g2.scale(chal.to_field(endo_coeff))`
+#[hotpath::measure]
 fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
     endo_coeff: P::BaseField,
     g1: &[SWJAffine<P>],
@@ -312,36 +329,41 @@ fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
     let mut denominators = vec![P::BaseField::zero(); g1.len()];
     // acc = 2 (phi(g2) + g2)
     let mut points = g2.to_vec();
-    batch_endo_in_place(endo_coeff, &mut points);
-    batch_add_assign_no_branch(&mut denominators, &mut points, g2);
-    batch_double_in_place(&mut denominators, &mut points);
+    hotpath::measure_block!("endo::setup", {
+        batch_endo_in_place(endo_coeff, &mut points);
+        batch_add_assign_no_branch(&mut denominators, &mut points, g2);
+        batch_double_in_place(&mut denominators, &mut points);
+    });
 
     let mut tmp_s = g2.to_vec();
     let mut tmp_acc = g2.to_vec();
-    for i in (0..(128 / 2)).rev() {
-        // s = g2
-        assign(&mut tmp_s, g2);
-        // tmp = acc
-        assign(&mut tmp_acc, &points);
+    hotpath::measure_block!("endo::ladder", {
+        for i in (0..(128 / 2)).rev() {
+            // s = g2
+            assign(&mut tmp_s, g2);
+            // tmp = acc
+            assign(&mut tmp_acc, &points);
 
-        let r_2i = get_bit(r, 2 * i);
-        if r_2i == 0 {
-            batch_negate_in_place(&mut tmp_s);
-        }
-        if get_bit(r, 2 * i + 1) == 1 {
-            batch_endo_in_place(endo_coeff, &mut tmp_s);
-        }
+            let r_2i = get_bit(r, 2 * i);
+            if r_2i == 0 {
+                batch_negate_in_place(&mut tmp_s);
+            }
+            if get_bit(r, 2 * i + 1) == 1 {
+                batch_endo_in_place(endo_coeff, &mut tmp_s);
+            }
 
-        // acc = (acc + s) + acc
-        batch_add_assign_no_branch(&mut denominators, &mut points, &tmp_s);
-        batch_add_assign_no_branch(&mut denominators, &mut points, &tmp_acc);
-    }
+            // acc = (acc + s) + acc
+            batch_add_assign_no_branch(&mut denominators, &mut points, &tmp_s);
+            batch_add_assign_no_branch(&mut denominators, &mut points, &tmp_acc);
+        }
+    });
     // acc += g1
     batch_add_assign(&mut denominators, &mut points, g1);
     points
 }
 
 /// Double an array of curve points in-place.
+#[hotpath::measure]
 fn batch_double_in_place<P: SWCurveConfig>(
     denominators: &mut [P::BaseField],
     points: &mut [SWJAffine<P>],

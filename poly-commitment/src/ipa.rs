@@ -298,6 +298,7 @@ impl<G: CommitmentCurve> SRS<G> {
     ///
     /// Returns `true` if verification succeeds, `false` otherwise.
     #[allow(clippy::too_many_lines)]
+    #[hotpath::measure]
     pub fn verify<EFqSponge, RNG, const FULL_ROUNDS: usize>(
         &self,
         group_map: &G::Map,
@@ -635,6 +636,7 @@ where
     }
 
     #[cfg(feature = "std")]
+    #[hotpath::measure]
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
@@ -703,6 +705,7 @@ where
     }
 
     #[cfg(feature = "std")]
+    #[hotpath::measure]
     fn commit_evaluations_non_hiding(
         &self,
         domain: D<G::ScalarField>,
@@ -820,6 +823,7 @@ impl<G: CommitmentCurve> SRS<G> {
     #[allow(clippy::type_complexity)]
     #[allow(clippy::many_single_char_names)]
     #[allow(clippy::too_many_lines)]
+    #[hotpath::measure]
     pub fn open<EFqSponge, RNG, D: EvaluationDomain<G::ScalarField>, const FULL_ROUNDS: usize>(
         &self,
         group_map: &G::Map,
@@ -873,7 +877,7 @@ impl<G: CommitmentCurve> SRS<G> {
         //    ζ^2 + evalscale * (ζ ω)^2
         //    ζ^3 + evalscale * (ζ ω)^3
         //    ...
-        let b_init = {
+        let b_init = hotpath::measure_block!("ipa::open::b_init", {
             // randomise/scale the eval powers
             let mut scale = G::ScalarField::one();
             let mut res: Vec<G::ScalarField> =
@@ -885,15 +889,17 @@ impl<G: CommitmentCurve> SRS<G> {
                 scale *= &evalscale;
             }
             res
-        };
+        });
 
         // Combined polynomial p(X) evaluated at the combined eval point b_init.
-        let combined_inner_product = p
-            .coeffs
-            .iter()
-            .zip(b_init.iter())
-            .map(|(a, b)| *a * b)
-            .fold(G::ScalarField::zero(), |acc, x| acc + x);
+        let combined_inner_product = hotpath::measure_block!(
+            "ipa::open::inner_product",
+            p.coeffs
+                .iter()
+                .zip(b_init.iter())
+                .map(|(a, b)| *a * b)
+                .fold(G::ScalarField::zero(), |acc, x| acc + x)
+        );
 
         // Usually, the prover sends `combined_inner_product`` to the verifier
         // So we should absorb `combined_inner_product``
@@ -940,25 +946,31 @@ impl<G: CommitmentCurve> SRS<G> {
             let rand_r = <G::ScalarField as UniformRand>::rand(rng);
 
             // Pedersen commitment to a_lo,rand_l,<a_hi,b_lo>
-            let l = G::Group::msm_bigint(
-                &[g_lo, &[self.h, u_base]].concat(),
-                &[a_hi, &[rand_l, inner_prod(a_hi, b_lo)]]
-                    .concat()
-                    .iter()
-                    .map(|x| x.into_bigint())
-                    .collect::<Vec<_>>(),
-            )
-            .into_affine();
+            let l = hotpath::measure_block!(
+                "ipa::fold::msm_l",
+                G::Group::msm_bigint(
+                    &[g_lo, &[self.h, u_base]].concat(),
+                    &[a_hi, &[rand_l, inner_prod(a_hi, b_lo)]]
+                        .concat()
+                        .iter()
+                        .map(|x| x.into_bigint())
+                        .collect::<Vec<_>>(),
+                )
+                .into_affine()
+            );
 
-            let r = G::Group::msm_bigint(
-                &[g_hi, &[self.h, u_base]].concat(),
-                &[a_lo, &[rand_r, inner_prod(a_lo, b_hi)]]
-                    .concat()
-                    .iter()
-                    .map(|x| x.into_bigint())
-                    .collect::<Vec<_>>(),
-            )
-            .into_affine();
+            let r = hotpath::measure_block!(
+                "ipa::fold::msm_r",
+                G::Group::msm_bigint(
+                    &[g_hi, &[self.h, u_base]].concat(),
+                    &[a_lo, &[rand_r, inner_prod(a_lo, b_hi)]]
+                        .concat()
+                        .iter()
+                        .map(|x| x.into_bigint())
+                        .collect::<Vec<_>>(),
+                )
+                .into_affine()
+            );
 
             lr.push((l, r));
             blinders.push((rand_l, rand_r));
@@ -977,33 +989,42 @@ impl<G: CommitmentCurve> SRS<G> {
             chal_invs.push(u_inv);
 
             // IPA-folding polynomial coefficients
-            a = o1_utils::cfg_iter!(a_hi)
-                .zip(a_lo)
-                .map(|(&hi, &lo)| {
-                    // lo + u_inv * hi
-                    let mut res = hi;
-                    res *= u_inv;
-                    res += &lo;
-                    res
-                })
-                .collect();
+            a = hotpath::measure_block!(
+                "ipa::fold::poly",
+                o1_utils::cfg_iter!(a_hi)
+                    .zip(a_lo)
+                    .map(|(&hi, &lo)| {
+                        // lo + u_inv * hi
+                        let mut res = hi;
+                        res *= u_inv;
+                        res += &lo;
+                        res
+                    })
+                    .collect()
+            );
 
             // IPA-folding evaluation points.
             // This folding implicitly constructs the challenge polynomial b(X):
             // after all rounds, b[0] = b_poly(chals, evaluation_point).
-            b = o1_utils::cfg_iter!(b_lo)
-                .zip(b_hi)
-                .map(|(&lo, &hi)| {
-                    // lo + u * hi
-                    let mut res = hi;
-                    res *= u;
-                    res += &lo;
-                    res
-                })
-                .collect();
+            b = hotpath::measure_block!(
+                "ipa::fold::evals",
+                o1_utils::cfg_iter!(b_lo)
+                    .zip(b_hi)
+                    .map(|(&lo, &hi)| {
+                        // lo + u * hi
+                        let mut res = hi;
+                        res *= u;
+                        res += &lo;
+                        res
+                    })
+                    .collect()
+            );
 
             // IPA-folding bases
-            g = G::combine_one_endo(endo_r, endo_q, g_lo, g_hi, &u_pre);
+            g = hotpath::measure_block!(
+                "ipa::fold::bases",
+                G::combine_one_endo(endo_r, endo_q, g_lo, g_hi, &u_pre)
+            );
         }
 
         assert!(
@@ -1062,6 +1083,7 @@ impl<G: CommitmentCurve> SRS<G> {
 }
 
 impl<G: CommitmentCurve> SRS<G> {
+    #[hotpath::measure]
     fn lagrange_basis(&self, domain: D<G::ScalarField>) -> Vec<PolyComm<G>> {
         let n = domain.size();
 

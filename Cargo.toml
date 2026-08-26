@@ -65,6 +65,7 @@ hex = { version = "0.4", default-features = false, features = [
   "alloc",
   "serde",
 ] }
+hotpath = "0.23"
 iai = "0.1"
 internal-tracing = { path = "./internal-tracing", default-features = false }
 itertools = { version = "0.12.1", default-features = false, features = [
@@ -77,7 +78,7 @@ kimchi-stubs = { path = "./kimchi-stubs" }
 kimchi-visu = { path = "./tools/kimchi-visu" }
 kimchi_napi = { path = "./kimchi-napi" }
 kimchi_wasm = { path = "./kimchi-wasm" }
-libc = "=0.2.169"
+libc = "=0.2.172"
 libflate = "2"
 log = "0.4.20"
 mina-base58 = { path = "./crates/mina-base58" }

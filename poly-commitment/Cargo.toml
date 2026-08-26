@@ -18,6 +18,7 @@ ark-serialize.workspace = true
 blake2.workspace = true
 hashbrown.workspace = true
 hex.workspace = true
+hotpath.workspace = true
 itertools.workspace = true
 num-bigint.workspace = true
 rand.workspace = true
@@ -57,6 +58,9 @@ parallel = [
   "mina-poseidon/parallel",
 ]
 ocaml_types = ["ocaml", "ocaml-gen"]
+# Opt-in profiling. All hotpath macros are noops unless this is enabled.
+hotpath = ["hotpath/hotpath"]
+hotpath-alloc = ["hotpath/hotpath-alloc"]
 
 [[bench]]
 name = "poly_comm"

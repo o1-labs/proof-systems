@@ -123,6 +123,7 @@ where
     /// # Panics
     ///
     /// Will panic if `PolishToken` evaluation is invalid.
+    #[hotpath::measure]
     pub fn oracles<EFqSponge, EFrSponge, Srs>(
         &self,
         index: &VerifierIndex<FULL_ROUNDS, G, Srs>,
@@ -778,6 +779,7 @@ where
     Ok(())
 }
 
+#[hotpath::measure]
 fn to_batch<
     'b,
     const FULL_ROUNDS: usize,
@@ -1233,6 +1235,7 @@ where
 /// # Errors
 ///
 /// Will give error if `proof(s)` are not verified as valid.
+#[hotpath::measure]
 pub fn verify_with_rng<
     const FULL_ROUNDS: usize,
     G,
@@ -1306,6 +1309,7 @@ where
 /// # Errors
 ///
 /// Will give error if `srs` of `proof` is invalid or `verify` process fails.
+#[hotpath::measure]
 pub fn batch_verify_with_rng<
     const FULL_ROUNDS: usize,
     G,
