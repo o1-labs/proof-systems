@@ -327,33 +327,44 @@ fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
     let r = rep.as_ref();
 
     let mut denominators = vec![P::BaseField::zero(); g1.len()];
+
+    // Each ladder iteration adds one of only four loop-invariant vectors:
+    // g2, -g2, phi(g2), or -phi(g2) (negation touches y, the endomorphism
+    // touches x, so the two commute). Precompute all four once instead of
+    // rebuilding the selected variant from g2 on every iteration.
+    let (g2_endo, g2_neg, g2_endo_neg) = hotpath::measure_block!("endo::precompute", {
+        let mut g2_endo = g2.to_vec();
+        batch_endo_in_place(endo_coeff, &mut g2_endo);
+        let mut g2_neg = g2.to_vec();
+        batch_negate_in_place(&mut g2_neg);
+        let mut g2_endo_neg = g2_endo.clone();
+        batch_negate_in_place(&mut g2_endo_neg);
+        (g2_endo, g2_neg, g2_endo_neg)
+    });
+
     // acc = 2 (phi(g2) + g2)
-    let mut points = g2.to_vec();
+    let mut points = g2_endo.clone();
     hotpath::measure_block!("endo::setup", {
-        batch_endo_in_place(endo_coeff, &mut points);
         batch_add_assign_no_branch(&mut denominators, &mut points, g2);
         batch_double_in_place(&mut denominators, &mut points);
     });
 
-    let mut tmp_s = g2.to_vec();
     let mut tmp_acc = g2.to_vec();
     hotpath::measure_block!("endo::ladder", {
         for i in (0..(128 / 2)).rev() {
-            // s = g2
-            assign(&mut tmp_s, g2);
             // tmp = acc
             assign(&mut tmp_acc, &points);
 
-            let r_2i = get_bit(r, 2 * i);
-            if r_2i == 0 {
-                batch_negate_in_place(&mut tmp_s);
-            }
-            if get_bit(r, 2 * i + 1) == 1 {
-                batch_endo_in_place(endo_coeff, &mut tmp_s);
-            }
+            // s = (-1)^(1 - r_2i) * phi^(r_2i1) (g2)
+            let s: &[SWJAffine<P>] = match (get_bit(r, 2 * i + 1), get_bit(r, 2 * i)) {
+                (0, 1) => g2,
+                (0, _) => &g2_neg,
+                (_, 1) => &g2_endo,
+                (_, _) => &g2_endo_neg,
+            };
 
             // acc = (acc + s) + acc
-            batch_add_assign_no_branch(&mut denominators, &mut points, &tmp_s);
+            batch_add_assign_no_branch(&mut denominators, &mut points, s);
             batch_add_assign_no_branch(&mut denominators, &mut points, &tmp_acc);
         }
     });
