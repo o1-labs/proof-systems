@@ -27,6 +27,65 @@ use mina_poseidon::sponge::ScalarChallenge;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
+/// Elements below which a chunk is not worth splitting further: rayon
+/// dispatch and batch-inversion amortization overhead dominate under this
+/// size. Tuned on the `fold_regression` benchmark.
+#[cfg(feature = "parallel")]
+const MIN_CHUNK: usize = 128;
+
+/// Split `n` elements into per-thread chunks: enough chunks to occupy the
+/// rayon pool, but never chunks smaller than [`MIN_CHUNK`]. This is the
+/// single level of parallelism in this module - all the batch helpers below
+/// run serially within one chunk.
+#[cfg(feature = "parallel")]
+fn chunk_size(n: usize) -> usize {
+    let num_chunks = (n / MIN_CHUNK).clamp(1, 2 * rayon::current_num_threads());
+    n.div_ceil(num_chunks).max(1)
+}
+
+#[cfg(not(feature = "parallel"))]
+const fn chunk_size(n: usize) -> usize {
+    if n == 0 {
+        1
+    } else {
+        n
+    }
+}
+
+/// Serial Montgomery batch inversion: replaces every non-zero element with
+/// its inverse and leaves zeros untouched, at a cost of three
+/// multiplications per element and a single field inversion.
+///
+/// Semantically identical to `ark_ff::batch_inversion`, but always serial:
+/// ark's version parallelizes internally under its `parallel` feature with no
+/// serial escape hatch, and every call in this module already runs inside a
+/// parallel chunk, where the extra fork/join per call is pure overhead.
+fn serial_batch_inversion<F: Field>(v: &mut [F]) {
+    // Forward pass: prefix products of the non-zero elements.
+    let mut prod = Vec::with_capacity(v.len());
+    let mut tmp = F::one();
+    for f in v.iter().filter(|f| !f.is_zero()) {
+        tmp *= *f;
+        prod.push(tmp);
+    }
+
+    // Invert the total product (non-zero: it is a product of non-zeros).
+    let mut inv = tmp.inverse().expect("product of non-zero field elements");
+
+    // Backward pass: peel one factor off per element to recover each inverse
+    // from the prefix product of the elements before it.
+    for (f, s) in v.iter_mut().rev().filter(|f| !f.is_zero()).zip(
+        prod.into_iter()
+            .rev()
+            .skip(1)
+            .chain(core::iter::once(F::one())),
+    ) {
+        let new_inv = inv * *f;
+        *f = inv * s;
+        inv = new_inv;
+    }
+}
+
 fn add_pairs_in_place<P: SWCurveConfig>(pairs: &mut Vec<SWJAffine<P>>) {
     let len = if pairs.len().is_multiple_of(2) {
         pairs.len()
@@ -50,7 +109,7 @@ fn add_pairs_in_place<P: SWCurveConfig>(pairs: &mut Vec<SWJAffine<P>>) {
         })
         .collect::<Vec<_>>();
 
-    ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
+    serial_batch_inversion::<P::BaseField>(&mut denominators);
 
     for (i, d) in (0..len).step_by(2).zip(denominators.iter()) {
         let j = i / 2;
@@ -98,24 +157,24 @@ fn batch_add_assign_no_branch<P: SWCurveConfig>(
     v1: &[SWJAffine<P>],
 ) {
     hotpath::measure_block!("nobranch::denominators", {
-        o1_utils::cfg_iter_mut!(denominators)
-            .enumerate()
-            .for_each(|(i, denom)| {
-                let p0 = v0[i];
-                let p1 = v1[i];
-                let d = p0.x - p1.x;
-                *denom = d;
+        denominators
+            .iter_mut()
+            .zip(v0.iter())
+            .zip(v1.iter())
+            .for_each(|((denom, p0), p1)| {
+                *denom = p0.x - p1.x;
             });
     });
 
     hotpath::measure_block!("nobranch::inversion", {
-        ark_ff::batch_inversion::<P::BaseField>(denominators);
+        serial_batch_inversion::<P::BaseField>(denominators);
     });
 
     hotpath::measure_block!("nobranch::add_formula", {
-        o1_utils::cfg_iter!(denominators)
-            .zip(o1_utils::cfg_iter_mut!(v0))
-            .zip(o1_utils::cfg_iter!(v1))
+        denominators
+            .iter()
+            .zip(v0.iter_mut())
+            .zip(v1.iter())
             .for_each(|((d, p0), p1)| {
                 let s = (p0.y - p1.y) * d;
                 let x = s.square() - p0.x - p1.x;
@@ -134,9 +193,10 @@ pub fn batch_add_assign<P: SWCurveConfig>(
     v1: &[SWJAffine<P>],
 ) {
     hotpath::measure_block!("branch::denominators", {
-        o1_utils::cfg_iter_mut!(denominators)
-            .zip(o1_utils::cfg_iter!(v0))
-            .zip(o1_utils::cfg_iter!(v1))
+        denominators
+            .iter_mut()
+            .zip(v0.iter())
+            .zip(v1.iter())
             .for_each(|((denom, p0), p1)| {
                 let d = if p0.x == p1.x {
                     if p1.y.is_zero() {
@@ -152,13 +212,14 @@ pub fn batch_add_assign<P: SWCurveConfig>(
     });
 
     hotpath::measure_block!("branch::inversion", {
-        ark_ff::batch_inversion::<P::BaseField>(denominators);
+        serial_batch_inversion::<P::BaseField>(denominators);
     });
 
     hotpath::measure_block!("branch::add_formula", {
-        o1_utils::cfg_iter!(denominators)
-            .zip(o1_utils::cfg_iter_mut!(v0))
-            .zip(o1_utils::cfg_iter!(v1))
+        denominators
+            .iter()
+            .zip(v0.iter_mut())
+            .zip(v1.iter())
             .for_each(|((d, p0), p1)| {
                 if p1.is_zero() {
                 } else if p0.is_zero() {
@@ -221,7 +282,7 @@ fn affine_window_combine_base<P: SWCurveConfig>(
             for i in 0..g1.len() {
                 denominators[i] = points[i].y.double();
             }
-            ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
+            serial_batch_inversion::<P::BaseField>(&mut denominators);
 
             // TODO: Use less memory
             for i in 0..g1.len() {
@@ -292,14 +353,16 @@ fn affine_window_combine_base<P: SWCurveConfig>(
 
 #[hotpath::measure]
 fn batch_endo_in_place<P: SWCurveConfig>(endo_coeff: P::BaseField, ps: &mut [SWJAffine<P>]) {
-    o1_utils::cfg_iter_mut!(ps).for_each(|p| p.x *= endo_coeff);
+    for p in ps.iter_mut() {
+        p.x *= endo_coeff;
+    }
 }
 
 #[hotpath::measure]
 fn batch_negate_in_place<P: SWCurveConfig>(ps: &mut [SWJAffine<P>]) {
-    o1_utils::cfg_iter_mut!(ps).for_each(|p| {
+    for p in ps.iter_mut() {
         p.y = -p.y;
-    });
+    }
 }
 
 /// Uses a batch version of Algorithm 1 of
@@ -384,7 +447,7 @@ fn batch_double_in_place<P: SWCurveConfig>(
         .for_each(|(d, p)| {
             *d = p.y.double();
         });
-    ark_ff::batch_inversion::<P::BaseField>(denominators);
+    serial_batch_inversion::<P::BaseField>(denominators);
 
     // TODO: Use less memory
     o1_utils::cfg_iter!(denominators)
@@ -418,7 +481,7 @@ fn affine_window_combine_one_base<P: SWCurveConfig>(
             for i in 0..g1.len() {
                 denominators[i] = points[i].y.double();
             }
-            ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
+            serial_batch_inversion::<P::BaseField>(&mut denominators);
 
             // TODO: Use less memory
             for i in 0..g1.len() {
@@ -453,8 +516,8 @@ pub fn affine_window_combine<P: SWCurveConfig>(
     x1: P::ScalarField,
     x2: P::ScalarField,
 ) -> Vec<SWJAffine<P>> {
-    const CHUNK_SIZE: usize = 10_000;
-    let b: Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
+    let chunk_size = chunk_size(g1.len());
+    let b: Vec<_> = g1.chunks(chunk_size).zip(g2.chunks(chunk_size)).collect();
     let v: Vec<_> = o1_utils::cfg_into_iter!(b)
         .map(|(v1, v2)| affine_window_combine_base(v1, v2, x1, x2))
         .collect();
@@ -471,8 +534,8 @@ pub fn affine_window_combine_one_endo<P: SWCurveConfig>(
     g2: &[SWJAffine<P>],
     chal: &ScalarChallenge<P::ScalarField>,
 ) -> Vec<SWJAffine<P>> {
-    const CHUNK_SIZE: usize = 4096;
-    let b: Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
+    let chunk_size = chunk_size(g1.len());
+    let b: Vec<_> = g1.chunks(chunk_size).zip(g2.chunks(chunk_size)).collect();
     let v: Vec<_> = o1_utils::cfg_into_iter!(b)
         .map(|(v1, v2)| affine_window_combine_one_endo_base(endo_coeff, v1, v2, chal))
         .collect();
@@ -483,8 +546,8 @@ pub fn affine_window_combine_one<P: SWCurveConfig>(
     g2: &[SWJAffine<P>],
     x2: P::ScalarField,
 ) -> Vec<SWJAffine<P>> {
-    const CHUNK_SIZE: usize = 10_000;
-    let b: Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
+    let chunk_size = chunk_size(g1.len());
+    let b: Vec<_> = g1.chunks(chunk_size).zip(g2.chunks(chunk_size)).collect();
     let v: Vec<_> = o1_utils::cfg_into_iter!(b)
         .map(|(v1, v2)| affine_window_combine_one_base(v1, v2, x2))
         .collect();
