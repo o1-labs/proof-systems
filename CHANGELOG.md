@@ -19,6 +19,9 @@ and this project adheres to
 
 #### Changed
 
+- Release the prover's `witness` at its last use rather than holding it to
+  end-of-proof. Proofs are unchanged
+  ([#3601](https://github.com/o1-labs/proof-systems/pull/3601))
 - Lower the prover's peak memory by releasing the d8 evaluations once the
   linearization is done, rather than holding them to end-of-proof
   ([#3587](https://github.com/o1-labs/proof-systems/pull/3587))
