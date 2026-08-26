@@ -442,16 +442,18 @@ fn batch_double_in_place<P: SWCurveConfig>(
     denominators: &mut [P::BaseField],
     points: &mut [SWJAffine<P>],
 ) {
-    o1_utils::cfg_iter_mut!(denominators)
-        .zip(o1_utils::cfg_iter!(points))
+    denominators
+        .iter_mut()
+        .zip(points.iter())
         .for_each(|(d, p)| {
             *d = p.y.double();
         });
     serial_batch_inversion::<P::BaseField>(denominators);
 
     // TODO: Use less memory
-    o1_utils::cfg_iter!(denominators)
-        .zip(o1_utils::cfg_iter_mut!(points))
+    denominators
+        .iter()
+        .zip(points.iter_mut())
         .for_each(|(d, p)| {
             let sq = p.x.square();
             let s = (sq.double() + sq + P::COEFF_A) * d;
