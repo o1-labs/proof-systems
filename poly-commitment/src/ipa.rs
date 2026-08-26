@@ -945,32 +945,34 @@ impl<G: CommitmentCurve> SRS<G> {
             let rand_l = <G::ScalarField as UniformRand>::rand(rng);
             let rand_r = <G::ScalarField as UniformRand>::rand(rng);
 
-            // Pedersen commitment to a_lo,rand_l,<a_hi,b_lo>
-            let l = hotpath::measure_block!(
-                "ipa::fold::msm_l",
-                G::Group::msm_bigint(
-                    &[g_lo, &[self.h, u_base]].concat(),
-                    &[a_hi, &[rand_l, inner_prod(a_hi, b_lo)]]
-                        .concat()
-                        .iter()
-                        .map(|x| x.into_bigint())
-                        .collect::<Vec<_>>(),
-                )
-                .into_affine()
-            );
-
-            let r = hotpath::measure_block!(
-                "ipa::fold::msm_r",
-                G::Group::msm_bigint(
-                    &[g_hi, &[self.h, u_base]].concat(),
-                    &[a_lo, &[rand_r, inner_prod(a_lo, b_hi)]]
-                        .concat()
-                        .iter()
-                        .map(|x| x.into_bigint())
-                        .collect::<Vec<_>>(),
-                )
-                .into_affine()
-            );
+            // Pedersen commitments to (a_hi, rand_l, <a_hi, b_lo>) and
+            // (a_lo, rand_r, <a_lo, b_hi>).
+            //
+            // The h/u_base contributions are added as two scalar
+            // multiplications outside the MSM (identical group element,
+            // avoids concatenating the bases/scalars into fresh vectors),
+            // and the two independent sides are computed in parallel.
+            let (l, r) = hotpath::measure_block!("ipa::fold::msm_lr", {
+                let compute_l = || {
+                    G::Group::msm_bigint(
+                        g_lo,
+                        &a_hi.iter().map(|x| x.into_bigint()).collect::<Vec<_>>(),
+                    ) + self.h.mul(rand_l)
+                        + u_base.mul(inner_prod(a_hi, b_lo))
+                };
+                let compute_r = || {
+                    G::Group::msm_bigint(
+                        g_hi,
+                        &a_lo.iter().map(|x| x.into_bigint()).collect::<Vec<_>>(),
+                    ) + self.h.mul(rand_r)
+                        + u_base.mul(inner_prod(a_lo, b_hi))
+                };
+                #[cfg(feature = "parallel")]
+                let (l, r) = rayon::join(compute_l, compute_r);
+                #[cfg(not(feature = "parallel"))]
+                let (l, r) = (compute_l(), compute_r());
+                (l.into_affine(), r.into_affine())
+            });
 
             lr.push((l, r));
             blinders.push((rand_l, rand_r));
