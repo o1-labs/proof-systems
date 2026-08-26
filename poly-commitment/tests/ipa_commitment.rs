@@ -387,3 +387,77 @@ fn test_dlog_commitment() {
     assert!(result);
     println!("verification time: {:?}", start.elapsed());
 }
+
+/// Frozen proof-bytes regression digest for the IPA fold optimization
+/// series.
+///
+/// Runs `SRS::open` on fully deterministic inputs (seeded RNG, Blake2b-derived
+/// SRS bases) and asserts a hard-coded digest of the serialized proof. Every
+/// optimization to the fold path must be a pure reordering/precompute, so this
+/// digest must NEVER change. If it does, the change under test altered the
+/// proof itself and must be rejected.
+///
+/// The digest was recorded at the base of the optimization series
+/// (branch `perf/ipa-fold`).
+#[test]
+fn test_open_proof_digest_regression() {
+    use blake2::{Blake2b512, Digest};
+
+    let mut rng = o1_utils::tests::make_test_rng(Some([0u8; 32]));
+
+    // 2^13 keeps the test fast while exercising the same multi-round fold
+    // structure as production (13 rounds; both multi-chunk and single-chunk
+    // ladder shapes across the optimization series' chunking policies).
+    let n = 1 << 13;
+    let srs = SRS::<VestaG>::create(n);
+    let group_map = <VestaG as CommitmentCurve>::Map::setup();
+    let sponge = DefaultFqSponge::<VestaParameters, SC, FULL_ROUNDS>::new(
+        mina_poseidon::pasta::fq_kimchi::static_params(),
+    );
+
+    // Two hiding commitments: blinder draws come from the seeded RNG.
+    let polys: Vec<DensePolynomial<Fp>> = (0..2)
+        .map(|_| {
+            let coeffs = (0..n).map(|_| Fp::rand(&mut rng)).collect();
+            DensePolynomial::from_coefficients_vec(coeffs)
+        })
+        .collect();
+    let commits: Vec<_> = polys.iter().map(|p| srs.commit(p, 1, &mut rng)).collect();
+
+    let elm = vec![Fp::rand(&mut rng), Fp::rand(&mut rng)];
+    let polyscale = Fp::rand(&mut rng);
+    let evalscale = Fp::rand(&mut rng);
+
+    let polys_to_open: Vec<(
+        DensePolynomialOrEvaluations<_, Radix2EvaluationDomain<_>>,
+        PolyComm<_>,
+    )> = polys
+        .iter()
+        .zip(&commits)
+        .map(|(p, c)| {
+            (
+                DensePolynomialOrEvaluations::DensePolynomial(p),
+                c.blinders.clone(),
+            )
+        })
+        .collect();
+
+    let proof = srs.open(
+        &group_map,
+        &polys_to_open,
+        &elm,
+        polyscale,
+        evalscale,
+        sponge,
+        &mut rng,
+    );
+
+    let bytes = rmp_serde::to_vec(&proof).expect("serialize opening proof");
+    let digest = hex::encode(Blake2b512::digest(&bytes));
+    assert_eq!(
+        digest,
+        "2ff2874171b8ec1aa70c002eb91ad8652ee0522ce14c101c42db0b4462781806e079460d12ebe1d0528080b50a2aa8270aa0ff9ca20e7a193430645efbc5370f",
+        "IPA opening proof bytes changed: the fold optimization under test \
+         is not a pure reordering/precompute"
+    );
+}
