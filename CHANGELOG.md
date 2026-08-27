@@ -13,6 +13,12 @@ and this project adheres to
 
 #### Added
 
+- `Expr::evaluations_fused`, a fused chunked expression evaluator: compiles
+  the expression to a flat tape and evaluates it in a single pass over
+  cache-resident chunks, eliminating the per-node full-domain intermediate
+  buffers of `Expr::evaluations` while producing bit-identical results. The
+  prover's quotient computation now uses it for the gate, generic, and lookup
+  constraint evaluations
 - A frozen `expr_eval` benchmark for gate-constraint expression evaluation,
   covering every gate type at cache-resident and memory-bound domain sizes
   ([#3603](https://github.com/o1-labs/proof-systems/pull/3603))

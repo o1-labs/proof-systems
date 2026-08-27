@@ -796,7 +796,7 @@ where
             let mut t4 = {
                 let generic_constraint =
                     generic::Generic::combined_constraints(&all_alphas, &mut cache);
-                let generic4 = generic_constraint.evaluations(&env);
+                let generic4 = generic_constraint.evaluations_fused(&env);
 
                 if cfg!(debug_assertions) {
                     let p4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
@@ -859,7 +859,7 @@ where
                 .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })
                 {
                     let constraint = gate.combined_constraints(&all_alphas, &mut cache);
-                    let eval = constraint.evaluations(&env);
+                    let eval = constraint.evaluations_fused(&env);
                     if eval.domain().size == t4.domain().size {
                         t4 += &eval;
                     } else if eval.domain().size == t8.domain().size {
@@ -885,7 +885,7 @@ where
                     for (ii, (constraint, alpha_pow)) in
                         constraints.into_iter().zip_eq(lookup_alphas).enumerate()
                     {
-                        let mut eval = constraint.evaluations(&env);
+                        let mut eval = constraint.evaluations_fused(&env);
                         eval.evals.par_iter_mut().for_each(|x| *x *= alpha_pow);
 
                         if eval.domain().size == t4.domain().size {
