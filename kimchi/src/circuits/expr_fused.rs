@@ -618,11 +618,27 @@ where
     let n = res_domain.size();
     let mut out = vec![F::zero(); n];
 
+    // One statically-partitioned task per worker, each with a single scratch
+    // reused across its chunks. Chunks are uniform work (same tape), so
+    // fine-grained work stealing buys nothing here, and `for_each_init`-style
+    // adaptive splitting would re-create the scratch pool per split segment --
+    // measured at hundreds of MB of allocation churn per proof, cancelling
+    // the evaluator's savings over the legacy kernels.
     #[cfg(feature = "parallel")]
-    out.par_chunks_mut(CHUNK).enumerate().for_each_init(
-        || Scratch::new(tape.n_slots, tape.cols.len()),
-        |sc, (ci, chunk)| run_chunk(&tape, ci * CHUNK, chunk, sc),
-    );
+    {
+        let n_chunks = n.div_ceil(CHUNK);
+        let n_tasks = rayon::current_num_threads().clamp(1, n_chunks.max(1));
+        let chunks_per_task = n_chunks.div_ceil(n_tasks);
+        out.par_chunks_mut(CHUNK * chunks_per_task)
+            .enumerate()
+            .for_each(|(ti, task_out)| {
+                let mut sc = Scratch::new(tape.n_slots, tape.cols.len());
+                let base = ti * chunks_per_task * CHUNK;
+                for (ci, chunk) in task_out.chunks_mut(CHUNK).enumerate() {
+                    run_chunk(&tape, base + ci * CHUNK, chunk, &mut sc);
+                }
+            });
+    }
     #[cfg(not(feature = "parallel"))]
     {
         let mut sc = Scratch::new(tape.n_slots, tape.cols.len());
