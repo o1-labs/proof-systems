@@ -30,8 +30,16 @@ use kimchi::{
         expr::{self, l0_1, Constants},
         gate::GateType,
         polynomials::{
-            complete_add::CompleteAdd, endomul_scalar::EndomulScalar, endosclmul::EndosclMul,
-            poseidon::Poseidon, varbasemul::VarbaseMul,
+            complete_add::CompleteAdd,
+            endomul_scalar::EndomulScalar,
+            endosclmul::EndosclMul,
+            foreign_field_add::circuitgates::ForeignFieldAdd,
+            foreign_field_mul::circuitgates::ForeignFieldMul,
+            poseidon::Poseidon,
+            range_check::circuitgates::{RangeCheck0, RangeCheck1},
+            rot::Rot64,
+            varbasemul::VarbaseMul,
+            xor::Xor16,
         },
         wires::COLUMNS,
     },
@@ -75,6 +83,12 @@ fn make_env_data(rng: &mut impl Rng, d1_log2: u32) -> EnvData {
             (GateType::EndoMul, rand_evals(rng, domain.d8)),
             (GateType::EndoMulScalar, rand_evals(rng, domain.d8)),
             (GateType::CompleteAdd, rand_evals(rng, domain.d4)),
+            (GateType::RangeCheck0, rand_evals(rng, domain.d8)),
+            (GateType::RangeCheck1, rand_evals(rng, domain.d8)),
+            (GateType::ForeignFieldAdd, rand_evals(rng, domain.d8)),
+            (GateType::ForeignFieldMul, rand_evals(rng, domain.d8)),
+            (GateType::Xor16, rand_evals(rng, domain.d8)),
+            (GateType::Rot64, rand_evals(rng, domain.d8)),
         ],
         alpha: Fp::rand(rng),
         beta: Fp::rand(rng),
@@ -141,6 +155,24 @@ fn gate_exprs(alphas: &Alphas<Fp>) -> Vec<(&'static str, E<Fp>)> {
             "complete_add",
             CompleteAdd::combined_constraints(alphas, &mut cache),
         ),
+        (
+            "range_check0",
+            RangeCheck0::combined_constraints(alphas, &mut cache),
+        ),
+        (
+            "range_check1",
+            RangeCheck1::combined_constraints(alphas, &mut cache),
+        ),
+        (
+            "foreign_field_add",
+            ForeignFieldAdd::combined_constraints(alphas, &mut cache),
+        ),
+        (
+            "foreign_field_mul",
+            ForeignFieldMul::combined_constraints(alphas, &mut cache),
+        ),
+        ("xor16", Xor16::combined_constraints(alphas, &mut cache)),
+        ("rot64", Rot64::combined_constraints(alphas, &mut cache)),
     ]
 }
 
@@ -157,11 +189,22 @@ fn benchmark_expr_eval(c: &mut Criterion) {
         if d1_log2 > 12 {
             group.sample_size(20);
         }
-        for (name, e) in &exprs {
+        // Per-gate cases: the five always-on gates (unchanged case names).
+        for (name, e) in exprs.iter().take(5) {
             group.bench_function(format!("evaluations/{name}/{d1_log2}"), |b| {
                 b.iter(|| black_box(e.evaluations(&env)))
             });
         }
+        // Aggregate: every gate type kimchi's quotient loop can evaluate,
+        // including the optional ones no bench circuit currently enables -
+        // the quotient::gates region for a maximally-featured circuit.
+        group.bench_function(format!("evaluations/all_gates/{d1_log2}"), |b| {
+            b.iter(|| {
+                for (_, e) in &exprs {
+                    black_box(e.evaluations(&env));
+                }
+            })
+        });
     }
     group.finish();
 }

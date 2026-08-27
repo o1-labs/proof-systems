@@ -23,8 +23,16 @@ use kimchi::{
         expr::{self, l0_1, Constants},
         gate::GateType,
         polynomials::{
-            complete_add::CompleteAdd, endomul_scalar::EndomulScalar, endosclmul::EndosclMul,
-            poseidon::Poseidon, varbasemul::VarbaseMul,
+            complete_add::CompleteAdd,
+            endomul_scalar::EndomulScalar,
+            endosclmul::EndosclMul,
+            foreign_field_add::circuitgates::ForeignFieldAdd,
+            foreign_field_mul::circuitgates::ForeignFieldMul,
+            poseidon::Poseidon,
+            range_check::circuitgates::{RangeCheck0, RangeCheck1},
+            rot::Rot64,
+            varbasemul::VarbaseMul,
+            xor::Xor16,
         },
         wires::COLUMNS,
     },
@@ -56,6 +64,12 @@ fn test_gate_evaluations_digest_regression() {
         (GateType::EndoMul, rand_evals(&mut rng, domain.d8)),
         (GateType::EndoMulScalar, rand_evals(&mut rng, domain.d8)),
         (GateType::CompleteAdd, rand_evals(&mut rng, domain.d4)),
+        (GateType::RangeCheck0, rand_evals(&mut rng, domain.d8)),
+        (GateType::RangeCheck1, rand_evals(&mut rng, domain.d8)),
+        (GateType::ForeignFieldAdd, rand_evals(&mut rng, domain.d8)),
+        (GateType::ForeignFieldMul, rand_evals(&mut rng, domain.d8)),
+        (GateType::Xor16, rand_evals(&mut rng, domain.d8)),
+        (GateType::Rot64, rand_evals(&mut rng, domain.d8)),
     ];
     let alpha = Fp::rand(&mut rng);
 
@@ -99,6 +113,12 @@ fn test_gate_evaluations_digest_regression() {
         EndosclMul::combined_constraints(&alphas, &mut cache),
         EndomulScalar::combined_constraints(&alphas, &mut cache),
         CompleteAdd::combined_constraints(&alphas, &mut cache),
+        RangeCheck0::combined_constraints(&alphas, &mut cache),
+        RangeCheck1::combined_constraints(&alphas, &mut cache),
+        ForeignFieldAdd::combined_constraints(&alphas, &mut cache),
+        ForeignFieldMul::combined_constraints(&alphas, &mut cache),
+        Xor16::combined_constraints(&alphas, &mut cache),
+        Rot64::combined_constraints(&alphas, &mut cache),
     ] {
         let evals = e.evaluations(&env);
         let mut bytes = Vec::new();
@@ -111,8 +131,7 @@ fn test_gate_evaluations_digest_regression() {
 
     let digest = hex::encode(hasher.finalize());
     assert_eq!(
-        digest,
-        "ab9826dd00d2764ab40707049bd39f3d579deedac512a29edd65b68f002a55acb9f0dac1b22b9360354f9ec94f63e9610b54d0e79682ae0f7cbf6645ba965791",
+        digest, "640b8ef8693a014e81e3c514c02e99fd16ef5d9ae91782c210d0d4b1ffd670d963e8887d8dda206bb1d5fefebf58051d56982341e65b9c09b971e0b108156e74",
         "gate constraint evaluations changed: the expression-evaluator \
          optimization under test is not behavior-preserving"
     );
