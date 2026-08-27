@@ -24,8 +24,10 @@ use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criteri
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi, pasta::FULL_ROUNDS, sponge::DefaultFqSponge,
-    sponge::ScalarChallenge, FqSponge,
+    constants::PlonkSpongeConstantsKimchi,
+    pasta::FULL_ROUNDS,
+    sponge::{DefaultFqSponge, ScalarChallenge},
+    FqSponge,
 };
 use poly_commitment::{
     commitment::{CommitmentCurve, EndoCurve},
