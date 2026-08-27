@@ -1143,9 +1143,17 @@ fn mod_pow2(i: usize, len: usize) -> usize {
 /// Grain size for parallel elementwise kernels: bounds rayon's adaptive
 /// splitting so a single kernel does not shatter into sub-cache-line tasks.
 /// A gate-constraint evaluation dispatches hundreds of such kernels, so the
-/// floor matters at every domain size. Tuned on the `expr_eval` benchmark.
+/// floor matters at every domain size.
+///
+/// Swept on the `expr_eval` poseidon cases: 1024-4096 is a plateau (within
+/// ~4%); 8192 and above collapse small-domain kernels into a single task
+/// (a d1 = 2^10 circuit's d8 columns are exactly 8192 elements) and measured
+/// ~1.5x worse there. 1024 is the plateau's bottom: `with_min_len` is a
+/// floor on split size, not a task-count mandate - rayon splits only when
+/// workers are idle - so the smallest plateau value costs few-core machines
+/// nothing and permits the most parallelism on many-core ones.
 #[allow(dead_code)]
-const PAR_GRAIN: usize = 1 << 12;
+const PAR_GRAIN: usize = 1 << 10;
 
 impl<'a, F: FftField> EvalResult<'a, F> {
     /// Create an evaluation over the domain `res_domain`.
