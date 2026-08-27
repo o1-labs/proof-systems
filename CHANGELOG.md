@@ -27,6 +27,18 @@ and this project adheres to
   parallelise the d8 lookup-table and sorted-polynomial construction. Proofs are
   unchanged ([#3587](https://github.com/o1-labs/proof-systems/pull/3587))
 
+#### Removed
+
+- Stop computing the witness evaluations that nothing reads.
+  `ConstraintSystem::evaluate` built the witness over `d4` as well as `d8`, and
+  a row-shifted copy of the witness over each, none of which had a reader:
+  constraints referring to the next row are evaluated by shifting the index into
+  the unshifted evaluations, and `ColumnEnvironment` has no accessor for a
+  shifted column. `WitnessOverDomains` now holds only the witness and the
+  permutation accumulator over `d8`, plus the shifted accumulator the
+  permutation argument compares against, and `WitnessShifts` is gone.
+  ([#3598](https://github.com/o1-labs/proof-systems/pull/3598))
+
 ### [kimchi-napi](./kimchi-napi)
 
 #### Fixed
@@ -35,6 +47,20 @@ and this project adheres to
   ([#3577](https://github.com/o1-labs/proof-systems/pull/3577))
 
 ### [kimchi-stubs](./kimchi-stubs)
+
+#### Added
+
+- Add `<field>_vector_clear`, letting the caller eagerly release a consumed
+  vector's Rust-side allocation. OCaml only sees the pointer, so its GC never
+  feels the (potentially large) backing buffer
+  ([#3592](https://github.com/o1-labs/proof-systems/pull/3592))
+- Run proving inside a scoped rayon thread pool sized by `KIMCHI_PROVE_THREADS`,
+  falling back to the global pool when unset. Pools are reused across proves via
+  a per-thread-count freelist, bounded by `KIMCHI_PROVE_POOL_CAP` (default 2) so
+  idle pools do not accumulate. This lets a long-running worker prove different
+  tasks at different thread counts without rebuilding its global pool; the
+  thread count does not affect the proof
+  ([#3592](https://github.com/o1-labs/proof-systems/pull/3592))
 
 #### Fixed
 
