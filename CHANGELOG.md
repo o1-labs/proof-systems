@@ -13,12 +13,21 @@ and this project adheres to
 
 #### Added
 
+- A frozen `expr_eval` benchmark for gate-constraint expression evaluation,
+  covering every gate type at cache-resident and memory-bound domain sizes
+  ([#3603](https://github.com/o1-labs/proof-systems/pull/3603))
 - Add an optional mmap-backed prover-index cache for loading proving keys from
   disk while allowing the OS page cache to evict unused pages
   ([#3569](https://github.com/o1-labs/proof-systems/pull/3569))
 
 #### Changed
 
+- Speed up gate-constraint expression evaluation: bound rayon's adaptive
+  splitting with a grain floor so the hundreds of per-AST-node kernels stop
+  shattering into sub-cache-line tasks, replace ark-poly's compound-assign
+  operators with grain-bounded zips, and use a power-of-two bitmask instead
+  of `%` in the strided kernels. Evaluations are unchanged bit-for-bit
+  ([#3603](https://github.com/o1-labs/proof-systems/pull/3603))
 - Lower the prover's peak memory by releasing the d8 evaluations once the
   linearization is done, rather than holding them to end-of-proof
   ([#3587](https://github.com/o1-labs/proof-systems/pull/3587))
