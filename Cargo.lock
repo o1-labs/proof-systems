@@ -1702,6 +1702,7 @@ dependencies = [
  "ark-ff",
  "ark-poly",
  "ark-serialize",
+ "ark-std",
  "blake2",
  "criterion",
  "groupmap",

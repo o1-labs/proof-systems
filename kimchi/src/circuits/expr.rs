@@ -1140,70 +1140,12 @@ fn mod_pow2(i: usize, len: usize) -> usize {
     i & (len - 1)
 }
 
-/// Below this many elements, elementwise kernels run serially: a rayon
-/// fork/join costs more than the loop body at small sizes, and a single
-/// gate-constraint evaluation dispatches hundreds of such kernels (one or
-/// two per AST node). Tuned on the `expr_eval` benchmark.
-#[cfg(feature = "parallel")]
-const PAR_MIN_LEN: usize = 1 << 13;
-
-/// Grain size for the parallel path: bounds rayon's adaptive splitting so a
-/// single kernel does not shatter into sub-cache-line tasks.
-#[cfg(feature = "parallel")]
+/// Grain size for parallel elementwise kernels: bounds rayon's adaptive
+/// splitting so a single kernel does not shatter into sub-cache-line tasks.
+/// A gate-constraint evaluation dispatches hundreds of such kernels, so the
+/// floor matters at every domain size. Tuned on the `expr_eval` benchmark.
+#[allow(dead_code)]
 const PAR_GRAIN: usize = 1 << 12;
-
-/// `(0..n).map(g).collect()`, parallelized only when `n` is large enough to
-/// amortize the fork/join.
-fn vec_from_fn<F: Send, G: Sync + Send + Fn(usize) -> F>(n: usize, g: G) -> Vec<F> {
-    #[cfg(feature = "parallel")]
-    if n >= PAR_MIN_LEN {
-        return (0..n)
-            .into_par_iter()
-            .with_min_len(PAR_GRAIN)
-            .map(g)
-            .collect();
-    }
-    (0..n).map(g).collect()
-}
-
-/// Elementwise in-place update, parallelized only when the slice is large
-/// enough to amortize the fork/join.
-fn for_each_mut<F: Send, G: Sync + Send + Fn(&mut F)>(v: &mut [F], g: G) {
-    #[cfg(feature = "parallel")]
-    if v.len() >= PAR_MIN_LEN {
-        v.par_iter_mut().with_min_len(PAR_GRAIN).for_each(g);
-        return;
-    }
-    v.iter_mut().for_each(g);
-}
-
-/// Like [`for_each_mut`], passing the element index to the closure.
-fn for_each_indexed_mut<F: Send, G: Sync + Send + Fn(usize, &mut F)>(v: &mut [F], g: G) {
-    #[cfg(feature = "parallel")]
-    if v.len() >= PAR_MIN_LEN {
-        v.par_iter_mut()
-            .enumerate()
-            .with_min_len(PAR_GRAIN)
-            .for_each(|(i, e)| g(i, e));
-        return;
-    }
-    v.iter_mut().enumerate().for_each(|(i, e)| g(i, e));
-}
-
-/// Elementwise `g(&mut a[i], &b[i])`, parallelized only when the slices are
-/// large enough to amortize the fork/join.
-fn zip_assign<F: Send + Sync, G: Sync + Send + Fn(&mut F, &F)>(a: &mut [F], b: &[F], g: G) {
-    assert_eq!(a.len(), b.len());
-    #[cfg(feature = "parallel")]
-    if a.len() >= PAR_MIN_LEN {
-        a.par_iter_mut()
-            .zip(b.par_iter())
-            .with_min_len(PAR_GRAIN)
-            .for_each(|(x, y)| g(x, y));
-        return;
-    }
-    a.iter_mut().zip(b.iter()).for_each(|(x, y)| g(x, y));
-}
 
 impl<'a, F: FftField> EvalResult<'a, F> {
     /// Create an evaluation over the domain `res_domain`.
@@ -1220,7 +1162,10 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         g: G,
     ) -> Evaluations<F, D<F>> {
         let n = res_domain.1.size();
-        Evaluations::<F, D<F>>::from_vec_and_domain(vec_from_fn(n, g), res_domain.1)
+        Evaluations::<F, D<F>>::from_vec_and_domain(
+            ark_std::cfg_into_iter!(0..n, PAR_GRAIN).map(g).collect(),
+            res_domain.1,
+        )
     }
 
     /// Call the internal function `init_` and return the computed evaluation as
@@ -1238,7 +1183,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (Constant(x), Constant(y)) => Constant(x + y),
             (Evals { domain, mut evals }, Constant(x))
             | (Constant(x), Evals { domain, mut evals }) => {
-                for_each_mut(&mut evals.evals, |e| *e += x);
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN).for_each(|e| *e += x);
                 Evals { domain, evals }
             }
             (
@@ -1265,10 +1210,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
-                let v = vec_from_fn(n, |i| {
-                    x + evals.evals
-                        [mod_pow2(scale * i + (domain as usize) * shift, evals.evals.len())]
-                });
+                let v: Vec<_> = ark_std::cfg_into_iter!(0..n, PAR_GRAIN)
+                    .map(|i| {
+                        x + evals.evals
+                            [mod_pow2(scale * i + (domain as usize) * shift, evals.evals.len())]
+                    })
+                    .collect();
                 Evals {
                     domain: res_domain.0,
                     evals: Evaluations::<F, D<F>>::from_vec_and_domain(v, res_domain.1),
@@ -1285,7 +1232,9 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 assert_eq!(d1, d2);
-                zip_assign(&mut es1.evals, &es2.evals, |a, b| *a += b);
+                ark_std::cfg_iter_mut!(es1.evals, PAR_GRAIN)
+                    .zip(ark_std::cfg_iter!(es2.evals, PAR_GRAIN))
+                    .for_each(|(a, b)| *a += b);
                 Evals {
                     domain: d1,
                     evals: es1,
@@ -1320,10 +1269,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
-                for_each_indexed_mut(&mut evals.evals, |i, e| {
-                    *e += es_sub.evals
-                        [mod_pow2(scale * i + (d_sub as usize) * s, es_sub.evals.len())];
-                });
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN)
+                    .enumerate()
+                    .for_each(|(i, e)| {
+                        *e += es_sub.evals
+                            [mod_pow2(scale * i + (d_sub as usize) * s, es_sub.evals.len())];
+                    });
                 Evals { evals, domain: d }
             }
             (
@@ -1353,10 +1304,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
                 let n = res_domain.1.size();
-                let v = vec_from_fn(n, |i| {
-                    es1.evals[mod_pow2(scale1 * i + (d1 as usize) * s1, es1.evals.len())]
-                        + es2.evals[mod_pow2(scale2 * i + (d2 as usize) * s2, es2.evals.len())]
-                });
+                let v: Vec<_> = ark_std::cfg_into_iter!(0..n, PAR_GRAIN)
+                    .map(|i| {
+                        es1.evals[mod_pow2(scale1 * i + (d1 as usize) * s1, es1.evals.len())]
+                            + es2.evals[mod_pow2(scale2 * i + (d2 as usize) * s2, es2.evals.len())]
+                    })
+                    .collect();
 
                 Evals {
                     domain: res_domain.0,
@@ -1371,11 +1324,11 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x - y),
             (Evals { domain, mut evals }, Constant(x)) => {
-                for_each_mut(&mut evals.evals, |e| *e -= x);
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN).for_each(|e| *e -= x);
                 Evals { domain, evals }
             }
             (Constant(x), Evals { domain, mut evals }) => {
-                for_each_mut(&mut evals.evals, |e| *e = x - *e);
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN).for_each(|e| *e = x - *e);
                 Evals { domain, evals }
             }
             (
@@ -1428,7 +1381,9 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 assert_eq!(d1, d2);
-                zip_assign(&mut es1.evals, &es2.evals, |a, b| *a -= b);
+                ark_std::cfg_iter_mut!(es1.evals, PAR_GRAIN)
+                    .zip(ark_std::cfg_iter!(es2.evals, PAR_GRAIN))
+                    .for_each(|(a, b)| *a -= b);
                 Evals {
                     domain: d1,
                     evals: es1,
@@ -1453,11 +1408,13 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
 
-                for_each_indexed_mut(&mut evals.evals, |i, e| {
-                    *e = es_sub.evals
-                        [mod_pow2(scale * i + (d_sub as usize) * s, es_sub.evals.len())]
-                        - *e;
-                });
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN)
+                    .enumerate()
+                    .for_each(|(i, e)| {
+                        *e = es_sub.evals
+                            [mod_pow2(scale * i + (d_sub as usize) * s, es_sub.evals.len())]
+                            - *e;
+                    });
                 Evals { evals, domain: d }
             }
             (
@@ -1478,10 +1435,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
-                for_each_indexed_mut(&mut evals.evals, |i, e| {
-                    *e -= es_sub.evals
-                        [mod_pow2(scale * i + (d_sub as usize) * s, es_sub.evals.len())];
-                });
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN)
+                    .enumerate()
+                    .for_each(|(i, e)| {
+                        *e -= es_sub.evals
+                            [mod_pow2(scale * i + (d_sub as usize) * s, es_sub.evals.len())];
+                    });
                 Evals { evals, domain: d }
             }
             (
@@ -1537,7 +1496,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         match self {
             Constant(x) => Constant(x.square()),
             Evals { domain, mut evals } => {
-                for_each_mut(&mut evals.evals, |e| {
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN).for_each(|e| {
                     e.square_in_place();
                 });
                 Evals { domain, evals }
@@ -1567,7 +1526,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (Constant(x), Constant(y)) => Constant(x * y),
             (Evals { domain, mut evals }, Constant(x))
             | (Constant(x), Evals { domain, mut evals }) => {
-                for_each_mut(&mut evals.evals, |e| *e *= x);
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN).for_each(|e| *e *= x);
                 Evals { domain, evals }
             }
             (
@@ -1608,7 +1567,9 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 assert_eq!(d1, d2);
-                zip_assign(&mut es1.evals, &es2.evals, |a, b| *a *= b);
+                ark_std::cfg_iter_mut!(es1.evals, PAR_GRAIN)
+                    .zip(ark_std::cfg_iter!(es2.evals, PAR_GRAIN))
+                    .for_each(|(a, b)| *a *= b);
                 Evals {
                     domain: d1,
                     evals: es1,
@@ -1644,10 +1605,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
 
-                for_each_indexed_mut(&mut evals.evals, |i, e| {
-                    *e *= es_sub.evals
-                        [mod_pow2(scale * i + (d_sub as usize) * s, es_sub.evals.len())];
-                });
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN)
+                    .enumerate()
+                    .for_each(|(i, e)| {
+                        *e *= es_sub.evals
+                            [mod_pow2(scale * i + (d_sub as usize) * s, es_sub.evals.len())];
+                    });
                 Evals { evals, domain: d }
             }
             (
@@ -2084,7 +2047,7 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
                     Either::Left(x) => {
                         let x = match x {
                             EvalResult::Evals { domain, mut evals } => {
-                                for_each_mut(&mut evals.evals, |x| {
+                                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN).for_each(|x| {
                                     x.double_in_place();
                                 });
                                 return Either::Left(EvalResult::Evals { domain, evals });
