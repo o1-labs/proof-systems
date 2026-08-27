@@ -56,7 +56,7 @@ const MIN_CHUNK: usize = 128;
 /// evaluated at the cache level the ladder should run from (e.g. a 1 MiB
 /// cache shared by 2 threads -> ~1490 elements; 16 MiB shared by 6 ->
 /// ~7750). The default 2048 is a compromise across common topologies. The
-/// cap only binds when `n / (2 x threads)` exceeds it - on machines with
+/// cap only binds when `n / threads` exceeds it - on machines with
 /// enough threads, the division already yields smaller chunks and the cap
 /// is inert.
 #[cfg(feature = "parallel")]
@@ -78,7 +78,7 @@ fn max_chunk() -> usize {
 /// all the batch helpers below run serially within one chunk.
 #[cfg(feature = "parallel")]
 fn chunk_size(n: usize) -> usize {
-    let num_chunks = (n / MIN_CHUNK).clamp(1, 2 * rayon::current_num_threads());
+    let num_chunks = (n / MIN_CHUNK).clamp(1, rayon::current_num_threads());
     n.div_ceil(num_chunks).clamp(1, max_chunk())
 }
 
