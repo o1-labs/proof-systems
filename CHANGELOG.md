@@ -139,11 +139,27 @@ and this project adheres to
 
 #### Changed
 
+- Speed up the IPA opening prover's base folding: precompute the endo ladder's
+  four selector vectors, compute the ladder step as `2*acc + s`, run the batch
+  helpers serially inside adaptively-sized parallel chunks (one fork per
+  combine instead of hundreds, bounded above by the new
+  `KIMCHI_IPA_FOLD_MAX_POINTS_PER_CHUNK` environment variable, default 2048
+  points per chunk), and compute the round's L/R commitments concurrently.
+  Proofs are unchanged
+  ([#3602](https://github.com/o1-labs/proof-systems/pull/3602))
+- Borrow the SRS bases in `open` instead of cloning them when no padding is
+  needed ([#3602](https://github.com/o1-labs/proof-systems/pull/3602))
 - Gate prover-only `SRS` trait methods behind `#[cfg(feature = "std")]` so the
   core trait and IPA implementation compile in `no_std`.
 - Add a thread-safe no-std lagrange basis cache using a spinlock and `Arc`,
   replacing the previous `Rc<RefCell<HashMap>>` approach that required
   `unsafe impl Send/Sync` on `SRS`.
+
+#### Added
+
+- A frozen `fold_regression` benchmark and a seeded proof-bytes digest test
+  gating any change to the opening prover
+  ([#3602](https://github.com/o1-labs/proof-systems/pull/3602))
 
 ### [mina-poseidon](./poseidon)
 
