@@ -1128,6 +1128,18 @@ fn unnormalized_lagrange_evals<
 
 /// Implement algebraic methods like `add`, `sub`, `mul`, `square`, etc to use
 /// algebra on the type `EvalResult`.
+/// Reduce an index modulo a power-of-two length.
+///
+/// Every evaluation vector in the expression framework lives over a radix-2
+/// domain (d1/d2/d4/d8), so `len` is always a power of two and the wrap-around
+/// in the strided kernels can use a bitmask instead of a per-element integer
+/// division.
+#[inline]
+fn mod_pow2(i: usize, len: usize) -> usize {
+    debug_assert!(len.is_power_of_two());
+    i & (len - 1)
+}
+
 impl<'a, F: FftField> EvalResult<'a, F> {
     /// Create an evaluation over the domain `res_domain`.
     /// The second parameter, `g`, is a function used to define the
@@ -1193,7 +1205,8 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 );
                 let v: Vec<_> = o1_utils::cfg_into_iter!(0..n)
                     .map(|i| {
-                        x + evals.evals[(scale * i + (domain as usize) * shift) % evals.evals.len()]
+                        x + evals.evals
+                            [mod_pow2(scale * i + (domain as usize) * shift, evals.evals.len())]
                     })
                     .collect();
                 Evals {
@@ -1250,7 +1263,8 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 o1_utils::cfg_iter_mut!(evals.evals)
                     .enumerate()
                     .for_each(|(i, e)| {
-                        *e += es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
+                        *e += es_sub.evals
+                            [mod_pow2(scale * i + (d_sub as usize) * s, es_sub.evals.len())];
                     });
                 Evals { evals, domain: d }
             }
@@ -1283,8 +1297,8 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 let n = res_domain.1.size();
                 let v: Vec<_> = o1_utils::cfg_into_iter!(0..n)
                     .map(|i| {
-                        es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
-                            + es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
+                        es1.evals[mod_pow2(scale1 * i + (d1 as usize) * s1, es1.evals.len())]
+                            + es2.evals[mod_pow2(scale2 * i + (d2 as usize) * s2, es2.evals.len())]
                     })
                     .collect();
 
@@ -1324,7 +1338,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
                 EvalResult::init(res_domain, |i| {
-                    evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()] - x
+                    evals.evals[mod_pow2(scale * i + (d as usize) * s, evals.evals.len())] - x
                 })
             }
             (
@@ -1344,7 +1358,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 );
 
                 EvalResult::init(res_domain, |i| {
-                    x - evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
+                    x - evals.evals[mod_pow2(scale * i + (d as usize) * s, evals.evals.len())]
                 })
             }
             (
@@ -1386,7 +1400,8 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 o1_utils::cfg_iter_mut!(evals.evals)
                     .enumerate()
                     .for_each(|(i, e)| {
-                        *e = es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()]
+                        *e = es_sub.evals
+                            [mod_pow2(scale * i + (d_sub as usize) * s, es_sub.evals.len())]
                             - *e;
                     });
                 Evals { evals, domain: d }
@@ -1412,7 +1427,8 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 o1_utils::cfg_iter_mut!(evals.evals)
                     .enumerate()
                     .for_each(|(i, e)| {
-                        *e -= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
+                        *e -= es_sub.evals
+                            [mod_pow2(scale * i + (d_sub as usize) * s, es_sub.evals.len())];
                     });
                 Evals { evals, domain: d }
             }
@@ -1444,8 +1460,8 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 );
 
                 EvalResult::init(res_domain, |i| {
-                    es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
-                        - es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
+                    es1.evals[mod_pow2(scale1 * i + (d1 as usize) * s1, es1.evals.len())]
+                        - es2.evals[mod_pow2(scale2 * i + (d2 as usize) * s2, es2.evals.len())]
                 })
             }
         }
@@ -1487,7 +1503,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
                 EvalResult::init(res_domain, |i| {
-                    evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()].square()
+                    evals.evals[mod_pow2(scale * i + (d as usize) * s, evals.evals.len())].square()
                 })
             }
         }
@@ -1526,7 +1542,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
                 EvalResult::init(res_domain, |i| {
-                    x * evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
+                    x * evals.evals[mod_pow2(scale * i + (d as usize) * s, evals.evals.len())]
                 })
             }
             (
@@ -1579,7 +1595,8 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 o1_utils::cfg_iter_mut!(evals.evals)
                     .enumerate()
                     .for_each(|(i, e)| {
-                        *e *= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
+                        *e *= es_sub.evals
+                            [mod_pow2(scale * i + (d_sub as usize) * s, es_sub.evals.len())];
                     });
                 Evals { evals, domain: d }
             }
@@ -1611,8 +1628,8 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
                 EvalResult::init(res_domain, |i| {
-                    es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
-                        * es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
+                    es1.evals[mod_pow2(scale1 * i + (d1 as usize) * s1, es1.evals.len())]
+                        * es2.evals[mod_pow2(scale2 * i + (d2 as usize) * s2, es2.evals.len())]
                 })
             }
         }
@@ -1983,7 +2000,7 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
                 witnesses are the same"
                 );
                 EvalResult::init_((d, res_domain), |i| {
-                    evals.evals[(scale * i + (d_sub as usize) * s) % evals.evals.len()]
+                    evals.evals[mod_pow2(scale * i + (d_sub as usize) * s, evals.evals.len())]
                 })
             }
         }
