@@ -7,6 +7,7 @@ pub mod constraints;
 pub mod domain_constant_evaluation;
 pub mod domains;
 pub mod expr;
+pub mod expr_fused;
 pub mod gate;
 pub mod lookup;
 pub mod polynomial;

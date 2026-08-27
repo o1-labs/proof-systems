@@ -86,6 +86,10 @@ name = "expr_eval"
 harness = false
 
 [[bench]]
+name = "expr_eval_fused"
+harness = false
+
+[[bench]]
 name = "proof_criterion_mina"
 harness = false
 

@@ -589,7 +589,7 @@ pub enum FeatureFlag {
 }
 
 impl FeatureFlag {
-    fn is_enabled(&self) -> bool {
+    pub(crate) fn is_enabled(&self) -> bool {
         todo!("Handle features")
     }
 }
@@ -1052,7 +1052,7 @@ enum EvalResult<'a, F: FftField> {
 /// = (omega^{q n} omega_8^{r n} - 1) / (omega_8^k - omega^i)
 /// = ((omega_8^n)^r - 1) / (omega_8^k - omega^i)
 /// = ((omega_8^n)^r - 1) / (omega^q omega_8^r - omega^i)
-fn unnormalized_lagrange_evals<
+pub(crate) fn unnormalized_lagrange_evals<
     'a,
     F: FftField,
     ChallengeTerm,
@@ -1908,6 +1908,20 @@ impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
     ) -> Evaluations<F, D<F>> {
         self.evaluate_constants(env).evaluations(env)
     }
+
+    /// Like [`Self::evaluations`], but evaluated with the fused chunked
+    /// evaluator ([`crate::circuits::expr_fused`]): bit-identical result, no
+    /// full-domain intermediate allocations.
+    pub fn evaluations_fused<
+        'a,
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column> + Sync,
+    >(
+        &self,
+        env: &Environment,
+    ) -> Evaluations<F, D<F>> {
+        self.evaluate_constants(env).evaluations_fused(env)
+    }
 }
 
 /// Use as a result of the expression evaluations routine.
@@ -2025,6 +2039,21 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
                 })
             }
         }
+    }
+
+    /// Like [`Self::evaluations`], but evaluated with the fused chunked
+    /// evaluator ([`crate::circuits::expr_fused`]): bit-identical result, no
+    /// full-domain intermediate allocations.
+    pub fn evaluations_fused<
+        'a,
+        ChallengeTerm,
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column> + Sync,
+    >(
+        &self,
+        env: &Environment,
+    ) -> Evaluations<F, D<F>> {
+        crate::circuits::expr_fused::evaluations_fused(self, env)
     }
 
     fn evaluations_helper<

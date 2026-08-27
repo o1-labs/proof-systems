@@ -9,6 +9,7 @@ mod chunked;
 mod ec;
 mod endomul;
 mod endomul_scalar;
+mod expr_fused;
 mod foreign_field_add;
 mod foreign_field_mul;
 mod framework;
