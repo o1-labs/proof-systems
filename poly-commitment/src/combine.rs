@@ -33,11 +33,11 @@ use rayon::prelude::*;
 #[cfg(feature = "parallel")]
 const MIN_CHUNK: usize = 128;
 
-/// Cap on elements per chunk. Override once at startup with
-/// `KIMCHI_IPA_FOLD_MAX_POINTS_PER_CHUNK`.
+/// Upper bound on elements per chunk. Defaults to 2048. Override at
+/// runtime with `KIMCHI_IPA_FOLD_MAX_POINTS_PER_CHUNK` if profiling
+/// shows cache pressure in the fold ladder on your deployment hardware.
 ///
-/// A chunk should stay cache-resident across the ~130 ladder passes of
-/// [`affine_window_combine_one_endo_base`]. Per-element working set:
+/// Per-element working set across the ~130 ladder passes:
 ///
 /// ```text
 ///     accumulator point      64 B
@@ -45,20 +45,6 @@ const MIN_CHUNK: usize = 128;
 ///     selector vectors   4 x 64 B
 ///     total                ~352 B
 /// ```
-///
-/// Under a saturated pool every hardware thread runs one chunk, so a cache
-/// shared by T hardware threads holds T chunks at once:
-///
-/// ```text
-///     max_chunk = cache_bytes / (T x 352)
-/// ```
-///
-/// evaluated at the cache level the ladder should run from (e.g. a 1 MiB
-/// cache shared by 2 threads -> ~1490 elements; 16 MiB shared by 6 ->
-/// ~7750). The default 2048 is a compromise across common topologies. The
-/// cap only binds when `n / threads` exceeds it - on machines with
-/// enough threads, the division already yields smaller chunks and the cap
-/// is inert.
 #[cfg(feature = "parallel")]
 fn max_chunk() -> usize {
     static MAX_CHUNK: std::sync::LazyLock<usize> = std::sync::LazyLock::new(|| {
