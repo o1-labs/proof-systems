@@ -33,14 +33,53 @@ use rayon::prelude::*;
 #[cfg(feature = "parallel")]
 const MIN_CHUNK: usize = 128;
 
+/// Cap on elements per chunk. Override once at startup with
+/// `KIMCHI_IPA_FOLD_MAX_POINTS_PER_CHUNK`.
+///
+/// A chunk should stay cache-resident across the ~130 ladder passes of
+/// [`affine_window_combine_one_endo_base`]. Per-element working set:
+///
+/// ```text
+///     accumulator point      64 B
+///     denominator scratch    32 B
+///     selector vectors   4 x 64 B
+///     total                ~352 B
+/// ```
+///
+/// Under a saturated pool every hardware thread runs one chunk, so a cache
+/// shared by T hardware threads holds T chunks at once:
+///
+/// ```text
+///     max_chunk = cache_bytes / (T x 352)
+/// ```
+///
+/// evaluated at the cache level the ladder should run from (e.g. a 1 MiB
+/// cache shared by 2 threads -> ~1490 elements; 16 MiB shared by 6 ->
+/// ~7750). The default 2048 is a compromise across common topologies. The
+/// cap only binds when `n / (2 x threads)` exceeds it - on machines with
+/// enough threads, the division already yields smaller chunks and the cap
+/// is inert.
+#[cfg(feature = "parallel")]
+fn max_chunk() -> usize {
+    static MAX_CHUNK: std::sync::LazyLock<usize> = std::sync::LazyLock::new(|| {
+        std::env::var("KIMCHI_IPA_FOLD_MAX_POINTS_PER_CHUNK")
+            .ok()
+            // An unparsable value falls back to the default.
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(2048)
+            .max(1)
+    });
+    *MAX_CHUNK
+}
+
 /// Split `n` elements into per-thread chunks: enough chunks to occupy the
-/// rayon pool, but never chunks smaller than [`MIN_CHUNK`]. This is the
-/// single level of parallelism in this module - all the batch helpers below
-/// run serially within one chunk.
+/// rayon pool, but never chunks smaller than [`MIN_CHUNK`] nor larger than
+/// [`max_chunk`]. This is the single level of parallelism in this module -
+/// all the batch helpers below run serially within one chunk.
 #[cfg(feature = "parallel")]
 fn chunk_size(n: usize) -> usize {
     let num_chunks = (n / MIN_CHUNK).clamp(1, 2 * rayon::current_num_threads());
-    n.div_ceil(num_chunks).max(1)
+    n.div_ceil(num_chunks).clamp(1, max_chunk())
 }
 
 #[cfg(not(feature = "parallel"))]
