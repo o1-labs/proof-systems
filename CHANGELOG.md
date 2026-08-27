@@ -157,8 +157,7 @@ and this project adheres to
 
 #### Added
 
-- A frozen `fold_regression` benchmark and a seeded proof-bytes digest test
-  gating any change to the opening prover
+- A frozen `fold_regression` benchmark for the opening prover
   ([#3602](https://github.com/o1-labs/proof-systems/pull/3602))
 
 ### [mina-poseidon](./poseidon)
