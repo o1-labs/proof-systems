@@ -347,7 +347,6 @@ impl<C: AffineRepr> PolyComm<C> {
     ///
     /// Panics if `com` and `elm` are not of the same size.
     #[must_use]
-    #[hotpath::measure]
     pub fn multi_scalar_mul(com: &[&Self], elm: &[C::ScalarField]) -> Self {
         assert_eq!(com.len(), elm.len());
 
@@ -462,7 +461,6 @@ pub fn b_poly<F: Field>(chals: &[F], x: F) -> F {
 ///
 /// # References
 /// - [Halo paper, Section 3.2](https://eprint.iacr.org/2019/1021.pdf)
-#[hotpath::measure]
 pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
     let rounds = chals.len();
     let s_length = 1 << rounds;

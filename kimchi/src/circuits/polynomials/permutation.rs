@@ -220,7 +220,6 @@ where
     ///
     /// Will panic if `power of alpha` is missing.
     #[allow(clippy::type_complexity)]
-    #[hotpath::measure]
     pub fn perm_quot(
         &self,
         lagrange: &WitnessOverDomains<F>,
@@ -357,7 +356,6 @@ where
     }
 
     /// permutation linearization poly contribution computation
-    #[hotpath::measure]
     pub fn perm_lnrz(
         &self,
         e: &ProofEvaluations<PointEvaluations<F>>,
@@ -446,7 +444,6 @@ where
     /// # Panics
     ///
     /// Will panic if `first element` is not 1.
-    #[hotpath::measure]
     pub fn perm_aggreg(
         &self,
         witness: &[Vec<F>; COLUMNS],

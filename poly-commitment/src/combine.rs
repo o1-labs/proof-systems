@@ -189,13 +189,12 @@ fn add_pairs_in_place<P: SWCurveConfig>(pairs: &mut Vec<SWJAffine<P>>) {
 /// assuming that for each `i`, `v0[i].x != v1[i].x` so we can use the ordinary
 /// addition formula and don't have to handle the edge cases of doubling and
 /// hitting the point at infinity.
-#[hotpath::measure]
 fn batch_add_assign_no_branch<P: SWCurveConfig>(
     denominators: &mut [P::BaseField],
     v0: &mut [SWJAffine<P>],
     v1: &[SWJAffine<P>],
 ) {
-    hotpath::measure_block!("nobranch::denominators", {
+    {
         denominators
             .iter_mut()
             .zip(v0.iter())
@@ -203,13 +202,13 @@ fn batch_add_assign_no_branch<P: SWCurveConfig>(
             .for_each(|((denom, p0), p1)| {
                 *denom = p0.x - p1.x;
             });
-    });
+    };
 
-    hotpath::measure_block!("nobranch::inversion", {
+    {
         serial_batch_inversion::<P::BaseField>(denominators);
-    });
+    };
 
-    hotpath::measure_block!("nobranch::add_formula", {
+    {
         denominators
             .iter()
             .zip(v0.iter_mut())
@@ -221,17 +220,16 @@ fn batch_add_assign_no_branch<P: SWCurveConfig>(
                 p0.x = x;
                 p0.y = y;
             });
-    });
+    };
 }
 
 /// Given arrays of curve points `v0` and `v1` do `v0[i] += v1[i]` for each i.
-#[hotpath::measure]
 pub fn batch_add_assign<P: SWCurveConfig>(
     denominators: &mut [P::BaseField],
     v0: &mut [SWJAffine<P>],
     v1: &[SWJAffine<P>],
 ) {
-    hotpath::measure_block!("branch::denominators", {
+    {
         denominators
             .iter_mut()
             .zip(v0.iter())
@@ -248,13 +246,13 @@ pub fn batch_add_assign<P: SWCurveConfig>(
                 };
                 *denom = d;
             });
-    });
+    };
 
-    hotpath::measure_block!("branch::inversion", {
+    {
         serial_batch_inversion::<P::BaseField>(denominators);
-    });
+    };
 
-    hotpath::measure_block!("branch::add_formula", {
+    {
         denominators
             .iter()
             .zip(v0.iter_mut())
@@ -280,7 +278,7 @@ pub fn batch_add_assign<P: SWCurveConfig>(
                     p0.y = y;
                 }
             });
-    });
+    };
 }
 
 fn affine_window_combine_base<P: SWCurveConfig>(
@@ -390,14 +388,12 @@ fn affine_window_combine_base<P: SWCurveConfig>(
     points
 }
 
-#[hotpath::measure]
 fn batch_endo_in_place<P: SWCurveConfig>(endo_coeff: P::BaseField, ps: &mut [SWJAffine<P>]) {
     for p in ps.iter_mut() {
         p.x *= endo_coeff;
     }
 }
 
-#[hotpath::measure]
 fn batch_negate_in_place<P: SWCurveConfig>(ps: &mut [SWJAffine<P>]) {
     for p in ps.iter_mut() {
         p.y = -p.y;
@@ -407,7 +403,6 @@ fn batch_negate_in_place<P: SWCurveConfig>(ps: &mut [SWJAffine<P>]) {
 /// Uses a batch version of Algorithm 1 of
 /// <https://eprint.iacr.org/2019/1021.pdf> (on page 19) to compute `g1 +
 /// g2.scale(chal.to_field(endo_coeff))`
-#[hotpath::measure]
 fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
     endo_coeff: P::BaseField,
     g1: &[SWJAffine<P>],
@@ -429,7 +424,7 @@ fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
     // g2, -g2, phi(g2), or -phi(g2) (negation touches y, the endomorphism
     // touches x, so the two commute). Precompute all four once instead of
     // rebuilding the selected variant from g2 on every iteration.
-    let (g2_endo, g2_neg, g2_endo_neg) = hotpath::measure_block!("endo::precompute", {
+    let (g2_endo, g2_neg, g2_endo_neg) = {
         let mut g2_endo = g2.to_vec();
         batch_endo_in_place(endo_coeff, &mut g2_endo);
         let mut g2_neg = g2.to_vec();
@@ -437,16 +432,16 @@ fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
         let mut g2_endo_neg = g2_endo.clone();
         batch_negate_in_place(&mut g2_endo_neg);
         (g2_endo, g2_neg, g2_endo_neg)
-    });
+    };
 
     // acc = 2 (phi(g2) + g2)
     let mut points = g2_endo.clone();
-    hotpath::measure_block!("endo::setup", {
+    {
         batch_add_assign_no_branch(&mut denominators, &mut points, g2);
         batch_double_in_place(&mut denominators, &mut points);
-    });
+    };
 
-    hotpath::measure_block!("endo::ladder", {
+    {
         for i in (0..(128 / 2)).rev() {
             // s = (-1)^(1 - r_2i) * phi^(r_2i1) (g2)
             let s: &[SWJAffine<P>] = match (get_bit(r, 2 * i + 1), get_bit(r, 2 * i)) {
@@ -461,14 +456,13 @@ fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
             batch_double_in_place(&mut denominators, &mut points);
             batch_add_assign_no_branch(&mut denominators, &mut points, s);
         }
-    });
+    };
     // acc += g1
     batch_add_assign(&mut denominators, &mut points, g1);
     points
 }
 
 /// Double an array of curve points in-place.
-#[hotpath::measure]
 fn batch_double_in_place<P: SWCurveConfig>(
     denominators: &mut [P::BaseField],
     points: &mut [SWJAffine<P>],

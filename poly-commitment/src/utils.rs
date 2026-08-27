@@ -100,7 +100,6 @@ impl<F: Field> ScaledChunkedPolynomial<F, &[F]> {
 /// ```
 ///
 /// Additional complexity is added to handle chunks.
-#[hotpath::measure]
 pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
     plnms: PolynomialsToCombine<G, D>,
     polyscale: G::ScalarField,

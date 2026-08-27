@@ -1935,7 +1935,6 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    #[hotpath::measure]
     pub fn evaluations<
         'a,
         ChallengeTerm,

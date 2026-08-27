@@ -26,7 +26,6 @@ ark-poly.workspace = true
 ark-serialize.workspace = true
 blake2.workspace = true
 hex.workspace = true
-hotpath.workspace = true
 itertools.workspace = true
 log.workspace = true
 num-bigint.workspace = true
@@ -136,6 +135,3 @@ sha2-compress = ["sha2/compress"]
 sha2-force-soft = ["sha2/force-soft"]
 sha2-loongarch64_asm = ["sha2/loongarch64_asm"]
 sha2-oid = ["sha2/oid"]
-# Opt-in profiling. All hotpath macros are noops unless this is enabled.
-hotpath = ["hotpath/hotpath", "poly-commitment/hotpath"]
-hotpath-alloc = ["hotpath/hotpath-alloc", "poly-commitment/hotpath-alloc"]
