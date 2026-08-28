@@ -21,9 +21,9 @@ pub mod fp {
     // CamlPastaFpPlonkGateVector
     //
 
-    #[derive(ocaml_gen::CustomType)]
+    #[derive(Clone, ocaml_gen::CustomType)]
     pub struct CamlPastaFpPlonkGateVector(pub Vec<CircuitGate<Fp>>);
-    pub type CamlPastaFpPlonkGateVectorPtr<'a> = ocaml::Pointer<'a, CamlPastaFpPlonkGateVector>;
+    pub type CamlPastaFpPlonkGateVectorPtr = ocaml::Pointer<CamlPastaFpPlonkGateVector>;
 
     extern "C" fn caml_pasta_fp_plonk_gate_vector_finalize(v: ocaml::Raw) {
         unsafe {
@@ -35,6 +35,8 @@ pub mod fp {
     ocaml::custom!(CamlPastaFpPlonkGateVector {
         finalize: caml_pasta_fp_plonk_gate_vector_finalize,
     });
+
+    impl_custom_to_value!(CamlPastaFpPlonkGateVector);
 
     //
     // Functions
@@ -116,9 +118,9 @@ pub mod fq {
     // CamlPastaFqPlonkGateVector
     //
 
-    #[derive(ocaml_gen::CustomType)]
+    #[derive(Clone, ocaml_gen::CustomType)]
     pub struct CamlPastaFqPlonkGateVector(pub Vec<CircuitGate<Fq>>);
-    pub type CamlPastaFqPlonkGateVectorPtr<'a> = ocaml::Pointer<'a, CamlPastaFqPlonkGateVector>;
+    pub type CamlPastaFqPlonkGateVectorPtr = ocaml::Pointer<CamlPastaFqPlonkGateVector>;
 
     extern "C" fn caml_pasta_fq_plonk_gate_vector_finalize(v: ocaml::Raw) {
         unsafe {
@@ -130,6 +132,8 @@ pub mod fq {
     ocaml::custom!(CamlPastaFqPlonkGateVector {
         finalize: caml_pasta_fq_plonk_gate_vector_finalize,
     });
+
+    impl_custom_to_value!(CamlPastaFqPlonkGateVector);
 
     //
     // Functions

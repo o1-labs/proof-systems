@@ -236,8 +236,8 @@ pub mod caml {
     // CamlLookupTable<CamlF>
     //
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlLookupTable<CamlF> {
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlLookupTable<CamlF: 'static + ocaml::ToValue + ocaml::FromValue> {
         pub id: i32,
         pub data: Vec<Vec<CamlF>>,
     }
@@ -246,6 +246,7 @@ pub mod caml {
     where
         F: PrimeField,
         CamlF: Into<F>,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(caml_lt: CamlLookupTable<CamlF>) -> Self {
             Self {
@@ -263,6 +264,7 @@ pub mod caml {
     where
         F: PrimeField,
         CamlF: From<F>,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(lt: LookupTable<F>) -> Self {
             Self {

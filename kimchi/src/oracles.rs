@@ -49,8 +49,8 @@ pub mod caml {
 
     use super::*;
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlOracles<CamlF> {
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlOracles<CamlF: 'static + ocaml::ToValue + ocaml::FromValue> {
         pub o: CamlRandomOracles<CamlF>,
         pub public_evals: (CamlF, CamlF),
         pub opening_prechallenges: Vec<CamlF>,
@@ -76,7 +76,7 @@ pub mod caml {
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
         EFrSponge: FrSponge<G::ScalarField>,
         EFrSponge: From<&'static ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
-        CamlF: From<G::ScalarField>,
+        CamlF: 'static + From<G::ScalarField> + ocaml::ToValue + ocaml::FromValue,
         CurveParams: poly_commitment::OpenProof<G, FULL_ROUNDS>,
     {
         let lgr_comm: Vec<PolyComm<G>> = lgr_comm.into_iter().take(public_input.len()).collect();

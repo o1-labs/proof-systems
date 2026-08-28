@@ -5,8 +5,9 @@ use mina_poseidon::{
     poseidon::ArithmeticSpongeParams,
 };
 
+#[derive(Clone)]
 pub struct CamlPastaFpPoseidonParams(ArithmeticSpongeParams<Fp, FULL_ROUNDS>);
-pub type CamlPastaFpPoseidonParamsPtr<'a> = ocaml::Pointer<'a, CamlPastaFpPoseidonParams>;
+pub type CamlPastaFpPoseidonParamsPtr = ocaml::Pointer<CamlPastaFpPoseidonParams>;
 
 extern "C" fn caml_pasta_fp_poseidon_params_finalize(v: ocaml::Raw) {
     unsafe {
@@ -18,6 +19,8 @@ extern "C" fn caml_pasta_fp_poseidon_params_finalize(v: ocaml::Raw) {
 ocaml::custom!(CamlPastaFpPoseidonParams {
     finalize: caml_pasta_fp_poseidon_params_finalize,
 });
+
+impl_custom_to_value!(CamlPastaFpPoseidonParams);
 
 #[ocaml::func]
 pub fn caml_pasta_fp_poseidon_params_create() -> CamlPastaFpPoseidonParams {

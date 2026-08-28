@@ -1290,8 +1290,11 @@ pub mod caml {
     use ark_ec::AffineRepr;
     use ocaml;
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlOpeningProof<G, F> {
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlOpeningProof<
+        G: 'static + ocaml::ToValue + ocaml::FromValue,
+        F: ocaml::ToValue + ocaml::FromValue,
+    > {
         /// vector of rounds of L & R commitments
         pub lr: Vec<(G, G)>,
         pub delta: G,
@@ -1304,8 +1307,8 @@ pub mod caml {
         for CamlOpeningProof<CamlG, CamlF>
     where
         G: AffineRepr,
-        CamlG: From<G>,
-        CamlF: From<G::ScalarField>,
+        CamlG: 'static + From<G> + ocaml::ToValue + ocaml::FromValue,
+        CamlF: From<G::ScalarField> + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(opening_proof: OpeningProof<G, FULL_ROUNDS>) -> Self {
             Self {
@@ -1326,8 +1329,8 @@ pub mod caml {
         for OpeningProof<G, FULL_ROUNDS>
     where
         G: AffineRepr,
-        CamlG: Into<G>,
-        CamlF: Into<G::ScalarField>,
+        CamlG: 'static + Into<G> + ocaml::ToValue + ocaml::FromValue,
+        CamlF: Into<G::ScalarField> + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(caml: CamlOpeningProof<CamlG, CamlF>) -> Self {
             Self {

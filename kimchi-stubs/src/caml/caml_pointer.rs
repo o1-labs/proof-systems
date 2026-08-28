@@ -23,7 +23,15 @@ macro_rules! impl_caml_pointer {
             compare: $name::caml_pointer_compare,
         });
 
-        unsafe impl<'a> ocaml::FromValue<'a> for $name {
+        // See the note in `shared_reference.rs`: share the `Rc` rather than
+        // deep-copying, and keep `clone` off the type itself.
+        unsafe impl ocaml::ToValue for $name {
+            fn to_value(&self, rt: &ocaml::Runtime) -> ocaml::Value {
+                ocaml::Pointer::alloc_custom($name(::std::rc::Rc::clone(&self.0))).to_value(rt)
+            }
+        }
+
+        unsafe impl ocaml::FromValue for $name {
             fn from_value(x: ocaml::Value) -> Self {
                 let x = ocaml::Pointer::<Self>::from_value(x);
                 $name(x.as_ref().0.clone())

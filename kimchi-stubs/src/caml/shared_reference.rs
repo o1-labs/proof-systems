@@ -34,7 +34,18 @@ macro_rules! impl_shared_reference {
             compare: $name::caml_pointer_compare,
         });
 
-        unsafe impl<'a> ::ocaml::FromValue<'a> for $name {
+        // ocaml-rs 1.x dropped the blanket `Custom -> IntoValue` impl and
+        // `to_value` now borrows, so hand back a fresh handle sharing the same
+        // `Arc`. Deliberately not `#[derive(Clone)]`: these types deref to
+        // `Arc<_>`, and an inherent `clone` would silently win method
+        // resolution over the inner `Arc::clone` at existing call sites.
+        unsafe impl ::ocaml::ToValue for $name {
+            fn to_value(&self, rt: &::ocaml::Runtime) -> ::ocaml::Value {
+                ::ocaml::Pointer::alloc_custom(Self(::std::sync::Arc::clone(&self.0))).to_value(rt)
+            }
+        }
+
+        unsafe impl ::ocaml::FromValue for $name {
             fn from_value(value: ::ocaml::Value) -> Self {
                 let x: ::ocaml::Pointer<Self> = ::ocaml::FromValue::from_value(value);
                 Self(x.as_ref().0.clone())

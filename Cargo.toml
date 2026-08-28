@@ -103,8 +103,12 @@ num-bigint = { version = "0.4.6", default-features = false, features = [
 num-integer = { version = "0.1.45", default-features = false }
 o1-utils = { path = "./utils", default-features = false }
 o1vm = { path = "./o1vm" }
-ocaml = { version = "0.22.2" }
-ocaml-gen = { version = "1.0.0" }
+ocaml = { version = "1.3.0" }
+# ocaml-gen 1.0.0 on crates.io still depends on `ocaml ^0.22.4`, which cannot
+# coexist with `ocaml` 1.x. o1-labs/ocaml-gen's own master already declares
+# `ocaml = "1.3.0"` but has never been released; pin the git rev until a
+# release is cut, then swap back to a crates.io version.
+ocaml-gen = { git = "https://github.com/o1-labs/ocaml-gen", rev = "e1d1a7baba0ae445524f7d2598468177e5692b11" }
 once_cell = "=1.21.3"
 optimism = { path = "./optimism" }
 os_pipe = { version = "1.1.4", features = ["io_safety"] }

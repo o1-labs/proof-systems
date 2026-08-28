@@ -20,8 +20,8 @@ use poly_commitment::{
     SRS,
 };
 
-#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-pub struct CamlOracles<F> {
+#[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+pub struct CamlOracles<F: 'static + ocaml::ToValue + ocaml::FromValue> {
     pub o: CamlRandomOracles<F>,
     pub p_eval: (Vec<F>, Vec<F>),
     pub opening_prechallenges: Vec<F>,

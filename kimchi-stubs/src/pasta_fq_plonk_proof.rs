@@ -39,7 +39,7 @@ type Srs =
 #[ocaml_gen::func]
 #[ocaml::func]
 pub fn caml_pasta_fq_plonk_proof_create(
-    index: CamlPastaFqPlonkIndexPtr<'static>,
+    index: CamlPastaFqPlonkIndexPtr,
     witness: Vec<CamlFqVector>,
     runtime_tables: Vec<CamlRuntimeTable<CamlFq>>,
     prev_challenges: Vec<CamlFq>,
@@ -87,18 +87,15 @@ pub fn caml_pasta_fq_plonk_proof_create(
         kimchi::bench::bench_arguments_dump_into_file(&index.cs, &witness, &runtime_tables, &prev);
     }
 
-    // NB: This method is designed only to be used by tests. However, since
-    // creating a new reference will cause `drop` to be called on it once we are
-    // done with it. Since `drop` calls `caml_shutdown` internally, we *really,
-    // really* do not want to do this, but we have no other way to get at the
-    // active runtime.
+    // NB: `recover_handle` hands back a shared reference to a static `Runtime`,
+    // so nothing is dropped here and `caml_shutdown` is never reached.
     // TODO: There's actually a way to get a handle to the runtime as a function
     // argument. Switch to doing this instead.
     let runtime = unsafe { ocaml::Runtime::recover_handle() };
 
     // Release the runtime lock so that other threads can run using it while we
     // generate the proof.
-    runtime.releasing_runtime(|| {
+    crate::caml::runtime::releasing_runtime(runtime, || {
         let group_map = GroupMap::<Fp>::setup();
         let proof = crate::with_prove_pool(|| {
             ProverProof::create_recursive::<

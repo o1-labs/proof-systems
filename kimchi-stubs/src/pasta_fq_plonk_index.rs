@@ -17,6 +17,10 @@ use mina_curves::pasta::{Fq, Pallas, PallasParameters, Vesta};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi, pasta::FULL_ROUNDS, sponge::DefaultFqSponge,
 };
+// `ocaml::func`'s bytecode wrapper (emitted for functions with more than five
+// arguments) expands to a bare `Value::new(..)`, so ocaml-derive 1.0.0 requires
+// `Value` to be in scope at the call site. Remove once that is fixed upstream.
+use ocaml::Value;
 use poly_commitment::{ipa::OpeningProof, lagrange_basis::WithLagrangeBasis, SRS as _};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -50,7 +54,7 @@ impl core::ops::Deref for IndexHandle {
 /// Boxed so that we don't store large proving indexes in the OCaml heap.
 #[derive(ocaml_gen::CustomType)]
 pub struct CamlPastaFqPlonkIndex(pub IndexHandle);
-pub type CamlPastaFqPlonkIndexPtr<'a> = ocaml::Pointer<'a, CamlPastaFqPlonkIndex>;
+pub type CamlPastaFqPlonkIndexPtr = ocaml::Pointer<CamlPastaFqPlonkIndex>;
 
 extern "C" fn caml_pasta_fq_plonk_index_finalize(v: ocaml::Raw) {
     unsafe {
@@ -71,6 +75,7 @@ impl ocaml::custom::Custom for CamlPastaFqPlonkIndex {
     };
 }
 
+
 #[ocaml_gen::func]
 #[ocaml::func]
 pub fn caml_pasta_fq_plonk_index_create(
@@ -81,7 +86,7 @@ pub fn caml_pasta_fq_plonk_index_create(
     prev_challenges: ocaml::Int,
     srs: CamlFqSrs,
     lazy_mode: bool,
-) -> Result<CamlPastaFqPlonkIndex, ocaml::Error> {
+) -> Result<CamlPastaFqPlonkIndexPtr, ocaml::Error> {
     let gates: Vec<_> = gates
         .as_ref()
         .0
@@ -126,7 +131,7 @@ pub fn caml_pasta_fq_plonk_index_create(
         FULL_ROUNDS,
     >>();
 
-    Ok(CamlPastaFqPlonkIndex(IndexHandle::Owned(Box::new(index))))
+    Ok(ocaml::Pointer::alloc_custom(CamlPastaFqPlonkIndex(IndexHandle::Owned(Box::new(index)))))
 }
 
 #[ocaml_gen::func]
@@ -165,7 +170,7 @@ pub fn caml_pasta_fq_plonk_index_read(
     offset: Option<ocaml::Int>,
     srs: CamlFqSrs,
     path: String,
-) -> Result<CamlPastaFqPlonkIndex, ocaml::Error> {
+) -> Result<CamlPastaFqPlonkIndexPtr, ocaml::Error> {
     // open the file for reading
     let file = match File::open(path) {
         Err(_) => {
@@ -193,14 +198,14 @@ pub fn caml_pasta_fq_plonk_index_read(
     t.linearization = linearization;
     t.powers_of_alpha = powers_of_alpha;
 
-    Ok(CamlPastaFqPlonkIndex(IndexHandle::Owned(Box::new(t))))
+    Ok(ocaml::Pointer::alloc_custom(CamlPastaFqPlonkIndex(IndexHandle::Owned(Box::new(t)))))
 }
 
 #[ocaml_gen::func]
 #[ocaml::func]
 pub fn caml_pasta_fq_plonk_index_write(
     append: Option<bool>,
-    index: CamlPastaFqPlonkIndexPtr<'static>,
+    index: CamlPastaFqPlonkIndexPtr,
     path: String,
 ) -> Result<(), ocaml::Error> {
     let file = OpenOptions::new()
@@ -231,7 +236,7 @@ pub fn caml_pasta_fq_plonk_index_write(
 #[ocaml::func]
 pub fn caml_pasta_fq_plonk_index_write_cached(
     identifier: String,
-    index: CamlPastaFqPlonkIndexPtr<'static>,
+    index: CamlPastaFqPlonkIndexPtr,
     path: String,
 ) -> Result<(), ocaml::Error> {
     kimchi::cached_prover_index::write_cache(
@@ -254,7 +259,7 @@ pub fn caml_pasta_fq_plonk_index_read_cached(
     identifier: String,
     srs: CamlFqSrs,
     path: String,
-) -> Result<CamlPastaFqPlonkIndex, ocaml::Error> {
+) -> Result<CamlPastaFqPlonkIndexPtr, ocaml::Error> {
     let index = kimchi::cached_prover_index::read_cache::<FULL_ROUNDS, Pallas, Srs>(
         &identifier,
         std::path::Path::new(&path),
@@ -265,5 +270,5 @@ pub fn caml_pasta_fq_plonk_index_read_cached(
             "caml_pasta_fq_plonk_index_read_cached: {e}"
         ))
     })?;
-    Ok(CamlPastaFqPlonkIndex(IndexHandle::Mmap(Box::new(index))))
+    Ok(ocaml::Pointer::alloc_custom(CamlPastaFqPlonkIndex(IndexHandle::Mmap(Box::new(index)))))
 }

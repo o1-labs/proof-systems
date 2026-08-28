@@ -1549,8 +1549,11 @@ pub mod caml {
     #[cfg(feature = "internal_tracing")]
     pub use internal_traces::caml::CamlTraces as CamlProverTraces;
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlProofWithPublic<CamlG, CamlF> {
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlProofWithPublic<
+        CamlG: 'static + ocaml::ToValue + ocaml::FromValue,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
+    > {
         pub public_evals: Option<PointEvaluations<Vec<CamlF>>>,
         pub proof: CamlProverProof<CamlG, CamlF>,
     }
@@ -1559,8 +1562,11 @@ pub mod caml {
     // CamlProverProof<CamlG, CamlF>
     //
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlProverProof<CamlG, CamlF> {
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlProverProof<
+        CamlG: 'static + ocaml::ToValue + ocaml::FromValue,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
+    > {
         pub commitments: CamlProverCommitments<CamlG>,
         pub proof: CamlOpeningProof<CamlG, CamlF>,
         // OCaml doesn't have sized arrays, so we have to convert to a tuple..
@@ -1575,16 +1581,16 @@ pub mod caml {
     // CamlProverCommitments<CamlG>
     //
 
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlLookupCommitments<CamlG> {
+    #[derive(Clone, ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlLookupCommitments<CamlG: 'static + ocaml::ToValue + ocaml::FromValue> {
         pub sorted: Vec<CamlPolyComm<CamlG>>,
         pub aggreg: CamlPolyComm<CamlG>,
         pub runtime: Option<CamlPolyComm<CamlG>>,
     }
 
     #[allow(clippy::type_complexity)]
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlProverCommitments<CamlG> {
+    #[derive(Clone, ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlProverCommitments<CamlG: 'static + ocaml::ToValue + ocaml::FromValue> {
         // polynomial commitments
         pub w_comm: (
             CamlPolyComm<CamlG>,
@@ -1633,6 +1639,7 @@ pub mod caml {
     where
         G: AffineRepr,
         CamlPolyComm<CamlG>: From<PolyComm<G>>,
+        CamlG: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(
             LookupCommitments {
@@ -1653,6 +1660,7 @@ pub mod caml {
     where
         G: AffineRepr,
         PolyComm<G>: From<CamlPolyComm<CamlG>>,
+        CamlG: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(
             CamlLookupCommitments {
@@ -1677,6 +1685,7 @@ pub mod caml {
     where
         G: AffineRepr,
         CamlPolyComm<CamlG>: From<PolyComm<G>>,
+        CamlG: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(prover_comm: ProverCommitments<G>) -> Self {
             let [w_comm0, w_comm1, w_comm2, w_comm3, w_comm4, w_comm5, w_comm6, w_comm7, w_comm8, w_comm9, w_comm10, w_comm11, w_comm12, w_comm13, w_comm14] =
@@ -1710,6 +1719,7 @@ pub mod caml {
     where
         G: AffineRepr,
         PolyComm<G>: From<CamlPolyComm<CamlG>>,
+        CamlG: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(caml_prover_comm: CamlProverCommitments<CamlG>) -> ProverCommitments<G> {
             let (
@@ -1774,6 +1784,8 @@ pub mod caml {
         G: poly_commitment::commitment::EndoCurve,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
+        CamlG: 'static + ocaml::ToValue + ocaml::FromValue,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(pp: ProofTuple<FULL_ROUNDS, G>) -> Self {
             let (public_evals, evals) = pp.0.evals.into();
@@ -1799,6 +1811,8 @@ pub mod caml {
         G::BaseField: PrimeField,
         G: poly_commitment::commitment::EndoCurve,
         G::ScalarField: From<CamlF>,
+        CamlG: 'static + ocaml::ToValue + ocaml::FromValue,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(caml_pp: CamlProofWithPublic<CamlG, CamlF>) -> Self {
             let CamlProofWithPublic {

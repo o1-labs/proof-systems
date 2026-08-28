@@ -43,7 +43,7 @@ type EFrSponge = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi, FULL_ROUNDS>;
 #[ocaml_gen::func]
 #[ocaml::func]
 pub fn caml_pasta_fp_plonk_proof_create(
-    index: CamlPastaFpPlonkIndexPtr<'static>,
+    index: CamlPastaFpPlonkIndexPtr,
     witness: Vec<CamlFpVector>,
     runtime_tables: Vec<CamlRuntimeTable<CamlFp>>,
     prev_challenges: Vec<CamlFp>,
@@ -91,13 +91,14 @@ pub fn caml_pasta_fp_plonk_proof_create(
         kimchi::bench::bench_arguments_dump_into_file(&index.cs, &witness, &runtime_tables, &prev);
     }
 
-    // NB: This method is designed only to be used by tests. However, since creating a new reference will cause `drop` to be called on it once we are done with it. Since `drop` calls `caml_shutdown` internally, we *really, really* do not want to do this, but we have no other way to get at the active runtime.
+    // NB: `recover_handle` hands back a shared reference to a static `Runtime`,
+    // so nothing is dropped here and `caml_shutdown` is never reached.
     // TODO: There's actually a way to get a handle to the runtime as a function argument. Switch
     // to doing this instead.
     let runtime = unsafe { ocaml::Runtime::recover_handle() };
 
     // Release the runtime lock so that other threads can run using it while we generate the proof.
-    runtime.releasing_runtime(|| {
+    crate::caml::runtime::releasing_runtime(runtime, || {
         let group_map = GroupMap::<Fq>::setup();
         let proof = crate::with_prove_pool(|| {
             ProverProof::create_recursive::<EFqSponge, EFrSponge, _>(
@@ -118,7 +119,7 @@ pub fn caml_pasta_fp_plonk_proof_create(
 #[ocaml_gen::func]
 #[ocaml::func]
 pub fn caml_pasta_fp_plonk_proof_create_and_verify(
-    index: CamlPastaFpPlonkIndexPtr<'static>,
+    index: CamlPastaFpPlonkIndexPtr,
     witness: Vec<CamlFpVector>,
     runtime_tables: Vec<CamlRuntimeTable<CamlFp>>,
     prev_challenges: Vec<CamlFp>,
@@ -161,13 +162,14 @@ pub fn caml_pasta_fp_plonk_proof_create_and_verify(
     // public input
     let public_input = witness[0][0..index.cs.public].to_vec();
 
-    // NB: This method is designed only to be used by tests. However, since creating a new reference will cause `drop` to be called on it once we are done with it. Since `drop` calls `caml_shutdown` internally, we *really, really* do not want to do this, but we have no other way to get at the active runtime.
+    // NB: `recover_handle` hands back a shared reference to a static `Runtime`,
+    // so nothing is dropped here and `caml_shutdown` is never reached.
     // TODO: There's actually a way to get a handle to the runtime as a function argument. Switch
     // to doing this instead.
     let runtime = unsafe { ocaml::Runtime::recover_handle() };
 
     // Release the runtime lock so that other threads can run using it while we generate the proof.
-    runtime.releasing_runtime(|| {
+    crate::caml::runtime::releasing_runtime(runtime, || {
         let group_map = GroupMap::<Fq>::setup();
         let proof = ProverProof::create_recursive::<EFqSponge, EFrSponge, _>(
             &group_map,
@@ -200,7 +202,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_lookup(
     srs: CamlFpSrs,
     lazy_mode: bool,
 ) -> (
-    CamlPastaFpPlonkIndex,
+    CamlPastaFpPlonkIndexPtr,
     CamlFp,
     CamlProofWithPublic<CamlGVesta, CamlFp>,
 ) {
@@ -313,7 +315,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_lookup(
     let caml_prover_proof = (proof, vec![public_input]).into();
 
     (
-        CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index))),
+        ocaml::Pointer::alloc_custom(CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index)))),
         public_input.into(),
         caml_prover_proof,
     )
@@ -325,7 +327,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_foreign_field_mul(
     srs: CamlFpSrs,
     lazy_mode: bool,
 ) -> (
-    CamlPastaFpPlonkIndex,
+    CamlPastaFpPlonkIndexPtr,
     CamlProofWithPublic<CamlGVesta, CamlFp>,
 ) {
     use ark_ff::Zero;
@@ -476,7 +478,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_foreign_field_mul(
     )
     .unwrap();
     (
-        CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index))),
+        ocaml::Pointer::alloc_custom(CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index)))),
         (proof, vec![]).into(),
     )
 }
@@ -487,7 +489,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_range_check(
     srs: CamlFpSrs,
     lazy_mode: bool,
 ) -> (
-    CamlPastaFpPlonkIndex,
+    CamlPastaFpPlonkIndexPtr,
     CamlProofWithPublic<CamlGVesta, CamlFp>,
 ) {
     use ark_ff::Zero;
@@ -548,7 +550,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_range_check(
     )
     .unwrap();
     (
-        CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index))),
+        ocaml::Pointer::alloc_custom(CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index)))),
         (proof, vec![]).into(),
     )
 }
@@ -559,7 +561,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_range_check0(
     srs: CamlFpSrs,
     lazy_mode: bool,
 ) -> (
-    CamlPastaFpPlonkIndex,
+    CamlPastaFpPlonkIndexPtr,
     CamlProofWithPublic<CamlGVesta, CamlFp>,
 ) {
     use ark_ff::Zero;
@@ -624,7 +626,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_range_check0(
     )
     .unwrap();
     (
-        CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index))),
+        ocaml::Pointer::alloc_custom(CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index)))),
         (proof, vec![]).into(),
     )
 }
@@ -635,7 +637,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_ffadd(
     srs: CamlFpSrs,
     lazy_mode: bool,
 ) -> (
-    CamlPastaFpPlonkIndex,
+    CamlPastaFpPlonkIndexPtr,
     CamlFp,
     CamlProofWithPublic<CamlGVesta, CamlFp>,
 ) {
@@ -753,7 +755,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_ffadd(
     )
     .unwrap();
     (
-        CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index))),
+        ocaml::Pointer::alloc_custom(CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index)))),
         public_input.into(),
         (proof, vec![public_input]).into(),
     )
@@ -765,7 +767,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_xor(
     srs: CamlFpSrs,
     lazy_mode: bool,
 ) -> (
-    CamlPastaFpPlonkIndex,
+    CamlPastaFpPlonkIndexPtr,
     (CamlFp, CamlFp),
     CamlProofWithPublic<CamlGVesta, CamlFp>,
 ) {
@@ -846,7 +848,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_xor(
     )
     .unwrap();
     (
-        CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index))),
+        ocaml::Pointer::alloc_custom(CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index)))),
         (public_input.0.into(), public_input.1.into()),
         (proof, vec![public_input.0, public_input.1]).into(),
     )
@@ -858,7 +860,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_rot(
     srs: CamlFpSrs,
     lazy_mode: bool,
 ) -> (
-    CamlPastaFpPlonkIndex,
+    CamlPastaFpPlonkIndexPtr,
     (CamlFp, CamlFp),
     CamlProofWithPublic<CamlGVesta, CamlFp>,
 ) {
@@ -942,7 +944,7 @@ pub fn caml_pasta_fp_plonk_proof_example_with_rot(
     )
     .unwrap();
     (
-        CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index))),
+        ocaml::Pointer::alloc_custom(CamlPastaFpPlonkIndex(IndexHandle::Owned(Box::new(index)))),
         (public_input.0.into(), public_input.1.into()),
         (proof, vec![public_input.0, public_input.1]).into(),
     )

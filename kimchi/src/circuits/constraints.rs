@@ -59,7 +59,7 @@ use rayon::prelude::*;
 /// - Associated lookup tables are not included
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]

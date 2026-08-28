@@ -6,7 +6,7 @@ use mina_curves::pasta::curves::{pallas::ProjectivePallas, vesta::ProjectiveVest
 #[derive(Clone, Copy, ocaml_gen::CustomType)]
 pub struct CamlGroupProjectivePallas(pub ProjectivePallas);
 
-unsafe impl<'a> ocaml::FromValue<'a> for CamlGroupProjectivePallas {
+unsafe impl ocaml::FromValue for CamlGroupProjectivePallas {
     fn from_value(value: ocaml::Value) -> Self {
         let x: ocaml::Pointer<Self> = ocaml::FromValue::from_value(value);
         *x.as_ref()
@@ -23,6 +23,8 @@ impl CamlGroupProjectivePallas {
 ocaml::custom!(CamlGroupProjectivePallas {
     finalize: CamlGroupProjectivePallas::caml_pointer_finalize,
 });
+
+impl_custom_to_value!(CamlGroupProjectivePallas);
 
 impl Deref for CamlGroupProjectivePallas {
     type Target = ProjectivePallas;
@@ -111,7 +113,7 @@ impl Neg for &CamlGroupProjectivePallas {
 #[derive(Clone, Copy, ocaml_gen::CustomType)]
 pub struct CamlGroupProjectiveVesta(pub ProjectiveVesta);
 
-unsafe impl<'a> ocaml::FromValue<'a> for CamlGroupProjectiveVesta {
+unsafe impl ocaml::FromValue for CamlGroupProjectiveVesta {
     fn from_value(value: ocaml::Value) -> Self {
         let x: ocaml::Pointer<Self> = ocaml::FromValue::from_value(value);
         *x.as_ref()
@@ -128,6 +130,8 @@ impl CamlGroupProjectiveVesta {
 ocaml::custom!(CamlGroupProjectiveVesta {
     finalize: CamlGroupProjectiveVesta::caml_pointer_finalize,
 });
+
+impl_custom_to_value!(CamlGroupProjectiveVesta);
 
 impl Deref for CamlGroupProjectiveVesta {
     type Target = ProjectiveVesta;

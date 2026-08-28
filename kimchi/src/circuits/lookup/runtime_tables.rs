@@ -92,8 +92,8 @@ pub mod caml {
     //
     // CamlRuntimeTable<CamlF>
     //
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlRuntimeTable<CamlF> {
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlRuntimeTable<CamlF: 'static + ocaml::ToValue + ocaml::FromValue> {
         pub id: i32,
         pub data: Vec<CamlF>,
     }
@@ -103,6 +103,7 @@ pub mod caml {
     where
         F: PrimeField,
         CamlF: From<F>,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(rt: RuntimeTable<F>) -> Self {
             Self {
@@ -116,6 +117,7 @@ pub mod caml {
     where
         F: PrimeField,
         CamlF: Into<F>,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(caml_rt: CamlRuntimeTable<CamlF>) -> Self {
             Self {
@@ -125,7 +127,7 @@ pub mod caml {
         }
     }
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlRuntimeTableSpec {
         pub id: i32,
         pub len: usize,
@@ -150,8 +152,8 @@ pub mod caml {
     }
 
     // CamlRuntimetableCfg
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlRuntimeTableCfg<CamlF> {
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlRuntimeTableCfg<CamlF: 'static + ocaml::ToValue + ocaml::FromValue> {
         pub id: i32,
         pub first_column: Vec<CamlF>,
     }
@@ -161,6 +163,7 @@ pub mod caml {
     where
         F: PrimeField,
         CamlF: From<F>,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(rt_cfg: RuntimeTableCfg<F>) -> Self {
             Self {
@@ -174,6 +177,7 @@ pub mod caml {
     where
         F: PrimeField,
         CamlF: Into<F>,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(caml_rt_cfg: CamlRuntimeTableCfg<CamlF>) -> Self {
             Self {

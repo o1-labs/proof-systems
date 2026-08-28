@@ -32,7 +32,7 @@ use super::{argument::ArgumentWitness, expr};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(all(test, feature = "std"), derive(proptest_derive::Arbitrary))]
@@ -64,7 +64,7 @@ impl CurrOrNext {
 )]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(all(test, feature = "std"), derive(proptest_derive::Arbitrary))]
@@ -458,8 +458,8 @@ pub mod caml {
     use crate::circuits::wires::caml::CamlWire;
     use itertools::Itertools;
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlCircuitGate<F> {
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlCircuitGate<F: 'static + ocaml::ToValue + ocaml::FromValue> {
         pub typ: GateType,
         pub wires: (
             CamlWire,
@@ -477,6 +477,7 @@ pub mod caml {
     where
         CamlF: From<F>,
         F: PrimeField,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(cg: CircuitGate<F>) -> Self {
             Self {
@@ -491,6 +492,7 @@ pub mod caml {
     where
         CamlF: From<F>,
         F: PrimeField,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(cg: &CircuitGate<F>) -> Self {
             Self {
@@ -505,6 +507,7 @@ pub mod caml {
     where
         F: From<CamlF>,
         F: PrimeField,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(ccg: CamlCircuitGate<CamlF>) -> Self {
             Self {

@@ -8,14 +8,14 @@ use kimchi::{
 };
 use poly_commitment::{commitment::CommitmentCurve, PolyComm};
 
-#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-pub struct CamlPlonkDomain<Fr> {
+#[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+pub struct CamlPlonkDomain<Fr: 'static + ocaml::ToValue + ocaml::FromValue> {
     pub log_size_of_group: ocaml::Int,
     pub group_gen: Fr,
 }
 
-#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-pub struct CamlPlonkVerificationEvals<PolyComm> {
+#[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+pub struct CamlPlonkVerificationEvals<PolyComm: 'static + ocaml::ToValue + ocaml::FromValue> {
     pub sigma_comm: Vec<PolyComm>,
     pub coefficients_comm: Vec<PolyComm>,
     pub generic_comm: PolyComm,
@@ -32,14 +32,14 @@ pub struct CamlPlonkVerificationEvals<PolyComm> {
     pub rot_comm: Option<PolyComm>,
 }
 
-#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)]
+#[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Enum)]
 pub enum CamlLookupsUsed {
     Single,
     Joint,
 }
 
-#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-pub struct CamlLookupSelectors<T> {
+#[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+pub struct CamlLookupSelectors<T: 'static + ocaml::ToValue + ocaml::FromValue> {
     pub lookup: Option<T>,
     pub xor: Option<T>,
     pub range_check: Option<T>,
@@ -50,6 +50,7 @@ impl<G, CamlPolyComm> From<LookupSelectors<PolyComm<G>>> for CamlLookupSelectors
 where
     G: AffineRepr + CommitmentCurve,
     CamlPolyComm: From<PolyComm<G>>,
+    CamlPolyComm: 'static + ocaml::ToValue + ocaml::FromValue,
 {
     fn from(val: LookupSelectors<PolyComm<G>>) -> Self {
         let LookupSelectors {
@@ -71,6 +72,7 @@ impl<G, CamlPolyComm> From<CamlLookupSelectors<CamlPolyComm>> for LookupSelector
 where
     G: AffineRepr + CommitmentCurve,
     PolyComm<G>: From<CamlPolyComm>,
+    CamlPolyComm: 'static + ocaml::ToValue + ocaml::FromValue,
 {
     fn from(val: CamlLookupSelectors<CamlPolyComm>) -> Self {
         let CamlLookupSelectors {
@@ -88,7 +90,7 @@ where
     }
 }
 
-#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+#[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
 pub struct CamlLookupInfo {
     /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
     pub max_per_row: ocaml::Int,
@@ -127,8 +129,8 @@ impl From<CamlLookupInfo> for LookupInfo {
     }
 }
 
-#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-pub struct CamlLookupVerifierIndex<PolyComm> {
+#[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+pub struct CamlLookupVerifierIndex<PolyComm: 'static + ocaml::ToValue + ocaml::FromValue> {
     pub joint_lookup_used: bool,
     pub lookup_table: Vec<PolyComm>,
     pub lookup_selectors: CamlLookupSelectors<PolyComm>,
@@ -141,6 +143,7 @@ impl<G, CamlPolyComm> From<LookupVerifierIndex<G>> for CamlLookupVerifierIndex<C
 where
     G: AffineRepr + CommitmentCurve,
     CamlPolyComm: From<PolyComm<G>>,
+    CamlPolyComm: 'static + ocaml::ToValue + ocaml::FromValue,
 {
     fn from(li: LookupVerifierIndex<G>) -> Self {
         let LookupVerifierIndex {
@@ -167,6 +170,7 @@ impl<G, CamlPolyComm> From<CamlLookupVerifierIndex<CamlPolyComm>> for LookupVeri
 where
     G: AffineRepr + CommitmentCurve,
     PolyComm<G>: From<CamlPolyComm>,
+    CamlPolyComm: 'static + ocaml::ToValue + ocaml::FromValue,
 {
     fn from(li: CamlLookupVerifierIndex<CamlPolyComm>) -> Self {
         let CamlLookupVerifierIndex {
@@ -188,8 +192,12 @@ where
     }
 }
 
-#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-pub struct CamlPlonkVerifierIndex<Fr, SRS, PolyComm> {
+#[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+pub struct CamlPlonkVerifierIndex<
+    Fr: 'static + ocaml::ToValue + ocaml::FromValue,
+    SRS: 'static + ocaml::ToValue + ocaml::FromValue,
+    PolyComm: 'static + ocaml::ToValue + ocaml::FromValue,
+> {
     pub domain: CamlPlonkDomain<Fr>,
     pub max_poly_size: ocaml::Int,
     pub public: ocaml::Int,

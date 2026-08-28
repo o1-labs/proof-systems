@@ -23,10 +23,7 @@ use serde_with::serde_as;
 /// Evaluations of a polynomial at 2 points
 #[serde_as]
 #[derive(Copy, Clone, Serialize, Deserialize, Default, Debug, PartialEq)]
-#[cfg_attr(
-    feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
-)]
+#[cfg_attr(feature = "ocaml_types", derive(ocaml_gen::Struct))]
 #[serde(bound(
     serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Evals>",
     deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Evals>"
@@ -38,6 +35,40 @@ pub struct PointEvaluations<Evals> {
     /// Evaluation at `zeta . omega`, the product of the challenge point and the group generator.
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub zeta_omega: Evals,
+}
+
+// `ocaml::ToValue`/`ocaml::FromValue` are implemented by hand rather than
+// derived. `PointEvaluations` exists regardless of the `ocaml_types` feature,
+// so the `Evals: ocaml::ToValue + ocaml::FromValue` bounds the derive requires
+// (ocaml-rs 1.x no longer infers them the way synstructure did in 0.22) cannot
+// go on the struct itself without leaking an optional dependency into the
+// default build. Putting them on the impls keeps the struct unconstrained.
+//
+// These mirror what `#[derive(ocaml::ToValue, ocaml::FromValue)]` expands to
+// for a two-field record: a block of tag 0 with the fields in declaration
+// order. Keep them in sync with the field list above.
+#[cfg(feature = "ocaml_types")]
+unsafe impl<Evals: 'static + ocaml::ToValue> ocaml::ToValue for PointEvaluations<Evals> {
+    fn to_value(&self, rt: &ocaml::Runtime) -> ocaml::Value {
+        unsafe {
+            let mut value = ocaml::Value::alloc(2, 0.into());
+            value.store_field(rt, 0, &self.zeta);
+            value.store_field(rt, 1, &self.zeta_omega);
+            value
+        }
+    }
+}
+
+#[cfg(feature = "ocaml_types")]
+unsafe impl<Evals: 'static + ocaml::FromValue> ocaml::FromValue for PointEvaluations<Evals> {
+    fn from_value(value: ocaml::Value) -> Self {
+        unsafe {
+            Self {
+                zeta: ocaml::FromValue::from_value(value.field(0)),
+                zeta_omega: ocaml::FromValue::from_value(value.field(1)),
+            }
+        }
+    }
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
@@ -595,8 +626,11 @@ pub mod caml {
     // CamlRecursionChallenge<CamlG, CamlF>
     //
 
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlRecursionChallenge<CamlG, CamlF> {
+    #[derive(Clone, ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlRecursionChallenge<
+        CamlG: 'static + ocaml::ToValue + ocaml::FromValue,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
+    > {
         pub chals: Vec<CamlF>,
         pub comm: CamlPolyComm<CamlG>,
     }
@@ -610,6 +644,8 @@ pub mod caml {
         G: AffineRepr,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
+        CamlG: 'static + ocaml::ToValue + ocaml::FromValue,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(ch: RecursionChallenge<G>) -> Self {
             Self {
@@ -623,6 +659,8 @@ pub mod caml {
     where
         G: AffineRepr + From<CamlG>,
         G::ScalarField: From<CamlF>,
+        CamlG: 'static + ocaml::ToValue + ocaml::FromValue,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(caml_ch: CamlRecursionChallenge<CamlG, CamlF>) -> RecursionChallenge<G> {
             RecursionChallenge {
@@ -637,8 +675,8 @@ pub mod caml {
     //
 
     #[allow(clippy::type_complexity)]
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlProofEvaluations<CamlF> {
+    #[derive(Clone, ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlProofEvaluations<CamlF: 'static + ocaml::ToValue + ocaml::FromValue> {
         pub w: (
             PointEvaluations<Vec<CamlF>>,
             PointEvaluations<Vec<CamlF>>,
@@ -720,6 +758,7 @@ pub mod caml {
     where
         F: Clone,
         CamlF: From<F>,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(pe: ProofEvaluations<PointEvaluations<Vec<F>>>) -> Self {
             let first = pe.public.map(|x: PointEvaluations<Vec<F>>| {
@@ -933,6 +972,7 @@ pub mod caml {
         F: Clone,
         CamlF: Clone,
         F: From<CamlF>,
+        CamlF: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(
             (public, cpe): (

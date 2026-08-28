@@ -4,8 +4,9 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi, pasta::FULL_ROUNDS, permutation::poseidon_block_cipher,
     poseidon::ArithmeticSpongeParams,
 };
+#[derive(Clone)]
 pub struct CamlPastaFqPoseidonParams(ArithmeticSpongeParams<Fq, FULL_ROUNDS>);
-pub type CamlPastaFqPoseidonParamsPtr<'a> = ocaml::Pointer<'a, CamlPastaFqPoseidonParams>;
+pub type CamlPastaFqPoseidonParamsPtr = ocaml::Pointer<CamlPastaFqPoseidonParams>;
 
 extern "C" fn caml_pasta_fq_poseidon_params_finalize(v: ocaml::Raw) {
     unsafe {
@@ -17,6 +18,8 @@ extern "C" fn caml_pasta_fq_poseidon_params_finalize(v: ocaml::Raw) {
 ocaml::custom!(CamlPastaFqPoseidonParams {
     finalize: caml_pasta_fq_poseidon_params_finalize,
 });
+
+impl_custom_to_value!(CamlPastaFqPoseidonParams);
 
 #[ocaml::func]
 pub fn caml_pasta_fq_poseidon_params_create() -> CamlPastaFqPoseidonParams {

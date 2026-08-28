@@ -750,8 +750,8 @@ pub mod caml {
     use super::PolyComm;
     use ark_ec::AffineRepr;
 
-    #[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlPolyComm<CamlG> {
+    #[derive(Clone, Debug, ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlPolyComm<CamlG: 'static + ocaml::ToValue + ocaml::FromValue> {
         pub unshifted: Vec<CamlG>,
         pub shifted: Option<CamlG>,
     }
@@ -761,7 +761,7 @@ pub mod caml {
     impl<G, CamlG> From<PolyComm<G>> for CamlPolyComm<CamlG>
     where
         G: AffineRepr,
-        CamlG: From<G>,
+        CamlG: 'static + From<G> + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(polycomm: PolyComm<G>) -> Self {
             Self {
@@ -774,7 +774,7 @@ pub mod caml {
     impl<'a, G, CamlG> From<&'a PolyComm<G>> for CamlPolyComm<CamlG>
     where
         G: AffineRepr,
-        CamlG: From<G> + From<&'a G>,
+        CamlG: 'static + From<G> + From<&'a G> + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(polycomm: &'a PolyComm<G>) -> Self {
             Self {
@@ -787,6 +787,7 @@ pub mod caml {
     impl<G, CamlG> From<CamlPolyComm<CamlG>> for PolyComm<G>
     where
         G: AffineRepr + From<CamlG>,
+        CamlG: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(camlpolycomm: CamlPolyComm<CamlG>) -> Self {
             assert!(
@@ -806,6 +807,7 @@ pub mod caml {
     impl<'a, G, CamlG> From<&'a CamlPolyComm<CamlG>> for PolyComm<G>
     where
         G: AffineRepr + From<&'a CamlG> + From<CamlG>,
+        CamlG: 'static + ocaml::ToValue + ocaml::FromValue,
     {
         fn from(camlpolycomm: &'a CamlPolyComm<CamlG>) -> Self {
             assert!(
