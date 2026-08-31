@@ -24,6 +24,7 @@ ark-ec.workspace = true
 ark-ff.workspace = true
 ark-poly.workspace = true
 ark-serialize.workspace = true
+ark-std.workspace = true
 blake2.workspace = true
 hex.workspace = true
 itertools.workspace = true
@@ -82,6 +83,10 @@ required-features = ["prover", "diagnostics"]
 
 [[bench]]
 name = "proof_criterion"
+harness = false
+
+[[bench]]
+name = "expr_eval"
 harness = false
 
 [[bench]]

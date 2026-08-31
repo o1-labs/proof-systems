@@ -1128,6 +1128,33 @@ fn unnormalized_lagrange_evals<
 
 /// Implement algebraic methods like `add`, `sub`, `mul`, `square`, etc to use
 /// algebra on the type `EvalResult`.
+/// Reduce an index modulo a power-of-two length.
+///
+/// Every evaluation vector in the expression framework lives over a radix-2
+/// domain (d1/d2/d4/d8), so `len` is always a power of two and the wrap-around
+/// in the strided kernels can use a bitmask instead of a per-element integer
+/// division.
+#[inline]
+fn mod_pow2(i: usize, len: usize) -> usize {
+    debug_assert!(len.is_power_of_two());
+    i & (len - 1)
+}
+
+/// Grain size for parallel elementwise kernels: bounds rayon's adaptive
+/// splitting so a single kernel does not shatter into sub-cache-line tasks.
+/// A gate-constraint evaluation dispatches hundreds of such kernels, so the
+/// floor matters at every domain size.
+///
+/// Swept on the `expr_eval` poseidon cases: 1024-4096 is a plateau (within
+/// ~4%); 8192 and above collapse small-domain kernels into a single task
+/// (a d1 = 2^10 circuit's d8 columns are exactly 8192 elements) and measured
+/// ~1.5x worse there. 1024 is the plateau's bottom: `with_min_len` is a
+/// floor on split size, not a task-count mandate - rayon splits only when
+/// workers are idle - so the smallest plateau value costs few-core machines
+/// nothing and permits the most parallelism on many-core ones.
+#[allow(dead_code)]
+const PAR_GRAIN: usize = 1 << 10;
+
 impl<'a, F: FftField> EvalResult<'a, F> {
     /// Create an evaluation over the domain `res_domain`.
     /// The second parameter, `g`, is a function used to define the
@@ -1144,7 +1171,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
     ) -> Evaluations<F, D<F>> {
         let n = res_domain.1.size();
         Evaluations::<F, D<F>>::from_vec_and_domain(
-            o1_utils::cfg_into_iter!(0..n).map(g).collect(),
+            ark_std::cfg_into_iter!(0..n, PAR_GRAIN).map(g).collect(),
             res_domain.1,
         )
     }
@@ -1164,7 +1191,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (Constant(x), Constant(y)) => Constant(x + y),
             (Evals { domain, mut evals }, Constant(x))
             | (Constant(x), Evals { domain, mut evals }) => {
-                o1_utils::cfg_iter_mut!(evals.evals).for_each(|e| *e += x);
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN).for_each(|e| *e += x);
                 Evals { domain, evals }
             }
             (
@@ -1191,9 +1218,10 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
-                let v: Vec<_> = o1_utils::cfg_into_iter!(0..n)
+                let v: Vec<_> = ark_std::cfg_into_iter!(0..n, PAR_GRAIN)
                     .map(|i| {
-                        x + evals.evals[(scale * i + (domain as usize) * shift) % evals.evals.len()]
+                        x + evals.evals
+                            [mod_pow2(scale * i + (domain as usize) * shift, evals.evals.len())]
                     })
                     .collect();
                 Evals {
@@ -1212,7 +1240,9 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 assert_eq!(d1, d2);
-                es1 += &es2;
+                ark_std::cfg_iter_mut!(es1.evals, PAR_GRAIN)
+                    .zip(ark_std::cfg_iter!(es2.evals, PAR_GRAIN))
+                    .for_each(|(a, b)| *a += b);
                 Evals {
                     domain: d1,
                     evals: es1,
@@ -1247,10 +1277,11 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
-                o1_utils::cfg_iter_mut!(evals.evals)
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN)
                     .enumerate()
                     .for_each(|(i, e)| {
-                        *e += es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
+                        *e += es_sub.evals
+                            [mod_pow2(scale * i + (d_sub as usize) * s, es_sub.evals.len())];
                     });
                 Evals { evals, domain: d }
             }
@@ -1281,10 +1312,10 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
                 let n = res_domain.1.size();
-                let v: Vec<_> = o1_utils::cfg_into_iter!(0..n)
+                let v: Vec<_> = ark_std::cfg_into_iter!(0..n, PAR_GRAIN)
                     .map(|i| {
-                        es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
-                            + es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
+                        es1.evals[mod_pow2(scale1 * i + (d1 as usize) * s1, es1.evals.len())]
+                            + es2.evals[mod_pow2(scale2 * i + (d2 as usize) * s2, es2.evals.len())]
                     })
                     .collect();
 
@@ -1301,11 +1332,11 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x - y),
             (Evals { domain, mut evals }, Constant(x)) => {
-                o1_utils::cfg_iter_mut!(evals.evals).for_each(|e| *e -= x);
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN).for_each(|e| *e -= x);
                 Evals { domain, evals }
             }
             (Constant(x), Evals { domain, mut evals }) => {
-                o1_utils::cfg_iter_mut!(evals.evals).for_each(|e| *e = x - *e);
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN).for_each(|e| *e = x - *e);
                 Evals { domain, evals }
             }
             (
@@ -1324,7 +1355,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
                 EvalResult::init(res_domain, |i| {
-                    evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()] - x
+                    evals.evals[mod_pow2(scale * i + (d as usize) * s, evals.evals.len())] - x
                 })
             }
             (
@@ -1344,7 +1375,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 );
 
                 EvalResult::init(res_domain, |i| {
-                    x - evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
+                    x - evals.evals[mod_pow2(scale * i + (d as usize) * s, evals.evals.len())]
                 })
             }
             (
@@ -1358,7 +1389,9 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 assert_eq!(d1, d2);
-                es1 -= &es2;
+                ark_std::cfg_iter_mut!(es1.evals, PAR_GRAIN)
+                    .zip(ark_std::cfg_iter!(es2.evals, PAR_GRAIN))
+                    .for_each(|(a, b)| *a -= b);
                 Evals {
                     domain: d1,
                     evals: es1,
@@ -1383,10 +1416,11 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
 
-                o1_utils::cfg_iter_mut!(evals.evals)
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN)
                     .enumerate()
                     .for_each(|(i, e)| {
-                        *e = es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()]
+                        *e = es_sub.evals
+                            [mod_pow2(scale * i + (d_sub as usize) * s, es_sub.evals.len())]
                             - *e;
                     });
                 Evals { evals, domain: d }
@@ -1409,10 +1443,11 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
-                o1_utils::cfg_iter_mut!(evals.evals)
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN)
                     .enumerate()
                     .for_each(|(i, e)| {
-                        *e -= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
+                        *e -= es_sub.evals
+                            [mod_pow2(scale * i + (d_sub as usize) * s, es_sub.evals.len())];
                     });
                 Evals { evals, domain: d }
             }
@@ -1444,8 +1479,8 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 );
 
                 EvalResult::init(res_domain, |i| {
-                    es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
-                        - es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
+                    es1.evals[mod_pow2(scale1 * i + (d1 as usize) * s1, es1.evals.len())]
+                        - es2.evals[mod_pow2(scale2 * i + (d2 as usize) * s2, es2.evals.len())]
                 })
             }
         }
@@ -1469,7 +1504,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         match self {
             Constant(x) => Constant(x.square()),
             Evals { domain, mut evals } => {
-                o1_utils::cfg_iter_mut!(evals.evals).for_each(|e| {
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN).for_each(|e| {
                     e.square_in_place();
                 });
                 Evals { domain, evals }
@@ -1487,7 +1522,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
                 EvalResult::init(res_domain, |i| {
-                    evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()].square()
+                    evals.evals[mod_pow2(scale * i + (d as usize) * s, evals.evals.len())].square()
                 })
             }
         }
@@ -1499,7 +1534,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (Constant(x), Constant(y)) => Constant(x * y),
             (Evals { domain, mut evals }, Constant(x))
             | (Constant(x), Evals { domain, mut evals }) => {
-                o1_utils::cfg_iter_mut!(evals.evals).for_each(|e| *e *= x);
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN).for_each(|e| *e *= x);
                 Evals { domain, evals }
             }
             (
@@ -1526,7 +1561,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
                 EvalResult::init(res_domain, |i| {
-                    x * evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
+                    x * evals.evals[mod_pow2(scale * i + (d as usize) * s, evals.evals.len())]
                 })
             }
             (
@@ -1540,7 +1575,9 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 assert_eq!(d1, d2);
-                es1 *= &es2;
+                ark_std::cfg_iter_mut!(es1.evals, PAR_GRAIN)
+                    .zip(ark_std::cfg_iter!(es2.evals, PAR_GRAIN))
+                    .for_each(|(a, b)| *a *= b);
                 Evals {
                     domain: d1,
                     evals: es1,
@@ -1576,10 +1613,11 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
 
-                o1_utils::cfg_iter_mut!(evals.evals)
+                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN)
                     .enumerate()
                     .for_each(|(i, e)| {
-                        *e *= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
+                        *e *= es_sub.evals
+                            [mod_pow2(scale * i + (d_sub as usize) * s, es_sub.evals.len())];
                     });
                 Evals { evals, domain: d }
             }
@@ -1611,8 +1649,8 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 witnesses are the same"
                 );
                 EvalResult::init(res_domain, |i| {
-                    es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
-                        * es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
+                    es1.evals[mod_pow2(scale1 * i + (d1 as usize) * s1, es1.evals.len())]
+                        * es2.evals[mod_pow2(scale2 * i + (d2 as usize) * s2, es2.evals.len())]
                 })
             }
         }
@@ -1983,7 +2021,7 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
                 witnesses are the same"
                 );
                 EvalResult::init_((d, res_domain), |i| {
-                    evals.evals[(scale * i + (d_sub as usize) * s) % evals.evals.len()]
+                    evals.evals[mod_pow2(scale * i + (d_sub as usize) * s, evals.evals.len())]
                 })
             }
         }
@@ -2017,7 +2055,7 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
                     Either::Left(x) => {
                         let x = match x {
                             EvalResult::Evals { domain, mut evals } => {
-                                o1_utils::cfg_iter_mut!(evals.evals).for_each(|x| {
+                                ark_std::cfg_iter_mut!(evals.evals, PAR_GRAIN).for_each(|x| {
                                     x.double_in_place();
                                 });
                                 return Either::Left(EvalResult::Evals { domain, evals });
