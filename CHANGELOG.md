@@ -16,6 +16,12 @@ and this project adheres to
 - Add an optional mmap-backed prover-index cache for loading proving keys from
   disk while allowing the OS page cache to evict unused pages
   ([#3569](https://github.com/o1-labs/proof-systems/pull/3569))
+- Add a `memory_profile` binary under the `diagnostics` feature: proves the
+  canonical benchmark circuit (`kimchi::bench::BenchmarkCtx`) under a counting
+  global allocator and reports total bytes allocated, allocation count, peak
+  live bytes, and peak resident set for proof creation, for A/B comparisons of
+  prover memory changes
+  ([#3605](https://github.com/o1-labs/proof-systems/pull/3605))
 
 #### Changed
 
