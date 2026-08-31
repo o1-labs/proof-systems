@@ -14,7 +14,8 @@
 //! cargo run --release -p kimchi --bin memory_profile --features diagnostics -- [srs_log2]
 //! ```
 //!
-//! `srs_log2` sets the domain/SRS size (default 16).
+//! `srs_log2` sets the domain/SRS size (default 16). The resident-set
+//! sampler interval is `KIMCHI_MEMORY_PROFILE_SAMPLE_MS` (default 25).
 
 use kimchi::bench::BenchmarkCtx;
 use std::time::Instant;
@@ -92,7 +93,13 @@ mod mem_profile {
     }
 
     pub fn start() -> Window {
-        let sampler = std::thread::spawn(|| {
+        let sample_ms: u64 = match std::env::var("KIMCHI_MEMORY_PROFILE_SAMPLE_MS") {
+            Err(_) => 25,
+            Ok(s) => s.parse().ok().filter(|ms| *ms >= 1).unwrap_or_else(|| {
+                panic!("KIMCHI_MEMORY_PROFILE_SAMPLE_MS must be a positive integer (ms), got {s:?}")
+            }),
+        };
+        let sampler = std::thread::spawn(move || {
             use tikv_jemalloc_ctl::{epoch, stats};
             while !STOP.load(Relaxed) {
                 if epoch::advance().is_ok() {
@@ -100,7 +107,7 @@ mod mem_profile {
                         PEAK_RESIDENT.fetch_max(r, Relaxed);
                     }
                 }
-                std::thread::sleep(core::time::Duration::from_millis(25));
+                std::thread::sleep(core::time::Duration::from_millis(sample_ms));
             }
         });
 
