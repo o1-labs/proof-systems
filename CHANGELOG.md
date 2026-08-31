@@ -16,6 +16,12 @@ and this project adheres to
 - Add an optional mmap-backed prover-index cache for loading proving keys from
   disk while allowing the OS page cache to evict unused pages
   ([#3569](https://github.com/o1-labs/proof-systems/pull/3569))
+- Add a `memory_profile` binary under the `diagnostics` feature: proves the
+  canonical benchmark circuit (`kimchi::bench::BenchmarkCtx`) under a counting
+  global allocator and reports total bytes allocated, allocation count, peak
+  live bytes, and peak resident set for proof creation, for A/B comparisons of
+  prover memory changes
+  ([#3605](https://github.com/o1-labs/proof-systems/pull/3605))
 
 #### Changed
 
@@ -26,6 +32,18 @@ and this project adheres to
   evaluations to the d1 subdomain instead of running a full d8 iFFT, and
   parallelise the d8 lookup-table and sorted-polynomial construction. Proofs are
   unchanged ([#3587](https://github.com/o1-labs/proof-systems/pull/3587))
+
+#### Removed
+
+- Stop computing the witness evaluations that nothing reads.
+  `ConstraintSystem::evaluate` built the witness over `d4` as well as `d8`, and
+  a row-shifted copy of the witness over each, none of which had a reader:
+  constraints referring to the next row are evaluated by shifting the index into
+  the unshifted evaluations, and `ColumnEnvironment` has no accessor for a
+  shifted column. `WitnessOverDomains` now holds only the witness and the
+  permutation accumulator over `d8`, plus the shifted accumulator the
+  permutation argument compares against, and `WitnessShifts` is gone.
+  ([#3598](https://github.com/o1-labs/proof-systems/pull/3598))
 
 ### [kimchi-napi](./kimchi-napi)
 
