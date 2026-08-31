@@ -150,8 +150,8 @@ fn main() {
     let setup_start = Instant::now();
     let ctx = BenchmarkCtx::new(srs_log2);
     println!(
-        "- setup time (index, verifier digest, lagrange basis): {:.1}s",
-        setup_start.elapsed().as_secs_f64()
+        "- setup time (index, verifier digest, lagrange basis): {} ms",
+        setup_start.elapsed().as_millis()
     );
 
     let window = mem_profile::start();
@@ -159,7 +159,7 @@ fn main() {
     let proof_and_public = ctx.create_proof();
     let prove_time = prove_start.elapsed();
     window.report("proof creation");
-    println!("- time to create proof: {:.1}s", prove_time.as_secs_f64());
+    println!("- time to create proof: {} ms", prove_time.as_millis());
 
     std::hint::black_box(proof_and_public);
 }
