@@ -282,7 +282,7 @@ where
         //~    and $0$ for the rest.
         let public = witness[0][0..index.cs.public].to_vec();
         let public_poly = -Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-            public,
+            public.clone(),
             index.cs.domain.d1,
         )
         .interpolate();
@@ -803,7 +803,20 @@ where
                 let mut t4 = {
                     let generic_constraint =
                         generic::Generic::combined_constraints(&all_alphas, &mut cache);
-                    let generic4 = generic_constraint.evaluations(&env);
+                    let mut generic4 = generic_constraint.evaluations(&env);
+
+                    // The generic constraint equals the public input on the
+                    // public-input rows, but those (d1) rows were skipped while
+                    // evaluating it. Add the public input back so interpolation
+                    // recovers the generic gate exactly; the public-input
+                    // polynomial (added below in coefficient form) then cancels it
+                    // on d1, keeping the numerator divisible by Z_H.
+                    {
+                        let stride = (index.cs.domain.d4.size / index.cs.domain.d1.size) as usize;
+                        for (row, p) in public.iter().enumerate() {
+                            generic4.evals[stride * row] += p;
+                        }
+                    }
 
                     if cfg!(debug_assertions) {
                         let p4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
