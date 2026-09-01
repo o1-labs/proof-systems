@@ -97,6 +97,8 @@ name = "amortization"
 harness = false
 
 [features]
+# Forwards Pasta MSM acceleration down to poly-commitment.
+openvm = ["poly-commitment/openvm", "mina-curves/openvm"]
 default = ["prover"]
 std = [
   "rand",
