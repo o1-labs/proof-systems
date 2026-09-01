@@ -50,19 +50,22 @@ pub fn bench_proof_creation_mina(c: &mut Criterion) {
             format!("proof creation (mina, vesta, circuit seed {})", seed),
             |b| {
                 b.iter(|| {
-                    black_box(ProverProof::<
-                        Vesta,
-                        OpeningProof<Vesta, FULL_ROUNDS>,
-                        FULL_ROUNDS,
-                    >::create_recursive::<BaseSpongeVesta, ScalarSpongeVesta, _>(
-                        &group_map,
-                        witness.clone(),
-                        &runtime_tables,
-                        &index,
-                        prev.clone(),
-                        None,
-                        &mut rand::rngs::OsRng,
-                    ))
+                    black_box(
+                        ProverProof::<
+                            Vesta,
+                            OpeningProof<Vesta, FULL_ROUNDS>,
+                            FULL_ROUNDS,
+                        >::create_recursive::<BaseSpongeVesta, ScalarSpongeVesta, _>(
+                            &group_map,
+                            witness.clone(),
+                            &runtime_tables,
+                            &index,
+                            prev.clone(),
+                            None,
+                            &mut rand::rngs::OsRng,
+                        )
+                        .expect("proof creation failed: the benchmark inputs no longer satisfy the constraint system"),
+                    )
                 })
             },
         );
@@ -80,19 +83,22 @@ pub fn bench_proof_creation_mina(c: &mut Criterion) {
             format!("proof creation (mina, pallas, circuit seed {})", seed),
             |b| {
                 b.iter(|| {
-                    black_box(ProverProof::<
-                        Pallas,
-                        OpeningProof<Pallas, FULL_ROUNDS>,
-                        FULL_ROUNDS,
-                    >::create_recursive::<BaseSpongePallas, ScalarSpongePallas, _>(
-                        &group_map,
-                        witness.clone(),
-                        &runtime_tables,
-                        &index,
-                        prev.clone(),
-                        None,
-                        &mut rand::rngs::OsRng,
-                    ))
+                    black_box(
+                        ProverProof::<
+                            Pallas,
+                            OpeningProof<Pallas, FULL_ROUNDS>,
+                            FULL_ROUNDS,
+                        >::create_recursive::<BaseSpongePallas, ScalarSpongePallas, _>(
+                            &group_map,
+                            witness.clone(),
+                            &runtime_tables,
+                            &index,
+                            prev.clone(),
+                            None,
+                            &mut rand::rngs::OsRng,
+                        )
+                        .expect("proof creation failed: the benchmark inputs no longer satisfy the constraint system"),
+                    )
                 })
             },
         );

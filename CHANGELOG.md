@@ -16,6 +16,13 @@ and this project adheres to
 - Add an optional mmap-backed prover-index cache for loading proving keys from
   disk while allowing the OS page cache to evict unused pages
   ([#3569](https://github.com/o1-labs/proof-systems/pull/3569))
+- Add an opt-in fused row-wise constraint evaluator, which compiles the
+  constraint expression to a flat bytecode and walks the domain a block at a
+  time instead of materialising a full-domain `Evaluations` per sub-expression.
+  Off by default; selected via `KIMCHI_FUSED_EVAL` (`1` to use it, `verify` to
+  run both paths and assert they agree). Falls back to the vectorised path for
+  any expression it cannot compile
+  ([#3590](https://github.com/o1-labs/proof-systems/pull/3590))
 - Add a `memory_profile` binary under the `diagnostics` feature: proves the
   canonical benchmark circuit (`kimchi::bench::BenchmarkCtx`) under a counting
   global allocator and reports total bytes allocated, allocation count, peak
@@ -25,6 +32,13 @@ and this project adheres to
 
 #### Changed
 
+- Skip the d1 rows in the permutation quotient. The permutation contribution
+  vanishes there for a satisfying witness, so the honest prover was computing
+  known zeros. The quotient is unchanged, but as a consequence a witness that
+  violates the permutation argument no longer trips the prover's "rest of
+  division by vanishing polynomial" check in release builds; it produces a proof
+  that fails verification instead. Debug builds still reject it earlier via
+  `index.verify()` ([#3589](https://github.com/o1-labs/proof-systems/pull/3589))
 - Lower the prover's peak memory by releasing the d8 evaluations once the
   linearization is done, rather than holding them to end-of-proof
   ([#3587](https://github.com/o1-labs/proof-systems/pull/3587))
@@ -83,6 +97,15 @@ and this project adheres to
 
 - Treat public evaluations of oracles as vectors for chunking coherence
   ([#3577](https://github.com/o1-labs/proof-systems/pull/3577))
+
+### [o1-utils](./utils)
+
+#### Added
+
+- Add `cfg_chunks_mut!`, the mutable-chunks counterpart to the existing
+  `cfg_iter!` family, so callers can chunk in parallel without depending on
+  `rayon` unconditionally
+  ([#3586](https://github.com/o1-labs/proof-systems/pull/3586))
 
 ## 0.7.0
 
