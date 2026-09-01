@@ -16,6 +16,19 @@ and this project adheres to
 - Add an optional mmap-backed prover-index cache for loading proving keys from
   disk while allowing the OS page cache to evict unused pages
   ([#3569](https://github.com/o1-labs/proof-systems/pull/3569))
+- Add an opt-in fused row-wise constraint evaluator, which compiles the
+  constraint expression to a flat bytecode and walks the domain a block at a
+  time instead of materialising a full-domain `Evaluations` per sub-expression.
+  Off by default; selected via `KIMCHI_FUSED_EVAL` (`1` to use it, `verify` to
+  run both paths and assert they agree). Falls back to the vectorised path for
+  any expression it cannot compile
+  ([#3590](https://github.com/o1-labs/proof-systems/pull/3590))
+- Add a `memory_profile` binary under the `diagnostics` feature: proves the
+  canonical benchmark circuit (`kimchi::bench::BenchmarkCtx`) under a counting
+  global allocator and reports total bytes allocated, allocation count, peak
+  live bytes, and peak resident set for proof creation, for A/B comparisons of
+  prover memory changes
+  ([#3605](https://github.com/o1-labs/proof-systems/pull/3605))
 
 #### Changed
 
@@ -38,6 +51,18 @@ and this project adheres to
   parallelise the d8 lookup-table and sorted-polynomial construction. Proofs are
   unchanged ([#3587](https://github.com/o1-labs/proof-systems/pull/3587))
 
+#### Removed
+
+- Stop computing the witness evaluations that nothing reads.
+  `ConstraintSystem::evaluate` built the witness over `d4` as well as `d8`, and
+  a row-shifted copy of the witness over each, none of which had a reader:
+  constraints referring to the next row are evaluated by shifting the index into
+  the unshifted evaluations, and `ColumnEnvironment` has no accessor for a
+  shifted column. `WitnessOverDomains` now holds only the witness and the
+  permutation accumulator over `d8`, plus the shifted accumulator the
+  permutation argument compares against, and `WitnessShifts` is gone.
+  ([#3598](https://github.com/o1-labs/proof-systems/pull/3598))
+
 ### [kimchi-napi](./kimchi-napi)
 
 #### Fixed
@@ -46,6 +71,20 @@ and this project adheres to
   ([#3577](https://github.com/o1-labs/proof-systems/pull/3577))
 
 ### [kimchi-stubs](./kimchi-stubs)
+
+#### Added
+
+- Add `<field>_vector_clear`, letting the caller eagerly release a consumed
+  vector's Rust-side allocation. OCaml only sees the pointer, so its GC never
+  feels the (potentially large) backing buffer
+  ([#3592](https://github.com/o1-labs/proof-systems/pull/3592))
+- Run proving inside a scoped rayon thread pool sized by `KIMCHI_PROVE_THREADS`,
+  falling back to the global pool when unset. Pools are reused across proves via
+  a per-thread-count freelist, bounded by `KIMCHI_PROVE_POOL_CAP` (default 2) so
+  idle pools do not accumulate. This lets a long-running worker prove different
+  tasks at different thread counts without rebuilding its global pool; the
+  thread count does not affect the proof
+  ([#3592](https://github.com/o1-labs/proof-systems/pull/3592))
 
 #### Fixed
 
@@ -58,6 +97,15 @@ and this project adheres to
 
 - Treat public evaluations of oracles as vectors for chunking coherence
   ([#3577](https://github.com/o1-labs/proof-systems/pull/3577))
+
+### [o1-utils](./utils)
+
+#### Added
+
+- Add `cfg_chunks_mut!`, the mutable-chunks counterpart to the existing
+  `cfg_iter!` family, so callers can chunk in parallel without depending on
+  `rayon` unconditionally
+  ([#3586](https://github.com/o1-labs/proof-systems/pull/3586))
 
 ## 0.7.0
 

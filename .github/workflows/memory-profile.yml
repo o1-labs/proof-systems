@@ -1,0 +1,41 @@
+#
+# Manually-triggered end-to-end prover memory profile, running the
+# kimchi memory_profile binary. The byte metrics are deterministic for
+# a given runner class, but scale with thread count (rayon scratch
+# buffers) — compare runs from the same runner class only.
+#
+
+name: Prover memory profile
+
+on:
+  workflow_dispatch:
+    inputs:
+      srs_log2:
+        description: "log2 of the domain/SRS size (4..=28)"
+        required: false
+        default: "16"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  memory_profile:
+    name: Run the prover memory profile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Load versions
+        id: versions
+        uses: ./.github/actions/load-versions
+
+      - name: Use shared Rust toolchain setting up steps
+        uses: ./.github/actions/toolchain-shared
+        with:
+          rust_toolchain_version: ${{ steps.versions.outputs.rust-msrv }}
+
+      - name: Run the prover memory profile
+        run: |
+          cargo run --release -p kimchi --bin memory_profile \
+            --features diagnostics -- ${{ inputs.srs_log2 }}

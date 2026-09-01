@@ -1912,6 +1912,50 @@ enum Either<A, B> {
     Right(B),
 }
 
+/// Execution mode for the experimental fused row-wise evaluator.
+/// `KIMCHI_FUSED_EVAL=1` uses it (falling back to the vectorised path for
+/// expressions it does not handle); `=verify` runs both and asserts they agree.
+fn fused_eval_mode() -> u8 {
+    #[cfg(feature = "std")]
+    {
+        match std::env::var("KIMCHI_FUSED_EVAL").as_deref() {
+            Ok("verify") => 2,
+            Ok("1") | Ok("use") => 1,
+            _ => 0,
+        }
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        0
+    }
+}
+
+/// Flat bytecode for the fused evaluator: a stack machine walked once per domain
+/// row, with intermediates living in a register frame rather than full-domain
+/// arrays.
+enum FOp {
+    Lit(usize),
+    Col(usize),
+    Aux(usize),
+    Add,
+    Sub,
+    Mul,
+    Square,
+    Double,
+    Pow(u64),
+    StoreReg(usize),
+    LoadReg(usize),
+}
+
+/// A witness-column access resolved for the fused evaluator: at row `i` it reads
+/// `evals[(scale * i + offset) % len]` -- the same indexing as `SubEvals`.
+struct FCol<'a, F> {
+    evals: &'a [F],
+    scale: usize,
+    offset: usize,
+    len: usize,
+}
+
 impl<F: FftField, Column: Copy> Expr<F, Column> {
     /// Evaluate an expression into a field element.
     pub fn evaluate<Evaluations: ColumnEvaluations<F, Column = Column>>(
@@ -1976,6 +2020,11 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
         &self,
         env: &Environment,
     ) -> Evaluations<F, D<F>> {
+        if fused_eval_mode() == 1 {
+            if let Some(f) = self.evaluations_fused(env) {
+                return f;
+            }
+        }
         let d1_size = env.get_domain(Domain::D1).size;
         let deg = self.degree(d1_size, env.get_constants().zk_rows);
         let d = if deg <= d1_size {
@@ -2023,7 +2072,354 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
         // result that did not (e.g. a borrowed `Evals` returned directly), so the
         // numerator stays divisible by Z_H regardless of which path produced it.
         EvalResult::<'_, F>::zero_d1_rows(&mut result, d);
+        if fused_eval_mode() == 2 {
+            if let Some(f) = self.evaluations_fused(env) {
+                assert_eq!(
+                    f.evals, result.evals,
+                    "fused evaluator disagrees with vectorised path"
+                );
+            }
+        }
         result
+    }
+
+    /// Experimental: evaluate this expression over d8 with a fused, row-wise
+    /// stack-machine bytecode -- intermediates live in registers, not full-domain
+    /// arrays. Returns `None` for anything the spike does not handle (below d8,
+    /// feature flags, vanishing/Lagrange atoms), so callers fall back.
+    fn evaluations_fused<'a, ChallengeTerm, Challenge, Environment>(
+        &self,
+        env: &Environment,
+    ) -> Option<Evaluations<F, D<F>>>
+    where
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+    {
+        let d1_size = env.get_domain(Domain::D1).size;
+        let deg = self.degree(d1_size, env.get_constants().zk_rows);
+        // Handle the d4 (generic + low-degree gates) and d8 (high-degree gates)
+        // constraints. d1-degree constraints are cheap and rare -> fall back.
+        let d = if deg <= d1_size {
+            return None;
+        } else if deg <= 4 * d1_size {
+            Domain::D4
+        } else if deg <= 8 * d1_size {
+            Domain::D8
+        } else {
+            return None;
+        };
+
+        let mut code: Vec<FOp> = Vec::new();
+        let mut lits: Vec<F> = Vec::new();
+        let mut cols: Vec<FCol<'a, F>> = Vec::new();
+        let mut aux: Vec<Vec<F>> = Vec::new();
+        let mut regs: HashMap<CacheId, usize> = HashMap::new();
+        let mut n_reg = 0usize;
+        let mut depth = 0usize;
+        let mut max_depth = 0usize;
+        self.fcompile(
+            env,
+            d,
+            &mut code,
+            &mut lits,
+            &mut cols,
+            &mut aux,
+            &mut regs,
+            &mut n_reg,
+            &mut depth,
+            &mut max_depth,
+        )
+        .ok()?;
+
+        let dom = env.get_domain(d);
+        let n = dom.size as usize;
+        let regbase = max_depth;
+        let frame = (max_depth + n_reg).max(1);
+        // Block-at-a-time: each opcode processes `B` consecutive rows (lanes), so
+        // the `match` dispatch is amortised over the block and the working set
+        // (frame * B field elements) stays L1-resident. Stack slot `s` occupies
+        // lanes `st[s*B .. s*B + B]`.
+        const B: usize = 8;
+        let chunk = 1usize << 14; // multiple of B
+
+        // 7n packing: for a d8 result every 8th row is a d1 row, where every
+        // constraint vanishes for a satisfying witness -- so the honest prover's
+        // value there is zero. Since the chunk and block sizes are multiples of
+        // 8, those rows are exactly lane 0 of every block: starting the lane
+        // loops at 1 skips them, leaving the zeros `out` was allocated with.
+        // That is 1/8 fewer column reads and bytecode steps. (d4 keeps every
+        // lane -- the generic constraint equals the public input on the
+        // public-input rows.)
+        let lstart = if (d as usize) == 8 { 1usize } else { 0usize };
+        let mut out = vec![F::zero(); n];
+        o1_utils::cfg_chunks_mut!(out, chunk)
+            .enumerate()
+            .for_each(|(ci, slots)| {
+                let base = ci * chunk;
+                let mut st = vec![F::zero(); frame * B];
+                let len = slots.len();
+                let mut off = 0usize;
+                while off < len {
+                    let blk = B.min(len - off);
+                    let idx0 = base + off;
+                    let mut sp = 0usize;
+                    // SAFETY: the compile pass bounds every slot/lit/col index; `sp`
+                    // never exceeds `max_depth`, `regbase + r < frame`, `l < blk <= B`,
+                    // and the column index is reduced mod `len`.
+                    unsafe {
+                        for op in &code {
+                            match op {
+                                FOp::Lit(i) => {
+                                    let v = *lits.get_unchecked(*i);
+                                    let d0 = sp * B;
+                                    for l in lstart..blk {
+                                        *st.get_unchecked_mut(d0 + l) = v;
+                                    }
+                                    sp += 1;
+                                }
+                                FOp::Col(i) => {
+                                    let c = cols.get_unchecked(*i);
+                                    let d0 = sp * B;
+                                    for l in lstart..blk {
+                                        let raw = c.scale * (idx0 + l) + c.offset;
+                                        let j = if raw < c.len { raw } else { raw % c.len };
+                                        *st.get_unchecked_mut(d0 + l) = *c.evals.get_unchecked(j);
+                                    }
+                                    sp += 1;
+                                }
+                                FOp::Aux(i) => {
+                                    // Materialised over `d`, indexed directly by row.
+                                    let a = aux.get_unchecked(*i);
+                                    let d0 = sp * B;
+                                    for l in lstart..blk {
+                                        *st.get_unchecked_mut(d0 + l) = *a.get_unchecked(idx0 + l);
+                                    }
+                                    sp += 1;
+                                }
+                                FOp::Add => {
+                                    sp -= 1;
+                                    let (t0, s0) = ((sp - 1) * B, sp * B);
+                                    for l in lstart..blk {
+                                        let v = *st.get_unchecked(s0 + l);
+                                        *st.get_unchecked_mut(t0 + l) += v;
+                                    }
+                                }
+                                FOp::Sub => {
+                                    sp -= 1;
+                                    let (t0, s0) = ((sp - 1) * B, sp * B);
+                                    for l in lstart..blk {
+                                        let v = *st.get_unchecked(s0 + l);
+                                        *st.get_unchecked_mut(t0 + l) -= v;
+                                    }
+                                }
+                                FOp::Mul => {
+                                    sp -= 1;
+                                    let (t0, s0) = ((sp - 1) * B, sp * B);
+                                    for l in lstart..blk {
+                                        let v = *st.get_unchecked(s0 + l);
+                                        *st.get_unchecked_mut(t0 + l) *= v;
+                                    }
+                                }
+                                FOp::Square => {
+                                    let t0 = (sp - 1) * B;
+                                    for l in lstart..blk {
+                                        st.get_unchecked_mut(t0 + l).square_in_place();
+                                    }
+                                }
+                                FOp::Double => {
+                                    let t0 = (sp - 1) * B;
+                                    for l in lstart..blk {
+                                        st.get_unchecked_mut(t0 + l).double_in_place();
+                                    }
+                                }
+                                FOp::Pow(p) => {
+                                    let t0 = (sp - 1) * B;
+                                    if *p == 7 {
+                                        // x^7 = (x^2)^2 * x^2 * x -- the Poseidon
+                                        // S-box, evaluated ~4M times/proof over d8.
+                                        // A fixed 2-square/2-mul chain avoids the
+                                        // generic bigint exponentiation in [pow].
+                                        for l in lstart..blk {
+                                            let x = *st.get_unchecked(t0 + l);
+                                            let x2 = x.square();
+                                            let x4 = x2.square();
+                                            *st.get_unchecked_mut(t0 + l) = x4 * x2 * x;
+                                        }
+                                    } else {
+                                        for l in lstart..blk {
+                                            let v = st.get_unchecked(t0 + l).pow([*p]);
+                                            *st.get_unchecked_mut(t0 + l) = v;
+                                        }
+                                    }
+                                }
+                                FOp::StoreReg(r) => {
+                                    let (d0, s0) = ((regbase + *r) * B, (sp - 1) * B);
+                                    for l in lstart..blk {
+                                        *st.get_unchecked_mut(d0 + l) = *st.get_unchecked(s0 + l);
+                                    }
+                                }
+                                FOp::LoadReg(r) => {
+                                    let (d0, s0) = (sp * B, (regbase + *r) * B);
+                                    for l in lstart..blk {
+                                        *st.get_unchecked_mut(d0 + l) = *st.get_unchecked(s0 + l);
+                                    }
+                                    sp += 1;
+                                }
+                            }
+                        }
+                        for l in lstart..blk {
+                            *slots.get_unchecked_mut(off + l) = *st.get_unchecked(l);
+                        }
+                    }
+                    off += blk;
+                }
+            });
+
+        let mut result = Evaluations::from_vec_and_domain(out, dom);
+        EvalResult::<'_, F>::zero_d1_rows(&mut result, d);
+        Some(result)
+    }
+
+    /// Lower the expression tree into [`FOp`] bytecode (post-order). `Err` means
+    /// an unsupported node was hit and the caller should fall back.
+    #[allow(clippy::too_many_arguments)]
+    fn fcompile<'a, ChallengeTerm, Challenge, Environment>(
+        &self,
+        env: &Environment,
+        d: Domain,
+        code: &mut Vec<FOp>,
+        lits: &mut Vec<F>,
+        cols: &mut Vec<FCol<'a, F>>,
+        aux: &mut Vec<Vec<F>>,
+        regs: &mut HashMap<CacheId, usize>,
+        n_reg: &mut usize,
+        depth: &mut usize,
+        max_depth: &mut usize,
+    ) -> Result<(), ()>
+    where
+        Challenge: Index<ChallengeTerm, Output = F>,
+        Environment: ColumnEnvironment<'a, F, ChallengeTerm, Challenge, Column = Column>,
+    {
+        use ExprInner::*;
+        use Operations::*;
+        match self {
+            Atom(Constant(x)) => {
+                lits.push(*x);
+                code.push(FOp::Lit(lits.len() - 1));
+                *depth += 1;
+                *max_depth = (*max_depth).max(*depth);
+            }
+            Atom(Cell(v)) => {
+                match env.get_column(&v.col) {
+                    None => {
+                        lits.push(F::zero());
+                        code.push(FOp::Lit(lits.len() - 1));
+                    }
+                    Some(e) => {
+                        let d_sub = env.column_domain(&v.col) as usize;
+                        let scale = d_sub / (d as usize);
+                        if scale == 0 {
+                            return Err(());
+                        }
+                        cols.push(FCol {
+                            evals: e.evals.as_slice(),
+                            scale,
+                            offset: d_sub * v.row.shift(),
+                            len: e.evals.len(),
+                        });
+                        code.push(FOp::Col(cols.len() - 1));
+                    }
+                }
+                *depth += 1;
+                *max_depth = (*max_depth).max(*depth);
+            }
+            Add(a, b) => {
+                a.fcompile(env, d, code, lits, cols, aux, regs, n_reg, depth, max_depth)?;
+                b.fcompile(env, d, code, lits, cols, aux, regs, n_reg, depth, max_depth)?;
+                code.push(FOp::Add);
+                *depth -= 1;
+            }
+            Sub(a, b) => {
+                a.fcompile(env, d, code, lits, cols, aux, regs, n_reg, depth, max_depth)?;
+                b.fcompile(env, d, code, lits, cols, aux, regs, n_reg, depth, max_depth)?;
+                code.push(FOp::Sub);
+                *depth -= 1;
+            }
+            Mul(a, b) => {
+                a.fcompile(env, d, code, lits, cols, aux, regs, n_reg, depth, max_depth)?;
+                b.fcompile(env, d, code, lits, cols, aux, regs, n_reg, depth, max_depth)?;
+                code.push(FOp::Mul);
+                *depth -= 1;
+            }
+            Square(a) => {
+                a.fcompile(env, d, code, lits, cols, aux, regs, n_reg, depth, max_depth)?;
+                code.push(FOp::Square);
+            }
+            Double(a) => {
+                a.fcompile(env, d, code, lits, cols, aux, regs, n_reg, depth, max_depth)?;
+                code.push(FOp::Double);
+            }
+            Pow(a, p) => {
+                a.fcompile(env, d, code, lits, cols, aux, regs, n_reg, depth, max_depth)?;
+                code.push(FOp::Pow(*p));
+            }
+            Cache(id, e) => match regs.get(id) {
+                Some(&r) => {
+                    code.push(FOp::LoadReg(r));
+                    *depth += 1;
+                    *max_depth = (*max_depth).max(*depth);
+                }
+                None => {
+                    e.fcompile(env, d, code, lits, cols, aux, regs, n_reg, depth, max_depth)?;
+                    let r = *n_reg;
+                    *n_reg += 1;
+                    regs.insert(*id, r);
+                    code.push(FOp::StoreReg(r));
+                }
+            },
+            // Feature flags are fixed for a proof: resolve at compile time and
+            // only lower the live branch (no per-row branch).
+            IfFeature(feature, e1, e2) => {
+                if feature.is_enabled() {
+                    e1.fcompile(env, d, code, lits, cols, aux, regs, n_reg, depth, max_depth)?;
+                } else {
+                    e2.fcompile(env, d, code, lits, cols, aux, regs, n_reg, depth, max_depth)?;
+                }
+            }
+            // The zk/previous-rows vanishing polynomial is a borrowed d8 column.
+            Atom(VanishesOnZeroKnowledgeAndPreviousRows) => {
+                let e = env.vanishes_on_zero_knowledge_and_previous_rows();
+                let d_sub = Domain::D8 as usize;
+                let scale = d_sub / (d as usize);
+                if scale == 0 {
+                    return Err(());
+                }
+                cols.push(FCol {
+                    evals: e.evals.as_slice(),
+                    scale,
+                    offset: 0,
+                    len: e.evals.len(),
+                });
+                code.push(FOp::Col(cols.len() - 1));
+                *depth += 1;
+                *max_depth = (*max_depth).max(*depth);
+            }
+            // The unnormalized Lagrange basis is materialised over `d` (owned);
+            // precompute it once and load it like a column.
+            Atom(UnnormalizedLagrangeBasis(i)) => {
+                let offset = if i.zk_rows {
+                    -(env.get_constants().zk_rows as i32) + i.offset
+                } else {
+                    i.offset
+                };
+                let evals = unnormalized_lagrange_evals(env.l0_1(), offset, d, env);
+                aux.push(evals.evals);
+                code.push(FOp::Aux(aux.len() - 1));
+                *depth += 1;
+                *max_depth = (*max_depth).max(*depth);
+            }
+        }
+        Ok(())
     }
 
     fn evaluations_helper<
