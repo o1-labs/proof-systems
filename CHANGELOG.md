@@ -16,6 +16,13 @@ and this project adheres to
 - Add an optional mmap-backed prover-index cache for loading proving keys from
   disk while allowing the OS page cache to evict unused pages
   ([#3569](https://github.com/o1-labs/proof-systems/pull/3569))
+- Add an opt-in fused row-wise constraint evaluator, which compiles the
+  constraint expression to a flat bytecode and walks the domain a block at a
+  time instead of materialising a full-domain `Evaluations` per sub-expression.
+  Off by default; selected via `KIMCHI_FUSED_EVAL` (`1` to use it, `verify` to
+  run both paths and assert they agree). Falls back to the vectorised path for
+  any expression it cannot compile
+  ([#3590](https://github.com/o1-labs/proof-systems/pull/3590))
 - Add a `memory_profile` binary under the `diagnostics` feature: proves the
   canonical benchmark circuit (`kimchi::bench::BenchmarkCtx`) under a counting
   global allocator and reports total bytes allocated, allocation count, peak
@@ -79,6 +86,15 @@ and this project adheres to
 
 - Treat public evaluations of oracles as vectors for chunking coherence
   ([#3577](https://github.com/o1-labs/proof-systems/pull/3577))
+
+### [o1-utils](./utils)
+
+#### Added
+
+- Add `cfg_chunks_mut!`, the mutable-chunks counterpart to the existing
+  `cfg_iter!` family, so callers can chunk in parallel without depending on
+  `rayon` unconditionally
+  ([#3586](https://github.com/o1-labs/proof-systems/pull/3586))
 
 ## 0.7.0
 
