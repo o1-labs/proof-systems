@@ -4,7 +4,7 @@ use crate::circuits::domains::EvaluationDomains;
 use alloc::{vec, vec::Vec};
 use ark_ff::FftField;
 use ark_poly::{
-    univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
+    univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E, Polynomial,
     Radix2EvaluationDomain as D,
 };
 #[cfg(feature = "parallel")]
@@ -84,15 +84,12 @@ impl<F: FftField> DomainConstantEvaluations<F> {
         // omega^{n-zk_rows}, omega^{n-zk_rows+1}, omega^{n-1}.
         let permutation_vanishing_polynomial_m =
             permutation_vanishing_polynomial(domain.d1, zk_rows);
-        let permutation_vanishing_polynomial_l = eval_from_roots_over_d8(
-            &x_d8,
-            &[
-                omega.pow([n - zk_rows]),
-                omega.pow([n - zk_rows + 1]),
-                omega.pow([n - 1]),
-            ],
-            domain.d8,
-        );
+        let permutation_vanishing_polynomial_l = {
+            let evals: Vec<F> = o1_utils::cfg_iter!(x_d8)
+                .map(|z| permutation_vanishing_polynomial_m.evaluate(z))
+                .collect();
+            E::from_vec_and_domain(evals, domain.d8)
+        };
 
         let poly_x_d1 = E::from_vec_and_domain(x_d8, domain.d8);
 
