@@ -100,19 +100,21 @@ pub fn caml_pasta_fq_plonk_proof_create(
     // generate the proof.
     runtime.releasing_runtime(|| {
         let group_map = GroupMap::<Fp>::setup();
-        let proof = ProverProof::create_recursive::<
-            DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
-            DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
-            _,
-        >(
-            &group_map,
-            witness,
-            &runtime_tables,
-            index,
-            prev,
-            None,
-            &mut rand::rngs::OsRng,
-        )
+        let proof = crate::with_prove_pool(|| {
+            ProverProof::create_recursive::<
+                DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+                DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi, FULL_ROUNDS>,
+                _,
+            >(
+                &group_map,
+                witness,
+                &runtime_tables,
+                index,
+                prev,
+                None,
+                &mut rand::rngs::OsRng,
+            )
+        })
         .map_err(|e| ocaml::Error::Error(e.into()))?;
         Ok((proof, public_input).into())
     })

@@ -288,7 +288,6 @@ where
             // gamma is a constant, so it needs no all-ones broadcast vector,
             // and x is read straight off the cached d8 domain points.
             let shifts: Evaluations<F, D<F>> = &lagrange
-                .d8
                 .this
                 .w
                 .par_iter()
@@ -317,7 +316,7 @@ where
                     l
                 })
                 .unwrap()
-                * &lagrange.d8.this.z.clone();
+                * &lagrange.this.z.clone();
 
             // sigmas = z(x * w) *
             // (w8[0] + gamma + sigma[0] * beta) *
@@ -325,7 +324,6 @@ where
             // (w8[6] + gamma + sigma[6] * beta)
             // in evaluation form in d8, computed in a single pass per element
             let sigmas = &lagrange
-                .d8
                 .this
                 .w
                 .par_iter()
@@ -358,7 +356,7 @@ where
                     l
                 })
                 .unwrap()
-                * &lagrange.d8.next.z.clone();
+                * &lagrange.z_next.clone();
 
             &(&shifts - &sigmas).scale(alpha0)
                 * &self.cs.precomputations().permutation_vanishing_polynomial_l
