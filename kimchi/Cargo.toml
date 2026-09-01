@@ -76,6 +76,10 @@ iai.workspace = true
 name = "flamegraph"
 required-features = ["prover"]
 
+[[bin]]
+name = "memory_profile"
+required-features = ["prover", "diagnostics"]
+
 [[bench]]
 name = "proof_criterion"
 harness = false
