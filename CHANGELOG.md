@@ -32,6 +32,13 @@ and this project adheres to
 
 #### Changed
 
+- Skip the d1 rows in the permutation quotient. The permutation contribution
+  vanishes there for a satisfying witness, so the honest prover was computing
+  known zeros. The quotient is unchanged, but as a consequence a witness that
+  violates the permutation argument no longer trips the prover's "rest of
+  division by vanishing polynomial" check in release builds; it produces a proof
+  that fails verification instead. Debug builds still reject it earlier via
+  `index.verify()` ([#3589](https://github.com/o1-labs/proof-systems/pull/3589))
 - Lower the prover's peak memory by releasing the d8 evaluations once the
   linearization is done, rather than holding them to end-of-proof
   ([#3587](https://github.com/o1-labs/proof-systems/pull/3587))
