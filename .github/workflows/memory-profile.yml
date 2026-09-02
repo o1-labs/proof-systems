@@ -1,30 +1,30 @@
 #
-# Manually-triggered end-to-end prover memory profile, running the
-# kimchi memory_profile binary. The byte metrics are deterministic for
-# a given runner class, but scale with thread count (rayon scratch
-# buffers) — compare runs from the same runner class only.
+# Manually-triggered end-to-end prover memory profile over the serialised mina
+# circuit fixtures, compared against the merge base with master. Both runs
+# happen back to back on the same runner (like benches-mina-prover.yml): the
+# byte metrics are deterministic for a given runner class, so any nonzero
+# byte delta in the report is caused by the change under test.
 #
 
 name: Prover memory profile
 
 on:
   workflow_dispatch:
-    inputs:
-      srs_log2:
-        description: "log2 of the domain/SRS size (4..=28)"
-        required: false
-        default: "16"
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   memory_profile:
-    name: Run the prover memory profile
+    name: Memory-profile the mina fixtures against master
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          # Full history so the merge base can be checked out and profiled on
+          # this same runner.
+          fetch-depth: 0
 
       - name: Load versions
         id: versions
@@ -35,7 +35,35 @@ jobs:
         with:
           rust_toolchain_version: ${{ steps.versions.outputs.rust-msrv }}
 
-      - name: Run the prover memory profile
+      - name: Record the runner's CPU
+        run: lscpu || cat /proc/cpuinfo
+
+      - name: Resolve the revisions to compare
+        id: revs
         run: |
-          cargo run --release -p kimchi --bin memory_profile \
-            --features diagnostics -- ${{ inputs.srs_log2 }}
+          set -x
+          {
+            echo "head=$(git rev-parse HEAD)"
+            echo "base=$(git merge-base origin/master HEAD)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Profile the baseline (merge base with master)
+        run: |
+          set -x
+          git checkout --detach ${{ steps.revs.outputs.base }}
+          bash scripts/memory-profile-mina-circuits.sh /tmp/memory-profile-base.jsonl
+
+      - name: Profile this revision
+        run: |
+          set -x
+          git checkout --detach ${{ steps.revs.outputs.head }}
+          bash scripts/memory-profile-mina-circuits.sh /tmp/memory-profile-head.jsonl
+
+      - name: Render the comparison matrix
+        run: |
+          {
+            echo "## Prover memory profile: ${{ steps.revs.outputs.head }} vs ${{ steps.revs.outputs.base }}"
+            echo
+            python3 scripts/memory-profile-diff.py \
+              /tmp/memory-profile-base.jsonl /tmp/memory-profile-head.jsonl
+          } | tee -a "$GITHUB_STEP_SUMMARY"
