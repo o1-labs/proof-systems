@@ -36,3 +36,7 @@ for fixture in "$FIXTURES_DIR"/kimchi_inputs_*.ser; do
   # peak_resident is only trustworthy for the first proof in a process.
   "${CARGO_TARGET_DIR:-target}/release/memory_profile" fixture "$fixture" >> "$OUT"
 done
+
+# 2^16 size anchor: no mina fixture reaches that domain size.
+echo "Profiling synthetic 2^16" >&2
+"${CARGO_TARGET_DIR:-target}/release/memory_profile" synthetic --srs-log2 16 >> "$OUT"
