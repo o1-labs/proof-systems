@@ -7,18 +7,25 @@ Rows are joined on (workload, curve, seed). Peak byte metrics are
 deterministic for a given runner, so any nonzero delta there is caused by the
 change under test; allocation counts, peak_resident and the timings are noisy
 and only indicative.
+
+Exits nonzero if a gated metric (allocated, peak_live, peak_delta) grows by
+more than REGRESSION_THRESHOLD on any row. 1% of the peak is roughly one
+domain-sized d8 polynomial buffer (8·2^k·32 bytes), so the gate reads as
+"this change retains at least a polynomial's worth of extra memory".
 """
 
 import json
 import sys
 
+REGRESSION_THRESHOLD = 0.01
+
 METRICS = [
-    ("allocated_bytes", "allocated", "mb"),
-    ("allocs", "allocs*", "count"),
-    ("peak_live_bytes", "peak_live", "mb"),
-    ("peak_delta_bytes", "peak_delta", "mb"),
-    ("peak_resident_bytes", "peak_resident*", "mb"),
-    ("prove_ms", "prove*", "ms"),
+    ("allocated_bytes", "allocated", "mb", True),
+    ("allocs", "allocs*", "count", False),
+    ("peak_live_bytes", "peak_live", "mb", True),
+    ("peak_delta_bytes", "peak_delta", "mb", True),
+    ("peak_resident_bytes", "peak_resident*", "mb", False),
+    ("prove_ms", "prove*", "ms", False),
 ]
 
 
@@ -74,18 +81,26 @@ def main():
     if not common:
         sys.exit("no common (workload, curve, seed) rows between the two runs")
 
-    print("| fixture | " + " | ".join(label for _, label, _ in METRICS) + " |")
+    regressions = []
+    print("| fixture | " + " | ".join(label for _, label, _, _ in METRICS) + " |")
     print("|" + "---|" * (len(METRICS) + 1))
     for key in sorted(common):
         base, head = base_runs[key], head_runs[key]
-        cells = [fmt_cell(base[m], head[m], unit) for m, _, unit in METRICS]
+        cells = []
+        for m, label, unit, gated in METRICS:
+            cell = fmt_cell(base[m], head[m], unit)
+            if gated and base[m] and (head[m] - base[m]) / base[m] > REGRESSION_THRESHOLD:
+                cell = f"**{cell} ⚠**"
+                regressions.append(f"{row_label(key, head)}: {label} {fmt_value(base[m], unit)} -> {fmt_value(head[m], unit)}")
+            cells.append(cell)
         print(f"| {row_label(key, head)} | " + " | ".join(cells) + " |")
 
     print()
     print("Cells are `head (delta vs base, %)`. `peak_live` and `peak_delta` "
           "are deterministic per runner class and `allocated` is stable to "
           "well under 0.1%; metrics marked `*` (allocation count, resident "
-          "set, wall time) are noisy and only indicative.")
+          "set, wall time) are noisy and only indicative. Gated metrics fail "
+          f"the job on a >{REGRESSION_THRESHOLD:.0%} increase.")
 
     only_base = [k for k in base_runs if k not in head_runs]
     only_head = [k for k in head_runs if k not in base_runs]
@@ -93,6 +108,12 @@ def main():
         if keys:
             names = ", ".join(row_label(k, runs[k]) for k in sorted(keys))
             print(f"\nOnly in {label}: {names}")
+
+    if regressions:
+        print(f"\n**Memory regression detected ({len(regressions)}):**")
+        for r in regressions:
+            print(f"- {r}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
