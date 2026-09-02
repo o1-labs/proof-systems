@@ -1782,7 +1782,6 @@ dependencies = [
  "base64 0.21.7",
  "getrandom 0.2.15",
  "kimchi",
- "kimchi_wasm",
  "libc",
  "mina-curves",
  "mina-poseidon",
