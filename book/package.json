@@ -15,7 +15,7 @@
     "remark-math": "6.0.0"
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "3.9.2",
+    "@docusaurus/module-type-aliases": "3.10.2",
     "@docusaurus/types": "3.9.2",
     "typescript": "5.9.3"
   },
