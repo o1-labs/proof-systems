@@ -1,23 +1,52 @@
 //! End-to-end prover memory profile.
 //!
-//! Proves the canonical benchmark circuit (`kimchi::bench::BenchmarkCtx`)
-//! under a counting global allocator and reports, for the proof-creation
-//! window: total bytes allocated, allocation count, peak live bytes (and its
-//! delta over the bytes live when the window opened), plus jemalloc's peak
-//! resident set sampled by a background thread. The process exists for this
-//! one measurement, so the counters are exact for a deterministic workload —
-//! a single run is the answer.
+//! Proves either the canonical benchmark circuit (`kimchi::bench::BenchmarkCtx`)
+//! or a serialised mina circuit fixture (the same `kimchi_inputs_*.ser` files
+//! the `proof_criterion_mina` bench consumes) under a counting global
+//! allocator and reports, for the proof-creation window: total bytes
+//! allocated, allocation count, peak live bytes (and its delta over the bytes
+//! live when the window opened), plus jemalloc's peak resident set sampled by
+//! a background thread. The process exists for this one measurement, so the
+//! counters are exact for a deterministic workload — a single run is the
+//! answer.
 //!
 //! Usage:
 //!
 //! ```text
-//! cargo run --release -p kimchi --bin memory_profile --features diagnostics -- [srs_log2]
+//! cargo run --release -p kimchi --bin memory_profile --features diagnostics -- synthetic [--srs-log2 16]
+//! cargo run --release -p kimchi --bin memory_profile --features diagnostics -- fixture <kimchi_inputs_CURVE_SEED.ser>
 //! ```
 //!
-//! `srs_log2` sets the domain/SRS size (default 16). The resident-set
-//! sampler interval is `KIMCHI_MEMORY_PROFILE_SAMPLE_MS` (default 25).
+//! `synthetic` proves the benchmark circuit at the given domain/SRS size;
+//! `fixture` proves a mina fixture, whose curve and seed are parsed from the
+//! filename exactly as in `proof_criterion_mina`. Output is a single JSON
+//! object on stdout (byte counts, not MB), meant to be collected across
+//! fixtures and diffed against a baseline run — see
+//! `scripts/memory-profile-mina-circuits.sh` and
+//! `scripts/memory-profile-diff.py`.
+//! One fixture per invocation: jemalloc retains pages across proofs, so
+//! `peak_resident` is only trustworthy for the first proof in a process.
+//! The resident-set sampler interval is `KIMCHI_MEMORY_PROFILE_SAMPLE_MS`
+//! (default 25).
 
-use kimchi::bench::BenchmarkCtx;
+use ark_ff::PrimeField;
+use clap::Parser;
+use groupmap::GroupMap;
+use kimchi::{
+    bench::{
+        bench_arguments_from_file, BaseSpongePallas, BaseSpongeVesta, BenchmarkCtx,
+        ScalarSpongePallas, ScalarSpongeVesta,
+    },
+    curve::KimchiCurve,
+    plonk_sponge::FrSponge,
+    proof::ProverProof,
+};
+use mina_curves::{
+    named::NamedCurve,
+    pasta::{Pallas, Vesta},
+};
+use mina_poseidon::{pasta::FULL_ROUNDS, FqSponge};
+use poly_commitment::ipa::OpeningProof;
 use std::time::Instant;
 
 // A counting wrapper around jemalloc. jemalloc-ctl statistics still observe
@@ -123,50 +152,196 @@ mod mem_profile {
         }
     }
 
+    #[derive(serde::Serialize)]
+    pub struct Metrics {
+        #[serde(rename = "allocated_bytes")]
+        pub allocated: usize,
+        pub allocs: usize,
+        #[serde(rename = "peak_live_bytes")]
+        pub peak_live: usize,
+        #[serde(rename = "peak_delta_bytes")]
+        pub peak_delta: usize,
+        #[serde(rename = "peak_resident_bytes")]
+        pub peak_resident: usize,
+    }
+
     impl Window {
-        pub fn report(self, label: &str) {
+        pub fn finish(self) -> Metrics {
             STOP.store(true, Relaxed);
             let _ = self.sampler.join();
-            let mb = |b: usize| b as f64 / (1u64 << 20) as f64;
-            println!(
-                "- {label} allocation profile: allocated={:.1} MB allocs={} \
-                 peak_live={:.1} MB peak_delta={:.1} MB peak_resident={:.1} MB",
-                mb(ALLOCATED.load(Relaxed)),
-                COUNT.load(Relaxed),
-                mb(PEAK.load(Relaxed)),
-                mb(PEAK.load(Relaxed).saturating_sub(self.live_before)),
-                mb(PEAK_RESIDENT.load(Relaxed)),
-            );
+            let peak_live = PEAK.load(Relaxed);
+            Metrics {
+                allocated: ALLOCATED.load(Relaxed),
+                allocs: COUNT.load(Relaxed),
+                peak_live,
+                peak_delta: peak_live.saturating_sub(self.live_before),
+                peak_resident: PEAK_RESIDENT.load(Relaxed),
+            }
         }
     }
 }
 
-fn main() {
-    let srs_log2: u32 = match std::env::args().nth(1) {
-        None => 16,
-        Some(s) => s
-            .parse()
-            .unwrap_or_else(|_| panic!("srs_log2 must be an integer, got {s:?}")),
-    };
-    assert!(
-        (4..=28).contains(&srs_log2),
-        "srs_log2 must be in 4..=28, got {srs_log2}"
-    );
-    println!("PROVER MEMORY PROFILE: domain/SRS 2^{srs_log2}");
+/// One profiled proof, as the JSON object written to stdout.
+#[derive(serde::Serialize)]
+struct Report<'a> {
+    workload: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    srs_log2: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    curve: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    seed: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    domain_log2: Option<u32>,
+    setup_ms: u128,
+    prove_ms: u128,
+    #[serde(flatten)]
+    metrics: mem_profile::Metrics,
+}
 
+impl std::fmt::Display for Report<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&serde_json::to_string(self).map_err(|_| std::fmt::Error)?)
+    }
+}
+
+/// A serialised mina circuit fixture, addressed by the filename convention
+/// `kimchi_inputs_CURVE_SEED.ser` that `proof_criterion_mina` also uses.
+#[derive(Clone)]
+struct Fixture {
+    path: String,
+    curve: String,
+    seed: String,
+}
+
+impl std::str::FromStr for Fixture {
+    type Err = String;
+
+    fn from_str(path: &str) -> Result<Self, Self::Err> {
+        let (curve, seed) = path
+            .split('/')
+            .next_back()
+            .unwrap_or(path)
+            .strip_prefix("kimchi_inputs_")
+            .and_then(|s| s.strip_suffix(".ser"))
+            .and_then(|s| s.split_once('_'))
+            .ok_or_else(|| {
+                format!(
+                    "fixture filename must look like kimchi_inputs_CURVE_SEED.ser, got {path:?}"
+                )
+            })?;
+        Ok(Fixture {
+            path: path.to_string(),
+            curve: curve.to_string(),
+            seed: seed.to_string(),
+        })
+    }
+}
+
+fn profile_synthetic(srs_log2: u32) {
     let setup_start = Instant::now();
     let ctx = BenchmarkCtx::new(srs_log2);
-    println!(
-        "- setup time (index, verifier digest, lagrange basis): {} ms",
-        setup_start.elapsed().as_millis()
-    );
+    let setup_ms = setup_start.elapsed().as_millis();
 
     let window = mem_profile::start();
     let prove_start = Instant::now();
     let proof_and_public = ctx.create_proof();
-    let prove_time = prove_start.elapsed();
-    window.report("proof creation");
-    println!("- time to create proof: {} ms", prove_time.as_millis());
-
+    let prove_ms = prove_start.elapsed().as_millis();
+    let metrics = window.finish();
     std::hint::black_box(proof_and_public);
+
+    println!(
+        "{}",
+        Report {
+            workload: "synthetic",
+            srs_log2: Some(srs_log2),
+            curve: None,
+            seed: None,
+            domain_log2: None,
+            setup_ms,
+            prove_ms,
+            metrics,
+        }
+    );
+}
+
+fn profile_fixture_curve<G, BaseSponge, ScalarSponge>(fixture: &Fixture)
+where
+    G: KimchiCurve<FULL_ROUNDS> + NamedCurve,
+    G::BaseField: PrimeField,
+    BaseSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField, FULL_ROUNDS>,
+    ScalarSponge: FrSponge<G::ScalarField>
+        + From<&'static mina_poseidon::poseidon::ArithmeticSpongeParams<G::ScalarField, FULL_ROUNDS>>,
+{
+    let setup_start = Instant::now();
+    let srs = poly_commitment::precomputed_srs::get_srs_test();
+    let (index, witness, runtime_tables, prev) =
+        bench_arguments_from_file::<FULL_ROUNDS, G, BaseSponge>(srs, fixture.path.clone());
+    let group_map = GroupMap::<_>::setup();
+    let domain_log2 = index.cs.domain.d1.size.trailing_zeros();
+    let setup_ms = setup_start.elapsed().as_millis();
+
+    let window = mem_profile::start();
+    let prove_start = Instant::now();
+    let proof = ProverProof::<G, OpeningProof<G, FULL_ROUNDS>, FULL_ROUNDS>::create_recursive::<
+        BaseSponge,
+        ScalarSponge,
+        _,
+    >(
+        &group_map,
+        witness,
+        &runtime_tables,
+        &index,
+        prev,
+        None,
+        &mut rand::rngs::OsRng,
+    )
+    .expect("proof creation failed: the fixture no longer satisfies the constraint system");
+    let prove_ms = prove_start.elapsed().as_millis();
+    let metrics = window.finish();
+    std::hint::black_box(proof);
+
+    println!(
+        "{}",
+        Report {
+            workload: "fixture",
+            srs_log2: None,
+            curve: Some(&fixture.curve),
+            seed: Some(&fixture.seed),
+            domain_log2: Some(domain_log2),
+            setup_ms,
+            prove_ms,
+            metrics,
+        }
+    );
+}
+
+fn profile_mina_fixture(fixture: &Fixture) {
+    if fixture.curve == Vesta::NAME {
+        profile_fixture_curve::<Vesta, BaseSpongeVesta, ScalarSpongeVesta>(fixture);
+    } else if fixture.curve == Pallas::NAME {
+        profile_fixture_curve::<Pallas, BaseSpongePallas, ScalarSpongePallas>(fixture);
+    } else {
+        panic!("Unsupported curve: {}", fixture.curve);
+    }
+}
+
+#[derive(Parser)]
+#[command(about = "End-to-end prover memory profile; emits one JSON object on stdout")]
+enum Cli {
+    /// Prove the synthetic benchmark circuit (kimchi::bench::BenchmarkCtx)
+    Synthetic {
+        /// log2 of the domain/SRS size
+        #[arg(long, default_value_t = 16, value_parser = clap::value_parser!(u32).range(4..=28))]
+        srs_log2: u32,
+    },
+    /// Prove a serialised mina circuit fixture (kimchi_inputs_CURVE_SEED.ser)
+    Fixture { fixture: Fixture },
+}
+
+fn main() {
+    match Cli::parse() {
+        Cli::Synthetic { srs_log2 } => profile_synthetic(srs_log2),
+        Cli::Fixture { fixture } => profile_mina_fixture(&fixture),
+    }
 }
