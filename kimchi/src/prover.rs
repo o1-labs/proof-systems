@@ -134,7 +134,6 @@ where
     runtime_table: Option<DensePolynomial<F>>,
     runtime_table_d8: Option<Evaluations<F, D<F>>>,
     runtime_table_comm: Option<BlindedCommitment<G>>,
-    runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
 impl<G, OpeningProof, const FULL_ROUNDS: usize> ProverProof<G, OpeningProof, FULL_ROUNDS>
@@ -394,7 +393,7 @@ where
                 "uses_runtime_tables": lcs.runtime_tables.is_some(),
             });
             //~~ * if using runtime table:
-            if let Some(cfg_runtime_tables) = &lcs.runtime_tables {
+            let runtime_second_col_d8 = if let Some(cfg_runtime_tables) = &lcs.runtime_tables {
                 //~~~ * check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
                 //~~~   we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
                 let expected_runtime: Vec<_> = cfg_runtime_tables
@@ -461,8 +460,10 @@ where
                 lookup_context.runtime_table = Some(runtime_table_contribution);
                 lookup_context.runtime_table_d8 = Some(runtime_table_contribution_d8);
                 lookup_context.runtime_table_comm = Some(runtime_table_comm);
-                lookup_context.runtime_second_col_d8 = Some(second_column_d8);
-            }
+                Some(second_column_d8)
+            } else {
+                None
+            };
 
             //~~ * If queries involve a lookup table with multiple columns
             //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
@@ -524,7 +525,7 @@ where
                             )
                         } else {
                             // if runtime table are used, the second row is modified
-                            let second_col = lookup_context.runtime_second_col_d8.as_ref().unwrap();
+                            let second_col = runtime_second_col_d8.as_ref().unwrap();
 
                             let table_row = lcs.lookup_table8.iter().enumerate().map(|(col, e)| {
                                 if col == 1 {
@@ -636,6 +637,7 @@ where
         if let Some(lcs) = lookup_constraint_system {
             //~~ * Compute the lookup aggregation polynomial.
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
+            let sorted = lookup_context.sorted.take().unwrap();
 
             let aggreg = lookup::constraints::aggregation::<_, G::ScalarField>(
                 lookup_context.dummy_lookup_value.unwrap(),
@@ -647,7 +649,7 @@ where
                 &lookup_context.table_id_combiner.unwrap(),
                 beta,
                 gamma,
-                lookup_context.sorted.as_ref().unwrap(),
+                &sorted,
                 rng,
                 &lcs.configuration.lookup_info,
                 index.cs.zk_rows as usize,
@@ -677,6 +679,7 @@ where
         //~ 1. Compute the permutation aggregation polynomial $z$.
         internal_tracing::checkpoint!(internal_traces; z_permutation_aggregation_polynomial);
         let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
+        drop(witness);
 
         //~ 1. Commit (hiding) to the permutation aggregation polynomial $z$.
         let z_comm = index.srs.commit(&z_poly, num_chunks, rng);
@@ -702,162 +705,165 @@ where
         //~~ * the negated public polynomial
         //~    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
         //~    TODO: specify the split of the permutation polynomial into perm and bnd?
-        let lookup_env = if let Some(lcs) = lookup_constraint_system {
-            let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
+        let (t_comm, zeta, zeta_omega, chunked_evals, ft, blinding_ft) = {
+            let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.take();
+            let sorted8 = lookup_context.sorted8.take();
+            let aggreg8 = lookup_context.aggreg8.take();
+            let runtime_table_d8 = lookup_context.runtime_table_d8.take();
 
-            Some(LookupEnvironment {
-                aggreg: lookup_context.aggreg8.as_ref().unwrap(),
-                sorted: lookup_context.sorted8.as_ref().unwrap(),
-                selectors: &lcs.lookup_selectors,
-                table: joint_lookup_table_d8,
-                runtime_selector: lcs.runtime_selector.as_ref(),
-                runtime_table: lookup_context.runtime_table_d8.as_ref(),
-            })
-        } else {
-            None
-        };
+            let lookup_env = if let Some(lcs) = lookup_constraint_system {
+                Some(LookupEnvironment {
+                    aggreg: aggreg8.as_ref().unwrap(),
+                    sorted: sorted8.as_ref().unwrap(),
+                    selectors: &lcs.lookup_selectors,
+                    table: joint_lookup_table_d8.as_ref().unwrap(),
+                    runtime_selector: lcs.runtime_selector.as_ref(),
+                    runtime_table: runtime_table_d8.as_ref(),
+                })
+            } else {
+                None
+            };
 
-        internal_tracing::checkpoint!(internal_traces; eval_witness_polynomials_over_domains);
-        let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
-        internal_tracing::checkpoint!(internal_traces; compute_index_evals);
-        let env = {
-            let mut index_evals = HashMap::new();
-            use GateType::*;
-            index_evals.insert(Generic, &column_evaluations.generic_selector4);
-            index_evals.insert(Poseidon, &column_evaluations.poseidon_selector8);
-            index_evals.insert(CompleteAdd, &column_evaluations.complete_add_selector4);
-            index_evals.insert(VarBaseMul, &column_evaluations.mul_selector8);
-            index_evals.insert(EndoMul, &column_evaluations.emul_selector8);
-            index_evals.insert(EndoMulScalar, &column_evaluations.endomul_scalar_selector8);
+            internal_tracing::checkpoint!(internal_traces; eval_witness_polynomials_over_domains);
+            let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
+            internal_tracing::checkpoint!(internal_traces; compute_index_evals);
+            let env = {
+                let mut index_evals = HashMap::new();
+                use GateType::*;
+                index_evals.insert(Generic, &column_evaluations.generic_selector4);
+                index_evals.insert(Poseidon, &column_evaluations.poseidon_selector8);
+                index_evals.insert(CompleteAdd, &column_evaluations.complete_add_selector4);
+                index_evals.insert(VarBaseMul, &column_evaluations.mul_selector8);
+                index_evals.insert(EndoMul, &column_evaluations.emul_selector8);
+                index_evals.insert(EndoMulScalar, &column_evaluations.endomul_scalar_selector8);
 
-            if let Some(selector) = &column_evaluations.range_check0_selector8 {
-                index_evals.insert(GateType::RangeCheck0, selector);
-            }
-
-            if let Some(selector) = &column_evaluations.range_check1_selector8 {
-                index_evals.insert(GateType::RangeCheck1, selector);
-            }
-
-            if let Some(selector) = &column_evaluations.foreign_field_add_selector8 {
-                index_evals.insert(GateType::ForeignFieldAdd, selector);
-            }
-
-            if let Some(selector) = &column_evaluations.foreign_field_mul_selector8 {
-                index_evals.extend(
-                    foreign_field_mul::gadget::circuit_gates()
-                        .iter()
-                        .map(|gate_type| (*gate_type, selector)),
-                );
-            }
-
-            if let Some(selector) = &column_evaluations.xor_selector8 {
-                index_evals.insert(GateType::Xor16, selector);
-            }
-
-            if let Some(selector) = &column_evaluations.rot_selector8 {
-                index_evals.insert(GateType::Rot64, selector);
-            }
-
-            let mds = &G::sponge_params().mds;
-            Environment {
-                constants: Constants {
-                    endo_coefficient: index.cs.endo,
-                    mds,
-                    zk_rows: index.cs.zk_rows,
-                },
-                challenges: BerkeleyChallenges {
-                    alpha,
-                    beta,
-                    gamma,
-                    joint_combiner: lookup_context
-                        .joint_combiner
-                        .unwrap_or(G::ScalarField::zero()),
-                },
-                witness: &lagrange.this.w,
-                coefficient: &column_evaluations.coefficients8,
-                vanishes_on_zero_knowledge_and_previous_rows: &index
-                    .cs
-                    .precomputations()
-                    .vanishes_on_zero_knowledge_and_previous_rows,
-                z: &lagrange.this.z,
-                l0_1: l0_1(index.cs.domain.d1),
-                domain: index.cs.domain,
-                index: index_evals,
-                lookup: lookup_env,
-            }
-        };
-
-        let mut cache = expr::Cache::default();
-
-        internal_tracing::checkpoint!(internal_traces; compute_quotient_poly);
-
-        let quotient_poly = {
-            // generic
-            let mut t4 = {
-                let generic_constraint =
-                    generic::Generic::combined_constraints(&all_alphas, &mut cache);
-                let generic4 = generic_constraint.evaluations(&env);
-
-                if cfg!(debug_assertions) {
-                    let p4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
-                    let gen_minus_pub = &generic4 + &p4;
-
-                    check_constraint!(index, gen_minus_pub);
+                if let Some(selector) = &column_evaluations.range_check0_selector8 {
+                    index_evals.insert(GateType::RangeCheck0, selector);
                 }
 
-                generic4
+                if let Some(selector) = &column_evaluations.range_check1_selector8 {
+                    index_evals.insert(GateType::RangeCheck1, selector);
+                }
+
+                if let Some(selector) = &column_evaluations.foreign_field_add_selector8 {
+                    index_evals.insert(GateType::ForeignFieldAdd, selector);
+                }
+
+                if let Some(selector) = &column_evaluations.foreign_field_mul_selector8 {
+                    index_evals.extend(
+                        foreign_field_mul::gadget::circuit_gates()
+                            .iter()
+                            .map(|gate_type| (*gate_type, selector)),
+                    );
+                }
+
+                if let Some(selector) = &column_evaluations.xor_selector8 {
+                    index_evals.insert(GateType::Xor16, selector);
+                }
+
+                if let Some(selector) = &column_evaluations.rot_selector8 {
+                    index_evals.insert(GateType::Rot64, selector);
+                }
+
+                let mds = &G::sponge_params().mds;
+                Environment {
+                    constants: Constants {
+                        endo_coefficient: index.cs.endo,
+                        mds,
+                        zk_rows: index.cs.zk_rows,
+                    },
+                    challenges: BerkeleyChallenges {
+                        alpha,
+                        beta,
+                        gamma,
+                        joint_combiner: lookup_context
+                            .joint_combiner
+                            .unwrap_or(G::ScalarField::zero()),
+                    },
+                    witness: &lagrange.this.w,
+                    coefficient: &column_evaluations.coefficients8,
+                    vanishes_on_zero_knowledge_and_previous_rows: &index
+                        .cs
+                        .precomputations()
+                        .vanishes_on_zero_knowledge_and_previous_rows,
+                    z: &lagrange.this.z,
+                    l0_1: l0_1(index.cs.domain.d1),
+                    domain: index.cs.domain,
+                    index: index_evals,
+                    lookup: lookup_env,
+                }
             };
 
-            // permutation
-            let (mut t8, bnd) = {
-                let alphas =
-                    all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                let (perm, bnd) = index.perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
+            let mut cache = expr::Cache::default();
 
-                check_constraint!(index, perm);
+            internal_tracing::checkpoint!(internal_traces; compute_quotient_poly);
 
-                (perm, bnd)
-            };
+            let quotient_poly = {
+                // generic
+                let mut t4 = {
+                    let generic_constraint =
+                        generic::Generic::combined_constraints(&all_alphas, &mut cache);
+                    let generic4 = generic_constraint.evaluations(&env);
 
-            {
-                use crate::circuits::argument::DynArgument;
+                    if cfg!(debug_assertions) {
+                        let p4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
+                        let gen_minus_pub = &generic4 + &p4;
 
-                let range_check0_enabled = column_evaluations.range_check0_selector8.is_some();
-                let range_check1_enabled = column_evaluations.range_check1_selector8.is_some();
-                let foreign_field_addition_enabled =
-                    column_evaluations.foreign_field_add_selector8.is_some();
-                let foreign_field_multiplication_enabled =
-                    column_evaluations.foreign_field_mul_selector8.is_some();
-                let xor_enabled = column_evaluations.xor_selector8.is_some();
-                let rot_enabled = column_evaluations.rot_selector8.is_some();
+                        check_constraint!(index, gen_minus_pub);
+                    }
 
-                for gate in [
-                    (
-                        (&CompleteAdd::default() as &dyn DynArgument<G::ScalarField>),
-                        true,
-                    ),
-                    (&VarbaseMul::default(), true),
-                    (&EndosclMul::default(), true),
-                    (&EndomulScalar::default(), true),
-                    (&Poseidon::default(), true),
-                    // Range check gates
-                    (&RangeCheck0::default(), range_check0_enabled),
-                    (&RangeCheck1::default(), range_check1_enabled),
-                    // Foreign field addition gate
-                    (&ForeignFieldAdd::default(), foreign_field_addition_enabled),
-                    // Foreign field multiplication gate
-                    (
-                        &ForeignFieldMul::default(),
-                        foreign_field_multiplication_enabled,
-                    ),
-                    // Xor gate
-                    (&Xor16::default(), xor_enabled),
-                    // Rot gate
-                    (&Rot64::default(), rot_enabled),
-                ]
-                .into_iter()
-                .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })
+                    generic4
+                };
+
+                // permutation
+                let (mut t8, bnd) = {
+                    let alphas =
+                        all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
+                    let (perm, bnd) = index.perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
+
+                    check_constraint!(index, perm);
+
+                    (perm, bnd)
+                };
+
                 {
+                    use crate::circuits::argument::DynArgument;
+
+                    let range_check0_enabled = column_evaluations.range_check0_selector8.is_some();
+                    let range_check1_enabled = column_evaluations.range_check1_selector8.is_some();
+                    let foreign_field_addition_enabled =
+                        column_evaluations.foreign_field_add_selector8.is_some();
+                    let foreign_field_multiplication_enabled =
+                        column_evaluations.foreign_field_mul_selector8.is_some();
+                    let xor_enabled = column_evaluations.xor_selector8.is_some();
+                    let rot_enabled = column_evaluations.rot_selector8.is_some();
+
+                    for gate in [
+                        (
+                            (&CompleteAdd::default() as &dyn DynArgument<G::ScalarField>),
+                            true,
+                        ),
+                        (&VarbaseMul::default(), true),
+                        (&EndosclMul::default(), true),
+                        (&EndomulScalar::default(), true),
+                        (&Poseidon::default(), true),
+                        // Range check gates
+                        (&RangeCheck0::default(), range_check0_enabled),
+                        (&RangeCheck1::default(), range_check1_enabled),
+                        // Foreign field addition gate
+                        (&ForeignFieldAdd::default(), foreign_field_addition_enabled),
+                        // Foreign field multiplication gate
+                        (
+                            &ForeignFieldMul::default(),
+                            foreign_field_multiplication_enabled,
+                        ),
+                        // Xor gate
+                        (&Xor16::default(), xor_enabled),
+                        // Rot gate
+                        (&Rot64::default(), rot_enabled),
+                    ]
+                    .into_iter()
+                    .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })
                     {
                         let constraint = gate.combined_constraints(&all_alphas, &mut cache);
                         let eval = constraint.evaluations(&env);
@@ -869,338 +875,335 @@ where
                             panic!("Bad evaluation")
                         }
                         check_constraint!(index, format!("{:?}", gate.argument_type()), eval);
-                    };
-                }
-            }
-
-            // lookup
-            {
-                if let Some(lcs) = lookup_constraint_system {
-                    let constraints = lookup::constraints::constraints(&lcs.configuration, false);
-                    let constraints_len = u32::try_from(constraints.len())
-                        .expect("not expecting a large amount of constraints");
-                    let lookup_alphas =
-                        all_alphas.get_alphas(ArgumentType::Lookup, constraints_len);
-
-                    // as lookup constraints are computed with the expression framework,
-                    // each of them can result in Evaluations of different domains
-                    for (ii, (constraint, alpha_pow)) in
-                        constraints.into_iter().zip_eq(lookup_alphas).enumerate()
-                    {
-                        let mut eval = constraint.evaluations(&env);
-                        eval.evals.par_iter_mut().for_each(|x| *x *= alpha_pow);
-
-                        if eval.domain().size == t4.domain().size {
-                            t4 += &eval;
-                        } else if eval.domain().size == t8.domain().size {
-                            t8 += &eval;
-                        } else if eval.evals.iter().all(|x| x.is_zero()) {
-                            // Skip any 0-valued evaluations
-                        } else {
-                            panic!("Bad evaluation")
-                        }
-
-                        check_constraint!(index, format!("lookup constraint #{ii}"), eval);
                     }
-                }
-            }
-
-            // public polynomial
-            let mut f = t4.interpolate() + t8.interpolate();
-            f += &public_poly;
-
-            // divide contributions with vanishing polynomial
-            let (mut quotient, res) = f.divide_by_vanishing_poly(index.cs.domain.d1);
-            if !res.is_zero() {
-                return Err(ProverError::Prover(
-                    "rest of division by vanishing polynomial",
-                ));
-            }
-
-            quotient += &bnd; // already divided by Z_H
-            quotient
-        };
-
-        //~ 1. commit (hiding) to the quotient polynomial $t$
-        let t_comm = { index.srs.commit(&quotient_poly, 7 * num_chunks, rng) };
-
-        //~ 1. Absorb the commitment of the quotient polynomial with the Fq-Sponge.
-        absorb_commitment(&mut fq_sponge, &t_comm.commitment);
-
-        //~ 1. Sample $\zeta'$ with the Fq-Sponge.
-        let zeta_chal = ScalarChallenge::new(fq_sponge.challenge());
-
-        //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
-        let zeta = zeta_chal.to_field(endo_r);
-
-        let omega = index.cs.domain.d1.group_gen;
-        let zeta_omega = zeta * omega;
-
-        //~ 1. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
-        if lookup_constraint_system.is_some() {
-            //~~ * the aggregation polynomial
-            let aggreg = lookup_context
-                .aggreg_coeffs
-                .as_ref()
-                .unwrap()
-                .to_chunked_polynomial(num_chunks, index.max_poly_size);
-
-            //~~ * the sorted polynomials
-            let sorted = lookup_context
-                .sorted_coeffs
-                .as_ref()
-                .unwrap()
-                .iter()
-                .map(|c| c.to_chunked_polynomial(num_chunks, index.max_poly_size))
-                .collect::<Vec<_>>();
-
-            //~~ * the table polynonial
-            let joint_table = lookup_context.joint_lookup_table.as_ref().unwrap();
-            let joint_table = joint_table.to_chunked_polynomial(num_chunks, index.max_poly_size);
-
-            lookup_context.lookup_aggregation_eval = Some(PointEvaluations {
-                zeta: aggreg.evaluate_chunks(zeta),
-                zeta_omega: aggreg.evaluate_chunks(zeta_omega),
-            });
-            lookup_context.lookup_table_eval = Some(PointEvaluations {
-                zeta: joint_table.evaluate_chunks(zeta),
-                zeta_omega: joint_table.evaluate_chunks(zeta_omega),
-            });
-            lookup_context.lookup_sorted_eval = array::from_fn(|i| {
-                if i < sorted.len() {
-                    let sorted = &sorted[i];
-                    Some(PointEvaluations {
-                        zeta: sorted.evaluate_chunks(zeta),
-                        zeta_omega: sorted.evaluate_chunks(zeta_omega),
-                    })
-                } else {
-                    None
-                }
-            });
-            lookup_context.runtime_lookup_table_eval =
-                lookup_context.runtime_table.as_ref().map(|runtime_table| {
-                    let runtime_table =
-                        runtime_table.to_chunked_polynomial(num_chunks, index.max_poly_size);
-                    PointEvaluations {
-                        zeta: runtime_table.evaluate_chunks(zeta),
-                        zeta_omega: runtime_table.evaluate_chunks(zeta_omega),
-                    }
-                });
-        }
-
-        //~ 1. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
-        //~~ * $s_i$
-        //~~ * $w_i$
-        //~~ * $z$
-        //~~ * lookup (TODO, see [this issue](https://github.com/MinaProtocol/mina/issues/13886))
-        //~~ * generic selector
-        //~~ * poseidon selector
-        //~
-        //~    By "chunk evaluate" we mean that the evaluation of each polynomial can potentially be a vector of values.
-        //~    This is because the index's `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.
-        //~    If a polynomial $f$ exceeds this size, it must be split into several polynomials like so:
-        //~    $$f(x) = f_0(x) + x^n f_1(x) + x^{2n} f_2(x) + \cdots$$
-        //~
-        //~    And the evaluation of such a polynomial is the following list for $x \in {\zeta, \zeta\omega}$:
-        //~
-        //~    $$(f_0(x), f_1(x), f_2(x), \ldots)$$
-        //~
-        //~    TODO: do we want to specify more on that? It seems unnecessary except for the t polynomial (or if for some reason someone sets that to a low value)
-
-        internal_tracing::checkpoint!(internal_traces; lagrange_basis_eval_zeta_poly);
-        let zeta_evals =
-            LagrangeBasisEvaluations::new(index.max_poly_size, index.cs.domain.d1, zeta);
-        internal_tracing::checkpoint!(internal_traces; lagrange_basis_eval_zeta_omega_poly);
-        let zeta_omega_evals =
-            LagrangeBasisEvaluations::new(index.max_poly_size, index.cs.domain.d1, zeta_omega);
-
-        let chunked_evals_for_selector =
-            |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
-                zeta: zeta_evals.evaluate_boolean(p),
-                zeta_omega: zeta_omega_evals.evaluate_boolean(p),
-            };
-
-        let chunked_evals_for_evaluations =
-            |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
-                zeta: zeta_evals.evaluate(p),
-                zeta_omega: zeta_omega_evals.evaluate(p),
-            };
-
-        internal_tracing::checkpoint!(internal_traces; chunk_eval_zeta_omega_poly);
-        let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
-            public: {
-                let chunked = public_poly.to_chunked_polynomial(num_chunks, index.max_poly_size);
-                Some(PointEvaluations {
-                    zeta: chunked.evaluate_chunks(zeta),
-                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                })
-            },
-            s: array::from_fn(|i| {
-                chunked_evals_for_evaluations(&column_evaluations.permutation_coefficients8[i])
-            }),
-            coefficients: array::from_fn(|i| {
-                chunked_evals_for_evaluations(&column_evaluations.coefficients8[i])
-            }),
-            w: array::from_fn(|i| {
-                let chunked =
-                    witness_poly[i].to_chunked_polynomial(num_chunks, index.max_poly_size);
-                PointEvaluations {
-                    zeta: chunked.evaluate_chunks(zeta),
-                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                }
-            }),
-
-            z: {
-                let chunked = z_poly.to_chunked_polynomial(num_chunks, index.max_poly_size);
-                PointEvaluations {
-                    zeta: chunked.evaluate_chunks(zeta),
-                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                }
-            },
-
-            lookup_aggregation: lookup_context.lookup_aggregation_eval.take(),
-            lookup_table: lookup_context.lookup_table_eval.take(),
-            lookup_sorted: array::from_fn(|i| lookup_context.lookup_sorted_eval[i].take()),
-            runtime_lookup_table: lookup_context.runtime_lookup_table_eval.take(),
-            generic_selector: chunked_evals_for_selector(&column_evaluations.generic_selector4),
-            poseidon_selector: chunked_evals_for_selector(&column_evaluations.poseidon_selector8),
-            complete_add_selector: chunked_evals_for_selector(
-                &column_evaluations.complete_add_selector4,
-            ),
-            mul_selector: chunked_evals_for_selector(&column_evaluations.mul_selector8),
-            emul_selector: chunked_evals_for_selector(&column_evaluations.emul_selector8),
-            endomul_scalar_selector: chunked_evals_for_selector(
-                &column_evaluations.endomul_scalar_selector8,
-            ),
-
-            range_check0_selector: column_evaluations
-                .range_check0_selector8
-                .as_ref()
-                .map(chunked_evals_for_selector),
-            range_check1_selector: column_evaluations
-                .range_check1_selector8
-                .as_ref()
-                .map(chunked_evals_for_selector),
-            foreign_field_add_selector: column_evaluations
-                .foreign_field_add_selector8
-                .as_ref()
-                .map(chunked_evals_for_selector),
-            foreign_field_mul_selector: column_evaluations
-                .foreign_field_mul_selector8
-                .as_ref()
-                .map(chunked_evals_for_selector),
-            xor_selector: column_evaluations
-                .xor_selector8
-                .as_ref()
-                .map(chunked_evals_for_selector),
-            rot_selector: column_evaluations
-                .rot_selector8
-                .as_ref()
-                .map(chunked_evals_for_selector),
-
-            runtime_lookup_table_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
-                lcs.runtime_selector
-                    .as_ref()
-                    .map(chunked_evals_for_selector)
-            }),
-            xor_lookup_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
-                lcs.lookup_selectors
-                    .xor
-                    .as_ref()
-                    .map(chunked_evals_for_selector)
-            }),
-            lookup_gate_lookup_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
-                lcs.lookup_selectors
-                    .lookup
-                    .as_ref()
-                    .map(chunked_evals_for_selector)
-            }),
-            range_check_lookup_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
-                lcs.lookup_selectors
-                    .range_check
-                    .as_ref()
-                    .map(chunked_evals_for_selector)
-            }),
-            foreign_field_mul_lookup_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
-                lcs.lookup_selectors
-                    .ffmul
-                    .as_ref()
-                    .map(chunked_evals_for_selector)
-            }),
-        };
-
-        let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);
-        let zeta_omega_to_srs_len = zeta_omega.pow([index.max_poly_size as u64]);
-        let zeta_to_domain_size = zeta.pow([d1_size as u64]);
-
-        //~ 1. Evaluate the same polynomials without chunking them
-        //~    (so that each polynomial should correspond to a single value this time).
-        let evals: ProofEvaluations<PointEvaluations<G::ScalarField>> = {
-            let powers_of_eval_points_for_chunks = PointEvaluations {
-                zeta: zeta_to_srs_len,
-                zeta_omega: zeta_omega_to_srs_len,
-            };
-            chunked_evals.combine(&powers_of_eval_points_for_chunks)
-        };
-
-        //~ 1. Compute the ft polynomial.
-        //~    This is to implement [Maller's optimization](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html).
-        internal_tracing::checkpoint!(internal_traces; compute_ft_poly);
-        let ft: DensePolynomial<G::ScalarField> = {
-            let f_chunked = {
-                // TODO: compute the linearization polynomial in evaluation form so
-                // that we can drop the coefficient forms of the index polynomials from
-                // the constraint system struct
-
-                // permutation (not part of linearization yet)
-                let alphas =
-                    all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                let f = index.perm_lnrz(&evals, zeta, beta, gamma, alphas);
-
-                // the circuit polynomial
-                let f = {
-                    let (_lin_constant, mut lin) =
-                        index.linearization.to_polynomial(&env, zeta, &evals);
-                    lin += &f;
-                    lin.interpolate()
                 };
 
-                // The constraint environment and the d8 evaluations it borrows
-                // (`lagrange`, and the lookup table / sorted / aggregation
-                // evaluations) are not needed past this point -- everything
-                // below operates on d1-sized polynomials. Those d8 buffers
-                // dominate the prover's peak memory, so releasing them here
-                // rather than at end-of-proof materially lowers the peak.
-                drop(env);
-                drop(lagrange);
-                lookup_context.joint_lookup_table_d8 = None;
-                lookup_context.sorted8 = None;
-                lookup_context.aggreg8 = None;
+                // lookup
+                {
+                    if let Some(lcs) = lookup_constraint_system {
+                        let constraints =
+                            lookup::constraints::constraints(&lcs.configuration, false);
+                        let constraints_len = u32::try_from(constraints.len())
+                            .expect("not expecting a large amount of constraints");
+                        let lookup_alphas =
+                            all_alphas.get_alphas(ArgumentType::Lookup, constraints_len);
 
-                // see https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#the-prover-side
-                f.to_chunked_polynomial(num_chunks, index.max_poly_size)
-                    .linearize(zeta_to_srs_len)
+                        // as lookup constraints are computed with the expression framework,
+                        // each of them can result in Evaluations of different domains
+                        for (ii, (constraint, alpha_pow)) in
+                            constraints.into_iter().zip_eq(lookup_alphas).enumerate()
+                        {
+                            let mut eval = constraint.evaluations(&env);
+                            eval.evals.par_iter_mut().for_each(|x| *x *= alpha_pow);
+
+                            if eval.domain().size == t4.domain().size {
+                                t4 += &eval;
+                            } else if eval.domain().size == t8.domain().size {
+                                t8 += &eval;
+                            } else if eval.evals.iter().all(|x| x.is_zero()) {
+                                // Skip any 0-valued evaluations
+                            } else {
+                                panic!("Bad evaluation")
+                            }
+
+                            check_constraint!(index, format!("lookup constraint #{ii}"), eval);
+                        }
+                    }
+                }
+
+                // public polynomial
+                let mut f = t4.interpolate() + t8.interpolate();
+                f += &public_poly;
+
+                // divide contributions with vanishing polynomial
+                let (mut quotient, res) = f.divide_by_vanishing_poly(index.cs.domain.d1);
+                if !res.is_zero() {
+                    return Err(ProverError::Prover(
+                        "rest of division by vanishing polynomial",
+                    ));
+                }
+
+                quotient += &bnd; // already divided by Z_H
+                quotient
             };
 
-            let t_chunked = quotient_poly
-                .to_chunked_polynomial(7 * num_chunks, index.max_poly_size)
-                .linearize(zeta_to_srs_len);
+            //~ 1. commit (hiding) to the quotient polynomial $t$
+            let t_comm = { index.srs.commit(&quotient_poly, 7 * num_chunks, rng) };
 
-            &f_chunked - &t_chunked.scale(zeta_to_domain_size - G::ScalarField::one())
-        };
+            //~ 1. Absorb the commitment of the quotient polynomial with the Fq-Sponge.
+            absorb_commitment(&mut fq_sponge, &t_comm.commitment);
 
-        //~ 1. construct the blinding part of the ft polynomial commitment
-        //~    [see this section](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#evaluation-proof-and-blinding-factors)
-        let blinding_ft = {
-            let blinding_t = t_comm.blinders.chunk_blinding(zeta_to_srs_len);
-            let blinding_f = G::ScalarField::zero();
+            //~ 1. Sample $\zeta'$ with the Fq-Sponge.
+            let zeta_chal = ScalarChallenge::new(fq_sponge.challenge());
 
-            PolyComm {
-                // blinding_f - Z_H(zeta) * blinding_t
-                chunks: vec![
-                    blinding_f - (zeta_to_domain_size - G::ScalarField::one()) * blinding_t,
-                ],
+            //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
+            let zeta = zeta_chal.to_field(endo_r);
+
+            let omega = index.cs.domain.d1.group_gen;
+            let zeta_omega = zeta * omega;
+
+            //~ 1. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
+            if lookup_constraint_system.is_some() {
+                //~~ * the aggregation polynomial
+                let aggreg = lookup_context
+                    .aggreg_coeffs
+                    .as_ref()
+                    .unwrap()
+                    .to_chunked_polynomial(num_chunks, index.max_poly_size);
+
+                //~~ * the sorted polynomials
+                let sorted = lookup_context
+                    .sorted_coeffs
+                    .as_ref()
+                    .unwrap()
+                    .iter()
+                    .map(|c| c.to_chunked_polynomial(num_chunks, index.max_poly_size))
+                    .collect::<Vec<_>>();
+
+                //~~ * the table polynonial
+                let joint_table = lookup_context.joint_lookup_table.as_ref().unwrap();
+                let joint_table =
+                    joint_table.to_chunked_polynomial(num_chunks, index.max_poly_size);
+
+                lookup_context.lookup_aggregation_eval = Some(PointEvaluations {
+                    zeta: aggreg.evaluate_chunks(zeta),
+                    zeta_omega: aggreg.evaluate_chunks(zeta_omega),
+                });
+                lookup_context.lookup_table_eval = Some(PointEvaluations {
+                    zeta: joint_table.evaluate_chunks(zeta),
+                    zeta_omega: joint_table.evaluate_chunks(zeta_omega),
+                });
+                lookup_context.lookup_sorted_eval = array::from_fn(|i| {
+                    if i < sorted.len() {
+                        let sorted = &sorted[i];
+                        Some(PointEvaluations {
+                            zeta: sorted.evaluate_chunks(zeta),
+                            zeta_omega: sorted.evaluate_chunks(zeta_omega),
+                        })
+                    } else {
+                        None
+                    }
+                });
+                lookup_context.runtime_lookup_table_eval =
+                    lookup_context.runtime_table.as_ref().map(|runtime_table| {
+                        let runtime_table =
+                            runtime_table.to_chunked_polynomial(num_chunks, index.max_poly_size);
+                        PointEvaluations {
+                            zeta: runtime_table.evaluate_chunks(zeta),
+                            zeta_omega: runtime_table.evaluate_chunks(zeta_omega),
+                        }
+                    });
             }
+
+            //~ 1. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
+            //~~ * $s_i$
+            //~~ * $w_i$
+            //~~ * $z$
+            //~~ * lookup (TODO, see [this issue](https://github.com/MinaProtocol/mina/issues/13886))
+            //~~ * generic selector
+            //~~ * poseidon selector
+            //~
+            //~    By "chunk evaluate" we mean that the evaluation of each polynomial can potentially be a vector of values.
+            //~    This is because the index's `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.
+            //~    If a polynomial $f$ exceeds this size, it must be split into several polynomials like so:
+            //~    $$f(x) = f_0(x) + x^n f_1(x) + x^{2n} f_2(x) + \cdots$$
+            //~
+            //~    And the evaluation of such a polynomial is the following list for $x \in {\zeta, \zeta\omega}$:
+            //~
+            //~    $$(f_0(x), f_1(x), f_2(x), \ldots)$$
+            //~
+            //~    TODO: do we want to specify more on that? It seems unnecessary except for the t polynomial (or if for some reason someone sets that to a low value)
+
+            internal_tracing::checkpoint!(internal_traces; lagrange_basis_eval_zeta_poly);
+            let zeta_evals =
+                LagrangeBasisEvaluations::new(index.max_poly_size, index.cs.domain.d1, zeta);
+            internal_tracing::checkpoint!(internal_traces; lagrange_basis_eval_zeta_omega_poly);
+            let zeta_omega_evals =
+                LagrangeBasisEvaluations::new(index.max_poly_size, index.cs.domain.d1, zeta_omega);
+
+            let chunked_evals_for_selector =
+                |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
+                    zeta: zeta_evals.evaluate_boolean(p),
+                    zeta_omega: zeta_omega_evals.evaluate_boolean(p),
+                };
+
+            let chunked_evals_for_evaluations =
+                |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
+                    zeta: zeta_evals.evaluate(p),
+                    zeta_omega: zeta_omega_evals.evaluate(p),
+                };
+
+            internal_tracing::checkpoint!(internal_traces; chunk_eval_zeta_omega_poly);
+            let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
+                public: {
+                    let chunked =
+                        public_poly.to_chunked_polynomial(num_chunks, index.max_poly_size);
+                    Some(PointEvaluations {
+                        zeta: chunked.evaluate_chunks(zeta),
+                        zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                    })
+                },
+                s: array::from_fn(|i| {
+                    chunked_evals_for_evaluations(&column_evaluations.permutation_coefficients8[i])
+                }),
+                coefficients: array::from_fn(|i| {
+                    chunked_evals_for_evaluations(&column_evaluations.coefficients8[i])
+                }),
+                w: array::from_fn(|i| {
+                    let chunked =
+                        witness_poly[i].to_chunked_polynomial(num_chunks, index.max_poly_size);
+                    PointEvaluations {
+                        zeta: chunked.evaluate_chunks(zeta),
+                        zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                    }
+                }),
+
+                z: {
+                    let chunked = z_poly.to_chunked_polynomial(num_chunks, index.max_poly_size);
+                    PointEvaluations {
+                        zeta: chunked.evaluate_chunks(zeta),
+                        zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                    }
+                },
+
+                lookup_aggregation: lookup_context.lookup_aggregation_eval.take(),
+                lookup_table: lookup_context.lookup_table_eval.take(),
+                lookup_sorted: array::from_fn(|i| lookup_context.lookup_sorted_eval[i].take()),
+                runtime_lookup_table: lookup_context.runtime_lookup_table_eval.take(),
+                generic_selector: chunked_evals_for_selector(&column_evaluations.generic_selector4),
+                poseidon_selector: chunked_evals_for_selector(
+                    &column_evaluations.poseidon_selector8,
+                ),
+                complete_add_selector: chunked_evals_for_selector(
+                    &column_evaluations.complete_add_selector4,
+                ),
+                mul_selector: chunked_evals_for_selector(&column_evaluations.mul_selector8),
+                emul_selector: chunked_evals_for_selector(&column_evaluations.emul_selector8),
+                endomul_scalar_selector: chunked_evals_for_selector(
+                    &column_evaluations.endomul_scalar_selector8,
+                ),
+
+                range_check0_selector: column_evaluations
+                    .range_check0_selector8
+                    .as_ref()
+                    .map(chunked_evals_for_selector),
+                range_check1_selector: column_evaluations
+                    .range_check1_selector8
+                    .as_ref()
+                    .map(chunked_evals_for_selector),
+                foreign_field_add_selector: column_evaluations
+                    .foreign_field_add_selector8
+                    .as_ref()
+                    .map(chunked_evals_for_selector),
+                foreign_field_mul_selector: column_evaluations
+                    .foreign_field_mul_selector8
+                    .as_ref()
+                    .map(chunked_evals_for_selector),
+                xor_selector: column_evaluations
+                    .xor_selector8
+                    .as_ref()
+                    .map(chunked_evals_for_selector),
+                rot_selector: column_evaluations
+                    .rot_selector8
+                    .as_ref()
+                    .map(chunked_evals_for_selector),
+
+                runtime_lookup_table_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
+                    lcs.runtime_selector
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                }),
+                xor_lookup_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
+                    lcs.lookup_selectors
+                        .xor
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                }),
+                lookup_gate_lookup_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
+                    lcs.lookup_selectors
+                        .lookup
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                }),
+                range_check_lookup_selector: lookup_constraint_system.as_ref().and_then(|lcs| {
+                    lcs.lookup_selectors
+                        .range_check
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                }),
+                foreign_field_mul_lookup_selector: lookup_constraint_system.as_ref().and_then(
+                    |lcs| {
+                        lcs.lookup_selectors
+                            .ffmul
+                            .as_ref()
+                            .map(chunked_evals_for_selector)
+                    },
+                ),
+            };
+
+            let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);
+            let zeta_omega_to_srs_len = zeta_omega.pow([index.max_poly_size as u64]);
+            let zeta_to_domain_size = zeta.pow([d1_size as u64]);
+
+            //~ 1. Evaluate the same polynomials without chunking them
+            //~    (so that each polynomial should correspond to a single value this time).
+            let evals: ProofEvaluations<PointEvaluations<G::ScalarField>> = {
+                let powers_of_eval_points_for_chunks = PointEvaluations {
+                    zeta: zeta_to_srs_len,
+                    zeta_omega: zeta_omega_to_srs_len,
+                };
+                chunked_evals.combine(&powers_of_eval_points_for_chunks)
+            };
+
+            //~ 1. Compute the ft polynomial.
+            //~    This is to implement [Maller's optimization](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html).
+            internal_tracing::checkpoint!(internal_traces; compute_ft_poly);
+            let ft: DensePolynomial<G::ScalarField> = {
+                let f_chunked = {
+                    // TODO: compute the linearization polynomial in evaluation form so
+                    // that we can drop the coefficient forms of the index polynomials from
+                    // the constraint system struct
+
+                    // permutation (not part of linearization yet)
+                    let alphas =
+                        all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
+                    let f = index.perm_lnrz(&evals, zeta, beta, gamma, alphas);
+
+                    // the circuit polynomial
+                    let f = {
+                        let (_lin_constant, mut lin) =
+                            index.linearization.to_polynomial(&env, zeta, &evals);
+                        lin += &f;
+                        lin.interpolate()
+                    };
+
+                    // see https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#the-prover-side
+                    f.to_chunked_polynomial(num_chunks, index.max_poly_size)
+                        .linearize(zeta_to_srs_len)
+                };
+
+                let t_chunked = quotient_poly
+                    .to_chunked_polynomial(7 * num_chunks, index.max_poly_size)
+                    .linearize(zeta_to_srs_len);
+
+                &f_chunked - &t_chunked.scale(zeta_to_domain_size - G::ScalarField::one())
+            };
+
+            //~ 1. construct the blinding part of the ft polynomial commitment
+            //~    [see this section](https://o1-labs.github.io/proof-systems/kimchi/maller_15.html#evaluation-proof-and-blinding-factors)
+            let blinding_ft = {
+                let blinding_t = t_comm.blinders.chunk_blinding(zeta_to_srs_len);
+                let blinding_f = G::ScalarField::zero();
+
+                PolyComm {
+                    // blinding_f - Z_H(zeta) * blinding_t
+                    chunks: vec![
+                        blinding_f - (zeta_to_domain_size - G::ScalarField::one()) * blinding_t,
+                    ],
+                }
+            };
+
+            (t_comm, zeta, zeta_omega, chunked_evals, ft, blinding_ft)
         };
 
         //~ 1. Evaluate the ft polynomial at $\zeta\omega$ only.
