@@ -57,9 +57,12 @@ jobs:
           # stable/beta for macOS.
           # Skip macOS on PRs to improve CI velocity (macOS
           # runners are limited). macOS runs on master pushes
-          # only.
-          if [[ "$EVENT_NAME" == "push" \
-                && "$REF" == "refs/heads/master" ]]; then
+          # and manual dispatches (a dispatch is deliberate, so
+          # it gets the full matrix — useful to validate
+          # macOS-only fixes on a branch before merging).
+          if [[ ("$EVENT_NAME" == "push" \
+                 && "$REF" == "refs/heads/master") \
+                || "$EVENT_NAME" == "workflow_dispatch" ]]; then
             VALUE=$(jq -nc \
               --arg msrv "$RUST_MSRV" \
               --arg stable "$RUST_STABLE" \
