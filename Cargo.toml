@@ -67,7 +67,7 @@ hex = { version = "0.4", default-features = false, features = [
 ] }
 iai = "0.1"
 internal-tracing = { path = "./internal-tracing", default-features = false }
-itertools = { version = "0.12.1", default-features = false, features = [
+itertools = { version = "0.13.0", default-features = false, features = [
   "use_alloc",
 ] }
 js-sys = "=0.3.83"
