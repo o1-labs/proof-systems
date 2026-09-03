@@ -106,7 +106,7 @@ jobs:
           ocaml_version: ${{ needs.load-versions.outputs.ocaml-version }}
 
       - name: Install the Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ needs.load-versions.outputs.python-version }}
           check-latest: true
