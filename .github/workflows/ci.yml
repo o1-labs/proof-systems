@@ -37,7 +37,7 @@ jobs:
       node: '["${{ steps.versions.outputs.node-version }}"]'
       matrix: ${{ steps.matrix.outputs.value }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: .github
 
@@ -105,7 +105,7 @@ jobs:
     steps:
       # if 'workflow_run'
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: ${{ github.event_name == 'workflow_run' }}
       - uses: ./.github/actions/toolchain-shared
         if: ${{ github.event_name == 'workflow_run' }}
@@ -133,7 +133,7 @@ jobs:
     runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up NodeJS
         uses: actions/setup-node@v6
@@ -188,7 +188,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up NodeJS
         uses: actions/setup-node@v6
@@ -248,7 +248,7 @@ jobs:
           - { name: "mina-tx-type", path: "mina-tx-type" }
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
@@ -270,7 +270,7 @@ jobs:
     runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
@@ -305,7 +305,7 @@ jobs:
     runs-on: ${{ matrix.rust_and_os.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared

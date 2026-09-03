@@ -15,7 +15,7 @@ jobs:
       rust-nightly: ${{ steps.versions.outputs.rust-nightly }}
       rust-nightly-pinned: ${{ steps.versions.outputs.rust-nightly-pinned }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: .github
 
@@ -37,7 +37,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Use shared Rust toolchain setting up steps
         uses: ./.github/actions/toolchain-shared
