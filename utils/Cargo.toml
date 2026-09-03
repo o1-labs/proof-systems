@@ -30,7 +30,7 @@ serde.workspace = true
 serde_json = { workspace = true, optional = true }
 serde_with.workspace = true
 sha2.workspace = true
-spin = { version = "0.10", default-features = false, features = ["lazy"] }
+spin = { version = "0.12", default-features = false, features = ["lazy"] }
 thiserror.workspace = true
 
 [dev-dependencies]
