@@ -33,7 +33,7 @@ jobs:
       rust-beta: ${{ steps.versions.outputs.rust-beta }}
       ocaml-version: ${{ steps.versions.outputs.ocaml-version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: .github
 
@@ -54,7 +54,7 @@ jobs:
           - ${{ needs.load-versions.outputs.rust-beta }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
