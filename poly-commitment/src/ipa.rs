@@ -22,7 +22,7 @@ use crate::{
 };
 #[cfg(feature = "std")]
 use crate::{utils::combine_polys, PolynomialsToCombine};
-use alloc::{vec, vec::Vec};
+use alloc::{borrow::Cow, vec, vec::Vec};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 #[cfg(feature = "std")]
 use ark_ff::{BigInteger, Field};
@@ -846,8 +846,16 @@ impl<G: CommitmentCurve> SRS<G> {
         // practice. Therefore, padding equals zero, and this code can be
         // removed. Only a current test case uses a SRS with a non-power of 2.
         let padding = padded_length - self.g.len();
-        let mut g = self.g.clone();
-        g.extend(vec![G::zero(); padding]);
+        // In practice the SRS size is a power of two and padding is zero, so
+        // borrow the bases instead of cloning ~SRS-size points per opening;
+        // the first fold round replaces `g` with an owned folded vector.
+        let mut g: Cow<'_, [G]> = if padding == 0 {
+            Cow::Borrowed(&self.g)
+        } else {
+            let mut g = self.g.clone();
+            g.extend(vec![G::zero(); padding]);
+            Cow::Owned(g)
+        };
 
         // Combines polynomials roughly as follows: p(X) := ∑_i polyscale^i p_i(X)
         //
@@ -939,26 +947,34 @@ impl<G: CommitmentCurve> SRS<G> {
             let rand_l = <G::ScalarField as UniformRand>::rand(rng);
             let rand_r = <G::ScalarField as UniformRand>::rand(rng);
 
-            // Pedersen commitment to a_lo,rand_l,<a_hi,b_lo>
-            let l = G::Group::msm_bigint(
-                &[g_lo, &[self.h, u_base]].concat(),
-                &[a_hi, &[rand_l, inner_prod(a_hi, b_lo)]]
-                    .concat()
-                    .iter()
-                    .map(|x| x.into_bigint())
-                    .collect::<Vec<_>>(),
-            )
-            .into_affine();
-
-            let r = G::Group::msm_bigint(
-                &[g_hi, &[self.h, u_base]].concat(),
-                &[a_lo, &[rand_r, inner_prod(a_lo, b_hi)]]
-                    .concat()
-                    .iter()
-                    .map(|x| x.into_bigint())
-                    .collect::<Vec<_>>(),
-            )
-            .into_affine();
+            // Pedersen commitments to (a_hi, rand_l, <a_hi, b_lo>) and
+            // (a_lo, rand_r, <a_lo, b_hi>).
+            //
+            // The h/u_base contributions are added as two scalar
+            // multiplications outside the MSM (identical group element,
+            // avoids concatenating the bases/scalars into fresh vectors),
+            // and the two independent sides are computed in parallel.
+            let (l, r) = {
+                let compute_l = || {
+                    G::Group::msm_bigint(
+                        g_lo,
+                        &a_hi.iter().map(|x| x.into_bigint()).collect::<Vec<_>>(),
+                    ) + self.h.mul(rand_l)
+                        + u_base.mul(inner_prod(a_hi, b_lo))
+                };
+                let compute_r = || {
+                    G::Group::msm_bigint(
+                        g_hi,
+                        &a_lo.iter().map(|x| x.into_bigint()).collect::<Vec<_>>(),
+                    ) + self.h.mul(rand_r)
+                        + u_base.mul(inner_prod(a_lo, b_hi))
+                };
+                #[cfg(feature = "parallel")]
+                let (l, r) = rayon::join(compute_l, compute_r);
+                #[cfg(not(feature = "parallel"))]
+                let (l, r) = (compute_l(), compute_r());
+                (l.into_affine(), r.into_affine())
+            };
 
             lr.push((l, r));
             blinders.push((rand_l, rand_r));
@@ -1003,7 +1019,7 @@ impl<G: CommitmentCurve> SRS<G> {
                 .collect();
 
             // IPA-folding bases
-            g = G::combine_one_endo(endo_r, endo_q, g_lo, g_hi, &u_pre);
+            g = Cow::Owned(G::combine_one_endo(endo_r, endo_q, g_lo, g_hi, &u_pre));
         }
 
         assert!(
