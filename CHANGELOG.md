@@ -94,6 +94,10 @@ and this project adheres to
 
 - Treat public evaluations of oracles as vectors for chunking coherence
   ([#3577](https://github.com/o1-labs/proof-systems/pull/3577))
+- Link the cdylib with `-undefined dynamic_lookup` on macOS from a build script,
+  so the link survives a `RUSTFLAGS` environment variable (which makes cargo
+  ignore the equivalent `.cargo/config.toml` rustflags), as CI sets one
+  ([#3606](https://github.com/o1-labs/proof-systems/pull/3606))
 
 ### [kimchi-wasm](./kimchi-wasm)
 
