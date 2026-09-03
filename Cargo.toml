@@ -103,7 +103,7 @@ num-bigint = { version = "0.4.6", default-features = false, features = [
 num-integer = { version = "0.1.45", default-features = false }
 o1-utils = { path = "./utils", default-features = false }
 o1vm = { path = "./o1vm" }
-ocaml = { version = "0.22.2" }
+ocaml = { version = "1.3.0" }
 ocaml-gen = { version = "1.0.0" }
 once_cell = "=1.21.3"
 optimism = { path = "./optimism" }
