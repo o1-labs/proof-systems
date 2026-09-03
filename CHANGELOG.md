@@ -32,6 +32,14 @@ and this project adheres to
 
 #### Changed
 
+- Build the `DomainConstantEvaluations` d8 evaluations in closed form instead of
+  by FFT, and drop the `constant_1_d4` / `constant_1_d8` all-ones vectors
+  (`gamma` is folded into the permutation argument per-element instead). The
+  stored evaluations are unchanged, and `precomputations` is `#[serde(skip)]`,
+  so proofs and the cached-key format are unaffected; this only makes the
+  per-circuit precomputation cheaper and drops ~24 MB of resident memory per
+  materialised prover index
+  ([#3586](https://github.com/o1-labs/proof-systems/pull/3586))
 - Skip the d1 rows in the permutation quotient. The permutation contribution
   vanishes there for a satisfying witness, so the honest prover was computing
   known zeros. The quotient is unchanged, but as a consequence a witness that
