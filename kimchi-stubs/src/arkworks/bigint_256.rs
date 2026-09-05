@@ -1,4 +1,4 @@
-use crate::caml::caml_bytes_string::CamlBytesString;
+use crate::caml::{caml_bigstring::CamlBigstring, caml_bytes_string::CamlBytesString};
 use ark_ff::{BigInteger as ark_BigInteger, BigInteger256};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::{
@@ -228,6 +228,44 @@ pub fn caml_bigint_256_of_bytes(x: &[u8]) -> Result<CamlBigInteger256, ocaml::Er
     Ok(CamlBigInteger256(result))
 }
 
+/// Serialize `x` into `buf[pos .. pos + 32]`, the same bytes as
+/// `caml_bigint_256_to_bytes`, without allocating. Raises `Invalid_argument`
+/// when the window does not fit in `buf`.
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_bigint_256_to_bytes_into(
+    x: ocaml::Pointer<CamlBigInteger256>,
+    mut buf: CamlBigstring,
+    pos: ocaml::Int,
+) -> Result<(), ocaml::Error> {
+    let dst = buf.slice_mut(
+        pos,
+        core::mem::size_of::<BigInteger256>(),
+        "caml_bigint_256_to_bytes_into",
+    )?;
+    x.as_ref().0.serialize_compressed(dst).unwrap();
+    Ok(())
+}
+
+/// Deserialize from `buf[pos .. pos + 32]`, the same semantics as
+/// `caml_bigint_256_of_bytes`, without copying the bytes out first. Raises
+/// `Invalid_argument` when the window does not fit in `buf`.
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_bigint_256_of_bytes_from(
+    buf: CamlBigstring,
+    pos: ocaml::Int,
+) -> Result<CamlBigInteger256, ocaml::Error> {
+    let src = buf.slice(
+        pos,
+        core::mem::size_of::<BigInteger256>(),
+        "caml_bigint_256_of_bytes_from",
+    )?;
+    let result = BigInteger256::deserialize_compressed(src)
+        .map_err(|_| ocaml::Error::Message("deserialization error"))?;
+    Ok(CamlBigInteger256(result))
+}
+
 #[ocaml_gen::func]
 #[ocaml::func]
 pub fn caml_bigint_256_deep_copy(x: CamlBigInteger256) -> CamlBigInteger256 {
@@ -253,5 +291,30 @@ mod tests {
         let x2: BigUint = y.into();
         assert!(x2 == x);
         println!("biguint.to_string: {}", x2);
+    }
+
+    /// The in-place path writes the same bytes as `to_bytes`, at the offset,
+    /// and reads them back.
+    #[test]
+    fn in_place_bytes_match_to_bytes() {
+        let x = BigInteger256::from(0xdead_beef_u64);
+        let len = core::mem::size_of::<BigInteger256>();
+
+        let mut expected = vec![0u8; len];
+        x.serialize_compressed(&mut expected[..]).unwrap();
+
+        let mut buf = vec![0xffu8; 3 * len];
+        let range =
+            crate::caml::caml_bigstring::checked_range(buf.len(), len as ocaml::Int, len, "t")
+                .unwrap();
+        x.serialize_compressed(&mut buf[range.clone()]).unwrap();
+
+        assert_eq!(&buf[range.clone()], &expected[..]);
+        assert!(buf[..len].iter().all(|&b| b == 0xff));
+        assert!(buf[2 * len..].iter().all(|&b| b == 0xff));
+        assert_eq!(
+            BigInteger256::deserialize_compressed(&buf[range]).unwrap(),
+            x
+        );
     }
 }

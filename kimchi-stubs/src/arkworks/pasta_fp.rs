@@ -1,4 +1,7 @@
-use crate::{arkworks::CamlBigInteger256, caml::caml_bytes_string::CamlBytesString};
+use crate::{
+    arkworks::CamlBigInteger256,
+    caml::{caml_bigstring::CamlBigstring, caml_bytes_string::CamlBytesString},
+};
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -323,8 +326,72 @@ pub fn caml_pasta_fp_of_bytes(x: &[u8]) -> Result<CamlFp, ocaml::Error> {
     Ok(CamlFp(x))
 }
 
+/// Serialize `x` into `buf[pos .. pos + 32]`, the same bytes as
+/// `caml_pasta_fp_to_bytes`, without allocating. Raises `Invalid_argument`
+/// when the window does not fit in `buf`.
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fp_to_bytes_into(
+    x: ocaml::Pointer<CamlFp>,
+    mut buf: CamlBigstring,
+    pos: ocaml::Int,
+) -> Result<(), ocaml::Error> {
+    let dst = buf.slice_mut(
+        pos,
+        core::mem::size_of::<Fp>(),
+        "caml_pasta_fp_to_bytes_into",
+    )?;
+    x.as_ref().0.serialize_compressed(dst).unwrap();
+    Ok(())
+}
+
+/// Deserialize from `buf[pos .. pos + 32]`, the same semantics as
+/// `caml_pasta_fp_of_bytes`, without copying the bytes out first. Raises
+/// `Invalid_argument` when the window does not fit in `buf`.
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fp_of_bytes_from(
+    buf: CamlBigstring,
+    pos: ocaml::Int,
+) -> Result<CamlFp, ocaml::Error> {
+    let src = buf.slice(
+        pos,
+        core::mem::size_of::<Fp>(),
+        "caml_pasta_fp_of_bytes_from",
+    )?;
+    let x = Fp::deserialize_compressed(src)?;
+    Ok(CamlFp(x))
+}
+
 #[ocaml_gen::func]
 #[ocaml::func]
 pub fn caml_pasta_fp_deep_copy(x: CamlFp) -> CamlFp {
     x
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The in-place path writes the same bytes as `to_bytes`, at the offset,
+    /// and reads them back.
+    #[test]
+    fn in_place_bytes_match_to_bytes() {
+        let x: Fp = UniformRand::rand(&mut rand::thread_rng());
+        let len = core::mem::size_of::<Fp>();
+
+        let mut expected = vec![0u8; len];
+        x.serialize_compressed(&mut expected[..]).unwrap();
+
+        let mut buf = vec![0xffu8; 3 * len];
+        let range =
+            crate::caml::caml_bigstring::checked_range(buf.len(), len as ocaml::Int, len, "t")
+                .unwrap();
+        x.serialize_compressed(&mut buf[range.clone()]).unwrap();
+
+        assert_eq!(&buf[range.clone()], &expected[..]);
+        assert!(buf[..len].iter().all(|&b| b == 0xff));
+        assert!(buf[2 * len..].iter().all(|&b| b == 0xff));
+        assert_eq!(Fp::deserialize_compressed(&buf[range]).unwrap(), x);
+    }
 }
