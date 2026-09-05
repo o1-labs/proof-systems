@@ -1,3 +1,4 @@
+pub mod caml_bigstring;
 pub mod caml_bytes_string;
 
 #[macro_use]
