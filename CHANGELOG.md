@@ -78,6 +78,13 @@ and this project adheres to
 
 #### Added
 
+- Add in-place `caml_pasta_{fp,fq}_{to_bytes_into,of_bytes_from}` and
+  `caml_bigint_256_{to_bytes_into,of_bytes_from}`, which serialize into, or
+  deserialize from, a caller-provided `Bigstring` at an offset. Same wire bytes
+  as `to_bytes` / `of_bytes`, but with no intermediate `bytes` allocation, so a
+  bin_prot writer or reader for a field element allocates nothing. Out-of-range
+  offsets raise `Invalid_argument`
+  ([#3627](https://github.com/o1-labs/proof-systems/issues/3627))
 - Add `<field>_vector_clear`, letting the caller eagerly release a consumed
   vector's Rust-side allocation. OCaml only sees the pointer, so its GC never
   feels the (potentially large) backing buffer
