@@ -338,17 +338,12 @@ pub fn caml_pasta_fp_blit_to_bigstring(
     mut buf: CamlBigstring,
     pos: ocaml::Int,
 ) -> Result<(), ocaml::Error> {
-    let dst = buf.slice_mut(
+    buf.write_compressed(
+        &x.as_ref().0,
         pos,
-        core::mem::size_of::<Fp>(),
         "caml_pasta_fp_blit_to_bigstring",
-    )?;
-    // `dst` is exactly the compressed size, so this cannot come up short; map
-    // it anyway rather than leave a panic in the binary.
-    x.as_ref().0.serialize_compressed(dst).map_err(|_| {
-        ocaml::Error::Message("caml_pasta_fp_blit_to_bigstring: serialization failed")
-    })?;
-    Ok(())
+        "caml_pasta_fp_blit_to_bigstring: serialization failed",
+    )
 }
 
 /// Deserialize from `buf[pos .. pos + 32]`, the same semantics as
@@ -361,15 +356,12 @@ pub fn caml_pasta_fp_of_bigstring(
     buf: CamlBigstring,
     pos: ocaml::Int,
 ) -> Result<CamlFp, ocaml::Error> {
-    let src = buf.slice(
+    buf.read_compressed(
         pos,
-        core::mem::size_of::<Fp>(),
         "caml_pasta_fp_of_bigstring",
-    )?;
-    let x = Fp::deserialize_compressed(src).map_err(|_| {
-        ocaml::Error::Message("caml_pasta_fp_of_bigstring: not a canonical field element")
-    })?;
-    Ok(CamlFp(x))
+        "caml_pasta_fp_of_bigstring: not a canonical field element",
+    )
+    .map(CamlFp)
 }
 
 #[ocaml_gen::func]
