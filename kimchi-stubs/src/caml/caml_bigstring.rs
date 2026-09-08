@@ -7,6 +7,7 @@
 //! readers and writers for field elements need: `bin_write_t` gets a buffer
 //! and a position, and `bin_read_t` gets the same.
 
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ocaml::{bigarray::Array1, CamlError, Error, FromValue, IntoValue, Runtime, Value};
 use ocaml_gen::{const_random, Env, OCamlDesc};
 
@@ -74,6 +75,41 @@ impl CamlBigstring {
     ) -> Result<&mut [u8], Error> {
         let range = checked_range(self.0.len(), pos, len, fname)?;
         Ok(&mut self.0.data_mut()[range])
+    }
+
+    /// Serialize `x` in compressed form into the `size_of::<T>()` bytes at
+    /// `pos`. Raises `Invalid_argument fname` when that window does not fit
+    /// and `Failure failure` if serialization fails. The latter cannot happen
+    /// when the window is exactly the compressed size, as it is for the
+    /// 32-byte pasta fields and `BigInteger256`, but it is mapped rather than
+    /// left as a panic across the FFI.
+    ///
+    /// The exported stubs for each type are thin wrappers over this: an
+    /// `#[ocaml::func]` must be a concrete symbol, so only the body is shared.
+    pub fn write_compressed<T: CanonicalSerialize>(
+        &mut self,
+        x: &T,
+        pos: ocaml::Int,
+        fname: &'static str,
+        failure: &'static str,
+    ) -> Result<(), Error> {
+        let dst = self.slice_mut(pos, core::mem::size_of::<T>(), fname)?;
+        x.serialize_compressed(dst)
+            .map_err(|_| Error::Message(failure))
+    }
+
+    /// Deserialize a `T` from the `size_of::<T>()` bytes at `pos`. Raises
+    /// `Invalid_argument fname` when the window does not fit and
+    /// `Failure failure` when the bytes do not decode, e.g. a non-canonical
+    /// field element.
+    pub fn read_compressed<T: CanonicalDeserialize>(
+        &self,
+        pos: ocaml::Int,
+        fname: &'static str,
+        failure: &'static str,
+    ) -> Result<T, Error> {
+        let src = self.slice(pos, core::mem::size_of::<T>(), fname)?;
+        T::deserialize_compressed(src).map_err(|_| Error::Message(failure))
     }
 }
 
