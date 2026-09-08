@@ -322,7 +322,9 @@ pub fn caml_pasta_fp_to_bytes(x: ocaml::Pointer<CamlFp>) -> [u8; core::mem::size
 #[ocaml_gen::func]
 #[ocaml::func]
 pub fn caml_pasta_fp_of_bytes(x: &[u8]) -> Result<CamlFp, ocaml::Error> {
-    let x = Fp::deserialize_compressed(x)?;
+    let x = Fp::deserialize_compressed(x).map_err(|_| {
+        ocaml::Error::Message("caml_pasta_fp_of_bytes: not a canonical field element")
+    })?;
     Ok(CamlFp(x))
 }
 
@@ -331,7 +333,7 @@ pub fn caml_pasta_fp_of_bytes(x: &[u8]) -> Result<CamlFp, ocaml::Error> {
 /// when the window does not fit in `buf`.
 #[ocaml_gen::func]
 #[ocaml::func]
-pub fn caml_pasta_fp_to_bytes_into(
+pub fn caml_pasta_fp_blit_to_bigstring(
     x: ocaml::Pointer<CamlFp>,
     mut buf: CamlBigstring,
     pos: ocaml::Int,
@@ -339,27 +341,34 @@ pub fn caml_pasta_fp_to_bytes_into(
     let dst = buf.slice_mut(
         pos,
         core::mem::size_of::<Fp>(),
-        "caml_pasta_fp_to_bytes_into",
+        "caml_pasta_fp_blit_to_bigstring",
     )?;
-    x.as_ref().0.serialize_compressed(dst).unwrap();
+    // `dst` is exactly the compressed size, so this cannot come up short; map
+    // it anyway rather than leave a panic in the binary.
+    x.as_ref().0.serialize_compressed(dst).map_err(|_| {
+        ocaml::Error::Message("caml_pasta_fp_blit_to_bigstring: serialization failed")
+    })?;
     Ok(())
 }
 
 /// Deserialize from `buf[pos .. pos + 32]`, the same semantics as
 /// `caml_pasta_fp_of_bytes`, without copying the bytes out first. Raises
-/// `Invalid_argument` when the window does not fit in `buf`.
+/// `Invalid_argument` when the window does not fit in `buf`, and `Failure`
+/// when the bytes are not a canonical field element.
 #[ocaml_gen::func]
 #[ocaml::func]
-pub fn caml_pasta_fp_of_bytes_from(
+pub fn caml_pasta_fp_of_bigstring(
     buf: CamlBigstring,
     pos: ocaml::Int,
 ) -> Result<CamlFp, ocaml::Error> {
     let src = buf.slice(
         pos,
         core::mem::size_of::<Fp>(),
-        "caml_pasta_fp_of_bytes_from",
+        "caml_pasta_fp_of_bigstring",
     )?;
-    let x = Fp::deserialize_compressed(src)?;
+    let x = Fp::deserialize_compressed(src).map_err(|_| {
+        ocaml::Error::Message("caml_pasta_fp_of_bigstring: not a canonical field element")
+    })?;
     Ok(CamlFp(x))
 }
 

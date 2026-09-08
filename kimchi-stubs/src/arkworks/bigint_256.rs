@@ -224,7 +224,7 @@ pub fn caml_bigint_256_of_bytes(x: &[u8]) -> Result<CamlBigInteger256, ocaml::Er
         ocaml::Error::failwith("caml_bigint_256_of_bytes")?;
     };
     let result = BigInteger256::deserialize_compressed(&mut &*x)
-        .map_err(|_| ocaml::Error::Message("deserialization error"))?;
+        .map_err(|_| ocaml::Error::Message("caml_bigint_256_of_bytes: deserialization error"))?;
     Ok(CamlBigInteger256(result))
 }
 
@@ -233,7 +233,7 @@ pub fn caml_bigint_256_of_bytes(x: &[u8]) -> Result<CamlBigInteger256, ocaml::Er
 /// when the window does not fit in `buf`.
 #[ocaml_gen::func]
 #[ocaml::func]
-pub fn caml_bigint_256_to_bytes_into(
+pub fn caml_bigint_256_blit_to_bigstring(
     x: ocaml::Pointer<CamlBigInteger256>,
     mut buf: CamlBigstring,
     pos: ocaml::Int,
@@ -241,9 +241,13 @@ pub fn caml_bigint_256_to_bytes_into(
     let dst = buf.slice_mut(
         pos,
         core::mem::size_of::<BigInteger256>(),
-        "caml_bigint_256_to_bytes_into",
+        "caml_bigint_256_blit_to_bigstring",
     )?;
-    x.as_ref().0.serialize_compressed(dst).unwrap();
+    // `dst` is exactly the compressed size, so this cannot come up short; map
+    // it anyway rather than leave a panic in the binary.
+    x.as_ref().0.serialize_compressed(dst).map_err(|_| {
+        ocaml::Error::Message("caml_bigint_256_blit_to_bigstring: serialization failed")
+    })?;
     Ok(())
 }
 
@@ -252,17 +256,18 @@ pub fn caml_bigint_256_to_bytes_into(
 /// `Invalid_argument` when the window does not fit in `buf`.
 #[ocaml_gen::func]
 #[ocaml::func]
-pub fn caml_bigint_256_of_bytes_from(
+pub fn caml_bigint_256_of_bigstring(
     buf: CamlBigstring,
     pos: ocaml::Int,
 ) -> Result<CamlBigInteger256, ocaml::Error> {
     let src = buf.slice(
         pos,
         core::mem::size_of::<BigInteger256>(),
-        "caml_bigint_256_of_bytes_from",
+        "caml_bigint_256_of_bigstring",
     )?;
-    let result = BigInteger256::deserialize_compressed(src)
-        .map_err(|_| ocaml::Error::Message("deserialization error"))?;
+    let result = BigInteger256::deserialize_compressed(src).map_err(|_| {
+        ocaml::Error::Message("caml_bigint_256_of_bigstring: deserialization error")
+    })?;
     Ok(CamlBigInteger256(result))
 }
 
