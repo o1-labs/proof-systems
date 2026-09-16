@@ -159,6 +159,18 @@ where
     G::of_coordinates(x, y).mul_by_cofactor()
 }
 
+/// The ordinate of the IPA base `U` with its square-root sign pinned: `-y`
+/// when `y` is above `(p - 1) / 2`. `to_group` takes whichever root the
+/// field's `sqrt` returns, which a circuit cannot recompute cheaply; the
+/// lower-half representative is one it can check.
+fn lower_half_ordinate<F: PrimeField>(y: F) -> F {
+    if y.into_bigint() > F::MODULUS_MINUS_ONE_DIV_TWO {
+        -y
+    } else {
+        y
+    }
+}
+
 /// Additional methods for the SRS structure
 impl<G: CommitmentCurve> SRS<G> {
     /// Verifies a batch of polynomial commitment opening proofs.
@@ -268,7 +280,7 @@ impl<G: CommitmentCurve> SRS<G> {
             let u_base: G = {
                 let t = sponge.challenge_fq();
                 let (x, y) = group_map.to_group(t);
-                G::of_coordinates(x, y)
+                G::of_coordinates(x, lower_half_ordinate(y))
             };
 
             let Challenges { chal, chal_inv } = opening.challenges::<EFqSponge>(&endo_r, sponge);
@@ -773,7 +785,7 @@ impl<G: CommitmentCurve> SRS<G> {
         let u_base: G = {
             let t = sponge.challenge_fq();
             let (x, y) = group_map.to_group(t);
-            G::of_coordinates(x, y)
+            G::of_coordinates(x, lower_half_ordinate(y))
         };
 
         let mut a = p.coeffs;
