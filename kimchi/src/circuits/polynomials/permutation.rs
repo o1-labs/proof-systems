@@ -156,8 +156,11 @@ where
         let mut i: u32 = 7;
         for idx in 1..(PERMUTS) {
             let mut shift = Self::sample(domain, &mut i);
-            // they have to be distincts
-            while shifts.contains(&shift) {
+            // they have to generate distinct cosets of the domain
+            while shifts[..idx]
+                .iter()
+                .any(|s| (shift / s).pow([domain.size]).is_one())
+            {
                 shift = Self::sample(domain, &mut i);
             }
             shifts[idx] = shift;
