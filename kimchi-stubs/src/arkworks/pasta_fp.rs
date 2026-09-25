@@ -1,4 +1,7 @@
-use crate::{arkworks::CamlBigInteger256, caml::caml_bytes_string::CamlBytesString};
+use crate::{
+    arkworks::CamlBigInteger256,
+    caml::{caml_bigstring::CamlBigstring, caml_bytes_string::CamlBytesString},
+};
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -319,12 +322,77 @@ pub fn caml_pasta_fp_to_bytes(x: ocaml::Pointer<CamlFp>) -> [u8; core::mem::size
 #[ocaml_gen::func]
 #[ocaml::func]
 pub fn caml_pasta_fp_of_bytes(x: &[u8]) -> Result<CamlFp, ocaml::Error> {
-    let x = Fp::deserialize_compressed(x)?;
+    let x = Fp::deserialize_compressed(x).map_err(|_| {
+        ocaml::Error::Message("caml_pasta_fp_of_bytes: not a canonical field element")
+    })?;
     Ok(CamlFp(x))
+}
+
+/// Serialize `x` into `buf[pos .. pos + 32]`, the same bytes as
+/// `caml_pasta_fp_to_bytes`, without allocating. Raises `Invalid_argument`
+/// when the window does not fit in `buf`.
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fp_blit_to_bigstring(
+    x: ocaml::Pointer<CamlFp>,
+    mut buf: CamlBigstring,
+    pos: ocaml::Int,
+) -> Result<(), ocaml::Error> {
+    buf.write_compressed(
+        &x.as_ref().0,
+        pos,
+        "caml_pasta_fp_blit_to_bigstring",
+        "caml_pasta_fp_blit_to_bigstring: serialization failed",
+    )
+}
+
+/// Deserialize from `buf[pos .. pos + 32]`, the same semantics as
+/// `caml_pasta_fp_of_bytes`, without copying the bytes out first. Raises
+/// `Invalid_argument` when the window does not fit in `buf`, and `Failure`
+/// when the bytes are not a canonical field element.
+#[ocaml_gen::func]
+#[ocaml::func]
+pub fn caml_pasta_fp_of_bigstring(
+    buf: CamlBigstring,
+    pos: ocaml::Int,
+) -> Result<CamlFp, ocaml::Error> {
+    buf.read_compressed(
+        pos,
+        "caml_pasta_fp_of_bigstring",
+        "caml_pasta_fp_of_bigstring: not a canonical field element",
+    )
+    .map(CamlFp)
 }
 
 #[ocaml_gen::func]
 #[ocaml::func]
 pub fn caml_pasta_fp_deep_copy(x: CamlFp) -> CamlFp {
     x
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The in-place path writes the same bytes as `to_bytes`, at the offset,
+    /// and reads them back.
+    #[test]
+    fn in_place_bytes_match_to_bytes() {
+        let x: Fp = UniformRand::rand(&mut rand::thread_rng());
+        let len = core::mem::size_of::<Fp>();
+
+        let mut expected = vec![0u8; len];
+        x.serialize_compressed(&mut expected[..]).unwrap();
+
+        let mut buf = vec![0xffu8; 3 * len];
+        let range =
+            crate::caml::caml_bigstring::checked_range(buf.len(), len as ocaml::Int, len, "t")
+                .unwrap();
+        x.serialize_compressed(&mut buf[range.clone()]).unwrap();
+
+        assert_eq!(&buf[range.clone()], &expected[..]);
+        assert!(buf[..len].iter().all(|&b| b == 0xff));
+        assert!(buf[2 * len..].iter().all(|&b| b == 0xff));
+        assert_eq!(Fp::deserialize_compressed(&buf[range]).unwrap(), x);
+    }
 }
