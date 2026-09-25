@@ -371,7 +371,7 @@ pub struct Env<
     /// The value is a 128bits value.
     pub last_program_digest_after_execution: BigInt,
 
-    /// The coin folding combiner will be used to generate the combinaison of
+    /// The coin folding combiner will be used to generate the combination of
     /// folding instances
     pub r: BigInt,
 
