@@ -1739,6 +1739,245 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> Expr<ConstantExpr<F, Challe
     }
 }
 
+impl<F: FftField, Column: Copy, ChallengeTerm: Copy>
+    Expr<ConstantExpr<F, ChallengeTerm>, Column>
+{
+    /// Compile an expression to RPN tokens **in OCaml evaluation order**.
+    ///
+    /// This is the token analog of [`FormattedOutput::ocaml_str`] — the
+    /// generator behind `plonk_checks/scalars.ml` — rather than of
+    /// [`Self::to_polish`]. The differences exist so that a stack interpreter
+    /// reproduces the exact in-circuit operation order, and hence verification
+    /// key, of the generated OCaml:
+    ///
+    /// - Binary operators emit their **right** operand before their left, so an
+    ///   interpreter that pops top-as-left matches OCaml's right-to-left
+    ///   evaluation order. Under that convention `Sub` computes `left - right`
+    ///   (the non-commutative case that pins the ordering down).
+    /// - Cached subexpressions are hoisted and emitted in ascending [`CacheId`]
+    ///   order — mirroring `ocaml_str`'s sorted `let` bindings — each followed
+    ///   by `Store`; references become `Load`.
+    ///
+    /// Powers of the `alpha` challenge are emitted as the ordinary
+    /// `[Challenge(Alpha); Pow(n)]`. The generator shares a single
+    /// precomputed `alpha_pow(n)` for these, so the OCaml interpreter must
+    /// recognise that pattern and substitute the shared value to keep the
+    /// verification key byte-identical.
+    pub fn to_ocaml_ordered_polish(&self) -> Vec<PolishToken<F, Column, ChallengeTerm>> {
+        let mut res = vec![];
+        let mut next_slot = 0;
+        self.to_ocaml_ordered_polish_(&mut next_slot, &mut res);
+        res
+    }
+
+    fn to_ocaml_ordered_polish_(
+        &self,
+        next_slot: &mut usize,
+        res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
+    ) {
+        // Hoist this scope's cached subexpressions as `Store`s, in ascending
+        // `CacheId` order, then emit the body. Mirrors `ocaml_str`.
+        let mut env: HashMap<CacheId, &Self> = HashMap::new();
+        self.collect_caches(&mut env);
+        let mut env: Vec<_> = env.into_iter().collect();
+        env.sort_by_key(|(id, _)| *id);
+
+        let mut slots: HashMap<CacheId, usize> = HashMap::new();
+        for (id, e) in env {
+            e.to_ocaml_ordered_polish_(next_slot, res);
+            res.push(PolishToken::Store);
+            slots.insert(id, *next_slot);
+            *next_slot += 1;
+        }
+        self.emit_ocaml_ordered_body(&slots, next_slot, res);
+    }
+
+    /// Collect the caches directly referenced in this scope, stopping at each
+    /// `Cache` (its body is a sub-scope, hoisted when that cache is emitted).
+    /// Mirrors how `ocaml` populates its cache map.
+    fn collect_caches<'e>(&'e self, env: &mut HashMap<CacheId, &'e Self>) {
+        use Operations::*;
+        match self {
+            Cache(id, e) => {
+                env.insert(*id, e.as_ref());
+            }
+            Pow(x, _) | Double(x) | Square(x) => x.collect_caches(env),
+            Add(x, y) | Mul(x, y) | Sub(x, y) => {
+                x.collect_caches(env);
+                y.collect_caches(env);
+            }
+            IfFeature(_, e1, e2) => {
+                e1.collect_caches(env);
+                e2.collect_caches(env);
+            }
+            Atom(_) => (),
+        }
+    }
+
+    fn emit_ocaml_ordered_body(
+        &self,
+        slots: &HashMap<CacheId, usize>,
+        next_slot: &mut usize,
+        res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
+    ) {
+        use Operations::*;
+        match self {
+            // A constant subexpression is its own hoisting sub-scope.
+            Atom(ExprInner::Constant(c)) => c.to_ocaml_ordered_polish_(next_slot, res),
+            Atom(ExprInner::Cell(v)) => res.push(PolishToken::Cell(*v)),
+            Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) => {
+                res.push(PolishToken::VanishesOnZeroKnowledgeAndPreviousRows)
+            }
+            Atom(ExprInner::UnnormalizedLagrangeBasis(i)) => {
+                res.push(PolishToken::UnnormalizedLagrangeBasis(*i))
+            }
+            Pow(x, n) => {
+                x.emit_ocaml_ordered_body(slots, next_slot, res);
+                res.push(PolishToken::Pow(*n));
+            }
+            Double(x) => {
+                x.emit_ocaml_ordered_body(slots, next_slot, res);
+                res.push(PolishToken::Dup);
+                res.push(PolishToken::Add);
+            }
+            Square(x) => {
+                x.emit_ocaml_ordered_body(slots, next_slot, res);
+                res.push(PolishToken::Dup);
+                res.push(PolishToken::Mul);
+            }
+            // Right operand first: OCaml evaluates `(x OP y)` right-to-left.
+            Add(x, y) => {
+                y.emit_ocaml_ordered_body(slots, next_slot, res);
+                x.emit_ocaml_ordered_body(slots, next_slot, res);
+                res.push(PolishToken::Add);
+            }
+            Sub(x, y) => {
+                y.emit_ocaml_ordered_body(slots, next_slot, res);
+                x.emit_ocaml_ordered_body(slots, next_slot, res);
+                res.push(PolishToken::Sub);
+            }
+            Mul(x, y) => {
+                y.emit_ocaml_ordered_body(slots, next_slot, res);
+                x.emit_ocaml_ordered_body(slots, next_slot, res);
+                res.push(PolishToken::Mul);
+            }
+            Cache(id, _) => res.push(PolishToken::Load(slots[id])),
+            IfFeature(feature, e1, e2) => {
+                // True branch: runs when the feature is enabled.
+                res.push(PolishToken::SkipIfNot(*feature, 0));
+                let before = res.len();
+                e1.emit_ocaml_ordered_body(slots, next_slot, res);
+                res[before - 1] = PolishToken::SkipIfNot(*feature, res.len() - before);
+                // False branch: runs when the feature is disabled.
+                res.push(PolishToken::SkipIf(*feature, 0));
+                let before = res.len();
+                e2.emit_ocaml_ordered_body(slots, next_slot, res);
+                res[before - 1] = PolishToken::SkipIf(*feature, res.len() - before);
+            }
+        }
+    }
+}
+
+impl<F: Copy, ChallengeTerm: Copy> Operations<ConstantExprInner<F, ChallengeTerm>> {
+    /// Constant-expression counterpart of [`Expr::to_ocaml_ordered_polish_`]:
+    /// emits tokens in OCaml right-to-left evaluation order, hoisting cached
+    /// subexpressions in ascending [`CacheId`] order. Powers of `alpha` are
+    /// emitted as the ordinary `[Challenge(Alpha); Pow(n)]`; the OCaml
+    /// interpreter recognises that pattern and reuses the shared `alpha_pow(n)`.
+    fn to_ocaml_ordered_polish_<Column>(
+        &self,
+        next_slot: &mut usize,
+        res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
+    ) {
+        let mut env: HashMap<CacheId, &Self> = HashMap::new();
+        self.collect_caches(&mut env);
+        let mut env: Vec<_> = env.into_iter().collect();
+        env.sort_by_key(|(id, _)| *id);
+
+        let mut slots: HashMap<CacheId, usize> = HashMap::new();
+        for (id, e) in env {
+            e.to_ocaml_ordered_polish_(next_slot, res);
+            res.push(PolishToken::Store);
+            slots.insert(id, *next_slot);
+            *next_slot += 1;
+        }
+        self.emit_ocaml_ordered_body(&slots, next_slot, res);
+    }
+
+    fn collect_caches<'e>(&'e self, env: &mut HashMap<CacheId, &'e Self>) {
+        use Operations::*;
+        match self {
+            Cache(id, e) => {
+                env.insert(*id, e.as_ref());
+            }
+            Pow(x, _) | Double(x) | Square(x) => x.collect_caches(env),
+            Add(x, y) | Mul(x, y) | Sub(x, y) => {
+                x.collect_caches(env);
+                y.collect_caches(env);
+            }
+            IfFeature(_, e1, e2) => {
+                e1.collect_caches(env);
+                e2.collect_caches(env);
+            }
+            Atom(_) => (),
+        }
+    }
+
+    fn emit_ocaml_ordered_body<Column>(
+        &self,
+        slots: &HashMap<CacheId, usize>,
+        next_slot: &mut usize,
+        res: &mut Vec<PolishToken<F, Column, ChallengeTerm>>,
+    ) {
+        use Operations::*;
+        match self {
+            Atom(ConstantExprInner::Challenge(c)) => res.push(PolishToken::Challenge(*c)),
+            Atom(ConstantExprInner::Constant(c)) => res.push(PolishToken::Constant(*c)),
+            Pow(x, n) => {
+                x.emit_ocaml_ordered_body(slots, next_slot, res);
+                res.push(PolishToken::Pow(*n));
+            }
+            Double(x) => {
+                x.emit_ocaml_ordered_body(slots, next_slot, res);
+                res.push(PolishToken::Dup);
+                res.push(PolishToken::Add);
+            }
+            Square(x) => {
+                x.emit_ocaml_ordered_body(slots, next_slot, res);
+                res.push(PolishToken::Dup);
+                res.push(PolishToken::Mul);
+            }
+            // Right operand first: OCaml evaluates `(x OP y)` right-to-left.
+            Add(x, y) => {
+                y.emit_ocaml_ordered_body(slots, next_slot, res);
+                x.emit_ocaml_ordered_body(slots, next_slot, res);
+                res.push(PolishToken::Add);
+            }
+            Sub(x, y) => {
+                y.emit_ocaml_ordered_body(slots, next_slot, res);
+                x.emit_ocaml_ordered_body(slots, next_slot, res);
+                res.push(PolishToken::Sub);
+            }
+            Mul(x, y) => {
+                y.emit_ocaml_ordered_body(slots, next_slot, res);
+                x.emit_ocaml_ordered_body(slots, next_slot, res);
+                res.push(PolishToken::Mul);
+            }
+            Cache(id, _) => res.push(PolishToken::Load(slots[id])),
+            IfFeature(feature, e1, e2) => {
+                res.push(PolishToken::SkipIfNot(*feature, 0));
+                let before = res.len();
+                e1.emit_ocaml_ordered_body(slots, next_slot, res);
+                res[before - 1] = PolishToken::SkipIfNot(*feature, res.len() - before);
+                res.push(PolishToken::SkipIf(*feature, 0));
+                let before = res.len();
+                e2.emit_ocaml_ordered_body(slots, next_slot, res);
+                res[before - 1] = PolishToken::SkipIf(*feature, res.len() - before);
+            }
+        }
+    }
+}
+
 impl<F: FftField, Column: PartialEq + Copy, ChallengeTerm: Copy>
     Expr<ConstantExpr<F, ChallengeTerm>, Column>
 {
