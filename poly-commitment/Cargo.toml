@@ -63,6 +63,10 @@ name = "poly_comm"
 harness = false
 
 [[bench]]
+name = "fold_regression"
+harness = false
+
+[[bench]]
 name = "ipa"
 harness = false
 
