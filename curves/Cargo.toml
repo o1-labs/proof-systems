@@ -15,6 +15,18 @@ default = ["asm", "parallel"]
 # This feature enables assembly optimizations in ark_ff.
 asm = []
 parallel = ["ark-ec/parallel", "ark-ff/parallel", "ark-std/parallel"]
+# Routes Pasta Fp/Fq Montgomery multiplication through the SP1 zkVM
+# `sys_bigint` precompile when compiled for the SP1 zkVM target.
+# Off-target it falls back to the trait default (correct, not specialized).
+sp1 = ["dep:sp1-zkvm"]
+# Routes Pasta Fp/Fq Montgomery multiplication through the OpenVM modular
+# arithmetic extension when compiled for the OpenVM zkVM target. Same shape as
+# `sp1` above; off-target it falls back to the trait default.
+#
+# OpenVM's core is riscv32, so 256-bit arithmetic is emulated over 32-bit words
+# unless it goes through a chip -- this feature matters more there than the SP1
+# equivalent does on riscv64.
+openvm = ["dep:openvm-algebra-guest", "dep:openvm-ecc-guest", "dep:openvm-ecc-sw-macros", "dep:openvm", "dep:serde", "dep:bytemuck"]
 
 [dependencies]
 ark-bn254.workspace = true
@@ -22,6 +34,27 @@ ark-ec.workspace = true
 ark-ff.workspace = true
 ark-std.workspace = true
 num-bigint.workspace = true
+
+# sp1-zkvm is only pulled in when (a) the `sp1` feature is enabled and
+# (b) we're actually building for the SP1 zkVM target. Host builds with
+# `sp1` on never see this dep — the override falls back to the trait
+# default impl via cfg(target_os = "zkvm") inside the source.
+[target.'cfg(any(target_os = "zkvm", target_os = "openvm"))'.dependencies]
+sp1-zkvm = { workspace = true, optional = true }
+# Same target-gating rationale as sp1-zkvm: host builds with `openvm` on never
+# see this dep, the impl falls back via cfg(target_os = "zkvm") in the source.
+# Zero-copy [u64; 4] <-> [u8; 32] reinterpretation on the chip boundary.
+# Pod-to-Pod casts, so no `unsafe` is introduced.
+bytemuck = { version = "1", default-features = false, optional = true }
+openvm-algebra-guest = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.1.0-preview", optional = true }
+# `moduli_declare!` expands to code referencing `openvm` and `serde`, so the
+# declaring crate must carry both (openvm's own `k256` guest lib does the same).
+openvm = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.1.0-preview", optional = true }
+# `sw_declare!` must live in the same crate as `moduli_declare!`: the generated
+# `from_const_bytes` it needs for the curve's `b` constant is private.
+openvm-ecc-guest = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.1.0-preview", optional = true }
+openvm-ecc-sw-macros = { git = "https://github.com/openvm-org/openvm.git", tag = "v2.1.0-preview", optional = true }
+serde = { version = "1", default-features = false, features = ["derive", "alloc"], optional = true }
 
 [dev-dependencies]
 rand.workspace = true

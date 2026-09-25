@@ -163,7 +163,7 @@ impl<T: FlatVectorElem> IntoWasmAbi for FlatVector<T> {
     fn into_abi(self) -> Self::Abi {
         let mut data: Vec<u8> = Vec::with_capacity(self.0.len() * T::FLATTENED_SIZE);
         for x in self.0 {
-            data.extend(x.flatten());
+            data.extend(x.flatten().into_iter());
         }
         IntoWasmAbi::into_abi(data)
     }
