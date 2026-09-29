@@ -1,10 +1,10 @@
 use ark_ec::AffineRepr;
-use ark_ff::{BigInteger, One, PrimeField};
+use ark_ff::{BigInteger, One, PrimeField, Zero};
 use mina_curves::pasta::Pallas as CurvePoint;
 use num_bigint::BigUint;
 use o1_utils::{
     field_helpers::{FieldHelpersError, Result},
-    BigUintFieldHelpers, FieldHelpers,
+    i32_to_field, BigUintFieldHelpers, FieldHelpers,
 };
 
 /// Base field element type
@@ -153,4 +153,10 @@ fn field_big() {
     let bi = BigUint::from_bytes_le(&bytes);
     assert_eq!(fe.to_biguint(), bi);
     assert_eq!(bi.to_field::<BaseField>().unwrap(), fe);
+}
+
+#[test]
+fn i32_to_field_handles_min_value() {
+    let value: BaseField = i32_to_field(i32::MIN);
+    assert_eq!(value + BaseField::from(1_u64 << 31), BaseField::zero());
 }
