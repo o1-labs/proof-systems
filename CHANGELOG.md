@@ -115,6 +115,15 @@ and this project adheres to
   `rayon` unconditionally
   ([#3586](https://github.com/o1-labs/proof-systems/pull/3586))
 
+### [o1vm](./o1vm)
+
+#### Fixed
+
+- Copy the `.text` section into the memory pages using half-open intervals: the
+  last byte of the section is no longer dropped, and a section that is not page
+  aligned and spans several pages no longer panics on the first page
+  ([#3640](https://github.com/o1-labs/proof-systems/pull/3640))
+
 ## 0.7.0
 
 ### [kimchi-napi](./kimchi-napi)
