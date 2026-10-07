@@ -356,8 +356,10 @@ impl<G: CommitmentCurve> SRS<G> {
         let rand_base = G::ScalarField::rand(rng);
         let sg_rand_base = G::ScalarField::rand(rng);
 
-        let mut rand_base_i = G::ScalarField::one();
-        let mut sg_rand_base_i = G::ScalarField::one();
+        // Start both scaling factors from their random bases, so that every
+        // proof of the batch is weighted in the same way.
+        let mut rand_base_i = rand_base;
+        let mut sg_rand_base_i = sg_rand_base;
 
         for BatchEvaluationProof {
             sponge,
@@ -369,6 +371,12 @@ impl<G: CommitmentCurve> SRS<G> {
             combined_inner_product,
         } in batch.iter_mut()
         {
+            // Opening proofs are expected to have one round per bit of the
+            // SRS size.
+            if opening.lr.len() != max_rounds {
+                return false;
+            }
+
             sponge.absorb_fr(&[shift_scalar::<G>(*combined_inner_product)]);
 
             let u_base: G = {
