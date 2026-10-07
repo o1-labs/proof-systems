@@ -230,7 +230,7 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub lookup_constraint_system: Arc<LookupConstraintSystemCache<F>>,
     /// precomputes
     #[serde(skip)]
-    precomputations: Arc<LazyCache<Arc<DomainConstantEvaluations<F>>>>,
+    pub(crate) precomputations: Arc<LazyCache<Arc<DomainConstantEvaluations<F>>>>,
 
     /// Disable gates checks (for testing; only enables with development builds)
     pub disable_gates_checks: bool,

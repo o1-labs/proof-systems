@@ -37,6 +37,8 @@ pub use poly_commitment;
 pub mod alphas;
 #[cfg(feature = "prover")]
 pub mod bench;
+#[cfg(feature = "mmap_cache")]
+pub mod cached_prover_index;
 pub mod circuits;
 pub mod curve;
 pub mod error;
