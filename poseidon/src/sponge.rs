@@ -113,7 +113,7 @@ pub fn endo_coefficient<F: PrimeField>() -> F {
     F::GENERATOR.pow(p_minus_1_over_3.into_bigint().as_ref())
 }
 
-fn get_bit(limbs_lsb: &[u64], i: u64) -> u64 {
+const fn get_bit(limbs_lsb: &[u64], i: u64) -> u64 {
     let limb = i / 64;
     let j = i % 64;
     (limbs_lsb[limb as usize] >> j) & 1
