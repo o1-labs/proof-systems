@@ -15,20 +15,18 @@ pub struct WitnessEvals<F: FftField> {
     pub z: Evaluations<F, D<F>>,
 }
 
-#[derive(Clone)]
-pub struct WitnessShifts<F: FftField> {
-    /// this wire evaluations
-    pub this: WitnessEvals<F>,
-    /// next wire evaluations
-    pub next: WitnessEvals<F>,
-}
-
+/// The witness and the permutation accumulator, evaluated over `d8`.
+///
+/// Only the values the quotient is built from: constraints referring to the
+/// next row are evaluated by shifting the index into these same evaluations,
+/// so no separately shifted copy of the witness is kept.
 #[derive(Clone)]
 pub struct WitnessOverDomains<F: FftField> {
-    /// evaluations over domain d4
-    pub d4: WitnessShifts<F>,
-    /// evaluations over domain d8
-    pub d8: WitnessShifts<F>,
+    /// The wires and the permutation accumulator at each row.
+    pub this: WitnessEvals<F>,
+    /// The permutation accumulator one row on, which the permutation argument
+    /// compares against the accumulator in [`Self::this`].
+    pub z_next: Evaluations<F, D<F>>,
 }
 
 // PLOOKUP
