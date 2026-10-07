@@ -893,10 +893,7 @@ impl<F: FftField, Column: Copy, ChallengeTerm: Copy> PolishToken<F, Column, Chal
                 }
                 Constant(Literal(x)) => stack.push(*x),
                 Dup => stack.push(stack[stack.len() - 1]),
-                Cell(v) => match v.evaluate(evals) {
-                    Ok(x) => stack.push(x),
-                    Err(e) => return Err(e),
-                },
+                Cell(v) => stack.push(v.evaluate(evals)?),
                 Pow(n) => {
                     let i = stack.len() - 1;
                     stack[i] = stack[i].pow([*n]);

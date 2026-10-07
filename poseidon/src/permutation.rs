@@ -138,7 +138,7 @@ pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants, const FULL_ROUNDS: u
     params: &ArithmeticSpongeParams<F, FULL_ROUNDS>,
     state: &mut [F],
 ) {
-    assert!(state.len() == SC::SPONGE_WIDTH);
+    assert_eq!(state.len(), SC::SPONGE_WIDTH);
 
     if SC::PERM_HALF_ROUNDS_FULL == 0 {
         if SC::PERM_INITIAL_ARK {
