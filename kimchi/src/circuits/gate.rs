@@ -377,9 +377,8 @@ impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
 
     fn connect_64bit(&mut self, zero_row: usize, start_row: usize) {
         // Connect the 64-bit cells from previous Generic gate with zeros in first 12 bits
-        self.connect_cell_pair((start_row, 1), (start_row, 2));
-        self.connect_cell_pair((start_row, 2), (zero_row, 0));
         self.connect_cell_pair((zero_row, 0), (start_row, 1));
+        self.connect_cell_pair((start_row, 1), (start_row, 2));
     }
 
     fn connect_ffadd_range_checks(
