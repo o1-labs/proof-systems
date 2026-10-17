@@ -367,8 +367,8 @@ fn test_bad_constraints() {
         ),
         Err(CircuitGateError::CopyConstraint {
             typ: GateType::RangeCheck0,
-            src: Wire { row: 2, col: 2 },
-            dst: Wire { row: 0, col: 0 }
+            src: Wire { row: 2, col: 1 },
+            dst: Wire { row: 2, col: 2 }
         })
     );
     witness[2][2] -= PallasField::one();
@@ -398,8 +398,8 @@ fn test_bad_constraints() {
         ),
         Err(CircuitGateError::CopyConstraint {
             typ: GateType::RangeCheck0,
-            src: Wire { row: 3, col: 2 },
-            dst: Wire { row: 2, col: 2 }
+            src: Wire { row: 3, col: 1 },
+            dst: Wire { row: 3, col: 2 }
         })
     );
 }
