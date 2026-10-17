@@ -30,8 +30,8 @@ After the repository being cloned, run:
 make setup
 ```
 
-this will also synchronize the Git submodules to get the version of Optimism the
-zkVM has been developed for.
+this also fetches the open MIPS tests used by the o1vm, a sparse checkout of the
+Optimism submodule.
 
 ### Mac & Linux
 

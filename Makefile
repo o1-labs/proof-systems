@@ -18,10 +18,15 @@ O1VM_RISCV32IM_BIN_DIR = ${O1VM_RESOURCES_PATH}/riscv32im/bin
 O1VM_RISCV32IM_BIN_FILES = $(patsubst ${O1VM_RISCV32IM_SOURCE_DIR}/%.S,${O1VM_RISCV32IM_BIN_DIR}/%.o,${O1VM_RISCV32IM_SOURCE_FILES})
 RISCV32_AS_FLAGS = --warn --fatal-warnings
 
-OPTIMISM_MIPS_SOURCE_DIR = $(shell pwd)/o1vm/ethereum-optimism/cannon/mipsevm/open_mips_tests/test
-OPTIMISM_MIPS_SOURCE_FILES = $(wildcard ${OPTIMISM_MIPS_SOURCE_DIR}/*.asm)
+# The open MIPS tests come from the ethereum-optimism submodule. Only the
+# directory below is fetched (see the setup-open-mips-tests target).
+OPTIMISM_SUBMODULE_PATH = o1vm/ethereum-optimism
+OPEN_MIPS_TESTS_SPARSE_PATH = cannon/mipsevm/open_mips_tests
+OPTIMISM_DIR = $(shell pwd)/${OPTIMISM_SUBMODULE_PATH}
+OPEN_MIPS_TESTS_SOURCE_DIR = ${OPTIMISM_DIR}/${OPEN_MIPS_TESTS_SPARSE_PATH}/test
+OPEN_MIPS_TESTS_SOURCE_FILES = $(wildcard ${OPEN_MIPS_TESTS_SOURCE_DIR}/*.asm)
 O1VM_MIPS_SOURCE_DIR = ${O1VM_RESOURCES_PATH}/mips/src
-O1VM_MIPS_SOURCE_FILES = $(patsubst ${OPTIMISM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIPS_SOURCE_DIR}/%.asm,${OPTIMISM_MIPS_SOURCE_FILES})
+O1VM_MIPS_SOURCE_FILES = $(patsubst ${OPEN_MIPS_TESTS_SOURCE_DIR}/%.asm,${O1VM_MIPS_SOURCE_DIR}/%.asm,${OPEN_MIPS_TESTS_SOURCE_FILES})
 O1VM_MIPS_BIN_DIR = ${O1VM_RESOURCES_PATH}/mips/bin
 O1VM_MIPS_BIN_FILES = $(patsubst ${O1VM_MIPS_SOURCE_DIR}/%.asm,${O1VM_MIPS_BIN_DIR}/%.o,${O1VM_MIPS_SOURCE_FILES})
 
@@ -69,17 +74,32 @@ O1VM_FEATURES = \
 all: release
 
 .PHONY: setup
-setup: setup-git setup-wasm-toolchain
+setup: setup-open-mips-tests setup-wasm-toolchain
 
-.PHONY: setup-git
-setup-git:
-		@echo ""
-		@echo "Syncing the Git submodules."
-		@echo ""
-		git submodule sync
-		git submodule update --init --recursive
-		@echo ""
-		@echo "Git submodules synced."
+# Fetch only the open MIPS tests from the ethereum-optimism submodule, at the
+# commit it pins, instead of checking out the whole Optimism repository and its
+# nested submodules. The tests are not copied into this repository because they
+# are licensed LGPLv3.
+.PHONY: setup-open-mips-tests
+setup-open-mips-tests: ## Fetch the open MIPS tests (sparse submodule checkout)
+		@if [ -d "${OPEN_MIPS_TESTS_SOURCE_DIR}" ]; then \
+			echo "Open MIPS tests already present."; \
+		else \
+			set -e; \
+			SHA=$$(git ls-tree HEAD ${OPTIMISM_SUBMODULE_PATH} | \
+				awk '{print $$3}'); \
+			URL=$$(git config -f .gitmodules \
+				submodule.${OPTIMISM_SUBMODULE_PATH}.url); \
+			echo "Fetching ${OPEN_MIPS_TESTS_SPARSE_PATH} at $$SHA"; \
+			git submodule init ${OPTIMISM_SUBMODULE_PATH}; \
+			mkdir -p ${OPTIMISM_SUBMODULE_PATH}; \
+			cd ${OPTIMISM_SUBMODULE_PATH}; \
+			git init -q; \
+			git remote add origin "$$URL" 2>/dev/null || true; \
+			git sparse-checkout set ${OPEN_MIPS_TESTS_SPARSE_PATH}; \
+			git fetch -q --depth 1 --filter=blob:none origin "$$SHA"; \
+			git checkout -q FETCH_HEAD; \
+		fi
 
 .PHONY: setup-wasm-toolchain
 setup-wasm-toolchain:
@@ -389,7 +409,7 @@ ${O1VM_RISCV32IM_BIN_DIR}/%.o: ${O1VM_RISCV32IM_SOURCE_DIR}/%.S
 .PHONY: build-mips-programs
 build-mips-programs: ${O1VM_MIPS_SOURCE_FILES} ${O1VM_MIPS_BIN_FILES} ## Build all MIPS programs written for the o1vm
 
-${O1VM_MIPS_SOURCE_DIR}/%.asm: ${OPTIMISM_MIPS_SOURCE_DIR}/%.asm
+${O1VM_MIPS_SOURCE_DIR}/%.asm: ${OPEN_MIPS_TESTS_SOURCE_DIR}/%.asm
 		@mkdir -p ${O1VM_MIPS_SOURCE_DIR}
 		@echo "Transforming $< to $@, making it compatible for o1vm"
 		@sed \
