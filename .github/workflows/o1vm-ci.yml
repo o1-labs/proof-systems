@@ -39,7 +39,7 @@ jobs:
 
   clippy-o1vm:
     name: Clippy o1vm (${{ matrix.rust_toolchain }})
-    needs: ['load-versions']
+    needs: ["load-versions"]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -51,8 +51,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: recursive
 
       - name: Use shared OCaml setting up steps
         uses: ./.github/actions/ocaml-shared
@@ -76,66 +74,3 @@ jobs:
         run: |
           eval $(opam env)
           make lint-all
-
-  run_o1vm_with_cached_data:
-    name: Run o1vm with cached data
-    needs: ['load-versions']
-    runs-on: ["ubuntu-latest"]
-    services:
-      o1vm-e2e-testing-cache:
-        image: o1labs/proof-systems:o1vm-e2e-testing-cache
-        volumes:
-          - /tmp:/tmp/cache
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          submodules: recursive
-
-      - name: Use shared Rust toolchain setting up steps
-        uses: ./.github/actions/toolchain-shared
-        with:
-          rust_toolchain_version: ${{ needs.load-versions.outputs.rust-msrv }}
-
-      # FIXME: currently not available for 5.0.0.
-      # It might be related to boxroot dependency, and we would need
-      # to bump up the ocaml-rs dependency
-      - name: Use shared OCaml setting up steps
-        uses: ./.github/actions/ocaml-shared
-        with:
-          ocaml_version: ${{ needs.load-versions.outputs.ocaml-version }}
-
-      - name: Install the Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ needs.load-versions.outputs.python-version }}
-          check-latest: true
-
-      - name: Install the Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: ${{ needs.load-versions.outputs.go-version }}
-
-      - name: Install the Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-
-      - name: Build the OP program
-        run: |
-          cd o1vm
-          make -C ./ethereum-optimism/op-program op-program
-          cd ..
-
-      - name: Start the local HTTP server
-        run: |
-          python -m http.server 8765 &
-
-      #
-      # Tests
-      #
-
-      - name: Execute o1vm in E2E flavor using cached data
-        run: |
-          eval $(opam env)
-          cd o1vm
-          unzip -q -o /tmp/o1vm-e2e-testing-cache.zip -d ./
-          RUST_LOG=debug RUN_WITH_CACHED_DATA="y" FILENAME="env-for-latest-l2-block.sh" O1VM_FLAVOR="pickles" STOP_AT="=3000000" ./run-code.sh

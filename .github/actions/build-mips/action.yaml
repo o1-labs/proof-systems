@@ -4,6 +4,10 @@ description: 'Builds MIPS programs for testing'
 runs:
   using: "composite"
   steps:
+    - name: Fetch the open MIPS tests (sparse submodule checkout)
+      shell: bash
+      run: make setup-open-mips-tests
+
     - name: Cache apt packages (Linux)
       if: runner.os == 'Linux'
       uses: actions/cache@v4

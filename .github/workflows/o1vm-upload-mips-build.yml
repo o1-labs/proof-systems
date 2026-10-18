@@ -8,10 +8,7 @@ jobs:
     name: Build and Upload MIPS Programs
     runs-on: ubuntu-latest
     steps:
-
       - uses: actions/checkout@v6
-        with:
-          submodules: 'recursive'
 
       - name: Build MIPS binaries
         uses: ./.github/actions/build-mips

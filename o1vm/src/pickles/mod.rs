@@ -6,10 +6,10 @@
 //! the size of the supported SRS. The proofs will then be aggregated using
 //! a modified version of pickles.
 //!
-//! You can run this flavor by using:
+//! You can run this flavor with the `pickles_o1vm` binary:
 //!
 //! ```bash
-//! O1VM_FLAVOR=pickles bash run-code.sh
+//! cargo run --release -p o1vm --bin pickles_o1vm -- cannon run --help
 //! ```
 
 pub mod column_env;
