@@ -17,6 +17,8 @@ env:
   CARGO_INCREMENTAL: 1
   CARGO_TERM_COLOR: always
   RUST_MIN_STACK: 31457280
+  # ocaml-boxroot-sys's vendored C does not build as C23, GCC 15's default
+  CFLAGS: -std=gnu17
 
 jobs:
   test-export-vectors:
