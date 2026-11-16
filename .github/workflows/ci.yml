@@ -110,7 +110,7 @@ jobs:
       - uses: ./.github/actions/toolchain-shared
         if: ${{ github.event_name == 'workflow_run' }}
         with:
-          rust_toolchain_version: ${{ matrix.rust_and_os.rust_toolchain_version }}
+          rust_toolchain_version: ${{ matrix.rust_toolchain_version }}
       - name: start-fresh
         if: ${{ github.event_name == 'workflow_run' }}
         shell: bash
