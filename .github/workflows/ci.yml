@@ -26,6 +26,8 @@ env:
   # 30 MB of stack for Keccak tests
   RUST_MIN_STACK: 31457280
   CARGO_EXTRA_ARGS: "--workspace"
+  # ocaml-boxroot-sys's vendored C does not build as C23, GCC 15's default
+  CFLAGS: -std=gnu17
 
 jobs:
   define-matrix:

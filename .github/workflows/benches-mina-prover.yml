@@ -6,6 +6,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # ocaml-boxroot-sys's vendored C does not build as C23, GCC 15's default
+  CFLAGS: -std=gnu17
 
 jobs:
 
