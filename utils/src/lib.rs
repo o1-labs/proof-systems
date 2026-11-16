@@ -8,6 +8,7 @@
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]
 #![deny(clippy::nursery)]
+#![allow(unknown_lints, clippy::ifs_as_logical_ops)]
 
 extern crate alloc;
 
